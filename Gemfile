@@ -36,7 +36,7 @@ gem 'paper_trail'
 # Pagination [https://github.com/ddnexus/pagy]
 gem 'pagy'
 gem 'premailer-rails'
-gem 'sghtmltopdf', '0.4.0'
+gem 'sghtmltopdf', '0.5.1'
 # Rate limiting and throttling [https://github.com/rack/rack-attack]
 gem 'rack-attack'
 # TOTP for two-factor authentication [https://github.com/mdp/rotp]
@@ -105,6 +105,7 @@ group :test do
   gem 'capybara'
   gem 'capybara-playwright-driver'
   gem 'factory_bot_rails'
+  gem 'playwright-ruby-client', '~> 1.63.0'
   gem 'pundit-matchers'
   gem 'rspec-rails'
   gem 'shoulda-matchers'
@@ -133,7 +134,9 @@ group :tools do
   gem 'rubocop-factory_bot', require: false
 
   gem 'rspec-github', require: false
+  gem 'rubocop', '>= 1.91', '< 3', require: false
   gem 'rubocop-capybara'
+  gem 'rubocop-performance', require: false
   gem 'rubocop-rails'
   gem 'rubocop-rspec'
   gem 'rubocop-rspec_rails'

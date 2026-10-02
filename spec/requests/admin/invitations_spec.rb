@@ -27,6 +27,43 @@ RSpec.describe 'Admin::Invitations' do
     end
   end
 
+  describe 'GET /admin/invitations' do
+    before { sign_in(admin) }
+
+    it 'renders translated role and relationship labels' do
+      get admin_invitations_path
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include('Household role', 'Dependent relationship', 'Dependent access')
+
+      document = response.parsed_body
+      {
+        'administrator' => 'Administrator',
+        'member' => 'Member'
+      }.each do |value, label|
+        option = document.at_css("#invitation_membership_role option[value='#{value}']")
+        expect(option.text.strip).to eq(label)
+      end
+      {
+        'parent' => 'Parent',
+        'carer' => 'Carer',
+        'family_member' => 'Family member',
+        'professional' => 'Professional'
+      }.each do |value, label|
+        option = document.at_css("#invitation_relationship_type option[value='#{value}']")
+        expect(option.text.strip).to eq(label)
+      end
+      {
+        'view' => 'View',
+        'record' => 'Record',
+        'manage' => 'Manage'
+      }.each do |value, label|
+        option = document.at_css("#invitation_access_level option[value='#{value}']")
+        expect(option.text.strip).to eq(label)
+      end
+    end
+  end
+
   describe 'DELETE /admin/invitations/:id' do
     context 'when authenticated as administrator' do
       before { sign_in(admin) }

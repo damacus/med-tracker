@@ -27,17 +27,17 @@ RSpec.describe 'Platform support access sessions' do
     end
   end
 
-  it 'requires privileged MFA proof before opening support access' do
+  it 'opens authorised support access without requiring optional MFA' do
     post platform_support_access_sessions_path,
          params: {
            support_access_session: { household_id: target_household.id, reason: 'Investigate invitation issue' }
          }
 
-    expect(response).to redirect_to(profile_path)
-    expect(flash[:alert]).to include('Set up MFA or a passkey')
+    expect(response).to redirect_to(platform_settings_path)
+    expect(SupportAccessSession.last).to have_attributes(reason: 'Investigate invitation issue', mfa_verified_at: nil)
   end
 
-  it 'rejects stale privileged MFA proof before opening support access' do
+  it 'opens support access without requiring MFA to be repeated' do
     travel_to 16.minutes.ago do
       authenticate_with_totp
     end
@@ -47,9 +47,9 @@ RSpec.describe 'Platform support access sessions' do
            params: {
              support_access_session: { household_id: target_household.id, reason: 'Investigate invitation issue' }
            }
-    end.not_to change(SupportAccessSession, :count)
+    end.to change(SupportAccessSession, :count).by(1)
 
-    expect(response).to redirect_to('/multifactor-auth')
+    expect(response).to redirect_to(platform_settings_path)
   end
 
   it 'requires a reason before opening support access' do
@@ -149,7 +149,7 @@ RSpec.describe 'Platform support access sessions' do
     expect(flash[:alert]).to include('not authorized')
   end
 
-  it 'requires hosted privileged MFA before support-mode admin access' do
+  it 'allows valid support-mode admin access despite the retired hosted MFA flag' do
     ENV['HOSTED_ADMIN_MFA_REQUIRED'] = 'true'
     SupportAccessSession.create!(
       platform_admin: platform_admin,
@@ -160,8 +160,7 @@ RSpec.describe 'Platform support access sessions' do
 
     get admin_root_path(household_slug: target_household.slug)
 
-    expect(response).to redirect_to(profile_path(household_slug: target_household.slug))
-    expect(flash[:alert]).to include('Set up MFA or a passkey')
+    expect(response).to have_http_status(:ok)
   end
 
   it 'denies support-mode access at the exact expiry boundary' do

@@ -71,6 +71,7 @@ module Views
 
       def initialize(daily_data:, smart_insights:, start_date:, end_date:, **options)
         @daily_data = daily_data
+        @cycle_summaries = options.fetch(:cycle_summaries, [])
         @smart_insights = smart_insights
         @start_date = start_date
         @end_date = end_date
@@ -88,6 +89,7 @@ module Views
           render_today_section if @daily_data
           render_summary_card if @daily_data
           render_compliance_section if @daily_data
+          render Components::Reports::RoutineCycles.new(cycles: @cycle_summaries) if @daily_data
           render_gp_health_history_form unless @daily_data
           render_insights_grid if @daily_data
         end
@@ -118,7 +120,7 @@ module Views
       def render_today_section = render Components::Reports::TodaySection.new(today_taken_medications: @today_taken_medications)
       def formatted_date_range = "#{@start_date.strftime('%B %d')} — #{@end_date.strftime('%B %d, %Y')}"
 
-      # rubocop:disable Metrics/AbcSize
+      # rubocop:disable-next Metrics/AbcSize
       def render_summary_card
         total_expected = @daily_data.sum { |d| d[:expected] }
         total_actual = @daily_data.sum { |d| d[:actual] }
@@ -146,7 +148,6 @@ module Views
           end
         end
       end
-      # rubocop:enable Metrics/AbcSize
 
       def summary_stat(label, value, subtext)
         div(class: 'space-y-1') do
@@ -240,7 +241,7 @@ module Views
         end
       end
 
-      # rubocop:disable Metrics/AbcSize
+      # rubocop:disable-next Metrics/AbcSize
       def render_insight_card(card)
         m3_card(class: 'space-y-4 border border-border/70 bg-card p-8 shadow-elevation-1 transition-transform hover:scale-[1.02] hover:shadow-elevation-2') do
           div(class: 'flex items-center gap-4') do
@@ -260,17 +261,13 @@ module Views
         end
       end
 
-      # rubocop:enable Metrics/AbcSize
-
       def render_smart_insight_card(insight)
         render_insight_card(
           InsightCard.new(
-            title: insight.title,
-            value: insight.summary,
+            title: insight.title, value: insight.summary,
             description: insight.detail,
             icon_class: insight_icon(insight),
-            text_color: insight_text_color(insight),
-            icon_background_class: insight_icon_background(insight)
+            text_color: insight_text_color(insight), icon_background_class: insight_icon_background(insight)
           )
         )
       end

@@ -7,7 +7,8 @@ module Rack
     AI_MEDICATION_SUGGESTIONS_PATH = %r{\A/households/[^/]+/ai-medication-suggestions\z}
     MCP_PATH = '/mcp'
 
-    throttle('req/ip', limit: 300, period: 5.minutes, &:ip)
+    throttle('req/ip', limit: (Rails.env.test? && ENV['CONTRACT_RATE_LIMITING'] == 'true' ? 3000 : 300),
+                       period: 5.minutes, &:ip)
 
     throttle('logins/ip', limit: 5, period: 20.seconds) do |req|
       req.ip if req.path == '/login' && req.post?
@@ -27,22 +28,6 @@ module Rack
 
     throttle('password_reset/email', limit: 5, period: 1.hour) do |req|
       req.params['email'].to_s.downcase.gsub(/\s+/, '') if req.path == '/reset-password-request' && req.post?
-    end
-
-    throttle('api/auth/login/ip', limit: 10, period: 1.minute) do |req|
-      req.ip if req.path == '/api/v1/auth/login' && req.post?
-    end
-
-    throttle('api/auth/login/email', limit: 10, period: 1.minute) do |req|
-      req.params['email'].to_s.downcase.gsub(/\s+/, '') if req.path == '/api/v1/auth/login' && req.post?
-    end
-
-    throttle('api/auth/refresh/ip', limit: 30, period: 1.minute) do |req|
-      req.ip if req.path == '/api/v1/auth/refresh' && req.post?
-    end
-
-    throttle('api/auth/oidc_exchange/ip', limit: 10, period: 1.minute) do |req|
-      req.ip if req.path == '/api/v1/auth/oidc_exchange' && req.post?
     end
 
     throttle('api/data_exports/ip', limit: 10, period: 1.minute) do |req|
@@ -157,6 +142,6 @@ module Rack
   end
 end
 
-Rack::Attack.enabled = !Rails.env.test?
+Rack::Attack.enabled = !Rails.env.test? || ENV['CONTRACT_RATE_LIMITING'] == 'true'
 
 Rails.application.config.middleware.use Rack::Attack

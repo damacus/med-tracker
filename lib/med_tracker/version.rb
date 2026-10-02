@@ -1,5 +1,5 @@
 # frozen_string_literal: true
 
 module MedTracker
-  VERSION = '0.5.26'
+  VERSION = '0.5.34'
 end

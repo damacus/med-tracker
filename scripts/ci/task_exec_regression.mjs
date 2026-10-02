@@ -26,11 +26,23 @@ const runTask = (command, marker) => {
 try {
   cpSync(path.join(repositoryRoot, 'Taskfile.yml'), path.join(temporaryRoot, 'Taskfile.yml'));
   cpSync(path.join(repositoryRoot, 'Taskfiles'), path.join(temporaryRoot, 'Taskfiles'), { recursive: true });
-  mkdirSync(path.join(temporaryRoot, 'mobile', 'android'), { recursive: true });
-  cpSync(
-    path.join(repositoryRoot, 'mobile', 'android', 'Taskfile.yml'),
-    path.join(temporaryRoot, 'mobile', 'android', 'Taskfile.yml')
-  );
+  for (const taskfile of [
+    'rails/Taskfile.yml',
+    'rust/Taskfile.yml',
+    'rust/api/Taskfile.yml',
+    'rust/web/Taskfile.yml',
+    'rust/ui-preview/Taskfile.yml',
+    'rust/contract-tests/Taskfile.yml',
+    'client-tools/Taskfile.yml',
+    'client-tools/openapi-generator/Taskfile.yml',
+    'mobile/android/Taskfile.yml',
+    'docs/Taskfile.yml'
+  ]) {
+    const destination = path.join(temporaryRoot, taskfile);
+    mkdirSync(path.dirname(destination), { recursive: true });
+    cpSync(path.join(repositoryRoot, taskfile), destination);
+  }
+  cpSync(path.join(repositoryRoot, 'rails', 'tasks'), path.join(temporaryRoot, 'rails', 'tasks'), { recursive: true });
   mkdirSync(path.dirname(stubPath), { recursive: true });
   writeFileSync(
     stubPath,
@@ -40,11 +52,14 @@ import { appendFileSync } from "node:fs";
 
 const args = process.argv.slice(1);
 const marker = process.env.TASK_EXEC_MARKER;
-const command = args.slice(args.indexOf("web-test") + 1);
-appendFileSync(marker, command.join(" ") + "\\n");
-if (command.join(" ") === "rails tailwindcss:build") process.exit(0);
-if (command.join(" ") === "TASK_EXEC_REGRESSION_SUCCESS") process.exit(0);
-if (command.join(" ").includes("TASK_EXEC_REGRESSION_FAILURE")) process.exit(23);
+const serviceIndex = args.indexOf("web-test");
+if (serviceIndex === -1) process.exit(0);
+let command = args.slice(serviceIndex + 1).join(" ");
+if (command.indexOf("eval") !== -1 && process.env.CMD) command = process.env.CMD;
+appendFileSync(marker, command + "\\n");
+if (command === "rails tailwindcss:build") process.exit(0);
+if (command === "TASK_EXEC_REGRESSION_SUCCESS") process.exit(0);
+if (command.includes("TASK_EXEC_REGRESSION_FAILURE")) process.exit(23);
 process.exit(1);
 ' "$@"
 `

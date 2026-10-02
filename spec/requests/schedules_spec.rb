@@ -169,7 +169,7 @@ RSpec.describe 'Schedules' do
       before { sign_in(users(:parent)) }
 
       it 'pauses the schedule and redirects to the person page' do
-        patch pause_person_schedule_path(person, schedule)
+        patch pause_person_schedule_path(person, schedule), params: { pause_period: { reason: 'other' } }
 
         expect(response).to redirect_to(person_path(person))
         expect(schedule.reload).to be_paused
@@ -177,6 +177,7 @@ RSpec.describe 'Schedules' do
 
       it 'returns a turbo stream refresh for the person show container' do
         patch pause_person_schedule_path(person, schedule),
+              params: { pause_period: { reason: 'other' } },
               headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 
         expect(response).to have_http_status(:ok)

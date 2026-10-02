@@ -15,10 +15,10 @@ RSpec.describe 'Schedules workflow' do
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include('Type (OTC or prescribed)')
-      expect(response.body).to include('Name of med')
+      expect(response.body).to include('Medication')
       expect(response.body).to include('Person name')
-      expect(response.body).to include('Dose, frequency')
-      expect(response.body).to include('Schedule (break this down)')
+      expect(response.body).to include('Frequency')
+      expect(response.body).to include('Schedule summary')
     end
 
     it 'preselects medication from query params' do

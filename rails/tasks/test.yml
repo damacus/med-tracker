@@ -1,0 +1,196 @@
+---
+version: "3"
+
+tasks:
+  preflight:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Verify Docker and the test image with a lightweight spec
+    summary: |
+      Verify Docker is available, the test image exists, and a focused spec runs.
+      Usage: task test:preflight
+      Usage: task test:preflight TEST_FILE=spec/path/to/spec.rb
+    cmds:
+      - './scripts/test_preflight.fish {{ .TEST_FILE | default "spec/domain/dose_amount_spec.rb" }}'
+
+  verify-dependencies:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Refresh mounted test dependencies and verify Chromium can launch
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: test
+          COMMAND: node scripts/test_dependency_verification.js
+
+  build:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Build test Docker images
+    summary: |
+      Build Docker images for test environment.
+      Use NO_CACHE=true to force a fresh build.
+      Usage: task test:build
+      Usage: task test:build NO_CACHE=true
+    cmds:
+      - task: :internal:build
+        vars:
+          ENVIRONMENT: test
+          NO_CACHE: '{{ .NO_CACHE | default "" }}'
+
+  up:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Start test database
+    summary: |
+      Start the test database container.
+      The web-test container is ephemeral — use 'task test' to run tests.
+      Usage: task test:up
+    cmds:
+      - task: :internal:up-db
+        vars: { ENVIRONMENT: test }
+
+  exec:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Run an arbitrary command in the ephemeral test web container (CMD=...)
+    summary: |
+      Run an arbitrary command inside a one-off test web container.
+      Useful for bundle install, coverage inspection, and mutation tooling setup.
+      Usage: task test:exec CMD='bundle install'
+      Usage: task test:exec CMD='cat coverage/.last_run.json'
+    requires:
+      vars: [CMD]
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: test
+          COMMAND: "rails tailwindcss:build"
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: test
+          DOCKER_RUN_ARGS: '-e CMD'
+          CMD: '{{ .CMD }}'
+          COMMAND: "sh -c 'eval \"$CMD\"'"
+
+  portless:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Start test server and register a Portless OIDC URL
+    summary: |
+      Start the test web server, register its Docker-assigned host port with
+      Portless, and print the stable local OIDC URL.
+      Requires a globally installed Portless CLI:
+        npm install -g portless
+        portless trust
+      Usage: task test:portless
+    cmds:
+      - task: :internal:up
+        vars: { ENVIRONMENT: test }
+      - ./scripts/portless_oidc.fish test med-tracker-test
+
+  server:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Start the isolated test web server on a Docker-assigned local port
+    cmds:
+      - task: :internal:up
+        vars: { ENVIRONMENT: test }
+
+  seed:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Seed test database with fixtures
+    summary: |
+      Seed test database with fixtures
+      Loads data from db/seeds.rb
+      Safe to run multiple times (idempotent if seeds are written correctly)
+      Usage: task test:seed
+    cmds:
+      - task: :internal:seed
+        vars: { ENVIRONMENT: test }
+
+  stop:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Stop test server
+    summary: |
+      Stop the test server
+      Removes containers but preserves database volumes
+      Usage: task test:stop
+    cmds:
+      - task: :internal:stop
+        vars: { ENVIRONMENT: test, MAIL_SERVICE: mail-test }
+
+  ps:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: List current status of test containers
+    summary: |
+      List current status of test containers
+      Usage: task test:ps
+    cmds:
+      - task: :internal:ps
+        vars: { ENVIRONMENT: test }
+
+  db-migrate:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Run Rails migrations
+    summary: |
+      Run Rails migrations on the test database
+      Usage: task test:db-migrate
+    cmds:
+      - task: :internal:db-migrate
+        vars: { ENVIRONMENT: test }
+
+  assets-rebuild:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Rebuild compiled assets inside the test container
+    summary: |
+      Rebuild compiled Rails assets inside the test web container.
+      Useful when importmap or Propshaft asset resolution gets out of sync.
+      Usage: task test:assets-rebuild
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: test
+          COMMAND: "find public/assets -mindepth 1 -maxdepth 1 -exec rm -rf {} +"
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: test
+          COMMAND: "rails assets:precompile"
+
+  rebuild:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Rebuild test server (drops database)
+    summary: |
+      Rebuild test environment from scratch
+      WARNING: This drops the database and all data!
+      Use this when:
+      - Database migrations have changed
+      - Docker images need to be rebuilt
+      - Testing migration changes
+      - You want a fresh test environment
+      Usage: task test:rebuild
+    cmds:
+      - task: :internal:stop
+        vars:
+          { ENVIRONMENT: test, REMOVE_VOLUMES: "true", MAIL_SERVICE: mail-test }
+      - task: :internal:build
+        vars: { ENVIRONMENT: test }
+      - task: :internal:up-db
+        vars: { ENVIRONMENT: test }
+      - task: :internal:seed
+        vars: { ENVIRONMENT: test }
+
+  port:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Print the host port of the running test server
+    summary: |
+      Print the host port that the test web container is listening on.
+      Useful for constructing URLs or scripting against the test server.
+      Usage: task test:port
+    cmds:
+      - task: :internal:port
+        vars: { ENVIRONMENT: test }
+
+  logs:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: View test container logs
+    summary: |
+      View and follow test container logs
+      Press Ctrl+C to stop following
+      Usage: task test:logs
+    cmds:
+      - task: :internal:logs
+        vars: { ENVIRONMENT: test }

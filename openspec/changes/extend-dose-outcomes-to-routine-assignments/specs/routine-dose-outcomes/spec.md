@@ -22,6 +22,21 @@ The system SHALL identify expected occurrences for an active routine `PersonMedi
 - **WHEN** occurrences are derived
 - **THEN** the system uses the existing cycle boundary and dose limit without changing their meaning
 
+### Requirement: Saved outcomes retain their cycle boundaries
+The system SHALL persist an immutable inclusive window end when saving an occurrence. It SHALL preserve that boundary when the source's cycle changes and when validating a later correction.
+
+#### Scenario: Change a monthly assignment to daily
+- **GIVEN** an outcome was saved for a monthly cycle
+- **WHEN** the assignment changes to a daily cycle
+- **THEN** the saved outcome retains its original month-end boundary
+- **AND** a correction uses that saved window
+
+#### Scenario: Migrate a saved monthly outcome
+- **GIVEN** a saved monthly outcome has an administration later than the cycle's first day
+- **WHEN** a v2 bundle is exported and imported into another household
+- **THEN** the original cycle end and take linkage are preserved
+- **AND** replaying the unchanged bundle does not create another outcome or reduce stock
+
 ### Requirement: As-needed assignments never generate expected outcomes
 The system SHALL NOT create expected occurrences, not-taken actions, missed-dose escalation, or adherence penalties for an as-needed direct assignment.
 
@@ -61,3 +76,17 @@ The system SHALL expose direct routine occurrences and persisted outcomes throug
 - **GIVEN** a direct routine assignment belongs to another household
 - **WHEN** a client requests or mutates its occurrence
 - **THEN** the system returns the normal PHI-safe not-found response and commits no changes
+
+### Requirement: Reports distinguish daily and longer routine cycles
+The system SHALL include daily routine doses in daily totals and expose weekly and monthly progress in separate cycle summaries. Actual administration history SHALL retain the recorded timestamp. An unfinished cycle SHALL NOT count as an unexplained miss.
+
+#### Scenario: Read an unfinished monthly cycle
+- **GIVEN** a monthly routine assignment has an unresolved position
+- **WHEN** a report includes part of the current month
+- **THEN** one cycle summary shows the unresolved position without counting it as missed
+- **AND** daily adherence totals do not assign the monthly expectation to one day
+
+#### Scenario: Read a long report
+- **GIVEN** a report spans multiple occurrence pages
+- **WHEN** a weekly or monthly cycle intersects more than one page
+- **THEN** its positions and administrations are counted once

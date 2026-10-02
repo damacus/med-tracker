@@ -64,7 +64,7 @@ module OpenFoodFacts
     def supplement_product?(payload)
       Array(payload['categories_tags_en']).any? do |category|
         normalized = category.to_s.downcase
-        SUPPLEMENT_CATEGORY_KEYWORDS.any?(&normalized.method(:include?))
+        SUPPLEMENT_CATEGORY_KEYWORDS.any? { |keyword| normalized.include?(keyword) }
       end
     end
 

@@ -142,8 +142,7 @@ RSpec.describe 'Admin::NhsDmdImports' do
         archive_service_name: 'test',
         archive_key: a_string_matching(%r{\Anhs-dmd/imports/[0-9a-f-]+\z}),
         archive_checksum: be_present,
-        archive_byte_size: be_positive,
-        archive_path: nil
+        archive_byte_size: be_positive
       )
     end
 

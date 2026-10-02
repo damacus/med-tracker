@@ -66,6 +66,27 @@ The dialog uses existing focus trapping, keyboard dismissal, labels, error assoc
 
 ## Risks / Trade-offs
 
+### Agreed completion scope (8 September 2026)
+
+Pause and resume take effect when accepted by the server. Do not expose backdating,
+reason/note corrections, automatic resume, or stock automation. Notes remain optional
+for every reason, including Other. Preserve original context after resume.
+
+Show source-specific pause history, newest first, from treatment cards. Include reason,
+note, start/end and recording/resuming actors, with explicit unknown legacy labels.
+Reports and PDFs use intervals for calculations but do not display reasons or notes.
+
+Complete the API, portable-v2 and sync contracts before native controls depend on them.
+Both native apps require a connection for pause/resume and capability discovery before
+enabling the controls. Preserve input on failure; update state only after confirmation.
+Today includes a compact Paused treatments section respecting the person filter, with
+Resume and history, including sources without expected doses today. Active treatment
+cards expose labelled Pause and history controls. iOS remains in its separate repository
+until its independently managed import lands; Android lives in mobile/android.
+
+Delivery remains a sequence of focused feature PRs. Implementation does not authorise
+merging, deployment, native distribution, or the iOS repository import.
+
 - **Legacy pauses have incomplete history** → Label them explicitly, keep the start unknown, and avoid changing historical calculations before migration.
 - **`active` and an open period can diverge through old code** → Route every writer through the service, retain database constraints, and add a consistency check used by migration and verification.
 - **Deprecation temporarily permits context-free API pauses** → Advertise the new capability, update first-party clients immediately, record `reason_not_recorded`, and remove the old shape only under the API versioning policy.

@@ -39,27 +39,16 @@ module NhsDmd
       raise Error, 'archive_not_terminal' if import_run.active?
 
       fetch_service(import_run.archive_service_name).delete(import_run.archive_key) if import_run.archive_reference?
-      FileUtils.rm_f(import_run.archive_path) if import_run.legacy_archive?
       import_run.update!(
         archive_service_name: nil,
         archive_key: nil,
         archive_checksum: nil,
-        archive_byte_size: nil,
-        archive_path: nil
+        archive_byte_size: nil
       )
     rescue Error
       raise
     rescue StandardError
       raise Error, 'archive_cleanup_failed'
-    end
-
-    def convert_legacy(import_run:, service_name: Rails.configuration.active_storage.service)
-      raise Error, 'legacy_archive_missing' unless import_run.active? && import_run.legacy_archive?
-
-      legacy_path = import_run.archive_path
-      reference = persist(import_run:, uploaded_file: legacy_path, service_name:)
-      FileUtils.rm_f(legacy_path)
-      reference
     end
 
     private
@@ -73,7 +62,6 @@ module NhsDmd
           return yield(file.path)
         end
       end
-      return yield(import_run.archive_path) if import_run.legacy_archive?
 
       raise Error, 'archive_reference_missing'
     rescue Error
@@ -114,8 +102,7 @@ module NhsDmd
         archive_service_name: reference.service_name,
         archive_key: reference.key,
         archive_checksum: reference.checksum,
-        archive_byte_size: reference.byte_size,
-        archive_path: nil
+        archive_byte_size: reference.byte_size
       )
     end
   end

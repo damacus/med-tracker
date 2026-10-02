@@ -20,11 +20,10 @@ class Account < ApplicationRecord
 
   enum :status, { unverified: 1, verified: 2, closed: 3 }
 
-  has_one :person, dependent: :nullify
+  has_one :person, -> { order(:id) }, dependent: :nullify, inverse_of: :account
   has_many :household_memberships, dependent: :destroy
   has_many :households, through: :household_memberships
   has_many :api_sessions, dependent: :destroy
-  has_many :api_household_selection_grants, dependent: :destroy
   has_many :api_app_tokens, dependent: :destroy
   has_many :push_subscriptions, dependent: :destroy
   has_many :native_device_tokens, dependent: :destroy

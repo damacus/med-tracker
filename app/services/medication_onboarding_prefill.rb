@@ -187,8 +187,7 @@ class MedicationOnboardingPrefill
   def parse_units(name)
     name.to_s.scan(/\b(tablets?|capsules?|gummies?|sachets?|sprays?|drops?|pads?)\b/i)
         .flatten
-        .map { |raw_unit| DISPLAY_UNIT_MAP.fetch(raw_unit.downcase, nil) }
-        .compact
+        .filter_map { |raw_unit| DISPLAY_UNIT_MAP.fetch(raw_unit.downcase, nil) }
         .uniq
   end
 

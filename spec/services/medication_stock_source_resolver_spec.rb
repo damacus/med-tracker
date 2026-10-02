@@ -38,6 +38,7 @@ RSpec.describe MedicationStockSourceResolver do
         resolver = described_class.new(user: nil, source: source, taken_at: taken_at)
 
         expect(resolver.available_medications).to include(medication)
+        expect(resolver.preload([source]).fetch(source).available_medications).to eq([medication])
       end
 
       it 'excludes medications that are out of stock' do
@@ -168,6 +169,7 @@ RSpec.describe MedicationStockSourceResolver do
         resolver = described_class.new(user: context, source: source, taken_at: taken_at)
 
         expect(resolver.resolve_selected(hidden_medication.id)).to be_nil
+        expect(resolver.preload([source]).fetch(source).resolve_selected(hidden_medication.id)).to be_nil
       end
     end
 
@@ -183,6 +185,8 @@ RSpec.describe MedicationStockSourceResolver do
         resolver = described_class.new(user: context, source: source, taken_at: taken_at)
 
         expect(resolver.resolve_selected(alternate_medication.id)).to eq(alternate_medication)
+        expect(resolver.preload([source]).fetch(source).resolve_selected(alternate_medication.id))
+          .to eq(alternate_medication)
       end
     end
 
@@ -203,6 +207,7 @@ RSpec.describe MedicationStockSourceResolver do
         resolver = described_class.new(user: users(:john), source: source, taken_at: taken_at)
 
         expect(resolver.resolve_selected(hidden_medication.id)).to eq(hidden_medication)
+        expect(resolver.preload([source]).fetch(source).resolve_selected(hidden_medication.id)).to eq(hidden_medication)
       end
     end
   end

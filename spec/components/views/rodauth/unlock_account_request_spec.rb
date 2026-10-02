@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Views::Rodauth::UnlockAccountRequest, type: :component do
-  # rubocop:disable RSpec/VerifiedDoubles
+  # rubocop:disable-next RSpec/VerifiedDoubles
   let(:rodauth) do
     double(
       'Rodauth',
@@ -16,7 +16,6 @@ RSpec.describe Views::Rodauth::UnlockAccountRequest, type: :component do
       reset_password_request_path: '/reset-password-request'
     )
   end
-  # rubocop:enable RSpec/VerifiedDoubles
 
   before do
     allow(controller).to receive_messages(rodauth: rodauth, form_authenticity_token: 'token', flash: {}, params: {})

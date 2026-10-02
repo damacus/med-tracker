@@ -12,9 +12,14 @@ if not docker image inspect med-tracker-web-test >/dev/null 2>&1
     exit 11
 end
 
+if not task test:verify-dependencies
+    echo 'Test dependency preflight failed: mounted node_modules or Chromium is stale.' >&2
+    exit 12
+end
+
 if not task test TEST_FILE=$test_file
     echo "Test preflight spec failed: $test_file" >&2
-    exit 12
+    exit 13
 end
 
 echo "Test preflight passed: $test_file"

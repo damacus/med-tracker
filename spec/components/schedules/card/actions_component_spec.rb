@@ -77,16 +77,15 @@ RSpec.describe Components::Schedules::Card::ActionsComponent, type: :component d
     expect(pause_button.text).to include('Pause schedule')
   end
 
-  it 'keeps action controls on one line with a labelled actions trigger', :aggregate_failures do
+  it 'stacks action controls on narrow screens with a labelled actions trigger', :aggregate_failures do
     rendered = render_as_owner
     action_row = rendered.at_css('[data-testid="schedule-card-actions"]')
     footer_classes = action_row.ancestors.find { |node| node['class']&.include?('pb-8') }['class'].split
     trigger = rendered.at_css("button[data-testid='schedule-actions-#{schedule.id}']")
 
-    expect(footer_classes).to include('px-6')
-    expect(action_row['class'].split).not_to include('flex-wrap')
-    expect(action_row['class'].split).to include('min-w-0')
-    expect(trigger['class'].split).to include('shrink-0')
+    expect(footer_classes).to include('px-8')
+    expect(action_row['class'].split).to include('min-w-0', 'flex-col', 'items-stretch', 'w-full', 'lg:flex-row')
+    expect(trigger['class'].split).to include('shrink-0', 'w-full', 'lg:w-auto')
     expect(delete_dialog_classes(rendered)).to include('block', 'w-full')
     expect(delete_trigger_classes(rendered)).to include('block', 'w-full')
   end

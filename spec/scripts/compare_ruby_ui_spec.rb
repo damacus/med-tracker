@@ -23,16 +23,17 @@ RSpec.describe 'RubyUI comparison command' do
     expect(error).to include('invalid option: --all')
   end
 
-  it 'reports a selected component difference from the real generator' do
+  it 'reports a real generator difference with literal spaces and shell metacharacters in the output path' do
     Dir.mktmpdir do |directory|
-      output = Pathname.new(directory).join('generated')
+      output = Pathname.new(directory).join('RubyUI output ; $() [safe]')
       before = protected_files
 
-      stdout, error, status = compare('--output', output.to_s, 'Button')
+      stdout, error, status = compare("--output=#{output}", 'Button')
 
       expect(status).to be_success, error
       expect(stdout).to include('Changed files: app/components/ruby_ui/button/button.rb')
       expect(stdout).to include('Requested components: Button')
+      expect(output.join('app/components/ruby_ui/button/button.rb')).to exist
       expect(protected_files).to eq(before)
     end
   end
@@ -132,18 +133,6 @@ RSpec.describe 'RubyUI comparison command' do
       expect(traversed[1]).to include('must not traverse symbolic links')
       expect(direct[2]).not_to be_success
       expect(traversed[2]).not_to be_success
-    end
-  end
-
-  it 'handles spaces and shell metacharacters as literal output-path characters' do
-    Dir.mktmpdir do |directory|
-      output = Pathname.new(directory).join('RubyUI output ; $() [safe]')
-
-      stdout, error, status = compare("--output=#{output}", 'Button')
-
-      expect(status).to be_success, error
-      expect(stdout).to include('Requested components: Button')
-      expect(output.join('app/components/ruby_ui/button/button.rb')).to exist
     end
   end
 

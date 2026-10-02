@@ -2,17 +2,13 @@ package io.damacus.medtracker.data.model
 
 import kotlinx.serialization.Serializable
 
-data class OidcExchangeRequest(
-    val idToken: String,
-    val nonce: String,
-    val codeVerifier: String,
-    val deviceName: String? = null,
-    val householdId: Long? = null
+data class HouseholdChoice(
+    val id: Long,
+    val name: String,
+    val role: String
 )
 
-data class RefreshRequest(
-    val refreshToken: String
-)
+data class HouseholdSelection(val households: List<HouseholdChoice>)
 
 @Serializable
 data class SessionPayload(
@@ -21,7 +17,8 @@ data class SessionPayload(
     val refreshToken: String,
     val refreshTokenExpiresAt: String? = null,
     val me: UserDto? = null,
-    val household: HouseholdDto? = null
+    val household: HouseholdDto? = null,
+    val oauthState: String? = null
 )
 
 @Serializable

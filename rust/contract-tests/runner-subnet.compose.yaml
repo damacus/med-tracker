@@ -1,0 +1,5 @@
+networks:
+  test:
+    ipam:
+      config:
+        - subnet: ${CONTRACT_TEST_SUBNET}

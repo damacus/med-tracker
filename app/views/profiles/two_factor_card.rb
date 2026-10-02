@@ -2,7 +2,7 @@
 
 module Views
   module Profiles
-    # rubocop:disable Metrics/ClassLength
+    # rubocop:disable-next Metrics/ClassLength
     class TwoFactorCard < Views::Base
       include Phlex::Rails::Helpers::ButtonTo
       include Phlex::Rails::Helpers::Routes
@@ -243,6 +243,5 @@ module Views
         { data: modal_link_data }
       end
     end
-    # rubocop:enable Metrics/ClassLength
   end
 end

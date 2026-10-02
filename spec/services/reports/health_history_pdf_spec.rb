@@ -58,6 +58,25 @@ RSpec.describe Reports::HealthHistoryPdf do
     expect(pdf_text(pdf)).not_to include('People:')
   end
 
+  it 'renders non-administration notes and distinct outcome totals' do
+    person = Data.define(:name).new('Alex Smith')
+    entry = Reports::HealthHistoryQuery::NotTakenEntry.new(
+      person: person, date: start_date, scheduled_at: nil, medication_name: 'Paracetamol',
+      reason: 'unwell', note: 'Feeling unwell'
+    )
+    result = empty_result.with(people: [person], not_taken_outcomes: [entry], daily_outcomes: [
+                                 { date: start_date, expected: 2, actual: 0, not_taken: 1, unexplained_missed: 1 }
+                               ])
+    pdf = described_class.new(result: result, start_date: start_date, end_date: end_date,
+                              generated_at: generated_at).render
+
+    expect(pdf_text(pdf).downcase).to include('not taken', 'feeling unwell', 'dose outcomes', 'unexplained misses')
+    pages = pdf_page_texts(pdf).map { |page| page.gsub(/\s+/, '') }
+    section_page = pages.find { |page| page.include?('Suspectedsideeffects') }
+    message = "Expected the side-effect heading and empty state on one page; extracted pages: #{pages.inspect}"
+    expect(section_page).to match(/Suspectedsideeffects.*Norecordsinthissection\./), message
+  end
+
   it 'renders a large health-history table across multiple pages' do
     medication_takes = Array.new(240) { |index| medication_take(index:) }
     pdf = described_class.new(
@@ -69,6 +88,18 @@ RSpec.describe Reports::HealthHistoryPdf do
 
     expect(pdf.scan(%r{/Type /Page\b}).size).to be > 1
     expect(pdf_text(pdf)).to include('Paracetamol')
+  end
+
+  it 'preserves the full routine cycle window in the PDF' do
+    source = create(:person_medication, :routine, dose_cycle: :monthly)
+    result = empty_result.with(cycle_summaries: [
+                                 { source: source, window_starts_on: start_date, window_ends_on: end_date,
+                                   expected: 2, actual: 1, not_taken: 0, unexplained_missed: 0 }
+                               ])
+    pdf = described_class.new(result: result, start_date: start_date, end_date: end_date,
+                              generated_at: generated_at).render
+
+    expect(pdf_text(pdf)).to include('Routine dose cycles', '2026-02-01', '2026-02-28')
   end
 
   it 'renders the single-person GP report through the shared PDF renderer' do
@@ -193,7 +224,10 @@ RSpec.describe Reports::HealthHistoryPdf do
       medication_takes: [],
       suspected_side_effects: [],
       notable_illnesses: [],
-      illness_patterns: []
+      illness_patterns: [],
+      not_taken_outcomes: [],
+      daily_outcomes: [],
+      cycle_summaries: []
     )
   end
 

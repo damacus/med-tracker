@@ -53,11 +53,12 @@ data class PortableSnapshot (
     /**
      * 
      *
-     * Values: medtrackerPeriodPortablePeriodV1,unknown_default_open_api
+     * Values: medtrackerPeriodPortablePeriodV1,medtrackerPeriodPortablePeriodV2,unknown_default_open_api
      */
     @JsonClass(generateAdapter = false)
     enum class Format(val value: kotlin.String) {
         @Json(name = "medtracker.portable.v1") medtrackerPeriodPortablePeriodV1("medtracker.portable.v1"),
+        @Json(name = "medtracker.portable.v2") medtrackerPeriodPortablePeriodV2("medtracker.portable.v2"),
         @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
     }
     /**

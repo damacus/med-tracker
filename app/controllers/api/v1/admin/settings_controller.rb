@@ -4,8 +4,6 @@ module Api
   module V1
     module Admin
       class SettingsController < BaseController
-        before_action :require_fresh_privileged_action, only: :update
-
         def show
           render json: { data: household_payload(current_household) }
         end

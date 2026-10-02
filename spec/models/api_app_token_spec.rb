@@ -5,6 +5,89 @@ require 'rails_helper'
 RSpec.describe ApiAppToken do
   fixtures :accounts
 
+  describe 'expiry' do
+    let(:account) { accounts(:jane_doe) }
+    let(:membership) { api_membership_for(account) }
+    let(:issued_at) { Time.zone.parse('2024-02-29 10:00:00') }
+
+    before do
+      allow(ENV).to receive(:fetch).and_call_original
+      allow(ENV).to receive(:fetch).with('API_APP_TOKEN_MAX_AGE_MONTHS', '12').and_return('12')
+    end
+
+    it 'defaults to twelve calendar months, including leap-day issuance' do
+      token = issue_app_token_at_issued_time
+
+      expect(token.expires_at).to eq(Time.zone.parse('2025-02-28 10:00:00'))
+    end
+
+    it 'rejects API and membership authentication at the expiry boundary' do
+      token, raw = described_class.issue_for(account: account, household_membership: membership, name: 'Boundary')
+
+      travel_to(token.expires_at, with_usec: true) do
+        expect(described_class.lookup_by_token(raw)).to be_nil
+        expect(token).not_to be_active_for_membership
+      end
+    end
+
+    it 'does not extend expiry when used' do
+      token = issue_app_token_at_issued_time
+      deadline = token.expires_at
+      travel_to(issued_at + 1.day) { token.touch_last_used! }
+
+      expect(token.reload.expires_at).to eq(deadline)
+    end
+
+    it 'allows a shorter requested expiry' do
+      deadline = 1.month.from_now.change(usec: 0)
+      token, = described_class.issue_for(account: account, household_membership: membership,
+                                         name: 'Shorter', expires_at: deadline)
+
+      expect(token.expires_at).to eq(deadline)
+    end
+
+    it 'rejects a requested expiry beyond the configured maximum' do
+      expect do
+        described_class.issue_for(account: account, household_membership: membership,
+                                  name: 'Too long', expires_at: 13.months.from_now)
+      end.to raise_error(ActiveRecord::RecordInvalid)
+    end
+
+    it 'persists a reduced maximum and never revives the token after an increase' do
+      token, raw = described_class.issue_for(account: account, household_membership: membership, name: 'Reduced')
+      original_created_at = token.created_at
+      allow(ENV).to receive(:fetch).with('API_APP_TOKEN_MAX_AGE_MONTHS', '12').and_return('1')
+      travel_to(original_created_at + 2.months) do
+        expect(described_class.lookup_by_token(raw)).to be_nil
+        expect(token.reload.expires_at).to eq(original_created_at + 1.month)
+        allow(ENV).to receive(:fetch).with('API_APP_TOKEN_MAX_AGE_MONTHS', '12').and_return('12')
+        expect(described_class.lookup_by_token(raw)).to be_nil
+      end
+    end
+
+    it 'rejects zero, negative and invalid configured maximum ages' do
+      %w[0 -1 invalid].each do |value|
+        allow(ENV).to receive(:fetch).with('API_APP_TOKEN_MAX_AGE_MONTHS', '12').and_return(value)
+        expect { issue_app_token_at_issued_time }.to raise_error(ArgumentError)
+      end
+    end
+
+    it 'caps unused tokens at startup without extending already shorter expiries' do
+      token, raw = described_class.issue_for(account: account, household_membership: membership, name: 'Unused')
+      shorter, = described_class.issue_for(account: account, household_membership: membership,
+                                           name: 'Short', expires_at: 1.week.from_now)
+      short_deadline = shorter.expires_at
+      allow(ENV).to receive(:fetch).with('API_APP_TOKEN_MAX_AGE_MONTHS', '12').and_return('1')
+
+      described_class.apply_maximum_age!
+
+      expect(token.reload.expires_at).to eq(token.created_at + 1.month)
+      expect(shorter.reload.expires_at).to eq(short_deadline)
+      allow(ENV).to receive(:fetch).with('API_APP_TOKEN_MAX_AGE_MONTHS', '12').and_return('12')
+      travel_to(token.created_at + 2.months) { expect(described_class.lookup_by_token(raw)).to be_nil }
+    end
+  end
+
   describe '#touch_last_used!' do
     let(:account) { accounts(:jane_doe) }
     let(:membership) { api_membership_for(account) }

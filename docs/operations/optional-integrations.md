@@ -75,9 +75,8 @@ Set the model explicitly in production so a RubyLLM default change cannot move
 the workload to another model. The chosen model must belong to the configured
 provider.
 
-Azure is not a documented provider yet. Issue
-[#1897](https://github.com/damacus/med-tracker/issues/1897) tracks the mismatch
-between its readiness check and initializer settings.
+Azure is not supported by this integration. An `AZURE_API_KEY` alone leaves
+medication help disabled; configure one of the supported providers above.
 
 ### Data sent to the model
 

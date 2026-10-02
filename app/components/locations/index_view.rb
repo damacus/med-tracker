@@ -63,7 +63,7 @@ module Components
               render_location_icon
               # Fallback for medication word
               m3_badge(variant: :tonal) do
-                pluralize(location.medications.size, t('medications.created').split.first.downcase)
+                t('locations.index.medication_count', count: location.medications.size)
               end
             end
             m3_heading(level: 2, variant: :title_large, class: 'font-bold break-words') { location.name }

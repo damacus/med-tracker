@@ -16,7 +16,7 @@ module Components
         end
 
         def view_template
-          div(class: 'flex min-w-0 items-center gap-0.5 w-full',
+          div(class: 'flex min-w-0 w-full flex-col items-stretch gap-2 lg:flex-row lg:items-center',
               data: { testid: 'person-medication-card-actions' }) do
             render_past_dose_button unless person_medication.paused?
             render_actions_menu if secondary_actions?
@@ -30,7 +30,7 @@ module Components
         end
 
         def render_past_dose_button
-          div(class: 'min-w-0 flex-1') do
+          div(class: 'min-w-0 w-full lg:flex-1') do
             render Components::Medications::PriorDayTakeAction.new(
               source: person_medication,
               context: { person: person, current_user: current_user },
@@ -48,12 +48,15 @@ module Components
         end
 
         def render_actions_menu
-          render RubyUI::DropdownMenu.new(options: { placement: 'bottom-end', strategy: 'fixed' }, class: 'shrink-0') do
-            render RubyUI::DropdownMenuTrigger.new(class: 'shrink-0') do
+          render RubyUI::DropdownMenu.new(
+            options: { placement: 'bottom-end', strategy: 'fixed' },
+            class: 'w-full shrink-0 lg:w-auto'
+          ) do
+            render RubyUI::DropdownMenuTrigger.new(class: 'w-full shrink-0 lg:w-auto') do
               render RubyUI::Button.new(
                 variant: :outline,
                 type: :button,
-                class: 'shrink-0',
+                class: 'w-full shrink-0 lg:w-auto',
                 data: { testid: "person-medication-actions-#{person_medication.id}" },
                 aria_label: t('person_medications.card.actions')
               ) do
@@ -76,6 +79,8 @@ module Components
         end
 
         def render_active_state_button
+          return render_pause_link unless person_medication.paused?
+
           form_with(
             url: active_state_path,
             method: :patch,
@@ -90,6 +95,17 @@ module Components
               render active_state_icon.new(size: 16, aria_hidden: 'true', class: 'mr-2 shrink-0')
               span { active_state_label }
             end
+          end
+        end
+
+        def render_pause_link
+          render RubyUI::DropdownMenuItem.new(
+            href: pause_form_person_person_medication_path(person, person_medication),
+            class: menu_item_class,
+            data: { turbo_frame: 'modal', testid: active_state_testid }
+          ) do
+            render Icons::Clock.new(size: 16, aria_hidden: 'true', class: 'mr-2 shrink-0')
+            span { active_state_label }
           end
         end
 

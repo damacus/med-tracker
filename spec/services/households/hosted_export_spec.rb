@@ -43,6 +43,50 @@ RSpec.describe Households::HostedExport do
       'medication_portable_ids' => [medication.portable_id]
     )
     expect(payload.dig('records', 'people').sole.fetch('location_portable_ids')).to include(location.portable_id)
+    expect(payload.dig('records', 'dose_occurrences').sole).to include('note' => 'Hosted export decision')
+  end
+
+  it 'restores the retained pause collection from the hosted archive without changing its outer format' do
+    source, period = retained_pause
+    export = described_class.generate!(household:, membership:, actor_account: operator)
+    payload = verify_pause_archive(export, source.person, period)
+    period_id = period.portable_id
+    period.destroy!
+
+    expect(restore_pause_collection(payload)).to be_applied
+    expect(source.medication_pause_periods.sole).to have_attributes(
+      portable_id: period_id, note: 'Retain on offboarding', ended_at: be_present
+    )
+  end
+
+  def retained_pause
+    person, _location, medication, _event = complete_export_graph
+    source = create(:schedule, household: household, person: person, medication: medication)
+    period = source.medication_pause_periods.create!(
+      reason: 'other', note: 'Retain on offboarding', started_at: 2.days.ago, ended_at: 1.day.ago,
+      recorded_by_membership: membership, resumed_by_membership: membership
+    )
+    [source, period]
+  end
+
+  def verify_pause_archive(export, person, period)
+    contents = export_zip_contents(export, person)
+    payload = JSON.parse(contents.fetch(:portable))
+    manifest = JSON.parse(contents.fetch(:manifest))
+    expect(manifest).to include('format' => 'medtracker.household-export.v1',
+                                'portable_format' => 'medtracker.portable.v2')
+    expect(payload.dig('records', 'medication_pause_periods').sole)
+      .to include('portable_id' => period.portable_id, 'note' => 'Retain on offboarding')
+    payload
+  end
+
+  def restore_pause_collection(payload)
+    pause_payload = payload.merge('records' => payload.fetch('records').slice('schedules', 'medication_pause_periods'))
+    PortableData::Importer.new(
+      household: household, membership: membership,
+      envelope: PortableData::Encryptor.encrypt(pause_payload, passphrase: 'restore-secret'),
+      passphrase: 'restore-secret', options: { dry_run: false }
+    ).call
   end
 
   def complete_export_graph
@@ -50,10 +94,18 @@ RSpec.describe Households::HostedExport do
     location = create(:location, household: household)
     person.location_memberships.create!(household: household, location: location)
     medication = create(:medication, household: household, location: location)
+    create_export_outcome(person, medication)
     event = HealthEvent.create!(household: household, person: person, event_kind: :suspected_side_effect,
                                 title: 'Hosted export reaction', started_on: Date.current)
     HealthEventMedication.create!(household: household, health_event: event, medication: medication)
     [person, location, medication, event]
+  end
+
+  def create_export_outcome(person, medication)
+    schedule = create(:schedule, household: household, person: person, medication: medication, frequency: 'Daily')
+    schedule.medication_dose_occurrences.create!(window_starts_on: Date.current, position: 1, outcome: 'not_taken',
+                                                 note: 'Hosted export decision', resolved_at: Time.current,
+                                                 resolved_by_membership: membership)
   end
 
   def attach_avatar(target_household, bytes, filename)

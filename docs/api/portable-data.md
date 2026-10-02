@@ -9,16 +9,32 @@ Use the OpenAPI contract for endpoint parameters and response envelopes. This gu
 | Format | Purpose |
 |---|---|
 | `medtracker.portable.v1` | Plaintext mobile snapshot and the data encrypted inside a migration bundle. |
-| `medtracker.portable.v2` | Consistent sync snapshot with a cursor for later change-feed requests. |
+| `medtracker.portable.v2` | Migration data with pause history and persisted dose outcomes, or a consistent sync snapshot with a cursor. |
 | `medtracker.portable.encrypted.v1` | AES-256-GCM envelope used for portable export and import. |
 | `medtracker.health_data.v1` | Plaintext health-data export. |
 | `medtracker.backup.v1` | JSON file stored inside a ZIP backup. |
 
 Every plaintext payload includes `scope`, `exported_at`, `source_instance_id`, and `records`. A sync snapshot also includes `cursor`.
 
+Request `portable_format=medtracker.portable.v2` on the encrypted export endpoint to include saved dose outcomes. Omitting this parameter retains the v1 format and collection shape.
+
+### Dose outcomes in v2 bundles
+
+The `dose_occurrences` collection contains persisted outcomes only. Export does not generate open dose rows or change stock. Records follow their source schedules and assignments, including retained sources.
+
+Each row includes the common portable identity and version fields, plus `source_type`, `source_portable_id`, `window_starts_on`, `window_ends_on`, `position`, nullable `scheduled_at`, `outcome`, nullable `reason`, nullable `note`, nullable `resolved_at`, and nullable `medication_take_portable_id`.
+
+Saved cycle ends survive later dose-cycle changes. Older v2 rows without an end date use the source cycle on first import; unchanged older rows can still be replayed. Routine outcomes require a routine assignment and cannot invent a scheduled time.
+
+References use portable IDs. Local membership IDs and signed API occurrence keys are not portable. The destination derives its own opaque keys from the preserved source, window and position. V1 bundles do not contain this collection.
+
 ## Security rules
 
 Send the portable passphrase in `X-MedTracker-Portable-Passphrase`. Do not put it in a URL or JSON body.
+
+Request `portable_export?version=2` to include pause history in an encrypted migration
+bundle. The default remains version 1. Both versions can be imported; v1 collections
+remain unchanged. Sync v2 snapshots include pause periods automatically.
 
 The encrypted envelope identifies the cipher and key derivation function. It also contains a salt, plaintext checksum, and authenticated ciphertext. Treat the complete envelope as sensitive health data even though its record values are encrypted.
 
@@ -91,6 +107,30 @@ Dose records add `client_uuid`, `source_type`, `source_portable_id`, `taken_at`,
 
 `source_type` is `schedule` or `person_medication`. Medication takes are immutable after import.
 
+### Medication pause periods (v2)
+
+`medication_pause_periods` records contain `source_type` (`schedule` or
+`person_medication`), `source_portable_id`, `reason`, optional `note`, `started_at`,
+`ended_at`, `created_at`, `legacy_context`, and `imported_context`, plus the common
+portable identity fields. An open period has no end. Legacy context uses
+`reason_not_recorded` and may have an unknown start. Its creation time is preserved
+so reports do not invent an earlier pause boundary.
+
+`recorded_by_person_portable_id` and `resumed_by_person_portable_id` identify actors
+where their membership has a person. Import resolves an actor only when exactly one
+membership in the destination household matches. Otherwise the original reference is
+retained and the actor is unavailable. Imported records have `imported_context: true`;
+the import audit event identifies the importer separately from the original actors.
+
+Import restores records without calling pause or resume actions. It preserves original
+context, rejects conflicting history or multiple open periods, and derives each
+affected source's active state from its final open period. Any failure rolls back the
+entire import. Reimporting the same periods does not create duplicates or change stock.
+An inactive current source without an open period is rejected as incomplete history.
+Existing native pause records remain unchanged on reimport, including their provenance
+and closing actor. Only a previously imported open period can advance to a closed period
+through import; its original recording context remains immutable.
+
 ### Notification preferences
 
 Notification preferences add `person_portable_id`, `enabled`, `dose_due_enabled`, `missed_dose_enabled`, `low_stock_enabled`, `private_text_enabled`, `morning_time`, `afternoon_time`, `evening_time`, and `night_time`.
@@ -109,11 +149,25 @@ Imports reject unknown record collections, Rails numeric IDs, invalid capacity r
 
 An applied import is transactional. If any record fails, MedTracker does not keep a partial import.
 
+Imports accept v1 and v2 plaintext inside the same encrypted envelope. V2 can restore saved dose outcomes and health events. Outcome references must resolve within the destination household or the imported graph. A linked take must match the source and saved cycle window. Duplicate dose slots and changes to existing outcome history are rejected during dry run.
+
+Restoring outcomes does not administer doses or deduct stock. An unchanged outcome can be imported again. The original resolution time is retained; the importing membership is recorded as the local actor for a newly restored outcome. Existing outcomes retain their local actor. Members need a current manage grant for every affected person.
+
+Existing medication takes remain authoritative when the same portable ID is imported again. Validation uses their stored source and timestamp. Hosted household export archives include the v2 outcome collection in their portable payload.
+
 ## Incremental sync
+
+Sync batches accept `medication_dose_occurrence` creates with `source_type: schedule` or `source_type: person_medication`, `source_id`, `occurrence_key`, and `outcome: not_taken`. Optional `reason` and `note` describe the decision. Repeating the same decision preserves the existing outcome without deducting stock. A different decision for an already resolved occurrence returns a conflict. Direct assignments must be routine; as-needed assignments have no expected outcomes. Weekly and monthly take replays retain the original cycle identity and saved window.
+
+To reopen a saved not-taken outcome, submit an update with its `id`, current `if_match` ETag, and `attributes: { outcome: open }`. This requires manage access. Outcome deletes and direct taken-state updates are unsupported; use a medication-take operation to record an actual dose. Each result includes the saved outcome's portable ID and ETag. A failed operation rolls back the complete batch. Current outcome access is checked before an idempotency cache replay.
 
 Start with `GET /sync/snapshot`. Store its cursor and each record ETag. Use the cursor with `GET /sync/changes` to read later changes and tombstones.
 
 Send local writes to `POST /sync/batches`. Update and delete operations need the latest ETag in `if_match`. Medication-take creation uses `client_uuid` for idempotency. A stale ETag returns a sync conflict, and the complete batch rolls back.
+
+Sync snapshots include persisted `dose_occurrences` in the v2 format and use current person-level view grants for person records and their sources. Reads do not create projected open occurrences.
+
+Changes with `record_type: MedicationDoseOccurrence` include a `record` field containing the current portable outcome and its ETag. Several events for one outcome can carry the same latest state. Outcome events and deletion markers are filtered by current access to the person. Clinical reasons and notes appear only in the authorised record payload, not in event metadata. Refresh the snapshot after access changes.
 
 ### Queued schedules and medication assignments
 
@@ -149,7 +203,20 @@ For example, send the following body to `POST /api/v1/households/{household_id}/
 
 Each successful result contains its operation index, action, record type and server-assigned `record_portable_id`. Create and update results also contain an `etag`. Use the latest ETag as the exact `if_match` string on the next update or delete, with the portable ID in `id`. A missing version returns `428 precondition_required`; a stale version returns `409 sync_conflict`.
 
-Delete retires the schedule or assignment. It no longer appears in active lists, but its past doses and pause history remain unchanged. The change feed records the retirement and a deletion marker for the same portable ID. Retrying a successful delete with the same idempotency key replays the result. A new request for a retired item returns not found. Pause, resume, reorder and reactivation are not batch actions.
+Delete retires the schedule or assignment. It no longer appears in active lists, but its past doses and pause history remain unchanged. The change feed records the retirement and a deletion marker for the same portable ID. Retrying a successful delete with the same idempotency key replays the result. A new request for a retired item returns not found. Reorder and reactivation are not batch actions.
+
+### Pause periods in sync batches
+
+Use `resource_type: medication_pause_period` with `action: create` to pause a
+source. Attributes are `source_type` (`schedule` or `person_medication`), portable
+`source_id`, a supported `reason`, and optional `note`. Do not send `id` or `if_match`
+for creation. The server records the effective start and actor.
+
+Use `action: close`, the period's portable `id`, its latest ETag in `if_match`, and
+empty attributes to resume. The server records the effective end and actor. Period
+update and delete operations are unsupported. Successful results include `index`,
+`action`, `record_type: MedicationPausePeriod`, `record_portable_id`, `etag`, and
+`replayed`. Failed operations roll back the complete batch.
 
 Persist one `Idempotency-Key` with each queued batch. If the connection drops, resend the identical body and key. The existing response is replayed without repeating writes, stock changes, audit entries or deletion markers. Changing the body while reusing the key returns `409 idempotency_key_reused`. The existing replay window is 24 hours; after that window, reconcile with the server before sending a new request. Requests without a key do not receive this batch-level replay protection.
 

@@ -28,6 +28,7 @@ import com.squareup.moshi.JsonClass
  * @param revokedAt 
  * @param permissionsVersion 
  * @param token One-time bearer token. Store it securely because later responses omit it.
+ * @param expiresAt 
  */
 
 
@@ -50,7 +51,10 @@ data class ApiAppTokenCreated (
 
     /* One-time bearer token. Store it securely because later responses omit it. */
     @Json(name = "token")
-    val token: kotlin.String
+    val token: kotlin.String,
+
+    @Json(name = "expires_at")
+    val expiresAt: java.time.OffsetDateTime
 
 ) {
 

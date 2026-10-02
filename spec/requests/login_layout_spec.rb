@@ -79,6 +79,17 @@ RSpec.describe 'Login layout' do
     expect(response.body).not_to include('class="nav"')
   end
 
+  it 'keeps password recovery feedback inline without a global duplicate' do
+    post '/reset-password-request', params: { email: '' }
+
+    document = response.parsed_body
+    reset_flash = document.at_css('#reset-flash')
+    expect(reset_flash).to be_present
+    expect(reset_flash.text).to be_present
+    expect(reset_flash.css('[role="alert"]').size).to eq(1)
+    expect(document.css('[data-testid="notice-stack"] [role="alert"]').size).to eq(0)
+  end
+
   it 'redirects unauthenticated users to login without routine login-required flash' do
     get dashboard_path
 
@@ -90,6 +101,8 @@ RSpec.describe 'Login layout' do
 
     expect(response.body).not_to include('Please login to continue')
     expect(response.body.scan('role="alert"').count).to eq(0)
+    expect(response.parsed_body.at_css('#login-flash')).to be_nil
+    expect(response.parsed_body.css('[data-testid="notice-stack"] [role="alert"]').size).to eq(0)
   end
 
   def capture_household_queries(&)

@@ -3,6 +3,28 @@ use predicates::prelude::*;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
+#[test]
+fn login_accepts_an_app_token_instead_of_a_password() {
+    Command::cargo_bin("medtracker")
+        .unwrap()
+        .args(["auth", "login", "--help"])
+        .env("MEDTRACKER_TOKEN", "private-token-sentinel")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--token"))
+        .stdout(predicate::str::contains("--password").not())
+        .stdout(predicate::str::contains("private-token-sentinel").not());
+}
+
+#[test]
+fn custom_refresh_command_is_retired() {
+    Command::cargo_bin("medtracker")
+        .unwrap()
+        .args(["auth", "refresh", "--help"])
+        .assert()
+        .failure();
+}
+
 #[tokio::test]
 async fn backup_export_returns_unsupported_when_server_capability_is_missing() {
     let server = MockServer::start().await;

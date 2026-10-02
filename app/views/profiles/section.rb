@@ -29,11 +29,11 @@ module Views
       private
 
       def render_header
-        div(class: 'flex items-start gap-4 px-5 py-5 sm:px-6', data: appearance_controller_data) do
+        div(class: 'flex flex-col items-start gap-4 px-5 py-5 sm:flex-row sm:px-6', data: appearance_controller_data) do
           div(class: 'flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-container text-on-primary-container') do
             render ICONS.fetch(@key).new(size: 22, aria_hidden: 'true')
           end
-          div(class: 'min-w-0 flex-1') do
+          div(class: 'w-full min-w-0 sm:w-auto sm:flex-1') do
             h2(class: 'text-xl font-semibold tracking-tight text-foreground') { @title }
             render_summary
           end
@@ -42,13 +42,14 @@ module Views
 
       def render_summary
         div(
-          class: 'mt-2 flex flex-wrap gap-2',
+          class: 'mt-2 flex w-full min-w-0 flex-wrap gap-2',
           data: { profile_section_summary: @key }
         ) do
           @summary.each_with_index do |item, index|
             render Badge.new(
               variant: :outline,
               size: :sm,
+              class: 'max-w-full whitespace-normal break-all',
               data: appearance_summary_data(index)
             ) { item }
           end

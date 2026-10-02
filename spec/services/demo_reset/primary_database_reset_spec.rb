@@ -41,6 +41,36 @@ RSpec.describe DemoReset::PrimaryDatabaseReset do
 
     expect(second_result).to eq(first_result)
     expect(connection).to have_received(:execute).with(/pg_advisory_xact_lock/).twice
+    expect(OauthApplication.order(:client_id).pluck(:client_id)).to eq(
+      %w[io.damacus.medtracker io.damacus.medtracker.debug io.damacus.medtracker.staging medtracker-ios-staging]
+    )
+    expect(OauthGrant.count).to be_zero
+  end
+
+  it 'drops account-owned integrations and their grants while restoring only public clients' do
+    account = accounts(:admin)
+    application = OauthApplication.create!(account:, name: 'Disposable', client_id: 'disposable',
+                                           redirect_uri: 'https://example.test/callback', scopes: 'patient/*.rs',
+                                           token_endpoint_auth_method: 'none')
+    OauthGrant.create!(
+      account:, oauth_application: application, household_membership: account.household_memberships.first,
+      person: Person.first, permissions_version: 1, scopes: 'patient/*.rs', expires_in: 15.minutes.from_now
+    )
+
+    described_class.new.call
+
+    expect(OauthApplication.pluck(:client_id)).not_to include('disposable')
+    expect(OauthApplication.count).to eq(4)
+    expect(OauthGrant.count).to be_zero
+  end
+
+  it 'rolls back truncation if public registration fails' do
+    original_emails = Account.order(:email).pluck(:email)
+    allow(DemoBaseline::PublicMobileClients).to receive(:register!).and_raise('registration failed')
+
+    expect { described_class.new.call }.to raise_error('registration failed')
+
+    expect(Account.order(:email).pluck(:email)).to eq(original_emails)
   end
 
   def schema_metadata_counts

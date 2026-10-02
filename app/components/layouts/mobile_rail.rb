@@ -50,7 +50,8 @@ module Components
           }
         ) do
           div(
-            class: 'flex h-7 w-16 shrink-0 items-center justify-center rounded-2xl transition-all state-layer ' \
+            class: 'flex h-[28px] w-16 max-w-full shrink-0 items-center justify-center rounded-2xl ' \
+                   'transition-all state-layer ' \
                    "#{if is_active
                         'bg-secondary-container text-on-secondary-container shadow-sm'
                       else
@@ -59,7 +60,8 @@ module Components
           ) do
             render item[:icon].new(size: 24, aria_hidden: 'true')
           end
-          span(class: 'h-[2.5em] text-xs font-semibold leading-tight text-on-surface') { item[:label] }
+          span(class: 'block h-auto min-h-[2.5em] w-full min-w-0 whitespace-normal break-words text-xs font-semibold ' \
+                      'leading-tight text-on-surface') { item[:label] }
         end
       end
     end

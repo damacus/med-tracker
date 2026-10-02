@@ -9,6 +9,18 @@ RSpec.describe MedicationReminderEligibilityQuery do
 
   before { travel_to(now) }
 
+  context 'when a routine cycle changes on a shared boundary' do
+    let(:now) { Time.zone.local(2026, 9, 1, 12) }
+
+    it 'does not count an obsolete monthly position against the new daily limit' do
+      source = create(:person_medication, :routine, person: person, dose_cycle: :monthly, max_daily_doses: 2)
+      record_not_taken(source, position: 2)
+      source.update!(dose_cycle: :daily, max_daily_doses: 1)
+
+      expect(build_query.medication_names).to include(source.medication.display_name)
+    end
+  end
+
   def build_query(scheduled_time: nil, at: now)
     described_class.new(person: person, scheduled_time: scheduled_time, now: at)
   end
@@ -43,6 +55,61 @@ RSpec.describe MedicationReminderEligibilityQuery do
   end
 
   describe '#medication_names' do
+    it 'allocates a legacy take to the earliest unresolved slot and keeps later reminders' do
+      schedule = schedule_with_times(times: %w[08:00 12:00 20:00], takes: [now.change(hour: 9)])
+      record_not_taken(schedule)
+
+      expect(build_query(scheduled_time: '12:00').medication_names).to be_empty
+      expect(build_query(scheduled_time: '20:00').medication_names).to include(schedule.medication_name)
+      expect(build_query.configured_times).to contain_exactly('20:00')
+    end
+
+    it 'keeps the evening reminder after an unlinked morning take' do
+      schedule = schedule_with_times(times: %w[08:00 20:00], takes: [now.change(hour: 8)])
+
+      expect(build_query(scheduled_time: '08:00').medication_names).to be_empty
+      expect(build_query(scheduled_time: '20:00').medication_names).to include(schedule.medication_name)
+      expect(build_query.configured_times).to contain_exactly('20:00')
+    end
+
+    it 'excludes a not-taken occurrence from due and missed-dose reminders' do
+      schedule = daily_schedule
+      record_not_taken(schedule)
+
+      expect(build_query.medication_names).to be_empty
+      expect(build_query(scheduled_time: '08:00').medication_names).to be_empty
+      expect(build_query.configured_times).to be_empty
+    end
+
+    it 'keeps another unresolved occurrence eligible after a not-taken outcome' do
+      schedule = schedule_with_times(times: %w[08:00 20:00])
+      record_not_taken(schedule)
+
+      expect(build_query(scheduled_time: '08:00').medication_names).to be_empty
+      expect(build_query(scheduled_time: '20:00').medication_names).to include(schedule.medication_name)
+      expect(build_query.configured_times).to contain_exactly('20:00')
+    end
+
+    it 'restores reminder eligibility when a not-taken occurrence is reopened' do
+      schedule = daily_schedule
+      outcome = record_not_taken(schedule)
+      outcome.update!(outcome: 'open', reason: nil, resolved_at: nil, resolved_by_membership: nil)
+
+      expect(build_query(scheduled_time: '08:00').medication_names).to include(schedule.medication_name)
+    end
+
+    it 'keeps the evening reminder after an explicitly linked morning take' do
+      schedule = schedule_with_times(times: %w[08:00 20:00])
+      outcome = record_not_taken(schedule)
+      take = create(:medication_take, :for_schedule, schedule: schedule, taken_at: now.change(hour: 8))
+      outcome.update!(outcome: 'taken', medication_take: take, reason: nil)
+
+      expect(build_query(scheduled_time: '08:00').medication_names).to be_empty
+      expect(build_query(scheduled_time: '20:00').medication_names).to include(schedule.medication_name)
+      expect(build_query.medication_names).to include(schedule.medication_name)
+      expect(build_query.configured_times).to contain_exactly('20:00')
+    end
+
     it 'returns an empty array when there are no schedules' do
       expect(build_query.medication_names).to eq([])
     end
@@ -100,6 +167,51 @@ RSpec.describe MedicationReminderEligibilityQuery do
     end
 
     context 'with routine person_medications' do
+      %w[daily weekly monthly].each do |cycle|
+        it "excludes a not-taken decision in the current #{cycle} window" do
+          source = create(:person_medication, :routine, person: person, dose_cycle: cycle, max_daily_doses: 1)
+          window = DoseCycle.new(cycle).range_for(now).begin.to_date
+          record_not_taken(source, window_starts_on: window)
+
+          expect(build_query.medication_names).not_to include(source.medication.display_name)
+        end
+      end
+
+      it 'keeps unresolved routine positions eligible until the whole cycle is resolved' do
+        source = create(:person_medication, :routine, person: person, max_daily_doses: 2)
+        record_not_taken(source)
+        expect(build_query.medication_names).to include(source.medication.display_name)
+        record_not_taken(source, position: 2)
+        expect(build_query.medication_names).not_to include(source.medication.display_name)
+      end
+
+      %w[daily weekly monthly].each do |cycle|
+        it "keeps the second #{cycle} position eligible after the first take" do
+          source = create(:person_medication, :routine, person: person, dose_cycle: cycle, max_daily_doses: 2)
+          create(:medication_take, :for_person_medication, person_medication: source, taken_at: now - 1.hour)
+
+          expect(build_query.medication_names).to include(source.medication.display_name)
+          window = DoseCycle.new(cycle).range_for(now).begin.to_date
+          record_not_taken(source, position: 2, window_starts_on: window)
+          expect(build_query.medication_names).not_to include(source.medication.display_name)
+        end
+      end
+
+      it 'restores eligibility when a routine decision is reopened' do
+        source = create(:person_medication, :routine, person: person, max_daily_doses: 1)
+        outcome = record_not_taken(source)
+        expect(build_query.medication_names).not_to include(source.medication.display_name)
+        outcome.update!(outcome: 'open', reason: nil, resolved_at: nil, resolved_by_membership: nil)
+        expect(build_query.medication_names).to include(source.medication.display_name)
+      end
+
+      it 'does not suppress the current cycle because of a previous cycle decision' do
+        source = create(:person_medication, :routine, person: person, dose_cycle: :weekly, max_daily_doses: 1)
+        window = DoseCycle.new('weekly').range_for(1.week.ago).begin.to_date
+        record_not_taken(source, window_starts_on: window)
+        expect(build_query.medication_names).to include(source.medication.display_name)
+      end
+
       it 'includes medications from routine person_medications not yet taken today' do
         medication = create(:medication)
         create(:person_medication, :routine, person: person, medication: medication, max_daily_doses: 1)
@@ -227,6 +339,16 @@ RSpec.describe MedicationReminderEligibilityQuery do
       ended_at:,
       recorded_by_membership: membership,
       resumed_by_membership: membership
+    )
+  end
+
+  def record_not_taken(source, position: 1, window_starts_on: today)
+    account = Account.create!(email: "outcome-reminder-#{SecureRandom.hex(4)}@example.test", status: :verified)
+    membership = source.household.household_memberships.create!(account: account, role: :member, status: :active)
+    source.medication_dose_occurrences.create!(
+      window_starts_on: window_starts_on, position: position,
+      scheduled_at: source.is_a?(Schedule) ? now.change(hour: 8) : nil,
+      outcome: 'not_taken', reason: 'unwell', resolved_at: now, resolved_by_membership: membership
     )
   end
 end

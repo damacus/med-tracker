@@ -23,7 +23,7 @@ import com.squareup.moshi.JsonClass
  * 
  *
  * @param household Whether household administration is supported.
- * @param freshMfaRequired Whether fresh MFA is required for writes.
+ * @param freshMfaRequired False. Administration uses the current login and permissions without a separate MFA freshness deadline.
  * @param appTokens Whether API app tokens are supported.
  * @param auditLogs Whether audit logs are supported.
  * @param invitations Whether invitations are supported.
@@ -37,7 +37,7 @@ data class CapabilityAdministration (
     @Json(name = "household")
     val household: kotlin.Boolean,
 
-    /* Whether fresh MFA is required for writes. */
+    /* False. Administration uses the current login and permissions without a separate MFA freshness deadline. */
     @Json(name = "fresh_mfa_required")
     val freshMfaRequired: kotlin.Boolean,
 

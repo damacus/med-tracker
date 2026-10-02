@@ -135,6 +135,7 @@ RSpec.describe 'Global search command palette', :browser do
         const url = typeof input === "string" ? input : input.url;
         if (url.includes("/search.json")) {
           return {
+            ok: true,
             json: async () => ({
               results: [{
                 path: '/people" onfocus="window.xss = true',

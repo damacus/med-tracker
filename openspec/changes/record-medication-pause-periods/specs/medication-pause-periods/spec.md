@@ -93,3 +93,33 @@ The system SHALL preserve sources that are already paused when this capability d
 - **WHEN** pause-period support is deployed
 - **THEN** it remains paused with one open legacy period marked `reason_not_recorded`
 - **AND** its unknown historical start remains explicitly unknown
+
+### Requirement: Pause context is retained in medication history
+The system SHALL expose current and completed source-specific periods newest first to
+authorised viewers, including reasons, optional notes, known times and actors. The system
+SHALL NOT offer reason/note correction or backdating controls. Reports and PDFs SHALL use
+pause intervals for calculations without displaying pause reasons or notes.
+
+#### Scenario: Read completed pause context
+- **GIVEN** a treatment was paused and resumed
+- **WHEN** an authorised viewer opens its pause history from the treatment card
+- **THEN** the original context and recording/resuming actors remain visible
+- **AND** unknown legacy values are explicitly labelled rather than invented
+
+### Requirement: Native apps expose connected pause controls
+iOS and Android SHALL offer labelled pause and history actions and a compact Paused
+treatments section on Today that respects the selected person. The section SHALL include
+paused sources even when they have no expected dose today. Pause/resume SHALL require
+capability support and a connection; source state changes only after server confirmation.
+
+#### Scenario: A native pause fails
+- **GIVEN** a user entered a valid reason and optional note
+- **WHEN** the pause request fails
+- **THEN** the form retains its input and presents a recoverable error
+- **AND** the app does not claim that the treatment is paused
+
+#### Scenario: Resume a paused native treatment
+- **GIVEN** a supported server and a paused treatment for the selected person
+- **WHEN** an authorised user resumes it from Today
+- **THEN** the server closes the current period and the app refreshes treatment state
+- **AND** its completed pause remains accessible in history

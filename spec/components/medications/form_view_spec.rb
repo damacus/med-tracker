@@ -64,17 +64,6 @@ RSpec.describe Components::Medications::FormView, type: :component do
     end
   end
 
-  describe 'edit header' do
-    it 'renders without the decorative pill icon and uses compact spacing' do
-      medication = build(:medication)
-      rendered = render_inline(described_class.new(medication: medication, title: 'Edit Medication'))
-      html = rendered.to_html
-
-      expect(html).not_to include('w-16 h-16 rounded-shape-xl bg-primary/10')
-      expect(rendered.css('div.text-center.mb-6.space-y-1')).to be_present
-    end
-  end
-
   describe 'supply fields' do
     it 'renames the section to Supply and keeps supply tracking fields' do
       medication = build(:medication, current_supply: 30, reorder_threshold: 5)

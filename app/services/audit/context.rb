@@ -84,6 +84,8 @@ module Audit
           { authentication_method: 'api_session', session_reference: "api_session:#{credential.id}" }
         when ApiAppToken
           { authentication_method: 'api_app_token', session_reference: "api_app_token:#{credential.id}" }
+        when OauthGrant
+          { authentication_method: 'oauth', session_reference: "oauth_grant:#{credential.id}" }
         when :web
           { authentication_method: 'web', session_reference: web_session_reference(request) }
         else

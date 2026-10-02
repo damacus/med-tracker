@@ -1,5 +1,203 @@
 # Changelog
 
+## [0.5.34](https://github.com/damacus/med-tracker/compare/v0.5.33...v0.5.34) (2026-10-02)
+
+
+### Features
+
+* **dashboard:** add read-only Rust household overview ([#2307](https://github.com/damacus/med-tracker/issues/2307)) ([026c27e](https://github.com/damacus/med-tracker/commit/026c27e2ff8888b5c2455fd2eccf19dc419d763a))
+* **rust:** add household management forms ([#2346](https://github.com/damacus/med-tracker/issues/2346)) ([6aed612](https://github.com/damacus/med-tracker/commit/6aed612468d873a90fdbb4de6bdbfc3a33d29062))
+
+
+### Bug Fixes
+
+* **deps:** update rust crate aes-gcm to 0.11 ([#2315](https://github.com/damacus/med-tracker/issues/2315)) ([4f2eda3](https://github.com/damacus/med-tracker/commit/4f2eda3f73d14286862cb9b4c31d3ddcc3705502))
+* **deps:** update rust crate base64 to 0.23 ([#2316](https://github.com/damacus/med-tracker/issues/2316)) ([d3864c6](https://github.com/damacus/med-tracker/commit/d3864c64836bd43b911c74ae4174e8fad789273e))
+* **deps:** update rust crate sea-orm to v2.0.4 ([#2314](https://github.com/damacus/med-tracker/issues/2314)) ([92bef60](https://github.com/damacus/med-tracker/commit/92bef60530cc7099b9b528b9545fe2bce6cc07b5))
+* **rust:** complete household medication port compatibility ([#2370](https://github.com/damacus/med-tracker/issues/2370)) ([476842c](https://github.com/damacus/med-tracker/commit/476842ceb30bd0ff0cd26de1bb7de3e79f798ee6))
+
+## [0.5.33](https://github.com/damacus/med-tracker/compare/v0.5.32...v0.5.33) (2026-09-30)
+
+
+### Features
+
+* **rust:** complete the documented MedTracker API ([#2302](https://github.com/damacus/med-tracker/issues/2302)) ([91d7f7e](https://github.com/damacus/med-tracker/commit/91d7f7e687ba71b3b65aea9ed9f9ca09be1d28ac))
+
+
+### Bug Fixes
+
+* **auth:** complete mobile sign-in consent ([#2287](https://github.com/damacus/med-tracker/issues/2287)) ([b6ebc98](https://github.com/damacus/med-tracker/commit/b6ebc9882896c5f5a31434aa8150496def41c79d))
+* **deps:** update dependency androidx.core:core-ktx to v1.19.1 ([#2291](https://github.com/damacus/med-tracker/issues/2291)) ([ef75b17](https://github.com/damacus/med-tracker/commit/ef75b17e616b19b8ec74b79960b656041f9416c9))
+* **deps:** update rust crate bcrypt to 0.19 ([#2317](https://github.com/damacus/med-tracker/issues/2317)) ([5f16cbf](https://github.com/damacus/med-tracker/commit/5f16cbf1d2c5e596536d7369ef1392877d814026))
+* **deps:** update rust crate getrandom to 0.4 ([#2318](https://github.com/damacus/med-tracker/issues/2318)) ([cfe6527](https://github.com/damacus/med-tracker/commit/cfe6527ac8d60c8869197006dce6a35201cb3fa2))
+* **deps:** update rust crate scraper to 0.27 ([#2322](https://github.com/damacus/med-tracker/issues/2322)) ([859d3d7](https://github.com/damacus/med-tracker/commit/859d3d7575301dbc3e4f11ef8db0955d7acba004))
+* **deps:** update rust crate zip to v8 ([#2324](https://github.com/damacus/med-tracker/issues/2324)) ([06844ec](https://github.com/damacus/med-tracker/commit/06844ecbf9106bb640fdbe0b334fadae14a58646))
+
+## [0.5.32](https://github.com/damacus/med-tracker/compare/v0.5.31...v0.5.32) (2026-09-23)
+
+
+### Bug Fixes
+
+* **auth:** resume mobile sign-in after expiry ([#2284](https://github.com/damacus/med-tracker/issues/2284)) ([821878f](https://github.com/damacus/med-tracker/commit/821878f534670dd93f15823eb98dfeb4e9596222))
+* **oauth:** restore canary public mobile clients ([#2281](https://github.com/damacus/med-tracker/issues/2281)) ([319550a](https://github.com/damacus/med-tracker/commit/319550ad0a720180d46d7e7fa85e3237957762e9))
+
+## [0.5.31](https://github.com/damacus/med-tracker/compare/v0.5.30...v0.5.31) (2026-09-20)
+
+
+### Bug Fixes
+
+* **tasks:** env transport through internal:run, container-eval CMD, db pre-start ([#2270](https://github.com/damacus/med-tracker/issues/2270)) ([3c0f7fc](https://github.com/damacus/med-tracker/commit/3c0f7fc1078fd43ce193cba1e9fe88bb792ce91a))
+* **tasks:** run every internal helper call instead of deduplicating ([#2268](https://github.com/damacus/med-tracker/issues/2268)) ([2732ca9](https://github.com/damacus/med-tracker/commit/2732ca9a030912031a919ba28ca32a855afba07c))
+
+## [0.5.30](https://github.com/damacus/med-tracker/compare/v0.5.29...v0.5.30) (2026-09-19)
+
+
+### Bug Fixes
+
+* **auth:** require S256 for mobile sign-in ([#2262](https://github.com/damacus/med-tracker/issues/2262)) ([f32b9e0](https://github.com/damacus/med-tracker/commit/f32b9e0d929e92d3587457602e6510975d764d8c))
+
+## [0.5.29](https://github.com/damacus/med-tracker/compare/v0.5.28...v0.5.29) (2026-09-17)
+
+
+### Features
+
+* **auth:** add configurable Rodauth mobile login ([10bd896](https://github.com/damacus/med-tracker/commit/10bd896b4b22d571f9b338e08455266aadd7d319))
+* **skill:** separate judgement from verification ([1013ddb](https://github.com/damacus/med-tracker/commit/1013ddb5abd2a21d801800eabd80df84a5e1907b))
+
+
+### Bug Fixes
+
+* **admin-users:** select the visible membership role ([5f2c184](https://github.com/damacus/med-tracker/commit/5f2c184b560b4412a55004e3026dcbc58514751f))
+* **ai:** reject unsupported Azure configuration ([0c0e0a3](https://github.com/damacus/med-tracker/commit/0c0e0a31c23e05ca5cfdfd7f798db905fc95ec81))
+* **android:** bound APK packaging workers ([26ec3b3](https://github.com/damacus/med-tracker/commit/26ec3b361b6c689a5f41c8cf7f5baa9b4c601268))
+* **api:** return app token validation errors ([97d2c65](https://github.com/damacus/med-tracker/commit/97d2c653172b586d29b2912c2c1c89f904052c6f))
+* batch dashboard and inventory queries ([8828122](https://github.com/damacus/med-tracker/commit/8828122312d0fbb1ec78b3defbf9f979ff5b9e5a))
+* **ci:** harden runtime and validation lanes ([#2228](https://github.com/damacus/med-tracker/issues/2228)) ([26ec3b3](https://github.com/damacus/med-tracker/commit/26ec3b361b6c689a5f41c8cf7f5baa9b4c601268))
+* **ci:** keep sharding without mandatory timing entries ([#2242](https://github.com/damacus/med-tracker/issues/2242)) ([5f75af7](https://github.com/damacus/med-tracker/commit/5f75af7ae1ac87414b5259eba78616cdaa53aa32))
+* **ci:** require UI-scoped Lighthouse validation ([26ec3b3](https://github.com/damacus/med-tracker/commit/26ec3b361b6c689a5f41c8cf7f5baa9b4c601268))
+* **dashboard:** wait for the direct-dose dialog ([5f2c184](https://github.com/damacus/med-tracker/commit/5f2c184b560b4412a55004e3026dcbc58514751f))
+* **deps:** update dependency androidx.compose:compose-bom to v2026.09.00 ([#2110](https://github.com/damacus/med-tracker/issues/2110)) ([422a08a](https://github.com/damacus/med-tracker/commit/422a08a3109671990bb1d59bf8f9de87e5dd9b62))
+* **historical-dose:** wait for the trigger-owned dialog ([5f2c184](https://github.com/damacus/med-tracker/commit/5f2c184b560b4412a55004e3026dcbc58514751f))
+* **mobile:** resolve conflict markers, stock removal API flow, and null enum deserialization ([#2220](https://github.com/damacus/med-tracker/issues/2220)) ([9ab2fbf](https://github.com/damacus/med-tracker/commit/9ab2fbfd81db135b7510d8c16a81bbb433bc7dd4))
+* **mobile:** Various changes for Andrdoi mobile app ([#2211](https://github.com/damacus/med-tracker/issues/2211)) ([21fad78](https://github.com/damacus/med-tracker/commit/21fad781bcfc4c43b47d2e24b5c9fd0f2b02bc1e))
+* **playwright:** align the Ruby client and browser runtime ([26ec3b3](https://github.com/damacus/med-tracker/commit/26ec3b361b6c689a5f41c8cf7f5baa9b4c601268))
+* **schedules:** wait for the open medication combobox ([5f2c184](https://github.com/damacus/med-tracker/commit/5f2c184b560b4412a55004e3026dcbc58514751f))
+* **test:** refresh mounted Playwright dependencies ([5f2c184](https://github.com/damacus/med-tracker/commit/5f2c184b560b4412a55004e3026dcbc58514751f))
+* **test:** stabilise browser workflows and Playwright preflight ([#2223](https://github.com/damacus/med-tracker/issues/2223)) ([5f2c184](https://github.com/damacus/med-tracker/commit/5f2c184b560b4412a55004e3026dcbc58514751f))
+
+
+### Performance Improvements
+
+* **ci:** balance browser examples from measured timings ([26ec3b3](https://github.com/damacus/med-tracker/commit/26ec3b361b6c689a5f41c8cf7f5baa9b4c601268))
+* **ci:** balance non-browser tests and collate coverage ([26ec3b3](https://github.com/damacus/med-tracker/commit/26ec3b361b6c689a5f41c8cf7f5baa9b4c601268))
+* **test:** reduce audit-log rate-limit workload ([26ec3b3](https://github.com/damacus/med-tracker/commit/26ec3b361b6c689a5f41c8cf7f5baa9b4c601268))
+* **test:** remove redundant suite work ([#2213](https://github.com/damacus/med-tracker/issues/2213)) ([279b09b](https://github.com/damacus/med-tracker/commit/279b09b4ca042dcad86090dc84781787593dea59))
+
+## [0.5.28](https://github.com/damacus/med-tracker/compare/v0.5.27...v0.5.28) (2026-09-09)
+
+
+### Features
+
+* **android:** add pause reasons and history ([#2150](https://github.com/damacus/med-tracker/issues/2150)) ([44137dc](https://github.com/damacus/med-tracker/commit/44137dc20103dbf43dfea8822d040933745ef9a5))
+* **api:** accept verified household invitations safely ([ab03953](https://github.com/damacus/med-tracker/commit/ab039532f1d8245879f39a23ada46e8f75f69dd0))
+* **api:** advertise scheduled dose outcome support ([ce0b967](https://github.com/damacus/med-tracker/commit/ce0b967ef8d2d07f3a1faade5725628f4ec7ad67))
+* **api:** correct scheduled dose outcomes with audit history ([194d80b](https://github.com/damacus/med-tracker/commit/194d80bd383327121ed7d5c39455dc24a2acc2e5))
+* **api:** expose audited medication review decisions ([661e4d1](https://github.com/damacus/med-tracker/commit/661e4d1c34f1466d971a0a53e27922250ac8ca2b))
+* **api:** expose pause lifecycle and sync ([#2148](https://github.com/damacus/med-tracker/issues/2148)) ([24c7db9](https://github.com/damacus/med-tracker/commit/24c7db98f331912f1c5c23deda679a0ed5034c46))
+* **api:** list scheduled dose occurrences ([a303d20](https://github.com/damacus/med-tracker/commit/a303d20021ccf3b274f6a46e5e23d4d880d4a84f))
+* **api:** manage locations and person memberships ([4bbae14](https://github.com/damacus/med-tracker/commit/4bbae1408857be695405d9795f457db9637b1ac9))
+* **api:** protect current profile avatar operations ([992fbf5](https://github.com/damacus/med-tracker/commit/992fbf55cc8721f70db15cfc28e53aa4e7938ce0))
+* **api:** provide protected health and review reports ([ef06e72](https://github.com/damacus/med-tracker/commit/ef06e726e5318d5e722d4461bdda4a5d2167de29))
+* **api:** record and list medication stock removals ([f92a72a](https://github.com/damacus/med-tracker/commit/f92a72af1d1c5d3ed2e393523fb5deca07a61c61))
+* **api:** record scheduled doses as not taken ([677fa6c](https://github.com/damacus/med-tracker/commit/677fa6cd3093b11a199a91454712f7d51fc8df90))
+* **api:** resend invitations with fresh authority ([23f4d0d](https://github.com/damacus/med-tracker/commit/23f4d0d8f8e99f0fb414a9acaa1ad3fe27a26149))
+* **api:** save current profile preferences atomically ([74fbd29](https://github.com/damacus/med-tracker/commit/74fbd29994ced5e5606e666470aa4207eaa992c3))
+* **api:** support routine dose outcomes ([da57485](https://github.com/damacus/med-tracker/commit/da57485fad35e9f85fe582e1d02d4c87c02abde0))
+* **dashboard:** show direct routine dose outcomes ([15e2199](https://github.com/damacus/med-tracker/commit/15e2199bc8bc1a3bb9459b996fb60fd54897d42a))
+* **dashboard:** show resolved dose outcomes separately ([d3a6c7b](https://github.com/damacus/med-tracker/commit/d3a6c7b3814da6ba3d83c92b3dc64490af8c304b))
+* **doses:** correct not-taken decisions from the dashboard ([e5da309](https://github.com/damacus/med-tracker/commit/e5da309906ad142f3ee6cff662fb9fa8ca61a22d))
+* **doses:** correct routine decisions through the web ([e236d7e](https://github.com/damacus/med-tracker/commit/e236d7e820c802c4f2a31f2d172ed50cf1d6f04a))
+* **doses:** link outcomes through canonical dose recording ([89a0484](https://github.com/damacus/med-tracker/commit/89a048451ce14b2580cfaedfe01cc2154283c507))
+* **doses:** preserve saved cycle boundaries ([40c79ba](https://github.com/damacus/med-tracker/commit/40c79ba9ee00ce85321e8a9d0d700aea4e1a9a63))
+* **doses:** project direct routine cycle occurrences ([80edc43](https://github.com/damacus/med-tracker/commit/80edc43c7bf2aa8a896578264987768b718981b7))
+* **doses:** project expected dose occurrences ([2458269](https://github.com/damacus/med-tracker/commit/2458269436e0ea91f177f006608a57ccb613d578))
+* **doses:** record not-taken outcomes from the dashboard ([93e8cfc](https://github.com/damacus/med-tracker/commit/93e8cfc388b9f666ab24660322e5f892c1400061))
+* **doses:** record routine not-taken decisions on the web ([78af7de](https://github.com/damacus/med-tracker/commit/78af7de92e5b3bad9da7d1ea439a58a76f84ae4c))
+* **doses:** resolve direct routine outcomes through shared rules ([913403e](https://github.com/damacus/med-tracker/commit/913403e4e90991e2033930fc5903dd005601b142))
+* **doses:** resolve not-taken outcomes ([f6ddc91](https://github.com/damacus/med-tracker/commit/f6ddc91d2dbb94286a9f2663916f8d786a4b9b7e))
+* **doses:** store attributable dose outcomes ([a64e340](https://github.com/damacus/med-tracker/commit/a64e340dd5fa77b6b133aff1de811630dfb45e16))
+* **insights:** distinguish missed routine cycles ([65786ac](https://github.com/damacus/med-tracker/commit/65786ac120a1d915305eccb424e9b7911d75404b))
+* **inventory:** record stock removals ([#2142](https://github.com/damacus/med-tracker/issues/2142)) ([8ff1a00](https://github.com/damacus/med-tracker/commit/8ff1a003668a33390da3a3b2914f812aa3a7ab3d))
+* **portability:** export saved dose outcomes in v2 bundles ([24ae998](https://github.com/damacus/med-tracker/commit/24ae998e2a9369d7b6b34040f227c40a5c4d29a2))
+* **portability:** restore saved dose outcomes from v2 bundles ([f5e4233](https://github.com/damacus/med-tracker/commit/f5e42335c43b49d33e083f837531491eba319736))
+* **portable:** preserve routine dose outcome windows ([6e5c66f](https://github.com/damacus/med-tracker/commit/6e5c66fc569edffd444785c51dcbb52ac0a11bc7))
+* **portable:** retain pause history ([#2147](https://github.com/damacus/med-tracker/issues/2147)) ([be6f420](https://github.com/damacus/med-tracker/commit/be6f420596df4ab18787aa6326c9a2cfd6c2f8ca))
+* **reminders:** honour direct routine dose outcomes ([440c154](https://github.com/damacus/med-tracker/commit/440c154d276a283d3de65920b3d385848d5b75f8))
+* **reports:** classify scheduled dose outcomes separately ([2f415ef](https://github.com/damacus/med-tracker/commit/2f415efceae6e4bc3c865462cf6068c2bf59b152))
+* **reports:** show not-taken outcomes in health history ([3a2305e](https://github.com/damacus/med-tracker/commit/3a2305e80d7ce3c4a8b8244d7b46201ab572324b))
+* **reports:** show routine cycles in reports and history ([07e2823](https://github.com/damacus/med-tracker/commit/07e2823ae06ddf26072e74a7985304dd857419fa))
+* **reports:** summarise routine dose cycles separately ([69069fc](https://github.com/damacus/med-tracker/commit/69069fc55bb667de6f8c31f9fad38a43f56bd51e))
+* **sync:** expose saved dose outcomes in snapshots and changes ([1acd7ac](https://github.com/damacus/med-tracker/commit/1acd7ac5d1acbfb4b3548b33e6b364323bcf91c6))
+* **sync:** link queued takes to scheduled occurrences ([91a5805](https://github.com/damacus/med-tracker/commit/91a58050ba18b5522b58c505e16f57e9ccc81200))
+* **sync:** queue versioned dose outcome decisions ([d1a8f1a](https://github.com/damacus/med-tracker/commit/d1a8f1a552cbf89ef3d43c4837ec58a48df08ee4))
+* **sync:** replay assignment pause and reorder actions ([98441e3](https://github.com/damacus/med-tracker/commit/98441e3068a30b4584e4b64b63b16fa425ab5afd))
+* **sync:** replay care records and medication reviews ([2f0cbc2](https://github.com/damacus/med-tracker/commit/2f0cbc23285e699b8f208deac54e8a64ce12283b))
+* **sync:** replay inventory and stock operations ([e2e21bc](https://github.com/damacus/med-tracker/commit/e2e21bce6640d14fe85f69145fe6db34cf80ae62))
+* **sync:** support routine dose outcomes and take replay ([8ca4050](https://github.com/damacus/med-tracker/commit/8ca4050b6885ddc891772ca8e5af64ae92147600))
+* **web:** collect and retain pause reasons ([#2149](https://github.com/damacus/med-tracker/issues/2149)) ([d968ee3](https://github.com/damacus/med-tracker/commit/d968ee34956e4c9c371b7d0b941d871e56cf6073))
+
+
+### Bug Fixes
+
+* **android:** include pause operations in sync capabilities ([40a5b04](https://github.com/damacus/med-tracker/commit/40a5b04e746d1655b3e526e77f635b24425f73a6))
+* **api:** accept documented stock source IDs for dose corrections ([89bcb34](https://github.com/damacus/med-tracker/commit/89bcb3468add431bd1cf8d8d5669bbdf741b66a2))
+* **api:** bind tenant context before recording session activity ([05691ad](https://github.com/damacus/med-tracker/commit/05691adedbe9602e46ba5cc103067eea8c9e775c))
+* **api:** preserve merged pause and dose contracts ([396bb4d](https://github.com/damacus/med-tracker/commit/396bb4d4928c564b5d119d63013c001a6a670032))
+* **api:** preserve merged pause and dose contracts ([26d556a](https://github.com/damacus/med-tracker/commit/26d556a2d1b36a9b50f691c86576bdaad2f548bd))
+* **api:** preserve merged pause and dose contracts ([4266cce](https://github.com/damacus/med-tracker/commit/4266cce217909846e8186fa6778fa559d2cb616d))
+* **api:** preserve merged pause and dose contracts ([2fdda76](https://github.com/damacus/med-tracker/commit/2fdda76d84ab20cc7e557897b7a9463c020e0798))
+* **api:** protect dose replacement with the observed version ([7f32340](https://github.com/damacus/med-tracker/commit/7f323408c1b5ed0e777e4cd6718d961d358cc94d))
+* **api:** return the exact saved dose occurrence with its version ([d386187](https://github.com/damacus/med-tracker/commit/d3861870b563c792e599c8f01e3abf3fc82093ee))
+* **dashboard:** exclude obsolete outcomes from current progress ([4ed7054](https://github.com/damacus/med-tracker/commit/4ed7054d3883e1976b82f2bf5951e7a2b7172026))
+* **dashboard:** ignore obsolete routine positions in current progress ([efcdb44](https://github.com/damacus/med-tracker/commit/efcdb442b1e6097cab809797b3ae6b9616274ae7))
+* **doses:** match full occurrence identity across cycle changes ([ec8ffbc](https://github.com/damacus/med-tracker/commit/ec8ffbc6d0e6dbd544ec33b4e865d2eb9ed6e37a))
+* **doses:** preserve correction access across routine cycle changes ([87d5e90](https://github.com/damacus/med-tracker/commit/87d5e9008264282e8bf8dcffcef1baa98f90a80b))
+* **doses:** retain clinical outcomes on migration rollback ([494856c](https://github.com/damacus/med-tracker/commit/494856ceef94a6b336d2f9e1bdea42805dfc8519))
+* **import:** reject duplicate immutable dose take links ([90d86ed](https://github.com/damacus/med-tracker/commit/90d86eda988ca818edd17d7167a079d4cc9fb549))
+* **insights:** distinguish explained dose outcomes from misses ([bc210cc](https://github.com/damacus/med-tracker/commit/bc210cc80223e1623a3ea55078d1694e041790da))
+* **locations:** retain locations referenced by historical takes ([805801d](https://github.com/damacus/med-tracker/commit/805801d15c9224b79ba30a91c694394c924fec5a))
+* **portability:** include dose outcomes in hosted household exports ([a003db9](https://github.com/damacus/med-tracker/commit/a003db98f8be0e4cecac6c3804f3d625998cd4a9))
+* **portability:** include dose outcomes in hosted household exports ([0323621](https://github.com/damacus/med-tracker/commit/032362116149db1dcec695e4f893eaa9531f8371))
+* **portability:** validate links against stored medication takes ([2827304](https://github.com/damacus/med-tracker/commit/28273049f10c68688b22708a19cf9f9644d7779d))
+* **reminders:** allocate legacy takes across open dose slots ([c8182cc](https://github.com/damacus/med-tracker/commit/c8182cca5e9086a7c43ecd16aa38d2d9fd694171))
+* **reminders:** ignore obsolete routine positions after cycle edits ([6e26cfd](https://github.com/damacus/med-tracker/commit/6e26cfdd4dbf6dc86e651696036f9395e120babc))
+* **reminders:** retain unresolved routine doses after a take ([fe7d27c](https://github.com/damacus/med-tracker/commit/fe7d27c7f2c603dd7e33928dbca9bd052693c47f))
+* **reminders:** suppress resolved dose occurrences ([530dbd1](https://github.com/damacus/med-tracker/commit/530dbd1443eb66db46cfef515da9bf1b86322ac1))
+* **reports:** preserve occurrence identities in outcome history ([2a75b91](https://github.com/damacus/med-tracker/commit/2a75b910c864a72fe6d736983126ee85fe6eef5a))
+* **sync:** recheck authority before cached batch replay ([7763f75](https://github.com/damacus/med-tracker/commit/7763f75aba1385576026ca261c930fb9e977bf41))
+* **sync:** recheck visibility of cached medicine creations ([e2aecc8](https://github.com/damacus/med-tracker/commit/e2aecc887f5d9eef39606a06ce7353e23da6f07d))
+* **tenancy:** restore outer database context after nested work ([efc94cd](https://github.com/damacus/med-tracker/commit/efc94cd053f12d4a321cd95bc596f7ced642c291))
+
+## [0.5.27](https://github.com/damacus/med-tracker/compare/v0.5.26...v0.5.27) (2026-09-08)
+
+
+### Features
+
+* **notifications:** deliver private iOS alerts ([#2101](https://github.com/damacus/med-tracker/issues/2101)) ([0d7d015](https://github.com/damacus/med-tracker/commit/0d7d015a41ea7fd1f6219a855932d54df5ac73e3))
+
+
+### Bug Fixes
+
+* **deps:** consolidate dependency updates ([#2141](https://github.com/damacus/med-tracker/issues/2141)) ([39fff36](https://github.com/damacus/med-tracker/commit/39fff366a36a307b048eaedc9d1e1f63694deffb))
+* **offline:** account for pending stock use ([#2131](https://github.com/damacus/med-tracker/issues/2131)) ([cb08198](https://github.com/damacus/med-tracker/commit/cb08198db5e092388554bfa628adc23b1f2ccc64))
+* **offline:** batch eligibility and match stock quantities ([#2138](https://github.com/damacus/med-tracker/issues/2138)) ([72b0c6d](https://github.com/damacus/med-tracker/commit/72b0c6d34657b49e4b048363924161e3edeaca68))
+* **offline:** close reads and hide ineffective retries ([#2136](https://github.com/damacus/med-tracker/issues/2136)) ([6a419dc](https://github.com/damacus/med-tracker/commit/6a419dc2a310b45335f517d9e6175123ee18d777))
+* **offline:** preserve doses across sync failures ([#2130](https://github.com/damacus/med-tracker/issues/2130)) ([9739e7b](https://github.com/damacus/med-tracker/commit/9739e7bec3d66e507f5266fe9acba5221feb3f5f))
+* **offline:** reserve stock atomically across browser contexts ([#2137](https://github.com/damacus/med-tracker/issues/2137)) ([b5f5121](https://github.com/damacus/med-tracker/commit/b5f5121e405f9428c1b6378a4bd25d26b04e80d4))
+* **offline:** respect cached dose eligibility ([#2132](https://github.com/damacus/med-tracker/issues/2132)) ([fbf7f52](https://github.com/damacus/med-tracker/commit/fbf7f526cc7a7d7c20d2cd04b58486c481bfc296))
+* **search:** distinguish failures and allow retry ([#2133](https://github.com/damacus/med-tracker/issues/2133)) ([0eda8a7](https://github.com/damacus/med-tracker/commit/0eda8a7ce638931b19fc5aaa079c96df85aff4a3))
+* **ui:** contain actions and clarify feedback ([#2126](https://github.com/damacus/med-tracker/issues/2126)) ([52eb4c2](https://github.com/damacus/med-tracker/commit/52eb4c20cd3c6f5c2268cf6211799a7ec0cc6272))
+
 ## [0.5.26](https://github.com/damacus/med-tracker/compare/v0.5.25...v0.5.26) (2026-09-06)
 
 

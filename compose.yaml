@@ -50,6 +50,9 @@ services:
       NHS_DMD_CLIENT_SECRET: ${NHS_DMD_CLIENT_SECRET:-}
       DEMO_MODE: ${DEMO_MODE:-false}
       APP_URL: ${APP_URL:-http://localhost:3000}
+      SESSION_INACTIVITY_TIMEOUT_DAYS: ${SESSION_INACTIVITY_TIMEOUT_DAYS:-30}
+      SESSION_MAX_AGE_DAYS: ${SESSION_MAX_AGE_DAYS:-0}
+      API_APP_TOKEN_MAX_AGE_MONTHS: ${API_APP_TOKEN_MAX_AGE_MONTHS:-12}
       OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
       OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
       OIDC_ISSUER_URL: ${OIDC_ISSUER_URL:-}
@@ -102,8 +105,10 @@ services:
       test:
         aliases: [mail-test]
     ports:
-      - "8025" # Web UI
-      - "1025" # SMTP
+      - target: 8025 # Web UI
+        host_ip: 127.0.0.1
+      - target: 1025 # SMTP
+        host_ip: 127.0.0.1
     restart: unless-stopped
 
   db-test:
@@ -114,6 +119,7 @@ services:
     networks: [test]
     volumes:
       - ./compose/init-roles.sql:/docker-entrypoint-initdb.d/001-init-roles.sql:ro
+      - ./compose/contract-db.sql:/contract-db.sql:ro
     healthcheck:
       interval: 5s
       timeout: 3s
@@ -127,16 +133,21 @@ services:
     networks: [test]
     build:
       target: test
+      args:
+        UID: ${TEST_IMAGE_UID:-1000}
     command: bin/rails db:prepare
     depends_on:
       db-test:
         condition: service_healthy
     environment: &rails_env_test
       RAILS_ENV: test
-      DATABASE_URL: postgresql://medtracker:medtracker_password@db-test:5432/medtracker
+      DATABASE_URL: ${CONTRACT_DATABASE_URL:-postgresql://medtracker:medtracker_password@db-test:5432/medtracker}
       DATABASE_ROLE: ${TEST_MIGRATION_DATABASE_ROLE:-}
       SMTP_ADDRESS: mail-test
       APP_URL: ${TEST_APP_URL:-http://localhost:3000}
+      SESSION_INACTIVITY_TIMEOUT_DAYS: ${TEST_SESSION_INACTIVITY_TIMEOUT_DAYS:-30}
+      SESSION_MAX_AGE_DAYS: ${TEST_SESSION_MAX_AGE_DAYS:-0}
+      API_APP_TOKEN_MAX_AGE_MONTHS: ${TEST_API_APP_TOKEN_MAX_AGE_MONTHS:-12}
       OIDC_CLIENT_ID: ${TEST_OIDC_CLIENT_ID:-}
       OIDC_CLIENT_SECRET: ${TEST_OIDC_CLIENT_SECRET:-}
       OIDC_ISSUER_URL: ${TEST_OIDC_ISSUER_URL:-}
@@ -155,9 +166,15 @@ services:
       file: compose/base.yml
       service: rails
     profiles: [test]
+    command: rails server -b 0.0.0.0
+    ports: !override
+      - target: 3000
+        host_ip: 127.0.0.1
     networks: [test]
     build:
       target: test
+      args:
+        UID: ${TEST_IMAGE_UID:-1000}
     depends_on:
       db-test:
         condition: service_healthy
@@ -168,6 +185,11 @@ services:
     environment:
       <<: *rails_env_test
       DATABASE_ROLE: ${TEST_DATABASE_ROLE:-}
+      CONTRACT_RATE_LIMITING: ${CONTRACT_RATE_LIMITING:-false}
+      MEDTRACKER_AI_MEDICATION_HELP_ENABLED: ${CONTRACT_AI_MEDICATION_HELP_ENABLED:-false}
+      NHS_DMD_CLIENT_ID: ${CONTRACT_NHS_DMD_CLIENT_ID:-}
+      NHS_DMD_CLIENT_SECRET: ${CONTRACT_NHS_DMD_CLIENT_SECRET:-}
+      RUBYOPT: ${CONTRACT_RUBYOPT:-}
     volumes:
       - .:/app
       - ${MEDTRACKER_GIT_COMMON_DIR:-.git}:${MEDTRACKER_GIT_COMMON_DIR:-.git}:ro
@@ -179,7 +201,7 @@ services:
       - /app/tmp/cache:uid=1000,gid=1000
       - /app/public/assets:uid=1000,gid=1000
     healthcheck:
-      disable: true
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/up || exit 1"]
 
   tools-test:
     extends:
@@ -235,6 +257,9 @@ services:
     environment: &rails_env_prod
       RAILS_ENV: production
       APP_URL: ${APP_URL:-http://localhost}
+      SESSION_INACTIVITY_TIMEOUT_DAYS: ${SESSION_INACTIVITY_TIMEOUT_DAYS:-30}
+      SESSION_MAX_AGE_DAYS: ${SESSION_MAX_AGE_DAYS:-0}
+      API_APP_TOKEN_MAX_AGE_MONTHS: ${API_APP_TOKEN_MAX_AGE_MONTHS:-12}
       ACTIVE_STORAGE_SERVICE: ${ACTIVE_STORAGE_SERVICE:-persistent}
       ACTIVE_STORAGE_ROOT: ${ACTIVE_STORAGE_ROOT:-/app/storage}
       DATABASE_URL: postgresql://medtracker:medtracker_password@db-prod:5432/medtracker

@@ -89,6 +89,7 @@ RSpec.describe 'Medications stock check' do
 
       expect(response).to have_http_status(:unprocessable_content)
       expect(response.body).to include('Quantity cannot be negative')
+      expect(response.body).to include('Apply 2 amendments')
       expect(paracetamol.reload.current_supply).to eq(80)
       expect(aspirin.reload.current_supply).to eq(25)
     end

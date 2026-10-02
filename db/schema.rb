@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_06_190000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_26_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -169,6 +169,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_06_190000) do
   create_table "api_app_tokens", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.datetime "created_at", null: false
+    t.datetime "expires_at", null: false
     t.bigint "household_membership_id", null: false
     t.datetime "last_used_at", null: false
     t.string "name", null: false
@@ -177,9 +178,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_06_190000) do
     t.string "token_digest", null: false
     t.datetime "updated_at", null: false
     t.index ["account_id"], name: "index_api_app_tokens_on_account_id"
+    t.index ["expires_at"], name: "index_api_app_tokens_on_expires_at"
     t.index ["household_membership_id", "revoked_at"], name: "index_api_app_tokens_on_membership_and_revoked_at"
     t.index ["household_membership_id"], name: "index_api_app_tokens_on_household_membership_id"
     t.index ["token_digest"], name: "index_api_app_tokens_on_token_digest", unique: true
+    t.check_constraint "expires_at > created_at", name: "api_app_token_positive_lifetime"
   end
 
   create_table "api_change_events", force: :cascade do |t|
@@ -241,17 +244,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_06_190000) do
     t.index ["expires_at"], name: "index_api_idempotency_keys_on_expires_at"
     t.index ["household_id", "key"], name: "index_api_idempotency_keys_on_household_id_and_key", unique: true
     t.index ["household_id"], name: "index_api_idempotency_keys_on_household_id"
-  end
-
-  create_table "api_oidc_nonces", force: :cascade do |t|
-    t.datetime "created_at", null: false
-    t.string "issuer", null: false
-    t.string "nonce", null: false
-    t.string "subject", null: false
-    t.datetime "updated_at", null: false
-    t.datetime "used_at", null: false
-    t.index ["issuer", "subject", "nonce"], name: "index_api_oidc_nonces_on_issuer_and_subject_and_nonce", unique: true
-    t.index ["used_at"], name: "index_api_oidc_nonces_on_used_at"
   end
 
   create_table "api_sessions", force: :cascade do |t|
@@ -432,21 +424,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_06_190000) do
   end
 
   create_table "dosages", force: :cascade do |t|
-    t.decimal "amount"
+    t.decimal "amount", null: false
     t.datetime "created_at", null: false
     t.decimal "current_supply", precision: 10, scale: 2
-    t.integer "default_dose_cycle"
+    t.integer "default_dose_cycle", null: false
     t.boolean "default_for_adults", default: false, null: false
     t.boolean "default_for_children", default: false, null: false
-    t.integer "default_max_daily_doses"
-    t.decimal "default_min_hours_between_doses", precision: 4, scale: 1
+    t.integer "default_max_daily_doses", null: false
+    t.decimal "default_min_hours_between_doses", precision: 4, scale: 1, null: false
     t.string "description"
-    t.string "frequency"
+    t.string "frequency", null: false
     t.bigint "household_id", null: false
     t.bigint "medication_id", null: false
     t.string "portable_id", default: -> { "(gen_random_uuid())::text" }, null: false
     t.decimal "reorder_threshold", precision: 10, scale: 2
-    t.string "unit"
+    t.string "unit", null: false
     t.datetime "updated_at", null: false
     t.index ["household_id", "portable_id"], name: "index_dosages_on_household_id_and_portable_id", unique: true
     t.index ["household_id"], name: "index_dosages_on_household_id"
@@ -646,10 +638,46 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_06_190000) do
     t.index ["name"], name: "index_locations_on_name_trigram", opclass: :gin_trgm_ops, using: :gin
   end
 
+  create_table "medication_dose_occurrences", force: :cascade do |t|
+    t.bigint "household_id", null: false
+    t.bigint "schedule_id"
+    t.bigint "person_medication_id"
+    t.bigint "medication_take_id"
+    t.bigint "resolved_by_membership_id"
+    t.string "portable_id", default: -> { "(gen_random_uuid())::text" }, null: false
+    t.date "window_starts_on", null: false
+    t.date "window_ends_on"
+    t.integer "position", null: false
+    t.datetime "scheduled_at"
+    t.string "outcome", default: "open", null: false
+    t.string "reason"
+    t.text "note"
+    t.datetime "resolved_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["household_id"], name: "index_medication_dose_occurrences_on_household_id"
+    t.index ["schedule_id"], name: "index_medication_dose_occurrences_on_schedule_id"
+    t.index ["person_medication_id"], name: "index_medication_dose_occurrences_on_person_medication_id"
+    t.index ["medication_take_id"], name: "index_medication_dose_occurrences_on_medication_take_id", unique: true
+    t.index ["resolved_by_membership_id"], name: "index_medication_dose_occurrences_on_resolved_by_membership_id"
+    t.index ["id", "household_id"], name: "index_medication_dose_occurrences_on_id_and_household_id", unique: true
+    t.index ["household_id", "portable_id"], name: "idx_dose_occurrences_household_portable_id", unique: true
+    t.index ["schedule_id", "window_starts_on", "position"], name: "idx_dose_occurrence_schedule_id_window", unique: true, where: "schedule_id IS NOT NULL"
+    t.index ["person_medication_id", "window_starts_on", "position"], name: "idx_dose_occurrence_person_medication_id_window", unique: true, where: "person_medication_id IS NOT NULL"
+    t.check_constraint "num_nonnulls(schedule_id, person_medication_id) = 1", name: "chk_dose_occurrences_exact_source"
+    t.check_constraint "position > 0", name: "chk_dose_occurrences_position"
+    t.check_constraint "(outcome = 'open' AND medication_take_id IS NULL AND reason IS NULL AND note IS NULL AND resolved_at IS NULL AND resolved_by_membership_id IS NULL) OR (outcome = 'not_taken' AND medication_take_id IS NULL AND resolved_at IS NOT NULL AND resolved_by_membership_id IS NOT NULL) OR (outcome = 'taken' AND medication_take_id IS NOT NULL AND reason IS NULL AND note IS NULL AND resolved_at IS NOT NULL AND resolved_by_membership_id IS NOT NULL)", name: "chk_dose_occurrences_state"
+    t.check_constraint "reason IS NULL OR reason IN ('refused', 'unwell', 'asleep', 'medicine_unavailable', 'clinician_advice', 'other')", name: "chk_dose_occurrences_reason"
+    t.check_constraint "note IS NULL OR char_length(note) <= 2000", name: "chk_dose_occurrences_note"
+    t.check_constraint "window_ends_on >= window_starts_on", name: "chk_dose_occurrences_window_order"
+  end
+
   create_table "medication_pause_periods", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "ended_at"
     t.bigint "household_id", null: false
+    t.jsonb "imported_actor_references", default: {}, null: false
+    t.boolean "imported_context", default: false, null: false
     t.boolean "legacy_context", default: false, null: false
     t.text "note"
     t.bigint "person_medication_id"
@@ -669,10 +697,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_06_190000) do
     t.index ["resumed_by_membership_id"], name: "index_medication_pause_periods_on_resumed_by_membership_id"
     t.index ["schedule_id"], name: "idx_med_pause_periods_open_schedule", unique: true, where: "((ended_at IS NULL) AND (schedule_id IS NOT NULL))"
     t.index ["schedule_id"], name: "index_medication_pause_periods_on_schedule_id"
-    t.check_constraint "ended_at IS NULL AND resumed_by_membership_id IS NULL OR ended_at IS NOT NULL AND resumed_by_membership_id IS NOT NULL", name: "chk_medication_pause_periods_resuming_actor"
-    t.check_constraint "legacy_context = true AND reason::text = 'reason_not_recorded'::text OR legacy_context = false AND reason::text <> 'reason_not_recorded'::text AND started_at IS NOT NULL AND recorded_by_membership_id IS NOT NULL", name: "chk_medication_pause_periods_legacy_context"
+    t.check_constraint "ended_at IS NULL AND resumed_by_membership_id IS NULL OR ended_at IS NOT NULL AND (resumed_by_membership_id IS NOT NULL OR imported_context)", name: "chk_medication_pause_periods_resuming_actor"
+    t.check_constraint "legacy_context AND reason::text = 'reason_not_recorded'::text OR NOT legacy_context AND reason::text <> 'reason_not_recorded'::text AND started_at IS NOT NULL AND (recorded_by_membership_id IS NOT NULL OR imported_context)", name: "chk_medication_pause_periods_legacy_context"
     t.check_constraint "num_nonnulls(schedule_id, person_medication_id) = 1", name: "chk_medication_pause_periods_exactly_one_source"
-    t.check_constraint "reason::text = ANY (ARRAY['out_of_supply'::character varying, 'temporarily_not_needed'::character varying, 'clinician_advice'::character varying, 'side_effects'::character varying, 'other'::character varying, 'reason_not_recorded'::character varying]::text[])", name: "chk_medication_pause_periods_reason"
+    t.check_constraint "reason::text = ANY (ARRAY['out_of_supply'::character varying::text, 'temporarily_not_needed'::character varying::text, 'clinician_advice'::character varying::text, 'side_effects'::character varying::text, 'other'::character varying::text, 'reason_not_recorded'::character varying::text])", name: "chk_medication_pause_periods_reason"
     t.check_constraint "started_at IS NULL OR ended_at IS NULL OR ended_at >= started_at", name: "chk_medication_pause_periods_interval"
   end
 
@@ -876,7 +904,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_06_190000) do
     t.bigint "archive_byte_size"
     t.string "archive_checksum"
     t.string "archive_key"
-    t.string "archive_path"
     t.string "archive_service_name"
     t.datetime "completed_at"
     t.datetime "created_at", null: false
@@ -948,6 +975,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_06_190000) do
   create_table "oauth_applications", force: :cascade do |t|
     t.bigint "account_id"
     t.string "client_id", null: false
+    t.string "client_kind", default: "integration", null: false
     t.string "client_secret"
     t.string "client_secret_hash"
     t.datetime "created_at", null: false
@@ -958,22 +986,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_06_190000) do
     t.datetime "updated_at", null: false
     t.index ["account_id"], name: "index_oauth_applications_on_account_id"
     t.index ["client_id"], name: "index_oauth_applications_on_client_id", unique: true
+    t.index ["id", "client_kind"], name: "index_oauth_applications_on_id_and_client_kind", unique: true
+    t.check_constraint "client_kind::text = ANY (ARRAY['integration'::character varying, 'mobile'::character varying]::text[])", name: "oauth_client_kind"
     t.check_constraint "(token_endpoint_auth_method = 'none' AND NULLIF(client_secret, '') IS NULL AND NULLIF(client_secret_hash, '') IS NULL) OR (token_endpoint_auth_method IN ('client_secret_basic', 'client_secret_post', 'client_secret_basic client_secret_post') AND (NULLIF(client_secret, '') IS NOT NULL OR NULLIF(client_secret_hash, '') IS NOT NULL))", name: "chk_oauth_applications_token_auth_method"
   end
 
   create_table "oauth_grants", force: :cascade do |t|
     t.string "access_type", default: "offline", null: false
     t.bigint "account_id", null: false
+    t.datetime "authenticated_at"
+    t.string "client_kind", default: "integration", null: false
     t.string "code"
     t.string "code_challenge"
     t.string "code_challenge_method"
     t.datetime "created_at", null: false
+    t.string "device_name"
     t.datetime "expires_in", null: false
-    t.bigint "household_membership_id", null: false
+    t.bigint "household_membership_id"
     t.datetime "last_used_at"
     t.bigint "oauth_application_id", null: false
-    t.integer "permissions_version", null: false
-    t.bigint "person_id", null: false
+    t.integer "permissions_version"
+    t.bigint "person_id"
     t.string "redirect_uri"
     t.string "refresh_token"
     t.string "refresh_token_hash"
@@ -992,6 +1025,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_06_190000) do
     t.index ["refresh_token_hash"], name: "index_oauth_grants_on_refresh_token_hash", unique: true
     t.index ["token"], name: "index_oauth_grants_on_token", unique: true
     t.index ["token_hash"], name: "index_oauth_grants_on_token_hash", unique: true
+    t.check_constraint "client_kind::text = 'integration'::text AND household_membership_id IS NOT NULL AND person_id IS NOT NULL AND permissions_version IS NOT NULL OR client_kind::text = 'mobile'::text AND household_membership_id IS NULL AND person_id IS NULL AND permissions_version IS NULL AND authenticated_at IS NOT NULL AND last_used_at IS NOT NULL", name: "oauth_grant_authority_boundary"
   end
 
   create_table "notification_events", force: :cascade do |t|
@@ -1186,7 +1220,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_06_190000) do
     t.datetime "expires_at", null: false
     t.bigint "household_id", null: false
     t.string "ip"
-    t.datetime "mfa_verified_at", null: false
+    t.datetime "mfa_verified_at"
     t.bigint "platform_admin_id", null: false
     t.text "reason", null: false
     t.string "request_id"
@@ -1309,6 +1343,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_06_190000) do
   add_foreign_key "location_memberships", "people", column: ["person_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_location_memberships_person_id_household"
   add_foreign_key "location_memberships", "people", deferrable: :deferred
   add_foreign_key "locations", "households"
+  add_foreign_key "medication_dose_occurrences", "households"
+  add_foreign_key "medication_dose_occurrences", "schedules"
+  add_foreign_key "medication_dose_occurrences", "person_medications"
+  add_foreign_key "medication_dose_occurrences", "medication_takes"
+  add_foreign_key "medication_dose_occurrences", "household_memberships", column: "resolved_by_membership_id"
+  add_foreign_key "medication_dose_occurrences", "schedules", column: ["schedule_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_dose_occurrence_schedule_id_household"
+  add_foreign_key "medication_dose_occurrences", "person_medications", column: ["person_medication_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_dose_occurrence_person_medication_id_household"
+  add_foreign_key "medication_dose_occurrences", "medication_takes", column: ["medication_take_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_dose_occurrence_medication_take_id_household"
+  add_foreign_key "medication_dose_occurrences", "household_memberships", column: ["resolved_by_membership_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_dose_occurrence_resolved_by_membership_id_household"
   add_foreign_key "medication_pause_periods", "household_memberships", column: "recorded_by_membership_id"
   add_foreign_key "medication_pause_periods", "household_memberships", column: "resumed_by_membership_id"
   add_foreign_key "medication_pause_periods", "household_memberships", column: ["recorded_by_membership_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_med_pause_periods_recorded_actor_household", validate: false
@@ -1355,6 +1398,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_06_190000) do
   add_foreign_key "oauth_grants", "accounts"
   add_foreign_key "oauth_grants", "household_memberships"
   add_foreign_key "oauth_grants", "oauth_applications"
+  add_foreign_key "oauth_grants", "oauth_applications", column: ["oauth_application_id", "client_kind"], primary_key: ["id", "client_kind"], name: "oauth_grant_application_kind"
   add_foreign_key "oauth_grants", "people"
   add_foreign_key "people", "accounts", deferrable: :deferred
   add_foreign_key "people", "households"
@@ -1591,6 +1635,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_06_190000) do
     schedules
     person_medications
     medication_pause_periods
+    medication_dose_occurrences
     medication_takes
     notification_preferences
     health_events

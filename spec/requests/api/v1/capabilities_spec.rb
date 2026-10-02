@@ -3,6 +3,47 @@
 require 'rails_helper'
 
 RSpec.describe 'API v1 capabilities' do
+  it 'advertises the implemented scheduled dose outcome operations and read bound' do
+    get api_v1_capabilities_path, as: :json
+
+    expect(response.parsed_body.dig('data', 'dose_outcomes')).to eq(
+      'source_types' => %w[schedule person_medication],
+      'max_read_days' => 31,
+      'actions' => %w[not_taken reopen take],
+      'replacement_requires_version' => true
+    )
+  end
+
+  it 'advertises stock removal history and stable submission identities' do
+    get api_v1_capabilities_path, as: :json
+    expect(response.parsed_body.dig('data', 'stock_removals')).to eq(
+      'actions' => %w[create index], 'submission_id_required' => true, 'max_page_size' => 100
+    )
+  end
+
+  it 'advertises location writes and online membership management' do
+    get api_v1_capabilities_path, as: :json
+    expect(response.parsed_body.dig('data', 'location_management')).to eq(
+      'actions' => %w[create update destroy], 'version_required' => true,
+      'person_memberships' => %w[create destroy], 'memberships_online_only' => true
+    )
+  end
+
+  it 'advertises bounded, versioned medication review operations' do
+    get api_v1_capabilities_path, as: :json
+    expect(response.parsed_body.dig('data', 'medication_reviews')).to eq(
+      'actions' => %w[index show update], 'version_required' => true, 'max_page_size' => 100
+    )
+  end
+
+  it 'advertises protected JSON and PDF report exports' do
+    get api_v1_capabilities_path, as: :json
+    expect(response.parsed_body.dig('data', 'reports')).to eq(
+      'formats' => %w[json pdf], 'health_history' => true, 'medication_reviews' => true,
+      'selected_person_required' => true, 'health_history_max_span_days' => 366
+    )
+  end
+
   it 'publishes the supported API, auth, portability, sync, and client-tool contracts without auth' do
     get api_v1_capabilities_path, as: :json
 
@@ -15,16 +56,10 @@ RSpec.describe 'API v1 capabilities' do
       'api_version' => 'v1',
       'portable_formats' => include('medtracker.portable.v1', 'medtracker.portable.encrypted.v1')
     )
-    expect(data.dig('authentication', 'methods')).to include('bearer_session', 'api_app_token')
-    expect(data.dig('authentication', 'hosted_mobile')).to eq('oidc_authorization_code_pkce')
-    expect(data.dig('authentication', 'oidc_exchange')).to include(
-      'supported' => true,
-      'pkce_required' => true,
-      'household_selection' => true,
-      'session_listing' => true,
-      'session_revocation' => true
-    )
-    expect(data).to include('administration' => include('household' => true, 'fresh_mfa_required' => true))
+    expect(data.dig('authentication', 'methods')).to include('oauth_bearer', 'api_app_token')
+    expect(data.dig('authentication', 'hosted_mobile')).to eq('rodauth_authorization_code_pkce')
+    expect(data.fetch('authentication')).not_to include('oidc_exchange', 'password_login')
+    expect(data).to include('administration' => include('household' => true, 'fresh_mfa_required' => false))
     expect(data.dig('sync', 'portable_ids')).to be(true)
     expect(data.dig('sync', 'numeric_ids')).to eq('backward_compatible')
     expect(data.dig('sync', 'idempotency_keys')).to be(true)

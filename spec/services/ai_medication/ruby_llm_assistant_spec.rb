@@ -60,6 +60,15 @@ RSpec.describe AiMedication::RubyLlmAssistant do
         expect(suggestion.errors).to eq(['ruby_llm_unconfigured'])
         expect(suggestion).to be_empty
       end
+
+      it 'fails safely when only an unsupported Azure key is present' do
+        allow(ENV).to receive(:fetch).with('AZURE_API_KEY', nil).and_return('test-azure-key')
+
+        suggestion = assistant.call(medication_identity: medication_identity)
+
+        expect(suggestion.errors).to eq(['ruby_llm_unconfigured'])
+        expect(suggestion).to be_empty
+      end
     end
 
     context 'when RubyLLM is available and configured' do

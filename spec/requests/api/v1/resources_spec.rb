@@ -162,7 +162,7 @@ RSpec.describe 'API v1 resources' do
 
     login_data = api_login(scoped_user, household_id: household.id)
     household.person_access_grants.where(household_membership: membership).destroy_all
-    household.person_access_grants.create!(
+    grant = household.person_access_grants.create!(
       household_membership: membership,
       person: visible_person,
       access_level: :view,
@@ -236,6 +236,28 @@ RSpec.describe 'API v1 resources' do
       returned_ids = response.parsed_body.fetch('data').map { |row| row.fetch('id') }
       expect(returned_ids).to include(ids.first)
       expect(returned_ids).not_to include(*ids.drop(1))
+    end
+
+    [
+      ["/api/v1/households/#{household.id}/schedules", visible_schedule.id],
+      ["/api/v1/households/#{household.id}/person_medications", visible_person_medication.id]
+    ].each do |path, source_id|
+      get path, headers: headers, as: :json
+
+      source = response.parsed_body.fetch('data').find { |row| row.fetch('id') == source_id }
+      expect(source.fetch('can_manage')).to be false
+    end
+
+    grant.update!(access_level: :manage)
+
+    [
+      ["/api/v1/households/#{household.id}/schedules", visible_schedule.id],
+      ["/api/v1/households/#{household.id}/person_medications", visible_person_medication.id]
+    ].each do |path, source_id|
+      get path, headers: headers, as: :json
+
+      source = response.parsed_body.fetch('data').find { |row| row.fetch('id') == source_id }
+      expect(source.fetch('can_manage')).to be true
     end
   end
 end

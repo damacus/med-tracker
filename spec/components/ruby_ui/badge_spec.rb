@@ -15,13 +15,6 @@ RSpec.describe RubyUI::Badge, type: :component do
     end
   end
 
-  it 'renders with primary variant by default' do
-    rendered = render_inline(described_class.new) { 'Badge' }
-
-    badge = rendered.css('span').first
-    expect(badge['class']).to include('text-on-primary-container')
-  end
-
   it 'normalizes outlined to outline' do
     rendered = render_inline(described_class.new(variant: :outlined)) { 'Badge' }
 

@@ -21,6 +21,8 @@ module DemoBaseline
           connection.reset_pk_sequence!(fixture_set.table_name)
         end
 
+        PublicMobileClients.register!
+
         verify_without_tenant_context!
       end
     end
@@ -57,6 +59,9 @@ module DemoBaseline
       summary = baseline_summary
       raise InvalidBaselineError, 'baseline counts do not match the committed contract' unless valid_summary?(summary)
       raise InvalidBaselineError, 'baseline contains delivery registrations or credentials' unless delivery_state_empty?
+      unless PublicMobileClients.valid_baseline?
+        raise InvalidBaselineError, 'baseline OAuth clients or grants do not match'
+      end
 
       summary
     end

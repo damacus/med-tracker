@@ -15,9 +15,10 @@ module OpenapiRouteCoverage
   end
 
   def mounted_paths
-    server_url = document.fetch('servers').first.fetch('url')
+    api_document = document
+    server_url = api_document.fetch('servers').first.fetch('url')
 
-    paths.to_h { |path, path_item| ["#{server_url}#{path}", path_item] }
+    api_document.fetch('paths').to_h { |path, path_item| ["#{server_url}#{path}", path_item] }
   end
 
   def api_route_operations
@@ -328,9 +329,11 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
   fixtures :accounts, :people, :users, :locations, :location_memberships, :carer_relationships
 
   it 'documents every mounted API v1 route' do
+    mounted_paths = described_class.mounted_paths
+
     described_class.api_route_operations.each do |path, verb|
-      expect(described_class.mounted_paths).to include(path)
-      expect(described_class.mounted_paths.fetch(path)).to include(verb.downcase)
+      expect(mounted_paths).to include(path)
+      expect(mounted_paths.fetch(path)).to include(verb.downcase)
     end
   end
 
@@ -387,6 +390,38 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
         ['ScheduleUpdateRequest', { schedule: { min_hours_between_doses: 4 } }],
         ['PersonMedicationUpdateRequest', { person_medication: { min_hours_between_doses: 6 } }]
       ]
+    end
+
+    it 'matches projected dose occurrences to the typed read response' do
+      login = api_login(users(:john))
+      household = Household.find(login.dig('household', 'id'))
+      medication = create(:medication, household: household)
+      schedule = create(:schedule, household: household, person: users(:john).person, medication: medication,
+                                   frequency: 'Daily', start_date: Date.current, max_daily_doses: 1)
+      get "/api/v1/households/#{household.id}/schedules/#{schedule.id}/dose_occurrences",
+          params: { start_date: Date.current.iso8601, end_date: Date.current.iso8601 },
+          headers: api_auth_headers(login.fetch('access_token'))
+
+      expect(described_class.schema_errors('DoseOccurrenceCollectionResponse', response.parsed_body)).to be_empty
+      key = response.parsed_body.fetch('data').sole.fetch('key')
+      post "/api/v1/households/#{household.id}/schedules/#{schedule.id}/dose_occurrences/not_taken",
+           params: { dose_occurrence: { key: key, reason: 'unwell', note: 'Resting' } },
+           headers: api_auth_headers(login.fetch('access_token')), as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(described_class.schema_errors('DoseOccurrenceResponse', response.parsed_body)).to be_empty
+    end
+
+    it 'types outcome corrections and requires the reopen version header' do
+      attributes = { dose_occurrence: { key: 'opaque-key', taken_at: Time.current.iso8601, dose_amount: '1.0' } }
+      expect(described_class.schema_errors('DoseTakeRequest', attributes)).to be_empty
+      attributes[:dose_occurrence][:dose_amount] = 1
+      expect(described_class.schema_errors('DoseTakeRequest', attributes)).to include('/dose_occurrence/dose_amount')
+      expect(described_class.schema_errors('DoseReopenRequest', dose_occurrence: { key: 'opaque-key' })).to be_empty
+      operation = described_class.document.dig(
+        'paths', '/households/{household_id}/schedules/{schedule_id}/dose_occurrences/reopen', 'patch'
+      )
+      expect(operation.fetch('parameters')).to include(include('name' => 'If-Match', 'required' => true))
     end
 
     it 'uses the canonical API v1 server address' do
@@ -536,8 +571,9 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
     end
 
     it 'models ETag preconditions on every controller that enforces stale-write conflicts' do
+      methods = %w[patch put]
       described_class::PRECONDITION_PATHS.each do |path|
-        %w[patch put].each do |method|
+        methods.each do |method|
           operation = described_class.operation(path, method)
 
           expect(operation.fetch('parameters')).to include({ '$ref' => '#/components/parameters/if_match' })
@@ -573,11 +609,7 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       expect(described_class.document.fetch('security')).to eq([{ 'bearerAuth' => [] }])
       expect(described_class.security_requirement_errors).to be_empty
       expect(described_class.unauthenticated_operations).to contain_exactly(
-        'GET /capabilities',
-        'POST /auth/login',
-        'POST /auth/oidc_exchange',
-        'POST /auth/refresh',
-        'POST /auth/select_household'
+        'GET /capabilities'
       )
       expect(described_class.operation('/auth/logout', 'delete')).not_to include('security')
     end
@@ -615,9 +647,11 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
     end
 
     it 'loads every reusable schema through the JSON Schema validator' do
+      document = described_class.document
+
       expect do
-        described_class.components.fetch('schemas').each_key do |name|
-          JSONSchemer.schema(described_class.dereferenced_schema(name))
+        document.fetch('components').fetch('schemas').each_value do |schema|
+          JSONSchemer.schema(described_class.dereference(schema, root: document))
         end
       end.not_to raise_error
     end
@@ -675,7 +709,7 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
         '#/components/schemas/CapabilitiesResponse'
       )
       expect(operation.dig('responses', '200', 'headers', 'Cache-Control', 'schema')).to include(
-        'type' => 'string', 'enum' => ['no-store']
+        'type' => 'string', 'enum' => ['no-store', 'private, no-store']
       )
     end
 
@@ -709,7 +743,7 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       end
     end
 
-    it 'matches the household settings Rails payload and fresh-proof error' do
+    it 'matches household settings reads and writes without an extra MFA challenge' do
       login_data = api_login(users(:admin))
       household_id = login_data.dig('household', 'id')
       headers = api_auth_headers(login_data.fetch('access_token'))
@@ -722,8 +756,8 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       patch api_v1_household_admin_settings_path(household_id),
             params: { household: { name: 'Contract update' } }, headers:, as: :json
 
-      expect(response).to have_http_status(:forbidden)
-      expect(described_class.schema_errors('AdminWriteForbiddenErrorEnvelope', response.parsed_body)).to be_empty
+      expect(response).to have_http_status(:ok)
+      expect(described_class.schema_errors('HouseholdAdminSettingsResponse', response.parsed_body)).to be_empty
     end
 
     it 'rejects unsupported household settings request fields' do
@@ -855,15 +889,15 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       )
     end
 
-    it 'types API app token administration without advertising unsupported validation' do
+    it 'types API app token administration responses' do
       collection_path = '/households/{household_id}/admin/app_tokens'
       collection = described_class.operation(collection_path, 'get')
       create = described_class.operation(collection_path, 'post')
       revoke = described_class.operation("#{collection_path}/{id}", 'delete')
 
       expect(collection.fetch('responses').keys).to include('200', '401', '403', '404', '429')
-      expect(create.fetch('responses').keys).to include('201', '400', '401', '403', '404', '409', '429')
-      expect(create.fetch('responses')).not_to include('422')
+      expect(create.fetch('responses').keys).to include('201', '400', '401', '403', '404', '409', '422', '429')
+      expect(create.dig('responses', '422', '$ref')).to eq('#/components/responses/ValidationFailed')
       expect(revoke.fetch('responses').keys).to include('204', '401', '403', '404', '409', '429')
     end
 
@@ -911,7 +945,7 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
 
     it 'matches the bounded descending Rails security audit event feed without leaking diagnostics' do
       household_id, headers = manager_api_context
-      rows = 101.times.map { |index| contract_security_audit_event(household_id, index) }
+      rows = Array.new(101) { |index| contract_security_audit_event(household_id, index) }
       rows.each { |row| SecurityAuditEvent.create!(row) }
 
       get api_v1_household_admin_audit_logs_path(household_id), headers:, as: :json
@@ -1159,61 +1193,6 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       expect(described_class.schema_errors('ErrorEnvelope', response.parsed_body)).to be_empty
     end
 
-    it 'types login, refresh, OIDC exchange, and household selection requests' do
-      login = described_class.operation('/auth/login', 'post')
-      refresh = described_class.operation('/auth/refresh', 'post')
-      oidc = described_class.operation('/auth/oidc_exchange', 'post')
-      selection = described_class.operation('/auth/select_household', 'post')
-
-      expect(auth_request_schema(login)).to eq('#/components/schemas/AuthLoginRequest')
-      expect(auth_request_schema(refresh)).to eq('#/components/schemas/AuthRefreshRequest')
-      expect(auth_request_schema(oidc)).to eq('#/components/schemas/AuthOidcExchangeRequest')
-      expect(auth_request_schema(selection)).to eq('#/components/schemas/AuthHouseholdSelectionRequest')
-    end
-
-    it 'types successful authentication responses' do
-      login = described_class.operation('/auth/login', 'post')
-      refresh = described_class.operation('/auth/refresh', 'post')
-      oidc = described_class.operation('/auth/oidc_exchange', 'post')
-      selection = described_class.operation('/auth/select_household', 'post')
-
-      expect(auth_response_schema(login, '201')).to eq('#/components/schemas/AuthLoginResponse')
-      expect(auth_response_schema(refresh, '200')).to eq('#/components/schemas/AuthRefreshResponse')
-      expect(auth_response_schema(oidc, '201')).to eq('#/components/schemas/AuthLoginResponse')
-      expect(auth_response_schema(selection, '201')).to eq('#/components/schemas/AuthLoginResponse')
-    end
-
-    it 'types household selection responses' do
-      login = described_class.operation('/auth/login', 'post')
-      oidc = described_class.operation('/auth/oidc_exchange', 'post')
-
-      expect(auth_response_schema(login, '202')).to eq('#/components/schemas/AuthHouseholdSelectionResponse')
-      expect(auth_response_schema(oidc, '202')).to eq('#/components/schemas/AuthHouseholdSelectionResponse')
-    end
-
-    it 'rate limits all session establishment operations' do
-      paths = %w[/auth/login /auth/refresh /auth/oidc_exchange /auth/select_household]
-      operations = paths.map { |path| described_class.operation(path, 'post') }
-
-      expect(operations).to all(satisfy { |operation| operation.fetch('responses').key?('429') })
-    end
-
-    it 'accepts only the supported authentication request fields' do
-      login = { email: 'admin@example.com', password: 'password', device_name: 'RSpec iPhone', household_id: 1 }
-      refresh = { refresh_token: 'mt_refresh_token' }
-      oidc = {
-        id_token: 'signed-id-token', nonce: 'nonce', code_verifier: 'pkce-verifier',
-        device_name: 'RSpec iPhone', household_id: 1, provider: 'oidc'
-      }
-      selection = { selection_token: 'mt_household_token', household_id: 1 }
-
-      expect(described_class.schema_errors('AuthLoginRequest', login)).to be_empty
-      expect(described_class.schema_errors('AuthRefreshRequest', refresh)).to be_empty
-      expect(described_class.schema_errors('AuthOidcExchangeRequest', oidc)).to be_empty
-      expect(described_class.schema_errors('AuthHouseholdSelectionRequest', selection)).to be_empty
-      expect(described_class.schema_errors('AuthLoginRequest', login.merge(token: 'private'))).to include('/token')
-    end
-
     it 'types authentication management and the current household profile' do
       households = described_class.operation('/auth/households', 'get')
       sessions = described_class.operation('/auth/sessions', 'get')
@@ -1227,35 +1206,17 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       expect(profile.fetch('responses').keys).to include('200', '401', '403', '404', '429')
     end
 
-    it 'matches Rails login and refresh responses' do
-      login_data = api_login(users(:admin))
-
-      expect(response).to have_http_status(:created)
-      expect(described_class.schema_errors('AuthLoginResponse', response.parsed_body)).to be_empty
-
-      post api_v1_auth_refresh_path, params: { refresh_token: login_data.fetch('refresh_token') }, as: :json
-
-      expect(response).to have_http_status(:ok)
-      expect(described_class.schema_errors('AuthRefreshResponse', response.parsed_body)).to be_empty
+    it 'requires the authenticated account in a household collection' do
+      expect(described_class.schema_errors('AuthHouseholdCollectionResponse', { 'data' => [] })).not_to be_empty
     end
 
-    it 'matches Rails household discovery and selection responses' do
-      user = users(:jane)
-      first_household = ensure_api_household_for(user)
-      create_secondary_membership_for(user)
+    it 'accepts account-level device sessions without a household binding' do
+      payload = { data: [{ id: 1, device_name: 'Android', last_used_at: Time.current.iso8601,
+                           access_token_expires_at: 15.minutes.from_now.iso8601,
+                           refresh_token_expires_at: 30.days.from_now.iso8601,
+                           created_at: Time.current.iso8601 }] }
 
-      login_without_household(user)
-
-      expect(response).to have_http_status(:accepted)
-      expect(described_class.schema_errors('AuthHouseholdSelectionResponse', response.parsed_body)).to be_empty
-
-      selection_token = response.parsed_body.dig('data', 'selection_token')
-      post api_v1_auth_select_household_path,
-           params: { selection_token: selection_token, household_id: first_household.id },
-           as: :json
-
-      expect(response).to have_http_status(:created)
-      expect(described_class.schema_errors('AuthLoginResponse', response.parsed_body)).to be_empty
+      expect(described_class.schema_errors('AuthSessionCollectionResponse', payload)).to be_empty
     end
 
     it 'matches Rails authentication collections and the current profile' do
@@ -1264,6 +1225,7 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       headers = api_auth_headers(login_data.fetch('access_token'))
 
       get api_v1_auth_households_path, headers:, as: :json
+      expect(response.parsed_body.fetch('account_id')).to eq(users(:admin).person.account.id)
       expect(described_class.schema_errors('AuthHouseholdCollectionResponse', response.parsed_body)).to be_empty
 
       get api_v1_auth_sessions_path, headers:, as: :json
@@ -1550,9 +1512,23 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       expect(described_class.schema_errors('SyncBatchRequest', request)).to be_empty
     end
 
+    it 'accepts queued dose outcome requests and their results' do
+      %w[create update].each do |action|
+        operation = { action: action, resource_type: 'medication_dose_occurrence', id: SecureRandom.uuid,
+                      if_match: 'version', attributes: { outcome: action == 'create' ? 'not_taken' : 'open' } }
+        result = { index: 0, action: action, record_type: 'MedicationDoseOccurrence',
+                   record_portable_id: SecureRandom.uuid, etag: 'version' }
+
+        expect(described_class.schema_errors('SyncBatchRequest', { batch: { operations: [operation] } })).to be_empty
+        expect(described_class.schema_errors('SyncBatchResponse', { data: { applied: true, results: [result] } }))
+          .to be_empty
+      end
+    end
+
     it 'accepts queued schedule and assignment requests and their results' do
+      actions = %w[create update delete]
       %w[schedule person_medication].each do |resource_type|
-        %w[create update delete].each do |action|
+        actions.each do |action|
           operation = { action: action, resource_type: resource_type, id: SecureRandom.uuid, if_match: 'version' }
           result = { index: 0, action: action, record_type: resource_type.classify,
                      record_portable_id: SecureRandom.uuid }
@@ -1794,27 +1770,12 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       allow(ENV).to receive(:fetch).with('MEDTRACKER_AI_MEDICATION_HELP_ENABLED', 'false').and_return('true')
     end
 
-    def create_secondary_membership_for(user)
-      household = create(:household)
-      household.household_memberships.create!(
-        account: user.person.account,
-        role: :member,
-        status: :active
-      )
-    end
-
-    def login_without_household(user)
-      post api_v1_auth_login_path,
-           params: { email: user.email_address, password: 'password' },
-           as: :json
+    def auth_response_schema(operation, status)
+      operation.dig('responses', status, 'content', 'application/json', 'schema', '$ref')
     end
 
     def auth_request_schema(operation)
       operation.dig('requestBody', 'content', 'application/json', 'schema', '$ref')
-    end
-
-    def auth_response_schema(operation, status)
-      operation.dig('responses', status, 'content', 'application/json', 'schema', '$ref')
     end
 
     def expect_private_audit_diagnostics(payload)

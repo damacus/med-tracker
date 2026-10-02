@@ -1,6 +1,93 @@
 ---
 ga:
-  hello: Dia dhuit an domhan
+  treatments:
+    form:
+      keep_maximum: "Fág bán é chun an uasteorainn reatha a choinneáil."
+      schedule_maximum: "Fág bán é chun uasmhéid de 4 dháileog in aghaidh an timthrialla a úsáid."
+      optional_maximum: "Tá uasteorainn roghnach le sannadh nua."
+      keep_cycle: "Coinnigh an timthriall reatha"
+      required_end_date: "Dáta deiridh (riachtanach)"
+      default_dose: "Dáileog réamhshocraithe"
+      keep_dose_choice: "Coinnigh an rogha dáileoige reatha"
+      linked_dose_hint: "Fág an rogha bán chun aon nasc atá ann a choinneáil. Má tá an dáileog nasctha, roghnaigh rogha ionaid sula n-athraíonn tú a méid nó a haonad."
+      apply_dose: "Úsáid an dáileog roghnaithe"
+      unavailable_selection: "Rogha nach bhfuil ar fáil"
+      schedule_type: "Cineál sceidil"
+      show_fields: "Taispeáin réimsí an sceidil"
+      time: "Am (UU:NN)"
+      taper_times_hint: "Baineann na hamanna dáileoige comhroinnte seo le gach céim laghdaithe agus socraíonn siad cathain atá dáileoga dlite. Fág bán iad le haghaidh dáileoga gan am socraithe."
+      step_time_instruction: "Am treorach na céime (UU:NN)"
+      step_time_hint: "Sábháiltear amanna treorach na céime leis an gcéim seo. Ní shocraíonn siad cathain atá dáileoga dlite."
+      add_time: "Cuir am leis"
+      remove_time: "Bain am"
+      date: "Dáta (BBBB-MM-LL)"
+      add_date: "Cuir dáta leis"
+      remove_date: "Bain dáta"
+      step: "Céim %{number}"
+      add_step: "Cuir céim leis"
+      remove_step: "Bain céim"
+      as_needed_hint: "Úsáid de réir mar is gá; níl amanna seasta ann chun an cógas a thabhairt."
+      resume: "Atosaigh an chóireáil"
+      resume_hint: "Atosaigh an chóireáil seo anois. Fanann an sos sa stair."
+      pause_open: "Ar sos faoi láthair"
+      no_pause_history: "Níl aon sosanna taifeadta."
+    types:
+      daily: "Gach lá"
+      multiple_daily: "Roinnt uaireanta sa lá"
+      weekly: "Gach seachtain"
+      specific_dates: "Dátaí sonracha"
+      prn: "De réir mar is gá"
+      tapering: "Laghdú dáileoige"
+      every_other_day: "Gach dara lá"
+    weekdays:
+      monday: "Dé Luain"
+      tuesday: "Dé Máirt"
+      wednesday: "Dé Céadaoin"
+      thursday: "Déardaoin"
+      friday: "Dé hAoine"
+      saturday: "Dé Sathairn"
+      sunday: "Dé Domhnaigh"
+    overview:
+      schedules_unavailable: "Níl sceidil ar fáil leis an rochtain atá agat faoi láthair. Is féidir na sannacháin a thaispeántar anseo a léamh fós."
+      title: "Cógas agus sceidil"
+      empty: "Níl aon chógas ná sceidil sannta."
+  stock_removals:
+    title: "Bain stoc"
+    description: "Taifead cógas a d'fhág an stoc gan é a thógáil. Ní thaifeadann sé seo dáileog."
+    quantity: "Cainníocht bainte"
+    note: "Nóta"
+    reason: "Cúis"
+    source: "Foinse stoic"
+    choose_source: "Roghnaigh stoc"
+    choose_reason: "Roghnaigh cúis"
+    submit: "Taifead baint"
+    cancel: "Cealaigh"
+    history: "Baintí le déanaí"
+    empty: "Níl aon bhaint stoic taifeadta."
+    available: "%{quantity} %{unit} ar fáil"
+    history_summary: "Baineadh %{quantity} %{unit} · %{reason}"
+    unknown_actor: "Taifeadóir anaithnid"
+    units: "aonad"
+    success: "Baint stoic taifeadta."
+    reasons:
+      dropped: "Tite"
+      damaged: "Damáistithe"
+      expired: "As dáta"
+      discarded: "Caite amach"
+      lost: "Caillte"
+      transferred_out: "Tugtha / aistrithe amach"
+      other: "Eile"
+    errors:
+      invalid_quantity: "Cuir isteach cainníocht dheimhneach le dhá ionad dheachúlacha ar a mhéad."
+      invalid_reason: "Roghnaigh cúis leis an mbaint."
+      invalid_note: "Coinnigh an nóta faoi 1,001 carachtar."
+      invalid_submission: "Athlódáil an fhoirm seo agus bain triail eile as."
+      invalid_source: "Roghnaigh stoc rianaithe ón gcógas seo."
+      untracked: "Ní dhéantar an stoc seo a rianú."
+      insufficient_stock: "Níl dóthain stoic ann. Seiceáil an chainníocht atá fágtha."
+      changed_submission: "Úsáideadh an t-aighneacht seo cheana le sonraí éagsúla."
+  offline:
+    record_access_required: Níl cead agat an dáileog seo a thaifeadadh.
   ruby_ui:
     common:
       close: Dún
@@ -47,6 +134,7 @@ ga:
       greater_than_or_equal_to: ní mór a bheith níos mó ná nó cothrom le %{count}
       inclusion: níl sé san áireamh sa liosta
       invalid: neamhbhailí
+      form_invalid: Níorbh fhéidir an luach seo a shábháil.
       not_a_number: ní uimhir é
       required: caithfidh sé a bheith ann
       taken: in úsáid cheana féin
@@ -95,6 +183,8 @@ ga:
   app:
     name: MedTracker
   global_search:
+    error: Níl an cuardach ar fáil. Bain triail eile as.
+    retry: Bain triail eile as an gcuardach
     dialog_label: Cuardach domhanda
     open: Oscail cuardach domhanda
     open_short: Cuardaigh
@@ -149,6 +239,20 @@ ga:
         title: Sreabhadh sceidil
         subtitle: Cruthaigh sceideal cógais
   admin:
+    labels:
+      membership_roles:
+        owner: Úinéir
+        administrator: Riarthóir
+        member: Ball
+      relationship_types:
+        parent: Tuismitheoir
+        carer: Cúramóir
+        family_member: Ball teaghlaigh
+        professional: Gairmí
+      access_levels:
+        view: Amharc
+        record: Taifead
+        manage: Bainistigh
     invitations:
       created: Cuireadh seolta
       resent: Cuireadh athsheolta
@@ -165,7 +269,11 @@ ga:
         cancel: Cealaigh
         form:
           email: Ríomhphost
-          role: Ról
+          role: Ról teaghlaigh
+          relationship_type: Gaol cleithiúnaí
+          select_relationship_type: Roghnaigh gaol
+          access_level: Rochtain cleithiúnaí
+          select_access_level: Roghnaigh leibhéal rochtana
           dependents: Cleithiúnaithe reatha
           dependents_hint: Roghnaigh leanaí reatha nó daoine fásta cleithiúnacha
             ar cheart don tuismitheoir nó cúramóir cuireadh seo iad a bhainistiú.
@@ -241,6 +349,8 @@ ga:
       unauthorized: Níl údarás agat an gníomh seo a dhéanamh.
       missing_account: Níl cuntas ag an úsáideoir le fíorú.
       index:
+        title: Bainistíocht úsáideoirí
+        new_user: Úsáideoir nua
         helper: Ní bhaineann róil teaghlaigh ach leis an teaghlach seo. Is féidir le riarthóirí córais gach teaghlach a bhainistiú.
       form:
         subtitle: Líon isteach na sonraí thíos chun cuntas úsáideora nua a chruthú.
@@ -255,6 +365,10 @@ ga:
         role: Ról teaghlaigh
         membership_role_helper: Ní féidir ach le riarthóirí córais ról an Úinéara a shannadh.
         select_role: Roghnaigh ról
+        dependent_relationship_type: Gaol cleithiúnaí
+        select_dependent_relationship_type: Roghnaigh gaol
+        dependent_access_level: Rochtain cleithiúnaí
+        select_dependent_access_level: Roghnaigh leibhéal rochtana
         dependents: Cleithiúnaithe reatha
         cancel: Cealaigh
         create_submit: Cruthaigh úsáideoir
@@ -569,6 +683,9 @@ ga:
       title: Suíomhanna
       add_location: Cuir Suíomh Leis
       members: Baill
+      medication_count:
+        one: "%{count} leigheas"
+        other: "%{count} leigheasanna"
       view: Amharc
       delete_dialog:
         title: Scrios Suíomh
@@ -586,6 +703,7 @@ ga:
       no_members: Níl aon bhaill sannta.
       details: Sonraí
       no_details: Níor cuireadh aon tuairisc ar fáil.
+      stock_warning: Stoc íseal
       add_member:
         title: Cuir Ball Leis
         description: Cuir duine le %{name}
@@ -668,7 +786,7 @@ ga:
         email_placeholder: Cuir do sheoladh ríomhphoist isteach
         submit: Iarr Athshocrú Focail Faire
         other_options: Roghanna Eile
-        back_to_login: Ar Ais go Sínigh Isteach
+        back_to_login: Ar ais le síniú isteach
         create_account: Cruthaigh Cuntas Nua
       reset_password:
         page_subtitle: Cruthaigh focal faire nua do do chuntas.
@@ -693,9 +811,9 @@ ga:
           fíoraithe nua.
         email_label: Seoladh ríomhphoist
         email_placeholder: Cuir do sheoladh ríomhphoist isteach
-        submit: Seol Eolas Fíoraithe Cuntais Arís
+        submit: Seol ríomhphost fíoraithe arís
         other_options: Roghanna Eile
-        back_to_login: Ar Ais go Sínigh Isteach
+        back_to_login: Ar ais le síniú isteach
         create_account: Cruthaigh Cuntas Nua
       otp_auth:
         page_title: Cuir do chód fíordheimhnithe isteach
@@ -828,6 +946,49 @@ ga:
         new_password_label: Focal Faire Nua
         confirm_password_label: Deimhnigh Focal Faire Nua
   medications:
+    stock:
+      title: "Bainistigh stoc"
+      adjust: "Coigeartaigh stoc"
+      new_quantity: "Cainníocht nua stoic"
+      order: "Taifead ordú"
+      receive: "Marcáil faighte"
+      ordered: "Ordaithe"
+      received: "Faighte"
+      not_ordered: "Níl ordú taifeadta"
+      edit_option: "Cuir stoc na rogha in eagar"
+      option_total: "Tá a stoc agus a aonad féin ag gach rogha. Athraigh cainníochtaí trí eagarthóir na rogha."
+      scalar_fallback: "Ní rianaítear stoc na roghanna. Is féidir le dáileoga stoc na máthairchógais a úsáid anseo; socraigh stoc ar rogha chun é a rianú ar leithligh."
+      receipt_hint: "Ní thaifeadann glacadh ordaithe ach a stádas. Coigeartaigh an stoc ar leithligh nuair a chomhaireann tú an seachadadh."
+      date_hint: "Cuir an dáta ionchais isteach mar YYYY-MM-DD."
+      original_token: "Oscail an fhoirm eagarthóireachta arís chun a bunleagan a lódáil, ansin athbhreithnigh agus seol do chuid athruithe."
+      option_readonly: "Bainistítear stoc roghanna agus tairseacha athordaithe trí eagarthóir na rogha."
+      invalid_quantity: "Cuir isteach cainníocht neamh-dhiúltach le dhá ionad de dheachúlacha ar a mhéad."
+      household_inventory: "Fardal an teaghlaigh"
+    dose_dialog:
+      administration_title: 'Taifead tabhairt cógais do %{name}'
+      choose_person_source: 'Roghnaigh an duine agus an fhoinse.'
+      close: 'Dún'
+      source: 'FOINSE CÓGAIS'
+      calculated: 'Ríomh don am roghnaithe'
+      dose_calculated: 'Dáileog ríofa don am roghnaithe'
+      log: 'Taifead'
+      view_only: 'Amharc amháin'
+      no_stock: 'Níl stoc incháilithe ann'
+      record: 'Taifead dáileog'
+      confirm: 'Deimhnigh an duine, an cógas, an t-am agus foinse an stoic.'
+      review: 'Athbhreithnigh an dáileog seo.'
+      unavailable: 'Níl an fhoinse seo ar fáil. Roghnaigh foinse eile sula seolann tú.'
+      choose_source: 'Roghnaigh foinse'
+      person: 'DUINE'
+      medication: 'CÓGAS'
+      dose: 'DÁILEOG'
+      taken_at: 'Tógtha ag'
+      stock_source: 'Foinse stoic'
+      remaining: 'fágtha'
+      invalid_time: 'Tá an t-am tógála neamhbhailí.'
+      foreign_source: 'Ní bhaineann an fhoinse seo leis an gcógas seo.'
+      forbidden: 'Ní féidir leat an dáileog seo a thaifeadadh.'
+      conflict: 'Tá an t-iarratas dáileoige seo ag teacht salach ar thaifead roimhe seo.'
     finder:
       nhs_directory: Eolaire NHS
       title: Aimsitheoir Leigheas
@@ -948,6 +1109,7 @@ ga:
       edit_subtitle: Nuashonraigh sonraí %{name}.
     index:
       your_inventory: Do Stoc
+      stock_remaining: "%{amount} %{unit} fágtha"
       add_for_person: Cuir cógas le duine
       title: Leigheasanna
       add_medication: Cuir Leigheas Leis
@@ -1076,7 +1238,9 @@ ga:
         damaged_or_disposed: Damáistithe nó diúscartha
         other: Eile
       clear_batch: Glan an bhaisc
-      apply: Cuir %{count} leasú i bhfeidhm
+      apply:
+        one: Cuir 1 leasú i bhfeidhm
+        other: Cuir %{count} leasuithe i bhfeidhm
       medicines: "%{count} leigheas"
       net_change: glanathrú iomlán
       units: aonaid
@@ -1087,14 +1251,6 @@ ga:
       success:
         one: Nuashonraíodh an soláthar atá fágtha do %{count} leigheas.
         other: Nuashonraíodh an soláthar atá fágtha do %{count} leigheasanna.
-  passwords:
-    reset_sent: Seoladh treoracha athshocraithe focal faire (más ann do úsáideoir
-      leis an seoladh ríomhphoist sin).
-    reset_success: Athshocraíodh an focal faire.
-    mismatch: Níor tháinig na focail faire le chéile.
-    invalid_token: Tá an nasc athshocraithe focal faire neamhbhailí nó imithe as feidhm.
-    mailer:
-      subject: Athsocraigh do focal faire
   people:
     created: Cruthaíodh an duine go rathúil.
     updated: Nuashonraíodh an duine go rathúil.
@@ -1197,8 +1353,19 @@ ga:
       paused: Ar sos
       notes: 'Nótaí:'
       timing_restrictions: 'Srianta Ama:'
-      max_doses_per_day: Uasmhéid %{count} dáileog in aghaidh an lae
-      wait_hours: Fan ar a laghad %{hours} uair an chloig idir dáileoga
+      max_doses:
+        daily:
+          one: Uasmhéid 1 dáileog in aghaidh an lae
+          other: Uasmhéid %{count} dáileog in aghaidh an lae
+        weekly:
+          one: Uasmhéid 1 dáileog in aghaidh na seachtaine
+          other: Uasmhéid %{count} dáileog in aghaidh na seachtaine
+        monthly:
+          one: Uasmhéid 1 dáileog in aghaidh na míosa
+          other: Uasmhéid %{count} dáileog in aghaidh na míosa
+      wait_hours:
+        one: Fan ar a laghad 1 uair an chloig idir dáileoga
+        other: Fan ar a laghad %{count} uair an chloig idir dáileoga
       next_dose_available: 'An chéad dáileog eile ar fáil i:'
       todays_doses: Dáileoga an Lae Inniu
       no_doses_today: Níor tógadh aon dáileoga inniu
@@ -1396,11 +1563,11 @@ ga:
         prescribed: Forordaithe
       person_label: Ainm an duine
       person_placeholder: Roghnaigh duine
-      medication_label: Ainm an leighis
+      medication_label: Leigheas
       medication_placeholder: Roghnaigh leigheas
-      frequency_label: Dáileog, minicíocht
+      frequency_label: Minicíocht
       frequency_placeholder: m.sh. uair sa lá
-      summary_title: Sceideal (briseadh síos)
+      summary_title: Achoimre ar an sceideal
       none: "-"
     index:
       title: Sceidil Ghníomhacha
@@ -1458,6 +1625,8 @@ ga:
       create_account: Cruthaigh ceann
       resend_verification: Seol ríomhphost fíoraithe arís
   take_medications:
+    cooldown: Níl an dáileog seo ar fáil faoi láthair.
+    out_of_stock: 'Ní féidir an cógas a ghlacadh: as stoc'
     success: Cláraíodh an leigheas tógtha go rathúil.
     failure: Theip ar chlárú an leighis tógtha.
     json_success: Cláraíodh an leigheas tógtha go rathúil.
@@ -1527,6 +1696,7 @@ ga:
       create: Cruthaigh comhartha
       empty: Níl aon chomharthaí API ann fós.
       last_used_at: 'Úsáideadh go deireanach: %{time}'
+      expires_at: 'Rachaidh in éag: %{time}'
       revoke: Cúlghair
       revoked: Cúlghaireadh an comhartha API.
       locked: Tá do chuntas glasáilte. Ní féidir comharthaí API a athrú anois.
@@ -1658,9 +1828,6 @@ ga:
     cannot_deactivate_self: Ní féidir leat do chuntas féin a dhíghníomhachtú.
     owner_deactivation_rejected: Ní féidir cuntais úinéara a dhíghníomhachtú ach
       ag úinéir teaghlaigh eile fad a fhanann úsáideoir úinéara gníomhach eile ann.
-  webauthn:
-    passkey_removed: Baineadh an eochair róchair go rathúil
-    passkey_registered: Cláraíodh an eochair róchair go rathúil
   layouts:
     mailer:
       footer_notice: Seoladh an ríomhphost seo toisc go bhfuil cuntas agat linn.
@@ -1804,6 +1971,18 @@ ga:
       pdf_unavailable: Níorbh fhéidir an PDF a ullmhú. Bain triail eile as.
       preparing_pdf: Ag ullmhú PDF...
     health_history:
+      cycles:
+        title: Timthriallta dáileoige rialta
+        description: Ní áirítear timthriall mar cheann caillte go dtí go gcríochnaíonn sé.
+        window: Tréimhse an timthrialla
+      outcomes:
+        title: Torthaí dáileog
+        not_taken: Gan glacadh
+        date: Dáta
+        expected: Beartaithe
+        taken: Glactha
+        unexplained_missed: Dáileoga caillte gan mhíniú
+        reason: Cúis
       person_required: Roghnaigh duine amháin chun stair sláinte don dochtúir teaghlaigh a íoslódáil.
       title: Tuarascáil staire sláinte MedTracker
       people: "Daoine: %{people}"
@@ -1814,6 +1993,7 @@ ga:
       ongoing_from: Ar siúl ó %{started_on}
       event_date_range: "%{started_on} go %{ended_on}"
       sources:
+        routine: Rialta
         scheduled: Sceidealaithe
         as_needed: De réir mar is gá/díreach
       medication_takes:
@@ -1962,8 +2142,8 @@ ga:
         description: Cógais a glacadh inniu, grúpáilte de réir duine.
         empty: Níor glacadh aon chógas inniu.
       summary:
-        overall_compliance: Cloí Iomlán
-        total_doses_logged: Líon Iomlán Dáileoga Logáilte
+        overall_compliance: Cloí Laethúil
+        total_doses_logged: Dáileoga Laethúla Logáilte
         evidence_reviewed: Fianaise Athbhreithnithe
         excellent: Sármhaith
         needs_attention: Teastaíonn aird
@@ -2019,6 +2199,12 @@ ga:
         metric_value:
           one: 1 lá
           other: "%{count} lá"
+      missed_routine_cycles:
+        title: "Timthriallta rialta caillte"
+        summary: "Tá dáileoga caillte gan mhíniú i %{count} timthriall as a chéile."
+        detail: "Athbhreithnigh taifid na ndáileog rialta do na timthriallta seo."
+        metric_label: "An tsraith is faide"
+        metric_value: "%{count} timthriall"
       missed_dose_pattern:
         title: Patrún dáileoga caillte
         summary:
@@ -2070,6 +2256,7 @@ ga:
         metric_value: Sceideal
   forms:
     locations:
+      new_title: Suíomh Nua
       name_placeholder: m.sh. Baile, Scoil, Teach na Mamó
       description_placeholder: Déan cur síos ar an suíomh seo...
     people:
@@ -2077,7 +2264,7 @@ ga:
       email_placeholder: e.g., jane@example.com
     medications:
       inventory_management: Bainistíocht Stoc
-      dosage_and_supply: Dáileog & Soláthar
+      dosage_options_read_only: Úsáideann an cógas seo roghanna dáileoige. Fanann siad gan athrú nuair a shábhálann tú na sonraí seo.
       name: Ainm
       name_placeholder: m.sh., Paracetamol
       friendly_name: Ainm taispeána
@@ -2179,6 +2366,16 @@ ga:
         other: 'Chuir %{count} earráid cosc ar an leigheas a shábháil:'
       starting_supply: Méid tosaigh
   dashboard:
+    outcomes:
+      not_taken: Gan glacadh
+      overdue: Thar am
+      reasons:
+        refused: Diúltaithe
+        unwell: Tinn
+        asleep: Ina chodladh
+        medicine_unavailable: Cógas gan fáil
+        clinician_advice: Comhairle cliniceora
+        other: Eile
     title: Dashboard an Teaghlaigh
     greeting_morning: Maidin mhaith, %{name}
     greeting_afternoon: Tráthnóna maith, %{name}
@@ -2274,10 +2471,6 @@ ga:
       next_dose: An Chéad Dháileog Eile
       due_today: Inniu
       no_upcoming_doses: Níl ceann ar bith inniu
-    quick_stats:
-      title: Staitisticí Tapa
-      people: Daoine
-      active_schedules: Sceidil ghníomhacha
     statuses:
       taken: Tógtha
       upcoming: Ag Teacht
@@ -2295,29 +2488,9 @@ ga:
       frequency: Minicíocht
       end_date: Dáta Deiridh
       actions: Gníomhartha
-    person_schedule:
-      age: Aois
-      dosage: Dáileog
-      frequency: Minicíocht
-      ends: Críochnaíonn
-      out_of_stock: As Stoc
-      on_cooldown: Ar Fhionraí
-      take_now: Tóg Anois
-      delete_confirmation: An bhfuil tú cinnte gur mhaith leat an sceideal seo do
-        %{medication} a scrios? Ní féidir an gníomh seo a chealú.
-    schedule_card:
-      dosage: Dáileog
-      remaining_supply: Soláthar Fágtha
-      frequency: Minicíocht
-      ends: Críochnaíonn
     delete_confirmation:
-      delete: Scrios
-      delete_schedule: Scrios Oideas Leigheasanna?
-      are_you_sure: An bhfuil tú cinnte gur mian leat %{medication} do %{person} a
-        scrios? Ní féidir an gníomh seo a chealú.
       cancel: Cealaigh
     quick_actions:
-      title: Gníomhartha Tapa
       add_medication: Cuir Leigheas Leis
       add_person: Cuir Duine Leis
   barcode_scanner:
@@ -2336,13 +2509,19 @@ ga:
       unavailable: Níor aimsíodh aon cheamara. Úsáid iontráil láimhe thíos.
       error: Earráid leis an scanóir. Úsáid iontráil láimhe thíos.
   dosages:
+    management:
+      daily: 'Laethúil'
+      weekly: 'Seachtainiúil'
+      monthly: 'Míosúil'
+      untracked: 'Gan rianú'
+      stock_hint: 'Fág an stoc bán do sholáthar gan rianú; ciallaíonn nialas go bhfuil an stoc rianaithe folamh. Fanann tairseach bhán gan socrú.'
+      confirm_mode: 'Tuigim go nglanann an chéad rogha dáileog aonair an chógais. Má rianaíonn an rogha seo stoc, cuirtear a méideanna in ionad iomláin stoic an chógais.'
+      confirm_required: 'Deimhnigh an t-athrú go roghanna dáileoige sula sábhálann tú.'
+      conflict: 'Tá an dáileog seo athraithe. Athlódáil a foirm eagarthóireachta agus athbhreithnigh do chuid athruithe sula sábhálann tú arís.'
+      retry_hint: 'Tar éis teip sábhála, seiceáil an liosta dáileog sula ndéanann tú iarracht eile. D’fhéadfadh rogha eile a chruthú má athdhéantar iarratas breisithe.'
     created: Cuireadh an dáileog leis go rathúil.
     updated: Nuashonraíodh an dáileog go rathúil.
     deleted: Baineadh an dáileog go rathúil.
-    new:
-      title: Cuir Dáileog Leis
-    edit:
-      title: Cuir Dáileog in Eagar
     form:
       amount: Méid
       unit: Aonad
@@ -2398,18 +2577,6 @@ ga:
     updated: Sábháladh socruithe fógra.
     update_failed: Theip ar shocruithe fógra a shábháil.
   notification_settings:
-    title: Socruithe Fógraí
-    description: Bainistigh do mheabhrúcháin leigheasanna.
-    browser:
-      title: Fógraí Brabhsálaí
-      status: Ag seiceáil stádas na bhfógraí...
-      enable: Cumasaigh Fógraí
-      disable: Díchumasaigh Fógraí
-      test: Seol Fógra Tástála
-    reminders:
-      enable: Cumasaigh Meabhrúcháin
-      description: Seol meabhrúcháin leigheasanna ag amanna sceidealta.
-      title: Amanna Meabhrúcháin
     categories:
       title: Catagóirí Fógraí
       dose_due_enabled:
@@ -2424,11 +2591,48 @@ ga:
       private_text_enabled:
         title: Ábhar Fógra Príobháideach
         description: Folaigh faisnéis íogair ar nós ainmneacha leigheasanna i bhfógraí.
-    period_labels:
-      morning: Maidin
-      afternoon: Tráthnóna
-      evening: Tráthnóna
-      night: Oíche
-    actions:
-      cancel: Cealaigh
-      save: Sábháil Socruithe
+  medication_pauses:
+    title: "Cuir cógas ar sos"
+    reason: "Cúis"
+    note: "Nóta (roghnach)"
+    choose_reason: "Roghnaigh cúis"
+    submit: "Cuir ar sos"
+    cancel: "Cealaigh"
+    timing: "Tosaíonn an sos nuair a shábháiltear é."
+    history: "Stair na sosanna"
+    start_unknown: "Tús anaithnid"
+    actor_unknown: "Duine gan taifead"
+    started: "Ar sos: %{date} · %{actor}"
+    resumed: "Atosaithe: %{date} · %{actor}"
+    reasons:
+      out_of_supply: "Soláthar ídithe"
+      temporarily_not_needed: "Níl gá leis go sealadach"
+      clinician_advice: "Comhairle cliniceora"
+      side_effects: "Fo-iarmhairtí"
+      other: "Eile"
+      reason_not_recorded: "Cúis gan taifead"
+
+  dose_outcomes:
+    title: "Taifead dáileog nár tógadh"
+    description: "Taifeadann sé seo nár tógadh an dáileog. Ní athróidh an stoc."
+    dose: "Dáileog"
+    reason: "Cúis (roghnach)"
+    note: "Nóta (roghnach)"
+    unspecified: "Níor roghnaíodh cúis"
+    confirm: "Deimhnigh nár tógadh"
+    cancel: "Cealaigh"
+    empty: "Níl aon dáileoga ag fanacht le cinneadh."
+    saved: "Taifeadadh nár tógadh an dáileog."
+    invalid: "Níorbh fhéidir an dáileog a nuashonrú. Seiceáil na sonraí agus bain triail eile as."
+    slot: "Dáileog %{position} · %{date} · %{time}"
+    cycle_slot: "Dáileog %{position} · %{start_date} go %{end_date}"
+    correct: "Ceartaigh an cinneadh"
+    correction_title: "Ceartaigh cinneadh na dáileoige"
+    reopen: "Athoscail an dáileog"
+    reopen_description: "Glan an cinneadh seo agus cuir an dáileog ar ais ar an liosta atá le déanamh. Fanann an cinneadh roimhe seo sa stair iniúchta."
+    take: "Taifead mar thógtha"
+    take_description: "Ná húsáid é seo ach amháin má tógadh an dáileog. Taifeadann sé seo dáileog iarbhír agus laghdaíonn sé an stoc."
+    taken_at: "Am a tógadh"
+    stock: "Foinse stoic"
+    corrected: "Ceartaíodh cinneadh na dáileoige."
+    resolved_elsewhere: "Níl an dáileog seo marcáilte a thuilleadh mar dháileog nár tógadh. Fill ar an deais chun a staid reatha a fheiceáil."

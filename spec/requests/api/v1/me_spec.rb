@@ -8,6 +8,32 @@ RSpec.describe 'API v1 me' do
   let(:user) { users(:jane) }
 
   describe 'GET /api/v1/households/:household_id/me' do
+    it 'authenticates and records session activity as the forced-RLS application role' do
+      login_data = api_login(user)
+      household_id = login_data.dig('household', 'id')
+      ActiveRecord::Base.connection.execute('SET LOCAL ROLE med_tracker_app')
+
+      get api_v1_household_me_path(household_id),
+          headers: api_auth_headers(login_data.fetch('access_token')), as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body.dig('data', 'id')).to eq(user.id)
+    end
+
+    it 'rejects revoked membership before changing session activity under row security' do
+      login_data = api_login(user)
+      session = ApiSession.lookup_by_access_token(login_data.fetch('access_token'))
+      session.household_membership.update!(status: :revoked)
+      previous_activity = session.last_used_at
+      ActiveRecord::Base.connection.execute('SET LOCAL ROLE med_tracker_app')
+
+      get api_v1_household_me_path(login_data.dig('household', 'id')),
+          headers: api_auth_headers(login_data.fetch('access_token')), as: :json
+
+      expect(response).to have_http_status(:unauthorized)
+      expect(session.reload.last_used_at).to eq(previous_activity)
+    end
+
     it 'returns the signed-in user profile' do
       login_data = api_login(user)
       household_id = login_data.dig('household', 'id')

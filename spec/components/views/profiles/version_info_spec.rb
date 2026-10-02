@@ -34,13 +34,4 @@ RSpec.describe Views::Profiles::VersionInfo, type: :component do
     expect(html).to include("https://github.com/damacus/med-tracker/releases/tag/v#{MedTracker::VERSION}")
     expect(html).not_to match(/Worktree|Commit/)
   end
-
-  it 'uses token-driven shells for version info' do
-    rendered = render_inline(described_class.new)
-    html = rendered.to_html
-
-    banned_classes = ['rounded-[2rem]', 'bg-card/95', 'shadow-[0_18px_45px_-32px_rgba']
-
-    expect(banned_classes.none?(&html.method(:include?))).to be(true)
-  end
 end

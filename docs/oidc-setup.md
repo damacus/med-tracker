@@ -4,8 +4,9 @@ MedTracker can use an OpenID Connect (OIDC) provider for browser sign-in. The
 provider must publish discovery metadata and support the authorization code
 flow.
 
-This guide covers the server-side browser flow. The hosted mobile API exchange
-is a separate contract and is not part of this setup.
+This guide configures the delegated browser login used by both the web app and
+the mobile system-browser journey. Phones authenticate through MedTracker's
+Rodauth authorization server, not directly against the external provider.
 
 ## Browser flow
 
@@ -21,6 +22,23 @@ flow requests the `openid`, `email`, and `profile` scopes.
 
 The provider does not grant household roles or person access. MedTracker keeps
 those decisions in household memberships and person access grants.
+
+## Mobile sign-in
+
+The phone discovers MedTracker's authorization endpoints at
+`/.well-known/oauth-authorization-server` and its registered public mobile client
+configuration at `/api/v1/capabilities`. It opens MedTracker's authorization page
+in the system browser and uses S256 PKCE to redeem the returned code.
+
+The browser offers the installation's existing local and delegated sign-in
+methods. Configure the external provider's confidential web client below; do not
+put its secret in the phone. MedTracker's public mobile registration and native
+callback are separate from this provider registration. The retired custom mobile
+exchange and its `OIDC_MOBILE_CLIENT_ID` setting are not part of this flow.
+
+After deployment, verify actual phone login, return to the registered callback,
+household access and refresh. Working discovery or a successful web login alone
+does not establish that the complete mobile journey works.
 
 ## Provider registration
 

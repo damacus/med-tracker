@@ -16,7 +16,8 @@ export default class extends Controller {
 		"search",
 	]
 	static values = {
-		applyLabel: String,
+		applyOneLabel: String,
+		applyOtherLabel: String,
 		selectedLabel: String,
 		medicinesLabel: String,
 		units: String,
@@ -86,7 +87,10 @@ export default class extends Controller {
 		this.emptyStateTarget.classList.toggle("hidden", count > 0)
 		this.selectedCountTarget.textContent = this.withCount(this.selectedLabelValue, count)
 		this.summaryCountTarget.textContent = this.withCount(this.medicinesLabelValue, count)
-		this.submitLabelTarget.textContent = this.withCount(this.applyLabelValue, count)
+		this.submitLabelTarget.textContent = this.withCount(
+			count === 1 ? this.applyOneLabelValue : this.applyOtherLabelValue,
+			count
+		)
 		this.submitButtonTarget.disabled = count === 0 || !validQuantities
 
 		const netChange = selectedIds.reduce((total, id) => total + this.renderDifference(id), 0)

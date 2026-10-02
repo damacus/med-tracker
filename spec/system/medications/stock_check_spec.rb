@@ -23,15 +23,19 @@ RSpec.describe 'Household stock check', :browser do
     expect(page).to have_button('Apply 0 amendments', disabled: true)
 
     check "stock_check_medication_#{paracetamol.id}"
+    expect(page).to have_button('Apply 1 amendment', disabled: true)
     within batch_row(paracetamol) do
       fill_in "stock_check_quantity_#{paracetamol.id}", with: '74'
     end
+    expect(page).to have_button('Apply 1 amendment', disabled: false)
 
     check "stock_check_medication_#{aspirin.id}"
+    expect(page).to have_button('Apply 2 amendments', disabled: true)
     within batch_row(aspirin) do
       click_button 'Set to zero'
       expect(page).to have_text('Out of stock')
     end
+    expect(page).to have_button('Apply 2 amendments', disabled: false)
 
     visible_batch_ids = all("[data-stock-check-target='batchRow']", visible: true).pluck('data-medication-id')
     expect(visible_batch_ids).to eq([paracetamol.id.to_s, aspirin.id.to_s])

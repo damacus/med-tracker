@@ -17,7 +17,7 @@ module Components
       super(**attrs)
     end
 
-    def view_template(&block)
+    def view_template
       content_attrs = attrs.except(:class)
 
       Dialog(open: true) do
@@ -31,7 +31,7 @@ module Components
           ]
         ) do
           render_header if @title || @subtitle
-          DialogMiddle(class: 'p-8 overflow-y-auto') { block.call if block_given? }
+          DialogMiddle(class: 'p-8 overflow-y-auto') { yield if block_given? }
         end
       end
     end

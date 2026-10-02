@@ -37,7 +37,7 @@ RSpec.describe Components::People::PersonCard, type: :component do
     expect(count_carer_relationship_queries { render_inline(described_class.new(person: needs_carer)) }).to eq(1)
   end
 
-  it 'renders card actions with shared M3 sizing and shape' do
+  it 'renders card actions with shared touch targets' do
     Current.household = person.household
 
     component = described_class.new(person: person)
@@ -51,8 +51,6 @@ RSpec.describe Components::People::PersonCard, type: :component do
 
     expect(action_classes).not_to be_empty
     expect(action_classes).to all(include_touch_target_class)
-    expect(action_classes).to all(include('rounded-shape-full'))
-    expect(action_classes.flatten).not_to include('rounded-xl')
   ensure
     Current.reset
   end

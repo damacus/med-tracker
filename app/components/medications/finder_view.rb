@@ -2,7 +2,7 @@
 
 module Components
   module Medications
-    # rubocop:disable Layout/LineLength
+    # rubocop:disable-next Layout/LineLength
     class FinderView < Components::Base
       def view_template
         div(
@@ -32,6 +32,7 @@ module Components
               detailsDescription: t('medications.finder.details.description'),
               detailsCategory: t('medications.finder.details.category'),
               detailsPackage: t('medications.finder.details.package'),
+              packageLabel: t('medications.finder.details.package'),
               detailsDirections: t('medications.finder.details.directions'),
               detailsWarnings: t('medications.finder.details.warnings'),
               reviewPromptSummary: {
@@ -184,6 +185,5 @@ module Components
         end
       end
     end
-    # rubocop:enable Layout/LineLength
   end
 end

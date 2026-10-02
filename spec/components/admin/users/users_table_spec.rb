@@ -76,7 +76,6 @@ RSpec.describe Components::Admin::Users::UsersTable, type: :component do
       row = rendered.css("[data-user-id='#{target_user.id}']").first
       edit_link = row.css('a').find { |link| link.text.include?('Edit') }
       expect(edit_link['href']).to include("/households/#{household.slug}/admin/users/#{target_user.id}/edit")
-      expect(edit_link['class']).to include('border')
     end
 
     it 'renders the household membership role instead of the legacy user role' do

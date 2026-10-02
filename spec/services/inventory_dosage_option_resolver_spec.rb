@@ -29,7 +29,7 @@ RSpec.describe InventoryDosageOptionResolver do
   end
 
   # Build an inventory double yielding `records` from the dosage_records AR chain.
-  # rubocop:disable RSpec/VerifiedDoubles
+  # rubocop:disable-next RSpec/VerifiedDoubles
   def build_inventory(records)
     scope = double('DosageRecordsScope', where: nil, not: nil, to_a: records) # rubocop:disable RSpec/VerifiedDoubles
     allow(scope).to receive_messages(where: scope, not: scope)
@@ -37,7 +37,6 @@ RSpec.describe InventoryDosageOptionResolver do
     allow(dbl).to receive(:dosage_records).and_return(scope)
     dbl
   end
-  # rubocop:enable RSpec/VerifiedDoubles
 
   # Allow `respond_to?` selectively on `source`
   before do

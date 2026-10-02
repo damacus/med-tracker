@@ -10,8 +10,11 @@ class PersonShowQuery
   end
 
   def call
-    schedules = person.schedules.current.includes(:medication)
-    person_medications = person.person_medications.current.includes(:medication).ordered
+    pause_context = {
+      medication_pause_periods: [{ recorded_by_membership: :person }, { resumed_by_membership: :person }]
+    }
+    schedules = person.schedules.current.includes(:medication, pause_context)
+    person_medications = person.person_medications.current.includes(:medication, pause_context).ordered
 
     Result.new(
       person: person,

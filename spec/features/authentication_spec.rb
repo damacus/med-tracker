@@ -235,7 +235,7 @@ RSpec.describe 'Authentication Features', type: :system do
     it 'allows requesting verification email resend' do
       visit '/verify-account-resend'
       fill_in 'Email address', with: 'resend@example.com'
-      click_on 'Resend Verify Account Information'
+      click_on 'Resend verification email'
 
       expect(page).to have_text(/sent|email|verification/i)
     end

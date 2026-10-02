@@ -16,7 +16,7 @@ RSpec.describe 'Navigation', :browser do
       visit '/verify-account-resend'
 
       expect(page).to have_field('Email address')
-      expect(page).to have_link('Welcome back', href: '/login')
+      expect(page).to have_link('Back to sign in', href: '/login')
       expect(page).to have_no_css('[data-responsive-shell-role="sidebar"]')
       expect(page).to have_no_css('[data-testid="mobile-rail"]')
       expect(page).to have_no_css('nav.nav')

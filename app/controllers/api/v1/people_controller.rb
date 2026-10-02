@@ -40,39 +40,8 @@ module Api
         params.expect(person: %i[name date_of_birth email person_type has_capacity])
       end
 
-      def grant_created_person_access(person)
-        access_change.create_grant!(
-          household: current_household,
-          household_membership: current_membership,
-          person: person,
-          access_level: :manage,
-          relationship_type: :family_member,
-          granted_by_membership: current_membership
-        )
-      end
-
-      def access_change
-        @access_change ||= Households::AccessChange.new(
-          actor_account: current_account,
-          actor_membership: current_membership,
-          request: request
-        )
-      end
-
       def persist_created_person(person)
-        ActiveRecord::Base.transaction do
-          if auto_assign_created_person_carer_relationship?(person)
-            CareDelegation::Assign.new(
-              carer: current_membership.person,
-              patient: person,
-              relationship_type: :family_member,
-              granted_by_membership: current_membership
-            ).call
-          else
-            person.save!
-            grant_created_person_access(person)
-          end
-        end
+        People::Create.new(person: person, authorization: pundit_user, request: request).call
         true
       rescue ActiveRecord::RecordInvalid => e
         person.errors.merge!(e.record.errors) unless e.record == person
@@ -80,10 +49,6 @@ module Api
       rescue CareDelegation::Assign::Error => e
         person.errors.add(:base, e.message)
         false
-      end
-
-      def auto_assign_created_person_carer_relationship?(person)
-        current_membership&.person.present? && (person.minor? || person.dependent_adult?)
       end
     end
   end

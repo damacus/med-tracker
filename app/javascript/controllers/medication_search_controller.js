@@ -118,12 +118,12 @@ export default class extends Controller {
       : this.escapeHtml(this.t("source"))
 
     const header = `
-      <div class="flex items-center justify-between mb-3">
+      <div class="flex min-w-0 items-center justify-between gap-3 mb-3">
         <p class="text-sm font-medium text-foreground" data-testid="search-results-header">
           ${this.escapeHtml(this.t("resultsTitle"))}
           <span class="text-on-surface-variant font-normal">— ${this.escapeHtml(this.resultCountText(results.length, query))}</span>
         </p>
-        <p class="text-xs text-on-surface-variant">${sourceText}</p>
+        <p class="min-w-0 max-w-[45%] break-all text-right text-xs text-on-surface-variant">${sourceText}</p>
       </div>
     `
 
@@ -142,19 +142,19 @@ export default class extends Controller {
 
   renderResultCard(result, barcode, permissions = {}) {
     const matchReasonBadge = result.match_reason_label
-      ? `<span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-tertiary-container text-on-tertiary-container">${this.escapeHtml(result.match_reason_label)}</span>`
+      ? `<span class="inline-flex max-w-full items-center rounded-full px-2 py-0.5 text-right text-xs font-medium break-all bg-tertiary-container text-on-tertiary-container">${this.escapeHtml(result.match_reason_label)}</span>`
       : ''
 
     const sourceBadge = result.source_label
-      ? `<span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-secondary-container text-on-secondary-container">${this.escapeHtml(result.source_label)}</span>`
+      ? `<span class="inline-flex max-w-full items-center rounded-full px-2 py-0.5 text-right text-xs font-medium break-all bg-secondary-container text-on-secondary-container">${this.escapeHtml(result.source_label)}</span>`
       : ''
 
     const badge = result.concept_class
-      ? `<span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-primary-container text-on-primary-container">${this.escapeHtml(result.concept_class)}</span>`
+      ? `<span class="inline-flex max-w-full items-center rounded-full px-2 py-0.5 text-right text-xs font-medium break-all bg-primary-container text-on-primary-container">${this.escapeHtml(result.concept_class)}</span>`
       : ''
 
     const label = result.concept_class_label && result.concept_class_label !== result.concept_class
-      ? `<span class="text-xs text-on-surface-variant">${this.escapeHtml(result.concept_class_label)}</span>`
+      ? `<span class="max-w-full break-all text-right text-xs text-on-surface-variant">${this.escapeHtml(result.concept_class_label)}</span>`
       : ''
 
     const existingMedication = result.existing_medication
@@ -168,12 +168,12 @@ export default class extends Controller {
     const relatedMedications = result.related_medications_html || ''
     const title = result.name || result.display
     const packageSize = result.package_size
-      ? `<p class="text-xs text-on-surface-variant mt-0.5">Pack size: ${this.escapeHtml(result.package_size)}</p>`
+      ? `<p class="text-xs text-on-surface-variant mt-0.5">${this.escapeHtml(this.t("packageLabel"))}: ${this.escapeHtml(result.package_size)}</p>`
       : ''
 
     return `
-      <div class="rounded-lg border border-border bg-surface-container-lowest p-4 hover:border-primary hover:shadow-sm transition-all" data-testid="result-card">
-        <div class="flex items-start justify-between gap-3">
+      <div class="min-w-0 rounded-lg border border-border bg-surface-container-lowest p-4 hover:border-primary hover:shadow-sm transition-all" data-testid="result-card">
+        <div class="flex min-w-0 items-start justify-between gap-3">
           <div class="flex-1 min-w-0">
             <p class="text-sm font-medium text-foreground truncate">${this.escapeHtml(title)}</p>
             ${packageSize}
@@ -184,7 +184,7 @@ export default class extends Controller {
             ${reviewPrompts}
             ${relatedMedications}
           </div>
-          <div class="flex flex-col items-end gap-1 shrink-0">
+          <div class="flex min-w-0 max-w-[45%] flex-col items-end gap-1 shrink">
             ${matchReasonBadge}
             ${sourceBadge}
             ${badge}

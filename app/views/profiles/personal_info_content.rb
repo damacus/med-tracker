@@ -41,9 +41,10 @@ module Views
       end
 
       def render_info_row(label, value)
-        div(class: 'flex items-center justify-between border-b border-border py-3 last:border-0') do
-          dt(class: 'text-sm font-medium text-on-surface-variant') { label }
-          dd(class: 'text-sm text-foreground') { value || 'Not set' }
+        div(class: 'flex flex-col items-start gap-1 border-b border-border py-3 last:border-0 sm:flex-row ' \
+                   'sm:items-center sm:justify-between') do
+          dt(class: 'min-w-0 max-w-full text-sm font-medium text-on-surface-variant') { label }
+          dd(class: 'min-w-0 max-w-full break-all text-sm text-foreground') { value || 'Not set' }
         end
       end
 

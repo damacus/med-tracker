@@ -23,16 +23,16 @@ module Views
 
       def render_header
         div(
-          class: 'mb-6 rounded-shape-xl border border-outline-variant/70 bg-surface-container-low p-5 shadow-elevation-1 sm:p-6',
+          class: 'mb-6 rounded-shape-xl border border-outline-variant/70 bg-surface-container-low p-3 shadow-elevation-1 sm:p-6',
           data: { testid: 'profile-hero' }
         ) do
-          div(class: 'flex items-center gap-4') do
+          div(class: 'flex flex-col items-start gap-4 sm:flex-row sm:items-center') do
             render Components::Shared::PersonAvatar.new(person: presenter.person, size: :lg)
-            div(class: 'min-w-0') do
+            div(class: 'w-full min-w-0') do
               p(class: 'text-[0.7rem] font-semibold uppercase tracking-[0.28em] text-on-surface-variant') do
                 t('profiles.show.eyebrow')
               end
-              h1(class: 'mt-1 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl') do
+              h1(class: 'mt-1 break-words text-3xl font-semibold tracking-tight text-foreground sm:text-4xl') do
                 t('profiles.show.title')
               end
               p(class: 'mt-1 break-all text-sm text-on-surface-variant') { presenter.account.email }
@@ -55,7 +55,7 @@ module Views
         nav(aria: { label: t('profiles.show.title') }) do
           render RubyUI::TabsList.new(
             role: 'tablist',
-            class: 'flex h-auto w-full rounded-shape-lg border border-outline-variant/70 ' \
+            class: 'flex h-auto w-full flex-wrap rounded-shape-lg border border-outline-variant/70 ' \
                    'bg-surface-container-highest p-1.5 shadow-elevation-1'
           ) do
             SECTION_KEYS.each { |key| render_section_tab(key) }
@@ -78,12 +78,17 @@ module Views
             testid: 'profile-section-tab',
             profile_section: key
           },
-          class: 'min-h-12 min-w-0 flex-1 rounded-shape-md px-1 text-xs font-semibold ' \
-                 'text-on-surface-variant hover:bg-surface-container-high hover:text-foreground sm:px-3 sm:text-sm ' \
+          class: 'min-h-12 min-w-0 basis-1/2 shrink-0 whitespace-normal break-words rounded-shape-md px-1 text-center text-xs ' \
+                 'font-semibold leading-tight text-on-surface-variant hover:bg-surface-container-high ' \
+                 'hover:text-foreground sm:basis-0 sm:flex-1 sm:px-3 sm:text-sm ' \
                  'data-[state=active]:bg-background data-[state=active]:text-primary ' \
                  'data-[state=active]:shadow-elevation-2 data-[state=active]:ring-1 ' \
                  'data-[state=active]:ring-outline-variant/70'
-        ) { t("profiles.sections.#{key}.title") }
+        ) do
+          span(class: 'block w-full min-w-0 max-w-full whitespace-normal break-words') do
+            t("profiles.sections.#{key}.title")
+          end
+        end
       end
 
       def render_section_panels
@@ -116,7 +121,7 @@ module Views
           title: t('profiles.sections.profile.title'),
           summary: presenter.profile_summary
         ) do
-          div(class: 'grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(20rem,0.9fr)] lg:items-start') do
+          div(class: 'grid min-w-0 grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(20rem,0.9fr)] lg:items-start') do
             render_personal_info_card
             render ProfileSettings.new(person: presenter.person, account: presenter.account)
           end

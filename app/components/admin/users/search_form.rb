@@ -56,7 +56,7 @@ module Components
               render RubyUI::Combobox.new(class: 'w-full') do
                 render RubyUI::ComboboxTrigger.new(
                   id: 'role_trigger',
-                  placeholder: membership_role_filter.presence&.titleize || t('admin.users.search.all_roles'),
+                  placeholder: membership_role_label(membership_role_filter) || t('admin.users.search.all_roles'),
                   class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all'
                 )
 
@@ -86,7 +86,7 @@ module Components
                           checked: membership_role_filter == role,
                           data: { action: 'change->filter-form#submit' }
                         )
-                        span { role.titleize }
+                        span { membership_role_label(role) }
                       end
                     end
                   end
@@ -98,6 +98,10 @@ module Components
 
         def membership_role_filter
           search_params[:membership_role].presence || search_params[:role].presence
+        end
+
+        def membership_role_label(role)
+          role.present? ? t("admin.labels.membership_roles.#{role}") : nil
         end
 
         def render_status_filter

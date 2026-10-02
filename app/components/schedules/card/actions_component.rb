@@ -15,8 +15,8 @@ module Components
         end
 
         def view_template
-          CardFooter(class: 'px-6 pb-8 pt-2') do
-            div(class: 'flex min-w-0 items-center gap-0.5 w-full',
+          CardFooter(class: 'px-8 pb-8 pt-2') do
+            div(class: 'flex min-w-0 w-full flex-col items-stretch gap-2 lg:flex-row lg:items-center',
                 data: { testid: 'schedule-card-actions' }) do
               render_past_dose_button unless schedule.paused?
               render_actions_menu if administrator?
@@ -27,7 +27,7 @@ module Components
         private
 
         def render_past_dose_button
-          div(class: 'min-w-0 flex-1') do
+          div(class: 'min-w-0 w-full lg:flex-1') do
             render Components::Medications::PriorDayTakeAction.new(
               source: schedule,
               context: { person: person, current_user: current_user },
@@ -45,12 +45,15 @@ module Components
         end
 
         def render_actions_menu
-          render RubyUI::DropdownMenu.new(options: { placement: 'bottom-end', strategy: 'fixed' }, class: 'shrink-0') do
-            render RubyUI::DropdownMenuTrigger.new(class: 'shrink-0') do
+          render RubyUI::DropdownMenu.new(
+            options: { placement: 'bottom-end', strategy: 'fixed' },
+            class: 'w-full shrink-0 lg:w-auto'
+          ) do
+            render RubyUI::DropdownMenuTrigger.new(class: 'w-full shrink-0 lg:w-auto') do
               render RubyUI::Button.new(
                 variant: :outline,
                 type: :button,
-                class: 'shrink-0',
+                class: 'w-full shrink-0 lg:w-auto',
                 data: { testid: "schedule-actions-#{schedule.id}" },
                 aria_label: t('schedules.card.actions')
               ) do
@@ -81,6 +84,8 @@ module Components
         end
 
         def render_active_state_action
+          return render_pause_link unless schedule.paused?
+
           form_with(
             url: active_state_path,
             method: :patch,
@@ -95,6 +100,17 @@ module Components
               render active_state_icon.new(size: 16, aria_hidden: 'true', class: 'mr-2 shrink-0')
               span { active_state_label }
             end
+          end
+        end
+
+        def render_pause_link
+          render RubyUI::DropdownMenuItem.new(
+            href: pause_form_person_schedule_path(person, schedule),
+            class: menu_item_class,
+            data: { turbo_frame: 'modal', testid: active_state_testid }
+          ) do
+            render Icons::Clock.new(size: 16, aria_hidden: 'true', class: 'mr-2 shrink-0')
+            span { active_state_label }
           end
         end
 

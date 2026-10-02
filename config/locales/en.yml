@@ -1,9 +1,98 @@
 ---
 en:
-  hello: Hello world
+  treatments:
+    form:
+      keep_maximum: "Leave blank to keep the current maximum."
+      schedule_maximum: "Leave blank to use a maximum of 4 doses per cycle."
+      optional_maximum: "A maximum is optional for a new assignment."
+      keep_cycle: "Keep current cycle"
+      required_end_date: "End date (required)"
+      default_dose: "Default dose"
+      keep_dose_choice: "Keep current dose choice"
+      linked_dose_hint: "Leave the option blank to keep any existing link. If the dose is linked, choose a replacement option before changing its amount or unit."
+      apply_dose: "Use selected dose"
+      unavailable_selection: "Unavailable selection"
+      schedule_type: "Schedule type"
+      show_fields: "Show schedule fields"
+      time: "Time (HH:MM)"
+      taper_times_hint: "These shared dose times apply to every taper step and set when doses are due. Leave blank for untimed doses."
+      step_time_instruction: "Step instruction time (HH:MM)"
+      step_time_hint: "Step instruction times are saved with this step. They do not set when doses are due."
+      add_time: "Add time"
+      remove_time: "Remove time"
+      date: "Date (YYYY-MM-DD)"
+      add_date: "Add date"
+      remove_date: "Remove date"
+      step: "Step %{number}"
+      add_step: "Add step"
+      remove_step: "Remove step"
+      as_needed_hint: "Use when needed; there are no fixed administration times."
+      resume: "Resume treatment"
+      resume_hint: "Resume this treatment now. The pause remains in its history."
+      pause_open: "Currently paused"
+      no_pause_history: "No pauses have been recorded."
+    types:
+      daily: "Daily"
+      multiple_daily: "Several times daily"
+      weekly: "Weekly"
+      specific_dates: "Specific dates"
+      prn: "As needed"
+      tapering: "Tapering"
+      every_other_day: "Every other day"
+    weekdays:
+      monday: "Monday"
+      tuesday: "Tuesday"
+      wednesday: "Wednesday"
+      thursday: "Thursday"
+      friday: "Friday"
+      saturday: "Saturday"
+      sunday: "Sunday"
+    overview:
+      schedules_unavailable: "Schedules are not available with your current access. Assignments shown here remain readable."
+      title: "Medication and schedules"
+      empty: "No medication or schedules have been assigned."
+  stock_removals:
+    title: "Remove stock"
+    description: "Record medicine that left stock without being taken. This does not record a dose."
+    quantity: "Quantity removed"
+    note: "Note"
+    reason: "Reason"
+    source: "Stock source"
+    choose_source: "Choose stock"
+    choose_reason: "Choose a reason"
+    submit: "Record removal"
+    cancel: "Cancel"
+    history: "Recent removals"
+    empty: "No stock removals recorded."
+    available: "%{quantity} %{unit} available"
+    history_summary: "Removed %{quantity} %{unit} · %{reason}"
+    unknown_actor: "Unknown recorder"
+    units: "units"
+    success: "Stock removal recorded."
+    reasons:
+      dropped: "Dropped"
+      damaged: "Damaged"
+      expired: "Expired"
+      discarded: "Discarded"
+      lost: "Lost"
+      transferred_out: "Given away / transferred out"
+      other: "Other"
+    errors:
+      invalid_quantity: "Enter a positive quantity with at most two decimal places."
+      invalid_reason: "Choose a removal reason."
+      invalid_note: "Keep the note to 1,000 characters or fewer."
+      invalid_submission: "Reload this form and try again."
+      invalid_source: "Choose tracked stock from this medicine."
+      untracked: "This stock is not tracked."
+      insufficient_stock: "Not enough stock. Check the remaining quantity."
+      changed_submission: "This submission has already been used with different details."
+  offline:
+    record_access_required: You do not have permission to record this dose.
   app:
     name: MedTracker
   global_search:
+    error: Search is unavailable. Please try again.
+    retry: Retry search
     dialog_label: Global search
     open: Open global search
     open_short: Search
@@ -103,6 +192,7 @@ en:
       greater_than_or_equal_to: must be greater than or equal to %{count}
       inclusion: is not included in the list
       invalid: is invalid
+      form_invalid: This value could not be saved.
       not_a_number: is not a number
       required: must exist
       taken: has already been taken
@@ -110,6 +200,20 @@ en:
       linked_to_health_event: has already been linked to this health event
       on_or_after_start_date: must be on or after the start date
   admin:
+    labels:
+      membership_roles:
+        owner: Owner
+        administrator: Administrator
+        member: Member
+      relationship_types:
+        parent: Parent
+        carer: Carer
+        family_member: Family member
+        professional: Professional
+      access_levels:
+        view: View
+        record: Record
+        manage: Manage
     invitations:
       created: Invitation sent
       resent: Invitation resent
@@ -126,7 +230,11 @@ en:
         cancel: Cancel
         form:
           email: Email
-          role: Role
+          role: Household role
+          relationship_type: Dependent relationship
+          select_relationship_type: Select relationship
+          access_level: Dependent access
+          select_access_level: Select access level
           dependents: Existing dependents
           dependents_hint: Select existing children or dependent adults this invited parent or carer should manage.
           submit: Send invitation
@@ -197,6 +305,9 @@ en:
           to: to
           of: of
           results: results
+          previous: Previous
+          next: Next
+          label: Pagination
     ambiguous_person_access_grants:
       index:
         title: Ambiguous access grants
@@ -227,6 +338,8 @@ en:
       unauthorized: You are not authorized to perform this action.
       missing_account: User does not have an account to verify.
       index:
+        title: User Management
+        new_user: New User
         helper: Household roles apply only to this household. System administrators can manage every household.
       form:
         subtitle: Fill in the details below to create a new user account.
@@ -241,6 +354,10 @@ en:
         role: Household role
         membership_role_helper: Only system administrators can assign the Owner role.
         select_role: Select role
+        dependent_relationship_type: Dependent relationship
+        select_dependent_relationship_type: Select relationship
+        dependent_access_level: Dependent access
+        select_dependent_access_level: Select access level
         dependents: Existing dependents
         cancel: Cancel
         create_submit: Create User
@@ -576,7 +693,7 @@ en:
         email_placeholder: Enter your email address
         submit: Request Password Reset
         other_options: Other Options
-        back_to_login: Back to Login
+        back_to_login: Back to sign in
         create_account: Create a New Account
       reset_password:
         page_subtitle: Create a new password for your account.
@@ -600,9 +717,9 @@ en:
           link.
         email_label: Email address
         email_placeholder: Enter your email address
-        submit: Resend Verify Account Information
+        submit: Resend verification email
         other_options: Other Options
-        back_to_login: Back to Login
+        back_to_login: Back to sign in
         create_account: Create a New Account
       otp_auth:
         page_title: Enter your authentication code
@@ -741,6 +858,9 @@ en:
       title: Locations
       add_location: Add Location
       members: Members
+      medication_count:
+        one: "%{count} medication"
+        other: "%{count} medications"
       view: View
       delete_dialog:
         title: Delete Location
@@ -758,6 +878,7 @@ en:
       no_members: No members assigned.
       details: Details
       no_details: No description provided.
+      stock_warning: Low stock
       add_member:
         title: Add Member
         description: Add a person to %{name}
@@ -778,6 +899,49 @@ en:
       success: "%{name} removed from %{location}"
       failure: Failed to remove member
   medications:
+    stock:
+      title: "Manage stock"
+      adjust: "Adjust stock"
+      new_quantity: "New stock quantity"
+      order: "Record order"
+      receive: "Mark received"
+      ordered: "Ordered"
+      received: "Received"
+      not_ordered: "No order recorded"
+      edit_option: "Edit option stock"
+      option_total: "Each option has its own stock and unit. Change quantities using the option editor."
+      scalar_fallback: "All options are untracked. Doses can still use the parent medicine stock shown here; set stock on an option to track it separately."
+      receipt_hint: "Receiving an order records its status only. Adjust stock separately when you count the delivery."
+      date_hint: "Enter the expected date as YYYY-MM-DD."
+      original_token: "Reopen the edit form to load its original version, then review and submit your changes."
+      option_readonly: "Option stock and reorder thresholds are managed through the option editor."
+      invalid_quantity: "Enter a nonnegative quantity with at most two decimal places."
+      household_inventory: "Household inventory"
+    dose_dialog:
+      administration_title: 'Log administration for %{name}'
+      choose_person_source: 'Choose the person and source.'
+      close: 'Close'
+      source: 'MEDICATION SOURCE'
+      calculated: 'Calculated for selected time'
+      dose_calculated: 'Dose calculated for selected time'
+      log: 'Log'
+      view_only: 'View only'
+      no_stock: 'No eligible stock'
+      record: 'Record dose'
+      confirm: 'Confirm the person, medication, time, and inventory source.'
+      review: 'Please review this dose.'
+      unavailable: 'This source is unavailable. Choose another source before submitting.'
+      choose_source: 'Choose source'
+      person: 'PERSON'
+      medication: 'MEDICATION'
+      dose: 'DOSE'
+      taken_at: 'Taken at'
+      stock_source: 'Stock source'
+      remaining: 'remaining'
+      invalid_time: 'Taken at is invalid.'
+      foreign_source: 'This source does not belong to this medication.'
+      forbidden: 'You cannot record this dose.'
+      conflict: 'This dose request conflicts with a previous record.'
     finder:
       nhs_directory: NHS Directory
       title: Medication Finder
@@ -895,7 +1059,9 @@ en:
         damaged_or_disposed: Damaged or disposed
         other: Other
       clear_batch: Clear batch
-      apply: Apply %{count} amendments
+      apply:
+        one: Apply 1 amendment
+        other: Apply %{count} amendments
       medicines: "%{count} medicines"
       net_change: total net change
       units: units
@@ -964,6 +1130,7 @@ en:
       edit_subtitle: Update %{name}'s details.
     index:
       your_inventory: Your Inventory
+      stock_remaining: "%{amount} %{unit} remaining"
       add_for_person: Add medication for someone
       title: Medications
       add_medication: Add Medication
@@ -1034,14 +1201,6 @@ en:
         low_in_days: Supply will be low in %{days} days
         empty_in_days: Supply will be empty in %{days} days
       location: Location
-  passwords:
-    reset_sent: Password reset instructions sent (if user with that email address
-      exists).
-    reset_success: Password has been reset.
-    mismatch: Passwords did not match.
-    invalid_token: Password reset link is invalid or has expired.
-    mailer:
-      subject: Reset your password
   people:
     created: Person was successfully created.
     updated: Person was successfully updated.
@@ -1142,8 +1301,19 @@ en:
       paused: Paused
       notes: 'Notes:'
       timing_restrictions: 'Timing Restrictions:'
-      max_doses_per_day: Maximum %{count} dose(s) per day
-      wait_hours: Wait at least %{hours} hours between doses
+      max_doses:
+        daily:
+          one: Maximum 1 dose per day
+          other: Maximum %{count} doses per day
+        weekly:
+          one: Maximum 1 dose per week
+          other: Maximum %{count} doses per week
+        monthly:
+          one: Maximum 1 dose per month
+          other: Maximum %{count} doses per month
+      wait_hours:
+        one: Wait at least 1 hour between doses
+        other: Wait at least %{count} hours between doses
       next_dose_available: 'Next dose available in:'
       todays_doses: Today's Doses
       no_doses_today: No doses taken today
@@ -1228,13 +1398,19 @@ en:
       active_dates: Active dates
       not_set: Not set
   dosages:
+    management:
+      daily: 'Daily'
+      weekly: 'Weekly'
+      monthly: 'Monthly'
+      untracked: 'Not tracked'
+      stock_hint: 'Leave stock blank for untracked supply; zero means tracked stock is empty. A blank threshold remains unset.'
+      confirm_mode: 'I understand that adding the first option clears the medication’s single dose. If this option tracks stock, its quantities replace the medication’s stock totals.'
+      confirm_required: 'Confirm the change to dosage options before saving.'
+      conflict: 'This dosage has changed. Reload its edit form and review your changes before saving again.'
+      retry_hint: 'After a failed save, check the dosage list before trying again. Repeating an add request can create another option.'
     created: Dosage was successfully added.
     updated: Dosage was successfully updated.
     deleted: Dosage was successfully removed.
-    new:
-      title: Add Dosage
-    edit:
-      title: Edit Dosage
     form:
       amount: Amount
       unit: Unit
@@ -1365,11 +1541,11 @@ en:
         prescribed: Prescribed
       person_label: Person name
       person_placeholder: Select person
-      medication_label: Name of med
+      medication_label: Medication
       medication_placeholder: Select medication
-      frequency_label: Dose, frequency
+      frequency_label: Frequency
       frequency_placeholder: e.g. Once daily
-      summary_title: Schedule (break this down)
+      summary_title: Schedule summary
       none: "-"
     index:
       title: Active Schedules
@@ -1424,6 +1600,8 @@ en:
       create_account: Create one
       resend_verification: Resend verification email
   take_medications:
+    cooldown: This dose is not available at this time.
+    out_of_stock: 'Cannot take medication: out of stock'
     success: Medication taken successfully.
     failure: Failed to record medication taken.
     json_success: Medication taken successfully.
@@ -1509,8 +1687,8 @@ en:
         description: Medications taken today, grouped by person.
         empty: No medications taken today.
       summary:
-        overall_compliance: Overall Compliance
-        total_doses_logged: Total Doses Logged
+        overall_compliance: Daily Compliance
+        total_doses_logged: Daily Doses Logged
         evidence_reviewed: Evidence Reviewed
         excellent: Excellent
         needs_attention: Needs attention
@@ -1540,6 +1718,18 @@ en:
             We recommend ordering a refill this afternoon.
       actionable_insight: Actionable insight
     health_history:
+      cycles:
+        title: Routine dose cycles
+        description: A cycle is not missed until it ends.
+        window: Cycle window
+      outcomes:
+        title: Dose outcomes
+        not_taken: Not taken
+        date: Date
+        expected: Expected
+        taken: Taken
+        unexplained_missed: Unexplained misses
+        reason: Reason
       person_required: Select one person to download a GP health history.
       title: MedTracker health history report
       people: "People: %{people}"
@@ -1550,6 +1740,7 @@ en:
       ongoing_from: "Ongoing since %{started_on}"
       event_date_range: "%{started_on} to %{ended_on}"
       sources:
+        routine: Routine
         scheduled: Scheduled
         as_needed: As-needed/direct
       medication_takes:
@@ -1710,6 +1901,12 @@ en:
         metric_value:
           one: 1 day
           other: "%{count} days"
+      missed_routine_cycles:
+        title: "Missed routine cycles"
+        summary: "%{count} consecutive cycles have unexplained missed doses."
+        detail: "Review the routine dose records for these cycles."
+        metric_label: "Longest run"
+        metric_value: "%{count} cycles"
       missed_dose_pattern:
         title: Missed-dose pattern
         summary:
@@ -1875,6 +2072,7 @@ en:
       create: Create token
       empty: No API tokens yet.
       last_used_at: 'Last used: %{time}'
+      expires_at: 'Expires: %{time}'
       revoke: Revoke
       revoked: API token revoked.
       locked: Your account is locked. API tokens cannot be changed right now.
@@ -1945,9 +2143,6 @@ en:
     cannot_deactivate_self: You cannot deactivate your own account.
     owner_deactivation_rejected: Owner accounts can only be deactivated by another household
       owner while another active owner user remains.
-  webauthn:
-    passkey_removed: Passkey removed successfully
-    passkey_registered: Passkey registered successfully
   layouts:
     mailer:
       footer_notice: This email was sent because you have an account with us.
@@ -2083,18 +2278,6 @@ en:
       review_note: Review note
       save: Save review record
   notification_settings:
-    title: Notification Settings
-    description: Manage your medication reminder notifications.
-    browser:
-      title: Browser Notifications
-      status: Checking notification status...
-      enable: Enable Notifications
-      disable: Disable Notifications
-      test: Send Test Notification
-    reminders:
-      enable: Enable Reminders
-      description: Send medication reminders at scheduled times.
-      title: Reminder Times
     categories:
       title: Notification Categories
       dose_due_enabled:
@@ -2109,14 +2292,6 @@ en:
       private_text_enabled:
         title: Private Notification Content
         description: Hide sensitive information like medication names in notifications.
-    period_labels:
-      morning: Morning
-      afternoon: Afternoon
-      evening: Evening
-      night: Night
-    actions:
-      cancel: Cancel
-      save: Save Settings
   invitations:
     accept:
       title: Complete Your Account
@@ -2143,6 +2318,7 @@ en:
         description: Manage people and their schedules, track medication schedules
   forms:
     locations:
+      new_title: New Location
       name_placeholder: e.g. Home, School, Grandma's House
       description_placeholder: Describe this location...
     people:
@@ -2150,7 +2326,7 @@ en:
       email_placeholder: e.g., jane@example.com
     medications:
       inventory_management: Inventory Management
-      dosage_and_supply: Dosage & Supply
+      dosage_options_read_only: This medication uses dosage options. They remain unchanged when you save these details.
       name: Name
       name_placeholder: e.g., Paracetamol
       friendly_name: Display name
@@ -2250,6 +2426,16 @@ en:
         one: '1 error prevented this medication from being saved:'
         other: "%{count} errors prevented this medication from being saved:"
   dashboard:
+    outcomes:
+      not_taken: Not taken
+      overdue: Overdue
+      reasons:
+        refused: Declined
+        unwell: Unwell
+        asleep: Asleep
+        medicine_unavailable: Medicine unavailable
+        clinician_advice: Clinician advice
+        other: Other
     title: Family Dashboard
     greeting_morning: Good morning, %{name}
     greeting_afternoon: Good afternoon, %{name}
@@ -2362,32 +2548,8 @@ en:
       end_date: End Date
       actions: Actions
     delete_confirmation:
-      delete: Delete
-      delete_schedule: Delete Schedule?
-      are_you_sure: Are you sure you want to delete %{medication} for %{person}? This
-        action cannot be undone.
       cancel: Cancel
-    person_schedule:
-      age: Age
-      dosage: Dosage
-      frequency: Frequency
-      ends: Ends
-      out_of_stock: Out of Stock
-      on_cooldown: On Cooldown
-      take_now: Take Now
-      delete_confirmation: Are you sure you want to delete this schedule for %{medication}?
-        This action cannot be undone.
-    schedule_card:
-      dosage: Dosage
-      remaining_supply: Remaining Supply
-      frequency: Frequency
-      ends: Ends
-    quick_stats:
-      title: Quick stats
-      people: People
-      active_schedules: Active schedules
     quick_actions:
-      title: Quick Actions
       add_medication: Add Medication
       add_person: Add Person
   medication_workflow:
@@ -2397,3 +2559,48 @@ en:
       search_placeholder: Search people…
       no_results: No people found.
     back: "← Back"
+  medication_pauses:
+    title: "Pause medication"
+    reason: "Reason"
+    note: "Note (optional)"
+    choose_reason: "Choose a reason"
+    submit: "Pause"
+    cancel: "Cancel"
+    timing: "The pause starts when it is saved."
+    history: "Pause history"
+    start_unknown: "Start unknown"
+    actor_unknown: "Person not recorded"
+    started: "Paused: %{date} · %{actor}"
+    resumed: "Resumed: %{date} · %{actor}"
+    reasons:
+      out_of_supply: "Out of supply"
+      temporarily_not_needed: "Temporarily not needed"
+      clinician_advice: "Clinician advice"
+      side_effects: "Side effects"
+      other: "Other"
+      reason_not_recorded: "Reason not recorded"
+
+  dose_outcomes:
+    title: "Record not taken"
+    description: "This records that the dose was not taken. Stock will not change."
+    dose: "Dose"
+    reason: "Reason (optional)"
+    note: "Note (optional)"
+    unspecified: "No reason selected"
+    confirm: "Confirm not taken"
+    cancel: "Cancel"
+    empty: "No doses are waiting for a decision."
+    saved: "Dose recorded as not taken."
+    invalid: "The dose could not be updated. Check the details and try again."
+    slot: "Dose %{position} · %{date} · %{time}"
+    cycle_slot: "Dose %{position} · %{start_date} to %{end_date}"
+    correct: "Correct decision"
+    correction_title: "Correct dose decision"
+    reopen: "Reopen dose"
+    reopen_description: "Clear this decision and return the dose to the outstanding list. The previous decision stays in the audit history."
+    take: "Record as taken"
+    take_description: "Use this only if the dose was taken. This records an actual dose and deducts stock."
+    taken_at: "Taken at"
+    stock: "Stock source"
+    corrected: "Dose decision corrected."
+    resolved_elsewhere: "This dose is no longer marked as not taken. Return to the dashboard to see its current state."

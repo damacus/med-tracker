@@ -4,16 +4,16 @@ Protects MedTracker credentials and health information by making secure authenti
 
 ## ADDED Requirements
 
-### Requirement: Android release authentication uses OIDC PKCE
-The Android release application SHALL use OIDC authorization-code authentication with PKCE and SHALL NOT expose password authentication or a user-editable server URL. Password authentication and server overrides MAY exist only in explicitly labelled debug or staging builds.
+### Requirement: Android authentication uses Rodauth browser PKCE
+As superseded by `unify-mobile-login-with-rodauth`, every Android build SHALL use the selected MedTracker instance's browser authorization-code flow with S256 PKCE. The application SHALL offer an editable instance URL and labelled canary/demo presets and SHALL NOT present a native password form.
 
 #### Scenario: Release sign-in
 - **WHEN** a user signs in to a release build
-- **THEN** the application starts the configured OIDC PKCE flow and offers no password fields or server override
+- **THEN** the application validates discovery for the selected instance and starts Rodauth browser PKCE without native password fields
 
 #### Scenario: Staging sign-in
 - **WHEN** a tester uses the staging build
-- **THEN** the application may present password authentication and a staging-labelled server configuration
+- **THEN** the application uses the same instance selection and Rodauth browser flow with its registered staging callback
 
 ### Requirement: Android credentials use protected no-backup storage
 The Android application SHALL protect access and refresh credentials with Android Keystore-backed encryption, store encrypted material under no-backup storage, and disable application backup.

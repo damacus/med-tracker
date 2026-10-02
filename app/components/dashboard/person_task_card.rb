@@ -3,14 +3,16 @@
 module Components
   module Dashboard
     class PersonTaskCard < Components::Base
-      attr_reader :person, :routine_tasks, :as_needed_items, :current_user, :dashboard_person_id
+      attr_reader :person, :routine_tasks, :as_needed_items, :current_user, :dashboard_person_id, :not_taken_outcomes
 
-      def initialize(person:, routine_tasks:, as_needed_items:, current_user: nil, dashboard_person_id: nil)
+      def initialize(person:, routine_tasks:, as_needed_items:, current_user: nil, **options)
         @person = person
         @routine_tasks = routine_tasks
         @as_needed_items = as_needed_items
         @current_user = current_user
-        @dashboard_person_id = dashboard_person_id
+        @dashboard_person_id = options[:dashboard_person_id]
+        @not_taken_outcomes = options.fetch(:not_taken_outcomes, [])
+        @can_correct_outcomes = options.fetch(:can_correct_outcomes, false)
         super()
       end
 
@@ -21,11 +23,37 @@ module Components
         ) do
           render_header
           render_routine_tasks
+          render_not_taken_outcomes
           render_as_needed_items
         end
       end
 
       private
+
+      def render_not_taken_outcomes
+        not_taken_outcomes.each do |outcome|
+          div(class: 'mt-3 rounded-shape-xl border border-border p-4',
+              data: { testid: 'dashboard-not-taken-outcome' }) do
+            m3_text(variant: :title_medium) { outcome.source.medication.display_name }
+            m3_text(variant: :body_medium) { t('dashboard.outcomes.not_taken') }
+            if outcome.reason.present?
+              m3_text(variant: :body_small) { t("dashboard.outcomes.reasons.#{outcome.reason}") }
+            end
+            m3_text(variant: :body_small) { outcome.note } if outcome.note.present?
+            render_correction_link(outcome) if @can_correct_outcomes
+          end
+        end
+      end
+
+      def render_correction_link(outcome)
+        path = if outcome.source.is_a?(::Schedule)
+                 edit_schedule_dose_occurrence_path(outcome.source, outcome)
+               else
+                 edit_person_medication_dose_occurrence_path(outcome.source, outcome)
+               end
+        m3_link(href: path, variant: :text,
+                data: { turbo_frame: '_top' }) { t('dose_outcomes.correct') }
+      end
 
       def render_header
         div(class: 'flex items-start justify-between gap-4 pb-4') do
@@ -90,7 +118,8 @@ module Components
           end
           div(class: 'flex shrink-0 items-center gap-2 sm:justify-end') do
             render_action(row)
-            render_status_badge(row) unless %i[upcoming available].include?(row[:status])
+            render_not_taken_action(row) if routine
+            render_status_badge(row) if row[:overdue] || %i[upcoming available].exclude?(row[:status])
           end
         end
       end
@@ -101,7 +130,7 @@ module Components
         render Components::Medications::TakeAction.new(
           source: row[:source],
           context: { person: person, current_user: current_user, dashboard_context: true,
-                     dashboard_person_id: dashboard_person_id },
+                     dashboard_person_id: dashboard_person_id, stock_source_resolver: row[:stock_source_resolver] },
           amount: row[:source].dose_amount,
           button: {
             label: take_label,
@@ -118,8 +147,23 @@ module Components
       def render_status_badge(row)
         m3_badge(variant: status_badge_variant(row[:status]),
                  class: 'px-3 py-1 text-[10px] font-black uppercase tracking-wider') do
-          status_label(row)
+          overdue_label(row) || status_label(row)
         end
+      end
+
+      def render_not_taken_action(row)
+        source = row[:source]
+        return if row[:status] == :taken
+        return if row[:scheduled_at] && row[:scheduled_at] > Time.current
+        return unless row[:can_record_outcome]
+
+        path = if source.is_a?(::Schedule)
+                 new_schedule_dose_occurrence_path(source)
+               else
+                 new_person_medication_dose_occurrence_path(source)
+               end
+        m3_link(href: path, variant: :text,
+                data: { turbo_frame: '_top' }) { t('dashboard.outcomes.not_taken') }
       end
 
       def routine_summary
@@ -174,6 +218,10 @@ module Components
         end
       end
 
+      def overdue_label(row)
+        t('dashboard.outcomes.overdue') if row[:overdue] && row[:status] == :upcoming
+      end
+
       def render_dose_metadata(row)
         div(class: 'mt-1.5 flex flex-col items-start gap-1.5',
             data: { testid: 'dashboard-dose-metadata' }) do
@@ -181,6 +229,9 @@ module Components
             dose_label(row[:source])
           end
           render_dose_progress(row)
+          if row[:not_taken_count].to_i.positive?
+            m3_text(variant: :body_small) { "#{row[:not_taken_count]} · #{t('dashboard.outcomes.not_taken')}" }
+          end
         end
       end
 

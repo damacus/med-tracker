@@ -10,10 +10,10 @@ class ReleaseSecurityContractTest {
         .first { File(it, "phone/build.gradle.kts").isFile }
 
     @Test
-    fun releaseAuthenticationUsesOidcPkceWithoutPasswordOrServerOverrideUi() {
+    fun releaseAuthenticationUsesBrowserPkceWithoutNativePasswordUi() {
         val build = File(androidRoot, "phone/build.gradle.kts").readText()
         val libraries = File(androidRoot, "gradle/libs.versions.toml").readText()
-        val releaseAuth = File(androidRoot, "phone/src/release/java/io/damacus/medtracker/AuthRoute.kt")
+        val releaseAuth = File(androidRoot, "phone/src/main/java/io/damacus/medtracker/AuthRoute.kt")
         val releaseGeneratedApi = File(
             androidRoot,
             "phone/src/main/kotlin/io/medtracker/client/apis/AuthenticationApi.kt"
@@ -53,51 +53,12 @@ class ReleaseSecurityContractTest {
         assertFalse(releaseGeneratedApi.readText().contains("createLoginSession"))
         assertFalse(releaseGeneratedApi.readText().contains("/auth/login"))
         assertFalse(releaseLoginRequest.exists())
-        assertTrue(nonReleaseGeneratedApi.readText().contains("createLoginSession"))
-        assertTrue(nonReleaseGeneratedApi.readText().contains("/auth/login"))
-        assertTrue(nonReleaseLoginRequest.isFile)
-        assertTrue(
+        assertFalse(nonReleaseLoginRequest.exists())
+        assertFalse(nonReleaseGeneratedApi.exists())
+        assertFalse(
             File(androidRoot, "phone/src/main/kotlin/io/medtracker/client/models/CapabilityAuthentication.kt")
                 .readText().contains("password_login")
         )
-    }
-
-    @Test
-    fun passwordAndServerConfigurationAreCompiledOnlyForStaging() {
-        val stagingAuth = File(androidRoot, "phone/src/staging/java/io/damacus/medtracker/AuthRoute.kt")
-        val stagingSource = stagingAuth.takeIf(File::isFile)?.readText().orEmpty()
-        val debugSource = File(
-            androidRoot,
-            "phone/src/debug/java/io/damacus/medtracker/AuthRoute.kt"
-        ).readText()
-        val sharedPasswordUi = File(
-            androidRoot,
-            "phone/src/nonRelease/java/io/damacus/medtracker/auth/PasswordAuthRoute.kt"
-        ).takeIf(File::isFile)?.readText().orEmpty()
-        val passwordAuthenticator = File(
-            androidRoot,
-            "phone/src/nonRelease/java/io/damacus/medtracker/auth/PasswordAuthenticator.kt"
-        ).takeIf(File::isFile)?.readText().orEmpty()
-        val build = File(androidRoot, "phone/build.gradle.kts").readText()
-
-        assertTrue(stagingSource.contains("Staging"))
-        assertTrue(debugSource.contains("Debug"))
-        assertTrue(stagingSource.contains("PasswordAuthRoute"))
-        assertTrue(debugSource.contains("PasswordAuthRoute"))
-        assertFalse(stagingSource.contains("OkHttpClient"))
-        assertFalse(stagingSource.contains("AuthenticationApi"))
-        assertFalse(debugSource.contains("OkHttpClient"))
-        assertFalse(debugSource.contains("AuthenticationApi"))
-        assertTrue(sharedPasswordUi.contains("Password"))
-        assertTrue(sharedPasswordUi.contains("Server URL"))
-        assertTrue(passwordAuthenticator.contains("interface PasswordAuthenticator"))
-        assertTrue(passwordAuthenticator.contains("class GeneratedPasswordAuthenticator"))
-        assertTrue(passwordAuthenticator.contains("HttpLoggingPolicy.client()"))
-        assertTrue(passwordAuthenticator.contains("io.medtracker.password.client.apis.AuthenticationApi"))
-        assertFalse(passwordAuthenticator.contains(" as "))
-        assertTrue(build.contains("src/nonRelease/java"))
-        assertTrue(build.contains("src/nonRelease/kotlin"))
-        assertFalse(File(androidRoot, "phone/src/main/java/io/damacus/medtracker/ui/login/LoginScreen.kt").exists())
     }
 
     @Test
@@ -154,9 +115,8 @@ class ReleaseSecurityContractTest {
         assertTrue(integrationScript.contains(":phone:testStagingCanaryIntegrationUnitTest"))
         assertTrue(integrationScript.contains("-Pmedtracker.canaryIntegration=true"))
         assertTrue(integrationSource.contains("MEDTRACKER_CANARY_BASE_URL"))
-        assertTrue(integrationSource.contains("MEDTRACKER_CANARY_EMAIL"))
-        assertTrue(integrationSource.contains("MEDTRACKER_CANARY_PASSWORD"))
-        assertTrue(integrationSource.contains("GeneratedPasswordAuthenticator"))
+        assertTrue(integrationSource.contains("MEDTRACKER_CANARY_TOKEN"))
+        assertTrue(integrationSource.contains("MobileAuthDiscovery"))
         assertFalse(integrationSource.contains("AuthenticationApi"))
         assertFalse(integrationSource.contains("AuthLoginRequest"))
         assertFalse(integrationSource.contains("OkHttpClient"))
@@ -187,20 +147,20 @@ class ReleaseSecurityContractTest {
     }
 
     @Test
-    fun generatorMaintainsReleaseAndNonReleaseSurfacesDeterministically() {
+    fun generatorMaintainsOneSharedApiSurfaceDeterministically() {
         val update = File(androidRoot, "scripts/api-update.fish").readText()
         val check = File(androidRoot, "scripts/api-check.fish").readText()
         val manifest = File(androidRoot, "import-manifest.sha256").readText()
 
-        assertTrue(update.contains("openapi-generator-password-config.yaml"))
+        assertFalse(update.contains("openapi-generator-password-config.yaml"))
         assertTrue(update.contains("openapi-generator-release.ignore"))
-        assertTrue(update.contains("phone/src/nonRelease/kotlin"))
-        assertTrue(check.contains("openapi-generator-password-config.yaml"))
+        assertFalse(update.contains("phone/src/nonRelease/kotlin"))
+        assertFalse(check.contains("openapi-generator-password-config.yaml"))
         assertTrue(check.contains("openapi-generator-release.ignore"))
-        assertTrue(check.contains("phone/src/nonRelease/kotlin"))
-        assertTrue(manifest.contains("openapi-generator-password-config.yaml"))
+        assertFalse(check.contains("phone/src/nonRelease/kotlin"))
+        assertFalse(manifest.contains("openapi-generator-password-config.yaml"))
         assertTrue(manifest.contains("openapi-generator-release.ignore"))
-        assertTrue(manifest.contains("phone/src/nonRelease/kotlin"))
+        assertFalse(manifest.contains("phone/src/nonRelease/kotlin"))
     }
 
     @Test

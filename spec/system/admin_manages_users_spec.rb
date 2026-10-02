@@ -134,8 +134,13 @@ RSpec.describe 'AdminManagesUsers' do
     login_as(admin)
     visit admin_users_path
 
-    find_by_id('role_trigger').click
-    all('label', text: 'Member', visible: :all).last.click
+    role_trigger = find_by_id('role_trigger')
+    role_trigger.click
+
+    role_list = find('[role="listbox"]', visible: true, wait: 10)
+    within(role_list) do
+      find('[role="option"]', text: 'Member', visible: true).click
+    end
 
     within '[data-testid="admin-users"]' do
       expect(page).to have_text('Carer User')

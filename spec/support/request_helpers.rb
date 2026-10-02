@@ -36,6 +36,10 @@ module RequestHelpers
     profile_api_tokens_path profile_api_token_path
     schedules_path schedule_path schedules_workflow_path start_schedules_workflow_path
     schedules_frequency_preview_path schedule_medication_takes_path
+    new_person_medication_dose_occurrence_path person_medication_dose_occurrences_path
+    edit_person_medication_dose_occurrence_path person_medication_dose_occurrence_path
+    new_schedule_dose_occurrence_path schedule_dose_occurrences_path
+    edit_schedule_dose_occurrence_path schedule_dose_occurrence_path
     search_path
   ].freeze
 
@@ -61,7 +65,6 @@ module RequestHelpers
     clear_2fa_for_account(account)
 
     post '/login', params: { email: account.email, password: 'password' }
-    follow_redirect! if response.redirect?
   end
 
   def default_request_household_slug

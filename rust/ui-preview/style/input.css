@@ -1,0 +1,40 @@
+@import "tailwindcss";
+@config "../tailwind.config.cjs";
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background: #f3f7f8;
+    color: #1d3440;
+    font-family: Inter, ui-sans-serif, system-ui;
+  }
+
+  button,
+  input,
+  select,
+  a {
+    font: inherit;
+  }
+
+  :focus-visible {
+    outline: 3px solid #0f7f9e;
+    outline-offset: 3px;
+  }
+}
+
+@layer components {
+  .preview-surface {
+    background: linear-gradient(120deg, #e6f5f5, #f5f8fb 55%, #fff4e8);
+  }
+
+  .preview-rail {
+    box-shadow: 0 -8px 28px rgba(23, 56, 70, .09);
+  }
+
+  .preview-card {
+    box-shadow: 0 12px 34px rgba(25, 60, 72, .06);
+  }
+}

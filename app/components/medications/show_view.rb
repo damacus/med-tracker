@@ -151,6 +151,11 @@ module Components
           render_reorder_actions if can_refill?
           render_refill_modal if can_refill?
           render_adjust_inventory_modal if can_update?
+          if can_update? && medication.current_supply.present?
+            m3_link(href: new_medication_stock_removal_path(medication), variant: :outlined) do
+              t('stock_removals.title')
+            end
+          end
         end
       end
 
@@ -262,13 +267,15 @@ module Components
       end
 
       def render_adjust_inventory_modal
-        render Components::Medications::AdjustInventoryModal.new(
-          medication: medication,
-          button_variant: :filled,
-          button_size: :lg,
-          button_class: 'w-full justify-center col-span-2',
-          button_label: t('medications.show.adjust_inventory')
-        )
+        div(class: 'col-span-2 min-w-0') do
+          render Components::Medications::AdjustInventoryModal.new(
+            medication: medication,
+            button_variant: :filled,
+            button_size: :lg,
+            button_class: 'w-full justify-center',
+            button_label: t('medications.show.adjust_inventory')
+          )
+        end
       end
 
       def render_dosages_section

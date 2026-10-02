@@ -23,13 +23,6 @@ RSpec.describe NhsDmdImport do
       expect(import.errors[:archive_key]).to be_present
     end
 
-    it 'retains bounded compatibility with an existing archive path' do
-      import = described_class.new(uploaded_filename: 'release.zip', archive_path: '/legacy/release.zip')
-
-      expect(import).to be_valid
-      expect(import).to be_legacy_archive
-    end
-
     it 'filters archive keys and checksums from framework parameter logging' do
       filtered = ActiveSupport::ParameterFilter
                  .new(Rails.application.config.filter_parameters)

@@ -4,8 +4,6 @@ module Api
   module V1
     module Admin
       class InvitationsController < BaseController
-        before_action :require_fresh_privileged_action, only: %i[create destroy]
-
         def index
           invitations = current_household.household_invitations.order(created_at: :desc).limit(100)
           render json: { data: invitations.map { |invitation| invitation_payload(invitation) } }

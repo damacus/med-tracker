@@ -46,8 +46,6 @@ class MedicationReminderJob < ApplicationJob
     @intended_at = intended_occurrence_at(intended_at)
     return record_unavailable(:invalid_occurrence) unless @intended_at
 
-    preserve_legacy_occurrence_for_retry
-
     true
   end
 
@@ -127,33 +125,8 @@ class MedicationReminderJob < ApplicationJob
   end
 
   def intended_occurrence_at(explicit_intended_at)
-    occurrence = explicit_intended_at.presence || scheduled_at || legacy_occurrence_at
+    occurrence = explicit_intended_at.presence || scheduled_at
     normalize_occurrence(occurrence)
-  end
-
-  def preserve_legacy_occurrence_for_retry
-    arguments[4] = @intended_at if arguments.length < 5
-  end
-
-  def legacy_occurrence_at
-    hour, min = time_components(@scheduled_time.presence || @pref.time_for_period(@period))
-    return unless hour && min
-
-    today = Time.zone.today
-    Time.zone.local(today.year, today.month, today.day, hour, min)
-  end
-
-  def time_components(value)
-    return [value.hour, value.min] if value.respond_to?(:hour) && value.respond_to?(:min)
-
-    match = value.to_s.match(/\A(\d{1,2}):(\d{1,2})(?::.*)?\z/)
-    return unless match
-
-    hour = match[1].to_i
-    min = match[2].to_i
-    return unless hour.between?(0, 23) && min.between?(0, 59)
-
-    [hour, min]
   end
 
   def normalize_occurrence(occurrence)

@@ -63,7 +63,7 @@ jobs:
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: "25.0.4+101.0.LTS"
 
       - name: Download generated clients
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
@@ -95,12 +95,12 @@ jobs:
       - name: Set up Swift
         uses: swift-actions/setup-swift@364295d9c23900ce04d4e5cc708387921b4e50f9
         with:
-          swift-version: "6.3.3"
+          swift-version: "6.4.0"
 
       - name: Verify Swift version
         run: |
           swift --version
-          swift --version | grep --fixed-strings --quiet "Swift version 6.3.3"
+          swift --version | grep --fixed-strings --quiet "Swift version 6.4"
 
       - name: Compile Swift client
         run: swift build --package-path tmp/api-clients/swift

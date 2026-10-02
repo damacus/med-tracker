@@ -141,7 +141,11 @@ module Components
           m3_badge(variant: :tonal, class: 'shrink-0 whitespace-nowrap') do
             ::Medications::SupplyStatusPresenter.new(medication: medication).inventory_units_label
           end
-          Badge(variant: :destructive, class: 'shrink-0 whitespace-nowrap') { 'Low Stock' } if medication.low_stock?
+          if medication.low_stock?
+            Badge(variant: :destructive, class: 'shrink-0 whitespace-nowrap') do
+              t('locations.show.stock_warning')
+            end
+          end
         end
       end
 
@@ -183,8 +187,7 @@ module Components
               variant: :text,
               size: :lg,
               icon: true,
-              class: 'opacity-0 group-hover:opacity-100 transition-opacity text-on-surface-variant ' \
-                     'hover:text-destructive',
+              class: 'text-on-surface-variant hover:text-destructive',
               aria_label: t('locations.show.remove_member.aria_label', default: 'Remove member')
             ) do
               render Icons::X.new(size: 14, aria_hidden: 'true')

@@ -28,6 +28,10 @@ The stable direct-assignment identity is source plus the local start date of the
 
 The assignment's `created_at` date and optional `retired_at` bound valid windows. Recorded pause periods exclude overlapping windows under the same interval rule used for schedules. No occurrence can be backdated before creation, after retirement, during a full pause window, or into the future.
 
+A date range selects the existing cycle windows that intersect it. An assignment created partway through a cycle keeps that cycle's original start date as its identity, but cannot become due before creation. Creation and retirement bound the active part of the cycle when evaluating a full pause. Persisted outcomes and unlinked takes use the same cycle boundaries, including when a read starts midway through the cycle.
+
+Persist the inclusive `window_ends_on` when an outcome is first saved. The end date is immutable with the occurrence identity. A later dose-cycle edit must not change the saved outcome's window or the dates accepted for its correction. Backfill existing records within each household's tenant context. Keep the column nullable during rolling upgrades; ordinary record creation requires it. Older portable rows derive the missing end from their source cycle on first import.
+
 Rejected alternatives:
 
 - Inventing a midnight due time would misrepresent the regimen.
@@ -40,9 +44,13 @@ Add the direct routine source adapter to the shared occurrence query. Dashboard,
 
 Existing unlinked direct-assignment takes are allocated deterministically inside their dose-cycle window, using the same non-persistent legacy rule as formal schedules. A new linked take continues through `MedicationAdministration::RecordDose` and the shared resolver, so stock and immutable history remain unchanged.
 
+Reports include daily routine assignments in daily totals. Weekly and monthly assignments have separate cycle summaries with inclusive start/end dates, expected, taken, not-taken, and unexplained counts. An open untimed position becomes unexplained only after its cycle ends. Actual administration history retains its original timestamp. Report paging deduplicates intersecting cycle identities, and saved windows remain visible when the report starts partway through them.
+
+Smart Insights includes cycle expectations and recorded resolutions in its existing evidence threshold. Daily routine misses use the existing daily pattern detector. A separate cycle detector reports at least two consecutive completed windows with unexplained misses for the same assignment. Explained decisions, gaps between windows, and unfinished cycles do not extend that pattern.
+
 ### Reuse authorization and interoperability shapes
 
-Resolve authorization through the `PersonMedication` person's existing view, record, and manage policy checks. The API occurrence response uses the existing source discriminator with `person_medication`; all operation IDs and outcome schemas stay stable.
+Resolve authorization through the `PersonMedication` person's existing view, record, and manage policy checks. The API occurrence response uses the existing source discriminator with `person_medication` and includes its inclusive cycle end. Keep all existing operation IDs stable. Add source-specific person-medication routes and operation IDs that reuse the existing controller actions and shared outcome schemas, because schedule and person-medication IDs identify different resources.
 
 Sync, portable v2, audit, and generated clients already understand the shared occurrence record. Extend validation and import preflight to allow direct routine source references. Capability metadata needs no second client feature flag if the scheduled-outcome capability explicitly advertises supported source types; add `person_medication` to that advertised list.
 
@@ -60,7 +68,7 @@ Add the not-taken action and correction state to the existing direct routine das
 ## Migration Plan
 
 1. Require the complete `record-scheduled-dose-outcomes` change.
-2. Enable direct routine source validation and occurrence derivation without changing the database schema.
+2. Enable direct routine source validation and occurrence derivation, then add and backfill immutable cycle-end snapshots.
 3. Extend dashboard, reminder, report, history, API, sync, and portable adapters through the shared projection.
 4. Advertise `person_medication` as a supported occurrence source and regenerate clients.
 

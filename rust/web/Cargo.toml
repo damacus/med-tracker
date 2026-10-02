@@ -1,0 +1,14 @@
+[package]
+name = "medtracker-web"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+axum = "0.8.4"
+chrono = "0.4"
+chrono-tz = "0.10"
+leptos = { version = "0.8.14", features = ["ssr"] }
+leptodon = { git = "https://github.com/openanalytics/leptodon.git", rev = "41276662e75fe94648cbea4836c7dab7708fc7b2", features = ["ssr"] }
+serde_yaml = "0.9"
+medtracker-ui-preview = { path = "../ui-preview" }
+tokio = { version = "1", features = ["macros", "net", "rt-multi-thread"] }

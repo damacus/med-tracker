@@ -39,7 +39,7 @@ RSpec.describe Components::Schedules::Card, type: :component do
   it 'renders pause action for manageable active schedules' do
     rendered = render_schedule_card(manage: true)
 
-    expect(rendered.at_css("button[data-testid='pause-schedule-#{schedule.id}']")).to be_present
+    expect(rendered.at_css("a[data-testid='pause-schedule-#{schedule.id}'][data-turbo-frame='modal']")).to be_present
   end
 
   it 'renders paused state without dose actions' do

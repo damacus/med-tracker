@@ -29,14 +29,14 @@ RSpec.describe 'Platform settings' do
     expect(AppSettings.instance.reload.invite_only).to be(false)
   end
 
-  it 'requires fresh privileged MFA before updating platform settings' do
+  it 'allows authorised platform settings updates without additional MFA' do
     PlatformAdmin.create!(account: platform_user.person.account)
     sign_in(platform_user)
 
     patch platform_settings_path, params: { app_settings: { invite_only: '0' } }
 
-    expect(response).to redirect_to(profile_path)
-    expect(AppSettings.instance.reload.invite_only).not_to be(false)
+    expect(response).to redirect_to(platform_settings_path)
+    expect(AppSettings.instance.reload.invite_only).to be(false)
   end
 
   it 'updates medicine lookup settings for an active platform admin' do

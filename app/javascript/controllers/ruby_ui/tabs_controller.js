@@ -15,6 +15,28 @@ export default class extends Controller {
     this.activeValue = e.currentTarget.dataset.value;
   }
 
+  navigate(e) {
+    const moves = { ArrowLeft: -1, ArrowRight: 1, Home: 0, End: -1 };
+    if (!(e.key in moves)) return;
+
+    const availableTriggers = this.triggerTargets.filter(
+      (trigger) => !trigger.disabled && trigger.getAttribute("aria-disabled") !== "true",
+    );
+    const currentIndex = availableTriggers.indexOf(e.currentTarget);
+    if (currentIndex < 0 || availableTriggers.length === 0) return;
+
+    e.preventDefault();
+    const nextIndex = e.key === "Home"
+      ? 0
+      : e.key === "End"
+        ? availableTriggers.length - 1
+        : (currentIndex + moves[e.key] + availableTriggers.length) % availableTriggers.length;
+    const nextTrigger = availableTriggers[nextIndex];
+
+    this.activeValue = nextTrigger.dataset.value;
+    nextTrigger.focus();
+  }
+
   activeValueChanged(currentValue, previousValue) {
     if (currentValue == "" || currentValue == previousValue) return;
 

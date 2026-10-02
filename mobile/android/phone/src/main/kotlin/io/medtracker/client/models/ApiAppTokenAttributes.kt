@@ -23,13 +23,18 @@ import com.squareup.moshi.JsonClass
  * 
  *
  * @param name 
+ * @param expiresAt Optional shorter expiry. Must be after issuance and within API_APP_TOKEN_MAX_AGE_MONTHS, which defaults to 12 calendar months. Null and unlimited lifetimes are rejected.
  */
 
 
 data class ApiAppTokenAttributes (
 
     @Json(name = "name")
-    val name: kotlin.String
+    val name: kotlin.String,
+
+    /* Optional shorter expiry. Must be after issuance and within API_APP_TOKEN_MAX_AGE_MONTHS, which defaults to 12 calendar months. Null and unlimited lifetimes are rejected. */
+    @Json(name = "expires_at")
+    val expiresAt: java.time.OffsetDateTime? = null
 
 ) {
 

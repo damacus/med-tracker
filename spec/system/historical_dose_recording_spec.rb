@@ -24,7 +24,7 @@ RSpec.describe 'Historical dose recording', :browser do
         click_button 'Log a past dose'
       end
 
-      dialog = find('dialog[open][role="dialog"]', text: 'Record a past dose')
+      dialog = find('dialog[open][role="dialog"]', text: 'Record a past dose', wait: 10)
       expect(dialog).to have_text('Record a dose taken earlier today or on a previous day.')
 
       field = dialog.find("input[name='medication_take[taken_at]'][type='datetime-local']", visible: :all)
@@ -48,10 +48,25 @@ RSpec.describe 'Historical dose recording', :browser do
     build_alternate_medication
 
     visit person_path(person)
-    trigger = find("[data-testid='log-past-dose-schedule-#{schedule.id}']")
+    trigger = find(
+      "[data-testid='log-past-dose-schedule-#{schedule.id}']",
+      visible: true,
+      wait: 10
+    )
+    dialog_container = trigger.find(
+      :xpath,
+      'ancestor::*[@data-controller="ruby-ui--dialog"][1]',
+      visible: :all,
+      wait: 10
+    )
+    expect(dialog_container).to have_css('dialog[role="dialog"]', visible: :all, wait: 10)
     trigger.click
 
-    expect(page).to have_css('[role="dialog"]', text: 'Record a past dose')
+    expect(dialog_container).to have_css(
+      'dialog[open][role="dialog"]',
+      text: 'Record a past dose',
+      wait: 10
+    )
 
     find('body').send_keys(:escape)
 

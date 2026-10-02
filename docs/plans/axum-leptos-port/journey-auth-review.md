@@ -1,0 +1,39 @@
+# Secure journey entry: independent review
+
+Review input: baseline `0b6fa2a8`, the existing and added Rust OAuth contracts, the bounded Rails authority below, frozen implementation source, runner evidence, and desktop/mobile browser screenshots. The reviewer changed no product or test source and ran no tests.
+
+## Rails authority for this slice
+
+- `app/misc/rodauth_main.rb` enables browser login, lockout, OTP, passkey, S256 PKCE for mobile, 15-minute access tokens, rotating refresh tokens, revocation, and session inactivity. Its login return rule resumes `/authorize`; the consent form is rendered in `app/views/rodauth/authorize.rb` with CSRF and registered client scopes.
+- `app/misc/rodauth_mobile_oauth.rb` makes mobile grants account-level and requires an active browser authentication session. `app/models/oauth_grant.rb` accepts a mobile grant only while it has `medtracker` scope, current login lifetime, and a verified, active, unlocked account. Raw bearer values are looked up through token hashes.
+- `app/controllers/api/v1/auth/sessions_controller.rb#households` lists the account's current active memberships in operational households. `app/controllers/api/v1/base_controller.rb#bind_api_household_context!` resolves current membership for each requested household, rejects foreign or nonoperational households, and binds tenant context before resource access. The same token can serve multiple households without carrying a fixed role.
+- `spec/requests/mobile_oauth_authorization_spec.rb` proves browser CSRF, second-factor gating after a correct password, S256-only mobile authorisation, registered callback and client binding, code expiry and single use, refresh rotation, device revocation, and current household role and membership changes. The six Rust cases cover only part of this authority.
+
+## Boundary questions and acceptance criteria
+
+The implementation should present a concrete browser-session, CSRF, consent, and grant transaction design before relying on any new shared abstraction. Password verification must leave a user with enrolled MFA or required passkey unapproved until that step completes; unsupported ceremonies must fail closed. A login or consent POST without the issued CSRF token must not issue a code. The resumed login must retain only a validated same-origin `/authorize` transaction, never an arbitrary return URL.
+
+An authorisation code must bind to one registered public client, exact registered callback, S256 challenge, approved scopes, account, and short expiry. Incorrect verifier, client, callback, expired code, or repeated redemption must yield no token; an invalid redemption must not consume an otherwise valid code unless the intended contract says otherwise. The code and refresh transition must be atomic under concurrent requests. Refresh must rotate once, reject replay, respect inactivity and absolute lifetime without extending authentication time, and revocation must disable both access and refresh. Secrets and bearer values must not enter logs or error bodies.
+
+An issued token must list only currently active operational households. Medication reads must use the selected household's current membership, role, and person access rules; membership loss or role change must take effect without reissuing the token, and one household's loss must not invalidate another authorised household.
+
+## Findings resolved during review
+
+1. Refresh rotation initially updated `last_used_at`, allowing refresh alone to extend inactivity. The product owner split the token update so refresh preserves activity; the HTTP test compares `last_used_at` and `authenticated_at` before and after rotation.
+2. Code redemption initially omitted the stored S256 method check. It now requires `code_challenge_method = 'S256'` under the locked grant lookup. HTTP cases reject missing/plain PKCE before code issuance and a wrong verifier at redemption.
+3. A password-only browser session initially remained usable if the account enrolled in OTP/WebAuthn afterwards. Session validation now rechecks factor enrollment before consent. The HTTP suite proves an OTP-enrolled account cannot reach consent or a code using only its password.
+4. Consent initially stamped the grant's authentication time at approval. It now derives that time from the signed browser session, preserving absolute login age through refresh.
+5. Consent initially required every requested scope despite selectable checkboxes. It now stores the approved subset and issues no refresh token without `offline_access`. The final form labels and describes each choice in user-facing language while retaining the original `scope[]` values.
+6. OAuth database errors initially flowed to a logger that rendered `DbErr`. The OAuth path now logs a generic operation failure and returns a generic HTTP error, avoiding credential-bearing SQL values in that diagnostic path.
+
+## Requirements verdict: pass for secure entry
+
+The final combined runner reports 30/30 HTTP cases and 5/5 browser cases, with no skips. This includes discovery, registered public client, CSRF login and consent, OTP password-only denial, exact callback/client and S256 PKCE checks, one-use code, refresh rotation and replay denial, revocation, issued-token household listing, medication read, and foreign-household rejection. The browser completed login and consent on desktop and mobile, intercepted the native callback, and checked keyboard error recovery. The final 1,499-path input manifest matched before and after at SHA-256 `36e580245342cce33ec66813f652cb504536185fa48398399334bcce22d13b59` on HEAD `0b6fa2a8`; see `journey-auth-runner-report.md` for fixture and image evidence.
+
+The implementation binds a signed ten-minute pending authorisation/CSRF cookie to the validated request, then rotates to a signed browser cookie backed by `account_active_session_keys`. Startup requires a secret of at least 32 bytes and a trusted public origin. Cookies are HttpOnly and SameSite=Lax, with Secure on HTTPS. Mobile grants remain account-level; selected household requests use current membership and transaction-local tenant settings. Token hashes use Rails-compatible padded URL-safe Base64 SHA256. Code and refresh changes use grant row locks and atomic updates. Ordinary reads use SeaORM entities; focused SQL remains for lockout and token transactions. The Compose runner supplies a transient signing secret and no host API port.
+
+## Code and UI quality verdict: pass for this slice
+
+No blocking source finding remains after the owner fixes. I inspected the final public-login, active-login, error and consent screenshots at desktop/mobile sizes: styled fields and labels fit without visible horizontal overflow, the error is legible, keyboard focus is visible, and scope descriptions now explain both data access and ongoing access. Direct public `/login` explains that sign-in begins in the registered app and exposes no unusable form. The API serves `/auth.css` under a CSP permitting only same-origin styles. The product owner reported passing API check, format, Clippy and unit tests plus web unit/lint checks; I did not execute them independently.
+
+The bounded result does not establish complete authentication or medication parity. OTP, passkey and recovery-code completion, password reset, and explicit consent decline remain unsupported; enrolled-factor accounts fail closed. Rust and Rails browser sessions are separate, with reauthentication across implementations accepted for this port. The browser test intercepted the native callback rather than launching a native app or external provider. A parallel Rust code-redemption race, later role change for a newly issued token, dose recording, stock updates and history were not exercised in this run. The source uses row locks and current membership reads for the first two, while Rails tests establish the broader authority; retain these as cutover checks rather than inferred end-to-end proof.

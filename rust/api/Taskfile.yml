@@ -1,0 +1,1179 @@
+---
+version: "3"
+
+tasks:
+  contract-recovery-inventory:
+    cmds:
+      - docker ps --format '{{"{{"}}.Names{{"}}"}} {{"{{"}}.Image{{"}}"}} {{"{{"}}.Ports{{"}}"}}'
+
+  contract-engine-ping:
+    cmds:
+      - curl --max-time 5 --silent --show-error --unix-socket /Users/damacus/.docker/run/docker.sock http://localhost/_ping
+
+  contract-process-diagnostics:
+    cmds:
+      - df -h .
+      - ps -axo pid,ppid,etime,state,comm | rg 'docker|buildx|cargo|rustc|fish|task'
+
+  contract-build-diagnostics:
+    cmds:
+      - docker buildx history ls
+      - docker system df
+      - ps -axo pid,ppid,etime,state,comm | rg 'docker|buildx|cargo|rustc|fish|task'
+
+  clean-household-incremental:
+    cmds:
+      - rm -rf rust/api/target/debug/incremental rust/web/target/debug/incremental rust/ui-preview/target/debug/incremental rust/contract-tests/target/debug/incremental
+
+  dashboard-ui-build:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - task -d rust/ui-preview build
+
+  build:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    deps: [dashboard-ui-build]
+    cmds:
+      - cargo build --manifest-path rust/api/Cargo.toml
+
+  fmt:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - cargo fmt --manifest-path rust/api/Cargo.toml --all -- --check
+
+  fmt:write:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - cargo fmt --manifest-path rust/api/Cargo.toml --all
+
+  check:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - cargo check --manifest-path rust/api/Cargo.toml --all-targets
+
+  test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - cargo test --manifest-path rust/api/Cargo.toml {{ if .TEST_FILE }}--test {{ .TEST_FILE }}{{ end }}
+
+  clippy:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - cargo clippy --manifest-path rust/api/Cargo.toml --all-targets -- -D warnings
+
+  acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish rust/contract-tests/run.fish rails medication-read-api
+
+  browser-rails:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish rust/contract-tests/run.fish rails browser-journey-rails
+
+  browser-rust:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - >-
+        env
+        HOUSEHOLD_ACCEPTANCE={{ .HOUSEHOLD_ACCEPTANCE | default "" | shellQuote }}
+        HOUSEHOLD_COMPLETION_ACCEPTANCE={{ .HOUSEHOLD_COMPLETION_ACCEPTANCE | default "" | shellQuote }}
+        HOUSEHOLD_STOCK_ACCEPTANCE={{ .HOUSEHOLD_STOCK_ACCEPTANCE | default "" | shellQuote }}
+        HOUSEHOLD_TEST_FILE={{ .HOUSEHOLD_TEST_FILE | default "" | shellQuote }}
+        HOUSEHOLD_TEST_FILTER={{ .HOUSEHOLD_TEST_FILTER | default "" | shellQuote }}
+        BROWSER_TEST_FILES={{ .BROWSER_TEST_FILES | default "tests/medication-journey.test.mjs tests/medication-journey-form.test.mjs" | shellQuote }}
+        fish rust/contract-tests/run.fish rails browser-journey-rust
+
+  browser-dashboard-rust:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish rust/contract-tests/run.fish rails browser-dashboard-rust
+
+  web-session-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish rust/contract-tests/run.fish rails web-session-api
+
+  web-reads-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish rust/contract-tests/run.fish rails web-reads-api
+
+  web-reads-rails:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish rust/contract-tests/run.fish rails web-reads-rails
+
+  contract-runner-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish --no-config rust/contract-tests/runner_compose_test.fish
+
+  contract-browser-context-test:
+    cmds:
+      - fish --no-config rust/contract-tests/browser_context_test.fish
+
+  contract-household-selector-test:
+    cmds:
+      - fish --no-config rust/contract-tests/household_selector_test.fish
+
+  contract-minor-wrapper-test:
+    cmds:
+      - fish --no-config rust/contract-tests/browser_minor_wrapper_test.fish
+
+  contract-runner-lint:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish --no-config -n rust/contract-tests/run.fish
+      - fish --no-config -n rust/contract-tests/run_complete_api.fish
+      - fish --no-config -n rust/contract-tests/run_complete_lane.fish
+      - fish --no-config -n rust/contract-tests/run_lookup_subset.fish
+      - fish --no-config -n rust/contract-tests/runner_compose_test.fish
+      - fish --no-config -n rust/contract-tests/browser_context_test.fish
+      - fish --no-config -n rust/contract-tests/household_selector_test.fish
+      - fish --no-config -n rust/contract-tests/fixtures/household_wrapper_probe.fish
+      - fish --no-config -n rust/contract-tests/browser_minor_wrapper.fish
+      - fish --no-config -n rust/contract-tests/browser_minor_wrapper_test.fish
+      - fish --no-config -n rust/contract-tests/fixtures/browser_minor_fake_task.fish
+      - fish --no-config -n rust/contract-tests/fixtures/browser_minor_legacy.fish
+      - fish --no-config -n rust/contract-tests/test_support/rtk
+
+  contract-harness-fmt:
+    cmds:
+      - rustfmt --edition 2021 --check rust/contract-tests/src/lib.rs
+
+  contract-harness-fmt:write:
+    cmds:
+      - rustfmt --edition 2021 rust/contract-tests/src/lib.rs
+
+  contract-harness-test:
+    cmds:
+      - cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --lib
+
+  complete-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish --no-config rust/contract-tests/run_complete_api.fish
+
+  contract-warm:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    deps: [contract-dependencies, contract-browser-dependencies]
+
+  contract-dependencies:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - docker build --target dependencies -f rust/contract-tests/Dockerfile .
+
+  contract-browser-dependencies:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - docker build --target dependencies -f rust/web/Dockerfile.smoke rust/web
+
+  contract-up:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    deps: [dashboard-ui-build]
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test up -d --wait --build rust-api
+
+  contract-source-snapshot:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    deps: [dashboard-ui-build]
+    requires:
+      vars: [CONTRACT_SOURCE_DIR]
+    cmds:
+      - mkdir -p '{{ .CONTRACT_SOURCE_DIR }}/rust/api' '{{ .CONTRACT_SOURCE_DIR }}/rust/web' '{{ .CONTRACT_SOURCE_DIR }}/rust/ui-preview' '{{ .CONTRACT_SOURCE_DIR }}/rust/contract-tests' '{{ .CONTRACT_SOURCE_DIR }}/config/locales' '{{ .CONTRACT_SOURCE_DIR }}/vendor/fonts'
+      - rsync -a --exclude target/ rust/api/ '{{ .CONTRACT_SOURCE_DIR }}/rust/api/'
+      - rsync -a --exclude target/ rust/web/ '{{ .CONTRACT_SOURCE_DIR }}/rust/web/'
+      - rsync -a --exclude target/ --exclude node_modules/ rust/ui-preview/ '{{ .CONTRACT_SOURCE_DIR }}/rust/ui-preview/'
+      - rsync -a --exclude target/ rust/contract-tests/ '{{ .CONTRACT_SOURCE_DIR }}/rust/contract-tests/'
+      - cp config/ai_medication_sources.yml config/nhs_dmd_curated_products.yml '{{ .CONTRACT_SOURCE_DIR }}/config/'
+      - cp config/locales/*.yml '{{ .CONTRACT_SOURCE_DIR }}/config/locales/'
+      - cp vendor/fonts/NotoSans-Regular.ttf vendor/fonts/OFL-1.1.txt '{{ .CONTRACT_SOURCE_DIR }}/vendor/fonts/'
+
+  contract-external-up:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test up -d --wait --no-build rust-api-ai-openai rust-api-ai-openrouter rust-api-ai-anthropic rust-api-ai-gemini
+
+  contract-compose-validate:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test config --quiet
+
+  contract-ready:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test exec -T rust-api curl --fail --silent --show-error http://127.0.0.1:39998/up
+
+  contract-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests fish rust/contract-tests/run_medication_api_tests.fish
+
+  contract-image-remove:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    cmds:
+      - fish rust/contract-tests/remove_image.fish {{ .CONTRACT_PROJECT }}
+
+  contract-web-session-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test web_session_api -- --test-threads=1
+
+  contract-web-reads-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test web_reads_api -- --test-threads=1
+
+  contract-openapi-locations-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --no-fail-fast --manifest-path rust/contract-tests/Cargo.toml --test openapi_locations --test openapi_location_writes --test openapi_rate_limit -- --test-threads=1
+
+  openapi-locations-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish rust/contract-tests/run.fish rails openapi-locations
+
+  contract-openapi-notifications-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test openapi_notification_preferences -- --test-threads=1
+
+  contract-openapi-admin-settings-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test openapi_admin_settings -- --test-threads=1
+
+  openapi-admin-settings-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish rust/contract-tests/run.fish rails openapi-admin-settings
+
+  openapi-admin-settings-fmt:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - rustfmt --check rust/contract-tests/tests/openapi_admin_settings.rs
+
+  contract-openapi-person-medication-writes-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test openapi_person_medication_writes -- --test-threads=1
+
+  openapi-person-medication-writes-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish rust/contract-tests/run.fish rails openapi-person-medication-writes
+
+  openapi-person-medication-writes-fmt:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - rustfmt --check rust/contract-tests/tests/openapi_person_medication_writes.rs
+
+  openapi-person-medication-writes-fmt:write:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - rustfmt rust/contract-tests/tests/openapi_person_medication_writes.rs
+
+  contract-openapi-schedule-writes-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test openapi_schedule_writes -- --test-threads=1
+
+  openapi-schedule-writes-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish rust/contract-tests/run.fish rails openapi-schedule-writes
+
+  openapi-schedule-writes-fmt:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - rustfmt --check rust/contract-tests/tests/openapi_schedule_writes.rs
+
+  openapi-schedule-writes-fmt:write:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - rustfmt rust/contract-tests/tests/openapi_schedule_writes.rs
+
+  contract-openapi-pause-lifecycle-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test openapi_pause_lifecycle -- --test-threads=1
+
+  openapi-pause-lifecycle-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish rust/contract-tests/run.fish rails openapi-pause-lifecycle
+
+  openapi-pause-lifecycle-fmt:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - rustfmt --check rust/contract-tests/tests/openapi_pause_lifecycle.rs
+
+  openapi-pause-lifecycle-fmt:write:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - rustfmt rust/contract-tests/tests/openapi_pause_lifecycle.rs
+
+  contract-openapi-dose-occurrences-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test openapi_dose_occurrences -- --test-threads=1
+
+  openapi-dose-occurrences-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish rust/contract-tests/run.fish rails openapi-dose-occurrences
+
+  openapi-dose-occurrences-fmt:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - rustfmt --check rust/contract-tests/tests/openapi_dose_occurrences.rs
+
+  openapi-dose-occurrences-fmt:write:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - rustfmt rust/contract-tests/tests/openapi_dose_occurrences.rs
+
+  contract-openapi-review-prompts-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test openapi_review_prompts -- --test-threads=1
+
+  openapi-review-prompts-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish rust/contract-tests/run.fish rails openapi-review-prompts
+
+  openapi-review-prompts-fmt:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - rustfmt --check rust/contract-tests/tests/openapi_review_prompts.rs
+
+  openapi-review-prompts-fmt:write:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - rustfmt rust/contract-tests/tests/openapi_review_prompts.rs
+
+  contract-openapi-app-tokens-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test openapi_app_tokens -- --test-threads=1
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test admin task_6a2_app_token -- --test-threads=1
+
+  openapi-app-tokens-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish --no-config rust/contract-tests/run.fish rails openapi-app-tokens
+
+  contract-openapi-memberships-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test openapi_memberships -- --test-threads=1
+
+  openapi-memberships-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish --no-config rust/contract-tests/run.fish rails openapi-memberships
+
+  contract-openapi-stock-workflows-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test openapi_stock_workflows -- --test-threads=1
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test medication_stock -- --test-threads=1
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test medication_management_security_api -- --test-threads=1
+
+  openapi-stock-workflows-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish --no-config rust/contract-tests/run.fish rails openapi-stock-workflows
+
+  contract-openapi-audit-logs-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test openapi_audit_logs -- --test-threads=1
+
+  openapi-audit-logs-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish --no-config rust/contract-tests/run.fish rails openapi-audit-logs
+
+  contract-openapi-person-grants-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test openapi_person_grants -- --test-threads=1
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test openapi_memberships -- --test-threads=1
+
+  openapi-person-grants-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish --no-config rust/contract-tests/run.fish rails openapi-person-grants
+
+  contract-openapi-invitations-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test up -d --wait --no-build rust-api-mail-fail
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test openapi_invitations -- --test-threads=1
+
+  contract-existing-invitations-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test invitations -- --test-threads=1
+
+  openapi-invitations-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish --no-config rust/contract-tests/run.fish rails openapi-invitations
+
+  openapi-invitations-legacy-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish --no-config rust/contract-tests/run.fish rails openapi-invitations-legacy
+
+  contract-openapi-profile-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test up -d --wait --no-build rust-api-storage-fail
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test openapi_profile -- --test-threads=1
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test profile -- --test-threads=1
+
+  openapi-profile-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish --no-config rust/contract-tests/run.fish rails openapi-profile
+
+  contract-openapi-profile-storage-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test up -d --wait --no-build rust-api-storage-fail
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test openapi_profile avatar_storage_failure_preserves_existing_attachment_and_profile_state -- --test-threads=1
+
+  openapi-profile-storage-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish --no-config rust/contract-tests/run.fish rails openapi-profile-storage
+
+  contract-openapi-rate-limit-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test openapi_rate_limit -- --test-threads=1
+
+  openapi-rate-limit-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish --no-config rust/contract-tests/run.fish rails openapi-rate-limit
+
+  contract-openapi-reports-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test up -d --wait --no-build rust-api-report-fail
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --no-fail-fast --manifest-path rust/contract-tests/Cargo.toml --test openapi_reports --test reports -- --test-threads=1 --skip data_exports_cover_json_zip_encryption_and_errors
+
+  openapi-reports-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish --no-config rust/contract-tests/run.fish rails openapi-reports
+
+  contract-openapi-health-events-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --no-fail-fast --manifest-path rust/contract-tests/Cargo.toml --test openapi_health_events --test dosage_health -- --test-threads=1
+
+  openapi-health-events-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish --no-config rust/contract-tests/run.fish rails openapi-health-events
+
+  contract-openapi-exports-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --no-fail-fast --manifest-path rust/contract-tests/Cargo.toml --test openapi_exports --test openapi_sync_reads -- --test-threads=1
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test sync -- --test-threads=1 --skip batch_
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test reports data_exports_cover_json_zip_encryption_and_errors -- --exact --test-threads=1
+
+  openapi-exports-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish --no-config rust/contract-tests/run.fish rails openapi-exports
+
+  contract-openapi-sync-reads-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test openapi_sync_reads -- --test-threads=1
+
+  openapi-sync-reads-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish --no-config rust/contract-tests/run.fish rails openapi-sync-reads
+
+  contract-openapi-external-integrations-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test openapi_external_integrations -- --test-threads=1
+
+  openapi-external-integrations-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish --no-config rust/contract-tests/run.fish rails openapi-external-integrations
+
+  contract-openapi-portable-writes-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test openapi_portable_writes -- --test-threads=1
+
+  openapi-portable-writes-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish --no-config rust/contract-tests/run.fish rails openapi-portable-writes
+
+  contract-openapi-portability-legacy-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test portability -- --test-threads=1
+
+  openapi-portability-legacy-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish --no-config rust/contract-tests/run.fish rails openapi-portability-legacy
+
+  contract-openapi-sync-batch-legacy-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test sync -- batch_ --test-threads=1
+
+  openapi-sync-batch-legacy-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish --no-config rust/contract-tests/run.fish rails openapi-sync-batch-legacy
+
+  contract-openapi-sync-batch-replay-focus-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test sync batch_replay_preserves_update_then_delete_results_after_resource_is_gone -- --exact --test-threads=1
+
+  openapi-sync-batch-replay-focus-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish --no-config rust/contract-tests/run.fish rails openapi-sync-batch-replay-focus
+
+  contract-openapi-replay-legacy-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test replay -- --test-threads=1
+
+  openapi-replay-legacy-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish --no-config rust/contract-tests/run.fish rails openapi-replay-legacy
+
+  contract-openapi-envelopes-legacy-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test envelopes -- --test-threads=1
+
+  openapi-envelopes-legacy-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish --no-config rust/contract-tests/run.fish rails openapi-envelopes-legacy
+
+  contract-api-legacy-auth-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test auth -- --test-threads=1
+
+  api-legacy-auth-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish --no-config rust/contract-tests/run.fish rails api-legacy-auth
+
+  contract-api-legacy-admin-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test admin -- --test-threads=1 --skip task_6a2_app_token
+
+  api-legacy-admin-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish --no-config rust/contract-tests/run.fish rails api-legacy-admin
+
+  contract-api-legacy-care-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test care -- --test-threads=1
+
+  api-legacy-care-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish --no-config rust/contract-tests/run.fish rails api-legacy-care
+
+  contract-api-legacy-devices-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test devices -- --test-threads=1
+
+  api-legacy-devices-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish --no-config rust/contract-tests/run.fish rails api-legacy-devices
+
+  contract-api-legacy-lookup-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests fish --no-config rust/contract-tests/run_lookup_subset.fish
+
+  api-legacy-lookup-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish --no-config rust/contract-tests/run.fish rails api-legacy-lookup
+
+  contract-openapi-read-completion-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --no-fail-fast --manifest-path rust/contract-tests/Cargo.toml --test openapi_read_completion --test openapi_location_writes -- --test-threads=1
+
+  openapi-read-completion-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish --no-config rust/contract-tests/run.fish rails openapi-read-completion
+
+  contract-openapi-medications-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test medication_read_api -- --test-threads=1
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test medication_stock -- --test-threads=1
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test dose_write_api -- --test-threads=1
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test openapi_medications -- --test-threads=1
+
+  openapi-medications-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish rust/contract-tests/run.fish rails openapi-medications
+
+  contract-openapi-medications-focused-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test openapi_medications -- --test-threads=1
+
+  openapi-medications-focused-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish rust/contract-tests/run.fish rails openapi-medications-focused
+
+  openapi-medications-fmt:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - rustfmt --check rust/contract-tests/tests/openapi_medications.rs
+
+  openapi-medications-fmt:write:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - rustfmt rust/contract-tests/tests/openapi_medications.rs
+
+  openapi-notifications-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish rust/contract-tests/run.fish rails openapi-notifications
+
+  openapi-notifications-fmt:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - rustfmt --check rust/contract-tests/tests/openapi_notification_preferences.rs
+
+  contract-openapi-native-tokens-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test openapi_native_device_tokens -- --test-threads=1
+
+  openapi-native-tokens-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish rust/contract-tests/run.fish rails openapi-native-tokens
+
+  openapi-native-tokens-fmt:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - rustfmt --check rust/contract-tests/tests/openapi_native_device_tokens.rs
+
+  contract-openapi-push-subscriptions-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test openapi_push_subscriptions -- --test-threads=1
+
+  openapi-push-subscriptions-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish rust/contract-tests/run.fish rails openapi-push-subscriptions
+
+  openapi-push-subscriptions-fmt:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - rustfmt --check rust/contract-tests/tests/openapi_push_subscriptions.rs
+
+  contract-openapi-dosages-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --no-fail-fast --manifest-path rust/contract-tests/Cargo.toml --test openapi_dosage_options -- --test-threads=1
+
+  openapi-dosages-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish rust/contract-tests/run.fish rails openapi-dosages
+
+  openapi-dosages-fmt:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - rustfmt --check rust/contract-tests/tests/openapi_dosage_options.rs
+
+  openapi-dosages-fmt:write:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - rustfmt rust/contract-tests/tests/openapi_dosage_options.rs
+
+  contract-openapi-people-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --no-fail-fast --manifest-path rust/contract-tests/Cargo.toml --test openapi_people -- --test-threads=1
+
+  openapi-people-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish rust/contract-tests/run.fish rails openapi-people
+
+  openapi-people-fmt:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - rustfmt --check rust/contract-tests/tests/openapi_people.rs
+
+  openapi-people-fmt:write:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - rustfmt rust/contract-tests/tests/openapi_people.rs
+
+  contract-openapi-sessions-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --no-fail-fast --manifest-path rust/contract-tests/Cargo.toml --test openapi_auth_sessions -- --test-threads=1
+
+  contract-selected-compile:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [TEST_TARGET]
+    cmds:
+      - cargo test --locked --no-run --manifest-path rust/contract-tests/Cargo.toml --test {{ .TEST_TARGET }}
+
+  contract-household-web-test:
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+      WORKSPACE_DIR:
+        sh: pwd
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml {{ if .HOUSEHOLD_TEST_FILE }}--test {{ .HOUSEHOLD_TEST_FILE }}{{ else if eq .HOUSEHOLD_STOCK_ACCEPTANCE "true" }}--test household_stock --test household_stock_boundaries --test household_stock_concurrency{{ else if eq .HOUSEHOLD_COMPLETION_ACCEPTANCE "true" }}--test household_web --test household_navigation --test household_lifecycle --test household_completion_medication{{ else }}--test household_web --test household_navigation --test household_lifecycle{{ end }} -- {{ if .HOUSEHOLD_TEST_FILTER }}{{ .HOUSEHOLD_TEST_FILTER }}{{ end }} --test-threads=1
+      - '{{ if .HOUSEHOLD_TEST_FILE }}{{ else if eq .HOUSEHOLD_STOCK_ACCEPTANCE "true" }}{{ else if eq .HOUSEHOLD_COMPLETION_ACCEPTANCE "true" }}MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test household_completion_dashboard -- {{ if .HOUSEHOLD_TEST_FILTER }}{{ .HOUSEHOLD_TEST_FILTER }}{{ end }} --test-threads=1{{ end }}'
+
+  household-browser-syntax:
+    cmds:
+      - node --check rust/web/tests/household-routes.test.mjs
+      - node --check rust/web/tests/household-workflows.test.mjs
+      - node --check rust/web/tests/household-completion-locales.test.mjs
+      - node --check rust/web/tests/household-completion-medication.test.mjs
+      - node --check rust/web/tests/household-completion-dashboard.test.mjs
+
+  fmt-file:
+    requires:
+      vars: [FILE]
+    cmds:
+      - rustfmt --edition 2024 '{{ .FILE }}'
+
+  openapi-sessions-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish rust/contract-tests/run.fish rails openapi-sessions
+
+  openapi-sessions-fmt:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - rustfmt --check rust/contract-tests/tests/openapi_auth_sessions.rs
+
+  openapi-sessions-fmt:write:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - rustfmt rust/contract-tests/tests/openapi_auth_sessions.rs
+
+  openapi-locations-fmt:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - rustfmt --check rust/contract-tests/tests/openapi_locations.rs
+      - rustfmt --check rust/contract-tests/tests/openapi_location_writes.rs
+      - rustfmt --check rust/contract-tests/tests/openapi_rate_limit.rs
+
+  openapi-locations-fmt:write:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - rustfmt rust/contract-tests/tests/openapi_locations.rs
+      - rustfmt rust/contract-tests/tests/openapi_location_writes.rs
+      - rustfmt rust/contract-tests/tests/openapi_rate_limit.rs
+
+  contract-web-reads-rails-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test build rust-api
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rails-web-read-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test web_reads_api -- --test-threads=1
+
+  contract-browser-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - mkdir -p docs/screenshots/journey-auth
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test build rust-browser-tests
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-browser-tests
+
+  contract-network-diagnostics:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish rust/contract-tests/network_diagnostics.fish
+
+  contract-browser-rails:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - mkdir -p docs/screenshots/journey-medication-rails
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test build rails-browser-tests
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rails-browser-tests node --test tests/medication-journey.test.mjs
+
+  contract-browser-rust:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - mkdir -p docs/screenshots/journey-medication-rust
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test build rust-browser-tests
+      - >-
+        fish {{ printf "%s/rust/contract-tests/browser_minor_wrapper.fish" (.CONTRACT_API_BUILD_CONTEXT | default ".") | shellQuote }}
+        {{ .CONTRACT_PROJECT | shellQuote }}
+        {{ .BROWSER_TEST_FILES | default "tests/medication-journey.test.mjs tests/medication-journey-form.test.mjs" | shellQuote }}
+        {{ printf "%s/fixture.json" (.CONTRACT_FIXTURE_DIR | default "") | shellQuote }}
+
+  contract-browser-node:
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-browser-tests node --test {{ .BROWSER_TEST_FILES | default "tests/medication-journey.test.mjs tests/medication-journey-form.test.mjs" }}
+
+  contract-minor-viewer-sql:
+    requires:
+      vars: [CONTRACT_PROJECT, PHASE, FIXTURE_PATH]
+    preconditions:
+      - sh: >-
+          fish --no-config -c 'string match -qr "^mtcontract-[0-9a-f]{16}\$" -- $argv[1]; and contains -- $argv[2] prepare restore'
+          -- {{ .CONTRACT_PROJECT | shellQuote }} {{ .PHASE | shellQuote }}
+        msg: Minor browser setup requires an owned disposable contract project and a valid phase
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+      HOUSEHOLD_ID:
+        sh: jq -er '.household_id | numbers' {{ .FIXTURE_PATH | shellQuote }}
+      VIEW_MEMBERSHIP_ID:
+        sh: jq -er '.view_membership_id | numbers' {{ .FIXTURE_PATH | shellQuote }}
+      VIEW_ACCOUNT_ID:
+        sh: jq -er '.view_account_id | numbers' {{ .FIXTURE_PATH | shellQuote }}
+      WEB_VIEW_EMAIL:
+        sh: jq -er '.web_view_email | strings' {{ .FIXTURE_PATH | shellQuote }}
+      SQL_PATH: '{{ .CONTRACT_API_BUILD_CONTEXT | default "." }}/rust/contract-tests/fixtures/minor-viewer-{{ .PHASE }}.sql'
+    cmds:
+      - >-
+        MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT | shellQuote }}
+        --profile test exec -T db-test env PGPASSWORD=medtracker_password
+        psql -X -1 -v ON_ERROR_STOP=1 -h db-test -U medtracker -d medtracker_contract
+        -v household_id={{ .HOUSEHOLD_ID | shellQuote }}
+        -v view_membership_id={{ .VIEW_MEMBERSHIP_ID | shellQuote }}
+        -v view_account_id={{ .VIEW_ACCOUNT_ID | shellQuote }}
+        -v web_view_email={{ .WEB_VIEW_EMAIL | shellQuote }}
+        -f - < {{ .SQL_PATH | shellQuote }}
+
+  contract-browser-dashboard-rust:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - mkdir -p docs/screenshots/dashboard-rust
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test build rust-browser-tests
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-browser-tests node --test tests/dashboard.test.mjs tests/leptodon-dashboard.test.mjs
+
+  contract-subnet-check:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_TEST_SUBNET]
+    cmds:
+      - fish rust/contract-tests/validate_subnet.fish '{{ .CONTRACT_TEST_SUBNET }}'

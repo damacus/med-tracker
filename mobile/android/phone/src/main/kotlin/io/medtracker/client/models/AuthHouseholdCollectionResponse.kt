@@ -23,11 +23,15 @@ import com.squareup.moshi.JsonClass
 /**
  * 
  *
+ * @param accountId 
  * @param `data` 
  */
 
 
 data class AuthHouseholdCollectionResponse (
+
+    @Json(name = "account_id")
+    val accountId: kotlin.Int,
 
     @Json(name = "data")
     val `data`: kotlin.collections.List<AuthHouseholdMembership>

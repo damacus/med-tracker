@@ -27,6 +27,9 @@ import io.medtracker.client.models.MedicationOrderDetailsRequest
 import io.medtracker.client.models.MedicationResponse
 import io.medtracker.client.models.MedicationUpdateRequest
 import io.medtracker.client.models.RateLimitErrorEnvelope
+import io.medtracker.client.models.StockRemovalCollectionResponse
+import io.medtracker.client.models.StockRemovalRequest
+import io.medtracker.client.models.StockRemovalResponse
 
 import com.squareup.moshi.Json
 
@@ -210,6 +213,86 @@ open class MedicationsApi(basePath: kotlin.String = defaultBasePath, client: Cal
     }
 
     /**
+     * POST /households/{household_id}/medications/{medication_id}/stock_removals
+     * Remove tracked stock without recording a dose.
+     * Replay the same submission_id and facts to return the original removal without another decrement. Changed facts are rejected. Current inventory-management permission is required even for cached requests.
+     * @param householdId 
+     * @param medicationId 
+     * @param stockRemovalRequest 
+     * @return StockRemovalResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun createMedicationStockRemoval(householdId: kotlin.Int, medicationId: kotlin.String, stockRemovalRequest: StockRemovalRequest) : StockRemovalResponse {
+        val localVarResponse = createMedicationStockRemovalWithHttpInfo(householdId = householdId, medicationId = medicationId, stockRemovalRequest = stockRemovalRequest)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as StockRemovalResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * POST /households/{household_id}/medications/{medication_id}/stock_removals
+     * Remove tracked stock without recording a dose.
+     * Replay the same submission_id and facts to return the original removal without another decrement. Changed facts are rejected. Current inventory-management permission is required even for cached requests.
+     * @param householdId 
+     * @param medicationId 
+     * @param stockRemovalRequest 
+     * @return ApiResponse<StockRemovalResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun createMedicationStockRemovalWithHttpInfo(householdId: kotlin.Int, medicationId: kotlin.String, stockRemovalRequest: StockRemovalRequest) : ApiResponse<StockRemovalResponse?> {
+        val localVariableConfig = createMedicationStockRemovalRequestConfig(householdId = householdId, medicationId = medicationId, stockRemovalRequest = stockRemovalRequest)
+
+        return request<StockRemovalRequest, StockRemovalResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation createMedicationStockRemoval
+     *
+     * @param householdId 
+     * @param medicationId 
+     * @param stockRemovalRequest 
+     * @return RequestConfig
+     */
+    fun createMedicationStockRemovalRequestConfig(householdId: kotlin.Int, medicationId: kotlin.String, stockRemovalRequest: StockRemovalRequest) : RequestConfig<StockRemovalRequest> {
+        val localVariableBody = stockRemovalRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.POST,
+            path = "/households/{household_id}/medications/{medication_id}/stock_removals".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"medication_id"+"}", encodeURIComponent(medicationId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
      * GET /households/{household_id}/medications/{id}
      * Read a medication.
      * 
@@ -278,6 +361,96 @@ open class MedicationsApi(basePath: kotlin.String = defaultBasePath, client: Cal
         return RequestConfig(
             method = RequestMethod.GET,
             path = "/households/{household_id}/medications/{id}".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * GET /households/{household_id}/medications/{medication_id}/stock_removals
+     * List stock removals in newest-first order.
+     * Requires current household inventory-management permission.
+     * @param householdId 
+     * @param medicationId 
+     * @param page  (optional, default to 1)
+     * @param perPage  (optional, default to 20)
+     * @return StockRemovalCollectionResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun listMedicationStockRemovals(householdId: kotlin.Int, medicationId: kotlin.String, page: kotlin.Int? = 1, perPage: kotlin.Int? = 20) : StockRemovalCollectionResponse {
+        val localVarResponse = listMedicationStockRemovalsWithHttpInfo(householdId = householdId, medicationId = medicationId, page = page, perPage = perPage)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as StockRemovalCollectionResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * GET /households/{household_id}/medications/{medication_id}/stock_removals
+     * List stock removals in newest-first order.
+     * Requires current household inventory-management permission.
+     * @param householdId 
+     * @param medicationId 
+     * @param page  (optional, default to 1)
+     * @param perPage  (optional, default to 20)
+     * @return ApiResponse<StockRemovalCollectionResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun listMedicationStockRemovalsWithHttpInfo(householdId: kotlin.Int, medicationId: kotlin.String, page: kotlin.Int?, perPage: kotlin.Int?) : ApiResponse<StockRemovalCollectionResponse?> {
+        val localVariableConfig = listMedicationStockRemovalsRequestConfig(householdId = householdId, medicationId = medicationId, page = page, perPage = perPage)
+
+        return request<Unit, StockRemovalCollectionResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation listMedicationStockRemovals
+     *
+     * @param householdId 
+     * @param medicationId 
+     * @param page  (optional, default to 1)
+     * @param perPage  (optional, default to 20)
+     * @return RequestConfig
+     */
+    fun listMedicationStockRemovalsRequestConfig(householdId: kotlin.Int, medicationId: kotlin.String, page: kotlin.Int?, perPage: kotlin.Int?) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf<kotlin.String, kotlin.collections.List<kotlin.String>>()
+            .apply {
+                if (page != null) {
+                    put("page", listOf(page.toString()))
+                }
+                if (perPage != null) {
+                    put("per_page", listOf(perPage.toString()))
+                }
+            }
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.GET,
+            path = "/households/{household_id}/medications/{medication_id}/stock_removals".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"medication_id"+"}", encodeURIComponent(medicationId.toString())),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,

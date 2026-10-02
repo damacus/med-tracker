@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Views::Rodauth::WebauthnAuth, type: :component do
-  # rubocop:disable RSpec/ExampleLength, RSpec/VerifiedDoubles
+  # rubocop:disable-next RSpec/ExampleLength, RSpec/VerifiedDoubles
   it 'renders the WebAuthn authentication form' do
     credential_options = Struct.new(:challenge) do
       def as_json
@@ -34,5 +34,4 @@ RSpec.describe Views::Rodauth::WebauthnAuth, type: :component do
     expect(rendered.to_html).to include('Use passkey')
     expect(rendered.to_html).to include('min-h-screen')
   end
-  # rubocop:enable RSpec/ExampleLength, RSpec/VerifiedDoubles
 end

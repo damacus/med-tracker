@@ -1,0 +1,232 @@
+---
+# Internal Tasks - Reusable Docker Compose operations
+# These tasks are marked 'internal: true' and should only be called by other taskfiles
+# They require ENVIRONMENT variable (dev, test, or prod) to select the compose profile
+#
+# Uses a single compose.yaml with profiles instead of separate docker-compose.*.yml files.
+# COMPOSE_PROJECT_NAME is derived from the directory basename to support multiple worktrees.
+version: "3"
+
+vars:
+  DEFAULT_COMPOSE_PROJECT:
+    sh: |
+      base=$(basename "$PWD")
+      hash=$(pwd -P | git hash-object --stdin | cut -c1-8)
+      printf '%s-%s\n' "$base" "$hash"
+  COMPOSE_PROJECT: '{{ .CONTRACT_PROJECT | default .DEFAULT_COMPOSE_PROJECT }}'
+  GIT_COMMON_DIR:
+    sh: git rev-parse --path-format=absolute --git-common-dir
+  COMPOSE_CMD: MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .COMPOSE_PROJECT }}
+
+tasks:
+  # Execute arbitrary commands in Docker containers
+  # Required vars: ENVIRONMENT, COMMAND
+  # SERVICE is auto-derived as web-{{ .ENVIRONMENT }}
+  # Example: task internal:run ENVIRONMENT=test COMMAND='rails console'
+  run:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Run arbitrary command in Docker container
+    internal: true
+    run: always
+    requires:
+      vars: [ENVIRONMENT, COMMAND]
+    vars:
+      WEB_SERVICE: '{{ .SERVICE | default (printf "web-%s" .ENVIRONMENT) }}'
+      DB_SERVICE: "db-{{ .ENVIRONMENT }}"
+    # Callers pass these values through vars: and forward them into the
+    # container with -e NAME in DOCKER_RUN_ARGS; task-level env: on the
+    # caller does not propagate through task: calls.
+    env:
+      DESTINATION: '{{ .DESTINATION | default "" }}'
+      REASON: '{{ .REASON | default "" }}'
+      CMD: '{{ .CMD | default "" }}'
+    cmds:
+      - '{{ if not .SERVICE }}MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} ./scripts/with_compose_lock.rb
+        "{{ .COMPOSE_PROJECT }}-{{ .ENVIRONMENT }}" docker compose -p {{ .COMPOSE_PROJECT }}
+        --profile {{ .ENVIRONMENT }} up -d --wait {{ .DB_SERVICE }}{{ end }}'
+      - 'MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} ./scripts/with_compose_lock.rb
+        "{{ .COMPOSE_PROJECT }}-{{ .ENVIRONMENT }}" docker compose -p {{ .COMPOSE_PROJECT }}
+        --profile {{ .ENVIRONMENT }} run --rm {{ .DOCKER_RUN_ARGS | default "" }} {{ .WEB_SERVICE }} {{ .COMMAND }}'
+
+  # Build Docker images for specified environment
+  # Required vars: ENVIRONMENT
+  # Optional vars: NO_CACHE (set to "true" to force rebuild)
+  # Example: task internal:build ENVIRONMENT=test NO_CACHE=true
+  build:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Build Docker images
+    silent: false
+    internal: true
+    run: always
+    requires:
+      vars: [ENVIRONMENT]
+    vars:
+      NO_CACHE: '{{ .NO_CACHE | default "" }}'
+      WEB_SERVICE: "web-{{ .ENVIRONMENT }}"
+    env:
+      APP_IMAGE_REF: '{{ .APP_IMAGE_REF | default "med-tracker:local-production-build" }}'
+    cmds:
+      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} build {{ if .NO_CACHE }}--no-cache{{ end }} {{ .WEB_SERVICE }}"
+
+  # Start Docker containers in detached mode
+  # Required vars: ENVIRONMENT
+  # Removes orphaned containers and starts services
+  # Example: task internal:up ENVIRONMENT=dev
+  up:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Start Docker containers
+    internal: true
+    run: always
+    requires:
+      vars: [ENVIRONMENT]
+    vars:
+      DB_SERVICE: "db-{{ .ENVIRONMENT }}"
+      WEB_SERVICE: "web-{{ .ENVIRONMENT }}"
+    cmds:
+      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} up -d --wait {{ .DB_SERVICE }} {{ .WEB_SERVICE }}"
+      - echo "✓ {{ .ENVIRONMENT | title }} environment started"
+
+  # Stop and remove containers for a single profile
+  # Required vars: ENVIRONMENT
+  # NOTE: 'docker compose down' ignores --profile and removes ALL project containers.
+  # We use stop + rm to target only the profile's services.
+  # When REMOVE_VOLUMES=true, only removes volumes prefixed with the environment name.
+  # Example: task internal:stop ENVIRONMENT=test
+  stop:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Stop and remove Docker containers
+    internal: true
+    run: always
+    requires:
+      vars: [ENVIRONMENT]
+    vars:
+      REMOVE_VOLUMES: '{{ .REMOVE_VOLUMES | default "false" }}'
+      DB_SERVICE: "db-{{ .ENVIRONMENT }}"
+      MIGRATE_SERVICE: "migrate-{{ .ENVIRONMENT }}"
+      WEB_SERVICE: "web-{{ .ENVIRONMENT }}"
+      MAIL_SERVICE: '{{ .MAIL_SERVICE | default "" }}'
+    cmds:
+      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} stop {{ .WEB_SERVICE }} {{ .MIGRATE_SERVICE }} {{ .DB_SERVICE }}{{ if .MAIL_SERVICE }} {{ .MAIL_SERVICE }}{{ end }}"
+      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} rm -f {{ .WEB_SERVICE }} {{ .MIGRATE_SERVICE }} {{ .DB_SERVICE }}{{ if .MAIL_SERVICE }} {{ .MAIL_SERVICE }}{{ end }}"
+      - docker network rm {{ .COMPOSE_PROJECT }}_{{ .ENVIRONMENT }} 2>/dev/null || true
+      - |
+        {{ if eq .REMOVE_VOLUMES "true" }}
+        for vol in $(docker volume ls -q --filter "name={{ .COMPOSE_PROJECT }}_medtracker_{{ .ENVIRONMENT }}_"); do
+          echo "Removing volume: $vol"
+          docker volume rm "$vol"
+        done
+        {{ end }}
+      - echo "✓ {{ .ENVIRONMENT | title }} environment stopped"
+
+  # Start only the database container for a profile
+  # Used by rebuild to prepare DB before starting the web service
+  up-db:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Start database container only
+    internal: true
+    run: always
+    requires:
+      vars: [ENVIRONMENT]
+    vars:
+      DB_SERVICE: "db-{{ .ENVIRONMENT }}"
+    cmds:
+      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} up -d {{ if .WAIT }}--wait{{ end }} {{ .DB_SERVICE }}"
+      - echo "✓ {{ .ENVIRONMENT | title }} database started"
+
+  contract-down:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    internal: true
+    run: always
+    requires:
+      vars: [CONTRACT_PROJECT]
+    cmds:
+      - "{{ .COMPOSE_CMD }} --profile test down --volumes --remove-orphans --rmi local"
+
+  db-migrate:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Run Rails migrations
+    internal: true
+    run: always
+    requires:
+      vars: [ENVIRONMENT]
+    vars:
+      MIGRATION_SERVICE: "migrate-{{ .ENVIRONMENT }}"
+    cmds:
+      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} run --rm {{ .MIGRATION_SERVICE }} rails db:migrate"
+
+  # Follow logs from Docker containers
+  # Press Ctrl+C to stop following logs
+  # Example: task internal:logs ENVIRONMENT=dev
+  logs:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Follow container logs
+    internal: true
+    run: always
+    requires:
+      vars: [ENVIRONMENT]
+    vars:
+      DB_SERVICE: "db-{{ .ENVIRONMENT }}"
+      WEB_SERVICE: "web-{{ .ENVIRONMENT }}"
+    cmds:
+      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} logs -f {{ .DB_SERVICE }} {{ .WEB_SERVICE }}"
+
+  ps:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Get current status of Docker Compose Stack
+    internal: true
+    run: always
+    requires:
+      vars: [ENVIRONMENT]
+    vars:
+      DB_SERVICE: "db-{{ .ENVIRONMENT }}"
+      WEB_SERVICE: "web-{{ .ENVIRONMENT }}"
+    cmds:
+      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} ps {{ .DB_SERVICE }} {{ .WEB_SERVICE }}"
+
+  seed:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Seed database with fixtures
+    summary: |
+      Seed database with fixtures
+      Required vars: ENVIRONMENT
+      Loads data from db/seeds.rb
+      Example: task internal:seed ENVIRONMENT=test
+    internal: true
+    run: always
+    requires:
+      vars: [ENVIRONMENT]
+    cmds:
+      - echo "Seeding {{ .ENVIRONMENT }} database..."
+      - task: run
+        vars:
+          ENVIRONMENT: { ref: .ENVIRONMENT }
+          COMMAND: "rails db:seed"
+      - defer: echo "✓ Database seeding completed"
+
+  port:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Get port of running container
+    internal: false
+    run: always
+    requires:
+      vars: [ENVIRONMENT]
+    vars:
+      WEB_SERVICE: "web-{{ .ENVIRONMENT }}"
+    env:
+      MEDTRACKER_GIT_COMMON_DIR: '{{ .GIT_COMMON_DIR }}'
+    cmds:
+      - fish scripts/compose_port.fish '{{ .COMPOSE_PROJECT }}' '{{ .ENVIRONMENT }}' '{{ .SERVICE | default .WEB_SERVICE }}' '{{ .PORT | default "3000" }}'
+
+  open-ui:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Open WebUI
+    internal: true
+    run: always
+    requires:
+      vars: [ENVIRONMENT]
+    cmds:
+      - |
+        PORT=$(task internal:port ENVIRONMENT={{ .ENVIRONMENT }})
+        echo "Opening http://localhost:$PORT/admin/users in Google Chrome..."
+        sleep 2
+        open -a "Google Chrome" "http://localhost:$PORT/admin/users"

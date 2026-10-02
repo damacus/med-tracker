@@ -33,7 +33,8 @@ module Components
       def stock_check_controller_data
         {
           controller: 'stock-check',
-          stock_check_apply_label_value: t('medications.stock_check.apply', count: '__COUNT__'),
+          stock_check_apply_one_label_value: t('medications.stock_check.apply.one'),
+          stock_check_apply_other_label_value: t('medications.stock_check.apply.other', count: '__COUNT__'),
           stock_check_selected_label_value: t('medications.stock_check.selected', count: '__COUNT__'),
           stock_check_medicines_label_value: t('medications.stock_check.medicines', count: '__COUNT__'),
           stock_check_units_value: t('medications.stock_check.units')
@@ -459,7 +460,7 @@ module Components
                 data: { stock_check_target: 'submitButton' }
               ) do
                 span(data: { stock_check_target: 'submitLabel' }) do
-                  t('medications.stock_check.apply', count: initial_adjustments.size)
+                  submit_label
                 end
               end
             end
@@ -477,6 +478,14 @@ module Components
         span { t('medications.stock_check.net_change') }
         plain ' '
         strong(data: { stock_check_target: 'netChange' }) { initial_net_change }
+      end
+
+      def submit_label
+        if initial_adjustments.one?
+          t('medications.stock_check.apply.one')
+        else
+          t('medications.stock_check.apply.other', count: initial_adjustments.size)
+        end
       end
 
       def initial_difference_label(medication)

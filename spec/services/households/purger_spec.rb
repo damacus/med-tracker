@@ -321,6 +321,7 @@ RSpec.describe Households::Purger do
     notification_preference = create(:notification_preference, person: person, household: household)
     medication = create(:medication, household: household)
     pause_period = pause_period_for(person, medication)
+    MedicationDoseOccurrence.create!(schedule: pause_period.schedule, window_starts_on: Date.current, position: 1)
     purged_blob = purged_blob_for(person)
     target_records(notification_preference, medication, pause_period, purged_blob).merge(preserved_records)
   end

@@ -55,18 +55,21 @@ cargo build --manifest-path client-tools/Cargo.toml --workspace
 
 ## Authentication
 
-Set the hosted base URL and authenticate through the API:
+Create an API app token in MedTracker, then configure the CLI with it:
 
-```bash
-medtracker --base-url https://example.invalid auth login \
-  --email user@example.com \
-  --password "$MEDTRACKER_PASSWORD"
+```fish
+set -x MEDTRACKER_TOKEN 'YOUR_APP_TOKEN'
+medtracker --base-url https://example.invalid auth login
 ```
 
 The CLI stores non-secret profile configuration in the operating system config
 directory. Access tokens are stored in the operating system keychain where
 available. Tests and automation can pass `MEDTRACKER_TOKEN` to avoid touching a
 developer keychain.
+
+Password login and the custom refresh command are retired. App tokens have a
+fixed configured expiry, defaulting to 12 calendar months; replace an expired
+token through MedTracker. Interactive phone sign-in uses Rodauth browser login.
 
 The tools never print token material. API errors show the server `code`,
 `message`, `request_id`, and `retry_after` value when present.

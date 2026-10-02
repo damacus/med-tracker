@@ -17,6 +17,17 @@ RSpec.describe PersonShowQuery do
       expect(result.members).to contain_exactly(:person, :schedules, :person_medications)
     end
 
+    it 'preloads pause history for both source types' do
+      person = create(:person)
+      create(:schedule, person: person)
+      create(:person_medication, person: person)
+
+      result = described_class.new(person: person).call
+
+      expect(result.schedules.first.association(:medication_pause_periods)).to be_loaded
+      expect(result.person_medications.first.association(:medication_pause_periods)).to be_loaded
+    end
+
     it 'omits retired administration sources' do
       person = create(:person)
       schedule = create(:schedule, person: person)

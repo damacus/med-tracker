@@ -14,16 +14,6 @@ module Api
           render_forbidden
         end
 
-        def require_fresh_privileged_action
-          return if Api::FreshPrivilegedAction.new(credential: current_api_session).satisfied?
-
-          render_api_error(
-            code: 'fresh_privileged_action_required',
-            message: 'Fresh MFA or OIDC MFA proof is required for this action.',
-            status: :forbidden
-          )
-        end
-
         def audit_admin_action!(event_type:, target:, outcome:)
           Audit::Event.record!(
             household: current_household,

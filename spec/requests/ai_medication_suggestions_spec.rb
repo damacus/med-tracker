@@ -5,7 +5,10 @@ require 'rails_helper'
 RSpec.describe 'AI medication suggestions' do
   fixtures :accounts, :people, :users, :locations, :location_memberships
 
-  before { sign_in(users(:admin)) }
+  before do
+    allow(ENV).to receive(:fetch).and_call_original
+    sign_in(users(:admin))
+  end
 
   it 'is unavailable when the environment flag is disabled' do
     Household.find_by!(slug: default_request_household_slug).update!(subscription_plan: 'family_plus')

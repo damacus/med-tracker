@@ -35,7 +35,7 @@ RSpec.describe Components::Locations::ShowView, type: :component do
 
     rendered = render_location
 
-    expect(rendered.text).to include('3 units', 'Low Stock')
+    expect(rendered.text).to include('3 units', I18n.t('locations.show.stock_warning'))
   end
 
   it 'renders location members with the shared person avatar' do
@@ -67,6 +67,16 @@ RSpec.describe Components::Locations::ShowView, type: :component do
     expect(rendered.at_css('button[aria-label="Remove member"] svg[aria-hidden="true"]')).to be_present
     expect(rendered.at_css('a[aria-label="Edit location details"] svg[aria-hidden="true"]')).to be_present
     expect(rendered.at_css('button[aria-label="Add member"] svg[aria-hidden="true"]')).to be_present
+  end
+
+  it 'keeps member removal controls visibly discoverable without hover' do
+    person = create(:person, name: 'Location Member')
+    create(:location_membership, location: location, person: person)
+
+    rendered = render_location(available_people: [], update_allowed: true)
+    remove_button = rendered.at_css('button[aria-label="Remove member"]')
+
+    expect(remove_button['class']).not_to include('opacity-0')
   end
 
   it 'hides the header edit link from non-managers' do

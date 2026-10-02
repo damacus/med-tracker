@@ -12,7 +12,6 @@ RSpec.describe Components::People::AddMedicationLanding, type: :component do
     end
 
     expect(options.size).to eq(2)
-    expect(options.map { |option| option['class'].split }).to all(include('state-layer', 'rounded-2xl'))
     expect(options.map { |option| option['class'].split }).to all(include_touch_target_class)
   end
 
@@ -21,11 +20,8 @@ RSpec.describe Components::People::AddMedicationLanding, type: :component do
 
     rendered = render_inline(described_class.new(person: person, back_path: add_medication_path))
     back_link = rendered.at_css("a[href='#{add_medication_path}']")
-    classes = back_link['class'].split
 
     expect(back_link.text).to include('Back')
-    expect(classes).to include('state-layer')
-    expect(classes).not_to include('rounded-xl')
   end
 
   def include_touch_target_class

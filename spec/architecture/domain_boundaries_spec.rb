@@ -835,13 +835,16 @@ RSpec.describe 'Medication administration domain boundaries' do
   end
 
   it 'keeps each medication-take persistence operation inside an exact reviewed boundary', :aggregate_failures do
-    expect(persistence_files.keys).to match_array(MEDICATION_TAKE_BOUNDARY_CONTRACTS.keys)
+    sources = application_sources
+    writes = persistence_files(sources)
+
+    expect(writes.keys).to match_array(MEDICATION_TAKE_BOUNDARY_CONTRACTS.keys)
 
     MEDICATION_TAKE_BOUNDARY_CONTRACTS.each do |path, contract|
-      source = application_sources.fetch(path)
+      source = sources.fetch(path)
 
       expect(scanner.class_names(source).count(contract.fetch(:class_name))).to eq(1), path
-      expect(persistence_files.fetch(path).tally).to eq(contract.fetch(:operations)), path
+      expect(writes.fetch(path).tally).to eq(contract.fetch(:operations)), path
     end
   end
 
@@ -1323,8 +1326,8 @@ RSpec.describe 'Medication administration domain boundaries' do
     end
   end
 
-  def persistence_files
-    application_sources.each_with_object({}) do |(path, source), files|
+  def persistence_files(sources)
+    sources.each_with_object({}) do |(path, source), files|
       operations = scanner.call(source)
       files[path] = operations if operations.any?
     end

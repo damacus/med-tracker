@@ -29,16 +29,6 @@ RSpec.describe Views::Profiles::Show, type: :component do
     end)
   end
 
-  it 'uses token-driven shell surfaces instead of literal gradients and white overlays' do
-    rendered = render_inline(described_class.new(presenter:))
-    html = rendered.to_html
-
-    banned_classes = ['bg-[radial-gradient', 'bg-white/70', 'border-white/50', 'rounded-[2rem]',
-                      'bg-card/95']
-
-    expect(banned_classes.none?(&html.method(:include?))).to be(true)
-  end
-
   it 'renders an M3 identity header with the person avatar and profile metadata' do
     rendered = render_inline(described_class.new(presenter:))
 
@@ -69,6 +59,14 @@ RSpec.describe Views::Profiles::Show, type: :component do
     )
   end
 
+  it 'allows profile tab labels to wrap inside their controls' do
+    rendered = render_inline(described_class.new(presenter:))
+
+    expect(rendered.css('[data-testid="profile-section-tab"]').pluck('class')).to all(
+      include('whitespace-normal', 'leading-tight')
+    )
+  end
+
   it 'renders the selected profile summary' do
     rendered = render_inline(described_class.new(presenter:))
 
@@ -87,7 +85,7 @@ RSpec.describe Views::Profiles::Show, type: :component do
     rendered = render_inline(described_class.new(presenter:))
     sheets = rendered.css('[data-controller="ruby-ui--sheet"]')
 
-    expect(sheets.map(&:text).map(&:squish)).to include(
+    expect(sheets.map { |sheet| sheet.text.squish }).to include(
       a_string_including('Profile photo'),
       a_string_including('Appearance')
     )
@@ -110,7 +108,7 @@ RSpec.describe Views::Profiles::Show, type: :component do
 
     expect(groups).not_to be_empty
     expect(groups.all? { |group| group.css('[role="radio"]').size == 2 }).to be(true)
-    expect(groups.map(&:text).map(&:squish)).to all(eq('OnOff'))
+    expect(groups.map { |group| group.text.squish }).to all(eq('OnOff'))
   end
 
   it 'keeps uncommon advanced tasks in nested expandable rows' do

@@ -44,12 +44,11 @@ data class AdminWriteForbiddenError (
     /**
      * 
      *
-     * Values: forbidden,fresh_privileged_action_required,unknown_default_open_api
+     * Values: forbidden,unknown_default_open_api
      */
     @JsonClass(generateAdapter = false)
     enum class Code(val value: kotlin.String) {
         @Json(name = "forbidden") forbidden("forbidden"),
-        @Json(name = "fresh_privileged_action_required") fresh_privileged_action_required("fresh_privileged_action_required"),
         @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
     }
 

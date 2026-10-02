@@ -127,7 +127,8 @@ RSpec.describe 'Person medication edit and update' do
       before { sign_in(users(:parent)) }
 
       it 'pauses the medication assignment and redirects' do
-        patch pause_person_person_medication_path(person, linked_person_medication)
+        patch pause_person_person_medication_path(person, linked_person_medication),
+              params: { pause_period: { reason: 'other' } }
 
         expect(response).to redirect_to(person_path(person))
         expect(linked_person_medication.reload).to be_paused
@@ -135,6 +136,7 @@ RSpec.describe 'Person medication edit and update' do
 
       it 'returns a turbo stream refresh for the person show container' do
         patch pause_person_person_medication_path(person, linked_person_medication),
+              params: { pause_period: { reason: 'other' } },
               headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 
         expect(response).to have_http_status(:ok)

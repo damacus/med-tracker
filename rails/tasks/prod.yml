@@ -1,0 +1,295 @@
+---
+# Production Environment Tasks (local validation only)
+# All tasks operate on the 'prod' profile (compose.yaml)
+# This is NOT for real production deployments — it validates
+# the production image builds and runs correctly.
+# Usage: task prod:<command>
+version: "3"
+
+tasks:
+  build:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Build production Docker images
+    summary: |
+      Build Docker images for production environment (app stage).
+      Use NO_CACHE=true to force a fresh build.
+      Usage: task prod:build
+      Usage: task prod:build NO_CACHE=true
+    env:
+      APP_IMAGE_REF: '{{ .APP_IMAGE_REF | default "med-tracker:local-production-build" }}'
+    cmds:
+      - task: :internal:build
+        vars:
+          ENVIRONMENT: prod
+          NO_CACHE: '{{ .NO_CACHE | default "" }}'
+          APP_IMAGE_REF: '{{ .APP_IMAGE_REF | default "med-tracker:local-production-build" }}'
+
+  medication-search-smoke:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Verify medication search from the final production image
+    summary: |
+      Build the final app target and exercise medication search without an app source mount.
+      Usage: task prod:medication-search-smoke
+    vars:
+      IMAGE_REF: '{{ .APP_IMAGE_REF | default "med-tracker:medication-search-smoke" }}'
+    cmds:
+      - task: build
+        vars:
+          APP_IMAGE_REF: '{{ .IMAGE_REF }}'
+      - ./scripts/production_medication_search_smoke.fish '{{ .IMAGE_REF }}'
+
+  observability-characterization:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Characterize observability from the final production image
+    summary: |
+      Build the final app target and capture request, job, logger, and telemetry output without an app source mount.
+      Usage: task prod:observability-characterization
+    vars:
+      IMAGE_REF: '{{ .APP_IMAGE_REF | default "med-tracker:observability-characterization" }}'
+    cmds:
+      - task: build
+        vars:
+          APP_IMAGE_REF: '{{ .IMAGE_REF }}'
+      - ./scripts/production_observability_characterization.fish '{{ .IMAGE_REF }}'
+
+  storage-disk-smoke:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Verify Disk storage from the final production image
+    vars:
+      IMAGE_REF: '{{ .APP_IMAGE_REF | default "med-tracker:storage-disk-smoke" }}'
+    cmds:
+      - task: build
+        vars:
+          APP_IMAGE_REF: '{{ .IMAGE_REF }}'
+      - ./scripts/production_storage_smoke.fish '{{ .IMAGE_REF }}' disk
+
+  storage-s3-smoke:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Verify S3 storage from the final production image
+    vars:
+      IMAGE_REF: '{{ .APP_IMAGE_REF | default "med-tracker:storage-s3-smoke" }}'
+    cmds:
+      - task: build
+        vars:
+          APP_IMAGE_REF: '{{ .IMAGE_REF }}'
+      - ./scripts/production_storage_smoke.fish '{{ .IMAGE_REF }}' s3
+
+  storage-migration-start:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Start or dry-run a portable storage migration
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: prod
+          COMMAND: 'env DATABASE_ROLE=med_tracker_owner STORAGE_MIGRATION_ACTION=start STORAGE_MIGRATION_SOURCE="{{ .SOURCE }}" STORAGE_MIGRATION_DESTINATION="{{ .DESTINATION }}" STORAGE_MIGRATION_PHASE="{{ .PHASE }}" STORAGE_MIGRATION_APPLY="{{ .APPLY }}" STORAGE_MIGRATION_CONFIRM="{{ .CONFIRM }}" rails storage:migration'
+
+  storage-migration-resume:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Resume or dry-run a portable storage migration
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: prod
+          COMMAND: 'env DATABASE_ROLE=med_tracker_owner STORAGE_MIGRATION_ACTION=resume STORAGE_MIGRATION_RUN_ID="{{ .RUN_ID }}" STORAGE_MIGRATION_SOURCE="{{ .SOURCE }}" STORAGE_MIGRATION_DESTINATION="{{ .DESTINATION }}" STORAGE_MIGRATION_PHASE="{{ .PHASE }}" STORAGE_MIGRATION_APPLY="{{ .APPLY }}" STORAGE_MIGRATION_CONFIRM="{{ .CONFIRM }}" rails storage:migration'
+
+  storage-migration-reconcile:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Reconcile or dry-run a stable portable storage set
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: prod
+          COMMAND: 'env DATABASE_ROLE=med_tracker_owner STORAGE_MIGRATION_ACTION=reconcile STORAGE_MIGRATION_RUN_ID="{{ .RUN_ID }}" STORAGE_MIGRATION_SOURCE="{{ .SOURCE }}" STORAGE_MIGRATION_DESTINATION="{{ .DESTINATION }}" STORAGE_MIGRATION_PHASE="{{ .PHASE }}" STORAGE_MIGRATION_APPLY="{{ .APPLY }}" STORAGE_MIGRATION_CONFIRM="{{ .CONFIRM }}" STORAGE_MIGRATION_MUTATIONS_QUIESCED="{{ .MUTATIONS_QUIESCED }}" STORAGE_MIGRATION_MIRROR_QUEUE_DRAINED="{{ .MIRROR_QUEUE_DRAINED }}" rails storage:migration'
+
+  storage-migration-cutover-eligibility:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Report portable storage cutover eligibility
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: prod
+          COMMAND: 'env DATABASE_ROLE=med_tracker_owner STORAGE_MIGRATION_ACTION=cutover_eligibility STORAGE_MIGRATION_RUN_ID="{{ .RUN_ID }}" STORAGE_MIGRATION_SOURCE="{{ .SOURCE }}" STORAGE_MIGRATION_DESTINATION="{{ .DESTINATION }}" STORAGE_MIGRATION_PHASE="{{ .PHASE }}" rails storage:migration'
+
+  storage-migration-cutover:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Cut over or dry-run portable storage
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: prod
+          COMMAND: 'env DATABASE_ROLE=med_tracker_owner STORAGE_MIGRATION_ACTION=cutover STORAGE_MIGRATION_RUN_ID="{{ .RUN_ID }}" STORAGE_MIGRATION_SOURCE="{{ .SOURCE }}" STORAGE_MIGRATION_DESTINATION="{{ .DESTINATION }}" STORAGE_MIGRATION_PHASE="{{ .PHASE }}" STORAGE_MIGRATION_APPLY="{{ .APPLY }}" STORAGE_MIGRATION_CONFIRM="{{ .CONFIRM }}" rails storage:migration'
+
+  storage-migration-rollback:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Roll back or dry-run portable storage inside the rollback window
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: prod
+          COMMAND: 'env DATABASE_ROLE=med_tracker_owner STORAGE_MIGRATION_ACTION=rollback STORAGE_MIGRATION_RUN_ID="{{ .RUN_ID }}" STORAGE_MIGRATION_SOURCE="{{ .SOURCE }}" STORAGE_MIGRATION_DESTINATION="{{ .DESTINATION }}" STORAGE_MIGRATION_PHASE="{{ .PHASE }}" STORAGE_MIGRATION_APPLY="{{ .APPLY }}" STORAGE_MIGRATION_CONFIRM="{{ .CONFIRM }}" STORAGE_MIGRATION_SOURCE_VERIFIED="{{ .SOURCE_VERIFIED }}" STORAGE_MIGRATION_MIRROR_QUEUE_DRAINED="{{ .MIRROR_QUEUE_DRAINED }}" rails storage:migration'
+
+  storage-migration-finalize:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Finalize or dry-run portable storage after its rollback window
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: prod
+          COMMAND: 'env DATABASE_ROLE=med_tracker_owner STORAGE_MIGRATION_ACTION=finalize STORAGE_MIGRATION_RUN_ID="{{ .RUN_ID }}" STORAGE_MIGRATION_SOURCE="{{ .SOURCE }}" STORAGE_MIGRATION_DESTINATION="{{ .DESTINATION }}" STORAGE_MIGRATION_PHASE="{{ .PHASE }}" STORAGE_MIGRATION_APPLY="{{ .APPLY }}" STORAGE_MIGRATION_CONFIRM="{{ .CONFIRM }}" STORAGE_MIGRATION_ACCEPTANCE_VERIFIED="{{ .ACCEPTANCE_VERIFIED }}" STORAGE_MIGRATION_RECOVERY_VERIFIED="{{ .RECOVERY_VERIFIED }}" STORAGE_MIGRATION_FINAL_RECONCILED="{{ .FINAL_RECONCILED }}" rails storage:migration'
+
+  storage-migration-retirement-eligibility:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Report whether the inactive source can be retired
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: prod
+          COMMAND: 'env DATABASE_ROLE=med_tracker_owner STORAGE_MIGRATION_ACTION=retirement_eligibility STORAGE_MIGRATION_RUN_ID="{{ .RUN_ID }}" STORAGE_MIGRATION_SOURCE="{{ .SOURCE }}" STORAGE_MIGRATION_DESTINATION="{{ .DESTINATION }}" STORAGE_MIGRATION_PHASE="{{ .PHASE }}" STORAGE_MIGRATION_LIVE_SOURCE_DEPENDENCY="{{ .LIVE_SOURCE_DEPENDENCY }}" rails storage:migration'
+
+  up:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Start production server (local validation)
+    summary: |
+      Start the production server locally for validation.
+      Uses Thruster (HTTP/2 proxy) wrapping Puma on port 80.
+      Usage: task prod:up
+    cmds:
+      - task: :internal:up
+        vars: { ENVIRONMENT: prod }
+
+  stop:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Stop production server
+    summary: |
+      Stop the production server and remove containers.
+      Database volumes are preserved.
+      Usage: task prod:stop
+    cmds:
+      - task: :internal:stop
+        vars: { ENVIRONMENT: prod }
+
+  ps:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: List production container status
+    summary: |
+      List current status of production Docker Compose stack.
+      Usage: task prod:ps
+    cmds:
+      - task: :internal:ps
+        vars: { ENVIRONMENT: prod }
+
+  rebuild:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Rebuild production server (drops database)
+    summary: |
+      Rebuild the production environment from scratch.
+      WARNING: This drops the database and all data!
+      Usage: task prod:rebuild
+    env:
+      APP_IMAGE_REF: '{{ .APP_IMAGE_REF | default "med-tracker:local-production-build" }}'
+    cmds:
+      - task: :internal:stop
+        vars: { ENVIRONMENT: prod, REMOVE_VOLUMES: "true" }
+      - task: :internal:build
+        vars:
+          ENVIRONMENT: prod
+          APP_IMAGE_REF: '{{ .APP_IMAGE_REF | default "med-tracker:local-production-build" }}'
+      - task: :internal:up
+        vars: { ENVIRONMENT: prod }
+
+  seed-medicines:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Seed medicines from db/seeds/medicines.yml (production)
+    summary: |
+      Seed the production database with medicines from db/seeds/medicines.yml.
+      Idempotent — safe to run multiple times.
+      Usage: task prod:seed-medicines
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: prod
+          COMMAND: 'rails runner ''load Rails.root.join("db/seeds/seed_medicines.rb")'''
+
+  seed-users:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Send invitations to initial users from db/seeds/users.yml (production)
+    summary: |
+      Send invitation emails to users listed in db/seeds/users.yml.
+      Idempotent — skips emails that already have an account or pending invitation.
+      Requires APP_URL env var for invitation links.
+      For k8s: run as a one-off Job or init container with: rails db:seed
+      Usage: task prod:seed-users
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: prod
+          COMMAND: 'rails runner ''load Rails.root.join("db/seeds/seed_users.rb")'''
+
+  verify-storage-restore:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Verify a restored production attachment and its stored blob
+    summary: |
+      Verify that an Active Storage attachment restored in PostgreSQL has a
+      readable, checksum-valid object on the mounted production volume.
+      Uses the owner-capable database role because the isolated recovery check
+      must select a restored attachment before tenant context is established.
+      Usage: task prod:verify-storage-restore
+      Usage: task prod:verify-storage-restore ATTACHMENT_ID=123
+    vars:
+      attachment_id: '{{ .ATTACHMENT_ID | default "" }}'
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: prod
+          COMMAND: 'env DATABASE_ROLE=med_tracker_owner ATTACHMENT_ID="{{ .attachment_id }}" DATABASE_RECOVERY_REFERENCE="{{ .DATABASE_RECOVERY_REFERENCE }}" DISK_RECOVERY_REFERENCE="{{ .DISK_RECOVERY_REFERENCE }}" S3_RECOVERY_REFERENCE="{{ .S3_RECOVERY_REFERENCE }}" STORAGE_MIGRATION_RUN_ID="{{ .STORAGE_MIGRATION_RUN_ID }}" AUTHORIZED_RETRIEVAL_VERIFIED="{{ .AUTHORIZED_RETRIEVAL_VERIFIED }}" CROSS_HOUSEHOLD_DENIAL_VERIFIED="{{ .CROSS_HOUSEHOLD_DENIAL_VERIFIED }}" rails med_tracker:storage:verify_restore'
+
+  import-dmd-barcodes:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Import NHS dm+d GTIN barcode mappings from CSV
+    summary: |
+      Import barcode-to-dm+d mappings into the production database.
+      Usage: task prod:import-dmd-barcodes FILE=/absolute/path/to/barcodes.csv
+    requires:
+      vars: [FILE]
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: prod
+          COMMAND: 'rails runner db/seeds/import_nhs_dmd_barcodes.rb "{{ .FILE }}"'
+
+  import-dmd-release:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Import NHS dm+d release XML (AMPP names + GTIN barcodes)
+    summary: |
+      Parse the dm+d release XML files and import AMPP product names
+      with their GTIN barcodes into the production database.
+      Automatically extracts the GTIN zip if only the zip is present.
+      This task is for local Docker Compose prod validation only.
+      For Kubernetes production, use the one-off Job flow in
+      docs/kubernetes-nhs-dmd-import.md.
+      RELEASE_DIR is a host path; it is bind-mounted into the container.
+      Usage: task prod:import-dmd-release RELEASE_DIR=storage/nhs_dmd/releases/current
+    requires:
+      vars: [RELEASE_DIR]
+    vars:
+      COMPOSE_PROJECT:
+        sh: basename $PWD
+      ABS_RELEASE_DIR:
+        sh: 'cd "{{ .RELEASE_DIR }}" && pwd'
+      CONTAINER_MOUNT: /tmp/dmd-release
+    cmds:
+      - >-
+        docker compose -p {{ .COMPOSE_PROJECT }} --profile prod run --rm
+        -v "{{ .ABS_RELEASE_DIR }}:{{ .CONTAINER_MOUNT }}:ro"
+        web-prod rails runner db/seeds/import_nhs_dmd_release.rb "{{ .CONTAINER_MOUNT }}"
+
+  logs:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: View production server logs
+    summary: |
+      View and follow production server logs in real-time.
+      Press Ctrl+C to stop following.
+      Usage: task prod:logs
+    cmds:
+      - task: :internal:logs
+        vars: { ENVIRONMENT: prod }

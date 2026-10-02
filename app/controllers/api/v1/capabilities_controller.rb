@@ -17,6 +17,15 @@ module Api
           api_version: 'v1',
           authentication: authentication,
           administration: administration,
+          medication_pause_periods: { supported: true, reasons: MedicationPausePeriod::PUBLIC_REASONS,
+                                      effective_time: 'server_acceptance' },
+          dose_outcomes: dose_outcomes,
+          stock_removals: stock_removals,
+          location_management: location_management,
+          medication_reviews: medication_reviews,
+          reports: reports,
+          profile: profile,
+          invitations: { actions: %w[accept resend], online_only: true, acceptance_session_required: true },
           portable_formats: portable_formats,
           backups: backups,
           fhir: fhir,
@@ -27,23 +36,29 @@ module Api
 
       def authentication
         {
-          methods: %w[bearer_session api_app_token],
-          hosted_mobile: 'oidc_authorization_code_pkce',
-          password_login: 'development_or_migration',
-          oidc_exchange: {
-            supported: true,
-            pkce_required: true,
-            household_selection: true,
-            session_listing: true,
-            session_revocation: true
-          }
+          methods: %w[oauth_bearer api_app_token],
+          hosted_mobile: 'rodauth_authorization_code_pkce',
+          mobile_oauth: mobile_oauth
+        }
+      end
+
+      def mobile_oauth
+        {
+          discovery_url: "#{request.base_url}/.well-known/oauth-authorization-server",
+          household_binding: 'account',
+          inactivity_timeout_days: AuthenticationLifetime.inactivity_days,
+          maximum_age_days: AuthenticationLifetime.maximum_age_days,
+          clients: OauthApplication.mobile.order(:client_id).map do |client|
+            { client_id: client.client_id, name: client.name,
+              redirect_uris: client.redirect_uri.split, scopes: client.scopes.split }
+          end
         }
       end
 
       def administration
         {
           household: true,
-          fresh_mfa_required: true,
+          fresh_mfa_required: false,
           app_tokens: true,
           audit_logs: true,
           invitations: true,
@@ -57,6 +72,39 @@ module Api
           medtracker.portable.encrypted.v1
           medtracker.portable.v2
         ]
+      end
+
+      def dose_outcomes
+        {
+          source_types: %w[schedule person_medication],
+          max_read_days: MedicationAdministration::OccurrenceProjection::MAX_DAYS,
+          actions: %w[not_taken reopen take],
+          replacement_requires_version: true
+        }
+      end
+
+      def reports
+        { formats: %w[json pdf], health_history: true, medication_reviews: true,
+          selected_person_required: true, health_history_max_span_days: Reports::GpDateRange::MAX_RANGE_DAYS }
+      end
+
+      def profile
+        { actions: %w[show update], online_only: true,
+          avatar: { actions: %w[show update destroy], max_bytes: 5.megabytes,
+                    content_types: %w[image/png image/jpeg image/webp] } }
+      end
+
+      def medication_reviews
+        { actions: %w[index show update], version_required: true, max_page_size: 100 }
+      end
+
+      def location_management
+        { actions: %w[create update destroy], version_required: true,
+          person_memberships: %w[create destroy], memberships_online_only: true }
+      end
+
+      def stock_removals
+        { actions: %w[create index], submission_id_required: true, max_page_size: 100 }
       end
 
       def backups
@@ -90,7 +138,9 @@ module Api
           etag_conflicts: true,
           change_feed: true,
           batch_mutations: true,
-          tombstones: true
+          tombstones: true,
+          operations: Api::Sync::OperationCatalog.as_json,
+          online_only_resources: Api::Sync::OperationCatalog::ONLINE_ONLY_RESOURCES
         }
       end
 

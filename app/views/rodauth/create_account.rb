@@ -21,6 +21,7 @@ module Views
       def flash_section
         return if flash_message.blank?
 
+        view_context.content_for(:auth_inline_flash, '1')
         div(id: 'signup-flash') do
           render RubyUI::Alert.new(variant: flash_variant) do
             plain(flash_message)

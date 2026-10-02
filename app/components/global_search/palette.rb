@@ -85,6 +85,8 @@ module Components
         {
           loading: t('global_search.loading'),
           no_results: t('global_search.no_results'),
+          error: t('global_search.error'),
+          retry: t('global_search.retry'),
           result_one: t('global_search.results.one'),
           result_other: t('global_search.results.other'),
           type_labels: {

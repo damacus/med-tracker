@@ -20,10 +20,10 @@ import okhttp3.Call
 import okhttp3.HttpUrl
 
 import io.medtracker.client.models.AuthHouseholdCollectionResponse
-import io.medtracker.client.models.AuthRefreshRequest
-import io.medtracker.client.models.AuthRefreshResponse
 import io.medtracker.client.models.AuthSessionCollectionResponse
 import io.medtracker.client.models.ErrorEnvelope
+import io.medtracker.client.models.InvitationAcceptanceRequest
+import io.medtracker.client.models.InvitationAcceptanceResponse
 import io.medtracker.client.models.RateLimitErrorEnvelope
 
 import com.squareup.moshi.Json
@@ -48,6 +48,80 @@ open class AccountApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
         val defaultBasePath: String by lazy {
             System.getProperties().getProperty(ApiClient.baseUrlKey, "/api/v1")
         }
+    }
+
+    /**
+     * POST /invitations/accept
+     * Accept an invitation matching the verified session account.
+     * Requires a user API session. Household app tokens and delegated OAuth grants cannot accept invitations. The operation runs online and rechecks accepted membership state on every retry. It never restores revoked grants or replaces an existing membership. Use the existing household-selection login flow to obtain a session for the new household.
+     * @param invitationAcceptanceRequest 
+     * @return InvitationAcceptanceResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun acceptHouseholdInvitation(invitationAcceptanceRequest: InvitationAcceptanceRequest) : InvitationAcceptanceResponse {
+        val localVarResponse = acceptHouseholdInvitationWithHttpInfo(invitationAcceptanceRequest = invitationAcceptanceRequest)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as InvitationAcceptanceResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * POST /invitations/accept
+     * Accept an invitation matching the verified session account.
+     * Requires a user API session. Household app tokens and delegated OAuth grants cannot accept invitations. The operation runs online and rechecks accepted membership state on every retry. It never restores revoked grants or replaces an existing membership. Use the existing household-selection login flow to obtain a session for the new household.
+     * @param invitationAcceptanceRequest 
+     * @return ApiResponse<InvitationAcceptanceResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun acceptHouseholdInvitationWithHttpInfo(invitationAcceptanceRequest: InvitationAcceptanceRequest) : ApiResponse<InvitationAcceptanceResponse?> {
+        val localVariableConfig = acceptHouseholdInvitationRequestConfig(invitationAcceptanceRequest = invitationAcceptanceRequest)
+
+        return request<InvitationAcceptanceRequest, InvitationAcceptanceResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation acceptHouseholdInvitation
+     *
+     * @param invitationAcceptanceRequest 
+     * @return RequestConfig
+     */
+    fun acceptHouseholdInvitationRequestConfig(invitationAcceptanceRequest: InvitationAcceptanceRequest) : RequestConfig<InvitationAcceptanceRequest> {
+        val localVariableBody = invitationAcceptanceRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.POST,
+            path = "/invitations/accept",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
     }
 
     /**
@@ -325,80 +399,6 @@ open class AccountApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
-            body = localVariableBody
-        )
-    }
-
-    /**
-     * POST /auth/refresh
-     * Rotate an API session refresh token.
-     * 
-     * @param authRefreshRequest 
-     * @return AuthRefreshResponse
-     * @throws IllegalStateException If the request is not correctly configured
-     * @throws IOException Rethrows the OkHttp execute method exception
-     * @throws UnsupportedOperationException If the API returns an informational or redirection response
-     * @throws ClientException If the API returns a client error response
-     * @throws ServerException If the API returns a server error response
-     */
-    @Suppress("UNCHECKED_CAST")
-    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun refreshSession(authRefreshRequest: AuthRefreshRequest) : AuthRefreshResponse {
-        val localVarResponse = refreshSessionWithHttpInfo(authRefreshRequest = authRefreshRequest)
-
-        return when (localVarResponse.responseType) {
-            ResponseType.Success -> (localVarResponse as Success<*>).data as AuthRefreshResponse
-            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
-            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
-            ResponseType.ClientError -> {
-                val localVarError = localVarResponse as ClientError<*>
-                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
-            }
-            ResponseType.ServerError -> {
-                val localVarError = localVarResponse as ServerError<*>
-                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
-            }
-        }
-    }
-
-    /**
-     * POST /auth/refresh
-     * Rotate an API session refresh token.
-     * 
-     * @param authRefreshRequest 
-     * @return ApiResponse<AuthRefreshResponse?>
-     * @throws IllegalStateException If the request is not correctly configured
-     * @throws IOException Rethrows the OkHttp execute method exception
-     */
-    @Suppress("UNCHECKED_CAST")
-    @Throws(IllegalStateException::class, IOException::class)
-    fun refreshSessionWithHttpInfo(authRefreshRequest: AuthRefreshRequest) : ApiResponse<AuthRefreshResponse?> {
-        val localVariableConfig = refreshSessionRequestConfig(authRefreshRequest = authRefreshRequest)
-
-        return request<AuthRefreshRequest, AuthRefreshResponse>(
-            localVariableConfig
-        )
-    }
-
-    /**
-     * To obtain the request config of the operation refreshSession
-     *
-     * @param authRefreshRequest 
-     * @return RequestConfig
-     */
-    fun refreshSessionRequestConfig(authRefreshRequest: AuthRefreshRequest) : RequestConfig<AuthRefreshRequest> {
-        val localVariableBody = authRefreshRequest
-        val localVariableQuery: MultiValueMap = mutableMapOf()
-        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
-        localVariableHeaders["Content-Type"] = "application/json"
-        localVariableHeaders["Accept"] = "application/json"
-
-        return RequestConfig(
-            method = RequestMethod.POST,
-            path = "/auth/refresh",
-            query = localVariableQuery,
-            headers = localVariableHeaders,
-            requiresAuthentication = false,
             body = localVariableBody
         )
     }

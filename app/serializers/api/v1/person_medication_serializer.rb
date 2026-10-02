@@ -5,17 +5,29 @@ module Api
     class PersonMedicationSerializer
       include DecimalSerialization
 
-      def initialize(person_medication)
+      def initialize(person_medication, can_manage: nil)
         @person_medication = person_medication
+        @can_manage = can_manage
       end
 
       def as_json(*)
-        medication_data.merge(dosing_limits)
+        medication_data.merge(dosing_limits).merge(pause_data).merge(permission_data)
       end
 
       private
 
-      attr_reader :person_medication
+      attr_reader :person_medication, :can_manage
+
+      def permission_data
+        can_manage.nil? ? {} : { can_manage: }
+      end
+
+      def pause_data
+        return {} unless person_medication.association(:medication_pause_periods).loaded?
+
+        period = person_medication.medication_pause_periods.find { |item| item.ended_at.nil? }
+        { current_pause_period: period && MedicationPausePeriodSerializer.new(period).as_json }
+      end
 
       def medication_data
         association_data.merge(schedule_data)

@@ -49,7 +49,7 @@ RSpec.describe SmartInsights::Detectors::AdherenceStreak do
     person = create(:person)
     schedule = create(:schedule, person: person, start_date: start_date, end_date: start_date + 2.days,
                                  schedule_type: :multiple_daily, schedule_config: { 'times' => %w[08:00 20:00] },
-                                 max_daily_doses: 2)
+                                 max_daily_doses: 2, frequency: 'Daily')
     (start_date..(start_date + 2.days)).each do |date|
       create(:medication_take, :for_schedule, schedule: schedule, taken_at: date.in_time_zone + 8.hours)
       record_pause(schedule, started_at: date.in_time_zone + 20.hours, ended_at: (date + 1.day).in_time_zone + 8.hours)

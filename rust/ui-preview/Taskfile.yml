@@ -1,0 +1,40 @@
+version: '3'
+
+tasks:
+  lock:
+    dir: "{{.TASKFILE_DIR}}"
+    cmds:
+      - npm install --package-lock-only --ignore-scripts
+  deps:
+    dir: "{{.TASKFILE_DIR}}"
+    cmds:
+      - npm ci
+  setup:
+    dir: "{{.TASKFILE_DIR}}"
+    cmds:
+      - rustup target add wasm32-unknown-unknown
+      - cargo install wasm-bindgen-cli --version 0.2.127 --locked
+  build:
+    dir: "{{.TASKFILE_DIR}}"
+    deps: [deps, setup]
+    cmds:
+      - cargo build --locked --features ssr
+      - npm run css
+      - cargo build --locked --release --lib --target wasm32-unknown-unknown --no-default-features --features hydrate
+      - wasm-bindgen target/wasm32-unknown-unknown/release/medtracker_ui_preview.wasm --out-dir public/pkg --target web
+  test:
+    dir: "{{.TASKFILE_DIR}}"
+    cmds:
+      - cargo test --locked --features ssr
+  fmt:
+    dir: "{{.TASKFILE_DIR}}"
+    cmds:
+      - cargo fmt --check
+  format:
+    dir: "{{.TASKFILE_DIR}}"
+    cmds:
+      - cargo fmt
+  lint:
+    dir: "{{.TASKFILE_DIR}}"
+    cmds:
+      - cargo clippy --all-targets --features ssr -- -D warnings

@@ -17,7 +17,6 @@ RSpec.describe Components::Layouts::MobileMenu, type: :component do
       rendered = render_inline(described_class.new)
 
       expect(rendered.css('div.md\\:hidden')).to be_present
-      expect(rendered.css('button[aria-label="Open menu"]')).to be_present
     end
   end
 

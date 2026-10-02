@@ -42,7 +42,7 @@ module Components
       end
 
       def render_left_section
-        div(class: 'nav__left flex items-center gap-6') do
+        div(class: 'nav__left flex min-w-0 flex-1 items-center gap-6') do
           if authenticated?
             render Components::Layouts::MobileMenu.new(
               current_user: current_user,
@@ -55,14 +55,15 @@ module Components
       end
 
       def render_right_section
-        div(class: 'nav__right flex items-center gap-4') do
+        div(class: 'nav__right flex shrink-0 items-center gap-4') do
           render_auth_actions
         end
       end
 
       def render_brand
-        div(class: 'nav__brand') do
-          link_to(t('layouts.navigation.brand'), root_path, class: 'nav__brand-link text-foreground')
+        div(class: 'nav__brand min-w-0') do
+          link_to(t('layouts.navigation.brand'), root_path,
+                  class: 'nav__brand-link block min-w-0 truncate text-foreground')
         end
       end
 

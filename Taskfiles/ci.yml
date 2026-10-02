@@ -1,6 +1,33 @@
 version: "3"
 
 tasks:
+  rust-port:
+    desc: Check Rust dashboard UI, API, web and contract-test compilation
+    cmds:
+      - task -d rust/ui-preview fmt
+      - task -d rust/ui-preview test
+      - task -d rust/ui-preview lint
+      - task -d rust/ui-preview build
+      - task: :api:fmt
+      - task: :api:clippy
+      - task: :api:test
+      - cargo test --manifest-path rust/web/Cargo.toml
+      - cargo check --manifest-path rust/contract-tests/Cargo.toml --all-targets
+
+  test:
+    desc: Test CI scripts with Node, without Rails or Docker
+    cmds:
+      - node --test "scripts/ci/tests/*.test.mjs"
+
+  coverage:test:
+    desc: Verify coverage collation without loading Rails or RSpec
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: test
+          SERVICE: tools-test
+          COMMAND: bundle exec ruby scripts/ci/tests/coverage.rb
+
   classify:
     desc: Select mandatory CI suites from the changed paths
     cmds:
@@ -24,3 +51,4 @@ tasks:
       - node --check scripts/ci/gate.mjs
       - node --check scripts/ci/markdown.mjs
       - node scripts/ci/task_exec_regression.mjs
+      - task: test

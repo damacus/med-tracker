@@ -86,6 +86,16 @@ RSpec.describe 'API v1 portable data' do
     expect(response.parsed_body.dig('error', 'message')).to eq('Portable passphrase header is required')
   end
 
+  it 'exports pause periods when portable v2 is requested' do
+    get "/api/v1/households/#{household_id}/portable_export",
+        params: { version: '2' }, headers: portable_headers, as: :json
+
+    expect(response).to have_http_status(:ok)
+    payload = PortableData::Encryptor.decrypt(response.parsed_body.fetch('data'), passphrase: passphrase)
+    expect(payload.fetch('format')).to eq('medtracker.portable.v2')
+    expect(payload.fetch('records')).to have_key('medication_pause_periods')
+  end
+
   it 'rejects portable imports without passphrase headers' do
     post "/api/v1/households/#{household_id}/portable_imports/dry_run",
          params: { bundle: encrypted_import_payload },

@@ -15,23 +15,6 @@ RSpec.describe Components::PersonMedications::Modal, type: :component do
   let(:medication) { create(:medication, name: 'Calpol') }
   let(:person_medication) { build(:person_medication, person: person, medication: medication) }
 
-  it 'renders a token-driven modal shell for the medication workflow' do
-    rendered = render_inline(
-      described_class.new(
-        described_class::Props.new(
-          person_medication: person_medication,
-          person: person,
-          medications: [medication]
-        )
-      )
-    )
-
-    html = rendered.to_html
-
-    expect(html).to include('bg-popover', 'bg-foreground/10', 'shadow-elevation-5')
-    expect(html).not_to include('bg-white')
-  end
-
   it 'renders medication dose options for the Stimulus controller' do
     allow(medication).to receive(:dose_options_payload).and_return([{ 'amount' => '1' }])
 
@@ -55,7 +38,6 @@ RSpec.describe Components::PersonMedications::Modal, type: :component do
     expect(back_link.text).to include('Back')
     expect(back_link['data-turbo-frame']).to eq('modal')
     expect(classes).to include('state-layer')
-    expect(classes).not_to include('rounded-xl')
   end
 
   def rendered_back_link

@@ -3,17 +3,21 @@
 module PortableData
   class Exporter
     FORMAT = 'medtracker.portable.v1'
+    V2_FORMAT = 'medtracker.portable.v2'
 
-    def initialize(household:, membership:, passphrase:, person_ids: nil, request: nil)
+    class Error < StandardError; end
+
+    def initialize(household:, membership:, passphrase:, person_ids: nil, **options)
       @household = household
       @membership = membership
       @passphrase = passphrase
       @person_ids = Array(person_ids).compact_blank
-      @request = request
+      @request = options[:request]
+      @people_scope = options[:people_scope]
     end
 
-    def call
-      export_payload = payload
+    def call(version: 1, format: FORMAT)
+      export_payload = payload(format: version == 2 ? V2_FORMAT : format)
       envelope = Encryptor.encrypt(export_payload, passphrase: passphrase)
       record_audit_event(export_payload, export_mode: 'encrypted_migration_bundle')
       envelope
@@ -35,36 +39,45 @@ module PortableData
       end
     end
 
-    def payload
-      export_payload
+    def payload(format: FORMAT)
+      export_payload(format: format)
     end
 
-    def mobile_payload
-      export_payload(include_health_events: true)
+    def mobile_payload(format: FORMAT)
+      export_payload(include_health_events: true, format: format)
     end
+
+    def v2_payload(include_health_events: false)
+      export_payload(include_health_events: include_health_events, format: V2_FORMAT)
+    end
+
+    def mobile_v2_payload = v2_payload(include_health_events: true)
 
     def household_payload
-      export_payload(include_health_events: true, scope: 'household')
+      export_payload(include_health_events: true, scope: 'household', format: V2_FORMAT)
     end
 
     private
 
     attr_reader :household, :membership, :passphrase, :person_ids, :request
 
-    def export_payload(include_health_events: false, scope: 'single_person')
+    def export_payload(include_health_events: false, scope: 'single_person', format: FORMAT)
+      raise Error, 'Unsupported portable data format' unless [FORMAT, V2_FORMAT].include?(format)
+
       {
-        format: FORMAT,
+        format: format,
         scope: scope,
         exported_at: Time.current.iso8601,
         source_instance_id: source_instance_id,
         records: records_payload(
           include_health_events: include_health_events,
-          household_wide: scope == 'household'
+          household_wide: scope == 'household',
+          include_outcomes: format == V2_FORMAT
         )
       }
     end
 
-    def records_payload(include_health_events:, household_wide:)
+    def records_payload(include_health_events:, household_wide:, include_outcomes: false)
       records = {
         people: people,
         locations: locations(include_health_events:, household_wide:),
@@ -76,6 +89,8 @@ module PortableData
         notification_preferences: notification_preferences
       }
       records[:health_events] = health_events if include_health_events
+      records[:dose_occurrences] = dose_occurrences if include_outcomes
+      records[:medication_pause_periods] = medication_pause_periods if include_outcomes
       ExportRecordSerializer.new(records).as_json
     end
 
@@ -85,7 +100,7 @@ module PortableData
 
     def people
       @people ||= begin
-        scope = household.people.where(id: manageable_person_ids).order(:id)
+        scope = household.people.where(id: @people_scope || manageable_person_ids).order(:id)
         person_ids.present? ? scope.where(id: person_ids) : scope
       end
     end
@@ -181,6 +196,20 @@ module PortableData
       @notification_preferences ||= NotificationPreference.where(household: household, person_id: person_id_values)
                                                           .includes(:person)
                                                           .order(:id)
+    end
+
+    def medication_pause_periods
+      scheduled = MedicationPausePeriod.where(household: household, schedule_id: schedules.select(:id))
+      assigned = MedicationPausePeriod.where(household: household, person_medication_id: person_medications.select(:id))
+      scheduled.or(assigned).includes(:schedule, :person_medication,
+                                      recorded_by_membership: :person, resumed_by_membership: :person).order(:id)
+    end
+
+    def dose_occurrences
+      scope = MedicationDoseOccurrence.where(household: household)
+      scope.where(schedule_id: schedules.select(:id))
+           .or(scope.where(person_medication_id: person_medications.select(:id)))
+           .includes(:schedule, :person_medication, :medication_take).order(:id)
     end
 
     def health_events

@@ -8,6 +8,7 @@ module SmartInsights
     DETECTORS = [
       Detectors::InventoryRisk,
       Detectors::MissedDosePattern,
+      Detectors::MissedRoutineCycles,
       Detectors::AdherenceStreak,
       Detectors::TimingConsistency,
       Detectors::PrnUsage,
@@ -24,10 +25,11 @@ module SmartInsights
     INSIGHT_PRIORITY = {
       inventory_risk: 0,
       missed_dose_pattern: 1,
-      adherence_streak: 2,
-      timing_consistency: 3,
-      prn_usage: 4,
-      schedule_hygiene: 5
+      missed_routine_cycles: 2,
+      adherence_streak: 3,
+      timing_consistency: 4,
+      prn_usage: 5,
+      schedule_hygiene: 6
     }.freeze
 
     attr_reader :people, :start_date, :end_date

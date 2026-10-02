@@ -20,6 +20,9 @@ module Components
         ) do
           render HeaderComponent.new(schedule: schedule, presenter: presenter)
           render DoseStatusComponent.new(schedule: schedule, presenter: presenter)
+          render Components::MedicationPauses::History.new(
+            periods: schedule.association(:medication_pause_periods).target
+          )
           render ActionsComponent.new(
             schedule: schedule,
             person: person,
@@ -44,7 +47,7 @@ module Components
                'rounded-[2rem] transition-all duration-300 group overflow-hidden'
         return "#{base} opacity-70 grayscale-[0.2]" if schedule.paused?
 
-        "#{base} hover:scale-[1.02] hover:shadow-2xl"
+        "#{base} hover:shadow-2xl"
       end
     end
   end

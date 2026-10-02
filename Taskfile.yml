@@ -4,31 +4,49 @@ silent: true
 run: once
 
 includes:
-  ci:
-    taskfile: Taskfiles/ci.yml
-  dev:
-    taskfile: Taskfiles/dev.yml
-  test:
-    taskfile: Taskfiles/test.yml
-  local:
-    taskfile: Taskfiles/local.yml
-  prod:
-    taskfile: Taskfiles/prod.yml
-  internal:
-    taskfile: Taskfiles/internal.yml
-  lighthouse:
-    taskfile: Taskfiles/lighthouse.yml
-  docs:
-    taskfile: Taskfiles/docs.yml
-  worktree:
-    taskfile: Taskfiles/worktree.yml
-  audit:
-    taskfile: Taskfiles/audit.yml
-  openspec:
-    taskfile: Taskfiles/openspec.yml
-  android:
+  rails:
+    taskfile: rails/Taskfile.yml
+    dir: .
+  legacy-rails:
+    taskfile: rails/Taskfile.yml
+    dir: .
+    flatten: true
+  rust:
+    taskfile: rust/Taskfile.yml
+    dir: .
+  api:
+    taskfile: rust/api/Taskfile.yml
+    dir: .
+  contracts:
+    taskfile: rust/contract-tests/Taskfile.yml
+    dir: .
+    aliases: [contract]
+  client-tools:
+    taskfile: client-tools/Taskfile.yml
+    dir: client-tools
+  api-clients:
+    taskfile: client-tools/openapi-generator/Taskfile.yml
+    dir: .
+  mobile:android:
     taskfile: mobile/android/Taskfile.yml
     dir: mobile/android
+    aliases: [android]
+  docs:
+    taskfile: docs/Taskfile.yml
+    dir: .
+  ci:
+    taskfile: Taskfiles/ci.yml
+    dir: .
+  worktree:
+    taskfile: Taskfiles/worktree.yml
+    dir: .
+  openspec:
+    taskfile: Taskfiles/openspec.yml
+    dir: .
+  agents:
+    taskfile: Taskfiles/agents.yml
+    dir: .
+    flatten: true
 
 tasks:
   default:
@@ -36,409 +54,3 @@ tasks:
     summary: Default task - shows all available commands
     silent: true
     cmds: [task --list]
-
-  client-tools:fmt:
-    desc: Format Rust client tools
-    cmds:
-      - cargo fmt --manifest-path client-tools/Cargo.toml --all
-
-  client-tools:check:
-    desc: Check Rust client tools
-    cmds:
-      - cargo check --manifest-path client-tools/Cargo.toml --workspace --all-targets
-
-  client-tools:clippy:
-    desc: Lint Rust client tools
-    cmds:
-      - cargo clippy --manifest-path client-tools/Cargo.toml --workspace --all-targets -- -D warnings
-
-  client-tools:test:
-    desc: Test Rust client tools
-    cmds:
-      - cargo test --manifest-path client-tools/Cargo.toml --workspace
-
-  api-clients:generate:
-    desc: Generate the Swift and Kotlin API clients from the V1 contract
-    cmds:
-      - ./client-tools/openapi-generator/generate.fish
-
-  api-clients:verify-generated:
-    desc: Verify generated API clients are deterministic
-    cmds:
-      - ./client-tools/openapi-generator/generate.fish determinism
-
-  api-clients:kotlin:
-    desc: Generate the Kotlin API client from the V1 contract
-    cmds:
-      - ./client-tools/openapi-generator/generate-kotlin.fish
-
-  api-clients:kotlin:test:
-    desc: Generate and compile the Kotlin API client
-    cmds:
-      - task: api-clients:kotlin
-      - ./tmp/api-clients/kotlin/gradlew --no-daemon -p tmp/api-clients/kotlin check assemble
-
-  api-clients:swift:
-    desc: Generate the Swift API client from the V1 contract
-    cmds:
-      - ./client-tools/openapi-generator/generate-swift.fish
-
-  api-clients:swift:test:
-    desc: Generate and compile the Swift API client
-    cmds:
-      - task: api-clients:swift
-      - swift build --package-path tmp/api-clients/swift
-
-  api-clients:verify:
-    desc: Verify generated API clients are deterministic
-    cmds:
-      - task: api-clients:verify-generated
-
-  test:
-    desc: Run tests in Docker (optionally specify TEST_FILE=path/to/spec)
-    summary: |
-      Run RSpec tests in Docker environment
-      Usage: task test
-      Usage: task test TEST_FILE=spec/models/user_spec.rb
-    silent: true
-    cmds:
-      - task: internal:run
-        vars:
-          ENVIRONMENT: test
-          COMMAND: 'bundle exec rspec --profile 20 --format documentation {{ .TEST_FILE | default "spec" }}'
-          TEST_FILE: '{{ .TEST_FILE | default "spec" }}'
-
-  ruby-ui:compare:
-    desc: Compare selected RubyUI components with the locked gem in isolated output
-    summary: |
-      Generate named RubyUI component families read-only and report differences.
-      Usage: task ruby-ui:compare COMPONENTS="Button Card"
-      Usage: task ruby-ui:compare COMPONENTS="Button Card" OUTPUT=/tmp/ruby-ui-compare
-    env:
-      RUBY_UI_COMPONENTS: '{{ .COMPONENTS | default "" }}'
-      RUBY_UI_OUTPUT: '{{ .OUTPUT | default "" }}'
-    cmds:
-      - ./scripts/run_ruby_ui_comparison.fish
-
-  households:migrate_local:
-    desc: Migrate the local pre-household database into one household
-    summary: |
-      Deterministically migrate local pre-household data into one household.
-      Usage: task households:migrate_local OWNER_EMAIL=dan@example.com HOUSEHOLD_NAME="Dan's household" DRY_RUN=1
-      Usage: task households:migrate_local OWNER_EMAIL=dan@example.com HOUSEHOLD_NAME="Dan's household" APPLY=1
-    requires:
-      vars: [OWNER_EMAIL, HOUSEHOLD_NAME]
-    cmds:
-      - task: internal:run
-        vars:
-          ENVIRONMENT: dev
-          COMMAND: 'OWNER_EMAIL="{{ .OWNER_EMAIL }}" HOUSEHOLD_NAME="{{ .HOUSEHOLD_NAME }}" DRY_RUN="{{ .DRY_RUN }}" APPLY="{{ .APPLY }}" rails households:migrate_local'
-
-  support-access:expire:
-    desc: Record natural support-access expiry events exactly once
-    summary: |
-      Process naturally expired support sessions using the forced-RLS application role.
-      Usage: task support-access:expire
-    cmds:
-      - task: internal:run
-        vars:
-          ENVIRONMENT: prod
-          COMMAND: 'env DATABASE_ROLE=med_tracker_app rails support_access:expire'
-
-  canary:demo-reset:
-    desc: Replace canary runtime state with the committed synthetic demo baseline
-    cmds:
-      - task: internal:run
-        vars:
-          ENVIRONMENT: prod
-          COMMAND: 'env DATABASE_ROLE=med_tracker_owner rails canary:demo_reset'
-
-  household-lifecycle:export:
-    desc: Generate a complete hosted household export
-    requires:
-      vars: [HOUSEHOLD_ID, ACTOR_ACCOUNT_ID, MEMBERSHIP_ID]
-    cmds:
-      - task: internal:run
-        vars:
-          ENVIRONMENT: prod
-          COMMAND: 'env DATABASE_ROLE=med_tracker_app HOUSEHOLD_ID={{ .HOUSEHOLD_ID }} ACTOR_ACCOUNT_ID={{ .ACTOR_ACCOUNT_ID }} MEMBERSHIP_ID={{ .MEMBERSHIP_ID }} rails household_lifecycle:export'
-
-  household-lifecycle:download:
-    desc: Download an authorized hosted household export to protected storage
-    requires:
-      vars: [HOUSEHOLD_ID, ACTOR_ACCOUNT_ID, EXPORT_ID, DESTINATION]
-    env:
-      DESTINATION: '{{ .DESTINATION }}'
-    cmds:
-      - task: internal:run
-        vars:
-          ENVIRONMENT: prod
-          DOCKER_RUN_ARGS: '-e DESTINATION'
-          COMMAND: 'env DATABASE_ROLE=med_tracker_app HOUSEHOLD_ID={{ .HOUSEHOLD_ID }} ACTOR_ACCOUNT_ID={{ .ACTOR_ACCOUNT_ID }} EXPORT_ID={{ .EXPORT_ID }} rails household_lifecycle:download'
-
-  household-lifecycle:hold:
-    desc: Place an audited household retention hold
-    requires:
-      vars: [HOUSEHOLD_ID, ACTOR_ACCOUNT_ID, REASON, REVIEW_ON]
-    env:
-      REASON: '{{ .REASON }}'
-    cmds:
-      - task: internal:run
-        vars:
-          ENVIRONMENT: prod
-          DOCKER_RUN_ARGS: '-e REASON'
-          COMMAND: 'env DATABASE_ROLE=med_tracker_app HOUSEHOLD_ID={{ .HOUSEHOLD_ID }} ACTOR_ACCOUNT_ID={{ .ACTOR_ACCOUNT_ID }} REVIEW_ON={{ .REVIEW_ON }} rails household_lifecycle:hold'
-
-  household-lifecycle:release-hold:
-    desc: Release an audited household retention hold
-    requires:
-      vars: [HOUSEHOLD_ID, ACTOR_ACCOUNT_ID, HOLD_ID]
-    cmds:
-      - task: internal:run
-        vars:
-          ENVIRONMENT: prod
-          COMMAND: 'env DATABASE_ROLE=med_tracker_app HOUSEHOLD_ID={{ .HOUSEHOLD_ID }} ACTOR_ACCOUNT_ID={{ .ACTOR_ACCOUNT_ID }} HOLD_ID={{ .HOLD_ID }} rails household_lifecycle:release_hold'
-
-  household-lifecycle:offboard:
-    desc: Disable a household and revoke every hosted access surface
-    requires:
-      vars: [HOUSEHOLD_ID, ACTOR_ACCOUNT_ID]
-    cmds:
-      - task: internal:run
-        vars:
-          ENVIRONMENT: prod
-          COMMAND: 'env DATABASE_ROLE=med_tracker_app HOUSEHOLD_ID={{ .HOUSEHOLD_ID }} ACTOR_ACCOUNT_ID={{ .ACTOR_ACCOUNT_ID }} rails household_lifecycle:offboard'
-
-  household-lifecycle:purge:
-    desc: Resume or start a held-safe household purge
-    requires:
-      vars: [HOUSEHOLD_ID, ACTOR_ACCOUNT_ID]
-    cmds:
-      - task: internal:run
-        vars:
-          ENVIRONMENT: prod
-          COMMAND: 'env DATABASE_ROLE=med_tracker_app HOUSEHOLD_ID={{ .HOUSEHOLD_ID }} ACTOR_ACCOUNT_ID={{ .ACTOR_ACCOUNT_ID }} rails household_lifecycle:purge'
-
-  hosted-restore:rehearse:
-    desc: Verify an already-restored isolated hosted environment and write durable evidence
-    summary: |
-      Verify an isolated database and attachment restore without performing the restore itself.
-      The evidence destination must be an absolute, non-existing directory on durable storage.
-      WORM_HEADS_JSON must contain the latest signed external checkpoint for sample_a and sample_b.
-      APP_IMAGE must match the immutable image reference baked into the production image at build time.
-    requires:
-      vars:
-        - DATABASE_BACKUP_ID
-        - ATTACHMENT_BACKUP_ID
-        - RESTORE_TARGET_ID
-        - APP_IMAGE
-        - TESTER
-        - HOUSEHOLD_A_ID
-        - HOUSEHOLD_B_ID
-        - WORM_REFERENCE
-        - WORM_HEADS_JSON
-        - EVIDENCE_ROOT
-        - EVIDENCE_OUTPUT
-    env:
-      DATABASE_BACKUP_ID: '{{ .DATABASE_BACKUP_ID }}'
-      ATTACHMENT_BACKUP_ID: '{{ .ATTACHMENT_BACKUP_ID }}'
-      RESTORE_TARGET_ID: '{{ .RESTORE_TARGET_ID }}'
-      APP_IMAGE: '{{ .APP_IMAGE }}'
-      TESTER: '{{ .TESTER }}'
-      HOUSEHOLD_A_ID: '{{ .HOUSEHOLD_A_ID }}'
-      HOUSEHOLD_B_ID: '{{ .HOUSEHOLD_B_ID }}'
-      WORM_REFERENCE: '{{ .WORM_REFERENCE }}'
-      WORM_HEADS_JSON: '{{ .WORM_HEADS_JSON }}'
-      EVIDENCE_ROOT: '{{ .EVIDENCE_ROOT }}'
-      EVIDENCE_OUTPUT: '{{ .EVIDENCE_OUTPUT }}'
-    cmds:
-      - mise exec -- ruby scripts/hosted_restore_rehearsal.rb
-
-  medication-review:snapshot:
-    desc: Regenerate the committed public evidence snapshot
-    cmds:
-      - task: internal:run
-        vars:
-          ENVIRONMENT: dev
-          COMMAND: 'bin/rails medication_review_evidence:snapshot'
-
-  medication-review:terminology-snapshot:
-    desc: Regenerate the committed no-license NLM RxClass terminology snapshot
-    cmds:
-      - task: internal:run
-        vars:
-          ENVIRONMENT: dev
-          COMMAND: 'bin/rails medication_review_evidence:terminology_snapshot'
-
-  medication-review:import:
-    desc: Import the committed public evidence snapshot into the development database
-    cmds:
-      - task: internal:run
-        vars:
-          ENVIRONMENT: dev
-          COMMAND: 'bin/rails medication_review_evidence:import'
-
-  medication-review:benchmark:
-    desc: Measure automatic detection against the committed public evidence snapshot
-    cmds:
-      - task: internal:run
-        vars:
-          ENVIRONMENT: dev
-          COMMAND: 'bin/rails medication_review_evidence:benchmark'
-
-  medication-review:refresh:
-    desc: Refresh public medication-review evidence and report source changes
-    cmds:
-      - task: internal:run
-        vars:
-          ENVIRONMENT: dev
-          COMMAND: 'bin/rails medication_review_evidence:refresh'
-
-  stop-all:
-    desc: Stop all services for this worktree (dev, test, prod)
-    summary: |
-      Stop all Docker containers, networks, and services for this branch/worktree.
-      Use when finished with a branch or worktree.
-      Usage: task stop-all
-    cmds:
-      - task: internal:stop
-        vars: { ENVIRONMENT: dev }
-      - task: internal:stop
-        vars: { ENVIRONMENT: test }
-      - task: internal:stop
-        vars: { ENVIRONMENT: prod }
-
-  rubocop:
-    desc: Run RuboCop linter (optionally with autocorrect)
-    summary: |
-      Run RuboCop linter with optional autocorrect in Docker
-      Usage: task rubocop
-      Usage: task rubocop AUTOCORRECT=true
-    vars:
-      autocorrect: '{{ .AUTOCORRECT | default "false" }}'
-    cmds:
-      - task: internal:run
-        vars:
-          ENVIRONMENT: test
-          SERVICE: tools-test
-          COMMAND: 'bin/rubocop --force-exclusion {{ if eq .autocorrect "true" }}-A{{ end }}'
-
-  typecheck:
-    desc: Run the advisory Sorbet check
-    silent: true
-    cmds:
-      - task: internal:run
-        vars:
-          ENVIRONMENT: test
-          SERVICE: tools-test
-          COMMAND: 'bundle exec srb tc --ignore /usr/local/bundle/gems/prism app/models/dose_constraints.rb app/domain/dose_cycle.rb app/domain/dose_amount.rb app/domain/schedule_frequency_phrase.rb sorbet/rbi/dose_constraints.rbi sorbet/rbi/schedule_frequency_phrase.rbi'
-
-  brakeman:
-    desc: Run Brakeman security scanner
-    summary: |
-      Run Brakeman in the tools container, matching CI's Ruby Security Scan.
-      Usage: task brakeman
-    cmds:
-      - task: internal:run
-        vars:
-          ENVIRONMENT: test
-          SERVICE: tools-test
-          COMMAND: 'bin/brakeman --no-pager'
-
-  rubycritic:
-    desc: Run RubyCritic quality analysis
-    summary: |
-      Run RubyCritic against application code, or a supplied target.
-      Usage: task rubycritic
-      Usage: task rubycritic TARGET=app/services/foo.rb
-    vars:
-      target: '{{ .TARGET | default "app" }}'
-    cmds:
-      - task: internal:run
-        vars:
-          ENVIRONMENT: test
-          SERVICE: tools-test
-          COMMAND: 'bundle exec rubycritic --format console --no-browser {{ .target }}'
-
-  playwright:
-    desc: Run local Playwright browser tests
-    summary: |
-      Run the local browser test suite backed by Playwright.
-      This delegates to the local CI-like test environment.
-      Usage: task playwright
-      Usage: task playwright TEST_FILE=spec/system/foo_spec.rb
-    cmds:
-      - task: local:test:browser
-        vars:
-          TEST_FILE: '{{ .TEST_FILE | default "" }}'
-
-  profile:dashboard:
-    desc: Capture a Vernier baseline profile for the dashboard pipeline
-    summary: |
-      Capture a reproducible Vernier profile for the representative dashboard pipeline.
-      Requires the development database and seeded data.
-      Usage: task profile:dashboard
-      Usage: task profile:dashboard OUT=docs/performance/profiles/dashboard-before.vernier.json.gz
-      Usage: task profile:dashboard PROFILE_DASHBOARD_EMAIL=admin@example.com
-    vars:
-      output: '{{ .OUT | default "docs/performance/profiles/dashboard-baseline.vernier.json.gz" }}'
-      summary_path: '{{ .SUMMARY | default "docs/performance/dashboard-baseline.md" }}'
-      interval: '{{ .INTERVAL | default "500" }}'
-      allocation_interval: '{{ .ALLOCATION_INTERVAL | default "10" }}'
-      profile_email: '{{ .PROFILE_DASHBOARD_EMAIL | default "admin@example.com" }}'
-      selected_person_id: '{{ .PROFILE_DASHBOARD_PERSON_ID | default "all" }}'
-    cmds:
-      - task: internal:run
-        vars:
-          ENVIRONMENT: dev
-          COMMAND: >-
-            env PROFILE_DASHBOARD_EMAIL={{ .profile_email }}
-            PROFILE_DASHBOARD_PERSON_ID={{ .selected_person_id }}
-            PROFILE_DASHBOARD_ARTIFACT={{ .output }}
-            PROFILE_DASHBOARD_SUMMARY={{ .summary_path }}
-            bundle exec vernier run
-            --output {{ .output }}
-            --interval {{ .interval }}
-            --allocation-interval {{ .allocation_interval }}
-            --hooks rails,memory_usage
-            --metadata workflow=dashboard
-            --
-            bin/rails runner scripts/profile_dashboard_request.rb
-
-  translator:hook:
-    desc: Run the Codex translator hook for staged locale and typography changes
-    summary: |
-      Runs the shared translator skill when staged files include locale YAML
-      or Ruby UI typography components.
-      Usage: task translator:hook
-    cmds:
-      - ./scripts/translator_hook.fish
-
-  mutation:
-    desc: Run mutation testing on a subject (SUBJECT=ClassName)
-    summary: |
-      Run mutant against a subject match expression inside the test container.
-      Requires the test database — run `task test:up` first.
-      Usage: task mutation SUBJECT=MedicationFriendlyName
-      Usage: task mutation SUBJECT='GlobalSearch::ResultBuilder*'
-    requires:
-      vars: [SUBJECT]
-    cmds:
-      - task: internal:run
-        vars:
-          ENVIRONMENT: test
-          COMMAND: 'env RAILS_ENV=test bundle exec mutant run -- "{{ .SUBJECT }}"'
-
-  mutation:since:
-    desc: Mutation-test only subjects changed since a git ref (REF, default origin/main)
-    summary: |
-      Incremental mutation run — mutates only subjects touched since REF.
-      Usage: task mutation:since
-      Usage: task mutation:since REF=HEAD~3
-    vars:
-      ref: '{{ .REF | default "origin/main" }}'
-    cmds:
-      - task: internal:run
-        vars:
-          ENVIRONMENT: test
-          COMMAND: 'env RAILS_ENV=test bundle exec mutant run --since {{ .ref }}'

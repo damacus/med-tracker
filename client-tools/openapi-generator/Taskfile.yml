@@ -1,0 +1,46 @@
+version: "3"
+
+tasks:
+  generate:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Generate the Swift and Kotlin API clients from the V1 contract
+    cmds:
+      - ./client-tools/openapi-generator/generate.fish
+
+  verify-generated:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Verify generated API clients are deterministic
+    cmds:
+      - ./client-tools/openapi-generator/generate.fish determinism
+
+  kotlin:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Generate the Kotlin API client from the V1 contract
+    cmds:
+      - ./client-tools/openapi-generator/generate-kotlin.fish
+
+  kotlin:test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Generate and compile the Kotlin API client
+    cmds:
+      - task: kotlin
+      - ./tmp/api-clients/kotlin/gradlew --no-daemon -p tmp/api-clients/kotlin check assemble
+
+  swift:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Generate the Swift API client from the V1 contract
+    cmds:
+      - ./client-tools/openapi-generator/generate-swift.fish
+
+  swift:test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Generate and compile the Swift API client
+    cmds:
+      - task: swift
+      - swift build --package-path tmp/api-clients/swift
+
+  verify:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    desc: Verify generated API clients are deterministic
+    cmds:
+      - task: verify-generated

@@ -47,10 +47,6 @@ class NhsDmdImport < ApplicationRecord
     archive_reference_values.all?(&:present?)
   end
 
-  def legacy_archive?
-    archive_path.present? && !archive_reference?
-  end
-
   def start!
     update!(started_at: Time.current) if started_at.blank?
   end

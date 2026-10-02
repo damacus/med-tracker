@@ -35,9 +35,12 @@ module Components
 
       def render_warning
         div(data: { controller: 'flash', flash_dismiss_after_value: 8000 }, class: 'pointer-events-auto') do
-          Alert(variant: :warning, class: 'relative pr-12') do
+          Alert(
+            variant: :warning,
+            class: 'relative pr-4 pt-14 max-md:[&>svg~*]:ps-0 md:pr-12 md:pt-4 md:[&>svg~*]:!ps-8'
+          ) do
             alert_circle_icon
-            AlertDescription { @warning }
+            AlertDescription(class: 'break-words') { @warning }
             dismiss_button
           end
         end

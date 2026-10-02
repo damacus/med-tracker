@@ -33,8 +33,8 @@ RSpec.describe 'Schedules workflow' do
 
     select 'Prescribed', from: 'Type (OTC or prescribed)'
     select 'John Doe', from: 'Person name'
-    select 'Paracetamol', from: 'Name of med'
-    fill_in 'Dose, frequency', with: 'Twice daily'
+    select 'Paracetamol', from: 'Medication'
+    fill_in 'Frequency', with: 'Twice daily'
 
     click_button 'Continue to schedule details'
 

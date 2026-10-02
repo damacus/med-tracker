@@ -82,6 +82,52 @@ RSpec.describe 'MedicationFinder' do
     expect(desktop_geometry.fetch('inputPaddingLeft')).to be >= desktop_geometry.fetch('iconWidth')
   end
 
+  it 'keeps long result metadata inside finder cards at narrow widths', :browser do
+    driven_by(:playwright)
+    page.current_window.resize_to(320, 844)
+    login_as(user)
+    stub_medication_finder_payload(
+      results: [
+        {
+          name: 'Long supplied medicine name',
+          display: 'Long supplied medicine name',
+          source_label: 'UnbrokenSourceLabelThatExceedsTheNarrowCardWidth',
+          match_reason_label: 'UnbrokenMatchReasonLabelThatExceedsTheNarrowCardWidth',
+          concept_class: 'VMP',
+          concept_class_label: 'UnbrokenConceptClassLabelThatExceedsTheNarrowCardWidth',
+          package_size: '32 tablets'
+        }
+      ],
+      permissions: { can_create: true, can_restock: true }
+    )
+
+    visit medication_finder_path
+    fill_in 'medication-search-input', with: 'long supplied medicine'
+    click_on 'Search'
+
+    expect(page).to have_css('[data-testid="result-card"]')
+    geometry = page.evaluate_script(<<~JS)
+      (() => {
+        const card = document.querySelector('[data-testid="result-card"]');
+        const cardRect = card.getBoundingClientRect();
+        const labels = Array.from(card.querySelectorAll('span'));
+        return {
+          overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+          cardRight: cardRect.right,
+          viewport: window.innerWidth,
+          labelsInsideCard: labels.every((label) => {
+            const rect = label.getBoundingClientRect();
+            return rect.left >= cardRect.left && rect.right <= cardRect.right;
+          })
+        };
+      })()
+    JS
+
+    expect(geometry.fetch('overflow')).to be <= 1, geometry.inspect
+    expect(geometry.fetch('cardRight')).to be <= geometry.fetch('viewport')
+    expect(geometry.fetch('labelsInsideCard')).to be(true)
+  end
+
   it 'opens a restock confirmation modal for an existing medication result', :browser do
     driven_by(:playwright)
     login_as(user)

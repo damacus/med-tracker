@@ -32,6 +32,26 @@ RSpec.describe MedicationQuery do
     expect(results.map(&:name)).to contain_exactly('Vitamin C', 'Vitamin D')
   end
 
+  it 'calculates consumption for the loaded list without per-medication queries' do
+    schedule = create(:schedule, max_daily_doses: 2)
+    direct = create(:person_medication, max_daily_doses: 3)
+    results = described_class.new(scope: scope).call.to_a
+    statements = []
+    subscriber = lambda do |_name, _start, _finish, _id, payload|
+      statements << payload[:sql] unless payload[:cached] || payload[:name] == 'SCHEMA'
+    end
+
+    rates = ActiveRecord::Base.uncached do
+      ActiveSupport::Notifications.subscribed(subscriber, 'sql.active_record') do
+        results.to_h { |medication| [medication.id, MedicationDailyConsumption.new(medication).call] }
+      end
+    end
+
+    expect(rates.fetch(schedule.medication_id)).to eq(2.0)
+    expect(rates.fetch(direct.medication_id)).to eq(3.0)
+    expect(statements).to be_empty
+  end
+
   it 'filters by location' do
     results = described_class.new(scope: scope, location_id: locations(:school).id).call
 

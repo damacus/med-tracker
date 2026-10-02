@@ -10,6 +10,9 @@ module Components
 
       def view_template
         medication_takes_section
+        not_taken_section
+        dose_outcomes_section
+        cycle_outcomes_section
         suspected_side_effects_section
         notable_illnesses_section
         illness_patterns_section
@@ -38,10 +41,55 @@ module Components
         end
       end
 
+      def not_taken_section
+        report_section(t('outcomes.not_taken')) do
+          headings = %w[time person medication].map { |key| t("medication_takes.#{key}") }
+          headings.push(t('outcomes.reason'), t('events.notes'))
+          table_or_empty(result.not_taken_outcomes, headings, table_class: 'health-history-not-taken-table') do |entry|
+            not_taken_row(entry)
+          end
+        end
+      end
+
+      def not_taken_row(entry)
+        reason = I18n.t("dashboard.outcomes.reasons.#{entry.reason}") if entry.reason.present?
+        time = entry.scheduled_at&.in_time_zone&.strftime('%Y-%m-%d %H:%M') || date(entry.date)
+        [time, entry.person.name, entry.medication_name, reason, entry.note]
+      end
+
+      def dose_outcomes_section
+        report_section(t('outcomes.title')) do
+          headings = %w[date expected taken not_taken unexplained_missed].map { |key| t("outcomes.#{key}") }
+          table_or_empty(result.daily_outcomes, headings, table_class: 'health-history-outcomes-table') do |day|
+            [date(day[:date]), day[:expected], day[:actual], day[:not_taken], day[:unexplained_missed]]
+          end
+        end
+      end
+
       def notable_illnesses_section
         report_section(t('notable_illnesses.title')) do
           event_table(result.notable_illnesses, include_medications: false)
         end
+      end
+
+      def cycle_outcomes_section
+        return if result.cycle_summaries.empty?
+
+        report_section(t('cycles.title')) do
+          p { t('cycles.description') }
+          headings = [t('cycles.window'), t('medication_takes.person'), t('medication_takes.medication')]
+          headings.concat(%w[expected taken not_taken unexplained_missed].map { |key| t("outcomes.#{key}") })
+          table_or_empty(result.cycle_summaries, headings, table_class: 'health-history-cycles-table') do |cycle|
+            cycle_row(cycle)
+          end
+        end
+      end
+
+      def cycle_row(cycle)
+        window = t('event_date_range', started_on: date(cycle[:window_starts_on]),
+                                       ended_on: date(cycle[:window_ends_on]))
+        [window, cycle[:source].person.name, cycle[:source].medication.display_name,
+         cycle[:expected], cycle[:actual], cycle[:not_taken], cycle[:unexplained_missed]]
       end
 
       def illness_patterns_section

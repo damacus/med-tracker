@@ -1,6 +1,93 @@
 ---
 pt:
-  hello: Olá mundo
+  treatments:
+    form:
+      keep_maximum: "Deixe em branco para manter o máximo atual."
+      schedule_maximum: "Deixe em branco para usar um máximo de 4 doses por ciclo."
+      optional_maximum: "O máximo é opcional para uma nova atribuição."
+      keep_cycle: "Manter o ciclo atual"
+      required_end_date: "Data de fim (obrigatória)"
+      default_dose: "Dose predefinida"
+      keep_dose_choice: "Manter a escolha de dose atual"
+      linked_dose_hint: "Deixe a opção em branco para manter qualquer ligação existente. Se a dose estiver ligada, escolha uma opção de substituição antes de alterar a quantidade ou a unidade."
+      apply_dose: "Usar a dose selecionada"
+      unavailable_selection: "Seleção indisponível"
+      schedule_type: "Tipo de horário"
+      show_fields: "Mostrar campos do horário"
+      time: "Hora (HH:MM)"
+      taper_times_hint: "Estas horas partilhadas aplicam-se a todas as etapas de redução e definem quando as doses devem ser tomadas. Deixe em branco para doses sem hora fixa."
+      step_time_instruction: "Hora da instrução da etapa (HH:MM)"
+      step_time_hint: "As horas das instruções são guardadas com esta etapa. Não definem quando as doses devem ser tomadas."
+      add_time: "Adicionar hora"
+      remove_time: "Remover hora"
+      date: "Data (AAAA-MM-DD)"
+      add_date: "Adicionar data"
+      remove_date: "Remover data"
+      step: "Etapa %{number}"
+      add_step: "Adicionar etapa"
+      remove_step: "Remover etapa"
+      as_needed_hint: "Usar quando necessário; não há horas fixas de administração."
+      resume: "Retomar tratamento"
+      resume_hint: "Retomar este tratamento agora. A pausa permanece no histórico."
+      pause_open: "Atualmente em pausa"
+      no_pause_history: "Não foram registadas pausas."
+    types:
+      daily: "Diário"
+      multiple_daily: "Várias vezes por dia"
+      weekly: "Semanal"
+      specific_dates: "Datas específicas"
+      prn: "Conforme necessário"
+      tapering: "Redução gradual"
+      every_other_day: "Dia sim, dia não"
+    weekdays:
+      monday: "Segunda-feira"
+      tuesday: "Terça-feira"
+      wednesday: "Quarta-feira"
+      thursday: "Quinta-feira"
+      friday: "Sexta-feira"
+      saturday: "Sábado"
+      sunday: "Domingo"
+    overview:
+      schedules_unavailable: "Os horários não estão disponíveis com o seu acesso atual. As atribuições apresentadas aqui continuam a poder ser lidas."
+      title: "Medicação e horários"
+      empty: "Não foram atribuídos medicamentos nem horários."
+  stock_removals:
+    title: "Remover stock"
+    description: "Registe o medicamento que saiu do stock sem ser administrado. Isto não regista uma dose."
+    quantity: "Quantidade removida"
+    note: "Nota"
+    reason: "Motivo"
+    source: "Origem do stock"
+    choose_source: "Escolha o stock"
+    choose_reason: "Escolha um motivo"
+    submit: "Registar remoção"
+    cancel: "Cancelar"
+    history: "Remoções recentes"
+    empty: "Não há remoções registadas."
+    available: "%{quantity} %{unit} disponíveis"
+    history_summary: "Removido: %{quantity} %{unit} · %{reason}"
+    unknown_actor: "Autor desconhecido"
+    units: "unidades"
+    success: "Remoção de stock registada."
+    reasons:
+      dropped: "Caiu"
+      damaged: "Danificado"
+      expired: "Fora de prazo"
+      discarded: "Descartado"
+      lost: "Perdido"
+      transferred_out: "Dado / transferido"
+      other: "Outro"
+    errors:
+      invalid_quantity: "Introduza uma quantidade positiva com até duas casas decimais."
+      invalid_reason: "Escolha um motivo de remoção."
+      invalid_note: "Limite a nota a 1.000 caracteres."
+      invalid_submission: "Recarregue este formulário e tente novamente."
+      invalid_source: "Escolha stock controlado deste medicamento."
+      untracked: "Este stock não é controlado."
+      insufficient_stock: "Stock insuficiente. Verifique a quantidade restante."
+      changed_submission: "Este envio já foi utilizado com outros dados."
+  offline:
+    record_access_required: Não tem permissão para registar esta dose.
   ruby_ui:
     common:
       close: Fechar
@@ -47,6 +134,7 @@ pt:
       greater_than_or_equal_to: deve ser maior ou igual a %{count}
       inclusion: não está incluído na lista
       invalid: não é válido
+      form_invalid: Não foi possível guardar este valor.
       not_a_number: não é um número
       required: deve existir
       taken: já está em uso
@@ -95,6 +183,8 @@ pt:
   app:
     name: MedTracker
   global_search:
+    error: A pesquisa está indisponível. Tente novamente.
+    retry: Repetir pesquisa
     dialog_label: Pesquisa global
     open: Abrir pesquisa global
     open_short: Pesquisar
@@ -211,7 +301,7 @@ pt:
         email_placeholder: Introduza o seu email
         submit: Solicitar redefinição de palavra-passe
         other_options: Outras opções
-        back_to_login: Voltar ao Início de Sessão
+        back_to_login: Voltar a iniciar sessão
         create_account: Criar uma Nova Conta
       reset_password:
         page_subtitle: Crie uma nova palavra-passe para a sua conta.
@@ -234,9 +324,9 @@ pt:
         card_description: Introduza o seu email e enviaremos um novo link de verificação.
         email_label: Endereço de email
         email_placeholder: Introduza o seu email
-        submit: Reenviar Informação de Verificação de Conta
+        submit: Reenviar email de verificação
         other_options: Outras opções
-        back_to_login: Voltar ao Início de Sessão
+        back_to_login: Voltar a iniciar sessão
         create_account: Criar uma Nova Conta
       otp_auth:
         page_title: Introduza o seu código de autenticação
@@ -373,6 +463,20 @@ pt:
         new_password_label: Nova Palavra-passe
         confirm_password_label: Confirmar Nova Palavra-passe
   admin:
+    labels:
+      membership_roles:
+        owner: Proprietário
+        administrator: Administrador
+        member: Membro
+      relationship_types:
+        parent: Pai ou mãe
+        carer: Cuidador
+        family_member: Membro da família
+        professional: Profissional
+      access_levels:
+        view: Ver
+        record: Registar
+        manage: Gerir
     invitations:
       created: Convite enviado
       resent: Convite reenviado
@@ -389,7 +493,11 @@ pt:
         cancel: Cancelar
         form:
           email: Email
-          role: Função
+          role: Função do agregado
+          relationship_type: Relação do dependente
+          select_relationship_type: Selecione a relação
+          access_level: Acesso do dependente
+          select_access_level: Selecione o nível de acesso
           dependents: Dependentes existentes
           dependents_hint: Selecione crianças existentes ou adultos dependentes que
             este pai/mãe ou cuidador convidado deve gerir.
@@ -465,6 +573,8 @@ pt:
       unauthorized: Não está autorizado a realizar esta ação.
       missing_account: O utilizador não tem uma conta para verificar.
       index:
+        title: Gestão de utilizadores
+        new_user: Novo utilizador
         helper: As funções do agregado aplicam-se apenas a este agregado. Os administradores do sistema podem gerir todos os agregados.
       form:
         subtitle: Preencha os dados abaixo para criar uma nova conta de utilizador.
@@ -479,6 +589,10 @@ pt:
         role: Função do agregado
         membership_role_helper: Apenas os administradores do sistema podem atribuir a função de Proprietário.
         select_role: Selecione uma função
+        dependent_relationship_type: Relação do dependente
+        select_dependent_relationship_type: Selecione a relação
+        dependent_access_level: Acesso do dependente
+        select_dependent_access_level: Selecione o nível de acesso
         dependents: Dependentes existentes
         cancel: Cancelar
         create_submit: Criar utilizador
@@ -794,6 +908,9 @@ pt:
       title: Localizações
       add_location: Adicionar Localização
       members: Membros
+      medication_count:
+        one: "%{count} medicamento"
+        other: "%{count} medicamentos"
       view: Ver
       delete_dialog:
         title: Eliminar Localização
@@ -811,6 +928,7 @@ pt:
       no_members: Nenhum membro atribuído.
       details: Detalhes
       no_details: Nenhuma descrição fornecida.
+      stock_warning: Stock baixo
       add_member:
         title: Adicionar Membro
         description: Adicionar uma pessoa a %{name}
@@ -831,6 +949,49 @@ pt:
       success: "%{name} removido de %{location}"
       failure: Falha ao remover membro
   medications:
+    stock:
+      title: "Gerir stock"
+      adjust: "Ajustar stock"
+      new_quantity: "Nova quantidade de stock"
+      order: "Registar encomenda"
+      receive: "Marcar como recebido"
+      ordered: "Encomendado"
+      received: "Recebido"
+      not_ordered: "Nenhuma encomenda registada"
+      edit_option: "Editar stock da opção"
+      option_total: "Cada opção tem o seu próprio stock e unidade. Altere as quantidades no editor da opção."
+      scalar_fallback: "Todas as opções têm stock sem controlo. As doses ainda podem usar o stock do medicamento principal apresentado aqui; defina stock numa opção para o controlar separadamente."
+      receipt_hint: "Receber uma encomenda regista apenas o seu estado. Ajuste o stock separadamente ao contar a entrega."
+      date_hint: "Introduza a data prevista como YYYY-MM-DD."
+      original_token: "Abra novamente o formulário de edição para carregar a versão original, reveja e envie as alterações."
+      option_readonly: "O stock e os limites de reposição das opções são geridos no editor da opção."
+      invalid_quantity: "Introduza uma quantidade não negativa com até duas casas decimais."
+      household_inventory: "Inventário do agregado"
+    dose_dialog:
+      administration_title: 'Registar administração para %{name}'
+      choose_person_source: 'Escolha a pessoa e a origem.'
+      close: 'Fechar'
+      source: 'ORIGEM DO MEDICAMENTO'
+      calculated: 'Calculada para a hora selecionada'
+      dose_calculated: 'Dose calculada para a hora selecionada'
+      log: 'Registar'
+      view_only: 'Apenas leitura'
+      no_stock: 'Sem stock elegível'
+      record: 'Registar dose'
+      confirm: 'Confirme a pessoa, o medicamento, a hora e a origem do stock.'
+      review: 'Reveja esta dose.'
+      unavailable: 'Esta origem não está disponível. Escolha outra antes de enviar.'
+      choose_source: 'Escolher origem'
+      person: 'PESSOA'
+      medication: 'MEDICAMENTO'
+      dose: 'DOSE'
+      taken_at: 'Tomada às'
+      stock_source: 'Origem do stock'
+      remaining: 'restantes'
+      invalid_time: 'A hora da toma é inválida.'
+      foreign_source: 'Esta origem não pertence a este medicamento.'
+      forbidden: 'Não pode registar esta dose.'
+      conflict: 'Este pedido de dose entra em conflito com um registo anterior.'
     finder:
       nhs_directory: Diretório NHS
       title: Pesquisador de Medicamentos
@@ -961,6 +1122,7 @@ pt:
       edit_subtitle: Atualizar detalhes de %{name}.
     index:
       your_inventory: O Seu Inventário
+      stock_remaining: "%{amount} %{unit} restantes"
       add_for_person: Adicionar medicação para alguém
       title: Medicamentos
       add_medication: Adicionar Medicamento
@@ -1079,7 +1241,9 @@ pt:
         damaged_or_disposed: Danificado ou eliminado
         other: Outro
       clear_batch: Limpar lote
-      apply: Aplicar %{count} alterações
+      apply:
+        one: Aplicar 1 alteração
+        other: Aplicar %{count} alterações
       medicines: "%{count} medicamentos"
       net_change: alteração líquida total
       units: unidades
@@ -1090,14 +1254,6 @@ pt:
       success:
         one: O fornecimento restante de %{count} medicamento foi atualizado.
         other: O fornecimento restante de %{count} medicamentos foi atualizado.
-  passwords:
-    reset_sent: Instruções de redefinição de palavra-passe enviadas (se existir um
-      utilizador com esse endereço de email).
-    reset_success: Palavra-passe redefinida.
-    mismatch: As palavras-passe não coincidem.
-    invalid_token: O link de redefinição de palavra-passe é inválido ou expirou.
-    mailer:
-      subject: Redefinir a sua palavra-passe
   people:
     created: Pessoa criada com sucesso.
     updated: Pessoa atualizada com sucesso.
@@ -1198,8 +1354,19 @@ pt:
       paused: Em pausa
       notes: 'Notas:'
       timing_restrictions: 'Restrições de Tempo:'
-      max_doses_per_day: Máximo %{count} dose(s) por dia
-      wait_hours: Esperar pelo menos %{hours} horas entre doses
+      max_doses:
+        daily:
+          one: Máximo 1 dose por dia
+          other: Máximo %{count} doses por dia
+        weekly:
+          one: Máximo 1 dose por semana
+          other: Máximo %{count} doses por semana
+        monthly:
+          one: Máximo 1 dose por mês
+          other: Máximo %{count} doses por mês
+      wait_hours:
+        one: Esperar pelo menos 1 hora entre doses
+        other: Esperar pelo menos %{count} horas entre doses
       next_dose_available: 'Próxima dose disponível em:'
       todays_doses: Doses de Hoje
       no_doses_today: Nenhuma dose tomada hoje
@@ -1396,11 +1563,11 @@ pt:
         prescribed: Prescrita
       person_label: Nome da pessoa
       person_placeholder: Selecionar pessoa
-      medication_label: Nome do medicamento
+      medication_label: Medicamento
       medication_placeholder: Selecionar medicamento
-      frequency_label: Dose, frequência
+      frequency_label: Frequência
       frequency_placeholder: p. ex., Uma vez por dia
-      summary_title: Receita (desdobrar isto)
+      summary_title: Resumo do horário
       none: "-"
     index:
       title: Receitas ativas
@@ -1457,6 +1624,8 @@ pt:
       create_account: Criar uma
       resend_verification: Reenviar email de verificação
   take_medications:
+    cooldown: Esta dose não está disponível neste momento.
+    out_of_stock: 'Não é possível tomar o medicamento: sem stock'
     success: Toma de medicamento registada com sucesso.
     failure: Falha ao registar toma de medicamento.
     json_success: Toma de medicamento registada com sucesso.
@@ -1492,6 +1661,18 @@ pt:
       pdf_unavailable: Não foi possível preparar o PDF. Tente novamente.
       preparing_pdf: A preparar PDF...
     health_history:
+      cycles:
+        title: Ciclos de doses de rotina
+        description: Um ciclo não é considerado perdido até terminar.
+        window: Período do ciclo
+      outcomes:
+        title: Resultados das doses
+        not_taken: Não tomadas
+        date: Data
+        expected: Previstas
+        taken: Tomadas
+        unexplained_missed: Omissões sem explicação
+        reason: Motivo
       person_required: Selecione uma pessoa para transferir um historial de saúde para o médico de família.
       title: Relatório do historial de saúde do MedTracker
       people: "Pessoas: %{people}"
@@ -1502,6 +1683,7 @@ pt:
       ongoing_from: Em curso desde %{started_on}
       event_date_range: "%{started_on} a %{ended_on}"
       sources:
+        routine: Rotina
         scheduled: Agendado
         as_needed: Conforme necessário/direto
       medication_takes:
@@ -1650,8 +1832,8 @@ pt:
         description: Medicações tomadas hoje, agrupadas por pessoa.
         empty: Nenhuma medicação tomada hoje.
       summary:
-        overall_compliance: Cumprimento geral
-        total_doses_logged: Total de doses registadas
+        overall_compliance: Cumprimento diário
+        total_doses_logged: Doses diárias registadas
         evidence_reviewed: Evidência revista
         excellent: Excelente
         needs_attention: Precisa de atenção
@@ -1707,6 +1889,12 @@ pt:
         metric_value:
           one: 1 dia
           other: "%{count} dias"
+      missed_routine_cycles:
+        title: "Ciclos de rotina perdidos"
+        summary: "Há doses perdidas sem explicação em %{count} ciclos consecutivos."
+        detail: "Reveja os registos de doses de rotina destes ciclos."
+        metric_label: "Maior sequência"
+        metric_value: "%{count} ciclos"
       missed_dose_pattern:
         title: Padrão de doses em falta
         summary:
@@ -1817,6 +2005,7 @@ pt:
       create: Criar token
       empty: Ainda não existem tokens de API.
       last_used_at: 'Última utilização: %{time}'
+      expires_at: 'Expira: %{time}'
       revoke: Revogar
       revoked: Token de API revogado.
       locked: A sua conta está bloqueada. Os tokens de API não podem ser alterados agora.
@@ -1947,9 +2136,6 @@ pt:
     owner_deactivation_rejected: As contas de proprietário só podem ser desativadas
       por outro proprietário do agregado enquanto existir outro utilizador proprietário
       ativo.
-  webauthn:
-    passkey_removed: Chave de acesso removida com sucesso
-    passkey_registered: Chave de acesso registada com sucesso
   layouts:
     mailer:
       footer_notice: Este email foi enviado porque tem uma conta connosco.
@@ -2085,18 +2271,6 @@ pt:
       review_note: Nota da revisão
       save: Guardar registo da revisão
   notification_settings:
-    title: Definições de Notificação
-    description: Gira as notificações de lembrete da sua medicação.
-    browser:
-      title: Notificações do Navegador
-      status: A verificar o estado das notificações...
-      enable: Ativar notificações
-      disable: Desativar notificações
-      test: Enviar notificação de teste
-    reminders:
-      enable: Ativar lembretes
-      description: Enviar lembretes de medicação nos horários agendados.
-      title: Horários dos lembretes
     categories:
       title: Categorias de Notificação
       dose_due_enabled:
@@ -2111,14 +2285,6 @@ pt:
       private_text_enabled:
         title: Conteúdo de Notificação Privado
         description: Ocultar informações sensíveis como nomes de medicamentos nas notificações.
-    period_labels:
-      morning: Manhã
-      afternoon: Tarde
-      evening: Noite
-      night: Madrugada
-    actions:
-      cancel: Cancelar
-      save: Guardar definições
   invitations:
     accept:
       title: Concluir a sua conta
@@ -2145,13 +2311,19 @@ pt:
         description: Gira pessoas e os respetivos horários, acompanhe os horários
           de medicação
   dosages:
+    management:
+      daily: 'Diário'
+      weekly: 'Semanal'
+      monthly: 'Mensal'
+      untracked: 'Sem controlo'
+      stock_hint: 'Deixe o stock em branco para um fornecimento sem controlo; zero significa que o stock controlado está vazio. Um limite em branco permanece por definir.'
+      confirm_mode: 'Compreendo que adicionar a primeira opção apaga a dose única do medicamento. Se esta opção controlar stock, as suas quantidades substituem os totais de stock do medicamento.'
+      confirm_required: 'Confirme a alteração para opções de dosagem antes de guardar.'
+      conflict: 'Esta dose foi alterada. Recarregue o formulário e reveja as alterações antes de voltar a guardar.'
+      retry_hint: 'Se não conseguir guardar, verifique a lista de doses antes de tentar novamente. Repetir um pedido de adição pode criar outra opção.'
     created: Dose adicionada com sucesso.
     updated: Dose atualizada com sucesso.
     deleted: Dose removida com sucesso.
-    new:
-      title: Adicionar dose
-    edit:
-      title: Editar dose
     form:
       amount: Quantidade
       unit: Unidade
@@ -2181,6 +2353,7 @@ pt:
     back: "← Voltar"
   forms:
     locations:
+      new_title: Nova localização
       name_placeholder: p. ex. Casa, Escola, Casa da Avó
       description_placeholder: Descreva esta localização...
     people:
@@ -2188,7 +2361,7 @@ pt:
       email_placeholder: e.g., jane@example.com
     medications:
       inventory_management: Gestão de Inventário
-      dosage_and_supply: Dosagem e Fornecimento
+      dosage_options_read_only: Este medicamento utiliza opções de dosagem. Estas permanecem inalteradas quando guarda estes detalhes.
       name: Nome
       name_placeholder: p. ex., Paracetamol
       friendly_name: Nome de apresentação
@@ -2288,6 +2461,16 @@ pt:
         other: "%{count} erros impediram que este medicamento fosse guardado:"
       starting_supply: Quantidade inicial
   dashboard:
+    outcomes:
+      not_taken: Não tomada
+      overdue: Em atraso
+      reasons:
+        refused: Recusada
+        unwell: Indisposição
+        asleep: A dormir
+        medicine_unavailable: Medicamento indisponível
+        clinician_advice: Orientação médica
+        other: Outro
     title: Painel Familiar
     greeting_morning: Bom dia, %{name}
     greeting_afternoon: Boa tarde, %{name}
@@ -2401,31 +2584,52 @@ pt:
       end_date: Data de Fim
       actions: Ações
     delete_confirmation:
-      delete: Eliminar
-      delete_schedule: Eliminar Prescrição?
-      are_you_sure: Tem certeza de que deseja eliminar %{medication} para %{person}?
-        Esta ação não pode ser desfeita.
       cancel: Cancelar
-    person_schedule:
-      age: Idade
-      dosage: Dose
-      frequency: Frequência
-      ends: Termina
-      out_of_stock: Sem stock
-      on_cooldown: Em espera
-      take_now: Tomar agora
-      delete_confirmation: Tem certeza de que deseja eliminar este horário para %{medication}?
-        Esta ação não pode ser desfeita.
-    schedule_card:
-      dosage: Dose
-      remaining_supply: Stock restante
-      frequency: Frequência
-      ends: Termina
-    quick_stats:
-      title: Estatísticas rápidas
-      people: Pessoas
-      active_schedules: Planos ativos
     quick_actions:
-      title: Ações Rápidas
       add_medication: Adicionar Medicamento
       add_person: Adicionar Pessoa
+  medication_pauses:
+    title: "Pausar medicamento"
+    reason: "Motivo"
+    note: "Nota (opcional)"
+    choose_reason: "Escolha um motivo"
+    submit: "Pausar"
+    cancel: "Cancelar"
+    timing: "A pausa começa quando é guardada."
+    history: "Histórico de pausas"
+    start_unknown: "Início desconhecido"
+    actor_unknown: "Pessoa não registada"
+    started: "Pausa: %{date} · %{actor}"
+    resumed: "Retoma: %{date} · %{actor}"
+    reasons:
+      out_of_supply: "Sem stock"
+      temporarily_not_needed: "Temporariamente desnecessário"
+      clinician_advice: "Conselho clínico"
+      side_effects: "Efeitos secundários"
+      other: "Outro"
+      reason_not_recorded: "Motivo não registado"
+
+  dose_outcomes:
+    title: "Registar dose não tomada"
+    description: "Isto regista que a dose não foi tomada. O stock não será alterado."
+    dose: "Dose"
+    reason: "Motivo (opcional)"
+    note: "Nota (opcional)"
+    unspecified: "Nenhum motivo selecionado"
+    confirm: "Confirmar dose não tomada"
+    cancel: "Cancelar"
+    empty: "Não há doses à espera de uma decisão."
+    saved: "Dose registada como não tomada."
+    invalid: "Não foi possível atualizar a dose. Verifique os dados e tente novamente."
+    slot: "Dose %{position} · %{date} · %{time}"
+    cycle_slot: "Dose %{position} · %{start_date} a %{end_date}"
+    correct: "Corrigir decisão"
+    correction_title: "Corrigir decisão sobre a dose"
+    reopen: "Reabrir dose"
+    reopen_description: "Limpa esta decisão e devolve a dose à lista de pendentes. A decisão anterior permanece no histórico de auditoria."
+    take: "Registar como tomada"
+    take_description: "Use isto apenas se a dose tiver sido tomada. Isto regista uma dose real e deduz stock."
+    taken_at: "Data e hora da toma"
+    stock: "Origem do stock"
+    corrected: "Decisão sobre a dose corrigida."
+    resolved_elsewhere: "Esta dose já não está marcada como não tomada. Volte ao painel para ver o estado atual."

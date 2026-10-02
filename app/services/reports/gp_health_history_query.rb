@@ -120,7 +120,7 @@ module Reports
     end
 
     def source_type(source)
-      return :as_needed if source.is_a?(PersonMedication)
+      return source.routine? ? :routine : :as_needed if source.is_a?(PersonMedication)
       return :as_needed if source.respond_to?(:schedule_type_prn?) && source.schedule_type_prn?
 
       :scheduled

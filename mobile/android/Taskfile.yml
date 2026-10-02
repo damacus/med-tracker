@@ -3,47 +3,68 @@ version: "3"
 
 tasks:
   jvm:check:
+    dir: "{{.TASKFILE_DIR}}"
     desc: Verify Gradle runs on the pinned JDK 17 daemon
     cmds:
       - fish --no-config ./scripts/check-jdk.fish
 
   test:
+    dir: "{{.TASKFILE_DIR}}"
     desc: Run protocol, phone, and Wear unit tests
     cmds:
       - ./gradlew :wear-protocol:test :phone:testDebugUnitTest :wear:testDebugUnitTest --no-daemon
 
   projects:
+    dir: "{{.TASKFILE_DIR}}"
     desc: List Android Gradle modules
     cmds:
       - ./gradlew projects --no-daemon
 
   phone:test:
+    dir: "{{.TASKFILE_DIR}}"
     desc: Run phone unit tests
     cmds:
       - ./gradlew :phone:testDebugUnitTest {{.CLI_ARGS}} --no-daemon
 
+  phone:ui-test:
+    dir: "{{.TASKFILE_DIR}}"
+    desc: Run phone Compose tests on a connected emulator
+    cmds:
+      - ./gradlew :phone:connectedDebugAndroidTest {{.CLI_ARGS}} --no-daemon
+
+  phone:assemble:
+    dir: "{{.TASKFILE_DIR}}"
+    desc: Assemble the phone debug APK
+    cmds:
+      - ./gradlew :phone:assembleDebug --no-daemon
+
   integration:canary:
+    dir: "{{.TASKFILE_DIR}}"
     desc: Run the opt-in live canary integration test
     cmds:
       - fish --no-config ./scripts/canary-integration.fish
 
   lint:
+    dir: "{{.TASKFILE_DIR}}"
     desc: Run phone and Wear lint
     cmds:
       - ./gradlew :phone:lint :wear:lint --no-daemon
 
   assemble:
+    dir: "{{.TASKFILE_DIR}}"
     desc: Assemble phone and Wear debug, staging, and release APKs
     cmds:
-      - ./gradlew :phone:assembleDebug :phone:assembleStaging :phone:assembleRelease :wear:assembleDebug :wear:assembleStaging :wear:assembleRelease --no-daemon --stacktrace
+      - ./gradlew :phone:assembleDebug :phone:assembleStaging :phone:assembleRelease :wear:assembleDebug :wear:assembleStaging :wear:assembleRelease --no-daemon --max-workers=1 --stacktrace
 
   wear:boundary:
+    dir: "{{.TASKFILE_DIR}}"
     desc: Verify Wear source, runtime dependencies, and packaged permission boundaries
     cmds:
       - fish --no-config ./scripts/verify-wear-boundary.fish
       - ./gradlew :wear:verifyCompanionDependencies --no-daemon
 
   wear:smoke:
+    dir: "{{.TASKFILE_DIR}}"
     desc: Verify persistent signed-out connectivity on an explicitly selected emulator pair
     env:
       PHONE_SERIAL: '{{ .PHONE_SERIAL | default "" }}'
@@ -52,32 +73,38 @@ tasks:
       - fish --no-config ./scripts/wear-smoke.fish
 
   release:check:
+    dir: "{{.TASKFILE_DIR}}"
     desc: Verify the release APK excludes staging authentication UI
     cmds:
       - fish --no-config ./scripts/verify-release-security.fish
 
   release:validate:
+    dir: "{{.TASKFILE_DIR}}"
     desc: Validate explicit Android release server and OIDC configuration
     cmds:
       - fish --no-config ./scripts/validate-release-config.fish
 
   package:release:
+    dir: "{{.TASKFILE_DIR}}"
     desc: Build a release APK with explicit validated server and OIDC configuration
     cmds:
       - fish --no-config ./scripts/package-release.fish
 
   api:check:
+    dir: "{{.TASKFILE_DIR}}"
     desc: Verify the pinned Android OpenAPI client has no drift
     cmds:
       - ./scripts/api-check.fish
 
   api:update:
+    dir: "{{.TASKFILE_DIR}}"
     desc: Update the pinned Android OpenAPI client from the root contract
     cmds:
       - ./scripts/api-update.fish
       - task: api:check
 
   ci:
+    dir: "{{.TASKFILE_DIR}}"
     desc: Run phone, Wear and protocol checks plus release, boundary and API verification
     cmds:
       - task: jvm:check

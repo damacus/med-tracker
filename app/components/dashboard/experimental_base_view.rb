@@ -262,6 +262,7 @@ module Components
           person: row[:person],
           current_user: current_user,
           dashboard_context: true,
+          stock_source_resolver: row[:stock_source_resolver],
           dashboard_person_id: presenter.selected_person_id
         }
       end

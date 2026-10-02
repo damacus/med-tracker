@@ -9,7 +9,7 @@ module RubyUI
 
     def view_template(&block)
       span(**attrs) do
-        block ? block.call : @placeholder
+        block ? yield : @placeholder
       end
     end
 

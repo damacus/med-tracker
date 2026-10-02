@@ -3,7 +3,7 @@ import {
   getFailedTakes,
   getQueuedTakes,
   getSnapshot,
-  queueTake,
+  queueTakeIfAvailable,
   refreshSnapshot,
   syncQueuedTakes
 } from "controllers/offline_store"
@@ -17,6 +17,10 @@ export default class extends Controller {
     window.addEventListener("online", this.online)
     window.addEventListener("offline", this.offline)
     window.addEventListener("medtracker:offline-take-queued", this.refresh)
+    if (typeof BroadcastChannel !== "undefined") {
+      this.queueChannel = new BroadcastChannel(`medtracker:offline-takes:${this.tenantKeyValue}`)
+      this.queueChannel.onmessage = this.refresh
+    }
 
     if (navigator.onLine) await this.refreshSnapshot()
     await this.sync()
@@ -27,6 +31,8 @@ export default class extends Controller {
     window.removeEventListener("online", this.online)
     window.removeEventListener("offline", this.offline)
     window.removeEventListener("medtracker:offline-take-queued", this.refresh)
+    this.queueChannel?.close()
+    this.queueChannel = null
   }
 
   online = async () => {
@@ -58,16 +64,37 @@ export default class extends Controller {
   async sync() {
     if (!navigator.onLine) return
 
-    const result = await syncQueuedTakes(this.syncUrlValue, this.tenantKeyValue)
-    if (result.synced.length > 0) await this.refreshSnapshot()
+    try {
+      const result = await syncQueuedTakes(this.syncUrlValue, this.tenantKeyValue)
+      this.syncMessage = result.authRequired ? "Sign in to sync your pending doses." :
+        result.retryable ? "Sync is unavailable. Your doses are saved on this device. Retry when connected." : ""
+      if (result.synced.length > 0) await this.refreshSnapshot()
+    } catch (_) {
+      this.syncMessage = "Sync is unavailable. Your doses are saved on this device. Retry when connected."
+    }
+  }
+
+  async retrySync() {
+    await this.sync()
+    await this.render()
   }
 
   async queue(event) {
     const button = event.currentTarget
+    this.queueing ||= new WeakSet()
+    if (this.queueing.has(button)) return
+    this.queueing.add(button)
+    try {
+      await this.queueDose(event)
+    } finally {
+      this.queueing.delete(button)
+    }
+  }
+
+  async queueDose(event) {
+    const button = event.currentTarget
     const sourceType = button.dataset.sourceType
     const sourceId = Number(button.dataset.sourceId)
-    const doseAmount = button.dataset.doseAmount
-    const doseUnit = button.dataset.doseUnit
     const snapshot = await getSnapshot(this.tenantKeyValue)
     const data = snapshot?.payload?.data || {}
     const source = this.sourceFor(data, sourceType, sourceId)
@@ -75,17 +102,24 @@ export default class extends Controller {
 
     if (!source || !medication) return
 
-    const inventory = this.inventoryFor(data, medication, [], source)
-    const take = await queueTake({
-      source_type: sourceType,
-      source_id: sourceId,
-      dose_amount: doseAmount,
-      dose_unit: doseUnit,
-      taken_at: new Date().toISOString(),
-      taken_from_medication_id: inventory?.id || medication.id
+    const take = await queueTakeIfAvailable((queued) => {
+      if (this.eligibilityReason(data, source, queued)) return null
+      const inventory = this.inventoryFor(data, medication, queued, this.effectiveSource(source))
+      if (!inventory) return null
+      return {
+        source_type: sourceType,
+        source_id: sourceId,
+        dose_amount: source.offline_eligibility.dose_amount,
+        dose_unit: source.offline_eligibility.dose_unit,
+        taken_at: new Date().toISOString(),
+        taken_from_medication_id: inventory.id
+      }
     }, this.tenantKeyValue)
 
-    window.dispatchEvent(new CustomEvent("medtracker:offline-take-queued", { detail: { take } }))
+    if (take) {
+      window.dispatchEvent(new CustomEvent("medtracker:offline-take-queued", { detail: { take } }))
+      this.queueChannel?.postMessage(null)
+    }
   }
 
   async render() {
@@ -123,9 +157,12 @@ export default class extends Controller {
       const person = this.byId(data.people, source.person_id)
       const medication = this.byId(data.medications, source.medication_id)
       const pending = queued.filter((take) => take.source_type === sourceType && Number(take.source_id) === source.id)
-      const inventory = medication ? this.inventoryFor(data, medication, queued, source) : null
+      const effectiveSource = this.effectiveSource(source)
+      const inventory = medication ? this.inventoryFor(data, medication, queued, effectiveSource) : null
       const stockMedication = inventory || medication
-      const disabled = !medication || this.locallyOutOfStock(stockMedication, queued, source)
+      const outOfStock = !medication || this.locallyOutOfStock(stockMedication, queued, effectiveSource)
+      const reason = this.eligibilityReason(data, source, queued)
+      const disabled = outOfStock || !!reason
       const label = pending.length > 0 ? `${pending.length} pending` : "Take now"
 
       return `
@@ -133,7 +170,8 @@ export default class extends Controller {
           <div class="flex items-start justify-between gap-4">
             <div class="min-w-0">
               <p class="font-bold text-foreground">${this.escape(medication?.name || "Medication")}</p>
-              <p class="mt-1 text-sm text-on-surface-variant">${this.escape(person?.name || "Person")} · ${this.escape(this.doseLabel(source))}</p>
+              <p class="mt-1 text-sm text-on-surface-variant">${this.escape(person?.name || "Person")} · ${this.escape(this.doseLabel(effectiveSource))}</p>
+              ${reason ? `<p class="mt-2 text-sm text-on-surface-variant">${this.escape(reason)}</p>` : ""}
               ${pending.length > 0 ? `<p class="mt-2 text-xs font-bold uppercase tracking-widest text-primary">Queued locally</p>` : ""}
             </div>
             <button
@@ -145,7 +183,7 @@ export default class extends Controller {
               data-dose-amount="${this.escape(source.dose_amount || medication?.dose_amount || "")}"
               data-dose-unit="${this.escape(source.dose_unit || medication?.dose_unit || "")}"
               ${disabled ? "disabled" : ""}
-            >${this.escape(disabled ? "Out of stock" : label)}</button>
+            >${this.escape(outOfStock ? "Out of stock" : reason ? "Unavailable" : label)}</button>
           </div>
         </article>
       `
@@ -174,7 +212,7 @@ export default class extends Controller {
   }
 
   renderFailures(failed) {
-    if (failed.length === 0) {
+    if (failed.length === 0 && !this.syncMessage) {
       this.failuresTarget.innerHTML = ""
       return
     }
@@ -182,6 +220,8 @@ export default class extends Controller {
     this.failuresTarget.innerHTML = `
       <div class="rounded-lg border border-destructive/50 bg-destructive/10 p-4">
         <p class="text-sm font-bold text-destructive">Sync needs attention</p>
+        ${this.syncMessage ? `<p role="status" class="mt-2 text-sm">${this.escape(this.syncMessage)}</p>` : ""}
+        ${this.syncMessage ? `<button type="button" class="mt-3 rounded-lg border px-4 py-2 focus-visible:outline" data-action="offline-shell#retrySync">Retry sync</button>` : ""}
         <div class="mt-3 space-y-2">${failed.map((failure) => `
           <p class="text-xs text-destructive/90">${this.escape(failure.failure_message)}</p>
         `).join("")}</div>
@@ -192,6 +232,23 @@ export default class extends Controller {
   sourceFor(data, sourceType, sourceId) {
     const collection = sourceType === "schedule" ? data.schedules : data.person_medications
     return this.byId(collection, sourceId)
+  }
+
+  effectiveSource(source) {
+    return source.offline_eligibility ? { ...source, dose_amount: source.offline_eligibility.dose_amount, dose_unit: source.offline_eligibility.dose_unit } : source
+  }
+
+  eligibilityReason(data, source, queued) {
+    const eligibility = source.offline_eligibility
+    if (!eligibility || !(Date.parse(eligibility.valid_until) > Date.now())) return "Refresh your care plan before recording another dose."
+    if (!eligibility.allowed) return eligibility.reason || "This dose is unavailable."
+    const overlapping = queued.some(take => {
+      const pendingSource = this.sourceFor(data, take.source_type, take.source_id)
+      return pendingSource && Number(pendingSource.person_id) === Number(source.person_id) &&
+        Number(pendingSource.medication_id) === Number(source.medication_id)
+    })
+    if (overlapping) return "Sync the pending dose before recording another dose of this medicine."
+    return null
   }
 
   medicationForSource(data, source) {
@@ -236,7 +293,8 @@ export default class extends Controller {
   }
 
   stockConsumptionFor(take) {
-    return take.dose_unit === "ml" ? Number(take.dose_amount || 0) : 1
+    if (!take.dose_amount) return 0
+    return ["tablet", "capsule", "gummy", "sachet", "spray", "drop", "pad", "ml"].includes(take.dose_unit) ? Number(take.dose_amount) : 1
   }
 
   formatQuantity(quantity) {

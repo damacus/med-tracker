@@ -14,6 +14,7 @@ module Components
         @source = source
         @person = context.fetch(:person)
         @current_user = context.fetch(:current_user)
+        @stock_source_resolver = context[:stock_source_resolver]
         @amount = amount
         @button_label = button.fetch(:label)
         @button_variant = button.fetch(:variant)

@@ -50,6 +50,13 @@ RSpec.describe MedTrackerMcp::Context do
       expect_authentication_failure(request_for(raw_token))
     end
 
+    it 'rejects expired app tokens even when membership remains active' do
+      request = request_for(raw_token)
+      travel_to(app_token.expires_at, with_usec: true) do
+        expect_authentication_failure(request)
+      end
+    end
+
     it 'rejects locked accounts' do
       AccountLockout.create!(
         account: account,

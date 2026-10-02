@@ -149,7 +149,8 @@ module Components
           account_id = user.person&.account_id
           return no_membership_label unless account_id
 
-          access_summary.membership_role_for(account_id)&.titleize || no_membership_label
+          role = access_summary.membership_role_for(account_id)
+          role.present? ? t("admin.labels.membership_roles.#{role}") : no_membership_label
         end
 
         def no_membership_label

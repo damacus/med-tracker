@@ -4,7 +4,7 @@ module RubyUI
   class AccordionIcon < Base
     def view_template(&block)
       span(**attrs) do
-        block ? block.call : icon
+        block ? yield : icon
       end
     end
 

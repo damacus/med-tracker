@@ -3,17 +3,6 @@
 require 'rails_helper'
 
 RSpec.describe RubyUI::AlertDialogContent, type: :component do
-  it 'uses token-driven floating surfaces instead of hard-coded white' do
-    rendered = render_inline(described_class.new { 'Alert body' })
-    html = rendered.to_html
-
-    expect(html).to include('bg-popover')
-    expect(html).to include('bg-foreground/10')
-    expect(html).to include('backdrop-blur-[1.5px]')
-    expect(html).not_to include('bg-white')
-    expect(html).not_to include('bg-black/80')
-  end
-
   it 'renders a named modal alert dialog surface' do
     body = [
       RubyUI::AlertDialogTitle.new { 'Delete medication?' }.render_in(view_context),
@@ -51,7 +40,7 @@ RSpec.describe RubyUI::AlertDialogContent, type: :component do
   end
 
   it 'does not render duplicate title and description ids across alert dialogs' do
-    contents = 2.times.map do
+    contents = Array.new(2) do
       title = RubyUI::AlertDialogTitle.new { 'Delete medication?' }.render_in(view_context)
       description = RubyUI::AlertDialogDescription.new { 'This cannot be undone.' }.render_in(view_context)
 

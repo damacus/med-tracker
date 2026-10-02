@@ -36,7 +36,10 @@ module Components
           li(class: 'flex items-center gap-2') do
             div(class: 'w-1 h-1 rounded-full bg-secondary-container-foreground')
             m3_text(size: '2', weight: 'semibold', class: 'text-on-surface-variant') do
-              t('person_medications.card.max_doses_per_day', count: person_medication.max_daily_doses)
+              t(
+                "person_medications.card.max_doses.#{DoseCycle.new(person_medication.dose_cycle)}",
+                count: person_medication.max_daily_doses
+              )
             end
           end
         end
@@ -45,7 +48,7 @@ module Components
           li(class: 'flex items-center gap-2') do
             div(class: 'w-1 h-1 rounded-full bg-secondary-container-foreground')
             m3_text(size: '2', weight: 'semibold', class: 'text-on-surface-variant') do
-              t('person_medications.card.wait_hours', hours: person_medication.min_hours_between_doses)
+              t('person_medications.card.wait_hours', count: person_medication.min_hours_between_doses)
             end
           end
         end

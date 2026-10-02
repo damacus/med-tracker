@@ -26,11 +26,6 @@ module Platform
       record_promotion_rejection('platform_administrator_required') unless allowed
     end
 
-    def require_privileged_action_mfa
-      super
-      record_promotion_rejection('fresh_privileged_action_required') if performed?
-    end
-
     def access_change
       @access_change ||= Households::AccessChange.new(
         actor_account: current_account,

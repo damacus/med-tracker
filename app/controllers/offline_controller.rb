@@ -60,14 +60,19 @@ class OfflineController < ApplicationController
   private
 
   def snapshot_payload
+    schedules = policy_scope(Schedule).includes(:person, :medication).to_a
+    person_medications = policy_scope(PersonMedication).includes(:person, :medication).to_a
+    eligibility = OfflineDoseEligibilityBatch.new(sources: schedules + person_medications, user: current_user) do |source|
+      policy(source)
+    end.call
     {
       people: serialized(policy_scope(Person).includes(:locations, :notification_preference), Api::V1::PersonSerializer),
       locations: serialized(policy_scope(Location), Api::V1::LocationSerializer),
-      medications: serialized(policy_scope(Medication).includes(:location), Api::V1::MedicationSerializer),
-      schedules: serialized(policy_scope(Schedule).includes(:person, :medication), Api::V1::ScheduleSerializer),
-      person_medications: serialized(
-        policy_scope(PersonMedication).includes(:person, :medication),
-        Api::V1::PersonMedicationSerializer
+      medications: serialized(policy_scope(Medication).includes(:location, :schedules, :person_medications),
+                              Api::V1::MedicationSerializer),
+      schedules: serialized_sources(schedules, Api::V1::ScheduleSerializer, eligibility),
+      person_medications: serialized_sources(
+        person_medications, Api::V1::PersonMedicationSerializer, eligibility
       ),
       medication_takes: serialized(recent_medication_takes, Api::V1::MedicationTakeSerializer)
     }
@@ -75,6 +80,14 @@ class OfflineController < ApplicationController
 
   def serialized(records, serializer)
     records.map { |record| serializer.new(record).as_json }
+  end
+
+  def serialized_sources(records, serializer, eligibility)
+    records.map do |record|
+      serializer.new(record).as_json.merge(
+        offline_eligibility: eligibility.fetch(record)
+      )
+    end
   end
 
   def recent_medication_takes

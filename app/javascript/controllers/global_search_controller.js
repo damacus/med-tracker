@@ -117,11 +117,33 @@ export default class extends Controller {
         headers: { "Accept": "application/json" },
         signal: this.abortController.signal
       })
+      if (!response.ok) throw new Error("Search unavailable")
       const data = await response.json()
-      this.renderResults(data.results || [])
+      if (!Array.isArray(data?.results)) throw new Error("Invalid search response")
+      this.renderResults(data.results)
     } catch (error) {
-      if (error.name !== "AbortError") this.renderResults([])
+      if (error.name !== "AbortError") this.renderError()
     }
+  }
+
+  retry(event) {
+    event.preventDefault()
+    clearTimeout(this.searchTimer)
+    const query = this.inputTarget.value.trim()
+    if (query) this.fetchResults(query)
+    this.inputTarget.focus()
+  }
+
+  renderError() {
+    this.activeIndex = -1
+    this.resultsTarget.innerHTML = `
+      <div class="px-3 py-6 text-sm text-on-surface-variant">
+        <p>${this.escapeHtml(this.t("error"))}</p>
+        <button type="button" class="mt-3 rounded-md border border-primary px-4 py-2 text-primary focus-visible:ring-2 focus-visible:ring-primary"
+          data-action="click->global-search#retry">${this.escapeHtml(this.t("retry"))}</button>
+      </div>
+    `
+    this.setStatus(this.t("error"))
   }
 
   abortCurrentSearch() {

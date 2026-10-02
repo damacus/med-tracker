@@ -1,4 +1,4 @@
-FROM rubylang/ruby:4.0.6-resolute AS base
+FROM rubylang/ruby:4.0.7-resolute AS base
 WORKDIR /app
 
 ARG UID=1000
@@ -119,8 +119,6 @@ USER root
 RUN rm -rf /ms-playwright \
   && npx playwright install --with-deps chromium \
   && chmod -R 755 /ms-playwright
-
-RUN bash -c 'for browser in chromium chromium_headless_shell; do for revision in 1208 1223 1228; do expected="/ms-playwright/${browser}-${revision}"; if [ ! -e "$expected" ]; then installed="$(find /ms-playwright -maxdepth 1 -type d -name "${browser}-*" | sort | tail -n 1)"; ln -s "$(basename "$installed")" "$expected"; fi; done; done'
 
 USER ruby
 

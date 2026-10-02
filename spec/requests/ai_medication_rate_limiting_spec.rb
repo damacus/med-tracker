@@ -29,6 +29,7 @@ RSpec.describe 'AI medication suggestion rate limiting' do
     freeze_time
     sign_in(admin)
     household.update!(subscription_plan: 'family_plus')
+    allow(ENV).to receive(:fetch).and_call_original
     allow(ENV).to receive(:fetch).with('MEDTRACKER_AI_MEDICATION_HELP_ENABLED', 'false').and_return('true')
     allow(AiMedication::SuggestionService).to receive(:new).and_return(service)
   end

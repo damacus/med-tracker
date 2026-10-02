@@ -35,10 +35,10 @@ module PdfTextExtractor
 
   def bfchar_map(stream)
     characters = cmap_blocks(stream, 'bfchar').flat_map do |block|
-      block.scan(/<([0-9A-F]{4})>\s+<([0-9A-F]{4})>/i)
+      block.scan(/<([0-9A-F]{4})>\s+<((?:[0-9A-F]{4})+)>/i)
     end
     characters.to_h do |cid, codepoint|
-      [cid.to_i(16), codepoint.to_i(16).chr(Encoding::UTF_8)]
+      [cid.to_i(16), unicode_mapping(codepoint)]
     end
   end
 
@@ -58,10 +58,14 @@ module PdfTextExtractor
 
   def array_bfrange_map(block)
     block.scan(/<([0-9A-F]{4})>\s+<([0-9A-F]{4})>\s+\[(.*?)\]/im).flat_map do |first, _last, codepoints|
-      codepoints.scan(/<([0-9A-F]{4})>/i).flatten.each_with_index.map do |codepoint, index|
-        [first.to_i(16) + index, codepoint.to_i(16).chr(Encoding::UTF_8)]
+      codepoints.scan(/<((?:[0-9A-F]{4})+)>/i).flatten.each_with_index.map do |codepoint, index|
+        [first.to_i(16) + index, unicode_mapping(codepoint)]
       end
     end
+  end
+
+  def unicode_mapping(codepoints)
+    [codepoints].pack('H*').force_encoding(Encoding::UTF_16BE).encode(Encoding::UTF_8)
   end
 
   def cmap_blocks(stream, name)

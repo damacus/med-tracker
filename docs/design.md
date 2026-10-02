@@ -10,8 +10,10 @@ preserving attributable history inside a household authorization boundary.
 
 - The backend uses Ruby on Rails.
 - The frontend uses Hotwire (Turbo and Stimulus) with Phlex components.
-- Authentication uses Rodauth accounts with password, generic OIDC, passkeys,
-  and household-bound API credentials.
+- Authentication uses Rodauth accounts with password, generic OIDC and passkeys.
+  First-party mobile OAuth credentials identify the account; each household
+  request checks current membership and person/action permission. Restricted
+  integration credentials retain their household and scope limits.
 - Authorisation uses household memberships plus person-scoped access grants.
 - PostgreSQL stores development, test, and production data.
 - PaperTrail change history supports security and compliance evidence.

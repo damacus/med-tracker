@@ -23,9 +23,9 @@ val releaseOidcTokenEndpoint = providers.gradleProperty("medtracker.release.oidc
 val releaseOidcClientId = providers.gradleProperty("medtracker.release.oidcClientId")
     .orElse("invalid-medtracker-android-release")
 val releaseOidcRedirectUri = providers.gradleProperty("medtracker.release.oidcRedirectUri")
-    .orElse("io.damacus.medtracker.invalid:/oauth2redirect")
+    .orElse("io.damacus.medtracker:/oauth2redirect")
 val releaseOidcRedirectScheme = providers.gradleProperty("medtracker.release.oidcRedirectScheme")
-    .orElse("io.damacus.medtracker.invalid")
+    .orElse("io.damacus.medtracker")
 
 fun String.asBuildConfigString(): String =
     "\"${replace("\\", "\\\\").replace("\"", "\\\"")}\""
@@ -33,7 +33,7 @@ fun String.asBuildConfigString(): String =
 android {
     namespace = "io.damacus.medtracker"
     compileSdk {
-        version = release(36)
+        version = release(37)
     }
 
     defaultConfig {

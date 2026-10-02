@@ -24,7 +24,7 @@ module Components
             .report-header h1 { margin: 3mm 0 2mm; font-size: 18pt; line-height: 1.15; }
             .report-context, .report-generated { margin: 0; color: #DDEBE7; }
             .report-generated { font-size: 8pt; }
-            .report-section { margin: 0 0 7mm; }
+            .report-section { margin: 0 0 7mm; break-inside: avoid; page-break-inside: avoid; }
             h2, h3 { color: #174A46; break-after: avoid; page-break-after: avoid; }
             h2 { margin: 0 0 3mm; font-size: 15pt; }
             h3 { margin: 0 0 2mm; font-size: 11pt; }

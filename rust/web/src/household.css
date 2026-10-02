@@ -1,0 +1,24 @@
+.household-skip { position: absolute; left: -10000px; }
+.household-skip:focus { position: relative; left: 0; display: block; padding: 1rem; }
+.household-form { display: grid; gap: 1rem; max-width: 44rem; }
+.household-field, .form-field { display: grid; gap: .4rem; }
+.household-field label, .form-field label { font-weight: 600; }
+.household-field input, .household-field select, .household-field textarea, .form-field input, .form-field select, .form-field textarea { width: 100%; min-height: 44px; padding: .65rem; border: 1px solid #596b77; border-radius: .5rem; font: inherit; background: #fff; color: #142b39; box-sizing: border-box; }
+.household-field textarea, .form-field textarea { min-height: 6rem; }
+.household-field [aria-invalid="true"], .form-field [aria-invalid="true"] { border: 2px solid #9d1729; }
+.form-field input[type="checkbox"] { width: 24px; min-height: 24px; }
+.med-primary { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: .65rem 1rem; border: 1px solid #075f91; border-radius: .6rem; background: #075f91; color: #fff; font: inherit; font-weight: 600; text-decoration: none; cursor: pointer; }
+.med-panel { padding: 1rem; margin: 1rem 0; background: #fff; border: 1px solid #c8d7e0; border-radius: 1rem; }
+.household-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+.household-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: 1rem; }
+.household-details { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: .75rem; overflow-wrap: anywhere; }
+.household-details dt { font-weight: 600; }
+.household-details dd { margin: 0; }
+.household-error { color: #9d1729; margin: 0; }
+.household-errors { padding: 1rem; border: 2px solid #9d1729; border-radius: .5rem; background: #fff7f7; }
+.household-actions { display: flex; gap: .75rem; flex-wrap: wrap; align-items: center; }
+.household-list { display: grid; gap: 1rem; padding: 0; list-style: none; }
+.household-card { padding: 1rem; border: 1px solid #c8d7e0; border-radius: 1rem; background: #fff; }
+.household-card h2 { margin-top: 0; }
+.household-form :focus-visible, .household-list a:focus-visible, .med-primary:focus-visible { outline: 3px solid #075f91; outline-offset: 3px; }
+@media (max-width: 600px) { .household-form { width: 100%; } .household-actions > * { min-height: 44px; } }

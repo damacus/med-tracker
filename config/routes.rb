@@ -23,22 +23,30 @@ Rails.application.routes.draw do
       get :capabilities, to: 'capabilities#show'
 
       namespace :auth do
-        post :login, to: 'sessions#create'
-        post :oidc_exchange, to: 'sessions#oidc_exchange'
-        post :select_household, to: 'sessions#select_household'
         get :households, to: 'sessions#households'
         get :sessions, to: 'sessions#index'
         delete 'sessions/:id', to: 'sessions#revoke', as: :session
-        post :refresh, to: 'sessions#refresh'
         delete :logout, to: 'sessions#destroy'
       end
 
+      post 'invitations/accept', to: 'invitation_acceptances#create'
+
       scope 'households/:household_id', as: :household do
         resource :me, only: [:show], controller: 'me'
+        resource :profile, only: %i[show update]
+        get 'profile/avatar', to: 'profile_avatars#show'
+        put 'profile/avatar', to: 'profile_avatars#update'
+        delete 'profile/avatar', to: 'profile_avatars#destroy'
         resources :people, only: %i[index show create update]
-        resources :locations, only: %i[index show]
+        resources :medication_review_prompts, only: %i[index show update]
+        get 'reports/health_history', to: 'health_history_reports#show'
+        get 'reports/medication_reviews', to: 'medication_review_reports#show'
+        resources :locations, only: %i[index show create update destroy] do
+          resources :location_memberships, only: %i[create destroy]
+        end
         resources :medications, only: %i[index show create update]
         resources :medications, only: [] do
+          resources :stock_removals, only: %i[index create]
           member do
             patch :adjust_inventory
             patch :mark_as_ordered
@@ -48,17 +56,30 @@ Rails.application.routes.draw do
         resources :dosage_options, only: %i[index show create update]
         resources :health_events, only: %i[index show create update]
         resources :schedules, only: %i[index show create update] do
+          resources :dose_occurrences, only: [:index] do
+            post :not_taken, on: :collection
+            patch :reopen, on: :collection
+            post :take, on: :collection
+          end
           member do
             patch :pause
             patch :resume
           end
         end
         resources :person_medications, only: %i[index show create update] do
+          resources :dose_occurrences, only: [:index] do
+            post :not_taken, on: :collection
+            patch :reopen, on: :collection
+            post :take, on: :collection
+          end
           member do
             patch :pause
             patch :resume
             patch :reorder
           end
+        end
+        resources :medication_pause_periods, only: %i[index create] do
+          post :resume, on: :member
         end
         resources :medication_takes, only: %i[index create]
         resource :notification_preference, only: %i[show update]
@@ -84,6 +105,7 @@ Rails.application.routes.draw do
           resource :settings, only: %i[show update], controller: 'settings'
           resources :memberships, only: %i[index update destroy]
           resources :invitations, only: %i[index create destroy]
+          post 'invitations/:id/resend', to: 'invitation_resends#create'
           resources :person_access_grants, only: %i[index create destroy]
           resources :app_tokens, only: %i[index create destroy]
           resources :audit_logs, only: %i[index]
@@ -220,6 +242,7 @@ Rails.application.routes.draw do
     post 'medications/scan_restock', to: 'medications#scan_restock', as: :scan_restock_medications
     get 'medications/scan_restock_match', to: 'medications#scan_restock_match', as: :scan_restock_match_medications
     resources :medications do
+      resources :stock_removals, path: 'stock-removals', only: %i[new create], controller: 'medication_stock_removals'
       collection do
         get :stock_check
         patch :bulk_adjust_inventory
@@ -242,6 +265,11 @@ Rails.application.routes.draw do
     get 'schedules/frequency_preview', to: 'schedules#frequency_preview', as: :schedules_frequency_preview
     resources :schedules do
       resources :medication_takes, only: [:create]
+      resources :dose_occurrences, only: %i[new create edit update]
+    end
+
+    resources :person_medications, only: [] do
+      resources :dose_occurrences, only: %i[new create edit update]
     end
 
     get 'people/:person_id/avatar', to: 'people/avatars#show', as: :person_avatar
@@ -252,6 +280,7 @@ Rails.application.routes.draw do
 
       resources :schedules, except: [:index] do
         member do
+          get :pause_form
           patch :pause
           patch :resume
           post :take_medication
@@ -260,6 +289,7 @@ Rails.application.routes.draw do
 
       resources :person_medications, except: [:index] do
         member do
+          get :pause_form
           patch :pause
           patch :resume
           patch :reorder

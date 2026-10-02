@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 class MedicationReviewPromptsController < ApplicationController
-  REVIEW_STATUS_FILTERS = %w[needs_review reviewed all].freeze
-  PRIORITY_FILTERS = %w[all discuss_soon ask_when_convenient low_confidence].freeze
+  REVIEW_STATUS_FILTERS = MedicationReviewPromptQuery::REVIEW_STATUS_FILTERS
+  PRIORITY_FILTERS = MedicationReviewPromptQuery::PRIORITY_FILTERS
 
   def index
     authorize MedicationReviewPrompt
@@ -29,7 +29,8 @@ class MedicationReviewPromptsController < ApplicationController
     MedicationReviewPromptSync.new(people: people).call
     scope = policy_scope(MedicationReviewPrompt).includes(:person, :primary_medication, :interacting_medication)
     visible_scope = show_hidden? ? scope : scope.visible_by_default
-    prompts = filter_by_priority(filter_by_review_status(visible_scope)).order(:person_id, :created_at, :id).to_a
+    prompts = MedicationReviewPromptQuery.new(scope: scope, review_status: review_status_filter,
+                                              priority: priority_filter, show_hidden: show_hidden?).call.to_a
     replace_prompt_with_errors(prompts, prompt_with_errors)
 
     render Components::MedicationReviews::IndexView.new(
@@ -42,24 +43,6 @@ class MedicationReviewPromptsController < ApplicationController
         review_counts: review_counts(visible_scope)
       }
     ), status: status
-  end
-
-  def filter_by_review_status(scope)
-    case review_status_filter
-    when 'needs_review' then scope.where(status: unresolved_statuses)
-    when 'reviewed' then scope.where(status: reviewed_statuses)
-    else scope
-    end
-  end
-
-  def filter_by_priority(scope)
-    case priority_filter
-    when 'discuss_soon' then scope.where(risk_level: 'high')
-    when 'ask_when_convenient' then scope.where(risk_level: 'moderate')
-    when 'low_confidence'
-      scope.where(risk_level: %w[low unknown]).or(scope.where(match_confidence: %w[low unknown]))
-    else scope
-    end
   end
 
   def review_counts(scope)

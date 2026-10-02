@@ -4,6 +4,7 @@ import android.app.Application
 import io.damacus.medtracker.companion.CompanionPublisher
 import io.damacus.medtracker.companion.PhoneDataLayer
 import io.damacus.medtracker.data.SessionManager
+import io.damacus.medtracker.auth.MobileSessionAuthentication
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -16,6 +17,7 @@ class MedTrackerApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        MobileSessionAuthentication.install(this, sessionManager)
         companionScope.launch {
             CompanionPublisher(PhoneDataLayer(this@MedTrackerApplication), BuildConfig.VERSION_NAME)
                 .observe(sessionManager.sessionState.map { it.isLoggedIn })
