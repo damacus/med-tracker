@@ -50,4 +50,5 @@ tasks:
       - node --check scripts/ci/classify.mjs
       - node --check scripts/ci/gate.mjs
       - node --check scripts/ci/markdown.mjs
+      - node scripts/ci/task_exec_regression.mjs
       - task: test
