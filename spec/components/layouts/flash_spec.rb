@@ -16,6 +16,13 @@ RSpec.describe Components::Layouts::Flash, type: :component do
 
       expect(rendered.css('svg').any?).to be true
     end
+
+    it 'keeps the notice visible until navigation instead of auto-dismissing' do
+      rendered = render_inline(described_class.new(notice: 'Saved'))
+
+      notice = rendered.css('[data-flash-dismiss-after-value]').first
+      expect(notice['data-flash-dismiss-after-value']).to eq('0')
+    end
   end
 
   describe 'warning flash' do

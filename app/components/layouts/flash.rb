@@ -25,7 +25,7 @@ module Components
       end
 
       def render_notice
-        div(data: { controller: 'flash', flash_dismiss_after_value: 3000 }, class: 'pointer-events-auto') do
+        div(data: { controller: 'flash', flash_dismiss_after_value: 0 }, class: 'pointer-events-auto') do
           Alert(variant: :success) do
             check_icon
             AlertDescription { @notice }
