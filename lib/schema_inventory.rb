@@ -45,6 +45,7 @@ class SchemaInventory
     account_recovery_codes
     account_remember_keys
     account_verification_keys
+    account_webauthn_auth_challenges
     account_webauthn_keys
     account_webauthn_user_ids
     accounts

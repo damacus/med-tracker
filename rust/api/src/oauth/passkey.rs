@@ -109,6 +109,31 @@ pub(super) async fn passkey_login(
         Ok(verified) => verified,
         Err(_) => return login_error(PASSKEY_ERROR),
     };
+    let challenge_digest = digest(&form.webauthn_auth_challenge_hmac);
+    let consumed = match db
+        .execute_raw(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            "INSERT INTO account_webauthn_auth_challenges (challenge_digest, created_at) VALUES ($1, now()) ON CONFLICT (challenge_digest) DO NOTHING",
+            [challenge_digest.into()],
+        ))
+        .await
+    {
+        Ok(result) => result,
+        Err(error) => return database_error(error).into_response(),
+    };
+    if consumed.rows_affected() == 0 {
+        return login_error(PASSKEY_ERROR);
+    }
+    if let Err(error) = db
+        .execute_raw(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            "DELETE FROM account_webauthn_auth_challenges WHERE created_at < now() - interval '15 minutes'",
+            [],
+        ))
+        .await
+    {
+        return database_error(error).into_response();
+    }
     if let Some(handle) = &verified.user_handle {
         let handle = URL_SAFE_NO_PAD.encode(handle);
         let binding = webauthn_user_id::Entity::find()
