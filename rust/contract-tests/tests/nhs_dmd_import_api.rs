@@ -8,7 +8,9 @@ const AMPP_XML: &str = r#"<?xml version="1.0" encoding="utf-8" ?><ACTUAL_MEDICIN
 
 const GTIN_XML: &str = r#"<?xml version="1.0" encoding="utf-8" ?><GTIN_DETAILS><AMPPS><AMPP><AMPPID>111</AMPPID><GTINDATA><GTIN>05012345678901</GTIN><STARTDT>2020-01-01</STARTDT></GTINDATA><GTINDATA><GTIN>05012345678902</GTIN><STARTDT>2020-01-01</STARTDT><ENDDT>2020-01-02</ENDDT></GTINDATA></AMPP><AMPP><AMPPID>999</AMPPID><GTINDATA><GTIN>05012345678903</GTIN></GTINDATA></AMPP><AMPP><GTINDATA><GTIN>05012345678904</GTIN></GTINDATA></AMPP></AMPPS></GTIN_DETAILS>"#;
 
-fn nested_gtin_zip() -> Vec<u8> {
+const GTIN_XML_DUPLICATE: &str = r#"<?xml version="1.0" encoding="utf-8" ?><GTIN_DETAILS><AMPPS><AMPP><AMPPID>111</AMPPID><GTINDATA><GTIN>05012345678911</GTIN><STARTDT>2020-01-01</STARTDT></GTINDATA><GTINDATA><GTIN>0501 2345 678911</GTIN><STARTDT>2020-01-01</STARTDT></GTINDATA></AMPP></AMPPS></GTIN_DETAILS>"#;
+
+fn nested_gtin_zip(xml: &str) -> Vec<u8> {
     let mut buffer = Vec::new();
     {
         let mut writer = zip::ZipWriter::new(std::io::Cursor::new(&mut buffer));
@@ -18,15 +20,13 @@ fn nested_gtin_zip() -> Vec<u8> {
                 zip::write::SimpleFileOptions::default(),
             )
             .expect("gtin file entry");
-        writer
-            .write_all(GTIN_XML.as_bytes())
-            .expect("gtin xml bytes");
+        writer.write_all(xml.as_bytes()).expect("gtin xml bytes");
         writer.finish().expect("finish gtin zip");
     }
     buffer
 }
 
-fn release_zip() -> Vec<u8> {
+fn release_zip_with(gtin_xml: &str) -> Vec<u8> {
     let mut buffer = Vec::new();
     {
         let mut writer = zip::ZipWriter::new(std::io::Cursor::new(&mut buffer));
@@ -44,11 +44,15 @@ fn release_zip() -> Vec<u8> {
             )
             .expect("nested zip entry");
         writer
-            .write_all(&nested_gtin_zip())
+            .write_all(&nested_gtin_zip(gtin_xml))
             .expect("nested gtin bytes");
         writer.finish().expect("finish release zip");
     }
     buffer
+}
+
+fn release_zip() -> Vec<u8> {
+    release_zip_with(GTIN_XML)
 }
 
 fn import_form(bytes: Vec<u8>, filename: &str) -> multipart::Form {
@@ -143,6 +147,25 @@ fn nhs_dmd_import_upload_runs_and_reports_counts() {
     let rows = data(list).as_array().expect("run list").clone();
     assert!(rows.len() >= 2);
     assert_eq!(rows[0]["id"].as_i64(), Some(second_id));
+}
+
+#[test]
+fn nhs_dmd_import_duplicate_gtin_is_skipped() {
+    let target = Target::from_env();
+    let fixture = fixture();
+
+    let response = upload(
+        &target,
+        &fixture,
+        release_zip_with(GTIN_XML_DUPLICATE),
+        "release-duplicate.zip",
+    );
+    assert_eq!(response.status().as_u16(), 201);
+    let run_id = data(response)["id"].as_i64().expect("run id");
+    let run = wait_for_completion(&target, &fixture, run_id);
+    assert_eq!(run["status"], "completed");
+    assert_eq!(run["created_count"], 1);
+    assert_eq!(run["skipped_invalid_count"], 1);
 }
 
 #[test]

@@ -769,13 +769,13 @@ async fn persist_gtins(
         .all(db)
         .await
         .map_err(|error| error.to_string())?;
-    let mut by_gtin: HashMap<String, nhs_dmd_barcode::Model> = existing
+    let by_gtin: HashMap<String, nhs_dmd_barcode::Model> = existing
         .into_iter()
         .map(|row| (row.gtin.clone(), row))
         .collect();
     let now = Utc::now().naive_utc();
-    let mut inserts = Vec::new();
-    let mut updates: Vec<nhs_dmd_barcode::ActiveModel> = Vec::new();
+    let mut seen = HashSet::new();
+    let mut upserts = Vec::new();
     for record in records {
         match record {
             GtinParsed::SkipExpired => counts.skipped_expired += 1,
@@ -787,45 +787,41 @@ async fn persist_gtins(
                 amp_code,
                 display,
                 vmp_name,
-            } => match by_gtin.remove(gtin) {
-                None => {
-                    counts.created += 1;
-                    inserts.push(nhs_dmd_barcode::ActiveModel {
-                        amp_code: Set(amp_code.clone()),
-                        code: Set(code.clone()),
-                        concept_class: Set(Some("AMPP".to_owned())),
-                        created_at: Set(now),
-                        display: Set(display.clone()),
-                        gtin: Set(gtin.clone()),
-                        system: Set("https://dmd.nhs.uk".to_owned()),
-                        updated_at: Set(now),
-                        vmp_name: Set(vmp_name.clone()),
-                        ..Default::default()
+            } => {
+                if !seen.insert(gtin.clone()) {
+                    counts.skipped_invalid += 1;
+                } else {
+                    let identical = by_gtin.get(gtin).is_some_and(|row| {
+                        row.code == *code
+                            && row.display == *display
+                            && row.amp_code == *amp_code
+                            && row.vmp_name == *vmp_name
+                            && row.system == "https://dmd.nhs.uk"
+                            && row.concept_class.as_deref() == Some("AMPP")
                     });
-                }
-                Some(row) => {
-                    let identical = row.code == *code
-                        && row.display == *display
-                        && row.amp_code == *amp_code
-                        && row.vmp_name == *vmp_name
-                        && row.system == "https://dmd.nhs.uk"
-                        && row.concept_class.as_deref() == Some("AMPP");
-                    if identical {
+                    if by_gtin.contains_key(gtin) && identical {
                         counts.unchanged += 1;
                     } else {
-                        counts.updated += 1;
-                        let mut active: nhs_dmd_barcode::ActiveModel = row.into();
-                        active.amp_code = Set(amp_code.clone());
-                        active.code = Set(code.clone());
-                        active.display = Set(display.clone());
-                        active.vmp_name = Set(vmp_name.clone());
-                        active.system = Set("https://dmd.nhs.uk".to_owned());
-                        active.concept_class = Set(Some("AMPP".to_owned()));
-                        active.updated_at = Set(now);
-                        updates.push(active);
+                        if by_gtin.contains_key(gtin) {
+                            counts.updated += 1;
+                        } else {
+                            counts.created += 1;
+                        }
+                        upserts.push(nhs_dmd_barcode::ActiveModel {
+                            amp_code: Set(amp_code.clone()),
+                            code: Set(code.clone()),
+                            concept_class: Set(Some("AMPP".to_owned())),
+                            created_at: Set(now),
+                            display: Set(display.clone()),
+                            gtin: Set(gtin.clone()),
+                            system: Set("https://dmd.nhs.uk".to_owned()),
+                            updated_at: Set(now),
+                            vmp_name: Set(vmp_name.clone()),
+                            ..Default::default()
+                        });
                     }
                 }
-            },
+            }
         }
         let handled = counts.created
             + counts.updated
@@ -837,16 +833,30 @@ async fn persist_gtins(
             apply_progress(db, run_id, counts, 3).await?;
         }
     }
-    for chunk in inserts.chunks(INSERT_BATCH) {
+    let transaction = db.begin().await.map_err(|error| error.to_string())?;
+    for chunk in upserts.chunks(INSERT_BATCH) {
         nhs_dmd_barcode::Entity::insert_many(chunk.to_vec())
-            .exec(db)
+            .on_conflict(
+                sea_orm::sea_query::OnConflict::column(nhs_dmd_barcode::Column::Gtin)
+                    .update_columns([
+                        nhs_dmd_barcode::Column::AmpCode,
+                        nhs_dmd_barcode::Column::Code,
+                        nhs_dmd_barcode::Column::ConceptClass,
+                        nhs_dmd_barcode::Column::Display,
+                        nhs_dmd_barcode::Column::System,
+                        nhs_dmd_barcode::Column::UpdatedAt,
+                        nhs_dmd_barcode::Column::VmpName,
+                    ])
+                    .to_owned(),
+            )
+            .exec_without_returning(&transaction)
             .await
             .map_err(|error| error.to_string())?;
     }
-    for active in updates {
-        active.update(db).await.map_err(|error| error.to_string())?;
-    }
-    Ok(())
+    transaction
+        .commit()
+        .await
+        .map_err(|error| error.to_string())
 }
 
 async fn persist_supplementary(
