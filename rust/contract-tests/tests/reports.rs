@@ -90,10 +90,9 @@ fn assert_pdf(response: Response, filename_suffix: &str) -> String {
     let document = Document::load_mem(&bytes).expect("parse PDF structure");
     let pages = document.get_pages();
     assert!(!pages.is_empty(), "PDF must contain a page");
-    assert!(pages.values().any(|page| !document
-        .get_page_content(*page)
-        .expect("PDF page content stream")
-        .is_empty()));
+    assert!(pages
+        .values()
+        .any(|page| !document.get_page_content(*page).is_empty()));
     id
 }
 
