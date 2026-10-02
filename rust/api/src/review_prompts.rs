@@ -114,7 +114,7 @@ fn tag(record: &review_prompt::Model) -> String {
     let seconds = record.updated_at.and_utc().timestamp();
     let micros = record.updated_at.and_utc().timestamp_subsec_micros();
     let canonical = format!("MedicationReviewPrompt:{}:{seconds}.{micros:06}", record.id);
-    format!("\"{:x}\"", Sha256::digest(canonical.as_bytes()))
+    format!("\"{}\"", hex::encode(Sha256::digest(canonical.as_bytes())))
 }
 
 pub(super) fn value(record: &review_prompt::Model) -> Value {

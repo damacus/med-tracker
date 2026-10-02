@@ -147,7 +147,7 @@ async fn lookup(
     token: &str,
     now: chrono::NaiveDateTime,
 ) -> Result<Option<Credential>, ApiError> {
-    let hex_digest = format!("{:x}", Sha256::digest(token.as_bytes()));
+    let hex_digest = hex::encode(Sha256::digest(token.as_bytes()));
     if let Some(row) = api_session::Entity::find()
         .filter(api_session::Column::AccessTokenDigest.eq(&hex_digest))
         .filter(api_session::Column::RevokedAt.is_null())
@@ -592,7 +592,7 @@ async fn revoke_session(
         json!({
             "device_name_present": row.device_name.as_ref().is_some_and(|name| !name.is_empty()),
             "device_name_length": row.device_name.as_ref().filter(|name| !name.is_empty()).map(|name| name.chars().count()),
-            "user_agent_hash": row.user_agent.as_ref().filter(|agent| !agent.is_empty()).map(|agent| format!("{:x}", Sha256::digest(agent.as_bytes()))),
+            "user_agent_hash": row.user_agent.as_ref().filter(|agent| !agent.is_empty()).map(|agent| hex::encode(Sha256::digest(agent.as_bytes()))),
             "household_membership_id": row.household_membership_id,
             "permissions_version": row.permissions_version,
             "expires_at": timestamp(row.refresh_expires_at)

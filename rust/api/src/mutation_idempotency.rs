@@ -36,7 +36,7 @@ pub(super) fn key(headers: &HeaderMap) -> Option<&str> {
 
 pub(super) fn digest(method: &str, path: &str, body: &Value) -> String {
     let request = json!({"method": method, "path": path, "body": body});
-    format!("{:x}", Sha256::digest(request.to_string().as_bytes()))
+    hex::encode(Sha256::digest(request.to_string().as_bytes()))
 }
 
 pub(super) async fn lock_household_and_reauthenticate(
