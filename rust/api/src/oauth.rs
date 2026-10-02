@@ -5,12 +5,13 @@ mod configuration;
 mod discovery;
 mod helpers;
 mod login;
+mod passkey;
 mod sessions;
 mod tokens;
 
 use crate::entities::{
     account, account_lockout, active_session_key, household, membership, oauth_application,
-    oauth_grant, otp_key, person, recovery_code, user, webauthn_key,
+    oauth_grant, otp_key, person, recovery_code, user, webauthn_key, webauthn_user_id,
 };
 use crate::{configured_lifetime_days, restricted_role, tenant_setting, AppState};
 use axum::extract::{Form, State};
@@ -60,8 +61,13 @@ use helpers::sql;
 use helpers::transaction;
 use login::home;
 use login::login;
+use login::login_destination;
 use login::login_post;
 use login::logout;
+use login::passkey_context;
+use passkey::passkey_login;
+use passkey::passkey_script;
+use passkey::PasskeyChallenge;
 use sessions::account_available;
 use sessions::browser_cookie_age;
 pub(crate) use sessions::browser_session;
@@ -85,6 +91,8 @@ pub fn routes() -> Router<AppState> {
         .route("/.well-known/oauth-authorization-server", get(discovery))
         .route("/authorize", get(authorize).post(consent))
         .route("/login", get(login).post(login_post))
+        .route("/webauthn-login", post(passkey_login))
+        .route("/auth-passkey.js", get(passkey_script))
         .route("/logout", post(logout))
         .route("/", get(home))
         .route("/token", post(token))

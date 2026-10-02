@@ -25,6 +25,8 @@ pub(crate) struct BrowserSession {
     pub(crate) session_id: String,
     pub(super) issued_at: i64,
     pub(crate) csrf: String,
+    #[serde(default)]
+    pub(super) additional_factor_verified: bool,
 }
 
 pub(super) fn browser_cookie_age() -> i64 {
@@ -158,7 +160,7 @@ pub(crate) async fn browser_session(
         || now - last_use > Duration::days(inactivity)
         || (maximum > 0 && now - created_at > Duration::days(maximum))
         || !account_available(db, session.account_id).await?
-        || factor_required(db, session.account_id).await?
+        || (!session.additional_factor_verified && factor_required(db, session.account_id).await?)
     {
         return Ok(None);
     }

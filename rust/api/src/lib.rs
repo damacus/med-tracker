@@ -48,6 +48,7 @@ mod sync_events;
 mod sync_reads;
 mod ui_capabilities;
 mod web_pages;
+pub mod webauthn;
 
 use api_request_guards::rate_middleware;
 use api_responses::{

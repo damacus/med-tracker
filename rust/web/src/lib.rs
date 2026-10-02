@@ -18,7 +18,7 @@ pub mod treatments;
 use auth::BrandPanel;
 use document::{authenticated_document, medication_document};
 
-pub use auth::{render_consent, render_login, render_reset_unavailable};
+pub use auth::{PasskeyLogin, render_consent, render_login, render_reset_unavailable};
 pub use medication::{
     DoseFormState, DoseSource, MedicationCard, MedicationDetail, MedicationDetailRender,
     render_medication_detail, render_medication_detail_with_management,
@@ -90,8 +90,12 @@ pub fn medication_script() -> &'static str {
     include_str!("medication.js")
 }
 
+pub fn passkey_script() -> &'static str {
+    include_str!("auth-passkey.js")
+}
+
 async fn login() -> Html<String> {
-    Html(render_login("", ""))
+    Html(render_login("", "", None))
 }
 
 async fn styles() -> ([(header::HeaderName, &'static str); 1], &'static str) {

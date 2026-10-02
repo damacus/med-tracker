@@ -2,7 +2,8 @@ use super::*;
 
 pub(super) async fn login(State(state): State<AppState>, headers: HeaderMap) -> Response {
     if let Some(claim) = pending(&state, &headers) {
-        return html(medtracker_web::render_login(&claim.csrf, ""));
+        let passkey = passkey_context(&state, &claim.csrf);
+        return html(medtracker_web::render_login(&claim.csrf, "", passkey));
     }
     let intent = login_intent(&state, &headers).unwrap_or_else(|| LoginIntent {
         csrf: secret(),
@@ -11,12 +12,49 @@ pub(super) async fn login(State(state): State<AppState>, headers: HeaderMap) -> 
     let Some(signed) = state.oauth.sign(&intent) else {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     };
-    let mut response = html(medtracker_web::render_login(&intent.csrf, ""));
+    let mut response = html(medtracker_web::render_login(
+        &intent.csrf,
+        "",
+        passkey_context(&state, &intent.csrf),
+    ));
     response.headers_mut().append(
         header::SET_COOKIE,
         state.oauth.cookie(LOGIN_INTENT_COOKIE, &signed, 600),
     );
     response
+}
+
+pub(super) fn passkey_context(
+    state: &AppState,
+    csrf: &str,
+) -> Option<medtracker_web::PasskeyLogin> {
+    let challenge = URL_SAFE_NO_PAD.encode(Sha256::digest(secret().as_bytes()));
+    let claim = PasskeyChallenge {
+        challenge: challenge.clone(),
+        csrf: csrf.to_owned(),
+        issued_at: Utc::now().timestamp(),
+    };
+    let challenge_hmac = state.oauth.sign(&claim)?;
+    Some(medtracker_web::PasskeyLogin {
+        challenge,
+        challenge_hmac,
+        rp_id: state.oauth.base_url.host_str()?.to_owned(),
+    })
+}
+
+pub(super) async fn login_destination(
+    db: &DatabaseTransaction,
+    oauth_claim: Option<&Pending>,
+    account_id: i64,
+) -> Result<String, Response> {
+    if let Some(claim) = oauth_claim {
+        return Ok(claim.request.path());
+    }
+    match first_active_household(db, account_id).await {
+        Ok(Some(household)) => Ok(format!("/households/{}/dashboard", household.slug)),
+        Ok(None) => Ok("/".to_owned()),
+        Err(error) => Err(error),
+    }
 }
 
 async fn first_active_household(
@@ -87,6 +125,13 @@ pub(super) async fn login_post(
     else {
         return StatusCode::FORBIDDEN.into_response();
     };
+    let login_error = |error: &str| {
+        html(medtracker_web::render_login(
+            intent_csrf,
+            error,
+            passkey_context(&state, intent_csrf),
+        ))
+    };
     if intent_csrf != form.authenticity_token || !trusted_origin(&state, &headers, true) {
         return StatusCode::FORBIDDEN.into_response();
     }
@@ -119,10 +164,7 @@ pub(super) async fn login_post(
         }
     };
     let Some((account_id, _)) = account else {
-        return html(medtracker_web::render_login(
-            intent_csrf,
-            "Invalid email or password",
-        ));
+        return login_error("Invalid email or password");
     };
     if !valid {
         let count_row = db.query_one_raw(sql("INSERT INTO account_login_failures (account_id, number, created_at, updated_at) VALUES ($1, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT (account_id) DO UPDATE SET number = account_login_failures.number + 1, updated_at = CURRENT_TIMESTAMP RETURNING number", [account_id.into()])).await;
@@ -139,30 +181,23 @@ pub(super) async fn login_post(
         if db.commit().await.is_err() {
             return StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
-        return html(medtracker_web::render_login(
-            intent_csrf,
-            "Invalid email or password",
-        ));
+        return login_error("Invalid email or password");
     }
     let available = match account_available(&db, account_id).await {
         Ok(value) => value,
         Err(error) => return error,
     };
     if !available {
-        return html(medtracker_web::render_login(
-            intent_csrf,
-            "Sign in is unavailable for this account",
-        ));
+        return login_error("Sign in is unavailable for this account");
     }
     let required = match factor_required(&db, account_id).await {
         Ok(value) => value,
         Err(error) => return error,
     };
     if required {
-        return html(medtracker_web::render_login(
-            intent_csrf,
+        return login_error(
             "This account requires a sign-in method that is not yet supported here.",
-        ));
+        );
     }
     let session_id = secret();
     let csrf = secret();
@@ -186,14 +221,9 @@ pub(super) async fn login_post(
     {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     }
-    let destination = if let Some(claim) = oauth_claim.as_ref() {
-        claim.request.path()
-    } else {
-        match first_active_household(&db, account_id).await {
-            Ok(Some(household)) => format!("/households/{}/dashboard", household.slug),
-            Ok(None) => "/".to_owned(),
-            Err(error) => return error,
-        }
+    let destination = match login_destination(&db, oauth_claim.as_ref(), account_id).await {
+        Ok(destination) => destination,
+        Err(error) => return error,
     };
     if let Err(error) = db.commit().await {
         return database_error(error).into_response();
@@ -203,6 +233,7 @@ pub(super) async fn login_post(
         session_id,
         issued_at: Utc::now().timestamp(),
         csrf,
+        additional_factor_verified: false,
     };
     let Some(cookie) = state.oauth.sign(&session) else {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
