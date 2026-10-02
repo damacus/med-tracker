@@ -1,5 +1,32 @@
 # Delivery ledger
 
+Paused at the user's request on 2 October until the rate limit resets. Agents
+are stopped. Final application changes remain local and unpublished. The
+[delivery plan](plan.md#resume-from-here) records the exact next steps.
+
+Current status, 2 October: the household journeys through medication assignments
+are published as five pull requests with passing CI. Rails remains operational.
+The final set of fixes is still local: inventory and minor-user browser checks
+pass, as do the repaired dose tests. All twenty-three sync tests and eight retry
+tests also pass. The remaining compatibility checks passed too. The dose file
+and its tests have now been split into smaller files. All seven relevant API
+suites pass after the move, and independent review has accepted the split.
+After the occurrence split, six API suites and all thirty-five dashboard tests
+pass review. The schedule suite exposed two Rust compatibility bugs, tracked in
+#2367 and #2368, alongside outdated test data and assertions. The repairs pass
+all eleven active tests and six route checks both before and after the occurrence
+split. Independent review has accepted it. The final current schedule run's
+source and fixture hashes are runner-emitted only; that limit is recorded.
+The invitation refactor is accepted after matching checks. Sign-in API checks
+and all seven login browser tests pass before its refactor. It is now installed,
+but matching checks are incomplete: a client-field visibility fix is installed;
+the reviewed three-input-type visibility fix remains private and uninstalled.
+The existing deterministic first-option race
+test passed all four cases and six route checks. Reviewed extra assertions make
+the zero-to-one option transition and unchanged stock explicit; their rerun remains.
+The final changes need combined checks, review, publication and CI. The entries
+below preserve the earlier decisions and results.
+
 - 17:09 BST: resumed on `codex/rust-household-management-20261001`, based on
   published #2349. Starting acceptance 14/20. #2349 CI has no failures; Rust
   source and browser jobs still pending. Two-hour retrospective scheduled.
@@ -215,3 +242,146 @@
   passed on unchanged source. Original journey requirements are 20/20; final
   documentation checks and publication follow. The remaining stock bugs,
   compatibility, five refactors and runtime CI work are still required.
+- Assignment and schedule work is published in
+  [PR #2362](https://github.com/damacus/med-tracker/pull/2362), at commit
+  `9584ef7c0c55173d0b9f51bd26da6c3b625b52f3`. The changed-file Markdown check
+  passed for all ten documents after three presentation fixes; the documentation
+  build passed. Remote checks are running. The final stock regressions and
+  required household runtime CI checks are being added on a dependent branch.
+- Assignment CI run `36941130246` succeeded: sixteen jobs passed and five
+  inapplicable jobs were skipped. Issues #2359, #2360 and #2361 are closed as
+  fixed and published. PR #2362 remains open. The final branch also covers the
+  confirmed minor-viewer person-page bug in #2363 and clearer linked-dose edit
+  guidance. Two taper review warnings were checked, explained and resolved as
+  false positives; their suggested policy changes were not applied.
+- The first final-work run stopped at invalid test setup: medication creation
+  rejected a blank reorder threshold. The helper now uses the required value
+  and records API error details. The corrected four-test run reached the stock
+  assertions: both rejection controls passed; medication-stock removal failed
+  with 422 instead of 303, and a 501-option medication page failed with 503
+  instead of 200. These reproduce #2358 and #2353 before production changes.
+  The copied application matched all 370 checked source paths. Raw output is
+  preserved at `/private/tmp/household-g-20261002/G-INITIAL-RED-002/runner.raw.log`,
+  SHA-256 `40485820728b23bd6a4eabd37a977235e38a1fd3357e8c351cad35e70dc6aa12`.
+- The stock fixes now pass all four focused HTTP tests and six existing browser
+  checks. A medication with 501 dose choices loads successfully. When every
+  choice has blank stock, removing stock uses the medication's recorded balance;
+  insufficient stock and conflicting retries leave records unchanged.
+- Editing an assignment now has verified safeguards: leaving the dose choice
+  blank keeps its existing link, an incompatible dose is rejected, and choosing
+  a matching replacement saves correctly. Both HTTP tests and all six route
+  checks passed. Import checks follow before the large import file is split.
+- A minor can read an authorised person page and assignment history while
+  schedules remain restricted. The focused HTTP test passed in all five
+  languages. Two rendering tests also passed, including wording that avoids
+  claiming there are no assignments when schedules cannot be shown. Actual
+  desktop and mobile browser checks remain pending.
+- The large-household check passed, covering more than 500 visible medications,
+  assignments and schedules. Person pages and treatment choices loaded complete
+  collections; all six existing browser route checks also passed.
+- All five import checks passed before refactoring: two portable-write tests and
+  three export/import tests, including public readback and rejected access to
+  another person's data. The import file is being split first. Repeat those
+  same checks and review the move before starting another large file.
+- CI selection checks passed after adding the combined final household target
+  and a separate minor-user browser row. These checks verify which tests CI
+  selects; the two new browser groups still need actual runtime acceptance.
+  Review caught invalid browser-test setup before running it: teardown must
+  wait for the tests, stock errors must use the existing translated message,
+  and the minor viewer needs explicit preparation in the disposable fixture.
+- Independent review passed the import split: all 49 routine bodies and eight
+  constants or types are preserved, with no comment changes. The first compile
+  found two fields needing access between the new private modules. Those fixes
+  are in place and compilation passes. Formatting changes are recorded
+  separately; lint and the five post-split import tests remain pending.
+- The import split passed lint and all five existing import tests after the
+  move, matching the pre-split results. Independent review checked both test
+  logs and matching application copies. This one refactor is accepted; four
+  other large files still need their own checks and review.
+- Final inventory acceptance passed all seven HTTP tests and ten browser
+  journeys across five languages on desktop and mobile. Rejected saves kept
+  entered values and stock unchanged, successful removals saved correctly,
+  retries did not duplicate changes, and horizontal scrolling made the final
+  mobile navigation link usable. Minor-user browser checks remain separate.
+- Minor-user acceptance passed one HTTP test and ten browser journeys across
+  five languages on desktop and mobile. Authorised person pages and assignment
+  history remain available; schedules stay restricted. All twenty screenshots
+  are preserved. A later source snapshot matches the digest reported by the
+  run; the original temporary application copy was not retained.
+- A stock adjustment with a 300-character reason saved correctly. An
+  8,192-character reason returned a server error and left stock and history
+  unchanged. Issue #2365 records the confirmed Rust failure and the matching
+  Ruby code that needs separate verification. The agreed Rust fix preserves
+  the complete reason in the audit record and uses a short event label when
+  the full label exceeds the internal storage budget. Implementation and
+  acceptance are in progress; no Rails fix is claimed.
+- The Rust audit fix passed six tests, including the long reason that previously
+  failed and byte-boundary checks with ordinary text and emoji. The existing
+  short-reason stock test also passed, as did both sets of browser route checks.
+  Independent source review passed. The full reason remains in the audit record;
+  stock, history and sync each record one successful change. Publication remains
+  pending, and the Ruby follow-up in #2365 remains open.
+- Stock-choice compatibility passed both HTTP cases and all six route checks.
+  Matching stock now follows location name, then medication ID. The tests also
+  prove that recording a paused dose or exceeding ordinary or tracked stock is
+  rejected without changing stock, dose history, versions or sync records.
+  Two old expectations were corrected to match the documented rule that positive
+  stock stays visible while saving rechecks the quantity. Original source
+  manifests match the tested copy. People pagination is the next check.
+- People pagination passed its existing regression and all six route checks.
+  Oversized page requests now use a maximum page size of 100. Invalid inputs,
+  access restrictions and the behaviour of other resources remain covered by
+  passing controls. Independent review accepted the scoped fix and matching
+  source evidence. The dose-recording baselines follow before its file is split.
+- Before splitting dose recording, the existing stock-write, sync and retry
+  suites passed: six, twenty-three and eight tests respectively, each on its
+  own fixture. The two dose-mode tests also passed after repairing their setup.
+  The larger dose suite exposed missing setup values and a disagreement over
+  the error returned for an unknown source type. Rails treats that source as
+  missing. Two new tests now check this response through direct recording and
+  sync, while keeping malformed-input errors and unchanged-record checks.
+  Their first run found the expected error mismatch after all malformed-input
+  and unchanged-record checks passed. The small response fix then passed both
+  focused tests, six direct-write tests and their route checks. Independent
+  review accepted the focused fix on retained matching source manifests. The
+  wider dose checks and the file split remain pending.
+- The larger dose suite then passed eight tests and failed six, with one
+  pre-existing test ignored. Review traced three failures to occurrence audit
+  labels, two to Rails error responses, and one to a pagination expectation
+  that conflicts with the documented API limits. The writer is preparing
+  narrow fixes; the reviewer will check them before installation. Issue #2347
+  now records these results and the remaining compatibility work. The verifier
+  is capturing the other known test failures on the same frozen application
+  while this patch is designed. The dose split remains held.
+- The repaired dose suite now passes all seventeen active tests. The existing
+  timestamp-response test remains ignored. The checks cover audit labels,
+  paused doses, numeric input, pagination and empty stock. Rejected requests
+  leave stock and dose history unchanged. Both focused source-error tests,
+  all six direct-write tests and their route checks also pass. Independent
+  review accepted the fixes and confirmed that the tested source matches the
+  current files. Sync and retry checks are running before the large dose file
+  is split. The final tranche has not yet been published.
+- The remaining compatibility checks passed: three sync-event tests, nine
+  medication API tests and three read-response tests, with six route checks
+  after each. Independent review accepted the results and matching source.
+  We then installed only the reviewed dose split: a 164-line entry point with
+  twelve smaller source files, and the same test target divided into eight
+  files. All twenty-two installed files matched the reviewed proposal before
+  formatting. The verifier is checking compilation and rerunning the same
+  tests. The occurrence, invitation and authentication splits remain proposals.
+- The dose split is accepted. Its entry file is now 217 lines, with original
+  public definitions retained and no lint suppression. Formatting, API
+  compilation, lint and unit checks pass. The seven API suites passed on
+  separate fixtures: seventeen active dose tests, two source-error tests, six
+  direct-write tests, two stock-mode tests, two stock-choice tests, twenty-three
+  sync tests and eight retry tests. Each also passed six route checks. The
+  existing ignored timestamp case and all eighteen dose test names remain
+  unchanged. Independent review verified code preservation and matching tested
+  source. The first run retains its reported fixture hash; the other six also
+  have independently checked fixture hashes. Occurrence checks now follow.
+- The occurrence checks passed before its move: ten API tests, two sync-read
+  tests and thirty-five calendar/dashboard browser checks. The accepted dose,
+  sync and retry results also cover the unchanged code at this point. The
+  occurrence entry file has now been reduced to 117 lines with thirteen
+  smaller files. All fourteen installed files matched the reviewed proposal.
+  Compiler and after-move tests are running; the last two splits remain private.

@@ -6,11 +6,18 @@ tasks and published commit `5a7c984a354fc7cd3ad07a21e2d3c0cf320fb17e`.
 
 ## Current progress
 
+Paused at the user's request on 2 October 2026 until the rate limit resets.
+Implementation and test agents have been stopped. The final branch is unfinished;
+its application changes remain local and have not been published or merged.
+
 People, locations, medication forms and dosage management are published.
 Dosage and stock management have passed CI. Stock management is published in
 [PR #2357](https://github.com/damacus/med-tracker/pull/2357) after its checks and
-independent review. Assignments and schedules are underway;
-the final combined checks follow them.
+independent review. Assignments and schedules are published in
+[PR #2362](https://github.com/damacus/med-tracker/pull/2362). Local checks and
+independent review passed; GitHub CI passed. The final stock fixes,
+compatibility checks, remaining refactors and runtime CI work are underway on
+`codex/rust-household-final-20261002`.
 Rails stays operational throughout this work.
 
 The assignment checks passed 37 HTTP tests and 12 browser journeys, covering
@@ -20,14 +27,74 @@ tests also passed. Date tests found two taper problems: the dashboard displayed
 the base dose, and the form's time fields did not set dose times. Both fixes now
 pass their focused checks, and the final combined run passed 37 HTTP tests and
 12 browser journeys again. Requirements review and the full Rust gate passed.
-Final documentation checks and publication follow. The original journey list is
+Final documentation checks passed and the change is published. The original journey list is
 20/20; the final compatibility and refactor work below remains unfinished.
 
-Two stock follow-ups must be fixed before final acceptance: households with more
-than 500 dosage options cannot open some medication pages, and stock losses are
-blocked when every option leaves stock blank but the medication still has stock.
-They are tracked in issues [#2353](https://github.com/damacus/med-tracker/issues/2353)
-and [#2358](https://github.com/damacus/med-tracker/issues/2358).
+The final branch fixes two stock problems: large households can now open pages
+with more than 500 dosage options, and stock losses work when options leave stock
+blank but the medication still has a recorded balance. The combined HTTP and
+desktop/mobile browser checks passed. These fixes remain unpublished and tracked
+in [#2353](https://github.com/damacus/med-tracker/issues/2353) and
+[#2358](https://github.com/damacus/med-tracker/issues/2358).
+
+Minor users can now read authorised person pages and assignment history while
+schedules remain restricted. Checks passed across all five languages on desktop
+and mobile. The large import file has also been split and independently reviewed;
+all five import tests passed before and after the move. Dose recording and its
+tests have also been split and accepted. The occurrence split has passed six API
+suites and thirty-five dashboard tests. The named schedule API suite exposed
+pagination and numeric validation bugs in
+[#2367](https://github.com/damacus/med-tracker/issues/2367) and
+[#2368](https://github.com/damacus/med-tracker/issues/2368), alongside outdated
+test data and assertions. The repairs pass all eleven active tests and six route
+checks before and after the occurrence split. Independent review accepted it;
+the final current schedule run has runner-emitted source and fixture hashes,
+with that evidence limit recorded. The invitation refactor has also passed its
+before-and-after checks and independent review. Sign-in API checks and all seven
+login browser tests pass before the last refactor. That refactor is installed,
+but its matching checks are incomplete. The existing deterministic stock test passed all
+four cases, including rejection of a first-option race with its draft retained
+and stock, versions and sync records unchanged. Reviewed extra assertions now
+make the zero-to-one option transition explicit; their rerun remains.
+
+The long stock-adjustment reason bug is fixed on the final Rust branch, with
+six regression tests and the existing short-reason stock test passing. It is
+tracked in
+[#2365](https://github.com/damacus/med-tracker/issues/2365). The fix keeps the full
+reason in the audit record and uses a short event label when necessary. Publication
+is pending. The matching Ruby code still needs its own verification.
+
+## Resume from here
+
+Four final refactors are accepted: portable imports, dose recording, dose
+occurrences and invitations. OAuth is installed but has not passed compilation
+or its after-refactor tests. The compiler first found a private client ID; its
+reviewed visibility fix is installed. The next check found three private handler
+input types: `LoginForm`, `TokenForm` and `RevokeInput`. Their visibility-only fix
+has passed independent review but is still a private proposal, not installed.
+Both failed checks are retained in the verification evidence.
+
+1. Install the reviewed three-type OAuth fix from
+   `/private/tmp/household-g-20261002/oauth-input-visibility-proposal/proposal.diff`
+   after checking that its source still matches. Run compilation, formatting,
+   Clippy and unit tests before starting runtime checks.
+2. Run the same five authentication API suites and seven standalone login browser
+   tests used before the OAuth refactor. Run the four stock concurrency cases
+   with the new zero-to-one option assertions. Those assertions are installed;
+   their rerun is still outstanding.
+3. Run the final fifteen-case household API selection, combined household browser
+   journeys, fixed-clock dashboard checks and the final Rust/documentation checks.
+   Verify the actual mobile navigation gesture and obtain independent review.
+4. Commit and push the accepted application changes, open the follow-up PR against
+   [#2362](https://github.com/damacus/med-tracker/pull/2362), wait for CI, and update
+   the linked issues and review threads. No final application PR exists yet.
+
+The household CI configuration now includes fourteen separate journeys; all
+79 local policy tests pass. This configuration has not yet run in remote CI.
+Keep the known legacy OAuth command setup problem in
+[#2369](https://github.com/damacus/med-tracker/issues/2369) separate from the
+supported test command. Preserve user-owned skills and existing screenshots.
+The two-hour retrospective is complete; no replacement timer is needed.
 
 ## Stable path and ownership
 
@@ -35,8 +102,8 @@ One persistent Sol 6.1 writer owns product changes, regression tests and fixes.
 One persistent Luna Medium verifier exclusively runs installs, compiled checks,
 Docker, fixtures and browser tests. One independent Sol reviewer reads source
 and evidence. The coordinator owns Git, acceptance rulings and these records.
-No overlapping writers or repeated broad inventories. Existing completed agents
-are retained for context; only these three seats are active.
+No overlapping writers or repeated broad inventories. Existing agents are
+retained for context; the three working seats are paused until the user resumes.
 
 Progress and project reports must be clear to someone passing by. Lead with the
 user problem, what changed and what still needs checking. Explain stock conflicts
@@ -65,7 +132,7 @@ retrying. If two attempted fixes fail, reassess the cause before changing more c
 The requested two-hour retrospective ran at 19:07:57 BST. Its improvements now
 guide the work: check test data and commands before expensive runs, keep one
 person responsible for running them, and repeat only the checks affected by a fix.
-The completed timer was deleted. Work continues through the remaining journeys.
+The completed timer was deleted. Resume the remaining work after the rate reset.
 No routine AFK questions, global skill/memory edits, merge, deployment, Rails
 retirement or security-scanner bypass are authorised.
 
