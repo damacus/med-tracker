@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_26_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_02_174039) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -100,6 +100,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_26_000000) do
     t.datetime "requested_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
     t.datetime "updated_at"
     t.index ["account_id"], name: "index_account_verification_keys_on_account_id"
+  end
+
+  create_table "account_webauthn_auth_challenges", force: :cascade do |t|
+    t.string "challenge_digest", null: false
+    t.datetime "created_at", null: false
+    t.index ["challenge_digest"], name: "index_account_webauthn_auth_challenges_on_challenge_digest", unique: true
   end
 
   create_table "account_webauthn_keys", force: :cascade do |t|
