@@ -1,4 +1,4 @@
-FROM rust:1.98.1-bookworm AS dependencies
+FROM rust:1.99.0-bookworm AS dependencies
 
 RUN apt-get update && apt-get install -y --no-install-recommends fish curl ca-certificates poppler-utils && rm -rf /var/lib/apt/lists/*
 SHELL ["/usr/bin/fish", "-c"]
