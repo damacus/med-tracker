@@ -2,7 +2,10 @@ use super::source_projection::SourceRef;
 use crate::entities::medication;
 use crate::read_entities::{person_medication, schedule};
 use crate::{database_error, ApiError, AuthContext};
-use sea_orm::{ColumnTrait, Condition, DatabaseTransaction, EntityTrait, QueryFilter, QuerySelect};
+use sea_orm::{
+    ColumnTrait, Condition, ConnectionTrait, DatabaseTransaction, DbBackend, EntityTrait,
+    QueryFilter, QuerySelect, Statement,
+};
 use std::collections::{HashMap, HashSet};
 
 pub(super) async fn source_stock(
@@ -73,7 +76,41 @@ pub(super) async fn source_stock(
             .collect();
         query = query.filter(medication::Column::Id.is_in(candidate_ids));
     }
-    let candidates = query.all(db).await.map_err(database_error)?;
+    let mut candidates = query.all(db).await.map_err(database_error)?;
+    if !candidates.is_empty() {
+        let placeholders = (2..=candidates.len() + 1)
+            .map(|index| format!("${index}"))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let values = std::iter::once(household_id.into())
+            .chain(candidates.iter().map(|candidate| candidate.id.into()))
+            .collect::<Vec<sea_orm::Value>>();
+        let rows = db.query_all_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+            format!("SELECT m.id FROM medications m LEFT JOIN locations l ON l.id=m.location_id AND l.household_id=m.household_id WHERE m.household_id=$1 AND m.id IN ({placeholders}) ORDER BY l.name ASC, m.id ASC"), values,
+        )).await.map_err(database_error)?;
+        let order = rows
+            .into_iter()
+            .enumerate()
+            .map(|(rank, row)| {
+                row.try_get::<i64>("", "id")
+                    .map(|id| (id, rank))
+                    .map_err(database_error)
+            })
+            .collect::<Result<HashMap<_, _>, _>>()?;
+        if order.len() != candidates.len()
+            || candidates
+                .iter()
+                .any(|candidate| !order.contains_key(&candidate.id))
+        {
+            return Err(ApiError::internal());
+        }
+        candidates.sort_by_key(|candidate| {
+            (
+                order.get(&candidate.id).copied().unwrap_or(usize::MAX),
+                candidate.id,
+            )
+        });
+    }
     Ok(recordable_sources
         .into_iter()
         .filter_map(|source| {
@@ -97,7 +134,7 @@ fn eligible_stock_ids(
     candidates: &[medication::Model],
     linked_stock: Option<&HashSet<i64>>,
 ) -> Vec<i64> {
-    let mut ids: Vec<i64> = candidates
+    candidates
         .iter()
         .filter(|candidate| {
             candidate.household_id == household_id
@@ -110,9 +147,7 @@ fn eligible_stock_ids(
                     .is_none_or(|supply| supply > sea_orm::prelude::Decimal::ZERO)
         })
         .map(|candidate| candidate.id)
-        .collect();
-    ids.sort_unstable();
-    ids
+        .collect()
 }
 
 #[cfg(test)]

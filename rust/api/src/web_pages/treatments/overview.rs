@@ -1,24 +1,33 @@
 use super::*;
 use medtracker_web::household_i18n::Text;
-use medtracker_web::treatments::TreatmentRow;
+use medtracker_web::treatments::{TreatmentOverview, TreatmentRow};
 
 pub(in crate::web_pages) async fn rows(
     api: &mut WebApi,
     household: i64,
     person: i64,
-) -> Result<Vec<TreatmentRow>, PageError> {
+) -> Result<TreatmentOverview, PageError> {
     let medications = api
         .collection(&format!("/api/v1/households/{household}/medications"))
         .await?;
     let text = Text::new(api.locale);
     let mut rows = Vec::new();
+    let mut schedules_unavailable = false;
     for kind in [Kind::Assignment, Kind::Schedule] {
-        let sources = api
+        let sources = match api
             .collection(&format!(
                 "/api/v1/households/{household}/{}",
                 kind.resource()
             ))
-            .await?;
+            .await
+        {
+            Ok(sources) => sources,
+            Err(PageError::Status(StatusCode::FORBIDDEN)) if matches!(kind, Kind::Schedule) => {
+                schedules_unavailable = true;
+                continue;
+            }
+            Err(error) => return Err(error),
+        };
         for source in sources
             .into_iter()
             .filter(|source| numeric(source, "person_id") == Some(person))
@@ -54,5 +63,8 @@ pub(in crate::web_pages) async fn rows(
             });
         }
     }
-    Ok(rows)
+    Ok(TreatmentOverview {
+        rows,
+        schedules_unavailable,
+    })
 }

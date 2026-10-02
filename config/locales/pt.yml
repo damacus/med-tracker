@@ -8,6 +8,8 @@ pt:
       keep_cycle: "Manter o ciclo atual"
       required_end_date: "Data de fim (obrigatória)"
       default_dose: "Dose predefinida"
+      keep_dose_choice: "Manter a escolha de dose atual"
+      linked_dose_hint: "Deixe a opção em branco para manter qualquer ligação existente. Se a dose estiver ligada, escolha uma opção de substituição antes de alterar a quantidade ou a unidade."
       apply_dose: "Usar a dose selecionada"
       unavailable_selection: "Seleção indisponível"
       schedule_type: "Tipo de horário"
@@ -46,6 +48,7 @@ pt:
       saturday: "Sábado"
       sunday: "Domingo"
     overview:
+      schedules_unavailable: "Os horários não estão disponíveis com o seu acesso atual. As atribuições apresentadas aqui continuam a poder ser lidas."
       title: "Medicação e horários"
       empty: "Não foram atribuídos medicamentos nem horários."
   stock_removals:

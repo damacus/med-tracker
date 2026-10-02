@@ -8,6 +8,8 @@ cy:
       keep_cycle: "Cadw'r cylch presennol"
       required_end_date: "Dyddiad gorffen (gofynnol)"
       default_dose: "Dos diofyn"
+      keep_dose_choice: "Cadw'r dewis dos presennol"
+      linked_dose_hint: "Gadewch y dewis yn wag i gadw unrhyw gyswllt presennol. Os yw'r dos wedi'i gysylltu, dewiswch opsiwn newydd cyn newid ei swm neu ei uned."
       apply_dose: "Defnyddio'r dos a ddewiswyd"
       unavailable_selection: "Dewis ddim ar gael"
       schedule_type: "Math o amserlen"
@@ -46,6 +48,7 @@ cy:
       saturday: "Dydd Sadwrn"
       sunday: "Dydd Sul"
     overview:
+      schedules_unavailable: "Nid yw amserlenni ar gael gyda'ch mynediad presennol. Mae'r aseiniadau a ddangosir yma yn parhau i fod yn ddarllenadwy."
       title: "Meddyginiaeth ac amserlenni"
       empty: "Nid oes meddyginiaeth nac amserlenni wedi'u neilltuo."
   stock_removals:

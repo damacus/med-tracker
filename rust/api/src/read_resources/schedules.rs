@@ -13,6 +13,36 @@ use sea_orm::{
     ColumnTrait, DatabaseTransaction, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
     QuerySelect,
 };
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+pub(crate) struct SchedulePagination {
+    page: Option<String>,
+    per_page: Option<String>,
+    updated_since: Option<String>,
+}
+
+fn pagination_integer(value: &str) -> i64 {
+    let value = value.trim_start();
+    let (negative, digits) = match value.as_bytes().first() {
+        Some(b'-') => (true, &value[1..]),
+        Some(b'+') => (false, &value[1..]),
+        _ => (false, value),
+    };
+    let number = digits
+        .bytes()
+        .take_while(u8::is_ascii_digit)
+        .fold(0_i64, |number, digit| {
+            number
+                .saturating_mul(10)
+                .saturating_add(i64::from(digit - b'0'))
+        });
+    if negative {
+        number.saturating_neg()
+    } else {
+        number
+    }
+}
 
 fn schedule_scope(household_id: i64, context: &AuthContext) -> sea_orm::Select<schedule::Entity> {
     schedule::Entity::find()
@@ -46,7 +76,7 @@ async fn require_adult_schedule_index(
 pub(crate) async fn schedules_index(
     State(state): State<AppState>,
     Path(household_id): Path<i64>,
-    Query(pagination): Query<Pagination>,
+    Query(pagination): Query<SchedulePagination>,
     headers: HeaderMap,
 ) -> Result<Response, ApiError> {
     let (db, context) = request_context(&state, &headers, household_id).await?;
@@ -65,6 +95,11 @@ pub(crate) async fn schedules_index(
         }
         return Err(error);
     }
+    let pagination = Pagination {
+        page: pagination.page.as_deref().map(pagination_integer),
+        per_page: pagination.per_page.as_deref().map(pagination_integer),
+        updated_since: pagination.updated_since,
+    };
     let (db, page) = match parse_page(db, pagination) {
         Ok(value) => value,
         Err((db, error)) => {

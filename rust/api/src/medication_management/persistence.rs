@@ -4,6 +4,7 @@ use crate::entities::version;
 use crate::ApiError;
 use crate::AuthContext;
 use chrono::Utc;
+use sea_orm::prelude::Decimal;
 use sea_orm::ActiveModelTrait;
 use sea_orm::DatabaseTransaction;
 use sea_orm::Set;
@@ -36,6 +37,77 @@ pub(crate) async fn record_version(
     before: Option<Value>,
     after: Option<Value>,
 ) -> Result<(), ApiError> {
+    insert_version(
+        db,
+        context,
+        request_id,
+        VersionChange {
+            item_type,
+            item_id,
+            event,
+            before,
+            after,
+            inventory_adjustment: None,
+        },
+    )
+    .await
+}
+
+pub(crate) async fn record_inventory_adjustment(
+    db: &DatabaseTransaction,
+    context: &AuthContext,
+    request_id: &str,
+    medication: &medication::Model,
+    before: Value,
+    quantity: Decimal,
+    reason: Option<&str>,
+) -> Result<(), ApiError> {
+    let quantity = quantity.normalize().to_string();
+    let quantity_event = format!("adjust inventory (qty: {quantity})");
+    let event = reason
+        .filter(|reason| !reason.trim().is_empty())
+        .map(|reason| format!("adjust inventory (qty: {quantity}, reason: {reason})"))
+        .filter(|event| event.len() <= 1024)
+        .unwrap_or(quantity_event);
+    insert_version(
+        db,
+        context,
+        request_id,
+        VersionChange {
+            item_type: "Medication",
+            item_id: medication.id,
+            event: &event,
+            before: Some(before),
+            after: Some(medication_snapshot(medication)),
+            inventory_adjustment: Some(json!({"reason": reason, "new_quantity": quantity})),
+        },
+    )
+    .await
+}
+
+struct VersionChange<'a> {
+    item_type: &'a str,
+    item_id: i64,
+    event: &'a str,
+    before: Option<Value>,
+    after: Option<Value>,
+    inventory_adjustment: Option<Value>,
+}
+
+async fn insert_version(
+    db: &DatabaseTransaction,
+    context: &AuthContext,
+    request_id: &str,
+    change: VersionChange<'_>,
+) -> Result<(), ApiError> {
+    let VersionChange {
+        item_type,
+        item_id,
+        event,
+        before,
+        after,
+        inventory_adjustment,
+    } = change;
     let mut changes = serde_json::Map::new();
     let mut fields = std::collections::HashSet::new();
     if let Some(before) = before.as_ref().and_then(Value::as_object) {
@@ -59,13 +131,16 @@ pub(crate) async fn record_version(
             changes.insert(field, json!([old, new]));
         }
     }
-    let audit_context = json!({
+    let mut audit_context = json!({
         "actor_account_id": context.account_id,
         "actor_user_id": context.user_id,
         "actor_membership_id": context.membership.id,
         "household_id": context.membership.household_id,
         "request_id": request_id
     });
+    if let Some(adjustment) = inventory_adjustment {
+        audit_context["inventory_adjustment"] = adjustment;
+    }
     version::ActiveModel {
         item_type: Set(item_type.to_owned()),
         item_id: Set(item_id),

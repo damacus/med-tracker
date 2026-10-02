@@ -47,6 +47,9 @@ pub(super) fn attributes(body: &Value) -> Result<&Map<String, Value>, InputFailu
 }
 
 pub(super) fn parse_amount(value: &Value) -> Result<Decimal, InputFailure> {
+    if value.is_number() {
+        return Err(InputFailure::Invalid("dose_amount", "must be a string"));
+    }
     let amount = parse_decimal(value).ok_or(InputFailure::Invalid(
         "dose_amount",
         "must be a decimal string",

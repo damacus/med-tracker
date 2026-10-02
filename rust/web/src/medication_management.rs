@@ -35,7 +35,9 @@ pub(crate) fn messages(text: Text, errors: &[String]) -> String {
         .map(|message| {
             let key = match message.as_str() {
                 "Record has changed since it was last read" => Some("dosages.management.conflict"),
-                "missing_browser_precondition" => Some("medications.stock.original_token"),
+                "missing_browser_precondition" | "If-Match is required" => {
+                    Some("medications.stock.original_token")
+                }
                 "option_stock_readonly" => Some("medications.stock.option_readonly"),
                 "Quantity must be a valid nonnegative number" => {
                     Some("medications.stock.invalid_quantity")

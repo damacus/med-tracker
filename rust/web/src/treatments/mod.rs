@@ -9,7 +9,10 @@ use crate::household_i18n::Locale;
 use std::collections::{BTreeMap, BTreeSet};
 
 pub use assignment::render_assignment_form;
-pub use overview::{TreatmentRow, render_treatment_overview};
+pub use overview::{
+    TreatmentOverview, TreatmentRow, render_treatment_overview,
+    render_treatment_overview_with_access,
+};
 pub use pause::{PauseHistoryPage, PauseHistoryRow, render_pause_form, render_pause_history};
 pub use schedule::render_schedule_form;
 

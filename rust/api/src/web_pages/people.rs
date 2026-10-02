@@ -1,7 +1,7 @@
 use super::*;
 use medtracker_web::household_i18n::Text;
 use medtracker_web::people::{
-    render_people, render_person_form, render_person_with_treatments, PersonDraft, PersonRow,
+    render_people, render_person_form, render_person_with_treatment_access, PersonDraft, PersonRow,
 };
 
 pub(super) fn routes() -> Router<AppState> {
@@ -121,7 +121,7 @@ async fn show(
             &manageable,
         )?;
         let treatments = super::treatments::rows(&mut api, household_id, id).await?;
-        render_person_with_treatments(&name, &slug, &api.csrf, api.locale, row, treatments)
+        render_person_with_treatment_access(&name, &slug, &api.csrf, api.locale, row, treatments)
             .map_err(|_| error(StatusCode::INTERNAL_SERVER_ERROR))
     }
     .await;

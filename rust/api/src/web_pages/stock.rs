@@ -238,8 +238,12 @@ async fn save(
         );
     }
     if action == "remove" {
-        let invalid_source = if context.options.is_empty() {
-            !draft.dosage_id.is_empty()
+        let invalid_source = if context
+            .options
+            .iter()
+            .all(|row| row["current_supply"].is_null())
+        {
+            !draft.dosage_id.is_empty() || !context.medication["current_supply"].is_string()
         } else {
             !context.options.iter().any(|row| {
                 numeric(row, "id").map(|id| id.to_string()).as_deref()

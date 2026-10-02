@@ -8,6 +8,8 @@ ga:
       keep_cycle: "Coinnigh an timthriall reatha"
       required_end_date: "Dáta deiridh (riachtanach)"
       default_dose: "Dáileog réamhshocraithe"
+      keep_dose_choice: "Coinnigh an rogha dáileoige reatha"
+      linked_dose_hint: "Fág an rogha bán chun aon nasc atá ann a choinneáil. Má tá an dáileog nasctha, roghnaigh rogha ionaid sula n-athraíonn tú a méid nó a haonad."
       apply_dose: "Úsáid an dáileog roghnaithe"
       unavailable_selection: "Rogha nach bhfuil ar fáil"
       schedule_type: "Cineál sceidil"
@@ -46,6 +48,7 @@ ga:
       saturday: "Dé Sathairn"
       sunday: "Dé Domhnaigh"
     overview:
+      schedules_unavailable: "Níl sceidil ar fáil leis an rochtain atá agat faoi láthair. Is féidir na sannacháin a thaispeántar anseo a léamh fós."
       title: "Cógas agus sceidil"
       empty: "Níl aon chógas ná sceidil sannta."
   stock_removals:

@@ -237,7 +237,7 @@ pub fn render_stock(page: StockPage) -> Result<String, TranslationError> {
                 text,
                 page.errors.get("reason").map(Vec::as_slice).unwrap_or(&[]),
             ));
-            if options_mode {
+            if options_mode && !fallback {
                 let choices = page
                     .options
                     .iter()

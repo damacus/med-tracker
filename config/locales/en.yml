@@ -8,6 +8,8 @@ en:
       keep_cycle: "Keep current cycle"
       required_end_date: "End date (required)"
       default_dose: "Default dose"
+      keep_dose_choice: "Keep current dose choice"
+      linked_dose_hint: "Leave the option blank to keep any existing link. If the dose is linked, choose a replacement option before changing its amount or unit."
       apply_dose: "Use selected dose"
       unavailable_selection: "Unavailable selection"
       schedule_type: "Schedule type"
@@ -46,6 +48,7 @@ en:
       saturday: "Saturday"
       sunday: "Sunday"
     overview:
+      schedules_unavailable: "Schedules are not available with your current access. Assignments shown here remain readable."
       title: "Medication and schedules"
       empty: "No medication or schedules have been assigned."
   stock_removals:

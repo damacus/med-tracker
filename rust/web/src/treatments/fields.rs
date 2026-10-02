@@ -91,8 +91,16 @@ pub(super) fn common(page: &TreatmentFormPage) -> Result<String, TranslationErro
         "source_dosage_option_id",
         "person_medications.form.dose",
         page.dosages.clone(),
-        "treatments.form.default_dose",
+        if page.editing {
+            "treatments.form.keep_dose_choice"
+        } else {
+            "treatments.form.default_dose"
+        },
     )?);
+    if page.editing {
+        let guidance = text.get("treatments.form.linked_dose_hint", &[])?;
+        html.push_str(&view! { <p class="household-note">{guidance}</p> }.to_html());
+    }
     let apply_dose = text.get("treatments.form.apply_dose", &[])?;
     html.push_str(&view! {
         <button type="submit" name="intent" value="apply_dose" class="med-button">{apply_dose}</button>

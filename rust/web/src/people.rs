@@ -72,6 +72,27 @@ pub fn render_person_with_treatments(
     person: PersonRow,
     treatments: Vec<crate::treatments::TreatmentRow>,
 ) -> Result<String, TranslationError> {
+    render_person_with_treatment_access(
+        household_name,
+        slug,
+        _csrf,
+        locale,
+        person,
+        crate::treatments::TreatmentOverview {
+            rows: treatments,
+            schedules_unavailable: false,
+        },
+    )
+}
+
+pub fn render_person_with_treatment_access(
+    household_name: &str,
+    slug: &str,
+    _csrf: &str,
+    locale: Locale,
+    person: PersonRow,
+    treatments: crate::treatments::TreatmentOverview,
+) -> Result<String, TranslationError> {
     let raw_slug = slug;
     let slug = path_segment(slug);
     let text = Text::new(locale);
@@ -98,7 +119,7 @@ pub fn render_person_with_treatments(
     let edit = text.get("people.show.edit_person", &[])?;
     let back = text.get("people.show.back", &[])?;
     let title = person.name.clone();
-    let treatment_html = crate::treatments::render_treatment_overview(
+    let treatment_html = crate::treatments::render_treatment_overview_with_access(
         raw_slug,
         person.id,
         locale,

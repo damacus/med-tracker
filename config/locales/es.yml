@@ -8,6 +8,8 @@ es:
       keep_cycle: "Mantener el ciclo actual"
       required_end_date: "Fecha de fin (obligatoria)"
       default_dose: "Dosis predeterminada"
+      keep_dose_choice: "Mantener la elección de dosis actual"
+      linked_dose_hint: "Deje la opción en blanco para conservar cualquier vínculo existente. Si la dosis está vinculada, elija una opción de reemplazo antes de cambiar su cantidad o unidad."
       apply_dose: "Usar la dosis seleccionada"
       unavailable_selection: "Selección no disponible"
       schedule_type: "Tipo de pauta"
@@ -46,6 +48,7 @@ es:
       saturday: "Sábado"
       sunday: "Domingo"
     overview:
+      schedules_unavailable: "Los horarios no están disponibles con su acceso actual. Las asignaciones que se muestran aquí siguen siendo legibles."
       title: "Medicación y pautas"
       empty: "No se han asignado medicamentos ni pautas."
   stock_removals:

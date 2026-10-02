@@ -1,5 +1,5 @@
 use super::context::{household_manager, lock_medication, request_context, visible_medication};
-use super::persistence::{medication_snapshot, record_version};
+use super::persistence::{medication_snapshot, record_inventory_adjustment};
 use super::responses::{
     error_response, finish_with_request_id, medication_body, validation_response,
 };
@@ -211,24 +211,14 @@ pub(crate) async fn adjust_inventory(
     active.updated_at = Set(Utc::now().naive_utc());
     let updated = active.update(&db).await.map_err(database_error)?;
     let request_id = Uuid::new_v4().to_string();
-    let mut event = format!("adjust inventory (qty: {}", quantity.normalize());
-    if let Some(reason) = attributes
-        .get("reason")
-        .and_then(Value::as_str)
-        .filter(|reason| !reason.trim().is_empty())
-    {
-        event.push_str(&format!(", reason: {reason}"));
-    }
-    event.push(')');
-    record_version(
+    record_inventory_adjustment(
         &db,
         &context,
         &request_id,
-        "Medication",
-        updated.id,
-        &event,
-        Some(before),
-        Some(medication_snapshot(&updated)),
+        &updated,
+        before,
+        quantity,
+        attributes.get("reason").and_then(Value::as_str),
     )
     .await?;
     record_change(

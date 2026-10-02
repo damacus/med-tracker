@@ -13,6 +13,12 @@ pub struct TreatmentRow {
     pub paused: bool,
 }
 
+#[derive(Default)]
+pub struct TreatmentOverview {
+    pub rows: Vec<TreatmentRow>,
+    pub schedules_unavailable: bool,
+}
+
 pub fn render_treatment_overview(
     slug: &str,
     person: i64,
@@ -20,6 +26,26 @@ pub fn render_treatment_overview(
     can_manage: bool,
     rows: Vec<TreatmentRow>,
 ) -> Result<String, TranslationError> {
+    render_treatment_overview_with_access(
+        slug,
+        person,
+        locale,
+        can_manage,
+        TreatmentOverview {
+            rows,
+            schedules_unavailable: false,
+        },
+    )
+}
+
+pub fn render_treatment_overview_with_access(
+    slug: &str,
+    person: i64,
+    locale: Locale,
+    can_manage: bool,
+    overview: TreatmentOverview,
+) -> Result<String, TranslationError> {
+    let rows = overview.rows;
     let text = Text::new(locale);
     let base = format!("/households/{}/people/{person}", path_segment(slug));
     let title = text.get("treatments.overview.title", &[])?;
@@ -31,11 +57,17 @@ pub fn render_treatment_overview(
     let resume = text.get("person_medications.card.resume", &[])?;
     let history = text.get("medication_pauses.history", &[])?;
     let paused = text.get("person_medications.card.paused", &[])?;
+    let schedules_unavailable = if overview.schedules_unavailable {
+        Some(text.get("treatments.overview.schedules_unavailable", &[])?)
+    } else {
+        None
+    };
     Ok(view! {
         <section aria-labelledby="treatments-heading"><div class="household-heading"><h2 id="treatments-heading">{title}</h2>
             {can_manage.then(|| view! { <div class="household-actions"><a class="med-button" href=format!("{base}/assignments/new")>{add_assignment}</a><a class="med-button" href=format!("{base}/schedules/new")>{add_schedule}</a></div> })}
         </div>
-        {rows.is_empty().then(|| view! { <p>{empty}</p> })}
+        {schedules_unavailable.map(|message| view! { <p class="household-note" data-schedules-unavailable>{message}</p> })}
+        {(rows.is_empty() && !overview.schedules_unavailable).then(|| view! { <p>{empty}</p> })}
         <div class="household-grid">{rows.into_iter().map(|row| {
             let source = format!("{base}/{}/{}", row.resource, path_segment(&row.id));
             let edit = edit.clone();
