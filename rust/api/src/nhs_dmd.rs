@@ -187,11 +187,13 @@ async fn show(
     if !platform_admin(&db, context.account_id).await? {
         return Err(ApiError::forbidden());
     }
+    recover_stale_runs(&db).await?;
     let row = nhs_dmd_import::Entity::find_by_id(id)
         .one(&db)
         .await
         .map_err(database_error)?
         .ok_or_else(ApiError::not_found)?;
+    db.commit().await.map_err(database_error)?;
     Ok(Json(json!({ "data": run_value(&row) })).into_response())
 }
 
@@ -275,6 +277,9 @@ pub(crate) async fn stage_upload(
         if written == 0 {
             let _ = std::fs::remove_file(&path);
             return Err(StatusCode::UNPROCESSABLE_ENTITY);
+        }
+        if let Some((old_path, _)) = saved.take() {
+            let _ = std::fs::remove_file(old_path);
         }
         saved = Some((path, filename));
     }

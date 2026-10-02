@@ -635,6 +635,17 @@ async fn apply_progress(
     Ok(())
 }
 
+async fn touch_run(db: &DatabaseConnection, run_id: i64) -> Result<(), String> {
+    db.execute_raw(Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        "UPDATE nhs_dmd_imports SET updated_at = now() WHERE id = $1",
+        [run_id.into()],
+    ))
+    .await
+    .map_err(|error| error.to_string())?;
+    Ok(())
+}
+
 async fn drain_progress(
     db: &DatabaseConnection,
     run_id: i64,
@@ -681,13 +692,13 @@ async fn import_extracted(db: &DatabaseConnection, run_id: i64, dir: &Path) -> R
     drain_result?;
     let (names, counts) = names_result.map_err(|error| error.to_string())??;
     apply_progress(db, run_id, &counts, 3).await?;
-    persist_relationships(db, &names).await?;
+    persist_relationships(db, run_id, &names).await?;
     if let Some(files) = supplementary_files(dir) {
         let supplementary = tokio::task::spawn_blocking(move || parse_supplementary(&files))
             .await
             .map_err(|error| error.to_string())??;
         if let Some(data) = supplementary {
-            persist_supplementary(db, &data).await?;
+            persist_supplementary(db, run_id, &data).await?;
         }
     }
     let (gtin_tx, gtin_rx) = mpsc::unbounded_channel::<Counts>();
@@ -724,8 +735,10 @@ fn find_gtin_file(dir: &Path) -> Result<PathBuf, String> {
 
 async fn persist_relationships(
     db: &DatabaseConnection,
+    run_id: i64,
     names: &HashMap<String, AmppName>,
 ) -> Result<(), String> {
+    touch_run(db, run_id).await?;
     let transaction = db.begin().await.map_err(|error| error.to_string())?;
     nhs_dmd_ampp_relationship::Entity::delete_many()
         .exec(&transaction)
@@ -752,6 +765,7 @@ async fn persist_relationships(
             .exec(&transaction)
             .await
             .map_err(|error| error.to_string())?;
+        touch_run(db, run_id).await?;
     }
     transaction
         .commit()
@@ -852,6 +866,7 @@ async fn persist_gtins(
             .exec_without_returning(&transaction)
             .await
             .map_err(|error| error.to_string())?;
+        touch_run(db, run_id).await?;
     }
     transaction
         .commit()
@@ -861,8 +876,10 @@ async fn persist_gtins(
 
 async fn persist_supplementary(
     db: &DatabaseConnection,
+    run_id: i64,
     data: &TradeFamilyData,
 ) -> Result<(), String> {
+    touch_run(db, run_id).await?;
     let transaction = db.begin().await.map_err(|error| error.to_string())?;
     let now = Utc::now().naive_utc();
     let mut group_ids = HashMap::new();
@@ -896,6 +913,7 @@ async fn persist_supplementary(
         };
         group_ids.insert(code.clone(), row.id);
     }
+    touch_run(db, run_id).await?;
     let mut family_ids = HashMap::new();
     for (code, name, group_code) in &data.families {
         let group_id = group_code
@@ -937,10 +955,12 @@ async fn persist_supplementary(
         };
         family_ids.insert(code.clone(), row.id);
     }
+    touch_run(db, run_id).await?;
     nhs_dmd_amp_trade_family::Entity::delete_many()
         .exec(&transaction)
         .await
         .map_err(|error| error.to_string())?;
+    let mut membership_rows = 0_usize;
     for (amp_code, family_code) in &data.memberships {
         let Some(family_id) = family_ids.get(family_code) else {
             continue;
@@ -955,6 +975,10 @@ async fn persist_supplementary(
         .insert(&transaction)
         .await
         .map_err(|error| error.to_string())?;
+        membership_rows += 1;
+        if membership_rows.is_multiple_of(PROGRESS_BATCH as usize) {
+            touch_run(db, run_id).await?;
+        }
     }
     if let Some(released_on) = data.released_on {
         let exists = nhs_dmd_supplementary_release::Entity::find()
