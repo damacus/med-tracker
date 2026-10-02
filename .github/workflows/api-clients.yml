@@ -100,7 +100,7 @@ jobs:
       - name: Verify Swift version
         run: |
           swift --version
-          swift --version | grep --fixed-strings --quiet "Swift version 6.3.3"
+          swift --version | grep --fixed-strings --quiet "Swift version 6.4"
 
       - name: Compile Swift client
         run: swift build --package-path tmp/api-clients/swift
