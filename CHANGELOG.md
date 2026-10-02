@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.5.35](https://github.com/damacus/med-tracker/compare/v0.5.34...v0.5.35) (2026-10-02)
+
+
+### Bug Fixes
+
+* **deps:** update leptodon and leptodon-proc-macros together ([#2375](https://github.com/damacus/med-tracker/issues/2375)) ([d9d4499](https://github.com/damacus/med-tracker/commit/d9d44994f3ebbc327bafd169192b12c9cb74524e))
+* **deps:** update rust crate lopdf to 0.45 ([#2320](https://github.com/damacus/med-tracker/issues/2320)) ([881d919](https://github.com/damacus/med-tracker/commit/881d919589952d2671ac690cea46280540e024c3))
+* **deps:** update rust crate tower-http to 0.7 ([#2340](https://github.com/damacus/med-tracker/issues/2340)) ([dd10966](https://github.com/damacus/med-tracker/commit/dd10966149515e93a4ec2a4fdda63f4613ee3218))
+* **deps:** update sha2, hmac, pbkdf2 and p256 together ([#2374](https://github.com/damacus/med-tracker/issues/2374)) ([4da213c](https://github.com/damacus/med-tracker/commit/4da213c74457da71afefea421bbe843326839c3d))
+
 ## [0.5.34](https://github.com/damacus/med-tracker/compare/v0.5.33...v0.5.34) (2026-10-02)
 
 
