@@ -158,10 +158,37 @@ for (const viewport of [
       await history.getByRole('heading', { name: 'Previous Doses Today', exact: true }).waitFor();
       assert.equal(await history.getByText(medicationName, { exact: true }).count(), 1);
       const recordedDose = history.getByText(medicationName, { exact: true }).locator('..');
-      assert.ok(await recordedDose.getByText('1.25 ml', { exact: true }).isVisible());
-      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+      const doseSummary = recordedDose.locator('small');
+      assert.ok(await doseSummary.isVisible());
+      assert.match((await doseSummary.innerText()).trim(), /^.+ · 1\.25 ml$/);
       await history.scrollIntoViewIfNeeded();
       await screenshot(page, `journey-history-${viewport.name}.png`);
+      const layout = await page.evaluate(() => ({
+        width: window.innerWidth,
+        scrollWidth: document.documentElement.scrollWidth,
+        offenders: Array.from(document.querySelectorAll('body *'))
+          .filter(element => {
+            const rect = element.getBoundingClientRect();
+            return rect.width > 0 && (rect.right > window.innerWidth + 1 || rect.left < -1);
+          })
+          .slice(-20)
+          .map(element => {
+            const rect = element.getBoundingClientRect();
+            const style = getComputedStyle(element);
+            return {
+              tag: element.tagName,
+              className: String(element.className),
+              text: element.textContent.trim().slice(0, 120),
+              left: rect.left,
+              right: rect.right,
+              width: rect.width,
+              minWidth: style.minWidth,
+              display: style.display,
+              gridColumns: style.gridTemplateColumns,
+            };
+          }),
+      }));
+      assert.ok(layout.scrollWidth <= layout.width, JSON.stringify(layout));
     } finally {
       await context.close();
     }

@@ -35,7 +35,7 @@ fn create_multi_dose_medication(target: &Target, fixture: &Fixture, name: &str) 
     let mut db = database();
     for amount in ["5", "10"] {
         db.execute(
-            "INSERT INTO dosages (household_id, medication_id, amount, unit, frequency, created_at, updated_at) VALUES ($1, $2, $3::text::numeric, 'mg', 'daily', NOW(), NOW())",
+            "INSERT INTO dosages (household_id, medication_id, amount, unit, frequency, default_dose_cycle, default_max_daily_doses, default_min_hours_between_doses, created_at, updated_at) VALUES ($1, $2, $3::text::numeric, 'mg', 'daily', 0, 4, 0, NOW(), NOW())",
             &[&fixture.household_id, &medication_id, &amount],
         )
         .expect("multi-dose option");

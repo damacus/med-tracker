@@ -1,5 +1,56 @@
 ---
 en:
+  treatments:
+    form:
+      keep_maximum: "Leave blank to keep the current maximum."
+      schedule_maximum: "Leave blank to use a maximum of 4 doses per cycle."
+      optional_maximum: "A maximum is optional for a new assignment."
+      keep_cycle: "Keep current cycle"
+      required_end_date: "End date (required)"
+      default_dose: "Default dose"
+      keep_dose_choice: "Keep current dose choice"
+      linked_dose_hint: "Leave the option blank to keep any existing link. If the dose is linked, choose a replacement option before changing its amount or unit."
+      apply_dose: "Use selected dose"
+      unavailable_selection: "Unavailable selection"
+      schedule_type: "Schedule type"
+      show_fields: "Show schedule fields"
+      time: "Time (HH:MM)"
+      taper_times_hint: "These shared dose times apply to every taper step and set when doses are due. Leave blank for untimed doses."
+      step_time_instruction: "Step instruction time (HH:MM)"
+      step_time_hint: "Step instruction times are saved with this step. They do not set when doses are due."
+      add_time: "Add time"
+      remove_time: "Remove time"
+      date: "Date (YYYY-MM-DD)"
+      add_date: "Add date"
+      remove_date: "Remove date"
+      step: "Step %{number}"
+      add_step: "Add step"
+      remove_step: "Remove step"
+      as_needed_hint: "Use when needed; there are no fixed administration times."
+      resume: "Resume treatment"
+      resume_hint: "Resume this treatment now. The pause remains in its history."
+      pause_open: "Currently paused"
+      no_pause_history: "No pauses have been recorded."
+    types:
+      daily: "Daily"
+      multiple_daily: "Several times daily"
+      weekly: "Weekly"
+      specific_dates: "Specific dates"
+      prn: "As needed"
+      tapering: "Tapering"
+      every_other_day: "Every other day"
+    weekdays:
+      monday: "Monday"
+      tuesday: "Tuesday"
+      wednesday: "Wednesday"
+      thursday: "Thursday"
+      friday: "Friday"
+      saturday: "Saturday"
+      sunday: "Sunday"
+    overview:
+      schedules_unavailable: "Schedules are not available with your current access. Assignments shown here remain readable."
+      title: "Medication and schedules"
+      empty: "No medication or schedules have been assigned."
   stock_removals:
     title: "Remove stock"
     description: "Record medicine that left stock without being taken. This does not record a dose."
@@ -141,6 +192,7 @@ en:
       greater_than_or_equal_to: must be greater than or equal to %{count}
       inclusion: is not included in the list
       invalid: is invalid
+      form_invalid: This value could not be saved.
       not_a_number: is not a number
       required: must exist
       taken: has already been taken
@@ -847,6 +899,49 @@ en:
       success: "%{name} removed from %{location}"
       failure: Failed to remove member
   medications:
+    stock:
+      title: "Manage stock"
+      adjust: "Adjust stock"
+      new_quantity: "New stock quantity"
+      order: "Record order"
+      receive: "Mark received"
+      ordered: "Ordered"
+      received: "Received"
+      not_ordered: "No order recorded"
+      edit_option: "Edit option stock"
+      option_total: "Each option has its own stock and unit. Change quantities using the option editor."
+      scalar_fallback: "All options are untracked. Doses can still use the parent medicine stock shown here; set stock on an option to track it separately."
+      receipt_hint: "Receiving an order records its status only. Adjust stock separately when you count the delivery."
+      date_hint: "Enter the expected date as YYYY-MM-DD."
+      original_token: "Reopen the edit form to load its original version, then review and submit your changes."
+      option_readonly: "Option stock and reorder thresholds are managed through the option editor."
+      invalid_quantity: "Enter a nonnegative quantity with at most two decimal places."
+      household_inventory: "Household inventory"
+    dose_dialog:
+      administration_title: 'Log administration for %{name}'
+      choose_person_source: 'Choose the person and source.'
+      close: 'Close'
+      source: 'MEDICATION SOURCE'
+      calculated: 'Calculated for selected time'
+      dose_calculated: 'Dose calculated for selected time'
+      log: 'Log'
+      view_only: 'View only'
+      no_stock: 'No eligible stock'
+      record: 'Record dose'
+      confirm: 'Confirm the person, medication, time, and inventory source.'
+      review: 'Please review this dose.'
+      unavailable: 'This source is unavailable. Choose another source before submitting.'
+      choose_source: 'Choose source'
+      person: 'PERSON'
+      medication: 'MEDICATION'
+      dose: 'DOSE'
+      taken_at: 'Taken at'
+      stock_source: 'Stock source'
+      remaining: 'remaining'
+      invalid_time: 'Taken at is invalid.'
+      foreign_source: 'This source does not belong to this medication.'
+      forbidden: 'You cannot record this dose.'
+      conflict: 'This dose request conflicts with a previous record.'
     finder:
       nhs_directory: NHS Directory
       title: Medication Finder
@@ -1035,6 +1130,7 @@ en:
       edit_subtitle: Update %{name}'s details.
     index:
       your_inventory: Your Inventory
+      stock_remaining: "%{amount} %{unit} remaining"
       add_for_person: Add medication for someone
       title: Medications
       add_medication: Add Medication
@@ -1302,6 +1398,16 @@ en:
       active_dates: Active dates
       not_set: Not set
   dosages:
+    management:
+      daily: 'Daily'
+      weekly: 'Weekly'
+      monthly: 'Monthly'
+      untracked: 'Not tracked'
+      stock_hint: 'Leave stock blank for untracked supply; zero means tracked stock is empty. A blank threshold remains unset.'
+      confirm_mode: 'I understand that adding the first option clears the medication’s single dose. If this option tracks stock, its quantities replace the medication’s stock totals.'
+      confirm_required: 'Confirm the change to dosage options before saving.'
+      conflict: 'This dosage has changed. Reload its edit form and review your changes before saving again.'
+      retry_hint: 'After a failed save, check the dosage list before trying again. Repeating an add request can create another option.'
     created: Dosage was successfully added.
     updated: Dosage was successfully updated.
     deleted: Dosage was successfully removed.
@@ -2212,6 +2318,7 @@ en:
         description: Manage people and their schedules, track medication schedules
   forms:
     locations:
+      new_title: New Location
       name_placeholder: e.g. Home, School, Grandma's House
       description_placeholder: Describe this location...
     people:
@@ -2219,6 +2326,7 @@ en:
       email_placeholder: e.g., jane@example.com
     medications:
       inventory_management: Inventory Management
+      dosage_options_read_only: This medication uses dosage options. They remain unchanged when you save these details.
       name: Name
       name_placeholder: e.g., Paracetamol
       friendly_name: Display name

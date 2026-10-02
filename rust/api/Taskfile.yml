@@ -2,6 +2,29 @@
 version: "3"
 
 tasks:
+  contract-recovery-inventory:
+    cmds:
+      - docker ps --format '{{"{{"}}.Names{{"}}"}} {{"{{"}}.Image{{"}}"}} {{"{{"}}.Ports{{"}}"}}'
+
+  contract-engine-ping:
+    cmds:
+      - curl --max-time 5 --silent --show-error --unix-socket /Users/damacus/.docker/run/docker.sock http://localhost/_ping
+
+  contract-process-diagnostics:
+    cmds:
+      - df -h .
+      - ps -axo pid,ppid,etime,state,comm | rg 'docker|buildx|cargo|rustc|fish|task'
+
+  contract-build-diagnostics:
+    cmds:
+      - docker buildx history ls
+      - docker system df
+      - ps -axo pid,ppid,etime,state,comm | rg 'docker|buildx|cargo|rustc|fish|task'
+
+  clean-household-incremental:
+    cmds:
+      - rm -rf rust/api/target/debug/incremental rust/web/target/debug/incremental rust/ui-preview/target/debug/incremental rust/contract-tests/target/debug/incremental
+
   dashboard-ui-build:
     dir: "{{.TASKFILE_DIR}}/../.."
     cmds:
@@ -31,7 +54,7 @@ tasks:
   test:
     dir: "{{.TASKFILE_DIR}}/../.."
     cmds:
-      - cargo test --manifest-path rust/api/Cargo.toml
+      - cargo test --manifest-path rust/api/Cargo.toml {{ if .TEST_FILE }}--test {{ .TEST_FILE }}{{ end }}
 
   clippy:
     dir: "{{.TASKFILE_DIR}}/../.."
@@ -51,7 +74,15 @@ tasks:
   browser-rust:
     dir: "{{.TASKFILE_DIR}}/../.."
     cmds:
-      - fish rust/contract-tests/run.fish rails browser-journey-rust
+      - >-
+        env
+        HOUSEHOLD_ACCEPTANCE={{ .HOUSEHOLD_ACCEPTANCE | default "" | shellQuote }}
+        HOUSEHOLD_COMPLETION_ACCEPTANCE={{ .HOUSEHOLD_COMPLETION_ACCEPTANCE | default "" | shellQuote }}
+        HOUSEHOLD_STOCK_ACCEPTANCE={{ .HOUSEHOLD_STOCK_ACCEPTANCE | default "" | shellQuote }}
+        HOUSEHOLD_TEST_FILE={{ .HOUSEHOLD_TEST_FILE | default "" | shellQuote }}
+        HOUSEHOLD_TEST_FILTER={{ .HOUSEHOLD_TEST_FILTER | default "" | shellQuote }}
+        BROWSER_TEST_FILES={{ .BROWSER_TEST_FILES | default "tests/medication-journey.test.mjs tests/medication-journey-form.test.mjs" | shellQuote }}
+        fish rust/contract-tests/run.fish rails browser-journey-rust
 
   browser-dashboard-rust:
     dir: "{{.TASKFILE_DIR}}/../.."
@@ -78,6 +109,18 @@ tasks:
     cmds:
       - fish --no-config rust/contract-tests/runner_compose_test.fish
 
+  contract-browser-context-test:
+    cmds:
+      - fish --no-config rust/contract-tests/browser_context_test.fish
+
+  contract-household-selector-test:
+    cmds:
+      - fish --no-config rust/contract-tests/household_selector_test.fish
+
+  contract-minor-wrapper-test:
+    cmds:
+      - fish --no-config rust/contract-tests/browser_minor_wrapper_test.fish
+
   contract-runner-lint:
     dir: "{{.TASKFILE_DIR}}/../.."
     cmds:
@@ -86,7 +129,26 @@ tasks:
       - fish --no-config -n rust/contract-tests/run_complete_lane.fish
       - fish --no-config -n rust/contract-tests/run_lookup_subset.fish
       - fish --no-config -n rust/contract-tests/runner_compose_test.fish
+      - fish --no-config -n rust/contract-tests/browser_context_test.fish
+      - fish --no-config -n rust/contract-tests/household_selector_test.fish
+      - fish --no-config -n rust/contract-tests/fixtures/household_wrapper_probe.fish
+      - fish --no-config -n rust/contract-tests/browser_minor_wrapper.fish
+      - fish --no-config -n rust/contract-tests/browser_minor_wrapper_test.fish
+      - fish --no-config -n rust/contract-tests/fixtures/browser_minor_fake_task.fish
+      - fish --no-config -n rust/contract-tests/fixtures/browser_minor_legacy.fish
       - fish --no-config -n rust/contract-tests/test_support/rtk
+
+  contract-harness-fmt:
+    cmds:
+      - rustfmt --edition 2021 --check rust/contract-tests/src/lib.rs
+
+  contract-harness-fmt:write:
+    cmds:
+      - rustfmt --edition 2021 rust/contract-tests/src/lib.rs
+
+  contract-harness-test:
+    cmds:
+      - cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --lib
 
   complete-acceptance:
     dir: "{{.TASKFILE_DIR}}/../.."
@@ -124,12 +186,13 @@ tasks:
     requires:
       vars: [CONTRACT_SOURCE_DIR]
     cmds:
-      - mkdir -p '{{ .CONTRACT_SOURCE_DIR }}/rust/api' '{{ .CONTRACT_SOURCE_DIR }}/rust/web' '{{ .CONTRACT_SOURCE_DIR }}/rust/ui-preview' '{{ .CONTRACT_SOURCE_DIR }}/rust/contract-tests' '{{ .CONTRACT_SOURCE_DIR }}/config' '{{ .CONTRACT_SOURCE_DIR }}/vendor/fonts'
+      - mkdir -p '{{ .CONTRACT_SOURCE_DIR }}/rust/api' '{{ .CONTRACT_SOURCE_DIR }}/rust/web' '{{ .CONTRACT_SOURCE_DIR }}/rust/ui-preview' '{{ .CONTRACT_SOURCE_DIR }}/rust/contract-tests' '{{ .CONTRACT_SOURCE_DIR }}/config/locales' '{{ .CONTRACT_SOURCE_DIR }}/vendor/fonts'
       - rsync -a --exclude target/ rust/api/ '{{ .CONTRACT_SOURCE_DIR }}/rust/api/'
       - rsync -a --exclude target/ rust/web/ '{{ .CONTRACT_SOURCE_DIR }}/rust/web/'
       - rsync -a --exclude target/ --exclude node_modules/ rust/ui-preview/ '{{ .CONTRACT_SOURCE_DIR }}/rust/ui-preview/'
       - rsync -a --exclude target/ rust/contract-tests/ '{{ .CONTRACT_SOURCE_DIR }}/rust/contract-tests/'
       - cp config/ai_medication_sources.yml config/nhs_dmd_curated_products.yml '{{ .CONTRACT_SOURCE_DIR }}/config/'
+      - cp config/locales/*.yml '{{ .CONTRACT_SOURCE_DIR }}/config/locales/'
       - cp vendor/fonts/NotoSans-Regular.ttf vendor/fonts/OFL-1.1.txt '{{ .CONTRACT_SOURCE_DIR }}/vendor/fonts/'
 
   contract-external-up:
@@ -945,6 +1008,32 @@ tasks:
     cmds:
       - cargo test --locked --no-run --manifest-path rust/contract-tests/Cargo.toml --test {{ .TEST_TARGET }}
 
+  contract-household-web-test:
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+      WORKSPACE_DIR:
+        sh: pwd
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml {{ if .HOUSEHOLD_TEST_FILE }}--test {{ .HOUSEHOLD_TEST_FILE }}{{ else if eq .HOUSEHOLD_STOCK_ACCEPTANCE "true" }}--test household_stock --test household_stock_boundaries --test household_stock_concurrency{{ else if eq .HOUSEHOLD_COMPLETION_ACCEPTANCE "true" }}--test household_web --test household_navigation --test household_lifecycle --test household_completion_medication{{ else }}--test household_web --test household_navigation --test household_lifecycle{{ end }} -- {{ if .HOUSEHOLD_TEST_FILTER }}{{ .HOUSEHOLD_TEST_FILTER }}{{ end }} --test-threads=1
+      - '{{ if .HOUSEHOLD_TEST_FILE }}{{ else if eq .HOUSEHOLD_STOCK_ACCEPTANCE "true" }}{{ else if eq .HOUSEHOLD_COMPLETION_ACCEPTANCE "true" }}MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test household_completion_dashboard -- {{ if .HOUSEHOLD_TEST_FILTER }}{{ .HOUSEHOLD_TEST_FILTER }}{{ end }} --test-threads=1{{ end }}'
+
+  household-browser-syntax:
+    cmds:
+      - node --check rust/web/tests/household-routes.test.mjs
+      - node --check rust/web/tests/household-workflows.test.mjs
+      - node --check rust/web/tests/household-completion-locales.test.mjs
+      - node --check rust/web/tests/household-completion-medication.test.mjs
+      - node --check rust/web/tests/household-completion-dashboard.test.mjs
+
+  fmt-file:
+    requires:
+      vars: [FILE]
+    cmds:
+      - rustfmt --edition 2024 '{{ .FILE }}'
+
   openapi-sessions-acceptance:
     dir: "{{.TASKFILE_DIR}}/../.."
     cmds:
@@ -1024,7 +1113,51 @@ tasks:
     cmds:
       - mkdir -p docs/screenshots/journey-medication-rust
       - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test build rust-browser-tests
-      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-browser-tests node --test tests/medication-journey.test.mjs tests/medication-journey-form.test.mjs
+      - >-
+        fish {{ printf "%s/rust/contract-tests/browser_minor_wrapper.fish" (.CONTRACT_API_BUILD_CONTEXT | default ".") | shellQuote }}
+        {{ .CONTRACT_PROJECT | shellQuote }}
+        {{ .BROWSER_TEST_FILES | default "tests/medication-journey.test.mjs tests/medication-journey-form.test.mjs" | shellQuote }}
+        {{ printf "%s/fixture.json" (.CONTRACT_FIXTURE_DIR | default "") | shellQuote }}
+
+  contract-browser-node:
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-browser-tests node --test {{ .BROWSER_TEST_FILES | default "tests/medication-journey.test.mjs tests/medication-journey-form.test.mjs" }}
+
+  contract-minor-viewer-sql:
+    requires:
+      vars: [CONTRACT_PROJECT, PHASE, FIXTURE_PATH]
+    preconditions:
+      - sh: >-
+          fish --no-config -c 'string match -qr "^mtcontract-[0-9a-f]{16}\$" -- $argv[1]; and contains -- $argv[2] prepare restore'
+          -- {{ .CONTRACT_PROJECT | shellQuote }} {{ .PHASE | shellQuote }}
+        msg: Minor browser setup requires an owned disposable contract project and a valid phase
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+      HOUSEHOLD_ID:
+        sh: jq -er '.household_id | numbers' {{ .FIXTURE_PATH | shellQuote }}
+      VIEW_MEMBERSHIP_ID:
+        sh: jq -er '.view_membership_id | numbers' {{ .FIXTURE_PATH | shellQuote }}
+      VIEW_ACCOUNT_ID:
+        sh: jq -er '.view_account_id | numbers' {{ .FIXTURE_PATH | shellQuote }}
+      WEB_VIEW_EMAIL:
+        sh: jq -er '.web_view_email | strings' {{ .FIXTURE_PATH | shellQuote }}
+      SQL_PATH: '{{ .CONTRACT_API_BUILD_CONTEXT | default "." }}/rust/contract-tests/fixtures/minor-viewer-{{ .PHASE }}.sql'
+    cmds:
+      - >-
+        MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT | shellQuote }}
+        --profile test exec -T db-test env PGPASSWORD=medtracker_password
+        psql -X -1 -v ON_ERROR_STOP=1 -h db-test -U medtracker -d medtracker_contract
+        -v household_id={{ .HOUSEHOLD_ID | shellQuote }}
+        -v view_membership_id={{ .VIEW_MEMBERSHIP_ID | shellQuote }}
+        -v view_account_id={{ .VIEW_ACCOUNT_ID | shellQuote }}
+        -v web_view_email={{ .WEB_VIEW_EMAIL | shellQuote }}
+        -f - < {{ .SQL_PATH | shellQuote }}
 
   contract-browser-dashboard-rust:
     dir: "{{.TASKFILE_DIR}}/../.."

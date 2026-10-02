@@ -1,5 +1,56 @@
 ---
 pt:
+  treatments:
+    form:
+      keep_maximum: "Deixe em branco para manter o máximo atual."
+      schedule_maximum: "Deixe em branco para usar um máximo de 4 doses por ciclo."
+      optional_maximum: "O máximo é opcional para uma nova atribuição."
+      keep_cycle: "Manter o ciclo atual"
+      required_end_date: "Data de fim (obrigatória)"
+      default_dose: "Dose predefinida"
+      keep_dose_choice: "Manter a escolha de dose atual"
+      linked_dose_hint: "Deixe a opção em branco para manter qualquer ligação existente. Se a dose estiver ligada, escolha uma opção de substituição antes de alterar a quantidade ou a unidade."
+      apply_dose: "Usar a dose selecionada"
+      unavailable_selection: "Seleção indisponível"
+      schedule_type: "Tipo de horário"
+      show_fields: "Mostrar campos do horário"
+      time: "Hora (HH:MM)"
+      taper_times_hint: "Estas horas partilhadas aplicam-se a todas as etapas de redução e definem quando as doses devem ser tomadas. Deixe em branco para doses sem hora fixa."
+      step_time_instruction: "Hora da instrução da etapa (HH:MM)"
+      step_time_hint: "As horas das instruções são guardadas com esta etapa. Não definem quando as doses devem ser tomadas."
+      add_time: "Adicionar hora"
+      remove_time: "Remover hora"
+      date: "Data (AAAA-MM-DD)"
+      add_date: "Adicionar data"
+      remove_date: "Remover data"
+      step: "Etapa %{number}"
+      add_step: "Adicionar etapa"
+      remove_step: "Remover etapa"
+      as_needed_hint: "Usar quando necessário; não há horas fixas de administração."
+      resume: "Retomar tratamento"
+      resume_hint: "Retomar este tratamento agora. A pausa permanece no histórico."
+      pause_open: "Atualmente em pausa"
+      no_pause_history: "Não foram registadas pausas."
+    types:
+      daily: "Diário"
+      multiple_daily: "Várias vezes por dia"
+      weekly: "Semanal"
+      specific_dates: "Datas específicas"
+      prn: "Conforme necessário"
+      tapering: "Redução gradual"
+      every_other_day: "Dia sim, dia não"
+    weekdays:
+      monday: "Segunda-feira"
+      tuesday: "Terça-feira"
+      wednesday: "Quarta-feira"
+      thursday: "Quinta-feira"
+      friday: "Sexta-feira"
+      saturday: "Sábado"
+      sunday: "Domingo"
+    overview:
+      schedules_unavailable: "Os horários não estão disponíveis com o seu acesso atual. As atribuições apresentadas aqui continuam a poder ser lidas."
+      title: "Medicação e horários"
+      empty: "Não foram atribuídos medicamentos nem horários."
   stock_removals:
     title: "Remover stock"
     description: "Registe o medicamento que saiu do stock sem ser administrado. Isto não regista uma dose."
@@ -83,6 +134,7 @@ pt:
       greater_than_or_equal_to: deve ser maior ou igual a %{count}
       inclusion: não está incluído na lista
       invalid: não é válido
+      form_invalid: Não foi possível guardar este valor.
       not_a_number: não é um número
       required: deve existir
       taken: já está em uso
@@ -897,6 +949,49 @@ pt:
       success: "%{name} removido de %{location}"
       failure: Falha ao remover membro
   medications:
+    stock:
+      title: "Gerir stock"
+      adjust: "Ajustar stock"
+      new_quantity: "Nova quantidade de stock"
+      order: "Registar encomenda"
+      receive: "Marcar como recebido"
+      ordered: "Encomendado"
+      received: "Recebido"
+      not_ordered: "Nenhuma encomenda registada"
+      edit_option: "Editar stock da opção"
+      option_total: "Cada opção tem o seu próprio stock e unidade. Altere as quantidades no editor da opção."
+      scalar_fallback: "Todas as opções têm stock sem controlo. As doses ainda podem usar o stock do medicamento principal apresentado aqui; defina stock numa opção para o controlar separadamente."
+      receipt_hint: "Receber uma encomenda regista apenas o seu estado. Ajuste o stock separadamente ao contar a entrega."
+      date_hint: "Introduza a data prevista como YYYY-MM-DD."
+      original_token: "Abra novamente o formulário de edição para carregar a versão original, reveja e envie as alterações."
+      option_readonly: "O stock e os limites de reposição das opções são geridos no editor da opção."
+      invalid_quantity: "Introduza uma quantidade não negativa com até duas casas decimais."
+      household_inventory: "Inventário do agregado"
+    dose_dialog:
+      administration_title: 'Registar administração para %{name}'
+      choose_person_source: 'Escolha a pessoa e a origem.'
+      close: 'Fechar'
+      source: 'ORIGEM DO MEDICAMENTO'
+      calculated: 'Calculada para a hora selecionada'
+      dose_calculated: 'Dose calculada para a hora selecionada'
+      log: 'Registar'
+      view_only: 'Apenas leitura'
+      no_stock: 'Sem stock elegível'
+      record: 'Registar dose'
+      confirm: 'Confirme a pessoa, o medicamento, a hora e a origem do stock.'
+      review: 'Reveja esta dose.'
+      unavailable: 'Esta origem não está disponível. Escolha outra antes de enviar.'
+      choose_source: 'Escolher origem'
+      person: 'PESSOA'
+      medication: 'MEDICAMENTO'
+      dose: 'DOSE'
+      taken_at: 'Tomada às'
+      stock_source: 'Origem do stock'
+      remaining: 'restantes'
+      invalid_time: 'A hora da toma é inválida.'
+      foreign_source: 'Esta origem não pertence a este medicamento.'
+      forbidden: 'Não pode registar esta dose.'
+      conflict: 'Este pedido de dose entra em conflito com um registo anterior.'
     finder:
       nhs_directory: Diretório NHS
       title: Pesquisador de Medicamentos
@@ -1027,6 +1122,7 @@ pt:
       edit_subtitle: Atualizar detalhes de %{name}.
     index:
       your_inventory: O Seu Inventário
+      stock_remaining: "%{amount} %{unit} restantes"
       add_for_person: Adicionar medicação para alguém
       title: Medicamentos
       add_medication: Adicionar Medicamento
@@ -2215,6 +2311,16 @@ pt:
         description: Gira pessoas e os respetivos horários, acompanhe os horários
           de medicação
   dosages:
+    management:
+      daily: 'Diário'
+      weekly: 'Semanal'
+      monthly: 'Mensal'
+      untracked: 'Sem controlo'
+      stock_hint: 'Deixe o stock em branco para um fornecimento sem controlo; zero significa que o stock controlado está vazio. Um limite em branco permanece por definir.'
+      confirm_mode: 'Compreendo que adicionar a primeira opção apaga a dose única do medicamento. Se esta opção controlar stock, as suas quantidades substituem os totais de stock do medicamento.'
+      confirm_required: 'Confirme a alteração para opções de dosagem antes de guardar.'
+      conflict: 'Esta dose foi alterada. Recarregue o formulário e reveja as alterações antes de voltar a guardar.'
+      retry_hint: 'Se não conseguir guardar, verifique a lista de doses antes de tentar novamente. Repetir um pedido de adição pode criar outra opção.'
     created: Dose adicionada com sucesso.
     updated: Dose atualizada com sucesso.
     deleted: Dose removida com sucesso.
@@ -2247,6 +2353,7 @@ pt:
     back: "← Voltar"
   forms:
     locations:
+      new_title: Nova localização
       name_placeholder: p. ex. Casa, Escola, Casa da Avó
       description_placeholder: Descreva esta localização...
     people:
@@ -2254,6 +2361,7 @@ pt:
       email_placeholder: e.g., jane@example.com
     medications:
       inventory_management: Gestão de Inventário
+      dosage_options_read_only: Este medicamento utiliza opções de dosagem. Estas permanecem inalteradas quando guarda estes detalhes.
       name: Nome
       name_placeholder: p. ex., Paracetamol
       friendly_name: Nome de apresentação

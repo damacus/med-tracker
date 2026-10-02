@@ -128,7 +128,18 @@ fn timestamp_nanos(value: &Value) -> i128 {
 }
 
 fn assert_medication(value: &Value) {
-    assert_fields(value, MEDICATION_FIELDS);
+    let object = value.as_object().expect("Medication object");
+    for field in MEDICATION_FIELDS {
+        assert!(object.contains_key(*field), "required Medication field {field}");
+    }
+    for field in object.keys() {
+        assert!(MEDICATION_FIELDS.contains(&field.as_str()) || ["friendly_name", "barcode", "warnings"].contains(&field.as_str()), "unexpected Medication field {field}");
+    }
+    for field in ["friendly_name", "barcode", "warnings"] {
+        if let Some(value) = object.get(field) {
+            assert_nullable_string(value);
+        }
+    }
     assert_positive_id(&value["id"]);
     assert_uuid(&value["portable_id"]);
     assert!(!value["name"].as_str().unwrap().is_empty());

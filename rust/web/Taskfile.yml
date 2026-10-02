@@ -5,6 +5,7 @@ tasks:
     dir: "{{.TASKFILE_DIR}}"
     cmds:
       - npm ci --offline
+
   fmt:
     dir: "{{.TASKFILE_DIR}}"
     cmds:
@@ -20,7 +21,7 @@ tasks:
   test:
     dir: "{{.TASKFILE_DIR}}"
     cmds:
-      - cargo test
+      - cargo test {{ if .TEST_FILE }}--test {{ .TEST_FILE }}{{ end }}
   test:dashboard:
     dir: "{{.TASKFILE_DIR}}"
     cmds:

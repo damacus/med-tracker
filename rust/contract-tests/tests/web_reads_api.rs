@@ -337,6 +337,29 @@ fn shared_collections_filter_before_stable_pagination() {
         200,
     );
     assert_eq!(clamped["meta"]["per_page"], 100);
+    let people = path(fixture.household_id, "people");
+    for size in [100, 101, i64::MAX] {
+        let response = body(target.get(&format!("{people}?per_page={size}"), Some(&fixture.access_token)), 200);
+        assert_eq!(response["meta"]["per_page"], 100);
+        assert_eq!(response["meta"]["total_count"], clamped["meta"]["total_count"]);
+        assert_eq!(response["data"], clamped["data"]);
+    }
+    for query in ["page=0", "page=-1", "per_page=0", "per_page=-1", "updated_since=", "updated_since=not-a-timestamp", "page=abc", "per_page=abc", "per_page=", "per_page=1.5", "per_page=9223372036854775808", "page=0&per_page=999", "updated_since=&per_page=999"] {
+        let rejected = body(target.get(&format!("{people}?{query}"), Some(&fixture.access_token)), 422);
+        assert_eq!(rejected["error"]["code"], "unprocessable_content", "People query {query}");
+        assert!(rejected.get("data").is_none());
+    }
+    for resource in ["locations", "medications", "person_medications"] {
+        let rejected = body(target.get(&format!("{}?per_page=999", path(fixture.household_id, resource)), Some(&fixture.access_token)), 422);
+        assert_eq!(rejected["error"]["code"], "unprocessable_content", "unrelated {resource} stays strict");
+        assert!(rejected.get("data").is_none());
+    }
+    let schedules = path(fixture.household_id, "schedules");
+    let clamped_schedule = body(target.get(&format!("{schedules}?per_page=999"), Some(&fixture.access_token)), 200);
+    assert_eq!(clamped_schedule["meta"]["per_page"], 100);
+    let lenient_schedule = body(target.get(&format!("{schedules}?page=0&per_page=0&updated_since="), Some(&fixture.access_token)), 200);
+    assert_eq!(lenient_schedule["meta"]["page"], 1);
+    assert_eq!(lenient_schedule["meta"]["per_page"], 1);
 }
 
 #[test]

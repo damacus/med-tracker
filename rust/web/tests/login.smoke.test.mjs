@@ -85,10 +85,50 @@ for (const viewport of [
 
       const dashboardPath = `/households/${fixture.household_slug}/dashboard`;
       await page.waitForURL(url => url.pathname === dashboardPath);
-      await page.getByRole('heading', { level: 1, name: fixture.household_name, exact: true }).waitFor();
+      const dashboard = page.getByTestId('dashboard');
+      await dashboard.waitFor({ state: 'visible' });
+      assert.equal(await dashboard.getByRole('heading', { level: 2, name: "Today's Schedule", exact: true }).count(), 1);
+      assert.equal(await dashboard.getByTestId('dashboard-metrics').count(), 1);
+      const membershipsResponse = await page.request.get(new URL('/api/v1/auth/households', baseUrl).toString());
+      assert.equal(membershipsResponse.status(), 200);
+      const memberships = await membershipsResponse.json();
+      assert.equal(memberships.account_id, fixture.account_id);
+      assert.equal(memberships.data.filter(row => row.id === fixture.household_id
+        && row.slug === fixture.household_slug && row.name === fixture.household_name
+        && row.role === 'owner' && row.membership_id === fixture.owner_membership_id).length, 1);
+      const meResponse = await page.request.get(new URL(`/api/v1/households/${fixture.household_id}/me`, baseUrl).toString());
+      assert.equal(meResponse.status(), 200);
+      const me = (await meResponse.json()).data;
+      assert.equal(me.membership_role, 'owner');
+      assert.equal(me.account.id, fixture.account_id);
+      assert.equal(me.account.email, fixture.primary_email);
+      const profileResponse = await page.request.get(new URL(`/api/v1/households/${fixture.household_id}/profile`, baseUrl).toString());
+      assert.equal(profileResponse.status(), 200);
+      const profile = (await profileResponse.json()).data;
+      const peopleResponse = await page.request.get(new URL(`/api/v1/households/${fixture.household_id}/people`, baseUrl).toString());
+      assert.equal(peopleResponse.status(), 200);
+      const people = (await peopleResponse.json()).data;
+      assert.equal(typeof profile.person_id, 'string');
+      assert.ok(profile.person_id.length > 0);
+      const ownPerson = people.find(row => String(row.id) === profile.person_id);
+      assert.ok(ownPerson, 'The owner profile must identify a visible person');
+      assert.equal(typeof ownPerson.name, 'string');
+      assert.ok(ownPerson.name.trim().length > 0);
+      const firstName = ownPerson.name.trim().split(/\s+/)[0];
+      const greeting = await dashboard.getByRole('heading', { level: 1 }).innerText();
+      assert.ok(['morning', 'afternoon', 'evening'].some(period => greeting === `Good ${period}, ${firstName}`), `Dashboard greeting: ${greeting}`);
+      const navigation = dashboard.locator('.dashboard-sidebar nav[aria-label="Main navigation"] a[aria-current="page"]');
+      assert.equal(await navigation.count(), 1);
+      assert.equal(await navigation.getAttribute('href'), dashboardPath);
       const sessionCsrf = await page.locator('meta[name="csrf-token"]').getAttribute('content');
       assert.ok(sessionCsrf && sessionCsrf !== loginCsrf);
-      const logout = page.getByRole('button', { name: 'Sign out', exact: true });
+      if (viewport.name === 'mobile') {
+        await page.waitForFunction(() => document.querySelector('.dashboard-sidebar').parentElement.id === 'dashboard-navigation');
+        await page.getByRole('button', { name: 'Open menu', exact: true }).click();
+      }
+      const logout = viewport.name === 'mobile'
+        ? page.locator('#dashboard-navigation').getByRole('button', { name: 'Logout', exact: true })
+        : dashboard.locator('.dashboard-sidebar').getByRole('button', { name: 'Sign Out', exact: true });
       assert.ok(await logout.isVisible());
       await logout.focus();
       assert.ok(await logout.evaluate(element => element === element.ownerDocument.activeElement));
@@ -97,6 +137,8 @@ for (const viewport of [
       await page.goto(new URL(dashboardPath, baseUrl).toString());
       await page.waitForURL(url => url.pathname === '/login');
       assert.ok(await page.getByRole('heading', { level: 1, name: 'Welcome back', exact: true }).isVisible());
+      const revoked = await page.request.get(new URL('/api/v1/auth/households', baseUrl).toString());
+      assert.equal(revoked.status(), 401);
     } finally {
       await context.close();
     }

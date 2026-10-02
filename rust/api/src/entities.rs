@@ -82,6 +82,20 @@ entity!(otp_key, "account_otp_keys", {});
 
 entity!(webauthn_key, "account_webauthn_keys", {
     account_id: i64,
+    webauthn_id: String,
+    public_key: String,
+    nickname: Option<String>,
+    sign_count: i32,
+    last_use: Option<DateTime>,
+    created_at: DateTime,
+    updated_at: DateTime,
+});
+
+entity!(webauthn_user_id, "account_webauthn_user_ids", {
+    account_id: i64,
+    webauthn_id: String,
+    created_at: DateTime,
+    updated_at: DateTime,
 });
 
 pub mod recovery_code {

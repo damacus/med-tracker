@@ -70,7 +70,7 @@ fn create_schedule(target: &Target, fixture: &Fixture) -> (Value, String) {
     assert_eq!(created["active"], true);
     assert_eq!(created["paused"], false);
     assert_eq!(created["can_manage"], true);
-    assert_utc_second_timestamp(&created["updated_at"]);
+    assert_utc_timestamp(&created["updated_at"]);
     assert_audit_action(target, fixture, &request_id, "POST", "create", 201);
     (created, tag)
 }
@@ -88,10 +88,11 @@ fn schedule_preserves_fractional_min_hours_between_doses() {
     assert_eq!(body(response)["data"]["min_hours_between_doses"], "8.5");
 }
 
-fn assert_utc_second_timestamp(value: &Value) {
+fn assert_utc_timestamp(value: &Value) {
     let timestamp = value.as_str().expect("timestamp string");
-    assert_eq!(timestamp.len(), 20);
-    assert_eq!(&timestamp[10..11], "T");
+    let parsed = time::OffsetDateTime::parse(timestamp, &time::format_description::well_known::Rfc3339).expect("valid RFC3339 timestamp");
+    assert!(parsed.offset().is_utc());
+    assert_eq!(parsed.nanosecond() % 1000, 0);
     assert!(timestamp.ends_with('Z'));
 }
 
@@ -243,6 +244,26 @@ fn schedule_collection_filters_updates_and_normalizes_pagination() {
     let normalized = body(response);
     assert_eq!(normalized["meta"]["page"], 1);
     assert_eq!(normalized["meta"]["per_page"], 100);
+    for (query, page, size) in [
+        ("page=bogus&per_page=bogus", 1, 1),
+        ("page=0&per_page=0", 1, 1),
+        ("page=-3&per_page=-2", 1, 1),
+        ("page=1&per_page=1000", 1, 100),
+        ("page=1tail&per_page=2tail", 1, 2),
+    ] {
+        let response = target.get(&format!("{base}?{query}"), Some(&fixture.view_access_token));
+        let status = response.status().as_u16();
+        let result = body(response);
+        assert_eq!(status, 200, "{query}: {result}");
+        assert_eq!(result["meta"]["page"], page);
+        assert_eq!(result["meta"]["per_page"], size);
+        assert!(result["data"].as_array().unwrap().iter().all(|row| row["person_id"] == fixture.managed_person_id && row["can_manage"] == false));
+    }
+    for query in ["page=bogus", "page=0", "per_page=1000"] {
+        let response = target.get(&format!("/api/v1/households/{}/locations?{query}", fixture.household_id), Some(&fixture.access_token));
+        assert_eq!(response.status().as_u16(), 422);
+    }
+
 }
 
 #[test]
@@ -304,10 +325,12 @@ fn schedule_source_dosage_links_only_to_a_matching_visible_option() {
         &fixture.access_token,
         &json!({"medication": {"name": "Different source option medicine",
             "location_id": fixture.primary_location_id,
-            "dose_amount": "1", "dose_unit": "ml"}}),
+            "dose_amount": "1", "dose_unit": "ml", "reorder_threshold": "3"}}),
     );
-    assert_eq!(response.status().as_u16(), 201);
-    let alternate = body(response)["data"].clone();
+    let status = response.status().as_u16();
+    let result = body(response);
+    assert_eq!(status, 201, "{result}");
+    let alternate = result["data"].clone();
     let path = format!(
         "{}/{}",
         schedules_path(&fixture),
@@ -419,13 +442,9 @@ fn schedule_create_get_and_invalid_inputs_preserve_the_public_contract() {
     let response = target.get(&path, Some(&fixture.access_token));
     assert_eq!(response.status().as_u16(), 200);
     assert_eq!(etag(&response), created_etag);
-    assert!(created.get("current_pause_period").is_none());
-    let mut fetched = body(response)["data"].clone();
+    assert!(created["current_pause_period"].is_null());
+    let fetched = body(response)["data"].clone();
     assert!(fetched["current_pause_period"].is_null());
-    fetched
-        .as_object_mut()
-        .unwrap()
-        .remove("current_pause_period");
     assert_eq!(fetched, created);
 
     let response = target.get(
@@ -554,13 +573,9 @@ fn schedule_patch_and_put_keep_etags_validation_and_audit() {
     let response = target.get(&path, Some(&fixture.access_token));
     assert_eq!(response.status().as_u16(), 200);
     assert_eq!(etag(&response), replaced_etag);
-    assert!(replaced.get("current_pause_period").is_none());
-    let mut fetched = body(response)["data"].clone();
+    assert!(replaced["current_pause_period"].is_null());
+    let fetched = body(response)["data"].clone();
     assert!(fetched["current_pause_period"].is_null());
-    fetched
-        .as_object_mut()
-        .unwrap()
-        .remove("current_pause_period");
     assert_eq!(fetched, replaced);
 
     let response = target.patch_json(
@@ -600,10 +615,12 @@ fn schedule_patch_relinks_medication_but_keeps_the_person_fixed() {
         &fixture.access_token,
         &json!({"medication": {"name": "Schedule relink medicine",
             "location_id": fixture.primary_location_id,
-            "dose_amount": "1", "dose_unit": "ml"}}),
+            "dose_amount": "1", "dose_unit": "ml", "reorder_threshold": "3"}}),
     );
-    assert_eq!(response.status().as_u16(), 201);
-    let alternate = body(response)["data"].clone();
+    let status = response.status().as_u16();
+    let result = body(response);
+    assert_eq!(status, 201, "{result}");
+    let alternate = result["data"].clone();
     let response = target.patch_json(
         &path,
         &fixture.access_token,
@@ -641,8 +658,8 @@ fn schedule_patch_relinks_medication_but_keeps_the_person_fixed() {
         &fixture.access_token,
         &json!({"schedule": {"person_id": fixture.user_person_id.to_string()}}),
     );
-    assert_eq!(response.status().as_u16(), 200);
-    assert_eq!(body(response)["data"]["person_id"], created["person_id"]);
+    assert_eq!(response.status().as_u16(), 422);
+    assert_eq!(body(response)["error"]["errors"]["person_id"][0], "cannot be changed");
     let response = target.get(&path, Some(&fixture.access_token));
     assert_eq!(response.status().as_u16(), 200);
     let persisted = body(response)["data"].clone();
@@ -664,7 +681,7 @@ fn schedule_full_put_replaces_mutable_fields_and_rejects_invalid_values() {
         &path,
         &fixture.access_token,
         &json!({"schedule": {
-            "person_id": fixture.user_person_id.to_string(),
+            "person_id": created["person_portable_id"],
             "medication_id": fixture.managed_medication_portable_id,
             "dose_amount": "2.5", "dose_unit": "tablet", "frequency": "Alternate days",
             "start_date": "2026-03-01", "end_date": "2098-12-31",
@@ -690,6 +707,19 @@ fn schedule_full_put_replaces_mutable_fields_and_rejects_invalid_values() {
     assert_eq!(replaced["dose_cycle"], "daily");
     assert_eq!(replaced["schedule_type"], "every_other_day");
     assert_eq!(replaced["schedule_config"], json!({"times": ["09:30"]}));
+
+    let response = target.put_json_if_match(
+        &path,
+        &fixture.access_token,
+        &json!({"schedule": {"person_id": fixture.user_person_id.to_string()}}),
+        &replaced_etag,
+    );
+    assert_eq!(response.status().as_u16(), 422);
+    assert_eq!(body(response)["error"]["errors"]["person_id"][0], "cannot be changed");
+    let response = target.get(&path, Some(&fixture.access_token));
+    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(etag(&response), replaced_etag);
+    assert_eq!(body(response)["data"], replaced);
 
     let response = target.put_json_if_match(
         &path,
@@ -770,7 +800,7 @@ fn schedule_legacy_pause_and_resume_authorize_and_preserve_repeated_transitions(
     let periods = body(response)["data"].as_array().unwrap().to_vec();
     assert_eq!(periods.len(), 1);
     assert_eq!(periods[0]["id"], first_period);
-    assert_utc_second_timestamp(&periods[0]["ended_at"]);
+    assert_utc_timestamp(&periods[0]["ended_at"]);
 }
 
 #[test]
@@ -799,7 +829,7 @@ fn schedule_pause_and_resume_retain_history_and_audit() {
         paused["current_pause_period"]["source_id"],
         created["portable_id"]
     );
-    assert_utc_second_timestamp(&paused["current_pause_period"]["started_at"]);
+    assert_utc_timestamp(&paused["current_pause_period"]["started_at"]);
     assert!(paused["current_pause_period"]["ended_at"].is_null());
     let period_id = paused["current_pause_period"]["id"].clone();
     let response = target.get(&path, Some(&fixture.access_token));
@@ -835,7 +865,7 @@ fn schedule_pause_and_resume_retain_history_and_audit() {
         .find(|row| row["id"] == period_id)
         .expect("resumed period retained in history");
     assert_eq!(period["reason"], "reason_not_recorded");
-    assert_utc_second_timestamp(&period["ended_at"]);
+    assert_utc_timestamp(&period["ended_at"]);
     assert_audit_action(
         &target,
         &fixture,

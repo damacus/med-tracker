@@ -207,6 +207,7 @@ function run_contract
             set -gx CONTRACT_API_BUILD_CONTEXT (pwd)/$contract_run_dir/source
             rtk task api:contract-source-snapshot CONTRACT_SOURCE_DIR=$CONTRACT_API_BUILD_CONTEXT
             or return $status
+            set -gx CONTRACT_BROWSER_BUILD_CONTEXT "$CONTRACT_API_BUILD_CONTEXT/rust/web"
             set -l source_digest (find "$CONTRACT_API_BUILD_CONTEXT" -type f -print0 | xargs -0 shasum -a 256 | string replace -a "$CONTRACT_API_BUILD_CONTEXT/" '' | LC_ALL=C sort | shasum -a 256)
             set -l digest_parts (string split ' ' -- $source_digest)
             if not string match -rq '^[0-9a-f]{64}$' -- "$digest_parts[1]"
@@ -261,6 +262,14 @@ function run_contract
 
     rtk task --force test:exec CONTRACT_PROJECT=$contract_project CMD="CONTRACT_FIXTURE_PATH=/app/$contract_run_dir/fixture.json rails runner scripts/contract_provision.rb"
     or return $status
+    set -l fixture_hash (rtk proxy shasum -a 256 "$contract_fixture_path")
+    or return $status
+    set -l fixture_hash_parts (string split ' ' -- $fixture_hash)
+    if not string match -rq '^[0-9a-f]{64}$' -- "$fixture_hash_parts[1]"
+        echo 'Contract fixture digest could not be computed' >&2
+        return 1
+    end
+    echo "Contract fixture SHA-256: $fixture_hash_parts[1]"
     set -l fixture_seconds (math (date +%s) - $startup_at)
     echo "Contract fixture ready after $fixture_seconds seconds"
 
@@ -276,6 +285,10 @@ function run_contract
         or return $status
         rtk task api:contract-ready CONTRACT_PROJECT=$contract_project
         or return $status
+        if test "$HOUSEHOLD_ACCEPTANCE" = true
+            rtk proxy task api:contract-household-web-test CONTRACT_PROJECT=$contract_project
+            or return $status
+        end
         rtk task api:contract-browser-rust CONTRACT_PROJECT=$contract_project
         return $status
     end

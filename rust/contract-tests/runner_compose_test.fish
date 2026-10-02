@@ -147,6 +147,8 @@ contains -- api:contract-image-remove $trace
 or begin; echo 'Runner skipped image cleanup after browser failure' >&2; exit 1; end
 
 set -e CONTRACT_FAKE_FAIL_STEP
+set -lx CONTRACT_FAKE_REQUIRE_BROWSER_SNAPSHOT 1
+set -lx BROWSER_TEST_FILES tests/household-completion-dashboard.test.mjs tests/household-completion-locales.test.mjs
 command rm -f $test_dir/trace
 fish --no-config rust/contract-tests/run.fish rails browser-journey-rust >$test_dir/output 2>&1
 set run_status $status
@@ -159,6 +161,8 @@ contains -- api:contract-ready $trace
 or begin; echo 'Rust journey runner did not wait for API readiness' >&2; exit 1; end
 contains -- api:contract-browser-rust $trace
 or begin; echo 'Rust journey runner skipped its selected browser suite' >&2; exit 1; end
+contains -- browser-source-snapshot-verified $trace
+or begin; echo 'Rust journey browser build did not receive its captured Dockerfile and selected tests' >&2; exit 1; end
 contains -- cleanup $trace
 or begin; echo 'Rust journey runner skipped cleanup' >&2; exit 1; end
 if contains -- api:contract-test $trace; or contains -- api:contract-browser-test $trace; or contains -- api:contract-browser-rails $trace
@@ -179,6 +183,7 @@ contains -- api:contract-image-remove $trace
 or begin; echo 'Rust journey runner skipped image cleanup after browser failure' >&2; exit 1; end
 
 set -e CONTRACT_FAKE_FAIL_STEP
+set -e CONTRACT_FAKE_REQUIRE_BROWSER_SNAPSHOT BROWSER_TEST_FILES
 command rm -f $test_dir/trace
 fish --no-config rust/contract-tests/run.fish rails openapi-sessions >$test_dir/output 2>&1
 set run_status $status
