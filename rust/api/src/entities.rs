@@ -583,3 +583,75 @@ entity!(medication, "medications", {
     location_id: i64,
     updated_at: DateTime,
 });
+
+entity!(nhs_dmd_import, "nhs_dmd_imports", {
+    archive_byte_size: Option<i64>,
+    archive_checksum: Option<String>,
+    archive_key: Option<String>,
+    archive_service_name: Option<String>,
+    completed_at: Option<DateTime>,
+    created_at: DateTime,
+    created_count: i32,
+    error_message: Option<String>,
+    imported_count: i32,
+    log: Option<String>,
+    processed_records: i32,
+    skipped_count: i32,
+    skipped_expired_count: i32,
+    skipped_invalid_count: i32,
+    skipped_missing_name_count: i32,
+    started_at: Option<DateTime>,
+    status: i32,
+    total_records: i32,
+    unchanged_count: i32,
+    updated_at: DateTime,
+    updated_count: i32,
+    uploaded_filename: String,
+});
+
+entity!(nhs_dmd_barcode, "nhs_dmd_barcodes", {
+    amp_code: Option<String>,
+    code: String,
+    concept_class: Option<String>,
+    created_at: DateTime,
+    display: String,
+    gtin: String,
+    system: String,
+    updated_at: DateTime,
+    vmp_name: Option<String>,
+});
+
+entity!(nhs_dmd_ampp_relationship, "nhs_dmd_ampp_relationships", {
+    amp_code: String,
+    ampp_code: String,
+    created_at: DateTime,
+    updated_at: DateTime,
+});
+
+entity!(nhs_dmd_trade_family_group, "nhs_dmd_trade_family_groups", {
+    code: String,
+    name: String,
+    created_at: DateTime,
+    updated_at: DateTime,
+});
+
+entity!(nhs_dmd_trade_family, "nhs_dmd_trade_families", {
+    code: String,
+    name: String,
+    trade_family_group_id: Option<i64>,
+    created_at: DateTime,
+    updated_at: DateTime,
+});
+
+entity!(nhs_dmd_amp_trade_family, "nhs_dmd_amp_trade_families", {
+    amp_code: String,
+    trade_family_id: i64,
+    created_at: DateTime,
+    updated_at: DateTime,
+});
+
+entity!(nhs_dmd_supplementary_release, "nhs_dmd_supplementary_releases", {
+    released_on: Date,
+    created_at: DateTime,
+    updated_at: DateTime,
+});

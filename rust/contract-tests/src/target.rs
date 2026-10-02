@@ -483,6 +483,19 @@ impl Target {
             .expect("target must respond")
     }
 
+    pub fn post_multipart(
+        &self,
+        path: &str,
+        token: &str,
+        form: reqwest::blocking::multipart::Form,
+    ) -> Response {
+        self.require_local_write();
+        self.authorize(self.client.post(self.url(path)), Some(token))
+            .multipart(form)
+            .send()
+            .expect("target must respond")
+    }
+
     pub fn put_multipart(
         &self,
         path: &str,

@@ -135,6 +135,7 @@ cy:
       inclusion: nid yw wedi'i gynnwys yn y rhestr
       invalid: yn annilys
       form_invalid: Ni ellid cadw'r gwerth hwn.
+      forbidden: "Nid oes gennych awdurdod i wneud y weithred hon."
       not_a_number: nid yw'n rhif
       required: rhaid iddo fodoli
       taken: eisoes wedi'i gymryd

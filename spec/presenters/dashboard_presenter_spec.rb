@@ -244,34 +244,55 @@ RSpec.describe DashboardPresenter do
     it 'shows currently available work as the next due item' do
       travel_to Time.zone.parse('2026-05-05 12:00:00') do
         stub_dashboard_schedule(
-          routine_rows: [dashboard_row(metric_person, status: :upcoming, scheduled_at: 2.hours.from_now)],
-          as_needed_rows: [dashboard_row(metric_person, status: :available, scheduled_at: Time.current)]
+          routine_rows: [dashboard_row(metric_person, status: :upcoming, scheduled_at: Time.current)],
+          as_needed_rows: []
         )
 
         presenter = presenter_for(admin_user, people_scope: Person.where(id: metric_person.id))
 
         expect(presenter.next_due_value).to eq('Now')
         expect(presenter.due_now_count).to eq(1)
-        expect(presenter.tasks_left_count).to eq(2)
+        expect(presenter.tasks_left_count).to eq(1)
       end
     end
 
-    it 'falls back to the next scheduled future item when nothing is due now' do
+    it 'excludes available and cooldown as-needed rows from headline metrics' do
       travel_to Time.zone.parse('2026-05-05 12:00:00') do
         stub_dashboard_schedule(
-          routine_rows: [
-            dashboard_row(metric_person, status: :upcoming, scheduled_at: Time.zone.parse('2026-05-05 16:30:00'))
-          ],
+          routine_rows: [],
           as_needed_rows: [
-            dashboard_row(metric_person, status: :cooldown, scheduled_at: Time.zone.parse('2026-05-05 14:15:00'))
+            dashboard_row(metric_person, status: :available, scheduled_at: Time.current),
+            dashboard_row(metric_person, status: :cooldown, scheduled_at: 2.hours.from_now)
           ]
         )
 
         presenter = presenter_for(admin_user, people_scope: Person.where(id: metric_person.id))
 
-        expect(presenter.next_due_value).to eq('14:15')
+        expect(presenter.next_due_value).to eq('None today')
         expect(presenter.due_now_count).to eq(0)
-        expect(presenter.tasks_left_count).to eq(2)
+        expect(presenter.tasks_left_count).to eq(0)
+      end
+    end
+
+    {
+      available: -> { Time.current },
+      cooldown: -> { Time.zone.parse('2026-05-05 14:15:00') }
+    }.each do |status, scheduled_at|
+      it "uses the routine future time when as-needed work is #{status}" do
+        travel_to Time.zone.parse('2026-05-05 12:00:00') do
+          stub_dashboard_schedule(
+            routine_rows: [
+              dashboard_row(metric_person, status: :upcoming, scheduled_at: Time.zone.parse('2026-05-05 16:30:00'))
+            ],
+            as_needed_rows: [dashboard_row(metric_person, status: status, scheduled_at: scheduled_at.call)]
+          )
+
+          presenter = presenter_for(admin_user, people_scope: Person.where(id: metric_person.id))
+
+          expect(presenter.next_due_value).to eq('16:30')
+          expect(presenter.due_now_count).to eq(0)
+          expect(presenter.tasks_left_count).to eq(1)
+        end
       end
     end
 

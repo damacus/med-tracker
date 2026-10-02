@@ -135,6 +135,7 @@ ga:
       inclusion: níl sé san áireamh sa liosta
       invalid: neamhbhailí
       form_invalid: Níorbh fhéidir an luach seo a shábháil.
+      forbidden: "Níl údarás agat an gníomh seo a dhéanamh."
       not_a_number: ní uimhir é
       required: caithfidh sé a bheith ann
       taken: in úsáid cheana féin

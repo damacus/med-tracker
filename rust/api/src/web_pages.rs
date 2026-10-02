@@ -11,6 +11,7 @@ use api_client::WebApi;
 use response::{error, failure, login_redirect, page, page_status, redirect, PageError};
 pub(crate) use time::dashboard_now;
 
+mod admin;
 mod api_client;
 mod assets;
 mod dashboard;
@@ -37,6 +38,7 @@ pub fn routes() -> Router<AppState> {
         .merge(dosage_options::routes())
         .merge(stock::routes())
         .merge(treatments::routes())
+        .merge(admin::routes())
         .route("/household.css", get(assets::household_styles))
         .route("/households/{slug}/dashboard", get(dashboard::dashboard))
         .route(

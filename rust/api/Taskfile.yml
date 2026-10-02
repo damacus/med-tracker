@@ -1027,6 +1027,7 @@ tasks:
       - node --check rust/web/tests/household-completion-locales.test.mjs
       - node --check rust/web/tests/household-completion-medication.test.mjs
       - node --check rust/web/tests/household-completion-dashboard.test.mjs
+      - node --check rust/web/tests/household-admin-dmd.test.mjs
 
   fmt-file:
     requires:
