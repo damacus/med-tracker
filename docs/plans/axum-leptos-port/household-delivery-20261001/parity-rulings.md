@@ -1,7 +1,7 @@
 # Bounded parity rulings for #2347
 
 Independent source review, 1 October 2026. These recommendations cover only the
-three disagreements assigned by the coordinator. They do not certify runtime
+compatibility disagreements assigned by the coordinator. They do not certify runtime
 parity or resolve the other baseline failures. No source, tests or fixtures were
 changed by the reviewer. The coordinator owns final contract decisions.
 
@@ -87,9 +87,137 @@ offering dose controls in [inventory.rs](../../../../rust/api/src/web_pages/inve
 lines 102–109. Removing inventory IDs merely to satisfy the failing assertion
 would introduce a new projection policy without Rails or OpenAPI support.
 
+## Partly filled stock: show it, check the full dose when saving
+
+The next run reached a further incorrect test expectation: stock of 1.00 ml
+remained visible for a 1.25 ml dose. The authoritative
+[OpenAPI](../../../api/openapi.v1.yaml), lines 7115 and 7511, defines the optional
+stock projection as matching sources with untracked or positive supply. It also
+requires submission to check stock again.
+
+[MedicationStockSourceResolver](../../../../app/services/medication_stock_source_resolver.rb)
+uses `out_of_stock?` when listing stock;
+[SupplyLevel](../../../../app/models/supply_level.rb) defines this as a tracked
+balance at or below zero. Rust checks the quantity needed for the full dose when
+writing in [dose.rs](../../../../rust/api/src/dose.rs), for both medication stock
+and a selected tracked option.
+
+Correct the two insufficient-stock projection expectations in
+[source_capabilities_api.rs](../../../../rust/contract-tests/tests/source_capabilities_api.rs).
+Add actual dose submissions that require 422 and unchanged stock, dose history,
+versions and sync records. Preserve the documented positive-stock projection.
+The ordinary-stock assertion failed in the first run; the later tracked-stock
+assertion had not yet been reached. Both corrected checks subsequently passed,
+including rejected submissions and unchanged clinical records, in
+`G-SOURCE-CAPABILITIES-CORRECTED-002`.
+
+## Unknown dose source: return not found
+
+A dose request with a valid source identifier and a supplied, nonblank string
+source type that Rust does not support must return 404. Missing, blank,
+whitespace-only or non-string source types, malformed identifiers and unknown
+request fields retain their existing 422 responses. This applies to direct
+recording and sync through their shared creation function.
+
+[MedicationTakesController](../../../../app/controllers/api/v1/medication_takes_controller.rb)
+raises `ActiveRecord::RecordNotFound` for an unknown source type. Its explicit
+[request spec](../../../../spec/requests/api/v1/medication_takes_spec.rb) requires
+404 for a valid request using `source_type: 'unknown'`.
+[Sync::BatchesController](../../../../app/controllers/api/v1/sync/batches_controller.rb)
+uses the same source lookup rule. No Rails changes are needed for this ruling.
+
+`G-DOSE-SOURCE-ERRORS-RED-001` ran both new Rust tests against unchanged
+production handling. Each passed eighteen malformed-input controls and one
+unknown-field control, then failed because the supported request shape with an
+unknown source type returned 422 rather than 404. All clinical records remained
+unchanged. The existing `dose_write_api` expectation of 422 for this one case
+therefore needed correction; its original six-case baseline passed and is
+retained. The minimal shared validation fix subsequently passed both focused
+tests and six route checks in `G-SOURCE-ERRORS-GREEN-001`. Independent review
+verified the original matching source manifests and accepted this bounded fix.
+The corrected six-case direct-write suite also passed. Its receipt retains the
+pre-run manifest and matching emitted copied-source digest, but not the copied
+per-file manifest; no stronger source-provenance claim is made for that run.
+The wider dose checks subsequently passed as recorded below. Final composed
+acceptance remains pending.
+
+## Dose errors and audit records
+
+Occurrence actions must record the occurrence controller as their audit source.
+A paused occurrence returns the `paused` error code. When no matching source has
+available stock, direct recording and occurrence recording report out of stock,
+including when the submitted selection refers to an empty source. This check
+comes before resolving a stock selection. Existing checks for malformed input,
+access restrictions, retries and available stock selections keep their order.
+
+Direct recording with a numeric JSON dose amount returns `validation_failed`,
+the message `Validation failed`, and the field error `dose_amount: ["must be a
+string"]`, matching Rails. Sync keeps its existing error contract. Invalid take
+pagination remains rejected under the documented limits; a valid filtered page
+has a separate passing check.
+
+`G-DOSES-FIX-GREEN-001` passed all seventeen active dose tests and six route
+checks. The existing timestamp-response test remains ignored. Independent
+review accepted the error and audit fixes, the rejected-request checks and the
+matching source manifests. The source-error and direct-write targets also
+passed again on this source, with original matching manifests retained for
+both runs. Full sync and retry targets passed twenty-three and eight tests
+respectively. These results do not yet accept the proposed file splits or
+replace final composed acceptance and publication.
+
+## Schedule pagination and test corrections
+
+The named `schedules` target failed the same eight tests before and after the
+occurrence refactor: three passed and four existing cases remained ignored.
+These results came from separate fixtures; the reconstructed before source
+matched all 422 original application paths.
+
+One failure is a Rust bug, tracked in
+[#2367](https://github.com/damacus/med-tracker/issues/2367). Rails schedules use
+the shared pagination helper, which converts malformed values to zero before
+clamping the page and page size. The request `page=bogus&per_page=0` therefore
+succeeds with page one and size one. Rust rejected it before its normalisation
+could run. The reviewed correction accepts string pagination values only for
+schedules, then normalises the proven malformed, zero, negative and oversized
+cases after authorisation. Its signed decimal prefix parser is not a claim of
+complete Ruby `to_i` equivalence. Other resources keep their existing parsing.
+
+The remaining reached failures have reviewed test corrections: supply required
+medication reorder thresholds, accept nullable pause-period fields, and validate
+UTC timestamps without dropping microsecond precision. A successful full update
+keeps the original person. A separate attempted person transfer must return 422
+and preserve the saved body and version, as the API contract requires. The four
+existing ignored cases remain unchanged.
+
+The first repaired run passed eight tests and reached three more failures. A
+new locations control incorrectly expected 400; that resource explicitly returns
+422 for invalid pagination. The control now preserves that rejection.
+
+The two numeric amount assertions found another Rust compatibility bug, tracked
+in [#2368](https://github.com/damacus/med-tracker/issues/2368). Rails rejects a
+numeric schedule amount with `dose_amount: ["must be a string"]`. The reviewed
+follow-on preserves that assertion and adds only a numeric-value rejection at
+the existing schedule validation boundary. Other decimal errors and validation
+priorities stay unchanged.
+
+The corrections now cover three authored files. They are installed and
+independently reviewed; the first correction passed compiler and lint checks.
+The repaired reconstructed before version passed all eleven active schedule
+tests and six route checks; its four existing ignored cases remain unchanged.
+Independent review accepted its source and behavioural evidence. The matching
+run on the current code also passed eleven active tests and six route checks.
+Its source and fixture hashes are runner-emitted only; no independent original
+copy or fixture manifest is claimed. Independent review accepted the occurrence
+checkpoint with that qualification. Publication and final combined checks remain.
+Rails behaviour here was verified from current source, not live Rails requests.
+
 ## Verification limit
 
-All three rulings above are source-derived recommendations. No runtime command,
-Rails request, fixture mutation or screenshot was executed by this reviewer.
-Acceptance requires the exclusive verifier's receipts for the matching source,
-including strict pagination, location ordering and paused-write no-write checks.
+The original reviewer derived these rulings from source and did not execute
+Rails requests. The coordinator subsequently accepted the Rust checks recorded
+in [verification-queue.md](verification-queue.md):
+`G-WEB-READS-PAGINATION-GREEN-001` covers oversized People pages and malformed
+query controls; `G-SOURCE-CAPABILITIES-CORRECTED-002` covers location ordering,
+paused submissions and insufficient-stock submissions. Both receipts retain
+matching source manifests and unchanged-record checks. These changes remain
+local until the final tranche is published and its required CI passes.

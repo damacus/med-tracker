@@ -10,22 +10,22 @@ ignored evidence; no secrets in durable records. Write compact receipts here.
 Use separate grant-mutating token lifetimes and fixed-clock dashboard fixtures.
 All runtime actions preserve Rails, isolate fixtures and clean only owned files.
 
-Current state (2026-10-01 23:22 UTC): D and E are accepted and published. F's
-37 HTTP/12 core browser cases, 2/2 fixed-clock taper amount cases, one
-permission HTTP case plus seven medication browser regressions, and 35
-existing dashboard browser regressions all pass. The display shows the
-effective taper amount. #2361's native time control is now verified in the
-focused fixed-clock browser cases, and the affected core regressions pass on
-the same candidate. The full Rust gate passed; only final Markdown/docs gates
-remain. D-CORE-GREEN-001
-passed all four HTTP tests and existing household route/workflow regressions,
-but only 26/34 browser tests passed: eight non-English immediate-administration
-cases failed. The writer made a reviewed test-only pagination correction.
-D-CORE-BROWSER-002 then passed all 20 dosage browser cases on a fresh isolated
-fixture. D-PERMISSION-003 passed the isolated grant-mutating permission case
-and a fresh 20-case browser suite. The full `ci:rust-port` gate passed on
-unchanged frozen authored inputs. No D runtime job is active. Fixed-clock
-dashboard tests remain separate.
+Current state (2026-10-02): D, E and F are accepted and published. G's initial
+stock/pagination, minor, People, portable-import, audit, source-capabilities and
+dose RED/GREEN evidence is recorded below. The approved dose split is installed;
+format, API check, warning-denying Clippy, selected compiles and API unit tests
+pass. All seven required post-split dose contract targets pass on separate
+fixtures, including full sync and replay. Independent final dose review passed.
+The before-occurrence dose-occurrence and sync-read targets passed. The
+occurrence split is installed and its six mapped API targets plus fixed-clock
+dashboard check pass after the split. The brief's separate `schedules` Cargo
+suite was subsequently run against reconstructed pre-split and current source;
+both runs expose the same existing failures (3 pass, 8 fail, 4 ignored), so
+occurrence acceptance remains open pending the reviewed schedule-only repair
+and matched reruns. The first post-dose-split `doses` fixture hash is
+runner-emitted only because cleanup preceded independent rehash; the other six
+dose fixtures and all occurrence fixtures were independently hashed before
+cleanup.
 
 Baseline receipt: `api:openapi-dosages-acceptance` exited 0 on the Rust API
 listener; all 14 dosage contract tests passed. Raw log:
@@ -931,3 +931,1548 @@ Obsolete F intermediates are retained privately at
 `final-core-green-001` and 100 `guard-green-001` images. Before/after checksum
 manifests show no changed bytes. No earlier D/E screenshot paths were altered,
 and no other F screenshot directories remain in the checkout.
+
+## G initial stock and pagination RED
+
+The first four-case run was setup-only: all four tests stopped creating the
+parent medication because the helper sent `reorder_threshold: null`, which the
+canonical validator rejects as blank. No stock or pagination assertion ran.
+The setup review confirmed `"3"` is a valid medication threshold while null
+option stock and nullable dosage fields remain valid stimuli. This first run's
+task transcript preserves the result; its private job directory has manifests
+only, and the available RTK tee files contain image-build output rather than
+the test assertions.
+
+After the writer's test-only correction, selected compilation passed for
+`household_inventory_completion`. The corrected HTTP run executed all four
+cases: two controls passed; parent-stock fallback removal returned 422 instead
+of 303, and the native page for the 501-option fixture returned 503 instead of
+200. These are the intended product REDs; browser smoke was skipped because the
+HTTP target failed. Task exit was 201. No product source changed before these
+failures.
+
+Command: `HOUSEHOLD_ACCEPTANCE=true HOUSEHOLD_TEST_FILE=household_inventory_completion
+API_TIME_ZONE=UTC rtk proxy task api:browser-rust
+BROWSER_TEST_FILES=tests/household-routes.test.mjs`. Project
+`mtcontract-493bcdcbb3a54234`; runner source digest
+`93ff81de351d3b8469103801a8d8cef47d4d8e782e4eefaf16d55c003e44c378`; fixture
+SHA-256 emitted before cleanup
+`6fda8987b4c1b19c8fb2a91494ce740b243d7b26dc29f51222f6e0d738b325bb`. The 370
+application paths match exactly between
+`/private/tmp/household-g-20261002/G-INITIAL-RED-002/source.app-pre.manifest`
+and `source.copy.manifest`; each manifest hashes to
+`c327f4db007a91375b7f7fcf8ba2509a109c917d26407f97aa7bcadf41898063`. The
+four runner/command inputs, including the root Taskfile, are recorded
+separately in `command-inputs.manifest` (SHA-256
+`87f26392fc4b6a7938ea08e8d92900477d7137a9d3ee6d3cd1a3e8407808afb1`). Full
+raw task log:
+`/private/tmp/household-g-20261002/G-INITIAL-RED-002/runner.raw.log` (SHA-256
+`40485820728b23bd6a4eabd37a977235e38a1fd3357e8c351cad35e70dc6aa12`). The
+374-path premanifest is
+`/private/tmp/household-g-20261002/G-INITIAL-RED-002/source.pre.manifest`
+(SHA-256 `0fdc527bd5cae98a9e8a9e95a2f3886deb4266e078c7d89d92298678d0cd30e2`);
+the four-input subset is separated from the app-copy comparison. No browser
+run occurred.
+
+## G focused stock and pagination GREEN
+
+The reviewed focused fix passed the same four HTTP cases and the selected
+household routes browser smoke. HTTP: 4 passed, 0 failed. Browser: 6 passed,
+0 failed. Task exit 0. The parent-stock fallback removal and 501-option native
+medication page now pass; both negative stock controls remain green. This is
+focused acceptance only; broader callers, permission-change consistency and
+desktop/mobile stock journeys remain queued. The routes smoke produced no
+screenshots.
+
+Before the runtime, `api:fmt:write`, `task -d rust/web format`, selected compile
+for `household_inventory_completion`, and `api:clippy` each exited 0. Runner
+project `mtcontract-cfff38d818d74e18`; source digest
+`f33c7aa0be99d84d7d68351361b5e3406bb6563cf83b49d204749c05255d651c`; fixture
+SHA-256 emitted before cleanup
+`31a6adb3f6bee42ef626a6a09d5635d5ff545805b11527e2bb3197dfd68d74d5`. Full raw
+log: `/private/tmp/household-g-20261002/G-FOCUSED-GREEN-001/runner.raw.log`
+(SHA-256 `1aab6a8511a56bffd636df287632910947195180e3bf9d990a3b7bc46824da3a`).
+The 370 application paths matched the captured copy exactly (pre/copy manifest
+SHA-256 `8874bc1cc0454b84cce05b6a5385d2b5843c4312353454ae4271b83b7e85e10b`).
+Full 374-path pre/post source manifests match at
+`e3490e9dead526a525bec2d5c20207f66690e4489bc196ba08ec151a1cfcc337`; the four
+Task/runner command inputs are separately recorded and unchanged at
+`87f26392fc4b6a7938ea08e8d92900477d7137a9d3ee6d3cd1a3e8407808afb1`.
+
+## Portable-imports baseline preparation
+
+The named compatibility targets compile successfully before any importer
+extraction: `api:contract-selected-compile
+TEST_TARGET=openapi_portable_writes` and the same Task with
+`TEST_TARGET=portability` each exited 0. Logs:
+`/private/tmp/household-g-20261002/G-PORTABLE-BASELINE-COMPILE-001/openapi_portable_writes.raw.log`
+and `portability.raw.log`. The first target has two cases, including encrypted
+bundle strict-shape validation, dry-run and apply; the second has three, including
+encrypted export and public readback plus authority/rejection cases. The exact
+existing runtime wrappers are `api:openapi-portable-writes-acceptance` and
+`api:openapi-portability-legacy-acceptance`; each owns an isolated project and
+fixture. Runtime baselines remain queued until the next frozen input/copy is
+captured. The 374-path compile-input pre/post manifests match at
+`e3490e9dead526a525bec2d5c20207f66690e4489bc196ba08ec151a1cfcc337`; the four
+runner command inputs match separately at
+`87f26392fc4b6a7938ea08e8d92900477d7137a9d3ee6d3cd1a3e8407808afb1`.
+
+## G minor readiness and locale guidance
+
+The isolated `household_minor_readiness` runtime reached its actual HTTP
+assertion: the authorised person page returned 403 instead of 200 (0/1 passed,
+locale `en`, assertion at `household_minor_readiness.rs:124`). This is an
+access-behaviour RED, not a fixture setup failure. Runner project
+`mtcontract-7a7a52b8fa684c35`; emitted source digest
+`73ad1609c6062abc4fff179ace800a7ac7cec7c81c3a7d525008f84892d7b9f8` and
+fixture SHA-256 `0590bc1c746d8f2c3d7ac05ae9fe52bdf569f01a20c2ce4ef87a6bbaacaea0d3`.
+All 373 application paths in the captured copy matched the pre-copy manifest
+(SHA-256 `5039bef3a9a0d4fe7ec5bff3665fb03f9c4e5ca269c3227cbc7c4eb35e00bee1`).
+The writer was released after that validation and edited only the locale/form
+guidance paths; the minor test result remains evidence from the captured copy,
+not a claim that the live checkout stayed unchanged. Full raw log:
+`/private/tmp/household-g-20261002/G-MINOR-RED-001/runner.raw.log` (SHA-256
+`f5a20f7c5539e03ef93600f2c645078756ea0dae0fdce95b8961295bd1eba883`).
+
+After the guidance candidate passed independent static review, the web formatter
+and focused `readiness_locale` task completed successfully. The task ran all ten
+cases: five locale-specific missing-version guidance cases and five honest
+editing-placeholder cases, 10 passed/0 failed (Task exit 0). The focused source
+list, including all five locale files and the test, matched before and after;
+the pre/post manifest files have identical SHA-256
+`223a97b87159c6d1fa6e55aef95af052b6ed071d307bbed9cdbd346d4b2118a5`. This is
+focused-input stability, not a whole-checkout unchanged claim. Formatter log:
+`/private/tmp/household-g-20261002/G-READINESS-GREEN-001-format.raw.log` (SHA-256
+`f4eabc9ffeef72558bf83646d1ddc938dafc1b734452112c9ce0b3487d1d59a6`). Test log:
+`/private/tmp/household-g-20261002/G-READINESS-GREEN-002/readiness-locale.raw.log`
+(SHA-256 `abe393c3612446f57081744434b3b516d860d1d612ddb25a51d3ac33561057e7`);
+exit receipt is `task-exit.txt`. One earlier invocation did not start because its
+private job directory was absent; it ran no test and is not counted as a result.
+
+Next: after independent review of the frozen minor fix, run its one-case GREEN
+## G minor readiness focused GREEN
+
+The reviewed one-case GREEN passed. `household_minor_readiness` ran 1/1 HTTP
+case (Task exit 0), including the previously denied authorised person page and
+its schedule-only forbidden path. Runner project
+`mtcontract-858a464417cc4b84`; emitted source digest
+`9e90c2352490886cce2ca6933c36838c4a9c5d27f4ff25ceb35190ff5d3545f4`; fixture
+SHA-256 emitted before cleanup
+`b76c577497a80caaa762f63149a9f146b6000533f2e792cb6b465a60809f2eaa`.
+All 373 captured app paths matched the runner copy (no mismatches; app-pre
+manifest SHA-256 `4e3ae04ac7c970698cc93789120153551ab238ad33a3c3d84d7ea43c105d2466`;
+copy manifest SHA-256 `9e90c2352490886cce2ca6933c36838c4a9c5d27f4ff25ceb35190ff5d3545f4`).
+The runner copy had seven additional generated/hidden files, listed in
+`/private/tmp/household-g-20261002/G-MINOR-GREEN-001/source.copy-extras.manifest`
+(SHA-256 `0fd19f12a50c3c551b095fe2da98a79dee25a41688a874c9b2f825abb67443c1`).
+All 377-path pre/post manifests match at
+`fb6457408ceafafcd464b0e8e8fdc3d340e9de6758750ed740665a59037fc36e`; the four
+command inputs also match at
+`87f26392fc4b6a7938ea08e8d92900477d7137a9d3ee6d3cd1a3e8407808afb1`. Raw log:
+`/private/tmp/household-g-20261002/G-MINOR-GREEN-001/runner.raw.log` (SHA-256
+`8cee83f24dc14379161f56f5502fd2d3c7014051fccff6c8f859f210fe12652b`).
+
+The writer was released immediately after copy validation; subsequent live
+changes are unrelated locale/form guidance work. The runner used the validated
+copy. Independent review found an additional empty-state truthfulness issue
+outside this one-case fixture: when schedules are forbidden and assignments
+are empty, the renderer must not claim there are no schedules. A two-case
+renderer regression (unavailable empty state plus available-empty legacy
+control) is queued before final acceptance.
+
+## G overview empty-state renderer RED/GREEN
+
+The two-case `overview_access_locale` target ran without a fixture. The normal
+available-empty control passed; the unavailable-schedules/empty-assignments
+case failed as intended because the renderer still claimed schedules were
+absent (`Restricted schedules cannot be reported absent in en`, assertion at
+`overview_access_locale.rs:10`). This is a real truthfulness RED, not setup.
+Task exit 201. The focused pre/post source list matches at SHA-256
+`70947c5f7f771715d73643d476199d04bc1a376fb5427c938dd61ea3f06c45d6`. Raw log:
+`/private/tmp/household-g-20261002/G-OVERVIEW-LOCALE-RED-001/overview-locale.raw.log`
+(SHA-256 `d5924146800895318cb8a7ea1585bfba3d9712bde985b2c3b14d43672e21fa16`).
+The narrow renderer fix passed both cases (2/2, Task exit 0): the available-empty
+legacy message remains, while unavailable schedules no longer imply that no
+treatments exist. Focused source pre/post manifests match at
+`70947c5f7f771715d73643d476199d04bc1a376fb5427c938dd61ea3f06c45d6`. Raw log:
+`/private/tmp/household-g-20261002/G-OVERVIEW-LOCALE-GREEN-001/overview-locale.raw.log`
+(SHA-256 `5d2be08c02c3c3b4e834fb47467ee9a07c5c1267bbf892689d75f04742e1fa7c`).
+Metadata limitation: the focused list omitted the changed implementation file
+`rust/web/src/treatments/overview.rs`; no hash or before/after equality is
+claimed for it. The successful local Cargo task ran against the live checkout,
+which contained the fix, but this receipt has no immutable source-copy proof.
+
+## G assignment persistence controls
+
+The reviewer-approved `household_assignment_readiness` target compiled and ran
+in its own fresh fixture. Both existing-behaviour HTTP controls passed: linked
+assignments preserve a blank selection and require an explicit matching
+replacement without rejected writes; unlinked manual doses stay unlinked. The
+selected `household-routes` browser smoke also passed all six cases. Task exit
+0. Project `mtcontract-fef6d1715f294a4a`; source digest
+`18dd9f89eb75950cc080fb6cbc28dac7ef5d153d1a108f4049e432692a723d9b`; fixture
+SHA-256 `461cfe6dccdc8f3ee5befe856c3e21bc4f7335e6a996ff321a7b7ce58c4e8a35`.
+All 374 app paths matched the copy (zero mismatches; app manifest SHA-256
+`4945e42a48bfdc819422fa19734e46bab31952e31250b47f9d4d4bbd9b5dc2f6`; copy
+manifest SHA-256 `18dd9f89eb75950cc080fb6cbc28dac7ef5d153d1a108f4049e432692a723d9b`).
+The eight generated/hidden extras are recorded in
+`/private/tmp/household-g-20261002/G-ASSIGNMENT-GREEN-001/source.copy-extras.manifest`.
+Full 379-path pre/post manifest SHA-256 is
+`4c4446fec9f638e9ab24159ecf1c6f6f32c56c3402583058b773a4545df5f305`; command
+inputs match at `87f26392fc4b6a7938ea08e8d92900477d7137a9d3ee6d3cd1a3e8407808afb1`.
+Raw log: `/private/tmp/household-g-20261002/G-ASSIGNMENT-GREEN-001/runner.raw.log`
+(SHA-256 `2676d83cc520bf100423f26ca8d56eb59f1b7c70ef10e1307fbb8c2677f6ce4d`).
+
+## G portable-imports existing-behaviour baselines
+
+Before any importer move, both existing portable suites passed serially, each
+on a fresh fixture using the same source candidate (`18dd9f89...`).
+`api:openapi-portable-writes-acceptance` passed 2/2, including strict encrypted
+bundle validation, dry-run/apply and sync-batch result; project
+`mtcontract-242da249726346ee`, fixture SHA-256
+`cae8f7a45b5d23af7f540bbd9b246b4ea22a2775524e54c0f533e370e909241b`, raw log
+`/private/tmp/household-g-20261002/G-PORTABLE-WRITES-BASELINE-001/runner.raw.log`
+(SHA-256 `627454ab5649232f63972211457bfc22dbe34da1aa54cf5792f655986f421a92`).
+`api:openapi-portability-legacy-acceptance` passed 3/3: encrypted export/public
+readback, authority enforcement and cross-person reference rejection; project
+`mtcontract-ea33331e4cb64b15`, fixture SHA-256
+`87289533a6cf8d3e71ceb74235c57c8712f4dba22806bb656f27d1a9ea45878c`, raw log
+`/private/tmp/household-g-20261002/G-PORTABILITY-BASELINE-001/runner.raw.log`
+(SHA-256 `93bafce6da35dddd33e155b28f21ae5e2935335b8415f98c395ff822c34c51a1`).
+Both jobs had 374 app paths match the runner copy (zero mismatches, eight
+generated/hidden extras) and unchanged 379-path source pre/post manifests
+(`4c4446fec9f638e9ab24159ecf1c6f6f32c56c3402583058b773a4545df5f305`); four
+Task/runner input files match at `87f26392fc4b6a7938ea08e8d92900477d7137a9d3ee6d3cd1a3e8407808afb1`.
+All five pre-extraction baseline cases passed. The one approved importer split
+has now passed its formatter/check/Clippy and three selected compiles. The
+post-split `api:openapi-portable-writes-acceptance` passed 2/2 on fresh project
+`mtcontract-638acc27b7ad4a9d`; `api:openapi-portability-legacy-acceptance`
+passed 3/3 on fresh project `mtcontract-4913708771d6458b`. Both emitted source
+digest `959deae28f2e1a8f41f7752ac2422f53c73b6c41751ed73b0049148c38a84d19`.
+For each job, a 392-file copied-source manifest matched the live app manifest
+with no differences; both manifests hash to that source digest. The first
+fixture SHA-256 was `6c9db253dcaf73a94d92974f6a7a42cb2f721e27fcf143525da9a94b2a5649f8`;
+the second was `ff8c995a735d28dc8ad18b04cc62420458ab015ae1129db5bfb6d1332c2fafa4`.
+The post-split raw logs are
+`/private/tmp/household-g-20261002/G-PORTABLE-SPLIT-GREEN-001/runner.raw.log`
+(2/2; SHA-256 `0c7da514725b7bb63d58f4d644646660b8e8c86ab1ac65bb5e537b3aabe6b2a5`)
+and `/private/tmp/household-g-20261002/G-PORTABILITY-SPLIT-GREEN-001/runner.raw.log`
+(3/3; SHA-256 `7d8624c1c1b70a15dda604c005bd6aeabec4875ae4c2a449f61c9044391c06a0`).
+The split fast batch is at
+`/private/tmp/household-g-20261002/G-PORTABLE-SPLIT-FAST-002/`; formatter exit
+0, `api:check` exit 0, Clippy exit 0, and selected compiles for both portable
+targets and `household_final_acceptance` all exited 0. Its source pre/post
+manifests match at SHA-256
+`6f2f5359d1e157e9f8b6fa08787ca0ef932b367ba687018be4f81ba1864c4482`; formatting
+was run before the final compile/runtime candidate. The 41-body move receipt
+remains a pre-format identity comparison, not a whole-file identity claim.
+
+The first private wrapper-probe invocation was a setup failure and is not the
+RED: its evidence is retained at
+`/private/tmp/household-g-20261002/G-WRAPPER-PROBE-001/red.raw.log` (exit 1;
+SHA-256 `8ee169301d529ee9a8418fc8db764bc78619e08f4613686ae38b2f2d9738cf0a`).
+After the `fish --no-config` correction, the legacy helper produced the intended
+RED: its node-only selection missed the prepare/restore phases required for a
+separate minor fixture; the injected browser failure status was also observed.
+Eight assertions failed as expected. Raw output:
+`/private/tmp/household-g-20261002/G-WRAPPER-PROBE-002/red.raw.log` (RTK Task
+wrapper exit 201; inner probe Task exit 1; SHA-256
+`c750af5e9efa3b165ff32b465f837802f3bba1a7d277bc440d43e877b08e8f97`).
+The candidate GREEN then stopped in fixture validation because jq rejected the
+escaped dot in the email regex; no valid-fixture calls reached the wrapper.
+Raw output:
+`/private/tmp/household-g-20261002/G-WRAPPER-PROBE-002/green.raw.log` (RTK Task
+wrapper exit 201; inner probe Task exit 1; SHA-256
+`39d1f500a9e13910369a6d4f02e1c86067577be5e398f0135e393648effda063`).
+The private helper is being corrected to express a literal dot with `[.]`;
+candidate GREEN retried after that correction but the fake returned 92 because
+its fixture expectation used the original path while the wrapper deliberately
+passes `realpath`. Raw output:
+`/private/tmp/household-g-20261002/G-WRAPPER-PROBE-003/green.raw.log` (RTK Task
+wrapper exit 201; inner probe Task exit 1; classify as fake expectation/setup,
+not application behaviour; SHA-256
+`f88b38b162524776b3b58b26ddd3bda06ee459020e7e854bb3b3e98cb9401b41`). The
+canonical-path repair then passed candidate GREEN with all nine fake-Task
+assertions (exit 0), covering normal node-only selection, prepare/node/restore
+ordering, browser failure return, prepare/restore failure and invalid identity
+guards. Raw output:
+`/private/tmp/household-g-20261002/G-WRAPPER-PROBE-004/green.raw.log` (SHA-256
+`a828ebb74d92e451f9072cff93b9722f7aa3e461f73888679efc55f3f6a47588`). The
+writer installed the isolated minor HTTP/browser packet: one
+`household_minor_readiness` HTTP case plus ten explicit minor browser locale /
+viewport cases, with fixture-only prepare/restore SQL. Root Task wiring and
+review are required before runtime; do not repeat the wrapper RED/GREEN.
+
+## G large People collection check
+
+`household_people_collections` compiled and passed its isolated HTTP case,
+which confirmed complete large medication, assignment and schedule collections
+on the person detail and treatment forms. The selected route smoke passed all
+six cases. Task exit 0. Project `mtcontract-949b62aa267a427f`; source digest
+`18dd9f89eb75950cc080fb6cbc28dac7ef5d153d1a108f4049e432692a723d9b`; fixture
+SHA-256 `d28b6c8fea28beb421e1d0c03172e6da8fd099e1f135bedd2b481dc0cbd640ef`.
+All 374 app paths matched the copy (zero mismatches; app manifest SHA-256
+`4945e42a48bfdc819422fa19734e46bab31952e31250b47f9d4d4bbd9b5dc2f6`; copy
+manifest SHA-256 `18dd9f89eb75950cc080fb6cbc28dac7ef5d153d1a108f4049e432692a723d9b`).
+Eight generated/hidden extras are listed in
+`/private/tmp/household-g-20261002/G-PEOPLE-COLLECTIONS-GREEN-001/source.copy-extras.manifest`.
+Full source pre/post manifest SHA-256 is
+`4c4446fec9f638e9ab24159ecf1c6f6f32c56c3402583058b773a4545df5f305`; command
+inputs match at `87f26392fc4b6a7938ea08e8d92900477d7137a9d3ee6d3cd1a3e8407808afb1`.
+Raw log: `/private/tmp/household-g-20261002/G-PEOPLE-COLLECTIONS-GREEN-001/runner.raw.log`
+(SHA-256 `5eae194b25b757444a60407577ef83edcb907129e200912e52612daeff70ffc0`).
+
+## G composed inventory acceptance
+
+The final composed `household_final_acceptance` target passed all seven serial
+HTTP cases: two assignment controls, four stock cases and the complete People
+collection case. The selected inventory browser file passed all ten cases in
+five locales on desktop and mobile, including the mobile navigation gesture.
+The same isolated wrapper run used project `mtcontract-ba9fe25cbd834640`, code
+digest `8611a75140874abd71a8d904ae6f7209e13f422d85095628e0482c7505f71592`, and
+runner-emitted fixture SHA-256
+`220a619a8521fafd479f2e3fbfd4a108b3ce674917f5c378805b8ce264131862`. Its
+393-file copied-source manifest matched the live app manifest exactly; both
+hash to the code digest. Task exit 0. Selected target compile log:
+`/private/tmp/household-g-20261002/G-FINAL-INVENTORY-GREEN-001/compile.raw.log`
+(SHA-256 `27cb7d8b87f50cfc91fd6ac37f4bf55fefab5bb7e239a1a68e2abe5694e9c319`).
+Full wrapper output:
+`/private/tmp/household-g-20261002/G-FINAL-INVENTORY-GREEN-001/runner.raw.log`
+(SHA-256 `c986e54ac728c799bdd806a85edc32e257beb7defb64c518164a733239be3ef8`).
+The 25 new untracked screenshots were moved into
+`docs/screenshots/journey-medication-rust/g-20261002/inventory/`; no tracked
+image was overwritten. Their checksum list is
+`/private/tmp/household-g-20261002/G-FINAL-INVENTORY-GREEN-001/screenshots.sha256`
+(SHA-256 `b202b8d70bbe51d500140d6ce63a2e4705bd871d966663fd2f93a1b3e7173a82`).
+
+## G minor readiness — setup failure after HTTP pass
+
+The installed isolated minor packet passed its HTTP case (1/1): the ordinary
+viewer could read the authorised person and assignments while the schedule
+index remained forbidden. The browser phase did not start. Its fixture-only SQL
+prepare task was stopped by the Task precondition with “Minor browser setup
+requires an owned disposable contract project and a valid phase”; therefore
+this is a harness setup failure, not a browser or product failure. The wrapper
+then completed disposable-project teardown, including removal of its storage.
+No screenshots were produced.
+
+The job used project `mtcontract-9af1f246d51d49fc`. The runner emitted fixture
+SHA-256 `c01535acf4987400e46a7650a11c6f86179fb071b30e42cb937fa961fbbcbe94`
+before teardown. Its contract source digest was
+`d0cb04876a6f487de0b1591a488716c1414bdcf448289033d2a65dba231b9d19`; the
+400-file copied and live application manifests matched exactly and each
+manifest hashed to that digest. Raw output is
+`/private/tmp/household-g-20261002/G-MINOR-ACCEPTANCE-001/runner.raw.log`
+(Task exit 201; SHA-256
+`b604cbc20a5702cc695c9c718cc7f011c6ce65cef2ef18fe7c13e6d75ebfc459`). The
+copy and live manifests are in the same job directory. The rejected task was
+`api:contract-minor-viewer-sql`, invoked for the `prepare` phase with the
+valid-looking owned project name; no SQL mutation or browser assertion ran.
+The SQL Task guard contained an unescaped dollar sign inside a Fish double-
+quoted expression. Root escaped the regex anchor; independent review confirmed
+the corrected guard still rejects non-owned projects and invalid phases.
+
+The corrected isolated retry passed the HTTP case (1/1), fixture SQL prepare
+and restore, and all ten browser cases (five locales on desktop and mobile).
+Task exit was 0. Project `mtcontract-2189e058ce2748d7`; runner-emitted source
+digest `9bae6448d851ce01846b1630c7c3f9d4f43ba20ecf67af2b855132d860dcaf2f`;
+runner-emitted fixture SHA-256
+`54a19104a27f8215c6e8c550ff5ad911eebbc3abacccd9b932c232ea93f83e73`. The
+source digest is the available source receipt for this run; independent
+per-file copy/live manifests from the original run were not retained, so
+equality to that deleted copy is not claimed. A later read-only
+`api:contract-source-snapshot` copied the current application into
+`/private/tmp/household-g-20261002/G-MINOR-SOURCE-RECON-001/source`; its
+400-file manifest, generated with the runner's normalized relative-path,
+sorted per-file SHA-256 algorithm, hashes to the same emitted digest
+`9bae6448d851ce01846b1630c7c3f9d4f43ba20ecf67af2b855132d860dcaf2f`. This
+reconstructs current source identity and does not independently compare the
+original deleted runtime copy. The full wrapper log is
+`/private/tmp/household-g-20261002/G-MINOR-ACCEPTANCE-003/runner.raw.log`
+(SHA-256 `5efd39e1ba1546691d5fc4a8f83062cd05bb23f085b2e115a124253a4cf4c038`);
+the complete browser output is
+`/private/tmp/household-g-20261002/G-MINOR-ACCEPTANCE-003/browser.raw.log`
+(SHA-256 `6bc68f395217fefef9efb5bb0e286e5753539bce3d3bdc9e1a7ac3350483dccf`).
+Twenty screenshots were moved to
+`docs/screenshots/journey-medication-rust/g-20261002/minor-readiness/`; their
+checksum manifest is
+`/private/tmp/household-g-20261002/G-MINOR-ACCEPTANCE-003/screenshots.sha256`
+(SHA-256 `ec3062702d1d2b4c25598d34fc4189d2e208fa67d180dd3e973469579736eebd`).
+
+One intervening non-escalated retry stopped during pinned dependency setup
+because sandbox DNS was denied, then could not access the Docker socket during
+cleanup; it ran no application assertions. Its raw log is
+`/private/tmp/household-g-20261002/G-MINOR-ACCEPTANCE-002/runner.raw.log`
+(exit 201; SHA-256
+`556c4ae4df3b1036b3ab7717dcf6878b9f9fed1da8b269f4b6198eff567ae216`). The
+only retained run was owned project
+`mtcontract-e11db9b9ed98432c` at `tmp/contract-tests/run.6rhTtw`; after
+escalation, the existing `contract:cleanup` Task exited 0 for that project and
+its empty owned run directory was removed.
+
+## G adjustment-reason audit probe
+
+`household_adjustment_reason` compiled with two unused-helper warnings and no
+compile errors. Its isolated HTTP run passed the 300-character adjustment
+reason case, including the stock and audit write. The varied 8,192-character
+case reached the API and returned 500 `internal_error`; stock remained `20.0`
+and version/sync counts remained `(1, 1)` before and after. The diagnostic also
+reported an audit column type of `character varying` with no reported length,
+and only the event index on `versions`. This is an actual oversized-input
+failure with no partial stock/sync write; it does not establish a maximum-size
+or indexed-boundary contract. The six route smoke cases did not run because the
+HTTP target failed.
+
+Project `mtcontract-e3f2ea78e3cd4ece`; emitted source digest
+`c20d950e0c188326b23de7e4f60447b4623bb27d7d565c4d4962874bea0b127b`; fixture
+SHA-256 `1f1421256623fbf90b58f692e7d153d9215605e1b7feb000cdbd67a39311ec47`.
+The wrapper exited 201 after the contract test's exit 101. Raw log
+`/private/tmp/household-g-20261002/G-AUDIT-PROBE-001/runner.raw.log` (SHA-256
+`4f85ed7410d1dc757b4661af748c19fe87c4013819c2a953ea078b47e921e01f`); focused
+compile log `compile.raw.log` in the same directory (exit 0; two dead-code
+warnings; SHA-256
+`91735dd2dc7aba1e4b0551e45d05b2c6b46402be24999012e16a01f113a54dfb`).
+
+### Audit event-budget RED
+
+The writer's four focused `event_budget` cases compiled successfully and all
+four reached their assertions (two other tests were filtered). Both exact
+1,024-byte inputs, ASCII and multibyte, stored no structured `detail` reason.
+Both 1,025-byte inputs retained the full reason in `versions.event` rather than
+the required quantity-only label. This is the expected RED for the bounded
+storage fix; no browser smoke ran after the HTTP failure.
+
+Project `mtcontract-3624013cc2824551`; runner-emitted source digest
+`3c9a483664f20179363760138fe51574e9f79ed1cc92241f65436c29af56af45`; fixture
+SHA-256 `8a875a6bb76171d49f7f37b74e17f866701f975d12b54d60aa685f7483b6a400`.
+The wrapper exited 201 after the selected Cargo test exited 101. Raw log
+`/private/tmp/household-g-20261002/G-AUDIT-BUDGET-RED-001/runner.raw.log`
+(SHA-256 `f7d87c6bfe000f8d635ca7dd85a64d0085d6fc299ad9df6dedfc001753c02c6b`);
+compile log `compile.raw.log` in the same directory (exit 0, two unused-helper
+warnings; SHA-256
+`c92ef527662301be3d55a2c84983eaa7c325f204e54a3333411eb7eaf2cdf160`).
+
+### Bounded audit fix GREEN
+
+After the four boundary REDs, the writer kept the complete reason in
+structured audit detail through 1,024 UTF-8 bytes and switched to a concise
+quantity-only event label above that budget. API formatting, `api:check`,
+Clippy and selected contract compilation all passed. The full
+`household_adjustment_reason` suite passed 6/6: exact ASCII and multibyte
+reasons at 1,024 bytes, quantity-only labels at 1,025 bytes, and the original
+300- and 8,192-character probes. The six route smoke checks passed 6/6. The
+existing stock regression
+`household_stock::scalar_adjustment_records_reason_quantity_and_request_linkage`
+then passed 1/1 in its own fixture, with six route checks passing 6/6.
+
+The audit suite project was `mtcontract-e712d51282754e66`, source digest
+`93dfde80f4cc6755aac1bcacb07642e21304243ea8ceabd7d89e1a804c91b113`, fixture
+SHA-256 `c1a4aa1823c3485462fe23393e33d579b9752cdf76013c373b45c52a6bce677c`.
+Its raw runner log is
+`/private/tmp/household-g-20261002/G-AUDIT-BUDGET-GREEN-001/runner.raw.log`
+(Task exit 0; SHA-256
+`5d914a7a310538a908af57f35500cd7c14a4a4fd3c2954bddca7877c372962b0`). Fast
+logs are `fmt.raw.log`, `check.raw.log`, `clippy.raw.log` and `compile.raw.log`
+in that directory; each task exited 0. The existing stock regression used
+project `mtcontract-0aa3306050184332` with the same emitted source digest,
+fixture SHA-256
+`1986b449173f25466a6b3107d95e29a7be2286b6935575d02797bd9f58d40756`, and raw
+log `/private/tmp/household-g-20261002/G-AUDIT-STOCK-REGRESSION-001/runner.raw.log`
+(Task exit 0; SHA-256
+`415ff9a0b72ecc42211611587e7575930691bd3fac8fe99cabe7f6fc810d5314`). The
+runner-emitted digests identify the executed source snapshots; independent
+per-file copy/live manifests were not retained for these two runs.
+
+## Standalone source-capabilities baseline
+
+The selected `source_capabilities_api` target compiled, then both existing HTTP
+tests ran on an isolated fixture and failed at their assertions. In
+`eligible_stock_uses_source_signature_current_supply_and_selected_tracked_dosage`,
+the actual eligible IDs were `[1036427674, 1036427675]` while the expected IDs
+were reversed. In
+`source_list_and_detail_separate_record_from_manage_permission`,
+`eligible_ids(&paused).is_empty()` was false. These are baseline failures on
+the pre-edit candidate; the six route smoke cases did not run. No test or
+product change was made before this baseline.
+
+Project `mtcontract-a62fa1e977b442a9`; fixture SHA-256
+`1ddc7796d9fe929eb4f04f353a329a1498a36705c5ebc556eec723cb9ebbc84a`. The
+runner-emitted source SHA-256 was
+`ef0f3abf34f8dddd590969e9a042d1e21f533c6d484fe99a8532c0053ae393b9`. Before
+cleanup, 401-entry pre-run, copied and live file manifests matched exactly;
+each hashes to the same digest. The manifests are in
+`/private/tmp/household-g-20261002/G-SOURCE-CAPABILITIES-BASELINE-001/`.
+Root Taskfile hash was recorded separately because it is not copied into the
+application source; the API Taskfile is included in the 401 copied paths. Raw
+log `runner.raw.log` in that directory (Task exit 201 after Cargo exit 101;
+SHA-256 `33af16383f06ee3129b2ce14e5ab0c3a8cb09f5929a5489b86734a92042241fb`);
+focused compile `compile.raw.log` (exit 0; SHA-256
+`9e60845486da4da03162176f45f20f56581ecb619f57c7328a7db82336c7c422`).
+
+### Source-capabilities candidate check
+
+The writer's compatibility patch passed API formatting, `api:check`, Clippy
+and selected compilation for `source_capabilities_api`. On a fresh fixture,
+the permission-separation case passed. The eligible-stock case still failed at
+its assertion: actual IDs were `[1036427674, 1036427675]`, expected
+`[1036427674]`. The six route smoke cases did not run because HTTP failed, so
+this candidate is not accepted. The raw Task output is
+`/private/tmp/household-g-20261002/G-SOURCE-CAPABILITIES-GREEN-001/runner.raw.log`
+(wrapper exit 201 after Cargo exit 101; SHA-256
+`0f41ea301b138dc67f1219c6ade686157547d0ffb4088e4ca4843c81e6d7ccac`). The
+fixture SHA-256 emitted before cleanup was
+`2fe1afce801f1bdf0df47c431558460488636955b634a740aacd759afdf47f30`.
+
+Before launch, the 401-entry source manifest was captured. Before teardown,
+the copied and live manifests were captured and both matched the pre-run
+manifest exactly; all three manifest hashes are
+`5e0e6d21a54b486b2bc6f3878fe9bf6d025b84aef38b086ab19eded4b7943de6`. The
+copy was `tmp/contract-tests/run.TBKDOV/source`. Evidence, including empty
+manifest diffs and fast-check logs, is under
+`/private/tmp/household-g-20261002/G-SOURCE-CAPABILITIES-GREEN-001/`. The
+separate root and API Taskfile hashes were recorded before launch.
+
+The test-only correction aligned positive-but-insufficient stock expectations
+with the public contract and added actual rejected-take/no-write checks for
+ordinary and tracked stock. The unchanged production candidate then passed both
+`source_capabilities_api` tests and all six route smoke checks. API format,
+`api:check`, Clippy and selected compilation passed. Task exit was 0; the
+runner-emitted fixture SHA-256 was
+`1d51b3e699c8f438ffbe2df37d01ba71a3aa9ae13f83117fd331d50c51e684df`. Its raw
+log is
+`/private/tmp/household-g-20261002/G-SOURCE-CAPABILITIES-CORRECTED-002/runner.raw.log`
+(SHA-256
+`166452cd0317362b2b31ab8f2bca500730639d0e9e6e76b4cdf0361173433109`). The
+fresh 401-entry pre-run, copied and live manifests matched exactly, each with
+digest
+`f9c97a8221a6ccb9eca5a08e786b612cf23c243f5fa658a2c637e900de444286`; the
+application copy was `tmp/contract-tests/run.dCEWu0/source`. Complete evidence
+is under
+`/private/tmp/household-g-20261002/G-SOURCE-CAPABILITIES-CORRECTED-002/`.
+
+### Shared collection pagination baseline
+
+The selected `web_reads_api::shared_collections_filter_before_stable_pagination`
+test compiled and reached the People `per_page=999` assertion. The current API
+returned 422 with `per_page must be between 1 and 100`; the test expected 200
+and a clamped page size of 100. This is an actual baseline compatibility
+failure. The wrapper exited 201 after Cargo exited 101; one test ran and five
+were filtered. No route smoke ran after the HTTP failure. Raw output is
+`/private/tmp/household-g-20261002/G-WEB-READS-PAGINATION-RED-001/runner.raw.log`
+(SHA-256
+`ad5da5c0519e02dc0f8cc77ab1c57907e2b12221b3595d27560ca0859c035017`). The
+runner-emitted fixture SHA-256 was
+`6aeaf908fcccaa211596af5d175f6edf9dd36c34ea936b370ad2b7f2f367ee07`.
+
+Before launch and before teardown, 401-entry pre-run, copied and live source
+manifests matched exactly at digest
+`f9c97a8221a6ccb9eca5a08e786b612cf23c243f5fa658a2c637e900de444286`; the
+application copy was `tmp/contract-tests/run.8Q6TPF/source`. Root and API
+Taskfiles were recorded separately. The selected target compiled successfully;
+its log is `selected-compile.raw.log` in the evidence directory, with exit
+status 0. Full evidence is under
+`/private/tmp/household-g-20261002/G-WEB-READS-PAGINATION-RED-001/`.
+
+### Shared collection pagination GREEN
+
+The local People-only clamp now passes the same focused test: the request with
+`per_page=999` returns 200 and reports a page size of 100. The test's other
+query validation and collection controls also pass. API formatting, `api:check`,
+Clippy and selected compilation passed. The wrapper exited 0 with the one
+selected HTTP test passing and all six route smoke cases passing. Fixture SHA
+was `dfcf717d227acd5afd42ee0624ef2b044634bb79f29293d986941f9ee083253b`; raw
+runner log
+`/private/tmp/household-g-20261002/G-WEB-READS-PAGINATION-GREEN-001/runner.raw.log`
+(SHA-256
+`2e30b0e048cbcececbc4d90bd76ee28732c27f068443ae9d60446378455e2270`). The
+401-entry pre-run, copied and live manifests matched exactly at digest
+`1e1786fc8e7842d5329f91df9ccc103633f66c4d031e588f6442ff9bfc94e3bc`; the
+application copy was `tmp/contract-tests/run.1ebrvn/source`. Fast-check logs,
+manifests and empty diffs are under
+`/private/tmp/household-g-20261002/G-WEB-READS-PAGINATION-GREEN-001/`.
+
+### Dose-mode transition baseline setup
+
+The exact `dose_mode_transition_api` target compiled and ran its two named
+tests. Both stopped in the shared multi-dose helper before reaching behavior
+assertions: PostgreSQL returned SQLSTATE 23502 because the helper inserted a
+null `dosages.default_dose_cycle`. This is a fixture/setup failure, not a
+product RED. No route smoke ran. The wrapper exited 201 after Cargo exited 101.
+Raw output is
+`/private/tmp/household-g-20261002/G-DOSE-MODE-BASELINE-001/runner.raw.log`
+(SHA-256
+`e859fd380c06fd9f72a7b07d137c47ffd9a9a118de744eacf3c26fad8d4dca53`). Fixture
+SHA-256 emitted before cleanup was
+`7ca5c3c21767fc071d3fa5f9260806f07bab9980b74fac8c16c71b2932d5b2f6`. The
+target compiled successfully; its selected-compile log is in the same evidence
+directory (exit 0). Before launch and teardown, all 401 pre-run, copied and
+live source paths matched exactly at digest
+`1e1786fc8e7842d5329f91df9ccc103633f66c4d031e588f6442ff9bfc94e3bc`; the
+copy was `tmp/contract-tests/run.MomSNF/source`. Full evidence is under
+`/private/tmp/household-g-20261002/G-DOSE-MODE-BASELINE-001/`.
+
+After the test-only helper repair supplied valid daily defaults (cycle 0,
+maximum 4, minimum interval 0), the same two behavior tests passed. The six
+route smoke checks also passed; wrapper exit was 0. Fixture SHA-256 was
+`29f62f2792db0bae608b2da9076a48b5ec7933128512c27dffc4a5858824d636`. Raw log
+`/private/tmp/household-g-20261002/G-DOSE-MODE-CORRECTED-002/runner.raw.log`
+(SHA-256
+`6e989af9d8a57fc28fe28e9f3ec08e3312174fdd8d39364dd5b6cfdd71b47985`). The
+401-entry pre-run, copied and live manifests matched exactly at digest
+`e750f56aac2f42c5fc04da134cc23c9b870846ef9d6faa6a5f9bdc4f799f2e45`; the
+copy was `tmp/contract-tests/run.tf0ROq/source`. This confirms the original
+setup failure was confined to fixture defaults. Corrected-run evidence is in
+`/private/tmp/household-g-20261002/G-DOSE-MODE-CORRECTED-002/`.
+
+### Doses baseline
+
+The existing `doses` target contains 15 test attributes: 14 executable tests
+and one pre-existing ignored fractional-second timestamp case. The baseline
+ran all 15: two passed, twelve failed, and one was ignored. Eleven failures
+stopped in the shared `create_medication` helper at line 224, where a create
+request returned 422 instead of 201; that helper does not surface the response
+body, so the required-field cause remains to be diagnosed. One separate
+failure reached `medication_take_rejects_invalid_time_source_and_future_without_stock_loss`:
+the `source_type="unknown"` request returned 422 where the test expects 404.
+No route smoke ran after the HTTP target failed. No fixture or product edit was
+made before this baseline.
+
+The target compiled successfully (see `selected-compile.raw.log`, exit 0). The
+wrapper exited 201 after Cargo exited 101. Raw output is
+`/private/tmp/household-g-20261002/G-DOSES-BASELINE-001/runner.raw.log`
+(SHA-256
+`d5f8336af94051c84b8695a8f0faddbdd4dadb3654b118d3df6a9ec3641c2fa0`). Project
+was `mtcontract-9c5863c786fc4941`; fixture SHA-256 emitted before cleanup was
+`6a049ecb11d321e48cc262a319dad4d2fc806f0ddef0386fc1e1e4b49d35ecc7`. All 401
+pre-run, copied and live source paths matched exactly at digest
+`e750f56aac2f42c5fc04da134cc23c9b870846ef9d6faa6a5f9bdc4f799f2e45`; the
+copy was `tmp/contract-tests/run.0xEXFF/source`. Complete evidence is under
+`/private/tmp/household-g-20261002/G-DOSES-BASELINE-001/`.
+
+The writer has since frozen a test-only repair adding the currently required
+`reorder_threshold=3` and public response-body diagnostics to the shared helper.
+The reviewer confirmed the validator requirement and that reversing only these
+helper additions reconstructs the original test file. Selected compilation
+passes. A separate status conflict remains unresolved: this target expects
+404 for an unknown `source_type`, while `dose_write_api` has a 422 assertion;
+the reviewer notes the Rails request spec expects 404. The corrected behavior
+run is held pending the shared error-taxonomy ruling; no production change has
+been made.
+
+### Dose-write baseline
+
+All six unfiltered `dose_write_api` HTTP tests passed, including its existing
+invalid-time/source/unit/stock-selection 422 controls. All six route smoke
+checks passed. The wrapper exited 0. Fixture SHA-256 was
+`a346a8a34ad7803cd1cb9c82d71878e6980b4d55b3eb44b4f9d2a14e5b49fe11`; raw log
+`/private/tmp/household-g-20261002/G-DOSE-WRITE-BASELINE-001/runner.raw.log`
+(SHA-256
+`aea497f8b02428369b7a393ae4d1b1f9bfd101ad60ab1093660533bd38da410d`). The
+selected target compile passed. All 401 pre-run, copied and live source paths
+matched at digest
+`43009eccbfe57883dbefca91688ccddc20286fef741b1ea80bf531373699912a`; the copy
+was `tmp/contract-tests/run.vxxbIR/source`. Evidence is under
+`/private/tmp/household-g-20261002/G-DOSE-WRITE-BASELINE-001/`.
+
+### Full sync baseline
+
+The unfiltered `sync` target passed all 23 HTTP tests and the six route smoke
+checks; wrapper exit was 0. Fixture SHA-256 was
+`19799cc3ff58873a0f30aebb8d4151eea34a14ee1b8d462ae506de02f56c76fd`; raw log
+`/private/tmp/household-g-20261002/G-SYNC-BASELINE-001/runner.raw.log`
+(SHA-256
+`d006b368cb0f776ab5695c97b96ee80ea255eea68be9452794b4a5f33f2d4357`). The
+selected compile passed. All 401 pre-run, copied and live source paths matched
+at digest
+`43009eccbfe57883dbefca91688ccddc20286fef741b1ea80bf531373699912a`; the copy
+was `tmp/contract-tests/run.AKPoBD/source`. Evidence is under
+`/private/tmp/household-g-20261002/G-SYNC-BASELINE-001/`.
+
+### Replay baseline
+
+The unfiltered `replay` target passed all eight HTTP tests and the six route
+smoke checks; wrapper exit was 0. Fixture SHA-256 was
+`c688ec45b8e66e56b3dc333a7021911f87d75798db629f864673c4b09fb21877`; raw log
+`/private/tmp/household-g-20261002/G-REPLAY-BASELINE-001/runner.raw.log`
+(SHA-256
+`acaffdf3a2c9749953af752a9aceb284c31c80ae231a929c48c9dba05bf7abaf`). The
+selected compile passed. All 401 pre-run, copied and live source paths matched
+at digest
+`43009eccbfe57883dbefca91688ccddc20286fef741b1ea80bf531373699912a`; the copy
+was `tmp/contract-tests/run.gFqpXT/source`. Evidence is under
+`/private/tmp/household-g-20261002/G-REPLAY-BASELINE-001/`.
+
+### Direct and sync unsupported-source RED
+
+The new focused `dose_source_errors` target compiled, then ran two tests. In
+both direct and sync requests, all malformed-reference/unknown-field controls
+and the complete no-write snapshots passed. The final valid-reference
+unsupported-source attempt (attempt 19) returned 422 `invalid medication
+source` where 404 is required. No route smoke ran after the HTTP failure. The
+wrapper exited 201 after Cargo exited 101. Fixture SHA-256 was
+`1b5d252ac9ef2129627ef9b8b676b09a9d1db2ca61fe2dd0be244f45cc13f941`; raw log
+`/private/tmp/household-g-20261002/G-DOSE-SOURCE-ERRORS-RED-001/runner.raw.log`
+(SHA-256
+`0ad30e7634b10a4d513c1c2eece2d9a39238ce56b95ee45793ef4feb15f5ffaf`). The
+402-entry pre-run, copied and live manifests matched exactly at digest
+`6362974393e8b5f945782c2580da5892aa9c279c29cf558cb812ca1c499820cf`; the
+copy was `tmp/contract-tests/run.MSlUnk/source`. Selected compilation passed.
+Full evidence is under
+`/private/tmp/household-g-20261002/G-DOSE-SOURCE-ERRORS-RED-001/`.
+
+### Direct and sync unsupported-source GREEN
+
+After the narrow validation-order fix, `dose_source_errors` passed both direct
+and sync cases; malformed-reference and unknown-field controls, all no-write
+snapshots, and the valid unsupported-source 404 checks passed. The six
+household-route smoke checks also passed. Wrapper exit was 0. Fixture SHA-256
+was `6f5f87d27b0c1a75fa9bcff3ae066505cf9e4296d6bb8a8c916d9674267d2e6b`.
+Raw output is
+`/private/tmp/household-g-20261002/G-SOURCE-ERRORS-GREEN-001/runner.raw.log`
+(SHA-256
+`0a99a785207817d5b799ecb0150fba2a7335cc74f89174e7b16ff5cb2738f6a5`). The
+pre-run source manifest is
+`/private/tmp/household-g-20261002/G-SOURCE-ERRORS-GREEN-001/source-inputs.pre.manifest`;
+the copied and live manifests are `source.copy.manifest` and
+`source.live.manifest` in the same directory. All 402 entries matched, with
+manifest digest
+`e5cc6bc7e6abb580f45a1c234b86a63e57c508eb021ff6e67ed1ad0b32d87920`. The
+runner copy was `tmp/contract-tests/run.9vlV3G/source`. The API formatter,
+check, Clippy and selected compiles for `dose_source_errors` and
+`dose_write_api` all exited 0; their raw receipts are in this evidence
+directory. This is a focused result, not the full final composed acceptance.
+
+### Corrected dose-write acceptance
+
+The corrected unfiltered `dose_write_api` target passed all six HTTP tests,
+including its unknown-source 404 control, and all six household-route smoke
+checks. Wrapper exit was 0. Fixture SHA-256 was
+`ce3f2e147f30eecf30c838399be2f59072da3053e05c0e74fb9bee0044e511e4`; raw log
+`/private/tmp/household-g-20261002/G-DOSE-WRITE-GREEN-001/runner.raw.log`
+(SHA-256
+`0b043fa7b79809abb084e07f208d73954430ce83a825f78d8f54ad215f4980b0`). The
+402-entry pre-run source manifest is
+`/private/tmp/household-g-20261002/G-DOSE-WRITE-GREEN-001/source-inputs.pre.manifest`;
+its digest `e5cc6bc7e6abb580f45a1c234b86a63e57c508eb021ff6e67ed1ad0b32d87920`
+matches the runner-emitted copied-source digest. The runner removed its
+transient source copy during cleanup before a copied per-file manifest could
+be retained, so this receipt does not claim an independent file-by-file
+copy/live comparison. The target selected compile and the API formatting,
+check and Clippy gates passed in the immediately preceding source-error
+verification on this frozen source.
+
+### Repaired doses target
+
+The selected `doses` target compiled successfully, then ran all 15 test
+attributes: eight passed, six failed and the existing fractional-second case
+was ignored. The failures are real assertion mismatches, not fixture setup:
+three endpoint checks at `tests/doses.rs:205` expected
+`api/v1/dose_occurrences` but received `api/v1/person_medications` or
+`api/v1/schedules`; the paused-take check expected `paused` but received
+`unprocessable_content` at line 1672; the take-listing case expected 200 but
+received 422 at line 1076; and invalid-occurrence validation expected
+`validation_failed` but received `unprocessable_content` at line 1487. Cargo
+exited 101 and the outer wrapper exited 201, so the six route checks did not
+run. The dose owner has the exact failures for diagnosis; sync and replay are
+held until this result is classified.
+
+Fixture SHA-256 was
+`4d925a1f4b1a3e8906adbe899d0dc272358b18234b9ed991c12a3869fbf83a1b`; project
+was `mtcontract-194be8bafc3c4a94`. Raw output is
+`/private/tmp/household-g-20261002/G-DOSES-GREEN-001/runner.raw.log` (SHA-256
+`16b874a716881b7ccb3d4312c18ce47d6858dcb580a36049c882501e6e5bf5a1`). The
+selected compile receipt is
+`/private/tmp/household-g-20261002/G-DOSES-GREEN-001/selected-compile.raw.log`
+(exit 0). The 402-entry pre-run and post-run live manifests both have digest
+`e5cc6bc7e6abb580f45a1c234b86a63e57c508eb021ff6e67ed1ad0b32d87920`, matching
+the runner-emitted copied-source digest. The transient copy was cleaned before
+its per-file manifest could be retained; this evidence does not claim a
+per-file copied-source comparison. A post-run lookup briefly selected the
+unrelated stale `run.BlqqHW` path; its mislabeled copy-location, copy manifest
+and two diff files were removed. Manifests and raw output are under
+`/private/tmp/household-g-20261002/G-DOSES-GREEN-001/`.
+
+### `management_sync_events_api` compatibility baseline
+
+The exact target compiled successfully and ran three cases. The ordinary
+management-write case passed. The tracked-dose and tracked-removal cases
+failed before their event assertions at `tests/management_sync_events_api.rs:128`:
+their shared dosage insert omitted the required `default_dose_cycle`, producing
+PostgreSQL SQLSTATE23502. This is fixture setup, not a sync-event product
+failure; no route smoke ran after Cargo exited 101 and the outer Task reported
+201. The dose owner has the exact helper correction. Raw output is
+`/private/tmp/household-g-20261002/G-MANAGEMENT-SYNC-EVENTS-BASELINE-001/runner.raw.log`
+(SHA-256
+`a3f15bba2594e4b194110ac9abe75730c13176d07bc61bc430c697da38b76646`). The
+selected compile passed (receipt in `selected-compile.raw.log`). Fixture SHA-256
+was `f01f2034dba3eb067a885a7ddaceac69c48b65cf3c67d7007a04cdf556c85b5d`; the
+independent pre-cleanup receipt is `fixture.independent.sha256`. Project was
+`mtcontract-d7e58fea42e74e68`, copy
+`tmp/contract-tests/run.b6DDo6/source`. All 402 pre-run, copied and live source
+paths matched at digest
+`e5cc6bc7e6abb580f45a1c234b86a63e57c508eb021ff6e67ed1ad0b32d87920`. The
+background monitor's Fish `wait` returned 0 despite the nested Task failures;
+that value was removed as an invalid runner-exit receipt. The raw Task/Cargo
+failure lines and this qualification are preserved in
+`runner-exit-observation.txt`.
+
+### `openapi_medications` compatibility baseline
+
+The selected target compiled successfully and ran nine cases: seven passed and
+two failed at the OpenAPI response-shape assertion in
+`tests/openapi_medications.rs:58`. The actual medication response includes
+`friendly_name` and `warnings`, while the expected key set omits them. Cargo
+exited 101 and the wrapper exited 201; no route smoke ran after the target
+failure. This is a baseline assertion mismatch, not a setup failure. Raw output
+is `/private/tmp/household-g-20261002/G-OPENAPI-MEDICATIONS-BASELINE-001/runner.raw.log`
+(SHA-256
+`76ed6313c2247c212c4e436aa1c52c50c9093dc2d5f504ceeb0dba83d3bc5927`). The
+selected compile passed; its raw receipt is in the same directory. Fixture
+SHA-256 `c537459672853911f04d70c1be5119b92582cc629f0067f768a3a29d3f775546`
+was independently captured before cleanup. Project was
+`mtcontract-9d4aea5965f94eac`, source copy
+`tmp/contract-tests/run.8r1DDo/source`. Its 402-path pre-run, copied and live
+manifests matched with digest
+`e5cc6bc7e6abb580f45a1c234b86a63e57c508eb021ff6e67ed1ad0b32d87920` and zero
+diffs. The complete source receipts and fixture record are under
+`/private/tmp/household-g-20261002/G-OPENAPI-MEDICATIONS-BASELINE-001/`.
+
+### `openapi_read_completion` compatibility baseline
+
+The selected target compiled successfully and all three tests failed. Two
+cache-control assertions expected `no-store`, but the response was
+`private, no-store` (`tests/openapi_read_completion.rs:110` and `:218`). The
+People query case expected `per_page=101` to return 422, but received 200
+(`:299`). This expectation conflicts with the accepted positive-size clamp to
+100; the test is being amended to assert the bounded response. Cargo exited
+101 and the wrapper exited 201; no route smoke ran after the target failure.
+The complete RTK log is
+`/private/tmp/household-g-20261002/G-OPENAPI-READ-COMPLETION-BASELINE-001/runner.full.log`
+(SHA-256
+`24972cfd7c216d2f79970a7e2c6ab5eb32717d5a88fc2eb7495ec92f4b222f8f`); the
+captured wrapper output is `runner.raw.log` in the same directory. The selected
+compile passed. Fixture SHA-256
+`aae8d11230c8e37749ccb06b2fa123d6edba32fe7d17d2a37fd852703dfb6057` is the
+runner-emitted pre-cleanup receipt; an independent rehash missed teardown. The
+project was `mtcontract-858cde154d0e4e30`, source copy
+`tmp/contract-tests/run.WL2tXI/source`. All 402 pre-run, copied and live source
+paths matched with digest
+`e5cc6bc7e6abb580f45a1c234b86a63e57c508eb021ff6e67ed1ad0b32d87920`; both
+manifest diffs are empty. These receipts and the selected compile are under
+`/private/tmp/household-g-20261002/G-OPENAPI-READ-COMPLETION-BASELINE-001/`.
+
+### Focused zero-stock dose attempt — interrupted before assertions
+
+The `doses` target compiled successfully. The first launch did not start because
+the private evidence directory had not yet been created; this invocation error
+is recorded in `initial-invocation-setup.txt`. The corrected filtered run used
+`HOUSEHOLD_TEST_FILE=doses` and
+`HOUSEHOLD_TEST_FILTER=zero_stock_occurrence_retains_domain_error_and_direct_take_remains_generic_without_writes`.
+It was interrupted during the browser setup (`npm run css`) after review found
+that the selected test explicitly chose a zero-stock medication. No Cargo test
+or assertion ran. The wrapper exited 130; raw output is
+`/private/tmp/household-g-20261002/G-DOSES-ZERO-STOCK-RED-001/runner.raw.log`
+(SHA-256
+`897a5e2ee733f8a3e4b8b903e20e2dd5e0d4cc03676234a2e70a2ccf47641520`). The
+selected compile passed. Fixture SHA-256
+`49ca2c075cc1035febee8d4fd8c1e36b3fc2b77ed55c584bfcc89d40617c18d3` was
+independently recorded before cleanup. Project was
+`mtcontract-34048075154a45fb`, source copy
+`tmp/contract-tests/run.xz8YJA/source`. All 402 pre-run, copied and live source
+paths matched at digest
+`70feadb67bd5d421d97d762354ddfdae33185dc66c21ec4d7ea6c755273a52cf`; both
+diffs are empty. The owned disposable project and run directory were removed
+with `contract:cleanup` (exit 0). The initial case used explicit selection of
+the zero-stock medication. Root is reviewing whether to preserve that as a
+separate parity case alongside an automatic-selection case; a frozen two-case
+test request is pending. Evidence is under
+`/private/tmp/household-g-20261002/G-DOSES-ZERO-STOCK-RED-001/`.
+
+### Focused zero-stock dose RED
+
+After the reviewed test-only update added separate automatic- and explicit-
+selection cases, the selected `doses` target compiled successfully. The
+`zero_stock_` filter ran exactly two cases; both reached the intended
+assertions after their no-write snapshots. Explicit selection returned
+`Selected location is unavailable for this medication.` instead of the
+expected `Cannot take medication: out of stock`
+(`zero_stock_explicit_selection_retains_empty_stock_priority_without_writes`,
+`tests/doses.rs:1942`). The automatic-selection occurrence returned
+`unprocessable_content` instead of `out_of_stock`
+(`zero_stock_occurrence_retains_domain_error_and_direct_take_remains_generic_without_writes`,
+`:1828`). Cargo exited 101 and the wrapper exited 201; the six route smoke
+cases did not run. This is the actual focused RED. Raw wrapper output, including
+both Cargo assertions, is
+`/private/tmp/household-g-20261002/G-DOSES-ZERO-STOCK-RED-002/runner.raw.log`
+(SHA-256
+`8e5ff19b611c9b0a2d93b7c17a5e04b436cf46b0458e0a0df820befea937d5ec`); the
+build-only RTK tee is separately labelled `docker-build.tee.log`. The selected
+compile passed immediately before the run; its receipt is copied into this
+evidence directory with its origin noted. Fixture SHA-256
+`47190c5d638ca8689147ca43b6cf82eb970a102b082f3e8df05fd357b872397f` was
+independently captured before teardown. Project was
+`mtcontract-bb489551acaf478b`, source copy
+`tmp/contract-tests/run.rQEKZ5/source`. All 402 pre-run, copied and live source
+paths matched at digest
+`70536947125c1d262d62becbae1d48b22b34ecca0671c281d71717624affccc5`; both
+manifest diffs are empty. The raw output, source manifests and fixture receipt
+are under
+`/private/tmp/household-g-20261002/G-DOSES-ZERO-STOCK-RED-002/`.
+
+### Repaired dose suite and focused write compatibility — GREEN
+
+After the reviewed zero-stock mapping correction, the unfiltered `doses`
+target passed all 17 executable tests; one pre-existing fractional-second
+response test remains ignored. The six household-route smoke checks also
+passed. Runner exit was 0. This does not alter the existing ignore or claim
+that the Rails response-timestamp case passed. Raw output is
+`/private/tmp/household-g-20261002/G-DOSES-FIX-GREEN-001/runner.raw.log`
+(SHA-256
+`b4f8e1f114b9310987b60020e13e8428b308e9ac0b6f1f9826a4ca04f0a9455e`).
+Fixture SHA-256 `9d11ac8108e6d1815f6323bc1f38f67d097236f66a970c0b3b8506235dc51ab0`
+was independently captured before cleanup. Project was
+`mtcontract-f562104625f4483a`, source copy
+`tmp/contract-tests/run.VmnjI5/source`. All 402 pre-run, copied and live
+source paths matched at digest
+`4e2cb970ae7901c725e05726b4fed375b6319b4a0e18b14a7a4c56932f44a722`; both
+manifest diffs are empty. The route smoke count is six (one parent suite with
+five nested checks), not one. Independent review audited the raw assertions,
+manifests and fixture receipt.
+
+The two focused `dose_source_errors` cases passed, covering malformed-reference
+422 controls and unsupported-source 404 for direct and sync requests, with
+no-write snapshots. The route smoke checks passed 6/6; wrapper exit was 0.
+Raw output is
+`/private/tmp/household-g-20261002/G-DOSE-SOURCE-ERRORS-GREEN-002/runner.raw.log`
+(SHA-256
+`b65a5b3395b39f569fb2b7cfd4ec5e371dea6438227cf30bef7905a2cbff652d`).
+Fixture SHA-256 `e8f8e5b39864fc62ef04eca018cc327fd4d94b776517a507763c541cf04dc759`
+was independently captured before cleanup. Project was
+`mtcontract-d960e1128f1b430b`, source copy
+`tmp/contract-tests/run.9IrGFj/source`. All 402 pre-run, copied and live
+source paths matched at digest
+`4e2cb970ae7901c725e05726b4fed375b6319b4a0e18b14a7a4c56932f44a722`; both
+manifest diffs are empty.
+
+The corrected `dose_write_api` target passed all six direct-write tests, and
+the route smoke checks passed 6/6. Wrapper exit was 0. Raw output is
+`/private/tmp/household-g-20261002/G-DOSE-WRITE-GREEN-002/runner.raw.log`
+(SHA-256
+`cbe493c921d9912a2ef40d41f8eee065cd0ad0fdacbc6d6f423ed23c27f5bc2d`).
+Fixture SHA-256 `66fb96c2d7f6913ec9366e5131fcd91036fac94937a27028407178ce0843466f`
+was independently captured before cleanup. Project was
+`mtcontract-24eb4e635e8e4194`, source copy
+`tmp/contract-tests/run.gT1CSi/source`. All 402 pre-run, copied and live
+source paths matched at digest
+`4e2cb970ae7901c725e05726b4fed375b6319b4a0e18b14a7a4c56932f44a722`; both
+manifest diffs are empty. The fast format, API check, Clippy and selected
+compiles for all three targets passed on the same frozen application inputs.
+
+### Remaining unsplit dose and compatibility checks — GREEN
+
+The full `sync` target passed 23/23 HTTP tests and six route smoke checks;
+wrapper exit was 0. Its raw log is
+`/private/tmp/household-g-20261002/G-SYNC-FIX-GREEN-001/runner.raw.log`
+(SHA-256
+`da95f1f4315302a3fb381089f2d809eaa0607f2ca3490af0f5b87b7680aeb3f9`), fixture
+SHA-256
+`e74f1158bc5420caf50f1900340ea8983240894970c849f67ea4042b4f2b0b3f`, project
+`mtcontract-e701aab894544c8d`. The full `replay` target passed 8/8 HTTP tests
+and six route smoke checks; wrapper exit was 0. Its raw log is
+`/private/tmp/household-g-20261002/G-REPLAY-FIX-GREEN-001/runner.raw.log`
+(SHA-256
+`9f5b8dc383a1a52ee28e2937c052a7872e91bb8afe6704121a209fd64f709eab`), fixture
+SHA-256
+`205c081dc31deb377bb8f11bea1eff01a10b7eaa2cf6e8f94cb7b39d79561c41`, project
+`mtcontract-a3e566b65b894814`. Both used separate fixtures; all 402 pre/copy/live
+paths matched at digest
+`4e2cb970ae7901c725e05726b4fed375b6319b4a0e18b14a7a4c56932f44a722`.
+
+`dose_mode_transition_api` passed 2/2 HTTP tests plus six route checks; wrapper
+exit was 0. Raw log
+`/private/tmp/household-g-20261002/G-DOSE-MODE-FIX-GREEN-001/runner.raw.log`
+(SHA-256
+`5a938423c7ac71c0c7042d476cb72d7d7c44e0ce0b5390bff5a1315b2c8098b9`), fixture
+`53d4f0c66aac78950c5a9c01ade26c807febaa8b99ce5cec3bdd95423a774b4d`, project
+`mtcontract-85ab31b807464e88`. `source_capabilities_api` passed 2/2 HTTP tests
+plus six route checks; wrapper exit was 0. Raw log
+`/private/tmp/household-g-20261002/G-SOURCE-CAPABILITIES-FIX-GREEN-001/runner.raw.log`
+(SHA-256
+`8b3d971ed597200dd8921c0f96e25a165c5d741228f669c1a555f1f8f06fd9c3`), fixture
+`9897b0a85b8ecaa24366839706743ce14c7a3c58644505c4933c0271f882398f`, project
+`mtcontract-aed61781c71440e5`. Both source manifests match all 402 paths at
+the same digest above.
+
+The existing API unit task passed 36 library tests, including the four
+`dose::tests` and the `dose_occurrences` unit; the web crate's 12 unit tests
+also passed. Raw output is
+`/private/tmp/household-g-20261002/G-DOSE-UNIT-GREEN-001/task.corrected.raw.log`
+(SHA-256
+`23ffdd74a280837f1585038b04d5c3f84a1fc3ded1e52db4eb4f01446cd7ba5a`), exit 0.
+The initial `task -d rust/api test` invocation was an invocation error because
+the nested Taskfile already uses repository-root manifest paths. The corrected
+existing command was `task api:test`. The exact 18 executed/ignored dose test
+names, extracted from the already passing full target raw log, are preserved in
+`/private/tmp/household-g-20261002/G-DOSES-FIX-GREEN-001/test-name-list.txt`
+(SHA-256
+`35a5e5f2c2514116c939a0e8cafc466cb3b9212a2d43fb9b171e89a911fad026`).
+
+All three amended compatibility targets passed with six route checks apiece:
+`management_sync_events_api` passed 3/3, raw log
+`/private/tmp/household-g-20261002/G-MANAGEMENT-SYNC-EVENTS-FIX-GREEN-001/runner.raw.log`
+(SHA-256
+`8cee720bb484c33571e9a7b6629cabe65d2eb06a42ae8a1bea32f90d04d9257f`), fixture
+`176d4850cf2d5ff7fcc88e8b8258b7e98ed7a5d73f633a46fdf6dd8374a9c154`, project
+`mtcontract-384fd0c45f5a4838`; `openapi_medications` passed 9/9, raw log
+`/private/tmp/household-g-20261002/G-OPENAPI-MEDICATIONS-FIX-GREEN-001/runner.raw.log`
+(SHA-256
+`e03e752780d13f1a74bc0ff871d36fc26c2502c7d064cc62deb716c35562ba9f`), fixture
+`5a671eb705829c23570c04041f1417b0ea0a7288a6831de2beb4b6d362b1fc15`, project
+`mtcontract-68db743a3dc244bc`; `openapi_read_completion` passed 3/3, raw log
+`/private/tmp/household-g-20261002/G-OPENAPI-READ-COMPLETION-FIX-GREEN-001/runner.raw.log`
+(SHA-256
+`28a56bf4cce3c54a355d348654d0324f2501c6f8e8b3a26b957c6c32cb813700`), fixture
+`c3e420d0ebdee1a426bc59ce25b962c71d3c22eb2259f354b09d5acb0c9032b0`, project
+`mtcontract-905236bb103e445f`. Each wrapper exited 0, and all three had
+matching 402-path pre/copy/live manifests with digest
+`4e2cb970ae7901c725e05726b4fed375b6319b4a0e18b14a7a4c56932f44a722`.
+
+The dose CI policy regression first failed as expected because the new
+`dose-compatibility` row was missing (76/77 tests passed). After root added the
+row, `task ci:check` passed 77/77, including the focused policy test. The RED
+raw log is
+`/private/tmp/household-g-20261002/G-CI-DOSES-POLICY-RED-001/task.raw.log`
+(SHA-256
+`9d22be70d7576791e6f11e8008e4eede5b9d863c8b77e362f891d0a993d7232b`); the
+GREEN check log is
+`/private/tmp/household-g-20261002/G-CI-DOSES-POLICY-GREEN-001/task.raw.log`
+(SHA-256
+`200b1e5b3b871fbdf9b214aae83c35baaaa11c720c45b6c499b676a24543cab1`). The
+standalone CI row's actual browser runtime remains pending after the approved
+dose module split.
+
+### Dose split post-install verification — GREEN
+
+The approved dose production/test split is installed. The initial warning-denying
+Clippy attempt found seven unused imports in the facade. The reviewed three-file
+correction restored five definitions to the facade and gated the two unit-only
+imports; it added no lint allowances and changed no routine bodies. On the
+frozen corrected source, `api:fmt:write`, `api:check`, `api:clippy`, selected
+compiles for `doses`, `dose_source_errors` and `dose_write_api`, and `api:test`
+all exited 0. The unit task ran 36 API and 12 web tests. Format/check/Clippy logs
+are in `/private/tmp/household-g-20261002/G-DOSE-SPLIT-FAST-002-*`; the corrected
+unit raw log is
+`/private/tmp/household-g-20261002/G-DOSE-SPLIT-UNIT-GREEN-002.raw.log`.
+
+All seven separate post-split contract runs passed with wrapper exit 0 and six
+read-only household-route smoke checks apiece. Every run emitted source digest
+`6710c57383bf78ecc1c3db29e199d4ab6b0c2432fe4e0b67b17586a22470c4d5`; its
+422-file copied-source manifest exactly matches the 422-file live manifest.
+Each run directory retains `source.copy.manifest`, `source.live.manifest`, an
+empty `copy-live.diff`, runner digest, separate Taskfile command-input hashes,
+raw output, and exit status. The identical copy/live manifest file hash is
+`258cb49d84ccc1bed63e1ea57fcb2b402779ea482390d418ef60127059700952`.
+
+| Target | Result | Project | Fixture SHA-256 | Raw log and SHA-256 |
+| --- | --- | --- | --- | --- |
+| `doses` | 17 passed; 1 existing ignored; 0 failed; route smoke 6/6. All 18 executed names match the before-split list. | `mtcontract-e18922ebd12f4d36` | `3ed7c4b5cbb649d6cb08e5128a9a3d53348752cb466b5071ada02652d8ffa430` (runner-emitted only; independent rehash was unavailable after cleanup) | `/private/tmp/household-g-20261002/G-DOSE-SPLIT-DOSES-001/runner.raw.log` — `f8d279fbcb48c06331843333522eb24c93ecb317097a60e2f0f7b62df39b174f` |
+| `dose_source_errors` | HTTP 2/2; route smoke 6/6 | `mtcontract-057979a277f84d84` | `c33cf6305efc6347be5b0b87cac5cdb848d4833a95fe8385ca71a90ecf107dc2` | `/private/tmp/household-g-20261002/G-DOSE-SPLIT-SOURCE-ERRORS-001/runner.raw.log` — `15653a1b2822a07c1ecf91f145f97c800893bbf2340894e6faa51e07516c23b2` |
+| `dose_write_api` | HTTP 6/6; route smoke 6/6 | `mtcontract-5fab3a093dee4536` | `d87667a2c0b094b3220c7f7e693793c8e68db70db13f248e4e5fbf31a8bb361c` | `/private/tmp/household-g-20261002/G-DOSE-SPLIT-WRITE-API-001/runner.raw.log` — `099be401f5f605dbdc79f288a6e58f715d4d38c673340a9e6ba8a630fde9a346` |
+| `dose_mode_transition_api` | HTTP 2/2; route smoke 6/6 | `mtcontract-8e0f4cbb3ac54fd8` | `5f9e6a3afc90580b191036aa25f2e58a84d5357005331e3ca80e2946701da60f` | `/private/tmp/household-g-20261002/G-DOSE-SPLIT-MODE-TRANSITION-001/runner.raw.log` — `16c4d791d96e9d463e3eee95681ded5bada04e3aaab763238facf1f6d63e2e46` |
+| `source_capabilities_api` | HTTP 2/2; route smoke 6/6 | `mtcontract-4c64a1498b254dee` | `57a4d81e671232b297a9d5e905af069a18f50232a055e9e56f6fb6787afaa63c` | `/private/tmp/household-g-20261002/G-DOSE-SPLIT-SOURCE-CAPABILITIES-001/runner.raw.log` — `e6019f1b25426dafa490a05a84315401690bd8bb9da6202457c37774229b3834` |
+| `sync` | HTTP 23/23; route smoke 6/6 | `mtcontract-3134cf245ebf4c1d` | `72a904ec1fea23b34d47bf0c2bb0d40be2a1e5129583d2084bece0c22c7dff71` | `/private/tmp/household-g-20261002/G-DOSE-SPLIT-SYNC-001/runner.raw.log` — `c4f8dacd798f52522f13db39c3cd1da14c0a65101bf50e3958419d09aad561cb` |
+| `replay` | HTTP 8/8; route smoke 6/6 | `mtcontract-cbaec75cb07940ea` | `135113167fedac82161117346421cd10b9f82dd800c26fb650d0f8ddf104df7b` | `/private/tmp/household-g-20261002/G-DOSE-SPLIT-REPLAY-001/runner.raw.log` — `be6aafd0f13ccce32306f5a0d0b17342906efc34a403ef6d81c8a7e809d3b1ce` |
+
+The `doses` before/after test-name lists are preserved under its evidence
+directory and compare equal. Its fixture hash is explicitly limited to the
+runner-emitted receipt; no fixture-only rerun was made. Independent final review
+of the dose split passed. The standalone CI row runtime remains a separate
+workflow-level check.
+
+## Before-occurrence split compatibility checks
+
+On the unchanged, reviewed dose-split source, the `openapi_dose_occurrences`
+target compiled and passed all 10 HTTP tests plus the six route smoke checks.
+Project `mtcontract-99da08dde5824224`; source digest
+`6710c57383bf78ecc1c3db29e199d4ab6b0c2432fe4e0b67b17586a22470c4d5`; fixture
+SHA-256 `59230aa293025b7e848191f469b96eedbb75eb5dd236d5aa2c631f4ea709bd66` was
+independently captured before cleanup in
+`/private/tmp/household-g-20261002/G-BEFORE-OCCURRENCE-HTTP-001/fixture.independent.sha256`;
+the runner path was `tmp/contract-tests/run.Yt8AA8/fixture.json`. All 422 copied
+source paths match the live source manifest; the identical manifest SHA-256 is
+`258cb49d84ccc1bed63e1ea57fcb2b402779ea482390d418ef60127059700952`. Raw log
+`/private/tmp/household-g-20261002/G-BEFORE-OCCURRENCE-HTTP-001/runner.raw.log`
+(exit 0; SHA-256
+`03bfefa5d83022f79b6a567beb5ad5e52e341b27ed41c822becebddd0eacc5fa`).
+
+The `openapi_sync_reads` target then passed both HTTP tests and six route smoke
+checks in a separate fixture. Project `mtcontract-643b68f64f9146f9`; the same
+source digest; fixture SHA-256
+`3f59e5d64e14d8820be93416214642d8c47e097e2d9690412eee3f09abc7eafe` was
+independently captured before cleanup in
+`/private/tmp/household-g-20261002/G-BEFORE-OCCURRENCE-SYNC-READS-001/fixture.independent.sha256`;
+the runner path was `tmp/contract-tests/run.uSGIZI/fixture.json`. Its 422 copied
+source paths also match the live source with the same manifest SHA-256 above.
+Raw log
+`/private/tmp/household-g-20261002/G-BEFORE-OCCURRENCE-SYNC-READS-001/runner.raw.log`
+(exit 0; SHA-256
+`2fbaba44448ef16292da14feaf17cd5b8d2678f9c464899f3004cd7e69558b19`).
+
+The existing fixed-clock `api:browser-dashboard-rust` task dispatched the Rust
+dashboard runner and its default `dashboard.test.mjs` and
+`leptodon-dashboard.test.mjs` files. It passed 35/35 Node tests; wrapper exit
+was 0. Project `mtcontract-c0f1e15ddf9b4374`; source digest
+`6710c57383bf78ecc1c3db29e199d4ab6b0c2432fe4e0b67b17586a22470c4d5`; the
+422-entry copied and live manifests match (both manifest files have SHA-256
+`258cb49d84ccc1bed63e1ea57fcb2b402779ea482390d418ef60127059700952`). Fixture
+SHA-256 `f62e0e75a5d39fd5ff621400cb3eff9d0d82df1fd0f31343768f09a7648681ac` is
+runner-emitted only; cleanup removed the fixture before an independent rehash.
+The outer log is
+`/private/tmp/household-g-20261002/G-BEFORE-OCCURRENCE-DASHBOARD-001/runner.raw.log`
+(SHA-256
+`0254eabb44ca381ce89e34de802da75552ce99e566e12361b0f22e73e42c9a11`; exit 0).
+Full Node output is preserved at
+`/private/tmp/household-g-20261002/G-BEFORE-OCCURRENCE-DASHBOARD-001/browser.full.log`
+(SHA-256 `fe3fa17d1433948aeb86c151149c3cf54a674b5db997d58e926896ff19814f37`);
+it contains all 35 passing test names and the zero-failure summary. The original
+RTK tee was
+`/Users/damacus/Library/Application Support/rtk/tee/1790918882_task_api_206bd2.log`.
+All ten generated desktop/mobile screenshots are retained at
+`/private/tmp/household-g-20261002/G-BEFORE-OCCURRENCE-DASHBOARD-001/screenshots/`;
+their checksum manifest SHA-256 is
+`76c68bcc182749a678305519ed3a1f29015f83ea43907e8dfbfeb8b68848dce5`. The seven
+pre-existing top-level screenshots were archived before the run and restored
+byte-for-byte; the three new top-level Leptodon images were archived and removed.
+The F screenshot archive was not changed.
+
+## After-occurrence split checks
+
+The occurrence split was installed from the independently reviewed candidate.
+All 14 installed files matched its pre-format manifest. API formatting changed
+only `dose_occurrences.rs`, `dose_occurrences/input.rs`, and
+`dose_occurrences/keys.rs`; the exact pre-format and post-format manifests and
+diff are retained under
+`/private/tmp/household-g-20261002/G-OCCURRENCE-SPLIT-FAST-001/`. The focused
+API format, check, warning-denying Clippy, and unit gates all exited 0. API
+units reported 36 library tests and 12 web tests passed; doctests had zero
+tests. Full logs and checksums are in that evidence directory.
+
+Each after-split contract run used the existing `api:browser-rust` task, an
+isolated fixture, `HOUSEHOLD_ACCEPTANCE=true`, the named `HOUSEHOLD_TEST_FILE`,
+`API_TIME_ZONE=UTC`, and the six route smoke cases from
+`tests/household-routes.test.mjs`. No household filter, completion/stock flag,
+or dashboard clock was set. All six runtime copies match their captured
+pre-manifests and all six fixtures were independently hashed before cleanup.
+The common 435-path application manifest hash is
+`d31251ad535b03d110a108ef9dbf3c731cba02aa4c1bf9f0687279769246d58f`; runner
+source digest is
+`a5fedf06dbef8ac386f0c40eb741ed9f03cb8ff9294f6356a82ec9c2705b957e`.
+
+| Cargo target | Result | Project | Fixture SHA-256 | Raw log (SHA-256) |
+| --- | --- | --- | --- | --- |
+| `openapi_dose_occurrences` | 10/10 HTTP + 6/6 route smoke; task passed | `mtcontract-97fdac2cdec64aff` | `8461f60ad4d8af4dfd3df40687dba3eee5471ed8addfbe7a0a0744d9214f2221` | `/private/tmp/household-g-20261002/G-OCC-SPLIT-OCCURRENCES-001/runner.raw.log` (`075118adb910c3a4df5c92f8021c689513a9b45a74ffe6dfbe202a1414465d6c`) |
+| `doses` | 17 passed, 1 pre-existing ignored; 6/6 route smoke; task passed | `mtcontract-64cd565c94a24abe` | `5a3d8eeac3a8d5d72c94c54463d58c9fea409e1dc734bded6e8220bed814e8cd` | `/private/tmp/household-g-20261002/G-OCC-SPLIT-DOSES-001/runner.raw.log` (`fed0d9833bf5da39e5c3fb0af365471d600867b108b7b682c54691c8c2007bdf`) |
+| `sync` | 23/23 HTTP + 6/6 route smoke; task passed | `mtcontract-c49a349afeaa4a07` | `64ff8a95c65934fd9912a363521d5ab7c5fbc1d7b34a9f87d69a82c7a6f52760` | `/private/tmp/household-g-20261002/G-OCC-SPLIT-SYNC-001/runner.raw.log` (`e669ca9e0e671175875576d254c8e2ddc4eee41e7aa9c3f2217b11adb2608d27`) |
+| `replay` | 8/8 HTTP + 6/6 route smoke; task passed | `mtcontract-8d66cd73a35c4858` | `20851dc618655c5ad118d37d7f88a37aaa4738f2e25991d874dc0104ce771884` | `/private/tmp/household-g-20261002/G-OCC-SPLIT-REPLAY-001/runner.raw.log` (`073e82414422813f3b721ab3bb3936a040e50bddd2527d28541cd343d74d27d5`) |
+| `openapi_sync_reads` | 2/2 HTTP + 6/6 route smoke; task passed | `mtcontract-e707a0cbb3fa4519` | `2dc5bfdcf24183f1f5f3c267c2a70f7a3162386d8af139adb4719dd6292943db` | `/private/tmp/household-g-20261002/G-OCC-SPLIT-SYNC-READS-001/runner.raw.log` (`3993b266e7eb08501dcf1f29b36e22c2e903a221db64c8b7691a3cfe1d70eb60`) |
+| `dose_source_errors` | 2/2 HTTP + 6/6 route smoke; task passed | `mtcontract-3f301061340f4281` | `cdfd1ddfe4846a5677c91e78fc97ea6e5a019181cf3b1e4ca768ad8db3a46ddb` | `/private/tmp/household-g-20261002/G-OCC-SPLIT-SOURCE-ERRORS-001/runner.raw.log` (`f92eb7bd52bdda85aec0fd1fc0040352087ebecb4445a4a5f8b6658e5d92799f`) |
+
+The post-split fixed-clock `api:browser-dashboard-rust` task used its default
+`dashboard.test.mjs` and `leptodon-dashboard.test.mjs` files and passed 35/35.
+The Rust dashboard job used clock `2026-03-29T00:30:00Z`, project
+`mtcontract-a1b2263c4d534dfc`, source digest
+`a5fedf06dbef8ac386f0c40eb741ed9f03cb8ff9294f6356a82ec9c2705b957e`, matching
+435-path copy/live manifests, and independently captured fixture hash
+`12ee98d81e6782e2ea347bfa94f3d7d657f6b4bc1c941dc15013ee915058a999`. Outer raw
+log `/private/tmp/household-g-20261002/G-OCC-SPLIT-DASHBOARD-001/runner.raw.log`
+has SHA-256 `7381039d718ac0b65dc75e9545428d386d707df9f523fdf03242dcdb8c2b7fb0`;
+the authoritative Node assertions are in
+`browser.assertions.full.log` (35 pass, 0 fail; SHA-256
+`2ce1b87e1e8669b117964bc4c43fc6012b8e2b2beca187687675f3bf5f9fd08e`). The
+other `build.full.log` is Docker build output, not test output. Ten generated
+screenshots and checksums are retained in the same evidence directory. The
+seven original dashboard screenshots were restored byte-for-byte; three new
+Leptodon images are archived privately.
+
+## Required `schedules` suite before/after occurrence split
+
+The brief names Cargo target `schedules`; `openapi_schedule_writes` and the
+dashboard checks do not replace it. Because no executable before-split copy
+remained, the pre-split application was reconstructed under
+`/private/tmp/household-g-20261002/G-OCC-SCHEDULES-BEFORE-001/repo/`: the current
+application was copied privately, only the 13 new `rust/api/src/dose_occurrences/`
+children were removed, and `rust/api/src/dose_occurrences.rs` was restored from
+the reviewed retained `dose_occurrences-before.rs`. The repository's existing
+`api:contract-source-snapshot` task staged it. Its 422-path manifest exactly
+matches the original before-copy manifest (both SHA-256
+`258cb49d84ccc1bed63e1ea57fcb2b402779ea482390d418ef60127059700952`); the
+runner's 422-path copy also matches. This is a reconstructed snapshot verified
+against the original manifest, not the original deleted executable copy. The
+private `api:contract-selected-compile TEST_TARGET=schedules` passed.
+
+The existing Rust wrapper was dispatched from that private mirror with
+`HOUSEHOLD_ACCEPTANCE=true`, `HOUSEHOLD_TEST_FILE=schedules`,
+`API_TIME_ZONE=UTC`, and the six read-only route smoke cases. Project
+`mtcontract-345d54ce747140b6`; fixture SHA-256
+`ad0270d99e3364f78a3460b889df6101e1d8a0a9e0e15b67a46034267323454a` was
+independently captured before cleanup. Cargo executed 15 declared cases: 3
+passed, 8 failed, and 4 were ignored. The eight failures were pagination 400 vs
+200 at `tests/schedules.rs:233`; unexpected `current_pause_period` at :422 and
+:557; 422 vs 200/201 at :677, :605, and :309; and pause/resume version 24 vs 20
+at :93 in two tests. The inner contract Task failed 101 and the outer browser
+Task reported 201; the `rtk proxy` shell wait returned 0 and is not a Task
+status. Raw log
+`/private/tmp/household-g-20261002/G-OCC-SCHEDULES-BEFORE-001/schedules-before.raw.log`
+(SHA-256 `136c9f64cb08bca8211c110902d3671e30b3c8cfbd38c8a571ef8a2f41652550`).
+
+The current-source target was separately compiled and run from the main
+checkout with the same selector and a fresh fixture. Its 435-path runtime copy
+matches the captured current application manifest (SHA-256
+`d31251ad535b03d110a108ef9dbf3c731cba02aa4c1bf9f0687279769246d58f`); runner
+source digest is
+`a5fedf06dbef8ac386f0c40eb741ed9f03cb8ff9294f6356a82ec9c2705b957e`. Project
+`mtcontract-fe54c661b1a04aee`; independently captured fixture SHA-256
+`3c05fea9ba2dec4cd0edeb8212e8ddf5ff7be4e4610e7d679cb1652473330ad4`. It had
+the same 3 pass, 8 fail, 4 ignored results and task failure statuses as the
+reconstructed baseline. Raw log
+`/private/tmp/household-g-20261002/G-OCC-SCHEDULES-AFTER-001/schedules-after.raw.log`
+(SHA-256 `0928363321fdbf524a23cfdfe1044e0bfea4613b1707e6cf7eb8740a54b55560`).
+Both raw failures are being reviewed for a bounded test/setup correction before
+the matched repaired baseline and after-split acceptance reruns.
+
+The first repaired-schedule iteration installed the pagination fix and test
+correction in `rust/api/src/read_resources/schedules.rs` and
+`rust/contract-tests/tests/schedules.rs`. Formatting, `api:check`, warning-
+denying `api:clippy`, and selected `schedules` compilation passed. The repaired
+pre-occurrence run used a private reconstruction at
+`/private/tmp/household-g-20261002/G-OCC-SCHEDULES-BEFORE-001/repo/`, with the
+old occurrence facade restored and the 13 occurrence children absent. It began
+from the original 422-path pre-occurrence manifest and overlaid only the two
+reviewed schedule files. The existing snapshot dependency also regenerated
+four `rust/ui-preview/public/pkg` files; these four generated-output hash
+changes are recorded separately in
+`/private/tmp/household-g-20261002/G-SCHEDULE-FIX-RECONSTRUCTED-BEFORE-002/expected-vs-snapshot.diff`.
+All other copied paths match the original manifest. The staged 422-path source
+manifest and runner copy match at SHA-256
+`2b99afbf336a2a8a83951f110546e0df8adad1ae91d9b6332db0deaed2f512b7`; this is
+reconstructed repaired source with regenerated UI assets, not a two-file-only
+full-manifest match. Project `mtcontract-fa4f46d726934096`; independently
+captured fixture SHA-256
+`cc2f60326d8977f9c29262cf9eecc113aca94894b7656b3addc7d7b9eb496da9`.
+Cargo ran 15 declared cases: 8 passed, 3 failed, and the same 4 remained
+ignored. The failures were the locations `page=bogus` control expecting 400 but
+receiving 422 at `tests/schedules.rs:264`, plus two validation-message
+expectations (`must be a string`) receiving `must be a decimal string` at
+`tests/schedules.rs:485` and `:731`. The HTTP Task exited 101, so route smoke
+did not run; the outer `api:browser-rust` Task exited 201. Raw log
+`/private/tmp/household-g-20261002/G-SCHEDULE-FIX-RECONSTRUCTED-BEFORE-002/schedules-before.raw.log`
+(SHA-256 `45b998bdfc9cdbe234a8ecebc0f12ab55b3e0940b9a7fe429f86ce505d5363a2`).
+The original reconstructed baseline run remains preserved separately and is
+not replaced by this intermediate partial result. The final three-file
+repaired comparison and its passing results are recorded below.
+
+The CI policy test first failed as intended: 78 tests ran, 77 passed and one
+failed because the `schedule-compatibility` fixture row was absent. Raw log
+`/private/tmp/household-g-20261002/G-CI-SCHEDULE-RED-001/ci-check.raw.log`
+(SHA-256 `285b551f912d431b72ba369d9675adfe3bc3d809b9f2b6a72d29dd4bab646eab`).
+After the coordinator added the schedule matrix row, `task ci:check` passed
+78/78, including `actionlint` and Node syntax checks. The 13-row matrix includes
+`schedule-compatibility`, target `schedules`, with the six route smoke cases.
+Raw log
+`/private/tmp/household-g-20261002/G-CI-SCHEDULE-GREEN-001/ci-check.raw.log`
+(SHA-256 `506745c141fe73cf72923c372fcb2d7e5c933673e03d7ebdad65cebdc5faf472`).
+
+### Repaired schedules before/after occurrence comparison
+
+The earlier repaired-candidate paragraph above records an intermediate
+8-pass/3-fail/4-ignored run using only the first two schedule files. It is not
+the final repaired comparison. After the separately reviewed follow-on was
+installed, the final repaired source comprised exactly these authored paths:
+`rust/api/src/read_resources/schedules.rs`,
+`rust/api/src/schedule_writes/input.rs`, and
+`rust/contract-tests/tests/schedules.rs`. Formatting, API check, warning-denying
+Clippy, and selected compilation of `schedules` all passed. The installed
+authored-file hashes match
+`/private/tmp/household-g-20261002/schedule-compatibility-proposal/installed-preformat.sha256`
+and
+`/private/tmp/household-g-20261002/schedule-followon-proposal/installed-preformat.sha256`.
+The numeric-only validation behaviour is tracked separately as issue #2368.
+
+For the reconstructed unsplit run, the private mirror retained the original
+occurrence facade and had no occurrence child directory. Its expected
+422-path manifest and runtime copy match at SHA-256
+`c34349b401efc507404191c3f22200fd446dcbbc480a3bc9aa89c2098a4a6a4e`; the
+empty comparison is
+`/private/tmp/household-g-20261002/G-SCHEDULE-FIX-CURRENT-BEFORE-002/expected-vs-runtime-copy.diff`.
+The three authored schedule changes are the only authored differences from
+the original manifest. Four regenerated `rust/ui-preview/public/pkg` outputs
+are separately recorded in
+`/private/tmp/household-g-20261002/G-SCHEDULE-FIX-RECONSTRUCTED-BEFORE-002/expected-vs-snapshot.diff`;
+they came from the existing snapshot build, not authored changes. This is a
+reconstructed repaired source with regenerated UI assets, not an original
+executable copy. Project `mtcontract-8117cfdd69f64118` used fixture SHA-256
+`4b84126769a79e7966a8690c5b0438fa5411714bd7f537d7dac8b14afced4621`, captured
+independently before cleanup. All 11 active schedule cases passed, zero
+failed, and the same four established cases remained ignored. The six
+read-only route checks passed. The outer Task exited 0. Raw log
+`/private/tmp/household-g-20261002/G-SCHEDULE-FIX-CURRENT-BEFORE-002/schedules-before.raw.log`
+(SHA-256 `ee8f566e4c8ab33882631a40df64d5c9940f5b4cbb63e8149556a8b9d4ae395d`).
+
+The current-source comparison used a separate fresh fixture. Its runner
+emitted source digest `3ddaf3e03f370082def8fcef6d55f8e43ba83d9feb516998bad0e5e371e53600`,
+project `mtcontract-a2962babab0a47eb`, and fixture SHA-256
+`c79ab408a96d1cd0208f28870ed7eaf25773f9dab9feccd2f4610826650a8374`. The
+fixture digest is runner-emitted in the retained raw output; an independent
+rehash after cleanup is unavailable. The run passed all 11 active cases,
+failed none, retained all four ignores, and passed all six route checks. The
+outer Task exited 0. Raw log
+`/private/tmp/household-g-20261002/G-SCHEDULE-FIX-CURRENT-AFTER-001/schedules-after.raw.log`
+(SHA-256 `d3c992d2d3de27022354a7625d365fc0034a4c4216c88af80ecbb5555e9af3fc`).
+This completed the repaired unsplit/current schedules comparison; it does not
+claim broader Rails `to_i` parity than the reviewed pagination cases.
+
+### Invitation baselines
+
+The existing `api:openapi-invitations-acceptance` Task ran the complete
+`openapi_invitations` target in a fresh isolated fixture. All six cases passed,
+including `smtp_failure_rolls_back_invitation_rotation_without_receipt_or_audit`;
+the dedicated Task started `rust-api-mail-fail` before its no-deps test
+container. Project `mtcontract-804efa4f9b1e4b15`; source digest
+`3ddaf3e03f370082def8fcef6d55f8e43ba83d9feb516998bad0e5e371e53600`; runner-
+emitted fixture SHA-256
+`9049142bcbf7752129b4ed9cfe17f05b4702b9c636c6dfd74c9cb155e714a2ef`.
+The fixture digest is retained from the runner before cleanup; no independent
+rehash is available. Outer Task exit was 0. Raw log
+`/private/tmp/household-g-20261002/G-INVITATIONS-OPENAPI-001/invitations.raw.log`
+(SHA-256 `120b889f80fbc7316d394dd8d8e2dff7b85a15d465a47c1817e5dc7f1d3195ba`).
+
+The separate existing `api:openapi-invitations-legacy-acceptance` Task ran the
+full `invitations` target in a different fixture. All eight cases passed;
+outer Task exit was 0. Project `mtcontract-ce48be7c6a944a88`; source digest
+matched the preceding run at
+`3ddaf3e03f370082def8fcef6d55f8e43ba83d9feb516998bad0e5e371e53600`; runner-
+emitted fixture SHA-256
+`835fc82dcad808605314018c45557bcdc816470a52ca418f7f00f20775ec0b9e` (not
+independently rehashed after cleanup). Raw log
+`/private/tmp/household-g-20261002/G-INVITATIONS-LEGACY-001/invitations-legacy.raw.log`
+(SHA-256 `2a02033d55903908633fcc783ed8fb9265b611255cb8cd3829f79731074d7ed0`).
+
+### Invitation module split after-checks
+
+The reviewed invitation split installed `rust/api/src/invitations.rs` and ten
+child modules. Before formatting, all eleven installed files matched the
+candidate manifest
+`/private/tmp/household-g-20261002/invitation-extraction-candidate/installed-preformat.sha256`.
+`api:fmt:write` changed only import ordering in the facade and line wrapping
+in `responses.rs`; the exact formatter diff is retained at
+`/private/tmp/household-g-20261002/G-INVITATION-SPLIT-FAST-001/formatter-only.diff`
+(SHA-256 `b45124980b0aa032cc729887760c0f0d7183a89f9cd10c6bab4db32f0e048550`).
+The post-format hashes for all eleven files are in
+`/private/tmp/household-g-20261002/G-INVITATION-SPLIT-FAST-001/postformat.sha256`.
+Formatting, `api:check`, warning-denying `api:clippy`, `api:test`, and selected
+compilation of both `openapi_invitations` and `invitations` passed (all exit
+0). `api:test` ran 48 unit cases across its nonempty binaries; all passed.
+Their raw logs and exit receipts are in
+`/private/tmp/household-g-20261002/G-INVITATION-SPLIT-FAST-001/`.
+
+After the split, `api:openapi-invitations-acceptance` passed all six cases,
+including the configured SMTP failure rollback test. It used project
+`mtcontract-4f642a5b81984a33`, runner source digest
+`0b8f532a35103a9774bbf2fa1f860e456b97c8e06dcba66f36d569c2dff4692c`, and
+runner-emitted fixture SHA-256
+`c22a750e1b6658843f109ab0d916f60b7c8c772f3f85f3007df78a238c3531eb`; the
+fixture was not independently rehashed after cleanup. The Task exited 0. Raw
+log
+`/private/tmp/household-g-20261002/G-INVITATION-AFTER-OPENAPI-001/invitations.raw.log`
+(SHA-256 `e7aedfd6bd5264f0527ac30d1d509e542c5d4725dd0e014e570e42a410c7754e`).
+
+The separate `api:openapi-invitations-legacy-acceptance` run passed all eight
+cases. It used a fresh project `mtcontract-ff04bcc1bad54773`, the same runner
+source digest
+`0b8f532a35103a9774bbf2fa1f860e456b97c8e06dcba66f36d569c2dff4692c`, and
+runner-emitted fixture SHA-256
+`0d24eb5df746588172a1cfe6ec28ba395c1de580f18a245da8f976a5b11e3a26`; an
+independent post-cleanup rehash is unavailable. The Task exited 0. Raw log
+`/private/tmp/household-g-20261002/G-INVITATION-AFTER-LEGACY-001/invitations-legacy.raw.log`
+(SHA-256 `62df6298f57a4f7f132774a305ffdca464bc732644b67129572933e162e3c92b`).
+
+### OAuth before-split baselines
+
+These six before-split selections ran against runner source digest
+`0b8f532a35103a9774bbf2fa1f860e456b97c8e06dcba66f36d569c2dff4692c` on
+separate real-clock fixtures. The full `api:api-legacy-auth-acceptance` target
+passed 12/12; project `mtcontract-1f0365410f134d3a`; runner-emitted fixture SHA
+`326f6b931bf19664f73604add14283a25c15a43449243397428815130c1e4cb6`; outer
+exit 0. Raw `/private/tmp/household-g-20261002/G-OAUTH-BEFORE-AUTH-001/auth.raw.log`
+(SHA-256 `139e1746423fc062705ca62193152fee726c1a2338ef40dc0dd85d5c5d20a3c5`).
+
+The full `oauth` target passed 11/11 in the existing browser wrapper, project
+`mtcontract-865eeee96a444590`, fixture SHA
+`d330f583caea705a5cbd33c08f7a858d5e06040490d78147af672dc455dd5bbc`, outer
+exit 201 because the selected login smoke also ran and failed two dashboard
+heading assertions. A separate fresh standalone `tests/login.smoke.test.mjs`
+run reproduced the same 5/7 result, confirming this is not established as
+fixture interference. In both runs, desktop and mobile failed at the obsolete
+`h1` expectation in `rust/web/tests/login.smoke.test.mjs:88`; the other five
+browser checks passed. The test correction remains private and is not included
+in these before-source captures. The OAuth wrapper's initial
+`contract:oauth-rust` attempt failed before assertions because the selected
+runner overlay did not define the `rust-api` image/build context; this is a
+setup failure tracked as #2369, not an OAuth assertion result.
+
+For the OAuth wrapper run, raw outer log
+`/private/tmp/household-g-20261002/G-OAUTH-BEFORE-OAUTH-001/oauth.raw.log`
+(SHA-256 `a52d3b0c67fece9d104a312a1b049704623acffe96cd4a5600883b082f820fab`);
+the authoritative full Node tee was preserved at
+`/private/tmp/household-g-20261002/G-OAUTH-BEFORE-OAUTH-001/login-smoke-shared-failure.full-tee.log`
+(SHA-256 `09e8e8bd4981a1f96ccf08db1ddd5cb45322485ea208c01d370408d328b5c953`).
+For the fresh standalone browser run, raw outer log
+`/private/tmp/household-g-20261002/G-OAUTH-BEFORE-LOGIN-SMOKE-001/login.raw.log`;
+the authoritative full tee is
+`/private/tmp/household-g-20261002/G-OAUTH-BEFORE-LOGIN-SMOKE-001/login-smoke.full-tee.log`
+(SHA-256 `fe96d2f2f81e4979e65caa2f7f544c8ddc5f948ea8cb0c3e399830c4e4cd25ec`).
+The standalone project was `mtcontract-7d1b1979247943e4`, fixture SHA
+`5ab9197b777278ba9ea7168ef027cc9e45e89a13e83572637eebece568a1e5be`; this
+digest is runner-emitted, with no post-cleanup independent rehash. Generated
+login screenshots were archived and the five pre-run originals restored and
+checksum-verified.
+
+The full `api:web-session-acceptance` target passed 9/9; project
+`mtcontract-904ac5256ffb43ba`, fixture SHA
+`b2fc8a968cd2d92fe880f2a43629a9aeccc193110102561d3b7cd8caebad2fd7`, outer
+exit 0. Raw `/private/tmp/household-g-20261002/G-OAUTH-BEFORE-WEB-SESSION-001/web-session.raw.log`
+(SHA-256 `d4703a0c0f8808962bb067e6ea161078a875b181c413303cf2624feecc999186`).
+
+The explicit `medication_mobile_oauth_api` selection passed 7/7 and its
+read-only `tests/household-routes.test.mjs` smoke passed 6/6 in project
+`mtcontract-63f25a4d193245d1`; runner-emitted fixture SHA
+`08daffc22777e478636347dcb6f2d76a1e192abfa20713e8d470f089c83ec3d6`; outer
+exit 0. Raw `/private/tmp/household-g-20261002/G-OAUTH-BEFORE-MOBILE-001/mobile.raw.log`
+(SHA-256 `b4e6e513a0a9b005339fc205f507213af4b7fcccd427b806b593ebbd5684b685`).
+
+The full `api:openapi-sessions-acceptance` target passed 8/8 in project
+`mtcontract-b9de406b4e304bac`; runner-emitted fixture SHA
+`07795edcb5c7c0a68e32b08dd4512aadb3d88a113dd4e5b724fcef48f91d8dc9`; outer
+exit 0. Raw `/private/tmp/household-g-20261002/G-OAUTH-BEFORE-SESSIONS-001/sessions.raw.log`
+(SHA-256 `3964d21d037ba57c3422ea46d7b429d708f623536e98e1e5c671d4e84f2af3ef`).
+
+The mobile OAuth and auth sessions outputs both record the same source digest
+as auth and web-session above. Their fixture digests are runner-emitted before
+cleanup; independent post-cleanup rehashes are unavailable. No OAuth source or
+test correction has been installed while these before captures are being
+completed.
+
+The standalone-login CI policy regression failed before the workflow row was
+added: `task ci:check` ran 79 tests, 78 passed and one failed because the
+`standalone-login` fixture row was absent. The policy test requires that row to
+run the login smoke in its own fixture with household acceptance disabled, no
+HTTP target, no fixed dashboard clock, and no test filter. The outer Task
+reported exit 201. Raw log
+`/private/tmp/household-g-20261002/G-CI-LOGIN-RED-001/ci-check.raw.log`
+(SHA-256 `a5d6528289c5269e86da90d1323dc05b5ffa05ae410b3b3b6721e1fa8e4a69b4`).
+After the coordinator added the standalone-login row, the next `task ci:check`
+still failed: 79 tests ran, 78 passed and one failed because the general matrix
+assertion forbids `acceptance:` for every non-clock row, while the dedicated
+standalone-login assertion requires `acceptance: "false"`. The outer Task
+reported exit 201. Raw log
+`/private/tmp/household-g-20261002/G-CI-LOGIN-GREEN-001/ci-check.raw.log`
+(SHA-256 `d564d6962c48cf05bc476e536f300796282b9ca568c7d7477ababac54a1875e3`).
+The policy exception was narrowed to the standalone-login row, whose dedicated
+assertion still requires `acceptance: "false"` and forbids a target, clock,
+filter, stock or completion selector. The subsequent `task ci:check` passed
+79/79 tests, including actionlint and the CI-script Node syntax checks. The
+workflow matrix now has 14 rows. Outer exit 0. Raw log
+`/private/tmp/household-g-20261002/G-CI-LOGIN-GREEN-002/ci-check.raw.log`
+(SHA-256 `288042bd586df3682a45e50c821a8daa0bb21817a1069b8a8bd717174be2d862`).
+After the reviewed test-only login correction, a new standalone real-clock
+fixture passed all seven `tests/login.smoke.test.mjs` cases, including current
+owner greeting, mobile logout, CSRF and revocation. Source digest
+`310de470b49cd66e4f73e4720afe6bd74c05d90a46b67012a3e6084d5985b078`; project
+`mtcontract-27807ae465084df7`; runner-emitted fixture SHA-256
+`4faa7ee4b3e6628d27c953894eb21e29549227e69800ed0de193f33f246569bb`; outer
+exit 0. The five generated login screenshot hashes match the pre-run originals;
+those originals were restored after copying the run outputs privately. Raw log
+`/private/tmp/household-g-20261002/G-OAUTH-BEFORE-LOGIN-SMOKE-FIXED-001/login.raw.log`
+(SHA-256 `d36ffd3b0c3bf8603fe3fd9249d1fa695aabf6d782066eae1a7e320ab7cde9e4`).
+
+### First-option stock race final proof
+
+On the current source digest
+`310de470b49cd66e4f73e4720afe6bd74c05d90a46b67012a3e6084d5985b078`, the
+existing `household_stock_concurrency` target passed all four cases in fresh
+project `mtcontract-c91291f6d8414528`, including the gated browser dosage-index
+read racing insertion of the first tracked option, the 409 response, retained
+draft, and unchanged parent/option stock, versions and sync state. The six
+read-only `tests/household-routes.test.mjs` checks also passed; outer Task exit
+0. The runner emitted fixture SHA-256
+`6d70c0e1c515717b6857f4e532e3715c3e781d3927ebb2aba44155c0ff071465` before
+cleanup; independent post-cleanup rehash is unavailable. Raw log
+`/private/tmp/household-g-20261002/G-STOCK-CONCURRENCY-FINAL-001/stock-concurrency.raw.log`
+(SHA-256 `c21800bb4a5803a4e87a02f442a2922aa066de40205a97a7fba90e0b8c0daf15`).
+
+### OAuth visibility fix installed (resume 2026-10-02)
+
+The reviewed three-type fix from
+`/private/tmp/household-g-20261002/oauth-input-visibility-proposal/proposal.diff`
+was applied with `git apply -p0` after `before` SHA-256 verification. Installed
+hashes match the receipt `after` values: login.rs
+`16a5f47071e321512e94ca395cd9d84c475eac081baa6df77f91fd980ce5528c`, tokens.rs
+`3e8b1bf2730706144776cfb35ebd0a6deb241c50f4dc5083d9db6097c0921857`.
+Post-install gates on the live tree: `task api:fmt` exit 0, `task api:check`
+exit 0, `task api:clippy` exit 0 (`proc-macro-error2` future-incompat warning
+is pre-existing), `task api:test` exit 0 (36 lib + 12 auth_compatibility unit
+tests, 0 failed). After-split runtime baselines follow on fresh fixtures.
+
+### OAuth after-split baselines and stock concurrency (resume 2026-10-02)
+
+On post-visibility-fix source, fresh disposable fixtures each run:
+`api:api-legacy-auth-acceptance` auth 12/12 (mtcontract-19d8aa63dcd84f1c);
+`browser-rust` HOUSEHOLD_TEST_FILE=oauth + login.smoke — oauth 11/11, login
+smoke 7/7 (mtcontract-6dc226028a8d4866; earlier attempt without
+HOUSEHOLD_ACCEPTANCE skipped the HTTP target, evidence retained);
+`api:web-session-acceptance` 9/9 (mtcontract-64f53ccdff604392);
+`browser-rust` medication_mobile_oauth_api + household-routes — 7/7 + 6/6
+(mtcontract-fefa249356d24f25); `api:openapi-sessions-acceptance` 8/8
+(mtcontract-98c355d372644f9f). All match before-split baselines.
+
+`browser-rust` household_stock_concurrency + household-routes passed 4/4 +
+6/6 (mtcontract-45a93aadd7144f9d), exercising the installed zero-to-one
+option assertions including tracked_option_created_after_browser_scalar_check.
+
+### Final acceptance and gates (resume 2026-10-02, post-OAuth-fix)
+
+On the visibility-fixed source, fresh disposable fixtures each run:
+
+- `browser-rust` household_final_acceptance +
+  tests/household-inventory-completion.test.mjs — 15/15 HTTP (assignments 2,
+  inventory 4, people 1, dose_source_errors 2, stock_adjustment_audit 6) and
+  10/10 browser cases across five locales at desktop and mobile.
+- `browser-rust` people-locations-medications row with
+  HOUSEHOLD_ACCEPTANCE+HOUSEHOLD_COMPLETION_ACCEPTANCE=true —
+  household_completion_medication 4/4, household_lifecycle 2/2,
+  household_navigation 2/2, household_web 11/11,
+  household_completion_dashboard 9/9, browser 35/35
+  (mtcontract-88cc3d3750b64507). First attempt surfaced one stale case:
+  `editing_medication_identity_preserves_existing_dosage_options_and_tracked_supply`
+  manually posted `reorder_threshold` for an options-mode medication; the
+  browser form omits it, so the product correctly returned 422. The test now
+  matches the real browser contract and reports the response status on
+  failure. Rerun green.
+- Fixed-clock rows (CONTRACT_DASHBOARD_NOW=2026-03-29T00:30:00Z,
+  HOUSEHOLD_ACCEPTANCE=false): household-treatment-calendar 2/2
+  (mtcontract-578478d9642d49c2), household-taper-times 2/2
+  (mtcontract-12d7b761bc404cb1).
+
+Gates on the final tree: `task api:fmt:write` normalised
+rust/web/tests/dashboard_rendering.rs (edition-2021 style); `task
+ci:rust-port` exit 0 (ui-preview fmt/test/lint/build, api fmt/clippy/test, web
+tests, contract-tests check); `task ci:check` 79/79 including the 14-row
+matrix assertions; `task ci:markdown` clean after reflowing a `#2367` line in
+ledger.md that parsed as an ATX heading; `task docs:build` clean; `task
+openspec:validate` 24/24. Self-review of the full
+`origin/codex/rust-household-assignments-20261001` diff completed: no-write
+rejections, audit reason preservation in `audit_context.inventory_adjustment`,
+people per_page clamp vs schedule leniency vs strict resources, eligible stock
+ordering (location name then medication id), and minor-access schedule
+degradation all match the recorded rulings. Independent review was not
+available this session; the PR discloses self-review.

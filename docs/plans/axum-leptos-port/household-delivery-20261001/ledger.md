@@ -1,5 +1,12 @@
 # Delivery ledger
 
+Resumed and completed on 2 October: the reviewed OAuth visibility fix was
+installed, all after-split baselines and the final acceptance sweep passed on
+fresh fixtures, and the final Rust, CI, docs and OpenSpec gates are green.
+Publication (commit, push, stacked PR, CI watch) follows the plan's final
+steps. Independent review was unavailable in this session; final review was
+self-performed and is disclosed in the PR.
+
 Paused at the user's request on 2 October until the rate limit resets. Agents
 are stopped. Final application changes remain local and unpublished. The
 [delivery plan](plan.md#resume-from-here) records the exact next steps.
@@ -12,8 +19,8 @@ tests also pass. The remaining compatibility checks passed too. The dose file
 and its tests have now been split into smaller files. All seven relevant API
 suites pass after the move, and independent review has accepted the split.
 After the occurrence split, six API suites and all thirty-five dashboard tests
-pass review. The schedule suite exposed two Rust compatibility bugs, tracked in
-#2367 and #2368, alongside outdated test data and assertions. The repairs pass
+pass review. The schedule suite exposed two Rust compatibility bugs, tracked
+in #2367 and #2368, alongside outdated test data and assertions. The repairs pass
 all eleven active tests and six route checks both before and after the occurrence
 split. Independent review has accepted it. The final current schedule run's
 source and fixture hashes are runner-emitted only; that limit is recorded.
@@ -103,13 +110,13 @@ below preserve the earlier decisions and results.
 
 ## Waypoints
 
-| Journey | State | Evidence |
-| --- | --- | --- |
-| D dosage management | Published in #2351; CI passed | Writer report, independent review and verification queue |
-| E stock | Accepted and published in #2357; CI running | Stock ruling, stock review and verification queue |
-| F assignments and schedules | Checking existing API behaviour before file splits | Assignment brief and treatment rulings |
-| G parity and final acceptance | Waiting for F | Plan |
-| Two-hour retro | Completed; local improvements applied | retro.md; native timer deleted |
+| Journey                       | State                                              | Evidence                                                 |
+|-------------------------------|----------------------------------------------------|----------------------------------------------------------|
+| D dosage management           | Published in #2351; CI passed                      | Writer report, independent review and verification queue |
+| E stock                       | Accepted and published in #2357; CI running        | Stock ruling, stock review and verification queue        |
+| F assignments and schedules   | Checking existing API behaviour before file splits | Assignment brief and treatment rulings                   |
+| G parity and final acceptance | Waiting for F                                      | Plan                                                     |
+| Two-hour retro                | Completed; local improvements applied              | retro.md; native timer deleted                           |
 
 - 18:26 BST: D core HTTP passed 4/4. Browser retry passed 20/20 after a
   test-only pagination repair; all assertions were retained. A separate fresh

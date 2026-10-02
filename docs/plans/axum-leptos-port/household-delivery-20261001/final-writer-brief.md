@@ -13,6 +13,9 @@ page through the documented authorised API. Check pagination consistency; a
 partial result cannot establish that a medication has no options. Do not invent
 a medication filter absent from the API contract.
 
+The same limit also blocks person pages and treatment choices. Cover those
+callers before accepting the shared collection fix.
+
 For [#2358](https://github.com/damacus/med-tracker/issues/2358), prove that a
 browser stock loss fails with finite medication stock and only blank-stock
 options. Offer the medication-stock choice in that case. Any tracked option,
@@ -28,6 +31,18 @@ observed result. If confirmed, preserve the full reason in an existing suitable
 audit field and retain the public reason contract.
 
 ## Repair the test commands and compatibility checks
+
+Fix the confirmed minor-viewer regression in
+[#2363](https://github.com/damacus/med-tracker/issues/2363). An authorised person
+page must remain readable when the optional schedules list returns its existing
+adult-only 403. Keep person and assignment authorisation mandatory, omit only
+the forbidden schedule section with translated guidance, and propagate other
+failures. Add a failing regression before changing the page.
+
+Clarify the assignment edit selector and guidance. A blank selection preserves
+an existing link, while choosing a replacement option is already supported.
+Test linked and unlinked edits and replacement. Do not infer an option identity
+from equal doses or add unsupported unlink behaviour or public fields.
 
 The coordinator owns Task and CI changes for
 [#2359](https://github.com/damacus/med-tracker/issues/2359). Show that command-line
