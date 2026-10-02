@@ -77,6 +77,10 @@ services:
       AUTH_SESSION_SECRET: ${CONTRACT_AUTH_SESSION_SECRET:?Disposable authentication signing key required}
       CONTRACT_DASHBOARD_NOW: ${CONTRACT_DASHBOARD_NOW:-}
       CONTRACT_PROJECT: ${CONTRACT_PROJECT:?Isolated contract project required}
+    volumes:
+      - type: bind
+        source: ${CONTRACT_STORAGE_ROOT}
+        target: /app/tmp/storage
     depends_on:
       db-test:
         condition: service_healthy
@@ -192,6 +196,10 @@ services:
       ACTIVE_STORAGE_SERVICE_NAME: test
       REPORT_PDF_FONT_PATH: /src/vendor/fonts/NotoSans-Regular.ttf
       AUTH_SESSION_SECRET: ${CONTRACT_AUTH_SESSION_SECRET:?Disposable authentication signing key required}
+    volumes:
+      - type: bind
+        source: ${CONTRACT_STORAGE_ROOT}
+        target: /app/tmp/storage
     depends_on:
       db-test:
         condition: service_healthy
