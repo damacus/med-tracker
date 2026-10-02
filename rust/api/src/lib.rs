@@ -22,6 +22,7 @@ mod medication_reads;
 mod memberships;
 mod mutation_idempotency;
 mod native_device_tokens;
+mod nhs_dmd;
 mod notification_preferences;
 mod oauth;
 mod pause_lifecycle;

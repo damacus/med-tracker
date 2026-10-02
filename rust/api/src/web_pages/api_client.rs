@@ -34,6 +34,7 @@ pub(super) struct WebApi {
     pub(super) csrf: String,
     pub(super) cookie: Option<HeaderValue>,
     pub(super) locale: Locale,
+    pub(super) account_id: i64,
 }
 
 impl WebApi {
@@ -79,7 +80,14 @@ impl WebApi {
             csrf: session.csrf,
             cookie: None,
             locale,
+            account_id: session.account_id,
         })
+    }
+
+    pub(super) async fn is_platform_admin(&self) -> Result<bool, PageError> {
+        crate::nhs_dmd::platform_admin(&self.state.db, self.account_id)
+            .await
+            .map_err(|_| error(StatusCode::INTERNAL_SERVER_ERROR))
     }
 
     pub(super) async fn call(

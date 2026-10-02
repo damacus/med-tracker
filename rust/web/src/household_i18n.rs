@@ -215,6 +215,7 @@ impl Text {
 fn allowed(key: &str) -> bool {
     [
         "admin.households.",
+        "admin.nhs_dmd_imports.",
         "locations.",
         "forms.locations.",
         "people.",

@@ -193,6 +193,7 @@ en:
       inclusion: is not included in the list
       invalid: is invalid
       form_invalid: This value could not be saved.
+      forbidden: "You are not authorized to perform this action."
       not_a_number: is not a number
       required: must exist
       taken: has already been taken
