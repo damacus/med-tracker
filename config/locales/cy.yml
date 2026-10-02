@@ -1019,6 +1019,7 @@ cy:
       edit_subtitle: Diweddaru manylion %{name}.
     index:
       your_inventory: Eich Rhestr
+      stock_remaining: "%{amount} %{unit} yn weddill"
       add_for_person: Ychwanegu meddyginiaeth i rywun
       title: Meddyginiaethau
       add_medication: Ychwanegu Meddyginiaeth
@@ -1883,6 +1884,7 @@ cy:
       save: Cadw cofnod yr adolygiad
   forms:
     locations:
+      new_title: Lleoliad Newydd
       name_placeholder: e.e. Cartref, Ysgol, Tŷ Mam-gu
       description_placeholder: Disgrifiwch y lleoliad hwn...
     people:
@@ -1890,6 +1892,7 @@ cy:
       email_placeholder: e.g., jane@example.com
     medications:
       inventory_management: Rheoli Rhestr Eiddo
+      dosage_options_read_only: Mae'r feddyginiaeth hon yn defnyddio opsiynau dos. Byddant yn aros heb newid pan fyddwch yn cadw'r manylion hyn.
       name: Enw
       name_placeholder: e.e., Parasetamol
       friendly_name: Enw arddangos

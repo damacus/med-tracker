@@ -276,6 +276,10 @@ function run_contract
         or return $status
         rtk task api:contract-ready CONTRACT_PROJECT=$contract_project
         or return $status
+        if test "$HOUSEHOLD_ACCEPTANCE" = true
+            rtk proxy task api:contract-household-web-test CONTRACT_PROJECT=$contract_project
+            or return $status
+        end
         rtk task api:contract-browser-rust CONTRACT_PROJECT=$contract_project
         return $status
     end

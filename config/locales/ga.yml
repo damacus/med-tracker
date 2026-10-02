@@ -1014,6 +1014,7 @@ ga:
       edit_subtitle: Nuashonraigh sonraí %{name}.
     index:
       your_inventory: Do Stoc
+      stock_remaining: "%{amount} %{unit} fágtha"
       add_for_person: Cuir cógas le duine
       title: Leigheasanna
       add_medication: Cuir Leigheas Leis
@@ -2160,6 +2161,7 @@ ga:
         metric_value: Sceideal
   forms:
     locations:
+      new_title: Suíomh Nua
       name_placeholder: m.sh. Baile, Scoil, Teach na Mamó
       description_placeholder: Déan cur síos ar an suíomh seo...
     people:
@@ -2167,6 +2169,7 @@ ga:
       email_placeholder: e.g., jane@example.com
     medications:
       inventory_management: Bainistíocht Stoc
+      dosage_options_read_only: Úsáideann an cógas seo roghanna dáileoige. Fanann siad gan athrú nuair a shábhálann tú na sonraí seo.
       name: Ainm
       name_placeholder: m.sh., Paracetamol
       friendly_name: Ainm taispeána

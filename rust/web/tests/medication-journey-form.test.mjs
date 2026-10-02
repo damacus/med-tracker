@@ -98,7 +98,9 @@ async function assertHistory(page, medicationName, expectedCount) {
   const rows = history.getByText(medicationName, { exact: true });
   assert.equal(await rows.count(), expectedCount);
   if (expectedCount === 1) {
-    assert.ok(await rows.locator('..').getByText('1.25 ml', { exact: true }).isVisible());
+    const doseSummary = rows.locator('..').locator('small');
+    assert.ok(await doseSummary.isVisible());
+    assert.match((await doseSummary.innerText()).trim(), /^.+ · 1\.25 ml$/);
   }
 }
 
@@ -261,7 +263,9 @@ test('taper schedule records the selected date’s effective dose and stock', as
       await history.getByRole('heading', { name: 'Previous Doses Today', exact: true }).waitFor();
       const rows = history.getByText(medicationName, { exact: true });
       assert.equal(await rows.count(), 1);
-      assert.ok(await rows.locator('..').getByText('0.75 ml', { exact: true }).isVisible());
+      const doseSummary = rows.locator('..').locator('small');
+      assert.ok(await doseSummary.isVisible());
+      assert.match((await doseSummary.innerText()).trim(), /^.+ · 0\.75 ml$/);
       assert.match(sourceSummary, /Dose calculated for selected time/);
       assert.equal(priorSummary, 'Calculated for selected time');
       assert.equal(effectiveSummary, 'Calculated for selected time');

@@ -4,6 +4,7 @@ tasks:
   deps:
     cmds:
       - npm ci --offline
+
   fmt:
     cmds:
       - cargo fmt --check
@@ -15,7 +16,7 @@ tasks:
       - cargo clippy --all-targets -- -D warnings
   test:
     cmds:
-      - cargo test
+      - cargo test {{ if .TEST_FILE }}--test {{ .TEST_FILE }}{{ end }}
   test:dashboard:
     cmds:
       - cargo test --test dashboard_rendering

@@ -1093,6 +1093,32 @@ paths:
           $ref: '#/components/responses/PreconditionRequired'
         '429':
           $ref: '#/components/responses/RateLimited'
+  /households/{household_id}/ui_capabilities:
+    get:
+      operationId: getHouseholdUiCapabilities
+      tags: [Household, Capabilities]
+      summary: Read permissions for household management controls.
+      description: |
+        Rust browser capability discovery. Returned permissions use the same current
+        membership and person grants as mutations. These hints never replace mutation
+        authorization. This additive operation is currently implemented by Rust.
+      parameters:
+        - $ref: '#/components/parameters/household_id'
+      responses:
+        '200':
+          description: Current management permissions.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HouseholdUiCapabilitiesResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /households/{household_id}/locations:
     get:
       operationId: listLocations
@@ -6220,6 +6246,47 @@ components:
             $ref: '#/components/schemas/Location'
         meta:
           $ref: '#/components/schemas/PaginationMeta'
+    HouseholdUiCapabilitiesResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required: [people, locations, medications]
+          properties:
+            people:
+              type: object
+              additionalProperties: false
+              required: [create, manage_ids]
+              properties:
+                create:
+                  type: boolean
+                manage_ids:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/NumericId'
+            locations:
+              type: object
+              additionalProperties: false
+              required: [create, update]
+              properties:
+                create:
+                  type: boolean
+                update:
+                  type: boolean
+            medications:
+              type: object
+              additionalProperties: false
+              required: [create, update, manage_stock]
+              properties:
+                create:
+                  type: boolean
+                update:
+                  type: boolean
+                manage_stock:
+                  type: boolean
     Medication:
       type: object
       additionalProperties: false
@@ -6253,6 +6320,15 @@ components:
         display_name:
           type: string
           minLength: 1
+        friendly_name:
+          type: string
+          nullable: true
+        barcode:
+          type: string
+          nullable: true
+        warnings:
+          type: string
+          nullable: true
         category:
           type: string
           nullable: true
@@ -7032,6 +7108,16 @@ components:
           type: boolean
         can_manage:
           type: boolean
+        can_record:
+          type: boolean
+          readOnly: true
+          description: Optional Rust browser projection of the current member's dose-recording permission. Dose submission checks permission again.
+        eligible_stock_medication_ids:
+          type: array
+          readOnly: true
+          description: Optional Rust browser projection of scoped, matching stock sources with untracked or positive supply. Dose submission checks stock again.
+          items:
+            type: integer
         notes:
           type: string
           nullable: true
@@ -7418,6 +7504,16 @@ components:
           type: boolean
         can_manage:
           type: boolean
+        can_record:
+          type: boolean
+          readOnly: true
+          description: Optional Rust browser projection of the current member's dose-recording permission. Dose submission checks permission again.
+        eligible_stock_medication_ids:
+          type: array
+          readOnly: true
+          description: Optional Rust browser projection of scoped, matching stock sources with untracked or positive supply. Dose submission checks stock again.
+          items:
+            type: integer
         dose_cycle:
           type: string
           nullable: true
