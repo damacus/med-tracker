@@ -22,7 +22,7 @@ fn cose_ec2_key(x: &[u8], y: &[u8]) -> Vec<u8> {
 }
 
 fn stored_key_b64() -> String {
-    let point = signing_key().verifying_key().to_encoded_point(false);
+    let point = signing_key().verifying_key().to_sec1_point(false);
     URL_SAFE_NO_PAD.encode(cose_ec2_key(point.x().unwrap(), point.y().unwrap()))
 }
 
@@ -235,7 +235,7 @@ fn a_tampered_signature_is_rejected() {
 #[test]
 fn a_signature_from_a_different_key_is_rejected() {
     let wrong_key = SigningKey::from_slice(&[0x35u8; 32]).unwrap();
-    let point = wrong_key.verifying_key().to_encoded_point(false);
+    let point = wrong_key.verifying_key().to_sec1_point(false);
     let stored = URL_SAFE_NO_PAD.encode(cose_ec2_key(point.x().unwrap(), point.y().unwrap()));
     assert_eq!(
         verify_passkey_assertion(

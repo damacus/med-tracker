@@ -113,7 +113,7 @@ RSpec.describe SchemaInventory do
   end
 
   context 'with hosted household lifecycle operations' do
-    let(:taskfile) { Rails.root.join('Taskfile.yml').read }
+    let(:taskfile) { Rails.root.join('rails/Taskfile.yml').read }
     let(:runbook) { Rails.root.join('docs/operations/hosted-private-beta-runbook.md').read }
 
     it 'exposes exact task-wrapper commands and required operator inputs' do

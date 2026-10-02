@@ -1208,8 +1208,8 @@ checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
 name = "leptodon"
-version = "1.7.0-pre"
-source = "git+https://github.com/openanalytics/leptodon.git?rev=195c8fd78b13718004b1e26b2aad8aee5b451585#195c8fd78b13718004b1e26b2aad8aee5b451585"
+version = "1.8.0-pre"
+source = "git+https://github.com/openanalytics/leptodon.git?rev=41276662e75fe94648cbea4836c7dab7708fc7b2#41276662e75fe94648cbea4836c7dab7708fc7b2"
 dependencies = [
  "axum",
  "axum-extra",
@@ -1239,8 +1239,8 @@ dependencies = [
 
 [[package]]
 name = "leptodon-proc-macros"
-version = "1.7.0-pre"
-source = "git+https://github.com/openanalytics/leptodon.git?rev=195c8fd78b13718004b1e26b2aad8aee5b451585#195c8fd78b13718004b1e26b2aad8aee5b451585"
+version = "1.8.0-pre"
+source = "git+https://github.com/openanalytics/leptodon.git?rev=41276662e75fe94648cbea4836c7dab7708fc7b2#41276662e75fe94648cbea4836c7dab7708fc7b2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1367,7 +1367,7 @@ dependencies = [
  "tachys",
  "tokio",
  "tower",
- "tower-http",
+ "tower-http 0.6.11",
 ]
 
 [[package]]
@@ -1587,7 +1587,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
- "tower-http",
+ "tower-http 0.7.1",
  "wasm-bindgen",
  "web-sys",
 ]
@@ -2805,6 +2805,31 @@ name = "tower-http"
 version = "0.6.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4cfcf7e2740e6fc6d4d688b4ef00650406bb94adf4731e43c096c3a19fe40840"
+dependencies = [
+ "bitflags",
+ "bytes",
+ "futures-core",
+ "futures-util",
+ "http",
+ "http-body",
+ "http-body-util",
+ "http-range-header",
+ "httpdate",
+ "mime",
+ "mime_guess",
+ "percent-encoding",
+ "pin-project-lite",
+ "tokio",
+ "tokio-util",
+ "tower-layer",
+ "tower-service",
+]
+
+[[package]]
+name = "tower-http"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "08a05a66a4fdd61cbbe0a1d755ffe0ca6aba159dd4820936a0ff8a8278245b9c"
 dependencies = [
  "bitflags",
  "bytes",

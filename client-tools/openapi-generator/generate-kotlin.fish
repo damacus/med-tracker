@@ -26,6 +26,22 @@ function generate_kotlin_package --no-scope-shadowing
         -c /local/client-tools/openapi-generator/kotlin-config.yaml \
         --global-property apiDocs=false,modelDocs=false \
         -o "/output/"(basename "$destination")
+    or return 1
+
+    set -l wrapper_props "$destination/gradle/wrapper/gradle-wrapper.properties"
+    if test -f "$wrapper_props"
+        sed -i.bak 's|distributions/gradle-[0-9][0-9.]*-[a-z]*\.zip|distributions/gradle-9.8.0-bin.zip|' "$wrapper_props"
+        rm -f "$wrapper_props.bak"
+    end
+
+    set -l build_file "$destination/build.gradle"
+    if test -f "$build_file"; and not grep --quiet 'sourceCompatibility' "$build_file"
+        echo '
+java {
+    sourceCompatibility = JavaVersion.VERSION_24
+    targetCompatibility = JavaVersion.VERSION_24
+}' >> "$build_file"
+    end
 end
 
 generate_kotlin_package "$temporary_root/generated"

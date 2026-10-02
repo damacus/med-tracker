@@ -6,6 +6,7 @@ version: "3"
 
 tasks:
   build:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: Build development Docker images
     summary: |
       Build Docker images for development environment.
@@ -19,6 +20,7 @@ tasks:
           NO_CACHE: '{{ .NO_CACHE | default "" }}'
 
   up:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: Start development server
     summary: |
       Start the development server with all services running in detached mode.
@@ -34,6 +36,7 @@ tasks:
         vars: { ENVIRONMENT: dev }
 
   portless:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: Start development server and register a Portless OIDC URL
     summary: |
       Start the development server, register its Docker-assigned host port with
@@ -48,6 +51,7 @@ tasks:
       - ./scripts/portless_oidc.fish dev med-tracker
 
   seed:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: Seed development database with fixtures
     summary: |
       Seed the development database with fixtures from db/seeds.rb.
@@ -58,6 +62,7 @@ tasks:
         vars: { ENVIRONMENT: dev }
 
   stop:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: Stop development server
     summary: |
       Stop the development server and remove containers.
@@ -68,6 +73,7 @@ tasks:
         vars: { ENVIRONMENT: dev, MAIL_SERVICE: mail-dev }
 
   ps:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: List current status of Docker Compose Stack
     summary: |
       List current status of Docker Compose Stack
@@ -77,6 +83,7 @@ tasks:
         vars: { ENVIRONMENT: dev }
 
   db-migrate:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: Run Rails migrations
     summary: |
       Run Rails migrations on the development database
@@ -86,6 +93,7 @@ tasks:
         vars: { ENVIRONMENT: dev }
 
   assets-rebuild:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: Rebuild compiled assets inside the development container
     summary: |
       Rebuild compiled Rails assets inside the development web container.
@@ -106,6 +114,7 @@ tasks:
           COMMAND: "rails assets:precompile"
 
   rebuild:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: Rebuild development server (drops database)
     summary: |
       Rebuild the development environment from scratch.
@@ -127,6 +136,7 @@ tasks:
         vars: { ENVIRONMENT: dev }
 
   logs:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: View development server logs
     summary: |
       View and follow development server logs in real-time.
@@ -137,6 +147,7 @@ tasks:
         vars: { ENVIRONMENT: dev }
 
   seed-medicines:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: Seed medicines from db/seeds/medicines.yml
     summary: |
       Seed the development database with medicines from db/seeds/medicines.yml.
@@ -149,6 +160,7 @@ tasks:
           COMMAND: 'rails runner ''load Rails.root.join("db/seeds/seed_medicines.rb")'''
 
   seed-users:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: Seed initial users via invitations from db/seeds/users.yml
     summary: |
       Send invitation emails to users listed in db/seeds/users.yml.
@@ -162,6 +174,7 @@ tasks:
           COMMAND: 'rails runner ''load Rails.root.join("db/seeds/seed_users.rb")'''
 
   import-dmd-barcodes:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: Import NHS dm+d GTIN barcode mappings from CSV
     summary: |
       Import barcode-to-dm+d mappings into the development database.
@@ -175,6 +188,7 @@ tasks:
           COMMAND: 'rails runner db/seeds/import_nhs_dmd_barcodes.rb "{{ .FILE }}"'
 
   extract-dmd-release:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: Extract NHS dm+d release ZIP into the local release directory
     summary: |
       Unzip an NHS dm+d release archive into storage/nhs_dmd/releases/current
@@ -193,6 +207,7 @@ tasks:
       - unzip -o "{{ .ZIP_FILE }}" -d "{{ .DEST_DIR }}"
 
   import-dmd-release:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: Import NHS dm+d release XML (AMPP names + GTIN barcodes)
     summary: |
       Parse the dm+d release XML files and import AMPP product names
@@ -215,6 +230,7 @@ tasks:
         web-dev rails runner db/seeds/import_nhs_dmd_release.rb "{{ .CONTAINER_MOUNT }}"
 
   port:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: Print the host port of the running development server
     summary: |
       Print the host port that the development web container is listening on.
@@ -225,6 +241,7 @@ tasks:
         vars: { ENVIRONMENT: dev }
 
   open-ui:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: Open development server UI
     summary: |
       Open the development server UI in your default browser.
@@ -234,6 +251,7 @@ tasks:
         vars: { ENVIRONMENT: dev }
 
   runner:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: Run Ruby code in the dev container via rails runner
     summary: |
       Run arbitrary Ruby/Rails code inside the dev container without touching Docker directly.
@@ -248,6 +266,7 @@ tasks:
           COMMAND: "rails runner '{{ .CODE }}'"
 
   accounts:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: List seeded dev accounts (email addresses)
     summary: |
       Print all account email addresses in the development database.

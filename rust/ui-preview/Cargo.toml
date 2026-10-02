@@ -15,15 +15,15 @@ hydrate = ["leptos/hydrate", "leptodon/hydrate", "dep:wasm-bindgen", "dep:web-sy
 [dependencies]
 leptos = { version = "=0.8.21", default-features = false }
 leptos_dom = "=0.8.8"
-leptodon = { git = "https://github.com/openanalytics/leptodon.git", rev = "195c8fd78b13718004b1e26b2aad8aee5b451585", default-features = false }
+leptodon = { git = "https://github.com/openanalytics/leptodon.git", rev = "41276662e75fe94648cbea4836c7dab7708fc7b2", default-features = false }
 axum = { version = "0.8", optional = true }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "net"], optional = true }
-tower-http = { version = "0.6", features = ["fs"], optional = true }
+tower-http = { version = "0.7", features = ["fs"], optional = true }
 wasm-bindgen = { version = "0.2", optional = true }
 web-sys = { version = "0.3", features = ["KeyboardEvent", "HtmlElement", "Element"], optional = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
 [build-dependencies]
-leptodon = { git = "https://github.com/openanalytics/leptodon.git", rev = "195c8fd78b13718004b1e26b2aad8aee5b451585", default-features = false }
-leptodon-proc-macros = { git = "https://github.com/openanalytics/leptodon.git", rev = "195c8fd78b13718004b1e26b2aad8aee5b451585" }
+leptodon = { git = "https://github.com/openanalytics/leptodon.git", rev = "41276662e75fe94648cbea4836c7dab7708fc7b2", default-features = false }
+leptodon-proc-macros = { git = "https://github.com/openanalytics/leptodon.git", rev = "41276662e75fe94648cbea4836c7dab7708fc7b2" }

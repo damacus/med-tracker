@@ -7,6 +7,6 @@ pub(super) fn new_token() -> Result<(String, String), ApiError> {
         .iter()
         .map(|byte| format!("{byte:02x}"))
         .collect::<String>();
-    let digest = format!("{:x}", Sha256::digest(token.as_bytes()));
+    let digest = hex::encode(Sha256::digest(token.as_bytes()));
     Ok((token, digest))
 }

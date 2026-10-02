@@ -63,7 +63,7 @@ task prod:storage-migration-retirement-eligibility
 
 Home-Ops must run `rails storage:migration` in an approved Kubernetes Job for a
 deployed migration. Set `STORAGE_MIGRATION_ACTION` and the matching variables
-shown in `Taskfiles/prod.yml`. Confirm the cluster, namespace, workload,
+shown in `rails/tasks/prod.yml`. Confirm the cluster, namespace, workload,
 database, and both storage services before applying a change.
 
 The task input includes source, destination, current phase, run id where

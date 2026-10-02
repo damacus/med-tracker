@@ -3,6 +3,7 @@ version: "3"
 
 tasks:
   run:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: Run Lighthouse audit on dashboard (requires dev server running)
     summary: |
       Run Lighthouse mobile audit on the dashboard page
@@ -29,6 +30,7 @@ tasks:
       - task: summary
 
   summary:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: Display Lighthouse score summary
     summary: |
       Parse and display Lighthouse scores from the latest report
@@ -65,6 +67,7 @@ tasks:
         fi
 
   ci:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: Run Lighthouse audit for CI (fails if scores below threshold)
     summary: |
       Run Lighthouse audit and fail if scores are below thresholds
@@ -106,6 +109,7 @@ tasks:
           --bp-threshold "{{ .BP_THRESHOLD }}"
 
   failed-audits:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: List failed Lighthouse audits
     summary: |
       Show details of failed audits from the latest report

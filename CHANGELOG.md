@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.5.34](https://github.com/damacus/med-tracker/compare/v0.5.33...v0.5.34) (2026-10-02)
+
+
+### Features
+
+* **dashboard:** add read-only Rust household overview ([#2307](https://github.com/damacus/med-tracker/issues/2307)) ([026c27e](https://github.com/damacus/med-tracker/commit/026c27e2ff8888b5c2455fd2eccf19dc419d763a))
+* **rust:** add household management forms ([#2346](https://github.com/damacus/med-tracker/issues/2346)) ([6aed612](https://github.com/damacus/med-tracker/commit/6aed612468d873a90fdbb4de6bdbfc3a33d29062))
+
+
+### Bug Fixes
+
+* **deps:** update rust crate aes-gcm to 0.11 ([#2315](https://github.com/damacus/med-tracker/issues/2315)) ([4f2eda3](https://github.com/damacus/med-tracker/commit/4f2eda3f73d14286862cb9b4c31d3ddcc3705502))
+* **deps:** update rust crate base64 to 0.23 ([#2316](https://github.com/damacus/med-tracker/issues/2316)) ([d3864c6](https://github.com/damacus/med-tracker/commit/d3864c64836bd43b911c74ae4174e8fad789273e))
+* **deps:** update rust crate sea-orm to v2.0.4 ([#2314](https://github.com/damacus/med-tracker/issues/2314)) ([92bef60](https://github.com/damacus/med-tracker/commit/92bef60530cc7099b9b528b9545fe2bce6cc07b5))
+* **rust:** complete household medication port compatibility ([#2370](https://github.com/damacus/med-tracker/issues/2370)) ([476842c](https://github.com/damacus/med-tracker/commit/476842ceb30bd0ff0cd26de1bb7de3e79f798ee6))
+
 ## [0.5.33](https://github.com/damacus/med-tracker/compare/v0.5.32...v0.5.33) (2026-09-30)
 
 
