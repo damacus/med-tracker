@@ -6,7 +6,7 @@ publish = false
 
 [dependencies]
 base64 = "0.23"
-lopdf = { version = "0.40", default-features = false }
+lopdf = { version = "0.45", default-features = false }
 postgres = "0.19"
 reqwest = { version = "0.13", default-features = false, features = ["blocking", "cookies", "form", "json", "multipart", "rustls"] }
 scraper = "0.27"
