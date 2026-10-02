@@ -139,4 +139,3 @@ fn minor_can_read_authorised_person_and_assignments_when_schedule_index_is_forbi
     assert_eq!(target.get(&format!("{api}/schedules?per_page=100"), None).status().as_u16(), 403);
     minor.restore();
 }
-

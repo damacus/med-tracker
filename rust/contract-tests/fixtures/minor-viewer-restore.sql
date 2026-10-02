@@ -31,4 +31,3 @@ WHERE p.person_type IS NOT DISTINCT FROM s.person_type
   AND p.has_capacity IS NOT DISTINCT FROM s.has_capacity;
 
 DROP TABLE household_browser_minor_snapshot;
-

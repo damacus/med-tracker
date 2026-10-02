@@ -28,4 +28,3 @@ switch "$phase"
     case node
         exit $MINOR_WRAPPER_BROWSER_EXIT
 end
-

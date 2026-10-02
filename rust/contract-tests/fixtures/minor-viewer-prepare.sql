@@ -33,4 +33,3 @@ FROM people p
 JOIN household_browser_minor_snapshot s ON s.person_id = p.id
 WHERE p.person_type = 1 AND p.has_capacity = false
   AND p.date_of_birth = (CURRENT_DATE - INTERVAL '10 years')::date;
-

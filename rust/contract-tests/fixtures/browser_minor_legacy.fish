@@ -4,4 +4,3 @@ function main -a project browser_files fixture_path
 end
 
 main $argv
-

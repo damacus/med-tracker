@@ -60,4 +60,3 @@ printf '%s\n' '{"household_id":1,"view_membership_id":null,"view_account_id":3,"
 check_wrapper invalid_identity "$minor_test_project" "$minor" "$minor_test_fixture" 1 ''; or set failed 1
 rm -rf "$temporary"
 exit $failed
-

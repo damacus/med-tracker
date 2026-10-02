@@ -137,4 +137,3 @@ fn unlinked_assignment_blank_keeps_manual_dose_without_inventing_a_link() {
     assert_eq!(read(&target, &format!("/api/v1/households/{}/medications/{}", fixture.household_id, medication["id"].as_i64().unwrap())), before_medication);
     assert_eq!(counts(&mut db, &fixture, &source).2, 0);
 }
-
