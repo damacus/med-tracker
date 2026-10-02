@@ -35,7 +35,7 @@ function generate_kotlin_package --no-scope-shadowing
     end
 
     set -l build_file "$destination/build.gradle"
-    if test -f "$build_file"; and not rg --quiet 'sourceCompatibility' "$build_file"
+    if test -f "$build_file"; and not grep --quiet 'sourceCompatibility' "$build_file"
         echo '
 java {
     sourceCompatibility = JavaVersion.VERSION_24
