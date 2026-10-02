@@ -3,6 +3,7 @@ version: "3"
 
 tasks:
   verify:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: Verify the audit database ledger and optional Object Lock evidence
     cmds:
       - task: :internal:run
@@ -12,6 +13,7 @@ tasks:
           COMMAND: rails audit:verify
 
   export:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: Export signed native audit evidence and optional FHIR R4 AuditEvent resources
     cmds:
       - task: :internal:run
@@ -21,6 +23,7 @@ tasks:
           COMMAND: rails audit:export
 
   monitor:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: Emit the PHI-safe audit delivery backlog status
     cmds:
       - task: :internal:run

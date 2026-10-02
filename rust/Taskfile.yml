@@ -1,0 +1,18 @@
+version: "3"
+
+includes:
+  api:
+    taskfile: api/Taskfile.yml
+    dir: ..
+  web:
+    taskfile: web/Taskfile.yml
+    dir: web
+  ui:
+    taskfile: ui-preview/Taskfile.yml
+    dir: ui-preview
+
+tasks:
+  build:
+    desc: Build the Rust UI and API packages
+    cmds:
+      - task: api:build

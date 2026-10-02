@@ -1,0 +1,11 @@
+version: "3"
+
+tasks:
+  translator:hook:
+    desc: Run the Codex translator hook for staged locale and typography changes
+    summary: |
+      Runs the shared translator skill when staged files include locale YAML
+      or Ruby UI typography components.
+      Usage: task translator:hook
+    cmds:
+      - ./scripts/translator_hook.fish

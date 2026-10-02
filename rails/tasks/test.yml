@@ -3,6 +3,7 @@ version: "3"
 
 tasks:
   preflight:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: Verify Docker and the test image with a lightweight spec
     summary: |
       Verify Docker is available, the test image exists, and a focused spec runs.
@@ -12,6 +13,7 @@ tasks:
       - './scripts/test_preflight.fish {{ .TEST_FILE | default "spec/domain/dose_amount_spec.rb" }}'
 
   verify-dependencies:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: Refresh mounted test dependencies and verify Chromium can launch
     cmds:
       - task: :internal:run
@@ -20,6 +22,7 @@ tasks:
           COMMAND: node scripts/test_dependency_verification.js
 
   build:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: Build test Docker images
     summary: |
       Build Docker images for test environment.
@@ -33,6 +36,7 @@ tasks:
           NO_CACHE: '{{ .NO_CACHE | default "" }}'
 
   up:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: Start test database
     summary: |
       Start the test database container.
@@ -43,6 +47,7 @@ tasks:
         vars: { ENVIRONMENT: test }
 
   exec:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: Run an arbitrary command in the ephemeral test web container (CMD=...)
     summary: |
       Run an arbitrary command inside a one-off test web container.
@@ -64,6 +69,7 @@ tasks:
           COMMAND: "sh -c 'eval \"$CMD\"'"
 
   portless:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: Start test server and register a Portless OIDC URL
     summary: |
       Start the test web server, register its Docker-assigned host port with
@@ -78,12 +84,14 @@ tasks:
       - ./scripts/portless_oidc.fish test med-tracker-test
 
   server:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: Start the isolated test web server on a Docker-assigned local port
     cmds:
       - task: :internal:up
         vars: { ENVIRONMENT: test }
 
   seed:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: Seed test database with fixtures
     summary: |
       Seed test database with fixtures
@@ -95,6 +103,7 @@ tasks:
         vars: { ENVIRONMENT: test }
 
   stop:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: Stop test server
     summary: |
       Stop the test server
@@ -105,6 +114,7 @@ tasks:
         vars: { ENVIRONMENT: test, MAIL_SERVICE: mail-test }
 
   ps:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: List current status of test containers
     summary: |
       List current status of test containers
@@ -114,6 +124,7 @@ tasks:
         vars: { ENVIRONMENT: test }
 
   db-migrate:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: Run Rails migrations
     summary: |
       Run Rails migrations on the test database
@@ -123,6 +134,7 @@ tasks:
         vars: { ENVIRONMENT: test }
 
   assets-rebuild:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: Rebuild compiled assets inside the test container
     summary: |
       Rebuild compiled Rails assets inside the test web container.
@@ -139,6 +151,7 @@ tasks:
           COMMAND: "rails assets:precompile"
 
   rebuild:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: Rebuild test server (drops database)
     summary: |
       Rebuild test environment from scratch
@@ -161,6 +174,7 @@ tasks:
         vars: { ENVIRONMENT: test }
 
   port:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: Print the host port of the running test server
     summary: |
       Print the host port that the test web container is listening on.
@@ -171,6 +185,7 @@ tasks:
         vars: { ENVIRONMENT: test }
 
   logs:
+    dir: "{{.TASKFILE_DIR}}/../.."
     desc: View test container logs
     summary: |
       View and follow test container logs

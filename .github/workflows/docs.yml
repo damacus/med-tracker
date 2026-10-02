@@ -14,7 +14,7 @@ name: Docs
       - .python-version
       - README.md
       - Taskfile.yml
-      - Taskfiles/docs.yml
+      - docs/Taskfile.yml
       - .github/workflows/docs.yml
 
 permissions:

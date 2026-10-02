@@ -5,9 +5,9 @@ import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
 const repoRoot = fileURLToPath(new URL('../../..', import.meta.url));
-const internalTaskfile = fileURLToPath(new URL('../../../Taskfiles/internal.yml', import.meta.url));
-const rootTaskfile = fileURLToPath(new URL('../../../Taskfile.yml', import.meta.url));
-const testTaskfile = fileURLToPath(new URL('../../../Taskfiles/test.yml', import.meta.url));
+const internalTaskfile = fileURLToPath(new URL('../../../rails/tasks/internal.yml', import.meta.url));
+const rootTaskfile = fileURLToPath(new URL('../../../rails/Taskfile.yml', import.meta.url));
+const testTaskfile = fileURLToPath(new URL('../../../rails/tasks/test.yml', import.meta.url));
 
 function dryRun(...args) {
   const result = spawnSync('task', ['--dry', '--verbose', ...args], { cwd: repoRoot, encoding: 'utf8' });
@@ -156,10 +156,10 @@ test('test:assets-rebuild runs every internal:run call', () => {
   assert.ok(!output.includes('skipping execution'), output);
 });
 
-test('every task in Taskfiles/internal.yml declares run: always', () => {
+test('every task in rails/tasks/internal.yml declares run: always', () => {
   const lines = readFileSync(internalTaskfile, 'utf8').split('\n');
   const start = lines.findIndex(line => /^tasks:/.test(line));
-  assert.notEqual(start, -1, 'Taskfiles/internal.yml has no tasks: section');
+  assert.notEqual(start, -1, 'rails/tasks/internal.yml has no tasks: section');
   const tasks = new Map();
   let current;
   for (const line of lines.slice(start + 1)) {
