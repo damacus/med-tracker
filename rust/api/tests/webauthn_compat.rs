@@ -1,6 +1,6 @@
-use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
-use medtracker_api::webauthn::{PasskeyVerifyError, verify_passkey_assertion};
-use p256::ecdsa::{Signature, SigningKey, signature::Signer};
+use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
+use medtracker_api::webauthn::{verify_passkey_assertion, PasskeyVerifyError};
+use p256::ecdsa::{signature::Signer, Signature, SigningKey};
 use sha2::{Digest, Sha256};
 
 const ORIGIN: &str = "http://localhost:39998";
