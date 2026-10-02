@@ -1217,7 +1217,7 @@ dependencies = [
  "chrono",
  "const-str",
  "http",
- "leptodon-proc-macros",
+ "leptodon-proc-macros 1.7.0-pre",
  "leptos",
  "leptos-struct-table",
  "leptos-use",
@@ -1241,6 +1241,17 @@ dependencies = [
 name = "leptodon-proc-macros"
 version = "1.7.0-pre"
 source = "git+https://github.com/openanalytics/leptodon.git?rev=195c8fd78b13718004b1e26b2aad8aee5b451585#195c8fd78b13718004b1e26b2aad8aee5b451585"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
+ "walkdir",
+]
+
+[[package]]
+name = "leptodon-proc-macros"
+version = "1.8.0-pre"
+source = "git+https://github.com/openanalytics/leptodon.git?rev=41276662e75fe94648cbea4836c7dab7708fc7b2#41276662e75fe94648cbea4836c7dab7708fc7b2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1581,7 +1592,7 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "leptodon",
- "leptodon-proc-macros",
+ "leptodon-proc-macros 1.8.0-pre",
  "leptos",
  "leptos_dom",
  "serde",
