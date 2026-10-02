@@ -29,15 +29,30 @@ pub struct MedicationFormPage {
     pub errors: BTreeMap<String, Vec<String>>,
 }
 
-fn messages(text: Text, errors: &[String]) -> String {
+pub(crate) fn messages(text: Text, errors: &[String]) -> String {
     errors
         .iter()
-        .map(|message| text.api_error(message).unwrap_or_else(|| message.clone()))
+        .map(|message| {
+            let key = match message.as_str() {
+                "Record has changed since it was last read" => Some("dosages.management.conflict"),
+                "missing_browser_precondition" | "If-Match is required" => {
+                    Some("medications.stock.original_token")
+                }
+                "option_stock_readonly" => Some("medications.stock.option_readonly"),
+                "Quantity must be a valid nonnegative number" => {
+                    Some("medications.stock.invalid_quantity")
+                }
+                "confirm_option_mode" => Some("dosages.management.confirm_required"),
+                _ => None,
+            };
+            key.map_or_else(|| text.form_error(message), |key| text.get(key, &[]))
+                .expect("validated catalogue error message")
+        })
         .collect::<Vec<_>>()
         .join(". ")
 }
 
-fn field_error(name: &str, text: Text, errors: &[String]) -> String {
+pub(crate) fn field_error(name: &str, text: Text, errors: &[String]) -> String {
     if errors.is_empty() {
         return String::new();
     }
@@ -46,7 +61,7 @@ fn field_error(name: &str, text: Text, errors: &[String]) -> String {
     view! { <p class="household-field-error" id=id>{message}</p> }.to_html()
 }
 
-fn input_field(
+pub(crate) fn input_field(
     name: &str,
     label: String,
     value: &str,
@@ -76,7 +91,13 @@ fn input_field(
     )
 }
 
-fn textarea_field(name: &str, label: String, value: &str, text: Text, errors: &[String]) -> String {
+pub(crate) fn textarea_field(
+    name: &str,
+    label: String,
+    value: &str,
+    text: Text,
+    errors: &[String],
+) -> String {
     let id = format!("medication-{name}");
     let described = (!errors.is_empty()).then(|| format!("medication-{name}-error"));
     let error = field_error(name, text, errors);
@@ -96,7 +117,7 @@ fn textarea_field(name: &str, label: String, value: &str, text: Text, errors: &[
     .to_html()
 }
 
-fn select_field(
+pub(crate) fn select_field(
     name: &str,
     label: String,
     selected: &str,
@@ -195,7 +216,7 @@ pub fn render_medication_form_with_options(
             true,
         ),
     ] {
-        if options_mode && matches!(name, "dose_amount" | "current_supply") {
+        if options_mode && matches!(name, "dose_amount" | "current_supply" | "reorder_threshold") {
             continue;
         }
         fields.push_str(&input_field(
@@ -271,9 +292,16 @@ pub fn render_medication_form_with_options(
     };
     let save = text.get("forms.medications.save_medication", &[])?;
     let back = text.get("forms.medications.back", &[])?;
+    let options_link = page.medication_id.as_ref().map(|id| {
+        let label = text
+            .get("medications.show.dosages_heading", &[])
+            .expect("catalogue key");
+        view! { <a href=format!("{inventory}/{}/dosage_options", path_segment(id))>{label}</a> }
+    });
     let body = view! {
         <section class="household-content">
             <h1>{title.clone()}</h1>
+            {options_link}
             <div inner_html=error_summary></div>
             <form class="household-form" action=action method="post">
                 <input type="hidden" name="authenticity_token" value=page.csrf/>
@@ -290,4 +318,20 @@ pub fn render_medication_form_with_options(
         page.locale.as_str(),
         body,
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unknown_medication_errors_use_safe_localised_text() {
+        for locale in Locale::ALL {
+            let text = Text::new(locale);
+            assert_eq!(
+                messages(text, &["private database diagnostic".into()]),
+                text.get("errors.messages.form_invalid", &[]).unwrap()
+            );
+        }
+    }
 }

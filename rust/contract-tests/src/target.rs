@@ -136,6 +136,17 @@ impl Target {
             .expect("target must respond")
     }
 
+    pub fn delete_browser_json(&self, path: &str, csrf: &str) -> Response {
+        self.require_local_write();
+        self.client
+            .delete(self.url(path))
+            .header("Accept", "application/json")
+            .header("Origin", self.origin.origin().ascii_serialization())
+            .header("X-CSRF-Token", csrf)
+            .send()
+            .expect("target must respond")
+    }
+
     pub fn post_form(&self, path: &str, fields: &[(&str, &str)]) -> Response {
         self.require_local_write();
         self.client
@@ -267,6 +278,18 @@ impl Target {
             None => request,
         };
         request.json(body).send().expect("target must respond")
+    }
+
+    pub fn post_browser_json(&self, path: &str, csrf: &str, body: &serde_json::Value) -> Response {
+        self.require_local_write();
+        self.client
+            .post(self.url(path))
+            .header("Accept", "application/json")
+            .header("Origin", self.origin.origin().ascii_serialization())
+            .header("X-CSRF-Token", csrf)
+            .json(body)
+            .send()
+            .expect("target must respond")
     }
 
     pub fn post_json_from_web_client(

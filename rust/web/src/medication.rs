@@ -1,6 +1,7 @@
 use crate::document::medication_document;
 use crate::{household, household_i18n};
 use leptos::prelude::*;
+use std::collections::HashMap;
 
 #[derive(Clone)]
 pub struct MedicationCard {
@@ -65,6 +66,26 @@ pub fn render_medication_list_with_management(
     can_create: bool,
     locale: household_i18n::Locale,
 ) -> String {
+    render_medication_list_with_stock(
+        household_name,
+        slug,
+        csrf,
+        medications,
+        can_create,
+        locale,
+        &std::collections::HashMap::new(),
+    )
+}
+
+pub fn render_medication_list_with_stock(
+    household_name: &str,
+    slug: &str,
+    csrf: &str,
+    medications: Vec<MedicationCard>,
+    can_create: bool,
+    locale: household_i18n::Locale,
+    option_stock: &std::collections::HashMap<i64, Vec<crate::stock::OptionStock>>,
+) -> String {
     let prefix = format!("/households/{}", household::path_segment(slug));
     let text = household_i18n::Text::new(locale);
     let title = text
@@ -100,12 +121,21 @@ pub fn render_medication_list_with_management(
                     <div class="med-grid">
                         {medications.into_iter().map(|medication| {
                             let href = format!("{prefix}/medications/{}", medication.id);
-                            let stock = text.get("medications.index.stock_remaining", &[("amount", &medication.supply), ("unit", &medication.unit)]).expect("catalogue key");
+                            let rows = option_stock.get(&medication.id).map(Vec::as_slice).unwrap_or(&[]);
+                            let stock = if rows.is_empty() {
+                                let remaining = text.get("medications.index.stock_remaining", &[("amount", &medication.supply), ("unit", &medication.unit)]).expect("catalogue key");
+                                view! { <p>{remaining}</p> }.to_html()
+                            } else {
+                                crate::stock::inventory_quantities(rows, &medication.supply, &medication.unit, locale)
+                            };
+                            let stock_path = format!("{href}/stock");
+                            let stock_label = text.get("medications.stock.title", &[]).expect("catalogue key");
                             view! {
                                 <article class="med-card">
                                     <h2>{medication.name.clone()}</h2>
-                                    <p>{stock}</p>
+                                    <div inner_html=stock></div>
                                     <a href=href>{view_label.clone()}</a>
+                                    <a href=stock_path>{stock_label}</a>
                                 </article>
                             }
                         }).collect_view()}
@@ -142,6 +172,25 @@ pub fn render_medication_detail_with_management(
     can_edit: bool,
     locale: household_i18n::Locale,
 ) -> String {
+    render_medication_detail_with_stock(input, can_edit, locale, &[])
+}
+
+pub fn render_medication_detail_with_stock(
+    input: MedicationDetailRender<'_>,
+    can_edit: bool,
+    locale: household_i18n::Locale,
+    option_stock: &[crate::stock::OptionStock],
+) -> String {
+    let stock = HashMap::from([(input.medication.id, option_stock.to_vec())]);
+    render_medication_detail_with_stock_inventory(input, can_edit, locale, &stock)
+}
+
+pub fn render_medication_detail_with_stock_inventory(
+    input: MedicationDetailRender<'_>,
+    can_edit: bool,
+    locale: household_i18n::Locale,
+    stock_inventory: &HashMap<i64, Vec<crate::stock::OptionStock>>,
+) -> String {
     let MedicationDetailRender {
         household_name,
         slug,
@@ -153,6 +202,10 @@ pub fn render_medication_detail_with_management(
         notice,
         form_state,
     } = input;
+    let option_stock = stock_inventory
+        .get(&medication.id)
+        .map(Vec::as_slice)
+        .unwrap_or(&[]);
     let prefix = format!("/households/{}", household::path_segment(slug));
     let text = household_i18n::Text::new(locale);
     let people_label = text
@@ -180,6 +233,49 @@ pub fn render_medication_detail_with_management(
         .get("medications.show.inventory_status", &[])
         .expect("catalogue key");
     let dose_action = format!("{prefix}/medications/{}/doses", medication.id);
+    let stock_path = format!("{prefix}/medications/{}/stock", medication.id);
+    let stock_action_label = text
+        .get("medications.stock.title", &[])
+        .expect("catalogue key");
+    let stock_html = if option_stock.is_empty() {
+        let remaining = text
+            .get("medications.dose_dialog.remaining", &[])
+            .expect("catalogue key");
+        view! { <div class="med-stock-number"><strong>{medication.supply.clone()}</strong><span>{medication.unit.clone()}" "{remaining}</span></div> }.to_html()
+    } else {
+        crate::stock::inventory_quantities(
+            option_stock,
+            &medication.supply,
+            &medication.unit,
+            locale,
+        )
+    };
+    let label = |key: &str| {
+        text.get(&format!("medications.dose_dialog.{key}"), &[])
+            .expect("catalogue key")
+    };
+    let administration_title = text
+        .get(
+            "medications.dose_dialog.administration_title",
+            &[("name", &medication.name)],
+        )
+        .expect("catalogue key");
+    let notice = notice.map(|message| {
+        match message {
+            "Medication taken successfully." => text.get("schedules.medication_taken", &[]),
+            "Invalid dose configured" => text.get("schedules.invalid_dose_configured", &[]),
+            "Taken at is invalid." => Ok(label("invalid_time")),
+            "This source does not belong to this medication." => Ok(label("foreign_source")),
+            "You cannot record this dose." => Ok(label("forbidden")),
+            "This dose request conflicts with a previous record." => Ok(label("conflict")),
+            _ => text.form_error(message),
+        }
+        .expect("catalogue notice")
+    });
+    let notice = notice.as_deref();
+    let dosage_label = text
+        .get("medications.show.dosages_heading", &[])
+        .expect("catalogue key");
     let first = if let Some(form) = form_state.as_ref() {
         medication
             .sources
@@ -216,7 +312,7 @@ pub fn render_medication_detail_with_management(
         .unwrap_or_else(|| taken_at.to_owned());
     let selected_stock = form_state.as_ref().map(|form| form.stock_id.clone());
     let displayed_dose = if source_type == "schedule" {
-        "Calculated for selected time".to_owned()
+        label("calculated")
     } else {
         format!("{} {}", dose_amount, dose_unit)
     };
@@ -237,37 +333,39 @@ pub fn render_medication_detail_with_management(
                 <section class="med-content">
                     <p class="med-eyebrow">{profile_label}</p>
                     <h1>{medication.name.clone()}</h1>
+                    <a href=format!("{prefix}/medications/{}/dosage_options", medication.id)>{dosage_label}</a>
+                    <a class="med-button" href=stock_path>{stock_action_label}</a>
                     {can_edit.then(|| view! { <a class="med-button" href=format!("{prefix}/medications/{}/edit", medication.id)>{edit_label}</a> })}
                     <p class="med-location">{medication.location.clone()}</p>
                     {form_state.is_none().then_some(notice).flatten().map(|text| view! { <p class="med-alert" role="alert">{text.to_owned()}</p> })}
                     <div class="med-detail-grid">
                         {(!medication.description.is_empty()).then(|| view! { <section class="med-card"><h2>{overview_label}</h2><p>{medication.description.clone()}</p></section> })}
-                        <section class="med-card med-stock"><h2>{stock_label}</h2><div class="med-stock-number"><strong>{medication.supply.clone()}</strong><span>{medication.unit.clone()}" remaining"</span></div><p>"Stock source: "{medication.location.clone()}</p></section>
+                        <section class="med-card med-stock"><h2>{stock_label}</h2><div inner_html=stock_html></div><p>{label("stock_source")}": "{medication.location.clone()}</p></section>
                     </div>
-                    {has_recordable_source.then(|| view! { <a class="med-button med-log-link" href="#administration" data-open-administration>"Log"</a> })}
+                    {has_recordable_source.then(|| view! { <a class="med-button med-log-link" href="#administration" data-open-administration>{label("log")}</a> })}
                 </section>
             </div>
-            <dialog id="administration-dialog" aria-label=format!("Log administration for {}", medication.name)>
-                <div class="med-dialog-heading"><div><h2>"Log administration for "{medication.name.clone()}</h2><p>"Choose the person and source."</p></div><button type="button" class="med-close" data-close-dialog aria-label="Close">"×"</button></div>
+            <dialog id="administration-dialog" aria-label=administration_title.clone()>
+                <div class="med-dialog-heading"><div><h2>{administration_title.clone()}</h2><p>{label("choose_person_source")}</p></div><button type="button" class="med-close" data-close-dialog aria-label=label("close")>"×"</button></div>
                 <div class="med-source-list">
                     {medication.sources.into_iter().map(|source| {
                         let test_id = format!("log-administration-{}-{}", source.kind, source.id);
                         let stock_ids = source.eligible_stock_ids.iter().map(i64::to_string).collect::<Vec<_>>().join(",");
                         view! {
-                            <article class="med-source-card"><div><p class="med-eyebrow">"MEDICATION SOURCE"</p><strong>{source.person_name.clone()}</strong><p>{medication.name.clone()}</p><small>{if source.kind == "schedule" { "Dose calculated for selected time".to_owned() } else { format!("{} {}", source.amount, source.unit) }}</small></div>
-                                {(source.can_record && !source.eligible_stock_ids.is_empty()).then(|| view! { <button type="button" class="med-button" data-open-dose data-testid=test_id data-source-id=source.portable_id data-source-kind=source.kind data-person-name=source.person_name data-dose-amount=source.amount data-dose-unit=source.unit data-stock-ids=stock_ids>"Log"</button> })}
-                                {(!source.can_record).then(|| view! { <span class="med-source-note">"View only"</span> })}
-                                {(source.can_record && source.eligible_stock_ids.is_empty()).then(|| view! { <span class="med-source-note">"No eligible stock"</span> })}
+                            <article class="med-source-card"><div><p class="med-eyebrow">{label("source")}</p><strong>{source.person_name.clone()}</strong><p>{medication.name.clone()}</p><small>{if source.kind == "schedule" { label("dose_calculated") } else { format!("{} {}", source.amount, source.unit) }}</small></div>
+                                {(source.can_record && !source.eligible_stock_ids.is_empty()).then(|| view! { <button type="button" class="med-button" data-open-dose data-testid=test_id data-source-id=source.portable_id data-source-kind=source.kind data-person-name=source.person_name data-dose-amount=source.amount data-dose-unit=source.unit data-stock-ids=stock_ids>{label("log")}</button> })}
+                                {(!source.can_record).then(|| view! { <span class="med-source-note">{label("view_only")}</span> })}
+                                {(source.can_record && source.eligible_stock_ids.is_empty()).then(|| view! { <span class="med-source-note">{label("no_stock")}</span> })}
                             </article>
                         }
                     }).collect_view()}
                 </div>
             </dialog>
-            <dialog id="dose-dialog" aria-label="Record dose" data-reopen=form_state.is_some()>
-                <div class="med-dialog-heading"><div><h2>"Record dose"</h2><p>"Confirm the person, medication, time, and inventory source."</p></div><button type="button" class="med-close" data-close-dialog aria-label="Close">"×"</button></div>
-                {form_state.is_some().then(|| view! { <p class="med-alert" role="alert">{notice.unwrap_or("Please review this dose.").to_owned()}</p> })}
-                {source_unavailable.then(|| view! { <p class="med-source-note">"This source is unavailable. Choose another source before submitting."</p><button type="button" class="med-text-button" data-choose-source>"Choose source"</button> })}
-                <div class="med-dose-summary"><div><small>"PERSON"</small><strong id="dose-person">{first.as_ref().map(|source| source.person_name.clone()).unwrap_or_else(|| "Choose source".to_owned())}</strong></div><div><small>"MEDICATION"</small><strong>{medication.name.clone()}</strong></div><div><small>"DOSE"</small><strong id="dose-display">{displayed_dose}</strong></div></div>
+            <dialog id="dose-dialog" aria-label=label("record") data-calculated-dose=label("calculated") data-reopen=form_state.is_some()>
+                <div class="med-dialog-heading"><div><h2>{label("record")}</h2><p>{label("confirm")}</p></div><button type="button" class="med-close" data-close-dialog aria-label=label("close")>"×"</button></div>
+                {form_state.is_some().then(|| view! { <p class="med-alert" role="alert">{notice.map(str::to_owned).unwrap_or_else(|| label("review"))}</p> })}
+                {source_unavailable.then(|| view! { <p class="med-source-note">{label("unavailable")}</p><button type="button" class="med-text-button" data-choose-source>{label("choose_source")}</button> })}
+                <div class="med-dose-summary"><div><small>{label("person")}</small><strong id="dose-person">{first.as_ref().map(|source| source.person_name.clone()).unwrap_or_else(|| label("choose_source"))}</strong></div><div><small>{label("medication")}</small><strong>{medication.name.clone()}</strong></div><div><small>{label("dose")}</small><strong id="dose-display">{displayed_dose}</strong></div></div>
                 <form class="med-dose-form" method="post" action=dose_action>
                     <input type="hidden" name="authenticity_token" value=csrf.to_owned()/>
                     <input type="hidden" name="client_uuid" value=client_uuid.to_owned()/>
@@ -275,12 +373,12 @@ pub fn render_medication_detail_with_management(
                     <input type="hidden" name="source_id" value=source_id/>
                     <input type="hidden" name="dose_amount" value=dose_amount/>
                     <input type="hidden" name="dose_unit" value=dose_unit/>
-                    <label for="taken-at">"Taken at"</label><input id="taken-at" name="taken_at" type="datetime-local" value=taken_at required/>
-                    <label for="stock-source">"Stock source"</label>
+                    <label for="taken-at">{label("taken_at")}</label><input id="taken-at" name="taken_at" type="datetime-local" value=taken_at required/>
+                    <label for="stock-source">{label("stock_source")}</label>
                     <select id="stock-source" name="taken_from_medication_id">
-                        {stock_options.into_iter().map(|option| { let selected = selected_stock.as_ref().is_some_and(|stock| stock == &option.id.to_string()) || selected_stock.is_none() && first_stock_id == Some(option.id); let available = initial_stock_ids.contains(&option.id); view! { <option value=option.id selected=selected hidden=!available disabled=!available>{option.name}" — "{option.supply}" "{option.unit}" remaining"</option> } }).collect_view()}
+                        {stock_options.into_iter().map(|option| { let selected = selected_stock.as_ref().is_some_and(|stock| stock == &option.id.to_string()) || selected_stock.is_none() && first_stock_id == Some(option.id); let available = initial_stock_ids.contains(&option.id); let rows = stock_inventory.get(&option.id).map(Vec::as_slice).unwrap_or(&[]); let contents = crate::stock::selector_quantities(rows, &option.supply, &option.unit, locale); view! { <option value=option.id selected=selected hidden=!available disabled=!available>{option.name}" — "{contents}" "{label("remaining")}</option> } }).collect_view()}
                     </select>
-                    <div class="med-dialog-actions"><button class="med-button" type="submit" disabled=source_unavailable>"Log"</button></div>
+                    <div class="med-dialog-actions"><button class="med-button" type="submit" disabled=source_unavailable>{label("log")}</button></div>
                 </form>
             </dialog>
         </main>

@@ -43,6 +43,22 @@ if test "$task_name" = --force
 end
 
 switch $task_name
+    case test:exec
+        set -q CONTRACT_FAKE_RUN_DIR_FILE
+        or exit 62
+        set -l run_dir (cat "$CONTRACT_FAKE_RUN_DIR_FILE")
+        string match -rq '^tmp/contract-tests/run\.[A-Za-z0-9]{6}$' -- "$run_dir"
+        or exit 63
+        test -d "$run_dir"; and test -f "$run_dir/owner"
+        or exit 64
+        set -l project_arg (string match 'CONTRACT_PROJECT=*' -- $argv)
+        test (count $project_arg) -eq 1
+        or exit 65
+        set -l project (string replace 'CONTRACT_PROJECT=' '' -- "$project_arg")
+        test (cat "$run_dir/owner") = "$project"
+        or exit 66
+        echo '{"probe":true}' >"$run_dir/fixture.json"
+        exit $status
     case api:contract-source-snapshot
         if set -q CONTRACT_FAKE_TRACE
             echo $task_name >>$CONTRACT_FAKE_TRACE
@@ -89,6 +105,19 @@ switch $task_name
             or exit 48
             contains -- rust/contract-tests/runner.compose.yaml (string split : -- "$COMPOSE_FILE")
             or exit 49
+            if test "$CONTRACT_FAKE_REQUIRE_BROWSER_SNAPSHOT" = 1
+                set -q CONTRACT_BROWSER_BUILD_CONTEXT
+                or begin; echo 'Rust browser build did not inherit its captured source context' >&2; exit 58; end
+                test "$CONTRACT_BROWSER_BUILD_CONTEXT" = "$CONTRACT_API_BUILD_CONTEXT/rust/web"
+                or begin; echo 'Rust browser build context differs from the captured API web source' >&2; exit 59; end
+                test -f "$CONTRACT_BROWSER_BUILD_CONTEXT/Dockerfile.smoke"
+                or begin; echo 'Captured browser Dockerfile is missing' >&2; exit 60; end
+                for browser_test in (string split ' ' -- "$BROWSER_TEST_FILES")
+                    test -f "$CONTRACT_BROWSER_BUILD_CONTEXT/$browser_test"
+                    or begin; echo "Captured selected browser test is missing: $browser_test" >&2; exit 61; end
+                end
+                echo browser-source-snapshot-verified >>$CONTRACT_FAKE_TRACE
+            end
         end
         if test "$CONTRACT_FAKE_FAIL_STEP" = "$task_name"
             exit 42

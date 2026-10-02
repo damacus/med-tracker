@@ -1,5 +1,56 @@
 ---
 cy:
+  treatments:
+    form:
+      keep_maximum: "Gadewch yn wag i gadw'r uchafswm presennol."
+      schedule_maximum: "Gadewch yn wag i ddefnyddio uchafswm o 4 dos ym mhob cylch."
+      optional_maximum: "Mae uchafswm yn ddewisol ar gyfer neilltuad newydd."
+      keep_cycle: "Cadw'r cylch presennol"
+      required_end_date: "Dyddiad gorffen (gofynnol)"
+      default_dose: "Dos diofyn"
+      keep_dose_choice: "Cadw'r dewis dos presennol"
+      linked_dose_hint: "Gadewch y dewis yn wag i gadw unrhyw gyswllt presennol. Os yw'r dos wedi'i gysylltu, dewiswch opsiwn newydd cyn newid ei swm neu ei uned."
+      apply_dose: "Defnyddio'r dos a ddewiswyd"
+      unavailable_selection: "Dewis ddim ar gael"
+      schedule_type: "Math o amserlen"
+      show_fields: "Dangos meysydd amserlen"
+      time: "Amser (AA:MM)"
+      taper_times_hint: "Mae'r amseroedd dos cyffredin hyn yn berthnasol i bob cam lleihau ac yn pennu pryd mae dosau'n ddyledus. Gadewch yn wag ar gyfer dosau heb amser penodol."
+      step_time_instruction: "Amser cyfarwyddyd y cam (AA:MM)"
+      step_time_hint: "Mae amseroedd cyfarwyddyd y cam yn cael eu cadw gyda'r cam hwn. Nid ydynt yn pennu pryd mae dosau'n ddyledus."
+      add_time: "Ychwanegu amser"
+      remove_time: "Dileu amser"
+      date: "Dyddiad (BBBB-MM-DD)"
+      add_date: "Ychwanegu dyddiad"
+      remove_date: "Dileu dyddiad"
+      step: "Cam %{number}"
+      add_step: "Ychwanegu cam"
+      remove_step: "Dileu cam"
+      as_needed_hint: "Defnyddio yn ôl yr angen; nid oes amseroedd rhoi penodol."
+      resume: "Ailddechrau triniaeth"
+      resume_hint: "Ailddechrau'r driniaeth hon nawr. Mae'r saib yn aros yn yr hanes."
+      pause_open: "Wedi'i oedi ar hyn o bryd"
+      no_pause_history: "Nid oes seibiannau wedi'u cofnodi."
+    types:
+      daily: "Bob dydd"
+      multiple_daily: "Sawl gwaith y dydd"
+      weekly: "Bob wythnos"
+      specific_dates: "Dyddiadau penodol"
+      prn: "Yn ôl yr angen"
+      tapering: "Lleihau'r dos"
+      every_other_day: "Bob yn ail ddiwrnod"
+    weekdays:
+      monday: "Dydd Llun"
+      tuesday: "Dydd Mawrth"
+      wednesday: "Dydd Mercher"
+      thursday: "Dydd Iau"
+      friday: "Dydd Gwener"
+      saturday: "Dydd Sadwrn"
+      sunday: "Dydd Sul"
+    overview:
+      schedules_unavailable: "Nid yw amserlenni ar gael gyda'ch mynediad presennol. Mae'r aseiniadau a ddangosir yma yn parhau i fod yn ddarllenadwy."
+      title: "Meddyginiaeth ac amserlenni"
+      empty: "Nid oes meddyginiaeth nac amserlenni wedi'u neilltuo."
   stock_removals:
     title: "Tynnu stoc"
     description: "Cofnodwch feddyginiaeth a adawodd y stoc heb ei chymryd. Nid yw hyn yn cofnodi dos."
@@ -83,6 +134,7 @@ cy:
       greater_than_or_equal_to: rhaid bod yn fwy na neu'n hafal i %{count}
       inclusion: nid yw wedi'i gynnwys yn y rhestr
       invalid: yn annilys
+      form_invalid: Ni ellid cadw'r gwerth hwn.
       not_a_number: nid yw'n rhif
       required: rhaid iddo fodoli
       taken: eisoes wedi'i gymryd
@@ -890,6 +942,49 @@ cy:
       success: Tynnwyd %{name} o %{location}
       failure: Methwyd â thynnu aelod
   medications:
+    stock:
+      title: "Rheoli stoc"
+      adjust: "Addasu stoc"
+      new_quantity: "Maint stoc newydd"
+      order: "Cofnodi archeb"
+      receive: "Marcio wedi derbyn"
+      ordered: "Wedi archebu"
+      received: "Wedi derbyn"
+      not_ordered: "Dim archeb wedi ei chofnodi"
+      edit_option: "Golygu stoc yr opsiwn"
+      option_total: "Mae gan bob opsiwn ei stoc a’i uned ei hun. Newidiwch feintiau drwy olygydd yr opsiwn."
+      scalar_fallback: "Nid yw stoc yr opsiynau yn cael ei olrhain. Gall dosau ddefnyddio stoc y feddyginiaeth riant a ddangosir yma; gosodwch stoc ar opsiwn i’w olrhain ar wahân."
+      receipt_hint: "Mae derbyn archeb yn cofnodi ei statws yn unig. Addaswch y stoc ar wahân wrth gyfrif y danfoniad."
+      date_hint: "Rhowch y dyddiad disgwyliedig fel YYYY-MM-DD."
+      original_token: "Agorwch y ffurflen olygu eto i lwytho ei fersiwn wreiddiol, yna adolygwch a chyflwynwch eich newidiadau."
+      option_readonly: "Rheolir stoc opsiynau a throthwyon ail-archebu drwy olygydd yr opsiwn."
+      invalid_quantity: "Rhowch faint nad yw’n negatif gyda hyd at ddau le degol."
+      household_inventory: "Stoc y cartref"
+    dose_dialog:
+      administration_title: 'Cofnodi rhoi meddyginiaeth i %{name}'
+      choose_person_source: 'Dewiswch y person a’r ffynhonnell.'
+      close: 'Cau'
+      source: 'FFYNHONNELL MEDDYGINIAETH'
+      calculated: 'Wedi’i gyfrifo ar gyfer yr amser a ddewiswyd'
+      dose_calculated: 'Dos wedi’i gyfrifo ar gyfer yr amser a ddewiswyd'
+      log: 'Cofnodi'
+      view_only: 'Gweld yn unig'
+      no_stock: 'Dim stoc gymwys'
+      record: 'Cofnodi dos'
+      confirm: 'Cadarnhewch y person, y feddyginiaeth, yr amser a ffynhonnell y stoc.'
+      review: 'Adolygwch y dos hwn.'
+      unavailable: 'Nid yw’r ffynhonnell hon ar gael. Dewiswch ffynhonnell arall cyn cyflwyno.'
+      choose_source: 'Dewis ffynhonnell'
+      person: 'PERSON'
+      medication: 'MEDDYGINIAETH'
+      dose: 'DOS'
+      taken_at: 'Cymerwyd am'
+      stock_source: 'Ffynhonnell stoc'
+      remaining: 'yn weddill'
+      invalid_time: 'Mae’r amser cymryd yn annilys.'
+      foreign_source: 'Nid yw’r ffynhonnell hon yn perthyn i’r feddyginiaeth hon.'
+      forbidden: 'Ni allwch gofnodi’r dos hwn.'
+      conflict: 'Mae’r cais dos hwn yn gwrthdaro â chofnod blaenorol.'
     finder:
       nhs_directory: Cyfeiriadur GIG
       title: Darganfyddwr Meddyginiaethau
@@ -1351,6 +1446,16 @@ cy:
       active_dates: Dyddiadau gweithredol
       not_set: Heb ei osod
   dosages:
+    management:
+      daily: 'Dyddiol'
+      weekly: 'Wythnosol'
+      monthly: 'Misol'
+      untracked: 'Heb ei olrhain'
+      stock_hint: 'Gadewch y stoc yn wag ar gyfer cyflenwad heb ei olrhain; mae sero yn golygu bod y stoc a olrheinir yn wag. Mae trothwy gwag yn aros heb ei osod.'
+      confirm_mode: 'Rwy’n deall bod ychwanegu’r opsiwn cyntaf yn clirio dos sengl y feddyginiaeth. Os yw’r opsiwn hwn yn olrhain stoc, mae ei feintiau yn disodli cyfansymiau stoc y feddyginiaeth.'
+      confirm_required: 'Cadarnhewch y newid i opsiynau dos cyn cadw.'
+      conflict: 'Mae’r dos hwn wedi newid. Ail-lwythwch ei ffurflen olygu ac adolygwch eich newidiadau cyn cadw eto.'
+      retry_hint: 'Ar ôl methu cadw, gwiriwch y rhestr dosau cyn rhoi cynnig arall. Gall ailadrodd cais ychwanegu greu opsiwn arall.'
     created: Ychwanegwyd y dos yn llwyddiannus.
     updated: Diweddarwyd y dos yn llwyddiannus.
     deleted: Tynnwyd y dos yn llwyddiannus.

@@ -48,7 +48,7 @@ fn edit_precondition(
     current_etag: &str,
     options_mode: bool,
 ) -> Option<StatusCode> {
-    if fields.get("etag").is_none_or(String::is_empty) {
+    if fields.get("etag").is_none_or(|etag| etag.trim().is_empty()) {
         Some(StatusCode::PRECONDITION_REQUIRED)
     } else if fields.get("etag").is_some_and(|etag| etag != current_etag) {
         Some(StatusCode::CONFLICT)
@@ -122,11 +122,11 @@ fn payload(draft: &MedicationDraft, options_mode: bool) -> Option<Value> {
         attributes.insert(name.to_owned(), Value::String(value.clone()));
     }
     attributes.insert("location_id".to_owned(), json!(location_id));
-    attributes.insert(
-        "reorder_threshold".to_owned(),
-        json!(draft.reorder_threshold),
-    );
     if !options_mode {
+        attributes.insert(
+            "reorder_threshold".to_owned(),
+            json!(draft.reorder_threshold),
+        );
         attributes.insert("dose_unit".to_owned(), json!(draft.dose_unit));
         for (name, value) in [
             ("dose_amount", &draft.dose_amount),
@@ -360,8 +360,8 @@ async fn save(
     let path = id
         .as_ref()
         .map_or_else(|| base.clone(), |id| format!("{base}/{}", path_segment(id)));
-    let mut current_etag = String::new();
-    let options_mode = if id.is_some() {
+    let original_options_mode = !fields.contains_key("dose_amount");
+    let (current_etag, options_mode) = if id.is_some() {
         let reply = match api.get_reply(&path).await {
             Ok(reply) => reply,
             Err(response) => return response.response(),
@@ -369,24 +369,38 @@ async fn save(
         if !reply.status.is_success() {
             return page_status(String::new(), api.cookie, reply.status);
         }
-        let Some(etag) = reply.etag.as_deref().filter(|etag| !etag.is_empty()) else {
+        if reply.etag.as_deref().is_none_or(str::is_empty) {
             return failure(StatusCode::BAD_GATEWAY);
-        };
-        current_etag = etag.to_owned();
+        }
         let Some(row) = reply.value.get("data").filter(|row| row.is_object()) else {
             return failure(StatusCode::BAD_GATEWAY);
         };
-        match options_mode(&mut api, household_id, row).await {
+        let mode = match options_mode(&mut api, household_id, row).await {
             Ok(mode) => mode,
             Err(response) => return response.response(),
-        }
+        };
+        let reply = match api.get_reply(&path).await {
+            Ok(reply) => reply,
+            Err(response) => return response.response(),
+        };
+        let Some(etag) = reply.etag.as_deref().filter(|etag| !etag.is_empty()) else {
+            return failure(StatusCode::BAD_GATEWAY);
+        };
+        (etag.to_owned(), mode)
     } else {
-        false
+        (String::new(), false)
     };
     if id.is_some() {
         if let Some(status) = edit_precondition(&fields, &current_etag, options_mode) {
-            if status == StatusCode::CONFLICT {
-                let original_options_mode = !fields.contains_key("dose_amount");
+            if matches!(
+                status,
+                StatusCode::CONFLICT | StatusCode::PRECONDITION_REQUIRED
+            ) {
+                let message = if status == StatusCode::PRECONDITION_REQUIRED {
+                    "missing_browser_precondition".to_owned()
+                } else {
+                    "Record has changed since it was last read".to_owned()
+                };
                 return render_form(
                     api,
                     FormState {
@@ -395,10 +409,7 @@ async fn save(
                         household_name,
                         medication_id: id,
                         draft: draft_from_fields(&fields),
-                        errors: BTreeMap::from([(
-                            "medication".to_owned(),
-                            vec!["Record has changed since it was last read".to_owned()],
-                        )]),
+                        errors: BTreeMap::from([("medication".to_owned(), vec![message])]),
                         options_mode: original_options_mode,
                         status,
                     },
@@ -407,6 +418,25 @@ async fn save(
             }
             return failure(status);
         }
+    }
+    if options_mode && fields.contains_key("reorder_threshold") {
+        return render_form(
+            api,
+            FormState {
+                slug,
+                household_id,
+                household_name,
+                medication_id: id,
+                draft: draft_from_fields(&fields),
+                errors: BTreeMap::from([(
+                    "medication".into(),
+                    vec!["option_stock_readonly".into()],
+                )]),
+                options_mode,
+                status: StatusCode::UNPROCESSABLE_ENTITY,
+            },
+        )
+        .await;
     }
     let draft = draft_from_fields(&fields);
     let Some(body) = payload(&draft, options_mode) else {
@@ -484,7 +514,11 @@ async fn save(
                 medication_id: id,
                 draft,
                 errors: response_errors(&reply.value),
-                options_mode,
+                options_mode: if reply.status == StatusCode::CONFLICT {
+                    original_options_mode
+                } else {
+                    options_mode
+                },
                 status: reply.status,
             },
         )

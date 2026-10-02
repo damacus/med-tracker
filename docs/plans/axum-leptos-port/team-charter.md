@@ -89,3 +89,38 @@ evidence, and next action before releasing ownership.
 Record preparation, build/fixture, implementation, review-fix and resource-wait
 time where available. Consolidate checks at a stable slice boundary; repeat a
 check only when a changed input or unresolved risk makes its result obsolete.
+
+## Household completion run — 1 October 2026
+
+The [completion packet](next-slices-20261001.md) refines the current run. Sol 6.1
+product owners write disjoint localisation/forms, medication safety and dashboard
+modules; a separate Sol test writer owns named new tests. The independent Sol
+reviewer remains read-only. A bounded Sol scout prepares later dosage/stock/
+assignment slices and retires when its report is useful.
+
+Dan explicitly selects one persistent Luna Medium build/verification owner. That
+owner alone executes dependency installs, shared UI builds, Cargo gates, Docker,
+fixture/bootstrap, HTTP/browser acceptance and owned resource cleanup. Coordinator
+and all other seats submit jobs; they do not run a second build. The visible
+[queue](next-slices/build-queue.md) records exact source/fixture identities, Tasks,
+RED/GREEN, times, disk and evidence. Coordinator alone owns shared wiring, Git and
+acceptance. Source results certify approved immutable snapshots.
+
+Preserve the parallel disjoint writer boundary and same-owner review fixes. Stop
+new feature dispatch at the native two-hour assessment, finish verification and
+cleanup, and report accepted work separately from the unfinished programme.
+
+## Autonomous continuation — 1 October 2026, 17:09 BST
+
+Dan authorised continuing to completion while AFK, with a two-hour retrospective
+that feeds back into execution immediately. The [delivery plan](household-delivery-20261001/plan.md)
+supersedes the previous run's parallel writer allocation and stop-dispatch timer
+for this new run. One persistent Sol 6.1 writer owns product, tests and fixes,
+sequentially across dosage management, stock and assignments. Shared Rust routing
+and Task selector changes are explicitly delegated to that writer when required,
+with notice before editing. The coordinator retains Git and acceptance rulings.
+One persistent Luna Medium verifier remains the exclusive runtime owner; one
+independent Sol reviewer remains read-only for production and tests. Completed
+agents retain context without additional writing seats. The two-hour timer is a
+retro checkpoint, not a stop-work deadline. Each fully accepted journey remains
+a review waypoint before the next begins. Rails and cutover boundaries persist.

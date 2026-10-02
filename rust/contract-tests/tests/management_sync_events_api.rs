@@ -122,7 +122,7 @@ fn assert_request_audit(request: &str, status: i32) {
 fn tracked_option(fixture: &Fixture, medication_id: i64, stock: &str) -> i64 {
     database()
         .query_one(
-            "INSERT INTO dosages (household_id, medication_id, amount, unit, frequency, current_supply, created_at, updated_at) VALUES ($1, $2, '1.25', 'ml', 'daily', $3::text::numeric, NOW(), NOW()) RETURNING id",
+            "INSERT INTO dosages (household_id, medication_id, amount, unit, frequency, current_supply, default_dose_cycle, default_max_daily_doses, default_min_hours_between_doses, created_at, updated_at) VALUES ($1, $2, '1.25', 'ml', 'daily', $3::text::numeric, 0, 4, 0, NOW(), NOW()) RETURNING id",
             &[&fixture.household_id, &medication_id, &stock],
         )
         .expect("tracked option")

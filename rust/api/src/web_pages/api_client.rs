@@ -8,11 +8,15 @@ use chrono::{DateTime, Datelike, Duration, Utc};
 use medtracker_web::household_i18n::Locale;
 use sea_orm::TransactionTrait;
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use tower::ServiceExt;
 
 const BODY_LIMIT: usize = 1_048_576;
-const COLLECTION_LIMIT: usize = 500;
+
+enum BrowserWriteIntent {
+    Scalar(crate::medication_management::ScalarAdjustment),
+    Pause(crate::pause_lifecycle::BrowserSourceGuard),
+}
 
 pub(super) fn html_cookie_only(headers: &HeaderMap) -> bool {
     !headers.contains_key(header::AUTHORIZATION)
@@ -97,6 +101,57 @@ impl WebApi {
         csrf: Option<&str>,
         extra: &HeaderMap,
     ) -> Result<ApiReply, PageError> {
+        self.call_inner(method, path, body, csrf, extra, None).await
+    }
+
+    pub(super) async fn adjust_scalar_stock(
+        &mut self,
+        path: &str,
+        body: Value,
+        csrf: &str,
+        original_etag: String,
+    ) -> Result<ApiReply, PageError> {
+        self.call_inner(
+            Method::PATCH,
+            path,
+            Some(body),
+            Some(csrf),
+            &HeaderMap::new(),
+            Some(BrowserWriteIntent::Scalar(
+                crate::medication_management::ScalarAdjustment { original_etag },
+            )),
+        )
+        .await
+    }
+
+    pub(super) async fn pause_with_original_source(
+        &mut self,
+        path: &str,
+        body: Value,
+        extra: &HeaderMap,
+        guard: crate::pause_lifecycle::BrowserSourceGuard,
+    ) -> Result<ApiReply, PageError> {
+        let csrf = self.csrf.clone();
+        self.call_inner(
+            Method::POST,
+            path,
+            Some(body),
+            Some(&csrf),
+            extra,
+            Some(BrowserWriteIntent::Pause(guard)),
+        )
+        .await
+    }
+
+    async fn call_inner(
+        &mut self,
+        method: Method,
+        path: &str,
+        body: Option<Value>,
+        csrf: Option<&str>,
+        extra: &HeaderMap,
+        intent: Option<BrowserWriteIntent>,
+    ) -> Result<ApiReply, PageError> {
         let mut request = Request::builder().method(method).uri(path);
         for name in [
             header::IF_MATCH,
@@ -125,9 +180,18 @@ impl WebApi {
         } else {
             Vec::new()
         };
-        let request = request
+        let mut request = request
             .body(Body::from(encoded))
             .map_err(|_| error(StatusCode::INTERNAL_SERVER_ERROR))?;
+        match intent {
+            Some(BrowserWriteIntent::Scalar(scalar)) => {
+                request.extensions_mut().insert(scalar);
+            }
+            Some(BrowserWriteIntent::Pause(guard)) => {
+                request.extensions_mut().insert(guard);
+            }
+            None => {}
+        }
         let response = api_router(self.state.clone())
             .oneshot(request)
             .await
@@ -176,27 +240,61 @@ impl WebApi {
 
     pub(super) async fn collection(&mut self, base: &str) -> Result<Vec<Value>, PageError> {
         let mut records = Vec::new();
-        for page in 1..=5 {
+        let mut ids = HashSet::new();
+        let mut total = None;
+        let mut page = 1_u64;
+        loop {
             let value = self
                 .get(&format!("{base}?page={page}&per_page=100"))
                 .await?;
             let count = value
                 .pointer("/meta/total_count")
                 .and_then(Value::as_u64)
-                .ok_or_else(|| error(StatusCode::BAD_GATEWAY))? as usize;
+                .ok_or_else(|| error(StatusCode::BAD_GATEWAY))?;
+            if value.pointer("/meta/page").and_then(Value::as_u64) != Some(page)
+                || value.pointer("/meta/per_page").and_then(Value::as_u64) != Some(100)
+            {
+                return Err(error(StatusCode::BAD_GATEWAY));
+            }
+            if total.is_some_and(|total| total != count) {
+                return Err(error(StatusCode::SERVICE_UNAVAILABLE));
+            }
+            total = Some(count);
             let data = value
                 .get("data")
                 .and_then(Value::as_array)
                 .ok_or_else(|| error(StatusCode::BAD_GATEWAY))?;
-            records.extend(data.iter().cloned());
-            if records.len() >= count {
+            for row in data {
+                let id = row
+                    .get("id")
+                    .and_then(|value| {
+                        value
+                            .as_i64()
+                            .filter(|id| *id > 0)
+                            .map(|id| id.to_string())
+                            .or_else(|| {
+                                value
+                                    .as_str()
+                                    .filter(|id| !id.is_empty())
+                                    .map(str::to_owned)
+                            })
+                    })
+                    .ok_or_else(|| error(StatusCode::BAD_GATEWAY))?;
+                if !ids.insert(id) {
+                    return Err(error(StatusCode::SERVICE_UNAVAILABLE));
+                }
+                records.push(row.clone());
+            }
+            if records.len() as u64 == count {
                 return Ok(records);
             }
-            if data.is_empty() || records.len() >= COLLECTION_LIMIT {
-                break;
+            if data.is_empty() || records.len() as u64 > count {
+                return Err(error(StatusCode::SERVICE_UNAVAILABLE));
             }
+            page = page
+                .checked_add(1)
+                .ok_or_else(|| error(StatusCode::BAD_GATEWAY))?;
         }
-        Err(error(StatusCode::SERVICE_UNAVAILABLE))
     }
 
     pub(super) async fn dashboard_takes(

@@ -1,5 +1,56 @@
 ---
 es:
+  treatments:
+    form:
+      keep_maximum: "Déjelo en blanco para mantener el máximo actual."
+      schedule_maximum: "Déjelo en blanco para usar un máximo de 4 dosis por ciclo."
+      optional_maximum: "El máximo es opcional para una asignación nueva."
+      keep_cycle: "Mantener el ciclo actual"
+      required_end_date: "Fecha de fin (obligatoria)"
+      default_dose: "Dosis predeterminada"
+      keep_dose_choice: "Mantener la elección de dosis actual"
+      linked_dose_hint: "Deje la opción en blanco para conservar cualquier vínculo existente. Si la dosis está vinculada, elija una opción de reemplazo antes de cambiar su cantidad o unidad."
+      apply_dose: "Usar la dosis seleccionada"
+      unavailable_selection: "Selección no disponible"
+      schedule_type: "Tipo de pauta"
+      show_fields: "Mostrar campos de la pauta"
+      time: "Hora (HH:MM)"
+      taper_times_hint: "Estas horas compartidas se aplican a todos los pasos de reducción y determinan cuándo corresponde tomar las dosis. Déjelas en blanco para dosis sin hora fija."
+      step_time_instruction: "Hora de la instrucción del paso (HH:MM)"
+      step_time_hint: "Las horas de las instrucciones se guardan con este paso. No determinan cuándo corresponde tomar las dosis."
+      add_time: "Añadir hora"
+      remove_time: "Quitar hora"
+      date: "Fecha (AAAA-MM-DD)"
+      add_date: "Añadir fecha"
+      remove_date: "Quitar fecha"
+      step: "Paso %{number}"
+      add_step: "Añadir paso"
+      remove_step: "Quitar paso"
+      as_needed_hint: "Usar cuando sea necesario; no hay horas fijas de administración."
+      resume: "Reanudar tratamiento"
+      resume_hint: "Reanudar este tratamiento ahora. La pausa permanece en su historial."
+      pause_open: "En pausa actualmente"
+      no_pause_history: "No se han registrado pausas."
+    types:
+      daily: "Diaria"
+      multiple_daily: "Varias veces al día"
+      weekly: "Semanal"
+      specific_dates: "Fechas específicas"
+      prn: "Según necesidad"
+      tapering: "Reducción gradual"
+      every_other_day: "Cada dos días"
+    weekdays:
+      monday: "Lunes"
+      tuesday: "Martes"
+      wednesday: "Miércoles"
+      thursday: "Jueves"
+      friday: "Viernes"
+      saturday: "Sábado"
+      sunday: "Domingo"
+    overview:
+      schedules_unavailable: "Los horarios no están disponibles con su acceso actual. Las asignaciones que se muestran aquí siguen siendo legibles."
+      title: "Medicación y pautas"
+      empty: "No se han asignado medicamentos ni pautas."
   stock_removals:
     title: "Retirar existencias"
     description: "Registre el medicamento que salió de las existencias sin administrarse. Esto no registra una dosis."
@@ -83,6 +134,7 @@ es:
       greater_than_or_equal_to: debe ser mayor o igual que %{count}
       inclusion: no está incluido en la lista
       invalid: no es válido
+      form_invalid: No se pudo guardar este valor.
       not_a_number: no es un número
       required: debe existir
       taken: ya está en uso
@@ -896,6 +948,49 @@ es:
       success: "%{name} eliminado de %{location}"
       failure: Error al eliminar miembro
   medications:
+    stock:
+      title: "Gestionar existencias"
+      adjust: "Ajustar existencias"
+      new_quantity: "Nueva cantidad de existencias"
+      order: "Registrar pedido"
+      receive: "Marcar recibido"
+      ordered: "Pedido"
+      received: "Recibido"
+      not_ordered: "No hay pedido registrado"
+      edit_option: "Editar existencias de la opción"
+      option_total: "Cada opción tiene sus propias existencias y unidad. Cambie las cantidades en el editor de la opción."
+      scalar_fallback: "Todas las opciones tienen existencias sin seguimiento. Las dosis aún pueden usar las existencias del medicamento principal que se muestran aquí; establezca existencias en una opción para seguirlas por separado."
+      receipt_hint: "Recibir un pedido solo registra su estado. Ajuste las existencias por separado al contar la entrega."
+      date_hint: "Introduzca la fecha prevista como YYYY-MM-DD."
+      original_token: "Abra de nuevo el formulario de edición para cargar su versión original, revise y envíe los cambios."
+      option_readonly: "Las existencias y los umbrales de las opciones se gestionan en el editor de la opción."
+      invalid_quantity: "Introduzca una cantidad no negativa con un máximo de dos decimales."
+      household_inventory: "Inventario del hogar"
+    dose_dialog:
+      administration_title: 'Registrar administración para %{name}'
+      choose_person_source: 'Elija la persona y la fuente.'
+      close: 'Cerrar'
+      source: 'FUENTE DEL MEDICAMENTO'
+      calculated: 'Calculada para la hora seleccionada'
+      dose_calculated: 'Dosis calculada para la hora seleccionada'
+      log: 'Registrar'
+      view_only: 'Solo lectura'
+      no_stock: 'No hay existencias aptas'
+      record: 'Registrar dosis'
+      confirm: 'Confirme la persona, el medicamento, la hora y el origen de las existencias.'
+      review: 'Revise esta dosis.'
+      unavailable: 'Esta fuente no está disponible. Elija otra antes de enviar.'
+      choose_source: 'Elegir fuente'
+      person: 'PERSONA'
+      medication: 'MEDICAMENTO'
+      dose: 'DOSIS'
+      taken_at: 'Tomada a las'
+      stock_source: 'Origen de las existencias'
+      remaining: 'restantes'
+      invalid_time: 'La hora de la toma no es válida.'
+      foreign_source: 'Esta fuente no pertenece a este medicamento.'
+      forbidden: 'No puede registrar esta dosis.'
+      conflict: 'Esta solicitud de dosis entra en conflicto con un registro anterior.'
     finder:
       coming_soon: "¡Esta función llegará pronto! Integraremos con una API de base
         de datos de medicamentos para proporcionar información detallada sobre los
@@ -2120,6 +2215,16 @@ es:
       unavailable: No se encontró ninguna cámara. Usa la entrada manual abajo.
       error: Error del escáner. Usa la entrada manual abajo.
   dosages:
+    management:
+      daily: 'Diario'
+      weekly: 'Semanal'
+      monthly: 'Mensual'
+      untracked: 'Sin seguimiento'
+      stock_hint: 'Deje las existencias en blanco para un suministro sin seguimiento; cero significa que las existencias controladas están vacías. Un umbral en blanco sigue sin establecerse.'
+      confirm_mode: 'Entiendo que añadir la primera opción borra la dosis única del medicamento. Si esta opción controla existencias, sus cantidades sustituyen los totales del medicamento.'
+      confirm_required: 'Confirme el cambio a opciones de dosis antes de guardar.'
+      conflict: 'Esta dosis ha cambiado. Vuelva a cargar el formulario y revise los cambios antes de guardar de nuevo.'
+      retry_hint: 'Si no se puede guardar, revise la lista de dosis antes de volver a intentarlo. Repetir una solicitud de adición puede crear otra opción.'
     created: La dosis se añadió correctamente.
     updated: La dosis se actualizó correctamente.
     deleted: La dosis se eliminó correctamente.

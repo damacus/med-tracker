@@ -125,6 +125,43 @@ impl Text {
         self.get(key, arguments).ok()
     }
 
+    pub fn form_error(self, message: &str) -> Result<String, TranslationError> {
+        if let Some(translated) = self.api_error(message) {
+            return Ok(translated);
+        }
+        for key in [
+            "stock_removals.errors.invalid_quantity",
+            "stock_removals.errors.invalid_reason",
+            "stock_removals.errors.invalid_note",
+            "stock_removals.errors.invalid_submission",
+            "stock_removals.errors.invalid_source",
+            "stock_removals.errors.untracked",
+            "stock_removals.errors.insufficient_stock",
+            "stock_removals.errors.changed_submission",
+            "medications.stock.original_token",
+            "medications.stock.option_readonly",
+            "medications.stock.invalid_quantity",
+        ] {
+            if self.get(key, &[]).as_deref() == Ok(message) {
+                return Ok(message.to_owned());
+            }
+        }
+        for known in [
+            "can't be blank",
+            "is invalid",
+            "has already been taken",
+            "is not a number",
+            "is not included in the list",
+            "must be greater than 0",
+            "must be greater than or equal to 0",
+        ] {
+            if self.api_error(known).as_deref() == Some(message) {
+                return Ok(message.to_owned());
+            }
+        }
+        self.get("errors.messages.form_invalid", &[])
+    }
+
     pub fn get(self, key: &str, arguments: &[(&str, &str)]) -> Result<String, TranslationError> {
         let (value, _) = self.value(key)?;
         let template = value
@@ -185,7 +222,9 @@ fn allowed(key: &str) -> bool {
         "schedules.",
         "forms.medications.",
         "medications.",
+        "dosages.",
         "person_medications.",
+        "treatments.",
         "medication_pauses.",
         "dose_outcomes.",
         "stock_removals.",

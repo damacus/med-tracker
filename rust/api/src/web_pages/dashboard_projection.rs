@@ -14,6 +14,22 @@ fn dashboard_dose(source: &Value) -> String {
     format!("{amount} {unit}").trim().to_owned()
 }
 
+fn dashboard_dose_on(source: &Value, today: chrono::NaiveDate) -> String {
+    if field(source, "schedule_type") != "tapering" {
+        return dashboard_dose(source);
+    }
+    let Some(config) = source_config_on(source, today) else {
+        return dashboard_dose(source);
+    };
+    let amount = crate::dose::config_decimal(config, &["amount", "dose_amount"])
+        .map(|amount| crate::medication_projection::decimal_string(amount.to_string()))
+        .unwrap_or_else(|| field(source, "dose_amount").to_owned());
+    let unit = crate::dose::config_value(config, &["unit", "dose_unit"])
+        .and_then(Value::as_str)
+        .unwrap_or_else(|| field(source, "dose_unit"));
+    format!("{amount} {unit}").trim().to_owned()
+}
+
 fn schedule_in_local_range(source: &Value, today: chrono::NaiveDate) -> bool {
     let start = chrono::NaiveDate::parse_from_str(field(source, "start_date"), "%Y-%m-%d").ok();
     let end = chrono::NaiveDate::parse_from_str(field(source, "end_date"), "%Y-%m-%d").ok();
@@ -204,7 +220,7 @@ pub(super) fn project_source_tasks(
     {
         person.tasks.push(DashboardTaskRow {
             medication_name: medication_name.clone(),
-            dose: dashboard_dose(source),
+            dose: dashboard_dose_on(source, today),
             time: "—".to_owned(),
             scheduled_at: None,
             state: TaskState::Paused,
@@ -237,7 +253,7 @@ pub(super) fn project_source_tasks(
             .unwrap_or_else(|| "Anytime".to_owned());
         person.tasks.push(DashboardTaskRow {
             medication_name: medication_name.clone(),
-            dose: dashboard_dose(source),
+            dose: dashboard_dose_on(source, today),
             time,
             scheduled_at: projection.next_available_at,
             state: projection.state,
@@ -279,7 +295,7 @@ pub(super) fn project_source_tasks(
             .unwrap_or_else(|| "Anytime".to_owned());
         let task = DashboardTaskRow {
             medication_name: medication_name.clone(),
-            dose: dashboard_dose(source),
+            dose: dashboard_dose_on(source, today),
             time,
             scheduled_at,
             state,

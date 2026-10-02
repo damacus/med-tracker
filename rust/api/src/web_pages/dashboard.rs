@@ -2,7 +2,7 @@ use super::api_client::WebApi;
 use super::dashboard_projection::{
     dashboard_history, dashboard_sources, dashboard_stock, project_source_tasks, SourceTaskInput,
 };
-use super::response::{dashboard_page, failure, page_status};
+use super::response::{dashboard_page, failure, page_status, PageError};
 use super::time::{configured_timezone, dashboard_now};
 use super::{field, numeric};
 use crate::AppState;
@@ -54,12 +54,17 @@ pub(super) async fn dashboard(
         .iter()
         .filter_map(|row| Some((numeric(row, "id")?, field(row, "name").to_owned())))
         .collect();
-    let profile = match api.get(&format!("{base}/profile")).await {
+    let me = match api.get(&format!("{base}/me")).await {
         Ok(value) => value,
         Err(_) => return dashboard_read_error(api.cookie),
     };
-    let me = match api.get(&format!("{base}/me")).await {
+    let profile = match api.get(&format!("{base}/profile")).await {
         Ok(value) => value,
+        Err(PageError::Status(status))
+            if status == StatusCode::FORBIDDEN || status == StatusCode::NOT_FOUND =>
+        {
+            Value::Null
+        }
         Err(_) => return dashboard_read_error(api.cookie),
     };
     let household_manager = matches!(

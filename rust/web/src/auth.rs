@@ -1,6 +1,12 @@
 use crate::document::document;
 use leptos::prelude::*;
 
+pub struct PasskeyLogin {
+    pub challenge: String,
+    pub challenge_hmac: String,
+    pub rp_id: String,
+}
+
 #[component]
 pub(super) fn BrandPanel() -> impl IntoView {
     view! {
@@ -17,8 +23,39 @@ pub(super) fn BrandPanel() -> impl IntoView {
 }
 
 #[component]
-fn LoginPage(csrf: String, error: String) -> impl IntoView {
+fn PasskeySection(csrf: String, passkey: PasskeyLogin) -> impl IntoView {
+    let options = format!(
+        "{{\"challenge\":\"{}\",\"timeout\":60000,\"rpId\":\"{}\",\"userVerification\":\"required\",\"allowCredentials\":[]}}",
+        passkey.challenge, passkey.rp_id
+    );
+    view! {
+        <div class="passkey-area" id="passkey-login-section" hidden>
+            <p class="auth-divider"><span>"or"</span></p>
+            <button
+                type="button"
+                id="passkey-login-trigger"
+                class="secondary-button"
+                data-error-unsupported="Passkeys are not supported in this browser."
+                data-error-cancelled="Passkey sign-in was cancelled. Try again or use your password."
+                data-error-failed="We could not sign you in with that passkey. Try again or use your password."
+            >
+                "Continue with Passkey"
+            </button>
+            <p id="passkey-login-error" class="form-alert" role="alert" hidden></p>
+            <form id="webauthn-login-form" action="/webauthn-login" method="post" hidden data-credential-options=options>
+                <input type="hidden" name="authenticity_token" value=csrf/>
+                <input type="hidden" name="webauthn_auth_challenge" value=passkey.challenge/>
+                <input type="hidden" name="webauthn_auth_challenge_hmac" value=passkey.challenge_hmac/>
+                <input type="hidden" name="webauthn_auth" id="webauthn-auth" value=""/>
+            </form>
+        </div>
+    }
+}
+
+#[component]
+fn LoginPage(csrf: String, error: String, passkey: Option<PasskeyLogin>) -> impl IntoView {
     let focus_password = !error.is_empty();
+    let passkey_csrf = csrf.clone();
     view! {
         <main class="auth-page">
             <div class="auth-shell">
@@ -40,6 +77,7 @@ fn LoginPage(csrf: String, error: String) -> impl IntoView {
                         </div>
                         <button class="primary-button" type="submit">"Sign In to Dashboard"</button>
                     </form>
+                    {passkey.map(|passkey| view! { <PasskeySection csrf=passkey_csrf.clone() passkey=passkey/> })}
                 </section>
             </div>
         </main>
@@ -113,14 +151,24 @@ fn scope_copy(scope: &str) -> (&'static str, &'static str) {
     }
 }
 
-pub fn render_login(csrf: &str, error: &str) -> String {
+pub fn render_login(csrf: &str, error: &str, passkey: Option<PasskeyLogin>) -> String {
     if csrf.is_empty() {
         return document("Sign in", view! { <PublicLoginPage heading="Sign in through your app".to_owned() message="Open MedTracker from your registered mobile app to begin sign-in.".to_owned()/> }.to_html());
     }
-    document(
+    let has_passkey = passkey.is_some();
+    let page = document(
         "Sign in",
-        view! { <LoginPage csrf=csrf.to_owned() error=error.to_owned()/> }.to_html(),
-    )
+        view! { <LoginPage csrf=csrf.to_owned() error=error.to_owned() passkey=passkey/> }
+            .to_html(),
+    );
+    if has_passkey {
+        return page.replacen(
+            "</head>",
+            "<script defer src=\"/auth-passkey.js\"></script></head>",
+            1,
+        );
+    }
+    page
 }
 
 pub fn render_reset_unavailable() -> String {
@@ -138,15 +186,68 @@ pub fn render_consent(
 
 #[cfg(test)]
 mod tests {
-    use super::render_login;
+    use super::{PasskeyLogin, render_login};
+
+    fn passkey() -> PasskeyLogin {
+        PasskeyLogin {
+            challenge: "test-challenge".to_owned(),
+            challenge_hmac: "test-hmac".to_owned(),
+            rp_id: "localhost".to_owned(),
+        }
+    }
 
     #[test]
     fn login_is_a_server_rendered_document() {
-        let html = render_login("csrf", "");
+        let html = render_login("csrf", "", Some(passkey()));
         assert!(html.starts_with("<!doctype html>"));
         assert!(html.contains("Welcome back"));
         assert!(html.contains("authenticity_token"));
         assert!(!html.contains("disabled"));
-        assert!(!html.contains("<script"));
+        assert!(!html.contains("<script>"));
+        assert!(!html.contains("<script defer>"));
+    }
+
+    #[test]
+    fn login_page_offers_passkey_sign_in() {
+        let html = render_login("csrf", "", Some(passkey()));
+        assert!(html.contains("passkey-login-trigger"));
+        assert!(html.contains("Continue with Passkey"));
+        assert!(html.contains("id=\"webauthn-login-form\""));
+        assert!(html.contains("action=\"/webauthn-login\""));
+        assert!(html.contains("name=\"webauthn_auth\""));
+        assert!(html.contains("name=\"webauthn_auth_challenge\""));
+        assert!(html.contains("name=\"webauthn_auth_challenge_hmac\""));
+        assert!(html.contains("value=\"test-challenge\""));
+        assert!(html.contains("value=\"test-hmac\""));
+        assert!(html.contains("data-credential-options"));
+        assert!(html.contains("&quot;challenge&quot;:&quot;test-challenge&quot;"));
+        assert!(html.contains("&quot;rpId&quot;:&quot;localhost&quot;"));
+        assert!(html.contains("&quot;userVerification&quot;:&quot;required&quot;"));
+        assert!(html.contains("passkey-login-error"));
+        assert!(html.contains("<script defer src=\"/auth-passkey.js\"></script>"));
+    }
+
+    #[test]
+    fn login_page_hides_passkey_when_unavailable() {
+        let html = render_login("csrf", "", None);
+        assert!(!html.contains("passkey-login-trigger"));
+        assert!(!html.contains("webauthn-login-form"));
+        assert!(!html.contains("auth-passkey.js"));
+    }
+
+    #[test]
+    fn login_page_escapes_passkey_option_values() {
+        let html = render_login(
+            "csrf",
+            "",
+            Some(PasskeyLogin {
+                challenge: "a\"<script>x".to_owned(),
+                challenge_hmac: "h\"<script>x".to_owned(),
+                rp_id: "example.com".to_owned(),
+            }),
+        );
+        assert!(!html.contains("a\"<script>x"));
+        assert!(!html.contains("h\"<script>x"));
+        assert!(html.contains("a&quot;&lt;script&gt;x"));
     }
 }

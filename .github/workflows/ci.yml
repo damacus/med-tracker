@@ -240,6 +240,93 @@ jobs:
           rtk gain
       - run: TEST_IMAGE_UID=$(id -u) task api:browser-dashboard-rust
 
+  rust_household_browser:
+    needs: changes
+    if: ${{ needs.changes.outputs.rust_port == 'true' }}
+    runs-on: ubuntu-latest
+    name: Rust Household (${{ matrix.journey }})
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - journey: people-locations-medications
+            completion: "true"
+            browsers: "tests/household-routes.test.mjs tests/household-workflows.test.mjs tests/household-completion-medication.test.mjs tests/household-completion-locales.test.mjs tests/household-completion-dashboard.test.mjs tests/medication-journey.test.mjs tests/medication-journey-form.test.mjs"
+          - journey: dosage-options
+            target: household_dosage_options
+            browsers: "tests/household-dosage-options.test.mjs"
+          - journey: stock
+            stock: "true"
+            browsers: "tests/household-stock.test.mjs tests/household-stock-selector.test.mjs"
+          - journey: treatments
+            target: household_treatment_acceptance
+            browsers: "tests/household-treatments.test.mjs tests/household-treatment-administration.test.mjs"
+          - journey: calendar
+            acceptance: "false"
+            clock: "2026-03-29T00:30:00Z"
+            browsers: "tests/household-treatment-calendar.test.mjs"
+          - journey: taper-times
+            acceptance: "false"
+            clock: "2026-03-29T00:30:00Z"
+            browsers: "tests/household-taper-times.test.mjs"
+          - journey: dosage-permissions
+            target: household_dosage_permissions
+          - journey: stock-permissions
+            target: household_stock_permissions
+          - journey: treatment-permissions
+            target: household_treatment_permissions
+          - journey: inventory-completion
+            target: household_final_acceptance
+            browsers: "tests/household-inventory-completion.test.mjs"
+          - journey: minor-person-access
+            target: household_minor_readiness
+            browsers: "tests/household-minor-readiness.test.mjs"
+          - journey: dose-compatibility
+            target: doses
+            browsers: "tests/household-routes.test.mjs"
+          - journey: schedule-compatibility
+            target: schedules
+            browsers: "tests/household-routes.test.mjs"
+          - journey: standalone-login
+            acceptance: "false"
+            browsers: "tests/login.smoke.test.mjs"
+    env:
+      HOUSEHOLD_ACCEPTANCE: ${{ matrix.acceptance || 'true' }}
+      HOUSEHOLD_COMPLETION_ACCEPTANCE: ${{ matrix.completion || '' }}
+      HOUSEHOLD_STOCK_ACCEPTANCE: ${{ matrix.stock || '' }}
+      HOUSEHOLD_TEST_FILE: ${{ matrix.target || '' }}
+      BROWSER_TEST_FILES: ${{ matrix.browsers || 'tests/medication-journey.test.mjs tests/medication-journey-form.test.mjs' }}
+      CONTRACT_DASHBOARD_NOW: ${{ matrix.clock }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87
+        with:
+          toolchain: stable
+          targets: wasm32-unknown-unknown
+      - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
+        with:
+          version: 3.52.0
+          repo-token: ${{ github.token }}
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+        with:
+          workspaces: |
+            rust/api
+            rust/ui-preview
+      - name: Install contract runner prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fish rsync uuid-runtime jq openssl
+          cargo install --git https://github.com/rtk-ai/rtk --tag v0.50.0 --locked rtk
+          rtk gain
+      - name: Verify minor fixture failure handling
+        if: ${{ matrix.journey == 'minor-person-access' }}
+        run: task api:contract-minor-wrapper-test
+      - run: TEST_IMAGE_UID=$(id -u) task api:browser-rust
+
   docs_check:
     needs: changes
     if: ${{ needs.changes.outputs.docs == 'true' }}
@@ -666,6 +753,7 @@ jobs:
       - client_tools
       - rust_port
       - rust_dashboard_browser
+      - rust_household_browser
       - docs_check
       - test_non_system
       - coverage

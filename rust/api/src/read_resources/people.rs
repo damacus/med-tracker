@@ -67,6 +67,10 @@ pub(crate) async fn people_index(
             .await;
         }
     };
+    let pagination = Pagination {
+        per_page: pagination.per_page.map(|size| size.min(100)),
+        ..pagination
+    };
     let (db, page) = match parse_location_page(db, pagination) {
         Ok(value) => value,
         Err((db, error)) => {

@@ -6,20 +6,25 @@ mod document;
 mod medication;
 
 pub mod dashboard;
+pub mod dosage_options;
 pub mod household;
 pub mod household_i18n;
 pub mod locations;
 pub mod medication_management;
 pub mod people;
+pub mod stock;
+pub mod treatments;
 
 use auth::BrandPanel;
 use document::{authenticated_document, medication_document};
 
-pub use auth::{render_consent, render_login, render_reset_unavailable};
+pub use auth::{PasskeyLogin, render_consent, render_login, render_reset_unavailable};
 pub use medication::{
     DoseFormState, DoseSource, MedicationCard, MedicationDetail, MedicationDetailRender,
-    render_medication_detail, render_medication_detail_with_management, render_medication_list,
-    render_medication_list_with_management,
+    render_medication_detail, render_medication_detail_with_management,
+    render_medication_detail_with_stock, render_medication_detail_with_stock_inventory,
+    render_medication_list, render_medication_list_with_management,
+    render_medication_list_with_stock,
 };
 
 pub fn render_dashboard(household_name: &str, csrf: &str, empty: bool) -> String {
@@ -85,8 +90,12 @@ pub fn medication_script() -> &'static str {
     include_str!("medication.js")
 }
 
+pub fn passkey_script() -> &'static str {
+    include_str!("auth-passkey.js")
+}
+
 async fn login() -> Html<String> {
-    Html(render_login("", ""))
+    Html(render_login("", "", None))
 }
 
 async fn styles() -> ([(header::HeaderName, &'static str); 1], &'static str) {

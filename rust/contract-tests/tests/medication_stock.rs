@@ -52,14 +52,11 @@ fn assert_audit(
     assert_eq!(matching[0]["metadata"]["status"], status);
 }
 
-fn assert_utc_second_timestamp(value: &Value) {
+fn assert_utc_timestamp(value: &Value) {
     let timestamp = value.as_str().expect("timestamp string");
-    assert_eq!(timestamp.len(), 20);
-    assert_eq!(&timestamp[4..5], "-");
-    assert_eq!(&timestamp[7..8], "-");
-    assert_eq!(&timestamp[10..11], "T");
-    assert_eq!(&timestamp[13..14], ":");
-    assert_eq!(&timestamp[16..17], ":");
+    let parsed = time::OffsetDateTime::parse(timestamp, &time::format_description::well_known::Rfc3339).expect("valid RFC3339 timestamp");
+    assert!(parsed.offset().is_utc());
+    assert_eq!(parsed.nanosecond() % 1000, 0);
     assert!(timestamp.ends_with('Z'));
 }
 
@@ -97,7 +94,7 @@ fn create_medication(target: &Target, fixture: &Fixture, name: &str) -> (Value, 
             .as_str()
             .is_some_and(|id| !id.is_empty())
     );
-    assert_utc_second_timestamp(&created["updated_at"]);
+    assert_utc_timestamp(&created["updated_at"]);
     (created, created_etag)
 }
 
@@ -298,7 +295,7 @@ fn stock_removal_keeps_decimal_history_and_rejects_changed_replays() {
             .as_str()
             .is_some_and(|id| !id.is_empty())
     );
-    assert_utc_second_timestamp(&first["created_at"]);
+    assert_utc_timestamp(&first["created_at"]);
     let response = target.post_json_authorized(&path, &fixture.access_token, &payload);
     assert_eq!(response.status().as_u16(), 201);
     let replay_request_id = request_id(&response);

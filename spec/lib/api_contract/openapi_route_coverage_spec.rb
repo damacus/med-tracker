@@ -709,7 +709,7 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
         '#/components/schemas/CapabilitiesResponse'
       )
       expect(operation.dig('responses', '200', 'headers', 'Cache-Control', 'schema')).to include(
-        'type' => 'string', 'enum' => ['no-store']
+        'type' => 'string', 'enum' => ['no-store', 'private, no-store']
       )
     end
 

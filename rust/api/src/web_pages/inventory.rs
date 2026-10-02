@@ -6,10 +6,32 @@ use crate::AppState;
 use axum::extract::{Path, Query, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::Response;
+use medtracker_web::stock::OptionStock;
 use medtracker_web::{DoseFormState, DoseSource, MedicationCard, MedicationDetail};
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
+
+async fn option_inventory(
+    api: &mut WebApi,
+    household_id: i64,
+) -> Result<HashMap<i64, Vec<OptionStock>>, PageError> {
+    let rows = api
+        .collection(&format!("/api/v1/households/{household_id}/dosage_options"))
+        .await?;
+    let mut inventory = HashMap::<i64, Vec<OptionStock>>::new();
+    for row in rows {
+        let parent =
+            numeric(&row, "medication_id").ok_or_else(|| error(StatusCode::BAD_GATEWAY))?;
+        let id = numeric(&row, "id").ok_or_else(|| error(StatusCode::BAD_GATEWAY))?;
+        inventory.entry(parent).or_default().push(OptionStock {
+            id,
+            quantity: row["current_supply"].as_str().map(str::to_owned),
+            unit: field(&row, "unit").to_owned(),
+        });
+    }
+    Ok(inventory)
+}
 
 fn card(value: &Value) -> Option<MedicationCard> {
     Some(MedicationCard {
@@ -59,14 +81,19 @@ pub(super) async fn medications(
         Some(value) => value,
         None => return failure(StatusCode::BAD_GATEWAY),
     };
+    let stock = match option_inventory(&mut api, household_id).await {
+        Ok(stock) => stock,
+        Err(response) => return response.response(),
+    };
     page(
-        medtracker_web::render_medication_list_with_management(
+        medtracker_web::render_medication_list_with_stock(
             &household_name,
             &slug,
             &api.csrf,
             records.iter().filter_map(card).collect(),
             can_create,
             api.locale,
+            &stock,
         ),
         api.cookie,
     )
@@ -165,7 +192,9 @@ async fn detail(
             description: field(row, "description").to_owned(),
             supply: selected.supply,
             unit: selected.unit,
-            location: "Household inventory".to_owned(),
+            location: medtracker_web::household_i18n::Text::new(api.locale)
+                .get("medications.stock.household_inventory", &[])
+                .map_err(|_| error(StatusCode::INTERNAL_SERVER_ERROR))?,
             sources,
         },
         options,
@@ -282,8 +311,12 @@ pub(super) async fn render_detail(
         Some(value) => value,
         None => return failure(StatusCode::BAD_GATEWAY),
     };
+    let stock = match option_inventory(&mut api, household_id).await {
+        Ok(stock) => stock,
+        Err(response) => return response.response(),
+    };
     page_status(
-        medtracker_web::render_medication_detail_with_management(
+        medtracker_web::render_medication_detail_with_stock_inventory(
             medtracker_web::MedicationDetailRender {
                 household_name: &household_name,
                 slug: &slug,
@@ -297,6 +330,7 @@ pub(super) async fn render_detail(
             },
             can_edit,
             api.locale,
+            &stock,
         ),
         api.cookie,
         outcome.status,

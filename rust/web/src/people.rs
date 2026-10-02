@@ -61,6 +61,38 @@ pub fn render_person(
     locale: Locale,
     person: PersonRow,
 ) -> Result<String, TranslationError> {
+    render_person_with_treatments(household_name, slug, _csrf, locale, person, Vec::new())
+}
+
+pub fn render_person_with_treatments(
+    household_name: &str,
+    slug: &str,
+    _csrf: &str,
+    locale: Locale,
+    person: PersonRow,
+    treatments: Vec<crate::treatments::TreatmentRow>,
+) -> Result<String, TranslationError> {
+    render_person_with_treatment_access(
+        household_name,
+        slug,
+        _csrf,
+        locale,
+        person,
+        crate::treatments::TreatmentOverview {
+            rows: treatments,
+            schedules_unavailable: false,
+        },
+    )
+}
+
+pub fn render_person_with_treatment_access(
+    household_name: &str,
+    slug: &str,
+    _csrf: &str,
+    locale: Locale,
+    person: PersonRow,
+    treatments: crate::treatments::TreatmentOverview,
+) -> Result<String, TranslationError> {
     let raw_slug = slug;
     let slug = path_segment(slug);
     let text = Text::new(locale);
@@ -87,6 +119,13 @@ pub fn render_person(
     let edit = text.get("people.show.edit_person", &[])?;
     let back = text.get("people.show.back", &[])?;
     let title = person.name.clone();
+    let treatment_html = crate::treatments::render_treatment_overview_with_access(
+        raw_slug,
+        person.id,
+        locale,
+        person.can_edit,
+        treatments,
+    )?;
     let body = view! {
         <div class="household-heading"><h1>{person.name.clone()}</h1>
             {person.can_edit.then(|| view! { <a class="med-button" href=format!("/households/{slug}/people/{}/edit", person.id)>{edit}</a> })}
@@ -96,6 +135,7 @@ pub fn render_person(
             <dt>{dob}</dt><dd>{person.date_of_birth}</dd><dt>{kind}</dt><dd>{person_type}</dd>
             <dt>{capacity}</dt><dd>{capacity_value}</dd>
         </dl></section>
+        <div inner_html=treatment_html></div>
         <a class="med-text-button" href=format!("/households/{slug}/people")>{back}</a>
     }.to_html();
     Ok(household_document(
@@ -121,8 +161,8 @@ pub fn render_person_form(
     let text = Text::new(locale);
     let errors = errors
         .into_iter()
-        .map(|(field, message)| (field, text.api_error(&message).unwrap_or(message)))
-        .collect::<Vec<_>>();
+        .map(|(field, message)| text.form_error(&message).map(|message| (field, message)))
+        .collect::<Result<Vec<_>, TranslationError>>()?;
     let title = text.get(
         if person_id.is_some() {
             "people.form.edit_heading"

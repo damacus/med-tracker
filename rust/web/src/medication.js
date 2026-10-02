@@ -38,7 +38,7 @@
       select.value = eligible[0];
       dose.querySelector('#dose-person').textContent = button.dataset.personName;
       dose.querySelector('#dose-display').textContent = button.dataset.sourceKind === 'schedule'
-        ? 'Calculated for selected time'
+        ? dose.dataset.calculatedDose
         : `${button.dataset.doseAmount} ${button.dataset.doseUnit}`;
       administration.close();
       dose.showModal();
