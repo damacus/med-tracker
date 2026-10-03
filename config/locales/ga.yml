@@ -2599,6 +2599,19 @@ ga:
       search_placeholder: Cuardaigh daoine…
       no_results: Níor aimsíodh aon duine.
     back: "← Ar Ais"
+  notifications:
+    title: Mo fhógraí
+    description: Roghnaigh cé na fógraí leigheas a gheobhaidh an cuntas seo.
+      Baineann na roghanna seo leis cibé áit a gcuirtear d'fhógraí ar fáil —
+      ní chuireann siad fógraí brabhsálaí ar siúl don gléas seo.
+    enabled_label: Fógraí cumasaithe
+    enabled_hint: Cas gach fógra leigheas air nó as. Coimeádtar roghanna
+      catagóire agus baineann siad leis agus fógraí cumasaithe.
+    categories_hint: Roghnaigh cé na cineálacha fógra a bhaineann agus fógraí
+      cumasaithe.
+    unavailable: Níl roghanna fógra ar fáil don chuntas seo faoi láthair.
+    read_only: Is féidir leat na roghanna seo a fheiceáil, ach níl cead agat iad a athrú.
+    save: Sábháil roghanna
   notification_preferences:
     updated: Sábháladh socruithe fógra.
     update_failed: Theip ar shocruithe fógra a shábháil.

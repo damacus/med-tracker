@@ -21,6 +21,7 @@ mod doses;
 mod inventory;
 mod locations;
 mod medications;
+mod notifications;
 mod people;
 mod reports;
 mod response;
@@ -36,6 +37,7 @@ pub fn routes() -> Router<AppState> {
         .merge(people::routes())
         .merge(locations::routes())
         .merge(medications::routes())
+        .merge(notifications::routes())
         .merge(dosage_options::routes())
         .merge(stock::routes())
         .merge(treatments::routes())

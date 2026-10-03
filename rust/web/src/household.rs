@@ -17,6 +17,7 @@ pub fn household_document(
         ("people", "layouts.sidebar.people"),
         ("locations", "layouts.sidebar.locations"),
         ("reports", "layouts.sidebar.reports"),
+        ("settings/notifications", "notifications.title"),
     ];
     let navigation = view! {
         <nav class="med-sidebar" aria-label=text.get("layouts.mobile_rail.primary_navigation", &[]).unwrap_or_else(|_| "Primary navigation".into())>
