@@ -2281,6 +2281,22 @@ es:
       search_placeholder: Buscar personas…
       no_results: No se encontraron personas.
     back: "← Volver"
+  notifications:
+    title: Mis notificaciones
+    description: Elige qué notificaciones de medicación recibe esta cuenta.
+      Estas preferencias se aplican allá donde se entreguen tus
+      notificaciones; no activan las notificaciones del navegador en este
+      dispositivo.
+    enabled_label: Notificaciones activadas
+    enabled_hint: Activa o desactiva todas las notificaciones de medicación.
+      Las opciones de categoría se conservan y se aplican mientras las
+      notificaciones estén activadas.
+    categories_hint: Elige qué tipos de notificación se aplican mientras las
+      notificaciones estén activadas.
+    unavailable: Las preferencias de notificación no están disponibles para
+      esta cuenta en este momento.
+    read_only: Puedes ver estas preferencias, pero no tienes permiso para cambiarlas.
+    save: Guardar preferencias
   notification_preferences:
     updated: La configuración de notificaciones se guardó.
     update_failed: No se pudo guardar la configuración de notificaciones.

@@ -1650,6 +1650,21 @@ pt:
       unavailable: Não foi encontrada nenhuma câmara. Utilize a introdução manual
         abaixo.
       error: Erro do leitor. Utilize a introdução manual abaixo.
+  notifications:
+    title: As minhas notificações
+    description: Escolha que notificações de medicação esta conta recebe.
+      Estas preferências aplicam-se onde quer que as suas notificações sejam
+      entregues — não ativam as notificações do navegador neste dispositivo.
+    enabled_label: Notificações ativadas
+    enabled_hint: Ative ou desative todas as notificações de medicação. As
+      escolhas de categorias são mantidas e aplicam-se enquanto as
+      notificações estiverem ativadas.
+    categories_hint: Escolha que tipos de notificação se aplicam enquanto as
+      notificações estiverem ativadas.
+    unavailable: As preferências de notificação não estão disponíveis para
+      esta conta neste momento.
+    read_only: Pode ver estas preferências, mas não tem permissão para as alterar.
+    save: Guardar preferências
   notification_preferences:
     updated: Definições de notificação guardadas.
     update_failed: Falha ao guardar as definições de notificação.

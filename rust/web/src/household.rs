@@ -17,6 +17,7 @@ pub fn household_document(
         ("people", "layouts.sidebar.people"),
         ("locations", "layouts.sidebar.locations"),
         ("profile", "profiles.sections.profile.title"),
+        ("settings/notifications", "notifications.title"),
     ];
     let navigation = view! {
         <nav class="med-sidebar" aria-label=text.get("layouts.mobile_rail.primary_navigation", &[]).unwrap_or_else(|_| "Primary navigation".into())>
@@ -34,7 +35,7 @@ pub fn household_document(
     let skip =
         view! { <a class="household-skip" href="#household-content">{skip_label}</a> }.to_html();
     format!(
-        "<!doctype html><html lang=\"{}\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">{title}<link rel=\"stylesheet\" href=\"/medication.css\"><link rel=\"stylesheet\" href=\"/household.css\"></head><body>{skip}<div class=\"med-layout\">{navigation}<main class=\"med-content\" id=\"household-content\">{heading}{body}</main></div></body></html>",
+        "<!doctype html><html lang=\"{}\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">{title}<link rel=\"stylesheet\" href=\"/medication.css\"><link rel=\"stylesheet\" href=\"/household.css\"><script defer src=\"/profile.js\"></script></head><body>{skip}<div class=\"med-layout\">{navigation}<main class=\"med-content\" id=\"household-content\">{heading}{body}</main></div></body></html>",
         locale.as_str()
     )
 }
