@@ -5,6 +5,7 @@ SHELL ["/usr/bin/fish", "-c"]
 
 WORKDIR /src
 COPY rust/api/Cargo.toml rust/api/Cargo.lock rust/api/
+COPY rust/vendor rust/vendor
 COPY rust/web/Cargo.toml rust/web/Cargo.lock rust/web/
 COPY rust/ui-preview/Cargo.toml rust/ui-preview/build.rs rust/ui-preview/
 COPY rust/contract-tests/Cargo.toml rust/contract-tests/Cargo.lock rust/contract-tests/

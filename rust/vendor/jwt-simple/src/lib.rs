@@ -1,0 +1,1263 @@
+//! [![GitHub CI](https://github.com/jedisct1/rust-jwt-simple/workflows/Rust/badge.svg)](https://github.com/jedisct1/rust-jwt-simple/actions)
+//! [![Docs.rs](https://docs.rs/jwt-simple/badge.svg)](https://docs.rs/jwt-simple/)
+//! [![crates.io](https://img.shields.io/crates/v/jwt-simple.svg)](https://crates.io/crates/jwt-simple)
+//!
+//! <!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
+//!
+//! <!-- code_chunk_output -->
+//!
+//! - [JWT-Simple](#jwt-simple)
+//! - [Usage](#usage)
+//! - [Authentication (symmetric, `HS*` JWT algorithms) example](#authentication-symmetric-hs-jwt-algorithms-example)
+//! - [Keys and tokens creation](#keys-and-tokens-creation)
+//! - [Token verification](#token-verification)
+//! - [Signatures (asymmetric, `RS*`, `PS*`, `ES*` and `EdDSA` algorithms) example](#signatures-asymmetric-rs-ps-es-and-eddsa-algorithms-example)
+//! - [Key pairs and tokens creation](#key-pairs-and-tokens-creation)
+//! - [ES256](#es256)
+//! - [ES384](#es384)
+//! - [JWE (Encrypted tokens)](#jwe-encrypted-tokens)
+//! - [RSA-OAEP key management](#rsa-oaep-key-management)
+//! - [AES Key Wrap](#aes-key-wrap)
+//! - [ECDH-ES key agreement](#ecdh-es-key-agreement)
+//! - [Advanced usage](#advanced-usage)
+//! - [Custom claims](#custom-claims)
+//! - [Peeking at metadata before verification](#peeking-at-metadata-before-verification)
+//! - [Creating and attaching key identifiers](#creating-and-attaching-key-identifiers)
+//! - [Mitigations against replay attacks](#mitigations-against-replay-attacks)
+//! - [Salted keys](#salted-keys)
+//! - [CWT (CBOR) support](#cwt-cbor-support)
+//! - [Specifying header options](#specifying-header-options)
+//! - [Validating content and signature types](#validating-content-and-signature-types)
+//! - [Working around compilation issues with the `boring` crate](#working-around-compilation-issues-with-the-boring-crate)
+//! - [Usage in Web browsers](#usage-in-web-browsers)
+//! - [Why yet another JWT crate](#why-yet-another-jwt-crate)
+//!
+//! <!-- /code_chunk_output -->
+//!
+//! # JWT-Simple
+//!
+//! A new JWT (JSON Web Tokens) implementation for Rust that focuses on simplicity, while avoiding common JWT security pitfalls.
+//!
+//! `jwt-simple` is unopinionated and supports all commonly deployed authentication and signature algorithms:
+//!
+//! | JWT algorithm name | Description                           |
+//! | ------------------ | ------------------------------------- |
+//! | `HS256`            | HMAC-SHA-256                          |
+//! | `HS384`            | HMAC-SHA-384                          |
+//! | `HS512`            | HMAC-SHA-512                          |
+//! | `BLAKE2B`          | BLAKE2B-256                           |
+//! | `RS256`            | RSA with PKCS#1v1.5 padding / SHA-256 |
+//! | `RS384`            | RSA with PKCS#1v1.5 padding / SHA-384 |
+//! | `RS512`            | RSA with PKCS#1v1.5 padding / SHA-512 |
+//! | `PS256`            | RSA with PSS padding / SHA-256        |
+//! | `PS384`            | RSA with PSS padding / SHA-384        |
+//! | `PS512`            | RSA with PSS padding / SHA-512        |
+//! | `ES256`            | ECDSA over p256 / SHA-256             |
+//! | `ES384`            | ECDSA over p384 / SHA-384             |
+//! | `ES256K`           | ECDSA over secp256k1 / SHA-256        |
+//! | `EdDSA`            | Ed25519                               |
+//!
+//! JWE (JSON Web Encryption) is also supported with the following key management algorithms:
+//!
+//! | JWE algorithm name | Description                                 |
+//! | ------------------ | ------------------------------------------- |
+//! | `RSA-OAEP`         | RSA with OAEP using SHA-1 (not recommended) |
+//! | `A256KW`           | AES-256 Key Wrap                            |
+//! | `A128KW`           | AES-128 Key Wrap                            |
+//! | `ECDH-ES+A256KW`   | ECDH with AES-256 Key Wrap                  |
+//! | `ECDH-ES+A128KW`   | ECDH with AES-128 Key Wrap                  |
+//!
+//! Content encryption uses AES-GCM (A256GCM or A128GCM).
+//!
+//! `jwt-simple` can be compiled out of the box to WebAssembly/WASI. It is fully compatible with Fastly _Compute_ service.
+//!
+//! Important: JWT's purpose is to verify that data has been created by a party knowing a secret key. It does not provide any kind of confidentiality: JWT data is simply encoded as Base64, and is not encrypted.
+//!
+//! ## Usage
+//!
+//! `cargo.toml`:
+//!
+//! ```toml
+//! [dependencies]
+//! jwt-simple = "0.12"
+//! ```
+//!
+//! Rust:
+//!
+//! ```rust
+//! use jwt_simple::prelude::*;
+//! ```
+//!
+//! Errors are returned as `jwt_simple::Error` values (alias for the `Error` type of the `anyhow` crate).
+//!
+//! ## Authentication (symmetric, `HS*` JWT algorithms) example
+//!
+//! Authentication schemes use the same key for creating and verifying tokens. In other words, both parties need to ultimately trust each other, or else the verifier could also create arbitrary tokens.
+//!
+//! ### Keys and tokens creation
+//!
+//! Key creation:
+//!
+//! ```rust
+//! use jwt_simple::prelude::*;
+//!
+//! // create a new key for the `HS256` JWT algorithm
+//! let key = HS256Key::generate();
+//! ```
+//!
+//! A key can be exported as bytes with `key.to_bytes()`, and restored with `HS256Key::from_bytes()`.
+//!
+//! Token creation:
+//!
+//! ```rust,ignore
+//! // create claims valid for 2 hours
+//! let claims = Claims::create(Duration::from_hours(2));
+//! let token = key.authenticate(claims)?;
+//! ```
+//!
+//! -> Done!
+//!
+//! ### Token verification
+//!
+//! ```rust,ignore
+//! let claims = key.verify_token::<NoCustomClaims>(&token, None)?;
+//! ```
+//!
+//! -> Done! No additional steps required.
+//!
+//! Key expiration, start time, authentication tags, etc. are automatically verified. The function fails with `JWTError::InvalidAuthenticationTag` if the authentication tag is invalid for the given key.
+//!
+//! The full set of claims can be inspected in the `claims` object if necessary. `NoCustomClaims` means that only the standard set of claims is used by the application, but application-defined claims can also be supported.
+//!
+//! Extra verification steps can optionally be enabled via the `VerificationOptions` structure:
+//!
+//! ```rust,ignore
+//! let mut options = VerificationOptions::default();
+//! // Accept tokens that will only be valid in the future
+//! options.accept_future = true;
+//! // Accept tokens even if they have expired up to 15 minutes after the deadline,
+//! // and/or they will be valid within 15 minutes.
+//! // Note that 15 minutes is the default, since it is very common for clocks to be slightly off.
+//! options.time_tolerance = Some(Duration::from_mins(15));
+//! // Reject tokens if they were issued more than 1 hour ago
+//! options.max_validity = Some(Duration::from_hours(1));
+//! // Reject tokens if they don't include an issuer from that set
+//! options.allowed_issuers = Some(HashSet::from_strings(&["example app"]));
+//!
+//! // see the documentation for the full list of available options
+//!
+//! let claims = key.verify_token::<NoCustomClaims>(&token, Some(options))?;
+//! ```
+//!
+//! Note that `allowed_issuers` and `allowed_audiences` are not strings, but sets of strings (using the `HashSet` type from the Rust standard library), as the application can allow multiple values.
+//!
+//! ## Signatures (asymmetric, `RS*`, `PS*`, `ES*` and `EdDSA` algorithms) example
+//!
+//! A signature requires a key pair: a secret key used to create tokens, and a public key, that can only verify them.
+//!
+//! Always use a signature scheme if both parties do not ultimately trust each other, such as tokens exchanged between clients and API providers.
+//!
+//! ### Key pairs and tokens creation
+//!
+//! Key creation:
+//!
+//! #### ES256
+//!
+//! ```rust
+//! use jwt_simple::prelude::*;
+//!
+//! // create a new key pair for the `ES256` JWT algorithm
+//! let key_pair = ES256KeyPair::generate();
+//!
+//! // a public key can be extracted from a key pair:
+//! let public_key = key_pair.public_key();
+//! ```
+//!
+//! #### ES384
+//!
+//! ```rust
+//! use jwt_simple::prelude::*;
+//!
+//! // create a new key pair for the `ES384` JWT algorithm
+//! let key_pair = ES384KeyPair::generate();
+//!
+//! // a public key can be extracted from a key pair:
+//! let public_key = key_pair.public_key();
+//! ```
+//!
+//! Keys can be exported as bytes for later reuse, and imported from bytes or, for RSA, from individual parameters, DER-encoded data or PEM-encoded data.
+//!
+//! RSA key pair creation, using OpenSSL and PEM importation of the secret key:
+//!
+//! ```sh
+//! openssl genrsa -out private.pem 2048
+//! openssl rsa -in private.pem -outform PEM -pubout -out public.pem
+//! ```
+//!
+//! ```rust,ignore
+//! let key_pair = RS384KeyPair::from_pem(private_pem_file_content)?;
+//! let public_key = RS384PublicKey::from_pem(public_pem_file_content)?;
+//! ```
+//!
+//! Token creation and verification work the same way as with `HS*` algorithms, except that tokens are created with a key pair, and verified using the corresponding public key.
+//!
+//! Token creation:
+//!
+//! ```rust,ignore
+//! // create claims valid for 2 hours
+//! let claims = Claims::create(Duration::from_hours(2));
+//! let token = key_pair.sign(claims)?;
+//! ```
+//!
+//! Token verification:
+//!
+//! ```rust,ignore
+//! let claims = public_key.verify_token::<NoCustomClaims>(&token, None)?;
+//! ```
+//!
+//! Available verification options are identical to the ones used with symmetric algorithms.
+//!
+//! ## JWE (Encrypted tokens)
+//!
+//! While JWT signatures provide authenticity (verifying who created the token), JWE provides confidentiality by encrypting the token content. Use JWE when the claims contain sensitive data that should not be visible to intermediaries.
+//!
+//! ### RSA-OAEP key management
+//!
+//! RSA-OAEP uses asymmetric encryption: anyone with the public key can encrypt tokens, but only the private key holder can decrypt them.
+//!
+//! ```rust,ignore
+//! use jwt_simple::prelude::*;
+//!
+//! // Generate a key pair (2048 bits minimum, 4096 recommended for high security)
+//! let decryption_key = RsaOaepDecryptionKey::generate(2048)?;
+//! let encryption_key = decryption_key.encryption_key();
+//!
+//! // Encrypt a token
+//! let claims = Claims::create(Duration::from_hours(1))
+//! .with_subject("user@example.com");
+//! let token = encryption_key.encrypt(claims)?;
+//!
+//! // Decrypt the token
+//! let claims: JWTClaims<NoCustomClaims> = decryption_key.decrypt_token(&token, None)?;
+//! ```
+//!
+//! Keys can be exported and imported using PEM or DER formats, similar to RSA signature keys.
+//!
+//! ### AES Key Wrap
+//!
+//! For symmetric encryption where the same key is used for both encryption and decryption:
+//!
+//! ```rust,ignore
+//! use jwt_simple::prelude::*;
+//!
+//! // Generate a 256-bit key
+//! let key = A256KWKey::generate();
+//!
+//! // Or create from existing bytes
+//! let key = A256KWKey::from_bytes(&raw_key_bytes)?;
+//!
+//! // Encrypt
+//! let claims = Claims::create(Duration::from_hours(1));
+//! let token = key.encrypt(claims)?;
+//!
+//! // Decrypt
+//! let claims: JWTClaims<NoCustomClaims> = key.decrypt_token(&token, None)?;
+//! ```
+//!
+//! `A128KWKey` is also available for 128-bit keys.
+//!
+//! ### ECDH-ES key agreement
+//!
+//! ECDH-ES uses elliptic curve Diffie-Hellman for key agreement. Like RSA-OAEP, it uses asymmetric keys but is more efficient:
+//!
+//! ```rust,ignore
+//! use jwt_simple::prelude::*;
+//!
+//! // Generate a key pair
+//! let decryption_key = EcdhEsA256KWDecryptionKey::generate();
+//! let encryption_key = decryption_key.encryption_key();
+//!
+//! // Encrypt
+//! let claims = Claims::create(Duration::from_hours(1));
+//! let token = encryption_key.encrypt(claims)?;
+//!
+//! // Decrypt
+//! let claims: JWTClaims<NoCustomClaims> = decryption_key.decrypt_token(&token, None)?;
+//! ```
+//!
+//! JWE tokens support the same claim types and custom claims as JWT signatures. Decryption options allow validating claims, requiring specific key IDs, and limiting token size.
+//!
+//! ## Advanced usage
+//!
+//! ### Custom claims
+//!
+//! Claim objects support all the standard claims by default, and they can be set directly or via convenient helpers:
+//!
+//! ```rust,ignore
+//! let claims = Claims::create(Duration::from_hours(2)).
+//! with_issuer("Example issuer").with_subject("Example subject");
+//! ```
+//!
+//! But application-defined claims can also be used. These simply have to be present in a serializable type (this requires the `serde` crate):
+//!
+//! ```rust,ignore
+//! #[derive(Serialize, Deserialize)]
+//! struct MyAdditionalData {
+//! user_is_admin: bool,
+//! user_country: String,
+//! }
+//! let my_additional_data = MyAdditionalData {
+//! user_is_admin: false,
+//! user_country: "FR".to_string(),
+//! };
+//! ```
+//!
+//! Claim creation with custom data:
+//!
+//! ```rust,ignore
+//! let claims = Claims::with_custom_claims(my_additional_data, Duration::from_secs(30));
+//! ```
+//!
+//! Claim verification with custom data. Note the presence of the custom data type:
+//!
+//! ```rust,ignore
+//! let claims = public_key.verify_token::<MyAdditionalData>(&token, None)?;
+//! let user_is_admin = claims.custom.user_is_admin;
+//! ```
+//!
+//! ### Peeking at metadata before verification
+//!
+//! Properties such as the key identifier can be useful prior to tag or signature verification in order to pick the right key out of a set.
+//!
+//! ```rust,ignore
+//! let metadata = Token::decode_metadata(&token)?;
+//! let key_id = metadata.key_id();
+//! let algorithm = metadata.algorithm();
+//! // all other standard properties are also accessible
+//! ```
+//!
+//! **IMPORTANT:** neither the key ID nor the algorithm can be trusted. This is an unfixable design flaw of the JWT standard.
+//!
+//! As a result, `algorithm` should be used only for debugging purposes, and never to select a key type.
+//! Similarly, `key_id` should be used only to select a key in a set of keys made for the same algorithm.
+//!
+//! At the bare minimum, verification using `HS*` must be prohibited if a signature scheme was originally used to create the token.
+//!
+//! ### Creating and attaching key identifiers
+//!
+//! Key identifiers indicate to verifiers what public key (or shared key) should be used for verification.
+//! They can be attached at any time to existing shared keys, key pairs and public keys:
+//!
+//! ```rust,ignore
+//! let public_key_with_id = public_key.with_key_id(&"unique key identifier");
+//! ```
+//!
+//! Instead of delegating this to applications, `jwt-simple` can also create such an identifier for an existing key:
+//!
+//! ```rust,ignore
+//! let key_id = public_key.create_key_id();
+//! ```
+//!
+//! This creates a text-encoded identifier for the key, attaches it, and returns it.
+//!
+//! If an identifier has been attached to a shared key or a key pair, tokens created with them will include it.
+//!
+//! ### Mitigations against replay attacks
+//!
+//! `jwt-simple` includes mechanisms to mitigate replay attacks:
+//!
+//! - Nonces can be created and attached to new tokens using the `create_nonce()` claim function. The verification procedure can later reject any token that doesn't include the expected nonce (`required_nonce` verification option).
+//! - The verification procedure can reject tokens created too long ago, no matter what their expiration date is. This prevents tokens from malicious (or compromised) signers from being used for too long.
+//! - The verification procedure can reject tokens created before a date. For a given user, the date of the last successful authentication can be stored in a database, and used later along with this option to reject older (replayed) tokens.
+//!
+//! ### Salted keys
+//!
+//! Symmetric keys, such as the ones used with the `HS256`, `HS384`, `HS512` and `BLAKE2B` algorithms, are simple and fast, but have a major downside: signature and verification use the exact same key. Therefore, an adversary having access to the verifier key can forge arbitrary, valid tokens.
+//!
+//! Salted keys mitigate this issue in the following way:
+//!
+//! - A random signer salt is created and attached to the shared key. This salt is meant to be known only by the signer.
+//! - Another salt is computed from the signer salt and is meant to be used for verification.
+//! - The verifier salt is used to verify the signer salt, which is included in tokens in the `salt` JWT header.
+//!
+//! If the verifier has access to tokens, it can forge arbitrary tokens. But given only the verification code and keys, this is impossible. This greatly improves the security of symmetric keys used for verification on 3rd party servers, such as CDNs.
+//!
+//! A salt binds to a key, and can be of any length. The `generate_with_salt()` function generates both a random symmetric key, and a 32-byte salt.
+//!
+//! Example usage:
+//!
+//! ```rust,ignore
+//! // Create a random key and a signer salt
+//! let key = HS256Key::generate_with_salt();
+//! let claims = Claims::create(Duration::from_secs(86400));
+//! let token = key.authenticate(claims).unwrap();
+//! ```
+//!
+//! A salt is a `Salt` enum, because it can be either a salt for signing, or a salt for verification.
+//! It can be saved and restored:
+//!
+//! ```rust,ignore
+//! // Get the salt
+//! let salt = key.salt();
+//! // Attach an existing salt to a key
+//! key.attach_salt(salt)?;
+//! ```
+//!
+//! Given a signer salt, the corresponding verifier salt can be computed:
+//!
+//! ```rust,ignore
+//! // Compute the verifier salt, given a signer salt
+//! let verifier_salt = key.verifier_salt()?;
+//! ```
+//!
+//! The verifier salt doesn't have to be secret, and can even be hard-coded in the verification code.
+//!
+//! Verification:
+//!
+//! ```rust,ignore
+//! let verifier_salt = Salt::Verifier(verifier_salt_bytes);
+//! key.attach_salt(verifier_salt)?;
+//! let claims = key.verify_token::<NoCustomClaims>(&token, None)?;
+//! ```
+//!
+//! ### CWT (CBOR) support
+//!
+//! The development code includes a `cwt` cargo feature that enables experimental parsing and validation of CWT tokens.
+//!
+//! Please note that CWT doesn't support custom claims. The required identifiers [haven't been standardized yet](https://www.iana.org/assignments/cwt/cwt.xhtml).
+//!
+//! Also, the existing Rust crates for JSON and CBOR deserialization are not safe. An untrusted party can send a serialized object that requires a lot of memory and CPU to deserialize. Band-aids have been added for JSON, but with the current Rust tooling, it would be tricky to implement for CBOR.
+//!
+//! As a mitigation, we highly recommend rejecting tokens that would be too large in the context of your application. That can be done with the `max_token_length` verification option.
+//!
+//! ### Specifying header options
+//!
+//! It is possible to change the content type (`cty`) and signature type (`typ`) fields of a signed JWT by using the `sign_with_options`/`authenticate_with_options` functions and passing in a `HeaderOptions` struct:
+//!
+//! ``` rust,ignore
+//! let options = HeaderOptions {
+//! content_type: Some("foo".into()),
+//! signature_type: Some("foo+JWT".into()),
+//! ..Default::default()
+//! };
+//! key_pair.sign_with_options(claims, &options).unwrap();
+//! ```
+//!
+//! By default, generated JWTs will have a signature type field containing the string "JWT", and the content type field will not be present.
+//!
+//! ### Validating content and signature types
+//!
+//! By default, `jwt_simple` ignores the `content_type` field when doing validation, and checks `signature_type` to ensure it is either exactly `JWT` or ends in `+JWT`, case insensitive, if it is present. Both fields may instead be case-insensitively compared against an expected string:
+//!
+//! ```rust,ignore
+//! options.required_signature_type = Some("JWT".into());
+//! options.required_content_type = Some("foo+jwt".into());
+//! ```
+//!
+//! When validating CWTs, note that CWTs do not have a `content_type` field in their header, and therefore attempting to match a specific one by setting `required_content_type` during validation will **always result in an error**.
+//!
+//!
+//! ## Working around compilation issues with the `boring` crate
+//!
+//! As a temporary workaround for portability issues with one of the dependencies (the `boring` crate), this library can be compiled to use only Rust implementations.
+//!
+//! In order to do so, import the crate with `default-features = false, features = ["pure-rust"]` in your Cargo configuration.
+//!
+//! Do not do it unconditionally. This is only required for very specific setups and targets, and only until issues with the `boring` crate have been solved. The way to configure this in Cargo may also change in future versions.
+//!
+//! Static builds targeting the `musl` library don't require that workaround. Just use [`cargo-zigbuild`](https://github.com/rust-cross/cargo-zigbuild) to build your project.
+//!
+//! ## Usage in Web browsers
+//!
+//! The `wasm32-freestanding` target (still sometimes called `wasm32-unknown-unknown` in Rust) is supported (as in "it compiles").
+//!
+//! However, using a native JavaScript implementation is highly recommended instead. There are high-quality JWT implementations in JavaScript, leveraging the WebCrypto API, that provide better performance and security guarantees than a WebAssembly module.
+//!
+//! ## Why yet another JWT crate
+//!
+//! This crate is not an endorsement of JWT. JWT is [an awful design](https://tools.ietf.org/html/rfc8725), and one of the many examples that "but this is a standard" doesn't necessarily mean that it is good.
+//!
+//! I would highly recommend [PASETO](https://github.com/paragonie/paseto) or [Biscuit](https://github.com/CleverCloud/biscuit) instead if you control both token creation and verification.
+//!
+//! However, JWT is still widely used in the industry, and remains absolutely mandatory to communicate with popular APIs.
+//!
+//! This crate was designed to:
+//!
+//! - Be simple to use, even for people who are new to Rust
+//! - Avoid common JWT API pitfalls
+//! - Support features widely in use. I'd love to limit the algorithm choices to Ed25519, but other methods are required to connect to existing APIs, so we provide them (with the exception of the `None` signature method for obvious reasons).
+//! - Minimize code complexity and external dependencies
+//! - Automatically perform common tasks to prevent misuse. Signature verification and claims validation happen automatically instead of relying on applications.
+//! - Still allow power users to access everything JWT tokens include if they really need to
+//! - Work out of the box in a WebAssembly environment, so that it can be used in function-as-a-service platforms.
+#![forbid(unsafe_code)]
+
+#[cfg(all(feature = "pure-rust", feature = "optimal"))]
+compile_error!("jwt-simple: the `optimal` feature is only available when the `pure-rust` feature is disabled - Consider disabling default Cargo features.");
+
+#[cfg(all(not(feature = "pure-rust"), not(feature = "optimal")))]
+compile_error!("jwt-simple: the `optimal` feature is required when the `pure-rust` feature is disabled - Consider enabling default Cargo features.");
+
+pub mod algorithms;
+pub mod claims;
+pub mod common;
+#[cfg(feature = "cwt")]
+pub mod cwt_token;
+#[cfg(feature = "jwe")]
+pub mod jwe_header;
+#[cfg(feature = "jwe")]
+pub mod jwe_token;
+pub mod token;
+
+mod jwt_header;
+mod serde_additions;
+
+pub mod reexports {
+    pub use anyhow;
+    pub use coarsetime;
+    pub use ct_codecs;
+    pub use rand;
+    pub use serde;
+    pub use serde_json;
+    pub use thiserror;
+    pub use zeroize;
+}
+
+mod error;
+pub use error::{Error, JWTError};
+
+pub mod prelude {
+    pub use std::collections::HashSet;
+
+    pub use coarsetime::{self, Clock, Duration, UnixTimeStamp};
+    pub use ct_codecs::{
+        Base64, Base64NoPadding, Base64UrlSafe, Base64UrlSafeNoPadding, Decoder as _, Encoder as _,
+    };
+    pub use serde::{Deserialize, Serialize};
+
+    pub use crate::algorithms::*;
+    pub use crate::claims::*;
+    pub use crate::common::*;
+    #[cfg(feature = "cwt")]
+    pub use crate::cwt_token::*;
+    #[cfg(feature = "jwe")]
+    pub use crate::jwe_token::{DecryptionOptions, EncryptionOptions, JWEToken, JWETokenMetadata};
+    pub use crate::token::*;
+
+    mod hashset_from_strings {
+        use std::collections::HashSet;
+
+        pub trait HashSetFromStringsT {
+            /// Create a set from a list of strings
+            fn from_strings(strings: &[impl ToString]) -> HashSet<String> {
+                strings.iter().map(|x| x.to_string()).collect()
+            }
+        }
+
+        impl HashSetFromStringsT for HashSet<String> {}
+    }
+
+    pub use hashset_from_strings::HashSetFromStringsT as _;
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::prelude::*;
+
+    #[cfg(feature = "rsa")]
+    const RSA_KP_PEM: &str = r"
+-----BEGIN RSA PRIVATE KEY-----
+MIIEpAIBAAKCAQEAyqq0N5u8Jvl+BLH2VMP/NAv/zY9T8mSq0V2Gk5Ql5H1a+4qi
+3viorUXG3AvIEEccpLsW85ps5+I9itp74jllRjA5HG5smbb+Oym0m2Hovfj6qP/1
+m1drQg8oth6tNmupNqVzlGGWZLsSCBLuMa3pFaPhoxl9lGU3XJIQ1/evMkOb98I3
+hHb4ELn3WGtNlAVkbP20R8sSii/zFjPqrG/NbSPLyAl1ctbG2d8RllQF1uRIqYQj
+85yx73hqQCMpYWU3d9QzpkLf/C35/79qNnSKa3t0cyDKinOY7JGIwh8DWAa4pfEz
+gg56yLcilYSSohXeaQV0nR8+rm9J8GUYXjPK7wIDAQABAoIBAQCpeRPYyHcPFGTH
+4lU9zuQSjtIq/+bP9FRPXWkS8bi6GAVEAUtvLvpGYuoGyidTTVPrgLORo5ncUnjq
+KwebRimlBuBLIR/Zboery5VGthoc+h4JwniMnQ6JIAoIOSDZODA5DSPYeb58n15V
+uBbNHkOiH/eoHsG/nOAtnctN/cXYPenkCfeLXa3se9EzkcmpNGhqCBL/awtLU17P
+Iw7XxsJsRMBOst4Aqiri1GQI8wqjtXWLyfjMpPR8Sqb4UpTDmU1wHhE/w/+2lahC
+Tu0/+sCWj7TlafYkT28+4pAMyMqUT6MjqdmGw8lD7/vXv8TF15NU1cUv3QSKpVGe
+50vlB1QpAoGBAO1BU1evrNvA91q1bliFjxrH3MzkTQAJRMn9PBX29XwxVG7/HlhX
+0tZRSR92ZimT2bAu7tH0Tcl3Bc3NwEQrmqKlIMqiW+1AVYtNjuipIuB7INb/TUM3
+smEh+fn3yhMoVxbbh/klR1FapPUFXlpNv3DJHYM+STqLMhl9tEc/I7bLAoGBANqt
+zR6Kovf2rh7VK/Qyb2w0rLJE7Zh/WI+r9ubCba46sorqkJclE5cocxWuTy8HWyQp
+spxzLP1FQlsI+MESgRLueoH3HtB9lu/pv6/8JlNjU6SzovfUZ0KztVUyUeB4vAcH
+pGcf2CkUtoYc8YL22Ybck3s8ThIdnY5zphCF55PtAoGAf46Go3c05XVKx78R05AD
+D2/y+0mnSGSzUjHPMzPyadIPxhltlCurlERhnwPGC4aNHFcvWTwS8kUGns6HF1+m
+JNnI1okSCW10UI/jTJ1avfwU/OKIBKKWSfi9cDJTt5cRs51V7pKnVEr6sy0uvDhe
+u+G091HuhwY9ak0WNtPwfJ8CgYEAuRdoyZQQso7x/Bj0tiHGW7EOB2n+LRiErj6g
+odspmNIH8zrtHXF9bnEHT++VCDpSs34ztuZpywnHS2SBoHH4HD0MJlszksbqbbDM
+1bk3+1bUIlEF/Hyk1jljn3QTB0tJ4y1dwweaH9NvVn7DENW9cr/aePGnJwA4Lq3G
+fq/IPlUCgYAuqgJQ4ztOq0EaB75xgqtErBM57A/+lMWS9eD/euzCEO5UzWVaiIJ+
+nNDmx/jvSrxA1Ih8TEHjzv4ezLFYpaJrTst4Mjhtx+csXRJU9a2W6HMXJ4Kdn8rk
+PBziuVURslNyLdlFsFlm/kfvX+4Cxrbb+pAGETtRTgmAoCDbvuDGRQ==
+-----END RSA PRIVATE KEY-----
+    ";
+
+    #[cfg(feature = "rsa")]
+    const RSA_PK_PEM: &str = r"
+-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyqq0N5u8Jvl+BLH2VMP/
+NAv/zY9T8mSq0V2Gk5Ql5H1a+4qi3viorUXG3AvIEEccpLsW85ps5+I9itp74jll
+RjA5HG5smbb+Oym0m2Hovfj6qP/1m1drQg8oth6tNmupNqVzlGGWZLsSCBLuMa3p
+FaPhoxl9lGU3XJIQ1/evMkOb98I3hHb4ELn3WGtNlAVkbP20R8sSii/zFjPqrG/N
+bSPLyAl1ctbG2d8RllQF1uRIqYQj85yx73hqQCMpYWU3d9QzpkLf/C35/79qNnSK
+a3t0cyDKinOY7JGIwh8DWAa4pfEzgg56yLcilYSSohXeaQV0nR8+rm9J8GUYXjPK
+7wIDAQAB
+-----END PUBLIC KEY-----
+    ";
+
+    #[test]
+    fn hs384() {
+        let key = HS384Key::from_bytes(b"your-256-bit-secret").with_key_id("my-key-id");
+        let claims = Claims::create(Duration::from_secs(86400)).with_issuer("test issuer");
+        let token = key.authenticate(claims).unwrap();
+        let options = VerificationOptions {
+            allowed_issuers: Some(HashSet::from_strings(&["test issuer"])),
+            ..Default::default()
+        };
+        let _claims = key
+            .verify_token::<NoCustomClaims>(&token, Some(options))
+            .unwrap();
+    }
+
+    #[test]
+    fn blake2b() {
+        let key = Blake2bKey::from_bytes(b"your-256-bit-secret").with_key_id("my-key-id");
+        let claims = Claims::create(Duration::from_secs(86400)).with_issuer("test issuer");
+        let token = key.authenticate(claims).unwrap();
+        let options = VerificationOptions {
+            allowed_issuers: Some(HashSet::from_strings(&["test issuer"])),
+            ..Default::default()
+        };
+        let _claims = key
+            .verify_token::<NoCustomClaims>(&token, Some(options))
+            .unwrap();
+    }
+
+    #[test]
+    #[cfg(feature = "rsa")]
+    fn rs256() {
+        let key_pair = RS256KeyPair::from_pem(RSA_KP_PEM).unwrap();
+        let claims = Claims::create(Duration::from_secs(86400));
+        let token = key_pair.sign(claims).unwrap();
+        let pk = RS256PublicKey::from_pem(RSA_PK_PEM).unwrap();
+        let _claims = pk.verify_token::<NoCustomClaims>(&token, None).unwrap();
+        let components = pk.to_components();
+        let hex_e = Base64::encode_to_string(components.e).unwrap();
+        let _e = Base64::decode_to_vec(hex_e, None).unwrap();
+    }
+
+    #[test]
+    #[cfg(feature = "rsa")]
+    fn ps384() {
+        let key_pair = PS384KeyPair::generate(2048).unwrap();
+        let claims = Claims::create(Duration::from_secs(86400));
+        let token = key_pair.sign(claims).unwrap();
+        let _claims = key_pair
+            .public_key()
+            .verify_token::<NoCustomClaims>(&token, None)
+            .unwrap();
+    }
+
+    #[test]
+    fn es256() {
+        let key_pair = ES256KeyPair::generate();
+        let claims = Claims::create(Duration::from_secs(86400));
+        let token = key_pair.sign(claims).unwrap();
+        let _claims = key_pair
+            .public_key()
+            .verify_token::<NoCustomClaims>(&token, None)
+            .unwrap();
+    }
+
+    #[test]
+    fn es384() {
+        let key_pair = ES384KeyPair::generate();
+        let claims = Claims::create(Duration::from_secs(86400));
+        let token = key_pair.sign(claims).unwrap();
+        let _claims = key_pair
+            .public_key()
+            .verify_token::<NoCustomClaims>(&token, None)
+            .unwrap();
+    }
+
+    #[test]
+    fn es256k() {
+        let key_pair = ES256kKeyPair::generate();
+        let claims = Claims::create(Duration::from_secs(86400));
+        let token = key_pair.sign(claims).unwrap();
+        let _claims = key_pair
+            .public_key()
+            .verify_token::<NoCustomClaims>(&token, None)
+            .unwrap();
+    }
+
+    #[test]
+    fn ed25519() {
+        #[derive(Serialize, Deserialize)]
+        struct CustomClaims {
+            is_custom: bool,
+        }
+
+        let key_pair = Ed25519KeyPair::generate();
+        let mut pk = key_pair.public_key();
+        let key_id = pk.create_key_id();
+        let key_pair = key_pair.with_key_id(key_id);
+        let public_key = key_pair.public_key(); // Get public key after setting key_id
+        let custom_claims = CustomClaims { is_custom: true };
+        let claims = Claims::with_custom_claims(custom_claims, Duration::from_secs(86400));
+        let token = key_pair.sign(claims).unwrap();
+        let options = VerificationOptions {
+            required_key_id: Some(key_id.to_string()),
+            ..Default::default()
+        };
+        let claims: JWTClaims<CustomClaims> = public_key
+            .verify_token::<CustomClaims>(&token, Some(options))
+            .unwrap();
+        assert!(claims.custom.is_custom);
+    }
+
+    #[test]
+    fn ed25519_der() {
+        let key_pair = Ed25519KeyPair::generate();
+        let der = key_pair.to_der();
+        let key_pair2 = Ed25519KeyPair::from_der(&der).unwrap();
+        assert_eq!(key_pair.to_bytes(), key_pair2.to_bytes());
+    }
+
+    #[test]
+    fn require_nonce() {
+        let key = HS256Key::generate();
+        let mut claims = Claims::create(Duration::from_hours(1));
+        let nonce = claims.create_nonce();
+        let token = key.authenticate(claims).unwrap();
+
+        let options = VerificationOptions {
+            required_nonce: Some(nonce),
+            ..Default::default()
+        };
+        key.verify_token::<NoCustomClaims>(&token, Some(options))
+            .unwrap();
+    }
+
+    #[test]
+    fn eddsa_pem() {
+        let sk_pem = "-----BEGIN PRIVATE KEY-----
+MC4CAQAwBQYDK2VwBCIEIMXY1NUbUe/3dW2YUoKW5evsnCJPMfj60/q0RzGne3gg
+-----END PRIVATE KEY-----
+";
+        let pk_pem = "-----BEGIN PUBLIC KEY-----
+MCowBQYDK2VwAyEAyrRjJfTnhMcW5igzYvPirFW5eUgMdKeClGzQhd4qw+Y=
+-----END PUBLIC KEY-----
+";
+        let kp = Ed25519KeyPair::from_pem(sk_pem).unwrap();
+        assert_eq!(kp.public_key().to_pem(), pk_pem);
+    }
+
+    #[test]
+    fn key_metadata() {
+        let mut key_pair = Ed25519KeyPair::generate();
+        let thumbprint = key_pair.public_key().sha1_thumbprint();
+        let key_metadata = KeyMetadata::default()
+            .with_certificate_sha1_thumbprint(&thumbprint)
+            .unwrap();
+        key_pair.attach_metadata(key_metadata).unwrap();
+
+        let claims = Claims::create(Duration::from_secs(86400));
+        let token = key_pair.sign(claims).unwrap();
+
+        let decoded_metadata = Token::decode_metadata(&token).unwrap();
+        assert_eq!(
+            decoded_metadata.certificate_sha1_thumbprint(),
+            Some(thumbprint.as_ref())
+        );
+        let _ = key_pair
+            .public_key()
+            .verify_token::<NoCustomClaims>(&token, None)
+            .unwrap();
+    }
+
+    #[test]
+    fn set_header_content_type() {
+        let key_pair = Ed25519KeyPair::generate();
+        let claims = Claims::create(Duration::from_secs(86400));
+        let token = key_pair
+            .sign_with_options(
+                claims,
+                &HeaderOptions {
+                    content_type: Some("foo".into()),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+        let decoded_metadata = Token::decode_metadata(&token).unwrap();
+        assert_eq!(
+            decoded_metadata.jwt_header.content_type.as_deref(),
+            Some("foo")
+        );
+        let _ = key_pair
+            .public_key()
+            .verify_token::<NoCustomClaims>(&token, None)
+            .unwrap();
+    }
+
+    #[test]
+    fn set_header_signature_type() {
+        let key_pair = Ed25519KeyPair::generate();
+        let claims = Claims::create(Duration::from_secs(86400));
+        let token = key_pair
+            .sign_with_options(
+                claims,
+                &HeaderOptions {
+                    signature_type: Some("etc+jwt".into()),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+        let decoded_metadata = Token::decode_metadata(&token).unwrap();
+        assert_eq!(
+            decoded_metadata.jwt_header.signature_type.as_deref(),
+            Some("etc+jwt")
+        );
+        let _ = key_pair
+            .public_key()
+            .verify_token::<NoCustomClaims>(&token, None)
+            .unwrap();
+    }
+
+    #[cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))]
+    #[test]
+    fn expired_token() {
+        let key = HS256Key::generate();
+        let claims = Claims::create(Duration::from_secs(1));
+        let token = key.authenticate(claims).unwrap();
+        std::thread::sleep(std::time::Duration::from_secs(2));
+        let options = VerificationOptions {
+            time_tolerance: None,
+            ..Default::default()
+        };
+        let claims = key.verify_token::<NoCustomClaims>(&token, None);
+        assert!(claims.is_ok());
+        let claims = key.verify_token::<NoCustomClaims>(&token, Some(options));
+        assert!(claims.is_err());
+    }
+
+    #[test]
+    fn salt() {
+        let mut key = HS256Key::generate_with_salt();
+        let claims = Claims::create(Duration::from_secs(86400));
+        let token = key.authenticate(claims).unwrap();
+
+        let res = key.verify_token::<NoCustomClaims>(&token, None);
+        assert!(res.is_err());
+
+        let verifier_salt = key.verifier_salt().unwrap();
+        key.attach_salt(verifier_salt).unwrap();
+        key.verify_token::<NoCustomClaims>(&token, None).unwrap();
+    }
+
+    #[test]
+    fn salt2() {
+        let mut key = HS256Key::generate();
+        let claims = Claims::create(Duration::from_secs(86400));
+        let token = key.authenticate(claims).unwrap();
+
+        key.verify_token::<NoCustomClaims>(&token, None).unwrap();
+
+        let verifier_salt = Salt::Verifier(b"salt".to_vec());
+        key.attach_salt(verifier_salt).unwrap();
+        let res = key.verify_token::<NoCustomClaims>(&token, None);
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn weak_key_rejected_on_authenticate() {
+        let key = HS256Key::from_bytes(b"short");
+        let claims = Claims::create(Duration::from_secs(86400));
+        let res = key.authenticate(claims);
+        assert!(res.is_err());
+        assert!(res.unwrap_err().to_string().contains("Weak key"));
+    }
+
+    #[test]
+    fn weak_key_rejected_on_verify() {
+        let valid_key = HS256Key::generate();
+        let claims = Claims::create(Duration::from_secs(86400));
+        let token = valid_key.authenticate(claims).unwrap();
+
+        let weak_key = HS256Key::from_bytes(b"11-bytes..");
+        let res = weak_key.verify_token::<NoCustomClaims>(&token, None);
+        assert!(res.is_err());
+        assert!(res.unwrap_err().to_string().contains("Weak key"));
+    }
+
+    #[test]
+    fn min_key_length_accepted() {
+        let key = HS256Key::from_bytes(b"12-bytes...!");
+        let claims = Claims::create(Duration::from_secs(86400));
+        let token = key.authenticate(claims).unwrap();
+        key.verify_token::<NoCustomClaims>(&token, None).unwrap();
+    }
+
+    #[test]
+    fn weak_key_rejected_hs384() {
+        let key = HS384Key::from_bytes(b"short");
+        let claims = Claims::create(Duration::from_secs(86400));
+        assert!(key.authenticate(claims).is_err());
+    }
+
+    #[test]
+    fn weak_key_rejected_hs512() {
+        let key = HS512Key::from_bytes(b"short");
+        let claims = Claims::create(Duration::from_secs(86400));
+        assert!(key.authenticate(claims).is_err());
+    }
+
+    #[test]
+    fn weak_key_rejected_blake2b() {
+        let key = Blake2bKey::from_bytes(b"short");
+        let claims = Claims::create(Duration::from_secs(86400));
+        assert!(key.authenticate(claims).is_err());
+    }
+
+    #[cfg(feature = "jwe")]
+    #[test]
+    fn jwe_rsa_oaep() {
+        let decryption_key = RsaOaepDecryptionKey::generate(2048).unwrap();
+        let encryption_key = decryption_key.encryption_key();
+
+        let claims = Claims::create(Duration::from_secs(86400)).with_issuer("test issuer");
+        let token = encryption_key.encrypt(claims).unwrap();
+
+        let claims: JWTClaims<NoCustomClaims> = decryption_key.decrypt_token(&token, None).unwrap();
+        assert_eq!(claims.issuer, Some("test issuer".to_string()));
+    }
+
+    #[cfg(feature = "jwe")]
+    #[test]
+    fn jwe_a256kw() {
+        let key = A256KWKey::generate();
+
+        let claims = Claims::create(Duration::from_secs(86400)).with_issuer("test issuer");
+        let token = key.encrypt(claims).unwrap();
+
+        let claims: JWTClaims<NoCustomClaims> = key.decrypt_token(&token, None).unwrap();
+        assert_eq!(claims.issuer, Some("test issuer".to_string()));
+    }
+
+    #[cfg(feature = "jwe")]
+    #[test]
+    fn jwe_a256kw_from_bytes() {
+        let raw_key = [0u8; 32];
+        let key = A256KWKey::from_bytes(&raw_key).unwrap();
+
+        let claims = Claims::create(Duration::from_secs(86400));
+        let token = key.encrypt(claims).unwrap();
+
+        let key2 = A256KWKey::from_bytes(&raw_key).unwrap();
+        let _claims: JWTClaims<NoCustomClaims> = key2.decrypt_token(&token, None).unwrap();
+    }
+
+    #[cfg(feature = "jwe")]
+    #[test]
+    fn jwe_a128kw() {
+        let key = A128KWKey::generate();
+
+        let claims = Claims::create(Duration::from_secs(86400)).with_issuer("test issuer");
+        let token = key.encrypt(claims).unwrap();
+
+        let claims: JWTClaims<NoCustomClaims> = key.decrypt_token(&token, None).unwrap();
+        assert_eq!(claims.issuer, Some("test issuer".to_string()));
+    }
+
+    #[cfg(feature = "jwe")]
+    #[test]
+    fn jwe_a128kw_from_bytes() {
+        let raw_key = [0u8; 16];
+        let key = A128KWKey::from_bytes(&raw_key).unwrap();
+
+        let claims = Claims::create(Duration::from_secs(86400));
+        let token = key.encrypt(claims).unwrap();
+
+        let key2 = A128KWKey::from_bytes(&raw_key).unwrap();
+        let _claims: JWTClaims<NoCustomClaims> = key2.decrypt_token(&token, None).unwrap();
+    }
+
+    #[cfg(feature = "jwe")]
+    #[test]
+    fn jwe_ecdh_es_a256kw() {
+        let decryption_key = EcdhEsA256KWDecryptionKey::generate();
+        let encryption_key = decryption_key.encryption_key();
+
+        let claims = Claims::create(Duration::from_secs(86400))
+            .with_issuer("test issuer")
+            .with_audience("test audience");
+        let token = encryption_key.encrypt(claims).unwrap();
+
+        let claims: JWTClaims<NoCustomClaims> = decryption_key.decrypt_token(&token, None).unwrap();
+        assert_eq!(claims.issuer, Some("test issuer".to_string()));
+    }
+
+    #[cfg(feature = "jwe")]
+    #[test]
+    fn jwe_ecdh_es_a128kw() {
+        let decryption_key = EcdhEsA128KWDecryptionKey::generate();
+        let encryption_key = decryption_key.encryption_key();
+
+        let claims = Claims::create(Duration::from_secs(86400)).with_issuer("test issuer");
+        let token = encryption_key.encrypt(claims).unwrap();
+
+        let claims: JWTClaims<NoCustomClaims> = decryption_key.decrypt_token(&token, None).unwrap();
+        assert_eq!(claims.issuer, Some("test issuer".to_string()));
+    }
+
+    #[cfg(feature = "jwe")]
+    #[test]
+    fn jwe_custom_claims() {
+        #[derive(Serialize, Deserialize, Debug, PartialEq)]
+        struct CustomClaims {
+            user_id: u64,
+            role: String,
+        }
+
+        let key = A256KWKey::generate();
+
+        let custom = CustomClaims {
+            user_id: 12345,
+            role: "admin".to_string(),
+        };
+        let claims = Claims::with_custom_claims(custom, Duration::from_secs(86400))
+            .with_issuer("test issuer");
+        let token = key.encrypt(claims).unwrap();
+
+        let claims: JWTClaims<CustomClaims> = key.decrypt_token(&token, None).unwrap();
+        assert_eq!(claims.issuer, Some("test issuer".to_string()));
+        assert_eq!(claims.custom.user_id, 12345);
+        assert_eq!(claims.custom.role, "admin");
+    }
+
+    #[cfg(feature = "jwe")]
+    #[test]
+    fn jwe_with_content_encryption_a128gcm() {
+        let key = A256KWKey::generate();
+
+        let claims = Claims::create(Duration::from_secs(86400));
+        let options = EncryptionOptions {
+            content_encryption: ContentEncryption::A128GCM,
+            ..Default::default()
+        };
+        let token = key.encrypt_with_options(claims, &options).unwrap();
+
+        let metadata = A256KWKey::decode_metadata(&token).unwrap();
+        assert_eq!(metadata.encryption(), "A128GCM");
+
+        let _claims: JWTClaims<NoCustomClaims> = key.decrypt_token(&token, None).unwrap();
+    }
+
+    #[cfg(feature = "jwe")]
+    #[test]
+    fn jwe_metadata_decode() {
+        let key = A256KWKey::generate().with_key_id("my-key");
+
+        let claims = Claims::create(Duration::from_secs(86400));
+        let options = EncryptionOptions {
+            content_type: Some("JWT".to_string()),
+            ..Default::default()
+        };
+        let token = key.encrypt_with_options(claims, &options).unwrap();
+
+        let metadata = A256KWKey::decode_metadata(&token).unwrap();
+        assert_eq!(metadata.algorithm(), "A256KW");
+        assert_eq!(metadata.encryption(), "A256GCM");
+        assert_eq!(metadata.key_id(), Some("my-key"));
+        assert_eq!(metadata.content_type(), Some("JWT"));
+    }
+
+    #[cfg(feature = "jwe")]
+    #[test]
+    fn jwe_wrong_key_fails() {
+        let key1 = A256KWKey::generate();
+        let key2 = A256KWKey::generate();
+
+        let claims = Claims::create(Duration::from_secs(86400));
+        let token = key1.encrypt(claims).unwrap();
+
+        let result: Result<JWTClaims<NoCustomClaims>, _> = key2.decrypt_token(&token, None);
+        assert!(result.is_err());
+    }
+
+    #[cfg(feature = "jwe")]
+    #[test]
+    fn jwe_invalid_key_size_a256kw() {
+        let result = A256KWKey::from_bytes(&[0u8; 16]);
+        assert!(result.is_err());
+    }
+
+    #[cfg(feature = "jwe")]
+    #[test]
+    fn jwe_invalid_key_size_a128kw() {
+        let result = A128KWKey::from_bytes(&[0u8; 32]);
+        assert!(result.is_err());
+    }
+
+    #[cfg(feature = "jwe")]
+    #[test]
+    fn jwe_rsa_key_too_small() {
+        let result = RsaOaepDecryptionKey::generate(1024);
+        assert!(result.is_err());
+    }
+
+    #[cfg(feature = "jwe")]
+    #[test]
+    fn jwe_critical_header_rejected() {
+        use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
+
+        let key = A256KWKey::generate();
+        let claims = Claims::create(Duration::from_secs(86400));
+        let token = key.encrypt(claims).unwrap();
+
+        let parts: Vec<&str> = token.split('.').collect();
+        let header_bytes =
+            ct_codecs::Base64UrlSafeNoPadding::decode_to_vec(parts[0], None).unwrap();
+        let mut header: serde_json::Value = serde_json::from_slice(&header_bytes).unwrap();
+        header["crit"] = serde_json::json!(["unknown-extension"]);
+        let modified_header = serde_json::to_string(&header).unwrap();
+        let modified_header_b64 =
+            Base64UrlSafeNoPadding::encode_to_string(&modified_header).unwrap();
+
+        let modified_token = format!(
+            "{}.{}.{}.{}.{}",
+            modified_header_b64, parts[1], parts[2], parts[3], parts[4]
+        );
+
+        let result: Result<JWTClaims<NoCustomClaims>, _> = key.decrypt_token(&modified_token, None);
+        assert!(result.is_err());
+    }
+
+    #[cfg(feature = "jwe")]
+    #[test]
+    fn jwe_malformed_inputs_no_panic() {
+        let key = A256KWKey::generate();
+
+        let malformed_inputs = [
+            "",
+            ".",
+            "..",
+            "...",
+            "....",
+            ".....",
+            "a]]]]]",
+            "a.b.c.d.e",
+            "?????.?????.?????.?????.?????",
+            "eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJBMjU2R0NNIn0",
+            "eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJBMjU2R0NNIn0.",
+            "eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJBMjU2R0NNIn0..",
+            "eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJBMjU2R0NNIn0...",
+            "eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJBMjU2R0NNIn0....",
+            "eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJBMjU2R0NNIn0.a.b.c.d",
+            "not-base64!@#$.valid.valid.valid.valid",
+            "eyJhbGciOiJBMjU2S1cifQ.a.b.c.d",
+            "eyJ9.a.b.c.d",
+            "e30.a.b.c.d",
+            &"a".repeat(100000),
+            &format!("{}.{}.{}.{}.{}", "a".repeat(10000), "b", "c", "d", "e"),
+            "eyJhbGciOiJXUk9ORyIsImVuYyI6IkEyNTZHQ00ifQ.a.b.c.d",
+            "eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJXUk9ORyJ9.a.b.c.d",
+            "    .    .    .    .    ",
+            "eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJBMjU2R0NNIn0.AAAA.AAAA.AAAA.AAAA",
+            "eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJBMjU2R0NNIn0.....AAAA",
+        ];
+
+        for input in &malformed_inputs {
+            let result: Result<JWTClaims<NoCustomClaims>, _> = key.decrypt_token(input, None);
+            assert!(result.is_err(), "Expected error for input: {}", input);
+        }
+
+        // Also test decode_metadata with malformed inputs
+        for input in &malformed_inputs {
+            let _ = A256KWKey::decode_metadata(input);
+        }
+    }
+
+    #[cfg(feature = "jwe")]
+    #[test]
+    fn jwe_truncated_token_no_panic() {
+        let key = A256KWKey::generate();
+        let claims = Claims::create(Duration::from_secs(86400));
+        let token = key.encrypt(claims).unwrap();
+
+        // Test progressively truncated tokens
+        for i in 0..token.len() {
+            let truncated = &token[..i];
+            let result: Result<JWTClaims<NoCustomClaims>, _> = key.decrypt_token(truncated, None);
+            assert!(result.is_err());
+        }
+    }
+
+    #[cfg(feature = "jwe")]
+    #[test]
+    fn jwe_corrupted_parts_no_panic() {
+        let key = A256KWKey::generate();
+        let claims = Claims::create(Duration::from_secs(86400));
+        let token = key.encrypt(claims).unwrap();
+        let parts: Vec<&str> = token.split('.').collect();
+
+        // Corrupt each part individually
+        for i in 0..5 {
+            let mut modified_parts: Vec<String> = parts.iter().map(|s| s.to_string()).collect();
+            modified_parts[i] = "AAAA".to_string();
+            let modified = modified_parts.join(".");
+            let result: Result<JWTClaims<NoCustomClaims>, _> = key.decrypt_token(&modified, None);
+            assert!(result.is_err());
+        }
+
+        // Empty each part individually
+        for i in 0..5 {
+            let mut modified_parts: Vec<String> = parts.iter().map(|s| s.to_string()).collect();
+            modified_parts[i] = "".to_string();
+            let modified = modified_parts.join(".");
+            let result: Result<JWTClaims<NoCustomClaims>, _> = key.decrypt_token(&modified, None);
+            assert!(result.is_err());
+        }
+    }
+
+    #[cfg(feature = "jwe")]
+    #[test]
+    fn jwe_rsa_malformed_inputs_no_panic() {
+        let key = RsaOaepDecryptionKey::generate(2048).unwrap();
+
+        let malformed_inputs = [
+            "",
+            ".....",
+            "a.b.c.d.e",
+            "eyJhbGciOiJSU0EtT0FFUCIsImVuYyI6IkEyNTZHQ00ifQ.a.b.c.d",
+        ];
+
+        for input in &malformed_inputs {
+            let result: Result<JWTClaims<NoCustomClaims>, _> = key.decrypt_token(input, None);
+            assert!(result.is_err());
+        }
+    }
+
+    #[cfg(feature = "jwe")]
+    #[test]
+    fn jwe_ecdh_malformed_inputs_no_panic() {
+        let key = EcdhEsA256KWDecryptionKey::generate();
+
+        let malformed_inputs = [
+            "",
+            ".....",
+            "a.b.c.d.e",
+            "eyJhbGciOiJFQ0RILUVTK0EyNTZLVyIsImVuYyI6IkEyNTZHQ00ifQ.a.b.c.d",
+            // Valid header but missing epk
+            "eyJhbGciOiJFQ0RILUVTK0EyNTZLVyIsImVuYyI6IkEyNTZHQ00ifQ.AAAA.AAAA.AAAA.AAAA",
+        ];
+
+        for input in &malformed_inputs {
+            let result: Result<JWTClaims<NoCustomClaims>, _> = key.decrypt_token(input, None);
+            assert!(result.is_err());
+        }
+    }
+}
