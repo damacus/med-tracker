@@ -165,7 +165,7 @@ fn sidebar_bottom_links_to_the_household_settings_page() {
         .split("</div>")
         .next()
         .unwrap();
-    assert!(bottom.contains("href=\"/households/test/settings\""));
+    assert!(bottom.contains("href=\"/households/test/profile\""));
     assert!(bottom.contains("Settings"));
     assert!(!bottom.contains("aria-disabled=\"true\""));
 }
@@ -175,7 +175,7 @@ fn settings_link_escapes_special_characters_in_household_slug() {
     let mut page = test_page();
     page.slug = "family #1?".into();
     let html = render_dashboard(page);
-    assert!(html.contains("href=\"/households/family%20%231%3F/settings\""));
+    assert!(html.contains("href=\"/households/family%20%231%3F/profile\""));
 }
 
 #[test]

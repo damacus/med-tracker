@@ -1,3 +1,4 @@
+use axum::extract::Path;
 use axum::http::{header, StatusCode};
 use axum::response::{IntoResponse, Response};
 
@@ -8,6 +9,47 @@ pub(super) async fn household_styles() -> Response {
             (header::CACHE_CONTROL, "public, max-age=3600"),
         ],
         include_str!("../../../web/src/household.css"),
+    )
+        .into_response()
+}
+
+pub(super) async fn profile_styles() -> Response {
+    (
+        [
+            (header::CONTENT_TYPE, "text/css; charset=utf-8"),
+            (header::CACHE_CONTROL, "public, max-age=3600"),
+        ],
+        include_str!("../../../web/src/profile.css"),
+    )
+        .into_response()
+}
+
+pub(super) async fn profile_script() -> Response {
+    (
+        [
+            (header::CONTENT_TYPE, "text/javascript; charset=utf-8"),
+            (header::CACHE_CONTROL, "public, max-age=3600"),
+        ],
+        include_str!("../../../web/src/assets/profile.js"),
+    )
+        .into_response()
+}
+
+pub(super) async fn plus_jakarta_font(Path(file): Path<String>) -> Response {
+    let bytes: &'static [u8] = match file.as_str() {
+        "plus-jakarta-sans-v12-latin-regular.woff2" => include_bytes!("../../../../app/assets/fonts/plus-jakarta-sans/plus-jakarta-sans-v12-latin-regular.woff2"),
+        "plus-jakarta-sans-v12-latin-500.woff2" => include_bytes!("../../../../app/assets/fonts/plus-jakarta-sans/plus-jakarta-sans-v12-latin-500.woff2"),
+        "plus-jakarta-sans-v12-latin-600.woff2" => include_bytes!("../../../../app/assets/fonts/plus-jakarta-sans/plus-jakarta-sans-v12-latin-600.woff2"),
+        "plus-jakarta-sans-v12-latin-700.woff2" => include_bytes!("../../../../app/assets/fonts/plus-jakarta-sans/plus-jakarta-sans-v12-latin-700.woff2"),
+        "plus-jakarta-sans-v12-latin-800.woff2" => include_bytes!("../../../../app/assets/fonts/plus-jakarta-sans/plus-jakarta-sans-v12-latin-800.woff2"),
+        _ => return StatusCode::NOT_FOUND.into_response(),
+    };
+    (
+        [
+            (header::CONTENT_TYPE, "font/woff2"),
+            (header::CACHE_CONTROL, "public, max-age=86400"),
+        ],
+        bytes,
     )
         .into_response()
 }

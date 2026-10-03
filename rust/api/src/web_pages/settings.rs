@@ -7,10 +7,17 @@ use serde::Deserialize;
 #[derive(Default, Deserialize)]
 pub(super) struct SettingsQuery {
     saved: Option<String>,
+    section: Option<String>,
 }
 
 pub(super) fn routes() -> Router<AppState> {
-    Router::new().route("/households/{slug}/settings", get(show).post(update))
+    Router::new()
+        .route("/households/{slug}/profile", get(show).post(update))
+        .route("/households/{slug}/settings", get(legacy_settings))
+}
+
+async fn legacy_settings(Path(slug): Path<String>) -> Response {
+    redirect(format!("/households/{}/profile", path_segment(&slug)), None)
 }
 
 pub(super) fn profile_errors(reply: &Value) -> HashMap<String, Vec<String>> {
@@ -57,16 +64,33 @@ fn render(
     api: &WebApi,
     slug: &str,
     household_name: &str,
+    me: &Value,
     time_zone: String,
     can_edit: bool,
     errors: HashMap<String, Vec<String>>,
     notice: String,
+    active_section: &str,
+    security_html: String,
+    notifications_html: String,
+    advanced_html: String,
 ) -> Result<String, PageError> {
+    let person = me.pointer("/data/person").ok_or_else(|| error(StatusCode::BAD_GATEWAY))?;
+    let account = me.pointer("/data/account").ok_or_else(|| error(StatusCode::BAD_GATEWAY))?;
     render_settings(SettingsPage {
         household_name: household_name.to_owned(),
         slug: slug.to_owned(),
         locale: api.locale,
         csrf: api.csrf.clone(),
+        person_name: person.get("name").and_then(Value::as_str).ok_or_else(|| error(StatusCode::BAD_GATEWAY))?.to_owned(),
+        email: account.get("email").and_then(Value::as_str).ok_or_else(|| error(StatusCode::BAD_GATEWAY))?.to_owned(),
+        date_of_birth: person.get("date_of_birth").and_then(Value::as_str).map(str::to_owned),
+        age: person.get("age").and_then(Value::as_i64),
+        person_type: person.get("person_type").and_then(Value::as_str).ok_or_else(|| error(StatusCode::BAD_GATEWAY))?.to_owned(),
+        has_capacity: person.get("has_capacity").and_then(Value::as_bool).ok_or_else(|| error(StatusCode::BAD_GATEWAY))?,
+        active_section: active_section.to_owned(),
+        security_html,
+        notifications_html,
+        advanced_html,
         time_zone,
         can_edit,
         errors,
@@ -81,7 +105,7 @@ pub(super) async fn show(
     Query(query): Query<SettingsQuery>,
     headers: HeaderMap,
 ) -> Response {
-    let mut api = match WebApi::authenticated(state, headers).await {
+    let mut api = match WebApi::authenticated(state.clone(), headers).await {
         Ok(api) => api,
         Err(error) => return error.response(),
     };
@@ -90,6 +114,7 @@ pub(super) async fn show(
         let profile = api
             .get(&format!("/api/v1/households/{household_id}/profile"))
             .await?;
+        let me = api.get(&format!("/api/v1/households/{household_id}/me")).await?;
         let capabilities = api.capabilities(household_id).await?;
         let can_edit = can_edit_profile(&profile, &capabilities);
         let time_zone = profile
@@ -104,14 +129,31 @@ pub(super) async fn show(
         } else {
             String::new()
         };
+        let active_section = match query.section.as_deref() {
+            Some("security") => "security",
+            Some("notifications") => "notifications",
+            Some("advanced") => "advanced",
+            _ => "profile",
+        };
+        let security_html = if active_section == "security" {
+            profile_security::section(&state, &mut api, household_id, &slug).await?
+        } else { String::new() };
+        let advanced_html = if active_section == "advanced" {
+            profile_advanced::section(&state, &mut api, household_id, &slug).await?
+        } else { String::new() };
         render(
             &api,
             &slug,
             &household_name,
+            &me,
             time_zone,
             can_edit,
             HashMap::new(),
             notice,
+            active_section,
+            security_html,
+            String::new(),
+            advanced_html,
         )
     }
     .await;
@@ -142,6 +184,7 @@ pub(super) async fn update(
         let (household_id, household_name) = api.household(&slug).await?;
         let path = format!("/api/v1/households/{household_id}/profile");
         let profile = api.get(&path).await?;
+        let me = api.get(&format!("/api/v1/households/{household_id}/me")).await?;
         let capabilities = api.capabilities(household_id).await?;
         let can_edit = can_edit_profile(&profile, &capabilities);
         if !can_edit {
@@ -152,9 +195,14 @@ pub(super) async fn update(
                 &api,
                 &slug,
                 &household_name,
+                &me,
                 time_zone,
                 can_edit,
                 HashMap::from([("time_zone".to_owned(), vec![message.to_owned()])]),
+                String::new(),
+                "profile",
+                String::new(),
+                String::new(),
                 String::new(),
             )?;
             return Ok(page_status(
@@ -178,7 +226,7 @@ pub(super) async fn update(
             {
                 return Err(error(StatusCode::BAD_GATEWAY));
             }
-            let location = format!("/households/{}/settings?saved=1", path_segment(&slug));
+            let location = format!("/households/{}/profile?saved=1", path_segment(&slug));
             return Ok(redirect(location, api.cookie.take()));
         }
         if reply.status != StatusCode::UNPROCESSABLE_ENTITY {
@@ -188,9 +236,14 @@ pub(super) async fn update(
             &api,
             &slug,
             &household_name,
+            &me,
             time_zone,
             can_edit,
             profile_errors(&reply.value),
+            String::new(),
+            "profile",
+            String::new(),
+            String::new(),
             String::new(),
         )?;
         Ok(page_status(body, api.cookie.take(), reply.status))

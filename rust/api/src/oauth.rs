@@ -72,6 +72,10 @@ use sessions::LoginIntent;
 use sessions::Pending;
 use sessions::LOGIN_INTENT_COOKIE;
 use sessions::SESSION_COOKIE;
+
+pub(crate) fn clear_browser_session_cookie(state: &AppState) -> HeaderValue {
+    state.oauth.cookie(SESSION_COOKIE, "", 0)
+}
 use tokens::revoke;
 use tokens::token;
 

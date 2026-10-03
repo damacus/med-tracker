@@ -185,7 +185,16 @@ impl WebApi {
         csrf: Option<&str>,
         extra: &HeaderMap,
     ) -> Result<ApiReply, PageError> {
-        self.call_inner(method, path, body, csrf, extra, None).await
+        self.call_inner(method, path, body, csrf, extra, None, BODY_LIMIT).await
+    }
+
+    pub(super) async fn get_with_limit(
+        &mut self,
+        path: &str,
+        body_limit: usize,
+    ) -> Result<ApiReply, PageError> {
+        self.call_inner(Method::GET, path, None, None, &HeaderMap::new(), None, body_limit)
+            .await
     }
 
     pub(super) async fn adjust_scalar_stock(
@@ -204,6 +213,7 @@ impl WebApi {
             Some(BrowserWriteIntent::Scalar(
                 crate::medication_management::ScalarAdjustment { original_etag },
             )),
+            BODY_LIMIT,
         )
         .await
     }
@@ -223,6 +233,7 @@ impl WebApi {
             Some(&csrf),
             extra,
             Some(BrowserWriteIntent::Pause(guard)),
+            BODY_LIMIT,
         )
         .await
     }
@@ -235,6 +246,7 @@ impl WebApi {
         csrf: Option<&str>,
         extra: &HeaderMap,
         intent: Option<BrowserWriteIntent>,
+        body_limit: usize,
     ) -> Result<ApiReply, PageError> {
         let mut request = Request::builder().method(method).uri(path);
         for name in [
@@ -289,7 +301,7 @@ impl WebApi {
             .get(header::ETAG)
             .and_then(|value| value.to_str().ok())
             .map(str::to_owned);
-        let bytes = to_bytes(response.into_body(), BODY_LIMIT)
+        let bytes = to_bytes(response.into_body(), body_limit)
             .await
             .map_err(|_| error(StatusCode::BAD_GATEWAY))?;
         let value = decode_api_body(status, &bytes)?;

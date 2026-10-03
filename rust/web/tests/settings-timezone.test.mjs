@@ -9,7 +9,7 @@ const fixturePath = process.env.CONTRACT_FIXTURE_PATH;
 assert.ok(baseUrl, 'Set BASE_URL to the Rust server under test');
 assert.ok(fixturePath, 'Set CONTRACT_FIXTURE_PATH to the disposable fixture');
 const fixture = JSON.parse(await readFile(fixturePath, 'utf8'));
-const settingsUrl = new URL(`/households/${fixture.household_slug}/settings`, baseUrl).toString();
+const settingsUrl = new URL(`/households/${fixture.household_slug}/profile`, baseUrl).toString();
 
 async function login(page, email = fixture.primary_email) {
   await page.goto(new URL('/login', baseUrl).toString());
@@ -30,7 +30,7 @@ test('a profile viewer can read the time zone but cannot change it', async () =>
   try {
     const page = await browser.newPage();
     await login(page, email);
-    const readOnlyUrl = page.url().replace(/\/dashboard$/, '/settings');
+    const readOnlyUrl = page.url().replace(/\/dashboard$/, '/profile');
     await page.goto(readOnlyUrl);
     await page.getByRole('heading', { name: 'My Profile' }).waitFor();
     const zone = page.getByRole('combobox', { name: 'Time Zone' });

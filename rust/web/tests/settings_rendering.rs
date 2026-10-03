@@ -8,11 +8,42 @@ fn page(time_zone: &str) -> SettingsPage {
         slug: "test".into(),
         locale: Locale::En,
         csrf: "test-csrf".into(),
+        person_name: "Alex Taylor".into(),
+        email: "alex@example.test".into(),
+        date_of_birth: Some("1990-02-03".into()),
+        age: Some(36),
+        person_type: "adult".into(),
+        has_capacity: true,
+        active_section: "profile".into(),
+        security_html: String::new(),
+        notifications_html: String::new(),
+        advanced_html: String::new(),
         time_zone: time_zone.into(),
         can_edit: true,
         errors: HashMap::new(),
         notice: String::new(),
     }
+}
+
+#[test]
+fn profile_page_matches_the_rails_profile_structure() {
+    let html = render_settings(page("Europe/London")).unwrap();
+    assert!(html.contains("data-testid=\"profile-hero\""));
+    assert!(html.contains("id=\"profile-tab-profile\""));
+    assert!(html.contains("id=\"profile-tab-security\""));
+    assert!(html.contains("id=\"profile-tab-notifications\""));
+    assert!(html.contains("id=\"profile-tab-advanced\""));
+    assert!(html.contains("data-testid=\"profile-personal-info-card\""));
+    assert!(html.contains("data-testid=\"profile-time-zone-dialog\""));
+    assert!(html.contains("Alex Taylor"));
+    assert!(html.contains("alex@example.test"));
+    assert!(html.contains("1990-02-03"));
+}
+
+#[test]
+fn rust_pages_use_the_rails_profile_font() {
+    assert!(include_str!("../src/medication.css").contains("Plus Jakarta Sans"));
+    assert!(include_str!("../src/dashboard.css").contains("Plus Jakarta Sans"));
 }
 
 #[test]
@@ -48,7 +79,7 @@ fn settings_form_renders_a_labelled_supported_timezone_select_with_the_saved_cho
     let html = render_settings(page("Europe/London")).unwrap();
     assert!(html.contains("<h1"));
     assert!(html.contains("My Profile"));
-    assert!(html.contains("action=\"/households/test/settings\""));
+    assert!(html.contains("action=\"/households/test/profile\""));
     assert!(html.contains("method=\"post\""));
     assert!(html.contains("name=\"authenticity_token\""));
     assert!(html.contains("value=\"test-csrf\""));

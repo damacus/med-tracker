@@ -8,6 +8,16 @@ pub struct SettingsPage {
     pub slug: String,
     pub locale: Locale,
     pub csrf: String,
+    pub person_name: String,
+    pub email: String,
+    pub date_of_birth: Option<String>,
+    pub age: Option<i64>,
+    pub person_type: String,
+    pub has_capacity: bool,
+    pub active_section: String,
+    pub security_html: String,
+    pub notifications_html: String,
+    pub advanced_html: String,
     pub time_zone: String,
     pub can_edit: bool,
     pub errors: HashMap<String, Vec<String>>,
@@ -40,18 +50,60 @@ pub fn render_settings(page: SettingsPage) -> Result<String, TranslationError> {
         "settings-time-zone-hint"
     };
     let zones = time_zone_options(&page.time_zone);
-    let action = format!("/households/{}/settings", path_segment(&page.slug));
+    let action = format!("/households/{}/profile", path_segment(&page.slug));
+    let base = action.clone();
+    let profile_active = page.active_section == "profile";
+    let security_active = page.active_section == "security";
+    let notifications_active = page.active_section == "notifications";
+    let advanced_active = page.active_section == "advanced";
+    let initials: String = page.person_name.split_whitespace().filter_map(|part| part.chars().next()).take(2).collect();
+    let age = page.age.map(|value| value.to_string());
+    let capacity = if page.has_capacity { "Yes" } else { "No" };
     let body = view! {
-        <h1>{title.clone()}</h1>
+        <link rel="stylesheet" href="/profile.css"/>
+        <div class="profile-page">
+        <header class="profile-hero" data-testid="profile-hero">
+            <div class="profile-identity"><span class="profile-avatar" aria-hidden="true">{initials}</span><div><p class="profile-eyebrow">{text.get("profiles.show.eyebrow", &[])?}</p><h1>{title.clone()}</h1><p class="profile-email">{page.email.clone()}</p></div></div>
+            <p class="profile-description">{text.get("profiles.show.description", &[])?}</p>
+        </header>
+        <nav class="profile-tabs" aria-label=title.clone() role="tablist">
+            <a id="profile-tab-profile" role="tab" aria-selected=profile_active.to_string() aria-controls="profile-profile-panel" href=base.clone()>{text.get("profiles.sections.profile.title", &[])?}</a>
+            <a id="profile-tab-security" role="tab" aria-selected=security_active.to_string() aria-controls="profile-security-panel" href=format!("{base}?section=security")>{text.get("profiles.sections.security.title", &[])?}</a>
+            <a id="profile-tab-notifications" role="tab" aria-selected=notifications_active.to_string() aria-controls="profile-notifications-panel" href=format!("{base}?section=notifications")>{text.get("profiles.sections.notifications.title", &[])?}</a>
+            <a id="profile-tab-advanced" role="tab" aria-selected=advanced_active.to_string() aria-controls="profile-advanced-panel" href=format!("{base}?section=advanced")>{text.get("profiles.sections.advanced.title", &[])?}</a>
+        </nav>
         {(!page.notice.is_empty()).then(|| view! { <p class="med-success" role="status">{page.notice}</p> })}
-        <form class="household-form med-panel" method="post" action=action>
+        <section id="profile-profile-panel" class="profile-section" role="tabpanel" aria-labelledby="profile-tab-profile" hidden=!profile_active>
+            <div class="profile-section-header"><span class="profile-section-icon" aria-hidden="true">{"◉"}</span><div><h2>{text.get("profiles.sections.profile.title", &[])?}</h2><div class="profile-summary"><span>{page.person_name.clone()}</span><span>{page.email.clone()}</span><span>{text.get("profiles.appearance.modes.system", &[])?}</span></div></div></div>
+            <div class="profile-grid">
+                <section class="profile-info-card" data-testid="profile-personal-info-card"><h3>{text.get("profiles.show.personal_information.title", &[])?}</h3><p>{text.get("profiles.show.personal_information.description", &[])?}</p><dl>
+                    <div><dt>Name</dt><dd>{page.person_name.clone()}</dd></div>
+                    <div><dt>Email</dt><dd>{page.email.clone()}</dd></div>
+                    <div><dt>Time Zone</dt><dd>{page.time_zone.clone()}</dd></div>
+                    <div><dt>Date of Birth</dt><dd>{page.date_of_birth.clone().unwrap_or_else(|| "Not set".into())}</dd></div>
+                    {age.map(|value| view! { <div><dt>Age</dt><dd>{value}</dd></div> })}
+                    <div><dt>Person Type</dt><dd>{page.person_type}</dd></div>
+                    <div><dt>Has Capacity</dt><dd>{capacity}</dd></div>
+                </dl></section>
+                <div class="profile-settings">
+                    <button type="button" class="profile-setting-row" data-profile-dialog="profile-time-zone-modal"><span><strong>{zone_label.clone()}</strong><small>{hint.clone()}</small></span><span aria-hidden="true">{"›"}</span></button>
+                </div>
+            </div>
+        </section>
+        <section id="profile-security-panel" class="profile-section" role="tabpanel" aria-labelledby="profile-tab-security" hidden=!security_active inner_html=page.security_html></section>
+        <section id="profile-notifications-panel" class="profile-section" role="tabpanel" aria-labelledby="profile-tab-notifications" hidden=!notifications_active inner_html=page.notifications_html></section>
+        <section id="profile-advanced-panel" class="profile-section" role="tabpanel" aria-labelledby="profile-tab-advanced" hidden=!advanced_active inner_html=page.advanced_html></section>
+        </div>
+        <dialog id="profile-time-zone-modal" class="profile-dialog" data-testid="profile-time-zone-dialog" open=invalid_zone>
+            <div class="profile-dialog-heading"><div><h2>{zone_label.clone()}</h2><p>{hint.clone()}</p></div><button type="button" class="profile-dialog-close" aria-label="Close" data-profile-close="profile-time-zone-modal">{"×"}</button></div>
+        <form class="household-form" method="post" action=action>
             <input type="hidden" name="authenticity_token" value=page.csrf/>
             {(!other_errors.is_empty()).then(|| view! {
                 <ul class="med-alert" role="alert">{other_errors.into_iter().map(|error| view! {<li>{error}</li>}).collect_view()}</ul>
             })}
             <div class="form-field">
                 <label for="settings_time_zone">{zone_label}</label>
-                <p id="settings-time-zone-hint">{hint}</p>
+                <p id="settings-time-zone-hint" class="profile-sr-only">{hint}</p>
                 <select id="settings_time_zone" name="time_zone" required disabled=!page.can_edit
                     aria-invalid=invalid_zone.to_string() aria-describedby=described_by>
                     {zones.into_iter().map(|zone| { let current = zone == page.time_zone; view! { <option value=zone selected=current>{zone.clone()}</option> } }).collect_view()}
@@ -63,8 +115,10 @@ pub fn render_settings(page: SettingsPage) -> Result<String, TranslationError> {
                 })}
             </div>
             {(!page.can_edit).then(|| view! { <p>{read_only}</p> })}
-            {page.can_edit.then(|| view! { <div class="household-actions"><button class="med-primary" type="submit">{save}</button></div> })}
+            {page.can_edit.then(|| view! { <div class="household-actions"><button type="button" class="profile-secondary" data-profile-close="profile-time-zone-modal">{"Close"}</button><button class="med-primary" type="submit">{save}</button></div> })}
         </form>
+        </dialog>
+        <script src="/profile.js" defer></script>
     }.to_html();
     Ok(household_document(
         &title,

@@ -22,6 +22,8 @@ mod inventory;
 mod locations;
 mod medications;
 mod people;
+mod profile_advanced;
+mod profile_security;
 mod response;
 mod settings;
 mod stock;
@@ -41,7 +43,11 @@ pub fn routes() -> Router<AppState> {
         .merge(treatments::routes())
         .merge(admin::routes())
         .merge(settings::routes())
+        .merge(profile_security::routes())
+        .merge(profile_advanced::routes())
         .route("/household.css", get(assets::household_styles))
+        .route("/profile.css", get(assets::profile_styles))
+        .route("/profile.js", get(assets::profile_script))
         .route("/households/{slug}/dashboard", get(dashboard::dashboard))
         .route(
             "/households/{slug}/medications",
@@ -83,6 +89,7 @@ pub fn routes() -> Router<AppState> {
         .route("/fonts/inter-800.woff2", get(assets::inter_800))
         .route("/fonts/inter-600.woff2", get(assets::inter_600))
         .route("/fonts/inter-700.woff2", get(assets::inter_700))
+        .route("/fonts/plus-jakarta-sans/{file}", get(assets::plus_jakarta_font))
 }
 
 fn field<'a>(value: &'a Value, key: &str) -> &'a str {
