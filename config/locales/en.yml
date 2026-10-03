@@ -1625,6 +1625,20 @@ en:
       denied: Camera access was denied. Please use manual entry below.
       unavailable: No camera was found. Please use manual entry below.
       error: Scanner error. Please use manual entry below.
+  notifications:
+    title: My notifications
+    description: Choose which medication notifications this account receives.
+      These preferences apply wherever your notifications are delivered — they
+      do not turn on browser notifications for this device.
+    enabled_label: Notifications enabled
+    enabled_hint: Turn all medication notifications on or off. Category choices
+      are kept and apply again while notifications are enabled.
+    categories_hint: Choose which notification types apply while notifications
+      are enabled.
+    unavailable: Notification preferences are not available for this account
+      right now.
+    read_only: You can view these preferences, but you do not have permission to change them.
+    save: Save preferences
   notification_preferences:
     updated: Notification settings saved.
     update_failed: Failed to save notification settings.
