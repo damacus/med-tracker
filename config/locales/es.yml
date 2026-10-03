@@ -2299,6 +2299,32 @@ es:
         title: Contenido privado en notificaciones
         description: Oculta información sensible como nombres de medicamentos en las notificaciones.
   reports:
+    browser:
+      title: Informes
+      intro: Descargue un PDF del historial de salud de una persona en un
+        intervalo de fechas elegido.
+      person_label: Persona
+      person_prompt: Seleccione una persona
+      start_date_label: Fecha de inicio
+      end_date_label: Fecha de fin
+      include_medication_takes: Incluir el registro de administración de
+        medicamentos
+      download: Descargar PDF
+      no_people: No gestiona a nadie cuyo historial de salud se pueda descargar.
+      errors:
+        person_required: Seleccione una persona para el informe.
+        start_date_invalid: Introduzca una fecha de inicio en formato AAAA-MM-DD.
+        end_date_invalid: Introduzca una fecha de fin en formato AAAA-MM-DD.
+        date_order: La fecha de fin debe ser igual o posterior a la de inicio.
+        date_range: El intervalo de fechas del informe no puede superar los 366
+          días.
+        takes_invalid: La opción del registro de administración de medicamentos
+          no es válida.
+        forbidden: No tiene permiso para descargar este informe.
+        not_found: No se ha encontrado la persona ni el hogar.
+        unavailable: El servicio de informes no está disponible temporalmente.
+          Inténtelo más tarde.
+        failed: No se ha podido generar el informe. Inténtelo de nuevo.
     invalid_date: Se ha proporcionado un formato de fecha no válido.
     end_before_start: La fecha de finalización debe ser igual o posterior a la fecha de inicio.
     date_range_too_large: El intervalo de fechas del informe no puede superar los 180 dias.

@@ -22,6 +22,7 @@ mod inventory;
 mod locations;
 mod medications;
 mod people;
+mod reports;
 mod response;
 mod stock;
 mod time;
@@ -38,6 +39,7 @@ pub fn routes() -> Router<AppState> {
         .merge(dosage_options::routes())
         .merge(stock::routes())
         .merge(treatments::routes())
+        .merge(reports::routes())
         .merge(admin::routes())
         .route("/household.css", get(assets::household_styles))
         .route("/households/{slug}/dashboard", get(dashboard::dashboard))

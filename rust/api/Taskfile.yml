@@ -1033,6 +1033,7 @@ tasks:
       WORKSPACE_DIR:
         sh: pwd
     cmds:
+      - '{{ if eq .HOUSEHOLD_TEST_FILE "household_reports" }}MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test up -d --wait --no-build rust-api-report-fail{{ end }}'
       - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml {{ if .HOUSEHOLD_TEST_FILE }}--test {{ .HOUSEHOLD_TEST_FILE }}{{ else if eq .HOUSEHOLD_STOCK_ACCEPTANCE "true" }}--test household_stock --test household_stock_boundaries --test household_stock_concurrency{{ else if eq .HOUSEHOLD_COMPLETION_ACCEPTANCE "true" }}--test household_web --test household_navigation --test household_lifecycle --test household_completion_medication{{ else }}--test household_web --test household_navigation --test household_lifecycle{{ end }} -- {{ if .HOUSEHOLD_TEST_FILTER }}{{ .HOUSEHOLD_TEST_FILTER }}{{ end }} --test-threads=1
       - '{{ if .HOUSEHOLD_TEST_FILE }}{{ else if eq .HOUSEHOLD_STOCK_ACCEPTANCE "true" }}{{ else if eq .HOUSEHOLD_COMPLETION_ACCEPTANCE "true" }}MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test household_completion_dashboard -- {{ if .HOUSEHOLD_TEST_FILTER }}{{ .HOUSEHOLD_TEST_FILTER }}{{ end }} --test-threads=1{{ end }}'
 
@@ -1044,6 +1045,7 @@ tasks:
       - node --check rust/web/tests/household-completion-medication.test.mjs
       - node --check rust/web/tests/household-completion-dashboard.test.mjs
       - node --check rust/web/tests/household-admin-dmd.test.mjs
+      - node --check rust/web/tests/household-reports.test.mjs
 
   fmt-file:
     requires:
