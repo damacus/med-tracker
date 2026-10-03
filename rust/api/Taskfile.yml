@@ -2,6 +2,16 @@
 version: "3"
 
 tasks:
+  security-contract-check:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - cargo check --manifest-path rust/contract-tests/Cargo.toml --test passkey_security
+
+  passkey-security-acceptance:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - task api:browser-rust HOUSEHOLD_ACCEPTANCE=true HOUSEHOLD_TEST_FILE=passkey_security BROWSER_TEST_FILES=tests/login.smoke.test.mjs
+
   contract-recovery-inventory:
     cmds:
       - docker ps --format '{{"{{"}}.Names{{"}}"}} {{"{{"}}.Image{{"}}"}} {{"{{"}}.Ports{{"}}"}}'

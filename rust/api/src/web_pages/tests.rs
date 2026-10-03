@@ -5,6 +5,51 @@ use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
 use chrono::NaiveDate;
 
 #[test]
+fn pagination_rejects_duplicate_ids_and_changing_totals() {
+    use super::api_client::PageScan;
+    let page = |number, count, ids: &[i64]| {
+        serde_json::json!({
+            "meta": {"page": number, "per_page": 100, "total_count": count},
+            "data": ids.iter().map(|id| serde_json::json!({"id": id})).collect::<Vec<_>>()
+        })
+    };
+    let mut scan = PageScan::default();
+    assert!(scan.accept(page(1, 2, &[1])).is_ok());
+    assert!(scan.accept(page(2, 2, &[1])).is_err());
+    let mut scan = PageScan::default();
+    scan.accept(page(1, 2, &[1])).unwrap();
+    assert!(scan.accept(page(2, 3, &[2])).is_err());
+}
+
+#[test]
+fn pagination_rejects_malformed_metadata_and_truncated_or_oversized_results() {
+    use super::api_client::PageScan;
+    for value in [
+        serde_json::json!({"meta": {"page": 2, "per_page": 100, "total_count": 1}, "data": [{"id": 1}]}),
+        serde_json::json!({"meta": {"page": "1", "per_page": 100, "total_count": 1}, "data": [{"id": 1}]}),
+        serde_json::json!({"meta": {"page": 1, "per_page": 20, "total_count": 1}, "data": [{"id": 1}]}),
+        serde_json::json!({"meta": {"page": 1, "per_page": 100, "total_count": 1}, "data": []}),
+        serde_json::json!({"meta": {"page": 1, "per_page": 100, "total_count": 0}, "data": [{"id": 1}]}),
+    ] {
+        assert!(PageScan::default().accept(value).is_err());
+    }
+}
+
+#[test]
+fn malformed_api_json_preserves_the_parse_error() {
+    use super::api_client::decode_api_body;
+    use super::response::PageError;
+    assert!(matches!(
+        decode_api_body(StatusCode::OK, b"{invalid"),
+        Err(PageError::InvalidJson(_))
+    ));
+    assert!(decode_api_body(StatusCode::OK, b"").is_err());
+    assert!(decode_api_body(StatusCode::NO_CONTENT, b"")
+        .unwrap()
+        .is_null());
+}
+
+#[test]
 fn dashboard_clock_uses_real_utc_outside_the_isolated_contract_runner() {
     if std::env::var_os("CONTRACT_PROJECT").is_some() {
         return;

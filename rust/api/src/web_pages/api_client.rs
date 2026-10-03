@@ -7,11 +7,87 @@ use axum::http::{header, HeaderMap, HeaderValue, Method, Request, StatusCode};
 use chrono::{DateTime, Datelike, Duration, Utc};
 use medtracker_web::household_i18n::Locale;
 use sea_orm::TransactionTrait;
+use serde::Deserialize;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use tower::ServiceExt;
 
 const BODY_LIMIT: usize = 1_048_576;
+
+pub(super) fn decode_api_body(status: StatusCode, bytes: &[u8]) -> Result<Value, PageError> {
+    if bytes.is_empty() && (status == StatusCode::NO_CONTENT || !status.is_success()) {
+        return Ok(Value::Null);
+    }
+    serde_json::from_slice(bytes).map_err(PageError::InvalidJson)
+}
+
+#[derive(Deserialize)]
+struct CollectionPage {
+    data: Vec<Value>,
+    meta: PaginationMeta,
+}
+
+#[derive(Deserialize)]
+struct PaginationMeta {
+    page: u64,
+    per_page: u64,
+    total_count: u64,
+}
+
+#[derive(Default)]
+pub(super) struct PageScan {
+    ids: HashSet<String>,
+    total: Option<u64>,
+    pages: u64,
+}
+
+impl PageScan {
+    fn next_page(&self) -> Result<u64, PageError> {
+        self.pages
+            .checked_add(1)
+            .ok_or_else(|| error(StatusCode::BAD_GATEWAY))
+    }
+
+    pub(super) fn accept(&mut self, value: Value) -> Result<Vec<Value>, PageError> {
+        let page: CollectionPage = serde_json::from_value(value).map_err(PageError::InvalidJson)?;
+        if page.meta.page != self.next_page()? || page.meta.per_page != 100 || page.data.len() > 100
+        {
+            return Err(error(StatusCode::BAD_GATEWAY));
+        }
+        if self
+            .total
+            .is_some_and(|total| total != page.meta.total_count)
+        {
+            return Err(error(StatusCode::SERVICE_UNAVAILABLE));
+        }
+        self.total = Some(page.meta.total_count);
+        for row in &page.data {
+            let id = row
+                .get("id")
+                .and_then(|id| {
+                    id.as_i64()
+                        .filter(|id| *id > 0)
+                        .map(|id| id.to_string())
+                        .or_else(|| id.as_str().filter(|id| !id.is_empty()).map(str::to_owned))
+                })
+                .ok_or_else(|| error(StatusCode::BAD_GATEWAY))?;
+            if !self.ids.insert(id) {
+                return Err(error(StatusCode::SERVICE_UNAVAILABLE));
+            }
+        }
+        if self.ids.len() as u64 > page.meta.total_count
+            || (page.data.is_empty() && !self.complete())
+        {
+            return Err(error(StatusCode::SERVICE_UNAVAILABLE));
+        }
+        self.pages = page.meta.page;
+        Ok(page.data)
+    }
+
+    fn complete(&self) -> bool {
+        self.total == Some(self.ids.len() as u64)
+    }
+}
 
 enum BrowserWriteIntent {
     Scalar(crate::medication_management::ScalarAdjustment),
@@ -216,7 +292,7 @@ impl WebApi {
         let bytes = to_bytes(response.into_body(), BODY_LIMIT)
             .await
             .map_err(|_| error(StatusCode::BAD_GATEWAY))?;
-        let value = serde_json::from_slice(&bytes).unwrap_or(Value::Null);
+        let value = decode_api_body(status, &bytes)?;
         Ok(ApiReply {
             status,
             value,
@@ -248,60 +324,16 @@ impl WebApi {
 
     pub(super) async fn collection(&mut self, base: &str) -> Result<Vec<Value>, PageError> {
         let mut records = Vec::new();
-        let mut ids = HashSet::new();
-        let mut total = None;
-        let mut page = 1_u64;
+        let mut scan = PageScan::default();
         loop {
+            let page = scan.next_page()?;
             let value = self
                 .get(&format!("{base}?page={page}&per_page=100"))
                 .await?;
-            let count = value
-                .pointer("/meta/total_count")
-                .and_then(Value::as_u64)
-                .ok_or_else(|| error(StatusCode::BAD_GATEWAY))?;
-            if value.pointer("/meta/page").and_then(Value::as_u64) != Some(page)
-                || value.pointer("/meta/per_page").and_then(Value::as_u64) != Some(100)
-            {
-                return Err(error(StatusCode::BAD_GATEWAY));
-            }
-            if total.is_some_and(|total| total != count) {
-                return Err(error(StatusCode::SERVICE_UNAVAILABLE));
-            }
-            total = Some(count);
-            let data = value
-                .get("data")
-                .and_then(Value::as_array)
-                .ok_or_else(|| error(StatusCode::BAD_GATEWAY))?;
-            for row in data {
-                let id = row
-                    .get("id")
-                    .and_then(|value| {
-                        value
-                            .as_i64()
-                            .filter(|id| *id > 0)
-                            .map(|id| id.to_string())
-                            .or_else(|| {
-                                value
-                                    .as_str()
-                                    .filter(|id| !id.is_empty())
-                                    .map(str::to_owned)
-                            })
-                    })
-                    .ok_or_else(|| error(StatusCode::BAD_GATEWAY))?;
-                if !ids.insert(id) {
-                    return Err(error(StatusCode::SERVICE_UNAVAILABLE));
-                }
-                records.push(row.clone());
-            }
-            if records.len() as u64 == count {
+            records.extend(scan.accept(value)?);
+            if scan.complete() {
                 return Ok(records);
             }
-            if data.is_empty() || records.len() as u64 > count {
-                return Err(error(StatusCode::SERVICE_UNAVAILABLE));
-            }
-            page = page
-                .checked_add(1)
-                .ok_or_else(|| error(StatusCode::BAD_GATEWAY))?;
         }
     }
 
@@ -318,21 +350,14 @@ impl WebApi {
         let cutoff = week_start.min(month_start);
         let mut recent = Vec::new();
         let mut latest_older: HashMap<(bool, i64), (DateTime<Utc>, Value)> = HashMap::new();
-        let mut seen = 0usize;
-        let mut page = 1usize;
+        let mut scan = PageScan::default();
         loop {
+            let page = scan.next_page()?;
             let value = self
                 .get(&format!("{base}?page={page}&per_page=100"))
                 .await?;
-            let count = value
-                .pointer("/meta/total_count")
-                .and_then(Value::as_u64)
-                .ok_or_else(|| error(StatusCode::BAD_GATEWAY))? as usize;
-            let data = value
-                .get("data")
-                .and_then(Value::as_array)
-                .ok_or_else(|| error(StatusCode::BAD_GATEWAY))?;
-            for row in data {
+            let data = scan.accept(value)?;
+            for row in &data {
                 if !numeric(row, "person_id").is_some_and(|id| selected.contains(&id)) {
                     continue;
                 }
@@ -355,17 +380,10 @@ impl WebApi {
                     }
                 }
             }
-            seen += data.len();
-            if seen >= count {
+            if scan.complete() {
                 recent.extend(latest_older.into_values().map(|(_, row)| row));
                 return Ok(recent);
             }
-            if data.is_empty() {
-                return Err(error(StatusCode::SERVICE_UNAVAILABLE));
-            }
-            page = page
-                .checked_add(1)
-                .ok_or_else(|| error(StatusCode::SERVICE_UNAVAILABLE))?;
         }
     }
 

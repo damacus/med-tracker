@@ -38,6 +38,34 @@ Follow Red-Green-Refactor — no production code without a failing test first.
 
 ## Code and Architecture
 
+### Security protocols and primitives
+
+Do not implement security protocols or cryptographic primitives from scratch
+when a mature, maintained library or framework capability exists. This includes
+OAuth/OIDC, PKCE, WebAuthn/passkeys, JWT/JWK, signature verification, password
+hashing, token/session validation, CSRF protection, authentication challenges,
+nonces, state, key parsing and algorithm negotiation.
+
+Before introducing custom security-sensitive protocol code:
+
+1. Search project dependencies and the relevant ecosystem for established implementations.
+2. Prefer the mature implementation.
+3. Document the exact limitation if it cannot satisfy the requirement.
+4. Record why custom implementation is necessary.
+5. Add standards/interoperability and negative security tests.
+6. Keep the custom implementation as small as possible.
+
+Passing tests does not justify bespoke security code. Do not replace a
+battle-tested library with custom logic for perceived simplicity, dependency
+reduction, token savings or implementation convenience.
+
+Before implementing a non-trivial infrastructure or protocol capability, check
+whether an established dependency or framework feature already provides it.
+Prefer adopting and configuring proven implementations unless project
+requirements materially prevent doing so.
+
+### Application code
+
 - Use RuboCop as the source of truth for Ruby style.
 - Prefer clear names, small private methods, guard clauses, and Enumerable methods where they improve readability.
 - Keep controllers focused on HTTP concerns; put business logic in models, POROs, or service objects.

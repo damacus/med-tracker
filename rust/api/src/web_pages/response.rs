@@ -63,9 +63,11 @@ pub(super) fn login_redirect() -> Response {
         .into_response()
 }
 
+#[derive(Debug)]
 pub(super) enum PageError {
     Status(StatusCode),
     Login,
+    InvalidJson(serde_json::Error),
 }
 
 impl PageError {
@@ -73,6 +75,10 @@ impl PageError {
         match self {
             Self::Status(status) => failure(status),
             Self::Login => login_redirect(),
+            Self::InvalidJson(error) => {
+                eprintln!("Internal API JSON failed validation: {error}");
+                failure(StatusCode::BAD_GATEWAY)
+            }
         }
     }
 }

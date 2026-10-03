@@ -1,12 +1,15 @@
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
-use ciborium::value::Value as Cbor;
-use ring::signature::{
-    UnparsedPublicKey, VerificationAlgorithm, ECDSA_P256_SHA256_ASN1, ECDSA_P384_SHA384_ASN1,
-    ED25519, RSA_PKCS1_2048_8192_SHA256, RSA_PKCS1_2048_8192_SHA384, RSA_PKCS1_2048_8192_SHA512,
-    RSA_PSS_2048_8192_SHA256, RSA_PSS_2048_8192_SHA384, RSA_PSS_2048_8192_SHA512,
-};
-use serde_json::Value;
+use serde::Serialize;
 use sha2::{Digest, Sha256};
+use webauthn_rs_core::{
+    error::WebauthnError,
+    internals::AuthenticatorData,
+    proto::{
+        Authentication, AuthenticationState, COSEKey, CollectedClientData, Credential,
+        CredentialV3, PublicKeyCredential, UserVerificationPolicy,
+    },
+    WebauthnCore,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PasskeyVerifyError {
@@ -29,13 +32,18 @@ pub struct VerifiedPasskey {
 }
 
 pub fn credential_id(credential_json: &str) -> Result<String, PasskeyVerifyError> {
-    let parsed: Value =
-        serde_json::from_str(credential_json).map_err(|_| PasskeyVerifyError::Malformed)?;
-    parsed
-        .get("id")
-        .and_then(Value::as_str)
-        .map(str::to_owned)
-        .ok_or(PasskeyVerifyError::Malformed)
+    Ok(parse_assertion(credential_json)?.id)
+}
+
+fn parse_assertion(json: &str) -> Result<PublicKeyCredential, PasskeyVerifyError> {
+    let parsed: PublicKeyCredential =
+        serde_json::from_str(json).map_err(|_| PasskeyVerifyError::Malformed)?;
+    if parsed.type_ != "public-key"
+        || decode_b64(&parsed.id)?.as_slice() != parsed.raw_id.as_slice()
+    {
+        return Err(PasskeyVerifyError::Malformed);
+    }
+    Ok(parsed)
 }
 
 pub fn verify_passkey_assertion(
@@ -46,56 +54,53 @@ pub fn verify_passkey_assertion(
     stored_cose_key: &str,
     stored_sign_count: u64,
 ) -> Result<VerifiedPasskey, PasskeyVerifyError> {
-    let parsed: Value =
-        serde_json::from_str(credential_json).map_err(|_| PasskeyVerifyError::Malformed)?;
-    let response = parsed
-        .get("response")
-        .ok_or(PasskeyVerifyError::Malformed)?;
-    let credential_id = json_str(&parsed, "id")?.to_owned();
-    let authenticator_data = decode_b64(json_str(response, "authenticatorData")?)?;
-    let client_data = decode_b64(json_str(response, "clientDataJSON")?)?;
-    let signature = decode_b64(json_str(response, "signature")?)?;
-    let user_handle = response
-        .get("userHandle")
-        .and_then(Value::as_str)
-        .map(decode_b64)
-        .transpose()?;
-
-    let client: Value =
-        serde_json::from_slice(&client_data).map_err(|_| PasskeyVerifyError::Malformed)?;
-    if client.get("type").and_then(Value::as_str) != Some("webauthn.get") {
+    let parsed = parse_assertion(credential_json)?;
+    let response = &parsed.response;
+    let authenticator_data = response.authenticator_data.as_slice();
+    let client_data = response.client_data_json.as_slice();
+    let user_handle = response.user_handle.as_ref().map(|handle| handle.to_vec());
+    let client: CollectedClientData =
+        serde_json::from_slice(client_data).map_err(|_| PasskeyVerifyError::Malformed)?;
+    if client.type_ != "webauthn.get" {
         return Err(PasskeyVerifyError::UnexpectedType);
     }
-    if client.get("challenge").and_then(Value::as_str) != Some(expected_challenge) {
+    if client.challenge.as_slice() != decode_b64(expected_challenge)? {
         return Err(PasskeyVerifyError::ChallengeMismatch);
     }
-    if client.get("origin").and_then(Value::as_str) != Some(expected_origin) {
+    let origin = client.origin.as_str();
+    if client.cross_origin.unwrap_or(false)
+        || origin.strip_suffix('/').unwrap_or(origin) != expected_origin
+    {
         return Err(PasskeyVerifyError::OriginMismatch);
     }
-    if authenticator_data.len() < 37 {
-        return Err(PasskeyVerifyError::Malformed);
-    }
-    let flags = authenticator_data[32];
-    if flags & 0x01 == 0 || flags & 0x04 == 0 {
+    let auth = AuthenticatorData::<Authentication>::try_from(authenticator_data)
+        .map_err(|_| PasskeyVerifyError::Malformed)?;
+    if !auth.user_present || !auth.user_verified {
         return Err(PasskeyVerifyError::MissingUserFlags);
+    }
+    if auth.backup_state && !auth.backup_eligible {
+        return Err(PasskeyVerifyError::Malformed);
     }
     if authenticator_data[..32] != Sha256::digest(rp_id.as_bytes())[..] {
         return Err(PasskeyVerifyError::RpIdMismatch);
     }
-    let sign_count = u32::from_be_bytes(authenticator_data[33..37].try_into().unwrap());
+    let sign_count = auth.counter;
 
-    verify_signature(
-        stored_cose_key,
-        &authenticator_data,
-        &client_data,
-        &signature,
+    let cose = decode_b64(stored_cose_key).map_err(|_| PasskeyVerifyError::UnsupportedKey)?;
+    let cbor: serde_cbor_2::Value =
+        serde_cbor_2::from_slice(&cose).map_err(|_| PasskeyVerifyError::UnsupportedKey)?;
+    let key = COSEKey::try_from(&cbor).map_err(|_| PasskeyVerifyError::UnsupportedKey)?;
+    verify_with_library(
+        &parsed,
+        expected_challenge,
+        expected_origin,
+        rp_id,
+        key,
+        stored_sign_count,
+        auth.backup_eligible,
     )?;
-
-    if !(sign_count == 0 && stored_sign_count == 0) && u64::from(sign_count) <= stored_sign_count {
-        return Err(PasskeyVerifyError::SignCountReplay);
-    }
     Ok(VerifiedPasskey {
-        credential_id,
+        credential_id: parsed.id,
         sign_count,
         user_handle,
     })
@@ -107,134 +112,61 @@ fn decode_b64(value: &str) -> Result<Vec<u8>, PasskeyVerifyError> {
         .map_err(|_| PasskeyVerifyError::Malformed)
 }
 
-fn json_str<'a>(value: &'a Value, key: &str) -> Result<&'a str, PasskeyVerifyError> {
-    value
-        .get(key)
-        .and_then(Value::as_str)
-        .ok_or(PasskeyVerifyError::Malformed)
+#[derive(Serialize)]
+struct RailsAuthenticationState<'a> {
+    credentials: Vec<Credential>,
+    policy: UserVerificationPolicy,
+    challenge: &'a str,
+    appid: Option<String>,
+    allow_backup_eligible_upgrade: bool,
 }
 
-fn verify_signature(
-    stored_cose_key: &str,
-    authenticator_data: &[u8],
-    client_data: &[u8],
-    signature: &[u8],
+#[allow(clippy::too_many_arguments)]
+fn verify_with_library(
+    assertion: &PublicKeyCredential,
+    challenge: &str,
+    origin: &str,
+    rp_id: &str,
+    key: COSEKey,
+    counter: u64,
+    backup_eligible: bool,
 ) -> Result<(), PasskeyVerifyError> {
-    let cose = URL_SAFE_NO_PAD
-        .decode(stored_cose_key)
-        .map_err(|_| PasskeyVerifyError::UnsupportedKey)?;
-    let key: Cbor =
-        ciborium::de::from_reader(&cose[..]).map_err(|_| PasskeyVerifyError::UnsupportedKey)?;
-    let Cbor::Map(entries) = key else {
-        return Err(PasskeyVerifyError::UnsupportedKey);
-    };
-    let algorithm = cose_int(&entries, 3).ok_or(PasskeyVerifyError::UnsupportedKey)?;
-    let key_bytes = match algorithm {
-        -7 => ec_public_key(&entries, 1)?,
-        -35 => ec_public_key(&entries, 2)?,
-        -8 => okp_public_key(&entries)?,
-        -257 | -258 | -259 | -37 | -38 | -39 => rsa_public_key(&entries)?,
-        _ => return Err(PasskeyVerifyError::UnsupportedKey),
-    };
-    let verifier: &dyn VerificationAlgorithm = match algorithm {
-        -7 => &ECDSA_P256_SHA256_ASN1,
-        -35 => &ECDSA_P384_SHA384_ASN1,
-        -8 => &ED25519,
-        -257 => &RSA_PKCS1_2048_8192_SHA256,
-        -258 => &RSA_PKCS1_2048_8192_SHA384,
-        -259 => &RSA_PKCS1_2048_8192_SHA512,
-        -37 => &RSA_PSS_2048_8192_SHA256,
-        -38 => &RSA_PSS_2048_8192_SHA384,
-        _ => &RSA_PSS_2048_8192_SHA512,
-    };
-    let mut signed = authenticator_data.to_vec();
-    signed.extend_from_slice(&Sha256::digest(client_data));
-    UnparsedPublicKey::new(verifier, &key_bytes)
-        .verify(&signed, signature)
-        .map_err(|_| PasskeyVerifyError::SignatureInvalid)
-}
-
-fn cose_entry(entries: &[(Cbor, Cbor)], label: i64) -> Option<&Cbor> {
-    entries.iter().find_map(|(key, value)| {
-        (matches!(key, Cbor::Integer(i) if i128::from(*i) == i128::from(label))).then_some(value)
-    })
-}
-
-fn cose_int(entries: &[(Cbor, Cbor)], label: i64) -> Option<i64> {
-    match cose_entry(entries, label) {
-        Some(Cbor::Integer(value)) => i64::try_from(i128::from(*value)).ok(),
-        _ => None,
+    let mut credential: Credential = CredentialV3 {
+        cred_id: assertion.raw_id.to_vec(),
+        cred: key,
+        counter: counter
+            .try_into()
+            .map_err(|_| PasskeyVerifyError::SignCountReplay)?,
+        verified: true,
+        registration_policy: UserVerificationPolicy::Required,
     }
-}
-
-fn cose_bytes(entries: &[(Cbor, Cbor)], label: i64) -> Option<&[u8]> {
-    match cose_entry(entries, label) {
-        Some(Cbor::Bytes(value)) => Some(value),
-        _ => None,
-    }
-}
-
-fn ec_public_key(entries: &[(Cbor, Cbor)], curve: i64) -> Result<Vec<u8>, PasskeyVerifyError> {
-    let coordinate = if curve == 1 { 32 } else { 48 };
-    let x = cose_bytes(entries, -2).ok_or(PasskeyVerifyError::UnsupportedKey)?;
-    let y = cose_bytes(entries, -3).ok_or(PasskeyVerifyError::UnsupportedKey)?;
-    if cose_int(entries, 1) != Some(2)
-        || cose_int(entries, -1) != Some(curve)
-        || x.len() != coordinate
-        || y.len() != coordinate
-    {
-        return Err(PasskeyVerifyError::UnsupportedKey);
-    }
-    let mut key = Vec::with_capacity(1 + x.len() + y.len());
-    key.push(0x04);
-    key.extend_from_slice(x);
-    key.extend_from_slice(y);
-    Ok(key)
-}
-
-fn okp_public_key(entries: &[(Cbor, Cbor)]) -> Result<Vec<u8>, PasskeyVerifyError> {
-    let x = cose_bytes(entries, -2).ok_or(PasskeyVerifyError::UnsupportedKey)?;
-    if cose_int(entries, 1) != Some(1) || cose_int(entries, -1) != Some(6) || x.len() != 32 {
-        return Err(PasskeyVerifyError::UnsupportedKey);
-    }
-    Ok(x.to_vec())
-}
-
-fn rsa_public_key(entries: &[(Cbor, Cbor)]) -> Result<Vec<u8>, PasskeyVerifyError> {
-    let modulus = cose_bytes(entries, -1).ok_or(PasskeyVerifyError::UnsupportedKey)?;
-    let exponent = cose_bytes(entries, -2).ok_or(PasskeyVerifyError::UnsupportedKey)?;
-    if cose_int(entries, 1) != Some(3) || modulus.len() < 256 || exponent.is_empty() {
-        return Err(PasskeyVerifyError::UnsupportedKey);
-    }
-    let mut body = der_integer(modulus);
-    body.extend_from_slice(&der_integer(exponent));
-    let mut der = vec![0x30];
-    der_length(&mut der, body.len());
-    der.extend_from_slice(&body);
-    Ok(der)
-}
-
-fn der_integer(bytes: &[u8]) -> Vec<u8> {
-    let mut bytes = bytes;
-    while bytes.len() > 1 && bytes[0] == 0 {
-        bytes = &bytes[1..];
-    }
-    let padded = bytes[0] & 0x80 != 0;
-    let mut out = vec![0x02];
-    der_length(&mut out, bytes.len() + usize::from(padded));
-    if padded {
-        out.push(0);
-    }
-    out.extend_from_slice(bytes);
-    out
-}
-
-fn der_length(out: &mut Vec<u8>, length: usize) {
-    if length < 128 {
-        out.push(length as u8);
-    } else if length < 256 {
-        out.extend_from_slice(&[0x81, length as u8]);
-    } else {
-        out.extend_from_slice(&[0x82, (length >> 8) as u8, length as u8]);
-    }
+    .into();
+    credential.backup_eligible = backup_eligible;
+    let state: AuthenticationState = serde_json::from_value(
+        serde_json::to_value(RailsAuthenticationState {
+            credentials: vec![credential],
+            policy: UserVerificationPolicy::Required,
+            challenge,
+            appid: None,
+            allow_backup_eligible_upgrade: false,
+        })
+        .map_err(|_| PasskeyVerifyError::Malformed)?,
+    )
+    .map_err(|_| PasskeyVerifyError::Malformed)?;
+    let origin = url::Url::parse(origin).map_err(|_| PasskeyVerifyError::OriginMismatch)?;
+    let webauthn = WebauthnCore::new_unsafe_experts_only(
+        "MedTracker",
+        rp_id,
+        vec![origin],
+        std::time::Duration::from_secs(600),
+        Some(false),
+        Some(false),
+    );
+    webauthn
+        .authenticate_credential(assertion, &state)
+        .map(|_| ())
+        .map_err(|error| match error {
+            WebauthnError::CredentialPossibleCompromise => PasskeyVerifyError::SignCountReplay,
+            _ => PasskeyVerifyError::SignatureInvalid,
+        })
 }

@@ -19,6 +19,18 @@ pub(super) struct LoginIntent {
     pub(super) issued_at: i64,
 }
 
+impl super::configuration::AuthenticationClaim for Pending {
+    const PURPOSE: &'static str = PENDING_COOKIE;
+}
+
+impl super::configuration::AuthenticationClaim for LoginIntent {
+    const PURPOSE: &'static str = LOGIN_INTENT_COOKIE;
+}
+
+impl super::configuration::AuthenticationClaim for BrowserSession {
+    const PURPOSE: &'static str = SESSION_COOKIE;
+}
+
 #[derive(Clone, Deserialize, Serialize)]
 pub(crate) struct BrowserSession {
     pub(crate) account_id: i64,

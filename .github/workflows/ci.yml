@@ -292,7 +292,7 @@ jobs:
             target: nhs_dmd_import_api
             browsers: "tests/household-admin-dmd.test.mjs"
           - journey: standalone-login
-            acceptance: "false"
+            target: passkey_security
             browsers: "tests/login.smoke.test.mjs"
     env:
       HOUSEHOLD_ACCEPTANCE: ${{ matrix.acceptance || 'true' }}

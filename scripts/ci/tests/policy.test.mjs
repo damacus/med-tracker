@@ -137,9 +137,10 @@ test('standalone login uses a fresh fixture without preceding household writes',
   assert.ok(job, 'household browser job was not found');
   const row = job.match(/^          - journey: standalone-login\n(?<body>[\s\S]*?)(?=^          - journey:|^    env:)/m)?.groups?.body;
   assert.ok(row, 'standalone login fixture was not found');
-  assert.match(row, /^            acceptance: "false"$/m);
+  assert.match(row, /^            target: passkey_security$/m);
+  assert.doesNotMatch(row, /acceptance: "false"/);
   assert.match(row, /^            browsers: "tests\/login\.smoke\.test\.mjs"$/m);
-  assert.doesNotMatch(row, /clock:|target:|completion:|stock:|filter:/);
+  assert.doesNotMatch(row, /clock:|completion:|stock:|filter:/);
 });
 
 test('isolated Rails web server has a readiness healthcheck for Compose wait', () => {

@@ -1,4 +1,24 @@
-use super::*;
+use super::configuration::secret;
+use super::helpers::{
+    database_error, field, form_fields, html, oauth_error, redirect, transaction,
+};
+use super::sessions::{
+    browser_cookie_age, browser_session, pending, renewed_session_cookie, Pending, PENDING_COOKIE,
+    SESSION_COOKIE,
+};
+use crate::entities::{oauth_application, oauth_grant};
+use crate::{tenant_setting, AppState};
+use axum::{
+    extract::State,
+    http::{header, HeaderMap, StatusCode, Uri},
+    response::{IntoResponse, Response},
+};
+use chrono::{Duration, Utc};
+use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, Set};
+use serde::{Deserialize, Serialize};
+use serde_json::json;
+use std::collections::HashMap;
+use url::form_urlencoded;
 
 #[derive(Clone, Deserialize, Serialize, PartialEq)]
 pub(super) struct AuthorizationRequest {
@@ -69,12 +89,7 @@ fn valid_request(request: &AuthorizationRequest, client: &Client) -> bool {
             .any(|uri| uri == request.redirect_uri)
         && !request.state.is_empty()
         && request.state.len() <= 256
-        && request.code_challenge_method == "S256"
-        && (43..=128).contains(&request.code_challenge.len())
-        && request
-            .code_challenge
-            .bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
+        && super::pkce::valid_challenge(&request.code_challenge_method, &request.code_challenge)
         && !request.scope.is_empty()
         && request.scope.split_whitespace().all(|scope| {
             client
@@ -329,4 +344,39 @@ pub(super) async fn consent(
         state.oauth.cookie(PENDING_COOKIE, "", 0),
     );
     response
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{valid_request, AuthorizationRequest, Client};
+
+    #[test]
+    fn s256_challenges_must_encode_exactly_one_sha256_digest() {
+        let client = Client {
+            id: 1,
+            name: "Test".into(),
+            client_id: "mobile".into(),
+            redirect_uri: "app://callback".into(),
+            scopes: "medtracker".into(),
+        };
+        let mut request = AuthorizationRequest {
+            response_type: "code".into(),
+            response_mode: "query".into(),
+            client_id: client.client_id.clone(),
+            redirect_uri: client.redirect_uri.clone(),
+            scope: "medtracker".into(),
+            state: "state".into(),
+            code_challenge: "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM".into(),
+            code_challenge_method: "S256".into(),
+        };
+        assert!(valid_request(&request, &client));
+        for malformed in [
+            "A".repeat(44),
+            "A".repeat(128),
+            format!("{}B", "A".repeat(42)),
+        ] {
+            request.code_challenge = malformed;
+            assert!(!valid_request(&request, &client));
+        }
+    }
 }

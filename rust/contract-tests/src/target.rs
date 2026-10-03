@@ -233,6 +233,22 @@ impl Target {
         self.post_html_form_from_local_client(path, fields, client_ip)
     }
 
+    pub fn post_html_form_with_cookie(
+        &self,
+        path: &str,
+        fields: &[(String, String)],
+        cookie: &str,
+    ) -> Response {
+        self.require_local_write();
+        self.client
+            .post(self.url(path))
+            .header("Accept", "text/html")
+            .header("Cookie", cookie)
+            .form(fields)
+            .send()
+            .expect("target must respond")
+    }
+
     pub fn web_form_request(
         &self,
         method: &str,

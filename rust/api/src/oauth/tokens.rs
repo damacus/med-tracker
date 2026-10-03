@@ -1,4 +1,18 @@
-use super::*;
+use super::authorization::{client, Client};
+use super::configuration::{digest, secret};
+use super::helpers::{database_error, oauth_error, sql, transaction};
+use super::sessions::account_available;
+use crate::{configured_lifetime_days, AppState};
+use axum::{
+    extract::{Form, State},
+    http::{header, StatusCode},
+    response::{IntoResponse, Response},
+    Json,
+};
+use chrono::{Duration, Utc};
+use sea_orm::{ConnectionTrait, DatabaseTransaction};
+use serde::Deserialize;
+use serde_json::{json, Value};
 
 #[derive(Deserialize)]
 pub(super) struct TokenForm {
@@ -53,12 +67,7 @@ async fn redeem_code(
     else {
         return Ok(None);
     };
-    if code.len() > 256
-        || !(43..=128).contains(&verifier.len())
-        || !verifier
-            .bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_' || b == b'.' || b == b'~')
-    {
+    if code.len() > 256 || verifier.len() > 128 {
         return Ok(None);
     }
     let row = db.query_one_raw(sql("SELECT id, account_id, redirect_uri, code_challenge, code_challenge_method, scopes, expires_in FROM oauth_grants WHERE oauth_application_id = $1 AND client_kind = 'mobile' AND code = $2 AND revoked_at IS NULL FOR UPDATE", [registered.id.into(), code.clone().into()]))
@@ -85,10 +94,8 @@ async fn redeem_code(
     let expiry: chrono::NaiveDateTime = row
         .try_get("", "expires_in")
         .map_err(|e| database_error(e).into_response())?;
-    let actual_challenge = URL_SAFE_NO_PAD.encode(Sha256::digest(verifier.as_bytes()));
     if stored_redirect.as_deref() != Some(redirect_uri)
-        || method.as_deref() != Some("S256")
-        || challenge.as_deref() != Some(actual_challenge.as_str())
+        || !super::pkce::verify(method.as_deref(), challenge.as_deref(), verifier)
         || expiry <= Utc::now().naive_utc()
         || !account_available(db, account_id).await?
     {
