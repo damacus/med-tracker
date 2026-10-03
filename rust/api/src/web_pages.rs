@@ -1,5 +1,5 @@
 use crate::{oauth, AppState};
-use axum::extract::{Form, Path, State};
+use axum::extract::{Form, Path, Query, State};
 use axum::http::{header, HeaderMap, HeaderValue, Method, StatusCode};
 use axum::response::Response;
 use axum::routing::{get, post};
@@ -23,6 +23,7 @@ mod locations;
 mod medications;
 mod people;
 mod response;
+mod settings;
 mod stock;
 mod time;
 mod treatments;
@@ -39,6 +40,7 @@ pub fn routes() -> Router<AppState> {
         .merge(stock::routes())
         .merge(treatments::routes())
         .merge(admin::routes())
+        .merge(settings::routes())
         .route("/household.css", get(assets::household_styles))
         .route("/households/{slug}/dashboard", get(dashboard::dashboard))
         .route(

@@ -1770,6 +1770,7 @@ es:
       title: Zona horaria
       description: Elige la zona horaria de los recordatorios y las dosis registradas.
       save: Guardar zona horaria
+      read_only: No tienes permiso para cambiar esta zona horaria.
     account_security:
       title: Seguridad de la cuenta
       description: Gestiona tus credenciales de acceso y ajustes de seguridad

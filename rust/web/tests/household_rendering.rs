@@ -35,7 +35,13 @@ fn household_shell_keeps_navigation_in_the_current_household() {
         "en",
         String::new(),
     );
-    for destination in ["dashboard", "medications", "people", "locations"] {
+    for destination in [
+        "dashboard",
+        "medications",
+        "people",
+        "locations",
+        "settings",
+    ] {
         assert!(html.contains(&format!(
             "href=\"/households/test-household/{destination}\""
         )));

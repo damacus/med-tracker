@@ -156,6 +156,29 @@ fn unknown_shortcuts_are_ignored_without_a_fallback_link() {
 }
 
 #[test]
+fn sidebar_bottom_links_to_the_household_settings_page() {
+    let html = render_person(vec![]);
+    let bottom = html
+        .split("class=\"dashboard-sidebar-bottom\"")
+        .nth(1)
+        .unwrap()
+        .split("</div>")
+        .next()
+        .unwrap();
+    assert!(bottom.contains("href=\"/households/test/settings\""));
+    assert!(bottom.contains("Settings"));
+    assert!(!bottom.contains("aria-disabled=\"true\""));
+}
+
+#[test]
+fn settings_link_escapes_special_characters_in_household_slug() {
+    let mut page = test_page();
+    page.slug = "family #1?".into();
+    let html = render_dashboard(page);
+    assert!(html.contains("href=\"/households/family%20%231%3F/settings\""));
+}
+
+#[test]
 fn dashboard_public_css_and_script_have_content_versioned_urls() {
     let html = render_person(vec![]);
     assert!(html.contains("href=\"/dashboard.css?v="));

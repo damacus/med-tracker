@@ -220,6 +220,7 @@ fn allowed(key: &str) -> bool {
         "forms.locations.",
         "people.",
         "forms.people.",
+        "profiles.",
         "schedules.",
         "forms.medications.",
         "medications.",
