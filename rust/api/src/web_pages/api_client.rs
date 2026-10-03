@@ -2,7 +2,7 @@ use super::response::{error, PageError};
 use super::time::dashboard_time;
 use super::{field, numeric};
 use crate::{api_router, oauth, restricted_role, AppState};
-use axum::body::{to_bytes, Body};
+use axum::body::{to_bytes, Body, Bytes};
 use axum::http::{header, HeaderMap, HeaderValue, Method, Request, StatusCode};
 use chrono::{DateTime, Datelike, Duration, Utc};
 use medtracker_web::household_i18n::Locale;
@@ -102,6 +102,26 @@ pub(super) struct ApiReply {
     pub(super) status: StatusCode,
     pub(super) value: Value,
     pub(super) etag: Option<String>,
+}
+
+pub(super) struct BinaryReply {
+    pub(super) status: StatusCode,
+    pub(super) headers: HeaderMap,
+    pub(super) body: Bytes,
+}
+
+pub(super) fn download_headers(upstream: &HeaderMap) -> HeaderMap {
+    let mut forwarded = HeaderMap::new();
+    for name in [
+        header::CONTENT_TYPE,
+        header::CONTENT_DISPOSITION,
+        header::HeaderName::from_static("x-request-id"),
+    ] {
+        if let Some(value) = upstream.get(&name) {
+            forwarded.insert(name, value.clone());
+        }
+    }
+    forwarded
 }
 
 pub(super) struct WebApi {
@@ -227,6 +247,20 @@ impl WebApi {
         .await
     }
 
+    pub(super) async fn download(&mut self, path: &str) -> Result<BinaryReply, PageError> {
+        let (status, headers, body) = self
+            .send(Method::GET, path, None, None, &HeaderMap::new(), None)
+            .await?;
+        if status == StatusCode::UNAUTHORIZED {
+            return Err(PageError::Login);
+        }
+        Ok(BinaryReply {
+            status,
+            headers,
+            body,
+        })
+    }
+
     async fn call_inner(
         &mut self,
         method: Method,
@@ -236,6 +270,28 @@ impl WebApi {
         extra: &HeaderMap,
         intent: Option<BrowserWriteIntent>,
     ) -> Result<ApiReply, PageError> {
+        let (status, headers, bytes) = self.send(method, path, body, csrf, extra, intent).await?;
+        let etag = headers
+            .get(header::ETAG)
+            .and_then(|value| value.to_str().ok())
+            .map(str::to_owned);
+        let value = decode_api_body(status, &bytes)?;
+        Ok(ApiReply {
+            status,
+            value,
+            etag,
+        })
+    }
+
+    async fn send(
+        &mut self,
+        method: Method,
+        path: &str,
+        body: Option<Value>,
+        csrf: Option<&str>,
+        extra: &HeaderMap,
+        intent: Option<BrowserWriteIntent>,
+    ) -> Result<(StatusCode, HeaderMap, Bytes), PageError> {
         let mut request = Request::builder().method(method).uri(path);
         for name in [
             header::IF_MATCH,
@@ -284,20 +340,11 @@ impl WebApi {
             self.cookie = Some(cookie.clone());
         }
         let status = response.status();
-        let etag = response
-            .headers()
-            .get(header::ETAG)
-            .and_then(|value| value.to_str().ok())
-            .map(str::to_owned);
+        let headers = response.headers().clone();
         let bytes = to_bytes(response.into_body(), BODY_LIMIT)
             .await
             .map_err(|_| error(StatusCode::BAD_GATEWAY))?;
-        let value = decode_api_body(status, &bytes)?;
-        Ok(ApiReply {
-            status,
-            value,
-            etag,
-        })
+        Ok((status, headers, bytes))
     }
 
     pub(super) async fn get(&mut self, path: &str) -> Result<Value, PageError> {

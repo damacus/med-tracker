@@ -13,6 +13,7 @@ pub mod household_i18n;
 pub mod locations;
 pub mod medication_management;
 pub mod people;
+pub mod reports;
 pub mod stock;
 pub mod treatments;
 
