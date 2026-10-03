@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.5.36](https://github.com/damacus/med-tracker/compare/v0.5.35...v0.5.36) (2026-10-03)
+
+
+### Features
+
+* **rust:** add NHS dm+d admin import slice ([1db3993](https://github.com/damacus/med-tracker/commit/1db399334290b762f8ba6498a895ec7b30df1306))
+
+
+### Bug Fixes
+
+* **auth:** consume passkey challenges after first use ([a349bdc](https://github.com/damacus/med-tracker/commit/a349bdc94dc96dddb66a2e9e270a29493916d7f0))
+* execute task commands and count routine dashboard work ([#2135](https://github.com/damacus/med-tracker/issues/2135)) ([ecb4de2](https://github.com/damacus/med-tracker/commit/ecb4de292652f971161c0f4856075ed23edc77a8))
+* **rust:** delegate auth and close write races ([bb73d58](https://github.com/damacus/med-tracker/commit/bb73d5877adcf9cf5181a53ea778658e080a089a))
+* **rust:** scope contract storage overlay to defined services ([#2379](https://github.com/damacus/med-tracker/issues/2379)) ([7a8e885](https://github.com/damacus/med-tracker/commit/7a8e885804c90f41e26e4eaecf17a52df082f8ca))
+* **security:** remove RustCrypto RSA from push dependencies ([85af9da](https://github.com/damacus/med-tracker/commit/85af9da02e2200f1c094e5d7c144b81c7beed5a8))
+* **ui:** keep success flash visible until navigation ([#2380](https://github.com/damacus/med-tracker/issues/2380)) ([1e63a7f](https://github.com/damacus/med-tracker/commit/1e63a7faf897c7b21411264ec7bd2a8d859cda69))
+
 ## [0.5.35](https://github.com/damacus/med-tracker/compare/v0.5.34...v0.5.35) (2026-10-02)
 
 
