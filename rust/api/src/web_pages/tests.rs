@@ -6,6 +6,34 @@ use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
 use chrono::NaiveDate;
 use std::collections::HashMap;
 
+#[tokio::test]
+async fn report_download_accepts_a_pdf_larger_than_the_json_response_limit() {
+    use super::api_client::{read_response_body, response_body_limit, PDF_BODY_LIMIT};
+    use axum::body::Body;
+
+    let pdf = [b"%PDF-".as_slice(), &vec![b'x'; 1_048_576]].concat();
+    let bytes = read_response_body(Body::from(pdf.clone()), PDF_BODY_LIMIT)
+        .await
+        .expect("valid large report PDF");
+    assert_eq!(bytes.as_ref(), pdf);
+    assert!(read_response_body(Body::from(pdf), 1_048_576)
+        .await
+        .is_err());
+    assert!(
+        read_response_body(Body::from(vec![b'x'; PDF_BODY_LIMIT + 1]), PDF_BODY_LIMIT)
+            .await
+            .is_err()
+    );
+    assert_eq!(
+        response_body_limit(StatusCode::OK, PDF_BODY_LIMIT),
+        PDF_BODY_LIMIT
+    );
+    assert_eq!(
+        response_body_limit(StatusCode::UNPROCESSABLE_ENTITY, PDF_BODY_LIMIT),
+        1_048_576
+    );
+}
+
 #[test]
 fn pagination_rejects_duplicate_ids_and_changing_totals() {
     use super::api_client::PageScan;

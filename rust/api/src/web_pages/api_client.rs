@@ -13,6 +13,21 @@ use std::collections::{HashMap, HashSet};
 use tower::ServiceExt;
 
 const BODY_LIMIT: usize = 1_048_576;
+pub(super) const PDF_BODY_LIMIT: usize = 16 * 1_048_576;
+
+pub(super) async fn read_response_body(body: Body, limit: usize) -> Result<Bytes, PageError> {
+    to_bytes(body, limit)
+        .await
+        .map_err(|_| error(StatusCode::BAD_GATEWAY))
+}
+
+pub(super) fn response_body_limit(status: StatusCode, success_body_limit: usize) -> usize {
+    if status.is_success() {
+        success_body_limit
+    } else {
+        BODY_LIMIT
+    }
+}
 
 pub(super) fn decode_api_body(status: StatusCode, bytes: &[u8]) -> Result<Value, PageError> {
     if bytes.is_empty() && (status == StatusCode::NO_CONTENT || !status.is_success()) {
@@ -89,9 +104,10 @@ impl PageScan {
     }
 }
 
-enum BrowserWriteIntent {
+enum BrowserRequestIntent {
     Scalar(crate::medication_management::ScalarAdjustment),
     Pause(crate::pause_lifecycle::BrowserSourceGuard),
+    Download,
 }
 
 pub(super) fn html_cookie_only(headers: &HeaderMap) -> bool {
@@ -221,7 +237,7 @@ impl WebApi {
             Some(body),
             Some(csrf),
             &HeaderMap::new(),
-            Some(BrowserWriteIntent::Scalar(
+            Some(BrowserRequestIntent::Scalar(
                 crate::medication_management::ScalarAdjustment { original_etag },
             )),
         )
@@ -242,14 +258,21 @@ impl WebApi {
             Some(body),
             Some(&csrf),
             extra,
-            Some(BrowserWriteIntent::Pause(guard)),
+            Some(BrowserRequestIntent::Pause(guard)),
         )
         .await
     }
 
     pub(super) async fn download(&mut self, path: &str) -> Result<BinaryReply, PageError> {
         let (status, headers, body) = self
-            .send(Method::GET, path, None, None, &HeaderMap::new(), None)
+            .send(
+                Method::GET,
+                path,
+                None,
+                None,
+                &HeaderMap::new(),
+                Some(BrowserRequestIntent::Download),
+            )
             .await?;
         if status == StatusCode::UNAUTHORIZED {
             return Err(PageError::Login);
@@ -268,7 +291,7 @@ impl WebApi {
         body: Option<Value>,
         csrf: Option<&str>,
         extra: &HeaderMap,
-        intent: Option<BrowserWriteIntent>,
+        intent: Option<BrowserRequestIntent>,
     ) -> Result<ApiReply, PageError> {
         let (status, headers, bytes) = self.send(method, path, body, csrf, extra, intent).await?;
         let etag = headers
@@ -290,8 +313,14 @@ impl WebApi {
         body: Option<Value>,
         csrf: Option<&str>,
         extra: &HeaderMap,
-        intent: Option<BrowserWriteIntent>,
+        intent: Option<BrowserRequestIntent>,
     ) -> Result<(StatusCode, HeaderMap, Bytes), PageError> {
+        let success_body_limit = if matches!(intent.as_ref(), Some(BrowserRequestIntent::Download))
+        {
+            PDF_BODY_LIMIT
+        } else {
+            BODY_LIMIT
+        };
         let mut request = Request::builder().method(method).uri(path);
         for name in [
             header::IF_MATCH,
@@ -324,12 +353,13 @@ impl WebApi {
             .body(Body::from(encoded))
             .map_err(|_| error(StatusCode::INTERNAL_SERVER_ERROR))?;
         match intent {
-            Some(BrowserWriteIntent::Scalar(scalar)) => {
+            Some(BrowserRequestIntent::Scalar(scalar)) => {
                 request.extensions_mut().insert(scalar);
             }
-            Some(BrowserWriteIntent::Pause(guard)) => {
+            Some(BrowserRequestIntent::Pause(guard)) => {
                 request.extensions_mut().insert(guard);
             }
+            Some(BrowserRequestIntent::Download) => {}
             None => {}
         }
         let response = api_router(self.state.clone())
@@ -341,9 +371,8 @@ impl WebApi {
         }
         let status = response.status();
         let headers = response.headers().clone();
-        let bytes = to_bytes(response.into_body(), BODY_LIMIT)
-            .await
-            .map_err(|_| error(StatusCode::BAD_GATEWAY))?;
+        let limit = response_body_limit(status, success_body_limit);
+        let bytes = read_response_body(response.into_body(), limit).await?;
         Ok((status, headers, bytes))
     }
 
