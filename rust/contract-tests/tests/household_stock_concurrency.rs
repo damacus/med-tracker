@@ -359,3 +359,80 @@ fn stale_original_stock_token_rejects_without_changing_public_parent_api_behavio
     assert_eq!(response.status().as_u16(), 200);
     assert_eq!(response.json::<Value>().unwrap()["data"], option, "legacy parent API does not redistribute option stock");
 }
+
+fn revoke_membership_while_waiting_for_household_lock(create: bool) {
+    let (fixture, _guard, target, id) = setup("Revocation race", "127.0.0.85");
+    let before = read(&target, &fixture, id);
+    let mut db = Client::connect(&env::var("CONTRACT_AUDIT_DATABASE_URL").unwrap(), NoTls).unwrap();
+    let mut held = db.transaction().unwrap();
+    held.query_one(
+        "SELECT id FROM households WHERE id = $1 FOR UPDATE",
+        &[&fixture.household_id],
+    )
+    .unwrap();
+    let token = fixture.access_token.clone();
+    let path = if create {
+        format!("/api/v1/households/{}/medications", fixture.household_id)
+    } else {
+        api(&fixture, id)
+    };
+    let location = fixture.primary_location_id;
+    let worker = std::thread::spawn(move || {
+        let target = Target::from_env();
+        if create {
+            target.post_json_authorized(&path, &token, &json!({"medication": {"name": "Must not be created after revocation", "location_id": location, "dose_amount": "1", "dose_unit": "tablet", "reorder_threshold": "3"}})).status().as_u16()
+        } else {
+            target
+                .patch_json(
+                    &path,
+                    &token,
+                    &json!({"medication": {"name": "Must not be changed after revocation"}}),
+                )
+                .status()
+                .as_u16()
+        }
+    });
+    let mut observer =
+        Client::connect(&env::var("CONTRACT_AUDIT_DATABASE_URL").unwrap(), NoTls).unwrap();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(8);
+    loop {
+        let waiting: bool = observer.query_one("SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock' AND query LIKE '%households%')", &[]).unwrap().get(0);
+        if waiting {
+            break;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "request must reach household lock"
+        );
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    held.execute(
+        "UPDATE household_memberships SET status = 'revoked' WHERE id = $1",
+        &[&fixture.owner_membership_id],
+    )
+    .unwrap();
+    held.commit().unwrap();
+    let status = worker.join();
+    db.execute(
+        "UPDATE household_memberships SET status = 'active' WHERE id = $1",
+        &[&fixture.owner_membership_id],
+    )
+    .unwrap();
+    let status = status.unwrap();
+    assert!(
+        [401, 403, 404].contains(&status),
+        "revoked writer returned {status}"
+    );
+    assert_eq!(read(&target, &fixture, id), before);
+    assert_eq!(db.query_one("SELECT count(*) FROM medications WHERE household_id = $1 AND name = 'Must not be created after revocation'", &[&fixture.household_id]).unwrap().get::<_, i64>(0), 0);
+}
+
+#[test]
+fn medication_update_rechecks_membership_after_waiting_for_household_lock() {
+    revoke_membership_while_waiting_for_household_lock(false);
+}
+
+#[test]
+fn medication_create_rechecks_membership_after_waiting_for_household_lock() {
+    revoke_membership_while_waiting_for_household_lock(true);
+}

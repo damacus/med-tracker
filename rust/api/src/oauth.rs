@@ -6,25 +6,22 @@ mod discovery;
 mod helpers;
 mod login;
 mod passkey;
+mod pkce;
 mod sessions;
 mod tokens;
 
 use crate::entities::{
     account, account_lockout, active_session_key, household, membership, oauth_application,
-    oauth_grant, otp_key, person, recovery_code, user, webauthn_key, webauthn_user_id,
+    otp_key, person, recovery_code, user, webauthn_key,
 };
 use crate::{configured_lifetime_days, restricted_role, tenant_setting, AppState};
 use axum::extract::{Form, State};
-use axum::http::{header, HeaderMap, HeaderValue, StatusCode, Uri};
+use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
 use axum::response::{Html, IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use base64::{
-    engine::general_purpose::{URL_SAFE, URL_SAFE_NO_PAD},
-    Engine as _,
-};
+use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use chrono::{Duration, Utc};
-use hmac::{Hmac, KeyInit, Mac};
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseTransaction, DbBackend, EntityTrait,
     QueryFilter, QueryOrder, Set, Statement, TransactionTrait,
@@ -33,15 +30,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::Semaphore;
 use url::{form_urlencoded, Url};
 
 use authorization::authorize;
-use authorization::client;
 use authorization::consent;
 use authorization::AuthorizationRequest;
-use authorization::Client;
 use configuration::digest;
 use configuration::secret;
 pub(crate) use configuration::session_key_digest;
@@ -55,16 +48,13 @@ use helpers::database_error;
 use helpers::field;
 use helpers::form_fields;
 use helpers::html;
-use helpers::oauth_error;
 use helpers::redirect;
 use helpers::sql;
 use helpers::transaction;
 use login::home;
 use login::login;
-use login::login_destination;
 use login::login_post;
 use login::logout;
-use login::passkey_context;
 use passkey::passkey_login;
 use passkey::passkey_script;
 use passkey::PasskeyChallenge;
@@ -81,7 +71,6 @@ pub(crate) use sessions::BrowserSession;
 use sessions::LoginIntent;
 use sessions::Pending;
 use sessions::LOGIN_INTENT_COOKIE;
-use sessions::PENDING_COOKIE;
 use sessions::SESSION_COOKIE;
 use tokens::revoke;
 use tokens::token;

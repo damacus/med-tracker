@@ -8,7 +8,7 @@ use super::validation::{assign_attributes, barcode_conflict, valid_location, val
 use crate::database_error;
 use crate::entities::medication;
 use crate::entities::schedule;
-use crate::sync_events::lock_household;
+use crate::mutation_idempotency::lock_household_and_reauthenticate;
 use crate::sync_events::record_change;
 use crate::sync_events::SyncRecord;
 use crate::ApiError;
@@ -39,7 +39,9 @@ async fn update_medication(
     body: Result<Json<Value>, JsonRejection>,
     method: &str,
 ) -> Result<Response, ApiError> {
-    let (db, context) = request_context(&state, &headers, household_id).await?;
+    let (db, _) = request_context(&state, &headers, household_id).await?;
+    let (_, context) =
+        lock_household_and_reauthenticate(&state, &db, &headers, household_id).await?;
     let body = match body {
         Ok(Json(body)) => body,
         Err(_) => {
@@ -88,7 +90,6 @@ async fn update_medication(
         )
         .await;
     }
-    lock_household(&db, household_id).await?;
     lock_medication(&db, found.id).await?;
     let medication = visible_medication(&db, &context, &id)
         .await?

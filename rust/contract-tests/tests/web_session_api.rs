@@ -549,9 +549,22 @@ fn valid_browser_activity_renews_cookie_without_rotating_session_or_csrf() {
     let fixture = fixture();
     let browser = BrowserClient::new();
     let login = browser.login(&fixture.primary_email);
+    let session_ids = || {
+        database()
+            .query(
+                "SELECT session_id FROM account_active_session_keys WHERE account_id = $1 ORDER BY session_id",
+                &[&fixture.account_id],
+            )
+            .unwrap()
+            .iter()
+            .map(|row| row.get::<_, String>(0))
+            .collect::<Vec<_>>()
+    };
+    let original_sessions = session_ids();
     let dashboard = browser.get(&format!("/households/{}/dashboard", fixture.household_slug));
     assert_eq!(dashboard.status().as_u16(), 200);
-    assert_eq!(session_cookie(&dashboard), login.old_cookie);
+    assert!(!session_cookie(&dashboard).is_empty());
+    assert_eq!(session_ids(), original_sessions);
     let dashboard_age = session_cookie_max_age(&dashboard);
     assert!(dashboard_age > 0);
     assert_eq!(
@@ -562,7 +575,8 @@ fn valid_browser_activity_renews_cookie_without_rotating_session_or_csrf() {
     let path = medication_path(fixture.household_id);
     let api = browser.get(&path);
     assert_eq!(api.status().as_u16(), 200);
-    assert_eq!(session_cookie(&api), login.old_cookie);
+    assert!(!session_cookie(&api).is_empty());
+    assert_eq!(session_ids(), original_sessions);
     let api_age = session_cookie_max_age(&api);
     assert!(api_age > 0 && api_age <= dashboard_age);
 
@@ -574,12 +588,14 @@ fn valid_browser_activity_renews_cookie_without_rotating_session_or_csrf() {
         .send()
         .unwrap();
     assert_eq!(invalid_bearer.status().as_u16(), 401);
-    assert!(invalid_bearer
-        .headers()
-        .get_all(header::SET_COOKIE)
-        .iter()
-        .filter_map(|value| value.to_str().ok())
-        .all(|value| !value.starts_with("mt_oauth_session=")));
+    assert!(
+        invalid_bearer
+            .headers()
+            .get_all(header::SET_COOKIE)
+            .iter()
+            .filter_map(|value| value.to_str().ok())
+            .all(|value| !value.starts_with("mt_oauth_session="))
+    );
 
     let logout = browser
         .client

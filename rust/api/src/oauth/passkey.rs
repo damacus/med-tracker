@@ -1,4 +1,24 @@
-use super::*;
+use super::configuration::{digest, secret};
+use super::helpers::{database_error, html, redirect, transaction};
+use super::login::{login_destination, passkey_context};
+use super::sessions::{
+    account_available, browser_cookie_age, login_intent, pending, trusted_origin, BrowserSession,
+    LOGIN_INTENT_COOKIE, SESSION_COOKIE,
+};
+use crate::entities::{active_session_key, webauthn_key, webauthn_user_id};
+use crate::AppState;
+use axum::{
+    extract::{Form, State},
+    http::{header, HeaderMap, StatusCode},
+    response::{IntoResponse, Response},
+};
+use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
+use chrono::Utc;
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, DbBackend, EntityTrait, QueryFilter,
+    QuerySelect, Set, Statement,
+};
+use serde::{Deserialize, Serialize};
 
 const PASSKEY_ERROR: &str =
     "We could not sign you in with that passkey. Try again or use your password.";
@@ -8,6 +28,10 @@ pub(super) struct PasskeyChallenge {
     pub(super) challenge: String,
     pub(super) csrf: String,
     pub(super) issued_at: i64,
+}
+
+impl super::configuration::AuthenticationClaim for PasskeyChallenge {
+    const PURPOSE: &'static str = "mt_passkey_challenge";
 }
 
 #[derive(Deserialize)]
@@ -84,6 +108,7 @@ pub(super) async fn passkey_login(
     };
     let key = match webauthn_key::Entity::find()
         .filter(webauthn_key::Column::WebauthnId.eq(&credential_id))
+        .lock_exclusive()
         .one(&db)
         .await
     {
@@ -97,7 +122,9 @@ pub(super) async fn passkey_login(
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     };
     let origin = state.oauth.base_url.origin().ascii_serialization();
-    let stored_count = u64::from(key.sign_count.max(0) as u32);
+    let Ok(stored_count) = u64::try_from(key.sign_count) else {
+        return login_error(PASSKEY_ERROR);
+    };
     let verified = match crate::webauthn::verify_passkey_assertion(
         &form.webauthn_auth,
         &form.webauthn_auth_challenge,
@@ -109,7 +136,13 @@ pub(super) async fn passkey_login(
         Ok(verified) => verified,
         Err(_) => return login_error(PASSKEY_ERROR),
     };
-    let challenge_digest = digest(&form.webauthn_auth_challenge_hmac);
+    let Ok(sign_count) = i32::try_from(verified.sign_count) else {
+        return login_error(PASSKEY_ERROR);
+    };
+    let Some(handle) = &verified.user_handle else {
+        return login_error(PASSKEY_ERROR);
+    };
+    let challenge_digest = digest(&claim.challenge);
     let consumed = match db
         .execute_raw(Statement::from_sql_and_values(
             DbBackend::Postgres,
@@ -134,7 +167,7 @@ pub(super) async fn passkey_login(
     {
         return database_error(error).into_response();
     }
-    if let Some(handle) = &verified.user_handle {
+    {
         let handle = URL_SAFE_NO_PAD.encode(handle);
         let binding = webauthn_user_id::Entity::find()
             .filter(webauthn_user_id::Column::WebauthnId.eq(handle))
@@ -157,7 +190,7 @@ pub(super) async fn passkey_login(
         return login_error("Sign in is unavailable for this account");
     }
     let mut updated: webauthn_key::ActiveModel = key.into();
-    updated.sign_count = Set(i32::try_from(verified.sign_count).unwrap_or(i32::MAX));
+    updated.sign_count = Set(sign_count);
     updated.last_use = Set(Some(Utc::now().naive_utc()));
     updated.updated_at = Set(Utc::now().naive_utc());
     if let Err(error) = updated.update(&db).await {

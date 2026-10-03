@@ -275,3 +275,185 @@ fn a_malformed_stored_key_is_rejected() {
         );
     }
 }
+
+#[test]
+fn cross_origin_assertions_are_rejected() {
+    let client = serde_json::to_vec(&serde_json::json!({
+        "type": "webauthn.get", "challenge": CHALLENGE,
+        "origin": ORIGIN, "crossOrigin": true, "topOrigin": "https://evil.example"
+    }))
+    .unwrap();
+    let payload = signed_payload(&auth_data(0x05, 1), &client, None);
+    assert!(
+        verify_passkey_assertion(&payload, CHALLENGE, ORIGIN, RP_ID, &stored_key_b64(), 0).is_err()
+    );
+}
+
+#[test]
+fn inconsistent_credential_identifiers_and_types_are_rejected() {
+    for (field, value) in [("rawId", "b3RoZXI"), ("type", "password")] {
+        let mut payload: serde_json::Value = serde_json::from_str(&valid_payload(0x05, 1)).unwrap();
+        payload[field] = value.into();
+        assert!(verify_passkey_assertion(
+            &payload.to_string(),
+            CHALLENGE,
+            ORIGIN,
+            RP_ID,
+            &stored_key_b64(),
+            0
+        )
+        .is_err());
+    }
+}
+
+#[test]
+fn backup_state_requires_backup_eligibility() {
+    assert!(verify_passkey_assertion(
+        &valid_payload(0x15, 1),
+        CHALLENGE,
+        ORIGIN,
+        RP_ID,
+        &stored_key_b64(),
+        0
+    )
+    .is_err());
+}
+
+#[test]
+fn library_algorithms_verify_and_unsupported_algorithms_fail() {
+    use ciborium::value::Value as Cbor;
+    use openssl::{
+        bn::{BigNum, BigNumContext},
+        ec::{EcGroup, EcKey},
+        hash::MessageDigest,
+        nid::Nid,
+        pkey::PKey,
+        rsa::{Padding, Rsa},
+        sign::{RsaPssSaltlen, Signer},
+    };
+    for (algorithm, ed448) in [-7_i64, -35, -8, -257, -258, -259, -37, -38, -39]
+        .map(|algorithm| (algorithm, false))
+        .into_iter()
+        .chain([(-8, true)])
+    {
+        let mut entries = vec![(Cbor::Integer(3.into()), Cbor::Integer(algorithm.into()))];
+        let key = match algorithm {
+            -7 | -35 => {
+                let (curve, nid, size) = if algorithm == -7 {
+                    (1, Nid::X9_62_PRIME256V1, 32)
+                } else {
+                    (2, Nid::SECP384R1, 48)
+                };
+                let group = EcGroup::from_curve_name(nid).unwrap();
+                let key = EcKey::generate(&group).unwrap();
+                let mut x = BigNum::new().unwrap();
+                let mut y = BigNum::new().unwrap();
+                key.public_key()
+                    .affine_coordinates_gfp(
+                        &group,
+                        &mut x,
+                        &mut y,
+                        &mut BigNumContext::new().unwrap(),
+                    )
+                    .unwrap();
+                entries.extend(
+                    [
+                        (1, Cbor::Integer(2.into())),
+                        (-1, Cbor::Integer(curve.into())),
+                        (-2, Cbor::Bytes(x.to_vec_padded(size).unwrap())),
+                        (-3, Cbor::Bytes(y.to_vec_padded(size).unwrap())),
+                    ]
+                    .map(|(label, value)| (Cbor::Integer(label.into()), value)),
+                );
+                PKey::from_ec_key(key).unwrap()
+            }
+            -8 => {
+                let key = if ed448 {
+                    PKey::generate_ed448().unwrap()
+                } else {
+                    PKey::generate_ed25519().unwrap()
+                };
+                entries.extend(
+                    [
+                        (1, Cbor::Integer(1.into())),
+                        (-1, Cbor::Integer(if ed448 { 7.into() } else { 6.into() })),
+                        (-2, Cbor::Bytes(key.raw_public_key().unwrap())),
+                    ]
+                    .map(|(label, value)| (Cbor::Integer(label.into()), value)),
+                );
+                key
+            }
+            _ => {
+                let key = Rsa::generate(2048).unwrap();
+                entries.extend(
+                    [
+                        (1, Cbor::Integer(3.into())),
+                        (-1, Cbor::Bytes(key.n().to_vec())),
+                        (-2, Cbor::Bytes(key.e().to_vec())),
+                    ]
+                    .map(|(label, value)| (Cbor::Integer(label.into()), value)),
+                );
+                PKey::from_rsa(key).unwrap()
+            }
+        };
+        let mut encoded_key = Vec::new();
+        ciborium::ser::into_writer(&Cbor::Map(entries), &mut encoded_key).unwrap();
+        let stored = URL_SAFE_NO_PAD.encode(encoded_key);
+        let auth = auth_data(5, 1);
+        let client = client_data(CHALLENGE, ORIGIN, "webauthn.get");
+        let mut message = auth.clone();
+        message.extend_from_slice(&Sha256::digest(&client));
+        let digest = match algorithm {
+            -35 | -258 | -38 => MessageDigest::sha384(),
+            -259 | -39 => MessageDigest::sha512(),
+            _ => MessageDigest::sha256(),
+        };
+        let mut signer = if algorithm == -8 {
+            Signer::new_without_digest(&key).unwrap()
+        } else {
+            Signer::new(digest, &key).unwrap()
+        };
+        if [-37, -38, -39].contains(&algorithm) {
+            signer.set_rsa_padding(Padding::PKCS1_PSS).unwrap();
+            signer
+                .set_rsa_pss_saltlen(RsaPssSaltlen::DIGEST_LENGTH)
+                .unwrap();
+            signer.set_rsa_mgf1_md(digest).unwrap();
+        }
+        let mut signature = signer.sign_oneshot_to_vec(&message).unwrap();
+        for tampered in [false, true] {
+            if tampered {
+                signature[0] ^= 1;
+            }
+            let id = URL_SAFE_NO_PAD.encode([17; 32]);
+            let payload = serde_json::json!({"id": id, "rawId": id, "type": "public-key", "response": {
+                "authenticatorData": URL_SAFE_NO_PAD.encode(&auth), "clientDataJSON": URL_SAFE_NO_PAD.encode(&client), "signature": URL_SAFE_NO_PAD.encode(&signature)
+            }}).to_string();
+            let result = verify_passkey_assertion(&payload, CHALLENGE, ORIGIN, RP_ID, &stored, 0);
+            assert_eq!(
+                result.is_ok(),
+                !tampered && [-7, -8, -257].contains(&algorithm),
+                "algorithm {algorithm}, ed448 {ed448}: {result:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn origins_with_paths_and_credentials_are_not_valid_webauthn_origins() {
+    for origin in [
+        "http://localhost:39998/path",
+        "http://user@localhost:39998",
+        "http://localhost:39998/?query=yes",
+    ] {
+        let payload = signed_payload(
+            &auth_data(5, 1),
+            &client_data(CHALLENGE, origin, "webauthn.get"),
+            None,
+        );
+        assert!(
+            verify_passkey_assertion(&payload, CHALLENGE, ORIGIN, RP_ID, &stored_key_b64(), 0)
+                .is_err()
+        );
+    }
+}

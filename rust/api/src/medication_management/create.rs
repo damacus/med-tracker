@@ -6,7 +6,7 @@ use super::responses::{
 use super::validation::{assign_attributes, barcode_conflict, valid_location, validate_attributes};
 use crate::database_error;
 use crate::entities::medication;
-use crate::sync_events::lock_household;
+use crate::mutation_idempotency::lock_household_and_reauthenticate;
 use crate::sync_events::record_change;
 use crate::sync_events::SyncRecord;
 use crate::ApiError;
@@ -31,7 +31,9 @@ pub(crate) async fn create(
     headers: HeaderMap,
     body: Result<Json<Value>, JsonRejection>,
 ) -> Result<Response, ApiError> {
-    let (db, context) = request_context(&state, &headers, household_id).await?;
+    let (db, _) = request_context(&state, &headers, household_id).await?;
+    let (_, context) =
+        lock_household_and_reauthenticate(&state, &db, &headers, household_id).await?;
     let body = match body {
         Ok(Json(body)) => body,
         Err(_) => {
@@ -131,7 +133,6 @@ pub(crate) async fn create(
     if let Err((field, message)) = assign_attributes(&mut active, attributes) {
         return validation_response(db, &context, "POST", "create", field, message).await;
     }
-    lock_household(&db, household_id).await?;
     let savepoint = db.begin().await.map_err(database_error)?;
     let medication = match active.insert(&savepoint).await {
         Ok(medication) => {

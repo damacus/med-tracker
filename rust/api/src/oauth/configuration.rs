@@ -1,6 +1,18 @@
-use super::*;
+use axum::http::HeaderValue;
+use base64::{
+    engine::general_purpose::{URL_SAFE, URL_SAFE_NO_PAD},
+    Engine as _,
+};
+use cookie::{Cookie, CookieJar, Key};
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+use std::sync::Arc;
+use tokio::sync::Semaphore;
+use url::Url;
 
-type HmacSha256 = Hmac<Sha256>;
+pub(super) trait AuthenticationClaim {
+    const PURPOSE: &'static str;
+}
 
 #[derive(Clone)]
 pub struct OAuthState {
@@ -46,26 +58,26 @@ impl OAuthState {
         })
     }
 
-    pub(super) fn sign<T: Serialize>(&self, data: &T) -> Option<String> {
+    pub(super) fn sign<T: Serialize + AuthenticationClaim>(&self, data: &T) -> Option<String> {
         let payload = URL_SAFE_NO_PAD.encode(serde_json::to_vec(data).ok()?);
-        let mut mac = HmacSha256::new_from_slice(&self.secret).ok()?;
-        mac.update(payload.as_bytes());
-        Some(format!(
-            "{payload}.{}",
-            URL_SAFE_NO_PAD.encode(mac.finalize().into_bytes())
-        ))
+        let mut jar = CookieJar::new();
+        jar.private_mut(&Key::derive_from(&self.secret))
+            .add(Cookie::new(T::PURPOSE, payload));
+        Some(jar.get(T::PURPOSE)?.value().to_owned())
     }
 
-    pub(super) fn verify<T: for<'a> Deserialize<'a>>(&self, value: &str) -> Option<T> {
+    pub(super) fn verify<T: for<'a> Deserialize<'a> + AuthenticationClaim>(
+        &self,
+        value: &str,
+    ) -> Option<T> {
         if value.len() > 4096 {
             return None;
         }
-        let (payload, signature) = value.split_once('.')?;
-        let signature = URL_SAFE_NO_PAD.decode(signature).ok()?;
-        let mut mac = HmacSha256::new_from_slice(&self.secret).ok()?;
-        mac.update(payload.as_bytes());
-        mac.verify_slice(&signature).ok()?;
-        serde_json::from_slice(&URL_SAFE_NO_PAD.decode(payload).ok()?).ok()
+        let jar = CookieJar::new();
+        let cookie = jar
+            .private(&Key::derive_from(&self.secret))
+            .decrypt(Cookie::new(T::PURPOSE, value.to_owned()))?;
+        serde_json::from_slice(&URL_SAFE_NO_PAD.decode(cookie.value()).ok()?).ok()
     }
 
     pub(super) fn cookie(&self, name: &str, value: &str, max_age: i64) -> HeaderValue {
@@ -96,4 +108,44 @@ pub(super) fn digest(token: &str) -> String {
 
 pub(crate) fn session_key_digest(token: &str) -> String {
     digest(token)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::OAuthState;
+    use serde::{Deserialize, Serialize};
+    use std::sync::Arc;
+    use tokio::sync::Semaphore;
+
+    #[derive(Serialize, Deserialize)]
+    struct First {
+        value: String,
+    }
+    #[derive(Serialize, Deserialize)]
+    struct Second {
+        value: String,
+    }
+
+    impl super::AuthenticationClaim for First {
+        const PURPOSE: &'static str = "test-first";
+    }
+    impl super::AuthenticationClaim for Second {
+        const PURPOSE: &'static str = "test-second";
+    }
+
+    #[test]
+    fn signed_claims_cannot_be_reused_for_another_purpose() {
+        let state = OAuthState {
+            secret: Arc::from([42_u8; 64]),
+            base_url: "https://example.com".parse().unwrap(),
+            password_workers: Arc::new(Semaphore::new(1)),
+        };
+        let signed = state
+            .sign(&First {
+                value: "test".into(),
+            })
+            .unwrap();
+        assert!(state.verify::<First>(&signed).is_some());
+        assert!(state.verify::<Second>(&signed).is_none());
+    }
 }
