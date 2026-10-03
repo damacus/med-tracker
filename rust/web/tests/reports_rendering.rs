@@ -127,6 +127,26 @@ fn reports_form_without_manageable_people_disables_download_and_explains() {
 }
 
 #[test]
+fn malformed_dates_remain_visible_in_editable_text_controls() {
+    let html = page(
+        choices(),
+        ReportDraft {
+            start_date: "2026-02-30".into(),
+            end_date: "bad<date>".into(),
+            ..ReportDraft::default()
+        },
+        vec![
+            ("start_date".into(), "start_date_invalid".into()),
+            ("end_date".into(), "end_date_invalid".into()),
+        ],
+    );
+    assert_eq!(html.matches("type=\"text\"").count(), 2);
+    assert!(html.contains("value=\"2026-02-30\""));
+    assert!(html.contains("value=\"bad&lt;date&gt;\""));
+    assert!(!html.contains("type=\"date\""));
+}
+
+#[test]
 fn reports_form_renders_localized_in_every_supported_locale() {
     let expected = [
         (Locale::En, "en", "Reports", "Download PDF"),

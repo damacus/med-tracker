@@ -10,6 +10,7 @@ assert.ok(baseUrl, 'Set BASE_URL to the disposable Rust server');
 assert.ok(fixturePath, 'Set CONTRACT_FIXTURE_PATH to the disposable fixture');
 const fixture = JSON.parse(await readFile(fixturePath, 'utf8'));
 const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH });
+test.after(async () => browser.close());
 
 function householdUrl(path) {
   return new URL(`/households/${fixture.household_slug}${path}`, baseUrl).toString();
@@ -73,14 +74,17 @@ for (const viewport of [
     try {
       const page = await context.newPage();
       await login(page);
-      const destination = await page.goto(householdUrl('/reports'));
+      const inventory = await page.goto(householdUrl('/medications'));
+      assert.equal(inventory?.status(), 200);
+      await page.getByRole('link', { name: 'Reports', exact: true }).click();
+      const destination = await page.reload();
       assert.equal(destination?.status(), 200);
       await page.getByRole('link', { name: 'Reports', exact: true }).waitFor();
       await page.getByRole('heading', { level: 1, name: 'Reports', exact: true }).waitFor();
       const person = page.getByLabel('Person', { exact: true });
       await person.waitFor();
       const options = await page.locator('select[name="person_id"] option[value]:not([value=""])').evaluateAll(nodes => nodes.map(node => node.value));
-      assert.deepEqual(options, [String(fixture.managed_person_id)]);
+      assert.deepEqual(options.sort(), [String(fixture.user_person_id), String(fixture.managed_person_id)].sort());
       await person.selectOption(String(fixture.managed_person_id));
       await page.getByLabel('Start date', { exact: true }).fill('2026-02-24');
       await page.getByLabel('End date', { exact: true }).fill('2026-02-26');
@@ -111,6 +115,23 @@ for (const viewport of [
       assert.equal(await page.getByLabel('End date', { exact: true }).inputValue(), '2026-02-26');
       assert.equal(await page.getByLabel('Person', { exact: true }).inputValue(), String(fixture.managed_person_id));
       await screenshot(page, `health-history-reports-${viewport.name}-error.png`);
+
+      const malformed = new URL(householdUrl('/reports/health-history.pdf'));
+      malformed.search = new URLSearchParams({
+        person_id: String(fixture.managed_person_id),
+        start_date: '2026-02-30',
+        end_date: 'bad<date>',
+      }).toString();
+      assert.equal((await page.goto(malformed.toString()))?.status(), 422);
+      await assertAccessibleError(page, 'Start date');
+      await assertAccessibleError(page, 'End date');
+      assert.equal(await page.getByLabel('Start date', { exact: true }).inputValue(), '2026-02-30');
+      assert.equal(await page.getByLabel('End date', { exact: true }).inputValue(), 'bad<date>');
+
+      const medicationId = fixture[`journey_browser_${viewport.name}_medication_id`];
+      assert.equal((await page.goto(householdUrl(`/medications/${medicationId}`)))?.status(), 200);
+      await page.getByRole('link', { name: 'Reports', exact: true }).click();
+      await page.getByRole('heading', { level: 1, name: 'Reports', exact: true }).waitFor();
     } finally {
       await context.close();
     }

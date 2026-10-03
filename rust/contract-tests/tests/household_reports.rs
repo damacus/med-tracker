@@ -1,5 +1,5 @@
 use lopdf::Document;
-use medtracker_contract_tests::{fixture, Fixture, Target};
+use medtracker_contract_tests::{Fixture, Target, fixture};
 use postgres::{Client, NoTls};
 use reqwest::blocking::Response;
 use scraper::{Html, Selector};
@@ -87,10 +87,12 @@ fn request_id(response: &Response) -> String {
 }
 
 fn no_store(response: &Response) {
-    assert!(response.headers()["cache-control"]
-        .to_str()
-        .expect("cache header")
-        .contains("no-store"));
+    assert!(
+        response.headers()["cache-control"]
+            .to_str()
+            .expect("cache header")
+            .contains("no-store")
+    );
 }
 
 fn audits(target: &Target, fixture: &Fixture) -> Vec<Value> {
@@ -190,6 +192,7 @@ fn manual_session_cookie(fixture: &Fixture) -> String {
     let client = reqwest::blocking::Client::builder()
         .timeout(std::time::Duration::from_secs(10))
         .redirect(reqwest::redirect::Policy::none())
+        .cookie_store(true)
         .no_proxy()
         .build()
         .expect("manual client");
@@ -204,6 +207,7 @@ fn manual_session_cookie(fixture: &Fixture) -> String {
     let response = client
         .post(format!("{base}/login"))
         .header("Accept", "text/html")
+        .header("Origin", &base)
         .header("X-Forwarded-For", client_ip)
         .form(&[
             ("email", fixture.primary_email.as_str()),
@@ -255,8 +259,14 @@ fn reports_page_lists_only_manageable_people_and_downloads_the_existing_pdf() {
             .as_str()
         )
     );
-    let options = person_option_values(&html);
-    assert_eq!(options, vec![fixture.managed_person_id.to_string()]);
+    let mut options = person_option_values(&html);
+    let mut expected = vec![
+        fixture.user_person_id.to_string(),
+        fixture.managed_person_id.to_string(),
+    ];
+    options.sort();
+    expected.sort();
+    assert_eq!(options, expected);
     assert!(html.contains(&fixture.web_managed_person_name));
     assert!(!html.contains(&fixture.web_hidden_person_name));
     assert!(!html.contains(&fixture.foreign_person_name));
@@ -278,10 +288,12 @@ fn reports_page_lists_only_manageable_people_and_downloads_the_existing_pdf() {
             "{name} must carry an ISO default"
         );
     }
-    assert!(document
-        .select(&Selector::parse("select[name='person_id'] option[value='']").unwrap())
-        .next()
-        .is_some());
+    assert!(
+        document
+            .select(&Selector::parse("select[name='person_id'] option[value='']").unwrap())
+            .next()
+            .is_some()
+    );
     let after_page = audits(&target, &fixture);
     assert_eq!(
         download_audits(&after_page).len(),
@@ -318,7 +330,7 @@ fn reports_page_lists_only_manageable_people_and_downloads_the_existing_pdf() {
     let empty = target.get_html(&download_path(
         &fixture,
         &format!(
-            "?person_id={}&start_date=2026-02-26&end_date=2026-02-26",
+            "?person_id={}&start_date=2026-02-19&end_date=2026-02-19",
             fixture.managed_person_id
         ),
     ));
@@ -342,9 +354,7 @@ fn reports_page_lists_only_manageable_people_and_downloads_the_existing_pdf() {
         .expect("second download audit");
     assert_eq!(second_audit["metadata"]["include_medication_takes"], false);
     assert!(
-        downloads
-            .iter()
-            .any(|row| row["request_id"] == empty_id),
+        downloads.iter().any(|row| row["request_id"] == empty_id),
         "empty-range download must be audited once"
     );
     let session = target.get_html(&reports_page(&fixture));
@@ -397,18 +407,22 @@ fn invalid_report_filters_keep_the_form_with_errors_and_no_audit() {
     ] {
         let response = target.get_html(&download_path(&fixture, &query));
         assert_eq!(response.status().as_u16(), 422, "invalid filter {query}");
-        assert!(response.headers()["content-type"]
-            .to_str()
-            .unwrap()
-            .starts_with("text/html"));
+        assert!(
+            response.headers()["content-type"]
+                .to_str()
+                .unwrap()
+                .starts_with("text/html")
+        );
         assert!(response.headers().get("content-disposition").is_none());
         no_store(&response);
         let html = response.text().expect("invalid filter HTML");
         let document = Html::parse_document(&html);
-        assert!(document
-            .select(&Selector::parse("[role='alert']").unwrap())
-            .next()
-            .is_some());
+        assert!(
+            document
+                .select(&Selector::parse("[role='alert']").unwrap())
+                .next()
+                .is_some()
+        );
         let control = document
             .select(&Selector::parse(&format!("[name='{field}']")).unwrap())
             .next()
@@ -422,10 +436,12 @@ fn invalid_report_filters_keep_the_form_with_errors_and_no_audit() {
             control.value().attr("aria-describedby").is_some(),
             "{field} must reference an error description"
         );
-        assert!(document
-            .select(&Selector::parse("form#health_history_report_form").unwrap())
-            .next()
-            .is_some());
+        assert!(
+            document
+                .select(&Selector::parse("form#health_history_report_form").unwrap())
+                .next()
+                .is_some()
+        );
     }
     let retained = target.get_html(&download_path(
         &fixture,
@@ -462,10 +478,12 @@ fn foreign_and_unmanageable_people_are_masked_by_the_report_api() {
             &format!("?person_id={person}&start_date=2026-02-24&end_date=2026-02-26"),
         ));
         assert_eq!(response.status().as_u16(), 404, "masked person {person}");
-        assert!(response.headers()["content-type"]
-            .to_str()
-            .unwrap()
-            .starts_with("text/html"));
+        assert!(
+            response.headers()["content-type"]
+                .to_str()
+                .unwrap()
+                .starts_with("text/html")
+        );
         let html = response.text().expect("masked person HTML");
         assert!(!html.contains(&fixture.foreign_person_name));
         assert!(!html.contains(&fixture.web_hidden_person_name));
@@ -620,10 +638,12 @@ fn report_generation_failure_returns_a_controlled_form_error() {
         .expect("report failure download");
     assert_eq!(response.status().as_u16(), 503);
     no_store(&response);
-    assert!(response.headers()["content-type"]
-        .to_str()
-        .unwrap()
-        .starts_with("text/html"));
+    assert!(
+        response.headers()["content-type"]
+            .to_str()
+            .unwrap()
+            .starts_with("text/html")
+    );
     assert!(response.headers().get("content-disposition").is_none());
     let html = response.text().expect("failure HTML");
     assert!(html.contains("temporarily unavailable"));

@@ -27,6 +27,18 @@ pub fn render_reports(
     let raw_slug = slug;
     let slug = path_segment(slug);
     let text = Text::new(locale);
+    let date_input_type = |field: &str, invalid_key: &str| {
+        if errors
+            .iter()
+            .any(|(key, error)| key == field && error == invalid_key)
+        {
+            "text"
+        } else {
+            "date"
+        }
+    };
+    let start_type = date_input_type("start_date", "start_date_invalid");
+    let end_type = date_input_type("end_date", "end_date_invalid");
     let errors = errors
         .into_iter()
         .map(|(field, key)| {
@@ -77,13 +89,13 @@ pub fn render_reports(
                     {(!person_error.is_empty()).then(|| view! { <p class="household-field-error" id="report_person_id_error">{person_error}</p> })}
                 </div>
                 <div class="form-field"><label for="report_start_date">{start_label}</label>
-                    <input id="report_start_date" name="start_date" type="date" value=draft.start_date required
+                    <input id="report_start_date" name="start_date" type=start_type value=draft.start_date required
                         aria-invalid=(!start_error.is_empty()).then_some("true")
                         aria-describedby=(!start_error.is_empty()).then_some("report_start_date_error")/>
                     {(!start_error.is_empty()).then(|| view! { <p class="household-field-error" id="report_start_date_error">{start_error}</p> })}
                 </div>
                 <div class="form-field"><label for="report_end_date">{end_label}</label>
-                    <input id="report_end_date" name="end_date" type="date" value=draft.end_date required
+                    <input id="report_end_date" name="end_date" type=end_type value=draft.end_date required
                         aria-invalid=(!end_error.is_empty()).then_some("true")
                         aria-describedby=(!end_error.is_empty()).then_some("report_end_date_error")/>
                     {(!end_error.is_empty()).then(|| view! { <p class="household-field-error" id="report_end_date_error">{end_error}</p> })}

@@ -1,5 +1,4 @@
 use super::api_client::{decode_api_body, download_headers};
-use super::time::{configured_timezone, dashboard_now};
 use super::*;
 use axum::extract::Query;
 use axum::response::IntoResponse;
@@ -116,10 +115,8 @@ pub(super) fn download_error_key(status: StatusCode) -> &'static str {
     }
 }
 
-fn default_draft() -> ReportDraft {
-    let today = dashboard_now()
-        .with_timezone(&configured_timezone())
-        .date_naive();
+pub(super) fn default_draft() -> ReportDraft {
+    let today = crate::reports::today();
     ReportDraft {
         person_id: String::new(),
         start_date: today
@@ -211,9 +208,7 @@ async fn download(
         Ok(api) => api,
         Err(error) => return error.response(),
     };
-    let today = dashboard_now()
-        .with_timezone(&configured_timezone())
-        .date_naive();
+    let today = crate::reports::today();
     let draft = draft_from(&query);
     let result = async {
         match filters(&query, today) {

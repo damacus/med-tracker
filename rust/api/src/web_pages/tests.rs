@@ -6,6 +6,30 @@ use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
 use chrono::NaiveDate;
 use std::collections::HashMap;
 
+#[test]
+fn report_defaults_ignore_the_dashboard_contract_clock() {
+    if std::env::var_os("REPORT_CLOCK_CHILD").is_some() {
+        let draft = super::reports::default_draft();
+        assert_eq!(draft.end_date, crate::reports::today().to_string());
+        return;
+    }
+    let result = std::process::Command::new(std::env::current_exe().unwrap())
+        .args([
+            "--exact",
+            "web_pages::tests::report_defaults_ignore_the_dashboard_contract_clock",
+        ])
+        .env("REPORT_CLOCK_CHILD", "1")
+        .env("CONTRACT_PROJECT", "report-clock-test")
+        .env("CONTRACT_DASHBOARD_NOW", "2001-02-03T12:00:00Z")
+        .env("TZ", "UTC")
+        .output()
+        .unwrap();
+    assert!(
+        result.status.success(),
+        "{}",
+        String::from_utf8_lossy(&result.stdout)
+    );
+}
 #[tokio::test]
 async fn report_download_accepts_a_pdf_larger_than_the_json_response_limit() {
     use super::api_client::{read_response_body, response_body_limit, PDF_BODY_LIMIT};
