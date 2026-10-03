@@ -2060,6 +2060,7 @@ pt:
       title: Fuso horário
       description: Escolha o fuso horário usado nos lembretes e nas doses registadas.
       save: Guardar fuso horário
+      read_only: Não tem permissão para alterar este fuso horário.
     account_security:
       title: Segurança da Conta
       description: Gira as suas credenciais de início de sessão e definições de segurança

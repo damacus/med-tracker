@@ -1752,6 +1752,7 @@ ga:
       title: Crios Ama
       description: Roghnaigh an crios ama do mheabhrúcháin agus dáileoga taifeadta.
       save: Sábháil an crios ama
+      read_only: Níl cead agat an crios ama seo a athrú.
     account_security:
       title: Slándáil Chuntais
       description: Bainistigh do dhintiúir logála isteach agus do shocruithe slándála

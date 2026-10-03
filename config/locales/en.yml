@@ -2057,6 +2057,7 @@ en:
       title: Time Zone
       description: Choose the time zone used for reminders and recorded doses.
       save: Save time zone
+      read_only: You do not have permission to change this time zone.
     account_security:
       title: Account Security
       description: Manage your login credentials and security settings

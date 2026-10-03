@@ -101,3 +101,30 @@ fn html_cookie_session_rejects_any_explicit_authorization() {
     );
     assert!(!html_cookie_only(&headers));
 }
+
+#[test]
+fn settings_validation_errors_keep_the_field_and_message() {
+    let reply = serde_json::json!({
+        "error": {"errors": {"time_zone": ["Time zone is not included in the list"]}}
+    });
+    let errors = super::settings::profile_errors(&reply);
+    assert_eq!(
+        errors.get("time_zone"),
+        Some(&vec!["Time zone is not included in the list".to_owned()])
+    );
+}
+
+#[test]
+fn settings_edit_permission_requires_manage_access_to_profile_person() {
+    let profile = serde_json::json!({"data": {"person_id": "42"}});
+    let viewing = serde_json::json!({"data": {"people": {"manage_ids": [7]}}});
+    let managing = serde_json::json!({"data": {"people": {"manage_ids": [7, 42]}}});
+    assert!(!super::settings::can_edit_profile(&profile, &viewing));
+    assert!(super::settings::can_edit_profile(&profile, &managing));
+}
+
+#[test]
+fn settings_rejects_an_empty_timezone_before_profile_write() {
+    assert_eq!(super::settings::time_zone_error(""), Some("can't be blank"));
+    assert_eq!(super::settings::time_zone_error("UTC"), None);
+}

@@ -1778,6 +1778,7 @@ cy:
       title: Parth Amser
       description: Dewiswch y parth amser ar gyfer nodiadau atgoffa a dosau wedi'u cofnodi.
       save: Cadw'r parth amser
+      read_only: Nid oes gennych ganiatâd i newid y parth amser hwn.
     account_security:
       title: Diogelwch Cyfrif
       description: Rheoli eich manylion mewngofnodi a'ch gosodiadau diogelwch
