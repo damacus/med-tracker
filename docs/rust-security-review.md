@@ -193,13 +193,20 @@ use P-256/SHA-256. Core introduces an OpenSSL build/runtime dependency, exercise
 by the Linux contract build. Cookie brings older stable RustCrypto versions
 alongside newer existing versions; those duplicate versions are deliberate.
 
-Baseline and changed API locks report the same `RUSTSEC-2023-0071` RSA advisory
-and unmaintained `paste`, `proc-macro-error`, `proc-macro-error2` warnings. No new
-advisory was introduced; this is not a clean audit. RSA comes from `jsonwebtoken`
-and `web-push` → `jwt-simple` → `superboring`. APNs/VAPID use EC; WebAuthn public
-RSA verification uses the WebAuthn library's OpenSSL backend. No affected RSA private-key operation was
-found on these application paths. Track the advisory (no fixed release reported),
-without suppressing it or claiming a dependency fix.
+The baseline API lock reports `RUSTSEC-2023-0071` through `jsonwebtoken` and
+`web-push` → `jwt-simple` → `superboring`. APNs/VAPID use ES256, so they do not
+need RustCrypto RSA. The API now selects `jsonwebtoken`'s AWS-LC backend and
+patches `jwt-simple` 0.12.17 to make its RSA module/dependency optional. The
+Web Push dependency uses the patched library's unchanged ES256 implementation
+with RSA disabled; encryption and request construction remain in `web-push`.
+The patch is vendored with its licence, release checksum and exact scope in
+`rust/vendor/jwt-simple/PATCH.md`. Remove it when upstream permits disabling RSA.
+
+The changed lock contains no `rsa` or `superboring` package, and audit reports
+zero vulnerabilities without suppressions. The unmaintained `paste`,
+`proc-macro-error` and `proc-macro-error2` warnings remain. WebAuthn public RSA
+verification still uses the WebAuthn library's OpenSSL backend; passkey support
+is unchanged by this dependency fix.
 
 The full gate refreshes the web lock for its already-declared `tower-http 0.7`
 dependency; UI dependencies retain their separate `0.6` version.
@@ -232,8 +239,16 @@ Further sources: [private cookies](https://docs.rs/cookie/latest/cookie/struct.P
   job's passkey security target.
 - `task api:contract-household-selector-test`: passed.
 - `task docs:build` and `git diff --check`: passed.
-- `cargo audit` through a temporary Taskfile: nonzero on baseline and final locks
-  for the identical advisory/maintenance findings documented above.
+- `cargo audit` through a temporary Taskfile: baseline fails with the RSA
+  advisory; the final lock passes with zero vulnerabilities and three existing
+  maintenance warnings. `cargo tree -i rsa` confirms the package is absent.
+- RSA-removal checks: `task api:test` and `task api:clippy` pass;
+  `task api:vendor-jwt-test` passes all 33 non-RSA upstream tests. API regressions
+  verify the ES256 signature, reject tampering, decrypt the push payload and
+  prevent reintroducing the vulnerable crate into the lockfile.
+- `task api:openapi-external-integrations-acceptance`: all 13 Linux contract
+  tests pass, including encrypted Web Push delivery, APNs/FCM delivery,
+  permanent-failure cleanup and missing-provider configuration.
 - Database/browser regression command:
 
 ```sh

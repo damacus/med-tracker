@@ -339,3 +339,72 @@ pub(crate) async fn test_push_subscription(
     response.headers_mut().remove(header::CONTENT_TYPE);
     Ok(response)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+    use p256::ecdsa::{signature::Verifier, Signature, VerifyingKey};
+
+    #[test]
+    fn api_dependencies_exclude_the_vulnerable_rsa_crate() {
+        assert!(!include_str!("../../Cargo.lock").contains("\nname = \"rsa\"\n"));
+    }
+
+    #[test]
+    fn web_push_signs_for_the_endpoint_origin_and_encrypts_for_the_subscriber() {
+        let (recipient, auth) = ece::generate_keypair_and_auth_secret().unwrap();
+        let public = URL_SAFE_NO_PAD.encode(recipient.pub_as_raw().unwrap());
+        let private = URL_SAFE_NO_PAD.encode([7_u8; 32]);
+        let subscription = SubscriptionInfo::new(
+            "https://push.example/messages/123",
+            &public,
+            &URL_SAFE_NO_PAD.encode(auth),
+        );
+        let mut signature = VapidSignatureBuilder::from_base64(&private, &subscription).unwrap();
+        signature.add_claim("sub", "mailto:notifications@example.com");
+        let mut message = WebPushMessageBuilder::new(&subscription);
+        message.set_payload(ContentEncoding::Aes128Gcm, b"push payload");
+        message.set_vapid_signature(signature.build().unwrap());
+        let request = request_builder::build_request::<Vec<u8>>(message.build().unwrap());
+        assert_eq!(request.method().as_str(), "POST");
+        assert_eq!(request.headers()["content-encoding"], "aes128gcm");
+        assert_eq!(request.headers()["ttl"], "2419200");
+        let authorization = request.headers()["authorization"].to_str().unwrap();
+        let (token, public) = authorization
+            .strip_prefix("vapid t=")
+            .unwrap()
+            .split_once(", k=")
+            .unwrap();
+        let segments = token.split('.').collect::<Vec<_>>();
+        let claims: Value =
+            serde_json::from_slice(&URL_SAFE_NO_PAD.decode(segments[1]).unwrap()).unwrap();
+        assert_eq!(claims["aud"], "https://push.example");
+        assert_eq!(claims["sub"], "mailto:notifications@example.com");
+        let expires = claims["exp"].as_i64().unwrap();
+        assert!(
+            (Utc::now().timestamp() + 43190..=Utc::now().timestamp() + 43200).contains(&expires)
+        );
+        let verifying =
+            VerifyingKey::from_sec1_bytes(&URL_SAFE_NO_PAD.decode(public).unwrap()).unwrap();
+        let signature =
+            Signature::from_slice(&URL_SAFE_NO_PAD.decode(segments[2]).unwrap()).unwrap();
+        let signed = format!("{}.{}", segments[0], segments[1]);
+        verifying.verify(signed.as_bytes(), &signature).unwrap();
+        assert!(verifying.verify(b"tampered", &signature).is_err());
+        let encrypted = request.body();
+        assert_eq!(
+            ece::decrypt(&recipient.raw_components().unwrap(), &auth, encrypted).unwrap(),
+            b"push payload"
+        );
+    }
+
+    #[test]
+    fn web_push_rejects_invalid_signing_keys() {
+        let subscription =
+            SubscriptionInfo::new("https://push.example/messages", "invalid", "invalid");
+        for private in ["invalid", "invalid!"] {
+            assert!(VapidSignatureBuilder::from_base64(private, &subscription).is_err());
+        }
+    }
+}

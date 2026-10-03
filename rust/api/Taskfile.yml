@@ -2,6 +2,11 @@
 version: "3"
 
 tasks:
+  vendor-jwt-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - cargo test --manifest-path rust/vendor/jwt-simple/Cargo.toml --no-default-features --features pure-rust --lib
+
   security-contract-check:
     dir: "{{.TASKFILE_DIR}}/../.."
     cmds:
@@ -198,6 +203,7 @@ tasks:
     cmds:
       - mkdir -p '{{ .CONTRACT_SOURCE_DIR }}/rust/api' '{{ .CONTRACT_SOURCE_DIR }}/rust/web' '{{ .CONTRACT_SOURCE_DIR }}/rust/ui-preview' '{{ .CONTRACT_SOURCE_DIR }}/rust/contract-tests' '{{ .CONTRACT_SOURCE_DIR }}/config/locales' '{{ .CONTRACT_SOURCE_DIR }}/vendor/fonts'
       - rsync -a --exclude target/ rust/api/ '{{ .CONTRACT_SOURCE_DIR }}/rust/api/'
+      - rsync -a --exclude target/ rust/vendor/ '{{ .CONTRACT_SOURCE_DIR }}/rust/vendor/'
       - rsync -a --exclude target/ rust/web/ '{{ .CONTRACT_SOURCE_DIR }}/rust/web/'
       - rsync -a --exclude target/ --exclude node_modules/ rust/ui-preview/ '{{ .CONTRACT_SOURCE_DIR }}/rust/ui-preview/'
       - rsync -a --exclude target/ rust/contract-tests/ '{{ .CONTRACT_SOURCE_DIR }}/rust/contract-tests/'
