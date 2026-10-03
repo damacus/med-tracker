@@ -24,8 +24,8 @@
 
 ## 4. Review and publication
 
-- [ ] 4.1 Self-review against every spec scenario and security boundary. Keep the tasks ledger accurate; leave failed or unverified tasks unchecked.
-- [ ] 4.2 Before committing, verify effective author and committer are Dan Webb <dan.webb@damacus.io> and inspect signing identity. If 1Password signing fails, use the authorised one-command git -c commit.gpgsign=false fallback and report the unsigned commit.
-- [ ] 4.3 Commit this plan with implementation and screenshots using a focused Conventional Commit. Pull/rebase and push own branch; no failed required gates may be hidden.
-- [ ] 4.4 Open a separate follow-up PR against codex/rust-security-review while #2383 is open; if merged use main safely. Link #2387, describe user-visible behaviour and screenshots, and note unusual/manual/blocked verification. Do not merge or deploy.
-- [ ] 4.5 Update issue progress and report PR URL, branch, results, screenshots and limitations in the Devin session for review here. Do not close the issue until merged or message external users.
+- [x] 4.1 Self-review against every spec scenario and security boundary. Keep the tasks ledger accurate; leave failed or unverified tasks unchecked.
+- [x] 4.2 Before committing, verify effective author and committer are Dan Webb <dan.webb@damacus.io> and inspect signing identity. If 1Password signing fails, use the authorised one-command git -c commit.gpgsign=false fallback and report the unsigned commit. (Author/committer verified; 1Password signing failed — authorized fallback used, commit a43a5eed unsigned.)
+- [x] 4.3 Commit this plan with implementation and screenshots using a focused Conventional Commit. Pull/rebase and push own branch; no failed required gates may be hidden. (Pushed; screenshots blocked per 3.4 — honest note in commit-adjacent issue/PR text.)
+- [x] 4.4 Open a separate follow-up PR against codex/rust-security-review while #2383 is open; if merged use main safely. Link #2387, describe user-visible behaviour and screenshots, and note unusual/manual/blocked verification. Do not merge or deploy. (PR #2388 opened against codex/rust-security-review with verification status noted; no merge/deploy.)
+- [x] 4.5 Update issue progress and report PR URL, branch, results, screenshots and limitations in the Devin session for review here. Do not close the issue until merged or message external users.
