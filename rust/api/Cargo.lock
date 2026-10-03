@@ -3481,6 +3481,7 @@ dependencies = [
  "ciborium",
  "cookie",
  "crc32fast",
+ "ct-codecs",
  "ece",
  "getrandom 0.4.3",
  "hex",

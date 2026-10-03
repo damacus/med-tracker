@@ -111,6 +111,7 @@ services:
       CONTRACT_AI_ANTHROPIC_BASE_URL: http://127.0.0.1:39995
       CONTRACT_AI_GEMINI_BASE_URL: http://127.0.0.1:39996
       CONTRACT_PUSH_FAILURE_BASE_URL: http://127.0.0.1:39993
+      CONTRACT_PUSH_INVALID_VAPID_BASE_URL: http://127.0.0.1:39992
       CONTRACT_FIXTURE_PATH: /contract-run/fixture.json
       CONTRACT_AUDIT_DATABASE_URL: postgresql://medtracker:medtracker_password@db-test:5432/medtracker_contract
 
@@ -259,6 +260,20 @@ services:
         condition: service_healthy
     healthcheck:
       test: [CMD, curl, --fail, --silent, http://127.0.0.1:39996/up]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  rust-api-push-invalid-vapid:
+    <<: *contract-external-service
+    environment:
+      <<: *contract-external-env
+      API_LISTEN_ADDR: 0.0.0.0:39992
+      PUBLIC_BASE_URL: http://127.0.0.1:39992
+      VAPID_PUBLIC_KEY: BGsX0fLhLEJH-Lzm5WOkQPJ3A32BLeszoPShOUXYmMKWT-NC4v4af5uO5-tKfA-eFivOM1drMV7Oy7ZAaDe_UfU
+      VAPID_PRIVATE_KEY: AQ
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, http://127.0.0.1:39992/up]
       interval: 2s
       timeout: 2s
       retries: 30
