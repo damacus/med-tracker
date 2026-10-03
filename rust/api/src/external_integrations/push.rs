@@ -8,6 +8,7 @@ use axum::extract::{Path, State};
 use axum::http::{header, HeaderMap, StatusCode};
 use axum::response::Response;
 use chrono::Utc;
+use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use serde_json::{json, Value};
@@ -26,6 +27,13 @@ enum DeliveryOutcome {
     Transient,
 }
 
+fn valid_vapid_private_key(encoded: &str) -> bool {
+    let Ok(decoded) = Base64UrlSafeNoPadding::decode_to_vec(encoded, None) else {
+        return false;
+    };
+    decoded.len() == 32 && VapidSignatureBuilder::from_base64_no_sub(encoded).is_ok()
+}
+
 async fn web_push_delivery(
     client: &reqwest::Client,
     subscription: &push_subscription::Model,
@@ -37,6 +45,9 @@ async fn web_push_delivery(
     let Ok(private_key) = std::env::var("VAPID_PRIVATE_KEY") else {
         return DeliveryOutcome::Transient;
     };
+    if !valid_vapid_private_key(&private_key) {
+        return DeliveryOutcome::Transient;
+    }
     let subject =
         std::env::var("VAPID_SUBJECT").unwrap_or_else(|_| "notifications@example.com".to_owned());
     let subject = if subject.starts_with("mailto:") {
@@ -250,9 +261,9 @@ pub(crate) async fn test_push_subscription(
         response.headers_mut().remove(header::CONTENT_TYPE);
         return Ok(response);
     }
-    let vapid_configured = ["VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY"]
-        .iter()
-        .all(|name| std::env::var(name).is_ok_and(|value| !value.trim().is_empty()));
+    let vapid_configured = std::env::var("VAPID_PUBLIC_KEY")
+        .is_ok_and(|value| !value.trim().is_empty())
+        && std::env::var("VAPID_PRIVATE_KEY").is_ok_and(|value| valid_vapid_private_key(&value));
     let subscriptions = push_subscription::Entity::find()
         .filter(push_subscription::Column::AccountId.eq(context.account_id))
         .all(&db)
@@ -405,6 +416,39 @@ mod tests {
             SubscriptionInfo::new("https://push.example/messages", "invalid", "invalid");
         for private in ["invalid", "invalid!"] {
             assert!(VapidSignatureBuilder::from_base64(private, &subscription).is_err());
+        }
+    }
+
+    #[test]
+    fn vapid_private_key_validation_accepts_a_valid_scalar() {
+        let private = URL_SAFE_NO_PAD.encode([7_u8; 32]);
+        assert!(valid_vapid_private_key(&private));
+    }
+
+    #[test]
+    fn vapid_private_key_validation_rejects_malformed_keys_without_panicking() {
+        let decoded_1 = URL_SAFE_NO_PAD.encode([7_u8; 1]);
+        let decoded_31 = URL_SAFE_NO_PAD.encode([7_u8; 31]);
+        let decoded_33 = URL_SAFE_NO_PAD.encode([7_u8; 33]);
+        let zero_scalar = URL_SAFE_NO_PAD.encode([0_u8; 32]);
+        let overflowing_scalar = URL_SAFE_NO_PAD.encode([u8::MAX; 32]);
+        for private in [
+            "",
+            "   ",
+            "\t\n",
+            "invalid",
+            "invalid!",
+            "AQ",
+            decoded_1.as_str(),
+            decoded_31.as_str(),
+            decoded_33.as_str(),
+            zero_scalar.as_str(),
+            overflowing_scalar.as_str(),
+        ] {
+            assert!(
+                !valid_vapid_private_key(private),
+                "malformed VAPID key {private:?} must be rejected"
+            );
         }
     }
 }

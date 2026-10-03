@@ -1,8 +1,8 @@
-use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
-use medtracker_contract_tests::{Target, fixture};
-use serde_json::Value;
+use base64::Engine;
+use medtracker_contract_tests::{fixture, Target};
 use serde_json::json;
+use serde_json::Value;
 use std::collections::HashMap;
 use std::env;
 use std::io::{Read, Write};
@@ -474,10 +474,9 @@ fn assert_external_audit(
     };
     let hash = object[hash_key].as_str().expect("one-way input hash");
     assert_eq!(hash.len(), 64);
-    assert!(
-        hash.bytes()
-            .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
-    );
+    assert!(hash
+        .bytes()
+        .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase()));
     assert_eq!(object["result_status"], expected_status);
     assert_eq!(object[expected_count_key], expected_count);
 }
@@ -568,12 +567,10 @@ fn push_test_route_accepts_a_bodyless_request_and_returns_no_content() {
     );
     let response = post_without_body(&url, &fixture.push_api_access_token);
     assert_eq!(response.status().as_u16(), 204);
-    assert!(
-        response
-            .bytes()
-            .expect("empty push test response")
-            .is_empty()
-    );
+    assert!(response
+        .bytes()
+        .expect("empty push test response")
+        .is_empty());
 }
 
 #[test]
@@ -627,11 +624,9 @@ fn medication_lookup_uses_oauth_and_both_nhs_value_sets() {
     let mut value_sets = Vec::new();
     for request in &requests[1..] {
         assert_eq!(request.method, "GET");
-        assert!(
-            request
-                .target
-                .starts_with("/production1/fhir/ValueSet/$expand?")
-        );
+        assert!(request
+            .target
+            .starts_with("/production1/fhir/ValueSet/$expand?"));
         assert_eq!(
             request.headers.get("authorization").map(String::as_str),
             Some("Bearer contract-nhs-token")
@@ -747,11 +742,9 @@ fn ai_providers_use_their_protocols_and_only_return_fetched_sources() {
             payload["data"]["doses"][0]["evidence"]["title"],
             "Verified Calpol guidance"
         );
-        assert!(
-            payload["data"]["doses"][0]["evidence"]["text"]
-                .as_str()
-                .is_some_and(|text| text.contains("Children 6-8 years"))
-        );
+        assert!(payload["data"]["doses"][0]["evidence"]["text"]
+            .as_str()
+            .is_some_and(|text| text.contains("Children 6-8 years")));
         assert_eq!(payload["data"]["sources"][0]["url"], CALPOL_SOURCE);
         assert_eq!(
             payload["data"]["sources"][0]["title"],
@@ -929,12 +922,10 @@ fn push_test_sends_encrypted_web_push_and_prunes_only_expired_subscriptions() {
             request.headers.get("content-encoding").map(String::as_str),
             Some("aes128gcm")
         );
-        assert!(
-            request
-                .headers
-                .get("authorization")
-                .is_some_and(|value| value.starts_with("vapid t="))
-        );
+        assert!(request
+            .headers
+            .get("authorization")
+            .is_some_and(|value| value.starts_with("vapid t=")));
         assert!(!request.body.is_empty());
         assert!(!String::from_utf8_lossy(&request.body).contains("MedTracker"));
     }
@@ -944,11 +935,9 @@ fn push_test_sends_encrypted_web_push_and_prunes_only_expired_subscriptions() {
         .collect::<Vec<_>>();
     for endpoint in &endpoints {
         let path = endpoint.trim_start_matches(&format!("http://127.0.0.1:{PUSH_PORT}"));
-        assert!(
-            received_paths
-                .iter()
-                .any(|received| received.starts_with(path))
-        );
+        assert!(received_paths
+            .iter()
+            .any(|received| received.starts_with(path)));
     }
     for endpoint in &endpoints[..2] {
         assert!(
@@ -996,12 +985,10 @@ fn push_test_sends_fcm_and_apns_requests_and_prunes_only_permanent_failures() {
             &json!({"native_device_token": attributes}),
         );
         assert_eq!(response.status().as_u16(), 201);
-        assert!(
-            response
-                .text()
-                .expect("empty registration response")
-                .is_empty()
-        );
+        assert!(response
+            .text()
+            .expect("empty registration response")
+            .is_empty());
     }
     let fixture_account_id = api_session_account_id(&fixture.push_api_access_token);
     for token in &tokens {
@@ -1221,6 +1208,128 @@ fn push_test_returns_a_structured_503_when_sender_configuration_is_missing() {
         Some(&fixture.push_api_access_token),
     );
     assert_eq!(cleanup.status().as_u16(), 204);
+}
+
+#[test]
+fn push_test_returns_a_structured_503_when_the_vapid_private_key_is_malformed() {
+    let push_server = FakeHttpServer::start(PUSH_PORT, push_response);
+    let fixture = fixture();
+    let target = Target::from_env();
+    let subscription_path = format!(
+        "/api/v1/households/{}/push_subscription",
+        fixture.push_observer_household_id
+    );
+    let public_key = base64url(
+        "047cf27b188d034f7e8a52380304b51ac3c08969e277f21b35a60b48fc4766997807775510db8ed040293d9ac69f7430dbba7dade63ce982299e04b79d227873d1",
+    );
+    let auth_secret = URL_SAFE_NO_PAD.encode([0x42_u8; 16]);
+    let endpoint = format!(
+        "http://127.0.0.1:{PUSH_PORT}/push/invalid-vapid-{}",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system clock")
+            .as_nanos()
+    );
+    let registration = target.post_json_authorized(
+        &subscription_path,
+        &fixture.push_observer_access_token,
+        &json!({"push_subscription": {"endpoint": endpoint, "keys": {"p256dh": public_key, "auth": auth_secret}}}),
+    );
+    assert_eq!(registration.status().as_u16(), 201);
+    assert!(push_subscription_exists(&endpoint));
+    let base = env::var("CONTRACT_PUSH_INVALID_VAPID_BASE_URL")
+        .expect("isolated API origin with malformed VAPID configuration");
+    let path = format!(
+        "{base}/api/v1/households/{}/push_subscription/test",
+        fixture.push_observer_household_id
+    );
+    let response = post_without_body(&path, &fixture.push_observer_access_token);
+    assert_eq!(response.status().as_u16(), 503);
+    let request_id = response
+        .headers()
+        .get("x-request-id")
+        .and_then(|value| value.to_str().ok())
+        .map(str::to_owned);
+    let body: Value = response.json().expect("push error JSON");
+    assert_eq!(body["error"]["code"], "push_test_failed");
+    assert_eq!(
+        body["error"]["message"],
+        "Unable to send test notification."
+    );
+    let body_request_id = body["error"]["request_id"]
+        .as_str()
+        .expect("error request ID");
+    assert!(!body_request_id.is_empty());
+    if let Some(request_id) = request_id {
+        assert_eq!(body["error"]["request_id"], request_id);
+    }
+    assert!(
+        push_subscription_exists(&endpoint),
+        "malformed VAPID retains web subscription"
+    );
+    assert!(
+        push_server.requests().is_empty(),
+        "malformed VAPID must not emit browser-push requests"
+    );
+    let query = form_urlencoded::Serializer::new(String::new())
+        .append_pair("endpoint", &endpoint)
+        .finish();
+    let cleanup = target.delete(
+        &format!("{subscription_path}?{query}"),
+        Some(&fixture.push_observer_access_token),
+    );
+    assert_eq!(cleanup.status().as_u16(), 204);
+}
+
+#[test]
+fn push_test_succeeds_with_malformed_vapid_when_only_native_devices_are_registered() {
+    let fcm_server = FakeHttpServer::start(FCM_PORT, fcm_response);
+    let apns_server = FakeHttpServer::start(APNS_PORT, apns_response);
+    let fixture = fixture();
+    let base = env::var("CONTRACT_PUSH_INVALID_VAPID_BASE_URL")
+        .expect("isolated API origin with malformed VAPID configuration");
+    let path = format!(
+        "/api/v1/households/{}/native_device_tokens",
+        fixture.push_observer_household_id
+    );
+    let unique = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("system clock")
+        .as_nanos();
+    let android = format!("android-invalid-vapid-{unique}");
+    let ios = format!("ios-invalid-vapid-{unique}");
+    for (token, platform) in [(&android, "android"), (&ios, "ios")] {
+        let mut attributes = json!({"device_token": token, "platform": platform});
+        if platform == "ios" {
+            attributes["apns_environment"] = json!("sandbox");
+        }
+        let response = api_post_json(
+            &base,
+            &path,
+            &fixture.push_observer_access_token,
+            &json!({"native_device_token": attributes}),
+        );
+        assert_eq!(response.status().as_u16(), 201);
+    }
+    let fixture_account_id = api_session_account_id(&fixture.push_observer_access_token);
+    for token in [&android, &ios] {
+        assert_eq!(native_device_token_account(token), Some(fixture_account_id));
+    }
+    let test_url = format!(
+        "{base}/api/v1/households/{}/push_subscription/test",
+        fixture.push_observer_household_id
+    );
+    assert_eq!(
+        household_push_subscription_count(fixture.push_observer_household_id),
+        0
+    );
+    assert_push_household_active(fixture.push_observer_household_id);
+    let response = post_without_body(&test_url, &fixture.push_observer_access_token);
+    assert_eq!(response.status().as_u16(), 204);
+    assert_eq!(fcm_server.requests().len(), 1);
+    assert_eq!(apns_server.requests().len(), 1);
+    assert!(native_device_token_exists(&android));
+    assert!(native_device_token_exists(&ios));
 }
 
 fn push_subscription_exists(endpoint: &str) -> bool {
@@ -1562,11 +1671,9 @@ fn lookup_matches_one_leading_zero_and_enriches_family_related_medicine_and_revi
     assert_eq!(prompt["risk_level"], "high");
     assert_eq!(prompt["match_type"], "ingredient");
     assert_eq!(prompt["source_instruction"], "avoid");
-    assert!(
-        prompt["evidence_text"]
-            .as_str()
-            .is_some_and(|text| text.contains("Avoid warfarin with paracetamol"))
-    );
+    assert!(prompt["evidence_text"]
+        .as_str()
+        .is_some_and(|text| text.contains("Avoid warfarin with paracetamol")));
 }
 
 #[test]
@@ -1603,11 +1710,9 @@ fn lookup_source_priority_selects_open_products_facts_before_or_after_curated_ca
     assert_eq!(opf_server.requests().len(), 1);
     let provider_request = &opf_server.requests()[0];
     assert_eq!(provider_request.method, "GET");
-    assert!(
-        provider_request
-            .target
-            .starts_with("/api/v2/product/5021265232062.json?")
-    );
+    assert!(provider_request
+        .target
+        .starts_with("/api/v2/product/5021265232062.json?"));
     assert_eq!(
         provider_request.headers.get("accept").map(String::as_str),
         Some("application/json")

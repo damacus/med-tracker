@@ -219,7 +219,7 @@ tasks:
       GIT_COMMON_DIR:
         sh: git rev-parse --path-format=absolute --git-common-dir
     cmds:
-      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test up -d --wait --no-build rust-api-ai-openai rust-api-ai-openrouter rust-api-ai-anthropic rust-api-ai-gemini
+      - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test up -d --wait --no-build rust-api-ai-openai rust-api-ai-openrouter rust-api-ai-anthropic rust-api-ai-gemini rust-api-push-invalid-vapid
 
   contract-compose-validate:
     dir: "{{.TASKFILE_DIR}}/../.."
