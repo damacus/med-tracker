@@ -225,6 +225,7 @@ pub struct DashboardPage {
     pub selected_name: String,
     pub mobile_shortcuts: Vec<String>,
     pub household_manager: bool,
+    pub notifications_visible: bool,
     pub people: Vec<DashboardPerson>,
     pub selectable_people: Vec<(i64, String)>,
     pub metrics: DashboardMetrics,
@@ -450,6 +451,10 @@ fn person_option(id: String, name: String, prefix: String, selected: bool) -> im
 
 pub fn render_dashboard(page: DashboardPage) -> String {
     let prefix = format!("/households/{}/dashboard", page.slug);
+    let notifications_path = format!(
+        "/households/{}/settings/notifications",
+        crate::household::path_segment(&page.slug)
+    );
     let mobile_shortcuts: Vec<_> = page
         .mobile_shortcuts
         .iter()
@@ -494,7 +499,7 @@ pub fn render_dashboard(page: DashboardPage) -> String {
             <dialog id="dashboard-navigation" class="dashboard-drawer" aria-label="Navigation menu"><header class="dashboard-drawer-header"><h2>"MedTracker"</h2><button type="button" aria-label="Close menu" autofocus>{dashboard_icon("M6 6l12 12 M18 6 6 18")}</button></header></dialog>
             <aside class="dashboard-sidebar"><div class="dashboard-brand"><span class="dashboard-brand-mark">"M"</span><strong>"MedTracker"</strong></div>
                 <div id="dashboard-search-island"><SearchPalette items=search_items/></div>
-                <nav aria-label="Main navigation"><a aria-current="page" href=prefix.clone()>{dashboard_icon("m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10")}"Dashboard"</a>{["inventory", "locations", "people", "finder", "medicine_reviews", "reports", "administration"].into_iter().filter(|key| *key != "administration" || page.household_manager).map(|key| { let (label, path, material) = shortcut(key).expect("known navigation key"); let label = if key == "finder" { "Medication Finder" } else { label }; view! { <button type="button" aria-disabled="true" aria-describedby="dashboard-unavailable-help" title="This page is not available in this preview">{if material { dashboard_material_icon(path).into_any() } else { dashboard_icon(path).into_any() }}{label}</button> } }).collect_view()}</nav>
+                <nav aria-label="Main navigation"><a aria-current="page" href=prefix.clone()>{dashboard_icon("m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10")}"Dashboard"</a>{page.notifications_visible.then(|| view! { <a href=notifications_path>{dashboard_icon("M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4")}"My notifications"</a> })}{["inventory", "locations", "people", "finder", "medicine_reviews", "reports", "administration"].into_iter().filter(|key| *key != "administration" || page.household_manager).map(|key| { let (label, path, material) = shortcut(key).expect("known navigation key"); let label = if key == "finder" { "Medication Finder" } else { label }; view! { <button type="button" aria-disabled="true" aria-describedby="dashboard-unavailable-help" title="This page is not available in this preview">{if material { dashboard_material_icon(path).into_any() } else { dashboard_icon(path).into_any() }}{label}</button> } }).collect_view()}</nav>
                 <div class="dashboard-sidebar-bottom"><span class="dashboard-identity"><span class="dashboard-avatar" aria-hidden="true">{selected_name.chars().next().unwrap_or('?').to_string()}</span><span><strong>{selected_name.clone()}</strong><small>"Household"</small></span></span><form action="/logout" method="post"><input type="hidden" name="authenticity_token" value=csrf/><button type="submit"><span class="dashboard-desktop-label">"Sign Out"</span><span class="dashboard-mobile-label">"Logout"</span></button></form></div>
             </aside>
             <aside class="dashboard-mobile-rail" aria-label="Primary navigation" data-testid="dashboard-mobile-rail"><nav aria-label="Primary navigation">{mobile_shortcuts.into_iter().map(|key| mobile_shortcut(key, prefix.clone())).collect_view()}</nav></aside>

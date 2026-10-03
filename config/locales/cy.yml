@@ -2240,6 +2240,22 @@ cy:
       denied: Gwrthodwyd mynediad i'r camera. Defnyddiwch y cofnod â llaw isod.
       unavailable: Ni chanfuwyd camera. Defnyddiwch y cofnod â llaw isod.
       error: Gwall yn y sganiwr. Defnyddiwch y cofnod â llaw isod.
+  notifications:
+    title: Fy hysbysiadau
+    description: Dewiswch pa hysbysiadau meddyginiaeth y mae'r cyfrif hwn yn eu
+      derbyn. Mae'r dewisiadau hyn yn berthnasol lle bynnag y cyflwynir eich
+      hysbysiadau — nid ydynt yn troi hysbysiadau porwr ymlaen ar gyfer y
+      ddyfais hon.
+    enabled_label: Hysbysiadau wedi'u galluogi
+    enabled_hint: Trowch bob hysbysiad meddyginiaeth ymlaen neu i ffwrdd.
+      Cedwir dewisiadau categorïau ac maent yn berthnasol tra bo hysbysiadau
+      wedi'u galluogi.
+    categories_hint: Dewiswch pa fathau o hysbysiadau sy'n berthnasol tra bo
+      hysbysiadau wedi'u galluogi.
+    unavailable: Nid yw dewisiadau hysbysiadau ar gael ar gyfer y cyfrif hwn
+      ar hyn o bryd.
+    read_only: Gallwch weld y dewisiadau hyn, ond nid oes gennych ganiatâd i'w newid.
+    save: Cadw dewisiadau
   notification_preferences:
     updated: Cedwir y gosodiadau hysbysiadau.
     update_failed: Methwyd â chadw'r gosodiadau hysbysiadau.

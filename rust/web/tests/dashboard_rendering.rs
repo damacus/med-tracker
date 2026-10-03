@@ -20,6 +20,7 @@ fn test_page() -> DashboardPage {
         selected_name: "Test person".into(),
         mobile_shortcuts: vec!["dashboard".into(), "inventory".into(), "finder".into()],
         household_manager: false,
+        notifications_visible: false,
         people: vec![DashboardPerson {
             id: 1,
             name: "Test person".into(),
@@ -35,6 +36,21 @@ fn test_page() -> DashboardPage {
         stock: vec![],
         history: vec![],
     }
+}
+
+#[test]
+fn notification_navigation_requires_visibility_and_encodes_the_household_slug() {
+    let mut page = test_page();
+    page.slug = "test space".into();
+    let hidden = render_dashboard(page);
+    assert!(!hidden.contains("settings/notifications"));
+
+    let mut page = test_page();
+    page.slug = "test space".into();
+    page.notifications_visible = true;
+    let visible = render_dashboard(page);
+    assert!(visible.contains("href=\"/households/test%20space/settings/notifications\""));
+    assert!(visible.contains("My notifications"));
 }
 
 #[test]

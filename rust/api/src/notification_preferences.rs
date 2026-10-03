@@ -303,8 +303,8 @@ pub(super) async fn show(
             "GET",
             "show",
             StatusCode::NOT_FOUND,
-            "not_found",
-            "Resource not found",
+            "not_configured",
+            "Notification preferences are not configured",
         )
         .await;
     };
