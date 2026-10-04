@@ -15,7 +15,7 @@ This inventory covers the Rails source and the Rust Profile implementation in PR
 | Material 3 component variants and typography | `app/components/m3/`, `app/components/m3_helpers.rb` |
 | Profile layout and individual controls | `app/views/profiles/` |
 
-Rails has no separate Profile CSS file. Its Phlex views compose Tailwind classes with RubyUI/M3 components. The shared stylesheet also contains unrelated application rules; those are not part of the Rust export.
+Rails Profile views compose Tailwind classes with RubyUI/M3 components. The shared overlay refactor extracts their existing dialog and sheet rules to `app/assets/tailwind/profile-overlays.css`; other Profile styling remains in those components. The shared stylesheet also contains unrelated application rules; those are not part of the Rust export.
 
 ## Themes and exact font declarations
 
