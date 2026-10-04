@@ -4,6 +4,8 @@ fn main() {
     let manifest = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
     let root = manifest.join("../..");
     let css_path = root.join("app/assets/tailwind/application.css");
+    let overlays_path = root.join("app/assets/tailwind/profile-overlays.css");
+    println!("cargo:rerun-if-changed={}", overlays_path.display());
     let picker_path = root.join("app/views/profiles/theme_picker_card.rb");
     println!("cargo:rerun-if-changed={}", css_path.display());
     println!("cargo:rerun-if-changed={}", picker_path.display());
@@ -27,6 +29,9 @@ fn main() {
         &source[palette..components]
     );
     assert!(!css.contains("@apply") && !css.contains("@theme"));
+    css.push_str(
+        &fs::read_to_string(overlays_path).expect("canonical Profile overlay styles are required"),
+    );
     let picker = fs::read_to_string(picker_path).expect("canonical Rails theme picker is required");
     let mut theme_count = 0;
     for line in picker.lines().filter(|line| line.contains("color: 'bg-[#")) {

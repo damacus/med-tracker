@@ -293,7 +293,7 @@ jobs:
             browsers: "tests/household-admin-dmd.test.mjs"
           - journey: profile
             profile: "true"
-            browsers: "tests/settings-timezone.test.mjs tests/profile-notifications.test.mjs tests/profile-security.test.mjs tests/profile-security-unit.test.mjs tests/profile-advanced.test.mjs"
+            browsers: "tests/settings-timezone.test.mjs tests/profile-notifications.test.mjs tests/profile-security.test.mjs tests/profile-security-unit.test.mjs tests/profile-advanced.test.mjs tests/profile-overlays.test.mjs"
           - journey: standalone-login
             target: passkey_security
             browsers: "tests/login.smoke.test.mjs"

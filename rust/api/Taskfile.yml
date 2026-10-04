@@ -104,7 +104,7 @@ tasks:
     dir: "{{.TASKFILE_DIR}}/../.."
     cmds:
       - mkdir -p docs/screenshots/profile-rust
-      - task api:browser-rust HOUSEHOLD_ACCEPTANCE=true PROFILE_ACCEPTANCE=true BROWSER_TEST_FILES="tests/settings-timezone.test.mjs tests/profile-notifications.test.mjs tests/profile-security.test.mjs tests/profile-security-unit.test.mjs tests/profile-advanced.test.mjs"
+      - task api:browser-rust HOUSEHOLD_ACCEPTANCE=true PROFILE_ACCEPTANCE=true BROWSER_TEST_FILES="tests/settings-timezone.test.mjs tests/profile-notifications.test.mjs tests/profile-security.test.mjs tests/profile-security-unit.test.mjs tests/profile-advanced.test.mjs tests/profile-overlays.test.mjs"
 
   browser-dashboard-rust:
     dir: "{{.TASKFILE_DIR}}/../.."
@@ -219,7 +219,7 @@ tasks:
       - cp vendor/fonts/NotoSans-Regular.ttf vendor/fonts/OFL-1.1.txt '{{ .CONTRACT_SOURCE_DIR }}/vendor/fonts/'
       - rsync -a app/assets/fonts/ '{{ .CONTRACT_SOURCE_DIR }}/app/assets/fonts/'
       - mkdir -p '{{ .CONTRACT_SOURCE_DIR }}/app/assets/tailwind' '{{ .CONTRACT_SOURCE_DIR }}/app/views/profiles'
-      - cp app/assets/tailwind/application.css '{{ .CONTRACT_SOURCE_DIR }}/app/assets/tailwind/'
+      - cp app/assets/tailwind/application.css app/assets/tailwind/profile-overlays.css '{{ .CONTRACT_SOURCE_DIR }}/app/assets/tailwind/'
       - cp app/views/profiles/theme_picker_card.rb '{{ .CONTRACT_SOURCE_DIR }}/app/views/profiles/'
 
   contract-external-up:
@@ -1061,6 +1061,7 @@ tasks:
       - node --check rust/web/tests/profile-security.test.mjs
       - node --check rust/web/tests/profile-security-unit.test.mjs
       - node --check rust/web/tests/profile-advanced.test.mjs
+      - node --check rust/web/tests/profile-overlays.test.mjs
 
   fmt-file:
     requires:

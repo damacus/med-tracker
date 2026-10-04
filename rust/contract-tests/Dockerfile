@@ -16,6 +16,7 @@ COPY rust/api rust/api
 COPY rust/web/src rust/web/src
 COPY rust/web/build.rs rust/web/build.rs
 COPY app/assets/tailwind/application.css app/assets/tailwind/application.css
+COPY app/assets/tailwind/profile-overlays.css app/assets/tailwind/profile-overlays.css
 COPY app/views/profiles/theme_picker_card.rb app/views/profiles/theme_picker_card.rb
 COPY rust/ui-preview/src rust/ui-preview/src
 COPY rust/ui-preview/public rust/ui-preview/public

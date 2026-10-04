@@ -76,3 +76,11 @@ The contract container copies the build script, canonical CSS, picker and fonts 
 - Public font copies and the dedicated Rust standalone demo server remain separate asset-delivery concerns. This change verifies the authenticated Axum Profile application and its container build.
 
 Follow-up issues: [missing Tech Indigo font](https://github.com/damacus/med-tracker/issues/2392) and [canonical Profile dialog styling](https://github.com/damacus/med-tracker/issues/2393).
+
+## Shared Profile overlays
+
+`app/assets/tailwind/profile-overlays.css` is now the single browser-ready source for Profile dialogs and sheets. Rails imports it through Tailwind; Rust embeds the same file unchanged in its existing design export. Clean builds, source snapshots and the contract container include the file. There is no generated copy to synchronise.
+
+The rules come from `RubyUI::DialogContent`, `SheetContent`, their header/title/description components and `Profiles::ProfileSettings`: centred dialog, right-hand sheet, 70% border, popover/foreground roles, elevation 5/4, 28px shape token, 10% foreground backdrop and 1.5px blur. The compiled Rails Tailwind defaults establish 24rem for `max-w-sm`, 28rem for `max-w-md`, 36rem for `max-w-xl`, .25rem spacing and the 40rem `sm` breakpoint. Profile supplies 5/6 spacing units for horizontal/body padding. The timezone dialog uses RubyUI size `sm`, which maps to `max-w-md` (28rem); appearance uses the wide sheet. Rust no longer substitutes a bottom sheet or different rounding on mobile.
+
+The account-action forms, other Profile controls and client behaviour remain separate. Rails retains Stimulus and Rust retains its native-dialog adapter for focus, naming, dismissal and scroll lock. Sharing this stylesheet does not port the RubyUI runtime.

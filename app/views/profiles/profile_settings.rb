@@ -85,10 +85,10 @@ module Views
             end
             render DialogContent.new(
               size: :sm,
-              class: 'max-h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] rounded-shape-xl p-0'
+              class: 'profile-dialog profile-dialog-compact'
             ) do
               render_dialog_header(title:, description:)
-              render DialogMiddle.new(class: 'px-5 pb-5 pt-4 sm:px-6 sm:pb-6') do
+              render DialogMiddle.new(class: 'profile-overlay-body') do
                 render_sheet_error('profile-time-zone-errors')
                 render TimeZoneForm.new(account: @account)
               end
@@ -111,9 +111,9 @@ module Views
       def render_setting_sheet(title:, description:, testid:, size: :md, &content)
         render Sheet.new(data: { testid: }) do
           render_setting_trigger(title:, description:)
-          render SheetContent.new(side: :right, size:, class: 'w-[calc(100vw-1rem)] p-5 sm:w-[calc(100vw-2rem)] sm:p-6') do
+          render SheetContent.new(side: :right, size:, class: "profile-sheet #{'profile-sheet-wide' if size == :xl}") do
             render_sheet_header(title:, description:)
-            render SheetMiddle.new(class: 'mt-6 flex-1 space-y-5', &content)
+            render SheetMiddle.new(class: 'profile-overlay-body space-y-5', &content)
           end
         end
       end
@@ -135,14 +135,14 @@ module Views
       end
 
       def render_sheet_header(title:, description:)
-        render SheetHeader.new do
+        render SheetHeader.new(class: 'profile-overlay-heading') do
           render(SheetTitle.new { title })
           render(SheetDescription.new { description })
         end
       end
 
       def render_dialog_header(title:, description:)
-        render DialogHeader.new(class: 'px-5 pb-4 pt-6 text-left sm:px-6') do
+        render DialogHeader.new(class: 'profile-overlay-heading') do
           render(DialogTitle.new(class: 'text-xl') { title })
           render(DialogDescription.new(class: 'text-sm leading-6') { description })
         end

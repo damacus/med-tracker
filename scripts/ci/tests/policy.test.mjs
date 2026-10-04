@@ -151,7 +151,7 @@ test('full profile contracts and four browser sections have a hosted journey', (
   assert.ok(row, 'profile journey is absent');
   assert.match(row, /^            profile: "true"$/m);
   assert.doesNotMatch(row, /target:|acceptance: "false"/);
-  for (const file of ['settings-timezone', 'profile-notifications', 'profile-security', 'profile-security-unit', 'profile-advanced']) {
+  for (const file of ['settings-timezone', 'profile-notifications', 'profile-security', 'profile-security-unit', 'profile-advanced', 'profile-overlays']) {
     assert.ok(row.includes(`tests/${file}.test.mjs`), file);
   }
   assert.match(job, /PROFILE_ACCEPTANCE: \$\{\{ matrix\.profile \|\| '' \}\}/);
@@ -172,7 +172,7 @@ test('classification failure cannot produce a successful gate', () => {
 });
 
 test('canonical Rails design inputs also select Rust verification', () => {
-  for (const path of ['app/assets/tailwind/application.css', 'app/assets/fonts/inter/inter-v20-latin-regular.woff2', 'app/views/profiles/theme_picker_card.rb']) {
+  for (const path of ['app/assets/tailwind/profile-overlays.css', 'app/assets/tailwind/application.css', 'app/assets/fonts/inter/inter-v20-latin-regular.woff2', 'app/views/profiles/theme_picker_card.rb']) {
     assert.equal(classify([path]).selected.rust_port, true, path);
   }
 });

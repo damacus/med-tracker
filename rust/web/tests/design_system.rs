@@ -30,3 +30,12 @@ fn every_declared_font_is_embedded_from_the_rails_asset() {
     assert!(rails_font("/fonts/../secrets").is_none());
     assert!(rails_font("/fonts/unknown.woff2").is_none());
 }
+
+#[test]
+fn profile_overlays_are_delivered_with_the_shared_design_assets() {
+    assert!(rails_design_stylesheet().contains(include_str!(
+        "../../../app/assets/tailwind/profile-overlays.css"
+    )));
+    assert!(rails_design_stylesheet().contains(".profile-dialog[open]"));
+    assert!(rails_design_stylesheet().contains(".profile-sheet[open]"));
+}

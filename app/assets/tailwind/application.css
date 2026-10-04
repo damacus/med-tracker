@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./profile-overlays.css";
 
 .global-search-panel {
   left: 1rem;

@@ -45,7 +45,7 @@ module RubyUI
     def close_button
       button(
         type: 'button',
-        class: 'absolute end-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-tertiary-container data-[state=open]:text-on-surface-variant',
+        class: 'profile-dialog-close absolute end-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-tertiary-container data-[state=open]:text-on-surface-variant',
         data_action: 'click->ruby-ui--sheet-content#close',
         aria: { label: I18n.t('ruby_ui.common.close') }
       ) do
@@ -57,7 +57,7 @@ module RubyUI
       div(
         data_testid: 'drawer-backdrop',
         data_action: 'click->ruby-ui--sheet-content#close',
-        class: 'fixed inset-0 z-[70] bg-foreground/10 backdrop-blur-[1.5px] transition-opacity duration-300 pointer-events-auto ' \
+        class: 'profile-sheet-backdrop fixed inset-0 z-[70] bg-foreground/10 backdrop-blur-[1.5px] transition-opacity duration-300 pointer-events-auto ' \
                'data-[state=open]:opacity-100 data-[state=closed]:opacity-0 data-[state=closed]:pointer-events-none',
         aria_hidden: 'true',
         data_state: 'closed'

@@ -21,7 +21,7 @@
     {"pattern": "^docs/api/openapi\\.v1\\.yaml$", "suites": ["api_clients", "android_if_present"]},
     {"pattern": "^client-tools/openapi-generator/", "suites": ["api_clients"]},
     {"pattern": "^client-tools/(?!openapi-generator/)", "suites": ["rust"]},
-    {"pattern": "^app/(assets/tailwind/application\\.css$|assets/fonts/|views/profiles/theme_picker_card\\.rb$)", "suites": ["rust_port"]},
+    {"pattern": "^app/(assets/tailwind/(application|profile-overlays)\\.css$|assets/fonts/|views/profiles/theme_picker_card\\.rb$)", "suites": ["rust_port"]},
     {"pattern": "^rust/", "suites": ["rust_port"]},
     {"pattern": "^(Taskfiles/contract\\.yml|rust/contract-tests/Taskfile\\.yml|scripts/contract_provision\\.rb|scripts/compose_port\\.fish)$", "suites": ["rails", "rust_port"]},
     {"pattern": "^(app/|bin/|config/|db/|lib/|public/|spec/|test/|data/|vendor/|sorbet/|compose/|\\.kamal/|script/)", "suites": ["rails"]},
