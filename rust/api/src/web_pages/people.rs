@@ -212,16 +212,16 @@ async fn form_page(state: AppState, slug: String, id: Option<i64>, headers: Head
                 ..Default::default()
             }
         };
-        render_person_form(
-            &context.name,
-            &slug,
-            &api.csrf,
-            api.locale,
-            id,
+        render_person_form(medtracker_web::people::PersonFormPage {
+            household_name: &context.name,
+            slug: &slug,
+            csrf: &api.csrf,
+            locale: api.locale,
+            person_id: id,
             draft,
-            vec![],
-            context.notifications_visible,
-        )
+            errors: vec![],
+            notifications_visible: context.notifications_visible,
+        })
         .map_err(|_| error(StatusCode::INTERNAL_SERVER_ERROR))
     }
     .await;
@@ -297,16 +297,16 @@ async fn save(
             }
         }
         if errors.is_empty() { errors.push(("person".to_owned(), field(&reply.value["error"], "message").to_owned())); }
-        let body = render_person_form(
-            &context.name,
-            &slug,
-            &api.csrf,
-            api.locale,
-            id,
+        let body = render_person_form(medtracker_web::people::PersonFormPage {
+            household_name: &context.name,
+            slug: &slug,
+            csrf: &api.csrf,
+            locale: api.locale,
+            person_id: id,
             draft,
             errors,
-            context.notifications_visible,
-        )
+            notifications_visible: context.notifications_visible,
+        })
         .map_err(|_| error(StatusCode::INTERNAL_SERVER_ERROR))?;
         Ok(page_status(body, api.cookie.take(), reply.status))
     }.await;

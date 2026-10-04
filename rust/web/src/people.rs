@@ -162,16 +162,28 @@ pub fn render_person_with_treatment_access(
     ))
 }
 
-pub fn render_person_form(
-    household_name: &str,
-    slug: &str,
-    csrf: &str,
-    locale: Locale,
-    person_id: Option<i64>,
-    draft: PersonDraft,
-    errors: Vec<(String, String)>,
-    notifications_visible: bool,
-) -> Result<String, TranslationError> {
+pub struct PersonFormPage<'a> {
+    pub household_name: &'a str,
+    pub slug: &'a str,
+    pub csrf: &'a str,
+    pub locale: Locale,
+    pub person_id: Option<i64>,
+    pub draft: PersonDraft,
+    pub errors: Vec<(String, String)>,
+    pub notifications_visible: bool,
+}
+
+pub fn render_person_form(page: PersonFormPage<'_>) -> Result<String, TranslationError> {
+    let PersonFormPage {
+        household_name,
+        slug,
+        csrf,
+        locale,
+        person_id,
+        draft,
+        errors,
+        notifications_visible,
+    } = page;
     let raw_slug = slug;
     let slug = path_segment(slug);
     let text = Text::new(locale);
