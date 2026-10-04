@@ -34,3 +34,10 @@
 !app/assets/fonts/**
 **/target/
 **/node_modules/
+
+!rust/web/build.rs
+!app/assets/tailwind/
+!app/assets/tailwind/application.css
+!app/views/
+!app/views/profiles/
+!app/views/profiles/theme_picker_card.rb

@@ -170,3 +170,9 @@ test('classification failure cannot produce a successful gate', () => {
   needs.changes.result = 'failure';
   assert.ok(evaluate(needs).includes('Change classification must succeed'));
 });
+
+test('canonical Rails design inputs also select Rust verification', () => {
+  for (const path of ['app/assets/tailwind/application.css', 'app/assets/fonts/inter/inter-v20-latin-regular.woff2', 'app/views/profiles/theme_picker_card.rb']) {
+    assert.equal(classify([path]).selected.rust_port, true, path);
+  }
+});

@@ -1,17 +1,4 @@
-:root{color-scheme:light;--profile-palette:#1B4FB8;--profile-accent:#1b4fb8;--profile-muted:#596275;--profile-ink:#172033;--profile-paper:#fff;--profile-popover:#fff;--profile-ground:#f1f5fa;--profile-line:#d9dce4;--profile-on-accent:#fff}
-:root[data-theme="serene-sage"]{--profile-palette:#7DAA92}
-:root[data-theme="modern-clinical"]{--profile-palette:#0066FF}
-:root[data-theme="warm-earth"]{--profile-palette:#E07A5F}
-:root[data-theme="deep-lavender"]{--profile-palette:#9B5DE5}
-:root[data-theme="forest-care"]{--profile-palette:#2D6A4F}
-:root[data-theme="sunset-support"]{--profile-palette:#F28482}
-:root[data-theme="tech-indigo"]{--profile-palette:#4361EE}
-:root[data-theme="soft-rose"]{--profile-palette:#E5989B}
-:root[data-theme="minty-fresh"]{--profile-palette:#06D6A0}
-:root[data-theme]:not([data-theme="default"]){--profile-accent:var(--profile-palette);--profile-ground:color-mix(in oklab,var(--profile-palette) 5%,#fff);--profile-paper:color-mix(in oklab,var(--profile-palette) 2%,#fff);--profile-popover:color-mix(in oklab,var(--profile-palette) 1%,#fff);--profile-line:color-mix(in oklab,var(--profile-palette) 18%,#fff)}
-:root.dark{color-scheme:dark;--profile-accent:#79a4ff;--profile-ink:#ecf2ff;--profile-muted:#b0bdd0;--profile-paper:#17233b;--profile-popover:#1a2942;--profile-ground:#0f172b;--profile-line:#3d4f6a;--profile-on-accent:#0b1020}
-:root.dark[data-theme]:not([data-theme="default"]){--profile-accent:color-mix(in oklab,var(--profile-palette) 72%,#fff);--profile-ground:color-mix(in oklab,var(--profile-palette) 6%,oklch(.16 .01 260));--profile-paper:color-mix(in oklab,var(--profile-palette) 9%,oklch(.22 .012 260));--profile-popover:color-mix(in oklab,var(--profile-palette) 10%,oklch(.2 .012 260));--profile-line:color-mix(in oklab,var(--profile-palette) 18%,oklch(.34 .012 255))}
-:root[data-theme="serene-sage"]:not(.dark),:root[data-theme="warm-earth"]:not(.dark),:root[data-theme="sunset-support"]:not(.dark),:root[data-theme="soft-rose"]:not(.dark),:root[data-theme="minty-fresh"]:not(.dark){--profile-on-accent:#172033}
+:root{--profile-accent:var(--primary);--profile-muted:var(--on-surface-variant);--profile-ink:var(--foreground);--profile-paper:var(--card);--profile-popover:var(--popover);--profile-ground:var(--background);--profile-line:var(--border);--profile-on-accent:var(--primary-foreground);--profile-link:var(--on-primary-container)}
 .profile-shell{display:grid;grid-template-columns:255px minmax(0,1fr);min-height:100vh;background:var(--profile-ground);color:var(--profile-ink);font-family:var(--font-family,'Plus Jakarta Sans',sans-serif);line-height:1.5}
 .profile-sidebar{position:sticky;top:0;display:flex;flex-direction:column;gap:1.6rem;height:100vh;padding:2rem 1rem 1rem;border-right:1px solid var(--profile-line);background:var(--profile-paper)}
 .profile-brand{display:flex;align-items:center;gap:.75rem;padding:0 1rem;font-size:1.25rem;letter-spacing:-.03em}
@@ -221,18 +208,5 @@
 .profile-page :focus-visible,.profile-dialog :focus-visible{outline-color:var(--profile-accent)}
 .dark .profile-danger-zone h3,.dark .profile-security-passkey-actions>.profile-security-remove{color:#ffb0b5}
 
-:root[data-theme="deep-lavender"]:not(.dark){--profile-on-accent:#000}
-.profile-theme[data-theme="default"] .profile-theme-swatch{background:#1B4FB8}
-.profile-theme[data-theme="serene-sage"] .profile-theme-swatch{background:#7DAA92}
-.profile-theme[data-theme="modern-clinical"] .profile-theme-swatch{background:#0066FF}
-.profile-theme[data-theme="warm-earth"] .profile-theme-swatch{background:#E07A5F}
-.profile-theme[data-theme="deep-lavender"] .profile-theme-swatch{background:#9B5DE5}
-.profile-theme[data-theme="forest-care"] .profile-theme-swatch{background:#2D6A4F}
-.profile-theme[data-theme="sunset-support"] .profile-theme-swatch{background:#F28482}
-.profile-theme[data-theme="tech-indigo"] .profile-theme-swatch{background:#4361EE}
-.profile-theme[data-theme="soft-rose"] .profile-theme-swatch{background:#E5989B}
-.profile-theme[data-theme="minty-fresh"] .profile-theme-swatch{background:#06D6A0}
-:root{--profile-link:var(--profile-accent)}
-:root[data-theme]:not([data-theme="default"]):not(.dark){--profile-link:color-mix(in oklab,var(--profile-palette) 65%,#000)}
 .profile-shell .profile-tabs a[aria-selected="true"],.profile-shell .profile-section-icon,.profile-shell .profile-avatar,.profile-shell .profile-sidebar-avatar,.profile-shell .profile-mobile-rail a[aria-current="page"]{color:var(--profile-link)}
 .profile-page :focus-visible,.profile-dialog :focus-visible{outline-color:var(--profile-link)}

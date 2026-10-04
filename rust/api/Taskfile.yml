@@ -218,6 +218,9 @@ tasks:
       - cp config/locales/*.yml '{{ .CONTRACT_SOURCE_DIR }}/config/locales/'
       - cp vendor/fonts/NotoSans-Regular.ttf vendor/fonts/OFL-1.1.txt '{{ .CONTRACT_SOURCE_DIR }}/vendor/fonts/'
       - rsync -a app/assets/fonts/ '{{ .CONTRACT_SOURCE_DIR }}/app/assets/fonts/'
+      - mkdir -p '{{ .CONTRACT_SOURCE_DIR }}/app/assets/tailwind' '{{ .CONTRACT_SOURCE_DIR }}/app/views/profiles'
+      - cp app/assets/tailwind/application.css '{{ .CONTRACT_SOURCE_DIR }}/app/assets/tailwind/'
+      - cp app/views/profiles/theme_picker_card.rb '{{ .CONTRACT_SOURCE_DIR }}/app/views/profiles/'
 
   contract-external-up:
     dir: "{{.TASKFILE_DIR}}/../.."

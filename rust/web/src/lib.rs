@@ -84,6 +84,12 @@ pub fn render_journey_dashboard(
     medication_document("Dashboard", csrf, body)
 }
 
+include!(concat!(env!("OUT_DIR"), "/rails-fonts.rs"));
+
+pub fn rails_design_stylesheet() -> &'static str {
+    include_str!(concat!(env!("OUT_DIR"), "/rails-design.css"))
+}
+
 pub fn stylesheet() -> &'static str {
     include_str!("auth.css")
 }

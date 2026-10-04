@@ -286,24 +286,19 @@ test('Rails colour themes cover every profile tab and dark dialog inputs', async
         assert.equal(await page.locator('html').evaluate(element => getComputedStyle(element).getPropertyValue('--profile-palette').trim().toUpperCase()), colour);
         assert.equal(await page.locator('body').evaluate(element => getComputedStyle(element).fontFamily.split(',')[0].replaceAll('"', '').trim()), font);
         await page.evaluate(async font => { await document.fonts.load('400 16px ' + JSON.stringify(font)); await document.fonts.ready; }, font);
-        const contrast = await page.locator('.profile-brand>span').evaluate(element => {
+        const canonicalColours = await page.locator('.profile-brand>span').evaluate(element => {
           const style = getComputedStyle(element);
-          const canvas = document.createElement('canvas');
-          canvas.width = canvas.height = 1;
-          const context = canvas.getContext('2d');
-          function luminance(colour) {
-            context.fillStyle = colour;
-            context.fillRect(0, 0, 1, 1);
-            const channels = [...context.getImageData(0, 0, 1, 1).data].slice(0, 3).map(value => {
-              const n = value / 255;
-              return n <= 0.04045 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4;
-            });
-            return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
-          }
-          const a = luminance(style.color), b = luminance(style.backgroundColor);
-          return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+          const probe = document.createElement('span');
+          probe.style.backgroundColor = 'var(--primary)';
+          probe.style.color = 'var(--primary-foreground)';
+          element.append(probe);
+          const canonical = getComputedStyle(probe);
+          const result = [style.backgroundColor, style.color, canonical.backgroundColor, canonical.color];
+          probe.remove();
+          return result;
         });
-        if (contrast < 4.5) appearanceErrors.push(label + ' ' + mode + ' action contrast: ' + contrast);
+        assert.equal(canonicalColours[0], canonicalColours[2], label + ' ' + mode + ' primary');
+        assert.equal(canonicalColours[1], canonicalColours[3], label + ' ' + mode + ' primary foreground');
         const swatch = await page.getByRole('button', { name: label, exact: true }).locator('.profile-theme-swatch').evaluate(element => getComputedStyle(element).backgroundColor);
         const rgb = [1, 3, 5].map(offset => parseInt(colour.slice(offset, offset + 2), 16));
         const expectedSwatch = 'rgb(' + rgb.join(', ') + ')';
@@ -349,5 +344,25 @@ test('Rails colour themes cover every profile tab and dark dialog inputs', async
     await page.emulateMedia({ colorScheme: 'dark' });
     await page.waitForFunction(() => document.documentElement.classList.contains('dark'));
     assert.equal(await page.locator('html').evaluate(element => element.classList.contains('dark')), true);
+  } finally { await browser.close(); }
+});
+
+test('the compiled API serves every font declared by the canonical Rails stylesheet', async () => {
+  const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH });
+  try {
+    const page = await browser.newPage();
+    const response = await page.request.get(new URL('/rails-design.css', baseUrl).toString());
+    assert.equal(response.status(), 200);
+    const css = await response.text();
+    const urls = [...css.matchAll(/url\('([^']+)'\)/g)].map(match => match[1]);
+    assert.equal(urls.length, 31);
+    for (const url of urls) {
+      const font = await page.request.get(new URL(url, baseUrl).toString());
+      assert.equal(font.status(), 200, url);
+      assert.equal(font.headers()['content-type'], 'font/woff2', url);
+      assert.equal((await font.body()).subarray(0, 4).toString(), 'wOF2', url);
+    }
+    const missing = await page.request.get(new URL('/fonts/unknown/missing.woff2', baseUrl).toString());
+    assert.equal(missing.status(), 404);
   } finally { await browser.close(); }
 });

@@ -1,4 +1,4 @@
-@import url('/theme-fonts.css');
+@import url('/rails-design.css');
 @font-face{font-family:'Plus Jakarta Sans';font-style:normal;font-weight:400;font-display:swap;src:url('/fonts/plus-jakarta-sans/plus-jakarta-sans-v12-latin-regular.woff2') format('woff2')}
 @font-face{font-family:'Plus Jakarta Sans';font-style:normal;font-weight:500;font-display:swap;src:url('/fonts/plus-jakarta-sans/plus-jakarta-sans-v12-latin-500.woff2') format('woff2')}
 @font-face{font-family:'Plus Jakarta Sans';font-style:normal;font-weight:600;font-display:swap;src:url('/fonts/plus-jakarta-sans/plus-jakarta-sans-v12-latin-600.woff2') format('woff2')}

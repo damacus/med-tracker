@@ -203,7 +203,7 @@ mod tests {
         assert!(html.contains("Welcome back"));
         assert!(html.contains("authenticity_token"));
         assert!(html.contains("<script defer src=\"/profile.js\"></script>"));
-        assert!(crate::stylesheet().contains("@import url('/theme-fonts.css')"));
+        assert!(crate::stylesheet().contains("@import url('/rails-design.css')"));
         assert!(crate::stylesheet().contains("--font-family"));
         assert!(!html.contains("disabled"));
         assert!(!html.contains("<script>"));

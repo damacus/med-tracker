@@ -53,6 +53,7 @@ pub fn routes() -> Router<AppState> {
         .merge(profile_advanced::routes())
         .route("/household.css", get(assets::household_styles))
         .route("/profile.css", get(assets::profile_styles))
+        .route("/rails-design.css", get(assets::theme_font_styles))
         .route("/theme-fonts.css", get(assets::theme_font_styles))
         .route("/profile.js", get(assets::profile_script))
         .route(

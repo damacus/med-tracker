@@ -66,12 +66,6 @@ if (invalidDialog) {
 
 const appearanceKey = "med-tracker-appearance";
 const themeKey = "med-tracker-theme";
-const themeFonts = {
-  default: "Plus Jakarta Sans", "serene-sage": "Inter", "modern-clinical": "Plus Jakarta Sans",
-  "warm-earth": "Lexend", "deep-lavender": "Inter", "forest-care": "Outfit",
-  "sunset-support": "Figtree", "tech-indigo": "Geist", "soft-rose": "Urbanist", "minty-fresh": "Public Sans"
-};
-
 function syncAppearance() {
   const appearance = localStorage.getItem(appearanceKey) || "system";
   const theme = localStorage.getItem(themeKey) || "default";
@@ -79,11 +73,13 @@ function syncAppearance() {
   const root = document.documentElement;
   root.dataset.appearance = appearance;
   root.dataset.theme = theme;
+  root.dataset.allowPalette = "true";
+  for (const name of [...root.classList]) if (name.startsWith("theme-")) root.classList.remove(name);
+  if (theme !== "default") root.classList.add(`theme-${theme}`);
   root.classList.toggle("dark", dark);
   root.style.colorScheme = dark ? "dark" : "light";
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute("content", dark ? "#111827" : "#f8fafc");
-  root.style.setProperty("--font-family", `"${themeFonts[theme] || themeFonts.default}", sans-serif`);
   document.querySelectorAll("[data-appearance]").forEach(button => {
     button.setAttribute("aria-pressed", String(button.dataset.appearance === appearance));
   });
