@@ -23,6 +23,7 @@ pub fn render_reports(
     choices: Vec<ReportChoice>,
     draft: ReportDraft,
     errors: Vec<(String, String)>,
+    notifications_visible: bool,
 ) -> Result<String, TranslationError> {
     let raw_slug = slug;
     let slug = path_segment(slug);
@@ -116,5 +117,6 @@ pub fn render_reports(
         raw_slug,
         locale.as_str(),
         body,
+        notifications_visible,
     ))
 }

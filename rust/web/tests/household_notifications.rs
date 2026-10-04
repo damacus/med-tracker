@@ -14,6 +14,7 @@ fn page(draft: Option<NotificationDraft>, saved: bool, error: bool) -> Notificat
         editable: true,
         saved,
         error,
+        notifications_visible: true,
     }
 }
 
@@ -188,6 +189,33 @@ fn failed_save_keeps_attempted_values_with_an_associated_error_and_no_success() 
     assert!(!html.contains("Notification settings saved."));
     assert!(checkbox(&html, "dose_due_enabled").contains(" checked"));
     assert!(!checkbox(&html, "enabled").contains(" checked"));
+    let alert = html
+        .split("<div")
+        .skip(1)
+        .find(|tag| tag.contains("role=\"alert\""))
+        .expect("failed-save alert");
+    assert!(
+        alert.contains("id=\"notification-preferences-error\""),
+        "failed-save alert must carry a stable id"
+    );
+    let form = html
+        .split("<form")
+        .nth(1)
+        .and_then(|rest| rest.split('>').next())
+        .expect("notification form");
+    assert!(
+        form.contains("aria-describedby=\"notification-preferences-error\""),
+        "form must reference the failed-save alert"
+    );
+    let clean =
+        render_notification_settings(page(Some(NotificationDraft::default()), false, false))
+            .unwrap();
+    let clean_form = clean
+        .split("<form")
+        .nth(1)
+        .and_then(|rest| rest.split('>').next())
+        .expect("notification form");
+    assert!(!clean_form.contains("notification-preferences-error"));
 }
 
 #[test]
@@ -238,6 +266,7 @@ fn notification_settings_copy_exists_in_every_authoritative_locale() {
             editable: true,
             saved: false,
             error: false,
+            notifications_visible: true,
         })
         .unwrap();
         assert!(html.contains(&format!("lang=\"{}\"", locale.as_str())));
@@ -247,7 +276,15 @@ fn notification_settings_copy_exists_in_every_authoritative_locale() {
 
 #[test]
 fn household_shell_links_to_my_notifications() {
-    let html = household_document("People", "Test", "test-house", "en", String::new());
+    let html = household_document("People", "Test", "test-house", "en", String::new(), true);
     assert!(html.contains("href=\"/households/test-house/settings/notifications\""));
     assert!(html.contains("My notifications"));
+}
+
+#[test]
+fn household_shell_hides_my_notifications_without_read_access() {
+    let html = household_document("People", "Test", "test-house", "en", String::new(), false);
+    assert!(!html.contains("settings/notifications"));
+    assert!(!html.contains("My notifications"));
+    assert!(html.contains("href=\"/households/test-house/people\""));
 }

@@ -22,6 +22,7 @@ fn render(locale: Locale, supply: Option<String>) -> String {
         action: None,
         draft: StockDraft::default(),
         errors: BTreeMap::new(),
+        notifications_visible: true,
     })
     .unwrap()
 }

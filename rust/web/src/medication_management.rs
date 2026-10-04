@@ -27,6 +27,7 @@ pub struct MedicationFormPage {
     pub draft: MedicationDraft,
     pub locations: Vec<(String, String)>,
     pub errors: BTreeMap<String, Vec<String>>,
+    pub notifications_visible: bool,
 }
 
 pub(crate) fn messages(text: Text, errors: &[String]) -> String {
@@ -317,6 +318,7 @@ pub fn render_medication_form_with_options(
         &page.slug,
         page.locale.as_str(),
         body,
+        page.notifications_visible,
     ))
 }
 

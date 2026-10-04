@@ -71,6 +71,7 @@ pub struct PauseHistoryPage {
     pub medication_name: String,
     pub locale: Locale,
     pub rows: Vec<PauseHistoryRow>,
+    pub notifications_visible: bool,
 }
 
 pub struct PauseHistoryRow {
@@ -130,5 +131,6 @@ pub fn render_pause_history(page: PauseHistoryPage) -> Result<String, Translatio
         &page.slug,
         page.locale.as_str(),
         body,
+        page.notifications_visible,
     ))
 }

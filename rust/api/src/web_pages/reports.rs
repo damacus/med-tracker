@@ -187,9 +187,18 @@ async fn index(
         Err(error) => return error.response(),
     };
     let result = async {
-        let (_, name, choices) = context(&mut api, &slug).await?;
-        render_reports(&name, &slug, api.locale, choices, default_draft(), vec![])
-            .map_err(|_| error(StatusCode::INTERNAL_SERVER_ERROR))
+        let (household_id, name, choices) = context(&mut api, &slug).await?;
+        let notifications_visible = api.notifications_visible(household_id).await;
+        render_reports(
+            &name,
+            &slug,
+            api.locale,
+            choices,
+            default_draft(),
+            vec![],
+            notifications_visible,
+        )
+        .map_err(|_| error(StatusCode::INTERNAL_SERVER_ERROR))
     }
     .await;
     match result {
@@ -213,10 +222,18 @@ async fn download(
     let result = async {
         match filters(&query, today) {
             Err(errors) => {
-                let (_, name, choices) = context(&mut api, &slug).await?;
-                let body =
-                    render_reports(&name, &slug, api.locale, choices, draft, errors)
-                        .map_err(|_| error(StatusCode::INTERNAL_SERVER_ERROR))?;
+                let (household_id, name, choices) = context(&mut api, &slug).await?;
+                let notifications_visible = api.notifications_visible(household_id).await;
+                let body = render_reports(
+                    &name,
+                    &slug,
+                    api.locale,
+                    choices,
+                    draft,
+                    errors,
+                    notifications_visible,
+                )
+                .map_err(|_| error(StatusCode::INTERNAL_SERVER_ERROR))?;
                 Ok(page_status(
                     body,
                     api.cookie.take(),
@@ -252,6 +269,7 @@ async fn download(
                 if value.get("error").is_none() {
                     return Err(error(StatusCode::BAD_GATEWAY));
                 }
+                let notifications_visible = api.notifications_visible(household_id).await;
                 let body = render_reports(
                     &name,
                     &slug,
@@ -262,6 +280,7 @@ async fn download(
                         "download".to_owned(),
                         download_error_key(reply.status).to_owned(),
                     )],
+                    notifications_visible,
                 )
                 .map_err(|_| error(StatusCode::INTERNAL_SERVER_ERROR))?;
                 Ok(page_status(body, api.cookie.take(), reply.status))

@@ -1,9 +1,27 @@
+use super::api_client::cookie_value;
 use super::*;
-use axum::extract::Query;
 use medtracker_web::household::path_segment;
 use medtracker_web::notifications::{
     render_notification_settings, NotificationDraft, NotificationPage,
 };
+
+const SAVED_COOKIE: &str = "medtracker_notification_saved";
+
+fn saved_cookie(slug: &str) -> Option<HeaderValue> {
+    HeaderValue::from_str(&format!(
+        "{SAVED_COOKIE}=1; Path=/households/{}/settings/notifications; HttpOnly; SameSite=Lax",
+        path_segment(slug)
+    ))
+    .ok()
+}
+
+fn clear_saved_cookie(slug: &str) -> Option<HeaderValue> {
+    HeaderValue::from_str(&format!(
+        "{SAVED_COOKIE}=; Path=/households/{}/settings/notifications; Max-Age=0; HttpOnly; SameSite=Lax",
+        path_segment(slug)
+    ))
+    .ok()
+}
 
 pub(super) fn routes() -> Router<AppState> {
     Router::new().route(
@@ -52,6 +70,8 @@ struct RenderState {
     editable: bool,
     saved: bool,
     failed: bool,
+    consume_saved: bool,
+    notifications_visible: bool,
     status: StatusCode,
 }
 
@@ -66,8 +86,17 @@ fn render(mut api: WebApi, household_name: String, slug: &str, state: RenderStat
         editable: state.editable,
         saved: state.saved,
         error: state.failed,
+        notifications_visible: state.notifications_visible,
     }) {
-        Ok(body) => page_status(body, cookie, state.status),
+        Ok(body) => {
+            let mut response = page_status(body, cookie, state.status);
+            if state.consume_saved {
+                if let Some(cookie) = clear_saved_cookie(slug) {
+                    response.headers_mut().append(header::SET_COOKIE, cookie);
+                }
+            }
+            response
+        }
         Err(_) => failure(StatusCode::INTERNAL_SERVER_ERROR),
     }
 }
@@ -75,9 +104,9 @@ fn render(mut api: WebApi, household_name: String, slug: &str, state: RenderStat
 async fn edit(
     State(state): State<AppState>,
     Path(slug): Path<String>,
-    Query(query): Query<HashMap<String, String>>,
     headers: HeaderMap,
 ) -> Response {
+    let marked = cookie_value(&headers, SAVED_COOKIE) == Some("1");
     let mut api = match WebApi::authenticated(state, headers).await {
         Ok(api) => api,
         Err(error) => return error.response(),
@@ -111,12 +140,13 @@ async fn edit(
                         editable,
                         saved: false,
                         failed: false,
+                        consume_saved: marked,
+                        notifications_visible: first_use,
                         status: StatusCode::OK,
                     },
                 ))
             }
             status if status.is_success() => {
-                let saved = query.get("saved").is_some_and(|value| value == "1");
                 let draft = draft_from_record(&reply.value)?;
                 Ok(render(
                     api,
@@ -125,8 +155,10 @@ async fn edit(
                     RenderState {
                         draft: Some(draft),
                         editable,
-                        saved,
+                        saved: marked,
                         failed: false,
+                        consume_saved: marked,
+                        notifications_visible: true,
                         status: StatusCode::OK,
                     },
                 ))
@@ -150,6 +182,7 @@ async fn update(
     if !oauth::trusted_cookie_origin(&state, &headers) {
         return failure(StatusCode::FORBIDDEN);
     }
+    let marked = cookie_value(&headers, SAVED_COOKIE) == Some("1");
     let mut api = match WebApi::authenticated(state, headers).await {
         Ok(api) => api,
         Err(error) => return error.response(),
@@ -180,17 +213,19 @@ async fn update(
             )
             .await?;
         if reply.status.is_success() {
-            return Ok(redirect(
-                format!(
-                    "/households/{}/settings/notifications?saved=1",
-                    path_segment(&slug)
-                ),
+            let mut response = redirect(
+                format!("/households/{}/settings/notifications", path_segment(&slug)),
                 api.cookie.take(),
-            ));
+            );
+            if let Some(cookie) = saved_cookie(&slug) {
+                response.headers_mut().append(header::SET_COOKIE, cookie);
+            }
+            return Ok(response);
         }
         if reply.status == StatusCode::UNAUTHORIZED {
             return Err(PageError::Login);
         }
+        let notifications_visible = api.notifications_visible(household_id).await;
         Ok(render(
             api,
             name,
@@ -200,6 +235,8 @@ async fn update(
                 editable: reply.status != StatusCode::FORBIDDEN,
                 saved: false,
                 failed: true,
+                consume_saved: marked,
+                notifications_visible,
                 status: reply.status,
             },
         ))

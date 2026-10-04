@@ -9,6 +9,7 @@ fn page(choices: Vec<ReportChoice>, draft: ReportDraft, errors: Vec<(String, Str
         choices,
         draft,
         errors,
+        true,
     )
     .expect("reports page renders")
 }
@@ -163,6 +164,7 @@ fn reports_form_renders_localized_in_every_supported_locale() {
             choices(),
             ReportDraft::default(),
             vec![],
+            true,
         )
         .unwrap_or_else(|error| panic!("{code} reports render failed: {error}"));
         assert!(

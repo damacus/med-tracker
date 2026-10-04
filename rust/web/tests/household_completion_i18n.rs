@@ -21,6 +21,7 @@ fn person(locale: Locale, message: &str) -> String {
             ("name".into(), message.into()),
             ("base".into(), message.into()),
         ],
+        true,
     )
     .unwrap()
 }
@@ -45,6 +46,7 @@ fn location(locale: Locale, message: &str) -> String {
             ("name".into(), vec![message.into()]),
             ("base".into(), vec![message.into()]),
         ]),
+        notifications_visible: true,
     })
     .unwrap()
 }

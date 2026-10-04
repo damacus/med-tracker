@@ -7,7 +7,7 @@ use super::time::{configured_timezone, dashboard_now};
 use super::{field, numeric};
 use crate::AppState;
 use axum::extract::{Path, Query, State};
-use axum::http::{HeaderMap, HeaderValue, Method, StatusCode};
+use axum::http::{HeaderMap, HeaderValue, StatusCode};
 use axum::response::Response;
 use chrono::Timelike;
 use medtracker_web::dashboard::{calculate_metrics, DashboardPage, DashboardPerson};
@@ -39,21 +39,7 @@ pub(super) async fn dashboard(
         Ok(value) => value,
         Err(response) => return response.response(),
     };
-    let notifications_visible = match api
-        .call(
-            Method::GET,
-            &format!("/api/v1/households/{household_id}/notification_preference"),
-            None,
-            None,
-        )
-        .await
-    {
-        Ok(reply) if reply.status == StatusCode::OK => true,
-        Ok(reply) if reply.status == StatusCode::NOT_FOUND => {
-            reply.value.pointer("/error/code").and_then(Value::as_str) == Some("not_configured")
-        }
-        _ => false,
-    };
+    let notifications_visible = api.notifications_visible(household_id).await;
     if cfg!(debug_assertions)
         && std::env::var_os("CONTRACT_PROJECT").is_some()
         && query.contract_fail_dashboard_read.as_deref() == Some("people")

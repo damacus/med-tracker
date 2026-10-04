@@ -114,6 +114,19 @@ pub(super) fn html_cookie_only(headers: &HeaderMap) -> bool {
     !headers.contains_key(header::AUTHORIZATION)
 }
 
+pub(super) fn cookie_value<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
+    headers
+        .get(header::COOKIE)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| {
+            value
+                .split(';')
+                .map(str::trim)
+                .filter_map(|entry| entry.split_once('='))
+                .find_map(|(key, value)| (key == name).then_some(value))
+        })
+}
+
 pub(super) struct ApiReply {
     pub(super) status: StatusCode,
     pub(super) value: Value,
@@ -172,14 +185,7 @@ impl WebApi {
         db.commit()
             .await
             .map_err(|_| error(StatusCode::INTERNAL_SERVER_ERROR))?;
-        let locale_cookie = headers
-            .get(header::COOKIE)
-            .and_then(|value| value.to_str().ok())
-            .and_then(|value| {
-                value
-                    .split(';')
-                    .find_map(|entry| entry.trim().strip_prefix("medtracker_locale="))
-            });
+        let locale_cookie = cookie_value(&headers, "medtracker_locale");
         let locale = Locale::resolve(
             locale_cookie,
             headers
@@ -460,6 +466,24 @@ impl WebApi {
                 recent.extend(latest_older.into_values().map(|(_, row)| row));
                 return Ok(recent);
             }
+        }
+    }
+
+    pub(super) async fn notifications_visible(&mut self, household_id: i64) -> bool {
+        match self
+            .call(
+                Method::GET,
+                &format!("/api/v1/households/{household_id}/notification_preference"),
+                None,
+                None,
+            )
+            .await
+        {
+            Ok(reply) if reply.status == StatusCode::OK => true,
+            Ok(reply) if reply.status == StatusCode::NOT_FOUND => {
+                reply.value.pointer("/error/code").and_then(Value::as_str) == Some("not_configured")
+            }
+            _ => false,
         }
     }
 

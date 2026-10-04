@@ -164,6 +164,7 @@ pub(super) fn render(
         units,
         draft,
         errors,
+        notifications_visible: context.notifications_visible,
     };
     let result = match location.kind {
         Kind::Assignment => medtracker_web::treatments::render_assignment_form(page),

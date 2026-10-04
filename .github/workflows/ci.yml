@@ -291,6 +291,9 @@ jobs:
           - journey: admin-dmd-import
             target: nhs_dmd_import_api
             browsers: "tests/household-admin-dmd.test.mjs"
+          - journey: notifications
+            target: household_notifications
+            browsers: "tests/household-notifications.test.mjs"
           - journey: standalone-login
             target: passkey_security
             browsers: "tests/login.smoke.test.mjs"
