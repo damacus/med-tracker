@@ -320,3 +320,42 @@ fn settings_form_uses_supported_locale_labels() {
         );
     }
 }
+
+#[test]
+fn profile_overlays_expose_the_portable_modal_contract() {
+    let mut draft = page("Submitted invalid zone");
+    draft.errors.insert(
+        "time_zone".into(),
+        vec!["is not included in the list".into()],
+    );
+    let html = render_settings(draft).unwrap();
+    for (id, kind, heading) in [
+        (
+            "profile-time-zone-modal",
+            "dialog",
+            "profile-time-zone-heading",
+        ),
+        (
+            "profile-appearance-modal",
+            "sheet",
+            "profile-appearance-heading",
+        ),
+    ] {
+        let tag = html
+            .split(&format!("<dialog id=\"{id}\""))
+            .nth(1)
+            .unwrap()
+            .split('>')
+            .next()
+            .unwrap();
+        assert!(tag.contains("aria-modal=\"true\""));
+        assert!(tag.contains(&format!("aria-labelledby=\"{heading}\"")));
+        assert!(tag.contains("data-ui-modal"));
+        assert!(tag.contains(&format!("data-ui-kind=\"{kind}\"")));
+        if kind == "dialog" {
+            assert!(tag.contains(" open"));
+        }
+    }
+    assert!(html.contains("settings-time-zone-errors"));
+    assert!(html.contains("is not included in the list"));
+}

@@ -1,6 +1,6 @@
 use crate::household::path_segment;
 use crate::household_i18n::{Locale, Text, TranslationError};
-use damacus_web_ui::{Button, ButtonType};
+use damacus_web_ui::{Button, ButtonType, Dialog, Sheet};
 use leptos::prelude::*;
 use std::collections::HashMap;
 
@@ -145,6 +145,10 @@ pub fn render_settings(page: SettingsPage) -> Result<String, TranslationError> {
         ("people", text.get("layouts.sidebar.people", &[])?),
         ("profile", text.get("profiles.sections.profile.title", &[])?),
     ];
+    let timezone_csrf = page.csrf.clone();
+    let appearance_mode = text.get("profiles.appearance.mode_label", &[])?;
+    let theme_title = text.get("profiles.theme_picker.title", &[])?;
+    let theme_description = text.get("profiles.theme_picker.description", &[])?;
     let body = view! {
         <div class="profile-page">
         <header class="profile-hero" data-testid="profile-hero">
@@ -183,10 +187,10 @@ pub fn render_settings(page: SettingsPage) -> Result<String, TranslationError> {
         <section id="profile-notifications-panel" class="profile-section" role="tabpanel" aria-labelledby="profile-tab-notifications" tabindex="0" hidden=!notifications_active inner_html=page.notifications_html></section>
         <section id="profile-advanced-panel" class="profile-section" role="tabpanel" aria-labelledby="profile-tab-advanced" tabindex="0" hidden=!advanced_active inner_html=page.advanced_html></section>
         </div>
-        <dialog id="profile-time-zone-modal" class="profile-dialog profile-dialog-compact" data-testid="profile-time-zone-dialog" aria-labelledby="profile-time-zone-heading" open=invalid_zone>
+        <Dialog id="profile-time-zone-modal" class="profile-dialog profile-dialog-compact" attr:data-testid="profile-time-zone-dialog" labelled_by="profile-time-zone-heading" open=invalid_zone>
             <div class="profile-dialog-heading profile-overlay-heading"><h2 id="profile-time-zone-heading">{zone_label.clone()}</h2><p>{hint.clone()}</p><button type="button" class="profile-dialog-close" aria-label="Close" data-profile-close="profile-time-zone-modal">{"×"}</button></div>
         <form class="household-form profile-overlay-body" method="post" action=action>
-            <input type="hidden" name="authenticity_token" value=page.csrf.clone()/>
+            <input type="hidden" name="authenticity_token" value=timezone_csrf/>
             <div class="form-field">
                 <label for="settings_time_zone">{zone_label}</label>
                 <p id="settings-time-zone-hint" class="profile-sr-only">{hint}</p>
@@ -203,7 +207,7 @@ pub fn render_settings(page: SettingsPage) -> Result<String, TranslationError> {
             {(!page.can_edit).then(|| view! { <p>{read_only}</p> })}
             {page.can_edit.then(|| view! { <div class="household-actions"><Button class="profile-secondary" attr:data-profile-close="profile-time-zone-modal">{"Close"}</Button><Button class="med-primary" kind=ButtonType::Submit>{save}</Button></div> })}
         </form>
-        </dialog>
+        </Dialog>
         <dialog id="profile-avatar-modal" class="profile-dialog profile-sheet" data-testid="profile-avatar-sheet" aria-labelledby="profile-avatar-heading">
             <div class="profile-dialog-heading profile-overlay-heading"><h2 id="profile-avatar-heading">{avatar_title.clone()}</h2><p>{avatar_description.clone()}</p><button type="button" class="profile-dialog-close" aria-label="Close" data-profile-close="profile-avatar-modal">{"×"}</button></div>
             <div class="profile-sheet-body profile-overlay-body">
@@ -234,10 +238,10 @@ pub fn render_settings(page: SettingsPage) -> Result<String, TranslationError> {
                 {page.can_edit.then(|| view! { <div class="household-actions"><button type="button" class="profile-secondary" data-profile-close="profile-shortcuts-modal">{"Close"}</button><button class="med-primary" type="submit">{text.get("profiles.mobile_shortcuts.save", &[]).unwrap_or_default()}</button></div> })}
             </form>
         </dialog>
-        <dialog id="profile-appearance-modal" class="profile-dialog profile-sheet profile-sheet-wide" data-testid="profile-appearance-sheet" aria-labelledby="profile-appearance-heading">
+        <Sheet id="profile-appearance-modal" class="profile-dialog profile-sheet profile-sheet-wide" attr:data-testid="profile-appearance-sheet" labelled_by="profile-appearance-heading">
             <div class="profile-dialog-heading profile-overlay-heading"><h2 id="profile-appearance-heading">{appearance_title}</h2><p>{appearance_description}</p><button type="button" class="profile-dialog-close" aria-label="Close" data-profile-close="profile-appearance-modal">{"×"}</button></div>
-            <div class="profile-sheet-body profile-overlay-body profile-stack"><h3>{text.get("profiles.appearance.mode_label", &[])?}</h3><div class="profile-choice-grid">{[("light", "Light"), ("dark", "Dark"), ("system", "System")].into_iter().map(|(key,label)| view! { <button type="button" class="profile-choice" data-appearance=key aria-pressed="false">{label}</button> }).collect_view()}</div><h3>{text.get("profiles.theme_picker.title", &[])?}</h3><p>{text.get("profiles.theme_picker.description", &[])?}</p><div class="profile-theme-grid">{[("default", "Command Centre"), ("serene-sage", "Serene Sage"), ("modern-clinical", "Modern Clinical"), ("warm-earth", "Warm Earth"), ("deep-lavender", "Deep Lavender"), ("forest-care", "Forest Care"), ("sunset-support", "Sunset Support"), ("tech-indigo", "Tech Indigo"), ("soft-rose", "Soft Rose"), ("minty-fresh", "Minty Fresh")].into_iter().map(|(key,label)| view! { <button type="button" class="profile-theme" data-theme=key aria-pressed="false"><span class="profile-theme-swatch"></span>{label}</button> }).collect_view()}</div></div>
-        </dialog>
+            <div class="profile-sheet-body profile-overlay-body profile-stack"><h3>{appearance_mode}</h3><div class="profile-choice-grid">{[("light", "Light"), ("dark", "Dark"), ("system", "System")].into_iter().map(|(key,label)| view! { <button type="button" class="profile-choice" data-appearance=key aria-pressed="false">{label}</button> }).collect_view()}</div><h3>{theme_title}</h3><p>{theme_description}</p><div class="profile-theme-grid">{[("default", "Command Centre"), ("serene-sage", "Serene Sage"), ("modern-clinical", "Modern Clinical"), ("warm-earth", "Warm Earth"), ("deep-lavender", "Deep Lavender"), ("forest-care", "Forest Care"), ("sunset-support", "Sunset Support"), ("tech-indigo", "Tech Indigo"), ("soft-rose", "Soft Rose"), ("minty-fresh", "Minty Fresh")].into_iter().map(|(key,label)| view! { <button type="button" class="profile-theme" data-theme=key aria-pressed="false"><span class="profile-theme-swatch"></span>{label}</button> }).collect_view()}</div></div>
+        </Sheet>
     }.to_html();
     Ok(profile_document(ProfileDocument {
         title: &title,
