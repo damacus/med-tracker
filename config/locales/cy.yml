@@ -2284,6 +2284,32 @@ cy:
     updated: Cedwir y gosodiadau hysbysiadau.
     update_failed: Methwyd â chadw'r gosodiadau hysbysiadau.
   reports:
+    browser:
+      title: Adroddiadau
+      intro: Lawrlwythwch PDF o hanes iechyd ar gyfer un person dros ystod
+        dyddiadau a ddewiswyd.
+      person_label: Person
+      person_prompt: Dewiswch berson
+      start_date_label: Dyddiad dechrau
+      end_date_label: Dyddiad gorffen
+      include_medication_takes: Cynnwys y cofnod gweinyddu meddyginiaethau
+      download: Lawrlwytho PDF
+      no_people: Nid ydych yn rheoli unrhyw un y gellir lawrlwytho ei hanes
+        iechyd.
+      errors:
+        person_required: Dewiswch berson ar gyfer yr adroddiad.
+        start_date_invalid: Rhowch ddyddiad dechrau yn y fformat BBBB-MM-DD.
+        end_date_invalid: Rhowch ddyddiad gorffen yn y fformat BBBB-MM-DD.
+        date_order: Rhaid i'r dyddiad gorffen fod ar neu ar ôl y dyddiad
+          dechrau.
+        date_range: Ni chaiff ystod dyddiadau'r adroddiad fod yn fwy na 366
+          diwrnod.
+        takes_invalid: Mae'r dewis cofnod gweinyddu meddyginiaethau yn annilys.
+        forbidden: Ni chaniateir i chi lawrlwytho'r adroddiad hwn.
+        not_found: Ni ellid dod o hyd i'r person na'r cartref.
+        unavailable: Nid yw'r gwasanaeth adrodd ar gael ar hyn o bryd. Rhowch
+          gynnig arall arni yn nes ymlaen.
+        failed: Ni ellid cynhyrchu'r adroddiad. Rhowch gynnig arall arni.
     invalid_date: Darparwyd fformat dyddiad annilys.
     end_before_start: Rhaid i'r dyddiad gorffen fod ar neu ar ôl y dyddiad dechrau.
     date_range_too_large: Ni chaiff ystod dyddiadau'r adroddiad fod yn fwy na 180 diwrnod.

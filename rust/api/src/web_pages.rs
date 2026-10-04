@@ -29,6 +29,7 @@ mod notifications;
 mod people;
 mod profile_advanced;
 mod profile_security;
+mod reports;
 mod response;
 mod settings;
 mod stock;
@@ -47,6 +48,7 @@ pub fn routes() -> Router<AppState> {
         .merge(dosage_options::routes())
         .merge(stock::routes())
         .merge(treatments::routes())
+        .merge(reports::routes())
         .merge(admin::routes())
         .merge(settings::routes())
         .merge(profile_security::routes())

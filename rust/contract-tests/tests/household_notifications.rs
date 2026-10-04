@@ -135,7 +135,10 @@ fn notifications_page_offers_defaults_and_creates_absent_preferences() {
     .expect("contract database");
     db.execute(
         "DELETE FROM notification_preferences WHERE household_id = $1 AND id = $2",
-        &[&fixture.web_device_household_id, &created["data"]["id"].as_i64().unwrap()],
+        &[
+            &fixture.web_device_household_id,
+            &created["data"]["id"].as_i64().unwrap(),
+        ],
     )
     .expect("reset first-use preference for browser acceptance");
 }
@@ -421,13 +424,124 @@ fn notifications_page_masks_revoked_self_access() {
     assert_eq!(body["error"]["code"], "not_found");
     let dashboard = target.get_html(&format!("/households/{}/dashboard", fixture.household_slug));
     assert_eq!(dashboard.status().as_u16(), 200);
-    assert!(!dashboard.text().expect("masked dashboard").contains("settings/notifications"));
+    assert!(!dashboard
+        .text()
+        .expect("masked dashboard")
+        .contains("settings/notifications"));
     let page = target.get_html(&page_path(&fixture.household_slug));
     assert_eq!(page.status().as_u16(), 200);
-    let document = Html::parse_document(&page.text().expect("masked page"));
-    assert_eq!(document.select(&Selector::parse("form[method='post']").unwrap()).count(), 0);
-    assert_eq!(document.select(&Selector::parse("[role='status']").unwrap()).count(), 1);
+    let masked_html = page.text().expect("masked page");
+    assert!(
+        !masked_html.contains("settings/notifications"),
+        "settings shell must not offer a link that cannot open"
+    );
+    let document = Html::parse_document(&masked_html);
+    assert_eq!(
+        document
+            .select(&Selector::parse("form[method='post']").unwrap())
+            .count(),
+        0
+    );
+    assert_eq!(
+        document
+            .select(&Selector::parse("[role='status']").unwrap())
+            .count(),
+        1
+    );
+    let people = target.get_html(&format!("/households/{}/people", fixture.household_slug));
+    assert_eq!(people.status().as_u16(), 200);
+    assert!(
+        !people
+            .text()
+            .expect("masked people page")
+            .contains("settings/notifications"),
+        "shared household navigation must hide the unreachable link"
+    );
     viewer.restore();
+    let restored = target.get_html(&format!("/households/{}/people", fixture.household_slug));
+    assert_eq!(restored.status().as_u16(), 200);
+    assert!(
+        restored
+            .text()
+            .expect("restored people page")
+            .contains("settings/notifications"),
+        "household navigation must restore the link once preferences are readable"
+    );
+}
+
+#[test]
+fn notification_save_notice_is_single_use_and_not_bookmarkable() {
+    let fixture = fixture();
+    let target = Target::from_env();
+    let api = api_path(fixture.household_id);
+    let created = target.put_json(
+        &api,
+        &fixture.access_token,
+        &json!({"notification_preference": {"enabled": true, "dose_due_enabled": true}}),
+    );
+    assert_eq!(created.status().as_u16(), 200);
+    let token = sign_in(&target);
+    let saved = target.post_browser_form(
+        &page_path(&fixture.household_slug),
+        &[
+            ("authenticity_token".into(), token),
+            ("enabled".into(), "true".into()),
+            ("dose_due_enabled".into(), "true".into()),
+        ],
+    );
+    let status = saved.status().as_u16();
+    assert!(
+        [302, 303].contains(&status),
+        "notification save must redirect, got {status}"
+    );
+    let location = saved
+        .headers()
+        .get("location")
+        .and_then(|value| value.to_str().ok())
+        .expect("save redirect location")
+        .to_owned();
+    assert!(
+        !location.contains('?'),
+        "save redirect must not carry a bookmarkable marker: {location}"
+    );
+    let notice = saved
+        .headers()
+        .get_all("set-cookie")
+        .iter()
+        .filter_map(|value| value.to_str().ok())
+        .find(|value| value.starts_with("medtracker_notification_saved="))
+        .map(str::to_owned)
+        .expect("save redirect must set a one-time notice cookie");
+    assert!(
+        notice.contains("HttpOnly"),
+        "notice cookie must be HttpOnly"
+    );
+    let first = target.get_html(&location);
+    assert_eq!(first.status().as_u16(), 200);
+    assert!(
+        first
+            .text()
+            .expect("post-save page")
+            .contains("Notification settings saved."),
+        "redirected save must announce the persisted change once"
+    );
+    let revisit = target.get_html(&page_path(&fixture.household_slug));
+    assert!(
+        !revisit
+            .text()
+            .expect("reloaded page")
+            .contains("Notification settings saved."),
+        "reloading without a fresh save must not repeat the notice"
+    );
+    let bookmarked = target.get_html(&format!("{}?saved=1", page_path(&fixture.household_slug)));
+    assert_eq!(bookmarked.status().as_u16(), 200);
+    assert!(
+        !bookmarked
+            .text()
+            .expect("bookmarked page")
+            .contains("Notification settings saved."),
+        "a stale saved=1 link must not claim a save happened"
+    );
 }
 
 #[test]
@@ -455,7 +569,10 @@ fn denied_notification_save_retains_attempted_values_without_success() {
     viewer.expose_view();
     let capabilities: Value = target
         .get(
-            &format!("/api/v1/households/{}/ui_capabilities", fixture.household_id),
+            &format!(
+                "/api/v1/households/{}/ui_capabilities",
+                fixture.household_id
+            ),
             Some(&fixture.access_token),
         )
         .json()
@@ -465,12 +582,16 @@ fn denied_notification_save_retains_attempted_values_without_success() {
     assert_eq!(read_only.status().as_u16(), 200);
     let document = Html::parse_document(&read_only.text().expect("view-only page"));
     assert_eq!(
-        document.select(&Selector::parse("button[type='submit']").unwrap()).count(),
+        document
+            .select(&Selector::parse("button[type='submit']").unwrap())
+            .count(),
         0,
         "view-only preferences must not offer a save button"
     );
     assert_eq!(
-        document.select(&Selector::parse("input[type='checkbox'][disabled]").unwrap()).count(),
+        document
+            .select(&Selector::parse("input[type='checkbox'][disabled]").unwrap())
+            .count(),
         5,
         "view-only preferences must not offer editable switches"
     );

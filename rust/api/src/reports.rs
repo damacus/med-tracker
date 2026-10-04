@@ -187,7 +187,7 @@ async fn reject(
     .await
 }
 
-fn today() -> NaiveDate {
+pub(crate) fn today() -> NaiveDate {
     let timezone: Tz = std::env::var("TZ")
         .ok()
         .and_then(|value| value.parse().ok())

@@ -69,6 +69,7 @@ async fn render_page(
         .map(|rows| rows.iter().filter_map(run_value).collect())
         .unwrap_or_default();
     let action = format!("/households/{}/admin/nhs-dmd-import", path_segment(&slug));
+    let notifications_visible = api.notifications_visible(household_id).await;
     let body = render_dmd_import(DmdImportPage {
         household_name,
         slug,
@@ -78,6 +79,7 @@ async fn render_page(
         runs,
         alert,
         notice,
+        notifications_visible,
     });
     match body {
         Ok(body) => page_status(body, api.cookie.take(), status),

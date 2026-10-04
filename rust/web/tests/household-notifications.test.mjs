@@ -65,8 +65,10 @@ test('notification settings save switches from the household shell', async t => 
         await page.keyboard.press('Space');
         assert.equal(await privacy.isChecked(), true, 'keyboard toggles the privacy switch');
         await page.getByRole('button', { name: 'Save preferences' }).click();
-        await page.waitForURL(url => url.pathname === pagePath && url.searchParams.get('saved') === '1');
+        await page.waitForURL(url => url.pathname === pagePath && url.search === '');
         await page.getByRole('status').waitFor();
+        await page.reload();
+        assert.equal(await page.getByRole('status').count(), 0, 'save notice does not survive a reload');
         const persisted = await (await api('GET')).json();
         assert.equal(persisted.data.private_text_enabled, true, 'privacy switch persisted');
         assert.equal(persisted.data.morning_time, '07:05:00', 'reminder times preserved');
@@ -122,7 +124,8 @@ test('notification settings offer defaults and save on first use', async () => {
     }
     assert.equal(await page.getByRole('checkbox', { name: 'Private Notification Content' }).isChecked(), false);
     await page.getByRole('button', { name: 'Save preferences' }).click();
-    await page.waitForURL(url => url.searchParams.get('saved') === '1');
+    await page.waitForURL(url => url.pathname === `/households/${fixture.web_device_household_slug}/settings/notifications` && url.search === '');
+    await page.getByRole('status').waitFor();
     const created = await fetch(new URL(`/api/v1/households/${fixture.web_device_household_id}/notification_preference`, baseUrl), {
       headers: { Authorization: `Bearer ${fixture.web_device_access_token}` },
     });

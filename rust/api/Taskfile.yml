@@ -1044,6 +1044,7 @@ tasks:
       WORKSPACE_DIR:
         sh: pwd
     cmds:
+      - '{{ if eq .HOUSEHOLD_TEST_FILE "household_reports" }}MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test up -d --wait --no-build rust-api-report-fail{{ end }}'
       - '{{ if eq .PROFILE_ACCEPTANCE "true" }}MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test up -d --wait --no-build rust-api-storage-fail{{ end }}'
       - MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked {{ if eq .PROFILE_ACCEPTANCE "true" }}--no-fail-fast {{ end }}--manifest-path rust/contract-tests/Cargo.toml {{ if .HOUSEHOLD_TEST_FILE }}--test {{ .HOUSEHOLD_TEST_FILE }}{{ else if eq .PROFILE_ACCEPTANCE "true" }}--test profile --test openapi_profile --test oauth --test passkey_security --test web_profile_rust --test web_profile_security --test web_profile_advanced --test web_profile_close --test web_profile_notifications{{ else if eq .HOUSEHOLD_STOCK_ACCEPTANCE "true" }}--test household_stock --test household_stock_boundaries --test household_stock_concurrency{{ else if eq .HOUSEHOLD_COMPLETION_ACCEPTANCE "true" }}--test household_web --test household_navigation --test household_lifecycle --test household_completion_medication{{ else }}--test household_web --test household_navigation --test household_lifecycle{{ end }} -- {{ if .HOUSEHOLD_TEST_FILTER }}{{ .HOUSEHOLD_TEST_FILTER }}{{ end }} --test-threads=1
       - '{{ if .HOUSEHOLD_TEST_FILE }}{{ else if eq .PROFILE_ACCEPTANCE "true" }}{{ else if eq .HOUSEHOLD_STOCK_ACCEPTANCE "true" }}{{ else if eq .HOUSEHOLD_COMPLETION_ACCEPTANCE "true" }}MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test run --rm --no-deps rust-api-tests cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --test household_completion_dashboard -- {{ if .HOUSEHOLD_TEST_FILTER }}{{ .HOUSEHOLD_TEST_FILTER }}{{ end }} --test-threads=1{{ end }}'
@@ -1061,6 +1062,8 @@ tasks:
       - node --check rust/web/tests/profile-security.test.mjs
       - node --check rust/web/tests/profile-security-unit.test.mjs
       - node --check rust/web/tests/profile-advanced.test.mjs
+      - node --check rust/web/tests/household-notifications.test.mjs
+      - node --check rust/web/tests/household-reports.test.mjs
 
   fmt-file:
     requires:

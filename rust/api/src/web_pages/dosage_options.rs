@@ -34,6 +34,7 @@ struct Context {
     household_name: String,
     medication: Value,
     can_manage: bool,
+    notifications_visible: bool,
 }
 
 async fn context(
@@ -59,12 +60,14 @@ async fn context(
         .pointer("/data/medications/update")
         .and_then(Value::as_bool)
         .ok_or_else(|| error(StatusCode::BAD_GATEWAY))?;
+    let notifications_visible = api.notifications_visible(household_id).await;
     Ok(Context {
         api,
         household_id,
         household_name,
         medication,
         can_manage,
+        notifications_visible,
     })
 }
 
@@ -222,6 +225,7 @@ fn render_form(
         draft,
         first_option,
         errors,
+        notifications_visible: context.notifications_visible,
     });
     match body {
         Ok(body) => page_status(body, context.api.cookie, status),
@@ -278,6 +282,7 @@ async fn index(
             .collect(),
         can_manage: context.can_manage,
         notice,
+        notifications_visible: context.notifications_visible,
     });
     match body {
         Ok(body) => page_status(body, context.api.cookie, StatusCode::OK),

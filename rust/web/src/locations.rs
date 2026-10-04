@@ -24,6 +24,7 @@ pub struct LocationsPage {
     pub locale: Locale,
     pub can_create: bool,
     pub locations: Vec<LocationRow>,
+    pub notifications_visible: bool,
 }
 
 pub struct LocationFormPage {
@@ -35,6 +36,7 @@ pub struct LocationFormPage {
     pub title: String,
     pub draft: LocationDraft,
     pub errors: HashMap<String, Vec<String>>,
+    pub notifications_visible: bool,
 }
 
 pub struct LocationMedication {
@@ -52,6 +54,7 @@ pub struct LocationDetailPage {
     pub can_update: bool,
     pub medications: Vec<LocationMedication>,
     pub notice: String,
+    pub notifications_visible: bool,
 }
 
 pub fn render_location_list(page: LocationsPage) -> Result<String, TranslationError> {
@@ -80,6 +83,7 @@ pub fn render_location_list(page: LocationsPage) -> Result<String, TranslationEr
         &page.slug,
         page.locale.as_str(),
         body,
+        page.notifications_visible,
     ))
 }
 
@@ -151,6 +155,7 @@ pub fn render_location_form(page: LocationFormPage) -> Result<String, Translatio
         &page.slug,
         page.locale.as_str(),
         body,
+        page.notifications_visible,
     ))
 }
 
@@ -191,6 +196,7 @@ pub fn render_location_detail(page: LocationDetailPage) -> Result<String, Transl
         &page.slug,
         page.locale.as_str(),
         body,
+        page.notifications_visible,
     ))
 }
 

@@ -79,6 +79,7 @@ async fn index(
         },
         Err(error) => return error.response(),
     };
+    let notifications_visible = api.notifications_visible(household_id).await;
     location_page(
         render_location_list(LocationsPage {
             household_name,
@@ -86,6 +87,7 @@ async fn index(
             locale: api.locale,
             can_create,
             locations,
+            notifications_visible,
         }),
         api.cookie,
         StatusCode::OK,
@@ -157,6 +159,7 @@ async fn show(
         Ok(value) => value,
         Err(error) => return error.response(),
     };
+    let notifications_visible = api.notifications_visible(household_id).await;
     location_page(
         render_location_detail(LocationDetailPage {
             household_name,
@@ -166,6 +169,7 @@ async fn show(
             can_update,
             medications,
             notice: String::new(),
+            notifications_visible,
         }),
         api.cookie,
         StatusCode::OK,
@@ -238,30 +242,36 @@ async fn form(state: AppState, slug: String, id: Option<String>, headers: Header
     }
     draft_response(
         &mut api,
-        household_name,
-        slug,
-        id,
-        draft,
-        HashMap::new(),
-        StatusCode::OK,
+        household_id,
+        FormResponse {
+            household_name,
+            slug,
+            id,
+            draft,
+            errors: HashMap::new(),
+            status: StatusCode::OK,
+        },
     )
+    .await
 }
 
-fn draft_response(
-    api: &mut WebApi,
+struct FormResponse {
     household_name: String,
     slug: String,
     id: Option<String>,
     draft: LocationDraft,
     errors: HashMap<String, Vec<String>>,
     status: StatusCode,
-) -> Response {
-    let prefix = format!("/households/{}/locations", path_segment(&slug));
-    let action = id
+}
+
+async fn draft_response(api: &mut WebApi, household_id: i64, form: FormResponse) -> Response {
+    let prefix = format!("/households/{}/locations", path_segment(&form.slug));
+    let action = form
+        .id
         .as_ref()
         .map(|id| format!("{prefix}/{id}/edit"))
         .unwrap_or(prefix);
-    let key = if id.is_some() {
+    let key = if form.id.is_some() {
         "locations.show.edit_location"
     } else {
         "forms.locations.new_title"
@@ -270,19 +280,21 @@ fn draft_response(
         Ok(value) => value,
         Err(_) => return failure(StatusCode::INTERNAL_SERVER_ERROR),
     };
+    let notifications_visible = api.notifications_visible(household_id).await;
     location_page(
         render_location_form(LocationFormPage {
-            household_name,
-            slug,
+            household_name: form.household_name,
+            slug: form.slug,
             locale: api.locale,
             csrf: api.csrf.clone(),
             action,
             title,
-            draft,
-            errors,
+            draft: form.draft,
+            errors: form.errors,
+            notifications_visible,
         }),
         api.cookie.take(),
-        status,
+        form.status,
     )
 }
 
@@ -422,11 +434,15 @@ async fn save(
     }
     draft_response(
         &mut api,
-        household_name,
-        slug,
-        id,
-        draft,
-        errors,
-        reply.status,
+        household_id,
+        FormResponse {
+            household_name,
+            slug,
+            id,
+            draft,
+            errors,
+            status: reply.status,
+        },
     )
+    .await
 }
