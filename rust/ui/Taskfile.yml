@@ -1,0 +1,97 @@
+version: '3'
+
+tasks:
+  test:
+    dir: "{{.TASKFILE_DIR}}"
+    cmds:
+      - cargo test --locked
+  lock:
+    dir: "{{.TASKFILE_DIR}}"
+    cmds:
+      - cargo generate-lockfile
+  fmt:
+    dir: "{{.TASKFILE_DIR}}"
+    cmds:
+      - cargo fmt --check
+  format:
+    dir: "{{.TASKFILE_DIR}}"
+    cmds:
+      - cargo fmt
+  lint:
+    dir: "{{.TASKFILE_DIR}}"
+    cmds:
+      - cargo clippy --locked --all-targets -- -D warnings
+  package:
+    dir: "{{.TASKFILE_DIR}}"
+    cmds:
+      - cargo package --locked --allow-dirty
+  check:hydrate:
+    dir: "{{.TASKFILE_DIR}}"
+    cmds:
+      - cargo check --locked --lib --target wasm32-unknown-unknown --no-default-features --features hydrate
+  deps:
+    dir: "{{.TASKFILE_DIR}}"
+    cmds:
+      - npm ci {{.NPM_FLAGS}}
+  fixtures:
+    dir: "{{.TASKFILE_DIR}}"
+    cmds:
+      - cargo run --locked --example consumer -- .test-output
+  test:browser:
+    dir: "{{.TASKFILE_DIR}}"
+    deps: [fixtures]
+    cmds:
+      - node --test --test-concurrency=1 tests/browser.test.mjs
+
+  hydrate:lock:
+    dir: "{{.TASKFILE_DIR}}/examples/hydrated"
+    cmds:
+      - cargo generate-lockfile
+  hydrate:build:
+    dir: "{{.TASKFILE_DIR}}/examples/hydrated"
+    vars:
+      BINDGEN: '{{.BINDGEN | default "../../.tools/bin/wasm-bindgen"}}'
+    cmds:
+      - cargo build --locked --release --target wasm32-unknown-unknown
+      - '{{.BINDGEN}} --target web --out-dir ../../.test-output/pkg target/wasm32-unknown-unknown/release/portable_ui_hydrated_consumer.wasm'
+  hydrate:format:
+    dir: "{{.TASKFILE_DIR}}/examples/hydrated"
+    cmds:
+      - cargo fmt
+  hydrate:fmt:
+    dir: "{{.TASKFILE_DIR}}/examples/hydrated"
+    cmds:
+      - cargo fmt --check
+
+  test:hydrated:
+    dir: "{{.TASKFILE_DIR}}"
+    deps: [fixtures]
+    env:
+      UI_MODE: hydrate
+    cmds:
+      - node --test --test-concurrency=1 tests/browser.test.mjs
+
+  hydrate:tool:
+    dir: "{{.TASKFILE_DIR}}"
+    status:
+      - .tools/bin/wasm-bindgen --version | rg '^wasm-bindgen 0.2.129$'
+    cmds:
+      - cargo install --locked --root .tools wasm-bindgen-cli --version 0.2.129
+  browser:install:
+    dir: "{{.TASKFILE_DIR}}"
+    cmds:
+      - npx playwright install {{.INSTALL_DEPS}} chromium
+  ci:
+    dir: "{{.TASKFILE_DIR}}"
+    cmds:
+      - task deps
+      - task fmt
+      - task hydrate:fmt
+      - task test
+      - task lint
+      - task package
+      - task browser:install INSTALL_DEPS=--with-deps
+      - task test:browser
+      - task hydrate:tool
+      - task hydrate:build
+      - task test:hydrated

@@ -4,6 +4,7 @@ tasks:
   rust-port:
     desc: Check Rust dashboard UI, API, web and contract-test compilation
     cmds:
+      - task -t rust/ui/Taskfile.yml ci
       - task -d rust/ui-preview fmt
       - task -d rust/ui-preview test
       - task -d rust/ui-preview lint

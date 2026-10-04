@@ -41,7 +41,11 @@ pub(super) async fn profile_script() -> Response {
             (header::CONTENT_TYPE, "text/javascript; charset=utf-8"),
             (header::CACHE_CONTROL, "public, max-age=3600"),
         ],
-        include_str!("../../../web/src/assets/profile.js"),
+        format!(
+            "{}\n{}",
+            medtracker_web::UI_BROWSER_RUNTIME,
+            include_str!("../../../web/src/assets/profile.js")
+        ),
     )
         .into_response()
 }

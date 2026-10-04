@@ -1,32 +1,11 @@
-function syncModalScroll() {
-  document.documentElement.classList.toggle("profile-modal-open", Boolean(document.querySelector(".profile-dialog:modal")));
-}
-
-function openProfileDialog(dialog, trigger) {
-  if (dialog.open) return;
-  dialog.showModal();
-  syncModalScroll();
-  if (trigger) dialog.addEventListener("close", () => trigger.focus(), { once: true });
-}
-
-document.addEventListener("close", syncModalScroll, true);
-document.addEventListener("click", event => {
-  const dialog = event.target;
-  if (!(dialog instanceof HTMLDialogElement) || !dialog.matches(".profile-dialog:modal")) return;
-  const box = dialog.getBoundingClientRect();
-  if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) dialog.close();
-});
-
-document.addEventListener("click", event => {
-  const trigger = event.target.closest("[data-profile-dialog]");
-  if (trigger) {
-    const dialog = document.getElementById(trigger.dataset.profileDialog);
-    if (!dialog) return;
-    openProfileDialog(dialog, trigger);
-    return;
-  }
-  const close = event.target.closest("[data-profile-close]");
-  if (close) document.getElementById(close.dataset.profileClose)?.close();
+window.DamacusUI.init(document, {
+  modalSelector: ".profile-dialog",
+  triggerAttribute: "data-profile-dialog",
+  closeAttribute: "data-profile-close",
+  tabsSelector: ".profile-tabs",
+  navigation: true,
+  focusStorageKey: "profile-tab-focus",
+  scrollLockClass: "profile-modal-open"
 });
 
 document.addEventListener("error", event => {
@@ -34,35 +13,6 @@ document.addEventListener("error", event => {
     event.target.remove();
   }
 }, true);
-
-document.addEventListener("keydown", event => {
-  const tab = event.target.closest('[role="tab"]');
-  if (!tab || !tab.closest('[role="tablist"]')) return;
-  const tabs = [...tab.parentElement.querySelectorAll('[role="tab"]')];
-  const current = tabs.indexOf(tab);
-  let next;
-  if (event.key === "ArrowRight") next = tabs[(current + 1) % tabs.length];
-  if (event.key === "ArrowLeft") next = tabs[(current + tabs.length - 1) % tabs.length];
-  if (event.key === "Home") next = tabs[0];
-  if (event.key === "End") next = tabs[tabs.length - 1];
-  if (!next) return;
-  event.preventDefault();
-  sessionStorage.setItem("profile-tab-focus", next.id);
-  window.location.assign(next.href);
-});
-
-const focusedTab = sessionStorage.getItem("profile-tab-focus");
-if (focusedTab) {
-  sessionStorage.removeItem("profile-tab-focus");
-  const tab = document.getElementById(focusedTab);
-  if (tab?.getAttribute("aria-selected") === "true") tab.focus();
-}
-
-const invalidDialog = document.querySelector(".profile-dialog[open]");
-if (invalidDialog) {
-  invalidDialog.removeAttribute("open");
-  openProfileDialog(invalidDialog);
-}
 
 const appearanceKey = "med-tracker-appearance";
 const themeKey = "med-tracker-theme";

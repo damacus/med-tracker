@@ -214,6 +214,7 @@ tasks:
       - rsync -a --exclude target/ rust/api/ '{{ .CONTRACT_SOURCE_DIR }}/rust/api/'
       - rsync -a --exclude target/ rust/vendor/ '{{ .CONTRACT_SOURCE_DIR }}/rust/vendor/'
       - rsync -a --exclude target/ rust/web/ '{{ .CONTRACT_SOURCE_DIR }}/rust/web/'
+      - rsync -a --exclude target/ --exclude node_modules/ --exclude .test-output/ --exclude .tools/ rust/ui/ '{{ .CONTRACT_SOURCE_DIR }}/rust/ui/'
       - rsync -a --exclude target/ --exclude node_modules/ rust/ui-preview/ '{{ .CONTRACT_SOURCE_DIR }}/rust/ui-preview/'
       - rsync -a --exclude target/ rust/contract-tests/ '{{ .CONTRACT_SOURCE_DIR }}/rust/contract-tests/'
       - cp config/ai_medication_sources.yml config/nhs_dmd_curated_products.yml '{{ .CONTRACT_SOURCE_DIR }}/config/'

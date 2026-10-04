@@ -1388,6 +1388,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "damacus-web-ui"
+version = "0.1.0"
+dependencies = [
+ "leptos",
+]
+
+[[package]]
 name = "darling"
 version = "0.20.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3536,6 +3543,7 @@ dependencies = [
  "axum",
  "chrono",
  "chrono-tz",
+ "damacus-web-ui",
  "leptodon",
  "leptos",
  "medtracker-ui-preview",

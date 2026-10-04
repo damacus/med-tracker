@@ -204,6 +204,8 @@ jobs:
           workspaces: |
             rust/api
             rust/web
+            rust/ui
+            rust/ui/examples/hydrated
             rust/ui-preview
             rust/contract-tests
       - run: task ci:rust-port

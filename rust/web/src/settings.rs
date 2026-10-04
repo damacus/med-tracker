@@ -1,5 +1,6 @@
 use crate::household::path_segment;
 use crate::household_i18n::{Locale, Text, TranslationError};
+use damacus_web_ui::{Button, ButtonType};
 use leptos::prelude::*;
 use std::collections::HashMap;
 
@@ -200,7 +201,7 @@ pub fn render_settings(page: SettingsPage) -> Result<String, TranslationError> {
                 })}
             </div>
             {(!page.can_edit).then(|| view! { <p>{read_only}</p> })}
-            {page.can_edit.then(|| view! { <div class="household-actions"><button type="button" class="profile-secondary" data-profile-close="profile-time-zone-modal">{"Close"}</button><button class="med-primary" type="submit">{save}</button></div> })}
+            {page.can_edit.then(|| view! { <div class="household-actions"><Button class="profile-secondary" attr:data-profile-close="profile-time-zone-modal">{"Close"}</Button><Button class="med-primary" kind=ButtonType::Submit>{save}</Button></div> })}
         </form>
         </dialog>
         <dialog id="profile-avatar-modal" class="profile-dialog profile-sheet" data-testid="profile-avatar-sheet" aria-labelledby="profile-avatar-heading">

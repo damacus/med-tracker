@@ -1,6 +1,8 @@
 use axum::{Router, http::header, response::Html, routing::get};
 use leptos::prelude::*;
 
+pub use damacus_web_ui::BROWSER_RUNTIME as UI_BROWSER_RUNTIME;
+
 mod auth;
 mod document;
 mod medication;

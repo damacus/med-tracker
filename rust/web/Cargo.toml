@@ -12,3 +12,4 @@ leptodon = { git = "https://github.com/openanalytics/leptodon.git", rev = "41276
 serde_yaml = "0.9"
 medtracker-ui-preview = { path = "../ui-preview" }
 tokio = { version = "1", features = ["macros", "net", "rt-multi-thread"] }
+damacus-web-ui = { path = "../ui", version = "0.1.0" }
