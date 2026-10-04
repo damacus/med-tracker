@@ -2,7 +2,7 @@ use super::response::{error, PageError};
 use super::time::dashboard_time;
 use super::{field, numeric};
 use crate::{api_router, oauth, restricted_role, AppState};
-use axum::body::{to_bytes, Body};
+use axum::body::{to_bytes, Body, Bytes};
 use axum::http::{header, HeaderMap, HeaderValue, Method, Request, StatusCode};
 use chrono::{DateTime, Datelike, Duration, Utc};
 use medtracker_web::household_i18n::Locale;
@@ -13,6 +13,21 @@ use std::collections::{HashMap, HashSet};
 use tower::ServiceExt;
 
 const BODY_LIMIT: usize = 1_048_576;
+pub(super) const PDF_BODY_LIMIT: usize = 16 * 1_048_576;
+
+pub(super) async fn read_response_body(body: Body, limit: usize) -> Result<Bytes, PageError> {
+    to_bytes(body, limit)
+        .await
+        .map_err(|_| error(StatusCode::BAD_GATEWAY))
+}
+
+pub(super) fn response_body_limit(status: StatusCode, success_body_limit: usize) -> usize {
+    if status.is_success() {
+        success_body_limit
+    } else {
+        BODY_LIMIT
+    }
+}
 
 pub(super) fn decode_api_body(status: StatusCode, bytes: &[u8]) -> Result<Value, PageError> {
     if bytes.is_empty() && (status == StatusCode::NO_CONTENT || !status.is_success()) {
@@ -89,9 +104,10 @@ impl PageScan {
     }
 }
 
-enum BrowserWriteIntent {
+enum BrowserRequestIntent {
     Scalar(crate::medication_management::ScalarAdjustment),
     Pause(crate::pause_lifecycle::BrowserSourceGuard),
+    Download,
 }
 
 pub(super) fn html_cookie_only(headers: &HeaderMap) -> bool {
@@ -102,6 +118,26 @@ pub(super) struct ApiReply {
     pub(super) status: StatusCode,
     pub(super) value: Value,
     pub(super) etag: Option<String>,
+}
+
+pub(super) struct BinaryReply {
+    pub(super) status: StatusCode,
+    pub(super) headers: HeaderMap,
+    pub(super) body: Bytes,
+}
+
+pub(super) fn download_headers(upstream: &HeaderMap) -> HeaderMap {
+    let mut forwarded = HeaderMap::new();
+    for name in [
+        header::CONTENT_TYPE,
+        header::CONTENT_DISPOSITION,
+        header::HeaderName::from_static("x-request-id"),
+    ] {
+        if let Some(value) = upstream.get(&name) {
+            forwarded.insert(name, value.clone());
+        }
+    }
+    forwarded
 }
 
 pub(super) struct WebApi {
@@ -201,7 +237,7 @@ impl WebApi {
             Some(body),
             Some(csrf),
             &HeaderMap::new(),
-            Some(BrowserWriteIntent::Scalar(
+            Some(BrowserRequestIntent::Scalar(
                 crate::medication_management::ScalarAdjustment { original_etag },
             )),
         )
@@ -222,9 +258,30 @@ impl WebApi {
             Some(body),
             Some(&csrf),
             extra,
-            Some(BrowserWriteIntent::Pause(guard)),
+            Some(BrowserRequestIntent::Pause(guard)),
         )
         .await
+    }
+
+    pub(super) async fn download(&mut self, path: &str) -> Result<BinaryReply, PageError> {
+        let (status, headers, body) = self
+            .send(
+                Method::GET,
+                path,
+                None,
+                None,
+                &HeaderMap::new(),
+                Some(BrowserRequestIntent::Download),
+            )
+            .await?;
+        if status == StatusCode::UNAUTHORIZED {
+            return Err(PageError::Login);
+        }
+        Ok(BinaryReply {
+            status,
+            headers,
+            body,
+        })
     }
 
     async fn call_inner(
@@ -234,8 +291,36 @@ impl WebApi {
         body: Option<Value>,
         csrf: Option<&str>,
         extra: &HeaderMap,
-        intent: Option<BrowserWriteIntent>,
+        intent: Option<BrowserRequestIntent>,
     ) -> Result<ApiReply, PageError> {
+        let (status, headers, bytes) = self.send(method, path, body, csrf, extra, intent).await?;
+        let etag = headers
+            .get(header::ETAG)
+            .and_then(|value| value.to_str().ok())
+            .map(str::to_owned);
+        let value = decode_api_body(status, &bytes)?;
+        Ok(ApiReply {
+            status,
+            value,
+            etag,
+        })
+    }
+
+    async fn send(
+        &mut self,
+        method: Method,
+        path: &str,
+        body: Option<Value>,
+        csrf: Option<&str>,
+        extra: &HeaderMap,
+        intent: Option<BrowserRequestIntent>,
+    ) -> Result<(StatusCode, HeaderMap, Bytes), PageError> {
+        let success_body_limit = if matches!(intent.as_ref(), Some(BrowserRequestIntent::Download))
+        {
+            PDF_BODY_LIMIT
+        } else {
+            BODY_LIMIT
+        };
         let mut request = Request::builder().method(method).uri(path);
         for name in [
             header::IF_MATCH,
@@ -268,12 +353,13 @@ impl WebApi {
             .body(Body::from(encoded))
             .map_err(|_| error(StatusCode::INTERNAL_SERVER_ERROR))?;
         match intent {
-            Some(BrowserWriteIntent::Scalar(scalar)) => {
+            Some(BrowserRequestIntent::Scalar(scalar)) => {
                 request.extensions_mut().insert(scalar);
             }
-            Some(BrowserWriteIntent::Pause(guard)) => {
+            Some(BrowserRequestIntent::Pause(guard)) => {
                 request.extensions_mut().insert(guard);
             }
+            Some(BrowserRequestIntent::Download) => {}
             None => {}
         }
         let response = api_router(self.state.clone())
@@ -284,20 +370,10 @@ impl WebApi {
             self.cookie = Some(cookie.clone());
         }
         let status = response.status();
-        let etag = response
-            .headers()
-            .get(header::ETAG)
-            .and_then(|value| value.to_str().ok())
-            .map(str::to_owned);
-        let bytes = to_bytes(response.into_body(), BODY_LIMIT)
-            .await
-            .map_err(|_| error(StatusCode::BAD_GATEWAY))?;
-        let value = decode_api_body(status, &bytes)?;
-        Ok(ApiReply {
-            status,
-            value,
-            etag,
-        })
+        let headers = response.headers().clone();
+        let limit = response_body_limit(status, success_body_limit);
+        let bytes = read_response_body(response.into_body(), limit).await?;
+        Ok((status, headers, bytes))
     }
 
     pub(super) async fn get(&mut self, path: &str) -> Result<Value, PageError> {

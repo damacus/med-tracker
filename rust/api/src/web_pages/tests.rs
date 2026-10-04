@@ -1,8 +1,62 @@
-use super::api_client::html_cookie_only;
+use super::api_client::{download_headers, html_cookie_only};
+use super::reports::{download_error_key, filters};
 use super::response::page_status;
 use super::time::{dashboard_now, is_today_in_zone};
 use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
 use chrono::NaiveDate;
+use std::collections::HashMap;
+
+#[test]
+fn report_defaults_ignore_the_dashboard_contract_clock() {
+    if std::env::var_os("REPORT_CLOCK_CHILD").is_some() {
+        let draft = super::reports::default_draft();
+        assert_eq!(draft.end_date, crate::reports::today().to_string());
+        return;
+    }
+    let result = std::process::Command::new(std::env::current_exe().unwrap())
+        .args([
+            "--exact",
+            "web_pages::tests::report_defaults_ignore_the_dashboard_contract_clock",
+        ])
+        .env("REPORT_CLOCK_CHILD", "1")
+        .env("CONTRACT_PROJECT", "report-clock-test")
+        .env("CONTRACT_DASHBOARD_NOW", "2001-02-03T12:00:00Z")
+        .env("TZ", "UTC")
+        .output()
+        .unwrap();
+    assert!(
+        result.status.success(),
+        "{}",
+        String::from_utf8_lossy(&result.stdout)
+    );
+}
+#[tokio::test]
+async fn report_download_accepts_a_pdf_larger_than_the_json_response_limit() {
+    use super::api_client::{read_response_body, response_body_limit, PDF_BODY_LIMIT};
+    use axum::body::Body;
+
+    let pdf = [b"%PDF-".as_slice(), &vec![b'x'; 1_048_576]].concat();
+    let bytes = read_response_body(Body::from(pdf.clone()), PDF_BODY_LIMIT)
+        .await
+        .expect("valid large report PDF");
+    assert_eq!(bytes.as_ref(), pdf);
+    assert!(read_response_body(Body::from(pdf), 1_048_576)
+        .await
+        .is_err());
+    assert!(
+        read_response_body(Body::from(vec![b'x'; PDF_BODY_LIMIT + 1]), PDF_BODY_LIMIT)
+            .await
+            .is_err()
+    );
+    assert_eq!(
+        response_body_limit(StatusCode::OK, PDF_BODY_LIMIT),
+        PDF_BODY_LIMIT
+    );
+    assert_eq!(
+        response_body_limit(StatusCode::UNPROCESSABLE_ENTITY, PDF_BODY_LIMIT),
+        1_048_576
+    );
+}
 
 #[test]
 fn pagination_rejects_duplicate_ids_and_changing_totals() {
@@ -100,4 +154,143 @@ fn html_cookie_session_rejects_any_explicit_authorization() {
         HeaderValue::from_static("Bearer fake"),
     );
     assert!(!html_cookie_only(&headers));
+}
+
+fn report_query(pairs: &[(&str, &str)]) -> HashMap<String, String> {
+    pairs
+        .iter()
+        .map(|(key, value)| ((*key).to_owned(), (*value).to_owned()))
+        .collect()
+}
+
+#[test]
+fn report_filters_default_to_today_and_twelve_months_earlier() {
+    let today = NaiveDate::from_ymd_opt(2026, 2, 26).unwrap();
+    let accepted = filters(&report_query(&[("person_id", "7")]), today).expect("defaults");
+    assert_eq!(accepted.person_id, "7");
+    assert_eq!(accepted.end.to_string(), "2026-02-26");
+    assert_eq!(accepted.start.to_string(), "2025-02-26");
+    assert!(!accepted.include_takes);
+    let explicit = filters(
+        &report_query(&[
+            ("person_id", "9"),
+            ("start_date", "2026-02-19"),
+            ("end_date", "2026-02-26"),
+            ("include_medication_takes", "1"),
+        ]),
+        today,
+    )
+    .expect("explicit filters");
+    assert_eq!(explicit.person_id, "9");
+    assert_eq!(explicit.start.to_string(), "2026-02-19");
+    assert_eq!(explicit.end.to_string(), "2026-02-26");
+    assert!(explicit.include_takes);
+    let cleared = filters(
+        &report_query(&[("person_id", "7"), ("include_medication_takes", "0")]),
+        today,
+    )
+    .expect("unchecked takes");
+    assert!(!cleared.include_takes);
+}
+
+#[test]
+fn report_filters_default_start_handles_leap_day() {
+    let leap = NaiveDate::from_ymd_opt(2024, 2, 29).unwrap();
+    let accepted = filters(&report_query(&[("person_id", "7")]), leap).expect("leap day");
+    assert_eq!(accepted.end.to_string(), "2024-02-29");
+    assert_eq!(accepted.start.to_string(), "2023-02-28");
+    let leap_span = filters(
+        &report_query(&[
+            ("person_id", "7"),
+            ("start_date", "2023-02-28"),
+            ("end_date", "2024-02-29"),
+        ]),
+        NaiveDate::from_ymd_opt(2026, 2, 26).unwrap(),
+    )
+    .expect("366-day span including a leap day");
+    assert_eq!(
+        (leap_span.end - leap_span.start).num_days(),
+        366,
+        "leap-day span is allowed at the 366-day boundary"
+    );
+}
+
+#[test]
+fn report_filters_reject_malformed_reversed_oversized_and_unknown_values() {
+    let today = NaiveDate::from_ymd_opt(2026, 2, 26).unwrap();
+    for pairs in [
+        &[][..],
+        &[("person_id", "")][..],
+        &[("person_id", "7"), ("start_date", "not-a-date")][..],
+        &[("person_id", "7"), ("start_date", "2026-2-9")][..],
+        &[("person_id", "7"), ("end_date", "2026-13-40")][..],
+        &[
+            ("person_id", "7"),
+            ("start_date", "2026-02-27"),
+            ("end_date", "2026-02-26"),
+        ][..],
+        &[
+            ("person_id", "7"),
+            ("start_date", "2023-02-27"),
+            ("end_date", "2024-02-29"),
+        ][..],
+        &[("person_id", "7"), ("include_medication_takes", "true")][..],
+        &[("person_id", "7"), ("include_medication_takes", "2")][..],
+    ] {
+        assert!(filters(&report_query(pairs), today).is_err(), "{pairs:?}");
+    }
+    let errors = filters(&report_query(&[]), today).unwrap_err();
+    assert!(errors.iter().any(|(field, _)| field == "person_id"));
+    let errors = filters(
+        &report_query(&[
+            ("person_id", "7"),
+            ("start_date", "2026-02-27"),
+            ("end_date", "2026-02-26"),
+        ]),
+        today,
+    )
+    .unwrap_err();
+    assert!(errors.iter().any(|(field, _)| field == "end_date"));
+}
+
+#[test]
+fn download_headers_only_preserve_pdf_type_attachment_and_request_id() {
+    let mut upstream = HeaderMap::new();
+    upstream.insert(
+        header::CONTENT_TYPE,
+        HeaderValue::from_static("application/pdf"),
+    );
+    upstream.insert(
+        header::CONTENT_DISPOSITION,
+        HeaderValue::from_static("attachment; filename=\"report.pdf\""),
+    );
+    upstream.insert("x-request-id", HeaderValue::from_static("request-1"));
+    upstream.insert(header::SET_COOKIE, HeaderValue::from_static("mt_session=x"));
+    upstream.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
+    upstream.insert("x-internal-trace", HeaderValue::from_static("private"));
+    let forwarded = download_headers(&upstream);
+    assert_eq!(forwarded[header::CONTENT_TYPE], "application/pdf");
+    assert_eq!(
+        forwarded[header::CONTENT_DISPOSITION],
+        "attachment; filename=\"report.pdf\""
+    );
+    assert_eq!(forwarded["x-request-id"], "request-1");
+    assert!(!forwarded.contains_key(header::SET_COOKIE));
+    assert!(!forwarded.contains_key(header::CACHE_CONTROL));
+    assert!(!forwarded.contains_key("x-internal-trace"));
+}
+
+#[test]
+fn download_error_keys_map_report_api_statuses_neutrally() {
+    assert_eq!(download_error_key(StatusCode::FORBIDDEN), "forbidden");
+    assert_eq!(download_error_key(StatusCode::NOT_FOUND), "not_found");
+    assert_eq!(
+        download_error_key(StatusCode::SERVICE_UNAVAILABLE),
+        "unavailable"
+    );
+    assert_eq!(
+        download_error_key(StatusCode::UNPROCESSABLE_ENTITY),
+        "failed"
+    );
+    assert_eq!(download_error_key(StatusCode::BAD_GATEWAY), "failed");
 }

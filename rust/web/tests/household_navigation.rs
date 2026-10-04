@@ -41,7 +41,7 @@ fn inventory_navigation_reaches_people_locations_and_only_permitted_creation() {
             can_create,
             Locale::En,
         );
-        for destination in ["people", "locations"] {
+        for destination in ["people", "locations", "reports"] {
             assert!(html.contains(&format!("href=\"/households/test/{destination}\"")));
         }
         assert_eq!(
@@ -58,7 +58,7 @@ fn inventory_navigation_reaches_people_locations_and_only_permitted_creation() {
 fn medication_detail_navigation_reaches_people_locations_and_only_permitted_editing() {
     for can_edit in [false, true] {
         let html = render_medication_detail_with_management(detail(), can_edit, Locale::En);
-        for destination in ["people", "locations"] {
+        for destination in ["people", "locations", "reports"] {
             assert!(html.contains(&format!("href=\"/households/test/{destination}\"")));
         }
         assert_eq!(
