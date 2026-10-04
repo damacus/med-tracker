@@ -227,5 +227,6 @@ pub(super) fn document(
         &page.slug,
         page.locale.as_str(),
         body,
+        page.notifications_visible,
     ))
 }

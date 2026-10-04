@@ -10,6 +10,7 @@ pub(super) struct Context {
     pub(super) can_manage: bool,
     pub(super) medications: Vec<Value>,
     pub(super) options: Vec<Value>,
+    pub(super) notifications_visible: bool,
 }
 
 pub(super) async fn load(
@@ -53,6 +54,7 @@ pub(super) async fn load_read(
     let options = api
         .collection(&format!("/api/v1/households/{household_id}/dosage_options"))
         .await?;
+    let notifications_visible = api.notifications_visible(household_id).await;
     Ok(Context {
         api,
         household_id,
@@ -62,6 +64,7 @@ pub(super) async fn load_read(
         can_manage,
         medications,
         options,
+        notifications_visible,
     })
 }
 

@@ -7,6 +7,7 @@ pub fn household_document(
     slug: &str,
     locale: &str,
     body: String,
+    notifications_visible: bool,
 ) -> String {
     let locale = Locale::resolve(Some(locale), None);
     let text = Text::new(locale);
@@ -17,11 +18,14 @@ pub fn household_document(
         ("people", "layouts.sidebar.people"),
         ("locations", "layouts.sidebar.locations"),
         ("profile", "profiles.sections.profile.title"),
+        ("reports", "layouts.sidebar.reports"),
         ("settings/notifications", "notifications.title"),
     ];
     let navigation = view! {
         <nav class="med-sidebar" aria-label=text.get("layouts.mobile_rail.primary_navigation", &[]).unwrap_or_else(|_| "Primary navigation".into())>
-            {nav.into_iter().map(|(path, key)| {
+            {nav.into_iter().filter(|(path, _)| {
+                notifications_visible || *path != "settings/notifications"
+            }).map(|(path, key)| {
                 let label = text.get(key, &[]).unwrap_or_else(|_| path.to_owned());
                 view! { <a href=format!("{prefix}/{path}")>{label}</a> }
             }).collect_view()}

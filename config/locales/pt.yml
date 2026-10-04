@@ -1669,6 +1669,31 @@ pt:
     updated: Definições de notificação guardadas.
     update_failed: Falha ao guardar as definições de notificação.
   reports:
+    browser:
+      title: Relatórios
+      intro: Transfira um PDF do historial de saúde de uma pessoa num intervalo
+        de datas escolhido.
+      person_label: Pessoa
+      person_prompt: Selecione uma pessoa
+      start_date_label: Data de início
+      end_date_label: Data de fim
+      include_medication_takes: Incluir o registo de administrações de
+        medicamentos
+      download: Transferir PDF
+      no_people: Não gere ninguém cujo historial de saúde possa ser transferido.
+      errors:
+        person_required: Selecione uma pessoa para o relatório.
+        start_date_invalid: Introduza uma data de início no formato AAAA-MM-DD.
+        end_date_invalid: Introduza uma data de fim no formato AAAA-MM-DD.
+        date_order: A data de fim deve ser igual ou posterior à data de início.
+        date_range: O intervalo de datas do relatório não pode exceder 366 dias.
+        takes_invalid: A opção do registo de administrações de medicamentos é
+          inválida.
+        forbidden: Não tem permissão para transferir este relatório.
+        not_found: A pessoa ou o agregado não foi encontrada.
+        unavailable: O serviço de relatórios está temporariamente indisponível.
+          Tente novamente mais tarde.
+        failed: Não foi possível gerar o relatório. Tente novamente.
     invalid_date: Foi fornecido um formato de data inválido.
     end_before_start: A data de fim deve ser igual ou posterior à data de início.
     date_range_too_large: O intervalo de datas do relatorio nao pode exceder 180 dias.

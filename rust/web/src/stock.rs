@@ -130,6 +130,7 @@ pub struct StockPage {
     pub action: Option<String>,
     pub draft: StockDraft,
     pub errors: BTreeMap<String, Vec<String>>,
+    pub notifications_visible: bool,
 }
 
 pub fn render_stock(page: StockPage) -> Result<String, TranslationError> {
@@ -326,5 +327,6 @@ pub fn render_stock(page: StockPage) -> Result<String, TranslationError> {
         &page.slug,
         page.locale.as_str(),
         body,
+        page.notifications_visible,
     ))
 }

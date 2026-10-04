@@ -113,7 +113,7 @@ pub fn render_medication_list_with_stock(
         <main class="med-app">
             <header class="med-topbar"><a class="med-brand" href=format!("{prefix}/dashboard")>"MedTracker"</a><span>{household_name.to_owned()}</span></header>
             <div class="med-layout">
-                <nav class="med-sidebar" aria-label=household_name.to_owned()><a href=format!("{prefix}/dashboard")>{dashboard_label}</a><a aria-current="page" href=format!("{prefix}/medications")>{inventory_label.clone()}</a><a href=format!("{prefix}/people")>{people_label}</a><a href=format!("{prefix}/locations")>{locations_label}</a></nav>
+                <nav class="med-sidebar" aria-label=household_name.to_owned()><a href=format!("{prefix}/dashboard")>{dashboard_label}</a><a aria-current="page" href=format!("{prefix}/medications")>{inventory_label.clone()}</a><a href=format!("{prefix}/people")>{people_label}</a><a href=format!("{prefix}/locations")>{locations_label}</a><a href=format!("{prefix}/reports")>{text.get("layouts.sidebar.reports", &[]).expect("catalogue key")}</a></nav>
                 <section class="med-content">
                     <p class="med-eyebrow">{inventory_label}</p>
                     <h1>{title.clone()}</h1>
@@ -329,7 +329,7 @@ pub fn render_medication_detail_with_stock_inventory(
         <main class="med-app">
             <header class="med-topbar"><a class="med-brand" href=format!("{prefix}/dashboard")>"MedTracker"</a><span>{household_name.to_owned()}</span></header>
             <div class="med-layout">
-                <nav class="med-sidebar" aria-label=household_name.to_owned()><a href=format!("{prefix}/dashboard")>{dashboard_label}</a><a href=format!("{prefix}/medications")>{inventory_label}</a><a href=format!("{prefix}/people")>{people_label}</a><a href=format!("{prefix}/locations")>{locations_label}</a></nav>
+                <nav class="med-sidebar" aria-label=household_name.to_owned()><a href=format!("{prefix}/dashboard")>{dashboard_label}</a><a href=format!("{prefix}/medications")>{inventory_label}</a><a href=format!("{prefix}/people")>{people_label}</a><a href=format!("{prefix}/locations")>{locations_label}</a><a href=format!("{prefix}/reports")>{text.get("layouts.sidebar.reports", &[]).expect("catalogue key")}</a></nav>
                 <section class="med-content">
                     <p class="med-eyebrow">{profile_label}</p>
                     <h1>{medication.name.clone()}</h1>

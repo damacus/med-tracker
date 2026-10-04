@@ -9,6 +9,10 @@ function cleanup_contract_run
             echo "Contract project cleanup blocked: ownership marker missing at $contract_run_dir/owner for $contract_project; run directory retained" >&2
             return 1
         end
+        if set -q contract_api_image; and test -d "$contract_run_dir/storage"
+            rtk task api:contract-storage-release CONTRACT_PROJECT=$contract_project CONTRACT_RUN_DIR=$contract_run_dir
+            or return $status
+        end
         rtk task contract:cleanup CONTRACT_PROJECT=$contract_project CONTRACT_RUN_DIR=$contract_run_dir
         or begin
             set -l cleanup_status $status
