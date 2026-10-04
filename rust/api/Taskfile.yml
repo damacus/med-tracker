@@ -146,6 +146,8 @@ tasks:
   contract-runner-lint:
     dir: "{{.TASKFILE_DIR}}/../.."
     cmds:
+      - fish --no-config -n rust/contract-tests/release_storage.fish
+      - fish --no-config -n rust/contract-tests/release_storage_test.fish
       - fish --no-config -n rust/contract-tests/run.fish
       - fish --no-config -n rust/contract-tests/run_complete_api.fish
       - fish --no-config -n rust/contract-tests/run_complete_lane.fish
@@ -1214,3 +1216,18 @@ tasks:
       vars: [CONTRACT_TEST_SUBNET]
     cmds:
       - fish rust/contract-tests/validate_subnet.fish '{{ .CONTRACT_TEST_SUBNET }}'
+
+  contract-storage-release-test:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish --no-config rust/contract-tests/release_storage_test.fish
+
+  contract-storage-release:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT, CONTRACT_RUN_DIR]
+    env:
+      CONTRACT_PROJECT: '{{ .CONTRACT_PROJECT }}'
+      CONTRACT_RUN_DIR: '{{ .CONTRACT_RUN_DIR }}'
+    cmds:
+      - fish --no-config rust/contract-tests/release_storage.fish
