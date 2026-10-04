@@ -4,25 +4,25 @@ use medtracker_web::people::{PersonDraft, render_person_form};
 use std::collections::HashMap;
 
 fn person(locale: Locale, message: &str) -> String {
-    render_person_form(
-        "Test household",
-        "test",
-        "real-csrf",
+    render_person_form(medtracker_web::people::PersonFormPage {
+        household_name: "Test household",
+        slug: "test",
+        csrf: "real-csrf",
         locale,
-        Some(42),
-        PersonDraft {
+        person_id: Some(42),
+        draft: PersonDraft {
             name: "Retained <person>".into(),
             email: "draft@example.test".into(),
             date_of_birth: "1980-02-03".into(),
             person_type: "adult".into(),
             has_capacity: "true".into(),
         },
-        vec![
+        errors: vec![
             ("name".into(), message.into()),
             ("base".into(), message.into()),
         ],
-        true,
-    )
+        notifications_visible: true,
+    })
     .unwrap()
 }
 

@@ -78,22 +78,22 @@ fn household_shell_sets_supported_document_languages_and_rejects_injected_langua
 
 #[test]
 fn person_edit_renders_initial_values_native_submission_and_associated_errors() {
-    let html = render_person_form(
-        "Test household",
-        "test",
-        "test-csrf",
-        Locale::En,
-        Some(42),
-        PersonDraft {
+    let html = render_person_form(medtracker_web::people::PersonFormPage {
+        household_name: "Test household",
+        slug: "test",
+        csrf: "test-csrf",
+        locale: Locale::En,
+        person_id: Some(42),
+        draft: PersonDraft {
             name: "Draft <person>".into(),
             email: "draft@example.test".into(),
             date_of_birth: "1980-02-03".into(),
             person_type: "adult".into(),
             has_capacity: "true".into(),
         },
-        vec![("name".into(), "can't be blank".into())],
-        true,
-    )
+        errors: vec![("name".into(), "can't be blank".into())],
+        notifications_visible: true,
+    })
     .unwrap();
     assert!(html.contains("<h1"));
     assert!(html.contains("Edit Person"));
@@ -230,22 +230,22 @@ fn household_person_and_medication_forms_render_authoritative_locales_without_lo
             "não pode ficar em branco",
         ),
     ] {
-        let person = render_person_form(
-            "Test",
-            "test",
-            "csrf",
+        let person = render_person_form(medtracker_web::people::PersonFormPage {
+            household_name: "Test",
+            slug: "test",
+            csrf: "csrf",
             locale,
-            Some(42),
-            PersonDraft {
+            person_id: Some(42),
+            draft: PersonDraft {
                 name: "Retained draft".into(),
                 email: "draft@example.test".into(),
                 date_of_birth: "1980-02-03".into(),
                 person_type: "adult".into(),
                 has_capacity: "true".into(),
             },
-            vec![("name".into(), "can't be blank".into())],
-            true,
-        )
+            errors: vec![("name".into(), "can't be blank".into())],
+            notifications_visible: true,
+        })
         .unwrap();
         assert!(person.contains(person_heading));
         assert!(person.contains(&format!("lang=\"{}\"", locale.as_str())));
@@ -292,22 +292,22 @@ fn person_form_native_type_selection_and_capacity_checkbox_keep_the_initial_draf
         ("dependent_adult", "false"),
         ("adult", "true"),
     ] {
-        let html = render_person_form(
-            "Test",
-            "test",
-            "csrf",
-            Locale::En,
-            Some(42),
-            PersonDraft {
+        let html = render_person_form(medtracker_web::people::PersonFormPage {
+            household_name: "Test",
+            slug: "test",
+            csrf: "csrf",
+            locale: Locale::En,
+            person_id: Some(42),
+            draft: PersonDraft {
                 name: "Retained draft".into(),
                 email: String::new(),
                 date_of_birth: "1980-02-03".into(),
                 person_type: person_type.into(),
                 has_capacity: capacity.into(),
             },
-            Vec::new(),
-            true,
-        )
+            errors: Vec::new(),
+            notifications_visible: true,
+        })
         .unwrap();
         let selected = html
             .split("<option")
