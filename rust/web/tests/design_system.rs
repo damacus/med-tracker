@@ -30,3 +30,10 @@ fn every_declared_font_is_embedded_from_the_rails_asset() {
     assert!(rails_font("/fonts/../secrets").is_none());
     assert!(rails_font("/fonts/unknown.woff2").is_none());
 }
+
+#[test]
+fn tech_indigo_has_a_real_font_asset() {
+    let bytes = rails_font("/fonts/geist/geist-v1.7.2-variable.woff2")
+        .expect("Tech Indigo must ship its declared Geist font");
+    assert_eq!(&bytes[..4], b"wOF2");
+}

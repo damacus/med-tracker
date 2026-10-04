@@ -19,7 +19,7 @@ Rails has no separate Profile CSS file. Its Phlex views compose Tailwind classes
 
 ## Themes and exact font declarations
 
-Every family below falls back to `sans-serif`. All declared faces are normal style, WOFF2, Latin subsets, with `font-display: swap`. Rails body uses `var(--font-family, 'Inter', sans-serif)`; the default token resolves to Plus Jakarta Sans.
+Every family below falls back to `sans-serif`. All declared faces are normal style, WOFF2, with `font-display: swap`. Rails body uses `var(--font-family, 'Inter', sans-serif)`; the default token resolves to Plus Jakarta Sans.
 
 | Picker option | Key | Swatch | Font | Shipped weights |
 | --- | --- | --- | --- | --- |
@@ -30,7 +30,7 @@ Every family below falls back to `sans-serif`. All declared faces are normal sty
 | Deep Lavender | deep-lavender | #9B5DE5 | Inter v20 | 300, 400, 500, 600, 700, 800 |
 | Forest Care | forest-care | #2D6A4F | Outfit v15 | 400, 500, 600, 700 |
 | Sunset Support | sunset-support | #F28482 | Figtree v9 | 400, 500, 600, 700 |
-| Tech Indigo | tech-indigo | #4361EE | Geist | No font face or binary found; generic sans-serif fallback |
+| Tech Indigo | tech-indigo | #4361EE | Geist | 100–900 variable, normal; official Geist v1.7.2 |
 | Soft Rose | soft-rose | #E5989B | Urbanist v18 | 400, 500, 600, 700 |
 | Minty Fresh | minty-fresh | #06D6A0 | Public Sans v21 | 400, 500, 600, 700 |
 
@@ -69,7 +69,7 @@ The contract container copies the build script, canonical CSS, picker and fonts 
 
 ## Separate handling
 
-- Geist is missing from the canonical Rails assets. Do not substitute a guessed font or download one in this task.
+- Geist is supplied from the [official v1.7.2 release](https://github.com/vercel/geist-font/releases/tag/v1.7.2), unchanged, with its SIL Open Font License in both font directories. Its weight axis is 100–900, verified from the release font metadata. Other families retain their existing Latin subsets.
 - The hidden monochrome theme and palette-disabled Rails pages have separate rules; no new option or eligibility policy is added here.
 - Existing Rails primary/on-primary colour pairs may not all meet text contrast targets. The export preserves them exactly; accessibility correction must happen in the canonical design system, not through Rust-only guessed colours.
 - Tailwind utility generation, RubyUI/M3 rendering, responsive Profile layout and Stimulus behaviour are not ported by exporting tokens. They need bounded component work and matching browser tests.

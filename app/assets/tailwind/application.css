@@ -103,6 +103,14 @@
 @custom-variant dark (&:is(.dark *));
 
 @font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/geist/geist-v1.7.2-variable.woff2') format('woff2');
+}
+
+@font-face {
 	font-family: 'Inter';
 	font-style: normal;
 	font-weight: 300;
