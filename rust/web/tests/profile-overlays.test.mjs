@@ -20,6 +20,7 @@ test('shared Profile overlays preserve Rails geometry and keyboard dismissal on 
         await page.getByLabel('Password', { exact: true }).press('Enter');
         await page.waitForURL(url => url.pathname.endsWith('/dashboard'));
         await page.goto(new URL('/households/' + fixture.household_slug + '/profile', baseUrl).toString());
+        assert.equal(await page.evaluate(() => typeof window.LoomUI?.init), 'function');
         const trigger = page.getByRole('button', { name: /Time Zone Choose the time zone/ });
         await trigger.click();
         const dialog = page.getByTestId('profile-time-zone-dialog');

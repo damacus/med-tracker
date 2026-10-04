@@ -1,4 +1,4 @@
-window.DamacusUI.init(document, {
+window.LoomUI.init(document, {
   modalSelector: ".profile-dialog",
   triggerAttribute: "data-profile-dialog",
   closeAttribute: "data-profile-close",

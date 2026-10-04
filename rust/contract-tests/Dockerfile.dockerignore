@@ -9,10 +9,6 @@
 !rust/web/Cargo.lock
 !rust/web/src/
 !rust/web/src/**
-!rust/ui/
-!rust/ui/Cargo.toml
-!rust/ui/src/
-!rust/ui/src/**
 !rust/ui-preview/
 !rust/ui-preview/Cargo.toml
 !rust/ui-preview/build.rs

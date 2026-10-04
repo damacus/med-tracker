@@ -1,36 +1,30 @@
-# Portable Rust UI layer
+# Portable Rust web UI boundary
 
-The bake-off was a fit test for the existing MedTracker renderer and styling. It did not prove that local ownership is universally better, nor evaluate maintaining upstream patches, adapting copied components or future applications with different rendering requirements. Those approaches remain possible behind a stable API owned by us.
+The canonical UI library is [Loom UI](https://github.com/damacus/loom-ui). MedTracker consumes its public API through a full Git revision in `rust/web/Cargo.toml`; both the web and API lockfiles record that same revision. The copied `rust/ui` package is removed.
 
-The first extraction is one independently packageable Leptos crate at rust/ui. It owns semantic controls and browser interaction, with a small explicit public API. It depends on Leptos, not MedTracker, Rails, Axum, authentication, database models or application routes. Source CSS, fonts, themes, labels, persistence and API actions belong to each consuming application.
+## Ownership
 
-## Initial structure
+| Loom UI | MedTracker |
+| --- | --- |
+| Reusable controls and browser lifecycle | Profile composition, labels and routes |
+| Generic SSR semantics and hydration contracts | CSRF, permissions, persistence and API policy |
+| Component keyboard, modal and package tests | Actual Profile forms and household browser journeys |
+| Leptix primitives and narrow upstream adapters | Canonical Rails CSS, fonts and ten palettes |
 
-```text
-rust/                              existing grouping directory
-├── ui/                            real reusable library package
-│   ├── Cargo.toml                 feature/runtime and dependency boundary
-│   ├── src/lib.rs                 Button, Field, Tabs, Dialog and Sheet API
-│   ├── src/runtime.js             explicit browser initialisation and teardown
-│   ├── tests/semantics.rs         SSR semantics and escaped caller data
-│   └── README.md                 public contract and independent consumption
-├── web/                           MedTracker consumer and styling adapter
-│   └── src/assets/profile.js      application behaviour and UI initialisation
-└── api/                           existing Axum executable and API routes
-```
+Loom uses Leptix as its primitive foundation. Its initial release keeps native dialog/sheet compatibility controls while the upstream dialog SSR defect is resolved. MedTracker imports those tested public controls rather than a second local implementation. This dependency migration does not replace the application's existing navigation tabs with hydrated Leptix tabs.
 
-UI controls may import Leptos and package-owned interaction. They must not import rust/web, rust/api, Rails assets or product models. MedTracker may import the public package API; its product composites and business data stay local. Library controls receive caller classes without stock palettes or guessed values. No server render may access browser APIs.
+`rust/ui-preview` remains an application-owned dashboard/search island. It is a separate Leptodon integration with its own build and application checks, so it stays in this repository.
 
-Begin with the five measured primitives. Use native dialog modality behind the public abstraction, rather than promoting the prototype's custom focus code. Browser enhancement is explicitly initialised after native SSR or after Leptos hydration, with an idempotent lifecycle and teardown. The application retains navigation, theme persistence and API policy. The implementation behind this API may later change to an upstream library without changing every application.
+## Application adapter
 
-Prove the boundary through semantic SSR tests, real browser contracts, an unbranded consumer, the MedTracker adapter, package verification and the separate hydrated build/runtime path. Do not infer portability from a MedTracker screenshot or hydration support from successful compilation. First migrate a bounded consumer, then move other application controls with their tests. Publishing a shared repository and broad Profile migration are separate delivery steps.
+The API serves Loom's exported browser runtime before the MedTracker adapter through the existing Profile JavaScript URL. The adapter calls `window.LoomUI.init` with Profile selectors, focus storage and scroll-lock options. Appearance persistence, avatar requests, CSRF handling and business actions remain local.
 
-Rejected for this first extraction: a generic backend platform, a second colour system, one crate per primitive, copying whole Profile screens, and coupling the UI package to API/authentication models. These add ownership without a second concrete consumer or a stable shared contract. A dedicated repository can follow the standalone-package proof; current location is reversible.
+Library controls receive application classes. The canonical styling locations remain documented in [design-system-reuse.md](design-system-reuse.md). No new fonts, colours, spacing or radii are introduced by this migration.
 
-## Implemented boundary
+## Verification and upgrades
 
-The package exports the five primitive families and its browser runtime. An unbranded consumer verifies both server rendering and actual Leptos hydration with the same view. Hydration keeps the server-rendered elements and wires an application event. The package archive includes only public library sources, semantic tests, its manifest/lock, licence and README; application assets, Node dependencies and browser build output are excluded.
+Loom's repository owns its standalone SSR, browser, hydration and package verification. MedTracker CI no longer installs or runs a copied component test suite. It still builds the consumer and dashboard island, runs web/API checks, and verifies the four Profile sections and their actual forms, permissions and overlays against the Rust listener.
 
-MedTracker's first adapter passes its existing Profile selectors to the runtime and uses the shared Button for the timezone form footer. The API serves the runtime before the application adapter through the existing profile.js URL. Appearance persistence, avatar requests, CSRF, routes, translated labels and canonical Rails CSS/fonts remain application-owned. The contract Dockerfile and isolated source snapshot include the new path dependency. CI exercises the standalone crate, package verification and both browser rendering modes.
+CI and container builds resolve the same pinned Git revision from the committed lockfiles. There is no sibling-directory or symlink requirement, and the container/source-snapshot wiring no longer copies a local UI crate. Upgrades change the manifest revision and affected lockfiles together, then run MedTracker's application checks. Loom is public, so clean CI and container builds fetch it without repository credentials. A crates.io release is planned; the immutable Git pin remains the consumer contract until that release is published.
 
-The next useful extraction is a bounded set of Profile controls, preserving the existing semantic and browser contracts. Moving the package to a dedicated repository and consuming it from a second real application are separate follow-ups. Broader shared backend code should wait for a repeated concrete need; this UI package does not change the existing Axum API boundary.
+The UI package does not change the existing Axum API boundary or create a shared authentication/database framework. A second actual application remains a separate consumer integration.

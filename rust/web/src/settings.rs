@@ -1,7 +1,7 @@
 use crate::household::path_segment;
 use crate::household_i18n::{Locale, Text, TranslationError};
-use damacus_web_ui::{Button, ButtonType, Dialog, Sheet};
 use leptos::prelude::*;
+use loom_ui::{Button, ButtonType, Dialog, Sheet};
 use std::collections::HashMap;
 
 pub struct SettingsPage {

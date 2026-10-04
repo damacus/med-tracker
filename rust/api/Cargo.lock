@@ -1388,13 +1388,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "damacus-web-ui"
-version = "0.1.0"
-dependencies = [
- "leptos",
-]
-
-[[package]]
 name = "darling"
 version = "0.20.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1688,6 +1681,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "92773504d58c093f6de2459af4af33faa518c13451eb8f2b5698ed3d36e7c813"
 
 [[package]]
+name = "dyn_derive"
+version = "0.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "11bce3f6b5ab55c48928e8b0c960fb63de8aa9756e34ddfafc9720b2731e972e"
+dependencies = [
+ "dyn_std",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
+]
+
+[[package]]
+name = "dyn_std"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "18150a3b95526a6f32f542e74999f7f34607794d2048a105a30474b361474e67"
+
+[[package]]
 name = "ecb"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1964,6 +1975,56 @@ dependencies = [
  "crc32fast",
  "miniz_oxide",
  "zlib-rs",
+]
+
+[[package]]
+name = "floating-ui-core"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7c9cb2c7fcddeb646e63f25eb953a9aa941da66b5d7d1d4a8834f661aa1a3db2"
+dependencies = [
+ "dyn_derive",
+ "dyn_std",
+ "floating-ui-utils",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "floating-ui-dom"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bee9905ea1dd0f188a06bef6400e3148e2460215d4cc80b68b475e58be6eb55c"
+dependencies = [
+ "floating-ui-core",
+ "floating-ui-utils",
+ "web-sys",
+]
+
+[[package]]
+name = "floating-ui-leptos"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "27bbc6eca6ce802ee2961579b1a51b1300ef02e20628297ebfcbb013de0c3b76"
+dependencies = [
+ "floating-ui-dom",
+ "leptos",
+ "leptos-node-ref",
+ "send_wrapper",
+ "web-sys",
+]
+
+[[package]]
+name = "floating-ui-utils"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6e6fd107421492cee165af471b445a267db69a4a23dc93a4d1c9fe49060341a8"
+dependencies = [
+ "cfg-if",
+ "dyn_derive",
+ "dyn_std",
+ "serde",
+ "web-sys",
 ]
 
 [[package]]
@@ -2922,6 +2983,36 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
+name = "leptix-core"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1576941971e8e0b38b7100cad0a133a3bc90abe9e127a45801b0110b28f98c17"
+dependencies = [
+ "floating-ui-leptos",
+ "leptos",
+ "leptos-maybe-callback",
+ "leptos-node-ref",
+ "leptos-typed-fallback-show",
+ "leptos_dom",
+ "send_wrapper",
+ "serde",
+ "serde_json",
+ "web-sys",
+]
+
+[[package]]
+name = "leptix-tabs"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "05f797091a29d772392fba9577e920f464c163d7b1f697b804860d3283fd6a5a"
+dependencies = [
+ "leptix-core",
+ "leptos",
+ "leptos-node-ref",
+ "web-sys",
+]
+
+[[package]]
 name = "leptodon"
 version = "1.8.0-pre"
 source = "git+https://github.com/openanalytics/leptodon.git?rev=41276662e75fe94648cbea4836c7dab7708fc7b2#41276662e75fe94648cbea4836c7dab7708fc7b2"
@@ -3007,6 +3098,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "leptos-maybe-callback"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bff44378da0a611bd446e8354585fa0768206610b8e4b0ab8e6ce5988e06a0cc"
+dependencies = [
+ "leptos",
+]
+
+[[package]]
+name = "leptos-node-ref"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4f57b1ebc451fe9e7b6c7eba680fa8bc7313b410cc6c0f18481cb55a60ff3ac6"
+dependencies = [
+ "leptos",
+ "send_wrapper",
+]
+
+[[package]]
 name = "leptos-struct-table"
 version = "0.19.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3032,6 +3142,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 3.0.6",
+]
+
+[[package]]
+name = "leptos-typed-fallback-show"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "51cbf48cf93cbdebd4bc02a78c647d9dbe482c3153eef27e0731cf0c888258a4"
+dependencies = [
+ "leptos",
 ]
 
 [[package]]
@@ -3373,6 +3492,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f9f8bd3e56ce4dfc153cf470fffbfa98c7620958b312ca5c3a4b8d5181fd13c6"
 
 [[package]]
+name = "loom-ui"
+version = "0.1.0"
+source = "git+https://github.com/damacus/loom-ui.git?rev=3e52613aa91bf8bdc78c75e95a119333f6e847eb#3e52613aa91bf8bdc78c75e95a119333f6e847eb"
+dependencies = [
+ "leptix-tabs",
+ "leptos",
+ "web-sys",
+]
+
+[[package]]
 name = "lopdf"
 version = "0.44.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3543,9 +3672,9 @@ dependencies = [
  "axum",
  "chrono",
  "chrono-tz",
- "damacus-web-ui",
  "leptodon",
  "leptos",
+ "loom-ui",
  "medtracker-ui-preview",
  "serde_yaml",
  "tokio",

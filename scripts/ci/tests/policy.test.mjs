@@ -176,3 +176,12 @@ test('canonical Rails design inputs also select Rust verification', () => {
     assert.equal(classify([path]).selected.rust_port, true, path);
   }
 });
+
+test('shared UI verification belongs to Loom while MedTracker keeps application journeys', () => {
+  const taskfile = readFileSync(new URL('../../../Taskfiles/ci.yml', import.meta.url), 'utf8');
+  const workflow = readFileSync(new URL('../../../.github/workflows/ci.yml', import.meta.url), 'utf8');
+  assert.doesNotMatch(taskfile, /task -t rust\/ui\/Taskfile\.yml ci/);
+  assert.doesNotMatch(workflow, /^            rust\/ui(?:\/examples\/hydrated)?$/m);
+  assert.match(taskfile, /cargo test --manifest-path rust\/web\/Cargo\.toml/);
+  assert.match(workflow, /journey: profile/);
+});

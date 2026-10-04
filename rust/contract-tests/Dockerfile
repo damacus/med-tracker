@@ -7,15 +7,13 @@ WORKDIR /src
 COPY rust/api/Cargo.toml rust/api/Cargo.lock rust/api/
 COPY rust/vendor rust/vendor
 COPY rust/web/Cargo.toml rust/web/Cargo.lock rust/web/
-COPY rust/ui/Cargo.toml rust/ui/
 COPY rust/ui-preview/Cargo.toml rust/ui-preview/build.rs rust/ui-preview/
 COPY rust/contract-tests/Cargo.toml rust/contract-tests/Cargo.lock rust/contract-tests/
-RUN mkdir -p rust/ui/src rust/api/src rust/web/src rust/ui-preview/src rust/contract-tests/src && echo 'pub fn placeholder() {}' > rust/ui/src/lib.rs && echo 'pub fn placeholder() {}' > rust/api/src/lib.rs && echo 'fn main() {}' > rust/api/src/main.rs && echo 'pub fn placeholder() {}' > rust/web/src/lib.rs && echo 'pub fn placeholder() {}' > rust/ui-preview/src/lib.rs && echo 'pub fn placeholder() {}' > rust/contract-tests/src/lib.rs
+RUN mkdir -p rust/api/src rust/web/src rust/ui-preview/src rust/contract-tests/src && echo 'pub fn placeholder() {}' > rust/api/src/lib.rs && echo 'fn main() {}' > rust/api/src/main.rs && echo 'pub fn placeholder() {}' > rust/web/src/lib.rs && echo 'pub fn placeholder() {}' > rust/ui-preview/src/lib.rs && echo 'pub fn placeholder() {}' > rust/contract-tests/src/lib.rs
 RUN cargo build --locked --manifest-path rust/api/Cargo.toml; and cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --lib --no-run
 FROM dependencies AS runner
 COPY rust/api rust/api
 COPY rust/web/src rust/web/src
-COPY rust/ui/src rust/ui/src
 COPY rust/web/build.rs rust/web/build.rs
 COPY app/assets/tailwind/application.css app/assets/tailwind/application.css
 COPY app/assets/tailwind/profile-overlays.css app/assets/tailwind/profile-overlays.css
@@ -27,6 +25,6 @@ COPY config/nhs_dmd_curated_products.yml config/nhs_dmd_curated_products.yml
 COPY config/locales config/locales
 COPY vendor/fonts vendor/fonts
 COPY app/assets/fonts app/assets/fonts
-RUN find rust/ui/src rust/api/src rust/web/src rust/ui-preview/src -type f -exec touch {} +; and cargo build --locked --manifest-path rust/api/Cargo.toml
+RUN find rust/api/src rust/web/src rust/ui-preview/src -type f -exec touch {} +; and cargo build --locked --manifest-path rust/api/Cargo.toml
 COPY rust/contract-tests rust/contract-tests
 RUN find rust/contract-tests/src rust/contract-tests/tests -type f -exec touch {} +; and cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --lib --no-run
