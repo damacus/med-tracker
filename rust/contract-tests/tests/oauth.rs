@@ -168,7 +168,8 @@ fn unauthenticated_pkce_authorization_resumes_at_local_login() {
     let path = format!(
         "/authorize?response_type=code&response_mode=query&client_id={}&redirect_uri={}&scope=medtracker&state=contract-state&code_challenge=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA&code_challenge_method=S256",
         fixture.oauth_client_id,
-        url::form_urlencoded::byte_serialize(fixture.oauth_redirect_uri.as_bytes()).collect::<String>()
+        url::form_urlencoded::byte_serialize(fixture.oauth_redirect_uri.as_bytes())
+            .collect::<String>()
     );
     let response = Target::from_env().get(&path, None);
     assert_eq!(response.status().as_u16(), 302);
@@ -631,4 +632,559 @@ fn consent_requires_an_s256_challenge_before_issuing_a_code() {
         let denied = target.post_html_form(&action, &fields);
         assert_no_authorization_code(denied, &fixture.oauth_redirect_uri);
     }
+}
+
+#[test]
+fn password_login_with_recovery_requires_a_one_use_factor_before_issuing_session() {
+    let fixture = fixture();
+    let mut db = audit_database();
+    let account_id: i64 = db
+        .query_one(
+            "SELECT id FROM accounts WHERE email = $1",
+            &[&fixture.primary_email],
+        )
+        .unwrap()
+        .get(0);
+    let recovery = "profile-login-recovery-test";
+    db.execute(
+        "INSERT INTO account_recovery_codes (id, code) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+        &[&account_id, &recovery],
+    )
+    .unwrap();
+    let target = Target::from_env();
+    let csrf = login_csrf(&target);
+    let response = target.post_html_form(
+        "/login",
+        &[
+            ("email".to_owned(), fixture.primary_email.clone()),
+            ("password".to_owned(), "password".to_owned()),
+            ("authenticity_token".to_owned(), csrf),
+        ],
+    );
+    let pending_cookie = response
+        .headers()
+        .get_all("set-cookie")
+        .iter()
+        .filter_map(|value| value.to_str().ok())
+        .find(|value| value.starts_with("mt_login_factor="))
+        .map(|value| value.split(';').next().unwrap().to_owned())
+        .unwrap_or_default();
+    let status = response.status().as_u16();
+    let location = response
+        .headers()
+        .get("location")
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or("")
+        .to_owned();
+    if status != 302 || location != "/login-factor" {
+        db.execute(
+            "DELETE FROM account_recovery_codes WHERE id=$1 AND code=$2",
+            &[&account_id, &recovery],
+        )
+        .unwrap();
+    }
+    assert_eq!(status, 302);
+    assert_eq!(location, "/login-factor");
+    assert_eq!(target.get_html("/").headers()["location"], "/login");
+    let factor = target.get_html("/login-factor");
+    assert_eq!(factor.status().as_u16(), 200);
+    let document = Html::parse_document(&factor.text().unwrap());
+    let selector = Selector::parse("input[name='authenticity_token']").unwrap();
+    let csrf = document
+        .select(&selector)
+        .next()
+        .unwrap()
+        .value()
+        .attr("value")
+        .unwrap()
+        .to_owned();
+    let fields = [
+        ("authenticity_token".to_owned(), csrf.clone()),
+        ("factor".to_owned(), "recovery".to_owned()),
+        ("code".to_owned(), "wrong-code".to_owned()),
+    ];
+    assert_eq!(
+        target
+            .post_html_form("/login-factor", &fields)
+            .status()
+            .as_u16(),
+        200
+    );
+    assert_eq!(target.get_html("/").headers()["location"], "/login");
+    let success = target.post_html_form(
+        "/login-factor",
+        &[
+            ("authenticity_token".to_owned(), csrf.clone()),
+            ("factor".to_owned(), "recovery".to_owned()),
+            ("code".to_owned(), recovery.to_owned()),
+        ],
+    );
+    assert_eq!(success.status().as_u16(), 302);
+    assert!(success.headers()["location"]
+        .to_str()
+        .unwrap()
+        .ends_with("/dashboard"));
+    assert_eq!(
+        db.query_one(
+            "SELECT count(*) FROM account_recovery_codes WHERE id=$1 AND code=$2",
+            &[&account_id, &recovery]
+        )
+        .unwrap()
+        .get::<_, i64>(0),
+        0
+    );
+    assert_eq!(
+        target
+            .post_html_form_with_cookie(
+                "/login-factor",
+                &[
+                    ("authenticity_token".to_owned(), csrf.clone()),
+                    ("factor".to_owned(), "recovery".to_owned()),
+                    ("code".to_owned(), recovery.to_owned()),
+                ],
+                &pending_cookie
+            )
+            .status()
+            .as_u16(),
+        403
+    );
+    assert_eq!(
+        target
+            .post_html_form(
+                "/login-factor",
+                &[
+                    ("authenticity_token".to_owned(), csrf),
+                    ("factor".to_owned(), "recovery".to_owned()),
+                    ("code".to_owned(), recovery.to_owned()),
+                ]
+            )
+            .status()
+            .as_u16(),
+        403
+    );
+}
+
+#[test]
+fn enrolled_authenticator_can_sign_in_and_used_codes_cannot_sign_in_again() {
+    let fixture = fixture();
+    let mut db = audit_database();
+    let account_id: i64 = db
+        .query_one(
+            "SELECT id FROM accounts WHERE email=$1",
+            &[&fixture.primary_email],
+        )
+        .unwrap()
+        .get(0);
+    assert_eq!(
+        db.query_one(
+            "SELECT count(*) FROM account_otp_keys WHERE id=$1",
+            &[&account_id]
+        )
+        .unwrap()
+        .get::<_, i64>(0),
+        0
+    );
+    struct Cleanup(i64);
+    impl Drop for Cleanup {
+        fn drop(&mut self) {
+            let mut db = audit_database();
+            db.execute("DELETE FROM account_otp_keys WHERE id=$1", &[&self.0])
+                .unwrap();
+            db.execute("DELETE FROM account_recovery_codes WHERE id=$1", &[&self.0])
+                .unwrap();
+            db.execute(
+                "DELETE FROM account_login_failures WHERE account_id=$1",
+                &[&self.0],
+            )
+            .unwrap();
+            db.execute(
+                "DELETE FROM account_lockouts WHERE account_id=$1",
+                &[&self.0],
+            )
+            .unwrap();
+        }
+    }
+    let _cleanup = Cleanup(account_id);
+    let target = Target::from_env();
+    let csrf = login_csrf(&target);
+    assert_eq!(
+        target
+            .post_html_form(
+                "/login",
+                &[
+                    ("email".into(), fixture.primary_email.clone()),
+                    ("password".into(), "password".into()),
+                    ("authenticity_token".into(), csrf),
+                ]
+            )
+            .status()
+            .as_u16(),
+        302
+    );
+    let setup_path = format!(
+        "/households/{}/settings/security/otp/new",
+        fixture.household_slug
+    );
+    let setup = target.get_html(&setup_path);
+    assert_eq!(setup.status().as_u16(), 200);
+    let document = Html::parse_document(&setup.text().unwrap());
+    let input = |name: &str| {
+        let selector = Selector::parse(&format!("input[name='{name}']")).unwrap();
+        document
+            .select(&selector)
+            .next()
+            .unwrap()
+            .value()
+            .attr("value")
+            .unwrap()
+            .to_owned()
+    };
+    let uri_selector = Selector::parse("a[href^='otpauth:']").unwrap();
+    let uri = document
+        .select(&uri_selector)
+        .next()
+        .unwrap()
+        .value()
+        .attr("href")
+        .unwrap();
+    let uri_url = Url::parse(uri).unwrap();
+    let manual_secret = document
+        .select(&Selector::parse("code").unwrap())
+        .next()
+        .unwrap()
+        .text()
+        .collect::<String>();
+    let uri_secret = uri_url
+        .query_pairs()
+        .find(|(key, _)| key == "secret")
+        .unwrap()
+        .1;
+    assert!(
+        manual_secret.eq_ignore_ascii_case(&uri_secret),
+        "manual and URI authenticator secrets must match"
+    );
+    let totp = totp_rs::Totp::from_url(uri).unwrap();
+    let setup_code = totp.generate_current().to_string();
+    let enrolled = target.post_browser_form(
+        &format!(
+            "/households/{}/settings/security/otp",
+            fixture.household_slug
+        ),
+        &[
+            ("authenticity_token".into(), input("authenticity_token")),
+            ("secret".into(), input("secret")),
+            ("password".into(), "password".into()),
+            ("code".into(), setup_code),
+        ],
+    );
+    assert_eq!(enrolled.status().as_u16(), 303);
+    assert_eq!(
+        db.query_one(
+            "SELECT count(*) FROM account_otp_keys WHERE id=$1",
+            &[&account_id]
+        )
+        .unwrap()
+        .get::<_, i64>(0),
+        1
+    );
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    let next_step = (now / 30 + 1) * 30 + 1;
+    std::thread::sleep(std::time::Duration::from_secs(next_step - now));
+    let login = Target::from_env();
+    let csrf = login_csrf(&login);
+    let pending = login.post_html_form(
+        "/login",
+        &[
+            ("email".into(), fixture.primary_email.clone()),
+            ("password".into(), "password".into()),
+            ("authenticity_token".into(), csrf),
+        ],
+    );
+    assert_eq!(pending.status().as_u16(), 302);
+    assert_eq!(pending.headers()["location"], "/login-factor");
+    let factor = Html::parse_document(&login.get_html("/login-factor").text().unwrap());
+    let csrf = factor
+        .select(&Selector::parse("input[name='authenticity_token']").unwrap())
+        .next()
+        .unwrap()
+        .value()
+        .attr("value")
+        .unwrap()
+        .to_owned();
+    let code = totp.generate_current().to_string();
+    assert_eq!(
+        login
+            .post_html_form(
+                "/login-factor",
+                &[
+                    ("authenticity_token".into(), "wrong-csrf".into()),
+                    ("factor".into(), "otp".into()),
+                    ("code".into(), code.clone()),
+                ]
+            )
+            .status()
+            .as_u16(),
+        403
+    );
+    let completed = login.post_html_form(
+        "/login-factor",
+        &[
+            ("authenticity_token".into(), csrf),
+            ("factor".into(), "otp".into()),
+            ("code".into(), code.clone()),
+        ],
+    );
+    assert_eq!(completed.status().as_u16(), 302);
+    assert!(completed.headers()["location"]
+        .to_str()
+        .unwrap()
+        .ends_with("/dashboard"));
+    let replay = Target::from_env();
+    let csrf = login_csrf(&replay);
+    assert_eq!(
+        replay
+            .post_html_form(
+                "/login",
+                &[
+                    ("email".into(), fixture.primary_email),
+                    ("password".into(), "password".into()),
+                    ("authenticity_token".into(), csrf),
+                ]
+            )
+            .headers()["location"],
+        "/login-factor"
+    );
+    let factor = Html::parse_document(&replay.get_html("/login-factor").text().unwrap());
+    let csrf = factor
+        .select(&Selector::parse("input[name='authenticity_token']").unwrap())
+        .next()
+        .unwrap()
+        .value()
+        .attr("value")
+        .unwrap()
+        .to_owned();
+    assert_eq!(
+        replay
+            .post_html_form(
+                "/login-factor",
+                &[
+                    ("authenticity_token".into(), csrf),
+                    ("factor".into(), "otp".into()),
+                    ("code".into(), code),
+                ]
+            )
+            .status()
+            .as_u16(),
+        200
+    );
+    assert_eq!(replay.get_html("/").headers()["location"], "/login");
+}
+
+#[test]
+fn concurrent_recovery_completion_issues_only_one_authenticated_session() {
+    let fixture = fixture();
+    let mut db = audit_database();
+    let account_id: i64 = db
+        .query_one(
+            "SELECT id FROM accounts WHERE email=$1",
+            &[&fixture.primary_email],
+        )
+        .unwrap()
+        .get(0);
+    let recovery = "profile-concurrent-recovery-test";
+    db.execute(
+        "INSERT INTO account_recovery_codes (id,code) VALUES ($1,$2)",
+        &[&account_id, &recovery],
+    )
+    .unwrap();
+    let before: i64 = db.query_one("SELECT count(*) FROM account_active_session_keys WHERE account_id=$1 AND session_id NOT LIKE 'mfa:%'", &[&account_id]).unwrap().get(0);
+    let target = Target::from_env();
+    let csrf = login_csrf(&target);
+    let pending = target.post_html_form(
+        "/login",
+        &[
+            ("email".into(), fixture.primary_email),
+            ("password".into(), "password".into()),
+            ("authenticity_token".into(), csrf),
+        ],
+    );
+    if pending.status().as_u16() != 302 {
+        db.execute(
+            "DELETE FROM account_recovery_codes WHERE id=$1 AND code=$2",
+            &[&account_id, &recovery],
+        )
+        .unwrap();
+    }
+    assert_eq!(pending.status().as_u16(), 302);
+    assert_eq!(pending.headers()["location"], "/login-factor");
+    let cookie = pending
+        .headers()
+        .get_all("set-cookie")
+        .iter()
+        .filter_map(|value| value.to_str().ok())
+        .find(|value| value.starts_with("mt_login_factor="))
+        .unwrap()
+        .split(';')
+        .next()
+        .unwrap()
+        .to_owned();
+    let factor = Html::parse_document(&target.get_html("/login-factor").text().unwrap());
+    let csrf = factor
+        .select(&Selector::parse("input[name='authenticity_token']").unwrap())
+        .next()
+        .unwrap()
+        .value()
+        .attr("value")
+        .unwrap()
+        .to_owned();
+    let barrier = std::sync::Arc::new(std::sync::Barrier::new(2));
+    let handles: Vec<_> = (0..2)
+        .map(|_| {
+            let barrier = barrier.clone();
+            let csrf = csrf.clone();
+            let cookie = cookie.clone();
+            std::thread::spawn(move || {
+                let target = Target::from_env();
+                barrier.wait();
+                target
+                    .post_html_form_with_cookie(
+                        "/login-factor",
+                        &[
+                            ("authenticity_token".into(), csrf),
+                            ("factor".into(), "recovery".into()),
+                            ("code".into(), recovery.into()),
+                        ],
+                        &cookie,
+                    )
+                    .status()
+                    .as_u16()
+            })
+        })
+        .collect();
+    let mut statuses: Vec<_> = handles
+        .into_iter()
+        .map(|handle| handle.join().unwrap())
+        .collect();
+    statuses.sort_unstable();
+    assert_eq!(statuses, [302, 403]);
+    assert_eq!(db.query_one("SELECT count(*) FROM account_active_session_keys WHERE account_id=$1 AND session_id NOT LIKE 'mfa:%'", &[&account_id]).unwrap().get::<_, i64>(0), before+1);
+    assert_eq!(
+        db.query_one(
+            "SELECT count(*) FROM account_recovery_codes WHERE id=$1 AND code=$2",
+            &[&account_id, &recovery]
+        )
+        .unwrap()
+        .get::<_, i64>(0),
+        0
+    );
+}
+
+#[test]
+fn login_cannot_use_a_password_removed_by_a_concurrent_account_change() {
+    let fixture = fixture();
+    let mut db = audit_database();
+    let row = db
+        .query_one(
+            "SELECT id, password_hash FROM accounts WHERE email=$1",
+            &[&fixture.primary_email],
+        )
+        .unwrap();
+    let account_id: i64 = row.get(0);
+    let original_hash: String = row.get(1);
+    struct Restore {
+        account_id: i64,
+        hash: String,
+    }
+    impl Drop for Restore {
+        fn drop(&mut self) {
+            let mut db = audit_database();
+            db.execute(
+                "UPDATE accounts SET password_hash=$2 WHERE id=$1",
+                &[&self.account_id, &self.hash],
+            )
+            .unwrap();
+            db.execute(
+                "DELETE FROM account_login_failures WHERE account_id=$1",
+                &[&self.account_id],
+            )
+            .unwrap();
+        }
+    }
+    let _restore = Restore {
+        account_id,
+        hash: original_hash,
+    };
+    let target = Target::from_env();
+    let csrf = login_csrf(&target);
+    let before: i64 = db
+        .query_one(
+            "SELECT count(*) FROM account_active_session_keys WHERE account_id=$1",
+            &[&account_id],
+        )
+        .unwrap()
+        .get(0);
+    let mut change = db.transaction().unwrap();
+    change
+        .execute(
+            "UPDATE accounts SET password_hash=NULL WHERE id=$1",
+            &[&account_id],
+        )
+        .unwrap();
+    let changer_pid: i32 = change
+        .query_one("SELECT pg_backend_pid()", &[])
+        .unwrap()
+        .get(0);
+    let login = std::thread::spawn(move || {
+        target.post_html_form(
+            "/login",
+            &[
+                ("email".into(), fixture.primary_email),
+                ("password".into(), "password".into()),
+                ("authenticity_token".into(), csrf),
+            ],
+        )
+    });
+    let mut observer = audit_database();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    let blocked = loop {
+        let waiting: bool = observer.query_one(
+            "SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE $1=ANY(pg_blocking_pids(pid)))",
+            &[&changer_pid],
+        ).unwrap().get(0);
+        if waiting {
+            break true;
+        }
+        if std::time::Instant::now() >= deadline {
+            break false;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    };
+    change.commit().unwrap();
+    let response = login.join().unwrap();
+    assert!(
+        blocked,
+        "login must participate in the account change transaction ordering"
+    );
+    assert_eq!(
+        response.status().as_u16(),
+        200,
+        "removed password must not issue a session"
+    );
+    assert!(response
+        .text()
+        .unwrap()
+        .contains("Invalid email or password"));
+    assert_eq!(
+        observer
+            .query_one(
+                "SELECT count(*) FROM account_active_session_keys WHERE account_id=$1",
+                &[&account_id]
+            )
+            .unwrap()
+            .get::<_, i64>(0),
+        before
+    );
 }

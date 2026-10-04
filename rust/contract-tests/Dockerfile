@@ -20,6 +20,7 @@ COPY config/ai_medication_sources.yml config/ai_medication_sources.yml
 COPY config/nhs_dmd_curated_products.yml config/nhs_dmd_curated_products.yml
 COPY config/locales config/locales
 COPY vendor/fonts vendor/fonts
+COPY app/assets/fonts app/assets/fonts
 RUN find rust/api/src rust/web/src rust/ui-preview/src -type f -exec touch {} +; and cargo build --locked --manifest-path rust/api/Cargo.toml
 COPY rust/contract-tests rust/contract-tests
 RUN find rust/contract-tests/src rust/contract-tests/tests -type f -exec touch {} +; and cargo test --locked --manifest-path rust/contract-tests/Cargo.toml --lib --no-run

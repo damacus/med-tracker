@@ -172,7 +172,7 @@ fn unknown_shortcuts_are_ignored_without_a_fallback_link() {
 }
 
 #[test]
-fn sidebar_bottom_links_to_the_household_settings_page() {
+fn sidebar_identity_links_to_the_household_profile_page() {
     let html = render_person(vec![]);
     let bottom = html
         .split("class=\"dashboard-sidebar-bottom\"")
@@ -182,7 +182,9 @@ fn sidebar_bottom_links_to_the_household_settings_page() {
         .next()
         .unwrap();
     assert!(bottom.contains("href=\"/households/test/profile\""));
-    assert!(bottom.contains("Settings"));
+    assert!(bottom.contains("class=\"dashboard-identity\""));
+    assert!(bottom.contains("Profile"));
+    assert!(!bottom.contains(">Settings</a>"));
     assert!(!bottom.contains("aria-disabled=\"true\""));
 }
 

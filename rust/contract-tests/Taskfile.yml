@@ -235,6 +235,18 @@ tasks:
     cmds:
       - cargo test --manifest-path rust/contract-tests/Cargo.toml --test web_profile -- --test-threads=1
 
+  run-web-profile-security:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [BASE_URL, FIXTURE_PATH]
+    env:
+      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
+      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
+      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
+      CONTRACT_AUDIT_DATABASE_URL: '{{ .AUDIT_DATABASE_URL }}'
+    cmds:
+      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test web_profile_security -- --test-threads=1
+
   run-lookup:
     dir: "{{.TASKFILE_DIR}}/../.."
     desc: Run medication lookup and AI suggestion contract cases

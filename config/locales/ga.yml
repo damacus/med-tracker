@@ -1644,6 +1644,8 @@ ga:
       none: "Gan aicearra"
       save: "Sábháil aicearraí"
       invalid: "Roghnaigh idir aicearra amháin agus trí aicearra dhifriúla."
+      rust_unavailable: "Fanann aicearraí nach bhfuil ar fáil sábháilte ach ní thaispeántar iad sa bharra íochtair. Roghnaigh ceann scríbe atá ar fáil lena n-ionadú."
+      unavailable_option: "níl ar fáil faoi láthair"
     common:
       "on": Ar siúl
       "off": As
@@ -1656,6 +1658,25 @@ ga:
         two_factor_on: "2FA: Ar siúl"
         two_factor_off: "2FA: Gan chumasú"
         passkeys: "%{count} eochair rochtana"
+        methods_title: Fíordheimhniú dhá fhachtóir
+        methods_description: Cosain do chuntas le modhanna éagsúla fíordheimhnithe.
+        totp_description: Úsáid aip mar Google Authenticator nó 1Password chun cóid a ghiniúint.
+        recovery_description: Úsáid na cóid seo chun rochtain a fháil ar do chuntas má chailleann tú do ghléas 2FA.
+        passkeys_description: Fíordheimhniú gan pasfhocal le bithmhéadracht nó eochracha slándála.
+        totp_setup: Socraigh aip fíordheimhnithe
+        passkeys_setup: Cuir eochair rochtana leis
+        not_configured: Gan socrú
+        not_generated: Gan ghiniúint
+        no_passkeys: Níl aon eochracha rochtana cláraithe
+        passkey_added_on: Cuireadh leis %{date}
+        remove: Bain
+        totp_active: Tá an aip fíordheimhnithe gníomhach
+        totp_disable: Díchumasaigh
+        recovery_generated: Gineadh cóid aisghabhála
+        recovery_codes_available: "%{count} cód ar fáil"
+        recovery_view: Féach ar na cóid
+        recovery_generate: Gin cóid aisghabhála
+        recovery_regenerate: Athghin
       notifications:
         title: Fógraí
         reminders: "Meabhrúcháin: %{state}"
@@ -1814,12 +1835,14 @@ ga:
       view_docs: Féach ar na Doiciméid
     close_account:
       title: Dún Cuntas
+      retention_description: Baintear do shíniú isteach agus do rochtain ar theaghlaigh nuair a dhúnann tú do chuntas. Coinnítear taifid chógais agus sláinte i stair an teaghlaigh.
       description: Scrios do chuntas agus na sonraí gaolmhara go buan
       dialog_title: An bhfuil tú lánchinnte?
       dialog_description: Ní féidir an gníomh seo a chealú. Scriosfaidh sé do chuntas
         go buan agus bainfear do chuid sonraí go léir ó na freastalaithe.
       cancel_button: Cealaigh
       confirm_button: Tá, scrios mo chuntas
+      confirm_retention_button: Tá, dún mo chuntas
   users:
     welcome: Fáilte! Cruthaíodh do chuntas.
     created: Cruthaíodh an t-úsáideoir go rathúil.

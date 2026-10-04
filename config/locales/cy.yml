@@ -1670,6 +1670,8 @@ cy:
       none: "Dim llwybr byr"
       save: "Cadw llwybrau byr"
       invalid: "Dewiswch un i dri llwybr byr gwahanol."
+      rust_unavailable: "Mae llwybrau byr nad ydynt ar gael yn aros wedi'u cadw ond nid ydynt yn ymddangos yn y bar gwaelod. Dewiswch gyrchfan sydd ar gael i'w disodli."
+      unavailable_option: "ddim ar gael ar hyn o bryd"
     common:
       "on": Ymlaen
       "off": I ffwrdd
@@ -1682,6 +1684,25 @@ cy:
         two_factor_on: "2FA: Ymlaen"
         two_factor_off: "2FA: Heb ei alluogi"
         passkeys: "%{count} allweddi mynediad"
+        methods_title: Dilysu dau ffactor
+        methods_description: Diogelwch eich cyfrif gyda sawl dull dilysu.
+        totp_description: Defnyddiwch ap fel Google Authenticator neu 1Password i gynhyrchu codau.
+        recovery_description: Defnyddiwch y codau hyn i gael mynediad i'ch cyfrif os collwch eich dyfais 2FA.
+        passkeys_description: Dilysu heb gyfrinair gan ddefnyddio biometreg neu allweddi diogelwch.
+        totp_setup: Sefydlu ap dilysu
+        passkeys_setup: Ychwanegu allwedd fynediad
+        not_configured: Heb ei ffurfweddu
+        not_generated: Heb eu cynhyrchu
+        no_passkeys: Dim allweddi mynediad wedi'u cofrestru
+        passkey_added_on: Ychwanegwyd %{date}
+        remove: Dileu
+        totp_active: Mae'r ap dilysu yn weithredol
+        totp_disable: Analluogi
+        recovery_generated: Codau adfer wedi'u cynhyrchu
+        recovery_codes_available: "%{count} cod ar gael"
+        recovery_view: Gweld codau
+        recovery_generate: Cynhyrchu codau adfer
+        recovery_regenerate: Ailgynhyrchu
       notifications:
         title: Hysbysiadau
         reminders: "Nodiadau atgoffa: %{state}"
@@ -1839,12 +1860,14 @@ cy:
       view_docs: Gweld Dogfennaeth
     close_account:
       title: Cau Cyfrif
+      retention_description: Mae cau eich cyfrif yn dileu eich mynediad a'ch gallu i fewngofnodi i aelwydydd. Cedwir cofnodion meddyginiaeth ac iechyd yn hanes yr aelwyd.
       description: Dileu eich cyfrif a'r holl ddata cysylltiedig yn barhaol
       dialog_title: Ydych chi'n hollol siŵr?
       dialog_description: Ni ellir dadwneud y weithred hon. Bydd hyn yn dileu eich
         cyfrif yn barhaol ac yn tynnu'ch holl ddata o'n gweinyddwyr.
       cancel_button: Canslo
       confirm_button: Ie, dilëwch fy nghyfrif
+      confirm_retention_button: Ie, caewch fy nghyfrif
   users:
     welcome: Croeso! Mae eich cyfrif wedi'i greu.
     created: Crëwyd y defnyddiwr yn llwyddiannus.

@@ -94,6 +94,12 @@ enum BrowserWriteIntent {
     Pause(crate::pause_lifecycle::BrowserSourceGuard),
 }
 
+struct CallOptions<'a> {
+    extra: &'a HeaderMap,
+    intent: Option<BrowserWriteIntent>,
+    body_limit: usize,
+}
+
 pub(super) fn html_cookie_only(headers: &HeaderMap) -> bool {
     !headers.contains_key(header::AUTHORIZATION)
 }
@@ -185,7 +191,18 @@ impl WebApi {
         csrf: Option<&str>,
         extra: &HeaderMap,
     ) -> Result<ApiReply, PageError> {
-        self.call_inner(method, path, body, csrf, extra, None, BODY_LIMIT).await
+        self.call_inner(
+            method,
+            path,
+            body,
+            csrf,
+            CallOptions {
+                extra,
+                intent: None,
+                body_limit: BODY_LIMIT,
+            },
+        )
+        .await
     }
 
     pub(super) async fn get_with_limit(
@@ -193,8 +210,18 @@ impl WebApi {
         path: &str,
         body_limit: usize,
     ) -> Result<ApiReply, PageError> {
-        self.call_inner(Method::GET, path, None, None, &HeaderMap::new(), None, body_limit)
-            .await
+        self.call_inner(
+            Method::GET,
+            path,
+            None,
+            None,
+            CallOptions {
+                extra: &HeaderMap::new(),
+                intent: None,
+                body_limit,
+            },
+        )
+        .await
     }
 
     pub(super) async fn adjust_scalar_stock(
@@ -209,11 +236,13 @@ impl WebApi {
             path,
             Some(body),
             Some(csrf),
-            &HeaderMap::new(),
-            Some(BrowserWriteIntent::Scalar(
-                crate::medication_management::ScalarAdjustment { original_etag },
-            )),
-            BODY_LIMIT,
+            CallOptions {
+                extra: &HeaderMap::new(),
+                intent: Some(BrowserWriteIntent::Scalar(
+                    crate::medication_management::ScalarAdjustment { original_etag },
+                )),
+                body_limit: BODY_LIMIT,
+            },
         )
         .await
     }
@@ -231,9 +260,11 @@ impl WebApi {
             path,
             Some(body),
             Some(&csrf),
-            extra,
-            Some(BrowserWriteIntent::Pause(guard)),
-            BODY_LIMIT,
+            CallOptions {
+                extra,
+                intent: Some(BrowserWriteIntent::Pause(guard)),
+                body_limit: BODY_LIMIT,
+            },
         )
         .await
     }
@@ -244,10 +275,13 @@ impl WebApi {
         path: &str,
         body: Option<Value>,
         csrf: Option<&str>,
-        extra: &HeaderMap,
-        intent: Option<BrowserWriteIntent>,
-        body_limit: usize,
+        options: CallOptions<'_>,
     ) -> Result<ApiReply, PageError> {
+        let CallOptions {
+            extra,
+            intent,
+            body_limit,
+        } = options;
         let mut request = Request::builder().method(method).uri(path);
         for name in [
             header::IF_MATCH,

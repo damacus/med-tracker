@@ -1,6 +1,6 @@
-use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
-use medtracker_contract_tests::{Target, fixture};
-use p256::ecdsa::{Signature, SigningKey, signature::Signer};
+use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
+use medtracker_contract_tests::{fixture, Target};
+use p256::ecdsa::{signature::Signer, Signature, SigningKey};
 use postgres::{Client, NoTls};
 use scraper::{Html, Selector};
 use serde_json::json;
@@ -183,6 +183,56 @@ fn discoverable_login_requires_a_user_handle() {
 }
 
 #[test]
+fn passkey_login_waits_for_account_before_a_concurrent_key_removal() {
+    let credential = Credential::create();
+    let target = Target::from_env();
+    let form = credential.form(&target, 1);
+    let mut db = database();
+    let mut held = db.transaction().unwrap();
+    held.query_one(
+        "SELECT id FROM accounts WHERE id = $1 FOR UPDATE",
+        &[&fixture().account_id],
+    )
+    .unwrap();
+    let holder_pid: i32 = held
+        .query_one("SELECT pg_backend_pid()", &[])
+        .unwrap()
+        .get(0);
+    let worker = thread::spawn(move || {
+        target
+            .post_html_form_from_client("/webauthn-login", "127.0.0.85", &form)
+            .status()
+            .as_u16()
+    });
+    let deadline = Instant::now() + Duration::from_secs(8);
+    let mut observer = database();
+    loop {
+        let waiting: bool = observer
+            .query_one(
+                "SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE datname = current_database() AND $1 = ANY(pg_blocking_pids(pid)))",
+                &[&holder_pid],
+            )
+            .unwrap()
+            .get(0);
+        if waiting {
+            break;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "passkey login did not wait for account lock"
+        );
+        thread::sleep(Duration::from_millis(20));
+    }
+    held.execute(
+        "DELETE FROM account_webauthn_keys WHERE id = $1",
+        &[&credential.row_id],
+    )
+    .unwrap();
+    held.commit().unwrap();
+    assert_ne!(worker.join().unwrap(), 302);
+}
+
+#[test]
 fn simultaneous_distinct_challenges_cannot_accept_the_same_positive_counter() {
     let credential = Credential::create();
     let targets = [Arc::new(Target::from_env()), Arc::new(Target::from_env())];
@@ -212,7 +262,7 @@ fn simultaneous_distinct_challenges_cannot_accept_the_same_positive_counter() {
     let deadline = Instant::now() + Duration::from_secs(8);
     let mut observer = database();
     loop {
-        let waiting: i64 = observer.query_one("SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock' AND query LIKE '%account_webauthn_keys%'", &[]).unwrap().get(0);
+        let waiting: i64 = observer.query_one("SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock' AND cardinality(pg_blocking_pids(pid)) > 0 AND (query LIKE '%accounts%' OR query LIKE '%account_webauthn_keys%')", &[]).unwrap().get(0);
         if waiting >= 2 {
             break;
         }

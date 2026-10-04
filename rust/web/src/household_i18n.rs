@@ -221,6 +221,7 @@ fn allowed(key: &str) -> bool {
         "people.",
         "forms.people.",
         "profiles.",
+        "rodauth.views.",
         "schedules.",
         "forms.medications.",
         "medications.",

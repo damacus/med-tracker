@@ -20,6 +20,23 @@ pub(super) fn page(body: String, cookie: Option<HeaderValue>) -> Response {
     page_status(body, cookie, StatusCode::OK)
 }
 
+pub(super) fn profile_page_status(
+    body: String,
+    cookie: Option<HeaderValue>,
+    status: StatusCode,
+) -> Response {
+    let mut response = page_status(body, cookie, status);
+    response.headers_mut().insert(
+        header::CONTENT_SECURITY_POLICY,
+        HeaderValue::from_static("default-src 'none'; style-src 'self'; script-src 'self'; connect-src 'self'; font-src 'self'; worker-src 'self'; img-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"),
+    );
+    response
+}
+
+pub(super) fn profile_page(body: String, cookie: Option<HeaderValue>) -> Response {
+    profile_page_status(body, cookie, StatusCode::OK)
+}
+
 pub(super) fn dashboard_page(body: String, cookie: Option<HeaderValue>) -> Response {
     let mut response = page(body, cookie);
     response.headers_mut().insert(

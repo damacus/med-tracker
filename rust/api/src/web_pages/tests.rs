@@ -76,6 +76,20 @@ fn london_today_includes_late_utc_previous_day() {
 }
 
 #[test]
+fn dashboard_uses_a_saved_rails_timezone_label_for_calendar_dates() {
+    let profile = serde_json::json!({"data": {"time_zone": "London"}});
+    let zone = super::dashboard::profile_timezone(&profile);
+    assert_eq!(zone, chrono_tz::Europe::London);
+    let now = chrono::DateTime::parse_from_rfc3339("2026-03-29T23:30:00Z")
+        .unwrap()
+        .with_timezone(&chrono::Utc);
+    assert_eq!(
+        now.with_timezone(&zone).date_naive(),
+        NaiveDate::from_ymd_opt(2026, 3, 30).unwrap()
+    );
+}
+
+#[test]
 fn rejected_form_keeps_its_validation_status() {
     for status in [
         StatusCode::UNPROCESSABLE_ENTITY,

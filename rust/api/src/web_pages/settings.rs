@@ -1,4 +1,5 @@
 use super::*;
+use md5::{Digest, Md5};
 use medtracker_web::household::path_segment;
 use medtracker_web::household_i18n::Text;
 use medtracker_web::settings::{render_settings, SettingsPage};
@@ -8,12 +9,150 @@ use serde::Deserialize;
 pub(super) struct SettingsQuery {
     saved: Option<String>,
     section: Option<String>,
+    security_status: Option<String>,
+    advanced_status: Option<String>,
+    notification_status: Option<String>,
 }
 
 pub(super) fn routes() -> Router<AppState> {
     Router::new()
         .route("/households/{slug}/profile", get(show).post(update))
+        .route(
+            "/households/{slug}/profile/shortcuts",
+            post(update_shortcuts),
+        )
+        .route("/households/{slug}/profile/gravatar", post(update_gravatar))
         .route("/households/{slug}/settings", get(legacy_settings))
+}
+
+async fn update_shortcuts(
+    State(state): State<AppState>,
+    Path(slug): Path<String>,
+    headers: HeaderMap,
+    Form(fields): Form<HashMap<String, String>>,
+) -> Response {
+    let shortcuts: Vec<String> = (0..3)
+        .filter_map(|index| fields.get(&format!("mobile_shortcuts_{index}")))
+        .filter(|value| !value.is_empty())
+        .cloned()
+        .collect();
+    update_preference(
+        state,
+        slug,
+        headers,
+        fields,
+        "mobile_shortcuts",
+        json!(shortcuts),
+    )
+    .await
+}
+
+async fn update_gravatar(
+    State(state): State<AppState>,
+    Path(slug): Path<String>,
+    headers: HeaderMap,
+    Form(fields): Form<HashMap<String, String>>,
+) -> Response {
+    let enabled = fields.get("gravatar_enabled").map(String::as_str) == Some("1");
+    update_preference(
+        state,
+        slug,
+        headers,
+        fields,
+        "gravatar_enabled",
+        json!(enabled),
+    )
+    .await
+}
+
+async fn update_preference(
+    state: AppState,
+    slug: String,
+    headers: HeaderMap,
+    fields: HashMap<String, String>,
+    key: &str,
+    value: Value,
+) -> Response {
+    if !oauth::trusted_cookie_origin(&state, &headers) {
+        return failure(StatusCode::FORBIDDEN);
+    }
+    let mut api = match WebApi::authenticated(state, headers).await {
+        Ok(api) => api,
+        Err(error) => return error.response(),
+    };
+    if fields.get("authenticity_token") != Some(&api.csrf) {
+        return failure(StatusCode::FORBIDDEN);
+    }
+    let result = async {
+        let (household_id, household_name) = api.household(&slug).await?;
+        let path = format!("/api/v1/households/{household_id}/profile");
+        let profile = api.get(&path).await?;
+        let me = api
+            .get(&format!("/api/v1/households/{household_id}/me"))
+            .await?;
+        let capabilities = api.capabilities(household_id).await?;
+        if !can_edit_profile(&profile, &capabilities) {
+            return Err(error(StatusCode::FORBIDDEN));
+        }
+        let csrf = api.csrf.clone();
+        let payload = Value::Object(serde_json::Map::from_iter([(
+            key.to_owned(),
+            value.clone(),
+        )]));
+        let reply = api
+            .call(
+                Method::PATCH,
+                &path,
+                Some(json!({"profile": payload})),
+                Some(&csrf),
+            )
+            .await?;
+        if reply.status.is_success() {
+            let saved = api.get(&path).await?;
+            if saved.pointer(&format!("/data/{key}")) != Some(&value) {
+                return Err(error(StatusCode::BAD_GATEWAY));
+            }
+            return Ok(redirect(
+                format!("/households/{}/profile?saved=1", path_segment(&slug)),
+                api.cookie.take(),
+            ));
+        }
+        if reply.status != StatusCode::UNPROCESSABLE_ENTITY {
+            return Err(error(reply.status));
+        }
+        let mut attempted = profile;
+        attempted["data"][key] = value;
+        let body = render(ProfileRender {
+            api: &api,
+            slug: &slug,
+            household_name: &household_name,
+            household_id,
+            me: &me,
+            profile: &attempted,
+            time_zone: attempted
+                .pointer("/data/time_zone")
+                .and_then(Value::as_str)
+                .unwrap_or("UTC")
+                .to_owned(),
+            can_edit: true,
+            errors: profile_errors(&reply.value),
+            notice: String::new(),
+            active_section: "profile",
+            security_html: String::new(),
+            notifications_html: String::new(),
+            advanced_html: String::new(),
+        })?;
+        Ok(profile_page_status(
+            body,
+            api.cookie.take(),
+            StatusCode::UNPROCESSABLE_ENTITY,
+        ))
+    }
+    .await;
+    match result {
+        Ok(response) => response,
+        Err(error) => error.response(),
+    }
 }
 
 async fn legacy_settings(Path(slug): Path<String>) -> Response {
@@ -60,33 +199,113 @@ pub(super) fn time_zone_error(value: &str) -> Option<&'static str> {
     value.is_empty().then_some("can't be blank")
 }
 
-fn render(
-    api: &WebApi,
-    slug: &str,
-    household_name: &str,
-    me: &Value,
-    time_zone: String,
-    can_edit: bool,
-    errors: HashMap<String, Vec<String>>,
-    notice: String,
-    active_section: &str,
-    security_html: String,
-    notifications_html: String,
-    advanced_html: String,
-) -> Result<String, PageError> {
-    let person = me.pointer("/data/person").ok_or_else(|| error(StatusCode::BAD_GATEWAY))?;
-    let account = me.pointer("/data/account").ok_or_else(|| error(StatusCode::BAD_GATEWAY))?;
+fn gravatar_image_url(email: &str, enabled: bool, attached: bool) -> Option<String> {
+    if !enabled || attached || email.trim().is_empty() {
+        return None;
+    }
+    let digest = Md5::digest(email.to_lowercase().as_bytes());
+    Some(format!(
+        "https://www.gravatar.com/avatar/{}?d=404&s=64",
+        hex::encode(digest)
+    ))
+}
+
+pub(super) struct ProfileRender<'a> {
+    pub api: &'a WebApi,
+    pub slug: &'a str,
+    pub household_name: &'a str,
+    pub household_id: i64,
+    pub me: &'a Value,
+    pub profile: &'a Value,
+    pub time_zone: String,
+    pub can_edit: bool,
+    pub errors: HashMap<String, Vec<String>>,
+    pub notice: String,
+    pub active_section: &'a str,
+    pub security_html: String,
+    pub notifications_html: String,
+    pub advanced_html: String,
+}
+
+pub(super) fn render(input: ProfileRender<'_>) -> Result<String, PageError> {
+    let ProfileRender {
+        api,
+        slug,
+        household_name,
+        household_id,
+        me,
+        profile,
+        time_zone,
+        can_edit,
+        errors,
+        notice,
+        active_section,
+        security_html,
+        notifications_html,
+        advanced_html,
+    } = input;
+    let person = me
+        .pointer("/data/person")
+        .ok_or_else(|| error(StatusCode::BAD_GATEWAY))?;
+    let account = me
+        .pointer("/data/account")
+        .ok_or_else(|| error(StatusCode::BAD_GATEWAY))?;
+    let email = account
+        .get("email")
+        .and_then(Value::as_str)
+        .ok_or_else(|| error(StatusCode::BAD_GATEWAY))?;
+    let avatar_attached = profile
+        .pointer("/data/avatar_attached")
+        .and_then(Value::as_bool)
+        .ok_or_else(|| error(StatusCode::BAD_GATEWAY))?;
+    let gravatar_enabled = profile
+        .pointer("/data/gravatar_enabled")
+        .and_then(Value::as_bool)
+        .ok_or_else(|| error(StatusCode::BAD_GATEWAY))?;
     render_settings(SettingsPage {
         household_name: household_name.to_owned(),
         slug: slug.to_owned(),
+        household_id,
         locale: api.locale,
         csrf: api.csrf.clone(),
-        person_name: person.get("name").and_then(Value::as_str).ok_or_else(|| error(StatusCode::BAD_GATEWAY))?.to_owned(),
-        email: account.get("email").and_then(Value::as_str).ok_or_else(|| error(StatusCode::BAD_GATEWAY))?.to_owned(),
-        date_of_birth: person.get("date_of_birth").and_then(Value::as_str).map(str::to_owned),
+        person_name: person
+            .get("name")
+            .and_then(Value::as_str)
+            .ok_or_else(|| error(StatusCode::BAD_GATEWAY))?
+            .to_owned(),
+        person_id: person
+            .get("id")
+            .and_then(Value::as_i64)
+            .ok_or_else(|| error(StatusCode::BAD_GATEWAY))?,
+        email: email.to_owned(),
+        date_of_birth: person
+            .get("date_of_birth")
+            .and_then(Value::as_str)
+            .map(str::to_owned),
         age: person.get("age").and_then(Value::as_i64),
-        person_type: person.get("person_type").and_then(Value::as_str).ok_or_else(|| error(StatusCode::BAD_GATEWAY))?.to_owned(),
-        has_capacity: person.get("has_capacity").and_then(Value::as_bool).ok_or_else(|| error(StatusCode::BAD_GATEWAY))?,
+        person_type: person
+            .get("person_type")
+            .and_then(Value::as_str)
+            .ok_or_else(|| error(StatusCode::BAD_GATEWAY))?
+            .to_owned(),
+        has_capacity: person
+            .get("has_capacity")
+            .and_then(Value::as_bool)
+            .ok_or_else(|| error(StatusCode::BAD_GATEWAY))?,
+        mobile_shortcuts: profile
+            .pointer("/data/mobile_shortcuts")
+            .and_then(Value::as_array)
+            .ok_or_else(|| error(StatusCode::BAD_GATEWAY))?
+            .iter()
+            .filter_map(Value::as_str)
+            .map(str::to_owned)
+            .collect(),
+        gravatar_enabled,
+        avatar_attached,
+        gravatar_url: gravatar_image_url(email, gravatar_enabled, avatar_attached),
+        vapid_public_key: std::env::var("VAPID_PUBLIC_KEY")
+            .ok()
+            .filter(|value| !value.is_empty()),
         active_section: active_section.to_owned(),
         security_html,
         notifications_html,
@@ -114,7 +333,9 @@ pub(super) async fn show(
         let profile = api
             .get(&format!("/api/v1/households/{household_id}/profile"))
             .await?;
-        let me = api.get(&format!("/api/v1/households/{household_id}/me")).await?;
+        let me = api
+            .get(&format!("/api/v1/households/{household_id}/me"))
+            .await?;
         let capabilities = api.capabilities(household_id).await?;
         let can_edit = can_edit_profile(&profile, &capabilities);
         let time_zone = profile
@@ -136,29 +357,61 @@ pub(super) async fn show(
             _ => "profile",
         };
         let security_html = if active_section == "security" {
-            profile_security::section(&state, &mut api, household_id, &slug).await?
-        } else { String::new() };
+            profile_security::section(
+                &state,
+                &mut api,
+                household_id,
+                &slug,
+                query.security_status.as_deref(),
+            )
+            .await?
+        } else {
+            String::new()
+        };
         let advanced_html = if active_section == "advanced" {
-            profile_advanced::section(&state, &mut api, household_id, &slug).await?
-        } else { String::new() };
-        render(
-            &api,
-            &slug,
-            &household_name,
-            &me,
+            profile_advanced::section(
+                &state,
+                &mut api,
+                household_id,
+                &slug,
+                query.advanced_status.as_deref(),
+            )
+            .await?
+        } else {
+            String::new()
+        };
+        let notifications_html = if active_section == "notifications" {
+            notifications::section(
+                &state,
+                &mut api,
+                household_id,
+                &slug,
+                query.notification_status.as_deref(),
+            )
+            .await?
+        } else {
+            String::new()
+        };
+        render(ProfileRender {
+            api: &api,
+            slug: &slug,
+            household_name: &household_name,
+            household_id,
+            me: &me,
+            profile: &profile,
             time_zone,
             can_edit,
-            HashMap::new(),
+            errors: HashMap::new(),
             notice,
             active_section,
             security_html,
-            String::new(),
+            notifications_html,
             advanced_html,
-        )
+        })
     }
     .await;
     match result {
-        Ok(body) => page(body, api.cookie),
+        Ok(body) => profile_page(body, api.cookie),
         Err(error) => error.response(),
     }
 }
@@ -184,28 +437,32 @@ pub(super) async fn update(
         let (household_id, household_name) = api.household(&slug).await?;
         let path = format!("/api/v1/households/{household_id}/profile");
         let profile = api.get(&path).await?;
-        let me = api.get(&format!("/api/v1/households/{household_id}/me")).await?;
+        let me = api
+            .get(&format!("/api/v1/households/{household_id}/me"))
+            .await?;
         let capabilities = api.capabilities(household_id).await?;
         let can_edit = can_edit_profile(&profile, &capabilities);
         if !can_edit {
             return Err(error(StatusCode::FORBIDDEN));
         }
         if let Some(message) = time_zone_error(&time_zone) {
-            let body = render(
-                &api,
-                &slug,
-                &household_name,
-                &me,
+            let body = render(ProfileRender {
+                api: &api,
+                slug: &slug,
+                household_name: &household_name,
+                household_id,
+                me: &me,
+                profile: &profile,
                 time_zone,
                 can_edit,
-                HashMap::from([("time_zone".to_owned(), vec![message.to_owned()])]),
-                String::new(),
-                "profile",
-                String::new(),
-                String::new(),
-                String::new(),
-            )?;
-            return Ok(page_status(
+                errors: HashMap::from([("time_zone".to_owned(), vec![message.to_owned()])]),
+                notice: String::new(),
+                active_section: "profile",
+                security_html: String::new(),
+                notifications_html: String::new(),
+                advanced_html: String::new(),
+            })?;
+            return Ok(profile_page_status(
                 body,
                 api.cookie.take(),
                 StatusCode::UNPROCESSABLE_ENTITY,
@@ -232,25 +489,42 @@ pub(super) async fn update(
         if reply.status != StatusCode::UNPROCESSABLE_ENTITY {
             return Err(error(reply.status));
         }
-        let body = render(
-            &api,
-            &slug,
-            &household_name,
-            &me,
+        let body = render(ProfileRender {
+            api: &api,
+            slug: &slug,
+            household_name: &household_name,
+            household_id,
+            me: &me,
+            profile: &profile,
             time_zone,
             can_edit,
-            profile_errors(&reply.value),
-            String::new(),
-            "profile",
-            String::new(),
-            String::new(),
-            String::new(),
-        )?;
-        Ok(page_status(body, api.cookie.take(), reply.status))
+            errors: profile_errors(&reply.value),
+            notice: String::new(),
+            active_section: "profile",
+            security_html: String::new(),
+            notifications_html: String::new(),
+            advanced_html: String::new(),
+        })?;
+        Ok(profile_page_status(body, api.cookie.take(), reply.status))
     }
     .await;
     match result {
         Ok(response) => response,
         Err(error) => error.response(),
+    }
+}
+
+#[cfg(test)]
+mod gravatar_tests {
+    use super::gravatar_image_url;
+
+    #[test]
+    fn opt_in_uses_lowercase_email_and_uploaded_avatar_takes_precedence() {
+        assert_eq!(
+            gravatar_image_url("Alex@Example.Test", true, false).as_deref(),
+            Some("https://www.gravatar.com/avatar/daf006c44fe290681b00919b90ff875c?d=404&s=64")
+        );
+        assert_eq!(gravatar_image_url("Alex@Example.Test", false, false), None);
+        assert_eq!(gravatar_image_url("Alex@Example.Test", true, true), None);
     }
 }

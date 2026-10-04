@@ -13,18 +13,50 @@ pub(crate) struct MailConfig {
 }
 
 pub(super) fn smtp_send(config: MailConfig, email: String, token: String) -> Result<(), ()> {
-    let host = config.smtp_host.ok_or(())?;
-    let recipient = email.parse::<Mailbox>().map_err(|_| ())?;
     let url = format!(
         "{}/invitations/accept?token={token}",
         config.app_url.as_str().trim_end_matches('/')
     );
+    send_message(
+        config,
+        email,
+        "MedTracker invitation",
+        format!("You have been invited to MedTracker.\n\nAccept invitation:\n{url}\n\nThis invitation expires in seven days.\n"),
+    )
+}
+
+pub(crate) fn send_account_email_change(
+    config: MailConfig,
+    email: String,
+    verification_path: String,
+) -> Result<(), ()> {
+    if !verification_path.starts_with("/households/")
+        || verification_path.contains(['\r', '\n', '\\'])
+    {
+        return Err(());
+    }
+    let url = format!(
+        "{}{}",
+        config.app_url.as_str().trim_end_matches('/'),
+        verification_path
+    );
+    send_message(
+        config,
+        email,
+        "Verify your MedTracker email address",
+        format!("Confirm this email address for your MedTracker sign-in:\n{url}\n\nIf you did not request this, ignore this message.\n"),
+    )
+}
+
+fn send_message(config: MailConfig, email: String, subject: &str, body: String) -> Result<(), ()> {
+    let host = config.smtp_host.ok_or(())?;
+    let recipient = email.parse::<Mailbox>().map_err(|_| ())?;
     let message = Message::builder()
         .from(config.from)
         .to(recipient)
-        .subject("MedTracker invitation")
+        .subject(subject)
         .header(ContentType::TEXT_PLAIN)
-        .body(format!("You have been invited to MedTracker.\n\nAccept invitation:\n{url}\n\nThis invitation expires in seven days.\n"))
+        .body(body)
         .map_err(|_| ())?;
     let mut builder = if config.starttls {
         SmtpTransport::starttls_relay(&host).map_err(|_| ())?

@@ -24,6 +24,17 @@ pub(super) async fn profile_styles() -> Response {
         .into_response()
 }
 
+pub(super) async fn theme_font_styles() -> Response {
+    (
+        [
+            (header::CONTENT_TYPE, "text/css; charset=utf-8"),
+            (header::CACHE_CONTROL, "public, max-age=3600"),
+        ],
+        include_str!("../../../web/src/theme-fonts.css"),
+    )
+        .into_response()
+}
+
 pub(super) async fn profile_script() -> Response {
     (
         [
@@ -35,6 +46,17 @@ pub(super) async fn profile_script() -> Response {
         .into_response()
 }
 
+pub(super) async fn profile_notifications_script() -> Response {
+    (
+        [
+            (header::CONTENT_TYPE, "text/javascript; charset=utf-8"),
+            (header::CACHE_CONTROL, "public, max-age=3600"),
+        ],
+        include_str!("../../../web/src/assets/profile-notifications.js"),
+    )
+        .into_response()
+}
+
 pub(super) async fn plus_jakarta_font(Path(file): Path<String>) -> Response {
     let bytes: &'static [u8] = match file.as_str() {
         "plus-jakarta-sans-v12-latin-regular.woff2" => include_bytes!("../../../../app/assets/fonts/plus-jakarta-sans/plus-jakarta-sans-v12-latin-regular.woff2"),
@@ -42,6 +64,87 @@ pub(super) async fn plus_jakarta_font(Path(file): Path<String>) -> Response {
         "plus-jakarta-sans-v12-latin-600.woff2" => include_bytes!("../../../../app/assets/fonts/plus-jakarta-sans/plus-jakarta-sans-v12-latin-600.woff2"),
         "plus-jakarta-sans-v12-latin-700.woff2" => include_bytes!("../../../../app/assets/fonts/plus-jakarta-sans/plus-jakarta-sans-v12-latin-700.woff2"),
         "plus-jakarta-sans-v12-latin-800.woff2" => include_bytes!("../../../../app/assets/fonts/plus-jakarta-sans/plus-jakarta-sans-v12-latin-800.woff2"),
+        _ => return StatusCode::NOT_FOUND.into_response(),
+    };
+    (
+        [
+            (header::CONTENT_TYPE, "font/woff2"),
+            (header::CACHE_CONTROL, "public, max-age=86400"),
+        ],
+        bytes,
+    )
+        .into_response()
+}
+
+pub(super) async fn theme_font(Path((family, file)): Path<(String, String)>) -> Response {
+    if !matches!(
+        family.as_str(),
+        "lexend" | "outfit" | "figtree" | "urbanist" | "public-sans"
+    ) || !file.starts_with(&family)
+    {
+        return StatusCode::NOT_FOUND.into_response();
+    }
+    let bytes: &'static [u8] = match file.as_str() {
+        "lexend-v26-latin-regular.woff2" => {
+            include_bytes!("../../../../app/assets/fonts/lexend/lexend-v26-latin-regular.woff2")
+        }
+        "lexend-v26-latin-500.woff2" => {
+            include_bytes!("../../../../app/assets/fonts/lexend/lexend-v26-latin-500.woff2")
+        }
+        "lexend-v26-latin-600.woff2" => {
+            include_bytes!("../../../../app/assets/fonts/lexend/lexend-v26-latin-600.woff2")
+        }
+        "lexend-v26-latin-700.woff2" => {
+            include_bytes!("../../../../app/assets/fonts/lexend/lexend-v26-latin-700.woff2")
+        }
+        "outfit-v15-latin-regular.woff2" => {
+            include_bytes!("../../../../app/assets/fonts/outfit/outfit-v15-latin-regular.woff2")
+        }
+        "outfit-v15-latin-500.woff2" => {
+            include_bytes!("../../../../app/assets/fonts/outfit/outfit-v15-latin-500.woff2")
+        }
+        "outfit-v15-latin-600.woff2" => {
+            include_bytes!("../../../../app/assets/fonts/outfit/outfit-v15-latin-600.woff2")
+        }
+        "outfit-v15-latin-700.woff2" => {
+            include_bytes!("../../../../app/assets/fonts/outfit/outfit-v15-latin-700.woff2")
+        }
+        "figtree-v9-latin-regular.woff2" => {
+            include_bytes!("../../../../app/assets/fonts/figtree/figtree-v9-latin-regular.woff2")
+        }
+        "figtree-v9-latin-500.woff2" => {
+            include_bytes!("../../../../app/assets/fonts/figtree/figtree-v9-latin-500.woff2")
+        }
+        "figtree-v9-latin-600.woff2" => {
+            include_bytes!("../../../../app/assets/fonts/figtree/figtree-v9-latin-600.woff2")
+        }
+        "figtree-v9-latin-700.woff2" => {
+            include_bytes!("../../../../app/assets/fonts/figtree/figtree-v9-latin-700.woff2")
+        }
+        "urbanist-v18-latin-regular.woff2" => {
+            include_bytes!("../../../../app/assets/fonts/urbanist/urbanist-v18-latin-regular.woff2")
+        }
+        "urbanist-v18-latin-500.woff2" => {
+            include_bytes!("../../../../app/assets/fonts/urbanist/urbanist-v18-latin-500.woff2")
+        }
+        "urbanist-v18-latin-600.woff2" => {
+            include_bytes!("../../../../app/assets/fonts/urbanist/urbanist-v18-latin-600.woff2")
+        }
+        "urbanist-v18-latin-700.woff2" => {
+            include_bytes!("../../../../app/assets/fonts/urbanist/urbanist-v18-latin-700.woff2")
+        }
+        "public-sans-v21-latin-regular.woff2" => include_bytes!(
+            "../../../../app/assets/fonts/public-sans/public-sans-v21-latin-regular.woff2"
+        ),
+        "public-sans-v21-latin-500.woff2" => include_bytes!(
+            "../../../../app/assets/fonts/public-sans/public-sans-v21-latin-500.woff2"
+        ),
+        "public-sans-v21-latin-600.woff2" => include_bytes!(
+            "../../../../app/assets/fonts/public-sans/public-sans-v21-latin-600.woff2"
+        ),
+        "public-sans-v21-latin-700.woff2" => include_bytes!(
+            "../../../../app/assets/fonts/public-sans/public-sans-v21-latin-700.woff2"
+        ),
         _ => return StatusCode::NOT_FOUND.into_response(),
     };
     (

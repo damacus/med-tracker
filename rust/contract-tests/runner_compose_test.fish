@@ -182,6 +182,25 @@ or begin; echo 'Rust journey runner skipped cleanup after browser failure' >&2; 
 contains -- api:contract-image-remove $trace
 or begin; echo 'Rust journey runner skipped image cleanup after browser failure' >&2; exit 1; end
 
+set -lx PROFILE_ACCEPTANCE true
+set -lx HOUSEHOLD_ACCEPTANCE true
+set -lx BROWSER_TEST_FILES tests/settings-timezone.test.mjs tests/profile-notifications.test.mjs tests/profile-security.test.mjs tests/profile-advanced.test.mjs
+set -lx CONTRACT_FAKE_FAIL_STEP api:contract-household-web-test
+command rm -f $test_dir/trace
+fish --no-config rust/contract-tests/run.fish rails browser-journey-rust >$test_dir/output 2>&1
+set failure_status $status
+set trace (cat $test_dir/trace)
+test $failure_status -eq 42
+or begin; cat $test_dir/output >&2; echo "Profile runner lost contract failure status: $failure_status" >&2; exit 1; end
+contains -- api:contract-household-web-test $trace
+or begin; echo 'Profile runner skipped grouped contracts' >&2; exit 1; end
+contains -- api:contract-browser-rust $trace
+or begin; echo 'Profile runner skipped browser diagnostics after contract failure' >&2; exit 1; end
+contains -- cleanup $trace
+or begin; echo 'Profile runner skipped cleanup after grouped contract failure' >&2; exit 1; end
+
+set -e PROFILE_ACCEPTANCE HOUSEHOLD_ACCEPTANCE
+
 set -e CONTRACT_FAKE_FAIL_STEP
 set -e CONTRACT_FAKE_REQUIRE_BROWSER_SNAPSHOT BROWSER_TEST_FILES
 command rm -f $test_dir/trace

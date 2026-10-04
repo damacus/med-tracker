@@ -56,7 +56,7 @@ use input::valid_id;
 pub(super) use issuing::create;
 pub(super) use issuing::destroy;
 use mail::smtp_send;
-pub(super) use mail::MailConfig;
+pub(crate) use mail::{send_account_email_change, MailConfig};
 pub(super) use reading::index;
 use replay::accepted_retry;
 use replay::keyed_failure;

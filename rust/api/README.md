@@ -17,6 +17,15 @@ runner generates a disposable authentication signing key before Compose
 starts; deployment must supply its own stable `AUTH_SESSION_SECRET` and
 trusted `PUBLIC_BASE_URL`.
 
+OTP setup and verification also require `RODAUTH_HMAC_SECRET`, set to the
+Rails application's `secret_key_base` that was used to enrol existing
+authenticators. This is separate from `AUTH_SESSION_SECRET`. An optional
+`RODAUTH_HMAC_OLD_SECRET` supports the previous Rails key during rotation.
+Missing or empty OTP key configuration fails closed. Recovery codes retain
+the existing Rails storage and one-use behaviour.
+The disposable contract runner supplies matching Rails and Rust OTP keys,
+with a separate disposable session key.
+
 `task api:browser-rails` runs the medication browser journey against a
 disposable Rails fixture before porting that UI. Its Playwright sidecar shares
 the Rails container's network namespace and uses loopback port 3000. This

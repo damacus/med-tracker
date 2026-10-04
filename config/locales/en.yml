@@ -1977,6 +1977,8 @@ en:
       none: "No shortcut"
       save: "Save shortcuts"
       invalid: "Choose one to three different shortcuts."
+      rust_unavailable: "Unavailable shortcuts remain saved but do not appear in the bottom bar. Choose an available destination to replace one."
+      unavailable_option: "currently unavailable"
     updated: Profile updated successfully.
     common:
       "on": "On"
@@ -1990,6 +1992,25 @@ en:
         two_factor_on: "2FA: On"
         two_factor_off: "2FA: Not enabled"
         passkeys: "%{count} passkeys"
+        methods_title: Two-Factor Authentication
+        methods_description: Secure your account with multiple authentication methods.
+        totp_description: Use an app like Google Authenticator or 1Password to generate codes.
+        recovery_description: Use these codes to access your account if you lose your 2FA device.
+        passkeys_description: Passwordless authentication using biometrics or security keys.
+        totp_setup: Set up authenticator app
+        passkeys_setup: Add a passkey
+        not_configured: Not configured
+        not_generated: Not generated
+        no_passkeys: No passkeys registered
+        passkey_added_on: Added %{date}
+        remove: Remove
+        totp_active: Authenticator app is active
+        totp_disable: Disable
+        recovery_generated: Recovery codes generated
+        recovery_codes_available: "%{count} codes available"
+        recovery_view: View codes
+        recovery_generate: Generate recovery codes
+        recovery_regenerate: Regenerate
       notifications:
         title: Notifications
         reminders: "Reminders: %{state}"
@@ -2143,12 +2164,14 @@ en:
       view_docs: View Docs
     close_account:
       title: Close Account
+      retention_description: Closing your account removes your sign-in and household access. Medication and health records remain in the household history.
       description: Permanently delete your account and all associated data
       dialog_title: Are you absolutely sure?
       dialog_description: This action cannot be undone. This will permanently delete
         your account and remove all your data from our servers.
       cancel_button: Cancel
       confirm_button: Yes, delete my account
+      confirm_retention_button: Yes, close my account
   users:
     welcome: Welcome! Your account has been created.
     created: User was successfully created.

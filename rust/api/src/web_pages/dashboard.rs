@@ -25,6 +25,14 @@ fn dashboard_read_error(cookie: Option<HeaderValue>) -> Response {
     page_status(format!("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><link rel=\"stylesheet\" href=\"/dashboard.css?v={:016x}\"><title>Dashboard unavailable | MedTracker</title></head><body><main class=\"dashboard-error\"><h1>Dashboard unavailable</h1><p>We could not load your dashboard. Please reconnect and try again.</p><a href=\"/reconnect\">Try again</a></main></body></html>", medtracker_web::dashboard::DASHBOARD_CSS_VERSION), cookie, StatusCode::SERVICE_UNAVAILABLE)
 }
 
+pub(super) fn profile_timezone(profile: &Value) -> chrono_tz::Tz {
+    profile
+        .pointer("/data/time_zone")
+        .and_then(Value::as_str)
+        .and_then(medtracker_web::rails_time_zones::parse)
+        .unwrap_or_else(configured_timezone)
+}
+
 pub(super) async fn dashboard(
     State(state): State<AppState>,
     Path(slug): Path<String>,
@@ -151,11 +159,7 @@ pub(super) async fn dashboard(
         .find(|(id, _)| Some(*id) == account_person_id)
         .map(|(_, name)| name.as_str())
         .unwrap_or("there");
-    let timezone = profile
-        .pointer("/data/time_zone")
-        .and_then(Value::as_str)
-        .and_then(|value| value.parse().ok())
-        .unwrap_or_else(configured_timezone);
+    let timezone = profile_timezone(&profile);
     let schedules = match api.collection(&format!("{base}/schedules")).await {
         Ok(value) => value,
         Err(_) => return dashboard_read_error(api.cookie),

@@ -1968,6 +1968,8 @@ pt:
       none: "Sem atalho"
       save: "Guardar atalhos"
       invalid: "Escolha entre um e três atalhos diferentes."
+      rust_unavailable: "Os atalhos indisponíveis continuam guardados, mas não aparecem na barra inferior. Escolha um destino disponível para os substituir."
+      unavailable_option: "indisponível neste momento"
     common:
       "on": Ligado
       "off": Desligado
@@ -1980,6 +1982,25 @@ pt:
         two_factor_on: "2FA: Ligado"
         two_factor_off: "2FA: Não ativado"
         passkeys: "%{count} chaves de acesso"
+        methods_title: Autenticação de dois fatores
+        methods_description: Proteja a sua conta com vários métodos de autenticação.
+        totp_description: Use uma app como Google Authenticator ou 1Password para gerar códigos.
+        recovery_description: Use estes códigos para aceder à sua conta se perder o dispositivo de 2FA.
+        passkeys_description: Autenticação sem palavra-passe com biometria ou chaves de segurança.
+        totp_setup: Configurar app de autenticação
+        passkeys_setup: Adicionar uma chave de acesso
+        not_configured: Não configurado
+        not_generated: Não gerados
+        no_passkeys: Não há chaves de acesso registadas
+        passkey_added_on: Adicionada em %{date}
+        remove: Remover
+        totp_active: A app de autenticação está ativa
+        totp_disable: Desativar
+        recovery_generated: Códigos de recuperação gerados
+        recovery_codes_available: "%{count} códigos disponíveis"
+        recovery_view: Ver códigos
+        recovery_generate: Gerar códigos de recuperação
+        recovery_regenerate: Gerar novamente
       notifications:
         title: Notificações
         reminders: "Lembretes: %{state}"
@@ -2136,12 +2157,14 @@ pt:
       view_docs: Ver documentação
     close_account:
       title: Encerrar Conta
+      retention_description: Ao encerrar a sua conta, perde o acesso e a possibilidade de iniciar sessão nos agregados. Os registos de medicação e saúde permanecem no histórico do agregado.
       description: Eliminar permanentemente a sua conta e todos os dados associados
       dialog_title: Tem a certeza absoluta?
       dialog_description: Esta ação não pode ser desfeita. Isto irá eliminar permanentemente
         a sua conta e remover todos os seus dados dos nossos servidores.
       cancel_button: Cancelar
       confirm_button: Sim, eliminar a minha conta
+      confirm_retention_button: Sim, encerrar a minha conta
   users:
     welcome: Bem-vindo! A sua conta foi criada.
     created: Utilizador criado com sucesso.

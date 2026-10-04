@@ -1,11 +1,11 @@
 use crate::audit;
 use crate::auth_sessions;
-use crate::entities::{api_app_token, membership, security_audit_event, version};
+use crate::entities::{api_app_token, grant, membership, person, security_audit_event, version};
 use crate::medication_management::{
     error_response, finish_with_request_id, household_manager, request_context,
 };
 use crate::mutation_idempotency::{self, Lookup, StoredResponse};
-use crate::{database_error, ApiError, AppState, AuthContext};
+use crate::{database_error, ApiError, AppState, AuthContext, CredentialKind};
 use axum::body::Body;
 use axum::extract::{rejection::JsonRejection, Path, State};
 use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
@@ -14,8 +14,8 @@ use axum::Json;
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use chrono::{DateTime, Months, NaiveDateTime, Utc};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, QueryOrder,
-    QuerySelect, QueryTrait, Set,
+    ActiveModelTrait, ColumnTrait, Condition, DatabaseTransaction, EntityTrait, QueryFilter,
+    QueryOrder, QuerySelect, QueryTrait, Set,
 };
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
@@ -53,6 +53,53 @@ fn household_memberships(household_id: i64) -> sea_orm::sea_query::SelectStateme
         .column(membership::Column::Id)
         .filter(membership::Column::HouseholdId.eq(household_id))
         .into_query()
+}
+
+async fn may_manage_own_tokens(
+    db: &DatabaseTransaction,
+    context: &AuthContext,
+) -> Result<bool, ApiError> {
+    if !matches!(context.credential_kind, CredentialKind::BrowserSession) {
+        return Ok(false);
+    }
+    let Some(person_id) = context.membership.person_id else {
+        return Ok(false);
+    };
+    let person = person::Entity::find_by_id(person_id)
+        .filter(person::Column::HouseholdId.eq(context.membership.household_id))
+        .filter(person::Column::AccountId.eq(context.account_id))
+        .one(db)
+        .await
+        .map_err(database_error)?;
+    if person.is_none() {
+        return Ok(false);
+    }
+    let now = Utc::now().naive_utc();
+    Ok(grant::Entity::find()
+        .filter(grant::Column::HouseholdId.eq(context.membership.household_id))
+        .filter(grant::Column::HouseholdMembershipId.eq(context.membership.id))
+        .filter(grant::Column::PersonId.eq(person_id))
+        .filter(grant::Column::AccessLevel.eq("manage"))
+        .filter(grant::Column::RevokedAt.is_null())
+        .filter(
+            Condition::any()
+                .add(grant::Column::ExpiresAt.is_null())
+                .add(grant::Column::ExpiresAt.gt(now)),
+        )
+        .one(db)
+        .await
+        .map_err(database_error)?
+        .is_some())
+}
+
+async fn may_access_tokens(
+    db: &DatabaseTransaction,
+    context: &AuthContext,
+) -> Result<bool, ApiError> {
+    if household_manager(context) {
+        return Ok(true);
+    }
+    may_manage_own_tokens(db, context).await
 }
 
 async fn token_for_account(
@@ -282,7 +329,7 @@ pub(super) async fn index(
     headers: HeaderMap,
 ) -> Result<Response, ApiError> {
     let (db, context) = request_context(&state, &headers, household_id).await?;
-    if !household_manager(&context) {
+    if !may_access_tokens(&db, &context).await? {
         return denied(db, &context, "GET", "index").await;
     }
     let rows = api_app_token::Entity::find()
@@ -327,7 +374,7 @@ pub(super) async fn create(
         household_id,
     )
     .await?;
-    if !household_manager(&context) {
+    if !may_access_tokens(&db, &context).await? {
         return denied(db, &context, "POST", "create").await;
     }
     let Json(body) = match payload {
@@ -516,7 +563,7 @@ pub(super) async fn destroy(
         household_id,
     )
     .await?;
-    if !household_manager(&context) {
+    if !may_access_tokens(&db, &context).await? {
         return denied(db, &context, "DELETE", "destroy").await;
     }
     let path = format!("{}/{id}", path(household_id));

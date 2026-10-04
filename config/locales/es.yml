@@ -1642,6 +1642,8 @@ es:
       none: "Sin acceso directo"
       save: "Guardar accesos directos"
       invalid: "Elige de uno a tres accesos directos diferentes."
+      rust_unavailable: "Los accesos no disponibles siguen guardados, pero no aparecen en la barra inferior. Elige un destino disponible para sustituirlos."
+      unavailable_option: "no disponible actualmente"
     common:
       "on": Activado
       "off": Desactivado
@@ -1654,6 +1656,25 @@ es:
         two_factor_on: "2FA: Activado"
         two_factor_off: "2FA: No activado"
         passkeys: "%{count} claves de acceso"
+        methods_title: Autenticación de dos factores
+        methods_description: Protege tu cuenta con varios métodos de autenticación.
+        totp_description: Usa una aplicación como Google Authenticator o 1Password para generar códigos.
+        recovery_description: Usa estos códigos para acceder a tu cuenta si pierdes tu dispositivo de 2FA.
+        passkeys_description: Autenticación sin contraseña mediante biometría o claves de seguridad.
+        totp_setup: Configurar aplicación de autenticación
+        passkeys_setup: Añadir una clave de acceso
+        not_configured: Sin configurar
+        not_generated: Sin generar
+        no_passkeys: No hay claves de acceso registradas
+        passkey_added_on: Añadida el %{date}
+        remove: Eliminar
+        totp_active: La aplicación de autenticación está activa
+        totp_disable: Desactivar
+        recovery_generated: Códigos de recuperación generados
+        recovery_codes_available: "%{count} códigos disponibles"
+        recovery_view: Ver códigos
+        recovery_generate: Generar códigos de recuperación
+        recovery_regenerate: Regenerar
       notifications:
         title: Notificaciones
         reminders: "Recordatorios: %{state}"
@@ -1725,12 +1746,14 @@ es:
         minty_fresh: Menta Fresca
     close_account:
       title: Cerrar Cuenta
+      retention_description: Al cerrar tu cuenta se elimina tu acceso y tu inicio de sesión en los hogares. Los registros de medicación y salud permanecen en el historial del hogar.
       description: Eliminar permanentemente su cuenta y todos los datos asociados
       dialog_title: "¿Está completamente seguro?"
       dialog_description: Esta acción no se puede deshacer. Esto eliminará permanentemente
         su cuenta y eliminará todos sus datos de nuestros servidores.
       cancel_button: Cancelar
       confirm_button: Sí, eliminar mi cuenta
+      confirm_retention_button: Sí, cerrar mi cuenta
     password_sheet:
       change_button: Cambiar
       title: Cambiar contraseña

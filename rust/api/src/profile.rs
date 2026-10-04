@@ -148,7 +148,7 @@ fn parse(body: &Value) -> Result<Attributes, (StatusCode, &'static str)> {
     let time_zone = match inner.get("time_zone") {
         None => None,
         Some(Value::String(value)) => {
-            if !value.is_empty() && value.parse::<chrono_tz::Tz>().is_err() {
+            if !value.is_empty() && medtracker_web::rails_time_zones::parse(value).is_none() {
                 return Err(invalid_value);
             }
             Some(value.clone())
@@ -503,7 +503,7 @@ async fn update(
         Err((status, code)) => {
             let errors = if code == "validation_failed" {
                 if body["profile"]["time_zone"].as_str().is_some_and(|value| {
-                    !value.is_empty() && value.parse::<chrono_tz::Tz>().is_err()
+                    !value.is_empty() && medtracker_web::rails_time_zones::parse(value).is_none()
                 }) {
                     Some(json!({"time_zone":["Time zone is not included in the list"]}))
                 } else {
@@ -1169,7 +1169,15 @@ pub(super) async fn remove(
 
 #[cfg(test)]
 mod tests {
-    use super::AvatarStorage;
+    use super::{parse, AvatarStorage};
+    use serde_json::json;
+
+    #[test]
+    fn rails_time_zone_labels_are_valid_profile_preferences() {
+        let attrs = parse(&json!({"profile": {"time_zone": "London"}})).unwrap();
+        assert_eq!(attrs.time_zone.as_deref(), Some("London"));
+        assert!(parse(&json!({"profile": {"time_zone": "Invalid/Place"}})).is_err());
+    }
 
     #[test]
     fn existing_storage_service_config_is_used_and_unsupported_services_fail() {

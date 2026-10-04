@@ -5,7 +5,7 @@ use super::sessions::{
     account_available, browser_cookie_age, login_intent, pending, trusted_origin, BrowserSession,
     LOGIN_INTENT_COOKIE, SESSION_COOKIE,
 };
-use crate::entities::{active_session_key, webauthn_key, webauthn_user_id};
+use crate::entities::{account, active_session_key, webauthn_key, webauthn_user_id};
 use crate::AppState;
 use axum::{
     extract::{Form, State},
@@ -108,7 +108,6 @@ pub(super) async fn passkey_login(
     };
     let key = match webauthn_key::Entity::find()
         .filter(webauthn_key::Column::WebauthnId.eq(&credential_id))
-        .lock_exclusive()
         .one(&db)
         .await
     {
@@ -117,6 +116,27 @@ pub(super) async fn passkey_login(
     };
     let Some(key) = key else {
         return login_error(PASSKEY_ERROR);
+    };
+    let account_id = key.account_id;
+    let account = match account::Entity::find_by_id(account_id)
+        .lock_exclusive()
+        .one(&db)
+        .await
+    {
+        Ok(Some(account)) if account.status == 2 => account,
+        Ok(_) => return login_error(PASSKEY_ERROR),
+        Err(error) => return database_error(error).into_response(),
+    };
+    let key = match webauthn_key::Entity::find()
+        .filter(webauthn_key::Column::WebauthnId.eq(&credential_id))
+        .filter(webauthn_key::Column::AccountId.eq(account.id))
+        .lock_exclusive()
+        .one(&db)
+        .await
+    {
+        Ok(Some(key)) => key,
+        Ok(None) => return login_error(PASSKEY_ERROR),
+        Err(error) => return database_error(error).into_response(),
     };
     let Some(rp_id) = state.oauth.base_url.host_str() else {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
@@ -181,7 +201,6 @@ pub(super) async fn passkey_login(
             return login_error(PASSKEY_ERROR);
         }
     }
-    let account_id = key.account_id;
     let available = match account_available(&db, account_id).await {
         Ok(value) => value,
         Err(error) => return error,

@@ -194,6 +194,33 @@ fn profile_get_patch_put_and_invalid_update_preserve_public_state() {
 }
 
 #[test]
+fn rails_time_zone_label_round_trips_without_rewriting_the_preference() {
+    let target = Target::from_env();
+    let fixture = fixture();
+    let path = profile_path(&fixture);
+    let original = data(target.get(&path, Some(&fixture.profile_access_token)));
+
+    let response = target.patch_json(
+        &path,
+        &fixture.profile_access_token,
+        &json!({"profile": {"time_zone": "London"}}),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(data(response)["time_zone"], "London");
+    assert_eq!(
+        data(target.get(&path, Some(&fixture.profile_access_token)))["time_zone"],
+        "London"
+    );
+
+    let response = target.patch_json(
+        &path,
+        &fixture.profile_access_token,
+        &json!({"profile": {"time_zone": original["time_zone"]}}),
+    );
+    assert_eq!(response.status().as_u16(), 200);
+}
+
+#[test]
 fn profile_access_is_self_scoped_and_checks_current_grants() {
     let target = Target::from_env();
     let fixture = fixture();
@@ -453,7 +480,11 @@ fn invalid_avatar_replacement_keeps_existing_bytes() {
             "validation_failed",
         ),
         (
-            avatar_form(vec![b'x'; 5 * 1024 * 1024 + 128 * 1024], "huge.png", "image/png"),
+            avatar_form(
+                vec![b'x'; 5 * 1024 * 1024 + 128 * 1024],
+                "huge.png",
+                "image/png",
+            ),
             "validation_failed",
         ),
         (

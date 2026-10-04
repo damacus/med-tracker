@@ -291,6 +291,9 @@ jobs:
           - journey: admin-dmd-import
             target: nhs_dmd_import_api
             browsers: "tests/household-admin-dmd.test.mjs"
+          - journey: profile
+            profile: "true"
+            browsers: "tests/settings-timezone.test.mjs tests/profile-notifications.test.mjs tests/profile-security.test.mjs tests/profile-security-unit.test.mjs tests/profile-advanced.test.mjs"
           - journey: standalone-login
             target: passkey_security
             browsers: "tests/login.smoke.test.mjs"
@@ -299,6 +302,7 @@ jobs:
       HOUSEHOLD_COMPLETION_ACCEPTANCE: ${{ matrix.completion || '' }}
       HOUSEHOLD_STOCK_ACCEPTANCE: ${{ matrix.stock || '' }}
       HOUSEHOLD_TEST_FILE: ${{ matrix.target || '' }}
+      PROFILE_ACCEPTANCE: ${{ matrix.profile || '' }}
       BROWSER_TEST_FILES: ${{ matrix.browsers || 'tests/medication-journey.test.mjs tests/medication-journey-form.test.mjs' }}
       CONTRACT_DASHBOARD_NOW: ${{ matrix.clock }}
     steps:

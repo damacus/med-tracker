@@ -143,6 +143,20 @@ test('standalone login uses a fresh fixture without preceding household writes',
   assert.doesNotMatch(row, /clock:|completion:|stock:|filter:/);
 });
 
+test('full profile contracts and four browser sections have a hosted journey', () => {
+  const workflow = readFileSync(new URL('../../../.github/workflows/ci.yml', import.meta.url), 'utf8');
+  const job = workflow.match(/\n  rust_household_browser:\n(?<body>[\s\S]*?)(?=\n  [\w-]+:\n)/)?.groups?.body;
+  assert.ok(job, 'household browser job was not found');
+  const row = job.match(/^          - journey: profile\n(?<body>[\s\S]*?)(?=^          - journey:|^    env:)/m)?.groups?.body;
+  assert.ok(row, 'profile journey is absent');
+  assert.match(row, /^            profile: "true"$/m);
+  assert.doesNotMatch(row, /target:|acceptance: "false"/);
+  for (const file of ['settings-timezone', 'profile-notifications', 'profile-security', 'profile-security-unit', 'profile-advanced']) {
+    assert.ok(row.includes(`tests/${file}.test.mjs`), file);
+  }
+  assert.match(job, /PROFILE_ACCEPTANCE: \$\{\{ matrix\.profile \|\| '' \}\}/);
+});
+
 test('isolated Rails web server has a readiness healthcheck for Compose wait', () => {
   const compose = readFileSync(new URL('../../../compose.yaml', import.meta.url), 'utf8');
   const webTest = compose.match(/\n  web-test:\n(?<body>[\s\S]*?)(?=\n  [\w-]+:\n)/)?.groups?.body;

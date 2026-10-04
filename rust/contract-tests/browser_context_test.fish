@@ -18,6 +18,8 @@ set -lx CONTRACT_FIXTURE_DIR "$workspace/$browser_context_test_dir"
 set -lx CONTRACT_STORAGE_ROOT "$CONTRACT_FIXTURE_DIR/storage"
 set -lx CONTRACT_AUTH_SESSION_SECRET (rtk proxy openssl rand -hex 32)
 or exit $status
+set -lx CONTRACT_RODAUTH_HMAC_SECRET (rtk proxy openssl rand -hex 32)
+or exit $status
 set -lx CONTRACT_APNS_PRIVATE_KEY (rtk proxy openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:prime256v1 | string collect)
 if test $status -ne 0; or test (count $CONTRACT_APNS_PRIVATE_KEY) -ne 1
     echo 'Disposable context-test signing key generation failed' >&2

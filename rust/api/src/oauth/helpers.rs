@@ -29,7 +29,7 @@ pub(super) fn html(body: String) -> Response {
             (header::CACHE_CONTROL, "no-store"),
             (
                 header::CONTENT_SECURITY_POLICY,
-                "default-src 'none'; script-src 'self'; style-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+                "default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
             ),
         ],
         Html(body),
@@ -73,4 +73,20 @@ pub(super) fn field<'a>(fields: &'a [(String, String)], name: &str) -> Option<&'
         .map(|(_, value)| value.as_str());
     let value = values.next()?;
     values.next().is_none().then_some(value)
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn authentication_pages_allow_only_same_origin_fonts() {
+        let response = super::html(String::new());
+        let policy = response.headers()[super::header::CONTENT_SECURITY_POLICY]
+            .to_str()
+            .unwrap();
+        let font_source = policy
+            .split(';')
+            .map(str::trim)
+            .find(|directive| directive.starts_with("font-src"));
+        assert_eq!(font_source, Some("font-src 'self'"));
+    }
 }

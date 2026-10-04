@@ -14,6 +14,7 @@ set -e HOUSEHOLD_COMPLETION_ACCEPTANCE
 set -e HOUSEHOLD_STOCK_ACCEPTANCE
 set -e HOUSEHOLD_TEST_FILE
 set -e HOUSEHOLD_TEST_FILTER
+set -e PROFILE_ACCEPTANCE
 set -e BROWSER_TEST_FILES
 
 function assert_household_command
@@ -28,7 +29,7 @@ function assert_household_command
         echo "Household Task render failed for $case_name: $render_status" >&2
         return 1
     end
-    set -l rendered_command (string match -r 'cargo test --locked --manifest-path rust/contract-tests/Cargo.toml .*' < $selector_test_dir/rendered)
+    set -l rendered_command (string match -r 'cargo test --locked (?:--no-fail-fast )?--manifest-path rust/contract-tests/Cargo.toml .*' < $selector_test_dir/rendered)
     set -l expected_commands (string split \n -- "$expected_command")
     if test (count $rendered_command) -ne (count $expected_commands)
         cat $selector_test_dir/rendered >&2
@@ -60,8 +61,26 @@ assert_household_command false "$cargo_prefix $original_targets$unfiltered_suffi
 or exit $status
 assert_household_command true "$completion_commands" HOUSEHOLD_COMPLETION_ACCEPTANCE=true
 or exit $status
+assert_household_command profile "cargo test --locked --no-fail-fast --manifest-path rust/contract-tests/Cargo.toml --test profile --test openapi_profile --test oauth --test passkey_security --test web_profile_rust --test web_profile_security --test web_profile_advanced --test web_profile_close --test web_profile_notifications$unfiltered_suffix" PROFILE_ACCEPTANCE=true
+or exit $status
+rtk proxy task --dry --verbose api:contract-household-web-test CONTRACT_PROJECT=mtcontract-selector-probe PROFILE_ACCEPTANCE=true >$selector_test_dir/profile-contract 2>&1
+or exit $status
+string match -q '*up -d --wait --no-build rust-api-storage-fail*' (cat $selector_test_dir/profile-contract)
+or begin; echo 'Profile acceptance omitted the avatar storage-failure sidecar' >&2; exit 1; end
 assert_household_command explicit "$cargo_prefix --test household_completion_medication -- first_option_inserted_between_medication_and_options_reads_rejects_stale_scalar_draft_without_writes --test-threads=1" HOUSEHOLD_COMPLETION_ACCEPTANCE=true HOUSEHOLD_TEST_FILE=household_completion_medication HOUSEHOLD_TEST_FILTER=first_option_inserted_between_medication_and_options_reads_rejects_stale_scalar_draft_without_writes
 or exit $status
+
+rtk proxy task --dry --verbose api:profile-acceptance >$selector_test_dir/profile-wrapper 2>&1
+or exit $status
+string match -q '*PROFILE_ACCEPTANCE=true*' (cat $selector_test_dir/profile-wrapper)
+or begin; echo 'Profile wrapper omitted grouped acceptance selection' >&2; exit 1; end
+string match -q '*tests/settings-timezone.test.mjs tests/profile-notifications.test.mjs tests/profile-security.test.mjs tests/profile-security-unit.test.mjs tests/profile-advanced.test.mjs*' (cat $selector_test_dir/profile-wrapper)
+or begin; echo 'Profile wrapper omitted browser coverage' >&2; exit 1; end
+
+rtk proxy task --dry --verbose api:contract-browser-node CONTRACT_PROJECT=mtcontract-selector-probe PROFILE_ACCEPTANCE=true BROWSER_TEST_FILES='tests/settings-timezone.test.mjs tests/profile-notifications.test.mjs tests/profile-security.test.mjs tests/profile-advanced.test.mjs' >$selector_test_dir/profile-browser 2>&1
+or exit $status
+string match -q '*node --test --test-concurrency=1 tests/settings-timezone.test.mjs tests/profile-notifications.test.mjs tests/profile-security.test.mjs tests/profile-advanced.test.mjs*' (cat $selector_test_dir/profile-browser)
+or begin; echo 'Profile browser files are not serialised' >&2; exit 1; end
 
 command mkdir -p $selector_test_dir/bin
 or exit $status

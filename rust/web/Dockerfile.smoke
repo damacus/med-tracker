@@ -4,4 +4,5 @@ COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts
 FROM dependencies AS runner
 COPY tests/ tests/
+COPY src/profile-security.js src/profile-security.js
 CMD ["npm", "run", "smoke"]

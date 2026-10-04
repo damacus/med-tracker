@@ -8,7 +8,11 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 
 use api_client::WebApi;
-use response::{error, failure, login_redirect, page, page_status, redirect, PageError};
+pub(crate) use profile_security::verify_password_hash_for_close;
+use response::{
+    error, failure, login_redirect, page, page_status, profile_page, profile_page_status, redirect,
+    PageError,
+};
 pub(crate) use time::dashboard_now;
 
 mod admin;
@@ -49,7 +53,12 @@ pub fn routes() -> Router<AppState> {
         .merge(profile_advanced::routes())
         .route("/household.css", get(assets::household_styles))
         .route("/profile.css", get(assets::profile_styles))
+        .route("/theme-fonts.css", get(assets::theme_font_styles))
         .route("/profile.js", get(assets::profile_script))
+        .route(
+            "/profile-notifications.js",
+            get(assets::profile_notifications_script),
+        )
         .route("/households/{slug}/dashboard", get(dashboard::dashboard))
         .route(
             "/households/{slug}/medications",
@@ -91,7 +100,11 @@ pub fn routes() -> Router<AppState> {
         .route("/fonts/inter-800.woff2", get(assets::inter_800))
         .route("/fonts/inter-600.woff2", get(assets::inter_600))
         .route("/fonts/inter-700.woff2", get(assets::inter_700))
-        .route("/fonts/plus-jakarta-sans/{file}", get(assets::plus_jakarta_font))
+        .route(
+            "/fonts/plus-jakarta-sans/{file}",
+            get(assets::plus_jakarta_font),
+        )
+        .route("/fonts/{family}/{file}", get(assets::theme_font))
 }
 
 fn field<'a>(value: &'a Value, key: &str) -> &'a str {

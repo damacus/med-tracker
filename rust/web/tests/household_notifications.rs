@@ -1,8 +1,86 @@
 use medtracker_web::household::household_document;
 use medtracker_web::household_i18n::{Locale, Text};
 use medtracker_web::notifications::{
-    NotificationDraft, NotificationPage, render_notification_settings,
+    ManagedPerson, NotificationDraft, NotificationPage, ProfileNotificationPage,
+    render_notification_profile, render_notification_settings,
 };
+
+#[test]
+fn profile_notifications_render_push_managed_people_and_reminder_times() {
+    let html = render_notification_profile(ProfileNotificationPage {
+        slug: "family name".into(),
+        csrf: "csrf".into(),
+        household_id: 7,
+        locale: Locale::En,
+        preferences: NotificationDraft::default(),
+        editable: true,
+        saved: false,
+        error: false,
+        push_configured: true,
+        times: [Some("08:30".into()), None, Some("18:15".into()), None],
+        managed: vec![
+            ManagedPerson {
+                id: 11,
+                name: "Child".into(),
+                automatic: true,
+                selected: true,
+            },
+            ManagedPerson {
+                id: 12,
+                name: "Adult".into(),
+                automatic: false,
+                selected: true,
+            },
+        ],
+    })
+    .expect("profile notifications");
+    assert!(html.contains("data-profile-push"));
+    let push_title = html
+        .find("<h4>Browser Notifications</h4>")
+        .expect("push heading");
+    let push_box = html
+        .find("class=\"profile-push-status-box\"")
+        .expect("push status box");
+    assert!(push_title < push_box);
+    assert!(html.contains("data-testid=\"profile-notifications-header\""));
+    assert!(html.contains("Reminders: On"));
+    assert!(html.contains("3 categories enabled"));
+    assert!(html.contains("class=\"profile-section-body profile-notifications-body\""));
+    assert!(html.contains("data-household-id=\"7\""));
+    assert!(html.contains("data-push-on"));
+    assert!(html.contains("data-push-off"));
+    assert!(html.contains("/households/family%20name/profile/notifications"));
+    assert!(html.contains("People you manage"));
+    assert!(html.contains("Included automatically"));
+    assert!(html.contains("name=\"managed_person_ids[]\""));
+    assert!(html.contains("name=\"morning_time\""));
+    assert!(html.contains("value=\"08:30\""));
+    assert!(html.contains("name=\"evening_time\""));
+    assert_eq!(html.matches("class=\"profile-toggle\"").count(), 5);
+    assert!(html.contains("class=\"profile-notification-row\""));
+}
+
+#[test]
+fn profile_notifications_render_for_every_supported_locale() {
+    for locale in Locale::ALL {
+        let html = render_notification_profile(ProfileNotificationPage {
+            slug: "family".into(),
+            csrf: "csrf".into(),
+            household_id: 7,
+            locale,
+            preferences: NotificationDraft::default(),
+            editable: true,
+            saved: false,
+            error: false,
+            push_configured: true,
+            times: [None, None, None, None],
+            managed: vec![],
+        })
+        .expect("translated notification profile");
+        assert!(html.contains("data-testid=\"profile-notifications-card\""));
+        assert!(html.contains("name=\"morning_time\""));
+    }
+}
 
 fn page(draft: Option<NotificationDraft>, saved: bool, error: bool) -> NotificationPage {
     NotificationPage {

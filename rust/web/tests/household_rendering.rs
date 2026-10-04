@@ -40,7 +40,8 @@ fn household_shell_keeps_navigation_in_the_current_household() {
         "medications",
         "people",
         "locations",
-        "settings",
+        "profile",
+        "settings/notifications",
     ] {
         assert!(html.contains(&format!(
             "href=\"/households/test-household/{destination}\""

@@ -6,6 +6,7 @@ x-contract-external-env: &contract-external-env
   ACTIVE_STORAGE_SERVICE_NAME: test
   REPORT_PDF_FONT_PATH: /src/vendor/fonts/NotoSans-Regular.ttf
   AUTH_SESSION_SECRET: ${CONTRACT_AUTH_SESSION_SECRET:?Disposable authentication signing key required}
+  RODAUTH_HMAC_SECRET: ${CONTRACT_RODAUTH_HMAC_SECRET:?Disposable Rails OTP key required}
   MEDTRACKER_AI_MEDICATION_HELP_ENABLED: "true"
   MEDTRACKER_AI_MEDICATION_HELP_API_BASE_URL: http://127.0.0.1:20091
   MEDTRACKER_AI_MEDICATION_SOURCE_PROXY_ORIGIN: http://127.0.0.1:20089
@@ -30,6 +31,10 @@ x-contract-external-service: &contract-external-service
       condition: service_healthy
 
 services:
+  web-test:
+    environment:
+      SECRET_KEY_BASE: ${CONTRACT_RODAUTH_HMAC_SECRET:?Disposable Rails OTP key required}
+
   rust-api:
     profiles: [test]
     build:
@@ -75,6 +80,7 @@ services:
       APNS_KEY_ID: CONTRACTKEY
       APNS_PRIVATE_KEY: ${CONTRACT_APNS_PRIVATE_KEY:?Disposable APNs signing key required}
       AUTH_SESSION_SECRET: ${CONTRACT_AUTH_SESSION_SECRET:?Disposable authentication signing key required}
+      RODAUTH_HMAC_SECRET: ${CONTRACT_RODAUTH_HMAC_SECRET:?Disposable Rails OTP key required}
       CONTRACT_DASHBOARD_NOW: ${CONTRACT_DASHBOARD_NOW:-}
       CONTRACT_PROJECT: ${CONTRACT_PROJECT:?Isolated contract project required}
     volumes:
@@ -196,6 +202,7 @@ services:
       ACTIVE_STORAGE_SERVICE_NAME: test
       REPORT_PDF_FONT_PATH: /src/vendor/fonts/NotoSans-Regular.ttf
       AUTH_SESSION_SECRET: ${CONTRACT_AUTH_SESSION_SECRET:?Disposable authentication signing key required}
+      RODAUTH_HMAC_SECRET: ${CONTRACT_RODAUTH_HMAC_SECRET:?Disposable Rails OTP key required}
     volumes:
       - type: bind
         source: ${CONTRACT_STORAGE_ROOT}
@@ -227,6 +234,7 @@ services:
       ACTIVE_STORAGE_SERVICE_NAME: test
       REPORT_PDF_FONT_PATH: /src/vendor/fonts/NotoSans-Regular.ttf
       AUTH_SESSION_SECRET: ${CONTRACT_AUTH_SESSION_SECRET:?Disposable authentication signing key required}
+      RODAUTH_HMAC_SECRET: ${CONTRACT_RODAUTH_HMAC_SECRET:?Disposable Rails OTP key required}
     depends_on:
       db-test:
         condition: service_healthy
@@ -254,6 +262,7 @@ services:
       ACTIVE_STORAGE_SERVICE_NAME: test
       REPORT_PDF_FONT_PATH: /nonexistent/font.ttf
       AUTH_SESSION_SECRET: ${CONTRACT_AUTH_SESSION_SECRET:?Disposable authentication signing key required}
+      RODAUTH_HMAC_SECRET: ${CONTRACT_RODAUTH_HMAC_SECRET:?Disposable Rails OTP key required}
     depends_on:
       db-test:
         condition: service_healthy

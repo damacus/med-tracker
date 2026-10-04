@@ -1,3 +1,4 @@
+@import url('/theme-fonts.css');
 @font-face{font-family:Inter;font-style:normal;font-weight:500;font-display:swap;src:url('/fonts/inter-500.woff2') format('woff2')}
 @font-face{font-family:Inter;font-style:normal;font-weight:800;font-display:swap;src:url('/fonts/inter-800.woff2') format('woff2')}
 @font-face{font-family:Inter;font-style:normal;font-weight:400;font-display:swap;src:url('/fonts/inter-regular.woff2') format('woff2')}
@@ -8,7 +9,7 @@
 @font-face{font-family:'Plus Jakarta Sans';font-style:normal;font-weight:600;font-display:swap;src:url('/fonts/plus-jakarta-sans/plus-jakarta-sans-v12-latin-600.woff2') format('woff2')}
 @font-face{font-family:'Plus Jakarta Sans';font-style:normal;font-weight:700;font-display:swap;src:url('/fonts/plus-jakarta-sans/plus-jakarta-sans-v12-latin-700.woff2') format('woff2')}
 @font-face{font-family:'Plus Jakarta Sans';font-style:normal;font-weight:800;font-display:swap;src:url('/fonts/plus-jakarta-sans/plus-jakarta-sans-v12-latin-800.woff2') format('woff2')}
-:root{font-family:'Plus Jakarta Sans',sans-serif;color:#17233b;background:color-mix(in oklab,#7daa92 5%,white);--sage:#7daa92;--sage-dark:color-mix(in oklab,var(--sage) 72%,black);--line:color-mix(in oklab,var(--sage) 18%,white);--muted:#5c6a82;--surface-low:color-mix(in oklab,var(--sage) 3%,white);--surface:color-mix(in oklab,var(--sage) 6%,white);--surface-high:color-mix(in oklab,var(--sage) 9%,white);--secondary-container:color-mix(in oklab,var(--sage) 11%,white);--outline:#c2cedf;--shadow:0 1px 2px 0 rgb(16 36 72 / .06);--error:oklch(.577 .245 27.325);--warning:oklch(.79 .16 70);--success:oklch(.69 .2 145)}
+:root{--font-family:'Plus Jakarta Sans',sans-serif;font-family:var(--font-family);color:#17233b;background:color-mix(in oklab,#7daa92 5%,white);--sage:#7daa92;--sage-dark:color-mix(in oklab,var(--sage) 72%,black);--line:color-mix(in oklab,var(--sage) 18%,white);--muted:#5c6a82;--surface-low:color-mix(in oklab,var(--sage) 3%,white);--surface:color-mix(in oklab,var(--sage) 6%,white);--surface-high:color-mix(in oklab,var(--sage) 9%,white);--secondary-container:color-mix(in oklab,var(--sage) 11%,white);--outline:#c2cedf;--shadow:0 1px 2px 0 rgb(16 36 72 / .06);--error:oklch(.577 .245 27.325);--warning:oklch(.79 .16 70);--success:oklch(.69 .2 145)}
 *{box-sizing:border-box}
 body{margin:0;font-size:14px;line-height:1.5}
 button,input{font:inherit}
@@ -26,7 +27,10 @@ a,button,summary{outline-offset:3px}
 .dashboard-sidebar nav a[aria-current="page"]{background:var(--secondary-container);color:var(--sage-dark);font-weight:700}
 .dashboard-sidebar [aria-disabled="true"]{cursor:not-allowed}
 .dashboard-sidebar-bottom{display:grid;gap:8px;margin-top:auto;padding:24px 8px 0}
-.dashboard-identity{display:flex;align-items:center;gap:12px;padding:8px;border-radius:9999px;background:var(--surface-high)}
+.dashboard-identity{display:flex;align-items:center;gap:12px;padding:8px;border-radius:9999px;background:var(--surface-high);color:inherit;text-decoration:none}
+.dashboard-identity:hover{background:var(--surface)}
+.dashboard-mobile-profile{display:none!important}
+@media(max-width:767px){.dashboard-drawer .dashboard-mobile-profile{display:flex!important}}
 .dashboard-identity strong,.dashboard-identity small{display:block}.dashboard-identity strong{font-size:12px;font-weight:700}
 .dashboard-identity small{color:var(--muted);font-size:10px;font-weight:500;margin-top:0}
 .dashboard-identity .dashboard-avatar{width:32px;height:32px}

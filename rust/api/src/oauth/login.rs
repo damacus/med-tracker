@@ -1,4 +1,5 @@
 use super::*;
+use sea_orm::QuerySelect;
 
 pub(super) async fn login(State(state): State<AppState>, headers: HeaderMap) -> Response {
     if let Some(claim) = pending(&state, &headers) {
@@ -145,6 +146,7 @@ pub(super) async fn login_post(
     let row = match account::Entity::find()
         .filter(account::Column::Email.eq(form.email))
         .filter(account::Column::Status.eq(2))
+        .lock_exclusive()
         .one(&db)
         .await
     {
@@ -195,9 +197,7 @@ pub(super) async fn login_post(
         Err(error) => return error,
     };
     if required {
-        return login_error(
-            "This account requires a sign-in method that is not yet supported here.",
-        );
+        return super::factor_completion::begin(&state, db, account_id, oauth_claim.as_ref()).await;
     }
     let session_id = secret();
     let csrf = secret();
@@ -330,4 +330,17 @@ pub(super) async fn logout(
         state.oauth.cookie(SESSION_COOKIE, "", 0),
     );
     response
+}
+
+#[cfg(test)]
+mod factor_login_tests {
+    #[test]
+    fn pending_factor_expires_and_rejects_future_issuance() {
+        assert!(super::super::factor_completion::valid_issued_at(1000, 1000));
+        assert!(super::super::factor_completion::valid_issued_at(1000, 1299));
+        assert!(!super::super::factor_completion::valid_issued_at(
+            1000, 1300
+        ));
+        assert!(!super::super::factor_completion::valid_issued_at(1000, 999));
+    }
 }

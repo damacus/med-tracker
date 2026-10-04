@@ -1,6 +1,10 @@
+@import url('/profile.css');
+@import url('/theme-fonts.css');
+
 :root {
   color-scheme: light;
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-family);
   color: #14253a;
   background: #f3f8fb;
 }
@@ -8,6 +12,7 @@
 * { box-sizing: border-box; }
 
 body { margin: 0; }
+button, input, select, textarea { font-family: inherit; }
 
 .auth-page {
   min-height: 100vh;
@@ -176,6 +181,18 @@ body { margin: 0; }
 .scope-copy strong { font-size: .92rem; }
 .scope-copy small { color: #52687c; font-size: .8rem; line-height: 1.45; }
 
+:root.dark { color-scheme: dark; color: #e8edf4; background: #111827; }
+.dark .auth-page { background: radial-gradient(circle at 50% 0%, #1e3445, #101b2a 58%, #111827); }
+.dark .auth-shell { border-color: #344359; background: #1c293b; }
+.dark .brand-panel { background: linear-gradient(155deg, #204b50, #1c4059 55%, #273956); }
+.dark .brand-description, .dark .form-intro, .dark .scope-copy small { color: #bac9d8; }
+.dark .form-field label, .dark .scope-list legend { color: #dce7f2; }
+.dark .form-field input, .dark .form-field select, .dark .secondary-button { border-color: #61738a; color: #e8edf4; background: #26364a; }
+.dark .scope-row { border-color: #45566e; background: #26364a; }
+.dark .auth-divider { color: #b8c7d7; }
+.dark .auth-divider::before, .dark .auth-divider::after { border-color: #45566e; }
+.dark .form-alert { border-color: #a65b5b; color: #ffcecb; background: #4e2528; }
+
 @media (max-width: 760px) {
   .auth-page { padding: 16px; align-items: start; }
   .auth-shell { grid-template-columns: 1fr; border-radius: 20px; }
@@ -191,3 +208,13 @@ body { margin: 0; }
   .auth-page { padding: 12px; }
   .brand-panel, .form-panel { padding-left: 18px; padding-right: 18px; }
 }
+
+:root[data-theme] .auth-page{background:var(--profile-ground);color:var(--profile-ink)}
+:root[data-theme] .auth-shell,:root[data-theme] .form-panel{background:var(--profile-paper);border-color:var(--profile-line)}
+:root[data-theme] .brand-panel{background:linear-gradient(155deg,var(--profile-ground),color-mix(in oklab,var(--profile-accent) 18%,var(--profile-paper)));color:var(--profile-ink)}
+:root[data-theme] .brand-description,:root[data-theme] .form-intro,:root[data-theme] .scope-copy small{color:var(--profile-muted)}
+:root[data-theme] .form-field label,:root[data-theme] .scope-list legend{color:var(--profile-ink)}
+:root[data-theme] .form-field input,:root[data-theme] .form-field select,:root[data-theme] .secondary-button,:root[data-theme] .scope-row{background:var(--profile-paper);color:var(--profile-ink);border-color:var(--profile-line)}
+:root[data-theme] .primary-button{background:var(--profile-accent);border-color:var(--profile-accent);color:var(--profile-on-accent)}
+
+:root[data-theme] .field-heading a,:root[data-theme] .eyebrow{color:var(--profile-link)}

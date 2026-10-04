@@ -11,8 +11,8 @@ use axum::response::Response;
 use axum::Json;
 use chrono::{NaiveTime, Utc};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, Condition, DatabaseTransaction, EntityTrait, IntoActiveModel,
-    QueryFilter, Set,
+    ActiveModelTrait, ColumnTrait, Condition, ConnectionTrait, DatabaseTransaction, DbBackend,
+    EntityTrait, IntoActiveModel, QueryFilter, Set, Statement,
 };
 use serde_json::{json, Map, Value};
 use uuid::Uuid;
@@ -31,6 +31,7 @@ struct Attributes {
     afternoon_time: Option<Option<NaiveTime>>,
     evening_time: Option<Option<NaiveTime>>,
     night_time: Option<Option<NaiveTime>>,
+    managed_person_ids: Option<Vec<i64>>,
 }
 
 impl Attributes {
@@ -49,6 +50,7 @@ impl Attributes {
                         | "afternoon_time"
                         | "evening_time"
                         | "night_time"
+                        | "managed_person_ids"
                 )
             })
         {
@@ -64,11 +66,19 @@ impl Attributes {
             afternoon_time: time(attributes, "afternoon_time")?,
             evening_time: time(attributes, "evening_time")?,
             night_time: time(attributes, "night_time")?,
+            managed_person_ids: match attributes.get("managed_person_ids") {
+                None => None,
+                Some(Value::Array(ids)) if ids.len() <= 100 => {
+                    Some(ids.iter().map(Value::as_i64).collect::<Option<Vec<_>>>()?)
+                }
+                _ => return None,
+            },
         })
     }
 
     fn matches(&self, row: &notification_preference::Model) -> bool {
-        self.enabled.is_none_or(|value| value == row.enabled)
+        self.managed_person_ids.is_none()
+            && self.enabled.is_none_or(|value| value == row.enabled)
             && self
                 .dose_due_enabled
                 .is_none_or(|value| value == row.dose_due_enabled)
@@ -122,6 +132,30 @@ impl Attributes {
             row.night_time = Set(value);
         }
     }
+}
+
+async fn update_managed_adults(
+    db: &DatabaseTransaction,
+    context: &AuthContext,
+    selected: &[i64],
+) -> Result<(), ApiError> {
+    let rows = db.query_all_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+        "SELECT g.id, g.person_id, g.missed_dose_notifications_enabled FROM person_access_grants g JOIN people p ON p.id = g.person_id WHERE g.household_id = $1 AND g.household_membership_id = $2 AND g.access_level = 'manage' AND g.revoked_at IS NULL AND (g.expires_at IS NULL OR g.expires_at > now()) AND g.person_id <> $3 AND p.person_type = 0 FOR UPDATE OF g",
+        [context.membership.household_id.into(), context.membership.id.into(), context.membership.person_id.unwrap_or(-1).into()])).await.map_err(database_error)?;
+    for row in rows {
+        let id: i64 = row.try_get("", "id").map_err(database_error)?;
+        let person_id: i64 = row.try_get("", "person_id").map_err(database_error)?;
+        let enabled: bool = row
+            .try_get("", "missed_dose_notifications_enabled")
+            .map_err(database_error)?;
+        let wanted = selected.contains(&person_id);
+        if enabled != wanted {
+            db.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+                "UPDATE person_access_grants SET missed_dose_notifications_enabled = $2, updated_at = $3 WHERE id = $1",
+                [id.into(), wanted.into(), Utc::now().naive_utc().into()])).await.map_err(database_error)?;
+        }
+    }
+    Ok(())
 }
 
 fn boolean(attributes: &Map<String, Value>, key: &str) -> Option<Option<bool>> {
@@ -442,6 +476,7 @@ async fn update(
         }
     };
     active.updated_at = Set(now);
+    let managed_person_ids = attributes.managed_person_ids.clone();
     attributes.apply(&mut active);
     let row = if previous.is_some() {
         active.update(&db).await
@@ -449,6 +484,9 @@ async fn update(
         active.insert(&db).await
     }
     .map_err(database_error)?;
+    if let Some(selected) = managed_person_ids {
+        update_managed_adults(&db, &context, &selected).await?;
+    }
     let request_id = Uuid::new_v4().to_string();
     record_version(
         &db,

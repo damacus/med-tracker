@@ -191,6 +191,8 @@ function run_contract
     if contains -- "$argv[2]" medication-read-api web-session-api web-reads-api openapi-locations openapi-dosages openapi-people openapi-sessions openapi-notifications openapi-native-tokens openapi-push-subscriptions openapi-admin-settings openapi-person-medication-writes openapi-schedule-writes openapi-pause-lifecycle openapi-dose-occurrences openapi-review-prompts openapi-app-tokens openapi-memberships openapi-stock-workflows openapi-audit-logs openapi-person-grants openapi-invitations openapi-invitations-legacy openapi-profile openapi-profile-storage openapi-read-completion openapi-rate-limit openapi-reports openapi-health-events openapi-exports openapi-sync-reads openapi-external-integrations openapi-portable-writes openapi-portability-legacy openapi-sync-batch-legacy openapi-sync-batch-replay-focus openapi-replay-legacy openapi-envelopes-legacy openapi-medications openapi-medications-focused api-legacy-auth api-legacy-admin api-legacy-care api-legacy-devices api-legacy-lookup browser-journey-rails browser-journey-rust browser-dashboard-rust web-reads-rails
         set -gx CONTRACT_AUTH_SESSION_SECRET (rtk proxy openssl rand -hex 32)
         or return $status
+        set -gx CONTRACT_RODAUTH_HMAC_SECRET (rtk proxy openssl rand -hex 32)
+        or return $status
         set -gx CONTRACT_APNS_PRIVATE_KEY (rtk proxy openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:prime256v1 | string collect)
         set -l apns_generation_status $pipestatus
         if test $apns_generation_status[1] -ne 0
@@ -223,7 +225,11 @@ function run_contract
         set -gx CONTRACT_DASHBOARD_NOW 2026-03-29T00:30:00Z
         set -gx CONTRACT_RUST_BROWSER_SCREENSHOT_DIR ./docs/screenshots/dashboard-rust
     else if test "$argv[2]" = browser-journey-rust
-        set -gx CONTRACT_RUST_BROWSER_SCREENSHOT_DIR ./docs/screenshots/journey-medication-rust
+        if test "$PROFILE_ACCEPTANCE" = true
+            set -gx CONTRACT_RUST_BROWSER_SCREENSHOT_DIR ./docs/screenshots/profile-rust
+        else
+            set -gx CONTRACT_RUST_BROWSER_SCREENSHOT_DIR ./docs/screenshots/journey-medication-rust
+        end
     end
     set -lx CONTRACT_PROJECT $contract_project
     echo "Contract run project: $contract_project"
@@ -285,12 +291,24 @@ function run_contract
         or return $status
         rtk task api:contract-ready CONTRACT_PROJECT=$contract_project
         or return $status
+        set -l contract_status 0
         if test "$HOUSEHOLD_ACCEPTANCE" = true
             rtk proxy task api:contract-household-web-test CONTRACT_PROJECT=$contract_project
-            or return $status
+            set contract_status $status
+            if test $contract_status -ne 0
+                echo 'Rust API error log tail after contract failure:' >&2
+                rtk proxy docker compose -p $contract_project --profile test logs --no-color --tail=80 rust-api >&2
+                if test "$PROFILE_ACCEPTANCE" != true
+                    return $contract_status
+                end
+            end
         end
         rtk task api:contract-browser-rust CONTRACT_PROJECT=$contract_project
-        return $status
+        set -l browser_status $status
+        if test $contract_status -ne 0
+            return $contract_status
+        end
+        return $browser_status
     end
 
     if test "$argv[2]" = browser-dashboard-rust
@@ -484,6 +502,8 @@ function run_contract
             wait_for_contract_web "http://127.0.0.1:$port"
             or return $status
             rtk task contract:run-web-profile BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
+        else if test "$argv[2]" = web-profile-security
+            rtk task contract:run-web-profile-security BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path" AUDIT_DATABASE_URL="postgresql://medtracker:medtracker_password@127.0.0.1:5432/medtracker_contract"
         else if test "$argv[2]" = web-profile
             rtk task contract:run-web-profile BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
         else if test "$argv[2]" = mcp
@@ -560,6 +580,8 @@ function run_contract
             rtk task contract:run-web-json-actions-disabled BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
         else if test "$argv[2]" = profile
             rtk task contract:run-profile BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
+        else if test "$argv[2]" = web-profile-security
+            rtk task contract:run-web-profile-security BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN" AUDIT_DATABASE_URL="$CONTRACT_AUDIT_DATABASE_URL"
         else if test "$argv[2]" = web-profile
             rtk task contract:run-web-profile BASE_URL="$CONTRACT_RUST_URL" FIXTURE_PATH="$contract_fixture_path" APPROVED_ORIGIN="$CONTRACT_RUST_APPROVED_ORIGIN"
         else if test "$argv[2]" = mcp

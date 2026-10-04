@@ -3,6 +3,7 @@
 mod authorization;
 mod configuration;
 mod discovery;
+mod factor_completion;
 mod helpers;
 mod login;
 mod passkey;
@@ -38,6 +39,7 @@ use authorization::AuthorizationRequest;
 use configuration::digest;
 use configuration::secret;
 pub(crate) use configuration::session_key_digest;
+pub(crate) use configuration::AuthenticationClaim;
 pub use configuration::OAuthState;
 use discovery::capabilities;
 use discovery::discovery;
@@ -84,6 +86,10 @@ pub fn routes() -> Router<AppState> {
         .route("/.well-known/oauth-authorization-server", get(discovery))
         .route("/authorize", get(authorize).post(consent))
         .route("/login", get(login).post(login_post))
+        .route(
+            "/login-factor",
+            get(factor_completion::show).post(factor_completion::complete),
+        )
         .route("/webauthn-login", post(passkey_login))
         .route("/auth-passkey.js", get(passkey_script))
         .route("/logout", post(logout))

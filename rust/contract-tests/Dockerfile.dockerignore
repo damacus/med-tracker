@@ -28,5 +28,9 @@
 !vendor/fonts/
 !vendor/fonts/NotoSans-Regular.ttf
 !vendor/fonts/OFL-1.1.txt
+!app/
+!app/assets/
+!app/assets/fonts/
+!app/assets/fonts/**
 **/target/
 **/node_modules/

@@ -13,6 +13,7 @@ const composeConfig = (label, composeFile) => {
       CONTRACT_STORAGE_ROOT: path.join(repositoryRoot, 'tmp'),
       CONTRACT_PROJECT: 'mtcontract-regression',
       CONTRACT_AUTH_SESSION_SECRET: 'a'.repeat(64),
+      CONTRACT_RODAUTH_HMAC_SECRET: 'b'.repeat(64),
       CONTRACT_APNS_PRIVATE_KEY: 'unused',
       CONTRACT_API_BUILD_CONTEXT: repositoryRoot,
       CONTRACT_BROWSER_BUILD_CONTEXT: path.join(repositoryRoot, 'rust', 'web'),
@@ -37,5 +38,29 @@ composeConfig(
   'runner (self-provisioning)',
   'compose.yaml:rust/contract-tests/storage.compose.yaml:rust/contract-tests/runner.compose.yaml'
 );
+
+
+const rodauthConfig = spawnSync('docker', ['compose', '--profile', 'test', 'config', '--format', 'json'], {
+  cwd: repositoryRoot,
+  env: {
+    ...process.env,
+    COMPOSE_FILE: 'compose.yaml:rust/contract-tests/storage.compose.yaml:rust/contract-tests/runner.compose.yaml',
+    CONTRACT_STORAGE_ROOT: path.join(repositoryRoot, 'tmp'),
+    CONTRACT_PROJECT: 'mtcontract-regression',
+    CONTRACT_AUTH_SESSION_SECRET: 'a'.repeat(64),
+    CONTRACT_RODAUTH_HMAC_SECRET: 'b'.repeat(64),
+    CONTRACT_APNS_PRIVATE_KEY: 'unused',
+    CONTRACT_API_BUILD_CONTEXT: repositoryRoot,
+    CONTRACT_BROWSER_BUILD_CONTEXT: path.join(repositoryRoot, 'rust', 'web'),
+    CONTRACT_FIXTURE_DIR: path.join(repositoryRoot, 'tmp'),
+    CONTRACT_DATABASE_URL: 'postgresql://medtracker:medtracker_password@db-test:5432/medtracker'
+  },
+  encoding: 'utf8'
+});
+assert.equal(rodauthConfig.status, 0, 'profile authentication compose config resolves');
+const services = JSON.parse(rodauthConfig.stdout).services;
+assert.equal(services['rust-api'].environment.RODAUTH_HMAC_SECRET, 'b'.repeat(64));
+assert.equal(services['web-test'].environment.SECRET_KEY_BASE, 'b'.repeat(64));
+assert.notEqual(services['rust-api'].environment.RODAUTH_HMAC_SECRET, services['rust-api'].environment.AUTH_SESSION_SECRET);
 
 console.log('Contract compose regression passed: legacy and runner configurations both resolve.');

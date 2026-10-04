@@ -3,3 +3,5 @@
 !package-lock.json
 !tests/
 !tests/**
+!src/
+!src/profile-security.js

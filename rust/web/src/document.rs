@@ -5,7 +5,7 @@ pub(super) fn document(title: &str, body: String) -> String {
         .replace('>', "&gt;")
         .replace('"', "&quot;");
     format!(
-        "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><meta name=\"theme-color\" content=\"#f3f8fb\"><link rel=\"stylesheet\" href=\"/auth.css\"><title>{title} | MedTracker</title></head><body>{body}</body></html>"
+        "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><meta name=\"theme-color\" content=\"#f3f8fb\"><link rel=\"stylesheet\" href=\"/auth.css\"><script defer src=\"/profile.js\"></script><title>{title} | MedTracker</title></head><body>{body}</body></html>"
     )
 }
 

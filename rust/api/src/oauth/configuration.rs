@@ -10,7 +10,7 @@ use std::sync::Arc;
 use tokio::sync::Semaphore;
 use url::Url;
 
-pub(super) trait AuthenticationClaim {
+pub(crate) trait AuthenticationClaim {
     const PURPOSE: &'static str;
 }
 
@@ -22,6 +22,13 @@ pub struct OAuthState {
 }
 
 impl OAuthState {
+    pub(crate) fn passkey_origin_and_rp(&self) -> Option<(String, String)> {
+        Some((
+            self.base_url.origin().ascii_serialization(),
+            self.base_url.host_str()?.to_owned(),
+        ))
+    }
+
     pub(crate) fn occurrence_key_secret(&self) -> Arc<[u8]> {
         self.secret.clone()
     }
@@ -58,7 +65,7 @@ impl OAuthState {
         })
     }
 
-    pub(super) fn sign<T: Serialize + AuthenticationClaim>(&self, data: &T) -> Option<String> {
+    pub(crate) fn sign<T: Serialize + AuthenticationClaim>(&self, data: &T) -> Option<String> {
         let payload = URL_SAFE_NO_PAD.encode(serde_json::to_vec(data).ok()?);
         let mut jar = CookieJar::new();
         jar.private_mut(&Key::derive_from(&self.secret))
@@ -66,7 +73,7 @@ impl OAuthState {
         Some(jar.get(T::PURPOSE)?.value().to_owned())
     }
 
-    pub(super) fn verify<T: for<'a> Deserialize<'a> + AuthenticationClaim>(
+    pub(crate) fn verify<T: for<'a> Deserialize<'a> + AuthenticationClaim>(
         &self,
         value: &str,
     ) -> Option<T> {
@@ -147,5 +154,29 @@ mod tests {
             .unwrap();
         assert!(state.verify::<First>(&signed).is_some());
         assert!(state.verify::<Second>(&signed).is_none());
+    }
+    #[test]
+    fn pending_factor_cookie_cannot_authenticate_as_a_browser_session() {
+        let state = OAuthState {
+            secret: Arc::from([42_u8; 64]),
+            base_url: "https://example.com".parse().unwrap(),
+            password_workers: Arc::new(Semaphore::new(1)),
+        };
+        let claim: super::super::factor_completion::FactorIntent =
+            serde_json::from_value(serde_json::json!({
+                "account_id": 123,
+                "nonce": "test-nonce",
+                "csrf": "test-csrf",
+                "issued_at": 1000,
+                "authorization": null
+            }))
+            .unwrap();
+        let signed = state.sign(&claim).unwrap();
+        assert!(state
+            .verify::<super::super::factor_completion::FactorIntent>(&signed)
+            .is_some());
+        assert!(state
+            .verify::<super::super::sessions::BrowserSession>(&signed)
+            .is_none());
     }
 }
