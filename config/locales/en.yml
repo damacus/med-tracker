@@ -1682,6 +1682,29 @@ en:
       action_taken: Action taken
       medical_help_sought: Medical help was sought
   reports:
+    browser:
+      title: Reports
+      intro: Download a health history PDF for one person over a chosen date
+        range.
+      person_label: Person
+      person_prompt: Select a person
+      start_date_label: Start date
+      end_date_label: End date
+      include_medication_takes: Include medication administration log
+      download: Download PDF
+      no_people: You do not manage anyone whose health history can be downloaded.
+      errors:
+        person_required: Select a person for the report.
+        start_date_invalid: Enter a start date in YYYY-MM-DD format.
+        end_date_invalid: Enter an end date in YYYY-MM-DD format.
+        date_order: End date must be on or after start date.
+        date_range: Report date range cannot exceed 366 days.
+        takes_invalid: The medication administration log choice is invalid.
+        forbidden: You are not allowed to download this report.
+        not_found: The person or household could not be found.
+        unavailable: The report service is temporarily unavailable. Please try
+          again later.
+        failed: The report could not be generated. Please try again.
     invalid_date: Invalid date format provided.
     end_before_start: End date must be on or after start date.
     date_range_too_large: Report date range cannot exceed 180 days.

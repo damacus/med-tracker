@@ -39,3 +39,10 @@ fn profile_overlays_are_delivered_with_the_shared_design_assets() {
     assert!(rails_design_stylesheet().contains(".profile-dialog[open]"));
     assert!(rails_design_stylesheet().contains(".profile-sheet[open]"));
 }
+
+#[test]
+fn tech_indigo_has_a_real_font_asset() {
+    let bytes = rails_font("/fonts/geist/geist-v1.7.2-variable.woff2")
+        .expect("Tech Indigo must ship its declared Geist font");
+    assert_eq!(&bytes[..4], b"wOF2");
+}

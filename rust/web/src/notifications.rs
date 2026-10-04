@@ -32,6 +32,7 @@ pub struct NotificationPage {
     pub editable: bool,
     pub saved: bool,
     pub error: bool,
+    pub notifications_visible: bool,
 }
 
 pub struct ManagedPerson {
@@ -274,10 +275,10 @@ fn form(
     Ok(view! {
         <h1>{title.to_owned()}</h1>
         <p>{description}</p>
-        <form class="household-form med-card" id="notification_preferences_form" method="post" action=action>
+        <form class="household-form med-card" id="notification_preferences_form" method="post" action=action aria-describedby=page.error.then_some("notification-preferences-error")>
             <input type="hidden" name="authenticity_token" value=page.csrf.clone()/>
             {page.saved.then(|| view! { <div class="med-alert" role="status"><p>{saved_message}</p></div> })}
-            {page.error.then(|| view! { <div class="med-alert" role="alert"><p>{failed_message}</p></div> })}
+            {page.error.then(|| view! { <div class="med-alert" role="alert" id="notification-preferences-error"><p>{failed_message}</p></div> })}
             {(!page.editable).then(|| view! { <p role="status">{read_only_message}</p> })}
             {master}
             <fieldset class="form-field">
@@ -314,5 +315,6 @@ pub fn render_notification_settings(page: NotificationPage) -> Result<String, Tr
         raw_slug,
         page.locale.as_str(),
         body,
+        page.notifications_visible,
     ))
 }

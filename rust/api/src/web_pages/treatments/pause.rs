@@ -80,6 +80,7 @@ fn render(
         units: Vec::new(),
         draft,
         errors,
+        notifications_visible: context.notifications_visible,
     };
     match medtracker_web::treatments::render_pause_form(page, action == "resume", medication_name) {
         Ok(body) => page_status(body, context.api.cookie, status),
@@ -145,6 +146,7 @@ pub(super) async fn show(
                     resumed_by: row["resumed_by_name"].as_str().map(str::to_owned),
                 })
                 .collect(),
+            notifications_visible: context.notifications_visible,
         };
         return match medtracker_web::treatments::render_pause_history(history) {
             Ok(body) => page(body, context.api.cookie),

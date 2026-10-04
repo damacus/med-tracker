@@ -294,6 +294,9 @@ jobs:
           - journey: profile
             profile: "true"
             browsers: "tests/settings-timezone.test.mjs tests/profile-notifications.test.mjs tests/profile-security.test.mjs tests/profile-security-unit.test.mjs tests/profile-advanced.test.mjs tests/profile-overlays.test.mjs"
+          - journey: notifications
+            target: household_notifications
+            browsers: "tests/household-notifications.test.mjs"
           - journey: standalone-login
             target: passkey_security
             browsers: "tests/login.smoke.test.mjs"

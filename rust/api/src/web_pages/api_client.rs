@@ -2,7 +2,7 @@ use super::response::{error, PageError};
 use super::time::dashboard_time;
 use super::{field, numeric};
 use crate::{api_router, oauth, restricted_role, AppState};
-use axum::body::{to_bytes, Body};
+use axum::body::{to_bytes, Body, Bytes};
 use axum::http::{header, HeaderMap, HeaderValue, Method, Request, StatusCode};
 use chrono::{DateTime, Datelike, Duration, Utc};
 use medtracker_web::household_i18n::Locale;
@@ -13,6 +13,21 @@ use std::collections::{HashMap, HashSet};
 use tower::ServiceExt;
 
 const BODY_LIMIT: usize = 1_048_576;
+pub(super) const PDF_BODY_LIMIT: usize = 16 * 1_048_576;
+
+pub(super) async fn read_response_body(body: Body, limit: usize) -> Result<Bytes, PageError> {
+    to_bytes(body, limit)
+        .await
+        .map_err(|_| error(StatusCode::BAD_GATEWAY))
+}
+
+pub(super) fn response_body_limit(status: StatusCode, success_body_limit: usize) -> usize {
+    if status.is_success() {
+        success_body_limit
+    } else {
+        BODY_LIMIT
+    }
+}
 
 pub(super) fn decode_api_body(status: StatusCode, bytes: &[u8]) -> Result<Value, PageError> {
     if bytes.is_empty() && (status == StatusCode::NO_CONTENT || !status.is_success()) {
@@ -89,14 +104,15 @@ impl PageScan {
     }
 }
 
-enum BrowserWriteIntent {
+enum BrowserRequestIntent {
     Scalar(crate::medication_management::ScalarAdjustment),
     Pause(crate::pause_lifecycle::BrowserSourceGuard),
+    Download,
 }
 
 struct CallOptions<'a> {
     extra: &'a HeaderMap,
-    intent: Option<BrowserWriteIntent>,
+    intent: Option<BrowserRequestIntent>,
     body_limit: usize,
 }
 
@@ -104,10 +120,43 @@ pub(super) fn html_cookie_only(headers: &HeaderMap) -> bool {
     !headers.contains_key(header::AUTHORIZATION)
 }
 
+pub(super) fn cookie_value<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
+    headers
+        .get(header::COOKIE)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| {
+            value
+                .split(';')
+                .map(str::trim)
+                .filter_map(|entry| entry.split_once('='))
+                .find_map(|(key, value)| (key == name).then_some(value))
+        })
+}
+
 pub(super) struct ApiReply {
     pub(super) status: StatusCode,
     pub(super) value: Value,
     pub(super) etag: Option<String>,
+}
+
+pub(super) struct BinaryReply {
+    pub(super) status: StatusCode,
+    pub(super) headers: HeaderMap,
+    pub(super) body: Bytes,
+}
+
+pub(super) fn download_headers(upstream: &HeaderMap) -> HeaderMap {
+    let mut forwarded = HeaderMap::new();
+    for name in [
+        header::CONTENT_TYPE,
+        header::CONTENT_DISPOSITION,
+        header::HeaderName::from_static("x-request-id"),
+    ] {
+        if let Some(value) = upstream.get(&name) {
+            forwarded.insert(name, value.clone());
+        }
+    }
+    forwarded
 }
 
 pub(super) struct WebApi {
@@ -142,14 +191,7 @@ impl WebApi {
         db.commit()
             .await
             .map_err(|_| error(StatusCode::INTERNAL_SERVER_ERROR))?;
-        let locale_cookie = headers
-            .get(header::COOKIE)
-            .and_then(|value| value.to_str().ok())
-            .and_then(|value| {
-                value
-                    .split(';')
-                    .find_map(|entry| entry.trim().strip_prefix("medtracker_locale="))
-            });
+        let locale_cookie = cookie_value(&headers, "medtracker_locale");
         let locale = Locale::resolve(
             locale_cookie,
             headers
@@ -238,7 +280,7 @@ impl WebApi {
             Some(csrf),
             CallOptions {
                 extra: &HeaderMap::new(),
-                intent: Some(BrowserWriteIntent::Scalar(
+                intent: Some(BrowserRequestIntent::Scalar(
                     crate::medication_management::ScalarAdjustment { original_etag },
                 )),
                 body_limit: BODY_LIMIT,
@@ -262,11 +304,35 @@ impl WebApi {
             Some(&csrf),
             CallOptions {
                 extra,
-                intent: Some(BrowserWriteIntent::Pause(guard)),
+                intent: Some(BrowserRequestIntent::Pause(guard)),
                 body_limit: BODY_LIMIT,
             },
         )
         .await
+    }
+
+    pub(super) async fn download(&mut self, path: &str) -> Result<BinaryReply, PageError> {
+        let (status, headers, body) = self
+            .send(
+                Method::GET,
+                path,
+                None,
+                None,
+                CallOptions {
+                    extra: &HeaderMap::new(),
+                    intent: Some(BrowserRequestIntent::Download),
+                    body_limit: PDF_BODY_LIMIT,
+                },
+            )
+            .await?;
+        if status == StatusCode::UNAUTHORIZED {
+            return Err(PageError::Login);
+        }
+        Ok(BinaryReply {
+            status,
+            headers,
+            body,
+        })
     }
 
     async fn call_inner(
@@ -277,10 +343,31 @@ impl WebApi {
         csrf: Option<&str>,
         options: CallOptions<'_>,
     ) -> Result<ApiReply, PageError> {
+        let (status, headers, bytes) = self.send(method, path, body, csrf, options).await?;
+        let etag = headers
+            .get(header::ETAG)
+            .and_then(|value| value.to_str().ok())
+            .map(str::to_owned);
+        let value = decode_api_body(status, &bytes)?;
+        Ok(ApiReply {
+            status,
+            value,
+            etag,
+        })
+    }
+
+    async fn send(
+        &mut self,
+        method: Method,
+        path: &str,
+        body: Option<Value>,
+        csrf: Option<&str>,
+        options: CallOptions<'_>,
+    ) -> Result<(StatusCode, HeaderMap, Bytes), PageError> {
         let CallOptions {
             extra,
             intent,
-            body_limit,
+            body_limit: success_body_limit,
         } = options;
         let mut request = Request::builder().method(method).uri(path);
         for name in [
@@ -314,12 +401,13 @@ impl WebApi {
             .body(Body::from(encoded))
             .map_err(|_| error(StatusCode::INTERNAL_SERVER_ERROR))?;
         match intent {
-            Some(BrowserWriteIntent::Scalar(scalar)) => {
+            Some(BrowserRequestIntent::Scalar(scalar)) => {
                 request.extensions_mut().insert(scalar);
             }
-            Some(BrowserWriteIntent::Pause(guard)) => {
+            Some(BrowserRequestIntent::Pause(guard)) => {
                 request.extensions_mut().insert(guard);
             }
+            Some(BrowserRequestIntent::Download) => {}
             None => {}
         }
         let response = api_router(self.state.clone())
@@ -330,20 +418,10 @@ impl WebApi {
             self.cookie = Some(cookie.clone());
         }
         let status = response.status();
-        let etag = response
-            .headers()
-            .get(header::ETAG)
-            .and_then(|value| value.to_str().ok())
-            .map(str::to_owned);
-        let bytes = to_bytes(response.into_body(), body_limit)
-            .await
-            .map_err(|_| error(StatusCode::BAD_GATEWAY))?;
-        let value = decode_api_body(status, &bytes)?;
-        Ok(ApiReply {
-            status,
-            value,
-            etag,
-        })
+        let headers = response.headers().clone();
+        let limit = response_body_limit(status, success_body_limit);
+        let bytes = read_response_body(response.into_body(), limit).await?;
+        Ok((status, headers, bytes))
     }
 
     pub(super) async fn get(&mut self, path: &str) -> Result<Value, PageError> {
@@ -430,6 +508,24 @@ impl WebApi {
                 recent.extend(latest_older.into_values().map(|(_, row)| row));
                 return Ok(recent);
             }
+        }
+    }
+
+    pub(super) async fn notifications_visible(&mut self, household_id: i64) -> bool {
+        match self
+            .call(
+                Method::GET,
+                &format!("/api/v1/households/{household_id}/notification_preference"),
+                None,
+                None,
+            )
+            .await
+        {
+            Ok(reply) if reply.status == StatusCode::OK => true,
+            Ok(reply) if reply.status == StatusCode::NOT_FOUND => {
+                reply.value.pointer("/error/code").and_then(Value::as_str) == Some("not_configured")
+            }
+            _ => false,
         }
     }
 

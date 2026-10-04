@@ -34,6 +34,7 @@ pub struct DosageFormPage {
     pub draft: DosageDraft,
     pub first_option: bool,
     pub errors: BTreeMap<String, Vec<String>>,
+    pub notifications_visible: bool,
 }
 
 pub struct DosageListPage {
@@ -45,6 +46,7 @@ pub struct DosageListPage {
     pub options: Vec<DosageOption>,
     pub can_manage: bool,
     pub notice: Option<String>,
+    pub notifications_visible: bool,
 }
 
 pub struct DosageOption {
@@ -241,6 +243,7 @@ pub fn render_dosage_form(page: DosageFormPage) -> Result<String, TranslationErr
         &page.slug,
         page.locale.as_str(),
         body,
+        page.notifications_visible,
     ))
 }
 
@@ -290,5 +293,6 @@ pub fn render_dosage_list(page: DosageListPage) -> Result<String, TranslationErr
         &page.slug,
         page.locale.as_str(),
         body,
+        page.notifications_visible,
     ))
 }

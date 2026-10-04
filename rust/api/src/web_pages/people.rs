@@ -55,7 +55,15 @@ fn draft_from_fields(fields: &HashMap<String, String>) -> PersonDraft {
     }
 }
 
-async fn context(api: &mut WebApi, slug: &str) -> Result<(i64, String, bool, Vec<i64>), PageError> {
+struct Context {
+    household_id: i64,
+    name: String,
+    can_create: bool,
+    manageable: Vec<i64>,
+    notifications_visible: bool,
+}
+
+async fn context(api: &mut WebApi, slug: &str) -> Result<Context, PageError> {
     let (household_id, name) = api.household(slug).await?;
     let value = api.capabilities(household_id).await?;
     let can_create = value
@@ -69,7 +77,14 @@ async fn context(api: &mut WebApi, slug: &str) -> Result<(i64, String, bool, Vec
         .iter()
         .map(|id| id.as_i64().ok_or_else(|| error(StatusCode::BAD_GATEWAY)))
         .collect::<Result<Vec<_>, _>>()?;
-    Ok((household_id, name, can_create, manageable))
+    let notifications_visible = api.notifications_visible(household_id).await;
+    Ok(Context {
+        household_id,
+        name,
+        can_create,
+        manageable,
+        notifications_visible,
+    })
 }
 
 async fn index(
@@ -82,16 +97,27 @@ async fn index(
         Err(error) => return error.response(),
     };
     let result = async {
-        let (household_id, name, can_create, manageable) = context(&mut api, &slug).await?;
+        let context = context(&mut api, &slug).await?;
         let records = api
-            .collection(&format!("/api/v1/households/{household_id}/people"))
+            .collection(&format!(
+                "/api/v1/households/{}/people",
+                context.household_id
+            ))
             .await?;
         let rows = records
             .iter()
-            .map(|value| person_row(value, &manageable))
+            .map(|value| person_row(value, &context.manageable))
             .collect::<Result<Vec<_>, _>>()?;
-        render_people(&name, &slug, &api.csrf, api.locale, rows, can_create)
-            .map_err(|_| error(StatusCode::INTERNAL_SERVER_ERROR))
+        render_people(
+            &context.name,
+            &slug,
+            &api.csrf,
+            api.locale,
+            rows,
+            context.can_create,
+            context.notifications_visible,
+        )
+        .map_err(|_| error(StatusCode::INTERNAL_SERVER_ERROR))
     }
     .await;
     match result {
@@ -110,7 +136,8 @@ async fn show(
         Err(error) => return error.response(),
     };
     let result = async {
-        let (household_id, name, _, manageable) = context(&mut api, &slug).await?;
+        let context = context(&mut api, &slug).await?;
+        let household_id = context.household_id;
         let value = api
             .get(&format!("/api/v1/households/{household_id}/people/{id}"))
             .await?;
@@ -118,11 +145,19 @@ async fn show(
             value
                 .get("data")
                 .ok_or_else(|| error(StatusCode::BAD_GATEWAY))?,
-            &manageable,
+            &context.manageable,
         )?;
         let treatments = super::treatments::rows(&mut api, household_id, id).await?;
-        render_person_with_treatment_access(&name, &slug, &api.csrf, api.locale, row, treatments)
-            .map_err(|_| error(StatusCode::INTERNAL_SERVER_ERROR))
+        render_person_with_treatment_access(
+            &context.name,
+            &slug,
+            &api.csrf,
+            api.locale,
+            row,
+            treatments,
+            context.notifications_visible,
+        )
+        .map_err(|_| error(StatusCode::INTERNAL_SERVER_ERROR))
     }
     .await;
     match result {
@@ -153,12 +188,13 @@ async fn form_page(state: AppState, slug: String, id: Option<i64>, headers: Head
         Err(error) => return error.response(),
     };
     let result = async {
-        let (household_id, name, can_create, manageable) = context(&mut api, &slug).await?;
+        let context = context(&mut api, &slug).await?;
+        let household_id = context.household_id;
         let draft = if let Some(id) = id {
             let value = api
                 .get(&format!("/api/v1/households/{household_id}/people/{id}"))
                 .await?;
-            if !manageable.contains(&id) {
+            if !context.manageable.contains(&id) {
                 return Err(error(StatusCode::FORBIDDEN));
             }
             draft_from_record(
@@ -167,7 +203,7 @@ async fn form_page(state: AppState, slug: String, id: Option<i64>, headers: Head
                     .ok_or_else(|| error(StatusCode::BAD_GATEWAY))?,
             )
         } else {
-            if !can_create {
+            if !context.can_create {
                 return Err(error(StatusCode::FORBIDDEN));
             }
             PersonDraft {
@@ -176,8 +212,17 @@ async fn form_page(state: AppState, slug: String, id: Option<i64>, headers: Head
                 ..Default::default()
             }
         };
-        render_person_form(&name, &slug, &api.csrf, api.locale, id, draft, vec![])
-            .map_err(|_| error(StatusCode::INTERNAL_SERVER_ERROR))
+        render_person_form(
+            &context.name,
+            &slug,
+            &api.csrf,
+            api.locale,
+            id,
+            draft,
+            vec![],
+            context.notifications_visible,
+        )
+        .map_err(|_| error(StatusCode::INTERNAL_SERVER_ERROR))
     }
     .await;
     match result {
@@ -223,8 +268,8 @@ async fn save(
     }
     let draft = draft_from_fields(&fields);
     let result = async {
-        let (household_id, name, _, _) = context(&mut api, &slug).await?;
-        let base = format!("/api/v1/households/{household_id}/people");
+        let context = context(&mut api, &slug).await?;
+        let base = format!("/api/v1/households/{}/people", context.household_id);
         let path = id.map_or_else(|| base.clone(), |id| format!("{base}/{id}"));
         let capacity = match draft.has_capacity.as_str() {
             "true" => Value::Bool(true), "false" => Value::Bool(false), value => Value::String(value.to_owned()),
@@ -252,8 +297,17 @@ async fn save(
             }
         }
         if errors.is_empty() { errors.push(("person".to_owned(), field(&reply.value["error"], "message").to_owned())); }
-        let body = render_person_form(&name, &slug, &api.csrf, api.locale, id, draft, errors)
-            .map_err(|_| error(StatusCode::INTERNAL_SERVER_ERROR))?;
+        let body = render_person_form(
+            &context.name,
+            &slug,
+            &api.csrf,
+            api.locale,
+            id,
+            draft,
+            errors,
+            context.notifications_visible,
+        )
+        .map_err(|_| error(StatusCode::INTERNAL_SERVER_ERROR))?;
         Ok(page_status(body, api.cookie.take(), reply.status))
     }.await;
     match result {

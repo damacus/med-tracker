@@ -64,4 +64,5 @@ pub struct TreatmentFormPage {
     pub units: Vec<(String, String)>,
     pub draft: TreatmentDraft,
     pub errors: FormErrors,
+    pub notifications_visible: bool,
 }

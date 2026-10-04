@@ -213,6 +213,7 @@ async fn render_form(mut api: WebApi, form: FormState) -> Response {
             .collect(),
         Err(response) => return response.response(),
     };
+    let notifications_visible = api.notifications_visible(form.household_id).await;
     let body = match render_medication_form_with_options(
         MedicationFormPage {
             household_name: form.household_name,
@@ -223,6 +224,7 @@ async fn render_form(mut api: WebApi, form: FormState) -> Response {
             draft: form.draft,
             locations,
             errors: form.errors,
+            notifications_visible,
         },
         form.options_mode,
     ) {

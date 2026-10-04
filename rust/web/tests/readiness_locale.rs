@@ -18,6 +18,7 @@ fn missing_version(locale: Locale) {
         },
         locations: vec![("1".into(), "Synthetic location".into())],
         errors: BTreeMap::from([("base".into(), vec![message.into()])]),
+        notifications_visible: true,
     };
     let html = render_medication_form(page("If-Match is required")).unwrap();
     let expected = Text::new(locale)
@@ -60,6 +61,7 @@ fn assignment_choice(locale: Locale, placeholder: &str, guidance: &str) {
             ]),
         },
         errors: BTreeMap::new(),
+        notifications_visible: true,
     };
     let edit = render_assignment_form(page(true)).unwrap();
     assert!(

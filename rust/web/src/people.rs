@@ -29,6 +29,7 @@ pub fn render_people(
     locale: Locale,
     people: Vec<PersonRow>,
     can_create: bool,
+    notifications_visible: bool,
 ) -> Result<String, TranslationError> {
     let raw_slug = slug;
     let slug = path_segment(slug);
@@ -51,6 +52,7 @@ pub fn render_people(
         raw_slug,
         locale.as_str(),
         body,
+        notifications_visible,
     ))
 }
 
@@ -60,8 +62,17 @@ pub fn render_person(
     _csrf: &str,
     locale: Locale,
     person: PersonRow,
+    notifications_visible: bool,
 ) -> Result<String, TranslationError> {
-    render_person_with_treatments(household_name, slug, _csrf, locale, person, Vec::new())
+    render_person_with_treatments(
+        household_name,
+        slug,
+        _csrf,
+        locale,
+        person,
+        Vec::new(),
+        notifications_visible,
+    )
 }
 
 pub fn render_person_with_treatments(
@@ -71,6 +82,7 @@ pub fn render_person_with_treatments(
     locale: Locale,
     person: PersonRow,
     treatments: Vec<crate::treatments::TreatmentRow>,
+    notifications_visible: bool,
 ) -> Result<String, TranslationError> {
     render_person_with_treatment_access(
         household_name,
@@ -82,6 +94,7 @@ pub fn render_person_with_treatments(
             rows: treatments,
             schedules_unavailable: false,
         },
+        notifications_visible,
     )
 }
 
@@ -92,6 +105,7 @@ pub fn render_person_with_treatment_access(
     locale: Locale,
     person: PersonRow,
     treatments: crate::treatments::TreatmentOverview,
+    notifications_visible: bool,
 ) -> Result<String, TranslationError> {
     let raw_slug = slug;
     let slug = path_segment(slug);
@@ -144,6 +158,7 @@ pub fn render_person_with_treatment_access(
         raw_slug,
         locale.as_str(),
         body,
+        notifications_visible,
     ))
 }
 
@@ -155,6 +170,7 @@ pub fn render_person_form(
     person_id: Option<i64>,
     draft: PersonDraft,
     errors: Vec<(String, String)>,
+    notifications_visible: bool,
 ) -> Result<String, TranslationError> {
     let raw_slug = slug;
     let slug = path_segment(slug);
@@ -258,5 +274,6 @@ pub fn render_person_form(
         raw_slug,
         locale.as_str(),
         body,
+        notifications_visible,
     ))
 }

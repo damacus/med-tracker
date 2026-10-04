@@ -17,6 +17,7 @@ pub mod people;
 pub mod profile_advanced;
 pub mod profile_security;
 pub mod rails_time_zones;
+pub mod reports;
 pub mod settings;
 pub mod stock;
 pub mod treatments;

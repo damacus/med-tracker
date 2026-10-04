@@ -286,6 +286,7 @@ test('Rails colour themes cover every profile tab and dark dialog inputs', async
         assert.equal(await page.locator('html').evaluate(element => getComputedStyle(element).getPropertyValue('--profile-palette').trim().toUpperCase()), colour);
         assert.equal(await page.locator('body').evaluate(element => getComputedStyle(element).fontFamily.split(',')[0].replaceAll('"', '').trim()), font);
         await page.evaluate(async font => { await document.fonts.load('400 16px ' + JSON.stringify(font)); await document.fonts.ready; }, font);
+        assert.equal(await page.evaluate(font => [...document.fonts].some(face => face.family.replaceAll('"', '') === font && face.status === 'loaded'), font), true, label + ' ' + mode + ' loaded font');
         const canonicalColours = await page.locator('.profile-brand>span').evaluate(element => {
           const style = getComputedStyle(element);
           const probe = document.createElement('span');
@@ -355,7 +356,7 @@ test('the compiled API serves every font declared by the canonical Rails stylesh
     assert.equal(response.status(), 200);
     const css = await response.text();
     const urls = [...css.matchAll(/url\('([^']+)'\)/g)].map(match => match[1]);
-    assert.equal(urls.length, 31);
+    assert.equal(urls.length, 32);
     for (const url of urls) {
       const font = await page.request.get(new URL(url, baseUrl).toString());
       assert.equal(font.status(), 200, url);

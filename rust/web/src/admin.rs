@@ -32,6 +32,7 @@ pub struct DmdImportPage {
     pub runs: Vec<DmdImportRun>,
     pub alert: String,
     pub notice: String,
+    pub notifications_visible: bool,
 }
 
 pub fn render_dmd_import(page: DmdImportPage) -> Result<String, TranslationError> {
@@ -160,6 +161,7 @@ pub fn render_dmd_import(page: DmdImportPage) -> Result<String, TranslationError
         &page.slug,
         page.locale.as_str(),
         body,
+        page.notifications_visible,
     );
     if active {
         return Ok(document.replacen(

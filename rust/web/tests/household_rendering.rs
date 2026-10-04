@@ -17,6 +17,7 @@ fn household_shell_escapes_untrusted_labels_and_preserves_the_page_body() {
         "safe-household",
         "en",
         "<h1>People</h1><form method=\"post\"><input name=\"name\" value=\"Existing value\"></form>".into(),
+        true,
     );
     assert!(!html.contains("<script>alert('title')</script>"));
     assert!(!html.contains("<img src=x onerror=alert(1)>"));
@@ -34,6 +35,7 @@ fn household_shell_keeps_navigation_in_the_current_household() {
         "test-household",
         "en",
         String::new(),
+        true,
     );
     for destination in [
         "dashboard",
@@ -56,7 +58,7 @@ fn household_shell_keeps_navigation_in_the_current_household() {
 #[test]
 fn household_shell_sets_supported_document_languages_and_rejects_injected_language() {
     for locale in ["en", "es", "pt", "cy", "ga"] {
-        let html = household_document("People", "Test", "test", locale, String::new());
+        let html = household_document("People", "Test", "test", locale, String::new(), true);
         assert!(
             html.contains(&format!("lang=\"{locale}\"")),
             "missing document locale {locale}"
@@ -68,6 +70,7 @@ fn household_shell_sets_supported_document_languages_and_rejects_injected_langua
         "test",
         "en\" onload=\"alert(1)",
         String::new(),
+        true,
     );
     assert!(html.contains("lang=\"en\""));
     assert!(!html.contains("onload="));
@@ -89,6 +92,7 @@ fn person_edit_renders_initial_values_native_submission_and_associated_errors() 
             has_capacity: "true".into(),
         },
         vec![("name".into(), "can't be blank".into())],
+        true,
     )
     .unwrap();
     assert!(html.contains("<h1"));
@@ -123,6 +127,7 @@ fn location_edit_renders_retained_values_precondition_and_associated_errors() {
             idempotency_key: "location-test-key".into(),
         },
         errors: HashMap::from([("name".into(), vec!["can't be blank".into()])]),
+        notifications_visible: true,
     })
     .unwrap();
     assert!(html.contains("Edit Location"));
@@ -166,6 +171,7 @@ fn medication_edit_preserves_decimal_drafts_identity_and_native_error_associatio
         },
         locations: vec![("9".into(), "Test cupboard".into())],
         errors: BTreeMap::from([("name".into(), vec!["can't be blank".into()])]),
+        notifications_visible: true,
     })
     .unwrap();
     assert!(html.contains("Edit Medication"));
@@ -238,6 +244,7 @@ fn household_person_and_medication_forms_render_authoritative_locales_without_lo
                 has_capacity: "true".into(),
             },
             vec![("name".into(), "can't be blank".into())],
+            true,
         )
         .unwrap();
         assert!(person.contains(person_heading));
@@ -263,6 +270,7 @@ fn household_person_and_medication_forms_render_authoritative_locales_without_lo
             },
             locations: vec![("9".into(), "Test cupboard".into())],
             errors: BTreeMap::from([("name".into(), vec!["can't be blank".into()])]),
+            notifications_visible: true,
         })
         .unwrap();
         assert!(medication.contains(medication_heading));
@@ -298,6 +306,7 @@ fn person_form_native_type_selection_and_capacity_checkbox_keep_the_initial_draf
                 has_capacity: capacity.into(),
             },
             Vec::new(),
+            true,
         )
         .unwrap();
         let selected = html
@@ -351,6 +360,7 @@ fn existing_dosage_options_cannot_be_overwritten_by_a_scalar_medication_edit_for
             },
             locations: vec![("9".into(), "Test cupboard".into())],
             errors: BTreeMap::new(),
+            notifications_visible: true,
         },
         true,
     )
