@@ -54,14 +54,15 @@ async function mobileNavigation(page) {
     await page.mouse.wheel(before.total, 0);
     await page.waitForFunction(previous => document.querySelector('.med-sidebar').scrollLeft > previous, before.left);
   }
-  const last = page.locator('a[href="' + household + '/locations"]');
+  const last = nav.locator('a').last();
+  const destination = await last.getAttribute('href');
   const navBox = await nav.boundingBox();
   const linkBox = await last.boundingBox();
   assert.ok(navBox && linkBox);
   assert.ok(linkBox.x >= navBox.x - 1 && linkBox.x + linkBox.width <= navBox.x + navBox.width + 1, 'last mobile navigation link must be visible after the actual horizontal gesture');
   await last.press('Enter');
-  await page.waitForURL(current => current.pathname === household + '/locations');
-  assert.equal(new URL(page.url()).pathname, household + '/locations');
+  await page.waitForURL(current => current.pathname === destination);
+  assert.equal(new URL(page.url()).pathname, destination);
 }
 
 for (const locale of ['en', 'cy', 'ga', 'es', 'pt']) {

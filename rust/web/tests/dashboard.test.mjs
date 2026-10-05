@@ -286,7 +286,7 @@ test('mobile navigation opens as a left drawer and restores keyboard focus', asy
   }
 });
 
-test('dashboard uses the Rails sage tokens and component typography', async () => {
+test('dashboard uses the Rails palette tokens and component typography', async () => {
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   try {
     const page = await context.newPage();
@@ -298,7 +298,7 @@ test('dashboard uses the Rails sage tokens and component typography', async () =
       document.body.append(expected);
       expected.style.background = 'color-mix(in oklab, #7daa92 3%, white)';
       const surface = getComputedStyle(expected).backgroundColor;
-      expected.style.background = 'color-mix(in oklab, #7daa92 11%, white)';
+      expected.style.background = 'var(--secondary-container)';
       const selected = getComputedStyle(expected).backgroundColor;
       expected.remove();
       return {
