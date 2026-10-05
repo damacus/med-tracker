@@ -19,7 +19,7 @@ Proposed files and Tasks are labelled as new; their presence in a plan is not co
 | Slice | Sub-plan | Entry condition | Accepted outcome |
 | --- | --- | --- | --- |
 | 01 | [Foundation completion](slices/01-foundation.md) | Current published foundation and review fixes | Corrected image inputs, both runners, clean review and published CI |
-| 02 | [Persistence](slices/02-persistence.md) | 01 accepted | Schema parity, idempotent adoption, drift rejection, least privilege and rollback |
+| 02 | [Persistence](slices/02-persistence.md) | P1 after 01 is locally verified and published; P2/P3 after 01 accepted | Schema parity, idempotent adoption, drift rejection, least privilege and rollback |
 | 03 | [Identity](slices/03-identity.md) | 02 tenant/fixture interfaces accepted | Verified library choice, stored formats, browser security and OAuth/SMART |
 | 04 | [Care operations](slices/04-care-operations.md) | 02 plus validated actors from 03 | Complete household, medication, treatment, dose and sync operations |
 | 05 | [API and integrations](slices/05-api-integrations.md) | 04, relevant identity, and W1 before enqueue endpoints | API/native, FHIR/SMART/MCP, private data and integration parity |
@@ -31,6 +31,11 @@ Execute one owned task at a time. The numbering is a navigation aid, not permiss
 to defer queue infrastructure: **02 → W1 → 03 → 04 → 05 → W2/W3 → 06 → 08**.
 Identity dependency research may proceed independently, but there is one product writer.
 Each browser journey family in B2 is independently reviewable and reportable.
+
+While GitHub checks run on the immutable published setup commit, the writer may
+start P1's isolated test-runner work. This does not accept setup or authorise schema
+adoption. P2/P3 and persistence acceptance still require the accepted foundation.
+Keep P1 changes separate from the published commit whose CI is being observed.
 
 ## Global constraints and review focus
 
@@ -44,10 +49,12 @@ rollback plus missing scratch assets (R1/R3). Each owning sub-plan assigns expli
 
 ## Progress and integration
 
-Current state: foundation **unaccepted**. Bare local root CI and docs checks passed at
-the latest freeze; the real contract image build then failed to copy `rails/vendor/fonts`.
-F1 owns that correction. Do not recreate already accepted local work or claim the
-remaining image/review/published-CI gates have passed.
+Current state: foundation **unaccepted**. The font/context fixes, both complete
+browser runners, corrective review, local Loco CI and documentation checks pass.
+The verified setup is published at `9e54e930`; the prepared main merge and current
+upstream client-tools lock update are being checked before publication. Hosted CI
+still needs to pass. See `progress.md` for current evidence. Do not repeat completed
+work or treat the separate legacy Rails diagnostic as Rust implementation.
 
 Task reports live at `docs/plans/loco-migration-20261005/slices/<number>-report.md`;
 the foundation keeps its existing detailed report. The coordinator owns `progress.md`

@@ -10,7 +10,10 @@ SeaORM models and transaction-local RLS boundaries support shared authorised ope
 
 ## Global constraints
 
-Foundation accepted first. Synthetic databases only. Additive rollback-compatible changes only.
+P1 test-runner work may start once the foundation is locally verified and published
+while its immutable GitHub checks run. P2/P3 schema adoption and persistence
+acceptance require the foundation to be accepted first. Synthetic databases only.
+Additive rollback-compatible changes only.
 Retain Rails ledger provenance. Credential byte preservation is not authentication proof.
 Writer owns migration/model/tests; verifier owns database resources and generated entities.
 

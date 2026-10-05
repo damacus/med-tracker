@@ -21,7 +21,7 @@
     "client-tools"
   ],
   "files": {
-    "client-tools/Cargo.lock": "677c60ba6a7d817b856b78785cbde9f58b20aa27d0c5a6e9e38dcfe121dac315",
+    "client-tools/Cargo.lock": "7efcb1e7e92c723d1ec33d123856b6aa72680b603bad7836b7e4e3067cc2f0b8",
     "client-tools/Cargo.toml": "150242298cb1f978279a6d8338c18931f127fd025cc9cf9745956476ce1d929a",
     "client-tools/Taskfile.yml": "e35293f6177367ea31d18518445ff1768b0c2fe2ba086a37236855c2b4953679",
     "client-tools/crates/medtracker-api-client/Cargo.toml": "dfa63041033300515e6bca43cec19e7021968b778b4624815db6e979bdfbfc9a",
