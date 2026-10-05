@@ -18,6 +18,15 @@ test('relocated Rails UI still requires browser quality checks', () => {
   assert.equal(selected.loco, false);
 });
 
+test('root persistence tests and SQL fixtures select only the Loco runtime', () => {
+  for (const path of ['tests/persistence.rs', 'tests/fixtures/persistence.sql']) {
+    const selected = classify([path]).selected;
+    assert.equal(selected.loco, true, path);
+    assert.equal(selected.rails, false, path);
+    assert.equal(selected.rust_port, false, path);
+  }
+});
+
 test('Loco CI provisions the compiler components required by root checks', () => {
   const workflow = readFileSync(new URL('../../../.github/workflows/ci.yml', import.meta.url), 'utf8');
   const job = workflow.match(/\n  loco_foundation:\n([\s\S]*?)(?=\n  [a-z_]+:\n)/)?.[1];
