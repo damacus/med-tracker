@@ -168,6 +168,8 @@ end
 function run_contract
     set -l mode $argv[1]
     set -l workspace (pwd)
+    rtk proxy mkdir -p "$workspace/rails/tmp"
+    or return $status
     rtk proxy mkdir -p tmp/contract-tests
     or return $status
     set -g contract_run_dir (rtk proxy mktemp -d tmp/contract-tests/run.XXXXXX)

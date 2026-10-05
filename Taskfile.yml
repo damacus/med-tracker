@@ -45,6 +45,17 @@ includes:
     flatten: true
 
 tasks:
+  slice:test-runner:
+    cmds: [node --test scripts/migration/run-slice.test.mjs]
+  slice:test:
+    requires:
+      vars: [TARGET]
+    env:
+      SLICE_TARGET: '{{.TARGET}}'
+      SLICE_FILTER: '{{.FILTER | default ""}}'
+    cmds: [node scripts/migration/run-slice.mjs]
+  slice:test-all:
+    cmds: [node scripts/migration/run-slice.mjs --all]
   inventory:write:
     desc: Record reconciled migration inputs
     cmds: [node scripts/migration/inventory.mjs --write]
@@ -63,15 +74,15 @@ tasks:
   foundation:db-up:
     requires:
       vars: [FOUNDATION_PROJECT]
-    cmds: ['docker compose -p {{.FOUNDATION_PROJECT}} up -d --wait postgres']
+    cmds: ['docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} up -d --wait postgres']
   foundation:db-port:
     requires:
       vars: [FOUNDATION_PROJECT]
-    cmds: ['docker compose -p {{.FOUNDATION_PROJECT}} port postgres 5432']
+    cmds: ['docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} port postgres 5432']
   foundation:db-down:
     requires:
       vars: [FOUNDATION_PROJECT]
-    cmds: ['docker compose -p {{.FOUNDATION_PROJECT}} down --volumes']
+    cmds: ['docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} down --volumes']
   foundation:test-ci-paths:
     cmds: [node --test scripts/ci/tests/loco_paths.test.mjs]
   foundation:test-workspaces:
@@ -96,7 +107,8 @@ tasks:
   test:
     desc: Verify Loco and root ownership contracts
     cmds:
-      - cargo test --locked
+      - task: slice:test-runner
+      - task: slice:test-all
       - task: foundation:test
       - task: foundation:test-workspaces
       - task: foundation:test-relocation

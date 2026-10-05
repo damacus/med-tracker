@@ -5,6 +5,44 @@ import { join, relative } from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import test from 'node:test';
 
+test('policy workflow installs Fish before running Fish-based ownership tests', () => {
+  const workflow = readFileSync('.github/workflows/ci.yml', 'utf8');
+  const job = workflow.slice(workflow.indexOf('  policy_check:'), workflow.indexOf('  markdown_check:'));
+  assert.match(job, /apt-get install[^\n]*\bfish\b/, 'The policy job cannot execute the real Fish runner tests');
+  assert.match(job, /apt-get install[^\n]*\buuid-runtime\b/, 'The policy job cannot generate owned runner project IDs');
+  assert.ok(job.indexOf('apt-get install') < job.indexOf('task ci:check'));
+});
+
+test('contract runner prepares writable Rails tmp before container startup in a clean checkout', () => {
+  const root = process.cwd();
+  const fixture = mkdtempSync(join(tmpdir(), 'medtracker-clean-contract-'));
+  const executable = join(fixture, 'rtk');
+  mkdirSync(join(fixture, 'rails'));
+  writeFileSync(executable, `#!/usr/bin/env node
+const fs = require('node:fs'), cp = require('node:child_process');
+const args = process.argv.slice(2);
+if (args[0] === 'proxy') {
+  const result = cp.spawnSync(args[1], args.slice(2), { stdio: 'inherit' });
+  process.exit(result.status ?? 99);
+}
+if (args[0] === 'task' && args[1] === 'contract:prepare-db') {
+  try { fs.writeFileSync('rails/tmp/local_secret.txt', 'Synthetic writable-directory probe'); }
+  catch { process.exit(43); }
+  process.exit(42);
+}
+process.exit(0);
+`);
+  chmodSync(executable, 0o755);
+  try {
+    const result = spawnSync('fish', ['--no-config', join(root, 'rust/contract-tests/run.fish'), 'rails', 'doses'], {
+      cwd: fixture, env: { ...process.env, PATH: `${fixture}:${process.env.PATH}` }, encoding: 'utf8', timeout: 15000
+    });
+    assert.equal(result.status, 42, `Rails tmp was not prepared before startup: ${result.stderr}`);
+  } finally {
+    rmSync(fixture, { recursive: true, force: true });
+  }
+});
+
 test('contract runner emits absolute authoritative screenshot binds for both Rust browser branches', () => {
   const root = process.cwd();
   const fixture = mkdtempSync(join(tmpdir(), 'medtracker-screenshot-paths-'));

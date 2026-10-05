@@ -31,13 +31,13 @@ Workers cannot gain owner privileges and Rails can still operate (P3).
 **Interfaces:** Produce `slice:test TARGET FILTER` and `slice:test-runner` as defined in the specification;
 `DATABASE_URL` always points at this invocation's PostgreSQL 18 fixture.
 
-- [ ] Test `slice_runner_ignores_ambient_database`: set an unusable ambient URL; assert
+- [x] Test `slice_runner_ignores_ambient_database`: set an unusable ambient URL; assert
   `owned_endpoint_used == true`, `foreign_resources_touched == 0`, `owned_resources_remaining == 0`.
-- [ ] Register the test-only runner command and run `rtk task slice:test-runner`;
+- [x] Register the test-only runner command and run `rtk task slice:test-runner`;
   record the new runner's failing ambient-endpoint regression before implementation.
-- [ ] Implement owned test execution by reusing `foundation-database.mjs`; copy verified baseline SQL
+- [x] Implement owned test execution by reusing `foundation-database.mjs`; copy verified baseline SQL
   from retained ref, recording its exact path/hash and source migration count in provenance.
-- [ ] Run `rtk task slice:test-runner` and `rtk task slice:test TARGET=persistence`;
+- [x] Run `rtk task slice:test-runner` and `rtk task slice:test TARGET=persistence`;
   prove cleanup after success and forced failure.
 - [ ] Review and commit `test(persistence): isolate schema adoption rehearsals`.
 

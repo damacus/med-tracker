@@ -35,7 +35,7 @@ async function runFoundationTask(args, options) {
 export async function withOwnedDatabase(callback, runTask = runFoundationTask, inheritedEnvironment = process.env) {
   const project = `FOUNDATION_PROJECT=mtloco-http-${randomUUID()}`;
   const environment = { ...inheritedEnvironment };
-  for (const variable of ['COMPOSE_FILE', 'COMPOSE_PROJECT_NAME', 'COMPOSE_PROFILES', 'DATABASE_URL']) delete environment[variable];
+  for (const variable of ['COMPOSE_FILE', 'COMPOSE_PROJECT_NAME', 'COMPOSE_PROFILES', 'DATABASE_URL', 'DOCKER_HOST', 'DOCKER_CONTEXT', 'DOCKER_CONFIG', 'DOCKER_TLS_VERIFY', 'DOCKER_CERT_PATH']) delete environment[variable];
   const run = (name, timeout) => runTask([name, project], { env: environment, timeout });
   let failed = false;
   try {

@@ -3060,7 +3060,7 @@
     "rust/contract-tests/network_diagnostics.fish": "cd4c472fd72890530a77873e0e798d21cc67b3b8495ad3ef2d95c58114f51b1f",
     "rust/contract-tests/remove_image.fish": "f0fbbfd27c10163a706f8c68334ee57bcd9aaee620cd24fb73b4f57530e4464d",
     "rust/contract-tests/restart_web.fish": "127cc98fab64d58277894d9e160e256e58afc81ca565bd67f3829cf9c1aee15e",
-    "rust/contract-tests/run.fish": "8e638017454b5918b43f4c758e85f1c54363d315bad8e37925a506024f75570a",
+    "rust/contract-tests/run.fish": "d853d02926351bda24cdbd2f474b2896938c445a3325218cb9741d884717d1b4",
     "rust/contract-tests/run_complete_api.fish": "646c6fcbad05a518ac199ad90d192395f0a0b48b0df823fc3f291aa73b3fe06c",
     "rust/contract-tests/run_complete_lane.fish": "848a05fd3cd5ecd56e00fc3ed642a061215fd9d7de2437829a9fe1f525da9e7d",
     "rust/contract-tests/run_lookup_subset.fish": "3b68cf52e3491e86e27e75ea995eee0b4f37e710de062a64d6618ad3bd219100",

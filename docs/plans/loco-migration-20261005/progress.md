@@ -5,9 +5,9 @@ not moved into Loco yet. No slice is accepted.
 
 | Slice | Current state | What must happen next |
 | --- | --- | --- |
-| 1. Set up Loco and move Rails | The tested setup commit is pushed; Loco checks pass on the local merge with main | Finish documentation checks, publish the merge and verify GitHub CI |
-| 2. Use the existing database | Plan and schema inputs prepared | Implement and verify database adoption, household access and Rails rollback after setup is accepted |
-| 3. Sign-in and API authentication | Separate library experiment has 37 of 39 tests passing | Resolve the two library limitations and prove stored credentials, tokens and security behaviour |
+| 1. Set up Loco and move Rails | Setup and merges with main are published; two GitHub setup failures have local fixes | Verify container permissions, finish review, publish corrections and pass hosted CI |
+| 2. Use the existing database | Isolated Rust test runner passes real PostgreSQL success and failure checks locally | Finish review and publish the runner; adopt the schema after setup is accepted |
+| 3. Sign-in and API authentication | Separate library experiment has 37 of 39 tests passing | Resolve two proof failures and verify stored credentials, tokens and security behaviour |
 | 4. Household and medication actions | Not migrated | Implement complete authorised care workflows |
 | 5. APIs and integrations | Not migrated | Migrate the existing API, native clients and integrations |
 | 6. Browser pages and themes | Not migrated | Implement complete browser workflows and port existing themes to daisyUI |
@@ -17,10 +17,9 @@ not moved into Loco yet. No slice is accepted.
 ## Setup: what passed and what failed
 
 The setup fixes passed source review, root Loco checks, both browser test runs,
-Ruby lint and all 6,112 Rails examples. These fixes are committed locally as
-`9e54e9305083cfa9b22708e9feba0511cd48c18d`. That exact commit has now been pushed
-to the existing draft PR. The later MCP dependency merge remains local. The added
-Rails diagnostic has been archived outside the repository and removed.
+Ruby lint and all 6,112 Rails examples. Setup and both upstream dependency merges
+are published as `9e499003f9b321a355a133c6a976f42278ab836f` in the draft PR.
+The added Rails diagnostic has been archived outside the repository and removed.
 
 Main's MCP dependency update was then included in a normal merge. Testing the
 combined code produced one failure in 6,112 examples: scanning medicine to add
@@ -42,7 +41,25 @@ Loco `task ci` passes on the combined source. Inventory and preservation checks
 also pass. Preservation records 2,933 inputs, with 2,883 unchanged and 50 changed;
 the changes include upstream's dependency update. The current Loco CI log is
 `/Users/damacus/Library/Application Support/rtk/tee/1791227912_task_ci.log`.
-Documentation checks and publication follow.
+Documentation and client-tool checks also passed before publication.
+
+GitHub run `37363675318` finished with setup failures. The workflow checker lacked
+Fish. Rust browser fixtures could not write `/app/tmp/local_secret.txt`. A clean
+checkout lacks the Rails temporary directory; the contract runner now creates it
+before containers start. Both changes have failing regressions followed by passing
+checks. All 91 workflow tests pass locally. Real container permission verification
+and independent review remain pending. The hosted Loco job was cancelled without
+running, so it supplies no foundation acceptance evidence.
+
+The new isolated Rust database runner ignores ambient database addresses and
+Compose overrides, preserves unit and documentation tests, and cleans only its
+own fixture. Four runner checks pass. Real PostgreSQL 18 success and deliberate
+failure runs both removed all their owned resources. Rust formatting and lint
+pass. Devin SWE-2 Max completed review, and its three requested corrections
+passed focused re-review. Full local Loco CI passes on the final source, including
+the real PostgreSQL integration and HTTP health/Tera checks. The changes are being
+prepared for commit and push; corrected hosted Linux checks remain required.
+The exact preserved SQL baseline is pinned; no schema has been adopted.
 
 The combined full-run log is
 `/Users/damacus/Library/Application Support/rtk/tee/1791225510_task_rai_9786c9.log`.
@@ -53,8 +70,9 @@ Earlier results do not prove that the current combined code passes.
 ## Publication and remaining work
 
 [Draft PR #2451](https://github.com/damacus/med-tracker/pull/2451) now contains the
-setup correction at `9e54e930`. Passing hosted CI remains unverified. The later
-combined code still needs its checks, commit and push.
+setup and dependency merges at `9e499003`. Passing hosted CI remains unverified.
+The runner and new setup corrections still need final verification, review,
+commit and push.
 The user has authorised landing verified work on main through one branch and
 one PR. This does not authorise a production deployment or database change.
 

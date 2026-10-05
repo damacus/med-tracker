@@ -9,3 +9,4 @@ rails/config/credentials/*.yml.enc diff=rails_credentials
 rails/config/credentials.yml.enc diff=rails_credentials
 
 mobile/android/phone/src/main/kotlin/io/medtracker/client/** -whitespace
+migration/baseline.sql -whitespace

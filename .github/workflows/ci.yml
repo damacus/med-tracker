@@ -73,6 +73,8 @@ jobs:
           repo-token: ${{ github.token }}
       - name: Install actionlint
         run: go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+      - name: Install Fish for contract runner tests
+        run: sudo apt-get update && sudo apt-get install --yes fish uuid-runtime
       - run: task ci:check
 
   markdown_check:
