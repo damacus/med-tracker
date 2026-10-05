@@ -48,7 +48,7 @@ export async function withOwnedDatabase(callback, runTask = runFoundationTask, i
     failed = true;
     throw error;
   } finally {
-    try { await run('foundation:db-down', 20000); } catch (error) {
+    try { await run('foundation:db-down', 60000); } catch (error) {
       if (!failed) throw error;
       process.stderr.write(`Owned database cleanup failed: ${error.message}\n`);
     }
