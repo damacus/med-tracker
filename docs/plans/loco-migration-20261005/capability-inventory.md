@@ -71,6 +71,15 @@ screenshots. The Tera foundation page is not that completed browser migration.
 
 ## PR salvage dispositions
 
+The supported Rails schedule-edit UI links to the person-nested edit route.
+The generated top-level schedule edit route lacks its required person parameter
+and currently returns 400; the generated top-level show route has no controller
+action. These unused route declarations do not define a completed workflow.
+The corrected rollback audit verifies the supported nested edit form. The Loco
+browser tranche must retain complete authorized edit behaviour and make route
+compatibility decisions explicitly; no controller compatibility was invented
+solely to make geometry checks pass.
+
 | PR | Captured source | Disposition |
 | --- | --- | --- |
 | 2419 schema | `6d607c71c393a79cd259e39f13d48f1977fba1e2` | Retain 177-migration schema work for tranche 2 adoption checks |

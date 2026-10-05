@@ -29,4 +29,5 @@ for (const source of original) {
 }
 const report = { revision, unchanged: entries.filter(entry => entry.unchanged).length, modified: entries.filter(entry => !entry.unchanged).length, entries };
 if (process.argv.includes('--write')) writeFileSync(output, `${JSON.stringify(report, null, 2)}\n`);
+else assert.deepEqual(report, JSON.parse(readFileSync(output, 'utf8')), 'Preservation input changed: reconcile edits and regenerate ledger');
 console.log(`Preserved ${entries.length} inputs; ${report.unchanged} unchanged; ${report.modified} path/tooling edits; existing comments unchanged`);

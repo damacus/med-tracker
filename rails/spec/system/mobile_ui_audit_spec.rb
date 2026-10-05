@@ -72,6 +72,10 @@ RSpec.describe 'Mobile UI audit' do
 
           expect(page).to have_current_path(expected_path)
           expect(page).to have_css('body')
+          if path == schedule_edit_path
+            action = household_path(:person_schedule_path, person_id: people(:john), id: schedules(:john_paracetamol))
+            expect(page).to have_css("form[action='#{action}'] button[type='submit']")
+          end
           overflow = page_horizontal_overflow
           contrast_failures = low_contrast_text
           expect(overflow).to be <= 1,
@@ -277,10 +281,11 @@ RSpec.describe 'Mobile UI audit' do
   end
 
   def schedule_ui_paths
-    household_paths(:schedules_path, :new_schedule_path, :schedules_workflow_path) + [
-      household_path(:schedule_path, id: schedules(:john_paracetamol)),
-      household_path(:edit_schedule_path, id: schedules(:john_paracetamol))
-    ]
+    household_paths(:schedules_path, :new_schedule_path, :schedules_workflow_path)
+  end
+
+  def schedule_edit_path
+    household_path(:edit_person_schedule_path, person_id: people(:john), id: schedules(:john_paracetamol))
   end
 
   def people_ui_paths

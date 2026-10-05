@@ -78,7 +78,7 @@ tasks:
     cmds: [node --test scripts/migration/workspaces.test.mjs]
   dev:
     desc: Start the Loco server
-    cmds: ['cargo run -- start --environment {{.LOCO_ENV | default "development"}}']
+    cmds: ['cargo run --locked -- start --environment {{.LOCO_ENV | default "development"}}']
   build:
     desc: Build Loco
     cmds: [cargo build --locked]
@@ -98,11 +98,17 @@ tasks:
     cmds:
       - cargo test --locked
       - task: foundation:test
+      - task: foundation:test-workspaces
+      - task: foundation:test-relocation
+      - task: foundation:test-preservation
+      - task: inventory:check
+      - task: preservation:check
       - task: foundation:test-cleanup
+      - task: foundation:test-database
       - task: foundation:test-http
   routes:
     desc: List Loco routes
-    cmds: ['cargo run -- routes --environment {{.LOCO_ENV | default "development"}}']
+    cmds: ['cargo run --locked -- routes --environment {{.LOCO_ENV | default "development"}}']
   db:migrate:
     desc: Persistence adoption gate (tranche 2)
     cmds: ['fish -c ''echo "Loco schema adoption awaits tranche 2 acceptance" >&2; exit 1''']
@@ -111,7 +117,7 @@ tasks:
     cmds: ['fish -c ''echo "Loco fixtures await tranche 2 acceptance" >&2; exit 1''']
   worker:
     desc: Start the Loco worker process
-    cmds: ['cargo run -- start --worker --environment {{.LOCO_ENV | default "development"}}']
+    cmds: ['cargo run --locked -- start --worker --environment {{.LOCO_ENV | default "development"}}']
   browser:
     desc: Exercise Loco health and Tera over HTTP
     cmds: [{task: foundation:test-http}]
@@ -130,6 +136,12 @@ tasks:
     cmds: [node --test scripts/migration/foundation-http.test.mjs]
   foundation:test-cleanup:
     cmds: [node --test scripts/migration/process-cleanup.test.mjs]
+  foundation:test-preservation:
+    cmds: [node --test scripts/migration/preservation.test.mjs]
+  foundation:test-relocation:
+    cmds: [node --test scripts/migration/relocation.test.mjs]
+  foundation:test-database:
+    cmds: [node --test scripts/migration/foundation-database.test.mjs]
   default:
     desc: List all available tasks
     summary: Default task - shows all available commands

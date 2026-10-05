@@ -11,7 +11,7 @@ Dir.mktmpdir('coverage-check') do |directory|
   File.write(source, "if ENV.fetch('BRANCH') == 'yes'\n  :yes\nelse\n  :no\nend\n")
   application_root = ENV.fetch('RAILS_APPLICATION_ROOT', File.join(repository, 'rails'))
   environment = { 'BUNDLE_GEMFILE' => File.join(application_root, 'Gemfile'), 'COVERAGE' => 'true',
-                  'RAILS_APPLICATION_ROOT' => application_root }
+                  'RAILS_APPLICATION_ROOT' => application_root, 'SIMPLECOV_SOURCE_ROOT' => directory }
 
   reports = %w[yes no].each_with_index.map do |branch, index|
     output_path = File.join(directory, "shard-#{index + 1}")

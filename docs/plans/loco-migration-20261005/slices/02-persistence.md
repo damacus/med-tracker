@@ -46,6 +46,15 @@ test `tests/persistence.rs`; create synthetic records in `tests/fixtures/persist
 **Interfaces:** Produce the standard `Migrator` baseline entry and schema verification result;
 preserve original Rails `schema_migrations` and all stored record bytes.
 
+Fresh installation is the complete administrative PostgreSQL 18 psql provisioning
+plus guarded adoption pipeline. Preserve the COPY dump unchanged and refuse
+provisioning of non-empty targets. Populated adoption never restores baseline DDL.
+An outer transaction verifies the catalog before `Migrator::up`, verifies again
+after it, and commits. Preflight runs even when the baseline is already applied,
+and rejection must leave no newly installed SeaORM ledger. The scratch runtime
+does not require psql. Allow only the explicitly verified SeaORM ledger structure,
+ownership and supported row as named catalog differences.
+
 - [ ] Add `fresh_catalog_matches_rails`, `populated_adoption_preserves_bytes`,
   `second_adoption_changes_nothing`, `unknown_catalog_drift_is_rejected`.
   Assertions: `normalised_catalog == rails_catalog`, `before_ids == after_ids`,

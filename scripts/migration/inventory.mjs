@@ -4,7 +4,7 @@ import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 
 const output = 'docs/plans/loco-migration-20261005/source-inventory.json';
-const roots = ['rails/app', 'rails/config', 'rails/db', 'rails/spec', 'rails/lib', 'rails/public', 'rails/vendor/fonts', 'rust/api/src', 'rust/web/src', 'rust/ui-preview/src', 'rust/ui-preview/public', 'rust/contract-tests/tests', 'docs/api/openapi.v1.yaml', 'mobile/android', 'client-tools'];
+const roots = ['rails/app', 'rails/config', 'rails/db', 'rails/spec', 'rails/lib', 'rails/public', 'rails/vendor/fonts', 'rails/bin', 'rails/scripts', 'rails/tasks', 'rust/api/src', 'rust/web/src', 'rust/ui-preview/src', 'rust/ui-preview/public', 'rust/contract-tests', 'docs/api/openapi.v1.yaml', 'mobile/android', 'client-tools'];
 const revision = existsSync(output) ? JSON.parse(readFileSync(output, 'utf8')).revision : execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
 const movedRoots = new Set('app bin config db lib public spec test data vendor sorbet compose script storage log tmp Gemfile Gemfile.lock Dockerfile compose.yaml config.ru Rakefile Procfile.dev run .rspec .ruby-version .simplecov .rubocop.yml .dockerignore package.json package-lock.json .kamal .mutant'.split(' '));
 const original = execFileSync('git', ['ls-tree', '-r', '--name-only', revision], { encoding: 'utf8' }).trim().split('\n');

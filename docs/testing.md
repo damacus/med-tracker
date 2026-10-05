@@ -120,11 +120,11 @@ the test services, then choose a subject:
 
 ```shell
 task rails:test:up
-task mutation SUBJECT=MedicationFriendlyName
-task mutation SUBJECT='GlobalSearch::ResultBuilder*'
+task rails:mutation SUBJECT=MedicationFriendlyName
+task rails:mutation SUBJECT='GlobalSearch::ResultBuilder*'
 ```
 
-Use `task mutation:since` to check subjects changed since `origin/main`. Pass
+Use `task rails:mutation:since` to check subjects changed since `origin/main`. Pass
 `REF=HEAD~3` to compare with another Git reference. The CI mutation job is
 advisory while its signal is evaluated.
 

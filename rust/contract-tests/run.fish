@@ -167,6 +167,7 @@ end
 
 function run_contract
     set -l mode $argv[1]
+    set -l workspace (pwd)
     rtk proxy mkdir -p tmp/contract-tests
     or return $status
     set -g contract_run_dir (rtk proxy mktemp -d tmp/contract-tests/run.XXXXXX)
@@ -183,11 +184,11 @@ function run_contract
     or return $status
     set -gx CONTRACT_STORAGE_ROOT (rtk proxy realpath "$contract_run_dir/storage")
     set -gx CONTRACT_API_BUILD_CONTEXT (pwd)
-    set -gx COMPOSE_FILE rails/compose.yaml:rust/contract-tests/storage.compose.yaml
+    set -gx COMPOSE_FILE "$workspace/rails/compose.yaml:$workspace/rust/contract-tests/storage.compose.yaml"
     if set -q CONTRACT_TEST_SUBNET; and test -n "$CONTRACT_TEST_SUBNET"
         rtk task api:contract-subnet-check CONTRACT_TEST_SUBNET=$CONTRACT_TEST_SUBNET
         or return $status
-        set -gx COMPOSE_FILE "$COMPOSE_FILE:rust/contract-tests/runner-subnet.compose.yaml"
+        set -gx COMPOSE_FILE "$COMPOSE_FILE:$workspace/rust/contract-tests/runner-subnet.compose.yaml"
     end
     if contains -- "$argv[2]" medication-read-api web-session-api web-reads-api openapi-locations openapi-dosages openapi-people openapi-sessions openapi-notifications openapi-native-tokens openapi-push-subscriptions openapi-admin-settings openapi-person-medication-writes openapi-schedule-writes openapi-pause-lifecycle openapi-dose-occurrences openapi-review-prompts openapi-app-tokens openapi-memberships openapi-stock-workflows openapi-audit-logs openapi-person-grants openapi-invitations openapi-invitations-legacy openapi-profile openapi-profile-storage openapi-read-completion openapi-rate-limit openapi-reports openapi-health-events openapi-exports openapi-sync-reads openapi-external-integrations openapi-portable-writes openapi-portability-legacy openapi-sync-batch-legacy openapi-sync-batch-replay-focus openapi-replay-legacy openapi-envelopes-legacy openapi-medications openapi-medications-focused api-legacy-auth api-legacy-admin api-legacy-care api-legacy-devices api-legacy-lookup browser-journey-rails browser-journey-rust browser-dashboard-rust web-reads-rails
         set -gx CONTRACT_AUTH_SESSION_SECRET (rtk proxy openssl rand -hex 32)
@@ -202,7 +203,7 @@ function run_contract
             echo 'Disposable APNs key output was invalid' >&2
             return 1
         end
-        set -gx COMPOSE_FILE "$COMPOSE_FILE:rust/contract-tests/runner.compose.yaml"
+        set -gx COMPOSE_FILE "$COMPOSE_FILE:$workspace/rust/contract-tests/runner.compose.yaml"
         set -gx CONTRACT_FIXTURE_DIR (rtk proxy realpath "$contract_run_dir")
         if not contains -- "$argv[2]" browser-journey-rails web-reads-rails
             set -gx CONTRACT_API_BUILD_CONTEXT (pwd)/$contract_run_dir/source
@@ -222,9 +223,9 @@ function run_contract
     end
     if test "$argv[2]" = browser-dashboard-rust
         set -gx CONTRACT_DASHBOARD_NOW 2026-03-29T00:30:00Z
-        set -gx CONTRACT_RUST_BROWSER_SCREENSHOT_DIR ./docs/screenshots/dashboard-rust
+        set -gx CONTRACT_RUST_BROWSER_SCREENSHOT_DIR "$workspace/docs/screenshots/dashboard-rust"
     else if test "$argv[2]" = browser-journey-rust
-        set -gx CONTRACT_RUST_BROWSER_SCREENSHOT_DIR ./docs/screenshots/journey-medication-rust
+        set -gx CONTRACT_RUST_BROWSER_SCREENSHOT_DIR "$workspace/docs/screenshots/journey-medication-rust"
     end
     set -lx CONTRACT_PROJECT $contract_project
     echo "Contract run project: $contract_project"

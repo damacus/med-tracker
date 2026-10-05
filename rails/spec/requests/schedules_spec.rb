@@ -68,6 +68,21 @@ RSpec.describe 'Schedules' do
     end
   end
 
+  describe 'GET /people/:person_id/schedules/:id/edit' do
+    before { sign_in(users(:admin)) }
+
+    it 'renders the authenticated schedule edit form used by the schedule card' do
+      schedule = schedules(:john_paracetamol)
+
+      get edit_person_schedule_path(schedule.person, schedule)
+
+      expect(response).to have_http_status(:ok)
+      action = person_schedule_path(schedule.person, schedule)
+      form = response.parsed_body.at_css("form[action='#{action}']")
+      expect(form).to be_present
+    end
+  end
+
   describe 'POST /people/:person_id/schedules' do
     before { sign_in(users(:admin)) }
 

@@ -2,9 +2,9 @@
 
 | Slice | State | Evidence |
 | --- | --- | --- |
-| 01 Foundation | Blocked on contract image input | Bare root CI, CI tooling 82/82 and docs/whitespace passed; real root runner failed copying rails/vendor/fonts; its resources were cleaned; standalone runner and clean re-review/published CI remain pending |
+| 01 Foundation | Local gates pass; final reconciliation and publication pending | SWE-2 Max corrective verdict MET; minor shim and documentation-task fixes pass RED/GREEN. Tooling 89/89, relocation 7/7, actual scanner/context checks, both dashboard runners 35/35 and final root CI pass. Corrected full Rails suite passes 6,112 examples; final lint/reconciliation, corrected publication and hosted CI remain required |
 | 02 Persistence | Planned | slices/02-persistence.md: schema, owned acceptance runner, RLS and rollback |
-| 03 Identity | Planned, architecture decision open | slices/03-identity.md: library proof and stored-format compatibility before implementation |
+| 03 Identity | Planned; isolated library proof progressing | Pinned candidate proof passes 26/28; ten parser/context cases pass, two original wrapper-limit diagnostics remain. Durable storage, revocation, SMART and full interoperability remain unproved; no provider selected |
 | 04 Care operations | Planned | slices/04-care-operations.md: complete household/clinical writes and replay |
 | 05 API/integrations | Planned | slices/05-api-integrations.md: authoritative operations and native/integration parity |
 | 06 Browser/themes | Planned | slices/06-browser.md: complete journey families, daisyUI and offline replay |
@@ -18,12 +18,13 @@ and whenever a material blocker changes. Follow-up issues remain minimal.
 
 Plan review: Devin SWE-2 Max, supplied-plan only, conditionally sound. Corrections
 are recorded in plan.md. Runtime checks are recorded in foundation-report.md;
-independent foundation source review returned requirements not met; implementation
-acceptance remains pending.
+the original foundation source review returned requirements not met. The final
+corrective source review meets requirements; runtime acceptance remains pending.
 
-The authentication dependency decision remains open. auth-feasibility.md records
-the concrete RFC7009 and client-method gaps; no bespoke protocol replacement or
-external identity service has been approved as the implementation.
+The authentication dependency decision remains conditional. auth-feasibility.md
+records Astra's pinned-source findings and the concrete RFC7009 and client-method
+gaps. The authorised bounded proof must resolve these before acceptance; no
+external identity service has been selected.
 
 Independent source review dispatch was blocked by automatic approval review:
 the prior Devin authorization covered plan transfer, while this invocation would
@@ -42,6 +43,22 @@ tranche. The later user approval resolved the source-transfer approval block.
 
 Published foundation: `f54630d41e1388a5fd552d9de385ea78995b7653` on
 `codex/loco-migration`, [draft PR #2451](https://github.com/damacus/med-tracker/pull/2451).
+The executable slice plans are published at `035bf52f7f2389e6f15af5fe93aa9ba9ec9721b8`.
+The corrected foundation implementation is local. Final corrective source review
+passed on the 32-file freeze; the minor dashboard shim coverage fix has passed.
+Complete root and standalone dashboard runtimes and final root CI now pass.
+The corrected full Rails suite now passes 6,112 examples with zero failures.
+Final lint/reconciliation and corrected publication/hosted CI remain pending.
+
+The user prefers landing verified slices on main rather than creating a stack of
+migration PRs. The current single draft remains the foundation review vehicle;
+land it only after its applicable checks and hosted CI pass. This authorises
+verified main integration, not live deployment or a production schema change.
+
+The two-hour retrospective heartbeat checkpoints implementation, applies supported
+workflow improvements and continues the full goal. Preserve live handles and
+source ownership; a fresh session requires a complete handoff. Current reports
+distinguish current results from earlier resolved failures.
 Remaining work is tracked in [#2450](https://github.com/damacus/med-tracker/issues/2450).
 The verification wrapper's unintended default test-project invocation and
 unproven database effect are tracked in

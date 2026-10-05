@@ -28,4 +28,6 @@ ENV.delete('SIMPLECOV_SHARD')
 application_root = ENV.fetch('RAILS_APPLICATION_ROOT', File.expand_path('../../rails', __dir__))
 load File.join(application_root, '.simplecov')
 SimpleCov.coverage_path ENV.fetch('SIMPLECOV_COVERAGE_DIR') if ENV['SIMPLECOV_COVERAGE_DIR']
-SimpleCov.collate(result_files, 'rails')
+SimpleCov.collate(result_files, 'rails') do
+  root ENV.fetch('SIMPLECOV_SOURCE_ROOT', application_root)
+end

@@ -200,7 +200,10 @@ fn parsed_identity(body: &Bytes) -> Option<Value> {
 }
 
 fn source_config() -> Option<SourceConfig> {
-    serde_yaml::from_str(include_str!("../../../../rails/config/ai_medication_sources.yml")).ok()
+    serde_yaml::from_str(include_str!(
+        "../../../../rails/config/ai_medication_sources.yml"
+    ))
+    .ok()
 }
 
 fn allowed_source(url: &str, config: &SourceConfig) -> bool {

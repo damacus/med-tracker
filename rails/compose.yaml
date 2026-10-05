@@ -42,6 +42,7 @@ services:
         condition: service_healthy
     environment: &rails_env_dev
       RAILS_ENV: development
+      MEDTRACKER_REPOSITORY_ROOT: /workspace
       RAILS_FORCE_SSL: "false"
       DATABASE_URL: postgresql://medtracker:medtracker_password@db-dev:5432/medtracker
       DATABASE_ROLE: ${DEV_MIGRATION_DATABASE_ROLE:-}
@@ -62,6 +63,10 @@ services:
       - .:/app
       - ../docs:/app/docs:ro
       - ../scripts/ci:/workspace/scripts/ci:ro
+      - ../scripts/ci:/scripts/ci:ro
+      - ../renovate.json:/workspace/renovate.json:ro
+      - ../.gitignore:/.gitignore:ro
+      - ../.gitignore:/workspace/.gitignore:ro
       - ../rust:/app/rust:ro
       - ../tmp/contract-tests:/app/tmp/contract-tests
       - ${MEDTRACKER_GIT_COMMON_DIR:-.git}:${MEDTRACKER_GIT_COMMON_DIR:-.git}:ro
@@ -94,6 +99,10 @@ services:
       - .:/app
       - ../docs:/app/docs:ro
       - ../scripts/ci:/workspace/scripts/ci:ro
+      - ../scripts/ci:/scripts/ci:ro
+      - ../renovate.json:/workspace/renovate.json:ro
+      - ../.gitignore:/.gitignore:ro
+      - ../.gitignore:/workspace/.gitignore:ro
       - ../rust:/app/rust:ro
       - ../tmp/contract-tests:/app/tmp/contract-tests
       - ${MEDTRACKER_GIT_COMMON_DIR:-.git}:${MEDTRACKER_GIT_COMMON_DIR:-.git}:ro
@@ -149,6 +158,7 @@ services:
         condition: service_healthy
     environment: &rails_env_test
       RAILS_ENV: test
+      MEDTRACKER_REPOSITORY_ROOT: /workspace
       DATABASE_URL: ${CONTRACT_DATABASE_URL:-postgresql://medtracker:medtracker_password@db-test:5432/medtracker}
       DATABASE_ROLE: ${TEST_MIGRATION_DATABASE_ROLE:-}
       SMTP_ADDRESS: mail-test
@@ -167,6 +177,10 @@ services:
       - .:/app
       - ../docs:/app/docs:ro
       - ../scripts/ci:/workspace/scripts/ci:ro
+      - ../scripts/ci:/scripts/ci:ro
+      - ../renovate.json:/workspace/renovate.json:ro
+      - ../.gitignore:/.gitignore:ro
+      - ../.gitignore:/workspace/.gitignore:ro
       - ../rust:/app/rust:ro
       - ../tmp/contract-tests:/app/tmp/contract-tests
       - ${MEDTRACKER_GIT_COMMON_DIR:-.git}:${MEDTRACKER_GIT_COMMON_DIR:-.git}:ro
@@ -206,6 +220,10 @@ services:
       - .:/app
       - ../docs:/app/docs:ro
       - ../scripts/ci:/workspace/scripts/ci:ro
+      - ../scripts/ci:/scripts/ci:ro
+      - ../renovate.json:/workspace/renovate.json:ro
+      - ../.gitignore:/.gitignore:ro
+      - ../.gitignore:/workspace/.gitignore:ro
       - ../rust:/app/rust:ro
       - ../tmp/contract-tests:/app/tmp/contract-tests
       - ${MEDTRACKER_GIT_COMMON_DIR:-.git}:${MEDTRACKER_GIT_COMMON_DIR:-.git}:ro
@@ -230,10 +248,15 @@ services:
       target: tools
     environment:
       RAILS_ENV: test
+      MEDTRACKER_REPOSITORY_ROOT: /workspace
     volumes:
       - .:/app
       - ../docs:/app/docs:ro
       - ../scripts/ci:/workspace/scripts/ci:ro
+      - ../scripts/ci:/scripts/ci:ro
+      - ../renovate.json:/workspace/renovate.json:ro
+      - ../.gitignore:/.gitignore:ro
+      - ../.gitignore:/workspace/.gitignore:ro
       - ../rust:/app/rust:ro
       - ../tmp/contract-tests:/app/tmp/contract-tests
       - ${MEDTRACKER_GIT_COMMON_DIR:-.git}:${MEDTRACKER_GIT_COMMON_DIR:-.git}:ro

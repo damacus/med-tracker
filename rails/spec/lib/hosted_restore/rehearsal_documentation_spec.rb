@@ -9,7 +9,7 @@ RSpec.describe HostedRestore::Rehearsal do
 
     it 'documents the executable gate, durable evidence contract, cadence, and invalidation triggers' do
       expect(runbook).to include(
-        'task hosted-restore:rehearse', 'DATABASE_BACKUP_ID', 'ATTACHMENT_BACKUP_ID', 'APP_IMAGE',
+        'task rails:hosted-restore:rehearse', 'DATABASE_BACKUP_ID', 'ATTACHMENT_BACKUP_ID', 'APP_IMAGE',
         '/app/.runtime-image-ref', 'TESTER', 'WORM_HEADS_JSON', 'EVIDENCE_ROOT', 'EVIDENCE_OUTPUT',
         'evidence.json', 'evidence.md', 'complete.json',
         'at least quarterly', 'database major version', 'RLS policies', 'Object Lock'

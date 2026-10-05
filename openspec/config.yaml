@@ -1,7 +1,8 @@
 schema: spec-driven
 
 context: |
-  MedTracker is a Rails 8.1 modular monolith for household medication and health data.
+  MedTracker is migrating household medication and health data to root Loco/Tera.
+  Rails 8.1 remains independently runnable under rails/ until complete migration acceptance.
   Read AGENTS.md, docs/design.md, relevant ADRs, and existing public behavior before proposing changes.
   Preserve household isolation, person-level authorization, medication safety, audit integrity,
   immutable medication-take records, atomic transactions, and PHI-safe errors and diagnostics.

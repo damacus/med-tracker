@@ -57,6 +57,48 @@ identity/session infrastructure and also lacks demonstrated SMART response parit
 
 ## Required evidence before selection
 
+### Bounded architecture clarification during implementation
+
+A read-only Astra source check inspected oxide-auth master
+`0e3ef86d924aa5546dc3275d1d7269ea63edfaf1`, dated 31 January 2026.
+This establishes some maintenance activity, correcting the earlier unconfirmed
+maintenance statement; it does not establish a security-support commitment.
+Released docs identify 0.6.1. Reconcile these master findings with the actual
+locked release before relying on them. No dependencies were installed or tests run.
+
+- Async access-token flow supports body credentials; the high-level async refresh
+  wrapper only parses Basic headers. Its lower-level request adapter can invoke
+  the library-owned refresh engine without copying grant transitions.
+- Registrar validation receives client ID and optional secret but no authentication
+  method. Enforce each client's permitted method with immutable request context.
+  The refresh request trait also lacks client-ID access; bind a supplied public
+  client's ID explicitly rather than silently ignoring it.
+- The refresh engine proposes a one-hour access expiry. The durable issuer must
+  enforce MedTracker's configured access, refresh and inactivity policies instead.
+- SMART's top-level patient field needs response enrichment from verified stored
+  grant context; standard token serialisation alone does not supply it.
+- Authorizer/Issuer storage seams permit atomic code consumption, refresh rotation
+  and digest compatibility, but only database/interoperability tests can prove them.
+- No runnable RFC7009 HTTP orchestration was found in the inspected endpoint
+  modules. A narrowly composed revocation adapter remains an explicit protocol
+  responsibility requiring necessity documentation, negative tests and review.
+
+Recommendation: run I1's bounded interoperability proof with oxide-auth as a
+conditional in-process candidate. Do not select it as complete or assume Hydra
+is required. Escalate only if that proof requires an incompatible transition,
+external provider or unsupported custom protocol ownership. The source inspection
+does not accept identity migration or change the existing security constraint.
+
+Exact inspected source:
+
+- [Async refresh wrapper](https://github.com/197g/oxide-auth/blob/0e3ef86d924aa5546dc3275d1d7269ea63edfaf1/oxide-auth-async/src/endpoint/refresh.rs)
+- [Async grant engine](https://github.com/197g/oxide-auth/blob/0e3ef86d924aa5546dc3275d1d7269ea63edfaf1/oxide-auth-async/src/code_grant.rs)
+- [Registrar interface](https://github.com/197g/oxide-auth/blob/0e3ef86d924aa5546dc3275d1d7269ea63edfaf1/oxide-auth/src/primitives/registrar.rs)
+- [Refresh engine](https://github.com/197g/oxide-auth/blob/0e3ef86d924aa5546dc3275d1d7269ea63edfaf1/oxide-auth/src/code_grant/refresh.rs)
+- [Token response](https://github.com/197g/oxide-auth/blob/0e3ef86d924aa5546dc3275d1d7269ea63edfaf1/oxide-auth/src/code_grant/accesstoken.rs)
+
+### Identity proof acceptance
+
 Prove native S256 and confidential Basic/post/public-none; reject disallowed or
 mixed credentials, duplicate parameters, redirect mismatch and bad verifiers.
 Test expired/replayed/concurrently redeemed codes; refresh narrowing/expiry/reuse/

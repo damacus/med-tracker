@@ -83,3 +83,17 @@ To apply new database changes without a full rebuild:
 ```fish
 task rails:dev:db-migrate
 ```
+
+### Existing credentials diff configuration
+
+Git credentials diff enrollment is local to each checkout. After relocating
+Rails, an existing `bin/rails credentials:diff` driver points to the removed
+root executable. From the repository root, refresh it to the official Rails CLI:
+
+```fish
+git config --local diff.rails_credentials.textconv 'rails/bin/rails credentials:diff'
+```
+
+This updates Git metadata; it does not decrypt or edit credentials. Rails keys
+stay under the ignored `rails/config` paths. Source review packets use
+`git diff --no-textconv --no-ext-diff` so they contain no decrypted credentials.

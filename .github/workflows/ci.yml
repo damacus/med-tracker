@@ -100,6 +100,7 @@ jobs:
     if: ${{ needs.changes.outputs.loco == 'true' }}
     name: Loco Foundation
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:18-alpine
@@ -500,6 +501,7 @@ jobs:
     env:
       RAILS_ENV: test
       COVERAGE: true
+      RAILS_APPLICATION_ROOT: ${{ github.workspace }}/rails
 
     steps:
       - name: Checkout code

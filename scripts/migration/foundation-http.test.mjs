@@ -3,14 +3,15 @@ import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
 import test from 'node:test';
 import { stopOwnedProcess } from './process-cleanup.mjs';
+import { withOwnedDatabase } from './foundation-database.mjs';
 
-test('the root Loco listener exposes health and an initialized Tera view', { timeout: 90000 }, async () => {
+test('the root Loco listener exposes health and an initialized Tera view', { timeout: 210000 }, async () => withOwnedDatabase(async databaseUrl => {
   const reservation = createServer();
   await new Promise(resolve => reservation.listen(0, '127.0.0.1', resolve));
   const port = reservation.address().port;
   await new Promise(resolve => reservation.close(resolve));
   const origin = `http://127.0.0.1:${port}`;
-  const child = spawn('task', ['dev'], { detached: true, env: { ...process.env, LOCO_ENV: 'test', PORT: String(port) }, stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn('task', ['dev'], { detached: true, env: { ...process.env, LOCO_ENV: 'test', PORT: String(port), DATABASE_URL: databaseUrl }, stdio: ['ignore', 'pipe', 'pipe'] });
   let output = '';
   child.stdout.on('data', chunk => { output += chunk; });
   child.stderr.on('data', chunk => { output += chunk; });
@@ -48,4 +49,4 @@ test('the root Loco listener exposes health and an initialized Tera view', { tim
       process.stderr.write(`Owned process cleanup failed: ${error.message}\n`);
     }
   }
-});
+}));
