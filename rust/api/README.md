@@ -1,5 +1,17 @@
 # Secure mobile entry and medication reads
 
+Local API, web and UI-preview Rust tasks use the pinned
+`medtracker-rust-toolchain:1.99.0` container. Cargo and npm caches stay under
+the ignored local `tmp/` directory; crate build output stays in each crate's
+`target/` directory. The container runs with the host UID and GID so generated
+files remain editable.
+Run `task api:toolchain-build` after changing `rust/build/Dockerfile`.
+
+`task api:release-image` builds `medtracker-api:local` for the host's Linux
+architecture. The release target cross-compiles a static musl binary and uses
+`scratch` as its final stage. Contract tests explicitly use the separate
+Bookworm `runner` target, which retains the debug binary and test tools.
+
 `task api:acceptance` provisions the existing disposable PostgreSQL 18 Rails
 fixture, starts this Axum service against that database, sends focused HTTP
 requests to the Rust listener, and removes the isolated Docker project.

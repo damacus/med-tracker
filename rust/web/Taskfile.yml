@@ -9,23 +9,23 @@ tasks:
   fmt:
     dir: "{{.TASKFILE_DIR}}"
     cmds:
-      - cargo fmt --check
+      - fish ../build/run.fish cargo fmt --check
   format:
     dir: "{{.TASKFILE_DIR}}"
     cmds:
-      - cargo fmt
+      - fish ../build/run.fish cargo fmt
   lint:
     dir: "{{.TASKFILE_DIR}}"
     cmds:
-      - cargo clippy --all-targets -- -D warnings
+      - fish ../build/run.fish cargo clippy --locked --all-targets -- -D warnings
   test:
     dir: "{{.TASKFILE_DIR}}"
     cmds:
-      - cargo test {{ if .TEST_FILE }}--test {{ .TEST_FILE }}{{ end }}
+      - fish ../build/run.fish cargo test --locked {{ if .TEST_FILE }}--test {{ .TEST_FILE }}{{ end }}
   test:dashboard:
     dir: "{{.TASKFILE_DIR}}"
     cmds:
-      - cargo test --test dashboard_rendering
+      - fish ../build/run.fish cargo test --locked --test dashboard_rendering
   test:browser-dashboard:
     dir: "{{.TASKFILE_DIR}}"
     cmds:
@@ -37,4 +37,4 @@ tasks:
   serve:
     dir: "{{.TASKFILE_DIR}}"
     cmds:
-      - cargo run
+      - fish ../build/run.fish cargo run

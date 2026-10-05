@@ -35,6 +35,7 @@ services:
     build:
       context: ${CONTRACT_API_BUILD_CONTEXT:-.}
       dockerfile: rust/contract-tests/Dockerfile
+      target: runner
     image: medtracker-contract-runner:${CONTRACT_PROJECT}
     command: /src/rust/api/target/debug/medtracker-api
     networks: [test]

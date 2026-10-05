@@ -49,32 +49,42 @@ tasks:
     dir: "{{.TASKFILE_DIR}}/../.."
     deps: [dashboard-ui-build]
     cmds:
-      - cargo build --manifest-path rust/api/Cargo.toml
+      - fish rust/build/run.fish cargo build --locked --manifest-path rust/api/Cargo.toml
 
   fmt:
     dir: "{{.TASKFILE_DIR}}/../.."
     cmds:
-      - cargo fmt --manifest-path rust/api/Cargo.toml --all -- --check
+      - fish rust/build/run.fish cargo fmt --manifest-path rust/api/Cargo.toml --all -- --check
 
   fmt:write:
     dir: "{{.TASKFILE_DIR}}/../.."
     cmds:
-      - cargo fmt --manifest-path rust/api/Cargo.toml --all
+      - fish rust/build/run.fish cargo fmt --manifest-path rust/api/Cargo.toml --all
 
   check:
     dir: "{{.TASKFILE_DIR}}/../.."
     cmds:
-      - cargo check --manifest-path rust/api/Cargo.toml --all-targets
+      - fish rust/build/run.fish cargo check --locked --manifest-path rust/api/Cargo.toml --all-targets
 
   test:
     dir: "{{.TASKFILE_DIR}}/../.."
     cmds:
-      - cargo test --manifest-path rust/api/Cargo.toml {{ if .TEST_FILE }}--test {{ .TEST_FILE }}{{ end }}
+      - fish rust/build/run.fish cargo test --locked --manifest-path rust/api/Cargo.toml {{ if .TEST_FILE }}--test {{ .TEST_FILE }}{{ end }}
 
   clippy:
     dir: "{{.TASKFILE_DIR}}/../.."
     cmds:
-      - cargo clippy --manifest-path rust/api/Cargo.toml --all-targets -- -D warnings
+      - fish rust/build/run.fish cargo clippy --locked --manifest-path rust/api/Cargo.toml --all-targets -- -D warnings
+
+  release-image:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - fish rust/api/release-image.fish
+
+  toolchain-build:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    cmds:
+      - docker build --file rust/build/Dockerfile --tag medtracker-rust-toolchain:1.99.0 rust/build
 
   acceptance:
     dir: "{{.TASKFILE_DIR}}/../.."
@@ -178,6 +188,16 @@ tasks:
     dir: "{{.TASKFILE_DIR}}/../.."
     cmds:
       - docker build --target dependencies -f rust/contract-tests/Dockerfile .
+
+  contract-runner-build:
+    dir: "{{.TASKFILE_DIR}}/../.."
+    requires:
+      vars: [CONTRACT_PROJECT]
+    vars:
+      GIT_COMMON_DIR:
+        sh: git rev-parse --path-format=absolute --git-common-dir
+    cmds:
+      - env COMPOSE_FILE=compose.yaml:rust/contract-tests/storage.compose.yaml:rust/contract-tests/runner.compose.yaml CONTRACT_PROJECT={{ .CONTRACT_PROJECT }} MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .CONTRACT_PROJECT }} --profile test build rust-api
 
   contract-browser-dependencies:
     dir: "{{.TASKFILE_DIR}}/../.."

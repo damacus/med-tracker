@@ -24,6 +24,8 @@
 !config/
 !config/ai_medication_sources.yml
 !config/nhs_dmd_curated_products.yml
+!config/locales/
+!config/locales/**
 !vendor/
 !vendor/fonts/
 !vendor/fonts/NotoSans-Regular.ttf
