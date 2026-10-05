@@ -4,6 +4,13 @@ Status: implementation and verification in progress. Independent Devin SWE-2 Max
 review has not yet run. This report does not accept the foundation or the full
 feature migration.
 
+The coordinator pushed foundation commit
+`f54630d41e1388a5fd552d9de385ea78995b7653` on `codex/loco-migration` and opened
+[draft PR 2451](https://github.com/damacus/med-tracker/pull/2451). Remaining work is
+tracked in [issue 2450](https://github.com/damacus/med-tracker/issues/2450).
+Publication is a verified foundation waypoint; independent source review remains
+pending authorization.
+
 ## Implemented shape
 
 The root package is a standard Loco 1.2.0 application, pinned in Cargo.toml and
@@ -45,7 +52,11 @@ root Bundler. Ignore patterns protect relocated Rails keys/env/generated data.
 jobs, credential/session/signature gates, themes/assets, native contracts and PR
 salvage dispositions. `source-inventory.json` is generated from reconciled current
 source, including route declarations and all job paths. `task inventory:check`
-rejects added/changed input source. No PR has been closed as superseded.
+rejects added/changed input source. At the user's explicit request, the coordinator
+closed PRs 2397, 2399, 2402 and 2403 as superseded framework choices after verifying
+their captured heads. Their source refs remain protected locally and their
+branches were not deleted. Useful behaviour, themes and assets still require
+actual Tera/daisyUI migration evidence.
 
 `preservation.json` records original revision, each tracked source path,
 relocated destination and before/after SHA-256. The preservation task also checks
@@ -129,8 +140,8 @@ Tranches 2–6 still own schema/RLS/auth, complete API/native/integration journe
 Tera/daisyUI/browser/offline behaviour, worker recovery and two-architecture
 scratch runtime acceptance. The current Tera page is a foundation smoke surface.
 
-After final verification, Bucky stages the rename-aware diff and supplies it to
-Devin SWE-2 Max for separate requirements and technical-quality verdicts.
+The published draft awaits an authorized Devin SWE-2 Max source review for
+separate requirements and technical-quality verdicts.
 Nightingale retains all product/test fix ownership and waits for that review.
 Only Bucky integrates, commits, pushes and publishes. No deployment, live schema
 migration, PR merge or data reset has been performed.

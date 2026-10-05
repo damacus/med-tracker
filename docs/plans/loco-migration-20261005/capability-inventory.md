@@ -78,12 +78,20 @@ screenshots. The Tera foundation page is not that completed browser migration.
 | 2389 notifications | `ad7502b8cd2df9f3a0e6ec46edc55956dc8d61d9` | Retain all five switches for API/browser/worker acceptance |
 | 2390 profile | `4355b2fd47a37e89c0775dbf588de5edca8ceabb` | Retain complete four-tab profile behaviour |
 | 2395 fonts | `1b60dcbf4ab4c60b3f4be1798d939fbe00fd11c4` | Retain official Geist 1.7.2 and licenses |
-| 2397 styles | `750f347589e4a45f70fa089d66bba546a7046a05` | Palette/geometry/contrast source; reconcile in tranche 4 |
-| 2399 UI infrastructure | `73f3dfa8617728274974e8a37f240eafa5dbdea9` | Preserve useful behaviour/assets; supersede framework infrastructure only after replacement evidence |
-| 2402 UI infrastructure | `8bc8e335ac2e0a531182698711f8d4f8b0ce5538` | Preserve useful behaviour/assets; supersede framework infrastructure only after replacement evidence |
-| 2403 UI infrastructure | `ac6cdc99d7e92e20433e78d405b94ed5e8a17fa6` | Preserve useful behaviour/assets; supersede framework infrastructure only after replacement evidence |
+| 2397 styles | `750f347589e4a45f70fa089d66bba546a7046a05` | Closed framework choice; palette/geometry/contrast source retained for tranche 4 |
+| 2399 UI infrastructure | `73f3dfa8617728274974e8a37f240eafa5dbdea9` | Closed framework choice; useful behaviour/assets retained pending actual replacement evidence |
+| 2402 UI infrastructure | `8bc8e335ac2e0a531182698711f8d4f8b0ce5538` | Closed framework choice; useful behaviour/assets retained pending actual replacement evidence |
+| 2403 UI infrastructure | `ac6cdc99d7e92e20433e78d405b94ed5e8a17fa6` | Closed framework choice; useful behaviour/assets retained pending actual replacement evidence |
 
-None is closed or claimed replaced. PR 2381 is outside this migration. Bucky owns
-ref retention and eventual replacement links/publication. All nine snapshots
+PRs 2397, 2399, 2402 and 2403 are closed as superseded framework choices at the
+user's explicit request. The coordinator verified their current heads matched
+these snapshots before closing; source branches were not deleted. Their useful
+behaviour, themes and assets remain migration requirements and are not claimed
+replaced by the foundation page. PR 2381 is outside this migration. All nine snapshots
 are retained as `refs/loco-migration/input-pr-<number>` independently of remote
 branch pruning; see coordinator `pr-inputs.md` for those mappings.
+
+Foundation commit `f54630d41e1388a5fd552d9de385ea78995b7653` is published on
+`codex/loco-migration` in [draft PR 2451](https://github.com/damacus/med-tracker/pull/2451).
+[Issue 2450](https://github.com/damacus/med-tracker/issues/2450) tracks remaining
+work. Independent source review and full migration acceptance remain pending.

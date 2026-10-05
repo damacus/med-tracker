@@ -23,6 +23,14 @@ send the unpublished implementation diff and architecture records. A separate
 user approval question is pending. No reviewer substitution or implementation
 acceptance has occurred.
 
-The verified foundation may be published as an intermediate draft waypoint under
+The verified foundation is published as an intermediate draft waypoint under
 the repository's mandatory push instruction. Publication does not accept this
 tranche or authorize bypassing the blocked Devin source-transfer approval.
+
+Published foundation: `f54630d41e1388a5fd552d9de385ea78995b7653` on
+`codex/loco-migration`, [draft PR #2451](https://github.com/damacus/med-tracker/pull/2451).
+Remaining work is tracked in [#2450](https://github.com/damacus/med-tracker/issues/2450).
+PRs #2397, #2399, #2402 and #2403 are closed as superseded framework choices;
+their captured source and branches are preserved and useful behavior remains
+part of the migration inventory. Schema, scratch, profile, notifications and
+font input PRs remain open until their work is ported. PR #2381 is unchanged.

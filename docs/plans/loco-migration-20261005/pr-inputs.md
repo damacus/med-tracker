@@ -3,8 +3,13 @@
 Read from GitHub and fetched on 5 October 2026. Local refs under
 `refs/loco-migration/input-pr-<number>` preserve these objects independently of
 remote branch deletion. These refs are local; the source is not yet incorporated
-into Loco. No PR has been closed. Acceptance/disposition remains in the capability
-inventory and progress ledger.
+into Loco. PRs #2397, #2399, #2402 and #2403 were closed as superseded framework
+choices after their current heads were verified against these captures and linked
+to replacement draft #2451 and delivery issue #2450. Their source branches were
+retained. Useful behavior still requires migration and acceptance; closing these
+PRs does not claim UI parity. Other input PRs remain open.
+
+Acceptance/disposition remains in the capability inventory and progress ledger.
 
 | PR | Head commit | Retain |
 | --- | --- | --- |
