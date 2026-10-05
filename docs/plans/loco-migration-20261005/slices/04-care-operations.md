@@ -10,7 +10,11 @@ Loco controllers expose API routes without embedding business logic or calling a
 
 ## Global constraints
 
-Depends on P3 and validated actors from I2. Use exact authoritative wire contracts; integer database IDs
+Domain implementation depends on locally verified tenant/actor/error interfaces.
+Owned domain tests may establish actors through synthetic fixture setup; do not
+add a second production authentication path. Production HTTP integration and care
+acceptance require validated identity. Full identity acceptance does not block
+porting and testing independent transactions. Use exact authoritative wire contracts; integer database IDs
 remain `i64`, portable identifiers remain preserved strings. Never use floating point for dose quantities.
 Writer owns model/controller/tests; existing Rails services and Rust modules are read-only inputs.
 

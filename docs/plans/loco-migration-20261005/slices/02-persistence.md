@@ -10,9 +10,10 @@ SeaORM models and transaction-local RLS boundaries support shared authorised ope
 
 ## Global constraints
 
-P1 test-runner work may start once the foundation is locally verified and published
-while its immutable GitHub checks run. P2/P3 schema adoption and persistence
-acceptance require the foundation to be accepted first. Synthetic databases only.
+P1/P2/P3 implementation may start once the foundation and owned runner are locally
+verified and published while immutable GitHub checks run. Persistence acceptance
+still requires accepted foundation and all persistence review/runtime/hosted gates.
+Synthetic databases only. Queued CI does not block owned development rehearsals.
 Additive rollback-compatible changes only.
 Retain Rails ledger provenance. Credential byte preservation is not authentication proof.
 Writer owns migration/model/tests; verifier owns database resources and generated entities.
@@ -44,9 +45,10 @@ Workers cannot gain owner privileges and Rails can still operate (P3).
 
 ### P2: Adopt fresh and populated schemas, reject unknown drift
 
-**Files:** Create `migration/src/m20261005_000001_adopt_medtracker.rs`,
-`migration/catalog.sql`, `migration/allowed-differences.json`; modify `migration/src/lib.rs`;
-test `tests/persistence.rs`; create synthetic records in `tests/fixtures/persistence.sql`.
+**Files:** Implement the standard adoption entry in `migration/src/lib.rs`;
+create `migration/catalog.sql`, `migration/catalog.json`, `migration/ledger-catalog.json`;
+test `tests/persistence.rs`; create `tests/fixtures/persistence-roles.sql` and
+`tests/fixtures/persistence-records.sql`.
 **Interfaces:** Produce the standard `Migrator` baseline entry and schema verification result;
 preserve original Rails `schema_migrations` and all stored record bytes.
 
@@ -59,18 +61,18 @@ and rejection must leave no newly installed SeaORM ledger. The scratch runtime
 does not require psql. Allow only the explicitly verified SeaORM ledger structure,
 ownership and supported row as named catalog differences.
 
-- [ ] Add `fresh_catalog_matches_rails`, `populated_adoption_preserves_bytes`,
+- [x] Add `fresh_catalog_matches_rails`, `populated_adoption_preserves_bytes`,
   `second_adoption_changes_nothing`, `unknown_catalog_drift_is_rejected`.
   Assertions: `normalised_catalog == rails_catalog`, `before_ids == after_ids`,
   `before_credential_bytes == after_credential_bytes`, `second_ddl_count == 0`,
   `unknown_drift_accepted == false`. Cover indexes, constraints, functions, views, extensions,
   triggers, policies and grants, not just table columns.
-- [ ] Run `rtk task slice:test TARGET=persistence`; prove that the current empty migrator
+- [x] Run `rtk task slice:test TARGET=persistence`; prove that the current empty migrator
   accepts deliberately drifted restored schema and cannot record the supported adoption row.
   Catalog parity alone after administrative restoration is insufficient RED evidence.
-- [ ] Implement guarded adoption using standard migrations; accept only explicitly named differences.
+- [x] Implement guarded adoption using standard migrations; accept only explicitly named differences.
   Never run baseline DDL blindly against a populated database or erase its Rails ledger.
-- [ ] Run all P2 cases on fresh and representative populated PostgreSQL 18; verify explicit drift diagnostics.
+- [x] Run all P2 cases on fresh and representative populated PostgreSQL 18; verify explicit drift diagnostics.
 - [ ] Review and commit `feat(persistence): adopt the preserved MedTracker schema`.
 
 ### P3: Enforce runtime roles, tenant transactions and compatible fixtures

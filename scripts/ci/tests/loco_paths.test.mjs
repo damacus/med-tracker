@@ -43,3 +43,11 @@ test('Loco CI installs ripgrep before executing relocation checks', () => {
   assert.match(job, /apt-get install[^\n]*\bripgrep\b/, 'Relocation checks require the rg executable');
   assert.ok(job.indexOf('apt-get install') < job.indexOf('run: task ci'));
 });
+
+
+test('Loco checkout retains history for baseline inventory and preservation checks', () => {
+  const workflow = readFileSync(new URL('../../../.github/workflows/ci.yml', import.meta.url), 'utf8');
+  const job = workflow.match(/\n  loco_foundation:\n([\s\S]*?)(?=\n  [a-z_]+:\n)/)?.[1];
+  assert.ok(job);
+  assert.match(job, /uses: actions\/checkout@[^\n]+\n        with:\n          fetch-depth: 0/, 'Baseline checks must be able to read the retained historical commit');
+});

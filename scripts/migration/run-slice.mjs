@@ -33,12 +33,13 @@ async function runCargo(args, databaseUrl, inheritedEnvironment, signal) {
   }
 }
 
-export async function runSlice({ all = false, target, filter = '' }, inheritedEnvironment = process.env) {
+export async function runSlice({ all = false, target, filter = '', captureCatalog = false }, inheritedEnvironment = process.env) {
   if (!all && !/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(target ?? '')) throw new Error('TARGET must name a root Rust test binary');
   if (filter && !/^[A-Za-z0-9_:]+$/.test(filter)) throw new Error('FILTER must name a Rust test');
   const args = ['test', '--locked'];
   if (!all) args.push('--test', target);
   if (filter) args.push(filter);
+  if (captureCatalog) args.push('--', '--ignored');
   const controller = new AbortController();
   const interrupted = signal => controller.abort(new Error(`Slice execution interrupted by ${signal}`));
   const onTerm = () => interrupted('SIGTERM');
@@ -46,7 +47,10 @@ export async function runSlice({ all = false, target, filter = '' }, inheritedEn
   process.on('SIGTERM', onTerm);
   process.on('SIGINT', onInt);
   try {
-    await withOwnedDatabase(url => runCargo(args, url, inheritedEnvironment, controller.signal), undefined, inheritedEnvironment);
+    await withOwnedDatabase(async (url, provision) => {
+      if (all || ['persistence', 'tenant_access', 'care_doses'].includes(target)) await provision();
+      await runCargo(args, url, inheritedEnvironment, controller.signal);
+    }, undefined, inheritedEnvironment);
   } finally {
     process.off('SIGTERM', onTerm);
     process.off('SIGINT', onInt);
@@ -55,9 +59,11 @@ export async function runSlice({ all = false, target, filter = '' }, inheritedEn
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
-    if (process.argv.slice(2).some(argument => argument !== '--all')) throw new Error('Only --all is supported; TARGET and FILTER are Task variables');
+    if (process.argv.slice(2).some(argument => !['--all', '--capture-catalog'].includes(argument))) throw new Error('Only --all and --capture-catalog are supported; TARGET and FILTER are Task variables');
     const all = process.argv.includes('--all');
-    await runSlice({ all, target: process.env.SLICE_TARGET, filter: all ? '' : process.env.SLICE_FILTER });
+    const captureCatalog = process.argv.includes('--capture-catalog');
+    if (all && captureCatalog) throw new Error('Catalog capture requires its dedicated test');
+    await runSlice({ all, captureCatalog, target: captureCatalog ? 'persistence' : process.env.SLICE_TARGET, filter: captureCatalog ? 'capture_persistence_catalog' : all ? '' : process.env.SLICE_FILTER });
   } catch (error) {
     process.stderr.write(`${error.message}\n`);
     process.exitCode = 1;

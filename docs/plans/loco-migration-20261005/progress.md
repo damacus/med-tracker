@@ -1,113 +1,89 @@
 # Migration progress
 
-Updated 5 October 2026. We are still finishing setup. Medication features have
-not moved into Loco yet. No slice is accepted.
+Updated 5 October 2026. Guarded adoption, shared tenant access, runtime queue
+provisioning and the first Take domain operation pass their focused checks.
+Devin accepted the combined repair batch. The final source is frozen for full
+Loco CI and publication.
+No complete migration section is accepted yet.
 
-| Slice | Current state | What must happen next |
+| Area | Verified current state | Remaining acceptance work |
 | --- | --- | --- |
-| 1. Set up Loco and move Rails | Reviewed corrections and CI selector fix are published; full local Loco checks pass | Pass hosted checks on the corrected commit and accept setup |
-| 2. Use the existing database | Reviewed isolated Rust runner is published; schema adoption is prepared | Implement guarded adoption after setup is accepted |
-| 3. Sign-in and API authentication | Separate library experiment has 37 of 39 tests passing | Resolve two proof failures and verify stored credentials, tokens and security behaviour |
-| 4. Household and medication actions | Not migrated | Implement complete authorised care workflows |
-| 5. APIs and integrations | Not migrated | Migrate the existing API, native clients and integrations |
-| 6. Browser pages and themes | Not migrated | Implement complete browser workflows and port existing themes to daisyUI |
-| 7. Background jobs and reminders | Not migrated | Establish durable queues and migrate jobs and schedules |
-| 8. Release images and rollback | Not completed | Verify both scratch-image architectures and populated Rails rollback |
+| Loco foundation and Rails relocation | Published in draft PR #2451; full local checks and review passed | Corrected hosted run must pass with full Git history |
+| Schema and tenant persistence | Persistence 16/16; tenant access 11/11; exact baseline and metadata preserved; restricted-role server/worker boot passes | Final review, full CI, normal seed/task integration and populated Rails rollback |
+| Sign-in and API authentication | Isolated maintained-library proof: 39/41, with two retained wrapper diagnostics | Durable stored-format/concurrency checks and full browser/OAuth/SMART integration |
+| Care operations | Take 20/20: atomic stock/audit, replay, timing and account-zone selection, tracked stock, member scoping, concurrency, conflict, revoked-access denial and audit rollback | Real authenticated Loco routes and every remaining care operation |
+| APIs and integrations | Existing contracts and migration inputs retained | Migrate complete native/FHIR/SMART/MCP journeys |
+| Browser pages and themes | Foundation Tera page works | Complete browser workflows and port themes to daisyUI |
+| Background jobs and reminders | Owner-provisioned PostgreSQL queue supports restricted Loco startup | Actual job execution, schedules and reminder migration |
+| Release and cleanup | Useful source/PR inputs protected; Rails remains independently runnable | Both scratch architectures, complete journeys, populated rollback and obsolete tooling removal |
 
-## Setup: what passed and what failed
+## Current delivery
 
-The setup fixes passed source review, root Loco checks, both browser test runs,
-Ruby lint and all 6,112 Rails examples. Setup and both upstream dependency merges
-are published as `9e499003f9b321a355a133c6a976f42278ab836f` in the draft PR.
-The added Rails diagnostic has been archived outside the repository and removed.
+The focused checks pass on the final frozen source: persistence 16/16 plus one
+explicit capture-only test ignored; tenant access 11/11; care 20/20; runner 9/9;
+database helpers 4/4. Formatting and Clippy pass. Every owned PostgreSQL fixture
+was removed after its run; pre-existing volumes were preserved.
 
-Main's MCP dependency update was then included in a normal merge. Testing the
-combined code produced one failure in 6,112 examples: scanning medicine to add
-stock did not show the expected success message. The screenshot showed 30 units;
-the database assertion was not reached. All eight examples in that test file
-passed when run separately; a later focused run reproduced the original failure.
-A separate diagnostic passed, but did not control cookie-application timing and
-could not prove the cause. Framework inspection showed how a read-only lookup
-can write an older session cookie and lose the POST's notice. We have not shown
-that the migration caused this behaviour.
+The queue capture adds exactly 19 named objects. Shared access rechecks account
+lockout, current membership role/version and live person grants in the same
+transaction. Denied source view returns NotFound, matching retained privacy
+behaviour; no clinical effects remain after denial or failed audit.
 
-The user redirected the work away from repairing legacy RSpec tests. The original
-Rails application and tests remain unchanged. The added diagnostic was archived
-and removed. Loco checks and migrated Rust/browser workflows drive implementation;
-the existing Rails rollback evidence remains part of final release verification.
-No application fix or claim of a passing later Rails run was made.
+Devin passed the earlier adoption review. Its three bounded corrections are now
+implemented: explicit 177-row/nonempty Rails metadata assertions, safe system
+schema lookup during catalog checks, and refusal of caller-owned transaction
+adoption before any role/settings changes. The combined review approved its bounded
+scope. Its repair batch now passes focused checks: precise duplicate conflict
+handling, tracked-stock timestamps and explicit request-zone selection. Canonical
+account attribution is preserved and covered across households. Devin accepted
+the repair batch. Its requested member-role green-path coverage passes; coordinator
+review confirms linked stock succeeds and unlinked stock stays excluded. Production
+source is unchanged from the reviewed freeze. Full CI passed before that final
+coverage-only addition and is repeated on the final source before publication.
+This verifies domain behaviour, not HTTP routes or completed application identity.
 
-Loco `task ci` passes on the combined source. Inventory and preservation checks
-also pass. Preservation records 2,933 inputs, with 2,883 unchanged and 50 changed;
-the changes include upstream's dependency update. The current Loco CI log is
-`/Users/damacus/Library/Application Support/rtk/tee/1791227912_task_ci.log`.
-Documentation and client-tool checks also passed before publication.
+## Published and hosted state
 
-GitHub run `37363675318` finished with setup failures. The workflow checker lacked
-Fish. Rust browser fixtures could not write `/app/tmp/local_secret.txt`. A clean
-checkout lacks the Rails temporary directory; the contract runner now creates it
-before containers start. Both changes have failing regressions followed by passing
-checks. All 91 workflow tests passed locally. Independent review passed after
-corrections. Both old and corrected container startup passed on Docker Desktop;
-the old Linux ownership failure could not be reproduced locally. Hosted Linux
-remains the authoritative check. The hosted Loco job was cancelled without
-running, so that run supplies no foundation acceptance evidence.
+[Draft PR #2451](https://github.com/damacus/med-tracker/pull/2451) has published
+head 705e1f09. The current product change remains local until review and full CI
+pass. The user authorised landing verified work on main through one branch/PR;
+no production deployment or database mutation is authorised.
 
-The new isolated Rust database runner ignores ambient database addresses and
-Compose overrides, preserves unit and documentation tests, and cleans only its
-own fixture. All six final runner checks pass. Real PostgreSQL 18 success and deliberate
-failure runs both removed all their owned resources. Rust formatting and lint
-pass. Devin SWE-2 Max completed review, and its three requested corrections
-passed focused re-review. Full local Loco CI passes on the final source, including
-the real PostgreSQL integration and HTTP health/Tera checks. The changes were
-committed and pushed as `0c887dbb`; corrected hosted Linux checks remain required.
-The exact preserved SQL baseline is pinned; no schema has been adopted.
+Hosted run 37371230690 initially lost a household runner. Its failed job was
+retried and passed. Loco then reached its inventory check and failed because
+the shallow checkout lacked the retained baseline Git commit. The corrected
+Loco checkout fetches full history. Its failing regression is now green: six
+focused checks, 94 CI script tests and workflow lint pass. Coordinator source
+review passed. This routine prerequisite fix will publish with the capability.
 
-The combined full-run log is
-`/Users/damacus/Library/Application Support/rtk/tee/1791225510_task_rai_9786c9.log`.
-The focused run has finished and its temporary resources have been removed.
-Earlier test and review evidence is retained in [foundation-report.md](foundation-report.md).
-Earlier results do not prove that the current combined code passes.
+## Workflow after the retrospective
 
-## Publication and remaining work
+The eight areas are a coverage checklist, not eight serial implementation stops.
+Locally verified prerequisites permit development while hosted checks run. Astra
+owns shared persistence/identity; Nightingale owns disjoint care operations. Browser
+preparation has mapped all ten selectable palettes and retained saved monochrome
+tokens; its disjoint shell implementation can start after this publication freeze.
+The verifier alone owns builds and disposable resources. Root owns integration
+and publication. Devin reviews coherent capabilities in fresh source-only sessions;
+routine tooling fixes receive focused tests and coordinator review.
 
-[Draft PR #2451](https://github.com/damacus/med-tracker/pull/2451) now contains the
-setup, dependency merges and reviewed runner. Its verified head is now
-`3de44f157d51c0ca9392a7650af1df2b8ee30474`. Hosted run `37368954067` stopped
-before application checks because the selector did not map `tests/persistence.rs`.
-The two-file correction passed behavioural RED/GREEN, all 92 workflow tests,
-workflow lint, independent Devin review and exact-commit classification before
-publication. New hosted verification remains required; no slice is accepted.
-The user has authorised landing verified work on main through one branch and
-one PR. This does not authorise a production deployment or database change.
+The next implementation boundaries are durable identity storage and stock
+adjustment using existing SeaORM logic. Current source stays frozen for review and
+publication; preparation during that interval is read-only. Defects within the
+migration stay in their owning work rather than becoming follow-up issues.
 
-[Issue #2450](https://github.com/damacus/med-tracker/issues/2450) covers the whole
-migration. PRs #2397, #2399, #2402 and #2403 were closed as superseded framework
-choices; their captured source and branches remain available. Schema, scratch,
-profile, notification and font PRs remain open until their useful work is
-migrated. PR #2381 is unchanged.
+## Retained scope and evidence
 
-Read-only P2 preparation identified the exact baseline role/extension prerequisites
-and a default grant that would let runtime users edit the SeaORM ledger. The
-persistence brief now requires an owner-controlled ledger, transactional preflight
-before ledger installation, exact catalog comparison and drift rejection without
-leftover ledger objects. The retained SQL stays byte-for-byte unchanged; its
-whitespace does not affect SeaORM and has a scoped Git formatting exception.
-These are planning decisions, not implemented schema adoption.
+[Issue #2450](https://github.com/damacus/med-tracker/issues/2450) covers the entire
+migration. Superseded PRs #2397, #2399, #2402 and #2403 are closed with inputs
+protected. Schema, scratch, profile, notification and font work stays available
+until replacements land. PR #2381 is unchanged. Incident #2453 remains separate.
 
-The separate test-runner isolation incident remains tracked in
-[#2453](https://github.com/damacus/med-tracker/issues/2453). Existing test volumes
-were preserved. The database effect of the unintended invocation is unproved.
+Earlier foundation/Rails evidence is in foundation-report.md. Legacy RSpec
+diagnostics are stopped; original Rails code/tests remain the rollback reference.
+No source-only experiment or old green run proves completion of the new app.
 
-## Reporting and workflow
-
-Update `/private/tmp/medtracker-migration-status.html` and
-`/private/tmp/medtracker-2450-review-status.md` when a slice finishes or a problem
-changes the next action. Say what is finished, what is being checked, what is
-wrong and what happens next. Keep detailed job handles in the separate technical
-checkpoint. Review the workflow every two hours and apply supported improvements.
-
-The existing writer retains application and test ownership. The verifier owns
-builds, tests and temporary resources. The coordinator owns acceptance and
-publication. Independent Devin SWE-2 Max review sharing is authorised through
-16 October 2026. The goal remains completion of all eight slices.
+The user reports are /private/tmp/medtracker-migration-status.html and
+/private/tmp/medtracker-2450-review-status.md. Update at a completed slice or when
+a problem changes the next action. Detailed handles stay in the technical
+checkpoint. The next two-hour retro is due at or after 22:49 UTC.

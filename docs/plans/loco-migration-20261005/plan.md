@@ -19,23 +19,42 @@ Proposed files and Tasks are labelled as new; their presence in a plan is not co
 | Slice | Sub-plan | Entry condition | Accepted outcome |
 | --- | --- | --- | --- |
 | 01 | [Foundation completion](slices/01-foundation.md) | Current published foundation and review fixes | Corrected image inputs, both runners, clean review and published CI |
-| 02 | [Persistence](slices/02-persistence.md) | P1 after 01 is locally verified and published; P2/P3 after 01 accepted | Schema parity, idempotent adoption, drift rejection, least privilege and rollback |
-| 03 | [Identity](slices/03-identity.md) | 02 tenant/fixture interfaces accepted | Verified library choice, stored formats, browser security and OAuth/SMART |
-| 04 | [Care operations](slices/04-care-operations.md) | 02 plus validated actors from 03 | Complete household, medication, treatment, dose and sync operations |
+| 02 | [Persistence](slices/02-persistence.md) | Locally verified and published foundation; owned database runner passes | Schema parity, idempotent adoption, drift rejection, least privilege and rollback |
+| 03 | [Identity](slices/03-identity.md) | Locally verified tenant/fixture interfaces; library proof may run independently | Verified library choice, stored formats, browser security and OAuth/SMART |
+| 04 | [Care operations](slices/04-care-operations.md) | Verified shared tenant/actor/error interfaces; production routes require identity | Complete household, medication, treatment, dose and sync operations |
 | 05 | [API and integrations](slices/05-api-integrations.md) | 04, relevant identity, and W1 before enqueue endpoints | API/native, FHIR/SMART/MCP, private data and integration parity |
-| 06 | [Browser](slices/06-browser.md) | Relevant accepted 03–05 operations | Complete Tera journeys, existing themes, accessibility and offline replay |
+| 06 | [Browser](slices/06-browser.md) | Relevant locally verified operation; complete identity/workers required for acceptance | Complete Tera journeys, existing themes, accessibility and offline replay |
 | 07 | [Workers](slices/07-workers.md) | W1 immediately after 02; W2/W3 after their domain operations | All durable jobs, schedules, permissions, restart and drain |
 | 08 | [Release](slices/08-release.md) | Every capability owner accepted | Both scratch runtimes, no legacy dependency, full rehearsal and rollback |
 
-Execute one owned task at a time. The numbering is a navigation aid, not permission
-to defer queue infrastructure: **02 → W1 → 03 → 04 → 05 → W2/W3 → 06 → 08**.
-Identity dependency research may proceed independently, but there is one product writer.
-Each browser journey family in B2 is independently reviewable and reportable.
+## Execution correction from the retrospective
 
-While GitHub checks run on the immutable published setup commit, the writer may
-start P1's isolated test-runner work. This does not accept setup or authorise schema
-adoption. P2/P3 and persistence acceptance still require the accepted foundation.
-Keep P1 changes separate from the published commit whose CI is being observed.
+The eight sub-plans track complete scope, not eight serial approval stops.
+Implementation depends on locally verified interfaces. Hosted CI and independent
+review remain acceptance and merge gates; a queued or broken CI setup job does
+not stop isolated implementation against an already verified dependency.
+The foundation and owned runner are locally verified and published, so P2/P3
+implementation can start while their immutable hosted checks run. This does not
+accept foundation, persistence or release. Use only owned synthetic databases.
+
+Preserve dependencies: establish tenant transactions and queue storage before
+operations that require them. Reuse existing SeaORM entities, transactional care
+operations, validation, projections and contract tests from `rust/api/`, adapting
+HTTP boundaries to standard Loco. Do not recreate those operations merely to fit
+a new directory plan. Replace the legacy router, browser dispatch, UI framework
+and unsupported security flows as required by the approved architecture.
+
+One writer owns the current shared persistence work. Separate future ownership
+only where fixed interfaces and disjoint files make parallel implementation useful.
+Devin reviews coherent capability changes and security/schema decisions. Routine
+CI/tooling repairs receive focused tests and coordinator review, then join the
+next capability review. Do not start a separate reviewer round trip for each
+two-line setup correction or re-review non-blocking hypothetical nits.
+
+Batch integration updates into coherent deliveries rather than pushing every
+status edit and cancelling useful CI. Freeze review inputs and identify the exact
+published commit being checked. Report completed behaviour, the actual blocker
+and the next implementation action; retain detailed job records separately.
 
 ## Global constraints and review focus
 
@@ -49,12 +68,11 @@ rollback plus missing scratch assets (R1/R3). Each owning sub-plan assigns expli
 
 ## Progress and integration
 
-Current state: foundation **unaccepted**. The font/context fixes, both complete
-browser runners, corrective review, local Loco CI and documentation checks pass.
-The verified setup is published at `9e54e930`; the prepared main merge and current
-upstream client-tools lock update are being checked before publication. Hosted CI
-still needs to pass. See `progress.md` for current evidence. Do not repeat completed
-work or treat the separate legacy Rails diagnostic as Rust implementation.
+Current state: foundation **unaccepted**, published at `705e1f09`. Both upstream
+dependency merges, the reviewed owned test runner and the CI prerequisite fixes
+are published. Local Loco CI passes; hosted verification is still running/queued.
+P2 implementation is underway against owned synthetic fixtures. Do not repeat
+completed checks or treat the stopped Rails diagnostic as Rust implementation.
 
 Task reports live at `docs/plans/loco-migration-20261005/slices/<number>-report.md`;
 the foundation keeps its existing detailed report. The coordinator owns `progress.md`
@@ -62,8 +80,9 @@ and `/private/tmp/medtracker-migration-status.html`, updated after each accepted
 and on a material blocker. Report what shipped, what passed, what blocks delivery and
 the next action. Keep follow-up issues minimal; migration defects stay in their slice.
 
-Obtain independent task review, then full applicable slice checks and clean review
-on the frozen commit. Commit/push only accepted changes with passing applicable gates.
+Obtain independent review for coherent capability changes, then full applicable
+checks and clean review on the frozen commit. Publish locally verified integration
+commits; acceptance and merge additionally require the applicable hosted gates.
 Preserve existing local work when integrating documentation separately. Final broad
 review covers all slices together before the deployment approval boundary.
 

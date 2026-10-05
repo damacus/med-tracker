@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const ambientUrl = 'postgres://unowned.invalid:1/unowned';
 
-async function withProcessFixture(exitCode, callback, taskName = 'slice:test', assignments = ['TARGET=persistence']) {
+async function withProcessFixture(exitCode, callback, taskName = 'slice:test', assignments = ['TARGET=persistence'], provisionExit = 0) {
   const directory = await mkdtemp(join(tmpdir(), 'medtracker-slice-runner-'));
   const statePath = join(directory, 'state.json');
   await writeFile(statePath, JSON.stringify({ resources: { unrelated: ['existing-volume'] }, calls: [], foreign_resources_touched: 0 }));
@@ -24,12 +24,13 @@ const args = process.argv.slice(2);
 if (command === 'docker') {
   const project = args[args.indexOf('-p') + 1];
   if (!/^mtloco-http-[a-f0-9-]+$/.test(project)) throw new Error('Unowned project selected');
-  const operation = ['up', 'port', 'down'].find(value => args.includes(value));
+  const operation = ['up', 'port', 'down', 'exec'].find(value => args.includes(value));
   state.calls.push({ command, project, operation, args, docker_environment_removed: ['DOCKER_HOST', 'DOCKER_CONTEXT', 'DOCKER_CONFIG', 'DOCKER_TLS_VERIFY', 'DOCKER_CERT_PATH'].every(name => process.env[name] === undefined) });
   if (operation === 'up') state.resources[project] = ['owned-volume'];
   if (operation === 'down') delete state.resources[project];
   fs.writeFileSync(statePath, JSON.stringify(state));
   if (operation === 'port') process.stdout.write('127.0.0.1:54321\\n');
+  if (operation === 'exec') process.exit(Number(process.env.SLICE_FIXTURE_PROVISION_EXIT));
 } else {
   state.owned_endpoint_used = process.env.DATABASE_URL === 'postgres://medtracker:medtracker_password@127.0.0.1:54321/medtracker_loco';
   state.child_compose_environment_removed = ['COMPOSE_FILE', 'COMPOSE_PROJECT_NAME', 'COMPOSE_PROFILES'].every(name => process.env[name] === undefined);
@@ -44,7 +45,7 @@ if (command === 'docker') {
   try {
     const result = spawnSync('task', ['--taskfile', join(root, 'Taskfile.yml'), taskName, ...assignments], {
       cwd: root,
-      env: { ...process.env, PATH: `${directory}:${process.env.PATH}`, DATABASE_URL: ambientUrl, COMPOSE_FILE: '/unowned/compose.yaml', COMPOSE_PROJECT_NAME: 'unrelated', DOCKER_HOST: 'tcp://unowned.invalid:2376', DOCKER_CONTEXT: 'unrelated', DOCKER_CONFIG: '/unowned/docker-config', DOCKER_TLS_VERIFY: '1', DOCKER_CERT_PATH: '/unowned/certs', SLICE_FILTER: 'unrelated_filter', SLICE_FIXTURE_STATE: statePath, SLICE_FIXTURE_EXIT: String(exitCode) },
+      env: { ...process.env, PATH: `${directory}:${process.env.PATH}`, DATABASE_URL: ambientUrl, COMPOSE_FILE: '/unowned/compose.yaml', COMPOSE_PROJECT_NAME: 'unrelated', DOCKER_HOST: 'tcp://unowned.invalid:2376', DOCKER_CONTEXT: 'unrelated', DOCKER_CONFIG: '/unowned/docker-config', DOCKER_TLS_VERIFY: '1', DOCKER_CERT_PATH: '/unowned/certs', SLICE_FILTER: 'unrelated_filter', SLICE_FIXTURE_STATE: statePath, SLICE_FIXTURE_EXIT: String(exitCode), SLICE_FIXTURE_PROVISION_EXIT: String(provisionExit) },
       encoding: 'utf8',
       timeout: 15000,
     });
@@ -62,7 +63,7 @@ test('slice_runner_ignores_ambient_database', async () => {
     assert.equal(state.foreign_resources_touched, 0);
     assert.equal(state.child_compose_environment_removed, true);
     assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
-    assert.deepEqual(state.calls.filter(call => call.command === 'docker').map(call => call.operation), ['up', 'port', 'down']);
+    assert.deepEqual(state.calls.filter(call => call.command === 'docker').map(call => call.operation), ['up', 'port', 'exec', 'exec', 'down']);
   });
 });
 
@@ -104,8 +105,41 @@ test('failed slice execution cleans its owned database and preserves unrelated r
   await withProcessFixture(42, (result, state) => {
     assert.notEqual(result.status, 0);
     assert.deepEqual(state.resources.unrelated, ['existing-volume']);
-    assert.deepEqual(state.calls.filter(call => call.command === 'docker').map(call => call.operation), ['up', 'port', 'down'], 'Failure cleanup did not run for the owned fixture');
+    assert.deepEqual(state.calls.filter(call => call.command === 'docker').map(call => call.operation), ['up', 'port', 'exec', 'exec', 'down'], 'Failure cleanup did not run for the owned fixture');
     assert.deepEqual(Object.keys(state.resources), ['unrelated']);
     assert.equal(state.foreign_resources_touched, 0);
   });
+});
+
+test('failed administrative provisioning never starts Cargo and cleans only its owned resources', async () => {
+  await withProcessFixture(0, (result, state) => {
+    assert.notEqual(result.status, 0);
+    assert.equal(state.calls.some(call => call.command === 'cargo'), false);
+    assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
+    assert.deepEqual(state.calls.map(call => call.operation), ['up', 'port', 'exec', 'down']);
+  }, 'slice:test', ['TARGET=persistence'], 42);
+});
+
+test('administrative restore uses psql without startup files, stops on error and restores atomically', async () => {
+  await withProcessFixture(0, (result, state) => {
+    assert.equal(result.status, 0, result.stderr);
+    const calls = state.calls.filter(call => call.operation === 'exec');
+    assert.equal(calls.length, 2);
+    for (const call of calls) {
+      assert.ok(call.args.includes('psql'));
+      assert.ok(call.args.includes('-X'));
+      assert.ok(call.args.includes('ON_ERROR_STOP=1'));
+    }
+    assert.ok(calls[1].args.includes('--single-transaction'));
+    assert.equal(calls[1].args[calls[1].args.indexOf('-d') + 1], 'medtracker_reference');
+  });
+});
+
+test('catalog capture uses its explicit ignored test and does not inherit ambient filters', async () => {
+  await withProcessFixture(0, (result, state) => {
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(state.calls.find(call => call.command === 'cargo').args,
+      ['test', '--locked', '--test', 'persistence', 'capture_persistence_catalog', '--', '--ignored']);
+    assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
+  }, 'slice:catalog', []);
 });

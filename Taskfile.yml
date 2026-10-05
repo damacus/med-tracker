@@ -56,6 +56,10 @@ tasks:
     cmds: [node scripts/migration/run-slice.mjs]
   slice:test-all:
     cmds: [node scripts/migration/run-slice.mjs --all]
+  slice:catalog:
+    env:
+      PERSISTENCE_CATALOG_OUTPUT_DIR: '{{.OUTPUT_DIR | default ""}}'
+    cmds: [node scripts/migration/run-slice.mjs --capture-catalog]
   inventory:write:
     desc: Record reconciled migration inputs
     cmds: [node scripts/migration/inventory.mjs --write]
@@ -71,6 +75,8 @@ tasks:
   deps:
     desc: Resolve the root Loco lockfile
     cmds: [cargo generate-lockfile]
+  deps:migration:
+    cmds: [cargo update --offline --package migration]
   foundation:db-up:
     requires:
       vars: [FOUNDATION_PROJECT]
@@ -79,6 +85,12 @@ tasks:
     requires:
       vars: [FOUNDATION_PROJECT]
     cmds: ['docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} port postgres 5432']
+  foundation:db-provision:
+    requires:
+      vars: [FOUNDATION_PROJECT]
+    cmds:
+      - 'docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} exec -T postgres psql -X -v ON_ERROR_STOP=1 -U medtracker -d medtracker_loco -c "CREATE DATABASE medtracker_reference"'
+      - 'cat "{{.ROOT_DIR}}/tests/fixtures/persistence-roles.sql" "{{.ROOT_DIR}}/migration/baseline.sql" | docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} exec -T postgres psql -X -v ON_ERROR_STOP=1 --single-transaction -U medtracker -d medtracker_reference'
   foundation:db-down:
     requires:
       vars: [FOUNDATION_PROJECT]

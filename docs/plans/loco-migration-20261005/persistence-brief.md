@@ -1,7 +1,8 @@
 # Persistence adoption tranche brief
 
-Prepared while foundation acceptance is pending; this is not an implementation
-dispatch or permission to use a live database.
+Prepared while foundation acceptance is pending. After the retrospective, locally
+verified foundation and the published owned runner permit implementation on
+synthetic fixtures while hosted CI runs. This is never permission to use a live database.
 
 Input: PR #2419, exact head `6d607c71c393a79cd259e39f13d48f1977fba1e2`,
 preserved at `refs/loco-migration/input-pr-2419`. Examine its baseline SQL,
@@ -42,7 +43,7 @@ the `priority` column before issuing CREATE/ALTER. P3 should provision the compl
 access beforehand. Prove least-privilege startup with the actual pinned code;
 do not grant schema-owner privileges to avoid an incomplete provisioning step.
 
-Nightingale remains the sole source/test writer. The verifier owns all disposable
+Astra now owns shared persistence source and tests. The verifier owns all disposable
 PostgreSQL 18 resources and build/runtime checks. Bucky owns planning records,
 Git integration and independent Devin review dispatch.
 
@@ -71,7 +72,8 @@ does not establish authentication interoperability.
 
 Authentication selection remains a separate gate in auth-feasibility.md. This
 tranche does not authorize bespoke security protocols or an external identity
-service. Dispatch follows foundation acceptance and updated source examination.
+service. Dispatch follows verified local prerequisites and updated source examination;
+foundation acceptance remains required before persistence acceptance or merge.
 
 ## P2 preparation decisions
 
@@ -100,6 +102,18 @@ repeat and concurrent guarded-adoption behaviour on owned fixtures.
 
 Compare full catalog definitions, owners, ACLs and RLS flags/expressions, including
 unexpected objects. The retained verification SQL remains a partial smoke check.
+Here the application catalog means the preserved baseline's object families:
+schemas, extensions, relations, columns, constraints, indexes, functions, triggers
+(including internal enforcement), rules/views, policies, sequences, default ACLs
+and types; inheritance and event triggers are also checked. Compare every captured
+identity and definition, including additions in those families. Extension-owned
+objects are represented where applicable and extension versions are pinned.
+This is application schema adoption, not a general PostgreSQL administration audit:
+comments and unrelated facilities such as logical replication configuration,
+foreign servers or text-search configuration are outside this comparison. The
+preserved dump defines none of those application facilities. Do not claim that
+the guard detects every possible PostgreSQL catalog change. Adoption requires
+controlled administrative schema access, independently of this comparison.
 Capture the actual pinned SeaORM-generated ledger catalog before recording its
 exact allowed differences. Interpret repeated adoption's zero DDL changes as no
 effective catalog change; standard `CREATE TABLE IF NOT EXISTS` may still execute.

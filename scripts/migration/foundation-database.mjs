@@ -43,7 +43,7 @@ export async function withOwnedDatabase(callback, runTask = runFoundationTask, i
     const endpoint = String(await run('foundation:db-port', 10000)).trim();
     const match = /^127\.0\.0\.1:(\d+)$/.exec(endpoint);
     if (!match || Number(match[1]) < 1 || Number(match[1]) > 65535) throw new Error(`Invalid owned PostgreSQL endpoint: ${endpoint}`);
-    return await callback(`postgres://medtracker:medtracker_password@127.0.0.1:${match[1]}/medtracker_loco`);
+    return await callback(`postgres://medtracker:medtracker_password@127.0.0.1:${match[1]}/medtracker_loco`, () => run('foundation:db-provision', 60000));
   } catch (error) {
     failed = true;
     throw error;

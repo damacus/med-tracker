@@ -10,7 +10,9 @@ Small application scripts own interaction and offline outbox behaviour; CSS owns
 
 ## Global constraints
 
-Depends on accepted care/identity and relevant API/workers. The user's Tera/daisyUI migration
+Implement each journey against its locally verified operation interface. Complete
+care/identity and relevant API/workers remain acceptance requirements, rather than
+blocking independent shell/theme or journey implementation. The user's Tera/daisyUI migration
 instruction supersedes Rails-only Phlex rules for the Loco UI; retain Phlex within Rails rollback.
 Theme exports preserve values/names, licensed fonts and both storage keys. No read-only journey substitute.
 
