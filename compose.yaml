@@ -120,6 +120,8 @@ services:
     volumes:
       - ./compose/init-roles.sql:/docker-entrypoint-initdb.d/001-init-roles.sql:ro
       - ./compose/contract-db.sql:/contract-db.sql:ro
+      - ./db/schema.sql:/contract-schema.sql:ro
+      - ./db/verify_schema.sql:/contract-schema-verify.sql:ro
     healthcheck:
       interval: 5s
       timeout: 3s

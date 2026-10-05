@@ -35,7 +35,7 @@ tasks:
 
   prepare-db:
     dir: "{{.TASKFILE_DIR}}/../.."
-    desc: Create the disposable contract database in the isolated test PostgreSQL container
+    desc: Create the disposable contract database and provision it from db/schema.sql
     cmds:
       - task: internal:up-db
         vars: { ENVIRONMENT: test, WAIT: true }
@@ -44,6 +44,16 @@ tasks:
           ENVIRONMENT: test
           SERVICE: db-test
           COMMAND: env PGPASSWORD=medtracker_password psql -v ON_ERROR_STOP=1 -h db-test -U medtracker -d medtracker -f /contract-db.sql
+      - task: internal:run
+        vars:
+          ENVIRONMENT: test
+          SERVICE: db-test
+          COMMAND: env PGPASSWORD=medtracker_password psql -v ON_ERROR_STOP=1 -h db-test -U medtracker -d medtracker_contract -f /contract-schema.sql
+      - task: internal:run
+        vars:
+          ENVIRONMENT: test
+          SERVICE: db-test
+          COMMAND: env PGPASSWORD=medtracker_password psql -v ON_ERROR_STOP=1 -h db-test -U medtracker -d medtracker_contract -f /contract-schema-verify.sql
 
   mail-port:
     dir: "{{.TASKFILE_DIR}}/../.."
