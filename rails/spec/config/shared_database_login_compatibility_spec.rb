@@ -11,7 +11,7 @@ RSpec.describe SharedDatabaseLoginCompatibility do
     YAML.safe_load(Rails.root.join('compose.yaml').read, aliases: true)
   end
   let(:local_taskfile) do
-    YAML.safe_load(Rails.root.join('Taskfiles/local.yml').read, aliases: true, permitted_classes: [Symbol])
+    YAML.safe_load(Rails.root.join('tasks/local.yml').read, aliases: true, permitted_classes: [Symbol])
   end
   let(:deployment_guide) { Rails.root.join('docs/deployment.md').read }
   let(:upgrade_guide) { Rails.root.join('docs/pre-0-5-database-upgrade.md').read }

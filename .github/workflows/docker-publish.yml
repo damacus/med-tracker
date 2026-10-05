@@ -4,21 +4,21 @@ on:
   push:
     branches: [main]
     paths:
-      - app/**
-      - bin/**
-      - config/**
-      - db/**
-      - lib/**
-      - public/**
-      - data/medication_reviews/**
-      - scripts/verify_otlp_trace_resources.rb
-      - Gemfile
-      - Gemfile.lock
-      - package.json
-      - package-lock.json
-      - Dockerfile
-      - config.ru
-      - Rakefile
+      - rails/app/**
+      - rails/bin/**
+      - rails/config/**
+      - rails/db/**
+      - rails/lib/**
+      - rails/public/**
+      - rails/data/medication_reviews/**
+      - rails/scripts/verify_otlp_trace_resources.rb
+      - rails/Gemfile
+      - rails/Gemfile.lock
+      - rails/package.json
+      - rails/package-lock.json
+      - rails/Dockerfile
+      - rails/config.ru
+      - rails/Rakefile
       - .github/workflows/docker-publish.yml
   workflow_dispatch:
     inputs:
@@ -98,7 +98,7 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v7
         with:
-          context: .
+          context: rails
           platforms: linux/amd64,linux/arm64
           push: true
           build-args: |

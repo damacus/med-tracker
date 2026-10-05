@@ -32,7 +32,7 @@ set -x OIDC_ISSUER_URL "https://your-zitadel-instance.example"
 set -x OIDC_CLIENT_ID "your-zitadel-client-id"
 set -x OIDC_CLIENT_SECRET "your-zitadel-client-secret"
 set -x OIDC_PROVIDER_NAME "Zitadel"
-task dev:portless
+task rails:dev:portless
 ```
 
 Open <https://med-tracker.localhost/login> and choose **Continue with
@@ -71,7 +71,7 @@ MedTracker instance.
 
 ### Portless certificate warning
 
-Run `portless trust`, then restart `task dev:portless`.
+Run `portless trust`, then restart `task rails:dev:portless`.
 
 ## Related documentation
 

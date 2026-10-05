@@ -12,7 +12,7 @@ end
 set -l workspace (pwd)
 set -lx MEDTRACKER_GIT_COMMON_DIR (rtk git rev-parse --path-format=absolute --git-common-dir)
 or exit $status
-set -lx COMPOSE_FILE compose.yaml:rust/contract-tests/storage.compose.yaml:rust/contract-tests/runner.compose.yaml
+set -lx COMPOSE_FILE rails/compose.yaml:rust/contract-tests/storage.compose.yaml:rust/contract-tests/runner.compose.yaml
 set -lx CONTRACT_PROJECT mtcontract-browser-context-$fish_pid
 set -lx CONTRACT_FIXTURE_DIR "$workspace/$browser_context_test_dir"
 set -lx CONTRACT_STORAGE_ROOT "$CONTRACT_FIXTURE_DIR/storage"

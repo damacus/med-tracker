@@ -9,9 +9,9 @@ and system specs.
 Run the deterministic accessibility/responsive journey matrix locally with:
 
 ```fish
-task test:preflight
-task playwright TEST_FILE=spec/system/mobile_ui_audit_spec.rb
-task playwright TEST_FILE=spec/system/mobile_overflow_spec.rb
+task rails:test:preflight
+task rails:playwright TEST_FILE=spec/system/mobile_ui_audit_spec.rb
+task rails:playwright TEST_FILE=spec/system/mobile_overflow_spec.rb
 ```
 
 The existing blocking Playwright system job discovers these examples because

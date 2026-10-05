@@ -1,5 +1,6 @@
 {
   "jobs": {
+    "loco": ["loco_foundation"],
     "rails": ["scan_ruby", "scan_js", "lint", "test_non_system", "coverage", "test_system", "production_image_medication_search"],
     "rust": ["client_tools"],
     "rust_port": ["rust_port", "rust_dashboard_browser", "rust_household_browser"],
@@ -15,6 +16,8 @@
     "api_clients": ["generation", "kotlin", "swift"]
   },
   "rules": [
+    {"pattern": "^(src/|migration/|assets/|config/.*[.]yaml$|Cargo[.](toml|lock)$|compose[.]yaml$|scripts/migration/)", "suites": ["loco"]},
+    {"pattern": "^rails/(app/(components|views|javascript|assets)/|public/|config/routes[.]rb$|config/initializers/content_security_policy[.]rb$|db/seeds[.]rb$|spec/fixtures/|tasks/lighthouse[.]yml$|bin/lighthouse_score_gate[.]js$)", "suites": ["rails", "lighthouse"]},
     {"pattern": "^(scripts/ci/|Taskfiles/ci\\.yml$|\\.github/workflows/ci\\.yml$|Taskfile\\.yml$|mise\\.toml$)", "suites": ["all"], "prose": true},
     {"pattern": "^mobile/android/", "suites": ["android"]},
     {"pattern": "^docs/", "suites": ["docs"], "prose": true},
@@ -23,9 +26,9 @@
     {"pattern": "^client-tools/(?!openapi-generator/)", "suites": ["rust"]},
     {"pattern": "^rust/", "suites": ["rust_port"]},
     {"pattern": "^(Taskfiles/contract\\.yml|rust/contract-tests/Taskfile\\.yml|scripts/contract_provision\\.rb|scripts/compose_port\\.fish)$", "suites": ["rails", "rust_port"]},
-    {"pattern": "^(app/|bin/|config/|db/|lib/|public/|spec/|test/|data/|vendor/|sorbet/|compose/|\\.kamal/|script/)", "suites": ["rails"]},
+    {"pattern": "^(app/|bin/|config/(?!.*[.]yaml$)|db/|lib/|public/|spec/|test/|data/|vendor/|sorbet/|compose/|\\.kamal/|script/)", "suites": ["rails"]},
     {"pattern": "^(app/(components|views|javascript|assets)/|public/|config/routes\\.rb$|config/initializers/content_security_policy\\.rb$|db/seeds\\.rb$|spec/fixtures/|rails/tasks/lighthouse\\.yml$|bin/lighthouse_score_gate\\.js$)", "suites": ["rails", "lighthouse"]},
-    {"pattern": "^(Gemfile(?:\\.lock)?|package(?:-lock)?\\.json|Dockerfile|compose\\.yaml|config\\.ru|Rakefile|Procfile\\.dev|Taskfile\\.test\\.yml|run|\\.rspec|\\.ruby-version|\\.simplecov|\\.rubocop\\.yml|\\.dockerignore)$", "suites": ["rails"]},
+    {"pattern": "^(Gemfile(?:\\.lock)?|package(?:-lock)?\\.json|Dockerfile|config\\.ru|Rakefile|Procfile\\.dev|Taskfile\\.test\\.yml|run|\\.rspec|\\.ruby-version|\\.simplecov|\\.rubocop\\.yml|\\.dockerignore)$", "suites": ["rails"]},
     {"pattern": "^Taskfiles/(audit|capture_test|dev|internal|lighthouse|local|prod|test|worktree)\\.yml$", "suites": ["rails"]},
     {"pattern": "^rails/", "suites": ["rails"]},
     {"pattern": "^scripts/(audit_oidc_security\\.rb|build_curated_product_yaml\\.rb|check_quality\\.sh|compare_ruby_ui\\.rb|hosted_restore_rehearsal\\.rb|portless_oidc\\.fish|production_[^/]+\\.fish|profile_dashboard_request\\.rb|run_ruby_ui_comparison\\.fish|search_grocery_vitamins\\.rb|take_2fa_screenshots\\.js|test_capybara_browser\\.rb|test_dependency_verification\\.js|test_preflight\\.fish|translator_hook\\.fish|verify_otlp_trace_resources\\.rb|with_compose_lock\\.rb|worktree_[^/]+\\.fish)$", "suites": ["rails"]},

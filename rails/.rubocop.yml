@@ -20,10 +20,17 @@ AllCops:
     - "script/**/*"
     - "scripts/**/*"
     - "bin/{rails,rake}"
+    - "tmp/**/*"
+    - "log/**/*"
+    - "coverage/**/*"
+    - "storage/**/*"
+    - "vendor/**/*"
+    - "node_modules/**/*"
+    - ".bundle/**/*"
+    - ".mutant/**/*"
+    - "public/assets/**/*"
+    - "app/assets/builds/**/*"
     - !ruby/regexp /old_and_unused\.rb$/
-  <% `git -c safe.directory=/app status --ignored --porcelain`.lines.grep(/^!! /).each do |path| %>
-    - <%= path.sub(/^!! /, '').sub(/\/$/, '/**/*') %>
-  <% end %>
 
 Style/FrozenStringLiteralComment:
   Exclude:

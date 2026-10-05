@@ -23,7 +23,7 @@ use uuid::Uuid;
 
 const HEALTH_CONTROLLER: &str = "api/v1/health_history_reports";
 const REVIEW_CONTROLLER: &str = "api/v1/medication_review_reports";
-const FONT_PATH: &str = "/src/vendor/fonts/NotoSans-Regular.ttf";
+const FONT_PATH: &str = "/src/rails/vendor/fonts/NotoSans-Regular.ttf";
 
 #[derive(Default, Deserialize)]
 struct ReportQuery {

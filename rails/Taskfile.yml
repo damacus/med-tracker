@@ -5,29 +5,38 @@ run: once
 includes:
   dev:
     taskfile: tasks/dev.yml
-    dir: ..
+    dir: .
   test:
     taskfile: tasks/test.yml
-    dir: ..
+    dir: .
   local:
     taskfile: tasks/local.yml
-    dir: ..
+    dir: .
   prod:
     taskfile: tasks/prod.yml
-    dir: ..
+    dir: .
   internal:
     taskfile: tasks/internal.yml
-    dir: ..
+    dir: .
   audit:
     taskfile: tasks/audit.yml
-    dir: ..
+    dir: .
   lighthouse:
     taskfile: tasks/lighthouse.yml
-    dir: ..
+    dir: .
 
 tasks:
+  gems:audit:
+    dir: "{{.TASKFILE_DIR}}"
+    desc: Audit the Rails locked dependencies
+    cmds:
+      - task: internal:run
+        vars:
+          ENVIRONMENT: test
+          SERVICE: tools-test
+          COMMAND: bundle exec bundle-audit check
   test:
-    dir: "{{.TASKFILE_DIR}}/.."
+    dir: "{{.TASKFILE_DIR}}"
     desc: Run tests in Docker (optionally specify TEST_FILE=path/to/spec)
     summary: |
       Run RSpec tests in Docker environment
@@ -42,7 +51,7 @@ tasks:
           TEST_FILE: '{{ .TEST_FILE | default "spec" }}'
 
   ruby-ui:compare:
-    dir: "{{.TASKFILE_DIR}}/.."
+    dir: "{{.TASKFILE_DIR}}"
     desc: Compare selected RubyUI components with the locked gem in isolated output
     summary: |
       Generate named RubyUI component families read-only and report differences.
@@ -55,7 +64,7 @@ tasks:
       - ./scripts/run_ruby_ui_comparison.fish
 
   households:migrate_local:
-    dir: "{{.TASKFILE_DIR}}/.."
+    dir: "{{.TASKFILE_DIR}}"
     desc: Migrate the local pre-household database into one household
     summary: |
       Deterministically migrate local pre-household data into one household.
@@ -70,7 +79,7 @@ tasks:
           COMMAND: 'OWNER_EMAIL="{{ .OWNER_EMAIL }}" HOUSEHOLD_NAME="{{ .HOUSEHOLD_NAME }}" DRY_RUN="{{ .DRY_RUN }}" APPLY="{{ .APPLY }}" rails households:migrate_local'
 
   support-access:expire:
-    dir: "{{.TASKFILE_DIR}}/.."
+    dir: "{{.TASKFILE_DIR}}"
     desc: Record natural support-access expiry events exactly once
     summary: |
       Process naturally expired support sessions using the forced-RLS application role.
@@ -82,7 +91,7 @@ tasks:
           COMMAND: 'env DATABASE_ROLE=med_tracker_app rails support_access:expire'
 
   canary:demo-reset:
-    dir: "{{.TASKFILE_DIR}}/.."
+    dir: "{{.TASKFILE_DIR}}"
     desc: Replace canary runtime state with the committed synthetic demo baseline
     cmds:
       - task: internal:run
@@ -91,7 +100,7 @@ tasks:
           COMMAND: 'env DATABASE_ROLE=med_tracker_owner rails canary:demo_reset'
 
   canary:register-mobile-clients:
-    dir: "{{.TASKFILE_DIR}}/.."
+    dir: "{{.TASKFILE_DIR}}"
     desc: Restore known public mobile OAuth clients on the guarded canary target
     cmds:
       - task: internal:run
@@ -100,7 +109,7 @@ tasks:
           COMMAND: 'env DATABASE_ROLE=med_tracker_owner rails canary:register_mobile_clients'
 
   household-lifecycle:export:
-    dir: "{{.TASKFILE_DIR}}/.."
+    dir: "{{.TASKFILE_DIR}}"
     desc: Generate a complete hosted household export
     requires:
       vars: [HOUSEHOLD_ID, ACTOR_ACCOUNT_ID, MEMBERSHIP_ID]
@@ -111,7 +120,7 @@ tasks:
           COMMAND: 'env DATABASE_ROLE=med_tracker_app HOUSEHOLD_ID={{ .HOUSEHOLD_ID }} ACTOR_ACCOUNT_ID={{ .ACTOR_ACCOUNT_ID }} MEMBERSHIP_ID={{ .MEMBERSHIP_ID }} rails household_lifecycle:export'
 
   household-lifecycle:download:
-    dir: "{{.TASKFILE_DIR}}/.."
+    dir: "{{.TASKFILE_DIR}}"
     desc: Download an authorized hosted household export to protected storage
     requires:
       vars: [HOUSEHOLD_ID, ACTOR_ACCOUNT_ID, EXPORT_ID, DESTINATION]
@@ -124,7 +133,7 @@ tasks:
           COMMAND: 'env DATABASE_ROLE=med_tracker_app HOUSEHOLD_ID={{ .HOUSEHOLD_ID }} ACTOR_ACCOUNT_ID={{ .ACTOR_ACCOUNT_ID }} EXPORT_ID={{ .EXPORT_ID }} rails household_lifecycle:download'
 
   household-lifecycle:hold:
-    dir: "{{.TASKFILE_DIR}}/.."
+    dir: "{{.TASKFILE_DIR}}"
     desc: Place an audited household retention hold
     requires:
       vars: [HOUSEHOLD_ID, ACTOR_ACCOUNT_ID, REASON, REVIEW_ON]
@@ -137,7 +146,7 @@ tasks:
           COMMAND: 'env DATABASE_ROLE=med_tracker_app HOUSEHOLD_ID={{ .HOUSEHOLD_ID }} ACTOR_ACCOUNT_ID={{ .ACTOR_ACCOUNT_ID }} REVIEW_ON={{ .REVIEW_ON }} rails household_lifecycle:hold'
 
   household-lifecycle:release-hold:
-    dir: "{{.TASKFILE_DIR}}/.."
+    dir: "{{.TASKFILE_DIR}}"
     desc: Release an audited household retention hold
     requires:
       vars: [HOUSEHOLD_ID, ACTOR_ACCOUNT_ID, HOLD_ID]
@@ -148,7 +157,7 @@ tasks:
           COMMAND: 'env DATABASE_ROLE=med_tracker_app HOUSEHOLD_ID={{ .HOUSEHOLD_ID }} ACTOR_ACCOUNT_ID={{ .ACTOR_ACCOUNT_ID }} HOLD_ID={{ .HOLD_ID }} rails household_lifecycle:release_hold'
 
   household-lifecycle:offboard:
-    dir: "{{.TASKFILE_DIR}}/.."
+    dir: "{{.TASKFILE_DIR}}"
     desc: Disable a household and revoke every hosted access surface
     requires:
       vars: [HOUSEHOLD_ID, ACTOR_ACCOUNT_ID]
@@ -159,7 +168,7 @@ tasks:
           COMMAND: 'env DATABASE_ROLE=med_tracker_app HOUSEHOLD_ID={{ .HOUSEHOLD_ID }} ACTOR_ACCOUNT_ID={{ .ACTOR_ACCOUNT_ID }} rails household_lifecycle:offboard'
 
   household-lifecycle:purge:
-    dir: "{{.TASKFILE_DIR}}/.."
+    dir: "{{.TASKFILE_DIR}}"
     desc: Resume or start a held-safe household purge
     requires:
       vars: [HOUSEHOLD_ID, ACTOR_ACCOUNT_ID]
@@ -170,7 +179,7 @@ tasks:
           COMMAND: 'env DATABASE_ROLE=med_tracker_app HOUSEHOLD_ID={{ .HOUSEHOLD_ID }} ACTOR_ACCOUNT_ID={{ .ACTOR_ACCOUNT_ID }} rails household_lifecycle:purge'
 
   hosted-restore:rehearse:
-    dir: "{{.TASKFILE_DIR}}/.."
+    dir: "{{.TASKFILE_DIR}}"
     desc: Verify an already-restored isolated hosted environment and write durable evidence
     summary: |
       Verify an isolated database and attachment restore without performing the restore itself.
@@ -206,7 +215,7 @@ tasks:
       - mise exec -- ruby scripts/hosted_restore_rehearsal.rb
 
   medication-review:snapshot:
-    dir: "{{.TASKFILE_DIR}}/.."
+    dir: "{{.TASKFILE_DIR}}"
     desc: Regenerate the committed public evidence snapshot
     cmds:
       - task: internal:run
@@ -215,7 +224,7 @@ tasks:
           COMMAND: 'bin/rails medication_review_evidence:snapshot'
 
   medication-review:terminology-snapshot:
-    dir: "{{.TASKFILE_DIR}}/.."
+    dir: "{{.TASKFILE_DIR}}"
     desc: Regenerate the committed no-license NLM RxClass terminology snapshot
     cmds:
       - task: internal:run
@@ -224,7 +233,7 @@ tasks:
           COMMAND: 'bin/rails medication_review_evidence:terminology_snapshot'
 
   medication-review:import:
-    dir: "{{.TASKFILE_DIR}}/.."
+    dir: "{{.TASKFILE_DIR}}"
     desc: Import the committed public evidence snapshot into the development database
     cmds:
       - task: internal:run
@@ -233,7 +242,7 @@ tasks:
           COMMAND: 'bin/rails medication_review_evidence:import'
 
   medication-review:benchmark:
-    dir: "{{.TASKFILE_DIR}}/.."
+    dir: "{{.TASKFILE_DIR}}"
     desc: Measure automatic detection against the committed public evidence snapshot
     cmds:
       - task: internal:run
@@ -242,7 +251,7 @@ tasks:
           COMMAND: 'bin/rails medication_review_evidence:benchmark'
 
   medication-review:refresh:
-    dir: "{{.TASKFILE_DIR}}/.."
+    dir: "{{.TASKFILE_DIR}}"
     desc: Refresh public medication-review evidence and report source changes
     cmds:
       - task: internal:run
@@ -251,7 +260,7 @@ tasks:
           COMMAND: 'bin/rails medication_review_evidence:refresh'
 
   stop-all:
-    dir: "{{.TASKFILE_DIR}}/.."
+    dir: "{{.TASKFILE_DIR}}"
     desc: Stop all services for this worktree (dev, test, prod)
     summary: |
       Stop all Docker containers, networks, and services for this branch/worktree.
@@ -266,7 +275,7 @@ tasks:
         vars: { ENVIRONMENT: prod }
 
   rubocop:
-    dir: "{{.TASKFILE_DIR}}/.."
+    dir: "{{.TASKFILE_DIR}}"
     desc: Run RuboCop linter (optionally with autocorrect)
     summary: |
       Run RuboCop linter with optional autocorrect in Docker
@@ -282,7 +291,7 @@ tasks:
           COMMAND: 'bin/rubocop --force-exclusion {{ if eq .autocorrect "true" }}-A{{ end }}'
 
   rubocop:test:
-    dir: "{{.TASKFILE_DIR}}/.."
+    dir: "{{.TASKFILE_DIR}}"
     desc: Verify RuboCop performance checks and CI failure behaviour
     cmds:
       - task: internal:run
@@ -292,7 +301,7 @@ tasks:
           COMMAND: 'bundle exec rspec test/tooling/rubocop/cli_spec.rb'
 
   typecheck:
-    dir: "{{.TASKFILE_DIR}}/.."
+    dir: "{{.TASKFILE_DIR}}"
     desc: Run the advisory Sorbet check
     silent: true
     cmds:
@@ -303,7 +312,7 @@ tasks:
           COMMAND: 'bundle exec srb tc --ignore /usr/local/bundle/gems/prism app/models/dose_constraints.rb app/domain/dose_cycle.rb app/domain/dose_amount.rb app/domain/schedule_frequency_phrase.rb sorbet/rbi/dose_constraints.rbi sorbet/rbi/schedule_frequency_phrase.rbi'
 
   brakeman:
-    dir: "{{.TASKFILE_DIR}}/.."
+    dir: "{{.TASKFILE_DIR}}"
     desc: Run Brakeman security scanner
     summary: |
       Run Brakeman in the tools container, matching CI's Ruby Security Scan.
@@ -316,7 +325,7 @@ tasks:
           COMMAND: 'bin/brakeman --no-pager'
 
   rubycritic:
-    dir: "{{.TASKFILE_DIR}}/.."
+    dir: "{{.TASKFILE_DIR}}"
     desc: Run RubyCritic quality analysis
     summary: |
       Run RubyCritic against application code, or a supplied target.
@@ -332,7 +341,7 @@ tasks:
           COMMAND: 'bundle exec rubycritic --format console --no-browser {{ .target }}'
 
   playwright:
-    dir: "{{.TASKFILE_DIR}}/.."
+    dir: "{{.TASKFILE_DIR}}"
     desc: Run local Playwright browser tests
     summary: |
       Run the local browser test suite backed by Playwright.
@@ -345,7 +354,7 @@ tasks:
           TEST_FILE: '{{ .TEST_FILE | default "" }}'
 
   profile:dashboard:
-    dir: "{{.TASKFILE_DIR}}/.."
+    dir: "{{.TASKFILE_DIR}}"
     desc: Capture a Vernier baseline profile for the dashboard pipeline
     summary: |
       Capture a reproducible Vernier profile for the representative dashboard pipeline.
@@ -379,7 +388,7 @@ tasks:
             bin/rails runner scripts/profile_dashboard_request.rb
 
   mutation:
-    dir: "{{.TASKFILE_DIR}}/.."
+    dir: "{{.TASKFILE_DIR}}"
     desc: Run mutation testing on a subject (SUBJECT=ClassName)
     summary: |
       Run mutant against a subject match expression inside the test container.
@@ -395,7 +404,7 @@ tasks:
           COMMAND: 'env RAILS_ENV=test bundle exec mutant run -- "{{ .SUBJECT }}"'
 
   mutation:since:
-    dir: "{{.TASKFILE_DIR}}/.."
+    dir: "{{.TASKFILE_DIR}}"
     desc: Mutation-test only subjects changed since a git ref (REF, default origin/main)
     summary: |
       Incremental mutation run — mutates only subjects touched since REF.

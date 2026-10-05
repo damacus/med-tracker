@@ -6,12 +6,12 @@ import path from 'node:path';
 const repositoryRoot = process.cwd();
 mkdirSync(path.join(repositoryRoot, 'tmp'), { recursive: true });
 const temporaryRoot = mkdtempSync(path.join(repositoryRoot, 'tmp', 'task-exec-regression-'));
-const stubPath = path.join(temporaryRoot, 'scripts', 'with_compose_lock.rb');
+const stubPath = path.join(temporaryRoot, 'rails', 'scripts', 'with_compose_lock.rb');
 
 const runTask = (command, marker) => {
   const result = spawnSync(
     'task',
-    ['--taskfile', path.join(temporaryRoot, 'Taskfile.yml'), 'test:exec', `CMD=${command}`],
+    ['--taskfile', path.join(temporaryRoot, 'Taskfile.yml'), 'rails:test:exec', `CMD=${command}`],
     {
       cwd: temporaryRoot,
       env: { ...process.env, TASK_EXEC_MARKER: marker },

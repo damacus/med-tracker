@@ -6,11 +6,7 @@ run: once
 includes:
   rails:
     taskfile: rails/Taskfile.yml
-    dir: .
-  legacy-rails:
-    taskfile: rails/Taskfile.yml
-    dir: .
-    flatten: true
+    dir: rails
   rust:
     taskfile: rust/Taskfile.yml
     dir: .
@@ -49,6 +45,91 @@ includes:
     flatten: true
 
 tasks:
+  inventory:write:
+    desc: Record reconciled migration inputs
+    cmds: [node scripts/migration/inventory.mjs --write]
+  inventory:check:
+    desc: Reject unreconciled source inventory drift
+    cmds: [node scripts/migration/inventory.mjs]
+  preservation:write:
+    desc: Record relocation checksums and preserve source comments
+    cmds: [node scripts/migration/preservation.mjs --write]
+  preservation:check:
+    desc: Check preserved source files and comments
+    cmds: [node scripts/migration/preservation.mjs]
+  deps:
+    desc: Resolve the root Loco lockfile
+    cmds: [cargo generate-lockfile]
+  foundation:db-up:
+    requires:
+      vars: [FOUNDATION_PROJECT]
+    cmds: ['docker compose -p {{.FOUNDATION_PROJECT}} up -d --wait postgres']
+  foundation:db-port:
+    requires:
+      vars: [FOUNDATION_PROJECT]
+    cmds: ['docker compose -p {{.FOUNDATION_PROJECT}} port postgres 5432']
+  foundation:db-down:
+    requires:
+      vars: [FOUNDATION_PROJECT]
+    cmds: ['docker compose -p {{.FOUNDATION_PROJECT}} down --volumes']
+  foundation:test-ci-paths:
+    cmds: [node --test scripts/ci/tests/loco_paths.test.mjs]
+  foundation:test-workspaces:
+    cmds: [node --test scripts/migration/workspaces.test.mjs]
+  dev:
+    desc: Start the Loco server
+    cmds: ['cargo run -- start --environment {{.LOCO_ENV | default "development"}}']
+  build:
+    desc: Build Loco
+    cmds: [cargo build --locked]
+  check:
+    desc: Check Loco targets
+    cmds: [cargo check --locked --all-targets]
+  lint:
+    desc: Lint Loco
+    cmds: [cargo clippy --locked --all-targets -- -D warnings]
+  fmt:
+    desc: Check Loco formatting
+    cmds: [cargo fmt --all -- --check]
+  fmt:apply:
+    cmds: [cargo fmt --all]
+  test:
+    desc: Verify Loco and root ownership contracts
+    cmds:
+      - cargo test --locked
+      - task: foundation:test
+      - task: foundation:test-cleanup
+      - task: foundation:test-http
+  routes:
+    desc: List Loco routes
+    cmds: ['cargo run -- routes --environment {{.LOCO_ENV | default "development"}}']
+  db:migrate:
+    desc: Persistence adoption gate (tranche 2)
+    cmds: ['fish -c ''echo "Loco schema adoption awaits tranche 2 acceptance" >&2; exit 1''']
+  db:seed:
+    desc: Fixture migration gate (tranche 2)
+    cmds: ['fish -c ''echo "Loco fixtures await tranche 2 acceptance" >&2; exit 1''']
+  worker:
+    desc: Start the Loco worker process
+    cmds: ['cargo run -- start --worker --environment {{.LOCO_ENV | default "development"}}']
+  browser:
+    desc: Exercise Loco health and Tera over HTTP
+    cmds: [{task: foundation:test-http}]
+  release-image:
+    desc: Release runtime gate (tranche 6)
+    cmds: ['fish -c ''echo "Production Loco image awaits full migration acceptance" >&2; exit 1''']
+  ci:
+    desc: Verify root Loco foundation
+    cmds:
+      - task: fmt
+      - task: lint
+      - task: test
+  foundation:test:
+    cmds: [node --test scripts/migration/foundation.test.mjs]
+  foundation:test-http:
+    cmds: [node --test scripts/migration/foundation-http.test.mjs]
+  foundation:test-cleanup:
+    cmds: [node --test scripts/migration/process-cleanup.test.mjs]
   default:
     desc: List all available tasks
     summary: Default task - shows all available commands

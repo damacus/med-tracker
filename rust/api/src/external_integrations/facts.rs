@@ -221,7 +221,7 @@ pub(super) async fn off_search(query: &str) -> Vec<Value> {
 
 pub(super) fn curated_barcode(barcode: &str) -> Option<Value> {
     let config: Value = serde_yaml::from_str(include_str!(
-        "../../../../config/nhs_dmd_curated_products.yml"
+        "../../../../rails/config/nhs_dmd_curated_products.yml"
     ))
     .ok()?;
     let product = config

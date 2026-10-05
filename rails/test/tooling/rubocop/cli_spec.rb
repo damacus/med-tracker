@@ -39,5 +39,6 @@ RSpec.describe RuboCop::CLI do
     expect(output.lines.map { |path| File.expand_path(path.strip, root) }).to include(
       File.join(root, 'bin/audit-exporter'), File.join(root, 'bin/jobs')
     )
+    expect(output.lines.map(&:strip)).not_to include(match(%r{(?:\A|/)(?:tmp|coverage|node_modules|vendor)/}))
   end
 end

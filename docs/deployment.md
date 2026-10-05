@@ -1,6 +1,8 @@
 # Deployment
 
-MedTracker uses profiles in a single `compose.yaml` file for development,
+The published product image remains Rails while the Loco migration is in
+progress. Root `task release-image` is gated until complete migration acceptance.
+The Rails rollback uses profiles in `rails/compose.yaml` for development,
 testing, and local validation of the production image.
 
 ## Compose profiles
@@ -14,16 +16,16 @@ testing, and local validation of the production image.
 Use Taskfile wrappers:
 
 ```fish
-task dev:portless
-task dev:seed
+task rails:dev:portless
+task rails:dev:seed
 ```
 
 Stop or inspect:
 
 ```fish
-task dev:stop
-task dev:logs
-task dev:ps
+task rails:dev:stop
+task rails:dev:logs
+task rails:dev:ps
 ```
 
 ## Test deployment
@@ -31,15 +33,15 @@ task dev:ps
 Start/stop test services when needed:
 
 ```fish
-task test:up
-task test:stop
-task test:logs
+task rails:test:up
+task rails:test:stop
+task rails:test:logs
 ```
 
 Run full tests in the test environment:
 
 ```fish
-task test
+task rails:test
 ```
 
 ## Local production-image validation
@@ -49,17 +51,17 @@ database before starting the application. It is not a real production
 deployment.
 
 ```fish
-task prod:build
-task prod:up
-task prod:ps
+task rails:prod:build
+task rails:prod:up
+task rails:prod:ps
 ```
 
-`task prod:up` runs the `migrate-prod` service before starting the web service.
+`task rails:prod:up` runs the `migrate-prod` service before starting the web service.
 Use the Task wrappers to inspect and stop the local stack:
 
 ```fish
-task prod:logs
-task prod:stop
+task rails:prod:logs
+task rails:prod:stop
 ```
 
 For a real reachable deployment, follow the
@@ -130,11 +132,11 @@ After the first admin exists, self-registration without invitations is blocked.
 Development rebuild (destructive to dev volumes):
 
 ```bash
-task dev:rebuild
+task rails:dev:rebuild
 ```
 
 Test rebuild (destructive to test volumes):
 
 ```bash
-task test:rebuild
+task rails:test:rebuild
 ```

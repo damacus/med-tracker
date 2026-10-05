@@ -22,11 +22,19 @@ tasks:
   coverage:test:
     desc: Verify coverage collation without loading Rails or RSpec
     cmds:
-      - task: :internal:run
+      - task: :rails:internal:run
         vars:
           ENVIRONMENT: test
           SERVICE: tools-test
-          COMMAND: bundle exec ruby scripts/ci/tests/coverage.rb
+          COMMAND: env RAILS_APPLICATION_ROOT=/app bundle exec ruby /workspace/scripts/ci/tests/coverage.rb
+  coverage:lint:
+    desc: Lint shared Rails coverage helpers
+    cmds:
+      - task: :rails:internal:run
+        vars:
+          ENVIRONMENT: test
+          SERVICE: tools-test
+          COMMAND: bundle exec rubocop --config /app/.rubocop.yml /workspace/scripts/ci/collate_simplecov.rb /workspace/scripts/ci/tests/coverage.rb
 
   classify:
     desc: Select mandatory CI suites from the changed paths

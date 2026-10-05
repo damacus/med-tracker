@@ -1,5 +1,12 @@
 # Technical Quick Start
 
+The root application is now Loco 1.2. Use a dedicated PostgreSQL 18 database,
+set `DATABASE_URL`, run `task build`, then `task dev`. The foundation exposes
+`/up`, database readiness at `/_health` and a Tera landing page. Product
+workflows remain under migration; the Rails commands below run the reference
+and rollback application under `rails/`. See the
+[migration plan](plans/loco-migration-20261005/plan.md) for acceptance gates.
+
 This guide is for developers and advanced users who want to run the full
 MedTracker stack locally using Docker.
 
@@ -25,7 +32,7 @@ cd med-tracker
 Run this command to start the database, web server, and worker:
 
 ```fish
-task dev:portless
+task rails:dev:portless
 ```
 
 This starts the `dev` profile from `compose.yaml` and registers the stable local
@@ -36,7 +43,7 @@ URL `https://med-tracker.localhost`.
 To quickly populate the database with example users, people, and medicines:
 
 ```fish
-task dev:seed
+task rails:dev:seed
 ```
 
 > **Local development only:** fixture data includes sample accounts with known
@@ -55,17 +62,17 @@ The MedTracker UI is available at:
 
 | Command | Action |
 | --- | --- |
-| `task dev:logs` | View real-time application logs |
-| `task dev:stop` | Stop all development containers |
-| `task dev:ps` | List running containers |
-| `task test` | Run the full test suite in Docker |
+| `task rails:dev:logs` | View real-time application logs |
+| `task rails:dev:stop` | Stop all development containers |
+| `task rails:dev:ps` | List running containers |
+| `task rails:test` | Run the full test suite in Docker |
 
 ## Troubleshooting
 
 ### Rebuild from scratch
 If you encounter database issues or want to start fresh:
 ```fish
-task dev:rebuild
+task rails:dev:rebuild
 ```
 **Warning**
 
@@ -74,5 +81,5 @@ This command removes all data and recreates the database.
 ### Database migrations
 To apply new database changes without a full rebuild:
 ```fish
-task dev:db-migrate
+task rails:dev:db-migrate
 ```

@@ -17,7 +17,7 @@ tasks:
   # Start PostgreSQL container for local testing
   # Usage: task local:db:up
   db:up:
-    dir: "{{.TASKFILE_DIR}}/../.."
+    dir: "{{.TASKFILE_DIR}}/.."
     desc: Start local PostgreSQL container
     status:
       - docker ps --format '{{`{{.Names}}`}}' | grep -q '^{{.DB_CONTAINER}}$'
@@ -36,7 +36,7 @@ tasks:
   # Stop and remove PostgreSQL container
   # Usage: task local:db:down
   db:down:
-    dir: "{{.TASKFILE_DIR}}/../.."
+    dir: "{{.TASKFILE_DIR}}/.."
     desc: Stop local PostgreSQL container
     cmds:
       - docker stop {{.DB_CONTAINER}} 2>/dev/null || true
@@ -45,7 +45,7 @@ tasks:
   # Prepare database (migrate)
   # Usage: task local:db:prepare
   db:prepare:
-    dir: "{{.TASKFILE_DIR}}/../.."
+    dir: "{{.TASKFILE_DIR}}/.."
     desc: Run database migrations
     deps: [db:up]
     env:
@@ -58,7 +58,7 @@ tasks:
   # Usage: task local:test
   # Usage: task local:test TEST_FILE=spec/models/user_spec.rb
   test:
-    dir: "{{.TASKFILE_DIR}}/../.."
+    dir: "{{.TASKFILE_DIR}}/.."
     desc: Run non-browser tests locally
     deps: [db:prepare]
     env:
@@ -70,7 +70,7 @@ tasks:
   # Run browser tests locally (requires Playwright)
   # Usage: task local:test:browser
   test:browser:
-    dir: "{{.TASKFILE_DIR}}/../.."
+    dir: "{{.TASKFILE_DIR}}/.."
     desc: Run browser tests locally (requires Playwright)
     deps: [db:prepare]
     env:
@@ -83,7 +83,7 @@ tasks:
   # Run all tests locally
   # Usage: task local:test:all
   test:all:
-    dir: "{{.TASKFILE_DIR}}/../.."
+    dir: "{{.TASKFILE_DIR}}/.."
     desc: Run all tests locally
     deps: [db:prepare]
     env:
@@ -96,7 +96,7 @@ tasks:
   # Clean up - stop database container
   # Usage: task local:clean
   clean:
-    dir: "{{.TASKFILE_DIR}}/../.."
+    dir: "{{.TASKFILE_DIR}}/.."
     desc: Stop database and clean up
     cmds:
       - task: db:down

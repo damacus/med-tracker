@@ -26,7 +26,7 @@ Before onboarding another household, verify:
 - Existing pre-0.5 databases have completed the
   [pre-0.5 database upgrade](../pre-0-5-database-upgrade.md) bootstrap.
 - Interactive session limits follow the [central authentication policy](../two-factor-authentication.md); enrolled login MFA remains enforced.
-- `task rubocop`, `task test`, and `task brakeman` pass on the release branch.
+- `task rails:rubocop`, `task rails:test`, and `task rails:brakeman` pass on the release branch.
 - The hosted hardening audit has no `NO-GO` rows.
 - Invite-only registration is pinned by environment or platform-admin policy.
 - Backup and Restore test evidence exists for the current deployment.
@@ -105,10 +105,10 @@ WHERE schemaname = 'public'
 
 The role membership/create checks must return `false`; the forced-RLS,
 nullable-column, and null-policy queries must return no rows. Release verification
-also runs `task test TEST_FILE=spec/lib/schema_inventory_spec.rb`,
-`task test TEST_FILE=spec/models/household_row_level_security_spec.rb`,
-`task test TEST_FILE=spec/config/yaml_compose_spec.rb`, and
-`task test TEST_FILE=spec/config/database_role_config_spec.rb`.
+also runs `task rails:test TEST_FILE=spec/lib/schema_inventory_spec.rb`,
+`task rails:test TEST_FILE=spec/models/household_row_level_security_spec.rb`,
+`task rails:test TEST_FILE=spec/config/yaml_compose_spec.rb`, and
+`task rails:test TEST_FILE=spec/config/database_role_config_spec.rb`.
 
 ## Command scope
 

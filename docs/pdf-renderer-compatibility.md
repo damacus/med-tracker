@@ -52,7 +52,7 @@ representative characters from all five locales.
 The application test image passed this contract:
 
 ```text
-task test TEST_FILE=spec/services/reports/sghtmltopdf_contract_spec.rb
+task rails:test TEST_FILE=spec/services/reports/sghtmltopdf_contract_spec.rb
 2 examples, 0 failures
 ```
 

@@ -9,7 +9,9 @@ Dir.mktmpdir('coverage-check') do |directory|
   source = File.join(directory, 'app/controllers/api/example.rb')
   FileUtils.mkdir_p(File.dirname(source))
   File.write(source, "if ENV.fetch('BRANCH') == 'yes'\n  :yes\nelse\n  :no\nend\n")
-  environment = { 'BUNDLE_GEMFILE' => File.join(repository, 'Gemfile'), 'COVERAGE' => 'true' }
+  application_root = ENV.fetch('RAILS_APPLICATION_ROOT', File.join(repository, 'rails'))
+  environment = { 'BUNDLE_GEMFILE' => File.join(application_root, 'Gemfile'), 'COVERAGE' => 'true',
+                  'RAILS_APPLICATION_ROOT' => application_root }
 
   reports = %w[yes no].each_with_index.map do |branch, index|
     output_path = File.join(directory, "shard-#{index + 1}")
@@ -24,14 +26,14 @@ Dir.mktmpdir('coverage-check') do |directory|
       load #{source.inspect}
     RUBY
     output, status = Open3.capture2e(environment.merge('BRANCH' => branch),
-                                   'bundle', 'exec', 'ruby', '-e', script, chdir: directory)
+                                     'bundle', 'exec', 'ruby', '-e', script, chdir: directory)
     abort output unless status.success?
     File.join(output_path, '.resultset.json')
   end
 
   run = lambda do |paths|
     Open3.capture2e(environment.merge('SIMPLECOV_COVERAGE_DIR' => File.join(directory, 'merged')),
-                   'bundle', 'exec', 'ruby', collator, *paths, chdir: directory)
+                    'bundle', 'exec', 'ruby', collator, *paths, chdir: directory)
   end
 
   output, status = run.call(reports)
@@ -48,7 +50,7 @@ Dir.mktmpdir('coverage-check') do |directory|
   FileUtils.rm_rf(File.join(directory, 'merged'))
   output, status = run.call(reports)
   abort 'Incomplete coverage passed' if status.success?
-  %w[Line\ coverage Branch\ coverage API\ branch\ coverage].each do |message|
+  ['Line coverage', 'Branch coverage', 'API branch coverage'].each do |message|
     abort "Coverage gate did not report #{message}:\n#{output}" unless output.include?(message)
   end
 end

@@ -1,5 +1,12 @@
 # Testing
 
+Root `task ci` verifies Loco formatting, lint, compilation and actual HTTP
+health/Tera behaviour against a dedicated PostgreSQL 18 database. Set
+`DATABASE_URL` to the disposable verification database. `task inventory:check`
+and `task preservation:check` protect migration inputs and relocation records.
+The Rails suite below runs through `task rails:*` and remains the reference for
+product behaviour until each complete Loco journey passes its migration gates.
+
 MedTracker uses RSpec, Capybara, and Playwright. Application tests run against
 PostgreSQL 18.
 
@@ -8,24 +15,24 @@ PostgreSQL 18.
 Run the preflight before coding work:
 
 ```shell
-task test:preflight
+task rails:test:preflight
 ```
 
 If it reports a missing image, build the test image before retrying. Use
-`task test:rebuild` only when you need a destructive database reset.
+`task rails:test:rebuild` only when you need a destructive database reset.
 
 ## Run tests
 
 Always run tests through `task`:
 
 ```shell
-task test
+task rails:test
 ```
 
 Run a targeted spec path:
 
 ```shell
-task test TEST_FILE=spec/models/user_spec.rb
+task rails:test TEST_FILE=spec/models/user_spec.rb
 ```
 
 The full suite includes browser and non-browser examples. A focused command can
@@ -33,19 +40,19 @@ target a file, directory, or line accepted by RSpec.
 
 ## Test environments
 
-- Docker test environment: `task test` and `task test:*` tasks
-- Local CI-like environment: `task local:*` tasks
+- Docker test environment: `task rails:test` and `task rails:test:*` tasks
+- Local CI-like environment: `task rails:local:*` tasks
 
 Useful local commands:
 
 ```shell
-task local:test
-task playwright
-task local:test:all
-task local:clean
+task rails:local:test
+task rails:playwright
+task rails:local:test:all
+task rails:local:clean
 ```
 
-`task playwright` is the canonical local Playwright entrypoint. It runs the
+`task rails:playwright` is the canonical local Playwright entrypoint. It runs the
 browser-backed system tests through the repo's Taskfile wrapper.
 
 For a manual screen-reader and keyboard pass over those journeys, use the
@@ -62,11 +69,11 @@ MedTracker follows Red-Green-Refactor:
 ## Browser coverage
 
 Browser examples use the `browser` tag and usually live under `spec/system/` or
-`spec/features/`. Run all browser examples with `task playwright`, or pass a
+`spec/features/`. Run all browser examples with `task rails:playwright`, or pass a
 specific file:
 
 ```shell
-task playwright TEST_FILE=spec/system/dashboard_spec.rb
+task rails:playwright TEST_FILE=spec/system/dashboard_spec.rb
 ```
 
 CI runs non-browser specs in two parallel file shards and browser examples in
@@ -93,8 +100,8 @@ the same script before checking the application results.
 Run RuboCop through Taskfile:
 
 ```shell
-task rubocop
-task rubocop AUTOCORRECT=true
+task rails:rubocop
+task rails:rubocop AUTOCORRECT=true
 ```
 
 ## Coverage
@@ -112,7 +119,7 @@ Mutant checks whether selected specs detect changes to application code. Start
 the test services, then choose a subject:
 
 ```shell
-task test:up
+task rails:test:up
 task mutation SUBJECT=MedicationFriendlyName
 task mutation SUBJECT='GlobalSearch::ResultBuilder*'
 ```

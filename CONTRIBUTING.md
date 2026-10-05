@@ -7,8 +7,8 @@ git clone https://github.com/damacus/med-tracker.git
 cd med-tracker
 npm install -g portless
 portless trust
-task dev:portless  # start the dev stack at https://med-tracker.localhost
-task dev:seed      # seed the database
+task rails:dev:portless  # start the dev stack at https://med-tracker.localhost
+task rails:dev:seed      # seed the database
 ```
 
 Open <https://med-tracker.localhost>.
@@ -20,13 +20,13 @@ destructive reset command.
 ## Development workflow
 
 ```fish
-task test                    # run RSpec suite in Docker
-task test TEST_FILE=spec/models/user_spec.rb  # run a single file
-task rubocop                 # lint Ruby
-task rubocop AUTOCORRECT=true  # auto-fix style issues
-task dev:portless            # start / restart the dev server
-task stop-all                # stop all Docker environments
-task lighthouse:run          # accessibility/performance audit (requires the dev stack)
+task rails:test                    # run RSpec suite in Docker
+task rails:test TEST_FILE=spec/models/user_spec.rb  # run a single file
+task rails:rubocop                 # lint Ruby
+task rails:rubocop AUTOCORRECT=true  # auto-fix style issues
+task rails:dev:portless            # start / restart the dev server
+task rails:stop-all                # stop all Docker environments
+task rails:lighthouse:run          # accessibility/performance audit (requires the dev stack)
 task docs:serve              # serve docs locally
 ```
 

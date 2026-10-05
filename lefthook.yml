@@ -14,24 +14,24 @@ pre-push:
       tags:
         - backend
         - security
-      run: bundle audit
+      run: task rails:gems:audit
 
     - name: rubocop
       tags:
         - backend
         - linting
-      glob: "*.rb"
-      run: bundle exec rubocop {push_files}
+      glob: "rails/**/*.rb"
+      run: task rails:rubocop
 
     - name: rspec
       tags:
         - backend
         - testing
-      glob: "*.rb"
+      glob: "rails/**/*.rb"
       run: |
         echo "🧪 Running RSpec tests..."
         if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
-          task test
+          task rails:test
         else
           echo "⚠️  Docker not available, skipping RSpec tests"
           echo "Please start Docker daemon to run full test suite"
@@ -42,13 +42,13 @@ pre-commit:
   jobs:
     - name: translator
       glob:
-        - "config/locales/**/*.yml"
-        - "app/components/ruby_ui/typography/**/*.rb"
+        - "rails/config/locales/**/*.yml"
+        - "rails/app/components/ruby_ui/typography/**/*.rb"
       run: task translator:hook
 
     - name: rubocop
-      glob: "*.rb"
+      glob: "rails/**/*.rb"
       exclude:
-        - config/application.rb
-        - config/routes.rb
-      run: bundle exec rubocop --force-exclusion {all_files}
+        - rails/config/application.rb
+        - rails/config/routes.rb
+      run: task rails:rubocop

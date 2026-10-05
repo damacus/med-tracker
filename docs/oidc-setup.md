@@ -110,7 +110,7 @@ set -x OIDC_REDIRECT_URI "https://med-tracker.localhost/auth/oidc/callback"
 set -x OIDC_ISSUER_URL "https://identity.example.com"
 set -x OIDC_CLIENT_ID "your-client-id"
 set -x OIDC_CLIENT_SECRET "your-client-secret"
-task dev:portless
+task rails:dev:portless
 ```
 
 The issuer must be reachable from the MedTracker container. A host-only

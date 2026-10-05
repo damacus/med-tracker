@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
-const script = fileURLToPath(new URL('../../../bin/lighthouse_score_gate.js', import.meta.url));
+const script = fileURLToPath(new URL('../../../rails/bin/lighthouse_score_gate.js', import.meta.url));
 
 function runGate(t, scores, { malformed = false, audits = {} } = {}) {
   const directory = mkdtempSync(join(tmpdir(), 'ci-lighthouse-'));

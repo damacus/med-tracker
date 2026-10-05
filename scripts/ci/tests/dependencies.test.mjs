@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { verify } from '../../test_dependency_verification.js';
+import { verify } from '../../../rails/scripts/test_dependency_verification.js';
 
 for (const scenario of ['current', 'stale', 'refresh failure', 'launch failure']) {
   test(`dependency verification handles ${scenario}`, async t => {

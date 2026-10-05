@@ -36,7 +36,7 @@ function isolation_task -a project
     end
     if test -n "$subnet"
         set -lx CONTRACT_TEST_SUBNET $subnet
-        set -lx COMPOSE_FILE compose.yaml:rust/contract-tests/runner-subnet.compose.yaml
+        set -lx COMPOSE_FILE rails/compose.yaml:rust/contract-tests/runner-subnet.compose.yaml
         rtk task $argv[2..-1]
     else
         rtk task $argv[2..-1]

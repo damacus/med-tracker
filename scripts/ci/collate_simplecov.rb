@@ -25,6 +25,7 @@ end
 abort 'SimpleCov result files must have distinct command names' unless result_names.uniq.length == 2
 
 ENV.delete('SIMPLECOV_SHARD')
-load File.expand_path('../../.simplecov', __dir__)
+application_root = ENV.fetch('RAILS_APPLICATION_ROOT', File.expand_path('../../rails', __dir__))
+load File.join(application_root, '.simplecov')
 SimpleCov.coverage_path ENV.fetch('SIMPLECOV_COVERAGE_DIR') if ENV['SIMPLECOV_COVERAGE_DIR']
 SimpleCov.collate(result_files, 'rails')

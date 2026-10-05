@@ -142,6 +142,6 @@ task client-tools:test
 Rails gates still apply for repository changes:
 
 ```bash
-task rubocop
-task test
+task rails:rubocop
+task rails:test
 ```

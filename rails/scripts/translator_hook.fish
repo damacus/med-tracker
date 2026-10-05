@@ -12,12 +12,12 @@ set -l staged_files (git diff --cached --name-only --diff-filter=ACMR)
 set -l relevant_files
 
 for file in $staged_files
-    if string match -rq '^config/locales/.*\.yml$' -- $file
+    if string match -rq '^rails/config/locales/.*\.yml$' -- $file
         set relevant_files $relevant_files $file
         continue
     end
 
-    if string match -rq '^app/components/ruby_ui/typography/.*\.rb$' -- $file
+    if string match -rq '^rails/app/components/ruby_ui/typography/.*\.rb$' -- $file
         set relevant_files $relevant_files $file
     end
 end
@@ -36,10 +36,10 @@ set -l prompt (string join \n \
     "Use the translator skill from ~/.agents/skills/translator." \
     "Repository: MedTracker." \
     "Changed files: "(string join ", " $relevant_files) \
-    "Update translation files under config/locales so all locale trees stay in sync." \
+    "Update translation files under rails/config/locales so all locale trees stay in sync." \
     "When typography components introduce user-facing copy, add the corresponding i18n keys and translations." \
     "Preserve existing translations when still accurate. Preserve interpolation tokens, pluralization keys, and YAML structure." \
-    "Only modify files that are necessary for translation maintenance, primarily config/locales/*.yml." \
+    "Only modify files that are necessary for translation maintenance, primarily rails/config/locales/*.yml." \
     "Do not make unrelated refactors. Finish after writing the required locale updates.")
 
 echo "translator hook: running Codex translator with model $model"
@@ -57,7 +57,7 @@ if test $status -ne 0
     exit 1
 end
 
-set -l locale_files (find config/locales -maxdepth 1 -type f | sort)
+set -l locale_files (find rails/config/locales -maxdepth 1 -type f | sort)
 if test (count $locale_files) -gt 0
     git add $locale_files
 end

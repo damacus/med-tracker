@@ -76,7 +76,7 @@ permissions each time it runs.
 Run:
 
 ```fish
-task audit:verify
+task rails:audit:verify
 ```
 
 Inputs are supplied as environment variables:
@@ -101,7 +101,7 @@ verification reject time filters rather than reporting a valid partial result.
 Run:
 
 ```fish
-task audit:export
+task rails:audit:export
 ```
 
 Set `OUTPUT`, optional `HOUSEHOLD_ID`, `FROM`, `TO`, and `FHIR=true` as

@@ -1,0 +1,24 @@
+logger:
+  enable: true
+  pretty_backtrace: false
+  level: info
+  format: compact
+server:
+  port: <%= get_env(name="PORT", default="5150") %>
+  binding: <%= get_env(name="BINDING", default="127.0.0.1") %>
+  host: http://localhost
+workers:
+  mode: BackgroundQueue
+queue:
+  kind: Postgres
+  uri: <%= get_env(name="DATABASE_URL", default="postgres://medtracker:medtracker_password@localhost:5432/medtracker_loco") %>
+database:
+  uri: <%= get_env(name="DATABASE_URL", default="postgres://medtracker:medtracker_password@localhost:5432/medtracker_loco") %>
+  enable_logging: false
+  connect_timeout: 5000
+  idle_timeout: 5000
+  min_connections: 1
+  max_connections: 4
+  auto_migrate: false
+  dangerously_truncate: false
+  dangerously_recreate: false
