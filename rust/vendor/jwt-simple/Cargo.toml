@@ -40,7 +40,7 @@ superboring = { version = "0.1.12", optional = true }
 superboring = { version = "0.1.12", optional = true }
 
 [dev-dependencies]
-benchmark-simple = "0.1.10"
+benchmark-simple = "0.2.0"
 
 [features]
 default = ["optimal", "jwe"]
