@@ -3,6 +3,15 @@
 This charter supersedes older Axum/Leptos port allocations for this migration.
 Apply the user's team-development skill and repository instructions.
 
+Use **slice** for delivery boundaries in the revised implementation plans.
+The user requested HTML progress at each completed slice: the coordinator maintains
+`/private/tmp/medtracker-migration-status.html` and its requested Markdown status copy.
+Include shipped commit, passed checks, actual blocker and next action. Update material
+blockers promptly; avoid duplicate narrative reports for each verification attempt.
+Migration defects stay in the owning slice. Open follow-up issues only for independent
+work outside its completion boundary. Preserve existing incident #2453 without
+turning every repair into a new issue.
+
 - Bucky (root) owns interpretation, planning records, scope, acceptance, Git,
   commits, push and PR publication. Bucky does not become a second product writer.
 - Nightingale is one persistent GPT-6.1 Sol writer, advertised default low,
@@ -12,6 +21,15 @@ Apply the user's team-development skill and repository instructions.
 - One GPT-6 Luna medium verifier exclusively owns dependency installs, builds,
   runtime checks and acceptance resources. Writers request jobs and freeze inputs;
   quick static reads and task listing are allowed outside the runtime lane.
+
+Use existing public Tasks for verification resources with an explicit
+`CONTRACT_PROJECT` command-line assignment. Before starting a diagnostic, inspect
+its dry expansion: every Compose project and lock must name the intended
+disposable project. Do not wrap included internal Tasks with task-local project
+variables; that scope failed to reach the dependency during this tranche.
+Preserve pre-existing volumes. Capture resource provenance and retain diagnostic
+logs before cleanup; a silent successful migration log cannot prove no database
+change occurred.
 
 The verifier may generate root Cargo.lock through the writer-supplied dependency
 resolution Task as deterministic install output. Nightingale retains manifest and
@@ -26,9 +44,10 @@ re-review. After two failed evidence-based fixes Bucky diagnoses without replaci
 the writer or broadening scope. Use durable briefs/reports/ledger. Reports certify
 exact immutable inputs. Only Bucky commits or pushes. No live deployment/migration,
 merge, destructive data reset or unrequested external messages. The user approved
-Devin plan review and its architecture/security details. Automatic approval review
-requires a separate approval for implementation-source transfer; that question is
-pending and the blocked invocation has not run.
+Devin plan review and its architecture/security details. The user subsequently
+approved sending implementation diffs to Devin through 16 October 2026. Apply
+that authorization to migration reviews until its expiry; it does not authorize
+deployment, merge or unrelated data transfer.
 
 Only mark ledger completion after clean independent task/tranche review and
 checks. Do not substitute another reviewer model silently if Devin is unavailable.
