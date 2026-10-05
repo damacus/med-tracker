@@ -39,7 +39,8 @@ Workers cannot gain owner privileges and Rails can still operate (P3).
   from retained ref, recording its exact path/hash and source migration count in provenance.
 - [x] Run `rtk task slice:test-runner` and `rtk task slice:test TARGET=persistence`;
   prove cleanup after success and forced failure.
-- [ ] Review and commit `test(persistence): isolate schema adoption rehearsals`.
+- [x] Review and publish the owned runner as `0c887dbb`;
+  Devin reviewed the final source and full local Loco CI passed.
 
 ### P2: Adopt fresh and populated schemas, reject unknown drift
 
@@ -64,7 +65,9 @@ ownership and supported row as named catalog differences.
   `before_credential_bytes == after_credential_bytes`, `second_ddl_count == 0`,
   `unknown_drift_accepted == false`. Cover indexes, constraints, functions, views, extensions,
   triggers, policies and grants, not just table columns.
-- [ ] Run `rtk task slice:test TARGET=persistence`; the empty current migrator must fail catalog parity.
+- [ ] Run `rtk task slice:test TARGET=persistence`; prove that the current empty migrator
+  accepts deliberately drifted restored schema and cannot record the supported adoption row.
+  Catalog parity alone after administrative restoration is insufficient RED evidence.
 - [ ] Implement guarded adoption using standard migrations; accept only explicitly named differences.
   Never run baseline DDL blindly against a populated database or erase its Rails ledger.
 - [ ] Run all P2 cases on fresh and representative populated PostgreSQL 18; verify explicit drift diagnostics.

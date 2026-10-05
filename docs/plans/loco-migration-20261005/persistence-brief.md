@@ -48,7 +48,9 @@ Git integration and independent Devin review dispatch.
 
 Required observable RED acceptance before implementation:
 
-- The empty Loco ledger cannot reproduce the Rails migration catalog.
+- The current empty migrator cannot record the supported adoption row and accepts
+  deliberate drift in an administratively restored schema. Catalog parity after
+  restoration alone cannot prove that adoption works.
 - A repeated adoption must not duplicate DDL or change the normalized catalog.
 - Deliberately introduced catalog drift must fail with a useful diagnosis.
 - Populated synthetic records retain IDs, foreign keys, person enums, capacity
@@ -70,3 +72,36 @@ does not establish authentication interoperability.
 Authentication selection remains a separate gate in auth-feasibility.md. This
 tranche does not authorize bespoke security protocols or an external identity
 service. Dispatch follows foundation acceptance and updated source examination.
+
+## P2 preparation decisions
+
+Read-only inspection confirmed five required baseline roles and the `citext`,
+`pg_trgm` and `pgcrypto` extensions. Restore into a uniquely owned empty fixture
+with PostgreSQL 18 psql, startup files disabled, stop-on-error and one transaction.
+Reference and candidate must share database locale and extension versions.
+Preserve the dump's test-environment Rails metadata in test rehearsals. Populated
+adoption never rewrites that metadata; fresh non-test provisioning must make its
+environment handling explicit rather than silently changing the dump.
+
+The migration owner owns `public.seaql_migrations`. Runtime roles receive no
+write access to migration history. The baseline owner's default grants would
+otherwise grant runtime writes: revoke those grants on this one ledger inside
+the same adoption transaction and verify the exact resulting ACL. Leave all
+application-table default privileges intact. Reject a pre-existing empty ledger,
+malformed ledger or unknown migration rows; support only an absent ledger on
+first adoption or the exact supported row on repeat adoption. Preserve the
+recorded application timestamp on repeats.
+
+Use PostgreSQL's transaction advisory locking for cooperating administrative
+adoption calls, then preflight, standard `Migrator::up` on the borrowed transaction,
+postflight and commit. This lock does not claim to prevent unrelated administrator
+DDL. Require controlled administrative schema access during installation; prove
+repeat and concurrent guarded-adoption behaviour on owned fixtures.
+
+Compare full catalog definitions, owners, ACLs and RLS flags/expressions, including
+unexpected objects. The retained verification SQL remains a partial smoke check.
+Capture the actual pinned SeaORM-generated ledger catalog before recording its
+exact allowed differences. Interpret repeated adoption's zero DDL changes as no
+effective catalog change; standard `CREATE TABLE IF NOT EXISTS` may still execute.
+Fresh installation, populated preservation, failure rollback and drift rejection
+remain separate behavioural checks. No schema has been adopted by this preparation.

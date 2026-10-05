@@ -5,8 +5,8 @@ not moved into Loco yet. No slice is accepted.
 
 | Slice | Current state | What must happen next |
 | --- | --- | --- |
-| 1. Set up Loco and move Rails | Setup and merges with main are published; two GitHub setup failures have local fixes | Verify container permissions, finish review, publish corrections and pass hosted CI |
-| 2. Use the existing database | Isolated Rust test runner passes real PostgreSQL success and failure checks locally | Finish review and publish the runner; adopt the schema after setup is accepted |
+| 1. Set up Loco and move Rails | Reviewed corrections and CI selector fix are published; full local Loco checks pass | Pass hosted checks on the corrected commit and accept setup |
+| 2. Use the existing database | Reviewed isolated Rust runner is published; schema adoption is prepared | Implement guarded adoption after setup is accepted |
 | 3. Sign-in and API authentication | Separate library experiment has 37 of 39 tests passing | Resolve two proof failures and verify stored credentials, tokens and security behaviour |
 | 4. Household and medication actions | Not migrated | Implement complete authorised care workflows |
 | 5. APIs and integrations | Not migrated | Migrate the existing API, native clients and integrations |
@@ -47,18 +47,20 @@ GitHub run `37363675318` finished with setup failures. The workflow checker lack
 Fish. Rust browser fixtures could not write `/app/tmp/local_secret.txt`. A clean
 checkout lacks the Rails temporary directory; the contract runner now creates it
 before containers start. Both changes have failing regressions followed by passing
-checks. All 91 workflow tests pass locally. Real container permission verification
-and independent review remain pending. The hosted Loco job was cancelled without
-running, so it supplies no foundation acceptance evidence.
+checks. All 91 workflow tests passed locally. Independent review passed after
+corrections. Both old and corrected container startup passed on Docker Desktop;
+the old Linux ownership failure could not be reproduced locally. Hosted Linux
+remains the authoritative check. The hosted Loco job was cancelled without
+running, so that run supplies no foundation acceptance evidence.
 
 The new isolated Rust database runner ignores ambient database addresses and
 Compose overrides, preserves unit and documentation tests, and cleans only its
-own fixture. Four runner checks pass. Real PostgreSQL 18 success and deliberate
+own fixture. All six final runner checks pass. Real PostgreSQL 18 success and deliberate
 failure runs both removed all their owned resources. Rust formatting and lint
 pass. Devin SWE-2 Max completed review, and its three requested corrections
 passed focused re-review. Full local Loco CI passes on the final source, including
-the real PostgreSQL integration and HTTP health/Tera checks. The changes are being
-prepared for commit and push; corrected hosted Linux checks remain required.
+the real PostgreSQL integration and HTTP health/Tera checks. The changes were
+committed and pushed as `0c887dbb`; corrected hosted Linux checks remain required.
 The exact preserved SQL baseline is pinned; no schema has been adopted.
 
 The combined full-run log is
@@ -70,9 +72,12 @@ Earlier results do not prove that the current combined code passes.
 ## Publication and remaining work
 
 [Draft PR #2451](https://github.com/damacus/med-tracker/pull/2451) now contains the
-setup and dependency merges at `9e499003`. Passing hosted CI remains unverified.
-The runner and new setup corrections still need final verification, review,
-commit and push.
+setup, dependency merges and reviewed runner. Its verified head is now
+`3de44f157d51c0ca9392a7650af1df2b8ee30474`. Hosted run `37368954067` stopped
+before application checks because the selector did not map `tests/persistence.rs`.
+The two-file correction passed behavioural RED/GREEN, all 92 workflow tests,
+workflow lint, independent Devin review and exact-commit classification before
+publication. New hosted verification remains required; no slice is accepted.
 The user has authorised landing verified work on main through one branch and
 one PR. This does not authorise a production deployment or database change.
 
@@ -81,6 +86,14 @@ migration. PRs #2397, #2399, #2402 and #2403 were closed as superseded framework
 choices; their captured source and branches remain available. Schema, scratch,
 profile, notification and font PRs remain open until their useful work is
 migrated. PR #2381 is unchanged.
+
+Read-only P2 preparation identified the exact baseline role/extension prerequisites
+and a default grant that would let runtime users edit the SeaORM ledger. The
+persistence brief now requires an owner-controlled ledger, transactional preflight
+before ledger installation, exact catalog comparison and drift rejection without
+leftover ledger objects. The retained SQL stays byte-for-byte unchanged; its
+whitespace does not affect SeaORM and has a scoped Git formatting exception.
+These are planning decisions, not implemented schema adoption.
 
 The separate test-runner isolation incident remains tracked in
 [#2453](https://github.com/damacus/med-tracker/issues/2453). Existing test volumes
