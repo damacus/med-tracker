@@ -128,6 +128,8 @@ jobs:
           version: 3.52.0
           repo-token: ${{ github.token }}
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+      - name: Install relocation check prerequisites
+        run: sudo apt-get update && sudo apt-get install --yes ripgrep
       - run: task ci
 
   scan_ruby:

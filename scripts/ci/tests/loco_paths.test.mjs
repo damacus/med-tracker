@@ -35,3 +35,11 @@ test('Loco CI provisions the compiler components required by root checks', () =>
   assert.match(job, /run: task ci/);
   assert.match(job, /image: postgres:18-alpine/);
 });
+
+test('Loco CI installs ripgrep before executing relocation checks', () => {
+  const workflow = readFileSync(new URL('../../../.github/workflows/ci.yml', import.meta.url), 'utf8');
+  const job = workflow.match(/\n  loco_foundation:\n([\s\S]*?)(?=\n  [a-z_]+:\n)/)?.[1];
+  assert.ok(job);
+  assert.match(job, /apt-get install[^\n]*\bripgrep\b/, 'Relocation checks require the rg executable');
+  assert.ok(job.indexOf('apt-get install') < job.indexOf('run: task ci'));
+});
