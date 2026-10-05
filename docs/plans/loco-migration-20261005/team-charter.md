@@ -8,6 +8,11 @@ The user requested HTML progress at each completed slice: the coordinator mainta
 `/private/tmp/medtracker-migration-status.html` and its requested Markdown status copy.
 Include shipped commit, passed checks, actual blocker and next action. Update material
 blockers promptly; avoid duplicate narrative reports for each verification attempt.
+Write every visible update and team message in plain English, with proper spaces
+between words. Explain what is finished, what is being checked, what is wrong and
+what happens next. Keep hashes, job handles and detailed commands in the technical
+checkpoint or an optional evidence section. Do not present library experiments as
+completed application features.
 Migration defects stay in the owning slice. Open follow-up issues only for independent
 work outside its completion boundary. Preserve existing incident #2453 without
 turning every repair into a new issue.
@@ -48,6 +53,20 @@ Devin plan review and its architecture/security details. The user subsequently
 approved sending implementation diffs to Devin through 16 October 2026. Apply
 that authorization to migration reviews until its expiry; it does not authorize
 deployment, merge or unrelated data transfer.
+
+For a new test or a review repair, finish the relevant static checks and focused
+behavioural test before sending the final source for independent review. Freeze
+that passing input, obtain review, and then run the expensive whole-suite check.
+If a whole-suite failure requires diagnosis, test one evidence-based hypothesis
+at a time. Separate helper failures from application failures. Retain an unchanged
+owned test image for source-only retries, and clean it when the diagnosis ends.
+
+The user redirected this migration away from legacy Rails test repair. For Loco
+changes, run the Loco checks and the migrated workflows. Do not expand RSpec
+diagnostics or change Rails application behaviour unless a migration defect is
+demonstrated or Rails work is explicitly in scope. Preserve the original Rails
+tests and rollback evidence. Required hosted checks and final populated rollback
+verification remain acceptance criteria.
 
 Only mark ledger completion after clean independent task/tranche review and
 checks. Do not substitute another reviewer model silently if Devin is unavailable.

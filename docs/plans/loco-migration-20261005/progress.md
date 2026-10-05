@@ -1,70 +1,82 @@
 # Migration progress
 
-| Slice | State | Evidence |
+Updated 5 October 2026. We are still finishing setup. Medication features have
+not moved into Loco yet. No slice is accepted.
+
+| Slice | Current state | What must happen next |
 | --- | --- | --- |
-| 01 Foundation | Local gates pass; final reconciliation and publication pending | SWE-2 Max corrective verdict MET; minor shim and documentation-task fixes pass RED/GREEN. Tooling 89/89, relocation 7/7, actual scanner/context checks, both dashboard runners 35/35 and final root CI pass. Corrected full Rails suite passes 6,112 examples; final lint/reconciliation, corrected publication and hosted CI remain required |
-| 02 Persistence | Planned | slices/02-persistence.md: schema, owned acceptance runner, RLS and rollback |
-| 03 Identity | Planned; isolated library proof progressing | Pinned candidate proof passes 26/28; ten parser/context cases pass, two original wrapper-limit diagnostics remain. Durable storage, revocation, SMART and full interoperability remain unproved; no provider selected |
-| 04 Care operations | Planned | slices/04-care-operations.md: complete household/clinical writes and replay |
-| 05 API/integrations | Planned | slices/05-api-integrations.md: authoritative operations and native/integration parity |
-| 06 Browser/themes | Planned | slices/06-browser.md: complete journey families, daisyUI and offline replay |
-| 07 Workers | Planned | slices/07-workers.md: W1 queue prerequisite follows persistence before enqueue endpoints |
-| 08 Release | Planned | slices/08-release.md: both scratch runtimes, no legacy dependency and populated rollback |
+| 1. Set up Loco and move Rails | The tested setup commit is pushed; Loco checks pass on the local merge with main | Finish documentation checks, publish the merge and verify GitHub CI |
+| 2. Use the existing database | Plan and schema inputs prepared | Implement and verify database adoption, household access and Rails rollback after setup is accepted |
+| 3. Sign-in and API authentication | Separate library experiment has 37 of 39 tests passing | Resolve the two library limitations and prove stored credentials, tokens and security behaviour |
+| 4. Household and medication actions | Not migrated | Implement complete authorised care workflows |
+| 5. APIs and integrations | Not migrated | Migrate the existing API, native clients and integrations |
+| 6. Browser pages and themes | Not migrated | Implement complete browser workflows and port existing themes to daisyUI |
+| 7. Background jobs and reminders | Not migrated | Establish durable queues and migrate jobs and schedules |
+| 8. Release images and rollback | Not completed | Verify both scratch-image architectures and populated Rails rollback |
 
-The user-requested writing-plans packet is linked from plan.md. No future slice
-has been implemented or accepted by writing these plans. The HTML report is
-`/private/tmp/medtracker-migration-status.html`; update it after each accepted slice
-and whenever a material blocker changes. Follow-up issues remain minimal.
+## Setup: what passed and what failed
 
-Plan review: Devin SWE-2 Max, supplied-plan only, conditionally sound. Corrections
-are recorded in plan.md. Runtime checks are recorded in foundation-report.md;
-the original foundation source review returned requirements not met. The final
-corrective source review meets requirements; runtime acceptance remains pending.
+The setup fixes passed source review, root Loco checks, both browser test runs,
+Ruby lint and all 6,112 Rails examples. These fixes are committed locally as
+`9e54e9305083cfa9b22708e9feba0511cd48c18d`. That exact commit has now been pushed
+to the existing draft PR. The later MCP dependency merge remains local. The added
+Rails diagnostic has been archived outside the repository and removed.
 
-The authentication dependency decision remains conditional. auth-feasibility.md
-records Astra's pinned-source findings and the concrete RFC7009 and client-method
-gaps. The authorised bounded proof must resolve these before acceptance; no
-external identity service has been selected.
+Main's MCP dependency update was then included in a normal merge. Testing the
+combined code produced one failure in 6,112 examples: scanning medicine to add
+stock did not show the expected success message. The screenshot showed 30 units;
+the database assertion was not reached. All eight examples in that test file
+passed when run separately; a later focused run reproduced the original failure.
+A separate diagnostic passed, but did not control cookie-application timing and
+could not prove the cause. Framework inspection showed how a read-only lookup
+can write an older session cookie and lose the POST's notice. We have not shown
+that the migration caused this behaviour.
 
-Independent source review dispatch was blocked by automatic approval review:
-the prior Devin authorization covered plan transfer, while this invocation would
-send the unpublished implementation diff and architecture records. A separate
-user approval was subsequently granted through 16 October 2026. Foundation source
-review is authorized until that date. Devin CLI `swe-2-max` completed a read-only
-review of the supplied frozen `838e79d..959be24` diff and evidence. It did not
-independently execute tests or inspect omitted unchanged/generated bytes. Its
-requirements verdict was not met. Nightingale retains ownership of fixes;
-fresh verification and review are required. No reviewer substitution or
-implementation acceptance has occurred.
+The user redirected the work away from repairing legacy RSpec tests. The original
+Rails application and tests remain unchanged. The added diagnostic was archived
+and removed. Loco checks and migrated Rust/browser workflows drive implementation;
+the existing Rails rollback evidence remains part of final release verification.
+No application fix or claim of a passing later Rails run was made.
 
-The verified foundation is published as an intermediate draft waypoint under
-the repository's mandatory push instruction. Publication does not accept this
-tranche. The later user approval resolved the source-transfer approval block.
+Loco `task ci` passes on the combined source. Inventory and preservation checks
+also pass. Preservation records 2,933 inputs, with 2,883 unchanged and 50 changed;
+the changes include upstream's dependency update. The current Loco CI log is
+`/Users/damacus/Library/Application Support/rtk/tee/1791227912_task_ci.log`.
+Documentation checks and publication follow.
 
-Published foundation: `f54630d41e1388a5fd552d9de385ea78995b7653` on
-`codex/loco-migration`, [draft PR #2451](https://github.com/damacus/med-tracker/pull/2451).
-The executable slice plans are published at `035bf52f7f2389e6f15af5fe93aa9ba9ec9721b8`.
-The corrected foundation implementation is local. Final corrective source review
-passed on the 32-file freeze; the minor dashboard shim coverage fix has passed.
-Complete root and standalone dashboard runtimes and final root CI now pass.
-The corrected full Rails suite now passes 6,112 examples with zero failures.
-Final lint/reconciliation and corrected publication/hosted CI remain pending.
+The combined full-run log is
+`/Users/damacus/Library/Application Support/rtk/tee/1791225510_task_rai_9786c9.log`.
+The focused run has finished and its temporary resources have been removed.
+Earlier test and review evidence is retained in [foundation-report.md](foundation-report.md).
+Earlier results do not prove that the current combined code passes.
 
-The user prefers landing verified slices on main rather than creating a stack of
-migration PRs. The current single draft remains the foundation review vehicle;
-land it only after its applicable checks and hosted CI pass. This authorises
-verified main integration, not live deployment or a production schema change.
+## Publication and remaining work
 
-The two-hour retrospective heartbeat checkpoints implementation, applies supported
-workflow improvements and continues the full goal. Preserve live handles and
-source ownership; a fresh session requires a complete handoff. Current reports
-distinguish current results from earlier resolved failures.
-Remaining work is tracked in [#2450](https://github.com/damacus/med-tracker/issues/2450).
-The verification wrapper's unintended default test-project invocation and
-unproven database effect are tracked in
+[Draft PR #2451](https://github.com/damacus/med-tracker/pull/2451) now contains the
+setup correction at `9e54e930`. Passing hosted CI remains unverified. The later
+combined code still needs its checks, commit and push.
+The user has authorised landing verified work on main through one branch and
+one PR. This does not authorise a production deployment or database change.
+
+[Issue #2450](https://github.com/damacus/med-tracker/issues/2450) covers the whole
+migration. PRs #2397, #2399, #2402 and #2403 were closed as superseded framework
+choices; their captured source and branches remain available. Schema, scratch,
+profile, notification and font PRs remain open until their useful work is
+migrated. PR #2381 is unchanged.
+
+The separate test-runner isolation incident remains tracked in
 [#2453](https://github.com/damacus/med-tracker/issues/2453). Existing test volumes
-were preserved; this issue remains open independently of migration acceptance.
-PRs #2397, #2399, #2402 and #2403 are closed as superseded framework choices;
-their captured source and branches are preserved and useful behavior remains
-part of the migration inventory. Schema, scratch, profile, notifications and
-font input PRs remain open until their work is ported. PR #2381 is unchanged.
+were preserved. The database effect of the unintended invocation is unproved.
+
+## Reporting and workflow
+
+Update `/private/tmp/medtracker-migration-status.html` and
+`/private/tmp/medtracker-2450-review-status.md` when a slice finishes or a problem
+changes the next action. Say what is finished, what is being checked, what is
+wrong and what happens next. Keep detailed job handles in the separate technical
+checkpoint. Review the workflow every two hours and apply supported improvements.
+
+The existing writer retains application and test ownership. The verifier owns
+builds, tests and temporary resources. The coordinator owns acceptance and
+publication. Independent Devin SWE-2 Max review sharing is authorised through
+16 October 2026. The goal remains completion of all eight slices.

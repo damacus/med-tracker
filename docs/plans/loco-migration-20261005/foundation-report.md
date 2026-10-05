@@ -1,11 +1,30 @@
 # Foundation implementation report
 
-Status: fixes and verification in progress. Independent Devin SWE-2 Max
-supplied-diff review of published head `959be240e66f2731d5cba34cf66ace42e7ce4b4e`
-and baseline `838e79da76aceed1155d047dae038e1bd2bad5f1` returned requirements
-**NOT MET**. The exact [review](foundation-review-20261005.md) records its scope
-and limits: no independent runtime execution. This report does not accept the foundation or the full
-feature migration.
+Current status: setup is not yet accepted. The corrected source review passed,
+and the setup fixes passed local tests before main's MCP library update was
+included. The combined code then failed one stock browser test in the full Rails
+suite, and a later focused run reproduced it. We have not shown that the migration
+caused this Rails failure. The user redirected implementation back to Rust; the
+added diagnostic is archived and removed. The original Rails tests and application
+are unchanged. Current work is Loco verification and publishing the merge with main.
+
+Loco `task ci` now passes on the combined source with the upstream dependency
+update. The disposable PostgreSQL HTTP check, source preservation and owned-process
+cleanup checks passed. Documentation checks and publication follow. This does not
+claim that the later Rails stock test passed or that product features are migrated.
+
+The setup fixes are committed locally as
+`9e54e9305083cfa9b22708e9feba0511cd48c18d`. That exact earlier verified commit is
+now pushed to the existing draft PR. The later MCP update remains in an
+uncommitted normal merge. Loco checks, evidence reconciliation and publication
+remain required, and hosted CI is unverified. Medication features
+have not migrated into Loco.
+
+The sections below retain earlier evidence in chronological order. In particular,
+the original [source review](foundation-review-20261005.md) returned requirements
+NOT MET; the later [corrective review](foundation-final-review-20261005.md)
+returned MET for the reviewed source. Neither review independently ran tests.
+Earlier failures and pending checks must be read alongside the newer evidence.
 
 The coordinator pushed foundation commit
 `f54630d41e1388a5fd552d9de385ea78995b7653` on `codex/loco-migration` and opened
@@ -412,3 +431,28 @@ and published Loco 1.2.0 APIs validated by compilation/runtime checks. Cargo.loc
 pins registry checksums; upstream master examples are explanatory references,
 not the dependency pin. Serena initial instructions were called before source
 exploration; its active language server is Ruby, so Rust navigation used `rg`.
+
+
+## Deferred Rails stock-notice failure
+
+The verified foundation Rails suite passed before the upstream dependency merge.
+The combined tree later ran 6,112 examples with one missing scanned-stock notice.
+The same original example subsequently failed in a focused run, while its page
+showed 30 units. This establishes a missing user-visible notice; it does not
+establish a failed stock write or a cause attributable to the dependency merge.
+
+The added browser diagnostic passed its message and stock-write assertions, but
+controlled page-visible response delivery rather than cookie application. Its
+linked request context could commit cookies before releasing the held response,
+and its release event preceded complete redirected-page processing. That result
+neither proves nor rejects a stale-session-cookie cause. A later isolated-context
+variant was never executed. No application or session fix was made.
+
+As requested, Rails flash diagnosis is stopped. The original stock
+system spec is restored byte for byte to HEAD; every original assertion and
+comment remains intact. The exact diagnostic diff, spec, report and held manifest
+are archived outside the repository at
+`/private/tmp/medtracker-stock-diagnostic-archive-20261005`. Existing failure logs
+and screenshots are retained; no test resources were removed in this cleanup.
+The investigation does not gate further Rust implementation or claim medication
+feature migration is complete.
