@@ -40,6 +40,26 @@ turning every repair into a new issue.
   runtime checks and acceptance resources. Writers request jobs and freeze inputs;
   quick static reads and task listing are allowed outside the runtime lane.
 
+The Luna verifier was unavailable twice at the 22:29 checkpoint. Its stopped role
+is now owned by `verifier_sol`, using GPT-6.1 Sol at its advertised default low.
+This is an explicit availability fallback; all execution and acceptance requirements
+stay the same. Never restart the previous verifier alongside its replacement.
+Preserve and inspect any live command before handing over execution ownership.
+
+At the 22:54 retrospective, care/browser source review can proceed while identity
+finishes its remaining security cases. Identity receives a separate security review;
+both verdicts and whole-tree checks precede their combined publication. Keep shared
+compile inputs and the requested test source frozen until the verifier releases
+the job; prepare later work outside those files during execution. The next usable
+product boundary connects validated identity to the dose and stock routes, rather
+than accumulating isolated proofs instead of completing authenticated journeys.
+
+The user's scaffolding cleanup removes workspace/relocation and source-snapshot
+audits from everyday application checks. Use `task migration:audit` explicitly
+for relocation evidence and rollback rehearsal. Keep existing ledger files as
+historical evidence; do not regenerate them for each capability delivery. Normal
+checks retain behaviour, authorisation, persistence, resource cleanup and lint.
+
 ## Retrospective handoff and implementation ownership
 
 The user switched to Astra after the CI repair reached a clean published boundary

@@ -3,8 +3,10 @@
 The machine record `source-inventory.json` pins the observed checkout revision,
 source hashes, Rails route declarations and job paths. It includes local relocation
 changes; its revision is the parent commit, not a claim that those changes were
-already committed. `task inventory:check` rejects changed or added source inputs.
-Regeneration requires reconciling this inventory with the changed behaviour.
+already committed. These records are relocation evidence, not application tests.
+`task migration:audit` explicitly checks the retained snapshot when auditing the
+relocation or rehearsing rollback. Normal `task test` and `task ci` exercise the
+application without requiring ledger regeneration after legitimate source changes.
 
 ## Source owners and journeys
 

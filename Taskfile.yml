@@ -122,14 +122,17 @@ tasks:
       - task: slice:test-runner
       - task: slice:test-all
       - task: foundation:test
+      - task: foundation:test-cleanup
+      - task: foundation:test-database
+      - task: foundation:test-http
+  migration:audit:
+    desc: Audit retained migration inputs explicitly
+    cmds:
       - task: foundation:test-workspaces
       - task: foundation:test-relocation
       - task: foundation:test-preservation
       - task: inventory:check
       - task: preservation:check
-      - task: foundation:test-cleanup
-      - task: foundation:test-database
-      - task: foundation:test-http
   routes:
     desc: List Loco routes
     cmds: ['cargo run --locked -- routes --environment {{.LOCO_ENV | default "development"}}']

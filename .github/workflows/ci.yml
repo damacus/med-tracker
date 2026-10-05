@@ -116,8 +116,6 @@ jobs:
       DATABASE_URL: postgres://medtracker:medtracker_password@127.0.0.1:5432/medtracker_loco
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          fetch-depth: 0
       - uses: actions/setup-node@v7
         with:
           node-version: "24"
@@ -130,8 +128,6 @@ jobs:
           version: 3.52.0
           repo-token: ${{ github.token }}
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
-      - name: Install relocation check prerequisites
-        run: sudo apt-get update && sudo apt-get install --yes ripgrep
       - run: task ci
 
   scan_ruby:

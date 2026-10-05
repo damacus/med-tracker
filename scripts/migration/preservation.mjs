@@ -28,6 +28,7 @@ for (const source of original) {
   entries.push({ source, destination, original_mode: modes.get(source), current_mode: currentMode, original_sha256: hash(before), current_sha256: hash(after), unchanged: before.equals(after), force_stage_tracked_relocation: ignored });
 }
 const report = { revision, unchanged: entries.filter(entry => entry.unchanged).length, modified: entries.filter(entry => !entry.unchanged).length, entries };
+const canonical = ({ entries, ...report }) => ({ ...report, entries: entries.map(({ force_stage_tracked_relocation: _advisory, ...entry }) => entry) });
 if (process.argv.includes('--write')) writeFileSync(output, `${JSON.stringify(report, null, 2)}\n`);
-else assert.deepEqual(report, JSON.parse(readFileSync(output, 'utf8')), 'Preservation input changed: reconcile edits and regenerate ledger');
+else assert.deepEqual(canonical(report), canonical(JSON.parse(readFileSync(output, 'utf8'))), 'Preservation input changed: reconcile edits and regenerate ledger');
 console.log(`Preserved ${entries.length} inputs; ${report.unchanged} unchanged; ${report.modified} path/tooling edits; existing comments unchanged`);

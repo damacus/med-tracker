@@ -17,8 +17,9 @@ Read-only inputs: existing foundation review, reports, source inventory and reta
 ## Review focus
 
 Missing image inputs must fail before long builds (F1). Public root and standalone Tasks must reach
-the same owned fixture (F2). Cleanup must preserve existing volumes (F2). Stale ledgers must fail
-checks (F2). Review and CI results must identify the same published commit (F3).
+the same owned fixture (F2). Cleanup must preserve existing volumes (F2). The explicit
+relocation audit must detect drift; normal application checks do not regenerate
+historical ledgers (F2). Review and CI results must identify the same published commit (F3).
 
 ### F1: Make the contract image's font input available
 
@@ -43,17 +44,19 @@ Read `rails/vendor/fonts/NotoSans-Regular.ttf`, `rails/vendor/fonts/OFL-1.1.txt`
 ### F2: Verify both supported execution entry points
 
 **Files:** Test existing `rust/contract-tests/run.fish`, isolation/cleanup regressions;
-generate `../source-inventory.json` and `../preservation.json` after source freeze.
+retain `../source-inventory.json` and `../preservation.json` as relocation evidence.
 **Interfaces:** Consume F1 image; produce complete root/standalone runner logs and owned-resource cleanup.
 
 - [ ] Add a failing regression for any new ownership/path defect discovered by F1; preserve existing
   negative isolation checks. Assert `foreign_volumes_removed == 0` on failure cleanup.
 - [ ] Run `rtk task ci:check` for any added regression and record its actual failing assertion.
 - [ ] Make only demonstrated repairs through the same writer; preserve public wrapper ownership.
-- [ ] Freeze source; run `rtk task inventory:write`, `rtk task preservation:write`, `rtk task ci`,
+- [ ] Audit relocation once through `rtk task migration:audit`; reconcile legitimate
+  differences with the original records. Do not rewrite snapshots for every delivery.
+- [ ] Freeze source; run `rtk task ci`,
   `rtk task api:browser-dashboard-rust`, and `rtk task --dir rust/api browser-dashboard-rust`.
   Require both complete runner verdicts and zero remaining owned resources; do not credit Tailwind alone.
-- [ ] Integrate the verified code and generated records with an atomic Conventional Commit.
+- [ ] Integrate the verified code with an atomic Conventional Commit.
 
 ### F3: Accept and publish the corrected foundation
 

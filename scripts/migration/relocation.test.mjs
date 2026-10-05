@@ -5,13 +5,25 @@ import { tmpdir } from 'node:os';
 import { execFileSync, spawnSync } from 'node:child_process';
 import test from 'node:test';
 
-test('root CI executes workspace and source drift checks', () => {
+test('root CI verifies the application without rerunning relocation snapshot audits', () => {
   const result = spawnSync('task', ['--dry', '--force', '--verbose', 'ci'], { encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
   const output = result.stdout + result.stderr;
-  assert.match(output, /workspaces\.test\.mjs/);
-  assert.match(output, /inventory\.mjs/);
-  assert.match(output, /preservation\.mjs/);
+  assert.match(output, /cargo clippy/);
+  assert.match(output, /run-slice\.mjs --all/);
+  assert.match(output, /foundation-database\.test\.mjs/);
+  assert.match(output, /process-cleanup\.test\.mjs/);
+  assert.doesNotMatch(output, /workspaces\.test\.mjs|relocation\.test\.mjs|preservation(?:\.test)?\.mjs|inventory\.mjs/);
+});
+
+test('relocation snapshot audits remain available through an explicit task', () => {
+  const result = spawnSync('task', ['--dry', '--force', '--verbose', 'migration:audit'], { encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  const output = result.stdout + result.stderr;
+  for (const filename of ['workspaces.test.mjs', 'relocation.test.mjs', 'preservation.test.mjs', 'inventory.mjs', 'preservation.mjs']) {
+    assert.ok(output.includes(filename), `Missing explicit relocation audit ${filename}`);
+  }
+  assert.doesNotMatch(output, /cargo clippy|run-slice\.mjs --all/);
 });
 
 test('Git attributes follow Rails schema, vendor and credential paths', () => {

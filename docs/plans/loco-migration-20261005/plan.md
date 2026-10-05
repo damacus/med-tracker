@@ -51,6 +51,12 @@ CI/tooling repairs receive focused tests and coordinator review, then join the
 next capability review. Do not start a separate reviewer round trip for each
 two-line setup correction or re-review non-blocking hypothetical nits.
 
+Relocation ledgers and old-workspace checks are explicit `task migration:audit`
+evidence, not part of everyday `task test` or `task ci`. Keep their original
+records for relocation/rollback investigation. Do not regenerate snapshots to
+permit ordinary implementation. Behaviour, security, schema and cleanup checks
+remain in normal verification; complete product and rollback acceptance remain required.
+
 Batch integration updates into coherent deliveries rather than pushing every
 status edit and cancelling useful CI. Freeze review inputs and identify the exact
 published commit being checked. Report completed behaviour, the actual blocker
