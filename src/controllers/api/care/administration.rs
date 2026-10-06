@@ -95,10 +95,11 @@ pub(super) async fn store(
 ) -> std::result::Result<(StatusCode, Value, Option<String>, bool), response::Failure> {
     let status = StatusCode::from_u16(saved.status).map_err(|_| response::unavailable())?;
     let body = saved.body.clone();
+    let etag = saved.etag.map(str::to_owned);
     locations::store(tenant, principal.provenance(), saved)
         .await
         .map_err(response::operation)?;
-    Ok((status, body, None, false))
+    Ok((status, body, etag, false))
 }
 async fn reply(
     savepoint: DatabaseTransaction,

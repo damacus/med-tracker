@@ -10,6 +10,8 @@ mod crud;
 mod dosages;
 #[path = "care_api/dose_history.rs"]
 mod dose_history;
+#[path = "care_api/dose_outcomes.rs"]
+mod dose_outcomes;
 #[path = "care_api/fixture.rs"]
 mod fixture;
 #[path = "care_api/invitations.rs"]
@@ -62,12 +64,22 @@ struct Application {
 
 impl Application {
     async fn new() -> Self {
+        Self::new_with_occurrence_key(Some("synthetic-dose-occurrence-signing-key")).await
+    }
+
+    async fn new_with_occurrence_key(signing_key: Option<&str>) -> Self {
         let fixture = Fixture::new().await;
         let mut config = Config::new(&Environment::Test).unwrap();
         config.settings.get_or_insert_with(|| json!({}))["browser_session"] = json!({
             "key": "BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBw==",
             "secure": false
         });
+        let settings = config.settings.get_or_insert_with(|| json!({}));
+        if let Some(signing_key) = signing_key {
+            settings["dose_occurrences"] = json!({"signing_key": signing_key});
+        } else {
+            settings.as_object_mut().unwrap().remove("dose_occurrences");
+        }
         config.database.uri = fixture.runtime_uri.clone();
         let Some(QueueConfig::Postgres(queue)) = config.queue.as_mut() else {
             panic!("PostgreSQL queue required")

@@ -3,6 +3,7 @@ mod assignments;
 mod audit;
 mod dosages;
 mod dose_history;
+mod dose_occurrences;
 mod input;
 mod invitations;
 mod locations;
@@ -53,6 +54,38 @@ pub fn invitation_routes() -> Routes {
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("/api/v1/households")
+        .add(
+            "/{household_id}/schedules/{id}/dose_occurrences",
+            get(dose_occurrences::list_schedule),
+        )
+        .add(
+            "/{household_id}/schedules/{id}/dose_occurrences/not_taken",
+            post(dose_occurrences::not_taken_schedule),
+        )
+        .add(
+            "/{household_id}/schedules/{id}/dose_occurrences/reopen",
+            patch(dose_occurrences::reopen_schedule),
+        )
+        .add(
+            "/{household_id}/schedules/{id}/dose_occurrences/take",
+            post(dose_occurrences::take_schedule),
+        )
+        .add(
+            "/{household_id}/person_medications/{id}/dose_occurrences",
+            get(dose_occurrences::list_assignment),
+        )
+        .add(
+            "/{household_id}/person_medications/{id}/dose_occurrences/not_taken",
+            post(dose_occurrences::not_taken_assignment),
+        )
+        .add(
+            "/{household_id}/person_medications/{id}/dose_occurrences/reopen",
+            patch(dose_occurrences::reopen_assignment),
+        )
+        .add(
+            "/{household_id}/person_medications/{id}/dose_occurrences/take",
+            post(dose_occurrences::take_assignment),
+        )
         .add(
             "/{household_id}/schedules/{id}/pause",
             patch(pause_periods::legacy::pause_schedule),

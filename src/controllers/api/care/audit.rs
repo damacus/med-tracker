@@ -9,6 +9,28 @@ pub(super) struct RequestAudit {
 }
 
 impl RequestAudit {
+    pub fn dose_occurrence(
+        method: &'static str,
+        action: &'static str,
+        source: &'static str,
+    ) -> Self {
+        Self {
+            method,
+            controller: "api/v1/dose_occurrences",
+            action,
+            policy: if source == "schedule" {
+                "SchedulePolicy"
+            } else {
+                "PersonMedicationPolicy"
+            },
+            query: match action {
+                "take" => "take?",
+                "not_taken" => "not_taken?",
+                "reopen" => "reopen?",
+                _ => "index?",
+            },
+        }
+    }
     pub fn pause_period(method: &'static str, action: &'static str) -> Self {
         Self {
             method,

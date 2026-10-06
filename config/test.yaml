@@ -3,6 +3,9 @@ logger:
   pretty_backtrace: false
   level: info
   format: compact
+settings:
+  dose_occurrences:
+    signing_key: <%= get_env(name="AUTH_SESSION_SECRET", default="synthetic-test-dose-occurrence-signing-key") %>
 server:
   port: <%= get_env(name="PORT", default="5150") %>
   binding: <%= get_env(name="BINDING", default="127.0.0.1") %>

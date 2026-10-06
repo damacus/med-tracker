@@ -4,6 +4,7 @@ pub mod browser_query;
 pub mod browser_treatments;
 pub mod dosages;
 pub mod dose_history;
+pub mod dose_occurrences;
 pub mod doses;
 pub mod invitations;
 pub mod locations;

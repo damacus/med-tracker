@@ -110,10 +110,15 @@ Browser adapters call the same tested model methods; no extra runner is required
 **Files:** Dose/sync modules/controllers above; focused leaves under `tests/care_api/`.
 Read `rails/app/services/medication_administration/`, `offline_dose_eligibility.rb`,
 `rust/api/src/dose/`, `mutation_idempotency.rs` and contract `doses.rs`, `replay.rs`, `sync.rs`.
-**Dose operations:** `Take`, `Correct`, `Delete`, `RecordMissed`;
+**Dose operations:** `Take`, `ReopenMissed`, `RecordMissed`;
 **Sync operations:** `ReadChanges`, `ReplayBatch`. Keep client UUID and sync cursor formats.
 
-Separate tasks: `dose_take`, `dose_correction`, `dose_delete`, `dose_missed`,
+The authoritative API and retained scheduled-dose contract correct a missed
+occurrence by reopening it. They prohibit rewriting or deleting a recorded take.
+Preserve immutable take history and stock; do not invent take PATCH/DELETE routes.
+Guarded medication deletion remains part of medication CRUD above.
+
+Separate tasks: `dose_take`, `dose_reopen`, `dose_missed`,
 `sync_read` and `sync_replay` in the existing `care_api` binary. Apply the following cycle to each filter;
 the Take and Replay tasks own the concurrency/idempotency assertions.
 

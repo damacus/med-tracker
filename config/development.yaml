@@ -4,6 +4,8 @@ logger:
   level: info
   format: compact
 settings:
+  dose_occurrences:
+    signing_key: <%= get_env(name="AUTH_SESSION_SECRET", default="synthetic-development-dose-occurrence-key") %>
   browser_session:
     key: BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBw==
     secure: false
