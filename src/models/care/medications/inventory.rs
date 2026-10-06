@@ -12,7 +12,7 @@ pub(super) async fn adjust(
     let found = visible_medication(tenant, &input.medication_id)
         .await?
         .ok_or(OperationError::NotFound)?;
-    if !matches!(tenant.membership().role.as_str(), "owner" | "administrator") {
+    if !access::can_manage_household(tenant) {
         return Err(OperationError::Forbidden);
     }
     if let Some(scalar) = scalar {

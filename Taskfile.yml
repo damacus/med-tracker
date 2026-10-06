@@ -143,6 +143,9 @@ tasks:
       - task: foundation:test-cleanup
       - task: foundation:test-database
       - task: browser
+  test:unit:
+    desc: Run Loco library tests with an optional name filter
+    cmds: ['cargo test --locked --lib {{.FILTER | default ""}} -- --test-threads=1']
   migration:audit:
     desc: Audit retained migration inputs explicitly
     cmds:

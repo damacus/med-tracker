@@ -6,6 +6,47 @@ acceptance; the remaining signup, native-client and cutover gates still apply.
 
 ## Maintained implementations
 
+### New owner direction — full account lifecycle
+
+The following table describes the published intermediate architecture. The owner
+now prioritises replacing Rodauth with a feature-complete maintained implementation,
+including account lifecycle, rather than extending custom reset/settings flows.
+Authentication must run inside MedTracker with its own daisyUI pages, database and
+transaction boundaries. Rauthy and all separate identity services are rejected.
+The owner selected Better Auth RS, including OrganizationPlugin for households and
+multiple household memberships. Implement it through the normal account and
+household journeys, using the documented library interfaces. Do not add a separate
+pre-implementation proof programme. Record a concrete library limitation for an
+owner decision only when it changes an agreed requirement. The dependency has not
+yet been installed or exercised against MedTracker.
+
+The owner permits clearing existing passwords and disabling existing MFA enrolments,
+then requiring secure password reset/onboarding before access. Historical hash and
+MFA enrolment continuity are excluded. This is an intentional migration decision,
+not evidence of a security incident or permission to mutate live credentials.
+Future MFA requirements are separate; resetting enrolments does not drop future
+authenticator-app TOTP. Passkeys are an alternative primary login: authenticate
+through the browser without entering a username or password. TOTP is the separate
+MFA capability; email OTP may be omitted. WebAuthn user verification does not by
+itself define the application's additional-factor policy.
+
+Recovery codes are required for every login method, including passkey-only users.
+Do not require TOTP enrolment just to issue recovery codes or substitute reset
+email when a user loses their sole passkey. Better Auth RS's documented backup-code
+flow depends on TwoFactorPlugin/password verification and pending MFA; independent
+issuance/account recovery is a library-fit gap to investigate using a maintained
+capability or upstream extension. Email ownership verification remains required
+but is not evidence of failed-login unlock. Exact lockout/unlock behaviour is still
+unconfirmed, and its omission has not been approved.
+
+Existing account IDs, clinical records, access grants and
+saved pre-cutover rollback credentials remain protected.
+
+Current root controller/module registrations do not expose password reset; the
+prepared eleven browser contracts have not been registered or executed. Rails
+already supplies its Rodauth lifecycle reference. Pause new custom reset/controller
+implementation until the maintained lifecycle decision is resolved.
+
 Use the root application's existing dependencies and preserved account schema:
 
 | Concern | Implementation |

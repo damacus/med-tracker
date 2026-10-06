@@ -141,10 +141,7 @@ async fn accept_validated(
                 .one(&transaction)
                 .await?
                 .ok_or_else(unavailable)?;
-            if inviter.status != "active"
-                || inviter.revoked_at.is_some()
-                || !matches!(inviter.role.as_str(), "owner" | "administrator")
-            {
+            if !crate::models::authorization::household_manager(&inviter, invitation.household_id) {
                 return Err(unavailable());
             }
             if membership::Entity::find()

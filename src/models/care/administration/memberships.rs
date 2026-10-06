@@ -167,9 +167,12 @@ async fn change_record(
             .one(tenant.transaction())
             .await?
             .is_some();
-        if (next_owner && !platform)
-            || (!next_owner && tenant.membership().role != "owner" && !platform)
-        {
+        if !crate::models::authorization::may_change_owner(
+            tenant.membership(),
+            tenant.scope().household_id,
+            platform,
+            next_owner,
+        ) {
             return rejected(
                 tenant,
                 &current,

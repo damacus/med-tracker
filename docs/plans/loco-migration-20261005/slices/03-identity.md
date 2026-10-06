@@ -36,32 +36,46 @@ the full migration scope. Core native/public API sign-in stays in the first rele
 
 ## Review focus
 
+The owner subsequently permits clearing passwords and disabling current MFA
+enrolments, requiring secure reset/onboarding before access. Historical password-hash
+and MFA enrolment continuity are excluded; future MFA capability remains required
+with TOTP as the separate MFA capability. Prioritise a feature-complete maintained
+Rodauth lifecycle replacement inside MedTracker. Rauthy and all separate identity
+services are rejected. Better Auth RS is selected, including OrganizationPlugin
+for households and multiple memberships. Implement it through normal account and
+household journey tests, including recovery, closure and transaction/security
+boundaries. Do not add a separate pre-implementation proof programme. Pause custom
+reset/settings work; a concrete library limitation that changes an agreed
+requirement needs an explicit owner decision.
+
 Existing stored formats must work (I1/I2). Duplicate, mixed and disallowed client credentials fail (I1/I3).
 Concurrent code/refresh redemption cannot mint duplicate valid grants (I3). Wrong revocation hints cannot
 prevent valid token lookup (I3). Revoked sessions and cross-origin mutations fail immediately (I2/I3).
 
-### I1: Resolve protocol and stored-format compatibility with an executable decision
+### I1: Integrate the selected library with the agreed account transition
 
 **Files:** Create `docs/plans/loco-migration-20261005/identity-decision.md`,
 `tests/identity_compatibility.rs`, `tests/fixtures/identity/manifest.json`;
 read `rails/app/misc/rodauth_main.rb`, existing Rust compatibility tests and retained source formats.
-**Interfaces:** Produce a chosen dependency/version, stored-format inventory and signed-off compatibility strategy.
-No later identity task starts with an undecided protocol implementation.
+**Interfaces:** Pin Better Auth RS and map its storage interfaces to canonical
+account and household records. The selected implementation and approved credential
+transition are inputs to the normal identity journeys, not a separate research gate.
 
 - [ ] Define executable conformance cases for native S256; public-none/confidential Basic/secret-post;
-  refresh rotation; RFC7009 form revocation; SMART patient response; old passwords/TOTP,
+  refresh rotation; RFC7009 form revocation; SMART patient response; secure onboarding after password/MFA reset,
   supported passkeys, and rejection of invalidated historical sessions/tokens.
   Assertions include `mixed_credentials_accepted == false`, `wrong_redirect_accepted == false`,
-  `second_code_redemption_succeeds == false`, `old_password_authenticates == true`.
+  `second_code_redemption_succeeds == false`, `clinical_access_before_onboarding == false`.
 - [ ] Run `rtk task slice:test TARGET=identity_compatibility`; record unsupported cases against the candidate,
   rather than treating PKCE helper availability as a complete OAuth server.
-- [ ] Conduct one bounded library proof using the existing feasibility findings and current primary docs.
-  Record the exact remaining adapter surface, maintenance evidence and necessity for any protocol glue.
-  If external deployment or reauthorisation is necessary, produce its concrete compatibility decision for
-  the user. Escalate unresolved security architecture to Astra; do not open a generic follow-up issue.
-- [ ] Run the conformance proof; require every required method/format to pass or have an explicitly approved
-  transition before integration. Reconcile all environment configuration, including password pepper.
-- [ ] Commit the decision/proof separately as `docs(identity): record verified authentication architecture`.
+- [ ] Implement the selected library using the existing findings and current primary docs.
+  Exercise recovery, canonical memberships, closure and audit rollback in normal
+  account/household journeys. Record necessary adapters and concrete limitations;
+  do not replace maintained security protocols with application-owned implementations.
+- [ ] Run the affected account and protocol journeys during implementation; require
+  each agreed behaviour to pass or have an explicitly approved transition.
+  Reconcile environment configuration with the selected library.
+- [ ] Publish the implementation and its updated decision documentation together.
 
 ### I2: Preserve browser authentication, MFA/passkeys and security middleware
 

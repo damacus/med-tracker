@@ -108,7 +108,7 @@ pub async fn authorize(
     let found = visible_medication(tenant, id)
         .await?
         .ok_or(OperationError::NotFound)?;
-    if !matches!(tenant.membership().role.as_str(), "owner" | "administrator") {
+    if !access::can_manage_household(tenant) {
         return Err(OperationError::Forbidden);
     }
     Ok(found)

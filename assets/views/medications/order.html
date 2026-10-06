@@ -1,0 +1,30 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-2xl mx-auto">
+  <a class="link" href="/households/{{ slug }}/medications/{{ medication_id }}">Back to Medication</a>
+  <h1 class="text-3xl font-semibold mt-4">Order medication</h1>
+  <p class="mt-2">{{ name }}</p>
+  <p class="mt-4 font-semibold" role="status">{{ order_status }}</p>
+  <div class="card shell-card mt-6"><div class="card-body">
+    <form method="post" action="/households/{{ slug }}/medications/{{ medication_id }}/order" class="grid gap-4">
+      <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+      <label class="grid gap-2" for="supplier">Supplier<input id="supplier" name="supplier" class="input shell-input w-full" value="{{ draft.supplier }}" {% if errors.supplier is defined %}aria-invalid="true" aria-describedby="supplier-error"{% endif %}></label>
+      {% if errors.supplier is defined %}<p id="supplier-error" class="shell-error" role="alert">{{ errors.supplier | join(sep=". ") }}</p>{% endif %}
+      <label class="grid gap-2" for="quantity">Order quantity<input id="quantity" name="quantity" inputmode="decimal" class="input shell-input w-full" value="{{ draft.quantity }}" {% if errors.quantity is defined %}aria-invalid="true" aria-describedby="quantity-error"{% endif %}></label>
+      {% if errors.quantity is defined %}<p id="quantity-error" class="shell-error" role="alert">{{ errors.quantity | join(sep=". ") }}</p>{% endif %}
+      <label class="grid gap-2" for="arrival">Expected arrival<input id="arrival" name="expected_arrival_on" type="date" class="input shell-input w-full" value="{{ draft.expected_arrival_on }}" {% if errors.expected_arrival_on is defined %}aria-invalid="true" aria-describedby="arrival-error"{% endif %}></label>
+      {% if errors.expected_arrival_on is defined %}<p id="arrival-error" class="shell-error" role="alert">{{ errors.expected_arrival_on | join(sep=". ") }}</p>{% endif %}
+      <button class="btn btn-neutral" type="submit">Mark as ordered</button>
+    </form>
+  </div></div>
+  <div class="card shell-card mt-6"><div class="card-body">
+    <h2 class="card-title">Receive an order</h2>
+    <p>Receiving an order does not change stock. Use Adjust stock to record the delivered quantity.</p>
+    <a class="link" href="/households/{{ slug }}/medications/{{ medication_id }}">Review stock</a>
+    <form method="post" action="/households/{{ slug }}/medications/{{ medication_id }}/received">
+      <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+      <button class="btn btn-neutral mt-4" type="submit">Mark as received</button>
+    </form>
+  </div></div>
+</section>
+{% endblock content %}

@@ -64,23 +64,13 @@ fn active_grants(tenant: &TenantTransaction) -> sea_orm::Select<grant::Entity> {
 }
 pub async fn can_create(tenant: &TenantTransaction) -> Result<bool, OperationError> {
     access::recheck(tenant).await?;
-    if matches!(tenant.membership().role.as_str(), "owner" | "administrator") {
+    if access::can_manage_household(tenant) {
         return Ok(true);
     }
-    Ok(active_grants(tenant)
-        .filter(grant::Column::AccessLevel.eq("manage"))
-        .one(tenant.transaction())
-        .await?
-        .is_some())
+    access::has_person_access(tenant, PersonAccess::Manage).await
 }
 pub async fn can_manage(tenant: &TenantTransaction, id: i64) -> Result<bool, OperationError> {
-    access::recheck(tenant).await?;
-    Ok(active_grants(tenant)
-        .filter(grant::Column::PersonId.eq(id))
-        .filter(grant::Column::AccessLevel.eq("manage"))
-        .one(tenant.transaction())
-        .await?
-        .is_some())
+    access::can_access_person(tenant, id, PersonAccess::Manage).await
 }
 pub async fn authorize_create(tenant: &TenantTransaction) -> Result<(), OperationError> {
     lock(tenant).await?;

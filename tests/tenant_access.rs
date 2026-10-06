@@ -248,6 +248,73 @@ async fn runtime_role_cannot_alter_schema_or_migration_history() {
 }
 
 #[tokio::test]
+async fn cedar_person_access_uses_current_grant_level_and_database_expiry() {
+    use med_tracker::models::care::people;
+    let fixture = Fixture::new().await;
+    let transaction = access::begin(&fixture.runtime, &scope(71001, 72001))
+        .await
+        .unwrap();
+    for (level, expected) in [
+        ("view", [true, false, false]),
+        ("record", [true, true, false]),
+        ("manage", [true, true, true]),
+    ] {
+        fixture
+            .admin
+            .execute_raw(Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                "UPDATE person_access_grants SET access_level=$1 WHERE id=78001",
+                [level.into()],
+            ))
+            .await
+            .unwrap();
+        for (request, allowed) in [
+            PersonAccess::View,
+            PersonAccess::Record,
+            PersonAccess::Manage,
+        ]
+        .into_iter()
+        .zip(expected)
+        {
+            assert_eq!(
+                access::require_person_access(&transaction, 73001, request).await,
+                if allowed {
+                    Ok(())
+                } else {
+                    Err(OperationError::Forbidden)
+                }
+            );
+        }
+        let visible = people::list(&transaction, people::Pagination::default(), chrono_tz::UTC)
+            .await
+            .unwrap();
+        assert_eq!(visible["meta"]["total_count"], 1);
+        assert_eq!(visible["data"][0]["id"], 73001);
+    }
+    fixture.admin.execute_unprepared("UPDATE person_access_grants SET expires_at=timezone('UTC',clock_timestamp())-interval '1 second' WHERE id=78001").await.unwrap();
+    assert_eq!(
+        access::require_person_access(&transaction, 73001, PersonAccess::View).await,
+        Err(OperationError::Forbidden)
+    );
+    let expired = people::list(&transaction, people::Pagination::default(), chrono_tz::UTC)
+        .await
+        .unwrap();
+    assert_eq!(expired["meta"]["total_count"], 0);
+    assert_eq!(expired["data"], serde_json::json!([]));
+    fixture.admin.execute_unprepared("UPDATE person_access_grants SET expires_at=timezone('UTC',clock_timestamp())+interval '1 day' WHERE id=78001").await.unwrap();
+    access::require_person_access(&transaction, 73001, PersonAccess::Manage)
+        .await
+        .unwrap();
+    let restored = people::list(&transaction, people::Pagination::default(), chrono_tz::UTC)
+        .await
+        .unwrap();
+    assert_eq!(restored["meta"]["total_count"], 1);
+    assert_eq!(restored["data"][0]["id"], 73001);
+    transaction.rollback().await.unwrap();
+    fixture.close().await;
+}
+
+#[tokio::test]
 async fn shared_recheck_rejects_current_account_lockout() {
     let fixture = Fixture::new().await;
     let transaction = access::begin(&fixture.runtime, &scope(71001, 72001))

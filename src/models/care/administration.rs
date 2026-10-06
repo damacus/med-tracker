@@ -26,10 +26,7 @@ use std::collections::HashMap;
 
 pub async fn can_manage(tenant: &TenantTransaction) -> Result<bool, OperationError> {
     access::recheck(tenant).await?;
-    Ok(matches!(
-        tenant.membership().role.as_str(),
-        "owner" | "administrator"
-    ))
+    Ok(access::can_manage_household(tenant))
 }
 pub async fn authorize(tenant: &TenantTransaction) -> Result<(), OperationError> {
     locations::authorize(tenant).await

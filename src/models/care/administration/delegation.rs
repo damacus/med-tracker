@@ -92,10 +92,10 @@ pub async fn assign(
         .one(tenant.transaction())
         .await?
         .ok_or_else(|| invalid("patient", "must belong to the relationship household"))?;
+    if !crate::models::authorization::may_delegate(tenant.membership(), &patient) {
+        return Err(OperationError::Forbidden);
+    }
     if !can_manage(tenant).await? {
-        if !matches!(patient.person_type, 1 | 2) || patient.has_capacity {
-            return Err(OperationError::Forbidden);
-        }
         access::require_person_access(tenant, patient_id, PersonAccess::Manage).await?;
     }
     let (level, kind) = match relationship_type {

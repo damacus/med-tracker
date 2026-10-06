@@ -32,12 +32,14 @@ use sea_orm::{
 };
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
+pub(crate) use source::app_zone;
 use source::{
-    Source, app_zone, effective_source, local_date_in_zone, source, source_from_assignment,
+    Source, effective_source, local_date_in_zone, source, source_from_assignment,
     source_from_schedule,
 };
 use std::{collections::HashSet, str::FromStr};
-use stock::{decrement_stock, same_stock_signature};
+use stock::decrement_stock;
+pub(crate) use stock::same_stock_signature;
 use timing::{applies_on, timing_allowed};
 use uuid::Uuid;
 use validation::parse_decimal;

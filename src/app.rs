@@ -48,6 +48,7 @@ impl Hooks for App {
             .add_route(browser(crate::controllers::signup::routes()))
             .add_route(browser(crate::controllers::oauth_server::browser_routes()))
             .add_route(browser(crate::controllers::medications::routes()))
+            .add_route(browser(crate::controllers::medication_orders::routes()))
             .add_route(browser(crate::controllers::dosage_options::routes()))
             .add_route(browser(crate::controllers::locations::routes()))
             .add_route(browser(crate::controllers::people::routes()))

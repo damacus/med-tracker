@@ -21,6 +21,13 @@ agent needs a follow-up task to restart. Check its state before handing work bac
 Only the coordinator commits or pushes. Use the repository's required identity
 and signing rules.
 
+Preserve the integrated main ancestry during publication. A plain rebase can
+flatten the merge even when its tree stays correct, delaying hosted checks.
+Before pushing, verify that the fetched main tip remains an ancestor of the
+candidate; use a merge-preserving update when needed. Verify hosted checks against
+the exact pushed head. Do not add empty trigger commits while investigating a
+missing check.
+
 ## Delivery
 
 Use existing public Tasks. Write a failing behavioural test, implement the change,

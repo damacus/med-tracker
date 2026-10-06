@@ -22,6 +22,30 @@ W1 depends on P3 and runs before enqueueing API endpoints. W2 depends on the rel
 No runtime role DDL, owner bypass or secret-bearing payloads. One queue unless a verified limitation requires
 an explicit architecture decision. Worker/source ownership remains with the persistent writer.
 
+Browser Web Push is the first notification capability to complete. Reuse the
+existing browser opt-in/unsubscribe/test flow and service-worker payload/click
+contract. Keep account-scoped, multiple-device subscriptions in PostgreSQL,
+alongside durable queue coordination, with the same VAPID signing key across
+replicas. RustFS owns shared files rather than subscription or job coordination.
+Use a maintained Web Push implementation. The retained Rust input already uses
+`web-push` 0.11 with default features disabled and its public request builder,
+sending the library's signed/encrypted message through `reqwest` with Rustls.
+Reuse that maintained protocol path rather than introducing the optional
+isahc/libcurl or Hyper/native-TLS clients. It is not installed in the root app
+yet. The encryption dependency still requires inspection and static-link proof;
+verify the full dependency chain and HTTPS trust roots in both scratch images.
+
+Preserve HTTPS/endpoint allowlisting/private-address protections and recheck
+household access and notification preferences at delivery. Deduplicate logical
+reminders in PostgreSQL and prove two workers cannot deliver the same reminder
+twice. Honour Retry-After for temporary failures within the reminder's useful
+lifetime; remove only the individually expired 404/410 endpoint. Provider
+acceptance does not prove that the browser displayed the notification. Shared
+browser account switching must not deliver the previous account's health data.
+Verify actual Chrome/Firefox/Safari and iPhone Home Screen delivery, click routing,
+opt-out, expiry/retry and release-image HTTPS. Provide feature detection and iOS
+installation guidance, and request permission only after a deliberate user action.
+
 ## Review focus
 
 Crash after side effect before acknowledgement (W1/W2), duplicate enqueue (W1/W2), withdrawn access

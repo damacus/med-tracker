@@ -9,6 +9,20 @@ pub(super) struct RequestAudit {
 }
 
 impl RequestAudit {
+    pub fn treatment(method: &'static str, action: &'static str) -> Self {
+        Self {
+            method,
+            controller: "api/v1/schedules",
+            action,
+            policy: "SchedulePolicy",
+            query: match action {
+                "create" => "create?",
+                "update" => "update?",
+                "show" => "show?",
+                _ => "index?",
+            },
+        }
+    }
     pub fn dosage(method: &'static str, action: &'static str) -> Self {
         Self {
             method,
@@ -106,6 +120,8 @@ impl RequestAudit {
                 "create" => "create?",
                 "index" => "index?",
                 "show" => "show?",
+                "mark_as_ordered" => "mark_as_ordered?",
+                "mark_as_received" => "mark_as_received?",
                 _ => "update?",
             },
         }
@@ -126,6 +142,15 @@ impl RequestAudit {
             action: "create",
             policy: "MedicationTakePolicy",
             query: "create?",
+        }
+    }
+    pub fn take_history() -> Self {
+        Self {
+            method: "GET",
+            controller: "api/v1/medication_takes",
+            action: "index",
+            policy: "MedicationTakePolicy",
+            query: "index?",
         }
     }
     pub fn stock() -> Self {

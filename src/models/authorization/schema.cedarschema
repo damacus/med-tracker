@@ -1,0 +1,39 @@
+entity Membership {
+    id: Long,
+    household_id: Long,
+    role: String,
+    status: String,
+    revoked: Bool
+};
+entity Resource { id: Long, household_id: Long };
+type Grant = {
+    household_id: Long,
+    membership_id: Long,
+    person_id: Long,
+    level: String,
+    revoked: Bool,
+    expiring: Bool,
+    expires_at: Long,
+    now: Long
+};
+action "manage_household" appliesTo {
+    principal: Membership, resource: Resource, context: {}
+};
+action "view_person", "record_person", "manage_person" appliesTo {
+    principal: Membership, resource: Resource, context: Grant
+};
+action "delegate_person" appliesTo {
+    principal: Membership, resource: Resource,
+    context: { person_type: Long, has_capacity: Bool }
+};
+action "change_owner" appliesTo {
+    principal: Membership, resource: Resource,
+    context: { platform_admin: Bool, next_owner: Bool }
+};
+action "support_household" appliesTo {
+    principal: Membership, resource: Resource,
+    context: {
+        trusted: Bool, platform_admin: Bool, household_id: Long,
+        ended: Bool, expired: Bool, expires_at: Long, now: Long
+    }
+};

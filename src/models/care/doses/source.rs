@@ -61,7 +61,7 @@ pub(super) fn source_from_schedule(value: schedule::Model) -> Source {
     }
 }
 
-pub(super) fn app_zone() -> chrono_tz::Tz {
+pub(crate) fn app_zone() -> chrono_tz::Tz {
     std::env::var("TZ")
         .ok()
         .and_then(|value| value.parse().ok())

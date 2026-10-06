@@ -113,10 +113,7 @@ pub async fn accept_signup(
         .one(transaction)
         .await?
         .ok_or_else(super::acceptance::unavailable)?;
-    if inviter.status != "active"
-        || inviter.revoked_at.is_some()
-        || !matches!(inviter.role.as_str(), "owner" | "administrator")
-    {
+    if !crate::models::authorization::household_manager(&inviter, household_id) {
         return Err(super::acceptance::unavailable());
     }
     let actor = super::acceptance::AcceptanceActor {

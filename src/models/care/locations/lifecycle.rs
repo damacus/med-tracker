@@ -47,10 +47,7 @@ async fn record_membership_destroy(
 
 pub async fn can_manage(tenant: &TenantTransaction) -> Result<bool, OperationError> {
     access::recheck(tenant).await?;
-    Ok(matches!(
-        tenant.membership().role.as_str(),
-        "owner" | "administrator"
-    ))
+    Ok(access::can_manage_household(tenant))
 }
 
 pub async fn list(tenant: &TenantTransaction) -> Result<Vec<location::Model>, OperationError> {

@@ -111,31 +111,30 @@ pub(super) async fn prepare(
         .all(db)
         .await
         .map_err(database_error)?;
-    let candidate_ids: HashSet<i64> =
-        if context.membership().role == "owner" || context.membership().role == "administrator" {
-            candidates.iter().map(|value| value.id).collect()
-        } else {
-            let schedule_ids = schedule::Entity::find()
-                .filter(schedule::Column::HouseholdId.eq(household_id))
-                .filter(schedule::Column::PersonId.eq(source.person_id))
-                .all(db)
-                .await
-                .map_err(database_error)?
-                .into_iter()
-                .map(|value| value.medication_id);
-            let assignment_ids = person_medication::Entity::find()
-                .filter(person_medication::Column::HouseholdId.eq(household_id))
-                .filter(person_medication::Column::PersonId.eq(source.person_id))
-                .all(db)
-                .await
-                .map_err(database_error)?
-                .into_iter()
-                .map(|value| value.medication_id);
-            schedule_ids
-                .chain(assignment_ids)
-                .chain(std::iter::once(source.medication_id))
-                .collect()
-        };
+    let candidate_ids: HashSet<i64> = if access::can_manage_household(context.tenant) {
+        candidates.iter().map(|value| value.id).collect()
+    } else {
+        let schedule_ids = schedule::Entity::find()
+            .filter(schedule::Column::HouseholdId.eq(household_id))
+            .filter(schedule::Column::PersonId.eq(source.person_id))
+            .all(db)
+            .await
+            .map_err(database_error)?
+            .into_iter()
+            .map(|value| value.medication_id);
+        let assignment_ids = person_medication::Entity::find()
+            .filter(person_medication::Column::HouseholdId.eq(household_id))
+            .filter(person_medication::Column::PersonId.eq(source.person_id))
+            .all(db)
+            .await
+            .map_err(database_error)?
+            .into_iter()
+            .map(|value| value.medication_id);
+        schedule_ids
+            .chain(assignment_ids)
+            .chain(std::iter::once(source.medication_id))
+            .collect()
+    };
     let matching: Vec<_> = candidates
         .into_iter()
         .filter(|value| {

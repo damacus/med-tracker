@@ -103,6 +103,16 @@ download links may expire. Preserve underlying files and data and issue new auth
 links. Historical system export formats and pre-cutover offline queues need not be
 carried over; new exports and future offline replay still require working Loco flows.
 
+The subsequent identity decision permits clearing existing passwords and disabling
+existing MFA enrolments. Provide a secure usable reset/onboarding flow before access;
+preserve credentials in the independently saved rollback state where required.
+This is a conscious migration choice, not a reported incident. Future MFA capability
+is a separate decision. A maintained full account-lifecycle replacement is the top
+priority and must run inside MedTracker. Rauthy and separate identity services are
+rejected. Better Auth RS with OrganizationPlugin for households is the preferred
+candidate, pending proved feature mapping and transaction/security integration.
+No live changes are authorised by this decision.
+
 Browser pages use daisyUI and clear Loco routes. Keep the same colour schemes,
 required information, actions and accessibility; exact Rails pixels, CSS values,
 theme exports and historical browser URLs are not acceptance requirements. Users

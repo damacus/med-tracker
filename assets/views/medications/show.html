@@ -6,6 +6,7 @@
   <div class="card bg-base-100 border border-base-300 mt-6"><div class="card-body">
     <h2 class="card-title">Inventory status</h2>
     <p data-testid="current-supply" class="text-2xl font-semibold">{{ quantity }} {{ unit }}</p>
+    <a class="btn btn-ghost self-start" href="/households/{{ slug }}/medications/{{ medication_id }}/order">Order medication</a>
     {% if can_adjust %}<a class="btn btn-ghost self-start" href="/households/{{ slug }}/medications/{{ medication_id }}/stock/adjust">Adjust stock</a>{% endif %}
     {% if can_adjust %}
     <a class="btn btn-ghost self-start" href="/households/{{ slug }}/medications/{{ medication_id }}/edit">Edit Medication</a>

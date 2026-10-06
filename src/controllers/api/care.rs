@@ -1,15 +1,19 @@
 mod administration;
 mod audit;
 mod dosages;
+mod dose_history;
 mod input;
 mod invitations;
 mod locations;
 mod medication_crud;
 mod medication_reads;
+mod orders;
 mod people;
 mod projection;
 mod removals;
 mod response;
+mod schedule_lifecycle;
+mod treatments;
 
 use crate::models::{
     access::TenantTransaction,
@@ -46,6 +50,16 @@ pub fn invitation_routes() -> Routes {
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("/api/v1/households")
+        .add(
+            "/{household_id}/schedules",
+            get(schedule_lifecycle::index).post(treatments::create),
+        )
+        .add(
+            "/{household_id}/schedules/{id}",
+            get(schedule_lifecycle::show)
+                .patch(schedule_lifecycle::update)
+                .put(schedule_lifecycle::update),
+        )
         .add(
             "/{household_id}/dosage_options",
             get(dosages::index).post(dosages::create),
@@ -119,7 +133,18 @@ pub fn routes() -> Routes {
                 .patch(medication_crud::update)
                 .put(medication_crud::update),
         )
-        .add("/{household_id}/medication_takes", post(take))
+        .add(
+            "/{household_id}/medication_takes",
+            get(dose_history::index).post(take),
+        )
+        .add(
+            "/{household_id}/medications/{id}/mark_as_ordered",
+            patch(orders::ordered),
+        )
+        .add(
+            "/{household_id}/medications/{id}/mark_as_received",
+            patch(orders::received),
+        )
         .add(
             "/{household_id}/medications/{id}/adjust_inventory",
             patch(adjust_stock),

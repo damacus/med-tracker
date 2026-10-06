@@ -1,5 +1,20 @@
 version: '3'
 tasks:
+  order-probe:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align -f tests/fixtures/browser-order-probe.sql'
+  fail-order-audit:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -f tests/fixtures/browser-order-audit-failure.sql'
+  use-order-member:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -c "UPDATE public.household_memberships SET role=''member'' WHERE id=74001"'
   age-verification-email:
     requires:
       vars: [CARE_DATABASE_URL, REGISTRATION_EMAIL]

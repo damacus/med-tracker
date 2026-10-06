@@ -167,6 +167,14 @@ Rails compatibility with Loco-created data and lossless rollback are not require
 
 Existing sessions and tokens will be invalidated. Prove the mechanism with synthetic
 credentials; preserve fresh sign-in and MFA, rather than historical continuity.
+The owner also permits clearing passwords and disabling existing MFA enrolments,
+requiring secure reset/onboarding before access. Historical hash/enrolment continuity
+is excluded; future MFA requirements are a separate decision. Prioritise a maintained
+full account lifecycle replacement for Rodauth inside MedTracker. Separate identity
+services, including Rauthy, are rejected. Better Auth RS is preferred, including
+OrganizationPlugin for households with multiple memberships. Prove the actually
+used Rodauth feature mapping before integration; proposed drops need an owner
+decision. New custom reset/settings work is paused.
 Old download links may expire; preserve files/data and issue new authorised links.
 Historical system export formats and pre-cutover offline queues need not migrate;
 new exports and future offline replay remain required. PDF reports must match the

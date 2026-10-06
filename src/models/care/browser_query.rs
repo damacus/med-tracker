@@ -204,7 +204,7 @@ pub async fn detail(tenant: &TenantTransaction, id: &str) -> Result<Detail, Oper
 }
 
 pub fn can_adjust(tenant: &TenantTransaction) -> bool {
-    matches!(tenant.membership().role.as_str(), "owner" | "administrator")
+    access::can_manage_household(tenant)
 }
 
 async fn permitted(

@@ -92,6 +92,7 @@ export const test = base.extend({
         registrationProbe: async email => JSON.parse(await fixtureTask('registration-probe', [`REGISTRATION_EMAIL=${email}`])),
         verificationProbe: async email => JSON.parse(await fixtureTask('verification-probe', [`REGISTRATION_EMAIL=${email}`])),
         ageVerificationEmail: email => fixtureTask('age-verification-email', [`REGISTRATION_EMAIL=${email}`]),
+        orderProbe: async () => JSON.parse(await fixtureTask('order-probe')), failOrderAudit: () => fixtureTask('fail-order-audit'), useOrderMember: () => fixtureTask('use-order-member'),
         passkeyProbe: async () => JSON.parse(await fixtureTask('passkey-probe')),
         passkeyCounterAhead: () => fixtureTask('passkey-counter-ahead'),
         passkeyRemovalRace: () => fixtureTask('passkey-removal-race'), passkeyRemovalRaceReady: async () => (await fixtureTask('passkey-removal-race-ready')) === 't',

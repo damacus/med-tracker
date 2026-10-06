@@ -25,7 +25,7 @@ pub async fn authorize(tenant: &TenantTransaction) -> Result<(), OperationError>
         .map_err(|_| OperationError::Unavailable)?
         .ok_or(OperationError::NotFound)?;
     access::recheck(tenant).await?;
-    if !matches!(tenant.membership().role.as_str(), "owner" | "administrator") {
+    if !access::can_manage_household(tenant) {
         return Err(OperationError::Forbidden);
     }
     Ok(())

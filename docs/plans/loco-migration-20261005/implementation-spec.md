@@ -58,12 +58,34 @@ old download signatures, historical system export formats and pre-cutover offlin
 queues are excluded. Preserve underlying files/data and account credentials; new
 authorised downloads, Loco exports and future offline replay remain required.
 
+The owner subsequently permits clearing passwords and disabling existing MFA
+enrolments, with secure usable reset/onboarding before clinical access. Historical
+password hashes and MFA enrolments need not remain usable in Loco. Preserve rollback
+credentials in the independent saved state. This does not claim an incident or
+authorise live mutations. Passkeys are the primary passwordless login: the browser
+authenticator prompt must not require username/password entry. TOTP remains a
+separate MFA capability. Recovery codes are required for every login method,
+including passkey-only accounts, independently of TOTP enrolment.
+Prioritise a feature-complete maintained account-lifecycle implementation inside
+MedTracker. Rauthy and separate identity services are rejected. Better Auth RS is
+selected, including OrganizationPlugin for households and multiple memberships.
+Implement the library through normal account and household journey tests. Check
+transaction, recovery and closure behaviour as part of that implementation, rather
+than creating a separate proof gate before coding. A concrete library limitation
+that changes an agreed requirement needs an explicit owner decision. Do not extend
+custom lifecycle by default.
+
 Use daisyUI browser pages and clear Loco routes. Keep the same colour schemes,
 required information/actions and accessibility. Exact Rails pixels, CSS geometry,
 theme-export fidelity and historical browser URLs are excluded. Push subscriptions
 may require re-enrolment; future push behaviour/preferences remain required.
-PDF reports must match the existing appearance, using inspected renderer/font and
-retained Rust evidence and a verified final scratch runtime.
+PDF reports must match the existing appearance. Use the selected `sghtmltopdf`
+renderer, retained report templates/fonts and a verified final scratch runtime.
+Use `aws-sdk-s3` with the existing RustFS service for shared persistent files so
+multiple application replicas do not depend on one replica's local files.
+When enabled, Gravatar is the primary avatar source. Optional uploaded avatars
+use the maintained `image` crate for basic resizing, accept PNG/JPEG/WebP and
+retain the existing 5 MB limit. No new output-size requirement is approved.
 
 The first production gate excludes FHIR/SMART, MCP, AI and external medication
 lookup. These remain in the eventual complete migration objective. Exact external

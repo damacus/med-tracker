@@ -1,8 +1,11 @@
 pub mod administration;
 pub mod browser_query;
 pub mod dosages;
+pub mod dose_history;
 pub mod doses;
 pub mod invitations;
 pub mod locations;
 pub mod medications;
+pub mod orders;
 pub mod people;
+pub mod treatments;

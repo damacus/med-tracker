@@ -1,5 +1,112 @@
 # Authorization-server feasibility findings
 
+## Full account lifecycle research — 6 October 2026
+
+The owner prioritises a feature-complete maintained Rodauth replacement embedded
+inside MedTracker, with its own daisyUI pages and database. Rauthy and all separate
+identity services are rejected. Better Auth RS is selected,
+including OrganizationPlugin for households and multiple memberships. Clearing
+existing passwords and MFA enrolments is
+accepted, provided secure reset/onboarding works before access. The existing root
+registrations have no password-reset route; eleven intended reset contracts remain
+private and unexecuted. New custom lifecycle implementation is paused. Integrate
+the selected library through normal account and household journeys, without a
+separate pre-implementation proof programme. No dependency has been installed,
+deployed or exercised against MedTracker yet.
+
+| Option | Verified fit and limitation |
+| --- | --- |
+| [Rauthy v0.37.0](https://github.com/sebadob/rauthy/releases/tag/v0.37.0) | Separate Rust OIDC identity service with account/admin UI, activation/reset mail, passkeys and attack controls. Version 0.37 adds opt-in email OTP; authenticator-app TOTP is still unimplemented. |
+| [rs-auth](https://github.com/rs-auth/rs-auth) | Embedded signup, verification, reset, sessions and social login. Documented feature set does not establish required TOTP/passkey/full lifecycle coverage or independent audit evidence. |
+| [moso-auth](https://docs.rs/crate/moso-auth/latest) | Advertises lifecycle/MFA/passkeys, but published 0.0.1 dates to 19 August 2026 and depends on its own framework/ORM graph. Feature claims are not maturity or integration proof. |
+| [Better Auth RS](https://github.com/better-auth-rs/better-auth-rs) | Current master advertises Axum and application-owned SeaORM entities, but 1.0.0-alpha.3 APIs/schema may change and current DX examples are not a published release. Upstream TypeScript Better Auth maturity cannot be attributed to this Rust implementation. |
+
+The following Rauthy findings are retained as research history, not an adoption
+recommendation: the separate-service architecture is ruled out. Its
+[documentation](https://sebadob.github.io/rauthy/) reports an independent
+audit with findings addressed in 0.32.1. The report itself and latest-release coverage
+have not been verified. Its [official Dockerfile](https://raw.githubusercontent.com/sebadob/rauthy/main/Dockerfile)
+uses distroless cc-debian12 non-root, not scratch. MedTracker's own scratch server/
+worker requirement remains; a separate IdP image boundary needs an explicit decision.
+The [current OTP config](https://raw.githubusercontent.com/sebadob/rauthy/main/config.toml)
+states only email OTP is implemented. Resetting old MFA does not resolve whether
+future authenticator-app TOTP is required.
+
+The rejected external design would let Rauthy own credential lifecycle and its
+account UI. A maintained OIDC
+client supplies verified issuer/subject; explicit unique mappings preserve local
+account IDs. Never link care accounts dynamically from submitted/unverified email.
+Cedar, current local grants and PostgreSQL RLS own clinical access. Household
+administrators do not become identity-service administrators. Creation/deletion
+across two systems needs controlled retry/reconciliation rather than a claimed
+single SQL transaction.
+
+[Forced logout](https://sebadob.github.io/rauthy/work/logout.html) removes sessions
+and refresh tokens and sends backchannel notifications. Local JWT signature/expiry
+checks alone do not establish immediate invalidation. That documentation describes
+client-side backchannel helpers as future work; verify the actual maintained client
+or introspection capability before integration, rather than writing a new protocol.
+
+Normal account and household journey tests must provision an explicitly mapped existing account, receive
+activation/reset mail, sign in to that exact account, deny cross-household access,
+invalidate the MedTracker session on logout/disable, restart without losing mapping,
+and retry closure safely. No production credentials or account mutations. Outstanding
+feature decisions include exact password lockout/email unlock behaviour and any
+optional absolute session-age limit. Existing published source and
+all full migration requirements remain until this replacement is proved.
+
+Better Auth RS research must use a reviewed immutable revision rather than assume
+master documentation matches released `1.0.0-alpha.3`. The inspected master revision
+is `9f91cd7fdb8a5f73a9c69d5c56d363468a7dc281`. Prove passwordless migrated-account
+reset, mail callbacks, immediate session withdrawal with cookie caching disabled,
+transactional account/person/household/audit writes, and both scratch architectures.
+Organization membership may own household identity and roles, but it must preserve
+scoped suspension, person grants and Cedar without two mutable membership authorities.
+An active-organisation session selector does not authorise a household URL. Protect
+multi-tab access and live membership changes. Plugin admin routes and deletion must
+not bypass Cedar, retention holds, last-owner rules or clinical history preservation.
+
+Rails production verification grace is zero; no seven-day production grace needs
+reproducing. Password-only timed lockout and emailed unlock are not proved by client
+rate limiting. Passkeys must not count as MFA without proved required user
+verification. The owner requires passkeys as passwordless primary login and TOTP
+as the separate MFA capability, and permits omitting email OTP. Recovery codes
+are required regardless of login method, including recovery after loss of a sole
+passkey, without mandatory TOTP enrolment. TwoFactorPlugin's documented backup-code
+flow is not proof of that independent recovery capability. Investigate a maintained
+implementation or upstream extension; do not substitute reset email or a custom
+token protocol. Email ownership verification does not clear a failed-login lockout;
+the owner's verification-documentation link is not approval to omit emailed unlock.
+Plugin OAuth client sign-in is not evidence of a replacement OAuth
+authorisation server; deferred native/SMART work remains in the full migration goal.
+
+### Embedded integration findings at the pinned revision
+
+Read-only source inspection establishes one usable transaction seam and several
+gaps to exercise and resolve during the selected library's normal implementation:
+
+| Application requirement | Actual maintained-library seam or limitation |
+| --- | --- |
+| Atomic signup and clinical-account provisioning | [Email/password signup](https://github.com/better-auth-rs/better-auth-rs/blob/9f91cd7fdb8a5f73a9c69d5c56d363468a7dc281/crates/api/src/plugins/email_password.rs#L593) creates user, credential account and optional session through `TransactionStore`. [SeaORM hook context](https://github.com/better-auth-rs/better-auth-rs/blob/9f91cd7fdb8a5f73a9c69d5c56d363468a7dc281/crates/seaorm/src/hooks.rs#L27) exposes that transaction, allowing application person/household/membership/audit writes to join it and propagate failure. Prove forced audit failure rolls every write back. |
+| Reset a migrated account with no password | [Reset handlers](https://github.com/better-auth-rs/better-auth-rs/blob/9f91cd7fdb8a5f73a9c69d5c56d363468a7dc281/crates/api/src/plugins/password_management/handlers.rs#L108) create the missing credential account. Token consumption, password write and session withdrawal are separate calls; `on_password_reset` errors are logged and ignored. The [transaction interface](https://github.com/better-auth-rs/better-auth-rs/blob/9f91cd7fdb8a5f73a9c69d5c56d363468a7dc281/crates/core/src/store/mod.rs#L30) exposes only user/account/session creation. A callback cannot make the entire reset atomic. Prove the write-failure case and establish a maintained transaction extension rather than copying reset logic. |
+| OrganizationPlugin owns household memberships | [Custom schema](https://github.com/better-auth-rs/better-auth-rs/blob/9f91cd7fdb8a5f73a9c69d5c56d363468a7dc281/crates/core/src/schema.rs#L6) covers User, Session, Account and Verification; that limits bundled SeaORM entity substitution, not the public storage interface. [Public OrganizationStore/MemberStore](https://github.com/better-auth-rs/better-auth-rs/blob/9f91cd7fdb8a5f73a9c69d5c56d363468a7dc281/crates/core/src/store/mod.rs#L142) can map canonical existing household/membership tables. IDs are strings without a UUID constraint, allowing checked conversion of existing numeric IDs. Prove this adapter round-trip and live withdrawal without synchronised duplicate authorities. |
+| Household creation and invitation acceptance | [Organization creation](https://github.com/better-auth-rs/better-auth-rs/blob/9f91cd7fdb8a5f73a9c69d5c56d363468a7dc281/crates/api/src/plugins/organization/handlers/org.rs#L71) writes organization and member separately; invitation acceptance similarly separates member creation and invitation status. Account/member/person grants and audits need one transaction or a demonstrated maintained extension. |
+| Tenant RLS and safe account closure | Ordinary SeaORM store operations use the pooled connection rather than a supplied tenant transaction. [User deletion](https://github.com/better-auth-rs/better-auth-rs/blob/9f91cd7fdb8a5f73a9c69d5c56d363468a7dc281/crates/seaorm/src/store/users.rs#L162) uses a hook context without a transaction and separates API-key/user deletion. An after-delete audit cannot undo it. Establish tenant context in the actual transaction and guard closure with clinical retention/last-owner rules. |
+
+These findings do not reject OrganizationPlugin, approve feature drops or authorise
+a competing membership implementation. They identify the exact storage and
+transaction adapters required for the selected direction. Published alpha APIs
+may differ from these master sources; any adoption must pin the reviewed revision.
+
+Independent recovery remains a demonstrated gap at this pin. [Code generation](https://github.com/better-auth-rs/better-auth-rs/blob/9f91cd7fdb8a5f73a9c69d5c56d363468a7dc281/crates/api/src/plugins/two_factor/actions.rs#L352)
+requires an authenticated session, enabled two-factor state, a stored credential
+password and a TwoFactor row. [Redemption](https://github.com/better-auth-rs/better-auth-rs/blob/9f91cd7fdb8a5f73a9c69d5c56d363468a7dc281/crates/api/src/plugins/two_factor/mod.rs#L612)
+requires an existing session or a signed pending MFA challenge. There is no public
+configuration/helper for a passwordless, TOTP-free user to issue recovery codes or
+start recovery after losing their sole passkey. Prove that case explicitly and
+establish a maintained upstream extension; do not drop the requirement or introduce
+an application-owned recovery protocol.
+
 Read-only Scout research on 5 October 2026. No runtime checks or implementation.
 Actual Rails uses Rodauth OAuth server, not merely OAuth client authentication.
 SMART discovery advertises authorize/token/revoke, S256, authorization-code and

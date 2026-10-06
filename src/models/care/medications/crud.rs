@@ -4,8 +4,7 @@ mod persistence;
 mod validation;
 
 use super::*;
-use crate::models::entities::{api_tombstone, grant, person, person_medication, schedule};
-use sea_orm::sea_query::{Expr, ExprTrait};
+use crate::models::entities::{api_tombstone, person, person_medication, schedule};
 use sea_orm::{Condition, QueryOrder, QuerySelect};
 use std::collections::HashMap;
 
@@ -197,7 +196,7 @@ async fn locked_manager(
     let found = visible_medication(tenant, id)
         .await?
         .ok_or(OperationError::NotFound)?;
-    if !matches!(tenant.membership().role.as_str(), "owner" | "administrator") {
+    if !access::can_manage_household(tenant) {
         return Err(OperationError::Forbidden);
     }
     lock_row(tenant.transaction(), "medications", found.id).await?;
@@ -213,26 +212,10 @@ async fn locked_manager(
 }
 
 async fn may_create(tenant: &TenantTransaction) -> Result<bool, OperationError> {
-    if matches!(tenant.membership().role.as_str(), "owner" | "administrator") {
+    if access::can_manage_household(tenant) {
         return Ok(true);
     }
-    grant::Entity::find()
-        .filter(grant::Column::HouseholdId.eq(tenant.scope().household_id))
-        .filter(grant::Column::HouseholdMembershipId.eq(tenant.membership().id))
-        .filter(grant::Column::AccessLevel.eq("manage"))
-        .filter(grant::Column::RevokedAt.is_null())
-        .filter(
-            Condition::any()
-                .add(grant::Column::ExpiresAt.is_null())
-                .add(
-                    Expr::col(grant::Column::ExpiresAt)
-                        .gt(Expr::cust("timezone('UTC', clock_timestamp())")),
-                ),
-        )
-        .one(tenant.transaction())
-        .await
-        .map(|row| row.is_some())
-        .map_err(database_error)
+    access::has_person_access(tenant, crate::models::access::PersonAccess::Manage).await
 }
 
 pub async fn can_create(tenant: &TenantTransaction) -> Result<bool, OperationError> {

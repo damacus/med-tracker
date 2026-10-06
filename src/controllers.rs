@@ -7,6 +7,7 @@ pub mod dosage_options;
 pub mod home;
 pub mod invitations;
 pub mod locations;
+pub mod medication_orders;
 pub mod medications;
 pub mod oauth_server;
 pub mod people;

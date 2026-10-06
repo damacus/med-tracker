@@ -6,6 +6,8 @@ mod api_session;
 mod crud;
 #[path = "care_api/dosages.rs"]
 mod dosages;
+#[path = "care_api/dose_history.rs"]
+mod dose_history;
 #[path = "care_api/fixture.rs"]
 mod fixture;
 #[path = "care_api/invitations.rs"]
@@ -18,6 +20,14 @@ mod medication_reads;
 mod people;
 #[path = "care_api/resource_credentials.rs"]
 mod resource_credentials;
+#[path = "care_api/schedule_lifecycle.rs"]
+mod schedule_lifecycle;
+#[path = "care_api/schedule_scope.rs"]
+mod schedule_scope;
+#[path = "care_api/stock_orders.rs"]
+mod stock_orders;
+#[path = "care_api/treatments.rs"]
+mod treatments;
 
 use axum::{body::Body, http::Request};
 use fixture::Fixture;
