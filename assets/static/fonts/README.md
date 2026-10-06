@@ -2,8 +2,8 @@
 
 The WOFF2 files for Inter, Plus Jakarta Sans, Lexend, Outfit, Figtree, Urbanist and
 Public Sans are copied unchanged from `rails/app/assets/fonts/`. The Geist
-variable font and its original licence are copied unchanged from retained PR
-#2395 at `refs/loco-migration/input-pr-2395` (`1b60dcbf4ab4c60b3f4be1798d939fbe00fd11c4`).
+variable font and its original licence are copied unchanged from retained
+PR #2395 at `refs/loco-migration/input-pr-2395` (`1b60dcbf4ab4c60b3f4be1798d939fbe00fd11c4`).
 No remote fonts are loaded by the application.
 
 Each family includes its SIL Open Font License and copyright notice. The missing
