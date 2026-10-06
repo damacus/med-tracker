@@ -1,6 +1,6 @@
 use super::*;
 
-pub(super) async fn record(
+pub(in crate::models::identity) async fn record(
     transaction: &DatabaseTransaction,
     account_id: i64,
     token_type: &str,

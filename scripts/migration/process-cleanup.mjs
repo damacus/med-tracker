@@ -6,6 +6,7 @@ export async function stopOwnedProcess(child, { termMs = 2000, killMs = 2000 } =
   const alive = () => {
     try { process.kill(group, 0); return true; } catch (error) {
       if (error.code === 'ESRCH') return false;
+      if (error.code === 'EPERM') return true;
       throw error;
     }
   };

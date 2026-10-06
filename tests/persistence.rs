@@ -12,6 +12,7 @@ impl MigratorTrait for StandardLedger {
             Box::new(migration::m20261006_000003_canonical_take_identity::Migration),
             Box::new(migration::m20261006_000004_browser_sessions::Migration),
             Box::new(migration::m20261006_000005_access_token_scopes::Migration),
+            Box::new(migration::m20261006_000006_registration_policy::Migration),
         ]
     }
 }
@@ -29,6 +30,12 @@ async fn catalog(db: &loco_rs::prelude::DatabaseConnection) -> serde_json::Value
         .unwrap()
         .unwrap();
     serde_json::from_str(&row.try_get::<String>("", "catalog").unwrap()).unwrap()
+}
+
+fn sorted_catalog_keys(catalog: &serde_json::Map<String, serde_json::Value>) -> Vec<&str> {
+    let mut keys = catalog.keys().map(String::as_str).collect::<Vec<_>>();
+    keys.sort_unstable();
+    keys
 }
 
 #[tokio::test]
@@ -50,7 +57,7 @@ async fn capture_persistence_catalog() {
         .map(|(key, value)| (key.clone(), value.clone()))
         .collect();
     assert_eq!(
-        delta.keys().map(String::as_str).collect::<Vec<_>>(),
+        sorted_catalog_keys(&delta),
         vec![
             "column:public.seaql_migrations.applied_at",
             "column:public.seaql_migrations.version",
@@ -109,10 +116,7 @@ async fn capture_persistence_catalog() {
         "constraint:public.pg_loco_queue.pg_loco_queue_updated_at_not_null",
         "relation:public.pg_loco_queue",
     ];
-    assert_eq!(
-        queue.keys().map(String::as_str).collect::<Vec<_>>(),
-        expected
-    );
+    assert_eq!(sorted_catalog_keys(&queue), expected);
     std::fs::write(
         output.join("medtracker-queue-catalog.json"),
         serde_json::to_string_pretty(&queue).unwrap(),
@@ -144,6 +148,13 @@ async fn capture_persistence_catalog() {
                 "column:public.oauth_grants.access_token_scopes",
             ],
         ),
+        (
+            "registration-policy",
+            vec![
+                "function:public.registration_has_active_owner()",
+                "policy:public.household_memberships.registration_active_owner_lookup",
+            ],
+        ),
     ] {
         db.execute_unprepared("SET search_path = public, pg_temp")
             .await
@@ -157,10 +168,7 @@ async fn capture_persistence_catalog() {
             .filter(|(key, value)| previous.get(*key) != Some(*value))
             .map(|(key, value)| (key.clone(), value.clone()))
             .collect();
-        assert_eq!(
-            delta.keys().map(String::as_str).collect::<Vec<_>>(),
-            expected_keys
-        );
+        assert_eq!(sorted_catalog_keys(&delta), expected_keys);
         std::fs::write(
             output.join(format!("medtracker-{name}-catalog.json")),
             serde_json::to_string_pretty(&delta).unwrap(),
@@ -251,6 +259,42 @@ async fn adoption_provisions_the_standard_durable_browser_session_store() {
         .unwrap();
     db.close().await.unwrap();
     assert!(exists, "Standard durable browser session store is absent");
+}
+
+#[tokio::test]
+async fn registration_policy_exposes_only_active_owner_existence() {
+    let db = restored_database().await;
+    migration::Migrator::up(&db, None).await.unwrap();
+    db.execute_unprepared(include_str!("fixtures/persistence-records.sql"))
+        .await
+        .unwrap();
+    for (change, expected) in [
+        ("", false),
+        (
+            "UPDATE public.household_memberships SET role='owner' WHERE id=74001",
+            true,
+        ),
+        (
+            "UPDATE public.household_memberships SET status='revoked' WHERE id=74001",
+            false,
+        ),
+    ] {
+        db.execute_unprepared("RESET ROLE").await.unwrap();
+        if !change.is_empty() {
+            db.execute_unprepared(change).await.unwrap();
+        }
+        db.execute_unprepared("SET ROLE med_tracker_app")
+            .await
+            .unwrap();
+        let result = db.query_one_raw(migration::sea_orm::Statement::from_string(
+            migration::sea_orm::DbBackend::Postgres,
+            "SELECT public.registration_has_active_owner() AS has_owner, (SELECT count(*) FROM public.household_memberships) AS visible_memberships, pg_has_role(current_user, 'med_tracker_owner', 'MEMBER') AS can_assume_owner_role",
+        )).await.unwrap().unwrap();
+        assert_eq!(result.try_get::<bool>("", "has_owner").unwrap(), expected);
+        assert_eq!(result.try_get::<i64>("", "visible_memberships").unwrap(), 0);
+        assert!(!result.try_get::<bool>("", "can_assume_owner_role").unwrap());
+    }
+    db.close().await.unwrap();
 }
 
 #[tokio::test]
@@ -364,7 +408,9 @@ async fn populated_adoption_preserves_records_and_rails_metadata() {
     assert_eq!(records["rails_migrations"].as_array().unwrap().len(), 177);
     assert!(!records["rails_metadata"].as_array().unwrap().is_empty());
     migration::Migrator::up(&db, None).await.unwrap();
-    assert_eq!(ledger_rows(&db).await.len(), 5);
+    let adopted = ledger_rows(&db).await;
+    assert_eq!(adopted.len(), 6);
+    assert_eq!(adopted[5].0, "m20261006_000006_registration_policy");
     let after: String = db
         .query_one_raw(migration::sea_orm::Statement::from_string(
             migration::sea_orm::DbBackend::Postgres,
@@ -643,7 +689,9 @@ async fn cooperating_adoptions_serialize() {
     );
     first.unwrap();
     second.unwrap();
-    assert_eq!(ledger_rows(&db).await.len(), 5);
+    let adopted = ledger_rows(&db).await;
+    assert_eq!(adopted.len(), 6);
+    assert_eq!(adopted[5].0, "m20261006_000006_registration_policy");
     other.close().await.unwrap();
     db.close().await.unwrap();
 }
@@ -764,12 +812,13 @@ async fn baseline_only_adoption_upgrades_to_the_supported_runtime_state() {
     assert_eq!(baseline.len(), 1);
     migration::Migrator::up(&db, None).await.unwrap();
     let runtime = ledger_rows(&db).await;
-    assert_eq!(runtime.len(), 5);
+    assert_eq!(runtime.len(), 6);
     assert_eq!(runtime[0], baseline[0]);
     assert_eq!(runtime[1].0, "m20261005_000002_provision_runtime");
     assert_eq!(runtime[2].0, "m20261006_000003_canonical_take_identity");
     assert_eq!(runtime[3].0, "m20261006_000004_browser_sessions");
     assert_eq!(runtime[4].0, "m20261006_000005_access_token_scopes");
+    assert_eq!(runtime[5].0, "m20261006_000006_registration_policy");
     let before = catalog(&db).await;
     migration::Migrator::up(&db, None).await.unwrap();
     assert_eq!(ledger_rows(&db).await, runtime);

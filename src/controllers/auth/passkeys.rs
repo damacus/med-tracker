@@ -187,12 +187,16 @@ pub(super) async fn login(
     {
         Ok(()) => authenticated_redirect(&session),
         Err(AuthenticationError::Unavailable) => StatusCode::SERVICE_UNAVAILABLE.into_response(),
-        Err(_) => login_form(
-            &token,
-            &view,
-            Some("Unable to sign in with this passkey."),
-            StatusCode::UNAUTHORIZED,
-        ),
+        Err(_) => {
+            login_form(
+                &ctx.db,
+                &token,
+                &view,
+                Some("Unable to sign in with this passkey."),
+                StatusCode::UNAUTHORIZED,
+            )
+            .await
+        }
     }
 }
 

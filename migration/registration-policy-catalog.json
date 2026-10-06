@@ -1,0 +1,19 @@
+{
+  "function:public.registration_has_active_owner()": {
+    "acl": [
+      "med_tracker_app=X/med_tracker_owner",
+      "med_tracker_owner=X/med_tracker_owner"
+    ],
+    "owner": "med_tracker_owner",
+    "definition": "CREATE OR REPLACE FUNCTION public.registration_has_active_owner()\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'pg_temp'\nAS $function$\n    SELECT EXISTS (\n      SELECT 1 FROM public.household_memberships\n      WHERE role = 'owner' AND status = 'active'\n    );\n  $function$\n"
+  },
+  "policy:public.household_memberships.registration_active_owner_lookup": {
+    "check": null,
+    "roles": [
+      "med_tracker_owner"
+    ],
+    "using": "(((role)::text = 'owner'::text) AND ((status)::text = 'active'::text))",
+    "command": "r",
+    "permissive": true
+  }
+}

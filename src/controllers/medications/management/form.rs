@@ -143,6 +143,8 @@ pub(super) fn view(
         "Add a New Medication"
     });
     data["slug"] = json!(slug);
+    data["dosage_options_url"] =
+        json!(id.map(|id| format!("/households/{slug}/medications/{id}/dosage_options")));
     data["action"] = json!(id.map_or_else(
         || format!("/households/{slug}/medications"),
         |id| format!("/households/{slug}/medications/{id}")

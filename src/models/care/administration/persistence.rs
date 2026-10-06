@@ -14,7 +14,7 @@ fn context(tenant: &TenantTransaction, provenance: Option<&CredentialProvenance>
     }
     context
 }
-pub(super) async fn event(
+pub(crate) async fn event(
     tenant: &TenantTransaction,
     event: &str,
     metadata: Value,
@@ -45,6 +45,26 @@ pub(super) async fn record_version(
     after: Value,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<(), OperationError> {
+    record_version_as(
+        tenant,
+        kind,
+        id,
+        if before.is_some() { "update" } else { "create" },
+        before,
+        after,
+        provenance,
+    )
+    .await
+}
+pub(crate) async fn record_version_as(
+    tenant: &TenantTransaction,
+    kind: &str,
+    id: i64,
+    event: &str,
+    before: Option<Value>,
+    after: Value,
+    provenance: Option<&CredentialProvenance>,
+) -> Result<(), OperationError> {
     let mut keys = std::collections::BTreeSet::new();
     for value in [before.as_ref(), Some(&after)].into_iter().flatten() {
         keys.extend(
@@ -70,7 +90,7 @@ pub(super) async fn record_version(
     version::ActiveModel {
         item_type: Set(kind.into()),
         item_id: Set(id),
-        event: Set(if before.is_some() { "update" } else { "create" }.into()),
+        event: Set(event.into()),
         object: Set(before.map(|value| value.to_string())),
         object_changes: Set(Some(Value::Object(changes).to_string())),
         whodunnit: Set(Some(tenant.user_id().to_string())),
@@ -85,7 +105,7 @@ pub(super) async fn record_version(
     .await?;
     Ok(())
 }
-pub(super) async fn bump(tenant: &TenantTransaction, id: i64) -> Result<(), OperationError> {
+pub(crate) async fn bump(tenant: &TenantTransaction, id: i64) -> Result<(), OperationError> {
     use sea_orm::sea_query::{Expr, ExprTrait};
     membership::Entity::update_many()
         .col_expr(

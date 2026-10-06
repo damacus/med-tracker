@@ -10,6 +10,8 @@
     <button class="btn shell-primary" type="submit">Sign in</button>
   </form>
   <button type="button" class="btn mt-4" data-passkey-login>Sign in with a passkey</button>
+  {% if registration_open is defined and registration_open %}<p>Need an account? <a class="link" href="/create-account">Create one</a></p>{% endif %}
+  <p><a class="link" href="/verify-account-resend">Resend verification email</a></p>
 </div></section>
 <script src="/static/js/passkeys.js" defer></script>
 {% endblock content %}

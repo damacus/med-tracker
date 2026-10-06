@@ -1,0 +1,22 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-xl mx-auto card bg-base-100 border border-base-300">
+  <div class="card-body">
+    {% if signed_in %}
+    <h1 class="text-3xl font-semibold">Accept invitation</h1>
+    <p>You have been invited to join <strong>{{ invitation.household_name }}</strong> as a {{ invitation.membership_role }}.</p>
+    <p>Invitation for {{ invitation.email }}</p>
+    <form method="post" action="/invitations/accept" data-invitation-accept>
+      <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+      <input type="hidden" name="token" value="{{ invitation_token }}">
+      <button class="btn btn-neutral" type="submit">Accept invitation</button>
+    </form>
+    {% else %}
+    <h1 class="text-3xl font-semibold">Complete Your Account</h1>
+    <p>You have been invited to join <strong>{{ invitation.household_name }}</strong> as a {{ invitation.membership_role }}.</p>
+    <p>Already have an account? <a class="link" href="/login">Sign in</a> to accept this invitation.</p>
+    {% include "auth/account_form.html" %}
+    {% endif %}
+  </div>
+</section>
+{% endblock content %}

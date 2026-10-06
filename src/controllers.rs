@@ -3,11 +3,14 @@ use loco_rs::prelude::*;
 pub mod administration;
 pub mod api;
 pub mod auth;
+pub mod dosage_options;
 pub mod home;
+pub mod invitations;
 pub mod locations;
 pub mod medications;
 pub mod oauth_server;
 pub mod people;
+pub mod signup;
 
 #[allow(
     clippy::result_large_err,

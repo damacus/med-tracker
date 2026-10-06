@@ -58,20 +58,29 @@ pub fn routes() -> Routes {
         )
 }
 
-async fn login(token: CsrfToken, ViewEngine(view): ViewEngine<TeraView>) -> Response {
-    login_form(&token, &view, None, StatusCode::OK)
+async fn login(
+    State(ctx): State<AppContext>,
+    token: CsrfToken,
+    ViewEngine(view): ViewEngine<TeraView>,
+) -> Response {
+    login_form(&ctx.db, &token, &view, None, StatusCode::OK).await
 }
 
-fn login_form(
+async fn login_form(
+    db: &sea_orm::DatabaseConnection,
     token: &CsrfToken,
     view: &TeraView,
     error: Option<&str>,
     status: StatusCode,
 ) -> Response {
+    let registration_open = match crate::models::identity::signup::registration_open(db).await {
+        Ok(value) => value,
+        Err(_) => return StatusCode::SERVICE_UNAVAILABLE.into_response(),
+    };
     let Ok(authenticity_token) = token.authenticity_token() else {
         return StatusCode::SERVICE_UNAVAILABLE.into_response();
     };
-    let data = serde_json::json!({ "title":"Sign in", "allow_palette":false, "appearances":[{"id":"light","label":"Light"},{"id":"dark","label":"Dark"},{"id":"system","label":"System"}], "palettes":[], "authenticity_token":authenticity_token, "error":error });
+    let data = serde_json::json!({ "title":"Sign in", "allow_palette":false, "appearances":[{"id":"light","label":"Light"},{"id":"dark","label":"Dark"},{"id":"system","label":"System"}], "palettes":[], "authenticity_token":authenticity_token, "error":error, "registration_open":registration_open });
     match format::render().view(view, "auth/login.html", data) {
         Ok(response) => (
             status,
@@ -99,19 +108,25 @@ async fn sign_in(
         Ok(browser::SignInOutcome::OtpRequired) => redirect("/otp-auth"),
         Ok(browser::SignInOutcome::RecoveryRequired) => redirect("/recovery-auth"),
         Ok(browser::SignInOutcome::PasskeyRequired) => redirect("/webauthn-auth"),
-        Err(AuthenticationError::Unauthenticated) => login_form(
-            &token,
-            &view,
-            Some("Invalid email or password"),
-            StatusCode::UNAUTHORIZED,
-        ),
+        Err(AuthenticationError::Unauthenticated) => {
+            login_form(
+                &ctx.db,
+                &token,
+                &view,
+                Some("Invalid email or password"),
+                StatusCode::UNAUTHORIZED,
+            )
+            .await
+        }
         Err(AuthenticationError::Forbidden | AuthenticationError::InsufficientScope { .. }) => {
             login_form(
+                &ctx.db,
                 &token,
                 &view,
                 Some("An additional sign-in factor is required."),
                 StatusCode::FORBIDDEN,
             )
+            .await
         }
         Err(AuthenticationError::Unavailable) => StatusCode::SERVICE_UNAVAILABLE.into_response(),
     }
@@ -128,12 +143,25 @@ fn redirect(destination: &str) -> Response {
         .into_response()
 }
 
-fn authenticated_redirect(session: &Session<SessionPgPool>) -> Response {
-    let destination = session
+pub(crate) fn store_invitation_continuation(session: &Session<SessionPgPool>, token: &str) {
+    session.set("invitation_pending", token.to_owned());
+    session.set_store(true);
+}
+
+pub(crate) fn authenticated_redirect(session: &Session<SessionPgPool>) -> Response {
+    if let Some(query) = session
         .get::<crate::models::identity::authorization::AuthorizationInput>("oauth_pending")
         .and_then(|input| serde_urlencoded::to_string(input.0).ok())
-        .map_or_else(|| "/".to_owned(), |query| format!("/authorize?{query}"));
-    redirect(&destination)
+    {
+        return redirect(&format!("/authorize?{query}"));
+    }
+    if let Some(token) = session.get::<String>("invitation_pending") {
+        session.remove("invitation_pending");
+        if let Ok(query) = serde_urlencoded::to_string([("token", token)]) {
+            return redirect(&format!("/invitations/accept?{query}"));
+        }
+    }
+    redirect("/")
 }
 
 fn otp_form(

@@ -39,11 +39,20 @@ against retained behaviour before changing code. Do not silently substitute a
 different reviewer if Devin is unavailable.
 
 Diagnose one evidenced failure at a time. Separate test setup failures from
-application failures. After two unsuccessful fixes, the coordinator diagnoses the
-cause. Reuse a valid owned test image for source-only retries. Do not repeat a full
+application failures. After two unsuccessful fixes, obtain the actual SQL error,
+HTTP response or persisted state before another attempt. Reuse a valid owned test
+image for source-only retries. Do not repeat a full
 suite solely to publish cleanup, a report or a small repair.
 Read the canonical fixture setup before asserting roles, account IDs or other
 baseline values. Do not infer them from display names or the operation under test.
+Before changing persistence, inspect only facts the change depends on: the existing
+SeaORM operation/Loco route, affected constraints/indexes/RLS/grants, and relevant
+fixture identity/sequence. Separate verified facts from unanswered questions.
+Writer handoffs name the exact reused function, route or constraint in one or two
+lines, without a new planning document or runner. Start with the cheapest useful
+evidence, then focused behaviour and required combined checks. Reuse models and database
+roles when they satisfy the requirement. Add a role or bootstrap step only for a
+demonstrated limitation; do not design it around assumed owner permissions.
 When several browser cases fail at the same missing entry point, use one case to
 prove that prerequisite is missing. After implementing it, run every distinct
 behaviour and security case. Do not repeat app startup merely to reproduce the
@@ -75,6 +84,11 @@ Update `/private/tmp/medtracker-migration-status.html` and its Markdown copy at
 each completed slice or material blocker. Show published work, current work,
 what prevents the next delivery, and the next action. Use plain English. Keep
 technical logs separate; avoid duplicate accounts of every verification attempt.
+Use application sections that explain what works, what remains and what will prove
+completion. Distinguish local, published, accepted, merged and deployed work, and
+core production readiness from full migration completion. Continue independent
+implementation during source review and hosted CI when ownership is disjoint and
+the needed dependencies are locally verified.
 Run the requested two-hour retrospective and apply improvements within the user's
 authorised scope.
 

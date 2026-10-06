@@ -1,8 +1,11 @@
 mod administration;
 mod audit;
+mod dosages;
 mod input;
+mod invitations;
 mod locations;
 mod medication_crud;
+mod medication_reads;
 mod people;
 mod projection;
 mod removals;
@@ -34,9 +37,35 @@ use sea_orm::{
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 
+pub fn invitation_routes() -> Routes {
+    Routes::new()
+        .prefix("/api/v1")
+        .add("/invitations/accept", post(invitations::accept))
+}
+
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("/api/v1/households")
+        .add(
+            "/{household_id}/dosage_options",
+            get(dosages::index).post(dosages::create),
+        )
+        .add(
+            "/{household_id}/dosage_options/{id}",
+            get(dosages::show).patch(dosages::patch).put(dosages::put),
+        )
+        .add(
+            "/{household_id}/admin/invitations",
+            get(invitations::index).post(invitations::create),
+        )
+        .add(
+            "/{household_id}/admin/invitations/{id}",
+            delete(invitations::destroy),
+        )
+        .add(
+            "/{household_id}/admin/invitations/{id}/resend",
+            post(invitations::resend),
+        )
         .add(
             "/{household_id}/admin/settings",
             get(administration::settings_show)
@@ -80,10 +109,15 @@ pub fn routes() -> Routes {
                 .put(locations::update)
                 .delete(locations::destroy),
         )
-        .add("/{household_id}/medications", post(medication_crud::create))
+        .add(
+            "/{household_id}/medications",
+            get(medication_reads::index).post(medication_crud::create),
+        )
         .add(
             "/{household_id}/medications/{id}",
-            patch(medication_crud::update).put(medication_crud::update),
+            get(medication_reads::show)
+                .patch(medication_crud::update)
+                .put(medication_crud::update),
         )
         .add("/{household_id}/medication_takes", post(take))
         .add(

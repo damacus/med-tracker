@@ -1,0 +1,14 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-xl mx-auto card bg-base-100 border border-base-300">
+  <div class="card-body">
+    <h1 class="text-3xl font-semibold">Verify Account</h1>
+    <p>Confirm your email address to start using MedTracker.</p>
+    {% if error %}<p role="alert">{{ error }}</p>{% endif %}
+    <form method="post" action="/verify-account">
+      <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+      <button class="btn btn-neutral" type="submit">Verify Account</button>
+    </form>
+  </div>
+</section>
+{% endblock content %}

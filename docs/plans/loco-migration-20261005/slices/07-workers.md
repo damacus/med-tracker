@@ -10,6 +10,14 @@ workers revalidate actors and use durable idempotency. Verify actual pinned queu
 
 ## Global constraints
 
+Loss of pending/failed Rails jobs at cutover is explicitly accepted. Do not transfer
+the old queue or reconcile individual historical deliveries. All Loco job, permission,
+retry, duplicate-suppression, recovery and schedule checks remain required.
+Automated NHS dm+d import/reconciliation and medication review generation/background
+refresh are explicitly required before first production. Optional AI/provider
+lookup deferral cannot defer these outcomes; report a genuine required dependency
+as unresolved rather than silently omitting the job.
+
 W1 depends on P3 and runs before enqueueing API endpoints. W2 depends on the relevant accepted operations.
 No runtime role DDL, owner bypass or secret-bearing payloads. One queue unless a verified limitation requires
 an explicit architecture decision. Worker/source ownership remains with the persistent writer.

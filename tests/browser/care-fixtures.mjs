@@ -3,6 +3,7 @@ import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
+import { randomUUID } from 'node:crypto';
 import { withOwnedDatabase } from '../../scripts/migration/foundation-database.mjs';
 import { stopOwnedProcess } from '../../scripts/migration/process-cleanup.mjs';
 
@@ -10,7 +11,9 @@ const execute = promisify(execFile);
 const root = fileURLToPath(new URL('../../', import.meta.url));
 
 export const test = base.extend({
-  careFixture: [async ({}, use) => withOwnedDatabase(async (databaseUrl, provision) => {
+  captureMail: [false, { option: true }],
+  registrationInviteOnly: [undefined, { option: true }],
+  careFixture: [async ({ captureMail, registrationInviteOnly }, use) => withOwnedDatabase(async (databaseUrl, provision) => {
     await provision();
     const owner = new URL(databaseUrl);
     owner.pathname = '/medtracker_reference';
@@ -26,13 +29,20 @@ export const test = base.extend({
     const port = reservation.address().port;
     await new Promise(resolve => reservation.close(resolve));
     const origin = `http://localhost:${port}`;
+    const mailName = `mtloco-mail-${randomUUID()}`;
+    let mailStarted = false;
+    let mailpitUrl;
+    let smtpPort;
     let server;
     let output = '';
     let exited = false;
     const start = async () => {
       output = '';
       exited = false;
-      server = spawn('task', ['dev'], { cwd: root, detached: true, env: { ...process.env, LOCO_ENV: 'test', PORT: String(port), MEDTRACKER_PUBLIC_HOST: 'http://localhost', DATABASE_URL: runtime.href, MEDTRACKER_SESSION_KEY: Buffer.alloc(64, 7).toString('base64'), MEDTRACKER_COOKIE_SECURE: 'false', RAILS_SECRET_KEY_BASE: 'synthetic-rails-secret-key-base-for-compatibility', RAILS_OLD_SECRET_KEY_BASE: 'synthetic-old-rails-secret-key-base' }, stdio: ['ignore', 'pipe', 'pipe'] });
+      const environment = { ...process.env, LOCO_ENV: 'test', PORT: String(port), MEDTRACKER_PUBLIC_HOST: 'http://localhost', DATABASE_URL: runtime.href, MEDTRACKER_CAPTURE_MAIL: String(captureMail), MEDTRACKER_SMTP_PORT: smtpPort ?? '1025', MEDTRACKER_SESSION_KEY: Buffer.alloc(64, 7).toString('base64'), MEDTRACKER_COOKIE_SECURE: 'false', RAILS_SECRET_KEY_BASE: 'synthetic-rails-secret-key-base-for-compatibility', RAILS_OLD_SECRET_KEY_BASE: 'synthetic-old-rails-secret-key-base' };
+      delete environment.INVITE_ONLY;
+      if (registrationInviteOnly !== undefined) environment.INVITE_ONLY = String(registrationInviteOnly);
+      server = spawn('task', ['dev', ...(captureMail ? ['SERVER_AND_WORKER=true'] : [])], { cwd: root, detached: true, env: environment, stdio: ['ignore', 'pipe', 'pipe'] });
       server.stdout.on('data', chunk => { output += chunk; });
       server.stderr.on('data', chunk => { output += chunk; });
       server.on('exit', () => { exited = true; });
@@ -48,13 +58,40 @@ export const test = base.extend({
       if (!ready) throw Error(`Owned care server did not start: ${output}`);
     };
     try {
+      if (captureMail) {
+        await fixtureTask('mail-up', [`MAILPIT_NAME=${mailName}`]);
+        mailStarted = true;
+        const smtp = await fixtureTask('mail-port', [`MAILPIT_NAME=${mailName}`, 'MAILPIT_PORT=1025/tcp']);
+        const api = await fixtureTask('mail-port', [`MAILPIT_NAME=${mailName}`, 'MAILPIT_PORT=8025/tcp']);
+        if (!/^127\.0\.0\.1:\d+$/.test(smtp) || !/^127\.0\.0\.1:\d+$/.test(api)) throw Error('Mailpit must publish only owned loopback ports');
+        smtpPort = smtp.split(':')[1];
+        mailpitUrl = `http://${api}`;
+        const deadline = Date.now() + 10000;
+        let ready = false;
+        while (Date.now() < deadline) {
+          try { ready = (await fetch(`${mailpitUrl}/readyz`, { signal: AbortSignal.timeout(1000) })).ok; } catch {}
+          if (ready) break;
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        if (!ready) throw Error('Owned Mailpit did not become ready');
+      }
       await start();
-      await use({ origin, probe: async () => JSON.parse(await fixtureTask('probe')), revoke: () => fixtureTask('revoke'), reactivate: () => fixtureTask('reactivate'),
+      await use({ origin, mailpitUrl, probe: async () => JSON.parse(await fixtureTask('probe')), revoke: () => fixtureTask('revoke'), reactivate: () => fixtureTask('reactivate'),
         seedOtp: () => fixtureTask('seed-otp'), otpProbe: async () => JSON.parse(await fixtureTask('otp-probe')), closeOtpAccount: () => fixtureTask('close-otp-account'),
         seedRecovery: () => fixtureTask('seed-recovery'), recoveryProbe: async () => JSON.parse(await fixtureTask('recovery-probe')), exhaustOtp: () => fixtureTask('exhaust-otp'),
         seedRecoveryPasskey: () => fixtureTask('seed-recovery-passkey'),
         peopleProbe: async () => JSON.parse(await fixtureTask('people-probe')),
         seedAdministration: () => fixtureTask('seed-administration'), administrationProbe: async () => JSON.parse(await fixtureTask('administration-probe')),
+        invitationProbe: async email => JSON.parse(await fixtureTask('invitation-probe', [`INVITATION_EMAIL=${email}`])), expireInvitation: email => fixtureTask('expire-invitation', [`INVITATION_EMAIL=${email}`]),
+        seedInvitationAccount: () => fixtureTask('seed-invitation-account'), seedInvitationOtp: () => fixtureTask('seed-invitation-otp'),
+        invitationAcceptanceProbe: async () => JSON.parse(await fixtureTask('invitation-acceptance-probe')),
+        invitationSignupProbe: async email => JSON.parse(await fixtureTask('invitation-signup-probe', [`INVITATION_EMAIL=${email}`])),
+        signupDiagnostics: () => output.split('\n').filter(line => line.includes('Account setup operation failed')).join('\n'),
+        revokeInvitation: email => fixtureTask('revoke-invitation', [`INVITATION_EMAIL=${email}`]),
+        setRegistrationPolicy: inviteOnly => fixtureTask('registration-policy', [`REGISTRATION_INVITE_ONLY=${Boolean(inviteOnly)}`]), clearRegistrationPolicy: () => fixtureTask('clear-registration-policy'),
+        registrationProbe: async email => JSON.parse(await fixtureTask('registration-probe', [`REGISTRATION_EMAIL=${email}`])),
+        verificationProbe: async email => JSON.parse(await fixtureTask('verification-probe', [`REGISTRATION_EMAIL=${email}`])),
+        ageVerificationEmail: email => fixtureTask('age-verification-email', [`REGISTRATION_EMAIL=${email}`]),
         passkeyProbe: async () => JSON.parse(await fixtureTask('passkey-probe')),
         passkeyCounterAhead: () => fixtureTask('passkey-counter-ahead'),
         passkeyRemovalRace: () => fixtureTask('passkey-removal-race'), passkeyRemovalRaceReady: async () => (await fixtureTask('passkey-removal-race-ready')) === 't',
@@ -75,7 +112,9 @@ export const test = base.extend({
         restart: async () => { await stopOwnedProcess(server); await start(); },
         revokeSession: () => fixtureTask('revoke-session'), expireSession: () => fixtureTask('expire-session'), doseRequestId: () => fixtureTask('dose-request-id') });
     } finally {
-      await stopOwnedProcess(server);
+      try { await stopOwnedProcess(server); } finally {
+        if (mailStarted) await fixtureTask('mail-down', [`MAILPIT_NAME=${mailName}`]);
+      }
     }
   }), { timeout: 180000 }],
   baseURL: async ({ careFixture }, use) => use(careFixture.origin)

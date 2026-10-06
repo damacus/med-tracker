@@ -4,29 +4,102 @@ Updated 6 October 2026. Complete every slice in [the plan](plan.md).
 Foundation is accepted on the published commit below. The remaining migration
 areas are incomplete. Nothing is merged or deployed.
 
+A fresh read-only CLI process used the newly configured GitGuardian MCP with the
+existing OAuth connection. The authorised `get_incident` call verified incident
+37907524: Authentication Tuple, TRIGGERED, five occurrences. Occurrence content
+was excluded. No incidents have been resolved; the external GitGuardian gate
+remains open. This chat has not yet loaded the new tools.
+
+The current local delivery implements invitations, open/invited signup, verification
+and resend, stored API credentials, medication reads and dosage management. Focused
+checks pass; Devin SWE-2 Max accepted the final account and care sources. Combined
+`task ci` 40067 passed all Rust groups and 155 of 156 desktop/mobile cases.
+The sole failure was EPERM while polling server cleanup after SIGTERM; the
+application assertions passed. A one-line fix conservatively treats that liveness
+response as still alive, without accepting it as cleanup or suppressing signal
+refusal. The helper passes five regression/real-process tests. Exact failed mobile
+case 85015 now passes, including teardown. This is combined scope evidence with
+a focused tooling repair; the original full CI exit remains failed, rather than
+being described as a fresh successful full run. Six additional screenshots are
+preserved. Publication and exact-head hosted verification remain required.
+
+## Approved cutover scope — 6 October
+
+Rollback restores an independent pre-cutover dump or frozen replica and restarts
+Rails; new Loco data may be lost. Prove restoration and Rails operation, rather than
+Rails compatibility with Loco-created data. Stop Rails servers, workers and schedulers
+before Loco starts; stop Loco writers before restoring Rails. Old pending/failed Rails
+jobs may be lost without queue transfer or individual delivery reconciliation.
+
+Unsupported historical passkeys may be invalidated without counting affected accounts
+as a gate. Invalidate existing sessions/tokens with a proved mechanism, preserving
+fresh sign-in and MFA. Historical links, export formats, offline queues and push
+subscriptions need not survive. Preserve records/files, new authorised downloads,
+new exports, future offline replay and future push behaviour.
+
+Use daisyUI, the same colour schemes and clear Loco browser routes. Exact Rails pixels,
+CSS geometry, theme-export fidelity and browser bookmarks are excluded. Required
+information/actions and accessibility remain. PDF reports must match existing appearance
+and work in scratch. Inspect renderer/font and retained Rust work before choosing.
+
+FHIR/SMART, MCP, AI and external medication lookup are deferred from the first
+production gate, with no exact external provider/configuration parity requirement.
+They remain in the full migration goal. Core medication entry/care remain mandatory.
+Report first production readiness and complete migration acceptance separately.
+None of these design decisions authorises live data access, invalidation or deployment.
+
+The subsequent first-release answers keep NHS dm+d import/reconciliation/scanner,
+medication reviews/background refresh, complete administration, time-limited support,
+household export/closure/retention holds/deletion, avatar uploads, complete devices/
+sessions and automatic live dose/stock updates in the core production gate. Offline
+capture/replay, portable imports and both-native-app acceptance are deferred from
+that gate but remain in the full goal. Optional AI/provider deferral cannot exclude
+catalogue/scanner or review outcomes.
+
 ## Published
 
-The current published delivery at `bda18ac97870802085380da20095bde22a26fc3e` is pushed to
+The application delivery at `e920fbc003ee4bbe706a5984cf56a7febe7ba4e6` is pushed to
 [draft PR #2451](https://github.com/damacus/med-tracker/pull/2451).
+Current published HEAD is signed commit `3864ef9d688482041e2363f0956d8233a8936e60`,
+which changes only the Loco CI timeout.
 Loco owns root commands, routes, configuration and templates. Rails is independently
 runnable under `rails/` as the reference and rollback application.
 
 Published workflows include persistent browser sign-in, permitted household
 medication pages, medication create/edit/guarded deletion, dose recording and stock
 changes, location management, retained TOTP and recovery sign-in, People management,
-and native/SMART OAuth consent, token exchange and revocation. Local full CI passed
-with 31 care API and 74 desktop/mobile cases; both Recovery and People correction
-reviews approved that delivery. Its
+household administration, passkey registration/sign-in/removal and native/SMART
+OAuth consent, token exchange and revocation. Local full CI passed with 41 care API
+and 124 desktop/mobile cases; final Administration and Passkey reviews are clean.
+Documentation checks and eight inspected screenshots are published. GitHub checks
+for this new commit stopped at the Loco job's 20-minute timeout after browser
+case 94 of 124 started. The other selected suites passed; the final gate rejected
+the cancelled job. The reviewed, published workflow change allows 60 minutes without
+removing checks; `task ci:check` passes all 94 tooling tests. Exact-head
+[CI 37427833670](https://github.com/damacus/med-tracker/actions/runs/37427833670) is
+successful: all 39 jobs passed, including the full Loco job. PR validation
+37427833321 passed. GitGuardian remains the separate outstanding check.
+The previous `bda18ac` delivery's
 [GitHub CI](https://github.com/damacus/med-tracker/actions/runs/37414918830)
-succeeded on this exact commit, including Loco, Rails rollback and native clients.
+succeeded on that exact previous commit, including Loco, Rails rollback and native clients.
 GitGuardian remains a separate unresolved check;
-its current check reports nine detections across the PR history. Inspection confirms
+its exact-head check 112151424072 reports 15 detections across 21 PR commits. Inspection confirms
 fixed OAuth audit labels (incident 37907524) and synthetic OTP derivation vectors
-(incidents 37785602, 37785603, 37785604, 37910787 and 37910788). These are false
-positives. Dashboard sign-in approval and incident resolution remain pending;
-the check is still failing. No scanner exclusions or history rewrite were made.
+(incidents 37785602, 37785603, 37785604, 37910787 and 37910788), plus synthetic
+passkey fixture and foreign-credential test values (incidents 37913501–37913505).
+The fixtures record their Rails FakeClient/FakeAuthenticator provenance and mark
+their private keys as test-only. The foreign test IDs decode to fixed fixture
+labels; they are not production credentials. These are false positives.
+The user approved access and resolution of these verified false positives.
+The official hosted GitGuardian MCP is configured and an authorised read-only
+CLI call verified incident 37907524: Authentication Tuple, TRIGGERED, five
+occurrences, with occurrence content excluded. Incident/source-only scopes are
+saved. The MCP's `manage_private_incident` requires an explicitly user-supplied
+ignore reason; that choice is pending for verified audit-label and synthetic
+fixture detections. No incidents have been resolved yet.
+The check is still failing. No scanner exclusions or history rewrite were made.
 
-## Current delivery
+## Published behaviour and evidence
 
 Published Recovery passes all 14
 desktop/mobile cases, including exhausted OTP, passkey-only recovery, one-use
@@ -49,7 +122,7 @@ absent after cleanup. The pre-correction partial run is superseded by this resul
 The corrected delivery is committed and pushed. Household administration now passes
 eleven API cases and six desktop/mobile journeys. Devin SWE-2 Max accepted the final
 requirements, correctness and security review with no outstanding defects.
-Administration remains local until the combined publication checks pass.
+Administration is published with the passkey delivery below.
 
 Native passkey registration, passwordless and second-factor sign-in, restart and
 password-confirmed removal pass. Supported ES256 and RSA-2048 RS256 credentials
@@ -71,9 +144,46 @@ and CSRF/ownership cases pass across both viewports. Devin SWE-2 Max accepted th
 final requirements and correctness/security review with no outstanding defects.
 Final combined `task ci` passed all Rust/static/lifecycle checks, all 41 care API
 cases, three unit cases including exact challenge expiry, and all 124 desktop/mobile
-browser cases on the frozen candidate. Administration and passkeys remain local
-until documentation verification, commit and push complete. This does not accept
+browser cases on the frozen candidate. Documentation verification, commit and push
+are complete for administration and passkeys. This does not accept
 the remaining identity, care, browser or release requirements.
+
+## Current implementation
+
+Invitations and account setup are next. A real signed-in browser reached household
+administration and failed at the absent Invitations link. Existing API tests also
+proved the missing invitation routes. Nine invitation API tests and four persisted
+credential tests pass. Desktop/mobile invitation management passes with real Loco
+worker email delivery, resend and cancellation through an isolated Mailpit inbox.
+Guest password and OTP sign-in resume the invitation. Acceptance committed the
+expected effects, but a stale synthetic fixture ID sequence changed the selected
+account person. After correcting the fixture, all six invitation journeys pass
+on desktop/mobile, including password/OTP acceptance, atomic effects and replay.
+Stored sessions and app tokens now pass real care-route checks, including source
+household binding and immediate permission-version withdrawal. Four API-session
+and five resource-scope regressions also pass. Account creation with actual email
+verification remains required in this delivery. The missing POST handler is now
+registered. A valid submission initially returned 503 because its conflict rule
+did not match the preserved partial email index. The corrected insert passes the
+representative account creation, real email delivery and verification journey.
+All ten desktop/mobile signup cases now pass, including invalid, expired, revoked,
+cancelled and existing-account rejection. All ten open-registration desktop/mobile
+cases also pass: first-household bootstrap and verification, environment overrides
+and closed-registration denial. A database permission test proves that owner
+detection exposes only a boolean and preserves the application's tenant row
+visibility. Final verification resend passed both desktop/mobile cases with real
+SMTP delivery, strict recent-email suppression, retained key reuse and verified/
+missing-account refusal. Completed queue jobs and verification-key rows remain
+stored, matching the pinned framework and Rodauth lifecycles; tests count those
+rows while proving that rejected requests add no effects.
+Eight dosage API/removal cases pass, covering protected inactive references,
+live manager revocation and audit rollback. Both desktop/mobile dosage browser
+journeys pass actual create/edit/delete and parent-stock changes. Deleting the
+last tracked option resets stock to untracked, matching Rails. Medication
+list/detail reads now pass both route tests after two actual missing-GET cases
+failed, including conditional reads, stock projections, visibility and auditing.
+Valid OAuth credentials do not substitute for the invitation API's
+required user session. These changes remain local and have not passed acceptance.
 
 ## Whole-migration acceptance
 
@@ -81,8 +191,8 @@ the remaining identity, care, browser or release requirements.
 | --- | --- | --- |
 | Foundation | Accepted: both runners, audit, corrective review, local/docs and exact-head hosted CI pass; record published | Complete; product and populated rollback gates belong to later areas |
 | Persistence | Guarded schema adoption, restricted roles/RLS, persistence and tenant tests, normal seed CLI | Populated Rails rollback and complete schema acceptance |
-| Identity | Password/session and bearer tests; OAuth library integration; published TOTP and Recovery | Passkeys, remaining security settings and complete client interoperability |
-| Care | Dose, stock, medication management; local location API/browser checks | Every remaining household, person, membership, grant, dosage, treatment and sync operation |
+| Identity | Password/session and bearer tests; OAuth library integration; published TOTP, Recovery and supported passkeys | Account creation/verification, remaining security settings and complete client interoperability |
+| Care | Dose, stock, medication, location and People management; published household settings, membership and care-access administration | Invitations, remaining household operations, dosage, treatment and sync |
 | APIs | Actual Loco listener checks for migrated care and OAuth routes | Complete native/FHIR/SMART/MCP contracts |
 | Browser | Tera/daisyUI themes and migrated care/OAuth journeys on desktop/mobile | Remaining workflows, accessibility evidence and PWA/offline |
 | Workers | Owner-provisioned queue and restricted queue startup/recovery configuration | Every real job, recurrence, reminder, retry/idempotency and crash/drain outcome |
@@ -114,4 +224,4 @@ Update the local reports at `/private/tmp/medtracker-migration-status.html` and
 `/private/tmp/medtracker-2450-review-status.md` at each completed slice or material
 blocker. Detailed logs stay outside the status page.
 Prior delivery history is preserved in Git and the existing evidence artifacts.
-Last recorded retrospective: 06:13 UTC on 6 October. Next: 08:13 UTC.
+Last recorded retrospective: 08:14 UTC on 6 October. Next: 10:14 UTC.

@@ -74,13 +74,12 @@ rollback plus missing scratch assets (R1/R3). Each owning sub-plan assigns expli
 
 ## Progress and integration
 
-Current state: no complete migration area is accepted. The signed-in care
-journey and both upstream dependency merges are published at `3840bded`;
-classifier and Markdown repairs are published through `42636dec`. Local full
-Loco CI and the exact-head hosted Loco job pass. The overall hosted run retains
-a Rails browser failure; complete rollback acceptance remains outstanding.
-Medication CRUD, OAuth consent and automatic queue recovery are the current
-local delivery. Use [progress.md](progress.md) for its verification state.
+Foundation is accepted. Published deliveries include signed-in care, medication
+management, OAuth, household administration and supported passkeys. Account setup,
+invitations, stored API credentials, medication reads and dosage management have
+clean independent review; their final combined verification is running. The other
+migration areas remain unfinished. Use [progress.md](progress.md) and the readiness
+report for the current verification and publication state.
 Do not repeat completed checks or treat Rails diagnostics as Rust implementation.
 
 Task reports live at `docs/plans/loco-migration-20261005/slices/<number>-report.md`;
@@ -103,6 +102,14 @@ as part of this planning update.
 Approved direction: 5 October 2026. Implementation starts on `codex/loco-migration`.
 
 ## Outcome and constraints
+
+The 6 October authorisation correction requires a maintained policy library.
+The owner selected embedded Cedar on 6 October. Integration requires an executable
+proof of the current allow/deny matrix and both scratch targets. Replace bespoke
+permission decisions through one fail-closed engine boundary. Preserve trusted
+current SeaORM data, locking/rechecks, list scoping and PostgreSQL RLS; do not create
+a second mutable grants store or permission cache. The current reviewed capability
+delivery is an intermediate publication, not completion of this requirement.
 
 Make Loco the root application using its standard routing, controllers, SeaORM,
 Tera views, initializers and workers. Move Rails to `rails/` as an independently
@@ -148,7 +155,54 @@ Do not bulk-delete old credential rows during migration; retain them for Rails
 rollback until their owner explicitly removes them. Supported keys must remain usable
 on mixed-key accounts. Verify clear replacement messages and supported recovery
 and re-enrolment, including unsupported-only accounts, without silently bypassing
-MFA. Record affected accounts and user instructions in the cutover rehearsal.
+MFA. Counting affected production accounts is not a gate: the owner accepts
+invalidating unsupported historical passkeys. Record user instructions and prove
+the transition with synthetic accounts.
+
+The owner also approved a saved-state rollback on 6 October 2026. Preserve an
+independent pre-cutover dump or frozen replica; prove restoration and Rails
+operation on that saved state. A replica stops following before Loco writes.
+All new data created during the Loco period may be dropped or ignored on rollback.
+Rails compatibility with Loco-created data and lossless rollback are not required.
+
+Existing sessions and tokens will be invalidated. Prove the mechanism with synthetic
+credentials; preserve fresh sign-in and MFA, rather than historical continuity.
+Old download links may expire; preserve files/data and issue new authorised links.
+Historical system export formats and pre-cutover offline queues need not migrate;
+new exports and future offline replay remain required. PDF reports must match the
+existing appearance. Inspect the renderer, fonts and retained Rust work first and
+verify the selected implementation in scratch.
+
+Use daisyUI browser pages with the same colour schemes and clear Loco routes.
+Required information, actions and accessibility remain; exact Rails pixels, CSS
+values/geometry, theme-export fidelity and historical browser URLs do not.
+Historical push subscriptions need not survive; users may enable notifications
+again, with normal future push behaviour and preferences preserved.
+
+The core first production release excludes FHIR/SMART, MCP, AI and external medication
+lookup. These are deferred capabilities within the full migration objective, not
+permanently removed work. Exact AI/lookup provider configuration parity is unnecessary.
+Core medication entry and care remain required. Report the core production milestone
+separately; the active goal completes only when every remaining migration capability
+is implemented and verified.
+
+The subsequent first-production scope answers require automated NHS dm+d import/
+reconciliation and scanner, medication review generation/background refresh,
+complete platform administration, temporary time-limited support access, household
+export/closure/retention holds/permanent deletion, avatar uploads, complete device/
+session management and automatic live dose/stock updates. Catalogue/scanner and
+reviews are core; optional AI/provider lookup deferral does not exclude them.
+
+Browser offline capture/replay, acceptance of both native apps before cutover and
+portable imports are deferred from the first production gate. They remain in the
+complete migration goal. Public API correctness remains required. Record genuine
+dependencies of required outcomes as blockers rather than quietly deferring them.
+
+Pending or failed Rails jobs may be lost; do not require old queue transfer or
+individual delivery reconciliation. Correct Loco workers and schedules remain
+required. Scale Rails servers to zero and stop its separate workers and schedulers
+before Loco starts; stop Loco before restoring Rails. These decisions change the
+cutover design, not the separate live-action approval boundary.
 See [the deployment decision](../../deployment.md#approved-cutover-decision-unsupported-passkeys)
 and [the identity transition requirements](slices/03-identity.md#approved-passkey-transition-6-october-2026).
 The approval changes the compatibility requirement; it does not waive verification
@@ -159,10 +213,12 @@ of the transition or authorise production cutover.
 Devin CLI `swe-2-max` completed a supplied-plan review on 5 October 2026. Verdict:
 conditionally sound, not implementation approval or runtime verification.
 
-- Establish one schema owner after adoption: Loco. Preserve the Rails ledger;
-  permit only additive compatible changes while rollback is retained. Compare
+- Establish one schema owner after adoption: Loco. Preserve existing records and
+  the Rails ledger. Rollback restores the independent pre-cutover state; Rails
+  compatibility with the Loco-era schema is not a requirement. Compare
   normalized schema dumps with named exceptions, prove adoption idempotency and
-  reject unrecognized drift. Rehearse Rails boot and journeys on the adopted DB.
+  reject unrecognized drift. Rehearse Rails boot and journeys on the restored
+  pre-cutover database.
 - Inventory real password hashes/pepper, TOTP and encrypted-column formats,
   session/token formats and signed attachments. Prove migrated credentials and
   existing client tokens work; record unavoidable session/URL changes explicitly
@@ -185,8 +241,8 @@ conditionally sound, not implementation approval or runtime verification.
 
 ## UI and task contract
 
-Port existing light/dark palettes using the official daisyUI theme creator;
-commit exported CSS directly. Preserve palette names, local licensed fonts,
+Use daisyUI light/dark themes with the same colour schemes; fresh themes are allowed.
+Commit CSS directly. Preserve usable theme preferences, local licensed fonts,
 `med-tracker-theme` and `med-tracker-appearance` preferences and Light/Dark/System
 including live OS changes. Use standard daisyUI component geometry. Application
 JavaScript owns keyboard tabs/dialogs, focus and validation; CSS is not sufficient

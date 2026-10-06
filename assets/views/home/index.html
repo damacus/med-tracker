@@ -3,6 +3,7 @@
 <div class="max-w-3xl">
   <p class="text-sm font-semibold uppercase tracking-widest shell-muted">Care, kept together</p>
   <h1 class="text-4xl font-semibold mt-3">MedTracker</h1>
+  {% if auth_notice is defined and auth_notice %}<p role="status" class="mt-4">{{ auth_notice }}</p>{% endif %}
   {% if signed_in %}
   <nav class="mt-6" aria-label="Account">
     <a class="link" href="/multifactor-manage">Security settings</a>

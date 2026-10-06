@@ -3,7 +3,7 @@ use axum_session_sqlx::SessionPgPool;
 use base64::{Engine, engine::general_purpose::STANDARD};
 use sea_orm::{
     ColumnTrait, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, EntityTrait,
-    QueryFilter, QuerySelect, Statement, TransactionTrait,
+    QueryFilter, QueryOrder, QuerySelect, Statement, TransactionTrait,
 };
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -18,7 +18,7 @@ use super::{resource::AuthenticationError, store::Lifetime};
 use crate::models::{
     access::{self, Actor, HouseholdScope, TenantTransaction},
     care::doses::{CredentialMethod, CredentialProvenance},
-    entities::{account, household},
+    entities::{account, household, person, user},
 };
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -49,7 +49,43 @@ pub struct BrowserHousehold {
     pub slug: String,
 }
 
+pub struct BrowserInvitationActor {
+    pub account_id: i64,
+    pub user_id: i64,
+    pub person_id: i64,
+    pub email: String,
+    pub provenance: CredentialProvenance,
+}
+
 impl BrowserPrincipal {
+    pub async fn revalidate_invitation(
+        &self,
+        transaction: &DatabaseTransaction,
+    ) -> Result<BrowserInvitationActor, AuthenticationError> {
+        let account = validate(transaction, &self.identity, false).await?;
+        let person = person::Entity::find()
+            .filter(person::Column::AccountId.eq(account.id))
+            .order_by_asc(person::Column::Id)
+            .one(transaction)
+            .await
+            .map_err(unavailable)?
+            .ok_or(AuthenticationError::Unauthenticated)?;
+        let user = user::Entity::find()
+            .filter(user::Column::PersonId.eq(person.id))
+            .filter(user::Column::Active.eq(true))
+            .one(transaction)
+            .await
+            .map_err(unavailable)?
+            .ok_or(AuthenticationError::Unauthenticated)?;
+        Ok(BrowserInvitationActor {
+            account_id: account.id,
+            user_id: user.id,
+            person_id: person.id,
+            email: account.email,
+            provenance: self.provenance.clone(),
+        })
+    }
+
     pub(super) async fn authorization_transaction(
         &self,
         db: &DatabaseConnection,
@@ -137,7 +173,9 @@ fn sql(query: &str, values: impl IntoIterator<Item = sea_orm::Value>) -> Stateme
     Statement::from_sql_and_values(DbBackend::Postgres, query, values)
 }
 
-async fn transaction(db: &DatabaseConnection) -> Result<DatabaseTransaction, AuthenticationError> {
+pub(super) async fn transaction(
+    db: &DatabaseConnection,
+) -> Result<DatabaseTransaction, AuthenticationError> {
     let transaction = db.begin().await.map_err(unavailable)?;
     transaction.execute_unprepared("SET LOCAL ROLE med_tracker_app; SET LOCAL search_path = pg_catalog, public, pg_temp; SET LOCAL lock_timeout = '5s'; SET LOCAL statement_timeout = '30s'; SELECT set_config('med_tracker.current_account_id', '', true), set_config('med_tracker.current_household_id', '', true), set_config('med_tracker.current_membership_id', '', true), set_config('med_tracker.current_invitation_token_digest', '', true)").await.map_err(unavailable)?;
     Ok(transaction)
@@ -247,22 +285,30 @@ pub async fn sign_in(
         transaction.commit().await.map_err(unavailable)?;
         return Err(AuthenticationError::Unauthenticated);
     }
-    access::verify_account_actor(&transaction, account.id)
+    complete_primary_authentication(transaction, session, account.id).await
+}
+
+pub(super) async fn complete_primary_authentication(
+    transaction: DatabaseTransaction,
+    session: &Session<SessionPgPool>,
+    account_id: i64,
+) -> Result<SignInOutcome, AuthenticationError> {
+    access::verify_account_actor(&transaction, account_id)
         .await
         .map_err(super::resource::operation_error)?;
-    let factor = transaction.query_one_raw(sql("SELECT EXISTS (SELECT 1 FROM account_otp_keys WHERE id=$1) AS otp, EXISTS (SELECT 1 FROM account_webauthn_keys WHERE account_id=$1) AS passkey, timezone('UTC',clock_timestamp()) AS authenticated_at", [account.id.into()])).await.map_err(unavailable)?.ok_or(AuthenticationError::Unavailable)?;
+    let factor = transaction.query_one_raw(sql("SELECT EXISTS (SELECT 1 FROM account_otp_keys WHERE id=$1) AS otp, EXISTS (SELECT 1 FROM account_webauthn_keys WHERE account_id=$1) AS passkey, timezone('UTC',clock_timestamp()) AS authenticated_at", [account_id.into()])).await.map_err(unavailable)?.ok_or(AuthenticationError::Unavailable)?;
     let authenticated_at = factor
         .try_get("", "authenticated_at")
         .map_err(unavailable)?;
     if factor.try_get::<bool>("", "otp").map_err(unavailable)? {
-        otp::begin(transaction, session, account.id, authenticated_at).await?;
+        otp::begin(transaction, session, account_id, authenticated_at).await?;
         return Ok(SignInOutcome::OtpRequired);
     }
     if factor.try_get::<bool>("", "passkey").map_err(unavailable)? {
         let recovery = transaction
             .query_one_raw(sql(
                 "SELECT EXISTS (SELECT 1 FROM account_recovery_codes WHERE id=$1) AS present",
-                [account.id.into()],
+                [account_id.into()],
             ))
             .await
             .map_err(unavailable)?
@@ -271,14 +317,24 @@ pub async fn sign_in(
             .try_get::<bool>("", "present")
             .map_err(unavailable)?
         {
-            otp::begin(transaction, session, account.id, authenticated_at).await?;
+            otp::begin(transaction, session, account_id, authenticated_at).await?;
             return Ok(SignInOutcome::RecoveryRequired);
         }
-        otp::begin(transaction, session, account.id, authenticated_at).await?;
+        otp::begin(transaction, session, account_id, authenticated_at).await?;
         return Ok(SignInOutcome::PasskeyRequired);
     }
-    issue_session(transaction, session, account.id, authenticated_at, false).await?;
+    issue_session(transaction, session, account_id, authenticated_at, false).await?;
     Ok(SignInOutcome::Authenticated)
+}
+
+pub(super) async fn record_auth_token(
+    transaction: &DatabaseTransaction,
+    account_id: i64,
+    token_type: &str,
+    action: &str,
+    request_id: Option<&str>,
+) -> Result<(), AuthenticationError> {
+    passkeys::audit::record(transaction, account_id, token_type, action, request_id).await
 }
 
 async fn issue_session(

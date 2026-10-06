@@ -18,6 +18,12 @@ server:
       cache_control: no-cache
 workers:
   mode: BackgroundQueue
+mailer:
+  smtp:
+    enable: <%= get_env(name="MEDTRACKER_CAPTURE_MAIL", default="false") %>
+    host: 127.0.0.1
+    port: <%= get_env(name="MEDTRACKER_SMTP_PORT", default="1025") %>
+    secure: false
 queue:
   kind: Postgres
   uri: <%= get_env(name="DATABASE_URL", default="postgres://medtracker:medtracker_password@localhost:5432/medtracker_loco") %>

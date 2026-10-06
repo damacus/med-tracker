@@ -1,0 +1,11 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-xl mx-auto card bg-base-100 border border-base-300">
+  <div class="card-body">
+    <h1 class="text-3xl font-semibold">Create Account</h1>
+    <p>Create your account to start tracking medications safely.</p>
+    {% include "auth/account_form.html" %}
+    <p>Already have an account? <a class="link" href="/login">Sign in to your account</a></p>
+  </div>
+</section>
+{% endblock content %}

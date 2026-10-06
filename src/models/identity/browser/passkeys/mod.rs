@@ -2,7 +2,7 @@ use super::*;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use webauthn_rs_core::{WebauthnCore, proto::*};
 
-mod audit;
+pub(super) mod audit;
 mod authentication;
 mod credential;
 mod registration;

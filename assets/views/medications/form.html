@@ -2,6 +2,7 @@
 {% block content %}
 <section class="max-w-3xl mx-auto">
   <h1 class="text-3xl font-semibold">{{ title }}</h1>
+  {% if dosage_options_url %}<a class="link mt-4 inline-block" href="{{ dosage_options_url }}">Manage Dose Options</a>{% endif %}
   <div class="mt-6">{% include "components/form_errors.html" %}</div>
   {% if changed %}<a class="link mt-4 inline-block" href="{{ latest_url }}">Review latest details</a>{% endif %}
   <div class="card bg-base-100 border border-base-300 mt-6"><div class="card-body">

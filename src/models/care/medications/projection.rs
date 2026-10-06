@@ -62,7 +62,7 @@ fn medication_timestamp(value: chrono::NaiveDateTime) -> String {
         .to_rfc3339_opts(chrono::SecondsFormat::Micros, true)
 }
 
-pub(super) fn decimal_string(value: String) -> String {
+pub(crate) fn decimal_string(value: String) -> String {
     if let Some((whole, fraction)) = value.split_once('.') {
         let fraction = fraction.trim_end_matches('0');
         if fraction.is_empty() {

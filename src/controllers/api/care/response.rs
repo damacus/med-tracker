@@ -10,6 +10,15 @@ pub(super) struct Failure {
 }
 
 impl Failure {
+    pub fn invitation_delivery_unavailable() -> Self {
+        Self {
+            status: StatusCode::SERVICE_UNAVAILABLE,
+            code: "invitation_delivery_unavailable".into(),
+            message: "Invitation delivery is temporarily unavailable".into(),
+            details: None,
+            authenticate: None,
+        }
+    }
     pub fn fields(errors: Value) -> Self {
         Self {
             status: StatusCode::UNPROCESSABLE_ENTITY,

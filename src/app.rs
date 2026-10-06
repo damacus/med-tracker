@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use loco_rs::{
     Error, Result,
     app::{AppContext, Hooks, Initializer},
-    bgworker::Queue,
+    bgworker::{BackgroundWorker, Queue},
     boot::{BootResult, StartMode, create_app},
     config::Config,
     controller::AppRoutes,
@@ -41,14 +41,19 @@ impl Hooks for App {
         AppRoutes::with_default_routes()
             .add_route(crate::controllers::routes())
             .add_route(crate::controllers::api::care::routes())
+            .add_route(crate::controllers::api::care::invitation_routes())
             .add_route(crate::controllers::oauth_server::routes())
             .add_route(browser(crate::controllers::browser_routes()))
             .add_route(browser(crate::controllers::auth::routes()))
+            .add_route(browser(crate::controllers::signup::routes()))
             .add_route(browser(crate::controllers::oauth_server::browser_routes()))
             .add_route(browser(crate::controllers::medications::routes()))
+            .add_route(browser(crate::controllers::dosage_options::routes()))
             .add_route(browser(crate::controllers::locations::routes()))
             .add_route(browser(crate::controllers::people::routes()))
             .add_route(browser(crate::controllers::administration::routes()))
+            .add_route(browser(crate::controllers::invitations::routes()))
+            .add_route(browser(crate::controllers::invitations::acceptance_routes()))
     }
 
     async fn before_routes(ctx: &AppContext) -> Result<axum::Router<AppContext>> {
@@ -61,7 +66,10 @@ impl Hooks for App {
         Ok(axum::Router::new())
     }
 
-    async fn connect_workers(_ctx: &AppContext, _queue: &Queue) -> Result<()> {
+    async fn connect_workers(ctx: &AppContext, queue: &Queue) -> Result<()> {
+        queue
+            .register(loco_rs::mailer::MailerWorker::build(ctx))
+            .await?;
         Ok(())
     }
 

@@ -18,7 +18,10 @@ pub async fn index(
 ) -> Response {
     let mut households = Vec::new();
     let mut signed_in = false;
+    let mut auth_notice = None;
     if let Ok(session) = session {
+        auth_notice = session.get::<String>("auth_notice");
+        session.remove("auth_notice");
         match browser::authenticate(&ctx.db, &session).await {
             Ok(principal) => match principal.households(&ctx.db).await {
                 Ok(value) => {
@@ -43,6 +46,7 @@ pub async fn index(
             "title": "Welcome",
             "allow_palette": signed_in,
             "signed_in": signed_in,
+            "auth_notice": auth_notice,
             "households": households,
             "appearances": [
                 {"id": "light", "label": "Light"},

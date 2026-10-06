@@ -7,6 +7,7 @@ pub mod m20261005_000002_provision_runtime;
 pub mod m20261006_000003_canonical_take_identity;
 pub mod m20261006_000004_browser_sessions;
 pub mod m20261006_000005_access_token_scopes;
+pub mod m20261006_000006_registration_policy;
 pub use m20261006_000003_canonical_take_identity::CANONICAL_CLIENT_UUID_SQL;
 
 pub struct Migrator;
@@ -18,6 +19,7 @@ const RUNTIME_VERSION: &str = "m20261005_000002_provision_runtime";
 const TAKE_IDENTITY_VERSION: &str = "m20261006_000003_canonical_take_identity";
 const BROWSER_SESSION_VERSION: &str = "m20261006_000004_browser_sessions";
 const ACCESS_SCOPE_VERSION: &str = "m20261006_000005_access_token_scopes";
+const REGISTRATION_POLICY_VERSION: &str = "m20261006_000006_registration_policy";
 
 impl MigrationName for AdoptMedtracker {
     fn name(&self) -> &str {
@@ -44,6 +46,7 @@ impl MigratorTrait for StandardMigrator {
             Box::new(m20261006_000003_canonical_take_identity::Migration),
             Box::new(m20261006_000004_browser_sessions::Migration),
             Box::new(m20261006_000005_access_token_scopes::Migration),
+            Box::new(m20261006_000006_registration_policy::Migration),
         ]
     }
 }
@@ -92,6 +95,7 @@ async fn verify_catalog<C: ConnectionTrait>(db: &C, require_ledger: bool) -> Res
             TAKE_IDENTITY_VERSION,
             BROWSER_SESSION_VERSION,
             ACCESS_SCOPE_VERSION,
+            REGISTRATION_POLICY_VERSION,
         ];
         if rows.is_empty() || rows.len() > versions.len() {
             return Err(migration_error(
@@ -123,6 +127,11 @@ async fn verify_catalog<C: ConnectionTrait>(db: &C, require_ledger: bool) -> Res
         if rows.len() >= 5 {
             expected.extend(recorded_catalog(include_str!(
                 "../access-token-scopes-catalog.json"
+            ))?);
+        }
+        if rows.len() >= 6 {
+            expected.extend(recorded_catalog(include_str!(
+                "../registration-policy-catalog.json"
             ))?);
         }
     } else if require_ledger {

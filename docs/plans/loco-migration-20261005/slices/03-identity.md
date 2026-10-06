@@ -27,6 +27,13 @@ bypassing MFA. Test clean unsupported rejection, mixed-key accounts, the replace
 message and removal/re-enrolment. This approved transition replaces the requirement
 to authenticate every historical passkey algorithm in Loco.
 
+Counting affected production accounts is not a gate. Saved pre-cutover state keeps
+the Rails rollback credentials. Existing sessions and tokens will be invalidated;
+historical continuity is unnecessary. Test the invalidation mechanism on synthetic
+credentials and retain fresh authentication, account security and MFA checks.
+FHIR/SMART integration is deferred from the first production gate; it remains in
+the full migration scope. Core native/public API sign-in stays in the first release.
+
 ## Review focus
 
 Existing stored formats must work (I1/I2). Duplicate, mixed and disallowed client credentials fail (I1/I3).
@@ -42,7 +49,8 @@ read `rails/app/misc/rodauth_main.rb`, existing Rust compatibility tests and ret
 No later identity task starts with an undecided protocol implementation.
 
 - [ ] Define executable conformance cases for native S256; public-none/confidential Basic/secret-post;
-  refresh rotation; RFC7009 form revocation; SMART patient response; old passwords/TOTP/passkeys/tokens.
+  refresh rotation; RFC7009 form revocation; SMART patient response; old passwords/TOTP,
+  supported passkeys, and rejection of invalidated historical sessions/tokens.
   Assertions include `mixed_credentials_accepted == false`, `wrong_redirect_accepted == false`,
   `second_code_redemption_succeeds == false`, `old_password_authenticates == true`.
 - [ ] Run `rtk task slice:test TARGET=identity_compatibility`; record unsupported cases against the candidate,
@@ -57,9 +65,12 @@ No later identity task starts with an undecided protocol implementation.
 
 ### I2: Preserve browser authentication, MFA/passkeys and security middleware
 
-**Files:** Create `src/models/identity.rs`, `src/controllers/auth.rs`, `src/initializers/security.rs`,
-`tests/identity_browser.rs`; change `src/initializers.rs` to a module directory preserving the view initializer,
-and register routes in `src/app.rs`; add dependency/configuration only from I1's selected architecture.
+**Files:** Extend `src/models/identity/`, `src/controllers/auth.rs`,
+`src/controllers/auth/`, `src/controllers/signup.rs` and the existing browser
+specs/fixtures under `tests/browser/`. Register routes in `src/app.rs`; add
+dependency/configuration only from I1's selected architecture. Use the existing
+browser runner and identity test binaries; do not introduce a second browser
+runner or a parallel identity module.
 **Interfaces:** `async fn identity::authenticate(db: &DatabaseConnection, credential: &VerifiedCredential)
 -> Result<Actor, OperationError>`;
 `VerifiedCredential` is a wrapper around the chosen library's validated result, never caller-supplied identity.
@@ -69,15 +80,24 @@ Produces validated actor and preserved account/session policies, not household a
   passkey origin/RP mismatch and counter policy. Test CSRF rejection, CSP/cookie headers and rate limits.
   Assert `forged_actor_accepted == false`, `revoked_session_status == 401`,
   `cross_origin_mutation_committed == false`; use the contract's established status for CSRF rejection.
-- [ ] Run `rtk task slice:test TARGET=identity_browser`; demonstrate absent Loco behaviour.
+- [ ] Use the existing filtered browser task to demonstrate missing behaviour,
+  then run all affected identity journeys through the same runner.
 - [ ] Integrate the selected maintained implementations and original stored-format compatibility.
   Preserve expiry/revocation settings; do not swap existing account storage for generated sample users.
+- [ ] Finish invited signup and configurable open registration, including first-household
+  bootstrap. Preserve `INVITE_ONLY` precedence over the stored setting and the
+  missing-setting initialisation from whether an active owner exists. A stored
+  false setting stays open after bootstrap until changed. Verification must
+  use the retained one-use key format, real queued email delivery and status
+  transition before clinical access. Test atomic rollback, duplicate email,
+  closed registration and owner/self-care effects with the restricted database role.
 - [ ] Run identity tests and root CI; exercise real login, MFA/passkey and logout requests on an owned fixture.
 - [ ] Review and commit `feat(identity): preserve account security in Loco`.
 
 ### I3: Expose the complete OAuth/SMART authorisation server contract
 
-**Files:** Create `src/controllers/oauth.rs`, `src/models/oauth.rs`, `tests/oauth_server.rs`;
+**Files:** Extend `src/controllers/oauth_server/`, `src/models/identity/oauth.rs`,
+`tests/oauth_server.rs` and `tests/oauth_server/`;
 modify dependency/config files and `src/app.rs`; read `rust/contract-tests/tests/oauth.rs`
 and `smart_fhir.rs`. The selected library owns grant state transitions.
 **Interfaces:** `oauth::routes() -> Routes`; discovery/authorize/token/revoke endpoints retain the

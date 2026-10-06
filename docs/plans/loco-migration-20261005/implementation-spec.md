@@ -26,7 +26,7 @@ and the revision-pinned machine inventory. A working skeleton is insufficient.
   remain usable; unsupported keys never cause a silent MFA bypass.
 - Preserve FHIR R4/SMART, MCP, signed attachments, reports, imports/exports and platform/support flows.
 - Preserve complete browser operations, profile/security, devices and all five notification switches.
-- Use Tera and daisyUI; export existing palettes from the official theme creator as committed CSS.
+- Use Tera and daisyUI with the same colour schemes; fresh themes are allowed.
 - Preserve local licensed fonts, palette names, `med-tracker-theme`, `med-tracker-appearance`,
   Light/Dark/System and live operating-system appearance changes.
 - Preserve keyboard operation, focus, accessible validation, desktop/mobile layouts and offline replay.
@@ -35,12 +35,79 @@ and the revision-pinned machine inventory. A working skeleton is insufficient.
 - Prove TLS, fonts/PDF, timezones, templates/assets and writable storage in the actual final image.
 - Remove obsolete Axum/Leptos/Leptodon/Loom routing and Tasks after replacement acceptance.
 
+## Approved cutover acceptance — 6 October 2026
+
+Unsupported historical passkeys may be invalidated; counting affected production
+accounts must not block migration. Synthetic recovery, replacement and mixed-key
+tests remain required, with authentication and MFA enforced.
+
+Pending or failed Rails jobs may be lost at cutover. Old queue transfer and
+delivery-by-delivery reconciliation are excluded from acceptance. All Loco jobs
+and schedules still require their normal correctness and recovery evidence.
+
+Rollback restores an independently preserved pre-cutover database dump or frozen
+replica and restarts Rails against that state. A replica must stop following before
+Loco writes. Prove that the saved state restores and Rails operates on it. The owner
+accepts dropping or ignoring all data created during the Loco period; Rails
+compatibility with Loco-created data and lossless post-cutover rollback are excluded.
+Adoption must still preserve existing records, credentials and audit history.
+
+Existing sessions and tokens will be invalidated; prove synthetic invalidation
+and fresh authentication without an MFA bypass. Historical session/token continuity,
+old download signatures, historical system export formats and pre-cutover offline
+queues are excluded. Preserve underlying files/data and account credentials; new
+authorised downloads, Loco exports and future offline replay remain required.
+
+Use daisyUI browser pages and clear Loco routes. Keep the same colour schemes,
+required information/actions and accessibility. Exact Rails pixels, CSS geometry,
+theme-export fidelity and historical browser URLs are excluded. Push subscriptions
+may require re-enrolment; future push behaviour/preferences remain required.
+PDF reports must match the existing appearance, using inspected renderer/font and
+retained Rust evidence and a verified final scratch runtime.
+
+The first production gate excludes FHIR/SMART, MCP, AI and external medication
+lookup. These remain in the eventual complete migration objective. Exact external
+AI/lookup provider configuration parity is unnecessary; core medication entry and
+care remain required. Report core release readiness and full migration completion
+separately.
+
+The owner's subsequent first-production answers refine that boundary:
+
+| Required before first production | Deferred from first production; retained in full goal |
+| --- | --- |
+| Automated NHS dm+d import/reconciliation and scanner | Browser offline capture/replay |
+| Medication review generation and background refresh | Acceptance of both native apps before cutover |
+| Complete platform administration and time-limited support access | Portable imports |
+| Household export, closure, retention holds and permanent deletion | FHIR/SMART, MCP and optional AI/provider lookup work |
+| Avatar uploads and complete device/session management | Historical compatibility explicitly excluded above |
+| Automatic live dose/stock updates | |
+
+Catalogue/scanner and medication review outcomes are core requirements. Optional
+AI/lookup deferral must not omit them. Identify an unresolved dependency explicitly
+rather than deferring a required outcome. Core public API correctness remains
+required even though both native applications need not be accepted before cutover.
+
+Stop Rails servers, separately deployed workers and schedulers before starting
+Loco; stop Loco before restoring Rails. Prove exclusive write ownership in the
+rehearsal. These decisions do not authorise live data access, destructive actions,
+production shutdown, merging or deployment.
+
 ## Delivery constraints
+
+The owner requires library-backed authorisation rather than an application-owned
+Pundit replacement. The owner explicitly selected the embedded `cedar-policy` crate
+on 6 October. Prove the current permission matrix before accepting integration;
+do not reopen engine selection without a demonstrated limitation. Household-scoped roles,
+person view/record/manage, revoked/expired grants, capacity, time-limited support
+and list visibility must pass. Reject evaluation diagnostics as well as explicit
+deny. Trusted SeaORM reads, transaction rechecks/locking, SQL list scoping and RLS
+remain; no second grants store or synchronised permission cache. Verify build/runtime
+impact and both scratch targets. Integrate at the next safe source boundary.
 
 - Use maintained framework and security capabilities; no bespoke security protocol state machine.
 - Use Task entry points for execution and Fish for shell steps. Fixtures have password `password`.
 - Preserve source comments. Keep `AGENTS.md` and `agents.md` in sync.
-- Keep one persistent implementation writer, one verification lane and Devin SWE-2 Max review.
+- Keep the persistent team with disjoint writer ownership, one verification lane and Devin SWE-2 Max review.
 - Root owns planning, integration, commits and push; no overlapping source ownership.
 - Verification uses owned disposable resources, explicit endpoints and retained cleanup evidence.
 - Existing volumes and unrelated work are preserved. No live data is copied into test fixtures.

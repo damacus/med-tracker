@@ -1,13 +1,23 @@
 #[path = "care_api/administration.rs"]
 mod administration;
+#[path = "care_api/api_session.rs"]
+mod api_session;
 #[path = "care_api/crud.rs"]
 mod crud;
+#[path = "care_api/dosages.rs"]
+mod dosages;
 #[path = "care_api/fixture.rs"]
 mod fixture;
+#[path = "care_api/invitations.rs"]
+mod invitations;
 #[path = "care_api/locations.rs"]
 mod locations;
+#[path = "care_api/medication_reads.rs"]
+mod medication_reads;
 #[path = "care_api/people.rs"]
 mod people;
+#[path = "care_api/resource_credentials.rs"]
+mod resource_credentials;
 
 use axum::{body::Body, http::Request};
 use fixture::Fixture;

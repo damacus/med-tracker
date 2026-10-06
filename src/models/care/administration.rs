@@ -1,7 +1,7 @@
 pub mod delegation;
 pub mod grants;
 pub mod memberships;
-mod persistence;
+pub(crate) mod persistence;
 pub mod settings;
 
 use crate::models::{

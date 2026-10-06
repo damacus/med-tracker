@@ -4,6 +4,7 @@ use sea_orm::{
     QuerySelect, Statement, TransactionTrait,
 };
 
+pub mod api_session;
 mod audit;
 pub mod authorization;
 pub mod browser;
@@ -11,6 +12,7 @@ mod input;
 pub mod oauth;
 mod registrar;
 pub mod resource;
+pub mod signup;
 mod store;
 mod time_zone;
 pub mod totp;

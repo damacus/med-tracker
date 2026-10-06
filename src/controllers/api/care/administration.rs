@@ -14,13 +14,13 @@ pub(super) use memberships::{
 };
 pub(super) use settings::{show as settings_show, update as settings_update};
 
-fn request_id(request: Option<Extension<LocoRequestId>>) -> String {
+pub(super) fn request_id(request: Option<Extension<LocoRequestId>>) -> String {
     request.map_or_else(
         || uuid::Uuid::new_v4().to_string(),
         |Extension(id)| id.get().to_owned(),
     )
 }
-fn key(headers: &HeaderMap) -> Option<&str> {
+pub(super) fn key(headers: &HeaderMap) -> Option<&str> {
     headers
         .get("idempotency-key")
         .and_then(|value| value.to_str().ok())
@@ -55,7 +55,7 @@ fn attributes(body: &Value, envelope: &str) -> std::result::Result<Value, respon
     }
     Ok(Value::Object(attributes))
 }
-fn numeric_id(value: &str) -> std::result::Result<i64, response::Failure> {
+pub(super) fn numeric_id(value: &str) -> std::result::Result<i64, response::Failure> {
     value
         .parse::<i64>()
         .ok()
@@ -64,7 +64,7 @@ fn numeric_id(value: &str) -> std::result::Result<i64, response::Failure> {
         })
         .ok_or_else(|| response::operation(OperationError::NotFound))
 }
-async fn complete(
+pub(super) async fn complete(
     tenant: TenantTransaction,
     principal: &ValidatedPrincipal,
     audit: audit::RequestAudit,
@@ -88,7 +88,7 @@ async fn complete(
     }
     response
 }
-async fn store(
+pub(super) async fn store(
     tenant: &TenantTransaction,
     principal: &ValidatedPrincipal,
     saved: SavedResponse<'_>,

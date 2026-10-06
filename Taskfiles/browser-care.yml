@@ -1,5 +1,101 @@
 version: '3'
 tasks:
+  age-verification-email:
+    requires:
+      vars: [CARE_DATABASE_URL, REGISTRATION_EMAIL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1
+        -v email={{.REGISTRATION_EMAIL | shellQuote}} -f tests/fixtures/verification-email-age.sql
+  verification-probe:
+    requires:
+      vars: [CARE_DATABASE_URL, REGISTRATION_EMAIL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align
+        -v email={{.REGISTRATION_EMAIL | shellQuote}} -f tests/fixtures/verification-email-probe.sql
+  registration-policy:
+    requires:
+      vars: [CARE_DATABASE_URL, REGISTRATION_INVITE_ONLY]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction
+        -v invite_only={{.REGISTRATION_INVITE_ONLY | shellQuote}} -f tests/fixtures/registration-policy.sql
+  clear-registration-policy:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -c "DELETE FROM public.app_settings;"'
+  registration-probe:
+    requires:
+      vars: [CARE_DATABASE_URL, REGISTRATION_EMAIL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align
+        -v email={{.REGISTRATION_EMAIL | shellQuote}} -f tests/fixtures/registration-probe.sql
+  invitation-signup-probe:
+    requires:
+      vars: [CARE_DATABASE_URL, INVITATION_EMAIL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align
+        -v email={{.INVITATION_EMAIL | shellQuote}} -f tests/fixtures/invitation-browser-signup-probe.sql
+  seed-invitation-account:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction -f tests/fixtures/invitation-browser-account.sql'
+  seed-invitation-otp:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1
+        -c "INSERT INTO public.account_otp_keys(id,key,last_use,num_failures) VALUES(71002,'abcdefghijklmnop',now()-interval '1 day',0);"
+  invitation-acceptance-probe:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align -f tests/fixtures/invitation-browser-acceptance-probe.sql'
+  invitation-probe:
+    requires:
+      vars: [CARE_DATABASE_URL, INVITATION_EMAIL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align
+        -v email={{.INVITATION_EMAIL | shellQuote}} -f tests/fixtures/invitation-browser-probe.sql
+  expire-invitation:
+    requires:
+      vars: [CARE_DATABASE_URL, INVITATION_EMAIL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1
+        -v email={{.INVITATION_EMAIL | shellQuote}} -f tests/fixtures/invitation-browser-expire.sql
+  revoke-invitation:
+    requires:
+      vars: [CARE_DATABASE_URL, INVITATION_EMAIL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1
+        -v email={{.INVITATION_EMAIL | shellQuote}} -f tests/fixtures/invitation-browser-revoke.sql
+  mail-up:
+    requires:
+      vars: [MAILPIT_NAME]
+    cmds:
+      - >-
+        docker run --detach --name {{.MAILPIT_NAME | shellQuote}}
+        --publish 127.0.0.1::1025 --publish 127.0.0.1::8025
+        axllent/mailpit:v1.31.4
+  mail-port:
+    requires:
+      vars: [MAILPIT_NAME, MAILPIT_PORT]
+    cmds:
+      - 'docker port {{.MAILPIT_NAME | shellQuote}} {{.MAILPIT_PORT | shellQuote}}'
+  mail-down:
+    requires:
+      vars: [MAILPIT_NAME]
+    cmds:
+      - 'docker rm --force {{.MAILPIT_NAME | shellQuote}}'
   seed-unsupported-passkey:
     requires:
       vars: [CARE_DATABASE_URL, UNSUPPORTED_PUBLIC_KEY]

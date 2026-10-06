@@ -14,10 +14,14 @@ All capability owners accepted first. Never deploy the foundation as the finishe
 External production credentials, binding/host settings and connection limits are mandatory.
 No live migration/deployment/merge: produce reviewable artefacts and a rehearsed cutover procedure.
 
+First production readiness excludes deferred FHIR/SMART, MCP, AI and external lookup.
+Full migration completion still requires those capabilities. Report the two outcomes
+separately. The following rollback rehearsal uses the approved saved pre-cutover state.
+
 ## Review focus
 
 Missing TLS CA roots (R1), missing font/timezone/template assets (R1), architecture-specific runtime
-failure (R1), hidden legacy routing dependency (R2), and incompatible populated-database rollback (R3).
+failure (R1), hidden legacy routing dependency (R2), and failed saved-state restoration (R3).
 
 ### R1: Build and run actual scratch server and worker on both architectures
 
@@ -37,6 +41,14 @@ worker requirement. Close the PR only after its useful work has a verified repla
 The maintained WebAuthn dependency adds OpenSSL. Verify static linkage of that
 dependency on both architectures as part of the actual binary check; a successful
 host build does not establish that the scratch image can run it.
+
+PDF appearance must match Rails. The inspected Rails renderer uses sghtmltopdf
+0.5.1, A4, bundled `NotoSans-Regular.ttf`, and the styled report components including
+teal headers, tables and page counters. Retained `rust/api/src/reports.rs::render_pdf`
+uses printpdf for plain wrapped text; it is not evidence of matching appearance.
+Reuse verified font/assets and evaluate the maintained renderer before selecting
+a replacement. Compare actual representative reports, including multipage tables,
+and prove the selected renderer works in both scratch architectures.
 
 - [ ] Test absent required production credentials/settings and final-image operations.
   Assert `missing_credentials_boots == false`, `https_request_succeeds == true`,
@@ -73,21 +85,30 @@ under `tests/contracts/` with an independent manifest if needed; keep client too
 `docs/operations/loco-cutover-runbook.md`, `tests/cutover.rs`; update migration progress/HTML report,
 PR #2451 and issue #2450.
 **Interfaces:** New `task release:rehearse` creates representative populated synthetic data, adopts
-the schema, exercises full Loco journeys, runs Rails rollback and verifies preserved state.
+the schema, exercises Loco journeys, stops Loco writers, restores saved pre-cutover
+state and proves Rails operation on that restored state.
 
 - [ ] Test whole-dataset identity/credential/audit preservation, real native sign-in/dose flow,
-  offline replay, worker restart, cross-household denial and rollback after accepted writes.
+  future offline replay, worker restart, cross-household denial and saved-state rollback
+  after Loco writes. New Loco data may be dropped/ignored on rollback.
   Assert `before_ids == after_ids`, `successful_audits_preserved == true`,
   `duplicate_doses == 0`, `rails_rollback_journeys_succeed == true`.
-- [ ] Rehearse the approved unsupported-passkey transition: identify affected accounts,
+- [ ] Rehearse the approved unsupported-passkey transition on synthetic accounts;
   verify clear replacement instructions, supported-key use on mixed accounts and
   recovery/re-enrolment for unsupported-only accounts without silently bypassing MFA.
-  Preserve unsupported credential rows and prove they remain available to Rails rollback.
+  Preserve rollback credentials in saved pre-cutover state. Counting affected production
+  accounts is not a gate. Prove invalidation of old sessions/tokens and fresh sign-in
+  without an MFA bypass. Old download links, system export formats, offline queues and
+  push subscriptions need not survive; underlying records/files must survive adoption.
   PS256 authentication in Loco is deliberately excluded by the 6 October decision;
   the user recovery/replacement journey is a required cutover check.
 - [ ] Run `rtk task release:rehearse`; record unimplemented rehearsal failures.
 - [ ] Implement the disposable rehearsal and operational cutover/rollback instructions with explicit
-  image identity, schema checks, storage/queue compatibility and go/no-go evidence.
+  image identity, schema checks, saved-state restoration and go/no-go evidence.
+  Freeze the rollback replica before Loco writes, or preserve an independent dump.
+  Stop all Rails servers, workers and schedulers before starting Loco and verify
+  exclusive writers; stop all Loco writers before restoring Rails. Loss of pending/
+  failed Rails jobs is accepted, without old queue transfer or delivery reconciliation.
 - [ ] Run both-platform runtime, complete journeys/rehearsal and final broad independent review on one
   frozen commit; require green hosted CI and all capability rows accepted.
 - [ ] Commit, pull with rebase and push; report published artefacts, review verdict and remaining approval

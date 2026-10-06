@@ -1,8 +1,11 @@
 mod audit;
+pub(crate) use audit::medication_snapshot;
+pub(crate) use projection::decimal_string;
 pub mod crud;
 mod forecast;
 mod inventory;
 mod projection;
+pub mod reading;
 pub mod stock_removals;
 
 use crate::models::{

@@ -1,0 +1,20 @@
+{% if errors is defined and errors %}
+<div class="alert border border-error" role="alert"><div><h2 class="font-semibold">Check the following details</h2><ul>
+  {% for field, messages in errors %}{% for message in messages %}<li>{{ message }}</li>{% endfor %}{% endfor %}
+</ul></div></div>
+{% endif %}
+<form method="post" action="/create-account" class="flex flex-col gap-4">
+  <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+  {% if invitation is defined %}<input type="hidden" name="invitation_token" value="{{ invitation_token }}">{% endif %}
+  <label class="form-control" for="name">Name<input class="input input-bordered w-full" id="name" name="name" value="{{ name | default(value='') }}" required autocomplete="name" {% if errors is defined and errors.name is defined %}aria-invalid="true" aria-describedby="name-error"{% endif %}></label>
+  {% if errors is defined and errors.name is defined %}<p id="name-error">{% for message in errors.name %}{{ message }} {% endfor %}</p>{% endif %}
+  <label class="form-control" for="date_of_birth">Date of birth<input class="input input-bordered w-full" id="date_of_birth" name="date_of_birth" type="date" value="{{ date_of_birth | default(value='') }}" required {% if errors is defined and errors.date_of_birth is defined %}aria-invalid="true" aria-describedby="date-of-birth-error"{% endif %}></label>
+  {% if errors is defined and errors.date_of_birth is defined %}<p id="date-of-birth-error">{% for message in errors.date_of_birth %}{{ message }} {% endfor %}</p>{% endif %}
+  <label class="form-control" for="email">Email<input class="input input-bordered w-full" id="email" name="email" type="email" value="{% if invitation is defined %}{{ invitation.email }}{% else %}{{ email | default(value='') }}{% endif %}" {% if invitation is defined %}readonly{% else %}required autocomplete="email"{% endif %} {% if errors is defined and errors.email is defined %}aria-invalid="true" aria-describedby="email-error"{% endif %}></label>
+  {% if errors is defined and errors.email is defined %}<p id="email-error">{% for message in errors.email %}{{ message }} {% endfor %}</p>{% endif %}
+  <label class="form-control" for="password">Password<input class="input input-bordered w-full" id="password" name="password" type="password" minlength="12" required autocomplete="new-password" {% if errors is defined and errors.password is defined %}aria-invalid="true" aria-describedby="password-error"{% endif %}></label>
+  {% if errors is defined and errors.password is defined %}<p id="password-error">{% for message in errors.password %}{{ message }} {% endfor %}</p>{% endif %}
+  <label class="form-control" for="password-confirm">Confirm Password<input class="input input-bordered w-full" id="password-confirm" name="password-confirm" type="password" minlength="12" required autocomplete="new-password" {% if errors is defined and errors['password-confirm'] is defined %}aria-invalid="true" aria-describedby="password-confirm-error"{% endif %}></label>
+  {% if errors is defined and errors['password-confirm'] is defined %}<p id="password-confirm-error">{% for message in errors['password-confirm'] %}{{ message }} {% endfor %}</p>{% endif %}
+  <button class="btn btn-neutral" type="submit">Create Account</button>
+</form>

@@ -10,6 +10,13 @@ Loco controllers expose API routes without embedding business logic or calling a
 
 ## Global constraints
 
+First production must include complete platform administration, time-limited support
+access and household export/closure/retention holds/permanent deletion. These are
+core security outcomes, not optional follow-ups. Automated NHS dm+d import/
+reconciliation, scanner, review generation/background refresh and automatic live
+dose/stock updates are also core. Optional AI/provider lookup deferral does not
+exclude them. No live destructive action is authorised by these scope decisions.
+
 Domain implementation depends on locally verified tenant/actor/error interfaces.
 Owned domain tests may establish actors through synthetic fixture setup; do not
 add a second production authentication path. Production HTTP integration and care
@@ -74,8 +81,10 @@ the entire care migration before publishing working capabilities.
 
 ### C2: Medicines, inventory, dosage, schedules and assignments
 
-**Files:** Medication/treatment modules/controllers above; `tests/care_medications.rs`,
-`tests/care_treatments.rs`. Read existing stock adjustment service and Rust medication/schedule modules.
+**Files:** Medication/treatment modules/controllers above; focused leaves under
+`tests/care_api/`, registered in the existing `tests/care_api.rs` binary. Read existing
+stock adjustment service and Rust medication/schedule modules. Preserve the retained
+entry points: browser-only mutations do not justify new public API routes.
 **Medication operations:** `Create`, `Update`, `Retire`, `AdjustStock`, `RemoveStock`,
 `Order`, `Receive`, `CreateDosage`, `UpdateDosage`, `RetireDosage`;
 **Treatment operations:** `CreateSchedule`, `UpdateSchedule`, `RetireSchedule`, `Assign`, `Unassign`,
@@ -85,33 +94,34 @@ Split tasks into medication CRUD, stock adjustment/removal, order/receipt, dosag
 schedule CRUD, assignment/unassignment and pause/resume. Each unit uses the five steps
 below, with filter prefixes `medication_crud`, `stock_adjustment`, `stock_orders`,
 `dosage_crud`, `schedule_crud`, `assignments` and `pause_resume` respectively.
-Use `care_medications` for the first four units and `care_treatments` for the final three.
+Use the existing `care_api` binary with the owning module or descriptive test filter.
+Browser adapters call the same tested model methods; no extra runner is required.
 
 - [ ] Test full successful/invalid/forbidden actions, duplicate receipt, two competing stock writes,
   active dosage references and pause/resume boundaries. Assert one receipt effect for replay,
   exact decimal stock, no unauthorised mutation and stable occurrence identities.
-- [ ] Run `rtk task slice:test TARGET=care_medications` and `TARGET=care_treatments`; record RED.
+- [ ] Run `rtk task slice:test TARGET=care_api FILTER=<owning-module>`; record RED.
 - [ ] Implement the named actions with locking, current access and existing transactional audit requirements.
 - [ ] Run both focused binaries and existing stock/treatment contract expectations against Loco, then root CI.
 - [ ] Review and commit complete medication and treatment operations in independently reviewable commits.
 
 ### C3: Dose capture, history, correction and replay/sync
 
-**Files:** Dose/sync modules/controllers above; `tests/care_doses.rs`, `tests/care_sync.rs`.
+**Files:** Dose/sync modules/controllers above; focused leaves under `tests/care_api/`.
 Read `rails/app/services/medication_administration/`, `offline_dose_eligibility.rb`,
 `rust/api/src/dose/`, `mutation_idempotency.rs` and contract `doses.rs`, `replay.rs`, `sync.rs`.
 **Dose operations:** `Take`, `Correct`, `Delete`, `RecordMissed`;
 **Sync operations:** `ReadChanges`, `ReplayBatch`. Keep client UUID and sync cursor formats.
 
-Separate tasks: `dose_take`, `dose_correction`, `dose_delete`, `dose_missed` in `care_doses`;
-`sync_read` and `sync_replay` in `care_sync`. Apply the following cycle to each filter;
+Separate tasks: `dose_take`, `dose_correction`, `dose_delete`, `dose_missed`,
+`sync_read` and `sync_replay` in the existing `care_api` binary. Apply the following cycle to each filter;
 the Take and Replay tasks own the concurrency/idempotency assertions.
 
 - [ ] Test simultaneous same-UUID doses, same UUID/different payload, insufficient stock,
   partial batch conflicts, revoked permission before replay and forced audit failure.
   Assert `take_count_after_duplicate == 1`, `stock_decrements == 1`, `successful_audits == 1`,
   `payload_mismatch_is_conflict == true`, `writes_after_audit_failure == 0`.
-- [ ] Run `rtk task slice:test TARGET=care_doses` and `TARGET=care_sync`; record actual invariant failures.
+- [ ] Run `rtk task slice:test TARGET=care_api FILTER=<owning-module>`; record actual invariant failures.
 - [ ] Implement existing idempotency/conflict rules and atomic dose/stock/audit writes; include explicit
   historical timezone/occurrence handling. Preserve unsuccessful-access audit rules separately.
 - [ ] Run concurrent/replay tests, route-level contracts and root CI. Verify database state, not only responses.

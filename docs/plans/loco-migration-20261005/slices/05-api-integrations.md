@@ -58,6 +58,20 @@ adapters invoke shared care operations with verified actors and current scopes/c
 
 ### A3: Attachments, reports, portability, lookup and review workflows
 
+On 6 October, the owner excluded historical download-signature and system-export
+format compatibility. Preserve underlying files/data, issue new authorised links
+and generate new Loco exports. PDF reports must match existing appearance; inspect
+the current renderer, fonts and retained Rust implementation before selecting a
+renderer and prove it in scratch. FHIR/SMART, MCP, AI and external lookup remain in
+full migration scope but are deferred from the first production gate. Exact AI/
+lookup provider configuration parity is unnecessary; core medication entry remains.
+
+The later first-release answers require automated NHS dm+d import/reconciliation,
+scanner and medication review generation/background refresh. Those outcomes are
+core despite optional AI/lookup deferral. Portable imports and acceptance of both
+native apps are deferred from first production, not from the full goal. Core API
+correctness, avatar uploads and complete device/session management remain required.
+
 **Files:** Create `src/models/integrations/{attachments,reports,portability,lookup,reviews}.rs`,
 matching API controller modules, `tests/integration_data.rs`; add fixtures under `tests/fixtures/integrations/`.
 Read contract `uploads.rs`, `envelopes.rs`, `reports.rs`, `portability.rs`, `lookup.rs`, `reviews.rs`,
@@ -73,7 +87,8 @@ authorised private result references, never an unverified caller-supplied storag
 - [ ] Integrate maintained signing/encryption/storage clients and proven format compatibility.
   Use W1 durable enqueue for imports/reviews. Keep private storage, retention and error behaviour explicit.
 - [ ] Run `rtk task slice:contracts GROUP=data-integrations` plus root CI, including real private storage
-  and PDF fixtures. Verify old signed-format compatibility or an explicitly approved transition.
+  and matching PDF fixtures. Verify new authorised links and expiry; old Rails links
+  may expire under the approved transition.
 - [ ] Review, integrate and publish; reconcile every capability-inventory API row and update progress.
 
 **Done:** Every authoritative API operation and inventoried integration passes on Loco, pinned clients

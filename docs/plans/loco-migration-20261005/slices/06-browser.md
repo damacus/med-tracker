@@ -10,11 +10,23 @@ Small application scripts own interaction and offline outbox behaviour; CSS owns
 
 ## Global constraints
 
+The 6 October decision supersedes historical appearance and URL fidelity below:
+use daisyUI, the same colour schemes and clear Loco routes. Exact Rails pixels,
+CSS values/geometry and theme-export fidelity are unnecessary. Preserve required
+information/actions and accessibility. PDF appearance must still match. Existing
+push subscriptions may require re-enrolment. Pre-cutover offline queues need not
+migrate; future offline capture/replay and normal push behaviour remain required.
+Offline capture/replay is deferred from the first production gate, as subsequently
+approved, while remaining in the complete goal. Automatic live dose/stock updates,
+scanner, reviews, avatar uploads and complete device/session management are required
+before first production.
+
 Implement each journey against its locally verified operation interface. Complete
 care/identity and relevant API/workers remain acceptance requirements, rather than
 blocking independent shell/theme or journey implementation. The user's Tera/daisyUI migration
 instruction supersedes Rails-only Phlex rules for the Loco UI; retain Phlex within Rails rollback.
-Theme exports preserve values/names, licensed fonts and both storage keys. No read-only journey substitute.
+Keep the same colour schemes, licensed fonts and usable theme preferences; fresh
+daisyUI themes are allowed. No read-only journey substitute.
 
 ## Review focus
 

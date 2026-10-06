@@ -14,7 +14,9 @@ P1/P2/P3 implementation may start once the foundation and owned runner are local
 verified and published while immutable GitHub checks run. Persistence acceptance
 still requires accepted foundation and all persistence review/runtime/hosted gates.
 Synthetic databases only. Queued CI does not block owned development rehearsals.
-Additive rollback-compatible changes only.
+Preserve pre-existing records and ledger provenance during adoption. Rollback restores
+an independently saved pre-cutover dump or frozen replica, as approved on 6 October.
+Rails need not operate on Loco-created data; new Loco data may be dropped on rollback.
 Retain Rails ledger provenance. Credential byte preservation is not authentication proof.
 Writer owns migration/model/tests; verifier owns database resources and generated entities.
 
@@ -22,7 +24,7 @@ Writer owns migration/model/tests; verifier owns database resources and generate
 
 Populated adoption preserves IDs/bytes (P2). Repeated adoption is a no-op (P2). Unexpected functions,
 grants or RLS changes are rejected (P2). Reused pooled connections cannot leak tenants (P3).
-Workers cannot gain owner privileges and Rails can still operate (P3).
+Workers cannot gain owner privileges; Rails operates on restored pre-cutover state (P3).
 
 ### P1: Establish owned database acceptance and exact baseline inputs
 
@@ -86,7 +88,7 @@ standard `App::seed` for synthetic fixtures; runtime roles provisioned before wo
 - [ ] Add tests `pool_reuse_does_not_leak_household`, `runtime_role_cannot_alter_schema`,
   `minor_and_dependent_lack_capacity`, `rails_rollback_preserves_operations`.
   Assert cross-household rows empty, DDL denied, enum values exactly `0/1/2`, capacities `false/false`,
-  and preserved Rails reads/writes succeed on the adopted disposable database.
+  and Rails reads/writes succeed on the restored pre-cutover disposable database.
 - [ ] Run `rtk task slice:test TARGET=tenant_access`; record absent role/context/fixture failures.
 - [ ] Generate entities from the accepted schema; establish verified context with transaction-local settings,
   current membership checks and least privilege. Provision Loco queue storage with the migration role.

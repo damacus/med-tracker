@@ -116,7 +116,7 @@ tasks:
     desc: Start the Loco server
     cmds:
       - task: frontend:prepare
-      - 'cargo run --locked -- start --environment {{.LOCO_ENV | default "development"}}'
+      - 'cargo run --locked -- start {{if eq (.SERVER_AND_WORKER | default "false") "true"}}--server-and-worker{{end}} --environment {{.LOCO_ENV | default "development"}}'
   build:
     desc: Build Loco
     cmds:

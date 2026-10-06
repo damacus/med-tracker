@@ -13,7 +13,10 @@ use sea_orm::{
     QueryFilter, QuerySelect, TransactionTrait,
 };
 
-use super::store::{self, Lifetime, Store};
+use super::{
+    api_session,
+    store::{self, Lifetime, Store},
+};
 use crate::models::{
     access::{self, Actor, HouseholdScope, TenantTransaction},
     care::doses::{CredentialMethod, CredentialProvenance},
@@ -33,8 +36,15 @@ pub struct ValidatedPrincipal {
     account_id: i64,
     provenance: CredentialProvenance,
     time_zone: chrono_tz::Tz,
-    authorization: String,
-    grant_id: i64,
+    credential: Credential,
+}
+
+enum Credential {
+    OAuth {
+        authorization: String,
+        grant_id: i64,
+    },
+    Stored(api_session::StoredPrincipal),
 }
 
 impl ValidatedPrincipal {
@@ -64,17 +74,56 @@ impl ValidatedPrincipal {
             request_id,
         };
         let tenant = access::begin(db, &scope).await.map_err(operation_error)?;
-        match validate(tenant.transaction(), &self.authorization).await {
-            Ok(row) if row.id == self.grant_id && row.account_id == self.account_id => Ok(tenant),
-            result => {
-                tenant.rollback().await.map_err(operation_error)?;
-                Err(result.err().unwrap_or(AuthenticationError::Unauthenticated))
-            }
+        let checked = match &self.credential {
+            Credential::OAuth {
+                authorization,
+                grant_id,
+            } => validate(tenant.transaction(), authorization)
+                .await
+                .and_then(|row| {
+                    if row.id == *grant_id && row.account_id == self.account_id {
+                        Ok(())
+                    } else {
+                        Err(AuthenticationError::Unauthenticated)
+                    }
+                }),
+            Credential::Stored(principal) => principal
+                .revalidate(tenant.transaction())
+                .await
+                .and_then(|actor| {
+                    if actor.account_id != self.account_id {
+                        Err(AuthenticationError::Unauthenticated)
+                    } else if actor.household_id != household_id {
+                        Err(AuthenticationError::Forbidden)
+                    } else {
+                        Ok(())
+                    }
+                }),
+        };
+        if let Err(error) = checked {
+            tenant.rollback().await.map_err(operation_error)?;
+            return Err(error);
         }
+        Ok(tenant)
     }
 }
 
 pub async fn authenticate(
+    db: &DatabaseConnection,
+    headers: &HeaderMap,
+) -> Result<ValidatedPrincipal, AuthenticationError> {
+    if let Some((principal, actor)) = api_session::authenticate_stored(db, headers).await? {
+        return Ok(ValidatedPrincipal {
+            account_id: actor.account_id,
+            provenance: principal.provenance(),
+            time_zone: super::time_zone::preferred(&actor.preferences)?,
+            credential: Credential::Stored(principal),
+        });
+    }
+    authenticate_oauth(db, headers).await
+}
+
+pub(super) async fn authenticate_oauth(
     db: &DatabaseConnection,
     headers: &HeaderMap,
 ) -> Result<ValidatedPrincipal, AuthenticationError> {
@@ -100,8 +149,7 @@ pub async fn authenticate(
             account_id: row.account_id,
             provenance: CredentialProvenance { method: CredentialMethod::OauthGrant, reference: row.id.to_string() },
             time_zone,
-            authorization: authorization.to_owned(),
-            grant_id: row.id,
+            credential: Credential::OAuth { authorization: authorization.to_owned(), grant_id: row.id },
         })
     }.await;
     match result {
