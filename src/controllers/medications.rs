@@ -1,6 +1,6 @@
-mod forms;
+pub(super) mod forms;
 mod management;
-mod rendering;
+pub(super) mod rendering;
 
 use crate::models::{
     access::TenantTransaction,
@@ -72,7 +72,7 @@ async fn index(
     response
 }
 
-async fn begin(
+pub(super) async fn begin(
     ctx: &AppContext,
     session: &Session<SessionPgPool>,
     slug: &str,
@@ -302,7 +302,7 @@ async fn adjust_stock(
     }
 }
 
-fn request_id(request: Option<Extension<LocoRequestId>>) -> String {
+pub(super) fn request_id(request: Option<Extension<LocoRequestId>>) -> String {
     request.map_or_else(
         || uuid::Uuid::new_v4().to_string(),
         |Extension(id)| id.get().to_owned(),
@@ -323,7 +323,7 @@ fn redirect(slug: &str, id: &str) -> Response {
         .into_response()
 }
 
-fn operation_error(error: OperationError) -> Response {
+pub(super) fn operation_error(error: OperationError) -> Response {
     (
         forms::status(&error),
         [(header::CACHE_CONTROL, "no-store")],
@@ -332,7 +332,7 @@ fn operation_error(error: OperationError) -> Response {
         .into_response()
 }
 
-fn authentication_error(error: AuthenticationError) -> Response {
+pub(super) fn authentication_error(error: AuthenticationError) -> Response {
     match error {
         AuthenticationError::Unauthenticated => (
             StatusCode::SEE_OTHER,
@@ -349,6 +349,6 @@ fn authentication_error(error: AuthenticationError) -> Response {
     }
 }
 
-fn unavailable() -> Response {
+pub(super) fn unavailable() -> Response {
     operation_error(OperationError::Unavailable)
 }

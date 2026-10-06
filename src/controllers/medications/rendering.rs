@@ -39,7 +39,7 @@ fn context(
     data
 }
 
-pub(super) fn appearance_context() -> Value {
+pub(crate) fn appearance_context() -> Value {
     json!({ "allow_palette":true,
         "appearances":[{"id":"light","label":"Light"},{"id":"dark","label":"Dark"},{"id":"system","label":"System"}],
         "palettes":[{"id":"default","label":"Command Centre"},{"id":"serene-sage","label":"Serene Sage"},{"id":"modern-clinical","label":"Modern Clinical"},{"id":"warm-earth","label":"Warm Earth"},{"id":"deep-lavender","label":"Deep Lavender"},{"id":"forest-care","label":"Forest Care"},{"id":"sunset-support","label":"Sunset Support"},{"id":"tech-indigo","label":"Tech Indigo"},{"id":"soft-rose","label":"Soft Rose"},{"id":"minty-fresh","label":"Minty Fresh"}] })

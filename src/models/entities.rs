@@ -84,7 +84,11 @@ entity!(oauth_application, "oauth_applications", {
     client_secret_hash: Option<String>,
 });
 
-entity!(otp_key, "account_otp_keys", {});
+entity!(otp_key, "account_otp_keys", {
+    key: String,
+    last_use: DateTime,
+    num_failures: i32,
+});
 
 entity!(webauthn_key, "account_webauthn_keys", {
     account_id: i64,
@@ -558,6 +562,17 @@ entity!(location, "locations", {
     household_id: i64,
     portable_id: String,
     name: String,
+    description: Option<String>,
+    created_at: DateTime,
+    updated_at: DateTime,
+});
+
+entity!(location_membership, "location_memberships", {
+    household_id: i64,
+    location_id: i64,
+    person_id: i64,
+    created_at: DateTime,
+    updated_at: DateTime,
 });
 
 entity!(medication, "medications", {

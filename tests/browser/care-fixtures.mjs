@@ -32,7 +32,7 @@ export const test = base.extend({
     const start = async () => {
       output = '';
       exited = false;
-      server = spawn('task', ['dev'], { cwd: root, detached: true, env: { ...process.env, LOCO_ENV: 'test', PORT: String(port), DATABASE_URL: runtime.href, MEDTRACKER_SESSION_KEY: Buffer.alloc(64, 7).toString('base64'), MEDTRACKER_COOKIE_SECURE: 'false' }, stdio: ['ignore', 'pipe', 'pipe'] });
+      server = spawn('task', ['dev'], { cwd: root, detached: true, env: { ...process.env, LOCO_ENV: 'test', PORT: String(port), DATABASE_URL: runtime.href, MEDTRACKER_SESSION_KEY: Buffer.alloc(64, 7).toString('base64'), MEDTRACKER_COOKIE_SECURE: 'false', RAILS_SECRET_KEY_BASE: 'synthetic-rails-secret-key-base-for-compatibility', RAILS_OLD_SECRET_KEY_BASE: 'synthetic-old-rails-secret-key-base' }, stdio: ['ignore', 'pipe', 'pipe'] });
       server.stdout.on('data', chunk => { output += chunk; });
       server.stderr.on('data', chunk => { output += chunk; });
       server.on('exit', () => { exited = true; });
@@ -50,6 +50,7 @@ export const test = base.extend({
     try {
       await start();
       await use({ origin, probe: async () => JSON.parse(await fixtureTask('probe')), revoke: () => fixtureTask('revoke'), reactivate: () => fixtureTask('reactivate'),
+        seedOtp: () => fixtureTask('seed-otp'), otpProbe: async () => JSON.parse(await fixtureTask('otp-probe')), closeOtpAccount: () => fixtureTask('close-otp-account'),
         secondPerson: () => fixtureTask('second-person'),
         scheduledMedicine: () => fixtureTask('scheduled-medicine'),
         oauthProbe: async () => JSON.parse(await fixtureTask('oauth-probe')), ageAuthentication: () => fixtureTask('age-authentication'),

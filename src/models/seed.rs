@@ -34,6 +34,10 @@ fixture_entity!(locations, "locations", { household_id: i64, name: String, });
 fixture_entity!(medications, "medications", { household_id: i64, location_id: i64, name: String, current_supply: Decimal, dose_amount: f64, dose_unit: String, });
 fixture_entity!(person_medications, "person_medications", { household_id: i64, person_id: i64, medication_id: i64, dose_amount: Decimal, dose_unit: String, position: i32, });
 
+#[allow(
+    clippy::result_large_err,
+    reason = "Loco's framework error type contains ordered JSON values"
+)]
 pub async fn seed(ctx: &AppContext, base: &Path) -> Result<()> {
     if !matches!(
         ctx.environment,

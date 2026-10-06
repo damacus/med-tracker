@@ -1,5 +1,24 @@
 version: '3'
 tasks:
+  seed-otp:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1
+        -c "INSERT INTO public.account_otp_keys(id,key,last_use,num_failures) VALUES(71001,'abcdefghijklmnop',now()-interval '1 day',0)"
+  otp-probe:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align
+        -c "SELECT json_build_object('num_failures',num_failures,'recent_use',last_use>now()-interval '1 minute') FROM public.account_otp_keys WHERE id=71001"
+  close-otp-account:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -c "UPDATE public.accounts SET status=3 WHERE id=71001"'
   scheduled-medicine:
     requires:
       vars: [CARE_DATABASE_URL]

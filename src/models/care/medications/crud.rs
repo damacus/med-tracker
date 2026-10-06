@@ -135,6 +135,25 @@ pub async fn retire(
     etag: Option<&str>,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<(), OperationError> {
+    retire_with_event(tenant, id, etag, provenance, "api_destroy").await
+}
+
+pub(crate) async fn retire_cascade(
+    tenant: &TenantTransaction,
+    id: &str,
+    provenance: Option<&CredentialProvenance>,
+    event: &str,
+) -> Result<(), OperationError> {
+    retire_with_event(tenant, id, None, provenance, event).await
+}
+
+async fn retire_with_event(
+    tenant: &TenantTransaction,
+    id: &str,
+    etag: Option<&str>,
+    provenance: Option<&CredentialProvenance>,
+    event: &str,
+) -> Result<(), OperationError> {
     let context = StockContext { tenant, provenance };
     let found = locked_manager(tenant, id, etag).await?;
     let before = audit::medication_snapshot(&found);
@@ -156,7 +175,7 @@ pub async fn retire(
         &tenant.scope().request_id,
         "Medication",
         found.id,
-        "api_destroy",
+        event,
         Some(before),
         None,
     )

@@ -5,6 +5,26 @@ progress. Root `task release-image` is gated until complete migration acceptance
 The Rails rollback uses profiles in `rails/compose.yaml` for development,
 testing, and local validation of the production image.
 
+## Loco authentication secrets
+
+Existing authenticator enrolments require `RAILS_SECRET_KEY_BASE` to contain the
+same secret used by the Rails application when those credentials were created.
+Rodauth derives the authenticator secret from the stored key and Rails
+`secret_key_base`; a new browser-session key cannot replace it. Supply this value
+through the deployment's secret store, never a committed environment file. A
+missing or empty value prevents TOTP completion rather than falling back to the
+raw stored key.
+
+If the Rails installation used an old HMAC secret during rotation, preserve it
+explicitly as `RAILS_OLD_SECRET_KEY_BASE` alongside the current secret. Do not
+generate a new value for either setting during a restart. `MEDTRACKER_SESSION_KEY`
+remains the separate persistent 64-byte, Base64-encoded browser-session key.
+
+Password verification alone does not create a clinical session for a TOTP account.
+The additional-factor challenge expires after five minutes and requires a new
+password verification after expiry. Existing authenticator credentials stay in
+`account_otp_keys`; no re-enrolment or schema change is required by this flow.
+
 ## Compose profiles
 
 - `dev`: development stack

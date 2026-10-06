@@ -8,6 +8,9 @@ use sea_orm::{
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
+mod otp;
+pub use otp::{challenge, has_pending_challenge, verify as verify_otp};
+
 use super::{resource::AuthenticationError, store::Lifetime};
 use crate::models::{
     access::{self, Actor, HouseholdScope, TenantTransaction},
@@ -19,6 +22,13 @@ use crate::models::{
 struct Identity {
     account_id: i64,
     registry_key: String,
+    #[serde(default)]
+    additional_factor_verified: bool,
+}
+
+pub enum SignInOutcome {
+    Authenticated,
+    OtpRequired,
 }
 
 pub struct BrowserPrincipal {
@@ -136,6 +146,12 @@ async fn validate(
     access::verify_account_actor(transaction, identity.account_id)
         .await
         .map_err(super::resource::operation_error)?;
+    if !identity.additional_factor_verified {
+        let row = transaction.query_one_raw(sql("SELECT EXISTS (SELECT 1 FROM account_otp_keys WHERE id=$1) OR EXISTS (SELECT 1 FROM account_webauthn_keys WHERE account_id=$1) AS required", [identity.account_id.into()])).await.map_err(unavailable)?.ok_or(AuthenticationError::Unavailable)?;
+        if row.try_get::<bool>("", "required").map_err(unavailable)? {
+            return Err(AuthenticationError::Forbidden);
+        }
+    }
     let policy = Lifetime::from_environment().map_err(unavailable)?;
     let maximum = policy.maximum_age.map(|duration| duration.num_seconds());
     let query = if touch {
@@ -196,7 +212,7 @@ pub async fn sign_in(
     session: &Session<SessionPgPool>,
     email: String,
     password: String,
-) -> Result<(), AuthenticationError> {
+) -> Result<SignInOutcome, AuthenticationError> {
     if email.len() > 320 || password.len() > 1024 {
         return Err(AuthenticationError::Unauthenticated);
     }
@@ -229,30 +245,47 @@ pub async fn sign_in(
     access::verify_account_actor(&transaction, account.id)
         .await
         .map_err(super::resource::operation_error)?;
-    let factor = transaction.query_one_raw(sql("SELECT EXISTS (SELECT 1 FROM account_otp_keys WHERE id = $1) OR EXISTS (SELECT 1 FROM account_webauthn_keys WHERE account_id = $1) AS required", [account.id.into()])).await.map_err(unavailable)?.ok_or(AuthenticationError::Unavailable)?;
-    if factor
-        .try_get::<bool>("", "required")
-        .map_err(unavailable)?
-    {
+    let factor = transaction.query_one_raw(sql("SELECT EXISTS (SELECT 1 FROM account_otp_keys WHERE id=$1) AS otp, EXISTS (SELECT 1 FROM account_webauthn_keys WHERE account_id=$1) AS passkey, timezone('UTC',clock_timestamp()) AS authenticated_at", [account.id.into()])).await.map_err(unavailable)?.ok_or(AuthenticationError::Unavailable)?;
+    let authenticated_at = factor
+        .try_get("", "authenticated_at")
+        .map_err(unavailable)?;
+    if factor.try_get::<bool>("", "otp").map_err(unavailable)? {
+        otp::begin(transaction, session, account.id, authenticated_at).await?;
+        return Ok(SignInOutcome::OtpRequired);
+    }
+    if factor.try_get::<bool>("", "passkey").map_err(unavailable)? {
         return Err(AuthenticationError::Forbidden);
     }
+    issue_session(transaction, session, account.id, authenticated_at, false).await?;
+    Ok(SignInOutcome::Authenticated)
+}
+
+async fn issue_session(
+    transaction: DatabaseTransaction,
+    session: &Session<SessionPgPool>,
+    account_id: i64,
+    authenticated_at: chrono::NaiveDateTime,
+    additional_factor_verified: bool,
+) -> Result<(), AuthenticationError> {
     let registry_key = hex::encode(Sha256::digest(uuid::Uuid::new_v4().as_bytes()));
-    transaction.execute_raw(sql("INSERT INTO account_active_session_keys (account_id, session_id, created_at, last_use) VALUES ($1, $2, timezone('UTC', clock_timestamp()), timezone('UTC', clock_timestamp()))", [account.id.into(), registry_key.clone().into()])).await.map_err(unavailable)?;
+    transaction.execute_raw(sql("INSERT INTO account_active_session_keys (account_id, session_id, created_at, last_use) VALUES ($1, $2, $3, timezone('UTC', clock_timestamp()))", [account_id.into(), registry_key.clone().into(), authenticated_at.into()])).await.map_err(unavailable)?;
     transaction
         .execute_raw(sql(
             "DELETE FROM account_login_failures WHERE account_id = $1",
-            [account.id.into()],
+            [account_id.into()],
         ))
         .await
         .map_err(unavailable)?;
     transaction.commit().await.map_err(unavailable)?;
     session.renew();
     session.set_store(true);
+    session.remove("otp_pending");
     session.set(
         "identity",
         Identity {
-            account_id: account.id,
+            account_id,
             registry_key,
+            additional_factor_verified,
         },
     );
     Ok(())

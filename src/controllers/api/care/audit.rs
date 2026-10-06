@@ -9,6 +9,24 @@ pub(super) struct RequestAudit {
 }
 
 impl RequestAudit {
+    pub fn location_create() -> Self {
+        Self::location("POST", "create")
+    }
+    pub fn location(method: &'static str, action: &'static str) -> Self {
+        Self {
+            method,
+            controller: "api/v1/locations",
+            action,
+            policy: "LocationPolicy",
+            query: match action {
+                "create" => "create?",
+                "update" => "update?",
+                "destroy" => "destroy?",
+                "show" => "show?",
+                _ => "index?",
+            },
+        }
+    }
     pub fn medication(method: &'static str, action: &'static str) -> Self {
         Self {
             method,
@@ -70,7 +88,8 @@ pub(super) async fn record(
         "authentication_method": method, "session_reference": format!("{prefix}:{}", provenance.reference),
         "request_id": tenant.scope().request_id,
     });
-    if status.is_success() {
+    let success = status.is_success() || status == StatusCode::NOT_MODIFIED;
+    if success {
         context["policy_class"] = json!(request.policy);
         context["policy_query"] = json!(request.query);
     }
@@ -78,7 +97,7 @@ pub(super) async fn record(
     security_audit_event::ActiveModel {
         household_id: Set(tenant.scope().household_id), actor_account_id: Set(Some(tenant.scope().actor.account_id)),
         actor_membership_id: Set(Some(tenant.membership().id)), event_type: Set("api.request".into()),
-        request_id: Set(Some(tenant.scope().request_id.clone())), metadata: Set(json!({"http_method":request.method,"controller":request.controller,"action":request.action,"outcome":if status.is_success(){"success"}else{"failure"},"status":status.as_u16()})),
+        request_id: Set(Some(tenant.scope().request_id.clone())), metadata: Set(json!({"http_method":request.method,"controller":request.controller,"action":request.action,"outcome":if success{"success"}else{"failure"},"status":status.as_u16()})),
         audit_context: Set(context), created_at: Set(now), updated_at: Set(now), ..Default::default()
     }.insert(tenant.transaction()).await.map_err(|_| OperationError::Unavailable)?;
     Ok(())

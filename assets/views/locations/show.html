@@ -1,0 +1,37 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-3xl mx-auto">
+  <a class="link" href="/households/{{ slug }}/locations">Locations</a>
+  <a class="link ml-4" href="/households/{{ slug }}/medications">Medications</a>
+  <h1 class="text-3xl font-semibold mt-4">{{ location.name }}</h1>
+  {% if location.description %}<p class="mt-4">{{ location.description }}</p>{% endif %}
+  <div class="mt-6">{% include "components/form_errors.html" %}</div>
+  {% if can_manage %}
+  <div class="flex flex-col sm:flex-row gap-3 mt-6">
+    <a class="btn btn-neutral" href="/households/{{ slug }}/locations/{{ location.id }}/edit">Edit Location</a>
+    <button type="button" class="btn btn-ghost" data-dialog-open="delete-location">Delete Location</button>
+  </div>
+  <dialog id="delete-location" class="modal" aria-labelledby="delete-location-title">
+    <div class="modal-box">
+      <h2 id="delete-location-title" class="text-xl font-semibold">Delete Location</h2>
+      <p class="mt-4">Delete {{ location.name }} and its medications? Locations with administration history cannot be deleted.</p>
+      <form method="post" action="/households/{{ slug }}/locations/{{ location.id }}/destroy" class="modal-action">
+        <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+        <input type="hidden" name="etag" value="{{ etag }}">
+        <button type="button" class="btn btn-ghost" data-dialog-close>Cancel</button>
+        <button type="submit" class="btn btn-neutral">Delete</button>
+      </form>
+    </div>
+  </dialog>
+  {% endif %}
+  <h2 class="text-2xl font-semibold mt-8">Medications at this location</h2>
+  <ul class="flex flex-col gap-4 mt-4">
+  {% for medication in medications %}
+    <li class="card bg-base-100 border border-base-300"><div class="card-body">
+      <h3 class="card-title"><a class="link" href="/households/{{ slug }}/medications/{{ medication.id }}">{{ medication.name }}</a></h3>
+      <p>{% if medication.quantity %}Stock: {{ medication.quantity }} {{ medication.unit }}{% else %}Stock is not tracked.{% endif %}</p>
+    </div></li>
+  {% else %}<li>No medications are stored here.</li>{% endfor %}
+  </ul>
+</section>
+{% endblock content %}

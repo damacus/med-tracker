@@ -3,9 +3,14 @@ use loco_rs::prelude::*;
 pub mod api;
 pub mod auth;
 pub mod home;
+pub mod locations;
 pub mod medications;
 pub mod oauth_server;
 
+#[allow(
+    clippy::result_large_err,
+    reason = "Loco's framework error type contains ordered JSON values"
+)]
 async fn health() -> Result<Response> {
     format::json(serde_json::json!({"status": "ok", "application": "med-tracker"}))
 }

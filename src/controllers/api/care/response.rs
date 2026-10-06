@@ -5,7 +5,7 @@ pub(super) struct Failure {
     pub status: StatusCode,
     code: String,
     message: String,
-    details: Option<Value>,
+    details: Option<Box<Value>>,
     authenticate: Option<String>,
 }
 
@@ -15,7 +15,7 @@ impl Failure {
             status: StatusCode::UNPROCESSABLE_ENTITY,
             code: "validation_failed".into(),
             message: "Validation failed".into(),
-            details: Some(errors),
+            details: Some(Box::new(errors)),
             authenticate: None,
         }
     }
@@ -33,7 +33,7 @@ impl Failure {
             status: StatusCode::UNPROCESSABLE_ENTITY,
             code: "validation_failed".into(),
             message: "Validation failed".into(),
-            details: Some(json!({field: [message]})),
+            details: Some(Box::new(json!({field: [message]}))),
             authenticate: None,
         }
     }
@@ -130,7 +130,7 @@ pub(super) fn error(error: Failure, request_id: &str) -> Response {
     let mut body =
         json!({"error": {"code": error.code, "message": error.message, "request_id": request_id}});
     if let Some(details) = error.details {
-        body["error"]["errors"] = details;
+        body["error"]["errors"] = *details;
     }
     let mut response = success(error.status, body, request_id, None);
     if let Some(challenge) = error

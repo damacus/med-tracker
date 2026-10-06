@@ -1,132 +1,75 @@
-# Loco migration team charter
+# Loco migration working rules
 
-This charter supersedes older Axum/Leptos port allocations for this migration.
-Apply the user's team-development skill and repository instructions.
+Complete every slice in the approved plan. Migration defects stay in that work;
+create follow-up issues only for independent work outside the migration. Preserve
+Rails as the runnable rollback application. No migration section is accepted until
+its complete acceptance criteria pass.
 
-The user's retrospective correction supersedes earlier task-level ceremony.
-Locally verified dependencies permit isolated implementation; hosted CI is an
-acceptance/merge gate, not an implementation queue. The coordinator independently
-reviews routine tooling/CI repairs with focused tests. Devin reviews coherent
-capability changes and security/schema decisions, rather than every tiny repair.
-Keep one writer on shared persistence until its interfaces are stable. Preserve
-all correctness, interoperability, rollback and final release requirements.
-Start each new capability review in a fresh Devin session with its frozen source
-and acceptance evidence. Resume only to address findings within that capability.
-For unattended source reviews, supply the required source in the prompt and avoid
-tool calls that need interactive approval; never broaden tool permissions to
-work around a stalled review.
+## Ownership
 
-Use **slice** for delivery boundaries in the revised implementation plans.
-The user requested HTML progress at each completed slice: the coordinator maintains
-`/private/tmp/medtracker-migration-status.html` and its requested Markdown status copy.
-Include shipped commit, passed checks, actual blocker and next action. Update material
-blockers promptly; avoid duplicate narrative reports for each verification attempt.
-Write every visible update and team message in plain English, with proper spaces
-between words. Explain what is finished, what is being checked, what is wrong and
-what happens next. Keep hashes, job handles and detailed commands in the technical
-checkpoint or an optional evidence section. Do not present library experiments as
-completed application features.
-Migration defects stay in the owning slice. Open follow-up issues only for independent
-work outside its completion boundary. Preserve existing incident #2453 without
-turning every repair into a new issue.
+- The coordinator owns scope, integration, reports, commits and publication.
+- Astra owns identity and shared persistence/security changes.
+- Nightingale owns care operations and their tests.
+- The browser writer owns browser routes, templates and browser tests.
+- `verifier_sol` owns builds, dependency installs and disposable test resources.
+  The unavailable previous verifier stays stopped.
+- Devin CLI `swe-2-max` provides independent capability and security review.
 
-- Bucky (root) owns interpretation, planning records, scope, acceptance, Git,
-  commits, push and PR publication. Bucky does not become a second product writer.
-- Nightingale is one persistent GPT-6.1 Sol writer, advertised default low,
-  owning product, tests and review fixes within the active tranche.
-- Hubble is the user's explicitly chosen Devin CLI `swe-2-max` independent
-  reviewer, read-only. Give separate requirements and technical-quality verdicts.
-- One GPT-6 Luna medium verifier exclusively owns dependency installs, builds,
-  runtime checks and acceptance resources. Writers request jobs and freeze inputs;
-  quick static reads and task listing are allowed outside the runtime lane.
+Writers work in disjoint files. Request changes to shared files from their owner;
+the coordinator may release a narrow change when that owner is idle. A completed
+agent needs a follow-up task to restart. Check its state before handing work back.
+Only the coordinator commits or pushes. Use the repository's required identity
+and signing rules.
 
-The Luna verifier was unavailable twice at the 22:29 checkpoint. Its stopped role
-is now owned by `verifier_sol`, using GPT-6.1 Sol at its advertised default low.
-This is an explicit availability fallback; all execution and acceptance requirements
-stay the same. Never restart the previous verifier alongside its replacement.
-Preserve and inspect any live command before handing over execution ownership.
+## Delivery
 
-At the 22:54 retrospective, care/browser source review can proceed while identity
-finishes its remaining security cases. Identity receives a separate security review;
-both verdicts and whole-tree checks precede their combined publication. Keep shared
-compile inputs and the requested test source frozen until the verifier releases
-the job; prepare later work outside those files during execution. The next usable
-product boundary connects validated identity to the dose and stock routes, rather
-than accumulating isolated proofs instead of completing authenticated journeys.
+Use existing public Tasks. Write a failing behavioural test, implement the change,
+and run focused checks. Include final test edits in the compilation check before
+starting a database fixture. Freeze the tested source for review and verification.
+Source review and the final whole-suite check may run together on that freeze.
+Publish only after both pass; changed source needs new applicable evidence.
 
-The user's scaffolding cleanup removes workspace/relocation and source-snapshot
-audits from everyday application checks. Use `task migration:audit` explicitly
-for relocation evidence and rollback rehearsal. Keep existing ledger files as
-historical evidence; do not regenerate them for each capability delivery. Normal
-checks retain behaviour, authorisation, persistence, resource cleanup and lint.
+Review a usable capability rather than each small repair. Start a fresh Devin
+session for a new capability and resume it for corrections. Send actual authorised
+diffs and concise evidence; unattended reviews must not need interactive tool
+approval. Diff sharing is authorised through 16 October 2026. Check findings
+against retained behaviour before changing code. Do not silently substitute a
+different reviewer if Devin is unavailable.
 
-## Retrospective handoff and implementation ownership
+Diagnose one evidenced failure at a time. Separate test setup failures from
+application failures. After two unsuccessful fixes, the coordinator diagnoses the
+cause. Reuse a valid owned test image for source-only retries. Do not repeat a full
+suite solely to publish cleanup, a report or a small repair.
 
-The user switched to Astra after the CI repair reached a clean published boundary
-at `705e1f09`. The previous Sol writer has finished that work and is idle. Astra
-now owns the sole writer role for P2/P3 persistence, including migration, fixture
-runner changes, entities and shared access/error interfaces. This is a recorded
-handoff at a new capability boundary, not concurrent editing of the same source.
-The existing verifier remains the only owner of builds and database resources.
+## Keep migration machinery out of daily work
 
-Once the shared tenant/actor/error interfaces pass focused checks, the Sol writer
-may separately own care-operation modules and their tests. It must port existing
-SeaORM transaction/locking/audit logic and request shared-interface changes from
-Astra. Give each writer an explicit disjoint file set before dispatch. Add browser
-ownership only after the relevant domain operation is stable. The coordinator
-retains integration and Devin retains coherent capability/security review.
+Historical relocation, workspace and source-preservation checks belong to explicit
+`task migration:audit`, including rollback rehearsal. Do not regenerate historical
+ledgers for each capability. Keep real behaviour, permissions, persistence, lint
+and resource-cleanup checks in normal application verification.
 
-This two-owner arrangement supersedes the earlier global prohibition on parallel
-product writers only after those interface and ownership prerequisites are met.
-Until then Astra is the sole product/test writer. All later references to the
-same writer mean the owner of that capability; review fixes return to that owner.
-When a writer has completed its turn, dispatch a follow-up task for fixes; a queued
-message alone does not restart an idle writer. Keep the verifier's lane moving.
+Reuse Loco features and existing application helpers. Do not add temporary probe
+workers, duplicate test runners, per-repair briefs or parallel progress reports.
+Remove obsolete helpers alongside their replacement delivery. Keep database probes
+that verify real side effects, and isolation that protects unrelated databases.
 
-Use existing public Tasks for verification resources with an explicit
-`CONTRACT_PROJECT` command-line assignment. Before starting a diagnostic, inspect
-its dry expansion: every Compose project and lock must name the intended
-disposable project. Do not wrap included internal Tasks with task-local project
-variables; that scope failed to reach the dependency during this tranche.
-Preserve pre-existing volumes. Capture resource provenance and retain diagnostic
-logs before cleanup; a silent successful migration log cannot prove no database
-change occurred.
+Use explicit disposable project names with public Tasks. Inspect diagnostic task
+expansion before starting resources. Preserve existing volumes and evidence;
+cleanup must target only resources owned by that run. The verifier may generate
+lockfiles and formatter output on the owner's request, but may not manually change
+shared source. Record the resulting source before acceptance checks.
 
-The verifier may generate root Cargo.lock through the writer-supplied dependency
-resolution Task as deterministic install output. Nightingale retains manifest and
-lockfile ownership/review; this exception permits no manual source edits. Record
-the generated lock identity before subsequent frozen acceptance runs.
-The verifier may also run the writer-requested formatter and deterministic
-inventory/preservation Tasks. These are generation exceptions, not shared manual
-source ownership; report the resulting input identities before acceptance.
+## Report and continue
 
-Outside the explicit disjoint ownership arrangement above, no parallel writers
-may edit shared product or test files. The owning writer fixes findings and receives
-re-review. After two failed evidence-based fixes Bucky diagnoses without replacing
-the writer or broadening scope. Use durable briefs/reports/ledger. Reports certify
-exact immutable inputs. Only Bucky commits or pushes. No live deployment/migration,
-merge, destructive data reset or unrequested external messages. The user approved
-Devin plan review and its architecture/security details. The user subsequently
-approved sending implementation diffs to Devin through 16 October 2026. Apply
-that authorization to migration reviews until its expiry; it does not authorize
-deployment, merge or unrelated data transfer.
+Update `/private/tmp/medtracker-migration-status.html` and its Markdown copy at
+each completed slice or material blocker. Show published work, current work,
+what prevents the next delivery, and the next action. Use plain English. Keep
+technical logs separate; avoid duplicate accounts of every verification attempt.
+Run the requested two-hour retrospective and apply improvements within the user's
+authorised scope.
 
-For a new test or a review repair, finish the relevant static checks and focused
-behavioural test before sending the final source for independent review. Freeze
-that passing input. Source-only review and the whole-suite check may run in
-parallel against that same freeze: neither may modify it. Publication requires
-both to pass. If review requires executable changes, freeze the correction and
-verify the resulting source again; old evidence cannot certify changed inputs.
-If a whole-suite failure requires diagnosis, test one evidence-based hypothesis
-at a time. Separate helper failures from application failures. Retain an unchanged
-owned test image for source-only retries, and clean it when the diagnosis ends.
-
-The user redirected this migration away from legacy Rails test repair. For Loco
-changes, run the Loco checks and the migrated workflows. Do not expand RSpec
-diagnostics or change Rails application behaviour unless a migration defect is
-demonstrated or Rails work is explicitly in scope. Preserve the original Rails
-tests and rollback evidence. Required hosted checks and final populated rollback
-verification remain acceptance criteria.
-
-Only mark ledger completion after clean independent task/tranche review and
-checks. Do not substitute another reviewer model silently if Devin is unavailable.
+For Loco work, use Loco checks and migrated workflows. Investigate or change Rails
+only for a demonstrated compatibility defect or explicit Rails work. Retain
+required hosted checks and the final populated rollback verification. Do not
+deploy, merge, migrate live data, delete unrelated storage or send unrequested
+external messages. Keep incident #2453 and pending approvals visible.

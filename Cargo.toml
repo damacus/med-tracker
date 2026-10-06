@@ -17,6 +17,8 @@ base64 = "=0.22.1"
 bcrypt = "=0.19.3"
 headers = "=0.4.1"
 hex = "=0.4.3"
+hmac = "=0.13.0"
+totp-rs = { version = "=6.0.0", features = ["otpauth"] }
 oxide-auth = "=0.6.1"
 oxide-auth-async = "=0.2.1"
 serde_urlencoded = "=0.7.1"
@@ -30,7 +32,7 @@ axum_session_sqlx = { version = "=0.11.0", default-features = false, features = 
 axum_csrf = { version = "=0.11.0", features = ["layer"] }
 tower-http = { version = "=0.7.1", default-features = false, features = ["csrf"] }
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde_json = { version = "1", features = ["preserve_order"] }
 sha2 = "0.11"
 uuid = { version = "1", features = ["v4"] }
 sea-orm = { version = "=2.0.4", default-features = false, features = ["macros", "runtime-tokio-rustls", "sqlx-postgres", "with-chrono", "with-json", "with-rust_decimal"] }

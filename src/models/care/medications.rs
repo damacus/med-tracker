@@ -87,7 +87,8 @@ async fn snapshot(
     let row = projection::serialize_many(db, vec![medication.clone()])
         .await?
         .remove(0);
-    let representation = json!({"data": row});
+    let mut representation = json!({"data": row});
+    representation.sort_all_objects();
     let etag = format!(
         "\"{}\"",
         hex::encode(Sha256::digest(

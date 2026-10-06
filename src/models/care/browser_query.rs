@@ -82,8 +82,26 @@ pub struct MedicationCard {
 }
 
 pub async fn index(tenant: &TenantTransaction) -> Result<Vec<MedicationCard>, OperationError> {
+    medication_cards(tenant, None).await
+}
+
+pub async fn index_at_location(
+    tenant: &TenantTransaction,
+    location_id: i64,
+) -> Result<Vec<MedicationCard>, OperationError> {
+    medication_cards(tenant, Some(location_id)).await
+}
+
+async fn medication_cards(
+    tenant: &TenantTransaction,
+    location_id: Option<i64>,
+) -> Result<Vec<MedicationCard>, OperationError> {
     access::recheck(tenant).await?;
-    let records = access::medication_scope(tenant)
+    let mut query = access::medication_scope(tenant);
+    if let Some(location_id) = location_id {
+        query = query.filter(medication::Column::LocationId.eq(location_id));
+    }
+    let records = query
         .order_by_asc(medication::Column::Name)
         .order_by_asc(medication::Column::Id)
         .all(tenant.transaction())

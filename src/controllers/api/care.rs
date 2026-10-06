@@ -1,5 +1,6 @@
 mod audit;
 mod input;
+mod locations;
 mod medication_crud;
 mod projection;
 mod removals;
@@ -34,6 +35,17 @@ use sha2::{Digest, Sha256};
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("/api/v1/households")
+        .add(
+            "/{household_id}/locations",
+            get(locations::index).post(locations::create),
+        )
+        .add(
+            "/{household_id}/locations/{id}",
+            get(locations::show)
+                .patch(locations::update)
+                .put(locations::update)
+                .delete(locations::destroy),
+        )
         .add("/{household_id}/medications", post(medication_crud::create))
         .add(
             "/{household_id}/medications/{id}",

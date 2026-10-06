@@ -13,6 +13,7 @@ mod registrar;
 pub mod resource;
 mod store;
 mod time_zone;
+pub mod totp;
 
 use crate::models::entities::oauth_application;
 use input::Input;

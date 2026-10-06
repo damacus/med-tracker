@@ -40,7 +40,8 @@ use std::{collections::HashSet, str::FromStr};
 use stock::{decrement_stock, same_stock_signature};
 use timing::{applies_on, timing_allowed};
 use uuid::Uuid;
-use validation::{parse_decimal, valid_identifier};
+use validation::parse_decimal;
+pub(crate) use validation::valid_identifier;
 
 type ApiError = OperationError;
 

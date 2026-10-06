@@ -9,6 +9,7 @@
     "@playwright/test": "1.63.0",
     "@tailwindcss/cli": "4.3.0",
     "daisyui": "5.0.50",
+    "otpauth": "9.5.2",
     "tailwindcss": "4.3.0"
   }
 }
