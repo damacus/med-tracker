@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { chmodSync, cpSync, existsSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -43,8 +43,10 @@ test('agent guides remain identical', () => {
   assert.deepEqual(readFileSync('AGENTS.md'), readFileSync('agents.md'));
 });
 
-test('host Rails shares the canonical generated-source ignore rules', () => {
-  assert.equal(realpathSync('rails/.gitignore'), realpathSync('.gitignore'));
+test('host Rails ignore rules remain readable by Git and match the canonical rules', () => {
+  const result = spawnSync('git', ['status', '--short'], { encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  assert.doesNotMatch(result.stderr, /unable to access 'rails\/.gitignore'/);
   assert.deepEqual(readFileSync('rails/.gitignore'), readFileSync('.gitignore'));
 });
 
