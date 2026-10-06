@@ -2,12 +2,17 @@
 
 Read from GitHub and fetched on 5 October 2026. Local refs under
 `refs/loco-migration/input-pr-<number>` preserve these objects independently of
-remote branch deletion. These refs are local; the source is not yet incorporated
-into Loco. PRs #2397, #2399, #2402 and #2403 were closed as superseded framework
+remote branch deletion. These refs are local; incorporation and acceptance are
+tracked below and in the progress ledger. PRs #2397, #2399, #2402 and #2403 were closed as superseded framework
 choices after their current heads were verified against these captures and linked
 to replacement draft #2451 and delivery issue #2450. Their source branches were
 retained. Useful behavior still requires migration and acceptance; closing these
-PRs does not claim UI parity. Other input PRs remain open.
+PRs does not claim UI parity. PRs #2419 and #2395 were also closed on 6 October
+after replacement commit `3840bded` was published in #2451. Their captured heads
+still match GitHub. The schema baseline checksum remains exact, and the Geist
+font and licence have identical Git blob hashes in the Loco assets. Source
+branches remain available. Scratch, profile and notifications PRs remain open
+until their useful work has a published replacement.
 
 Acceptance/disposition remains in the capability inventory and progress ledger.
 
