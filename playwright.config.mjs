@@ -6,7 +6,7 @@ export default defineConfig({
   workers: 1,
   fullyParallel: false,
   timeout: 30000,
-  reporter: 'line',
+  reporter: [['line'], ['json', { outputFile: 'test-results/runtime-report.json' }]],
   outputDir: 'test-results',
   use: { browserName: 'chromium', locale: 'en-GB', trace: 'retain-on-failure' },
   projects: [

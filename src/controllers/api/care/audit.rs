@@ -9,6 +9,48 @@ pub(super) struct RequestAudit {
 }
 
 impl RequestAudit {
+    pub fn pause_period(method: &'static str, action: &'static str) -> Self {
+        Self {
+            method,
+            controller: "api/v1/medication_pause_periods",
+            action,
+            policy: "MedicationPausePeriodPolicy",
+            query: match action {
+                "create" => "create?",
+                "resume" => "resume?",
+                _ => "index?",
+            },
+        }
+    }
+    pub fn assignment(method: &'static str, action: &'static str) -> Self {
+        Self {
+            method,
+            controller: "api/v1/person_medications",
+            action,
+            policy: "PersonMedicationPolicy",
+            query: match action {
+                "create" => "create?",
+                "update" => "update?",
+                "show" => "show?",
+                "pause" => "pause?",
+                "resume" => "resume?",
+                _ => "index?",
+            },
+        }
+    }
+    pub fn push(method: &'static str, action: &'static str) -> Self {
+        Self {
+            method,
+            controller: "api/v1/push_subscriptions",
+            action,
+            policy: "PushSubscriptionPolicy",
+            query: if action == "create" {
+                "create?"
+            } else {
+                "destroy?"
+            },
+        }
+    }
     pub fn treatment(method: &'static str, action: &'static str) -> Self {
         Self {
             method,
@@ -19,6 +61,8 @@ impl RequestAudit {
                 "create" => "create?",
                 "update" => "update?",
                 "show" => "show?",
+                "pause" => "pause?",
+                "resume" => "resume?",
                 _ => "index?",
             },
         }

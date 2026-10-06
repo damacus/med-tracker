@@ -2,7 +2,7 @@ use super::source_stock::source_stock;
 use super::*;
 use crate::models::{
     authorization,
-    entities::{grant, membership, pause_period},
+    entities::{grant, membership, pause_period, person_medication},
 };
 use chrono::NaiveDate;
 use sea_orm::sea_query::{Expr, ExprTrait};
@@ -32,6 +32,7 @@ struct SourceContext {
 
 enum SourceKind {
     Schedule,
+    Assignment,
 }
 
 async fn source_context(
@@ -145,9 +146,13 @@ async fn source_context(
         .map(|(id, medication)| (id, medication.portable_id))
         .collect();
     let source_ids: Vec<i64> = sources.iter().map(|source| source.id).collect();
+    let source_column = match kind {
+        SourceKind::Schedule => pause_period::Column::ScheduleId,
+        SourceKind::Assignment => pause_period::Column::PersonMedicationId,
+    };
     let pauses = pause_period::Entity::find()
         .filter(pause_period::Column::HouseholdId.eq(context.scope().household_id))
-        .filter(pause_period::Column::ScheduleId.is_in(source_ids))
+        .filter(source_column.is_in(source_ids))
         .filter(pause_period::Column::EndedAt.is_null())
         .all(db)
         .await
@@ -207,10 +212,12 @@ async fn source_context(
         .filter_map(|pause| {
             let source_id = match kind {
                 SourceKind::Schedule => pause.schedule_id?,
+                SourceKind::Assignment => pause.person_medication_id?,
             };
             let source_portable_id = source_portable_ids.get(&source_id)?;
             let source_type = match kind {
                 SourceKind::Schedule => "schedule",
+                SourceKind::Assignment => "person_medication",
             };
             Some((
                 source_id,
@@ -321,6 +328,53 @@ fn schedule_row(
         "updated_at": timestamp(record.updated_at),
         "schedule_type": schedule_type(record.schedule_type),
         "schedule_config": record.schedule_config,
+        "max_daily_doses": record.max_daily_doses,
+        "min_hours_between_doses": record.min_hours_between_doses.map(|value| decimal_string(value.to_string())),
+        "current_pause_period": associations.pauses.get(&record.id)
+    })
+}
+
+pub(crate) async fn serialize_assignments(
+    db: &DatabaseTransaction,
+    context: &AuthContext,
+    records: Vec<person_medication::Model>,
+) -> Result<Vec<Value>, ApiError> {
+    let sources: Vec<SourceRef> = records
+        .iter()
+        .map(|record| SourceRef {
+            id: record.id,
+            person_id: record.person_id,
+            medication_id: record.medication_id,
+            portable_id: record.portable_id.clone(),
+        })
+        .collect();
+    let associations = source_context(db, context, &sources, SourceKind::Assignment).await?;
+    Ok(records
+        .into_iter()
+        .map(|record| assignment_row(record, &associations))
+        .collect())
+}
+
+fn assignment_row(record: person_medication::Model, associations: &SourceContext) -> Value {
+    json!({
+        "id": record.id,
+        "portable_id": record.portable_id,
+        "person_id": record.person_id,
+        "person_portable_id": associations.people.get(&record.person_id),
+        "medication_id": record.medication_id,
+        "medication_portable_id": associations.medications.get(&record.medication_id),
+        "dose_amount": record.dose_amount.map(|value| decimal_string(value.to_string())),
+        "dose_unit": record.dose_unit,
+        "active": record.active,
+        "paused": !record.active,
+        "can_manage": associations.manageable_people.contains(&record.person_id),
+        "can_record": associations.recordable_people.contains(&record.person_id),
+        "eligible_stock_medication_ids": associations.eligible_stock.get(&record.id).cloned().unwrap_or_default(),
+        "dose_cycle": dose_cycle(record.dose_cycle),
+        "administration_kind": if record.administration_kind == 0 { "routine" } else { "as_needed" },
+        "notes": record.notes,
+        "position": record.position,
+        "updated_at": timestamp(record.updated_at),
         "max_daily_doses": record.max_daily_doses,
         "min_hours_between_doses": record.min_hours_between_doses.map(|value| decimal_string(value.to_string())),
         "current_pause_period": associations.pauses.get(&record.id)

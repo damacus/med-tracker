@@ -49,7 +49,7 @@ async function signInWithPasskey(page) {
   return submitted;
 }
 
-test('register, sign in, restart and remove a named passkey through security settings', async ({ page, context, careFixture }, info) => {
+test('register, sign in, restart and remove a named passkey through security settings', { tag: '@isolated-runtime' }, async ({ page, context, careFixture }, info) => {
   await setup(page, context);
   await register(page);
   const registered = await careFixture.passkeyProbe();
@@ -255,7 +255,7 @@ test('a verified password completes the enrolled passkey factor and resumes OAut
   await expect(page.getByRole('heading', { name: 'Synthetic tablets', exact: true })).toBeVisible();
 });
 
-test('concurrent removal and passkey sign-in cannot deadlock or issue a removed credential session', async ({ page, context, careFixture }) => {
+test('concurrent removal and passkey sign-in cannot deadlock or issue a removed credential session', { tag: '@isolated-runtime' }, async ({ page, context, careFixture }) => {
   await setup(page, context);
   await register(page);
   const before = await careFixture.passkeyProbe();
@@ -379,7 +379,7 @@ test('recovery permits replacing an unsupported-only passkey with a native suppo
 });
 
 for (const algorithm of ['ES256', 'RS256']) {
-test(`an imported Rails ${algorithm} WebAuthn credential signs in without re-enrolment`, async ({ page, context, careFixture }) => {
+test(`an imported Rails ${algorithm} WebAuthn credential signs in without re-enrolment`, { tag: '@isolated-runtime' }, async ({ page, context, careFixture }) => {
   const file = algorithm === 'RS256' ? 'rails-passkey-rsa.json' : 'rails-passkey.json';
   const reference = JSON.parse(await readFile(new URL(`../fixtures/identity/${file}`, import.meta.url), 'utf8'));
   expect(reference.provenance.version).toBe('3.4.3');

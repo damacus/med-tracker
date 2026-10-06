@@ -11,7 +11,7 @@ export const test = base.extend({
     const port = reservation.address().port;
     await new Promise(resolve => reservation.close(resolve));
     const origin = `http://127.0.0.1:${port}`;
-    const server = spawn('task', ['dev'], { detached: true, env: { ...process.env, LOCO_ENV: 'test', PORT: String(port), DATABASE_URL: databaseUrl }, stdio: ['ignore', 'pipe', 'pipe'] });
+    const server = spawn('task', ['browser-care:serve'], { detached: true, env: { ...process.env, LOCO_ENV: 'test', PORT: String(port), DATABASE_URL: databaseUrl }, stdio: ['ignore', 'pipe', 'pipe'] });
     let output = '';
     let exited = false;
     server.stdout.on('data', chunk => { output += chunk; });

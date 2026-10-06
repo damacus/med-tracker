@@ -20,8 +20,9 @@ pub(super) async fn keyed_replay(
             details: json!({"message":"Idempotency key has already been used for a different request"}),
         })),
         KeyedResponse::Replay(saved) => {
-            let status = StatusCode::from_u16(saved.response_status as u16)
-                .map_err(|_| response::unavailable())?;
+            let saved_status =
+                u16::try_from(saved.response_status).map_err(|_| response::unavailable())?;
+            let status = StatusCode::from_u16(saved_status).map_err(|_| response::unavailable())?;
             let etag = saved
                 .response_headers
                 .get("ETag")

@@ -2,6 +2,8 @@
 mod administration;
 #[path = "care_api/api_session.rs"]
 mod api_session;
+#[path = "care_api/assignments.rs"]
+mod assignments;
 #[path = "care_api/crud.rs"]
 mod crud;
 #[path = "care_api/dosages.rs"]
@@ -12,20 +14,30 @@ mod dose_history;
 mod fixture;
 #[path = "care_api/invitations.rs"]
 mod invitations;
+#[path = "care_api/legacy_pause.rs"]
+mod legacy_pause;
 #[path = "care_api/locations.rs"]
 mod locations;
 #[path = "care_api/medication_reads.rs"]
 mod medication_reads;
+#[path = "care_api/pause_periods.rs"]
+mod pause_periods;
 #[path = "care_api/people.rs"]
 mod people;
+#[path = "care_api/push_subscriptions.rs"]
+mod push_subscriptions;
 #[path = "care_api/resource_credentials.rs"]
 mod resource_credentials;
+#[path = "care_api/saved_status.rs"]
+mod saved_status;
 #[path = "care_api/schedule_lifecycle.rs"]
 mod schedule_lifecycle;
 #[path = "care_api/schedule_scope.rs"]
 mod schedule_scope;
 #[path = "care_api/stock_orders.rs"]
 mod stock_orders;
+#[path = "care_api/treatment_timestamps.rs"]
+mod treatment_timestamps;
 #[path = "care_api/treatments.rs"]
 mod treatments;
 

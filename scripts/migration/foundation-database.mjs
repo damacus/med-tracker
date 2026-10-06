@@ -35,15 +35,19 @@ async function runFoundationTask(args, options) {
 export async function withOwnedDatabase(callback, runTask = runFoundationTask, inheritedEnvironment = process.env) {
   const project = `FOUNDATION_PROJECT=mtloco-http-${randomUUID()}`;
   const environment = { ...inheritedEnvironment };
+  const timings = [];
   for (const variable of ['COMPOSE_FILE', 'COMPOSE_PROJECT_NAME', 'COMPOSE_PROFILES', 'DATABASE_URL', 'DOCKER_HOST', 'DOCKER_CONTEXT', 'DOCKER_CONFIG', 'DOCKER_TLS_VERIFY', 'DOCKER_CERT_PATH']) delete environment[variable];
-  const run = (name, timeout) => runTask([name, project], { env: environment, timeout });
+  const run = async (name, timeout) => {
+    const started = performance.now();
+    try { return await runTask([name, project], { env: environment, timeout }); } finally { timings.push({ name, durationMs: performance.now() - started }); }
+  };
   let failed = false;
   try {
     await run('foundation:db-up', 60000);
     const endpoint = String(await run('foundation:db-port', 10000)).trim();
     const match = /^127\.0\.0\.1:(\d+)$/.exec(endpoint);
     if (!match || Number(match[1]) < 1 || Number(match[1]) > 65535) throw new Error(`Invalid owned PostgreSQL endpoint: ${endpoint}`);
-    return await callback(`postgres://medtracker:medtracker_password@127.0.0.1:${match[1]}/medtracker_loco`, () => run('foundation:db-provision', 60000));
+    return await callback(`postgres://medtracker:medtracker_password@127.0.0.1:${match[1]}/medtracker_loco`, () => run('foundation:db-provision', 60000), { project: project.slice('FOUNDATION_PROJECT='.length), timings });
   } catch (error) {
     failed = true;
     throw error;

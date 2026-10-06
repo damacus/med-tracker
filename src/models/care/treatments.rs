@@ -1,6 +1,6 @@
 mod input;
 pub mod lifecycle;
-mod projection;
+pub(crate) mod projection;
 mod source_stock;
 use crate::models::{
     access::{self, PersonAccess, TenantTransaction},

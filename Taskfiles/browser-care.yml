@@ -1,5 +1,31 @@
 version: '3'
 tasks:
+  binary:
+    cmds: ['cargo metadata --locked --no-deps --format-version 1 | jq -r ''.target_directory + "/debug/med-tracker"''']
+  serve:
+    vars:
+      BROWSER_BINARY:
+        sh: task browser-care:binary
+    cmds: ['{{.BROWSER_BINARY | shellQuote}} start {{if eq (.SERVER_AND_WORKER | default "false") "true"}}--server-and-worker{{end}} --environment {{.LOCO_ENV | default "test"}}']
+  migrate:
+    requires:
+      vars: [MIGRATION_DATABASE_URL]
+    vars:
+      BROWSER_BINARY:
+        sh: task browser-care:binary
+    env:
+      DATABASE_URL: '{{.MIGRATION_DATABASE_URL}}'
+    cmds: ['{{.BROWSER_BINARY | shellQuote}} db migrate --environment {{.LOCO_ENV | default "test"}}']
+  snapshot:
+    requires:
+      vars: [FOUNDATION_PROJECT, SNAPSHOT_PATH]
+    cmds: ['docker compose -f {{printf "%s/compose.yaml" .ROOT_DIR | shellQuote}} --env-file /dev/null -p {{.FOUNDATION_PROJECT | shellQuote}} exec -T postgres pg_dump -U medtracker -d medtracker_reference --format=custom --data-only --exclude-table=public.seaql_migrations > {{.SNAPSHOT_PATH | shellQuote}}']
+  reset:
+    requires:
+      vars: [FOUNDATION_PROJECT, CARE_DATABASE_URL, SNAPSHOT_PATH]
+    cmds:
+      - 'psql {{.CARE_DATABASE_URL | shellQuote}} -X -v ON_ERROR_STOP=1 --single-transaction -f tests/fixtures/browser-reset.sql'
+      - 'docker compose -f {{printf "%s/compose.yaml" .ROOT_DIR | shellQuote}} --env-file /dev/null -p {{.FOUNDATION_PROJECT | shellQuote}} exec -T postgres pg_restore -U medtracker -d medtracker_reference --data-only --disable-triggers --single-transaction --exit-on-error < {{.SNAPSHOT_PATH | shellQuote}}'
   order-probe:
     requires:
       vars: [CARE_DATABASE_URL]

@@ -33,6 +33,12 @@ missing check.
 Use existing public Tasks. Write a failing behavioural test, implement the change,
 and run focused checks. Include final test edits in the compilation check before
 starting a database fixture. Freeze the tested source for review and verification.
+Before dispatching a new journey, check its expected behaviour against the latest
+explicit user decisions and the current implementation specification. A legacy
+reference or earlier draft does not override a newer decision. Replace obsolete
+expectations before writing production code; keep the required security outcomes
+in the replacement journey. This check uses the existing specification and does
+not create a separate research or approval gate.
 Run source review alongside focused verification. Resolve actionable findings and
 freeze the corrected source before the final whole-suite check. This avoids
 finishing a long suite on code already known to need a repair. Publish only after

@@ -4,23 +4,35 @@ import { promisify } from 'node:util';
 import { createServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
+import { mkdtemp, rm, mkdir, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { withOwnedDatabase } from '../../scripts/migration/foundation-database.mjs';
 import { stopOwnedProcess } from '../../scripts/migration/process-cleanup.mjs';
 
 const execute = promisify(execFile);
 const root = fileURLToPath(new URL('../../', import.meta.url));
 
-export const test = base.extend({
-  captureMail: [false, { option: true }],
-  registrationInviteOnly: [undefined, { option: true }],
-  careFixture: [async ({ captureMail, registrationInviteOnly }, use) => withOwnedDatabase(async (databaseUrl, provision) => {
-    await provision();
+async function withCareFixture(captureMail, registrationInviteOnly, use) {
+  const runtimeTimings = { phases: [] };
+  const measure = async (name, action) => {
+    const started = performance.now();
+    try { return await action(); } finally { runtimeTimings.phases.push({ name, durationMs: performance.now() - started }); }
+  };
+  const databaseStarted = performance.now();
+  let databaseOwnership;
+  try { await withOwnedDatabase(async (databaseUrl, provision, ownership) => {
+    databaseOwnership = ownership;
+    runtimeTimings.phases.push({ name: 'database', durationMs: performance.now() - databaseStarted });
+    await measure('provision', provision);
     const owner = new URL(databaseUrl);
     owner.pathname = '/medtracker_reference';
     if (owner.hostname !== '127.0.0.1') throw Error('Care fixture must use the owned loopback database');
-    await execute('task', ['db:migrate', `MIGRATION_DATABASE_URL=${owner.href}`, 'LOCO_ENV=test'], { cwd: root, timeout: 60000 });
-    const fixtureTask = async (name, variables = []) => (await execute('task', [`browser-care:${name}`, `CARE_DATABASE_URL=${owner.href}`, ...variables], { cwd: root, timeout: 60000 })).stdout.trim();
-    await fixtureTask('seed');
+    await measure('migration', () => execute('task', ['browser-care:migrate', `MIGRATION_DATABASE_URL=${owner.href}`, 'LOCO_ENV=test'], { cwd: root, timeout: 60000 }));
+    const fixtureTask = async (name, variables = []) => (await execute('task', [`browser-care:${name}`, `CARE_DATABASE_URL=${owner.href}`, `FOUNDATION_PROJECT=${ownership.project}`, ...variables], { cwd: root, timeout: 60000 })).stdout.trim();
+    await measure('seed', () => fixtureTask('seed'));
+    const snapshotDirectory = await mkdtemp(join(tmpdir(), 'mtloco-browser-'));
+    const snapshotPath = join(snapshotDirectory, 'baseline.dump');
     const runtime = new URL(owner);
     runtime.username = 'medtracker_browser_runtime';
     runtime.password = 'password';
@@ -42,7 +54,7 @@ export const test = base.extend({
       const environment = { ...process.env, LOCO_ENV: 'test', PORT: String(port), MEDTRACKER_PUBLIC_HOST: 'http://localhost', DATABASE_URL: runtime.href, MEDTRACKER_CAPTURE_MAIL: String(captureMail), MEDTRACKER_SMTP_PORT: smtpPort ?? '1025', MEDTRACKER_SESSION_KEY: Buffer.alloc(64, 7).toString('base64'), MEDTRACKER_COOKIE_SECURE: 'false', RAILS_SECRET_KEY_BASE: 'synthetic-rails-secret-key-base-for-compatibility', RAILS_OLD_SECRET_KEY_BASE: 'synthetic-old-rails-secret-key-base' };
       delete environment.INVITE_ONLY;
       if (registrationInviteOnly !== undefined) environment.INVITE_ONLY = String(registrationInviteOnly);
-      server = spawn('task', ['dev', ...(captureMail ? ['SERVER_AND_WORKER=true'] : [])], { cwd: root, detached: true, env: environment, stdio: ['ignore', 'pipe', 'pipe'] });
+      server = spawn('task', ['browser-care:serve', ...(captureMail ? ['SERVER_AND_WORKER=true'] : [])], { cwd: root, detached: true, env: environment, stdio: ['ignore', 'pipe', 'pipe'] });
       server.stdout.on('data', chunk => { output += chunk; });
       server.stderr.on('data', chunk => { output += chunk; });
       server.on('exit', () => { exited = true; });
@@ -75,9 +87,12 @@ export const test = base.extend({
         }
         if (!ready) throw Error('Owned Mailpit did not become ready');
       }
-      await start();
-      await use({ origin, mailpitUrl, probe: async () => JSON.parse(await fixtureTask('probe')), revoke: () => fixtureTask('revoke'), reactivate: () => fixtureTask('reactivate'),
-        seedOtp: () => fixtureTask('seed-otp'), otpProbe: async () => JSON.parse(await fixtureTask('otp-probe')), closeOtpAccount: () => fixtureTask('close-otp-account'),
+      if (!captureMail && registrationInviteOnly === undefined) await measure('snapshot', () => fixtureTask('snapshot', [`SNAPSHOT_PATH=${snapshotPath}`]));
+      await measure('application-start', start);
+      await use({ origin, mailpitUrl, runtimeTimings,
+        reset: () => measure('reset', () => fixtureTask('reset', [`SNAPSHOT_PATH=${snapshotPath}`])),
+        probe: async () => JSON.parse(await fixtureTask('probe')), revoke: () => fixtureTask('revoke'), reactivate: () => fixtureTask('reactivate'),
+        seedOtp: () => fixtureTask('seed-otp'), otpProbe: async () => JSON.parse((await fixtureTask('otp-probe')) || 'null'), closeOtpAccount: () => fixtureTask('close-otp-account'),
         seedRecovery: () => fixtureTask('seed-recovery'), recoveryProbe: async () => JSON.parse(await fixtureTask('recovery-probe')), exhaustOtp: () => fixtureTask('exhaust-otp'),
         seedRecoveryPasskey: () => fixtureTask('seed-recovery-passkey'),
         peopleProbe: async () => JSON.parse(await fixtureTask('people-probe')),
@@ -110,14 +125,71 @@ export const test = base.extend({
         scheduledMedicine: () => fixtureTask('scheduled-medicine'),
         oauthProbe: async () => JSON.parse(await fixtureTask('oauth-probe')), ageAuthentication: () => fixtureTask('age-authentication'),
         failOAuthAudit: () => fixtureTask('fail-oauth-audit'), restoreOAuthAudit: () => fixtureTask('restore-oauth-audit'),
-        restart: async () => { await stopOwnedProcess(server); await start(); },
+        restart: async () => { await measure('application-stop', () => stopOwnedProcess(server)); await measure('application-start', start); },
         revokeSession: () => fixtureTask('revoke-session'), expireSession: () => fixtureTask('expire-session'), doseRequestId: () => fixtureTask('dose-request-id') });
     } finally {
-      try { await stopOwnedProcess(server); } finally {
-        if (mailStarted) await fixtureTask('mail-down', [`MAILPIT_NAME=${mailName}`]);
+      try { if (server) await measure('application-stop', () => stopOwnedProcess(server)); } finally {
+        try { if (mailStarted) await fixtureTask('mail-down', [`MAILPIT_NAME=${mailName}`]); } finally { await rm(snapshotDirectory, { recursive: true, force: true }); }
       }
     }
-  }), { timeout: 180000 }],
+  }); } finally {
+    if (databaseOwnership) {
+      const teardown = databaseOwnership.timings.find(phase => phase.name === 'foundation:db-down');
+      if (teardown) runtimeTimings.phases.push({ name: 'database-stop', durationMs: teardown.durationMs });
+    }
+    await mkdir(join(root, 'test-results'), { recursive: true });
+    await writeFile(join(root, 'test-results', `runtime-${randomUUID()}.json`), JSON.stringify({
+      captureMail, registrationInviteOnly, totalRuntimeMs: performance.now() - databaseStarted, ...runtimeTimings
+    }), { mode: 0o600 });
+  }
+}
+
+export const test = base.extend({
+  captureMail: [false, { option: true }],
+  registrationInviteOnly: [undefined, { option: true }],
+  isolatedCare: [false, { option: true }],
+  sharedCare: [async ({}, use) => {
+    let ready;
+    let release;
+    let completed;
+    const released = new Promise(resolve => { release = resolve; });
+    const pool = {
+      get: () => {
+        if (!ready) {
+          ready = new Promise((resolve, reject) => {
+            completed = withCareFixture(false, undefined, async fixture => { resolve(fixture); await released; });
+            completed.catch(reject);
+          });
+        }
+        return ready;
+      }
+    };
+    try { await use(pool); } finally { release(); if (completed) await completed; }
+  }, { scope: 'worker', timeout: 180000 }],
+  careFixture: [async ({ captureMail, registrationInviteOnly, isolatedCare, sharedCare }, use, info) => {
+    const started = performance.now();
+    let fixture;
+    let phaseStart = 0;
+    const run = async current => {
+      fixture = current;
+      const bodyStarted = performance.now();
+      try { await use(fixture); } finally { fixture.runtimeTimings.phases.push({ name: 'test-and-browser-cleanup', durationMs: performance.now() - bodyStarted }); }
+    };
+    try {
+      if (captureMail || registrationInviteOnly !== undefined || isolatedCare || info.tags.includes('@isolated-runtime')) {
+        await withCareFixture(captureMail, registrationInviteOnly, run);
+      } else {
+        fixture = await sharedCare.get();
+        phaseStart = fixture.runtimeTimings.reportedPhaseCount ?? 0;
+        await fixture.reset();
+        await run(fixture);
+      }
+    } finally {
+      if (fixture) { await info.attach('runtime-timings', {
+        body: JSON.stringify({ totalFixtureMs: performance.now() - started, phases: fixture.runtimeTimings.phases.slice(phaseStart) }), contentType: 'application/json'
+      }); fixture.runtimeTimings.reportedPhaseCount = fixture.runtimeTimings.phases.length; }
+    }
+  }, { timeout: 180000 }],
   baseURL: async ({ careFixture }, use) => use(careFixture.origin)
 });
 export { expect };

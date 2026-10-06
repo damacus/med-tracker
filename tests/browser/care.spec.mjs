@@ -3,7 +3,7 @@ import { measureCareContrast } from './care-contrast.mjs';
 
 test.use({ actionTimeout: 10000 });
 
-test('real signin, dose replay, permission withdrawal and stale stock preserve clinical state', async ({ page, careFixture }, testInfo) => {
+test('real signin, dose replay, permission withdrawal and stale stock preserve clinical state', { tag: '@isolated-runtime' }, async ({ page, careFixture }, testInfo) => {
   test.setTimeout(180000);
   const detail = '/households/persistence-fixture/medications/80001';
   const stock = `${detail}/stock/adjust`;

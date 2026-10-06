@@ -1,4 +1,5 @@
 mod administration;
+mod assignments;
 mod audit;
 mod dosages;
 mod dose_history;
@@ -8,8 +9,10 @@ mod locations;
 mod medication_crud;
 mod medication_reads;
 mod orders;
+mod pause_periods;
 mod people;
 mod projection;
+mod push_subscriptions;
 mod removals;
 mod response;
 mod schedule_lifecycle;
@@ -50,6 +53,44 @@ pub fn invitation_routes() -> Routes {
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("/api/v1/households")
+        .add(
+            "/{household_id}/schedules/{id}/pause",
+            patch(pause_periods::legacy::pause_schedule),
+        )
+        .add(
+            "/{household_id}/schedules/{id}/resume",
+            patch(pause_periods::legacy::resume_schedule),
+        )
+        .add(
+            "/{household_id}/person_medications/{id}/pause",
+            patch(pause_periods::legacy::pause_assignment),
+        )
+        .add(
+            "/{household_id}/person_medications/{id}/resume",
+            patch(pause_periods::legacy::resume_assignment),
+        )
+        .add(
+            "/{household_id}/medication_pause_periods",
+            get(pause_periods::index).post(pause_periods::create),
+        )
+        .add(
+            "/{household_id}/medication_pause_periods/{id}/resume",
+            post(pause_periods::resume),
+        )
+        .add(
+            "/{household_id}/person_medications",
+            get(assignments::index).post(assignments::create),
+        )
+        .add(
+            "/{household_id}/person_medications/{id}",
+            get(assignments::show)
+                .patch(assignments::update)
+                .put(assignments::update),
+        )
+        .add(
+            "/{household_id}/push_subscription",
+            post(push_subscriptions::create).delete(push_subscriptions::destroy),
+        )
         .add(
             "/{household_id}/schedules",
             get(schedule_lifecycle::index).post(treatments::create),

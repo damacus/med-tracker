@@ -1,0 +1,13 @@
+version: '3'
+
+tasks:
+  report:
+    desc: Report selected Clippy findings without changing the required lint gate
+    dir: '{{.TASKFILE_DIR}}/..'
+    cmds:
+      - node scripts/lint-advisory/report.mjs
+  test:
+    desc: Test advisory report classification and failure reporting without compiling Rust
+    dir: '{{.TASKFILE_DIR}}/..'
+    cmds:
+      - node --test scripts/lint-advisory/report.test.mjs

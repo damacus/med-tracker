@@ -51,7 +51,7 @@ test('medication ordering and receipt preserve stock, validate drafts and enforc
   expect(await careFixture.orderProbe()).toMatchObject({ status: 2, supply: '10.00', ordered_audits: 1, received_audits: 1 });
 });
 
-test('order audit failure rolls back status and metadata without changing stock', async ({ page, careFixture }) => {
+test('order audit failure rolls back status and metadata without changing stock', { tag: '@isolated-runtime' }, async ({ page, careFixture }) => {
   await openOrder(page);
   await page.getByLabel('Supplier', { exact: true }).fill('Synthetic pharmacy');
   await page.getByLabel('Order quantity', { exact: true }).fill('20');

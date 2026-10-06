@@ -40,7 +40,7 @@ async function fields(page) {
   return page.locator('form[data-otp-form]').evaluate(form => Object.fromEntries(new FormData(form)));
 }
 
-test('retained TOTP completes password sign-in and survives a real server restart', async ({ page, careFixture }, info) => {
+test('retained TOTP completes password sign-in and survives a real server restart', { tag: '@isolated-runtime' }, async ({ page, careFixture }, info) => {
   await careFixture.seedOtp();
   await password(page);
   expect((await careFixture.probe()).registry_sessions).toBe(0);

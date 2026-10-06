@@ -1,0 +1,56 @@
+name: Clippy advisory
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'migration/**'
+      - 'tests/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'scripts/lint-advisory/**'
+      - 'Taskfiles/lint-advisory.yml'
+      - '.github/workflows/lint-advisory.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: clippy-advisory-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  report:
+    name: Optional Clippy report
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87
+        with:
+          toolchain: stable
+          components: clippy
+      - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
+        with:
+          version: 3.52.0
+          repo-token: ${{ github.token }}
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+      - run: task --taskfile Taskfiles/lint-advisory.yml test
+      - name: Generate advisory report
+        continue-on-error: true
+        run: task --taskfile Taskfiles/lint-advisory.yml report
+      - name: Add report to run summary
+        if: ${{ always() && hashFiles('test-results/lint-advisory/report.md') != '' }}
+        run: cat test-results/lint-advisory/report.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: clippy-advisory
+          path: test-results/lint-advisory/
+          if-no-files-found: warn
+          retention-days: 14

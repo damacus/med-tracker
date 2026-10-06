@@ -77,7 +77,7 @@ for (const client of [
     expect(refresh.status()).toBe(400);
   });
 
-  test(`real ${client.id} consent rolls back when required audit fails`, async ({ page, careFixture }) => {
+  test(`real ${client.id} consent rolls back when required audit fails`, { tag: '@isolated-runtime' }, async ({ page, careFixture }) => {
     const query = new URLSearchParams({ response_type: 'code', response_mode: 'query', client_id: client.id, redirect_uri: client.redirect, scope: client.scopes, state: 'rollback-state', code_challenge: challenge, code_challenge_method: 'S256' });
     await page.goto(`/authorize?${query}`);
     await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');

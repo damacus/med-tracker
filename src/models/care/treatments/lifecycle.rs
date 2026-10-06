@@ -1,5 +1,5 @@
 use super::*;
-use chrono::{Datelike, NaiveDateTime};
+use chrono::Datelike;
 use sea_orm::{IntoActiveModel, PaginatorTrait, QueryOrder};
 use serde::Deserialize;
 
@@ -41,7 +41,6 @@ pub async fn list(tenant: &TenantTransaction, page: Pagination) -> Result<Value,
     if let Some(value) = page.updated_since {
         let timestamp = chrono::DateTime::parse_from_rfc3339(&value)
             .map(|value| value.naive_utc())
-            .or_else(|_| NaiveDateTime::parse_from_str(&value, "%Y-%m-%dT%H:%M:%S"))
             .map_err(|_| failure(InputFailure::Invalid("updated_since", "is invalid")))?;
         query = query.filter(schedule::Column::UpdatedAt.gte(timestamp));
     }
