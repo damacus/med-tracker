@@ -25,7 +25,7 @@ tasks:
         sh: task browser-care:binary
     env:
       DATABASE_URL: '{{.MIGRATION_DATABASE_URL}}'
-    cmds: ['{{.BROWSER_BINARY | shellQuote}} db migrate --environment {{.LOCO_ENV | default "test"}}']
+    cmds: ['env DATABASE_URL={{.MIGRATION_DATABASE_URL | shellQuote}} {{.BROWSER_BINARY | shellQuote}} db migrate --environment {{.LOCO_ENV | default "test"}}']
   snapshot:
     requires:
       vars: [FOUNDATION_PROJECT, SNAPSHOT_PATH]
