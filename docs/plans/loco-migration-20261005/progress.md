@@ -5,49 +5,49 @@ No complete migration area is accepted. Nothing is merged or deployed.
 
 ## Published
 
-The preceding delivery at `45089329dffb3a91cbe64052375c14e2964bd1eb` is pushed to
+The current published delivery at `4423ecf9756869dd7993f733823af4ce6902af61` is pushed to
 [draft PR #2451](https://github.com/damacus/med-tracker/pull/2451).
 Loco owns root commands, routes, configuration and templates. Rails is independently
 runnable under `rails/` as the reference and rollback application.
 
 Published workflows include persistent browser sign-in, permitted household
 medication pages, medication create/edit/guarded deletion, dose recording and stock
-changes, plus native/SMART OAuth consent, token exchange and revocation.
-Local full CI passed with 40 desktop/mobile browser cases.
-[GitHub CI](https://github.com/damacus/med-tracker/actions/runs/37403563931)
+changes, location management, retained TOTP sign-in, and native/SMART OAuth consent,
+token exchange and revocation. Local full CI passed with 58 desktop/mobile cases;
+both independent correction reviews accepted that delivery.
+[GitHub CI](https://github.com/damacus/med-tracker/actions/runs/37409443565)
 succeeded on this exact commit. GitGuardian remains a separate unresolved check;
 current incident details are unverified and dashboard sign-in approval is pending.
 
 ## Current delivery
 
-This delivery adds location management and retained TOTP sign-in.
-The actual location create/edit/delete journey passes desktop and mobile.
-Eleven focused API cases pass, including saved Rails retry compatibility,
-pagination/time filtering, conditional GET, invalid IDs, cached validation replay,
-malformed saved-error replay and guarded clinical-history deletion.
-Concurrent keyed creation passed on unchanged production: the existing household
-lock already prevents duplicate effects. No additional reservation was added.
+Recovery and People workflows are implemented locally. Recovery passes all 14
+desktop/mobile cases, including exhausted OTP, passkey-only recovery, one-use
+codes, current-account checks and bound OAuth continuation.
 
-TOTP passes twelve independent retained-format cases and sixteen desktop/mobile
-browser cases, including process restart, concurrent reuse rejection, account
-closure, current/old-secret sign-in and missing-challenge redirection.
-Devin accepts the bounded TOTP delivery. Pinned Rodauth source and its recorded
-independent Ruby oracle disproved the proposed derivation change; the algorithm
-and failure policy remain intact.
+People passes eight API cases and its desktop/mobile browser journey. Creation
+preserves capacity, carer/grant/Home associations, permissions and audit/sync
+effects. Partial updates retain the contract without mandatory `If-Match`.
+An actual Rails service probe supplied the exact saved POST/PATCH retry digests,
+including filtered email; both replay correctly. New Rust keys still bind the
+submitted body. Forced audit failure rolls back every dependent write. A reproduced
+lost permission-version increment is corrected with an atomic stored-value
+increment. Extra request fields are filtered as Rails does, protected account IDs
+cannot be assigned, and an empty filtered person returns 400.
 
-Final `task ci` passes on the corrected source (14684), including all 58
-desktop/mobile browser cases and every Rust suite. Both independent correction
-reviews accept their bounded source; their combined-CI condition is satisfied.
-Documentation and whitespace checks pass. Owned test containers, volumes and
-networks are removed. Hosted verification requires this delivery's exact pushed
-commit; earlier hosted success does not certify it.
-The next work is recovery-code completion and remaining household/people operations.
+Devin SWE-2 Max approved both Recovery and People corrections. Final combined
+`task ci` passed all Rust/static/lifecycle checks, 31 care API cases and all 74
+desktop/mobile browser cases. Owned test containers, volumes and networks are
+absent after cleanup. The pre-correction partial run is superseded by this result.
+The corrected delivery is local until committed and pushed; its hosted checks
+have not run yet. Passkey and household administration tests are prepared outside
+discovery for the next implementation boundary.
 
 ## Whole-migration acceptance
 
 | Area | Implemented evidence | Still required |
 | --- | --- | --- |
-| Foundation | Root Loco commands/routing; independently runnable relocated Rails; published hosted CI | Complete application and rollback acceptance |
+| Foundation | Original runner, audit, corrective review and exact-head hosted CI gates pass | Publish the updated foundation acceptance record; product and populated rollback gates belong to later areas |
 | Persistence | Guarded schema adoption, restricted roles/RLS, persistence and tenant tests, normal seed CLI | Populated Rails rollback and complete schema acceptance |
 | Identity | Password/session and bearer tests; OAuth library integration; locally verified TOTP | Recovery, passkeys, remaining security settings and complete client interoperability |
 | Care | Dose, stock, medication management; local location API/browser checks | Every remaining household, person, membership, grant, dosage, treatment and sync operation |

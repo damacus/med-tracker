@@ -1,5 +1,4 @@
 import { test, expect } from './care-fixtures.mjs';
-import { fileURLToPath } from 'node:url';
 
 test.use({ actionTimeout: 10000 });
 
@@ -37,5 +36,5 @@ test('each permitted person has an independent dose form and submitted draft', a
   expect(stored.takes).toBe(2);
   expect(stored.supply).toBe('7.00');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.screenshot({ path: fileURLToPath(new URL(`../../docs/screenshots/loco-care-people-${testInfo.project.name}.png`, import.meta.url)), fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath(`loco-care-people-${testInfo.project.name}.png`), fullPage: true });
 });

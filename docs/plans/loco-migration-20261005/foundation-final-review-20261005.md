@@ -1,5 +1,13 @@
 # Final Corrective Verdict — manifest `6efed2a2`, parent `035bf52f`
 
+Current execution status, 6 October: the pending foundation execution gates below
+have since passed. Both real runner entry points and their cleanup passed; the
+corrected published head `4423ecf9756869dd7993f733823af4ce6902af61` passed full
+local CI and [hosted CI](https://github.com/damacus/med-tracker/actions/runs/37409443565).
+A fresh historical audit also passes. The [foundation report](foundation-report.md)
+records these results. This status update preserves the original reviewer verdict
+and its limits; complete product migration and release remain separate gates.
+
 **Requirements verdict (corrective scope): MET at source level.** Each prior defect resolves against actual source:
 
 1. **Screenshot binds — resolved.** `rust/contract-tests/run.fish` now emits `"$workspace/docs/screenshots/dashboard-rust"` and `"$workspace/docs/screenshots/journey-medication-rust"` (absolute) in both browser branches, matching the shim assertion `$PWD/docs/screenshots/journey-medication-rust` and the regression test's `join(root, 'docs/screenshots', dir)`. Prior Important closed.

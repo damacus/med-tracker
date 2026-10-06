@@ -4,7 +4,7 @@ use crate::models::{
     entities::{dosage, location, medication, person, person_medication},
     errors::OperationError,
 };
-use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect, QueryTrait};
 use serde::Serialize;
 use std::collections::HashMap;
 
@@ -106,21 +106,44 @@ async fn medication_cards(
         .order_by_asc(medication::Column::Id)
         .all(tenant.transaction())
         .await?;
-    Ok(records
-        .into_iter()
-        .map(|record| MedicationCard {
-            id: record.id,
-            name: record
-                .friendly_name
-                .filter(|name| !name.is_empty())
-                .or(record.name)
-                .unwrap_or_else(|| "Medication".into()),
-            quantity: record
-                .current_supply
-                .map(|value| value.normalize().to_string()),
-            unit: record.dose_unit.unwrap_or_default(),
-        })
-        .collect())
+    Ok(records.into_iter().map(medication_card).collect())
+}
+
+pub async fn person_medications(
+    tenant: &TenantTransaction,
+    person_id: i64,
+) -> Result<Vec<MedicationCard>, OperationError> {
+    access::require_person_access(tenant, person_id, PersonAccess::View).await?;
+    let assignments = person_medication::Entity::find()
+        .select_only()
+        .column(person_medication::Column::MedicationId)
+        .filter(person_medication::Column::HouseholdId.eq(tenant.scope().household_id))
+        .filter(person_medication::Column::PersonId.eq(person_id))
+        .filter(person_medication::Column::Active.eq(true))
+        .filter(person_medication::Column::RetiredAt.is_null())
+        .into_query();
+    let records = access::medication_scope(tenant)
+        .filter(medication::Column::Id.in_subquery(assignments))
+        .order_by_asc(medication::Column::Name)
+        .order_by_asc(medication::Column::Id)
+        .all(tenant.transaction())
+        .await?;
+    Ok(records.into_iter().map(medication_card).collect())
+}
+
+fn medication_card(record: medication::Model) -> MedicationCard {
+    MedicationCard {
+        id: record.id,
+        name: record
+            .friendly_name
+            .filter(|name| !name.is_empty())
+            .or(record.name)
+            .unwrap_or_else(|| "Medication".into()),
+        quantity: record
+            .current_supply
+            .map(|value| value.normalize().to_string()),
+        unit: record.dose_unit.unwrap_or_default(),
+    }
 }
 
 pub async fn detail(tenant: &TenantTransaction, id: &str) -> Result<Detail, OperationError> {

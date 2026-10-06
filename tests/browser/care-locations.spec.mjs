@@ -45,7 +45,7 @@ test('locations can be created, edited, used by medication and safely deleted', 
   await page.goto(locationDetail);
   await expect(page.getByRole('link', { name: 'Synthetic location medicine', exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.screenshot({ path: `docs/screenshots/loco-location-${testInfo.project.name}.png`, fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath(`loco-location-${testInfo.project.name}.png`), fullPage: true });
   await page.getByRole('button', { name: 'Delete Location', exact: true }).click();
   await page.getByRole('dialog', { name: 'Delete Location', exact: true }).getByRole('button', { name: 'Delete', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Locations', exact: true })).toBeVisible();

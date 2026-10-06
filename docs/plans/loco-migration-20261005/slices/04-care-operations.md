@@ -43,8 +43,11 @@ Read Rails household/person policies and contract `care.rs`, `invitations.rs`, `
 Treat each named action as a separate task with the test cycle below. Test names start
 `households_<snake_case_action>`; for example `households_accept_invitation_*`.
 Run `TARGET=care_households FILTER=households_<snake_case_action>` for focused RED/GREEN,
-then the whole binary at slice acceptance. Commit a complete action rather than waiting
-for the entire household family. Review related action diffs together with separate verdicts.
+then the whole binary at slice acceptance. Group related actions into usable
+deliveries, such as household settings and membership/access management. Review
+the related action diffs together with separate verdicts. Run final full CI and
+publish once per reviewed delivery, rather than once per action; do not wait for
+the entire care migration before publishing working capabilities.
 
 - [ ] Test each action for admin, clinician, self, carer, parent and unauthorised actors. Include last-owner
   removal, cross-household IDs, expired invitations and capacity manipulation.

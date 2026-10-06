@@ -26,8 +26,10 @@ and signing rules.
 Use existing public Tasks. Write a failing behavioural test, implement the change,
 and run focused checks. Include final test edits in the compilation check before
 starting a database fixture. Freeze the tested source for review and verification.
-Source review and the final whole-suite check may run together on that freeze.
-Publish only after both pass; changed source needs new applicable evidence.
+Run source review alongside focused verification. Resolve actionable findings and
+freeze the corrected source before the final whole-suite check. This avoids
+finishing a long suite on code already known to need a repair. Publish only after
+review and checks pass; changed source needs new applicable evidence.
 
 Review a usable capability rather than each small repair. Start a fresh Devin
 session for a new capability and resume it for corrections. Send actual authorised

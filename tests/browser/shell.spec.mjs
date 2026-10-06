@@ -126,5 +126,5 @@ test('desktop and mobile shell load local assets without overflow', async ({ pag
   const missing = await request.get('/static/not-a-file.js');
   expect(missing.headers()['content-type']).toContain('text/html');
   expect(await missing.text()).toContain('Asset not found');
-  await page.screenshot({ path: `docs/screenshots/loco-shell-${testInfo.project.name}.png`, fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath(`loco-shell-${testInfo.project.name}.png`), fullPage: true });
 });

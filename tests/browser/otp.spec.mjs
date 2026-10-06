@@ -47,7 +47,7 @@ test('retained TOTP completes password sign-in and survives a real server restar
   const denied = await page.request.get(detail, { maxRedirects: 0 });
   expect(denied.status()).toBe(303);
   expect(denied.headers().location).toBe('/login');
-  await page.screenshot({ path: `docs/screenshots/loco-otp-${info.project.name}.png`, fullPage: true });
+  await page.screenshot({ path: info.outputPath(`loco-otp-${info.project.name}.png`), fullPage: true });
   await careFixture.restart();
   await page.reload();
   await page.getByLabel('Authentication code', { exact: true }).fill(code());

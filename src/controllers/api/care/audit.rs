@@ -9,6 +9,20 @@ pub(super) struct RequestAudit {
 }
 
 impl RequestAudit {
+    pub fn person(method: &'static str, action: &'static str) -> Self {
+        Self {
+            method,
+            controller: "api/v1/people",
+            action,
+            policy: "PersonPolicy",
+            query: match action {
+                "create" => "create?",
+                "update" => "update?",
+                "show" => "show?",
+                _ => "index?",
+            },
+        }
+    }
     pub fn location_create() -> Self {
         Self::location("POST", "create")
     }

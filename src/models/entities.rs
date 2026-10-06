@@ -312,6 +312,33 @@ entity!(person, "people", {
     updated_at: DateTime,
 });
 
+entity!(carer_relationship, "carer_relationships", {
+    household_id: i64,
+    carer_id: i64,
+    patient_id: i64,
+    relationship_type: Option<String>,
+    active: bool,
+    created_at: DateTime,
+    updated_at: DateTime,
+});
+
+entity!(notification_preference, "notification_preferences", {
+    household_id: i64,
+    person_id: i64,
+    portable_id: String,
+    enabled: bool,
+    dose_due_enabled: bool,
+    missed_dose_enabled: bool,
+    low_stock_enabled: bool,
+    private_text_enabled: bool,
+    morning_time: Option<Time>,
+    afternoon_time: Option<Time>,
+    evening_time: Option<Time>,
+    night_time: Option<Time>,
+    created_at: DateTime,
+    updated_at: DateTime,
+});
+
 entity!(health_event, "health_events", {
     household_id: i64,
     person_id: i64,

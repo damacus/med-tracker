@@ -6,6 +6,7 @@ pub mod home;
 pub mod locations;
 pub mod medications;
 pub mod oauth_server;
+pub mod people;
 
 #[allow(
     clippy::result_large_err,

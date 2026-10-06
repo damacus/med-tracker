@@ -45,10 +45,14 @@ review_refresh,export_expiry,support_expiry,observability_canary}.rs`,
 **Interfaces:** Each named worker's `enqueue` follows W1 and invokes the accepted domain operation.
 Preserve all Rails inventoried job outcomes, including reminder scheduling/delivery as separate responsibilities.
 
-Each named worker is a separate task with the cycle below, filtered by its module name
-in `worker_jobs`. Complete and review one worker before moving to the next. Separate
-`reminders::schedule` from `reminders::deliver` within its module and test both filters.
-The inventory comparison is the final family gate, not the first deliverable.
+Use the focused cycle below for each named worker, filtered by its module name in
+`worker_jobs`. Group related jobs for review and publication: notifications and
+reminders; imports and reconciliation; expiry and operational jobs. Resolve each
+job's failing checks before proceeding, but do not add a separate review, full CI
+run or publication gate for every worker. Review the complete family alongside
+focused checks, then run final CI once after review corrections are settled.
+Separate `reminders::schedule` from `reminders::deliver` within its module and test
+both filters. The inventory comparison remains the final family gate.
 
 - [ ] For every inventory job, test successful delivery, repeated execution, external failure and current
   permission denial. Assert `inventoried_jobs_without_replacement == []`, `repeat_side_effect_count == 1`,

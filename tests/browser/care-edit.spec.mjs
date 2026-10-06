@@ -23,7 +23,7 @@ test('clearing a scheduled scalar Dose retains the draft without changing clinic
   await expect(page.getByLabel('Dose', { exact: true })).toHaveValue('');
   const message = await page.locator('[role="alert"] a[href="#dose_amount"]').innerText();
   await expect(page.getByLabel('Dose', { exact: true })).toHaveAccessibleDescription(message);
-  await page.screenshot({ path: `docs/screenshots/loco-medication-dose-error-${testInfo.project.name}.png`, fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath(`loco-medication-dose-error-${testInfo.project.name}.png`), fullPage: true });
   await page.getByRole('link', { name: 'Back to Medications', exact: true }).click();
   await page.getByRole('link', { name: 'Synthetic tablets', exact: true }).click();
   await page.getByRole('link', { name: 'Edit Medication', exact: true }).click();

@@ -9,7 +9,9 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 mod otp;
+mod recovery;
 pub use otp::{challenge, has_pending_challenge, verify as verify_otp};
+pub use recovery::{challenge as recovery_challenge, verify as verify_recovery};
 
 use super::{resource::AuthenticationError, store::Lifetime};
 use crate::models::{
@@ -29,6 +31,7 @@ struct Identity {
 pub enum SignInOutcome {
     Authenticated,
     OtpRequired,
+    RecoveryRequired,
 }
 
 pub struct BrowserPrincipal {
@@ -254,6 +257,21 @@ pub async fn sign_in(
         return Ok(SignInOutcome::OtpRequired);
     }
     if factor.try_get::<bool>("", "passkey").map_err(unavailable)? {
+        let recovery = transaction
+            .query_one_raw(sql(
+                "SELECT EXISTS (SELECT 1 FROM account_recovery_codes WHERE id=$1) AS present",
+                [account.id.into()],
+            ))
+            .await
+            .map_err(unavailable)?
+            .ok_or(AuthenticationError::Unavailable)?;
+        if recovery
+            .try_get::<bool>("", "present")
+            .map_err(unavailable)?
+        {
+            otp::begin(transaction, session, account.id, authenticated_at).await?;
+            return Ok(SignInOutcome::RecoveryRequired);
+        }
         return Err(AuthenticationError::Forbidden);
     }
     issue_session(transaction, session, account.id, authenticated_at, false).await?;

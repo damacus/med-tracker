@@ -26,7 +26,7 @@ for (const client of [
       await expect(page.locator('body')).toContainText('Synthetic adult');
     }
     for (const checkbox of await page.locator('form#authorize-form input[type="checkbox"][name="scope[]"]').all()) await checkbox.check();
-    await page.screenshot({ path: `docs/screenshots/loco-oauth-${client.id}-${test.info().project.name}.png`, fullPage: true });
+    await page.screenshot({ path: test.info().outputPath(`loco-oauth-${client.id}-${test.info().project.name}.png`), fullPage: true });
     const form = await page.locator('form#authorize-form').evaluate(element => ({ action: element.getAttribute('action'), fields: Array.from(new FormData(element).entries()) }));
     for (const scope of client.scopes.split(' ')) expect(form.fields).toContainEqual(['scope[]', scope]);
     expect(form.fields).toContainEqual(['code_challenge', challenge]);

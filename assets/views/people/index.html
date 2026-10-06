@@ -1,0 +1,21 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-3xl mx-auto">
+  <a class="link" href="/households/{{ slug }}/medications">Medications</a>
+  <a class="link ml-4" href="/households/{{ slug }}/locations">Locations</a>
+  <h1 class="text-3xl font-semibold mt-4">People</h1>
+  {% if can_create %}<a class="btn btn-neutral mt-4" href="/households/{{ slug }}/people/new">Add Person</a>{% endif %}
+  <ul class="flex flex-col gap-4 mt-6">
+  {% for person in people %}
+    <li class="card bg-base-100 border border-base-300"><div class="card-body">
+      <h2 class="card-title"><a class="link" href="/households/{{ slug }}/people/{{ person.id }}">{{ person.name }}</a></h2>
+      <p>{% if person.age_present %}Age: {{ person.age }}{% else %}Date of birth is not recorded.{% endif %}</p>
+    </div></li>
+  {% else %}<li>No people are available in this household.</li>{% endfor %}
+  </ul>
+  <nav aria-label="People pages" class="flex justify-between mt-6">
+    {% if previous_page %}<a class="link" href="?page={{ previous_page }}&amp;per_page={{ per_page }}">Previous page</a>{% endif %}
+    {% if next_page %}<a class="link" href="?page={{ next_page }}&amp;per_page={{ per_page }}">Next page</a>{% endif %}
+  </nav>
+</section>
+{% endblock content %}

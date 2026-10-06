@@ -51,6 +51,9 @@ export const test = base.extend({
       await start();
       await use({ origin, probe: async () => JSON.parse(await fixtureTask('probe')), revoke: () => fixtureTask('revoke'), reactivate: () => fixtureTask('reactivate'),
         seedOtp: () => fixtureTask('seed-otp'), otpProbe: async () => JSON.parse(await fixtureTask('otp-probe')), closeOtpAccount: () => fixtureTask('close-otp-account'),
+        seedRecovery: () => fixtureTask('seed-recovery'), recoveryProbe: async () => JSON.parse(await fixtureTask('recovery-probe')), exhaustOtp: () => fixtureTask('exhaust-otp'),
+        seedRecoveryPasskey: () => fixtureTask('seed-recovery-passkey'),
+        peopleProbe: async () => JSON.parse(await fixtureTask('people-probe')),
         secondPerson: () => fixtureTask('second-person'),
         scheduledMedicine: () => fixtureTask('scheduled-medicine'),
         oauthProbe: async () => JSON.parse(await fixtureTask('oauth-probe')), ageAuthentication: () => fixtureTask('age-authentication'),

@@ -12,6 +12,7 @@
       <label for="otp" class="font-semibold">Authentication code</label>
       <input id="otp" name="otp" class="input input-bordered w-full" inputmode="numeric" autocomplete="one-time-code" required maxlength="32" {% if error %}aria-invalid="true" aria-describedby="otp-error"{% endif %}>
       <button type="submit" class="btn btn-neutral">Verify</button>
+      <a href="/recovery-auth" class="link">Use a recovery code</a>
       <a href="/login" class="link">Back to sign in</a>
     </form>
   </div></div>

@@ -3,7 +3,7 @@ mod lifecycle;
 use crate::models::care::locations::{self, KeyedResponse, SavedResponse};
 pub(super) use lifecycle::{destroy, index, show, update};
 
-async fn keyed_replay(
+pub(super) async fn keyed_replay(
     tenant: &TenantTransaction,
     key: &str,
     method: &str,

@@ -47,6 +47,7 @@ impl Hooks for App {
             .add_route(browser(crate::controllers::oauth_server::browser_routes()))
             .add_route(browser(crate::controllers::medications::routes()))
             .add_route(browser(crate::controllers::locations::routes()))
+            .add_route(browser(crate::controllers::people::routes()))
     }
 
     async fn before_routes(ctx: &AppContext) -> Result<axum::Router<AppContext>> {

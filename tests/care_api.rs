@@ -4,6 +4,8 @@ mod crud;
 mod fixture;
 #[path = "care_api/locations.rs"]
 mod locations;
+#[path = "care_api/people.rs"]
+mod people;
 
 use axum::{body::Body, http::Request};
 use fixture::Fixture;

@@ -1,5 +1,4 @@
 import { test, expect } from './care-fixtures.mjs';
-import { fileURLToPath } from 'node:url';
 import { measureCareContrast } from './care-contrast.mjs';
 
 test.use({ actionTimeout: 10000 });
@@ -48,7 +47,7 @@ test('medication creation, stale editing and guarded deletion work through real 
   await expect(stale.getByRole('link', { name: 'Review latest details', exact: true })).toBeVisible();
   await measureCareContrast(stale);
   expect(await stale.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await stale.screenshot({ path: fileURLToPath(new URL(`../../docs/screenshots/loco-medication-edit-${testInfo.project.name}.png`, import.meta.url)), fullPage: true });
+  await stale.screenshot({ path: testInfo.outputPath(`loco-medication-edit-${testInfo.project.name}.png`), fullPage: true });
   await stale.close();
   await page.getByRole('button', { name: 'Delete Medication', exact: true }).click();
   await page.getByRole('dialog', { name: 'Delete Medication', exact: true }).getByRole('button', { name: 'Delete', exact: true }).click();

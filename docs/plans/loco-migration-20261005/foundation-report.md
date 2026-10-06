@@ -1,24 +1,25 @@
 # Foundation implementation report
 
-Current status: setup is not yet accepted. The corrected source review passed,
-and the setup fixes passed local tests before main's MCP library update was
-included. The combined code then failed one stock browser test in the full Rails
-suite, and a later focused run reproduced it. We have not shown that the migration
-caused this Rails failure. The user redirected implementation back to Rust; the
-added diagnostic is archived and removed. The original Rails tests and application
-are unchanged. Current work is Loco verification and publishing the merge with main.
+Current status, 6 October: the original foundation runtime, review and publication
+gates are complete on published `4423ecf9756869dd7993f733823af4ce6902af61`.
+The updated acceptance record remains local until the current reviewed delivery
+is published. This does not accept the complete application or release.
 
-Loco `task ci` now passes on the combined source with the upstream dependency
-update. The disposable PostgreSQL HTTP check, source preservation and owned-process
-cleanup checks passed. Documentation checks and publication follow. This does not
-claim that the later Rails stock test passed or that product features are migrated.
+Both complete root and standalone dashboard runners recorded 35 passing tests
+on the same captured source and cleaned their owned resources, as detailed below.
+The corrective source review returned requirements MET. Final local Loco CI
+passed all Rust checks and 58 desktop/mobile cases.
+[Hosted CI 37409443565](https://github.com/damacus/med-tracker/actions/runs/37409443565)
+completed successfully on that exact published commit, including the rollback
+and retained Rust checks. This closes the earlier failed published-head gate.
 
-The setup fixes are committed locally as
-`9e54e9305083cfa9b22708e9feba0511cd48c18d`. That exact earlier verified commit is
-now pushed to the existing draft PR. The later MCP update remains in an
-uncommitted normal merge. Loco checks, evidence reconciliation and publication
-remain required, and hosted CI is unverified. Medication features
-have not migrated into Loco.
+Fresh `task migration:audit` passes (87262): runtime ownership, both helper
+namespaces, migration workspaces, relocation and preservation tests, source
+inventory and preservation checks. All 2,933 original inputs remain present;
+existing comments and modes are preserved. Only four stale current-file hashes
+needed reconciliation, for the already published CI workflow, root Tasks, CI
+classifier and merged Rails dependency lockfile. Original hashes, source revision
+and relocation history remain intact. Historical audits remain outside normal CI.
 
 The sections below retain earlier evidence in chronological order. In particular,
 the original [source review](foundation-review-20261005.md) returned requirements

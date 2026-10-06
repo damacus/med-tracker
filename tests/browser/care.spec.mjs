@@ -1,6 +1,5 @@
 import { test, expect } from './care-fixtures.mjs';
 import { measureCareContrast } from './care-contrast.mjs';
-import { fileURLToPath } from 'node:url';
 
 test.use({ actionTimeout: 10000 });
 
@@ -33,12 +32,12 @@ test('real signin, dose replay, permission withdrawal and stale stock preserve c
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page.getByRole('link', { name: 'Synthetic household', exact: true })).toBeVisible({ timeout: 5000 });
   await expect(page.getByText('Synthetic foreign household', { exact: true })).not.toBeVisible();
-  await page.screenshot({ path: fileURLToPath(new URL(`../../docs/screenshots/loco-households-${testInfo.project.name}.png`, import.meta.url)), fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath(`loco-households-${testInfo.project.name}.png`), fullPage: true });
   await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Medications', exact: true })).toBeVisible();
   await expect(page.getByText('Synthetic foreign medicine', { exact: true })).not.toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.screenshot({ path: fileURLToPath(new URL(`../../docs/screenshots/loco-medications-${testInfo.project.name}.png`, import.meta.url)), fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath(`loco-medications-${testInfo.project.name}.png`), fullPage: true });
   await page.getByRole('link', { name: 'Synthetic tablets', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Synthetic tablets', exact: true })).toBeVisible();
   await expect(page.getByTestId('current-supply')).toHaveText('10 tablets');
@@ -56,7 +55,7 @@ test('real signin, dose replay, permission withdrawal and stale stock preserve c
   const responseId = (await recordedResponse).headers()['x-request-id'];
   expect(responseId).toBeTruthy();
   expect(await careFixture.doseRequestId()).toBe(responseId);
-  await page.screenshot({ path: fileURLToPath(new URL(`../../docs/screenshots/loco-care-dose-${testInfo.project.name}.png`, import.meta.url)), fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath(`loco-care-dose-${testInfo.project.name}.png`), fullPage: true });
   const replay = await page.request.post(`${detail}/doses`, { form: original, headers: { Origin: careFixture.origin }, maxRedirects: 0 });
   expect(replay.status()).toBe(303);
   const afterReplay = await careFixture.probe();
@@ -109,7 +108,7 @@ test('real signin, dose replay, permission withdrawal and stale stock preserve c
     }
   }
   await second.evaluate(() => { document.documentElement.dataset.theme = 'default-light'; });
-  await second.screenshot({ path: fileURLToPath(new URL(`../../docs/screenshots/loco-care-stock-${testInfo.project.name}.png`, import.meta.url)), fullPage: true });
+  await second.screenshot({ path: testInfo.outputPath(`loco-care-stock-${testInfo.project.name}.png`), fullPage: true });
   await second.close();
   await careFixture.revokeSession();
   for (let attempt = 0; attempt < 2; attempt++) {

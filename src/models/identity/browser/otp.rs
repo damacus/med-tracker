@@ -3,13 +3,13 @@ use crate::models::entities::otp_key;
 use crate::models::identity::totp;
 
 #[derive(Clone, Serialize, Deserialize)]
-struct PasswordVerified {
-    account_id: i64,
-    authenticated_at: chrono::NaiveDateTime,
+pub(super) struct PasswordVerified {
+    pub(super) account_id: i64,
+    pub(super) authenticated_at: chrono::NaiveDateTime,
 }
 
 impl PasswordVerified {
-    fn current_at(&self, now: chrono::NaiveDateTime) -> bool {
+    pub(super) fn current_at(&self, now: chrono::NaiveDateTime) -> bool {
         let elapsed = now.signed_duration_since(self.authenticated_at);
         elapsed >= chrono::Duration::zero() && elapsed < chrono::Duration::minutes(5)
     }
@@ -46,7 +46,7 @@ pub(super) async fn begin(
     Ok(())
 }
 
-async fn pending(
+pub(super) async fn pending(
     db: &DatabaseConnection,
     session: &Session<SessionPgPool>,
 ) -> Result<(DatabaseTransaction, PasswordVerified, chrono::NaiveDateTime), AuthenticationError> {

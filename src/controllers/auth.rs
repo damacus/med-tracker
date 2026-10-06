@@ -11,6 +11,8 @@ use serde::Deserialize;
 
 use crate::models::identity::{browser, resource::AuthenticationError};
 
+mod recovery;
+
 #[derive(Deserialize)]
 struct Login {
     email: String,
@@ -34,6 +36,10 @@ pub fn routes() -> Routes {
         .add("/login", get(login).post(sign_in))
         .add("/logout", post(sign_out))
         .add("/otp-auth", get(otp_challenge).post(verify_otp))
+        .add(
+            "/recovery-auth",
+            get(recovery::challenge).post(recovery::verify),
+        )
 }
 
 async fn login(token: CsrfToken, ViewEngine(view): ViewEngine<TeraView>) -> Response {
@@ -75,6 +81,7 @@ async fn sign_in(
     match browser::sign_in(&ctx.db, &session, form.email, form.password).await {
         Ok(browser::SignInOutcome::Authenticated) => authenticated_redirect(&session),
         Ok(browser::SignInOutcome::OtpRequired) => redirect("/otp-auth"),
+        Ok(browser::SignInOutcome::RecoveryRequired) => redirect("/recovery-auth"),
         Err(AuthenticationError::Unauthenticated) => login_form(
             &token,
             &view,

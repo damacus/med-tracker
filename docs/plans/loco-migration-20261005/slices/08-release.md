@@ -28,6 +28,13 @@ modify root config production settings, `Taskfile.yml` and relevant CI workflow.
 `task release:verify PLATFORM=...` runs that artefact with owned fixtures and both process modes.
 Image runtime includes CA roots, licensed fonts, templates/assets, timezone capability and writable private storage.
 
+Retained input: PR #2418 is still open at `d11483c2dcfaa5e3cdbcaaab8f3f5707512efc0b`.
+Its `rust/contract-tests/Dockerfile` supplies useful musl build stages, a static-link
+check, CA roots, the PDF font, writable `/tmp` and non-root scratch execution.
+Adapt those parts to the root Loco binary and runtime assets. Its release Task
+selects only the host architecture; it does not prove the two-platform server and
+worker requirement. Close the PR only after its useful work has a verified replacement.
+
 - [ ] Test absent required production credentials/settings and final-image operations.
   Assert `missing_credentials_boots == false`, `https_request_succeeds == true`,
   `pdf_font_used == expected_font`, `dst_boundary_correct == true`, `private_storage_writable == true`.
