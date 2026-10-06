@@ -850,3 +850,119 @@ async fn dose_outcomes_missing_source_precedes_malformed_query_and_body() {
     app.close().await;
     assert_eq!((get, mutate), (404, 404));
 }
+#[tokio::test]
+async fn dose_outcomes_reopened_take_checks_supplied_version_and_allows_no_header() {
+    let mut outcomes = Vec::new();
+    for (source, id, uuid) in [
+        ("schedules", 83997, "c0d80f11-932e-4b22-8389-2baa7f2ad591"),
+        (
+            "person_medications",
+            81001,
+            "c0d80f11-932e-4b22-8389-2baa7f2ad592",
+        ),
+    ] {
+        let app = Application::new().await;
+        let token = app.token().await;
+        outcome_sources(&app).await;
+        let endpoint = format!(
+            "{}/api/v1/households/72001/{source}/{id}/dose_occurrences",
+            app.origin
+        );
+        let (status, listed) = occurrence(&app, &token, &endpoint).await;
+        assert_eq!(status, 200);
+        let key = listed["data"][0]["key"].as_str().unwrap();
+        let missed = app
+            .client
+            .post(format!("{endpoint}/not_taken"))
+            .bearer_auth(&token)
+            .json(&json!({"dose_occurrence":{"key":key,"reason":"refused"}}))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(missed.status().as_u16(), 200);
+        let missed_etag = missed
+            .headers()
+            .get("etag")
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_owned();
+        let reopened = app
+            .client
+            .patch(format!("{endpoint}/reopen"))
+            .bearer_auth(&token)
+            .header("if-match", &missed_etag)
+            .json(&json!({"dose_occurrence":{"key":key}}))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(reopened.status().as_u16(), 200);
+        let reopened_etag = reopened
+            .headers()
+            .get("etag")
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_owned();
+        assert_ne!(missed_etag, reopened_etag);
+        let body = json!({"dose_occurrence":{"key":key,"taken_at":chrono::Utc::now().to_rfc3339(),"client_uuid":uuid}});
+        let stale = app
+            .client
+            .post(format!("{endpoint}/take"))
+            .bearer_auth(&token)
+            .header("if-match", &missed_etag)
+            .json(&body)
+            .send()
+            .await
+            .unwrap();
+        let stale_status = stale.status().as_u16();
+        let stale_body: Value = stale.json().await.unwrap_or(Value::Null);
+        let row = app
+            .fixture
+            .admin
+            .query_one_raw(Statement::from_string(
+                DbBackend::Postgres,
+                "SELECT count(*) AS count FROM medication_takes",
+            ))
+            .await
+            .unwrap()
+            .unwrap();
+        let takes_after_stale = row.try_get::<i64>("", "count").unwrap();
+        let current = app
+            .client
+            .post(format!("{endpoint}/take"))
+            .bearer_auth(&token)
+            .json(&body)
+            .send()
+            .await
+            .unwrap();
+        let current_status = current.status().as_u16();
+        let repeated = app
+            .client
+            .post(format!("{endpoint}/take"))
+            .bearer_auth(&token)
+            .json(&body)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(repeated.status().as_u16(), 200);
+        outcomes.push((
+            stale_status,
+            stale_body["error"]["code"].clone(),
+            takes_after_stale,
+            current_status,
+        ));
+        let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT current_supply::text AS stock,(SELECT count(*) FROM medication_takes) AS takes FROM medications WHERE id=80001")).await.unwrap().unwrap();
+        let stock = row.try_get::<String>("", "stock").unwrap();
+        let takes = row.try_get::<i64>("", "takes").unwrap();
+        app.close().await;
+        assert_eq!((stock, takes), ("8.00".into(), 1));
+    }
+    assert_eq!(
+        outcomes,
+        vec![
+            (409, json!("sync_conflict"), 0, 200),
+            (409, json!("sync_conflict"), 0, 200)
+        ]
+    );
+}

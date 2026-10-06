@@ -95,7 +95,7 @@ pub async fn representation(
     Ok((body, etag))
 }
 
-async fn values(
+pub(crate) async fn values(
     tenant: &TenantTransaction,
     records: &[person::Model],
     zone: Tz,

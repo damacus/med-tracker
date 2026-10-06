@@ -5,6 +5,7 @@ mod validation;
 mod writing;
 
 pub use creation::create;
+pub(crate) use projection::values;
 pub use projection::{Pagination, list, read, representation};
 pub use writing::update;
 

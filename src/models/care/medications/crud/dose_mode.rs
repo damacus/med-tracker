@@ -53,7 +53,8 @@ pub(super) async fn sync_single_dose_mode(
             metadata: Set(json!({
                 "record_type": "MedicationDosageOption",
                 "record_id": option.id,
-                "portable_id": option.portable_id
+                "portable_id": option.portable_id,
+                "medication_id": medication_id
             })),
             deleted_at: Set(now),
             created_at: Set(now),

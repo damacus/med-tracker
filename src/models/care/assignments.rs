@@ -21,6 +21,7 @@ use sea_orm::{
 use serde_json::{Map, Value, json};
 use std::str::FromStr;
 use uuid::Uuid;
+pub(crate) use writing::clinical_snapshot;
 pub use writing::{authorize_create, authorize_update, create, update};
 type AuthContext = TenantTransaction;
 type ApiError = OperationError;

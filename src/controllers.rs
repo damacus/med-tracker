@@ -4,6 +4,7 @@ pub mod administration;
 pub mod api;
 pub mod auth;
 pub mod dosage_options;
+pub mod dose_occurrences;
 pub mod home;
 pub mod invitations;
 pub mod locations;

@@ -1,6 +1,7 @@
 mod legacy;
 mod persistence;
 mod reading;
+pub(crate) use reading::period_values;
 mod writing;
 use crate::models::{
     access::{self, PersonAccess, TenantTransaction},

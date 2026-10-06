@@ -9,7 +9,7 @@ pub struct Pagination {
     pub updated_since: Option<String>,
 }
 
-fn value(row: &dosage::Model, portable: &str) -> Result<Value, OperationError> {
+pub(crate) fn value(row: &dosage::Model, portable: &str) -> Result<Value, OperationError> {
     let cycle = match row.default_dose_cycle {
         0 => "daily",
         1 => "weekly",

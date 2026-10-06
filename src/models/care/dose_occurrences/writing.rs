@@ -199,30 +199,45 @@ pub async fn change(
             if row.legacy_take_id.is_some() {
                 return Err(conflict("already_resolved"));
             }
-            if let Some(record) = row.record.as_ref() {
-                if record.outcome == "not_taken" {
-                    if etag.is_none_or(str::is_empty) {
-                        return Err(OperationError::Conflict {
-                            code: "precondition_required".into(),
-                            details: json!({"error":"A current version is required"}),
-                        });
-                    }
-                    if etag != Some(record_etag(record).as_str()) {
-                        return Err(conflict("sync_conflict"));
-                    }
-                } else if record.outcome == "taken" {
-                    let supplied = attrs.get("client_uuid").and_then(Value::as_str);
-                    let stored = if let Some(id) = record.medication_take_id {
-                        medication_take::Entity::find_by_id(id)
-                            .one(tenant.transaction())
-                            .await?
-                            .and_then(|take| take.client_uuid)
-                    } else {
-                        None
-                    };
-                    if supplied.is_none() || supplied != stored.as_deref() {
-                        return Err(conflict("already_resolved"));
-                    }
+            if row
+                .record
+                .as_ref()
+                .is_none_or(|record| record.outcome != "taken")
+            {
+                if row
+                    .record
+                    .as_ref()
+                    .is_some_and(|record| record.outcome == "not_taken")
+                    && etag.is_none_or(str::is_empty)
+                {
+                    return Err(OperationError::Conflict {
+                        code: "precondition_required".into(),
+                        details: json!({"error":"A current version is required"}),
+                    });
+                }
+                if let Some(etag) = etag.filter(|value| !value.is_empty())
+                    && row
+                        .record
+                        .as_ref()
+                        .is_none_or(|record| etag != record_etag(record))
+                {
+                    return Err(conflict("sync_conflict"));
+                }
+            }
+            if let Some(record) = row.record.as_ref()
+                && record.outcome == "taken"
+            {
+                let supplied = attrs.get("client_uuid").and_then(Value::as_str);
+                let stored = if let Some(id) = record.medication_take_id {
+                    medication_take::Entity::find_by_id(id)
+                        .one(tenant.transaction())
+                        .await?
+                        .and_then(|take| take.client_uuid)
+                } else {
+                    None
+                };
+                if supplied.is_none() || supplied != stored.as_deref() {
+                    return Err(conflict("already_resolved"));
                 }
             }
             if row

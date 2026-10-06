@@ -1,27 +1,44 @@
 # Migration progress
 
 Updated 6 October 2026. Complete every slice in [the plan](plan.md).
-Foundation is accepted on the published commit below. The remaining migration
-areas are incomplete. Nothing is merged or deployed.
+Foundation is accepted. The verified baseline PR #2451 is merged; all remaining
+migration areas stay in scope. No live deployment has occurred.
 
-A fresh read-only CLI process used the newly configured GitGuardian MCP with the
-existing OAuth connection. The authorised `get_incident` call verified incident
-37907524: Authentication Tuple, TRIGGERED, five occurrences. Occurrence content
-was excluded. No incidents have been resolved; the external GitGuardian gate
-remains open. This chat has not yet loaded the new tools.
+## Current delivery
 
-The current local delivery implements invitations, open/invited signup, verification
-and resend, stored API credentials, medication reads and dosage management. Focused
-checks pass; Devin SWE-2 Max accepted the final account and care sources. Combined
-`task ci` 40067 passed all Rust groups and 155 of 156 desktop/mobile cases.
-The sole failure was EPERM while polling server cleanup after SIGTERM; the
-application assertions passed. A one-line fix conservatively treats that liveness
-response as still alive, without accepting it as cleanup or suppressing signal
-refusal. The helper passes five regression/real-process tests. Exact failed mobile
-case 85015 now passes, including teardown. This is combined scope evidence with
-a focused tooling repair; the original full CI exit remains failed, rather than
-being described as a fresh successful full run. Six additional screenshots are
-preserved. Publication and exact-head hosted verification remain required.
+Continuation [PR #2460](https://github.com/damacus/med-tracker/pull/2460) publishes
+the Rails shared-ignore correction at signed Dan Webb commit
+`730942fd2680439d77f626f5c7fef24fa4836c70`. Exact-head hosted
+[CI 37504518956](https://github.com/damacus/med-tracker/actions/runs/37504518956),
+GitGuardian and title validation pass. Local Rails baseline passed 6,112 examples
+with no failures. The separate release PR #2381 proposes version 0.6.0; it is
+not merged or deployed.
+
+The current care sync and dose-record browser candidate passes final root
+`task ci` run 85878: 141 care API tests, all remaining Rust targets and all
+192 desktop/mobile browser tests. The browser run completed in 11.6 minutes
+without skipped or flaky cases. Persistence includes its one explicitly ignored
+schema-capture utility. Task-owned test resources were cleaned up.
+
+Devin SWE-2 Max cleared the occurrence browser changes and all corrected sync
+operation families. The final location regression first reproduced permission
+checks occurring after missing/stale version checks; all 24 focused sync cases
+now pass with authority checked first. Snapshot visibility, deletion delivery,
+replay permissions and exact response behaviour are covered by the final run.
+These care changes await publication and exact-head hosted acceptance.
+
+Identity integration awaits the owner's durable Better Auth patch-source choice.
+Reminder workers compile and pass six controlled delivery tests. Reviewed retry,
+partial-delivery and scheduling gaps are being corrected within this delivery.
+Production reminder lifetime and uncertain sends after a crash still await owner
+decisions. PDF downloads and existing report information are being implemented;
+their first compilation follows care verification. Scratch configuration passes
+four tests and its orchestration passes five; actual images remain unproved.
+Saved-state rollback preparation passes eight orchestration tests; populated
+restore and Rails operation remain unproved.
+Remaining operations, integrations, browser journeys, workers, both scratch
+architectures and rollback remain required. The authoritative current report is
+`/private/tmp/medtracker-migration-status.html`.
 
 ## Approved cutover scope — 6 October
 
@@ -58,46 +75,24 @@ catalogue/scanner or review outcomes.
 
 ## Published
 
-The application delivery at `e920fbc003ee4bbe706a5984cf56a7febe7ba4e6` is pushed to
-[draft PR #2451](https://github.com/damacus/med-tracker/pull/2451).
-Current published HEAD is signed commit `3864ef9d688482041e2363f0956d8233a8936e60`,
-which changes only the Loco CI timeout.
-Loco owns root commands, routes, configuration and templates. Rails is independently
-runnable under `rails/` as the reference and rollback application.
+[Baseline PR #2451](https://github.com/damacus/med-tracker/pull/2451) was squash
+merged on 6 October 2026 as
+`3f4a7f952ef857b0f4f6e26105d9c39747771b0a`. Its exact source head
+`2d95d11aeff02a42251b802d11f09080d54ca536` passed
+[CI 37492218152, attempt 2](https://github.com/damacus/med-tracker/actions/runs/37492218152),
+GitGuardian, title validation and advisory Clippy. The Loco job passed 117 care API
+and 178 browser cases. The unchanged failed Rails schedule-card file passed locally
+and in its single hosted shard retry; no application change was needed.
 
-Published workflows include persistent browser sign-in, permitted household
-medication pages, medication create/edit/guarded deletion, dose recording and stock
-changes, location management, retained TOTP and recovery sign-in, People management,
-household administration, passkey registration/sign-in/removal and native/SMART
-OAuth consent, token exchange and revocation. Local full CI passed with 41 care API
-and 124 desktop/mobile cases; final Administration and Passkey reviews are clean.
-Documentation checks and eight inspected screenshots are published. GitHub checks
-for this new commit stopped at the Loco job's 20-minute timeout after browser
-case 94 of 124 started. The other selected suites passed; the final gate rejected
-the cancelled job. The reviewed, published workflow change allows 60 minutes without
-removing checks; `task ci:check` passes all 94 tooling tests. Exact-head
-[CI 37427833670](https://github.com/damacus/med-tracker/actions/runs/37427833670) is
-successful: all 39 jobs passed, including the full Loco job. PR validation
-37427833321 passed. GitGuardian remains the separate outstanding check.
-The previous `bda18ac` delivery's
-[GitHub CI](https://github.com/damacus/med-tracker/actions/runs/37414918830)
-succeeded on that exact previous commit, including Loco, Rails rollback and native clients.
-GitGuardian remains a separate unresolved check;
-its exact-head check 112151424072 reports 15 detections across 21 PR commits. Inspection confirms
-fixed OAuth audit labels (incident 37907524) and synthetic OTP derivation vectors
-(incidents 37785602, 37785603, 37785604, 37910787 and 37910788), plus synthetic
-passkey fixture and foreign-credential test values (incidents 37913501–37913505).
-The fixtures record their Rails FakeClient/FakeAuthenticator provenance and mark
-their private keys as test-only. The foreign test IDs decode to fixed fixture
-labels; they are not production credentials. These are false positives.
-The user approved access and resolution of these verified false positives.
-The official hosted GitGuardian MCP is configured and an authorised read-only
-CLI call verified incident 37907524: Authentication Tuple, TRIGGERED, five
-occurrences, with occurrence content excluded. Incident/source-only scopes are
-saved. The MCP's `manage_private_incident` requires an explicitly user-supplied
-ignore reason; that choice is pending for verified audit-label and synthetic
-fixture detections. No incidents have been resolved yet.
-The check is still failing. No scanner exclusions or history rewrite were made.
+Loco owns root commands, routes, configuration and templates. Rails is independently
+runnable under `rails/` as the reference and rollback application. Published
+work includes account setup/invitations, supported authentication, stored API
+credentials, medication/dosage/location/people management, household administration,
+treatments, recorded pauses, dose outcomes and OAuth consent/token/revocation.
+
+All eleven approved GitGuardian classifications are verified IGNORED: ten synthetic
+fixtures use `test_credential`, and incident 37907524 uses `false_positive`
+for fixed audit labels. No scanner exclusion or history rewrite was used.
 
 ## Published behaviour and evidence
 
@@ -224,4 +219,4 @@ Update the local reports at `/private/tmp/medtracker-migration-status.html` and
 `/private/tmp/medtracker-2450-review-status.md` at each completed slice or material
 blocker. Detailed logs stay outside the status page.
 Prior delivery history is preserved in Git and the existing evidence artifacts.
-Last recorded retrospective: 08:14 UTC on 6 October. Next: 10:14 UTC.
+Last recorded retrospective: 18:24 UTC on 6 October. Next: 20:24 UTC.

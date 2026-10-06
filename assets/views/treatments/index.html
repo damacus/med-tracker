@@ -13,6 +13,7 @@
     {% for record in group.records %}
     <article class="card shell-card mt-4" aria-label="{{ record.medication_name }} {{ group.kind }}"><div class="card-body">
       <h3 class="card-title"><a class="link" href="/households/{{ slug }}/medications/{{ record.medication_id }}">{{ record.medication_name }}</a></h3>
+      <a class="btn btn-ghost self-start" href="/households/{{ slug }}/people/{{ person_id }}/treatments/{{ group.kind }}/{{ record.id }}/doses">Dose records</a>
       <p>{{ record.dose_amount | default(value="Not specified") }} {{ record.dose_unit | default(value="") }} · {% if record.paused %}Paused{% elif record.active %}Active{% else %}Outside scheduled dates{% endif %}</p>
       <dl class="grid gap-2">
         {% if record.schedule_type is defined %}<dt class="font-semibold">Schedule type</dt><dd>{{ record.schedule_type | replace(from="_", to=" ") }}</dd>{% endif %}

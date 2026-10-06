@@ -124,7 +124,30 @@ pub async fn update(
         });
     }
     let attributes = input::attributes(body).map_err(failure)?;
-    let mut fields = ScheduleFields {
+    let mut fields = fields_from_record(&row);
+    input::apply_attributes(
+        tenant.transaction(),
+        tenant,
+        attributes,
+        &mut fields,
+        Some(&row),
+    )
+    .await?
+    .map_err(failure)?;
+    fields.validate().map_err(failure)?;
+    if fields == fields_from_record(&row) {
+        return Ok(before);
+    }
+    let mut active = row.into_active_model();
+    fields.assign(&mut active);
+    active.updated_at = Set(Utc::now().naive_utc());
+    let row = active.update(tenant.transaction()).await?;
+    persist(tenant, &row, Some(snapshot), "update", provenance).await?;
+    project(tenant, row).await
+}
+
+fn fields_from_record(row: &schedule::Model) -> ScheduleFields {
+    ScheduleFields {
         person_id: Some(row.person_id),
         medication_id: Some(row.medication_id),
         source_dosage_option_id: row.source_dosage_option_id,
@@ -139,21 +162,5 @@ pub async fn update(
         dose_cycle: row.dose_cycle,
         schedule_type: row.schedule_type,
         schedule_config: row.schedule_config.clone(),
-    };
-    input::apply_attributes(
-        tenant.transaction(),
-        tenant,
-        attributes,
-        &mut fields,
-        Some(&row),
-    )
-    .await?
-    .map_err(failure)?;
-    fields.validate().map_err(failure)?;
-    let mut active = row.into_active_model();
-    fields.assign(&mut active);
-    active.updated_at = Set(Utc::now().naive_utc());
-    let row = active.update(tenant.transaction()).await?;
-    persist(tenant, &row, Some(snapshot), "update", provenance).await?;
-    project(tenant, row).await
+    }
 }
