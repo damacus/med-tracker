@@ -13,7 +13,7 @@ ssr = ["leptos/ssr", "leptodon/ssr", "dep:axum", "dep:tokio", "dep:tower-http"]
 hydrate = ["leptos/hydrate", "leptodon/hydrate", "dep:wasm-bindgen", "dep:web-sys"]
 
 [dependencies]
-leptos = { version = "=0.8.21", default-features = false }
+leptos = { version = "=0.8.22", default-features = false }
 leptos_dom = "=0.8.8"
 leptodon = { git = "https://github.com/openanalytics/leptodon.git", rev = "41276662e75fe94648cbea4836c7dab7708fc7b2", default-features = false }
 axum = { version = "0.8", optional = true }
