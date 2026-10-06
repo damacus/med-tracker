@@ -4,6 +4,12 @@ silent: true
 run: once
 
 includes:
+  browser-care:
+    taskfile: Taskfiles/browser-care.yml
+    dir: .
+  frontend:
+    taskfile: Taskfiles/frontend.yml
+    dir: .
   rails:
     taskfile: rails/Taskfile.yml
     dir: rails
@@ -45,6 +51,11 @@ includes:
     flatten: true
 
 tasks:
+  slice:browser:
+    cmds:
+      - task: frontend:test-browser
+        vars:
+          GROUP: '{{.GROUP | default "shell"}}'
   slice:test-runner:
     cmds: [node --test scripts/migration/run-slice.test.mjs]
   slice:test:
@@ -76,7 +87,9 @@ tasks:
     desc: Resolve the root Loco lockfile
     cmds: [cargo generate-lockfile]
   deps:migration:
-    cmds: [cargo update --offline --package migration]
+    vars:
+      ONLINE: '{{.ONLINE | default "false"}}'
+    cmds: ['cargo update {{if ne .ONLINE "true"}}--offline{{end}} --package migration']
   foundation:db-up:
     requires:
       vars: [FOUNDATION_PROJECT]
@@ -101,10 +114,14 @@ tasks:
     cmds: [node --test scripts/migration/workspaces.test.mjs]
   dev:
     desc: Start the Loco server
-    cmds: ['cargo run --locked -- start --environment {{.LOCO_ENV | default "development"}}']
+    cmds:
+      - task: frontend:prepare
+      - 'cargo run --locked -- start --environment {{.LOCO_ENV | default "development"}}'
   build:
     desc: Build Loco
-    cmds: [cargo build --locked]
+    cmds:
+      - task: frontend:prepare
+      - cargo build --locked
   check:
     desc: Check Loco targets
     cmds: [cargo check --locked --all-targets]
@@ -119,12 +136,14 @@ tasks:
   test:
     desc: Verify Loco and root ownership contracts
     cmds:
+      - task: frontend:prepare
+      - task: frontend:test
       - task: slice:test-runner
       - task: slice:test-all
       - task: foundation:test
       - task: foundation:test-cleanup
       - task: foundation:test-database
-      - task: foundation:test-http
+      - task: browser
   migration:audit:
     desc: Audit retained migration inputs explicitly
     cmds:
@@ -137,17 +156,28 @@ tasks:
     desc: List Loco routes
     cmds: ['cargo run --locked -- routes --environment {{.LOCO_ENV | default "development"}}']
   db:migrate:
-    desc: Persistence adoption gate (tranche 2)
-    cmds: ['fish -c ''echo "Loco schema adoption awaits tranche 2 acceptance" >&2; exit 1''']
+    desc: Adopt and migrate the configured PostgreSQL database
+    requires:
+      vars: [MIGRATION_DATABASE_URL]
+    env:
+      MEDTRACKER_MIGRATION_DATABASE_URL: '{{.MIGRATION_DATABASE_URL}}'
+    cmds: ['env DATABASE_URL="$MEDTRACKER_MIGRATION_DATABASE_URL" cargo run --locked -- db migrate --environment {{.LOCO_ENV | default "development"}}']
   db:seed:
-    desc: Fixture migration gate (tranche 2)
-    cmds: ['fish -c ''echo "Loco fixtures await tranche 2 acceptance" >&2; exit 1''']
+    desc: Seed an empty development or test database with synthetic fixtures
+    requires:
+      vars: [SEED_DATABASE_URL]
+    env:
+      MEDTRACKER_SEED_DATABASE_URL: '{{.SEED_DATABASE_URL}}'
+    cmds: ['env DATABASE_URL="$MEDTRACKER_SEED_DATABASE_URL" cargo run --locked -- db seed --environment {{.LOCO_ENV | default "development"}}']
   worker:
     desc: Start the Loco worker process
     cmds: ['cargo run --locked -- start --worker --environment {{.LOCO_ENV | default "development"}}']
   browser:
-    desc: Exercise Loco health and Tera over HTTP
-    cmds: [{task: foundation:test-http}]
+    desc: Exercise the application through desktop and mobile browsers
+    cmds:
+      - task: frontend:test-browser
+        vars:
+          GROUP: all
   release-image:
     desc: Release runtime gate (tranche 6)
     cmds: ['fish -c ''echo "Production Loco image awaits full migration acceptance" >&2; exit 1''']
@@ -159,8 +189,6 @@ tasks:
       - task: test
   foundation:test:
     cmds: [node --test scripts/migration/foundation.test.mjs]
-  foundation:test-http:
-    cmds: [node --test scripts/migration/foundation-http.test.mjs]
   foundation:test-cleanup:
     cmds: [node --test scripts/migration/process-cleanup.test.mjs]
   foundation:test-preservation:

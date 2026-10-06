@@ -1,0 +1,100 @@
+{
+  "column:public.browser_sessions.expires": {
+    "acl": null,
+    "collation": null,
+    "compression": "",
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "not_null": false,
+    "options": null,
+    "position": 2,
+    "storage": "p",
+    "type": "bigint"
+  },
+  "column:public.browser_sessions.id": {
+    "acl": null,
+    "collation": "pg_catalog.default",
+    "compression": "",
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "not_null": true,
+    "options": null,
+    "position": 1,
+    "storage": "x",
+    "type": "character varying(128)"
+  },
+  "column:public.browser_sessions.session": {
+    "acl": null,
+    "collation": "pg_catalog.default",
+    "compression": "",
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "not_null": true,
+    "options": null,
+    "position": 3,
+    "storage": "x",
+    "type": "text"
+  },
+  "constraint:public.browser_sessions.browser_sessions_id_not_null": {
+    "deferrable": false,
+    "deferred": false,
+    "definition": "NOT NULL id",
+    "enforced": true,
+    "inherit_count": 0,
+    "local": true,
+    "no_inherit": false,
+    "validated": true
+  },
+  "constraint:public.browser_sessions.browser_sessions_pkey": {
+    "deferrable": false,
+    "deferred": false,
+    "definition": "PRIMARY KEY (id)",
+    "enforced": true,
+    "inherit_count": 0,
+    "local": true,
+    "no_inherit": true,
+    "validated": true
+  },
+  "constraint:public.browser_sessions.browser_sessions_session_not_null": {
+    "deferrable": false,
+    "deferred": false,
+    "definition": "NOT NULL session",
+    "enforced": true,
+    "inherit_count": 0,
+    "local": true,
+    "no_inherit": false,
+    "validated": true
+  },
+  "index:public.browser_sessions_pkey": {
+    "clustered": false,
+    "definition": "CREATE UNIQUE INDEX browser_sessions_pkey ON public.browser_sessions USING btree (id)",
+    "live": true,
+    "options": null,
+    "owner": "med_tracker_owner",
+    "ready": true,
+    "replica_identity": false,
+    "tablespace": null,
+    "valid": true
+  },
+  "relation:public.browser_sessions": {
+    "access_method": "heap",
+    "acl": [
+      "med_tracker_app=arwd/med_tracker_owner",
+      "med_tracker_owner=arwdDxtm/med_tracker_owner"
+    ],
+    "force_rls": false,
+    "kind": "r",
+    "options": null,
+    "owner": "med_tracker_owner",
+    "partition": false,
+    "partition_bound": null,
+    "partition_key": null,
+    "persistence": "p",
+    "replica_identity": "d",
+    "rls": false,
+    "tablespace": null
+  }
+}

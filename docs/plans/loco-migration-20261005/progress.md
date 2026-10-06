@@ -1,23 +1,83 @@
 # Migration progress
 
-Updated 5 October 2026. Guarded adoption, shared tenant access, runtime queue
-provisioning and the first Take domain operation pass their focused checks.
-Devin accepted the combined repair batch. The final source is frozen for full
-Loco CI and publication.
-No complete migration section is accepted yet.
+Updated 6 October 2026. No complete migration section is accepted yet.
+The full migration remains the active goal. The eight areas are a coverage
+checklist, not eight serial planning stops.
 
 | Area | Verified current state | Remaining acceptance work |
 | --- | --- | --- |
-| Loco foundation and Rails relocation | Published in draft PR #2451; full local checks and review passed | Corrected hosted run must pass with full Git history |
-| Schema and tenant persistence | Persistence 16/16; tenant access 11/11; exact baseline and metadata preserved; restricted-role server/worker boot passes | Final review, full CI, normal seed/task integration and populated Rails rollback |
-| Sign-in and API authentication | Isolated maintained-library proof: 39/41, with two retained wrapper diagnostics | Durable stored-format/concurrency checks and full browser/OAuth/SMART integration |
-| Care operations | Take 20/20: atomic stock/audit, replay, timing and account-zone selection, tracked stock, member scoping, concurrency, conflict, revoked-access denial and audit rollback | Real authenticated Loco routes and every remaining care operation |
-| APIs and integrations | Existing contracts and migration inputs retained | Migrate complete native/FHIR/SMART/MCP journeys |
-| Browser pages and themes | Foundation Tera page works | Complete browser workflows and port themes to daisyUI |
+| Loco foundation and Rails relocation | Published in draft PR #2451; local checks and hosted Loco job pass | Complete application and retained rollback verification |
+| Schema and tenant persistence | Local persistence 20/20 and tenant access 11/11; additive adoption preserves the baseline; normal seed CLI passes | Populated Rails rollback and full schema acceptance |
+| Sign-in and API authentication | Identity 23/23 and bearer validation 5/5; encrypted browser sessions survive a real process restart | Selective browser middleware, final review, all retained credentials and SMART integration |
+| Care operations | Local Take 28/28 and stock operations 19/19; UUID, skipped-midnight and removal/API independently reviewed | Every remaining care operation and user journey |
+| APIs and integrations | Ten real Loco listener tests pass, including stock removal/history, authentication challenges, authorization ordering and session-enabled cookie-free bearer responses | Complete native/FHIR/SMART/MCP contracts and strict HTTP idempotency |
+| Browser pages and themes | Actual care journeys and shell checks pass desktop/mobile, including navigation, Origin/CSRF, restart, expiry, revocation and request IDs | Final browser/session review, remaining workflows and offline/PWA |
 | Background jobs and reminders | Owner-provisioned PostgreSQL queue supports restricted Loco startup | Actual job execution, schedules and reminder migration |
 | Release and cleanup | Useful source/PR inputs protected; Rails remains independently runnable | Both scratch architectures, complete journeys, populated rollback and obsolete tooling removal |
 
-## Current delivery
+## Current local work
+
+Persistence passes 20 tests and doses pass 28. Five UUID regressions and the
+skipped-midnight regression failed before their repairs. UUID variants now
+share one lock and unique identity, historical stored spelling is preserved,
+and duplicate identities across households refuse adoption without rewriting
+records. The maintained timezone library resolves skipped midnight to the
+first valid local boundary. Devin SWE-2 Max approved these bounded repairs in
+`spiritual-titanium`; this does not approve identity, the HTTP/browser facade
+or the whole migration.
+
+Ten real API tests pass, including clinical-audit rollback with one retained
+HTTP-attempt audit. Header, response and audit share Loco's request ID. Hidden
+UUID conflicts preserve a private code without disclosing another household's
+record. Formatting and warnings-denied lint pass. Authentication challenge
+headers and insufficient-scope classification now pass their regressions.
+
+The OAuth review's suspected confidential refresh bypass was disproved by
+unchanged-production tests for both secret-post and Basic clients. Pinned library
+source confirms recovered grants still invoke client authentication. Keep that
+regression. Invalid stored PKCE error classification, narrowed access scope with
+preserved refresh authority and stored Rails timezone names now pass focused
+checks. Devin accepted these bounded repairs in `shore-pincushion` and accepted
+the bounded stock-removal/API implementation in `hurricane-brazil`. Neither
+verdict approves complete identity, browser integration or the whole migration.
+The confidential-secret negative test passed without a production change; the
+reviewer's reference to a RED-to-GREEN repair for that finding is incorrect.
+
+The extended desktop run proves clinical effects, actual process restart,
+encrypted session persistence, revocation, expiry and CSRF-token rejection.
+It exposed three defects: browser audit request IDs differ from response headers,
+foreign-origin forms are accepted and stale-stock errors lack a recovery link.
+These repairs and real scoped sign-in navigation pass the complete
+desktop/mobile journey. Session-enabled API tests now prove zero
+bearer-response cookies with middleware applied only to explicit browser routes.
+The duplicate homepage HTTP runner is removed after its health/static coverage
+passed through the actual browser journey. Normal `task db:seed` now passes its
+real CLI test with standard Loco fixtures, usable credentials and a household
+medication. Explicit command environment forwarding ensures the supplied seed
+database overrides a conflicting ambient database URL. Synthetic seeds remain
+limited to empty development/test databases.
+
+Full repaired candidate `task ci` passes (10199), including API10, dose28, stock19,
+identity23, resource5, persistence20, tenant11 and all fourteen desktop/mobile
+browser cases. Owned test resources are gone. Unused public demo tabs and the
+duplicate foundation HTTP runner are removed; real appearance controls and
+health/static/header checks remain in the application browser suite.
+
+Final browser review identified a missing dose form for a second permitted
+person and a Linux-incompatible test-output path. The real two-person browser
+test failed with one form where two are required (70688), before production
+changes. Both repairs pass real desktop/mobile tests (39164). Devin SWE-2 Max
+accepted the browser/session/seed integration corrections in `keen-sunfish`;
+its conditional full-CI requirement is satisfied by 10199. The review's other three requirements
+are already enforced by model-level stock authorization, eligible-source
+filtering and active household lifecycle checks; their existing tests pass.
+
+These product changes remain local. Publication and hosted verification remain
+required. Main's dependency update e8838fb4
+merged cleanly into the relocated Rails lockfile; that merge remains uncommitted
+with the candidate until review and publication gates pass.
+
+## Earlier verified delivery
 
 The focused checks pass on the final frozen source: persistence 16/16 plus one
 explicit capture-only test ignored; tenant access 11/11; care 20/20; runner 9/9;
@@ -45,14 +105,22 @@ This verifies domain behaviour, not HTTP routes or completed application identit
 ## Published and hosted state
 
 [Draft PR #2451](https://github.com/damacus/med-tracker/pull/2451) has published
-head 705e1f09. The current product change remains local until review and full CI
-pass. The user authorised landing verified work on main through one branch/PR;
+head `0c1a70dcd325134af4ef23cc9ea643834beb1972`. Guarded persistence, tenant
+access and the first Take were published earlier. The latest commit removes
+five historical audits from daily CI; `task migration:audit` retains them.
+Their full-history checkout and ripgrep installation are also removed.
+Hosted run 37386310209 finished with Loco Foundation passing. Overall CI failed
+on the existing Rails scanned-stock notice assertion at
+`rails/spec/system/medications/refill_inventory_spec.rb:77`. This prevents
+claiming full rollback verification. Nothing is merged or deployed.
+
+The user authorised landing verified work on main through one branch/PR;
 no production deployment or database mutation is authorised.
 
-Hosted run 37371230690 initially lost a household runner. Its failed job was
+Earlier hosted run 37371230690 initially lost a household runner. Its failed job was
 retried and passed. Loco then reached its inventory check and failed because
 the shallow checkout lacked the retained baseline Git commit. The corrected
-Loco checkout fetches full history. Its failing regression is now green: six
+Loco checkout fetched full history at that stage. Its regression passed: six
 focused checks, 94 CI script tests and workflow lint pass. Coordinator source
 review passed. This routine prerequisite fix will publish with the capability.
 
@@ -67,10 +135,13 @@ The verifier alone owns builds and disposable resources. Root owns integration
 and publication. Devin reviews coherent capabilities in fresh source-only sessions;
 routine tooling fixes receive focused tests and coordinator review.
 
-The next implementation boundaries are durable identity storage and stock
-adjustment using existing SeaORM logic. Current source stays frozen for review and
-publication; preparation during that interval is read-only. Defects within the
-migration stay in their owning work rather than becoming follow-up issues.
+The next usable delivery is persistent sign-in with dose and stock forms.
+Nightingale is also porting complete stock removal from its retained contract.
+Reviewed API snapshots stay fixed while new disjoint modules progress. Defects
+within the migration stay in their owning work rather than becoming follow-up
+issues. Devin receives actual diffs under the user's approval through
+16 October 2026. Automatic approval review rejected a broader complete-source
+packet; the accepted replacement is diff-only. No permission bypass was used.
 
 ## Retained scope and evidence
 
@@ -86,4 +157,4 @@ No source-only experiment or old green run proves completion of the new app.
 The user reports are /private/tmp/medtracker-migration-status.html and
 /private/tmp/medtracker-2450-review-status.md. Update at a completed slice or when
 a problem changes the next action. Detailed handles stay in the technical
-checkpoint. The next two-hour retro is due at or after 22:49 UTC.
+checkpoint. The next two-hour retro is due at or after 00:54 UTC on 6 October.

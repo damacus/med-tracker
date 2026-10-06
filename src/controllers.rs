@@ -1,12 +1,9 @@
 use loco_rs::prelude::*;
 
-async fn index(ViewEngine(view): ViewEngine<TeraView>) -> Result<Response> {
-    format::render().view(
-        &view,
-        "home/index.html",
-        data!({"title": "MedTracker migration foundation"}),
-    )
-}
+pub mod api;
+pub mod auth;
+pub mod home;
+pub mod medications;
 
 async fn health() -> Result<Response> {
     format::json(serde_json::json!({"status": "ok", "application": "med-tracker"}))
@@ -14,7 +11,10 @@ async fn health() -> Result<Response> {
 
 pub fn routes() -> Routes {
     Routes::new()
-        .add("/", get(index))
         .add("/up", get(health))
         .add("/health", get(health))
+}
+
+pub fn browser_routes() -> Routes {
+    Routes::new().add("/", get(home::index))
 }

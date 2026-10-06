@@ -1,4 +1,5 @@
 use super::*;
+use sea_orm::sea_query::{Expr, ExprTrait};
 
 pub(super) async fn replay_matches(
     db: &DatabaseTransaction,
@@ -60,7 +61,11 @@ pub(super) async fn lock_client_uuid(
     db: &DatabaseTransaction,
     client_uuid: &str,
 ) -> Result<(), ApiError> {
-    let digest = Sha256::digest(client_uuid.as_bytes());
+    let canonical = Uuid::parse_str(client_uuid)
+        .map_err(|_| error(ErrorKind::Validation, "invalid client_uuid"))?
+        .hyphenated()
+        .to_string();
+    let digest = Sha256::digest(canonical.as_bytes());
     let lock_id = i64::from_be_bytes(
         digest[..8]
             .try_into()
@@ -74,4 +79,34 @@ pub(super) async fn lock_client_uuid(
     .await
     .map_err(database_error)?;
     Ok(())
+}
+
+pub(super) async fn existing_take(
+    db: &DatabaseTransaction,
+    household_id: i64,
+    client_uuid: &str,
+) -> Result<Option<medication_take::Model>, ApiError> {
+    let parsed = Uuid::parse_str(client_uuid)
+        .map_err(|_| error(ErrorKind::Validation, "invalid client_uuid"))?;
+    let candidates = medication_take::Entity::find()
+        .filter(medication_take::Column::HouseholdId.eq(household_id))
+        .filter(Expr::cust(migration::CANONICAL_CLIENT_UUID_SQL).eq(parsed.simple().to_string()))
+        .all(db)
+        .await
+        .map_err(database_error)?;
+    let mut matching = candidates.into_iter().filter(|record| {
+        record
+            .client_uuid
+            .as_deref()
+            .and_then(|value| Uuid::parse_str(value).ok())
+            == Some(parsed)
+    });
+    let first = matching.next();
+    if matching.next().is_some() {
+        return Err(OperationError::Conflict {
+            code: "idempotency_key_unavailable".into(),
+            details: json!({"message": "Medication take idempotency key is unavailable"}),
+        });
+    }
+    Ok(first)
 }

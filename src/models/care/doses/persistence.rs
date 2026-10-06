@@ -1,5 +1,4 @@
 use super::*;
-use sea_orm::sea_query::ExprTrait;
 
 pub(super) async fn insert_take(
     db: &DatabaseTransaction,
@@ -29,11 +28,10 @@ pub(super) async fn insert_take(
     }
     let statement = medication_take::Entity::insert(model)
         .on_conflict(
-            sea_orm::sea_query::OnConflict::column(medication_take::Column::ClientUuid)
-                .target_and_where(
-                    sea_orm::sea_query::Expr::col(medication_take::Column::ClientUuid)
-                        .is_not_null(),
-                )
+            sea_orm::sea_query::OnConflict::new()
+                .expr(sea_orm::sea_query::Expr::cust(
+                    migration::CANONICAL_CLIENT_UUID_SQL,
+                ))
                 .do_nothing()
                 .to_owned(),
         )

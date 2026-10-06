@@ -4,6 +4,10 @@ pub use sea_orm_migration::{MigrationTrait, MigratorTrait, sea_orm};
 use serde_json::{Map, Value};
 
 pub mod m20261005_000002_provision_runtime;
+pub mod m20261006_000003_canonical_take_identity;
+pub mod m20261006_000004_browser_sessions;
+pub mod m20261006_000005_access_token_scopes;
+pub use m20261006_000003_canonical_take_identity::CANONICAL_CLIENT_UUID_SQL;
 
 pub struct Migrator;
 struct StandardMigrator;
@@ -11,6 +15,9 @@ struct AdoptMedtracker;
 
 const VERSION: &str = "m20261005_000001_adopt_medtracker";
 const RUNTIME_VERSION: &str = "m20261005_000002_provision_runtime";
+const TAKE_IDENTITY_VERSION: &str = "m20261006_000003_canonical_take_identity";
+const BROWSER_SESSION_VERSION: &str = "m20261006_000004_browser_sessions";
+const ACCESS_SCOPE_VERSION: &str = "m20261006_000005_access_token_scopes";
 
 impl MigrationName for AdoptMedtracker {
     fn name(&self) -> &str {
@@ -34,6 +41,9 @@ impl MigratorTrait for StandardMigrator {
         vec![
             Box::new(AdoptMedtracker),
             Box::new(m20261005_000002_provision_runtime::Migration),
+            Box::new(m20261006_000003_canonical_take_identity::Migration),
+            Box::new(m20261006_000004_browser_sessions::Migration),
+            Box::new(m20261006_000005_access_token_scopes::Migration),
         ]
     }
 }
@@ -76,7 +86,13 @@ async fn verify_catalog<C: ConnectionTrait>(db: &C, require_ledger: bool) -> Res
                 "SELECT version, applied_at FROM public.seaql_migrations ORDER BY version",
             ))
             .await?;
-        let versions = [VERSION, RUNTIME_VERSION];
+        let versions = [
+            VERSION,
+            RUNTIME_VERSION,
+            TAKE_IDENTITY_VERSION,
+            BROWSER_SESSION_VERSION,
+            ACCESS_SCOPE_VERSION,
+        ];
         if rows.is_empty() || rows.len() > versions.len() {
             return Err(migration_error(
                 "Migration ledger must contain a supported ordered migration prefix",
@@ -91,8 +107,23 @@ async fn verify_catalog<C: ConnectionTrait>(db: &C, require_ledger: bool) -> Res
                 ));
             }
         }
-        if rows.len() == 2 {
+        if rows.len() >= 2 {
             expected.extend(recorded_catalog(include_str!("../queue-catalog.json"))?);
+        }
+        if rows.len() >= 3 {
+            expected.extend(recorded_catalog(include_str!(
+                "../take-identity-catalog.json"
+            ))?);
+        }
+        if rows.len() >= 4 {
+            expected.extend(recorded_catalog(include_str!(
+                "../browser-session-catalog.json"
+            ))?);
+        }
+        if rows.len() >= 5 {
+            expected.extend(recorded_catalog(include_str!(
+                "../access-token-scopes-catalog.json"
+            ))?);
         }
     } else if require_ledger {
         return Err(migration_error(

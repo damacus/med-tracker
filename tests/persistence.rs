@@ -7,9 +7,12 @@ struct StandardLedger;
 #[async_trait::async_trait]
 impl MigratorTrait for StandardLedger {
     fn migrations() -> Vec<Box<dyn migration::MigrationTrait>> {
-        vec![Box::new(
-            migration::m20261005_000002_provision_runtime::Migration,
-        )]
+        vec![
+            Box::new(migration::m20261005_000002_provision_runtime::Migration),
+            Box::new(migration::m20261006_000003_canonical_take_identity::Migration),
+            Box::new(migration::m20261006_000004_browser_sessions::Migration),
+            Box::new(migration::m20261006_000005_access_token_scopes::Migration),
+        ]
     }
 }
 
@@ -76,7 +79,7 @@ async fn capture_persistence_catalog() {
     db.execute_unprepared("SET search_path = public, pg_temp")
         .await
         .unwrap();
-    StandardLedger::up(&db, None).await.unwrap();
+    StandardLedger::up(&db, Some(1)).await.unwrap();
     let queued = catalog(&db).await;
     let queue: serde_json::Map<String, serde_json::Value> = queued
         .as_object()
@@ -115,6 +118,56 @@ async fn capture_persistence_catalog() {
         serde_json::to_string_pretty(&queue).unwrap(),
     )
     .unwrap();
+    let mut previous = queued;
+    for (name, expected_keys) in [
+        (
+            "take-identity",
+            vec!["index:public.index_medication_takes_on_client_uuid_canonical"],
+        ),
+        (
+            "browser-session",
+            vec![
+                "column:public.browser_sessions.expires",
+                "column:public.browser_sessions.id",
+                "column:public.browser_sessions.session",
+                "constraint:public.browser_sessions.browser_sessions_id_not_null",
+                "constraint:public.browser_sessions.browser_sessions_pkey",
+                "constraint:public.browser_sessions.browser_sessions_session_not_null",
+                "index:public.browser_sessions_pkey",
+                "relation:public.browser_sessions",
+            ],
+        ),
+        (
+            "access-token-scopes",
+            vec![
+                "column:public.oauth_grants.access_token_scope_hash",
+                "column:public.oauth_grants.access_token_scopes",
+            ],
+        ),
+    ] {
+        db.execute_unprepared("SET search_path = public, pg_temp")
+            .await
+            .unwrap();
+        StandardLedger::up(&db, Some(1)).await.unwrap();
+        let current = catalog(&db).await;
+        let delta: serde_json::Map<String, serde_json::Value> = current
+            .as_object()
+            .unwrap()
+            .iter()
+            .filter(|(key, value)| previous.get(*key) != Some(*value))
+            .map(|(key, value)| (key.clone(), value.clone()))
+            .collect();
+        assert_eq!(
+            delta.keys().map(String::as_str).collect::<Vec<_>>(),
+            expected_keys
+        );
+        std::fs::write(
+            output.join(format!("medtracker-{name}-catalog.json")),
+            serde_json::to_string_pretty(&delta).unwrap(),
+        )
+        .unwrap();
+        previous = current;
+    }
     db.close().await.unwrap();
 }
 
@@ -136,6 +189,68 @@ async fn restored_database() -> loco_rs::prelude::DatabaseConnection {
     migration::sea_orm::Database::connect(options)
         .await
         .unwrap()
+}
+
+#[tokio::test]
+async fn historical_global_uuid_duplicates_reject_adoption_without_mutation() {
+    let db = restored_database().await;
+    migration::Migrator::up(&db, Some(2)).await.unwrap();
+    db.execute_unprepared(include_str!("fixtures/persistence-records.sql"))
+        .await
+        .unwrap();
+    db.execute_unprepared(include_str!("fixtures/care-doses.sql"))
+        .await
+        .unwrap();
+    db.execute_unprepared("INSERT INTO medication_takes(household_id,client_uuid,person_medication_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(72001,'006b49d9-1da2-42f1-800b-8c80867aee1c',81001,2,'tablet',now(),now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(92001,71001,'Other synthetic household','uuid-migration-household','UTC',now(),now()); INSERT INTO people(id,household_id,name,person_type,has_capacity,created_at,updated_at) VALUES(92002,92001,'Other synthetic adult',0,true,now(),now()); INSERT INTO locations(id,household_id,name,created_at,updated_at) VALUES(92003,92001,'Other synthetic cabinet',now(),now()); INSERT INTO medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at) VALUES(92004,92001,92003,'Other synthetic tablets',10,2,'tablet',now(),now()); INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(92005,92001,92002,92004,2,'tablet',0,now(),now()); INSERT INTO medication_takes(household_id,client_uuid,person_medication_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(92001,'006B49D9-1DA2-42F1-800B-8C80867AEE1C',92005,2,'tablet',now(),now(),now())").await.unwrap();
+    let before = catalog(&db).await;
+    let ledger = ledger_rows(&db).await;
+    let records = db
+        .query_one_raw(migration::sea_orm::Statement::from_string(
+            migration::sea_orm::DbBackend::Postgres,
+            "SELECT jsonb_agg(to_jsonb(t) ORDER BY id)::text AS data FROM medication_takes t",
+        ))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get::<String>("", "data")
+        .unwrap();
+    let result = migration::Migrator::up(&db, None).await;
+    let after = db
+        .query_one_raw(migration::sea_orm::Statement::from_string(
+            migration::sea_orm::DbBackend::Postgres,
+            "SELECT jsonb_agg(to_jsonb(t) ORDER BY id)::text AS data FROM medication_takes t",
+        ))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get::<String>("", "data")
+        .unwrap();
+    assert_eq!(records, after);
+    assert_eq!(catalog(&db).await, before);
+    assert_eq!(ledger_rows(&db).await, ledger);
+    db.close().await.unwrap();
+    assert!(
+        result.is_err(),
+        "Global historical UUID duplicates were accepted"
+    );
+}
+
+#[tokio::test]
+async fn adoption_provisions_the_standard_durable_browser_session_store() {
+    let db = restored_database().await;
+    migration::Migrator::up(&db, None).await.unwrap();
+    let exists = db
+        .query_one_raw(migration::sea_orm::Statement::from_string(
+            migration::sea_orm::DbBackend::Postgres,
+            "SELECT to_regclass('public.browser_sessions') IS NOT NULL AS present",
+        ))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get::<bool>("", "present")
+        .unwrap();
+    db.close().await.unwrap();
+    assert!(exists, "Standard durable browser session store is absent");
 }
 
 #[tokio::test]
@@ -231,7 +346,7 @@ async fn populated_adoption_preserves_records_and_rails_metadata() {
         'people', (SELECT jsonb_agg(to_jsonb(t) ORDER BY id) FROM public.people t),
         'memberships', (SELECT jsonb_agg(to_jsonb(t) ORDER BY id) FROM public.household_memberships t),
         'clients', (SELECT jsonb_agg(to_jsonb(t) ORDER BY id) FROM public.oauth_applications t),
-        'grants', (SELECT jsonb_agg(to_jsonb(t) ORDER BY id) FROM public.oauth_grants t),
+        'grants', (SELECT jsonb_agg(to_jsonb(t) - 'access_token_scopes' - 'access_token_scope_hash' ORDER BY id) FROM public.oauth_grants t),
         'rails_migrations', (SELECT jsonb_agg(to_jsonb(t) ORDER BY version) FROM public.schema_migrations t),
         'rails_metadata', (SELECT jsonb_agg(to_jsonb(t) ORDER BY key) FROM public.ar_internal_metadata t)
     )::text AS records";
@@ -249,7 +364,7 @@ async fn populated_adoption_preserves_records_and_rails_metadata() {
     assert_eq!(records["rails_migrations"].as_array().unwrap().len(), 177);
     assert!(!records["rails_metadata"].as_array().unwrap().is_empty());
     migration::Migrator::up(&db, None).await.unwrap();
-    assert_eq!(ledger_rows(&db).await.len(), 2);
+    assert_eq!(ledger_rows(&db).await.len(), 5);
     let after: String = db
         .query_one_raw(migration::sea_orm::Statement::from_string(
             migration::sea_orm::DbBackend::Postgres,
@@ -264,7 +379,130 @@ async fn populated_adoption_preserves_records_and_rails_metadata() {
         before == after,
         "Adoption changed synthetic records or Rails metadata"
     );
+    let added_fields_are_null: bool = db.query_one_raw(migration::sea_orm::Statement::from_string(migration::sea_orm::DbBackend::Postgres,
+        "SELECT NOT EXISTS (SELECT 1 FROM public.oauth_grants WHERE access_token_scopes IS NOT NULL OR access_token_scope_hash IS NOT NULL) AS unchanged"
+    )).await.unwrap().unwrap().try_get("", "unchanged").unwrap();
+    assert!(
+        added_fields_are_null,
+        "Adoption populated legacy grant access-scope metadata"
+    );
     db.close().await.unwrap();
+}
+
+#[tokio::test]
+async fn development_seed_creates_a_usable_account_and_household() {
+    use loco_rs::{
+        app::{AppContext, Hooks},
+        config::Config,
+        environment::Environment,
+    };
+    use med_tracker::models::{
+        access::{self, Actor, HouseholdScope},
+        entities::{account, medication},
+    };
+    use sea_orm::EntityTrait;
+    let db = restored_database().await;
+    let context = AppContext::builder(
+        Environment::Development,
+        db.clone(),
+        Config::new(&Environment::Development).unwrap(),
+    )
+    .build();
+    let database = db
+        .query_one_raw(migration::sea_orm::Statement::from_string(
+            migration::sea_orm::DbBackend::Postgres,
+            "SELECT current_database() AS name",
+        ))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get::<String>("", "name")
+        .unwrap();
+    let owned_url = std::env::var("DATABASE_URL").unwrap();
+    let (base, _) = owned_url.rsplit_once('/').unwrap();
+    let result = tokio::time::timeout(
+        std::time::Duration::from_secs(120),
+        tokio::process::Command::new("task")
+            .args([
+                "db:seed",
+                &format!("SEED_DATABASE_URL={base}/{database}"),
+                "LOCO_ENV=test",
+            ])
+            .env(
+                "DATABASE_URL",
+                "postgres://invalid:invalid@127.0.0.1:1/do_not_use",
+            )
+            .kill_on_drop(true)
+            .output(),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    assert!(
+        result.status.success(),
+        "Standard development seeding must be usable: {}",
+        String::from_utf8_lossy(&result.stderr)
+    );
+    let account = account::Entity::find_by_id(71001)
+        .one(&db)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(account.email, "persistence@example.test");
+    assert!(bcrypt::verify("password", account.password_hash.as_deref().unwrap()).unwrap());
+    let tenant = access::begin(
+        &db,
+        &HouseholdScope {
+            actor: Actor {
+                account_id: account.id,
+            },
+            household_id: 72001,
+            request_id: "seed-proof".into(),
+        },
+    )
+    .await
+    .unwrap();
+    let medicines = access::medication_scope(&tenant)
+        .all(tenant.transaction())
+        .await
+        .unwrap();
+    assert_eq!(medicines.len(), 1);
+    assert_eq!(medicines[0].id, 80001);
+    assert_eq!(medicines[0].current_supply.unwrap().to_string(), "10.00");
+    tenant.rollback().await.unwrap();
+    let production =
+        AppContext::builder(Environment::Production, db.clone(), context.config.clone()).build();
+    assert!(
+        med_tracker::app::App::seed(&production, std::path::Path::new("src/fixtures"))
+            .await
+            .is_err()
+    );
+    assert_eq!(medication::Entity::find().all(&db).await.unwrap().len(), 1);
+    db.close().await.unwrap();
+}
+
+#[test]
+fn development_has_a_stable_session_key() {
+    use base64::Engine;
+    use loco_rs::{config::Config, environment::Environment};
+    let first = Config::new(&Environment::Development).unwrap();
+    let second = Config::new(&Environment::Development).unwrap();
+    let key = first
+        .settings
+        .as_ref()
+        .and_then(|settings| settings["browser_session"]["key"].as_str())
+        .expect("Development must provide a stable session key");
+    assert_eq!(
+        base64::engine::general_purpose::STANDARD
+            .decode(key)
+            .unwrap()
+            .len(),
+        64
+    );
+    assert_eq!(
+        second.settings.as_ref().unwrap()["browser_session"]["key"],
+        key
+    );
 }
 
 #[tokio::test]
@@ -405,7 +643,7 @@ async fn cooperating_adoptions_serialize() {
     );
     first.unwrap();
     second.unwrap();
-    assert_eq!(ledger_rows(&db).await.len(), 2);
+    assert_eq!(ledger_rows(&db).await.len(), 5);
     other.close().await.unwrap();
     db.close().await.unwrap();
 }
@@ -526,9 +764,12 @@ async fn baseline_only_adoption_upgrades_to_the_supported_runtime_state() {
     assert_eq!(baseline.len(), 1);
     migration::Migrator::up(&db, None).await.unwrap();
     let runtime = ledger_rows(&db).await;
-    assert_eq!(runtime.len(), 2);
+    assert_eq!(runtime.len(), 5);
     assert_eq!(runtime[0], baseline[0]);
     assert_eq!(runtime[1].0, "m20261005_000002_provision_runtime");
+    assert_eq!(runtime[2].0, "m20261006_000003_canonical_take_identity");
+    assert_eq!(runtime[3].0, "m20261006_000004_browser_sessions");
+    assert_eq!(runtime[4].0, "m20261006_000005_access_token_scopes");
     let before = catalog(&db).await;
     migration::Migrator::up(&db, None).await.unwrap();
     assert_eq!(ledger_rows(&db).await, runtime);

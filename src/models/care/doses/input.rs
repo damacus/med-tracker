@@ -107,7 +107,7 @@ pub(super) async fn prepare(
         .await
         .map_err(database_error)?
         .ok_or(OperationError::NotFound)?;
-    let candidates = scope(household_id, context.membership())
+    let candidates = access::medication_scope(context.tenant)
         .all(db)
         .await
         .map_err(database_error)?;

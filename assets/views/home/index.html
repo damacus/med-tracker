@@ -1,5 +1,25 @@
-<!doctype html>
-<html lang="en">
-  <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{{ title }}</title></head>
-  <body><main><h1>{{ title }}</h1><p>Product workflows are being migrated. Rails remains the rollback application.</p></main></body>
-</html>
+{% extends "layouts/base.html" %}
+{% block content %}
+<div class="max-w-3xl">
+  <p class="text-sm font-semibold uppercase tracking-widest shell-muted">Care, kept together</p>
+  <h1 class="text-4xl font-semibold mt-3">MedTracker</h1>
+  {% if signed_in %}
+  <section class="mt-8">
+    <h2 class="text-2xl font-semibold">Your households</h2>
+    <ul class="flex flex-col gap-4 mt-4">
+    {% for household in households %}
+      <li class="card shell-card"><div class="card-body">
+        <h3 class="card-title"><a class="link" href="/households/{{ household.slug }}/medications">{{ household.name }}</a></h3>
+      </div></li>
+    {% else %}<li>You do not have an active household membership.</li>{% endfor %}
+    </ul>
+  </section>
+  {% else %}
+  <a class="btn btn-neutral mt-6" href="/login">Sign in</a>
+  <div class="card shell-card mt-8"><div class="card-body">
+    <h2 class="card-title">Your care, in one place</h2>
+    <p>Keep people, medicines and their care together.</p>
+  </div></div>
+  {% endif %}
+</div>
+{% endblock content %}

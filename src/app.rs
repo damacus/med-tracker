@@ -36,8 +36,24 @@ impl Hooks for App {
         Ok(vec![Box::new(crate::initializers::ViewEngineInitializer)])
     }
 
-    fn routes(_ctx: &AppContext) -> AppRoutes {
-        AppRoutes::with_default_routes().add_route(crate::controllers::routes())
+    fn routes(ctx: &AppContext) -> AppRoutes {
+        let browser = |routes| crate::models::identity::browser::route_layers(ctx, routes);
+        AppRoutes::with_default_routes()
+            .add_route(crate::controllers::routes())
+            .add_route(crate::controllers::api::care::routes())
+            .add_route(browser(crate::controllers::browser_routes()))
+            .add_route(browser(crate::controllers::auth::routes()))
+            .add_route(browser(crate::controllers::medications::routes()))
+    }
+
+    async fn before_routes(ctx: &AppContext) -> Result<axum::Router<AppContext>> {
+        let layers = crate::models::identity::browser::layers(ctx)
+            .await
+            .map_err(|_| Error::string("Browser session configuration is unavailable"))?;
+        if let Some(layers) = layers {
+            ctx.shared_store.insert(layers);
+        }
+        Ok(axum::Router::new())
     }
 
     async fn connect_workers(_ctx: &AppContext, _queue: &Queue) -> Result<()> {
@@ -52,9 +68,7 @@ impl Hooks for App {
         ))
     }
 
-    async fn seed(_ctx: &AppContext, _base: &Path) -> Result<()> {
-        Err(Error::string(
-            "Loco fixtures await persistence tranche acceptance",
-        ))
+    async fn seed(ctx: &AppContext, base: &Path) -> Result<()> {
+        crate::models::seed::seed(ctx, base).await
     }
 }

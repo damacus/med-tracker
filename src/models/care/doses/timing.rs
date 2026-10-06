@@ -55,19 +55,20 @@ pub(super) fn applies_on(source: &Source, date: NaiveDate) -> bool {
     }
 }
 
-fn local_midnight_utc(date: NaiveDate, zone: chrono_tz::Tz) -> NaiveDateTime {
+fn local_midnight_utc(date: NaiveDate, zone: chrono_tz::Tz) -> Result<NaiveDateTime, ApiError> {
     let midnight = date.and_hms_opt(0, 0, 0).expect("midnight is valid");
     zone.from_local_datetime(&midnight)
         .earliest()
+        .or_else(|| chrono_tz::GapInfo::new(&midnight, &zone).and_then(|gap| gap.end))
         .map(|time| time.with_timezone(&Utc).naive_utc())
-        .unwrap_or(midnight)
+        .ok_or_else(|| error(ErrorKind::Validation, "taken_at is invalid"))
 }
 
 fn cycle_bounds(
     time: NaiveDateTime,
     cycle: Option<i32>,
     zone: chrono_tz::Tz,
-) -> (NaiveDateTime, NaiveDateTime) {
+) -> Result<(NaiveDateTime, NaiveDateTime), ApiError> {
     cycle_bounds_in_zone(time, cycle, zone)
 }
 
@@ -75,7 +76,7 @@ pub(super) fn cycle_bounds_in_zone(
     time: NaiveDateTime,
     cycle: Option<i32>,
     zone: chrono_tz::Tz,
-) -> (NaiveDateTime, NaiveDateTime) {
+) -> Result<(NaiveDateTime, NaiveDateTime), ApiError> {
     let date = local_date_in_zone(time, zone);
     let start = match cycle.unwrap_or(0) {
         1 => date - Duration::days(date.weekday().num_days_from_monday() as i64),
@@ -94,10 +95,10 @@ pub(super) fn cycle_bounds_in_zone(
         }
         _ => start + Duration::days(1),
     };
-    (
-        local_midnight_utc(start, zone),
-        local_midnight_utc(end, zone),
-    )
+    Ok((
+        local_midnight_utc(start, zone)?,
+        local_midnight_utc(end, zone)?,
+    ))
 }
 
 pub(super) async fn timing_allowed(
@@ -167,7 +168,7 @@ pub(super) async fn timing_allowed(
             local_date_in_zone(proposed.taken_at, proposed.zone),
         );
         if let Some(max_doses) = source.max_daily_doses {
-            let (start, end) = cycle_bounds(proposed.taken_at, source.dose_cycle, proposed.zone);
+            let (start, end) = cycle_bounds(proposed.taken_at, source.dose_cycle, proposed.zone)?;
             let count = takes
                 .iter()
                 .filter(|take| {

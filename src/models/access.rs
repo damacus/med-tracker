@@ -1,11 +1,14 @@
 use sea_orm::{
     ColumnTrait, Condition, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend,
-    EntityTrait, QueryFilter, QueryOrder, Statement, TransactionTrait,
+    EntityTrait, QueryFilter, QueryOrder, QuerySelect, QueryTrait, Statement, TransactionTrait,
     sea_query::{Expr, ExprTrait},
 };
 
 use super::{
-    entities::{account, account_lockout, grant, household, membership, person, user},
+    entities::{
+        account, account_lockout, grant, household, medication, membership, person,
+        person_medication, schedule, user,
+    },
     errors::OperationError,
 };
 
@@ -164,11 +167,104 @@ pub async fn recheck(transaction: &TenantTransaction) -> Result<(), OperationErr
     Ok(())
 }
 
-async fn verify_membership(
+pub fn medication_scope(transaction: &TenantTransaction) -> sea_orm::Select<medication::Entity> {
+    let membership = transaction.membership();
+    let household_id = transaction.scope().household_id;
+    let query = medication::Entity::find().filter(medication::Column::HouseholdId.eq(household_id));
+    if membership.role == "owner" || membership.role == "administrator" {
+        return query;
+    }
+    let granted_schedules = schedule::Entity::find()
+        .select_only()
+        .column(schedule::Column::MedicationId)
+        .filter(schedule::Column::HouseholdId.eq(household_id))
+        .filter(schedule::Column::PersonId.in_subquery(granted_people(membership)))
+        .into_query();
+    let granted_assignments = person_medication::Entity::find()
+        .select_only()
+        .column(person_medication::Column::MedicationId)
+        .filter(person_medication::Column::HouseholdId.eq(household_id))
+        .filter(person_medication::Column::PersonId.in_subquery(granted_people(membership)))
+        .into_query();
+    let linked_schedules = schedule::Entity::find()
+        .select_only()
+        .column(schedule::Column::MedicationId)
+        .filter(schedule::Column::HouseholdId.eq(household_id))
+        .into_query();
+    let linked_assignments = person_medication::Entity::find()
+        .select_only()
+        .column(person_medication::Column::MedicationId)
+        .filter(person_medication::Column::HouseholdId.eq(household_id))
+        .into_query();
+    query.filter(
+        Condition::any()
+            .add(medication::Column::Id.in_subquery(granted_schedules))
+            .add(medication::Column::Id.in_subquery(granted_assignments))
+            .add(
+                Condition::all()
+                    .add(medication::Column::CreatedByMembershipId.eq(membership.id))
+                    .add(medication::Column::Id.not_in_subquery(linked_schedules))
+                    .add(medication::Column::Id.not_in_subquery(linked_assignments)),
+            ),
+    )
+}
+
+fn granted_people(membership: &membership::Model) -> sea_orm::sea_query::SelectStatement {
+    grant::Entity::find()
+        .select_only()
+        .column(grant::Column::PersonId)
+        .filter(grant::Column::HouseholdId.eq(membership.household_id))
+        .filter(grant::Column::HouseholdMembershipId.eq(membership.id))
+        .filter(grant::Column::RevokedAt.is_null())
+        .filter(grant::Column::AccessLevel.is_in(["view", "record", "manage"]))
+        .filter(
+            Condition::any()
+                .add(grant::Column::ExpiresAt.is_null())
+                .add(
+                    Expr::col(grant::Column::ExpiresAt)
+                        .gt(Expr::cust("timezone('UTC', clock_timestamp())")),
+                ),
+        )
+        .into_query()
+}
+
+pub(crate) async fn verify_membership(
     transaction: &DatabaseTransaction,
     scope: &HouseholdScope,
 ) -> Result<(membership::Model, i64), OperationError> {
-    let account = account::Entity::find_by_id(scope.actor.account_id)
+    verify_account(transaction, scope.actor.account_id).await?;
+    let household = household::Entity::find_by_id(scope.household_id)
+        .one(transaction)
+        .await?
+        .ok_or(OperationError::NotFound)?;
+    if household.status != "active" || household.lifecycle_state != "active" {
+        return Err(OperationError::Forbidden);
+    }
+    let membership = membership::Entity::find()
+        .filter(membership::Column::AccountId.eq(scope.actor.account_id))
+        .filter(membership::Column::HouseholdId.eq(scope.household_id))
+        .filter(membership::Column::Status.eq("active"))
+        .filter(membership::Column::RevokedAt.is_null())
+        .one(transaction)
+        .await?
+        .ok_or(OperationError::Forbidden)?;
+    let user_id = account_user(transaction, scope.actor.account_id).await?;
+    Ok((membership, user_id))
+}
+
+pub(crate) async fn verify_account_actor(
+    transaction: &DatabaseTransaction,
+    account_id: i64,
+) -> Result<i64, OperationError> {
+    verify_account(transaction, account_id).await?;
+    account_user(transaction, account_id).await
+}
+
+async fn verify_account(
+    transaction: &DatabaseTransaction,
+    account_id: i64,
+) -> Result<(), OperationError> {
+    let account = account::Entity::find_by_id(account_id)
         .one(transaction)
         .await?
         .filter(|record| record.status == 2)
@@ -181,23 +277,15 @@ async fn verify_membership(
     {
         return Err(OperationError::Unauthenticated);
     }
-    let household = household::Entity::find_by_id(scope.household_id)
-        .one(transaction)
-        .await?
-        .ok_or(OperationError::NotFound)?;
-    if household.status != "active" || household.lifecycle_state != "active" {
-        return Err(OperationError::Forbidden);
-    }
-    let membership = membership::Entity::find()
-        .filter(membership::Column::AccountId.eq(account.id))
-        .filter(membership::Column::HouseholdId.eq(scope.household_id))
-        .filter(membership::Column::Status.eq("active"))
-        .filter(membership::Column::RevokedAt.is_null())
-        .one(transaction)
-        .await?
-        .ok_or(OperationError::Forbidden)?;
+    Ok(())
+}
+
+async fn account_user(
+    transaction: &DatabaseTransaction,
+    account_id: i64,
+) -> Result<i64, OperationError> {
     let person = person::Entity::find()
-        .filter(person::Column::AccountId.eq(account.id))
+        .filter(person::Column::AccountId.eq(account_id))
         .order_by_asc(person::Column::Id)
         .one(transaction)
         .await?
@@ -208,5 +296,5 @@ async fn verify_membership(
         .one(transaction)
         .await?
         .ok_or(OperationError::Unauthenticated)?;
-    Ok((membership, user.id))
+    Ok(user.id)
 }

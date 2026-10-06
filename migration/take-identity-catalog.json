@@ -1,0 +1,13 @@
+{
+  "index:public.index_medication_takes_on_client_uuid_canonical": {
+    "clustered": false,
+    "definition": "CREATE UNIQUE INDEX index_medication_takes_on_client_uuid_canonical ON public.medication_takes USING btree ((\nCASE\n    WHEN ((client_uuid)::text ~* '^([0-9a-f]{32}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|\\{[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\}|urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$'::text) THEN lower(replace(replace(replace(regexp_replace((client_uuid)::text, '^urn:uuid:'::text, ''::text, 'i'::text), '-'::text, ''::text), '{'::text, ''::text), '}'::text, ''::text))\n    ELSE NULL::text\nEND))",
+    "live": true,
+    "options": null,
+    "owner": "med_tracker_owner",
+    "ready": true,
+    "replica_identity": false,
+    "tablespace": null,
+    "valid": true
+  }
+}

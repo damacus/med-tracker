@@ -1,0 +1,13 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="card shell-card max-w-lg mx-auto"><div class="card-body">
+  <h1 class="text-3xl font-semibold">Sign in</h1>
+  {% if error %}<p role="alert" class="shell-error">{{ error }}</p>{% endif %}
+  <form method="post" action="/login" class="grid gap-4 mt-4">
+    <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+    <label class="grid gap-2" for="email">Email address<input class="input shell-input w-full" id="email" name="email" type="email" autocomplete="username" maxlength="320" required></label>
+    <label class="grid gap-2" for="password">Password<input class="input shell-input w-full" id="password" name="password" type="password" autocomplete="current-password" maxlength="1024" required></label>
+    <button class="btn shell-primary" type="submit">Sign in</button>
+  </form>
+</div></section>
+{% endblock content %}

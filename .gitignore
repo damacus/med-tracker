@@ -106,3 +106,7 @@ vendor/**/*
 !/rails/vendor/fonts/
 !/rails/vendor/fonts/NotoSans-Regular.ttf
 !/rails/vendor/fonts/OFL-1.1.txt
+/assets/static/css/compiled.css
+/playwright-report/
+/test-results/
+/.task/

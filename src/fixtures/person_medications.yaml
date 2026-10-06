@@ -1,0 +1,9 @@
+- id: 81001
+  household_id: 72001
+  person_id: 73001
+  medication_id: 80001
+  dose_amount: "2.00"
+  dose_unit: "tablet"
+  position: 0
+  created_at: "2026-10-06T00:00:00"
+  updated_at: "2026-10-06T00:00:00"

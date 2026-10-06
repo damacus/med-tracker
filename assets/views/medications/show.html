@@ -1,0 +1,35 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-3xl mx-auto">
+  <a class="link" href="/households/{{ slug }}/medications">Medications</a>
+  <h1 class="text-3xl font-semibold mt-4">{{ name }}</h1>
+  <div class="card bg-base-100 border border-base-300 mt-6"><div class="card-body">
+    <h2 class="card-title">Inventory status</h2>
+    <p data-testid="current-supply" class="text-2xl font-semibold">{{ quantity }} {{ unit }}</p>
+    {% if can_adjust %}<a class="btn btn-ghost self-start" href="/households/{{ slug }}/medications/{{ medication_id }}/stock/adjust">Adjust stock</a>{% endif %}
+  </div></div>
+  {% if error %}<p id="dose-error" role="alert" class="alert mt-6">{{ error }}</p>{% endif %}
+  <section class="card bg-base-100 border border-base-300 mt-6"><div class="card-body">
+    <h2 class="card-title">Record dose</h2>
+    <p>Confirm the person, medication, time, and inventory source.</p>
+    {% for source in assignments %}
+      {% if source.can_record %}
+      <form method="post" action="/households/{{ slug }}/medications/{{ medication_id }}/doses" aria-label="Record dose for {{ source.person_name }}" data-dose-form class="flex flex-col gap-4 mt-4">
+        <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+        <input type="hidden" name="client_uuid" value="{{ source.draft.client_uuid }}">
+        <input type="hidden" name="source_type" value="{{ source.draft.source_type }}">
+        <input type="hidden" name="source_id" value="{{ source.draft.source_id }}">
+        <input type="hidden" name="dose_amount" value="{{ source.draft.dose_amount }}">
+        <input type="hidden" name="dose_unit" value="{{ source.draft.dose_unit }}">
+        <p><strong>{{ source.person_name }}</strong> · {{ name }} · {{ source.draft.dose_amount }} {{ source.dose_unit_label }}</p>
+        <label for="taken-at-{{ source.id }}" class="font-semibold">Taken at</label>
+        <input id="taken-at-{{ source.id }}" name="taken_at" type="datetime-local" class="input w-full" value="{{ source.draft.taken_at }}" {% if source.error %}aria-describedby="dose-error"{% endif %} required>
+        <label for="stock-source-{{ source.id }}" class="font-semibold">Stock source</label>
+        <select id="stock-source-{{ source.id }}" name="taken_from_medication_id" class="select w-full" {% if source.error %}aria-describedby="dose-error"{% endif %}><option value="{{ medication_id }}">{{ name }} — {{ quantity }} {{ unit }} remaining</option></select>
+        <button type="submit" class="btn btn-neutral self-start">Record dose</button>
+      </form>
+      {% elif not source.can_record %}<p>{{ source.person_name }} · View only</p>{% endif %}
+    {% else %}<p>No available medication source.</p>{% endfor %}
+  </div></section>
+</section>
+{% endblock content %}

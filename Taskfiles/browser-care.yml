@@ -1,0 +1,56 @@
+version: '3'
+tasks:
+  second-person:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction
+        -c "INSERT INTO public.person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,created_at,updated_at) VALUES(78002,72001,74001,73002,'manage','parent',now(),now());
+        INSERT INTO public.person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(81002,72001,73002,80001,1,'tablet',1,now(),now());"
+  seed:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction -f tests/fixtures/persistence-records.sql -f tests/fixtures/care-doses.sql'
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction
+        -c "CREATE ROLE medtracker_browser_runtime LOGIN PASSWORD 'password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS IN ROLE med_tracker_app;
+        INSERT INTO public.accounts(id,email,status,password_hash,created_at,updated_at) VALUES(71002,'foreign@example.test',2,crypt('password',gen_salt('bf',4)),now(),now());
+        INSERT INTO public.households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71002,'Synthetic foreign household','foreign-fixture','Europe/London',now(),now());
+        INSERT INTO public.locations(id,household_id,name,created_at,updated_at) VALUES(79002,72002,'Synthetic foreign cabinet',now(),now());
+        INSERT INTO public.medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at) VALUES(80002,72002,79002,'Synthetic foreign medicine',10,2,'tablet',now(),now());"
+  probe:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align
+        -c "SELECT json_build_object('supply',(SELECT current_supply::text FROM public.medications WHERE id=80001),'takes',(SELECT count(*) FROM public.medication_takes WHERE taken_from_medication_id=80001),'foreign_supply',(SELECT current_supply::text FROM public.medications WHERE id=80002),'foreign_takes',(SELECT count(*) FROM public.medication_takes WHERE taken_from_medication_id=80002),'runtime_superuser',(SELECT rolsuper FROM pg_roles WHERE rolname='medtracker_browser_runtime'),'runtime_bypassrls',(SELECT rolbypassrls FROM pg_roles WHERE rolname='medtracker_browser_runtime'),'stored_sessions',(SELECT count(*) FROM public.browser_sessions),'session_plaintext',(SELECT COALESCE(bool_or(session LIKE '%persistence@example.test%' OR session LIKE '%account_id%'),false) FROM public.browser_sessions),'registry_sessions',(SELECT count(*) FROM public.account_active_session_keys WHERE account_id=71001),'active_sessions',(SELECT count(*) FROM public.account_active_session_keys WHERE account_id=71001 AND last_use>now()-interval '30 days'));"
+  revoke:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -c "UPDATE public.person_access_grants SET revoked_at=now() WHERE id=78001"'
+  reactivate:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -c "UPDATE public.person_access_grants SET revoked_at=NULL WHERE id=78001"'
+  revoke-session:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -c "DELETE FROM public.account_active_session_keys WHERE account_id=71001"'
+  expire-session:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -c "UPDATE public.account_active_session_keys SET last_use=now()-interval ''31 days'' WHERE account_id=71001"'
+  dose-request-id:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align
+        -c "SELECT request_id FROM public.versions WHERE item_type='MedicationTake' AND item_id=(SELECT id FROM public.medication_takes WHERE taken_from_medication_id=80001 ORDER BY id DESC LIMIT 1) ORDER BY id DESC LIMIT 1"

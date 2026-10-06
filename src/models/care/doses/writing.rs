@@ -67,20 +67,18 @@ pub(crate) async fn create_with_failure(
     }
     lock_row(db, "households", household_id).await?;
     access::recheck(context.tenant).await?;
-    let client_uuid = attributes
+    let canonical_uuid = attributes
         .get("client_uuid")
         .and_then(Value::as_str)
-        .filter(|value| !value.is_empty());
+        .map(|value| Uuid::parse_str(value).map(|id| id.hyphenated().to_string()))
+        .transpose()
+        .map_err(|_| error(ErrorKind::Validation, "invalid client_uuid"))?;
+    let client_uuid = canonical_uuid.as_deref();
     if let Some(client_uuid) = client_uuid {
         lock_client_uuid(db, client_uuid).await?;
     }
     if let Some(client_uuid) = client_uuid
-        && let Some(existing) = medication_take::Entity::find()
-            .filter(medication_take::Column::HouseholdId.eq(household_id))
-            .filter(medication_take::Column::ClientUuid.eq(client_uuid))
-            .one(db)
-            .await
-            .map_err(database_error)?
+        && let Some(existing) = existing_take(db, household_id, client_uuid).await?
     {
         let replay = match replay_matches(db, context, household_id, &existing, attributes).await {
             Ok(replay) => replay,
@@ -119,11 +117,9 @@ pub(crate) async fn create_with_failure(
     }
     let take = insert_take(db, household_id, &proposed, client_uuid)
         .await?
-        .ok_or_else(|| {
-            error(
-                ErrorKind::Conflict,
-                "client_uuid was already used for a different dose",
-            )
+        .ok_or_else(|| OperationError::Conflict {
+            code: "idempotency_key_unavailable".into(),
+            details: json!({"message": "Medication take idempotency key is unavailable"}),
         })?;
     decrement_stock(db, context, request_id, &proposed).await?;
     record_domain_audit(db, context, request_id, &take, &proposed).await?;

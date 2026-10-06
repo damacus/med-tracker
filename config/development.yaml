@@ -3,10 +3,23 @@ logger:
   pretty_backtrace: false
   level: info
   format: compact
+settings:
+  browser_session:
+    key: BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBw==
+    secure: false
 server:
   port: <%= get_env(name="PORT", default="5150") %>
   binding: <%= get_env(name="BINDING", default="127.0.0.1") %>
   host: http://localhost
+  middlewares:
+    static:
+      enable: true
+      must_exist: true
+      folder:
+        uri: /static
+        path: assets/static
+      fallback: assets/static/404.html
+      cache_control: no-cache
 workers:
   mode: BackgroundQueue
 queue:

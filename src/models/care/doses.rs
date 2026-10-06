@@ -4,7 +4,6 @@ mod input;
 mod locking;
 mod persistence;
 mod replay;
-mod scope;
 mod source;
 mod stock;
 mod timing;
@@ -14,7 +13,7 @@ mod writing;
 use crate::models::{
     access::{self, HouseholdScope, PersonAccess, TenantTransaction},
     entities::{
-        api_change_event, dosage, grant, medication, medication_take, membership, person,
+        api_change_event, dosage, medication, medication_take, membership, person,
         person_medication, schedule,
     },
     errors::OperationError,
@@ -25,12 +24,11 @@ use chrono::{DateTime, Datelike, Duration, NaiveDate, NaiveDateTime, TimeZone, U
 use input::{ProposedTake, decimal_from_json, parse_input_time, prepare};
 use locking::lock_row;
 use persistence::insert_take;
-use replay::{lock_client_uuid, replay_matches};
-use scope::scope;
+use replay::{existing_take, lock_client_uuid, replay_matches};
 use sea_orm::prelude::Decimal;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, Condition, ConnectionTrait, DatabaseTransaction, DbBackend,
-    EntityTrait, QueryFilter, QuerySelect, QueryTrait, Set, Statement,
+    EntityTrait, QueryFilter, Set, Statement,
 };
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};

@@ -1,0 +1,9 @@
+- id: 80001
+  household_id: 72001
+  location_id: 79001
+  name: "Synthetic tablets"
+  current_supply: "10.00"
+  dose_amount: 2
+  dose_unit: "tablet"
+  created_at: "2026-10-06T00:00:00"
+  updated_at: "2026-10-06T00:00:00"

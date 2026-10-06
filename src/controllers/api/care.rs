@@ -1,0 +1,221 @@
+mod audit;
+mod input;
+mod projection;
+mod removals;
+mod response;
+
+use crate::models::{
+    access::TenantTransaction,
+    care::{
+        doses::{self, CredentialMethod, CredentialProvenance},
+        medications,
+    },
+    entities::{medication_take, security_audit_event},
+    errors::OperationError,
+    identity::resource::{self, AuthenticationError, ValidatedPrincipal},
+};
+use axum::{
+    Extension, Json as AxumJson,
+    extract::rejection::JsonRejection,
+    http::{HeaderMap, StatusCode},
+    response::IntoResponse,
+};
+use chrono::Utc;
+use loco_rs::controller::middleware::request_id::LocoRequestId;
+use loco_rs::prelude::*;
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, Set,
+    TransactionTrait,
+};
+use serde_json::{Value, json};
+use sha2::{Digest, Sha256};
+
+pub fn routes() -> Routes {
+    Routes::new()
+        .prefix("/api/v1/households")
+        .add("/{household_id}/medication_takes", post(take))
+        .add(
+            "/{household_id}/medications/{id}/adjust_inventory",
+            patch(adjust_stock),
+        )
+        .add(
+            "/{household_id}/medications/{id}/stock_removals",
+            get(removals::history).post(removals::create),
+        )
+}
+
+async fn begin(
+    ctx: &AppContext,
+    headers: &HeaderMap,
+    household_id: i64,
+    request_id: &str,
+) -> std::result::Result<(ValidatedPrincipal, TenantTransaction), response::Failure> {
+    let principal = resource::authenticate(&ctx.db, headers)
+        .await
+        .map_err(response::authentication)?;
+    let tenant = principal
+        .begin_household(&ctx.db, household_id, request_id.into())
+        .await
+        .map_err(response::authentication)?;
+    Ok((principal, tenant))
+}
+
+async fn take(
+    State(ctx): State<AppContext>,
+    Path(household_id): Path<i64>,
+    headers: HeaderMap,
+    request: Option<Extension<LocoRequestId>>,
+    body: std::result::Result<AxumJson<Value>, JsonRejection>,
+) -> Response {
+    let request_id = request.map_or_else(
+        || uuid::Uuid::new_v4().to_string(),
+        |Extension(id)| id.get().to_owned(),
+    );
+    let (principal, tenant) = match begin(&ctx, &headers, household_id, &request_id).await {
+        Ok(context) => context,
+        Err(error) => return response::error(error, &request_id),
+    };
+    let input = match body {
+        Ok(AxumJson(body)) => input::take(body),
+        Err(_) => Err(response::Failure::bad_request("Invalid JSON request body")),
+    };
+    let savepoint = match tenant.transaction().begin().await {
+        Ok(savepoint) => savepoint,
+        Err(_) => return response::error(response::unavailable(), &request_id),
+    };
+    let result = match input {
+        Ok(command) => doses::execute_in_timezone(
+            &tenant,
+            doses::Command::Take(command),
+            principal.time_zone(),
+            Some(principal.provenance()),
+        )
+        .await
+        .map_err(response::operation),
+        Err(error) => Err(error),
+    };
+    let result = match result {
+        Ok(outcome) => {
+            let (status, record) = match outcome {
+                doses::Outcome::Created(record) => (StatusCode::CREATED, record),
+                doses::Outcome::Replayed(record) => (StatusCode::OK, record),
+            };
+            projection::serialize(
+                tenant.transaction(),
+                std::slice::from_ref(&record),
+                household_id,
+            )
+            .await
+            .map(|rows| {
+                (
+                    status,
+                    json!({"data": rows.into_iter().next().expect("Single take projection")}),
+                    Some(projection::take_etag(&record)),
+                )
+            })
+            .map_err(response::operation)
+        }
+        Err(error) => Err(error),
+    };
+    let savepoint_result = if result.is_ok() {
+        savepoint.commit().await
+    } else {
+        savepoint.rollback().await
+    };
+    if savepoint_result.is_err() {
+        return response::error(response::unavailable(), &request_id);
+    }
+    finish(
+        tenant,
+        principal.provenance(),
+        audit::RequestAudit::take(),
+        result,
+        &request_id,
+    )
+    .await
+}
+
+async fn adjust_stock(
+    State(ctx): State<AppContext>,
+    Path((household_id, id)): Path<(i64, String)>,
+    headers: HeaderMap,
+    request: Option<Extension<LocoRequestId>>,
+    body: std::result::Result<AxumJson<Value>, JsonRejection>,
+) -> Response {
+    let request_id = request.map_or_else(
+        || uuid::Uuid::new_v4().to_string(),
+        |Extension(id)| id.get().to_owned(),
+    );
+    let (principal, tenant) = match begin(&ctx, &headers, household_id, &request_id).await {
+        Ok(context) => context,
+        Err(error) => return response::error(error, &request_id),
+    };
+    let input = match body {
+        Ok(AxumJson(body)) => input::stock(body, id),
+        Err(_) => Err(response::Failure::bad_request("Invalid request body")),
+    };
+    let savepoint = match tenant.transaction().begin().await {
+        Ok(savepoint) => savepoint,
+        Err(_) => return response::error(response::unavailable(), &request_id),
+    };
+    let result = match input {
+        Ok(command) => medications::execute_with_options(
+            &tenant,
+            medications::Command::AdjustStock(command),
+            None,
+            Some(principal.provenance()),
+        )
+        .await
+        .map_err(response::operation),
+        Err(error) => Err(error),
+    };
+    let result = match result {
+        Ok(record) => medications::read_stock_snapshot(&tenant, &record.id.to_string())
+            .await
+            .map(|snapshot| (StatusCode::OK, snapshot.representation, Some(snapshot.etag)))
+            .map_err(response::operation),
+        Err(error) => Err(error),
+    };
+    let savepoint_result = if result.is_ok() {
+        savepoint.commit().await
+    } else {
+        savepoint.rollback().await
+    };
+    if savepoint_result.is_err() {
+        return response::error(response::unavailable(), &request_id);
+    }
+    finish(
+        tenant,
+        principal.provenance(),
+        audit::RequestAudit::stock(),
+        result,
+        &request_id,
+    )
+    .await
+}
+
+type Reply = std::result::Result<(StatusCode, Value, Option<String>), response::Failure>;
+
+async fn finish(
+    tenant: TenantTransaction,
+    provenance: &CredentialProvenance,
+    request: audit::RequestAudit,
+    reply: Reply,
+    request_id: &str,
+) -> Response {
+    let status = match &reply {
+        Ok((status, _, _)) => *status,
+        Err(error) => error.status,
+    };
+    if audit::record(&tenant, provenance, request, status)
+        .await
+        .is_err()
+        || tenant.commit().await.is_err()
+    {
+        return response::error(response::unavailable(), request_id);
+    }
+    match reply {
+        Ok((status, body, etag)) => response::success(status, body, request_id, etag),
+        Err(error) => response::error(error, request_id),
+    }
+}

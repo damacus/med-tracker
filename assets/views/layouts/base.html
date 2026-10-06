@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en-GB" data-allow-palette="{{ allow_palette | default(value=false) }}" data-theme="neutral-light">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="theme-color" content="#f8fafc">
+    <title>{{ title }} | MedTracker</title>
+    <script src="/static/js/appearance.js"></script>
+    <link rel="stylesheet" href="/static/css/compiled.css">
+    <script src="/static/js/interaction.js" defer></script>
+  </head>
+  <body>
+    <a href="#main" class="skip-link">Skip to content</a>
+    <header class="shell-header">
+      <div class="shell-width shell-header-inner">
+        <a href="/" class="text-xl font-semibold" aria-label="MedTracker home">MedTracker</a>
+        <button type="button" class="btn btn-ghost" data-dialog-open="appearance-dialog">Appearance</button>
+      </div>
+    </header>
+    <main id="main" class="shell-width shell-main" tabindex="-1">{% block content %}{% endblock content %}</main>
+    <footer class="shell-footer"><div class="shell-width text-sm shell-muted">MedTracker · Care, kept together.</div></footer>
+    {% include "components/appearance.html" %}
+  </body>
+</html>
