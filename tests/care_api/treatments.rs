@@ -1,6 +1,46 @@
 use super::*;
 
 #[tokio::test]
+async fn treatment_retirement_audit_rejection_rolls_back_soft_update() {
+    use med_tracker::models::{
+        access::{Actor, HouseholdScope, begin},
+        care::treatments,
+    };
+    let app = Application::new().await;
+    let token = app.token().await;
+    let created = app
+        .client
+        .post(format!("{}/api/v1/households/72001/schedules", app.origin))
+        .bearer_auth(&token)
+        .json(&schedule_body())
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(created.status().as_u16(), 201);
+    let body = created.json::<Value>().await.unwrap();
+    let id = body["data"]["id"].as_i64().unwrap();
+    app.fixture.admin.execute_unprepared("CREATE SEQUENCE synthetic_retirement_reached; GRANT USAGE,SELECT ON SEQUENCE synthetic_retirement_reached TO med_tracker_app; CREATE FUNCTION reject_retirement_version() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.item_type='Schedule' AND NEW.event='update' THEN IF EXISTS(SELECT 1 FROM schedules WHERE id=NEW.item_id AND retired_at IS NOT NULL AND NOT active) THEN PERFORM nextval('synthetic_retirement_reached'); END IF; RAISE EXCEPTION 'Synthetic retirement version rejection'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_retirement_version BEFORE INSERT ON versions FOR EACH ROW EXECUTE FUNCTION reject_retirement_version()").await.unwrap();
+    let scope = HouseholdScope {
+        actor: Actor { account_id: 71001 },
+        household_id: 72001,
+        request_id: "synthetic-retirement-rollback".into(),
+    };
+    let tenant = begin(&app.fixture.runtime, &scope).await.unwrap();
+    let failed = treatments::retire(&tenant, &id.to_string(), None).await;
+    tenant.rollback().await.unwrap();
+    let row=app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,"SELECT active,retired_at IS NULL AS current,(SELECT is_called FROM synthetic_retirement_reached) AS reached,(SELECT count(*) FROM versions WHERE item_type='Schedule' AND event='update') AS versions,(SELECT count(*) FROM api_change_events WHERE record_type='Schedule' AND action='update') AS changes FROM schedules WHERE id=$1",[id.into()])).await.unwrap().unwrap();
+    let active: bool = row.try_get("", "active").unwrap();
+    let current: bool = row.try_get("", "current").unwrap();
+    let reached: bool = row.try_get("", "reached").unwrap();
+    let versions: i64 = row.try_get("", "versions").unwrap();
+    let changes: i64 = row.try_get("", "changes").unwrap();
+    app.close().await;
+    assert!(failed.is_err());
+    assert!(reached && active && current);
+    assert_eq!((versions, changes), (0, 0));
+}
+
+#[tokio::test]
 async fn treatment_schedule_creation_representation_matches_read_and_update_precondition() {
     let app = Application::new().await;
     let token = app.token().await;

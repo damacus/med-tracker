@@ -1,6 +1,7 @@
 mod input;
 pub mod lifecycle;
 pub(crate) mod projection;
+mod retirement;
 mod source_stock;
 use crate::models::{
     access::{self, PersonAccess, TenantTransaction},
@@ -9,6 +10,7 @@ use crate::models::{
     errors::OperationError,
 };
 use chrono::{NaiveDate, Utc};
+pub use retirement::retire;
 use sea_orm::prelude::Decimal;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, QuerySelect, Set,

@@ -1,0 +1,25 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-2xl mx-auto">
+  <a class="link" href="/households/{{ slug }}/people/{{ person_id }}/treatments">Back to treatments</a>
+  <h1 class="text-3xl font-semibold mt-4">{{ title }}</h1><p class="mt-2">{{ person_name }}</p>
+  {% if error %}<p class="shell-error mt-4" role="alert">{{ error }}</p>{% endif %}
+  <form class="card shell-card mt-6" method="post" action="/households/{{ slug }}/people/{{ person_id }}/treatments/{{ kind }}{% if record_id %}/{{ record_id }}{% endif %}"><div class="card-body gap-4">
+    <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+    <input type="hidden" name="etag" value="{{ draft.etag | default(value="") }}">
+    <input type="hidden" name="step_count" value="{{ step_count }}">
+    {% for field in fields %}{% include "treatments/field.html" %}{% endfor %}
+    {% if is_schedule %}
+    <p class="shell-muted">Enter times as HH:MM separated by commas. Enter specific dates as YYYY-MM-DD separated by commas or new lines.</p>
+    <fieldset class="grid gap-3" {% if errors.schedule_config is defined %}aria-describedby="configuration-error"{% endif %}>
+      <legend class="font-semibold">Weekdays and taper plan</legend>
+      <div class="flex flex-wrap gap-4">{% for day in weekdays %}<label class="flex gap-2 items-center"><input class="checkbox" type="checkbox" name="weekday_{{ day.value }}" {% if day.checked %}checked{% endif %}>{{ day.value | capitalize }}</label>{% endfor %}</div>
+      {% for step in steps %}<fieldset class="card shell-card"><legend class="font-semibold">Taper step {{ step.index + 1 }}</legend><div class="card-body">{% for field in step.fields %}{% include "treatments/field.html" %}{% endfor %}<button class="btn btn-ghost" type="submit" name="form_action" value="remove_step_{{ step.index }}" formnovalidate>Remove taper step {{ step.index + 1 }}</button></div></fieldset>{% endfor %}
+      <button class="btn btn-ghost self-start" type="submit" name="form_action" value="add_step" formnovalidate>Add taper step</button>
+    </fieldset>
+    {% if errors.schedule_config is defined %}<p class="shell-error" id="configuration-error" role="alert">{{ errors.schedule_config | join(sep=". ") }}</p>{% endif %}
+    {% endif %}
+    <button class="btn btn-neutral" type="submit">{{ title }}</button>
+  </div></form>
+</section>
+{% endblock content %}

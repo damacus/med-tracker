@@ -52,6 +52,7 @@ impl Hooks for App {
             .add_route(browser(crate::controllers::dosage_options::routes()))
             .add_route(browser(crate::controllers::locations::routes()))
             .add_route(browser(crate::controllers::people::routes()))
+            .add_route(browser(crate::controllers::treatments::routes()))
             .add_route(browser(crate::controllers::administration::routes()))
             .add_route(browser(crate::controllers::invitations::routes()))
             .add_route(browser(crate::controllers::invitations::acceptance_routes()))

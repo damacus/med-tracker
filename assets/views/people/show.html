@@ -11,6 +11,7 @@
     <dt class="font-semibold">Has capacity to manage own medication</dt><dd>{% if person.has_capacity %}Yes{% else %}No{% endif %}</dd>
   </div></dl>
   {% if can_manage %}<a class="btn btn-neutral mt-6" href="/households/{{ slug }}/people/{{ person.id }}/edit">Edit Person</a>{% endif %}
+  <a class="btn btn-ghost mt-6" href="/households/{{ slug }}/people/{{ person.id }}/treatments">Manage treatments</a>
   <h2 class="text-2xl font-semibold mt-8">Current medications</h2>
   <ul class="flex flex-col gap-4 mt-4">
   {% for medication in medications %}

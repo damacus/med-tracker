@@ -1,6 +1,7 @@
 mod dosing;
 mod input;
 mod reading;
+mod retirement;
 mod writing;
 use crate::models::{
     access::{self, PersonAccess, TenantTransaction},
@@ -11,6 +12,7 @@ use crate::models::{
 use axum::http::StatusCode;
 use chrono::Utc;
 pub use reading::{Pagination, list, read};
+pub use retirement::unassign;
 use sea_orm::prelude::Decimal;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, IntoActiveModel,

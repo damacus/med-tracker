@@ -47,9 +47,16 @@ review and checks pass; changed source needs new applicable evidence.
 Review a usable capability rather than each small repair. Start a fresh Devin
 session for a new capability and resume it for corrections. Send actual authorised
 diffs and concise evidence; unattended reviews must not need interactive tool
-approval. Diff sharing is authorised through 16 October 2026. Check findings
+approval. Dan has authorised all source and context needed for Devin reviews;
+the existing review-sharing authorisation runs through 16 October 2026. Check findings
 against retained behaviour before changing code. Do not silently substitute a
 different reviewer if Devin is unavailable.
+
+Include the actual helpers called by the change in the first review packet:
+permission checks, projections, input contracts, locked queries and relevant schema
+constraints. Reviewers must be able to verify these contracts from supplied source.
+Check conditional findings against those implementations before changing behaviour.
+This uses the existing packet and review; it adds no separate review stage.
 
 Diagnose one evidenced failure at a time. Separate test setup failures from
 application failures. After two unsuccessful fixes, obtain the actual SQL error,

@@ -108,6 +108,7 @@ async function withCareFixture(captureMail, registrationInviteOnly, use) {
         verificationProbe: async email => JSON.parse(await fixtureTask('verification-probe', [`REGISTRATION_EMAIL=${email}`])),
         ageVerificationEmail: email => fixtureTask('age-verification-email', [`REGISTRATION_EMAIL=${email}`]),
         orderProbe: async () => JSON.parse(await fixtureTask('order-probe')), failOrderAudit: () => fixtureTask('fail-order-audit'), useOrderMember: () => fixtureTask('use-order-member'),
+        treatmentProbe: async () => JSON.parse(await fixtureTask('treatment-probe')), failTreatmentAudit: () => fixtureTask('fail-treatment-audit'),
         passkeyProbe: async () => JSON.parse(await fixtureTask('passkey-probe')),
         passkeyCounterAhead: () => fixtureTask('passkey-counter-ahead'),
         passkeyRemovalRace: () => fixtureTask('passkey-removal-race'), passkeyRemovalRaceReady: async () => (await fixtureTask('passkey-removal-race-ready')) === 't',

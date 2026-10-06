@@ -1,5 +1,40 @@
 use super::*;
 
+#[tokio::test]
+async fn assignment_unassign_preserves_history_and_records_soft_update() {
+    use med_tracker::models::{
+        access::{Actor, HouseholdScope, begin},
+        care::assignments,
+    };
+    let app = Application::new().await;
+    app.fixture.admin.execute_unprepared("INSERT INTO medication_takes(id,household_id,person_medication_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(99991,72001,81001,2,'tablet',now(),now(),now()); INSERT INTO medication_pause_periods(household_id,person_medication_id,reason,legacy_context,imported_context,imported_actor_references,created_at,updated_at) VALUES(72001,81001,'reason_not_recorded',true,false,'{}',now(),now())").await.unwrap();
+    let scope = HouseholdScope {
+        actor: Actor { account_id: 71001 },
+        household_id: 72001,
+        request_id: "synthetic-unassign".into(),
+    };
+    let tenant = begin(&app.fixture.runtime, &scope).await.unwrap();
+    assignments::unassign(&tenant, "81001", None).await.unwrap();
+    tenant.commit().await.unwrap();
+    let tenant = begin(&app.fixture.runtime, &scope).await.unwrap();
+    let repeated = assignments::unassign(&tenant, "81001", None).await;
+    tenant.rollback().await.unwrap();
+    let row=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT active,retired_at IS NOT NULL AS retired,(SELECT count(*) FROM medication_takes WHERE person_medication_id=81001) AS takes,(SELECT count(*) FROM medication_pause_periods WHERE person_medication_id=81001) AS pauses,(SELECT count(*) FROM versions WHERE item_type='PersonMedication' AND event='update') AS versions,(SELECT count(*) FROM api_change_events WHERE record_type='PersonMedication' AND action='update') AS changes,(SELECT count(*) FROM api_tombstones WHERE record_type='PersonMedication') AS tombstones FROM person_medications WHERE id=81001")).await.unwrap().unwrap();
+    let active: bool = row.try_get("", "active").unwrap();
+    let retired: bool = row.try_get("", "retired").unwrap();
+    let counts: Vec<i64> = ["takes", "pauses", "versions", "changes", "tombstones"]
+        .iter()
+        .map(|field| row.try_get("", field).unwrap())
+        .collect();
+    app.close().await;
+    assert!(!active && retired);
+    assert_eq!(counts, vec![1, 1, 1, 1, 0]);
+    assert!(matches!(
+        repeated,
+        Err(med_tracker::models::errors::OperationError::NotFound)
+    ));
+}
+
 async fn assignment_medication(app: &Application) {
     app.fixture.admin.execute_unprepared("INSERT INTO medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at) VALUES(80999,72001,79001,'Synthetic assignment medicine',10,2,'tablet',now(),now())").await.unwrap();
 }

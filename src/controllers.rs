@@ -12,6 +12,7 @@ pub mod medications;
 pub mod oauth_server;
 pub mod people;
 pub mod signup;
+pub mod treatments;
 
 #[allow(
     clippy::result_large_err,
