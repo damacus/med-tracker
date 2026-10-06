@@ -1,5 +1,51 @@
 version: '3'
 tasks:
+  scheduled-medicine:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1
+        -c "INSERT INTO public.schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83001,72001,73001,80001,true,current_date-1,current_date+7,2,'tablet',6,'{}',now(),now())"
+  oauth-probe:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align
+        -c "SELECT json_build_object(
+        'native_grants',(SELECT count(*) FROM public.oauth_grants WHERE account_id=71001 AND oauth_application_id=75002),
+        'smart_grants',(SELECT count(*) FROM public.oauth_grants WHERE account_id=71001 AND oauth_application_id=75003),
+        'native_code_seconds',(SELECT extract(epoch FROM expires_in-now()) FROM public.oauth_grants WHERE account_id=71001 AND oauth_application_id=75002 ORDER BY id DESC LIMIT 1),
+        'smart_code_seconds',(SELECT extract(epoch FROM expires_in-now()) FROM public.oauth_grants WHERE account_id=71001 AND oauth_application_id=75003 ORDER BY id DESC LIMIT 1),
+        'native_auth_time_preserved',(SELECT authenticated_at=(SELECT created_at FROM public.account_active_session_keys WHERE account_id=71001 ORDER BY created_at DESC LIMIT 1) FROM public.oauth_grants WHERE account_id=71001 AND oauth_application_id=75002 ORDER BY id DESC LIMIT 1),
+        'native_consent_audits',(SELECT count(*) FROM public.versions WHERE item_type='Account' AND item_id=71001 AND event='mobile_oauth.consent_granted' AND object::jsonb->>'oauth_application_id'='75002'),
+        'native_revoke_audits',(SELECT count(*) FROM public.versions WHERE item_type='Account' AND item_id=71001 AND event='mobile_oauth.token_revoked' AND object::jsonb->>'oauth_application_id'='75002'),
+        'smart_consent_audits',(SELECT count(*) FROM public.security_audit_events WHERE actor_account_id=71001 AND event_type='smart_oauth.consent_granted' AND metadata->>'oauth_application_id'='75003'),
+        'smart_revoke_audits',(SELECT count(*) FROM public.security_audit_events WHERE actor_account_id=71001 AND event_type='smart_oauth.token_revoked' AND metadata->>'oauth_application_id'='75003'));"
+  age-authentication:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1
+        -c "UPDATE public.account_active_session_keys SET created_at=now()-interval '2 hours' WHERE account_id=71001"
+  fail-oauth-audit:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction
+        -c "ALTER TABLE public.versions ADD CONSTRAINT browser_oauth_audit_failure CHECK(event NOT IN('mobile_oauth.consent_granted','mobile_oauth.token_revoked')) NOT VALID;
+        ALTER TABLE public.security_audit_events ADD CONSTRAINT browser_oauth_audit_failure CHECK(event_type NOT IN('smart_oauth.consent_granted','smart_oauth.token_revoked')) NOT VALID;"
+  restore-oauth-audit:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction
+        -c "ALTER TABLE public.versions DROP CONSTRAINT IF EXISTS browser_oauth_audit_failure;
+        ALTER TABLE public.security_audit_events DROP CONSTRAINT IF EXISTS browser_oauth_audit_failure;"
   second-person:
     requires:
       vars: [CARE_DATABASE_URL]
@@ -12,7 +58,7 @@ tasks:
     requires:
       vars: [CARE_DATABASE_URL]
     cmds:
-      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction -f tests/fixtures/persistence-records.sql -f tests/fixtures/care-doses.sql'
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction -f tests/fixtures/persistence-records.sql -f tests/fixtures/care-doses.sql -f tests/oauth_server/clients.sql'
       - >-
         psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction
         -c "CREATE ROLE medtracker_browser_runtime LOGIN PASSWORD 'password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS IN ROLE med_tracker_app;

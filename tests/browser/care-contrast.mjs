@@ -1,4 +1,7 @@
 export async function measureCareContrast(page) {
+  await page.waitForFunction(() => !document.getAnimations().some(animation =>
+    animation instanceof CSSTransition && animation.playState === 'running'
+  ), undefined, { timeout: 5000 });
   return page.evaluate(() => {
     const canvas = document.createElement('canvas');
     canvas.width = canvas.height = 1;
@@ -28,7 +31,7 @@ export async function measureCareContrast(page) {
       const painted = foreground.map((channel, index) => index < 3 ? channel * alpha + background[index] * (1 - alpha) : 255);
       const first = luminance(painted);
       const second = luminance(background);
-      return [{ selector, ratio: (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05) }];
+      return [{ selector, foreground: painted, background, ratio: (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05) }];
     });
   });
 }

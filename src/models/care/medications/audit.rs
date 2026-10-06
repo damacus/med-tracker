@@ -15,6 +15,33 @@ pub(crate) fn medication_snapshot(record: &medication::Model) -> Value {
     })
 }
 
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn record_version(
+    db: &DatabaseTransaction,
+    context: &StockContext<'_>,
+    request_id: &str,
+    item_type: &str,
+    item_id: i64,
+    event: &str,
+    before: Option<Value>,
+    after: Option<Value>,
+) -> Result<(), ApiError> {
+    insert_version(
+        db,
+        context,
+        request_id,
+        VersionChange {
+            item_type,
+            item_id,
+            event,
+            before,
+            after,
+            inventory_adjustment: None,
+        },
+    )
+    .await
+}
+
 pub(crate) async fn record_inventory_adjustment(
     db: &DatabaseTransaction,
     context: &StockContext<'_>,
@@ -102,7 +129,7 @@ async fn insert_version(
         "active_role": context.tenant.membership().role,
         "permissions_version": context.tenant.membership().permissions_version,
         "policy_class": "MedicationPolicy",
-        "policy_query": "adjust_inventory?"
+        "policy_query": match event { "api_create" => "create?", "api_update" => "update?", "api_destroy" | "destroy" => "destroy?", _ => "adjust_inventory?" }
     });
     if let Some(provenance) = context.provenance {
         let (method, prefix) = match provenance.method {

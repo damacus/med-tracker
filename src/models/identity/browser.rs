@@ -35,6 +35,16 @@ pub struct BrowserHousehold {
 }
 
 impl BrowserPrincipal {
+    pub(super) async fn authorization_transaction(
+        &self,
+        db: &DatabaseConnection,
+    ) -> Result<(DatabaseTransaction, chrono::NaiveDateTime), AuthenticationError> {
+        let transaction = transaction(db).await?;
+        validate(&transaction, &self.identity, false).await?;
+        let row = transaction.query_one_raw(sql("SELECT created_at FROM account_active_session_keys WHERE account_id=$1 AND session_id=$2", [self.account_id().into(), self.identity.registry_key.clone().into()])).await.map_err(unavailable)?.ok_or(AuthenticationError::Unauthenticated)?;
+        let authenticated_at = row.try_get("", "created_at").map_err(unavailable)?;
+        Ok((transaction, authenticated_at))
+    }
     pub fn account_id(&self) -> i64 {
         self.identity.account_id
     }

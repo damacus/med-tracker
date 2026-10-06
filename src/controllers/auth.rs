@@ -66,11 +66,20 @@ async fn sign_in(
         return StatusCode::FORBIDDEN.into_response();
     }
     match browser::sign_in(&ctx.db, &session, form.email, form.password).await {
-        Ok(()) => (
-            StatusCode::SEE_OTHER,
-            [(header::LOCATION, "/"), (header::CACHE_CONTROL, "no-store")],
-        )
-            .into_response(),
+        Ok(()) => {
+            let destination = session
+                .get::<crate::models::identity::authorization::AuthorizationInput>("oauth_pending")
+                .and_then(|input| serde_urlencoded::to_string(input.0).ok())
+                .map_or_else(|| "/".to_owned(), |query| format!("/authorize?{query}"));
+            (
+                StatusCode::SEE_OTHER,
+                [
+                    (header::LOCATION, destination.as_str()),
+                    (header::CACHE_CONTROL, "no-store"),
+                ],
+            )
+                .into_response()
+        }
         Err(AuthenticationError::Unauthenticated) => login_form(
             &token,
             &view,

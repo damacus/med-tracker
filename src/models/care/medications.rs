@@ -1,4 +1,5 @@
 mod audit;
+pub mod crud;
 mod forecast;
 mod inventory;
 mod projection;

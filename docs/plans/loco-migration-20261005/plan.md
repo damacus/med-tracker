@@ -74,11 +74,14 @@ rollback plus missing scratch assets (R1/R3). Each owning sub-plan assigns expli
 
 ## Progress and integration
 
-Current state: foundation **unaccepted**, published at `705e1f09`. Both upstream
-dependency merges, the reviewed owned test runner and the CI prerequisite fixes
-are published. Local Loco CI passes; hosted verification is still running/queued.
-P2 implementation is underway against owned synthetic fixtures. Do not repeat
-completed checks or treat the stopped Rails diagnostic as Rust implementation.
+Current state: no complete migration area is accepted. The signed-in care
+journey and both upstream dependency merges are published at `3840bded`;
+classifier and Markdown repairs are published through `42636dec`. Local full
+Loco CI and the exact-head hosted Loco job pass. The overall hosted run retains
+a Rails browser failure; complete rollback acceptance remains outstanding.
+Medication CRUD, OAuth consent and automatic queue recovery are the current
+local delivery. Use [progress.md](progress.md) for its verification state.
+Do not repeat completed checks or treat Rails diagnostics as Rust implementation.
 
 Task reports live at `docs/plans/loco-migration-20261005/slices/<number>-report.md`;
 the foundation keeps its existing detailed report. The coordinator owns `progress.md`

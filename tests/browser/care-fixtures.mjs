@@ -51,6 +51,9 @@ export const test = base.extend({
       await start();
       await use({ origin, probe: async () => JSON.parse(await fixtureTask('probe')), revoke: () => fixtureTask('revoke'), reactivate: () => fixtureTask('reactivate'),
         secondPerson: () => fixtureTask('second-person'),
+        scheduledMedicine: () => fixtureTask('scheduled-medicine'),
+        oauthProbe: async () => JSON.parse(await fixtureTask('oauth-probe')), ageAuthentication: () => fixtureTask('age-authentication'),
+        failOAuthAudit: () => fixtureTask('fail-oauth-audit'), restoreOAuthAudit: () => fixtureTask('restore-oauth-audit'),
         restart: async () => { await stopOwnedProcess(server); await start(); },
         revokeSession: () => fixtureTask('revoke-session'), expireSession: () => fixtureTask('expire-session'), doseRequestId: () => fixtureTask('dose-request-id') });
     } finally {

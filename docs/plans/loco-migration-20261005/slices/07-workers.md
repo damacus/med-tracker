@@ -21,8 +21,10 @@ before delivery (W2), daylight-saving boundaries (W3), and SIGTERM with in-fligh
 
 ### W1: Prove queue provisioning, enqueue and recovery
 
-**Files:** Create `src/workers.rs`, `src/workers/probe.rs`, `tests/queue_runtime.rs`;
+**Files:** Create `src/workers.rs`, the first concrete W2 worker below and `tests/queue_runtime.rs`;
 modify `src/app.rs`, config worker sections and the P3 queue-storage migration if needed.
+Prove queue delivery with that real job's observable outcome. Do not add a
+temporary probe worker, parallel queue adapter or extra runtime runner.
 **Interfaces:** Standard Loco worker registration in `App::connect_workers`; new
 `enqueue(ctx: &AppContext, input: JobInput) -> Result<(), OperationError>` in each concrete worker.
 `JobInput` contains `actor_id: i64`, `household_id: i64`, `operation_key: String` and the specific job payload.

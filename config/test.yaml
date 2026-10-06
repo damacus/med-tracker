@@ -21,6 +21,9 @@ workers:
 queue:
   kind: Postgres
   uri: <%= get_env(name="DATABASE_URL", default="postgres://medtracker:medtracker_password@localhost:5432/medtracker_loco") %>
+  reaper:
+    age_minutes: 10
+    interval_seconds: 60
 database:
   uri: <%= get_env(name="DATABASE_URL", default="postgres://medtracker:medtracker_password@localhost:5432/medtracker_loco") %>
   enable_logging: false

@@ -5,6 +5,8 @@ use med_tracker::models::{
     errors::OperationError,
 };
 use sea_orm::{ConnectionTrait, Database, DatabaseConnection, DbBackend, Statement};
+#[path = "care_medications/crud.rs"]
+mod crud;
 #[path = "care_medications/stock_removals.rs"]
 mod stock_removals;
 

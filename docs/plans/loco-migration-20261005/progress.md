@@ -72,10 +72,65 @@ its conditional full-CI requirement is satisfied by 10199. The review's other th
 are already enforced by model-level stock authorization, eligible-source
 filtering and active household lifecycle checks; their existing tests pass.
 
-These product changes remain local. Publication and hosted verification remain
-required. Main's dependency update e8838fb4
-merged cleanly into the relocated Rails lockfile; that merge remains uncommitted
-with the candidate until review and publication gates pass.
+These product changes are published at `3840bded`, including the clean merge of
+main's dependency update `e8838fb4`. Classifier repair `60a70d4d` and Markdown
+repair `42636dec` are also pushed. Exact-head hosted run `37398111231` passes
+Loco, classification, Markdown, documentation and workflow checks. The overall
+run is still active; its Rails browser shard fails the admin membership-role
+filter because the listbox does not open. This is a different failure from the
+older scanned-stock notice. Neither result proves complete rollback acceptance.
+
+## Medication management and OAuth delivery
+
+Medication create, partial update and guarded deletion pass all 29 domain tests.
+Three real HTTP create/update cases pass, including stale ETags, validation and
+permissions. A real browser test then failed on the missing Add Medication link;
+the create, edit and guarded-delete pages now pass desktop/mobile verification.
+Independent review identified a blank-dose edit that can change dose mode;
+its scheduled-medication browser regression failed before the correction and
+now passes on desktop and mobile, alongside specific Location and Unit errors.
+Three extra domain cases pass for empty barcodes, oversized invalid doses and
+intentional nullable API updates. The next location tests remain unregistered during this delivery's
+verification, so they do not change its application build.
+
+The corrected OAuth HTTP suite passes all twelve cases in run `7196`. Actual
+browser tests previously exposed excessive code lifetime, missing transactional
+consent/revocation audits, permissions granted after being declined and a
+discovery issuer missing the configured port. The corrections pass actual
+desktop/mobile journeys, including retained query and form_post callbacks.
+Independent review found no proven release blocker in the supplied diff.
+Refresh consent, audit attribution and membership findings were checked against
+the retained application. The hidden Stay signed in choice reached a real
+browser failure, then passed on desktop and mobile after its correction.
+Both correction reviews approve the changes.
+These results do not accept complete identity or SMART integration.
+
+Queue run `31436` passes three real PostgreSQL cases with the restricted runtime
+role. It proves setup without runtime DDL, provider reconnection without lost
+queue records, maintained failed-job retry and stale-job requeue, and actual
+automatic recovery by Loco's reaper followed by bounded normal shutdown.
+Automatic recovery was disabled before the failing configuration test; standard
+development, test and production configurations now enable Loco's reaper.
+Provider reconnection does not prove application process restart. Real worker
+delivery, duplicate side effects, schedules and process crash/drain remain required.
+No queue adapter, fake application worker or extra runtime runner was added.
+
+Final full local `task ci` run `25075` passes, including all 40 desktop/mobile
+browser cases, 29 medication tests and the complete root Rust checks.
+Owned test containers, volumes and networks are removed. An earlier full run
+passed all Rust checks and 39 browser cases but sampled a button during a
+200-millisecond colour transition. The existing measurement helper now waits
+for actual CSS transitions to finish, bounded to five seconds; colours and
+contrast thresholds are unchanged. Focused desktop/mobile verification and
+the final full run pass. Publication follows this verified candidate.
+
+The remaining one-time Rails relocation structure audit now runs through
+`task migration:audit`, alongside other historical migration audits, instead
+of daily CI. Its regression failed before the Taskfile change and passes all
+eight cases afterwards. Database isolation, cleanup and application tests
+remain in daily CI. No new runner or implementation handoff document was added.
+The worker plan uses the first real application job to prove delivery instead
+of adding a temporary probe worker.
 
 ## Earlier verified delivery
 

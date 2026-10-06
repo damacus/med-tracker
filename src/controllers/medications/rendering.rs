@@ -39,7 +39,7 @@ fn context(
     data
 }
 
-fn appearance_context() -> Value {
+pub(super) fn appearance_context() -> Value {
     json!({ "allow_palette":true,
         "appearances":[{"id":"light","label":"Light"},{"id":"dark","label":"Dark"},{"id":"system","label":"System"}],
         "palettes":[{"id":"default","label":"Command Centre"},{"id":"serene-sage","label":"Serene Sage"},{"id":"modern-clinical","label":"Modern Clinical"},{"id":"warm-earth","label":"Warm Earth"},{"id":"deep-lavender","label":"Deep Lavender"},{"id":"forest-care","label":"Forest Care"},{"id":"sunset-support","label":"Sunset Support"},{"id":"tech-indigo","label":"Tech Indigo"},{"id":"soft-rose","label":"Soft Rose"},{"id":"minty-fresh","label":"Minty Fresh"}] })
@@ -50,11 +50,13 @@ pub fn index(
     token: &CsrfToken,
     slug: &str,
     medications: &[MedicationCard],
+    can_create: bool,
 ) -> Response {
     let mut data = appearance_context();
     data["title"] = json!("Medications");
     data["slug"] = json!(slug);
     data["medications"] = json!(medications);
+    data["can_create"] = json!(can_create);
     render(view, token, "medications/index.html", data, StatusCode::OK)
 }
 
@@ -68,6 +70,7 @@ pub fn detail(
     error: Option<&OperationError>,
 ) -> Response {
     let mut data = context(slug, &detail.stock, draft, error.map(super::forms::message));
+    data["etag"] = json!(detail.stock.etag);
     data["can_adjust"] = json!(detail.can_adjust);
     let selected = super::forms::field(draft, "source_id").parse::<i64>().ok();
     data["assignments"] = json!(detail.assignments.iter().map(|source| {

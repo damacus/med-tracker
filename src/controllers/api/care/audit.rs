@@ -9,6 +9,19 @@ pub(super) struct RequestAudit {
 }
 
 impl RequestAudit {
+    pub fn medication(method: &'static str, action: &'static str) -> Self {
+        Self {
+            method,
+            controller: "api/v1/medications",
+            action,
+            policy: "MedicationPolicy",
+            query: if action == "create" {
+                "create?"
+            } else {
+                "update?"
+            },
+        }
+    }
     pub fn removal(history: bool) -> Self {
         Self {
             method: if history { "GET" } else { "POST" },

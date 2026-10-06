@@ -4,8 +4,11 @@ use sea_orm::{
     QuerySelect, Statement, TransactionTrait,
 };
 
+mod audit;
+pub mod authorization;
 pub mod browser;
 mod input;
+pub mod oauth;
 mod registrar;
 pub mod resource;
 mod store;
@@ -62,7 +65,12 @@ pub async fn exchange_with_lifetime(
         } else {
             oxide_auth_async::code_grant::access_token::access_token(&mut endpoint, &input).await.map_err(code_error)?.to_json()
         };
-        serde_json::from_str(&json).map_err(|_| ExchangeError::Unavailable)
+        let mut response: serde_json::Value = serde_json::from_str(&json).map_err(|_| ExchangeError::Unavailable)?;
+        if let Some(person_id) = endpoint.store.selected.as_ref().and_then(|grant| grant.person_id) {
+            let person = crate::models::entities::person::Entity::find_by_id(person_id).one(&transaction).await.map_err(|_| ExchangeError::Unavailable)?.ok_or(ExchangeError::InvalidGrant)?;
+            response["patient"] = person.portable_id.into();
+        }
+        Ok(response)
     }.await;
     match result {
         Ok(response) => {

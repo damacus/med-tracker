@@ -1,4 +1,5 @@
 mod forms;
+mod management;
 mod rendering;
 
 use crate::models::{
@@ -26,8 +27,17 @@ use std::collections::HashMap;
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("/households")
-        .add("/{slug}/medications", get(index))
-        .add("/{slug}/medications/{id}", get(show))
+        .add("/{slug}/medications", get(index).post(management::create))
+        .add("/{slug}/medications/new", get(management::new))
+        .add(
+            "/{slug}/medications/{id}",
+            get(show).post(management::update),
+        )
+        .add("/{slug}/medications/{id}/edit", get(management::edit))
+        .add(
+            "/{slug}/medications/{id}/destroy",
+            post(management::destroy),
+        )
         .add("/{slug}/medications/{id}/doses", post(take))
         .add(
             "/{slug}/medications/{id}/stock/adjust",
@@ -51,7 +61,11 @@ async fn index(
         Ok(value) => value,
         Err(error) => return operation_error(error),
     };
-    let response = rendering::index(&view, &token, &slug, &medications);
+    let can_create = match medications::crud::can_create(&tenant).await {
+        Ok(value) => value,
+        Err(error) => return operation_error(error),
+    };
+    let response = rendering::index(&view, &token, &slug, &medications, can_create);
     if tenant.commit().await.is_err() {
         return unavailable();
     }

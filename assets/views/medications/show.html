@@ -7,6 +7,10 @@
     <h2 class="card-title">Inventory status</h2>
     <p data-testid="current-supply" class="text-2xl font-semibold">{{ quantity }} {{ unit }}</p>
     {% if can_adjust %}<a class="btn btn-ghost self-start" href="/households/{{ slug }}/medications/{{ medication_id }}/stock/adjust">Adjust stock</a>{% endif %}
+    {% if can_adjust %}
+    <a class="btn btn-ghost self-start" href="/households/{{ slug }}/medications/{{ medication_id }}/edit">Edit Medication</a>
+    <button type="button" class="btn btn-ghost self-start" data-dialog-open="delete-medication-dialog">Delete Medication</button>
+    {% endif %}
   </div></div>
   {% if error %}<p id="dose-error" role="alert" class="alert mt-6">{{ error }}</p>{% endif %}
   <section class="card bg-base-100 border border-base-300 mt-6"><div class="card-body">
@@ -32,4 +36,18 @@
     {% else %}<p>No available medication source.</p>{% endfor %}
   </div></section>
 </section>
+{% if can_adjust %}
+<dialog id="delete-medication-dialog" class="modal" aria-labelledby="delete-medication-title">
+  <div class="modal-box">
+    <h2 id="delete-medication-title" class="text-xl font-semibold">Delete Medication</h2>
+    <p class="mt-4">Are you sure you want to delete {{ name }}? This action cannot be undone.</p>
+    <form method="post" action="/households/{{ slug }}/medications/{{ medication_id }}/destroy" class="modal-action">
+      <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+      <input type="hidden" name="etag" value="{{ etag }}">
+      <button type="button" class="btn btn-ghost" data-dialog-close>Cancel</button>
+      <button type="submit" class="btn btn-neutral">Delete</button>
+    </form>
+  </div>
+</dialog>
+{% endif %}
 {% endblock content %}

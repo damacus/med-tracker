@@ -20,6 +20,7 @@ hex = "=0.4.3"
 oxide-auth = "=0.6.1"
 oxide-auth-async = "=0.2.1"
 serde_urlencoded = "=0.7.1"
+url = "=2.5.8"
 subtle = "=2.6.1"
 chrono = { version = "0.4", features = ["serde"] }
 chrono-tz = "0.10"

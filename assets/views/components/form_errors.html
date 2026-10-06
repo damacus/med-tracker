@@ -1,5 +1,5 @@
 {% if errors %}
 <section role="alert" aria-labelledby="form-errors-title" class="alert alert-error">
-  <div><h2 id="form-errors-title" class="font-semibold">Check the following details</h2><ul>{% for error in errors %}<li><a href="#{{ error.field }}">{{ error.message }}</a></li>{% endfor %}</ul></div>
+  <div><h2 id="form-errors-title" class="font-semibold">Check the following details</h2><ul>{% for error in errors %}<li id="form-error-{{ error.field }}"><a href="#{{ error.field }}">{{ error.message }}</a></li>{% endfor %}</ul></div>
 </section>
 {% endif %}

@@ -140,13 +140,13 @@ tasks:
       - task: frontend:test
       - task: slice:test-runner
       - task: slice:test-all
-      - task: foundation:test
       - task: foundation:test-cleanup
       - task: foundation:test-database
       - task: browser
   migration:audit:
     desc: Audit retained migration inputs explicitly
     cmds:
+      - task: foundation:test
       - task: foundation:test-workspaces
       - task: foundation:test-relocation
       - task: foundation:test-preservation

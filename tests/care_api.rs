@@ -1,3 +1,5 @@
+#[path = "care_api/crud.rs"]
+mod crud;
 #[path = "care_api/fixture.rs"]
 mod fixture;
 

@@ -13,14 +13,14 @@ test('root CI verifies the application without rerunning relocation snapshot aud
   assert.match(output, /run-slice\.mjs --all/);
   assert.match(output, /foundation-database\.test\.mjs/);
   assert.match(output, /process-cleanup\.test\.mjs/);
-  assert.doesNotMatch(output, /workspaces\.test\.mjs|relocation\.test\.mjs|preservation(?:\.test)?\.mjs|inventory\.mjs/);
+  assert.doesNotMatch(output, /foundation\.test\.mjs|workspaces\.test\.mjs|relocation\.test\.mjs|preservation(?:\.test)?\.mjs|inventory\.mjs/);
 });
 
 test('relocation snapshot audits remain available through an explicit task', () => {
   const result = spawnSync('task', ['--dry', '--force', '--verbose', 'migration:audit'], { encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
   const output = result.stdout + result.stderr;
-  for (const filename of ['workspaces.test.mjs', 'relocation.test.mjs', 'preservation.test.mjs', 'inventory.mjs', 'preservation.mjs']) {
+  for (const filename of ['foundation.test.mjs', 'workspaces.test.mjs', 'relocation.test.mjs', 'preservation.test.mjs', 'inventory.mjs', 'preservation.mjs']) {
     assert.ok(output.includes(filename), `Missing explicit relocation audit ${filename}`);
   }
   assert.doesNotMatch(output, /cargo clippy|run-slice\.mjs --all/);

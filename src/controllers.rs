@@ -4,6 +4,7 @@ pub mod api;
 pub mod auth;
 pub mod home;
 pub mod medications;
+pub mod oauth_server;
 
 async fn health() -> Result<Response> {
     format::json(serde_json::json!({"status": "ok", "application": "med-tracker"}))

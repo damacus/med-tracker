@@ -10,6 +10,15 @@ pub(super) struct Failure {
 }
 
 impl Failure {
+    pub fn fields(errors: Value) -> Self {
+        Self {
+            status: StatusCode::UNPROCESSABLE_ENTITY,
+            code: "validation_failed".into(),
+            message: "Validation failed".into(),
+            details: Some(errors),
+            authenticate: None,
+        }
+    }
     pub fn bad_request(message: &str) -> Self {
         Self {
             status: StatusCode::BAD_REQUEST,

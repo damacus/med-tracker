@@ -1,0 +1,36 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-3xl mx-auto">
+  <h1 class="text-3xl font-semibold">{{ title }}</h1>
+  <div class="mt-6">{% include "components/form_errors.html" %}</div>
+  {% if changed %}<a class="link mt-4 inline-block" href="{{ latest_url }}">Review latest details</a>{% endif %}
+  <div class="card bg-base-100 border border-base-300 mt-6"><div class="card-body">
+    <form id="medication-form" method="post" action="{{ action }}" class="flex flex-col gap-4">
+      <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+      <input type="hidden" name="etag" value="{{ draft.etag }}">
+      <label for="location_id" class="font-semibold">Location</label>
+      <select id="location_id" name="location_id" class="select w-full" required {% if location_invalid %}aria-invalid="true" aria-describedby="form-error-location_id"{% endif %}>
+        <option value="">Select a location...</option>
+        {% for location in locations %}<option value="{{ location.id }}" {% if location.id == selected_location %}selected{% endif %}>{{ location.name }}</option>{% endfor %}
+      </select>
+      {% for field in fields %}
+      <label for="{{ field.name }}" class="font-semibold">{{ field.label }}</label>
+      {% if field.kind == "textarea" %}
+      <textarea id="{{ field.name }}" name="{{ field.name }}" class="textarea w-full" {% if field.invalid %}aria-invalid="true" aria-describedby="form-error-{{ field.name }}"{% endif %}>{{ field.value }}</textarea>
+      {% else %}
+      <input id="{{ field.name }}" name="{{ field.name }}" type="{{ field.kind }}" {% if field.kind == "number" %}step="any"{% endif %} class="input w-full" value="{{ field.value }}" {% if field.required %}required{% endif %} {% if field.invalid %}aria-invalid="true" aria-describedby="form-error-{{ field.name }}"{% endif %}>
+      {% endif %}
+      {% endfor %}
+      {% if options_mode %}<p>This medication uses dosage options. They remain unchanged when you save these details.</p>
+      {% else %}
+      <label for="dose_unit" class="font-semibold">Unit</label>
+      <select id="dose_unit" name="dose_unit" class="select w-full" {% if unit_invalid %}aria-invalid="true" aria-describedby="form-error-dose_unit"{% endif %}><option value="">Select unit</option>{% for unit in units %}<option value="{{ unit }}" {% if unit == draft.dose_unit %}selected{% endif %}>{{ unit }}</option>{% endfor %}</select>
+      {% endif %}
+      <div class="flex flex-col sm:flex-row gap-3 mt-4">
+        <button type="submit" class="btn btn-neutral">Save Medication</button>
+        <a class="btn btn-ghost" href="/households/{{ slug }}/medications">Back to Medications</a>
+      </div>
+    </form>
+  </div></div>
+</section>
+{% endblock content %}

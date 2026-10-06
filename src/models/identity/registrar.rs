@@ -21,27 +21,45 @@ pub(super) struct RegisteredClient {
 }
 
 impl RegisteredClient {
+    pub fn authorization(application: oauth_application::Model) -> Result<Self, ExchangeError> {
+        let id = application.client_id.clone();
+        Self::build(application, Method::None, id)
+    }
+
     pub fn new(
         application: oauth_application::Model,
         input: &Input,
     ) -> Result<Self, ExchangeError> {
-        let redirect = RegisteredUrl::Exact(
-            application
-                .redirect_uri
+        Self::build(application, input.method, input.id.clone())
+    }
+
+    fn build(
+        application: oauth_application::Model,
+        method: Method,
+        submitted_id: String,
+    ) -> Result<Self, ExchangeError> {
+        let mut redirects = application.redirect_uri.split_whitespace().map(|value| {
+            value
                 .parse()
-                .map_err(|_| ExchangeError::Unavailable)?,
-        );
+                .map(RegisteredUrl::Exact)
+                .map_err(|_| ExchangeError::Unavailable)
+        });
+        let redirect = redirects.next().ok_or(ExchangeError::Unavailable)??;
+        let additional = redirects.collect::<Result<Vec<_>, _>>()?;
         let scope = application
             .scopes
             .parse()
             .map_err(|_| ExchangeError::Unavailable)?;
         let mut inner = ClientMap::new();
-        inner.register_client(Client::public(&application.client_id, redirect, scope));
+        inner.register_client(
+            Client::public(&application.client_id, redirect, scope)
+                .with_additional_redirect_uris(additional),
+        );
         Ok(Self {
             inner,
             application,
-            method: input.method,
-            submitted_id: input.id.clone(),
+            method,
+            submitted_id,
         })
     }
 }
@@ -60,7 +78,14 @@ impl oxide_auth_async::primitives::Registrar for RegisteredClient {
         client: BoundClient<'a>,
         scope: Option<Scope>,
     ) -> Result<PreGrant, RegistrarError> {
-        Registrar::negotiate(&self.inner, client, scope)
+        let mut granted = Registrar::negotiate(&self.inner, client, None)?;
+        if let Some(requested) = scope {
+            if !granted.scope.priviledged_to(&requested) {
+                return Err(RegistrarError::Unspecified);
+            }
+            granted.scope = requested;
+        }
+        Ok(granted)
     }
 
     async fn check(&self, id: &str, secret: Option<&[u8]>) -> Result<(), RegistrarError> {
