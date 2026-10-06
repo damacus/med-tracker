@@ -36,6 +36,15 @@ test('root browser tooling and dependencies select the Loco runtime', () => {
   }
 });
 
+test('advisory lint files remain classified as Loco tooling', () => {
+  for (const path of ['Taskfiles/lint-advisory.yml', 'scripts/lint-advisory/clippy.toml', 'scripts/lint-advisory/report.mjs', 'scripts/lint-advisory/report.test.mjs']) {
+    const selected = classify([path]).selected;
+    assert.equal(selected.loco, true, path);
+    assert.equal(selected.rails, false, path);
+    assert.equal(selected.rust_port, false, path);
+  }
+});
+
 test('Loco CI provisions the compiler components required by root checks', () => {
   const workflow = readFileSync(new URL('../../../.github/workflows/ci.yml', import.meta.url), 'utf8');
   const job = workflow.match(/\n  loco_foundation:\n([\s\S]*?)(?=\n  [a-z_]+:\n)/)?.[1];
