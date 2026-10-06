@@ -4,6 +4,7 @@
   <a class="link" href="/">Households</a>
   <a class="link ml-4" href="/households/{{ slug }}/locations">Locations</a>
   <a class="link ml-4" href="/households/{{ slug }}/people">People</a>
+  {% if can_manage %}<a class="link ml-4" href="/households/{{ slug }}/admin">Administration</a>{% endif %}
   <h1 class="text-3xl font-semibold mt-4">Medications</h1>
   {% if can_create %}<a class="btn btn-neutral mt-4" href="/households/{{ slug }}/medications/new">Add Medication</a>{% endif %}
   <ul class="flex flex-col gap-4 mt-6">

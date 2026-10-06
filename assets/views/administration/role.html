@@ -1,0 +1,18 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-3xl mx-auto">
+  <a class="link" href="/households/{{ slug }}/admin/users">Users</a>
+  <h1 class="text-3xl font-semibold mt-4">Edit household role for {{ member.name }}</h1>
+  <div class="mt-6">{% include "components/form_errors.html" %}</div>
+  <div class="card bg-base-100 border border-base-300 mt-6"><div class="card-body">
+    <form id="administration-form" action="/households/{{ slug }}/admin/users/{{ member.user_id }}/membership_role" method="post" class="flex flex-col gap-4">
+      <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+      <label for="role" class="font-semibold">Household role</label>
+      <select id="role" name="role" class="select w-full" {% if role_invalid %}aria-invalid="true" aria-describedby="form-error-role"{% endif %}>
+        {% for role in roles %}<option value="{{ role }}" {% if draft.role == role %}selected{% endif %}>{{ role | capitalize }}</option>{% endfor %}
+      </select>
+      <div class="flex flex-col sm:flex-row gap-3 mt-4"><button class="btn btn-neutral" type="submit">Update household role</button><a class="btn btn-ghost" href="/households/{{ slug }}/admin/users">Cancel</a></div>
+    </form>
+  </div></div>
+</section>
+{% endblock content %}

@@ -1,3 +1,4 @@
+mod administration;
 mod audit;
 mod input;
 mod locations;
@@ -36,6 +37,30 @@ use sha2::{Digest, Sha256};
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("/api/v1/households")
+        .add(
+            "/{household_id}/admin/settings",
+            get(administration::settings_show)
+                .patch(administration::settings_update)
+                .put(administration::settings_update),
+        )
+        .add(
+            "/{household_id}/admin/memberships",
+            get(administration::memberships_index),
+        )
+        .add(
+            "/{household_id}/admin/memberships/{id}",
+            patch(administration::memberships_update)
+                .put(administration::memberships_update)
+                .delete(administration::memberships_destroy),
+        )
+        .add(
+            "/{household_id}/admin/person_access_grants",
+            get(administration::grants_index).post(administration::grants_create),
+        )
+        .add(
+            "/{household_id}/admin/person_access_grants/{id}",
+            delete(administration::grants_destroy),
+        )
         .add(
             "/{household_id}/people",
             get(people::index).post(people::create),

@@ -20,6 +20,10 @@ and the revision-pinned machine inventory. A working skeleton is insufficient.
 - Keep dose, stock and audit writes transactional; preserve concurrency, conflict and replay semantics.
 - Preserve API v1, the authoritative `docs/api/openapi.v1.yaml`, and pinned native clients.
 - Preserve OAuth server/PKCE, refresh/revocation, MFA/passkeys, session policy and security middleware.
+- Apply the approved 6 October passkey transition: drop algorithms unsupported by
+  the maintained library, retain rows for Rails rollback, and offer explicit
+  reauthentication/replacement through existing verified flows. Supported keys
+  remain usable; unsupported keys never cause a silent MFA bypass.
 - Preserve FHIR R4/SMART, MCP, signed attachments, reports, imports/exports and platform/support flows.
 - Preserve complete browser operations, profile/security, devices and all five notification switches.
 - Use Tera and daisyUI; export existing palettes from the official theme creator as committed CSS.
@@ -76,11 +80,13 @@ later plans must consume these names or update all consuming plans before dispat
 - `src/models/errors.rs`: `OperationError` variants `Unauthenticated`, `Forbidden`,
   `NotFound`, `Validation`, `Conflict`, `Unavailable`; preserve public HTTP error details
   through the API plan's mapping rather than exposing database failures.
-- Every household operation has
-  `async fn execute(db: &DatabaseConnection, scope: &HouseholdScope, input: Command)
-  -> Result<Output, OperationError>` in its owning model module.
-- An operation opens its transaction, establishes verified actor/household RLS context
-  on that connection and rechecks current grants before reading or writing.
+- Household operations use named methods in their owning model modules, sharing
+  the existing `TenantTransaction` and `OperationError` interfaces. API, browser and
+  worker adapters call those same methods. Do not add a `Command` dispatcher or an
+  `execute` wrapper solely to satisfy the proposed migration interface.
+- Establish verified actor/household RLS context on the transaction connection and
+  recheck current grants before reading or writing. Keep related writes, audit and
+  completion in that transaction; callers must not bypass this boundary.
 - Library-owned credential validation produces `Actor`; it does not grant permission
   to a household or person. Workers revalidate the stored actor's current permissions.
 - `scripts/migration/run-slice.mjs` owns disposable PostgreSQL 18, explicit test URLs,

@@ -1,5 +1,6 @@
 use loco_rs::prelude::*;
 
+pub mod administration;
 pub mod api;
 pub mod auth;
 pub mod home;

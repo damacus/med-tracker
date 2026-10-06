@@ -34,6 +34,9 @@ check, CA roots, the PDF font, writable `/tmp` and non-root scratch execution.
 Adapt those parts to the root Loco binary and runtime assets. Its release Task
 selects only the host architecture; it does not prove the two-platform server and
 worker requirement. Close the PR only after its useful work has a verified replacement.
+The maintained WebAuthn dependency adds OpenSSL. Verify static linkage of that
+dependency on both architectures as part of the actual binary check; a successful
+host build does not establish that the scratch image can run it.
 
 - [ ] Test absent required production credentials/settings and final-image operations.
   Assert `missing_credentials_boots == false`, `https_request_succeeds == true`,
@@ -76,6 +79,12 @@ the schema, exercises full Loco journeys, runs Rails rollback and verifies prese
   offline replay, worker restart, cross-household denial and rollback after accepted writes.
   Assert `before_ids == after_ids`, `successful_audits_preserved == true`,
   `duplicate_doses == 0`, `rails_rollback_journeys_succeed == true`.
+- [ ] Rehearse the approved unsupported-passkey transition: identify affected accounts,
+  verify clear replacement instructions, supported-key use on mixed accounts and
+  recovery/re-enrolment for unsupported-only accounts without silently bypassing MFA.
+  Preserve unsupported credential rows and prove they remain available to Rails rollback.
+  PS256 authentication in Loco is deliberately excluded by the 6 October decision;
+  the user recovery/replacement journey is a required cutover check.
 - [ ] Run `rtk task release:rehearse`; record unimplemented rehearsal failures.
 - [ ] Implement the disposable rehearsal and operational cutover/rollback instructions with explicit
   image identity, schema checks, storage/queue compatibility and go/no-go evidence.

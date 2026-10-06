@@ -1,0 +1,17 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-3xl mx-auto">
+  <h1 class="text-3xl font-semibold">Security settings</h1>
+  <div class="card shell-card mt-6"><div class="card-body gap-5">
+    <h2 class="card-title">Passkeys</h2>
+    <p>Use your device or security key to sign in without a password.</p>
+    <ul class="grid gap-4">
+    {% for key in passkeys %}
+      <li class="flex flex-wrap items-center justify-between gap-4"><div><span>{{ key.nickname }}</span>{% if key.needs_replacement %}<p class="font-semibold">Needs replacement</p><p>This older passkey cannot sign in here. Add a new passkey before removing it.</p>{% endif %}</div><a class="link" href="/webauthn-remove?webauthn_remove={{ key.id }}" aria-label="Remove {{ key.nickname }}">Remove</a></li>
+    {% else %}<li>No passkeys are registered.</li>{% endfor %}
+    </ul>
+    <a class="btn btn-neutral" href="/webauthn-setup">Add a passkey</a>
+    <a class="link" href="/">Back to MedTracker</a>
+  </div></div>
+</section>
+{% endblock content %}

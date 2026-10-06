@@ -65,7 +65,11 @@ async fn index(
         Ok(value) => value,
         Err(error) => return operation_error(error),
     };
-    let response = rendering::index(&view, &token, &slug, &medications, can_create);
+    let can_manage = match crate::models::care::administration::can_manage(&tenant).await {
+        Ok(value) => value,
+        Err(error) => return operation_error(error),
+    };
+    let response = rendering::index(&view, &token, &slug, &medications, can_create, can_manage);
     if tenant.commit().await.is_err() {
         return unavailable();
     }

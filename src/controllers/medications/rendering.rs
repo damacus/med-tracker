@@ -51,12 +51,14 @@ pub fn index(
     slug: &str,
     medications: &[MedicationCard],
     can_create: bool,
+    can_manage: bool,
 ) -> Response {
     let mut data = appearance_context();
     data["title"] = json!("Medications");
     data["slug"] = json!(slug);
     data["medications"] = json!(medications);
     data["can_create"] = json!(can_create);
+    data["can_manage"] = json!(can_manage);
     render(view, token, "medications/index.html", data, StatusCode::OK)
 }
 

@@ -46,7 +46,8 @@ rendered pages provide associated labels/errors and semantic controls.
 **Files:** Create `src/controllers/browser.rs`, `src/controllers/browser/{care,profile,admin,data}.rs`,
 `assets/views/{care,profile,admin,data}/` templates and browser tests listed below; modify route registration.
 **Interfaces:** Each controller exposes `routes() -> Routes`; mutations consume the same care/integration
-`Command` types and validated actor/scope. Views receive preloaded projections, never query the database.
+named model methods and the existing validated tenant transaction. Views receive
+preloaded projections, never query the database.
 
 Each row is an independently reviewed task using the five checkbox steps below. Complete all rows;
 a navigation link or list page is not a successful write journey.

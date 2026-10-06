@@ -6,7 +6,7 @@ logger:
 server:
   port: <%= get_env(name="PORT", default="5150") %>
   binding: <%= get_env(name="BINDING", default="127.0.0.1") %>
-  host: http://localhost
+  host: <%= get_env(name="MEDTRACKER_PUBLIC_HOST", default="http://localhost") %>
   middlewares:
     static:
       enable: true

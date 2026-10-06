@@ -16,7 +16,7 @@ export const test = base.extend({
     owner.pathname = '/medtracker_reference';
     if (owner.hostname !== '127.0.0.1') throw Error('Care fixture must use the owned loopback database');
     await execute('task', ['db:migrate', `MIGRATION_DATABASE_URL=${owner.href}`, 'LOCO_ENV=test'], { cwd: root, timeout: 60000 });
-    const fixtureTask = async name => (await execute('task', [`browser-care:${name}`, `CARE_DATABASE_URL=${owner.href}`], { cwd: root, timeout: 60000 })).stdout.trim();
+    const fixtureTask = async (name, variables = []) => (await execute('task', [`browser-care:${name}`, `CARE_DATABASE_URL=${owner.href}`, ...variables], { cwd: root, timeout: 60000 })).stdout.trim();
     await fixtureTask('seed');
     const runtime = new URL(owner);
     runtime.username = 'medtracker_browser_runtime';
@@ -25,14 +25,14 @@ export const test = base.extend({
     await new Promise(resolve => reservation.listen(0, '127.0.0.1', resolve));
     const port = reservation.address().port;
     await new Promise(resolve => reservation.close(resolve));
-    const origin = `http://127.0.0.1:${port}`;
+    const origin = `http://localhost:${port}`;
     let server;
     let output = '';
     let exited = false;
     const start = async () => {
       output = '';
       exited = false;
-      server = spawn('task', ['dev'], { cwd: root, detached: true, env: { ...process.env, LOCO_ENV: 'test', PORT: String(port), DATABASE_URL: runtime.href, MEDTRACKER_SESSION_KEY: Buffer.alloc(64, 7).toString('base64'), MEDTRACKER_COOKIE_SECURE: 'false', RAILS_SECRET_KEY_BASE: 'synthetic-rails-secret-key-base-for-compatibility', RAILS_OLD_SECRET_KEY_BASE: 'synthetic-old-rails-secret-key-base' }, stdio: ['ignore', 'pipe', 'pipe'] });
+      server = spawn('task', ['dev'], { cwd: root, detached: true, env: { ...process.env, LOCO_ENV: 'test', PORT: String(port), MEDTRACKER_PUBLIC_HOST: 'http://localhost', DATABASE_URL: runtime.href, MEDTRACKER_SESSION_KEY: Buffer.alloc(64, 7).toString('base64'), MEDTRACKER_COOKIE_SECURE: 'false', RAILS_SECRET_KEY_BASE: 'synthetic-rails-secret-key-base-for-compatibility', RAILS_OLD_SECRET_KEY_BASE: 'synthetic-old-rails-secret-key-base' }, stdio: ['ignore', 'pipe', 'pipe'] });
       server.stdout.on('data', chunk => { output += chunk; });
       server.stderr.on('data', chunk => { output += chunk; });
       server.on('exit', () => { exited = true; });
@@ -54,6 +54,20 @@ export const test = base.extend({
         seedRecovery: () => fixtureTask('seed-recovery'), recoveryProbe: async () => JSON.parse(await fixtureTask('recovery-probe')), exhaustOtp: () => fixtureTask('exhaust-otp'),
         seedRecoveryPasskey: () => fixtureTask('seed-recovery-passkey'),
         peopleProbe: async () => JSON.parse(await fixtureTask('people-probe')),
+        seedAdministration: () => fixtureTask('seed-administration'), administrationProbe: async () => JSON.parse(await fixtureTask('administration-probe')),
+        passkeyProbe: async () => JSON.parse(await fixtureTask('passkey-probe')),
+        passkeyCounterAhead: () => fixtureTask('passkey-counter-ahead'),
+        passkeyRemovalRace: () => fixtureTask('passkey-removal-race'), passkeyRemovalRaceReady: async () => (await fixtureTask('passkey-removal-race-ready')) === 't',
+        seedForeignPasskey: () => fixtureTask('seed-foreign-passkey'),
+        seedUnsupportedPasskey: publicKey => {
+          if (typeof publicKey !== 'string' || !/^[A-Za-z0-9_-]+$/.test(publicKey)) throw Error('Invalid unsupported public passkey fixture');
+          return fixtureTask('seed-unsupported-passkey', [`UNSUPPORTED_PUBLIC_KEY=${publicKey}`]);
+        },
+        seedRetainedPasskey: stored => {
+          const fields = ['webauthn_id', 'public_key', 'user_handle'];
+          if (fields.some(field => typeof stored[field] !== 'string' || !/^[A-Za-z0-9_-]+$/.test(stored[field])) || !/^\d+$/.test(String(stored.sign_count))) throw Error('Invalid retained public passkey fixture');
+          return fixtureTask('seed-retained-passkey', [...fields.map(field => `RETAINED_${field.toUpperCase()}=${stored[field]}`), `RETAINED_SIGN_COUNT=${stored.sign_count}`]);
+        },
         secondPerson: () => fixtureTask('second-person'),
         scheduledMedicine: () => fixtureTask('scheduled-medicine'),
         oauthProbe: async () => JSON.parse(await fixtureTask('oauth-probe')), ageAuthentication: () => fixtureTask('age-authentication'),

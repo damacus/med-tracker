@@ -1,0 +1,15 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="card shell-card max-w-lg mx-auto"><div class="card-body gap-5">
+  <h1 class="text-3xl font-semibold">Remove Passkey</h1>
+  <p>Confirm your password to remove this passkey. You will be signed out afterwards.</p>
+  {% if error %}<p role="alert" class="shell-error">{{ error }}</p>{% endif %}
+  <form method="post" action="/webauthn-remove" class="grid gap-4">
+    <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+    <input type="hidden" name="webauthn_remove" value="{{ credential_id }}">
+    <label for="password" class="grid gap-2">Password<input id="password" name="password" type="password" class="input shell-input w-full" required autocomplete="current-password"></label>
+    <button class="btn shell-primary" type="submit">Remove WebAuthn Authenticator</button>
+    <a class="link" href="/multifactor-manage">Cancel</a>
+  </form>
+</div></section>
+{% endblock content %}

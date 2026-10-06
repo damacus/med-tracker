@@ -1,0 +1,26 @@
+{
+  "provenance": {
+    "library": "webauthn",
+    "version": "3.4.3",
+    "algorithm": "RS256",
+    "generator": "WebAuthn::FakeClient and FakeAuthenticator; Credential.from_create/from_get verified with user_verification:true",
+    "purpose": "Synthetic retained Rails/Rodauth credential; private key is test-only",
+    "original_origin": "http://localhost:5150"
+  },
+  "stored": {
+    "webauthn_id": "A9-5bndZjjdJc-ti4_YfSQ",
+    "public_key": "pAM5AQABAyBZAQDEobChPsEb_OtjkXzemzYoPjoiLYsvXyrhm7Q4KmsntVS8Q7AUGqd47eWrV-NQegQUC9uK2WIHFze1zyJJ7bY0LHKUfdSo4fzNmalyeJRmLR4tHNGNf30uXObvOkFASQ3Yxgq9tWh0jXs33CHaUs1JP3lXdUsYQsC_SYha2i-f0V-1ltwTrlYw-wvhlqhB4X-CYfMMtsC3MpPuWr2K9KgGO3PbHLAQuogOhBwyVHCY7SIqZiN6iuJJijSVHhQphjcHb9kVNuU0NrSyur-CpAoMHUj0c5JykD25UWjmb680IKMnfjLe8LpwbIfSh45coNvJTXBxQJIwlgsymA6q6TdFIUMBAAE",
+    "sign_count": "7",
+    "user_handle": "6P7ip83_7iMkTWnvM3ow19Hs3PQqLU248Xfp63Wg1Kk25lf-rrudwH9x2MVl1H99SnACS1Pb1vqgZYOElAXDkg"
+  },
+  "authenticator": {
+    "credentialId": "A9+5bndZjjdJc+ti4/YfSQ==",
+    "isResidentCredential": true,
+    "rpId": "localhost",
+    "privateKey": "MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDEobChPsEb/OtjkXzemzYoPjoiLYsvXyrhm7Q4KmsntVS8Q7AUGqd47eWrV+NQegQUC9uK2WIHFze1zyJJ7bY0LHKUfdSo4fzNmalyeJRmLR4tHNGNf30uXObvOkFASQ3Yxgq9tWh0jXs33CHaUs1JP3lXdUsYQsC/SYha2i+f0V+1ltwTrlYw+wvhlqhB4X+CYfMMtsC3MpPuWr2K9KgGO3PbHLAQuogOhBwyVHCY7SIqZiN6iuJJijSVHhQphjcHb9kVNuU0NrSyur+CpAoMHUj0c5JykD25UWjmb680IKMnfjLe8LpwbIfSh45coNvJTXBxQJIwlgsymA6q6TdFAgMBAAECggEAH+SyB5VsMSP28jF49YprYF+ngj+s4cQn6mwc8TdAJjKtSdQYzUn9fAnqRL5+qmEAJFhABed4lPnZGW49e4xJD3FeLGO0iKgPHzIbX+va9i+/Q0X3X2IcZda/xnHGf6zZyB1nRJoWFUGViNv1ybnAfm8DOYJW6dp59QzyRvo4200L03XVBoBywQAlRXnboU5eySXyN426HASEh+PDhfuDMMOVnVFNbjzYwuPjDv/6LlMPTZHU2w25cukyeCd89/ej0HDDQrXmRA38x3dXy5PTULjTRnFtSLZG1n4xb5VSr1S6MBm0/abf9Wrn2rtw8yFDd/Zws9qFgH/YWEKQ8tElCQKBgQDkkv5/xPDyz0ntDJgR340QCGYjpAMleSrAC0DPlZc6TKgmPcSAAqXe9UZj+o7kyGQJ1buS2xrhvcBQLboTbzZdYo1fm8F9976RZMpwMeHuW1+mVgwVKSe9yz/2Lh/fOEXvh2RwaRunqOhLO92vdQLbkyKw3hKIJ7W3uSQMG+pxwwKBgQDcOYe7VIhHjiCFVmNfD97QG7S7rFPQLrLmCSUeOfnXlg8ICrTXGrGDAYcsXzG+6Tbu/VCU1w4FcZIt9+NsAXAUBNELt8HFNVWt8ChLxvc2mg0oGmnnfQ1hnYKv5Ue201x4ppsCfN4jSwkw8PFbKH23Kb4SH6Y6UfWL+Fj1wupaVwKBgFSZ96rQ+SHWCZW8wJh09uBFS5DLhwKau3EDeUScKLJCZ0ZoPE/pKv3AKQKeXb9eUHC3dErh4CxHsGO82Q+SbTvZW1xU6SQ3y4hDFw6519cCaP/G/4fhiL0d+pmi7tcPHAuRQGK+9KZ0xS37hY0IsTsWVZPDTnaoxACxfR8iQf9DAoGBAKpYIcJoR6W5rTQWN3U/rGSjGbCVQptkk+LVrg1sYPI+U1AwH+PG9QnVs75BwBPhBynjbWJD2sehKqY9+X8AubXyZ9S9hbfKYoTRoAnFVFG65XRgwgxaMXCRSpZOLqOfaAa3MG3DMnxwPSLLLJYLgvqb4jbYnla8MMfdCMrIw0evAoGAfGmInaknl2DLImNwO72qCUFwSO2CcGurIHtDFWhSNFldKIruDYw7/Rzsk3/2Rld5LbXqvaDeuXfHGJhY0/JuorDtw+DvGrKhNd3WvS2xTqcP4x37YoKKQQZYKrNw9w1wzow/XhkzUEvXW1vxXqr37KJq8RtGurlyprwrpbZ8Xfc=",
+    "userHandle": "6P7ip83/7iMkTWnvM3ow19Hs3PQqLU248Xfp63Wg1Kk25lf+rrudwH9x2MVl1H99SnACS1Pb1vqgZYOElAXDkg==",
+    "signCount": "7",
+    "backupEligibility": true,
+    "backupState": true
+  }
+}

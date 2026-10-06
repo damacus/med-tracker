@@ -2,8 +2,10 @@
 
 Current status, 6 October: the original foundation runtime, review and publication
 gates are complete on published `4423ecf9756869dd7993f733823af4ce6902af61`.
-The updated acceptance record remains local until the current reviewed delivery
-is published. This does not accept the complete application or release.
+The acceptance record is published in `bda18ac97870802085380da20095bde22a26fc3e`.
+[Hosted CI 37414918830](https://github.com/damacus/med-tracker/actions/runs/37414918830)
+also passes on that exact commit. Foundation is accepted; complete application
+and release acceptance remain separate.
 
 Both complete root and standalone dashboard runners recorded 35 passing tests
 on the same captured source and cleaned their owned resources, as detailed below.

@@ -24,6 +24,8 @@ oxide-auth-async = "=0.2.1"
 serde_urlencoded = "=0.7.1"
 url = "=2.5.8"
 subtle = "=2.6.1"
+webauthn-rs-core = "=0.5.5"
+serde_cbor_2 = "0.13"
 chrono = { version = "0.4", features = ["serde"] }
 chrono-tz = "0.10"
 axum = "0.8"

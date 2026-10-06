@@ -42,6 +42,12 @@ Diagnose one evidenced failure at a time. Separate test setup failures from
 application failures. After two unsuccessful fixes, the coordinator diagnoses the
 cause. Reuse a valid owned test image for source-only retries. Do not repeat a full
 suite solely to publish cleanup, a report or a small repair.
+Read the canonical fixture setup before asserting roles, account IDs or other
+baseline values. Do not infer them from display names or the operation under test.
+When several browser cases fail at the same missing entry point, use one case to
+prove that prerequisite is missing. After implementing it, run every distinct
+behaviour and security case. Do not repeat app startup merely to reproduce the
+same prerequisite failure.
 
 ## Keep migration machinery out of daily work
 
@@ -54,6 +60,8 @@ Reuse Loco features and existing application helpers. Do not add temporary probe
 workers, duplicate test runners, per-repair briefs or parallel progress reports.
 Remove obsolete helpers alongside their replacement delivery. Keep database probes
 that verify real side effects, and isolation that protects unrelated databases.
+Delete migration-only helpers when their last caller is replaced. Do not create
+a separate cleanup delivery or rewrite a working runner just to remove its name.
 
 Use explicit disposable project names with public Tasks. Inspect diagnostic task
 expansion before starting resources. Preserve existing volumes and evidence;

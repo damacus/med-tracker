@@ -25,6 +25,53 @@ The additional-factor challenge expires after five minutes and requires a new
 password verification after expiry. Existing authenticator credentials stay in
 `account_otp_keys`; no re-enrolment or schema change is required by this flow.
 
+## Loco passkeys
+
+Configure the server's canonical public origin before registering passkeys. The
+relying-party ID comes from that origin's hostname; verification requires the
+configured scheme, hostname and port. Use a DNS hostname, or `localhost` for the
+owned browser fixtures. Native browsers reject an IP literal as a relying-party
+ID. Existing credentials remain bound to their original relying party.
+
+The adapter retains Rodauth's Base64url COSE public keys, credential IDs, user
+handles and signature counters in the existing WebAuthn tables. Ceremony state
+comes from webauthn-rs-core and is held in the encrypted browser session. A
+password-verified challenge keeps its original authentication time and expires
+after five minutes.
+
+The retained schema has no historical backup-eligibility or backup-state fields.
+The adapter therefore uses the maintained authenticator-data parser's observed
+flags, followed by full library signature verification. It cannot detect changes
+against historical backup flags or infer that a retained credential is bound to
+physical hardware. Counter, user-verification, challenge, origin and account
+checks still apply. The browser client uses the standard
+`PublicKeyCredential` JSON conversion methods; browsers without those methods
+cannot complete this passkey flow.
+
+### Approved cutover decision: unsupported passkeys
+
+**Decision approved by the project owner on 6 October 2026:** Loco will drop support
+for passkey algorithms that its maintained WebAuthn library cannot verify.
+Rails' default algorithm list includes PS256, which the selected Rust library
+does not support. We will accept this authentication compatibility break rather
+than add custom verification code or another identity provider.
+The pinned library accepts ES256 and RS256, with RSA restricted to a 2048-bit
+modulus and a three-byte exponent. Other unsupported key shapes follow the same
+replacement decision; an algorithm name alone does not establish compatibility.
+
+Affected users must reauthenticate through a supported sign-in/recovery flow and
+register a replacement passkey. Their unsupported passkey will not work in Loco.
+An unsupported key must not prevent another supported key from working. Security
+settings must explain which keys need replacing; MFA must not be silently bypassed.
+Do not delete unsupported credential rows as part of the migration; retain them
+for Rails rollback. Normal authenticated removal remains an explicit user action.
+
+Before cutover, identify affected accounts and verify the recovery and replacement
+journey, including accounts whose only passkey is unsupported. Include this
+transition in the user-facing migration instructions and the populated cutover
+rehearsal. Approval of the decision does not mean these implementation checks have
+passed; they remain release requirements.
+
 ## Compose profiles
 
 - `dev`: development stack

@@ -28,22 +28,36 @@ duplicate/concurrent replay (C3), and audit failure after clinical writes (C3) n
 Create `src/models/care/{households,medications,treatments,doses,sync}.rs`,
 `src/models/care.rs`, `src/controllers/api/{households,medications,treatments,doses,sync}.rs`,
 `src/controllers/api.rs`; modify module registration and `src/app.rs`.
-Each operation module exposes specification `execute(db, scope, input) -> Result<Output, OperationError>`.
-Its `Command` enum has the actions listed below; typed payloads use existing OpenAPI field names and
-validation rules. `Output` contains model/projection results without HTTP status or headers.
-Controllers deserialize the same typed input that browser controllers will use and map errors at the edge.
+Use named model methods with the existing `TenantTransaction` and `OperationError`
+interfaces. Preserve OpenAPI field names and validation rules. Return model or
+projection results without HTTP status or headers; controllers map errors at the
+edge. API and browser adapters call the same methods. No migration-only command
+dispatcher or forwarding wrapper is required.
 
 ### C1: Household membership, invitations, people and grants
 
-**Files:** Household model/controller above; `tests/care_households.rs`.
-**Interfaces:** `households::Command` actions `Create`, `Update`, `Invite`, `AcceptInvitation`,
+**Files:** Focused household, People and administration model/controller modules;
+tests in the existing `tests/care_api.rs` binary and its `tests/care_api/` modules.
+**Operations:** `Create`, `Update`, `Invite`, `AcceptInvitation`,
 `ChangeMembership`, `CreatePerson`, `UpdatePerson`, `GrantAccess`, `RevokeAccess`, `Retire`.
 Read Rails household/person policies and contract `care.rs`, `invitations.rs`, `household_minor_readiness.rs`.
 
-Treat each named action as a separate task with the test cycle below. Test names start
-`households_<snake_case_action>`; for example `households_accept_invitation_*`.
-Run `TARGET=care_households FILTER=households_<snake_case_action>` for focused RED/GREEN,
-then the whole binary at slice acceptance. Group related actions into usable
+Retain the actual entry points. Household creation belongs to account
+registration/bootstrap; retirement belongs to authorised operator offboarding.
+Do not invent public household POST/DELETE routes for those operations. Invitations
+use the existing administration list/issue/resend/revoke routes and verified-session
+acceptance at `/api/v1/invitations/accept`, plus the retained browser acceptance
+flow. Cover seven-day expiry, resend token rotation, atomic membership/grant creation
+and replay after access is revoked. Reuse Loco mail delivery with synthetic capture.
+Acceptance follows the authoritative root OpenAPI user API-session requirement.
+The retained Rails controller also admits mobile OAuth credentials, which diverges
+from that contract; do not broaden Loco acceptance to reproduce the discrepancy.
+Resend keeps its separately documented mobile credential support.
+
+Test every named action with the cycle below, using descriptive tests in its
+owning module. Run `TARGET=care_api FILTER=<module-or-test>` for focused RED/GREEN,
+then the whole binary at slice acceptance. Reuse the registered fixture rather
+than creating a parallel household test runner. Group related actions into usable
 deliveries, such as household settings and membership/access management. Review
 the related action diffs together with separate verdicts. Run final full CI and
 publish once per reviewed delivery, rather than once per action; do not wait for
@@ -53,7 +67,7 @@ the entire care migration before publishing working capabilities.
   removal, cross-household IDs, expired invitations and capacity manipulation.
   Assert `minor.has_capacity == false`, `dependent.has_capacity == false`,
   `cross_household_write_count == 0`, `household_has_owner == true` after rejected owner removal.
-- [ ] Run `rtk task slice:test TARGET=care_households`; absent operations must fail.
+- [ ] Run `rtk task slice:test TARGET=care_api FILTER=<owning-module>`; absent operations must fail.
 - [ ] Implement typed actions with current grants/RLS and transactional audit through P3.
 - [ ] Run all action/role cases and `rtk task ci`; verify results through real Loco routes.
 - [ ] Review and commit `feat(care): preserve household roles and person grants`.
@@ -62,9 +76,9 @@ the entire care migration before publishing working capabilities.
 
 **Files:** Medication/treatment modules/controllers above; `tests/care_medications.rs`,
 `tests/care_treatments.rs`. Read existing stock adjustment service and Rust medication/schedule modules.
-**Interfaces:** `medications::Command`: `Create`, `Update`, `Retire`, `AdjustStock`, `RemoveStock`,
+**Medication operations:** `Create`, `Update`, `Retire`, `AdjustStock`, `RemoveStock`,
 `Order`, `Receive`, `CreateDosage`, `UpdateDosage`, `RetireDosage`;
-`treatments::Command`: `CreateSchedule`, `UpdateSchedule`, `RetireSchedule`, `Assign`, `Unassign`,
+**Treatment operations:** `CreateSchedule`, `UpdateSchedule`, `RetireSchedule`, `Assign`, `Unassign`,
 `Pause`, `Resume`. Preserve original conflict/precondition semantics and date boundaries.
 
 Split tasks into medication CRUD, stock adjustment/removal, order/receipt, dosage CRUD,
@@ -86,8 +100,8 @@ Use `care_medications` for the first four units and `care_treatments` for the fi
 **Files:** Dose/sync modules/controllers above; `tests/care_doses.rs`, `tests/care_sync.rs`.
 Read `rails/app/services/medication_administration/`, `offline_dose_eligibility.rb`,
 `rust/api/src/dose/`, `mutation_idempotency.rs` and contract `doses.rs`, `replay.rs`, `sync.rs`.
-**Interfaces:** `doses::Command`: `Take`, `Correct`, `Delete`, `RecordMissed`;
-`sync::Command`: `ReadChanges`, `ReplayBatch`. Keep client UUID and sync cursor formats.
+**Dose operations:** `Take`, `Correct`, `Delete`, `RecordMissed`;
+**Sync operations:** `ReadChanges`, `ReplayBatch`. Keep client UUID and sync cursor formats.
 
 Separate tasks: `dose_take`, `dose_correction`, `dose_delete`, `dose_missed` in `care_doses`;
 `sync_read` and `sync_replay` in `care_sync`. Apply the following cycle to each filter;

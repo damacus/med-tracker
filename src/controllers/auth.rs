@@ -11,6 +11,7 @@ use serde::Deserialize;
 
 use crate::models::identity::{browser, resource::AuthenticationError};
 
+mod passkeys;
 mod recovery;
 
 #[derive(Deserialize)]
@@ -33,6 +34,21 @@ struct Otp {
 
 pub fn routes() -> Routes {
     Routes::new()
+        .add("/multifactor-manage", get(passkeys::settings))
+        .add(
+            "/webauthn-setup",
+            get(passkeys::setup).post(passkeys::register),
+        )
+        .add(
+            "/webauthn-remove",
+            get(passkeys::confirm_remove).post(passkeys::remove),
+        )
+        .add("/webauthn-login/options", get(passkeys::options))
+        .add("/webauthn-login", post(passkeys::login))
+        .add(
+            "/webauthn-auth",
+            get(passkeys::factor).post(passkeys::verify_factor),
+        )
         .add("/login", get(login).post(sign_in))
         .add("/logout", post(sign_out))
         .add("/otp-auth", get(otp_challenge).post(verify_otp))
@@ -82,6 +98,7 @@ async fn sign_in(
         Ok(browser::SignInOutcome::Authenticated) => authenticated_redirect(&session),
         Ok(browser::SignInOutcome::OtpRequired) => redirect("/otp-auth"),
         Ok(browser::SignInOutcome::RecoveryRequired) => redirect("/recovery-auth"),
+        Ok(browser::SignInOutcome::PasskeyRequired) => redirect("/webauthn-auth"),
         Err(AuthenticationError::Unauthenticated) => login_form(
             &token,
             &view,

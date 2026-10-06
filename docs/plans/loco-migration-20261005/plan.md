@@ -136,6 +136,24 @@ Each slice needs red-before-green behavior contracts, focused checks, a clean
 independent review and accepted evidence before completion. Intermediate commits
 may be integration waypoints; none is a partial cutover.
 
+## Approved cutover decisions
+
+On 6 October 2026, the project owner approved dropping historical passkey algorithms
+unsupported by the selected maintained Rust WebAuthn library, including PS256.
+Affected users may need to reauthenticate and register replacement passkeys. This
+is an intentional compatibility break, not unfinished compatibility research.
+Do not add custom verification or another provider to preserve those algorithms.
+
+Do not bulk-delete old credential rows during migration; retain them for Rails
+rollback until their owner explicitly removes them. Supported keys must remain usable
+on mixed-key accounts. Verify clear replacement messages and supported recovery
+and re-enrolment, including unsupported-only accounts, without silently bypassing
+MFA. Record affected accounts and user instructions in the cutover rehearsal.
+See [the deployment decision](../../deployment.md#approved-cutover-decision-unsupported-passkeys)
+and [the identity transition requirements](slices/03-identity.md#approved-passkey-transition-6-october-2026).
+The approval changes the compatibility requirement; it does not waive verification
+of the transition or authorise production cutover.
+
 ## Devin review corrections
 
 Devin CLI `swe-2-max` completed a supplied-plan review on 5 October 2026. Verdict:

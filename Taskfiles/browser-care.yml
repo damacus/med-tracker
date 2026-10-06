@@ -1,5 +1,90 @@
 version: '3'
 tasks:
+  seed-unsupported-passkey:
+    requires:
+      vars: [CARE_DATABASE_URL, UNSUPPORTED_PUBLIC_KEY]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction
+        -v public_key={{.UNSUPPORTED_PUBLIC_KEY | shellQuote}}
+        -f tests/fixtures/identity/unsupported-passkey-seed.sql
+  seed-retained-passkey:
+    requires:
+      vars: [CARE_DATABASE_URL, RETAINED_WEBAUTHN_ID, RETAINED_PUBLIC_KEY, RETAINED_SIGN_COUNT, RETAINED_USER_HANDLE]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction
+        -v webauthn_id={{.RETAINED_WEBAUTHN_ID | shellQuote}} -v public_key={{.RETAINED_PUBLIC_KEY | shellQuote}}
+        -v sign_count={{.RETAINED_SIGN_COUNT | shellQuote}} -v user_handle={{.RETAINED_USER_HANDLE | shellQuote}}
+        -f tests/fixtures/identity/rails-passkey-seed.sql
+  passkey-removal-race:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -f tests/fixtures/identity/passkey-removal-race.sql'
+  passkey-removal-race-ready:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align
+        -c "SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND application_name='passkey-removal-race' AND xact_start IS NOT NULL AND state='active')"
+  seed-foreign-passkey:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction
+        -c "INSERT INTO public.account_webauthn_user_ids(account_id,webauthn_id,created_at,updated_at) VALUES(71002,'Zm9yZWlnbi1hY2NvdW50',now(),now());
+        INSERT INTO public.account_webauthn_keys(account_id,nickname,webauthn_id,public_key,sign_count,created_at,updated_at)
+        SELECT 71002,'Foreign synthetic device','Zm9yZWlnbi1jcmVkZW50aWFs',public_key,sign_count,now(),now() FROM public.account_webauthn_keys WHERE account_id=71001 ORDER BY id LIMIT 1;"
+  seed-administration:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction
+        -c "UPDATE public.household_memberships SET role='owner' WHERE id=74001;
+        UPDATE public.people SET date_of_birth=current_date-interval '10 years' WHERE id=73002;
+        INSERT INTO public.accounts(id,email,status,password_hash,created_at,updated_at) VALUES(71003,'administration-member@example.test',2,crypt('password',gen_salt('bf',4)),now(),now());
+        INSERT INTO public.people(id,account_id,household_id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73004,71003,72001,'Synthetic administration member',current_date-interval '30 years',0,true,now(),now());
+        INSERT INTO public.users(id,person_id,email_address,password_digest,created_at,updated_at) VALUES(77002,73004,'administration-member@example.test',crypt('password',gen_salt('bf',4)),now(),now());
+        INSERT INTO public.household_memberships(id,account_id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74002,71003,72001,73004,'member',now(),now(),now());
+        INSERT INTO public.person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,created_at,updated_at) VALUES(78004,72001,74002,73004,'manage','self',now(),now()),(78005,72001,74001,73002,'view','parent',now(),now()),(78006,72001,74001,73004,'view','family_member',now(),now());"
+  administration-probe:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align
+        -c "SELECT json_build_object(
+        'owner_role',(SELECT role FROM public.household_memberships WHERE id=74001),
+        'member_role',(SELECT role FROM public.household_memberships WHERE id=74002),
+        'member_permissions_version',(SELECT permissions_version FROM public.household_memberships WHERE id=74002),
+        'relationship_active',(SELECT active FROM public.carer_relationships WHERE household_id=72001 AND carer_id=73004 AND patient_id=73002 ORDER BY id DESC LIMIT 1),
+        'patient_grant_active',EXISTS(SELECT 1 FROM public.person_access_grants WHERE household_membership_id=74002 AND person_id=73002 AND revoked_at IS NULL),
+        'patient_grant_level',(SELECT access_level FROM public.person_access_grants WHERE household_membership_id=74002 AND person_id=73002 ORDER BY id DESC LIMIT 1))"
+  passkey-probe:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align
+        -c "SELECT json_build_object(
+        'count',(SELECT count(*) FROM public.account_webauthn_keys WHERE account_id=71001),
+        'user_handles',(SELECT count(*) FROM public.account_webauthn_user_ids WHERE account_id=71001),
+        'max_sign_count',(SELECT COALESCE(max(sign_count),0) FROM public.account_webauthn_keys WHERE account_id=71001),
+        'nickname',(SELECT nickname FROM public.account_webauthn_keys WHERE account_id=71001 ORDER BY id DESC LIMIT 1),
+        'created_audits',(SELECT count(*) FROM public.versions WHERE item_type='AuthenticationToken' AND item_id=71001 AND event='auth_token/webauthn_credential/created'),
+        'revoked_audits',(SELECT count(*) FROM public.versions WHERE item_type='AuthenticationToken' AND item_id=71001 AND event='auth_token/webauthn_credential/revoked'),
+        'active_sessions',(SELECT count(*) FROM public.account_active_session_keys WHERE account_id=71001),
+        'verified_audits',(SELECT count(*) FROM public.versions WHERE item_type='AuthenticationToken' AND item_id=71001 AND event='auth_token/webauthn_verification/succeeded'),
+        'failed_audits',(SELECT count(*) FROM public.versions WHERE item_type='AuthenticationToken' AND item_id=71001 AND event='auth_token/webauthn_verification/failed'))"
+  passkey-counter-ahead:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -c "UPDATE public.account_webauthn_keys SET sign_count=2147483647 WHERE account_id=71001"'
   seed-recovery-passkey:
     requires:
       vars: [CARE_DATABASE_URL]

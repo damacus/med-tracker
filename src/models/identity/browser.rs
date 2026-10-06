@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 mod otp;
+pub mod passkeys;
 mod recovery;
 pub use otp::{challenge, has_pending_challenge, verify as verify_otp};
 pub use recovery::{challenge as recovery_challenge, verify as verify_recovery};
@@ -32,6 +33,7 @@ pub enum SignInOutcome {
     Authenticated,
     OtpRequired,
     RecoveryRequired,
+    PasskeyRequired,
 }
 
 pub struct BrowserPrincipal {
@@ -272,7 +274,8 @@ pub async fn sign_in(
             otp::begin(transaction, session, account.id, authenticated_at).await?;
             return Ok(SignInOutcome::RecoveryRequired);
         }
-        return Err(AuthenticationError::Forbidden);
+        otp::begin(transaction, session, account.id, authenticated_at).await?;
+        return Ok(SignInOutcome::PasskeyRequired);
     }
     issue_session(transaction, session, account.id, authenticated_at, false).await?;
     Ok(SignInOutcome::Authenticated)

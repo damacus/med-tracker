@@ -9,6 +9,33 @@ pub(super) struct RequestAudit {
 }
 
 impl RequestAudit {
+    pub fn administration(
+        method: &'static str,
+        resource: &'static str,
+        action: &'static str,
+    ) -> Self {
+        let (controller, policy) = match resource {
+            "settings" => ("api/v1/admin/settings", "HouseholdPolicy"),
+            "memberships" => ("api/v1/admin/memberships", "HouseholdMembershipPolicy"),
+            _ => (
+                "api/v1/admin/person_access_grants",
+                "PersonAccessGrantPolicy",
+            ),
+        };
+        Self {
+            method,
+            controller,
+            action,
+            policy,
+            query: match action {
+                "show" => "show?",
+                "create" => "create?",
+                "update" => "update?",
+                "destroy" => "destroy?",
+                _ => "index?",
+            },
+        }
+    }
     pub fn person(method: &'static str, action: &'static str) -> Self {
         Self {
             method,

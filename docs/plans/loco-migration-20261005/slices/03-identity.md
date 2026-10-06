@@ -14,6 +14,19 @@ P3 supplies tenant persistence. No custom grant engine or cryptographic primitiv
 External provider selection or incompatible credential/client transitions require an explicit decision.
 Synthetic credential fixtures only. Root planning authority owns the decision record; writer owns adapters/tests.
 
+### Approved passkey transition — 6 October 2026
+
+The user approved dropping credential algorithms unsupported by the maintained Rust
+library, even when affected users must reauthenticate and replace their passkeys.
+Do not pursue PS256 compatibility, add a provider or implement a custom verifier.
+Preserve existing credential rows for Rails rollback. Supported retained credentials
+must still work; an unsupported credential must not block another supported key.
+Security settings identify keys that need replacement. Use existing verified
+password/recovery and password-confirmed replacement flows without silently
+bypassing MFA. Test clean unsupported rejection, mixed-key accounts, the replacement
+message and removal/re-enrolment. This approved transition replaces the requirement
+to authenticate every historical passkey algorithm in Loco.
+
 ## Review focus
 
 Existing stored formats must work (I1/I2). Duplicate, mixed and disallowed client credentials fail (I1/I3).

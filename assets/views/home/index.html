@@ -4,6 +4,9 @@
   <p class="text-sm font-semibold uppercase tracking-widest shell-muted">Care, kept together</p>
   <h1 class="text-4xl font-semibold mt-3">MedTracker</h1>
   {% if signed_in %}
+  <nav class="mt-6" aria-label="Account">
+    <a class="link" href="/multifactor-manage">Security settings</a>
+  </nav>
   <section class="mt-8">
     <h2 class="text-2xl font-semibold">Your households</h2>
     <ul class="flex flex-col gap-4 mt-4">
