@@ -1,3 +1,4 @@
+pub mod reports;
 use loco_rs::prelude::*;
 
 pub mod administration;

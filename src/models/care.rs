@@ -13,4 +13,7 @@ pub mod orders;
 pub mod pause_periods;
 pub mod people;
 pub mod push_subscriptions;
+pub mod report_pdf;
+pub mod reports;
+pub mod review_prompts;
 pub mod treatments;

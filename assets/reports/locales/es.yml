@@ -1,0 +1,2664 @@
+---
+es:
+  treatments:
+    form:
+      keep_maximum: "Déjelo en blanco para mantener el máximo actual."
+      schedule_maximum: "Déjelo en blanco para usar un máximo de 4 dosis por ciclo."
+      optional_maximum: "El máximo es opcional para una asignación nueva."
+      keep_cycle: "Mantener el ciclo actual"
+      required_end_date: "Fecha de fin (obligatoria)"
+      default_dose: "Dosis predeterminada"
+      keep_dose_choice: "Mantener la elección de dosis actual"
+      linked_dose_hint: "Deje la opción en blanco para conservar cualquier vínculo existente. Si la dosis está vinculada, elija una opción de reemplazo antes de cambiar su cantidad o unidad."
+      apply_dose: "Usar la dosis seleccionada"
+      unavailable_selection: "Selección no disponible"
+      schedule_type: "Tipo de pauta"
+      show_fields: "Mostrar campos de la pauta"
+      time: "Hora (HH:MM)"
+      taper_times_hint: "Estas horas compartidas se aplican a todos los pasos de reducción y determinan cuándo corresponde tomar las dosis. Déjelas en blanco para dosis sin hora fija."
+      step_time_instruction: "Hora de la instrucción del paso (HH:MM)"
+      step_time_hint: "Las horas de las instrucciones se guardan con este paso. No determinan cuándo corresponde tomar las dosis."
+      add_time: "Añadir hora"
+      remove_time: "Quitar hora"
+      date: "Fecha (AAAA-MM-DD)"
+      add_date: "Añadir fecha"
+      remove_date: "Quitar fecha"
+      step: "Paso %{number}"
+      add_step: "Añadir paso"
+      remove_step: "Quitar paso"
+      as_needed_hint: "Usar cuando sea necesario; no hay horas fijas de administración."
+      resume: "Reanudar tratamiento"
+      resume_hint: "Reanudar este tratamiento ahora. La pausa permanece en su historial."
+      pause_open: "En pausa actualmente"
+      no_pause_history: "No se han registrado pausas."
+    types:
+      daily: "Diaria"
+      multiple_daily: "Varias veces al día"
+      weekly: "Semanal"
+      specific_dates: "Fechas específicas"
+      prn: "Según necesidad"
+      tapering: "Reducción gradual"
+      every_other_day: "Cada dos días"
+    weekdays:
+      monday: "Lunes"
+      tuesday: "Martes"
+      wednesday: "Miércoles"
+      thursday: "Jueves"
+      friday: "Viernes"
+      saturday: "Sábado"
+      sunday: "Domingo"
+    overview:
+      schedules_unavailable: "Los horarios no están disponibles con su acceso actual. Las asignaciones que se muestran aquí siguen siendo legibles."
+      title: "Medicación y pautas"
+      empty: "No se han asignado medicamentos ni pautas."
+  stock_removals:
+    title: "Retirar existencias"
+    description: "Registre el medicamento que salió de las existencias sin administrarse. Esto no registra una dosis."
+    quantity: "Cantidad retirada"
+    note: "Nota"
+    reason: "Motivo"
+    source: "Origen de existencias"
+    choose_source: "Elija existencias"
+    choose_reason: "Elija un motivo"
+    submit: "Registrar retirada"
+    cancel: "Cancelar"
+    history: "Retiradas recientes"
+    empty: "No hay retiradas registradas."
+    available: "%{quantity} %{unit} disponibles"
+    history_summary: "Retirado: %{quantity} %{unit} · %{reason}"
+    unknown_actor: "Autor desconocido"
+    units: "unidades"
+    success: "Retirada registrada."
+    reasons:
+      dropped: "Caído"
+      damaged: "Dañado"
+      expired: "Caducado"
+      discarded: "Desechado"
+      lost: "Perdido"
+      transferred_out: "Entregado / transferido"
+      other: "Otro"
+    errors:
+      invalid_quantity: "Introduzca una cantidad positiva con un máximo de dos decimales."
+      invalid_reason: "Elija un motivo de retirada."
+      invalid_note: "Limite la nota a 1.000 caracteres."
+      invalid_submission: "Vuelva a cargar este formulario e inténtelo de nuevo."
+      invalid_source: "Elija existencias controladas de este medicamento."
+      untracked: "Estas existencias no se controlan."
+      insufficient_stock: "No hay suficientes existencias. Compruebe la cantidad restante."
+      changed_submission: "Este envío ya se utilizó con otros datos."
+  offline:
+    record_access_required: No tienes permiso para registrar esta dosis.
+  ruby_ui:
+    common:
+      close: Cerrar
+      navigation_menu: Menú de navegación
+      more: Más
+    calendar:
+      previous_month: Ir al mes anterior
+      next_month: Ir al mes siguiente
+  activerecord:
+    attributes:
+      invitation:
+        roles:
+          admin: Administrador
+          clinician: Clínico
+          carer: Cuidador
+          parent: Padre/Madre
+          self: Mismo
+      user:
+        roles:
+          admin: Administrador
+          clinician: Clínico
+          carer: Cuidador
+          parent: Padre/Madre
+          self: Mismo
+    errors:
+      models:
+        health_event:
+          attributes:
+            ended_on:
+              on_or_after_start_date: debe ser igual o posterior a la fecha de inicio
+        health_event_medication:
+          attributes:
+            medication_id:
+              linked_to_health_event: ya se ha vinculado a este evento de salud
+        medication:
+          attributes:
+            barcode:
+              invalid: debe ser un GTIN de 13 o 14 dígitos
+              taken: ya está vinculado a otro medicamento en el inventario
+  errors:
+    messages:
+      blank: no puede estar en blanco
+      greater_than: debe ser mayor que %{count}
+      greater_than_or_equal_to: debe ser mayor o igual que %{count}
+      inclusion: no está incluido en la lista
+      invalid: no es válido
+      form_invalid: No se pudo guardar este valor.
+      forbidden: "No tienes autorización para realizar esta acción."
+      not_a_number: no es un número
+      required: debe existir
+      taken: ya está en uso
+      too_short: es demasiado corto (mínimo %{count} caracteres)
+      linked_to_health_event: ya se ha vinculado a este evento de salud
+      on_or_after_start_date: debe ser igual o posterior a la fecha de inicio
+  health_events:
+    created: Evento de salud registrado.
+    updated: Evento de salud actualizado.
+    deleted: Evento de salud eliminado.
+    invalid_medication_link: Selecciona solo medicamentos asignados a esta persona.
+    kinds:
+      illness: Enfermedad destacable
+      suspected_side_effect: Posible efecto secundario
+    severities:
+      mild: Leve
+      moderate: Moderado
+      severe: Grave
+    actions:
+      record_illness: Registrar enfermedad destacable
+      record_suspected_side_effect: Registrar posible efecto secundario
+      edit: Editar
+      delete: Eliminar
+      cancel: Cancelar
+      save: Guardar
+    index:
+      title: Eventos de salud de %{person}
+      subtitle: Registra enfermedades destacables y posibles efectos secundarios sin realizar afirmaciones clínicas.
+      empty: Aún no se han registrado eventos de salud.
+      ongoing_from: En curso desde %{started_on}
+      date_range: "%{started_on} a %{ended_on}"
+    form:
+      new_title: Registrar %{kind}
+      edit_title: Editar %{kind}
+      subtitle: Recoge hechos introducidos por la familia o la persona cuidadora.
+      title: Título
+      started_on: Fecha de inicio
+      ended_on: Fecha de finalización
+      ongoing: En curso
+      severity: Gravedad
+      no_severity: Sin especificar
+      suspected_medications: Medicamentos sospechosos
+      notes: Notas
+      action_taken: Medida adoptada
+      medical_help_sought: Se solicitó ayuda médica
+  app:
+    name: MedTracker
+  global_search:
+    error: La búsqueda no está disponible. Inténtalo de nuevo.
+    retry: Reintentar búsqueda
+    dialog_label: Búsqueda global
+    open: Abrir búsqueda global
+    open_short: Buscar
+    shortcut_hint: Ctrl K
+    input_label: Buscar en MedTracker
+    placeholder: Buscar personas, medicamentos, ubicaciones...
+    close: Cerrar búsqueda
+    loading: Buscando...
+    no_results: Sin resultados
+    page_title: Buscar
+    page_subtitle: Encuentra registros y accesos directos de MedTracker.
+    page_submit: Buscar
+    results:
+      one: 1 resultado
+      other: "%{count} resultados"
+    types:
+      command: Comandos
+      person: Personas
+      medication: Medicamentos
+      person_medication: Medicamentos por persona
+      schedule: Horarios
+      location: Ubicaciones
+    result_titles:
+      schedule: Horario de %{medication}
+    subtitles:
+      schedule: "%{person} · %{frequency}"
+      person_medication: "%{person} · medicamento sin horario"
+      no_frequency: Sin frecuencia
+    commands:
+      add_medication:
+        title: Añadir medicamento
+        subtitle: Iniciar el flujo de medicamento
+      medication_finder:
+        title: Buscador de medicamentos
+        subtitle: Buscar NHS dm+d y fuentes de códigos de barras
+      inventory:
+        title: Inventario
+        subtitle: Abrir inventario de medicamentos
+      people:
+        title: Personas
+        subtitle: Abrir personas
+      locations:
+        title: Ubicaciones
+        subtitle: Abrir ubicaciones
+      reports:
+        title: Informes
+        subtitle: Abrir informes
+      add_person:
+        title: Añadir persona
+        subtitle: Crear una persona dependiente
+      schedule_workflow:
+        title: Flujo de horario
+        subtitle: Crear un horario de medicación
+  rodauth:
+    verify_account:
+      subject: Verifica tu cuenta de MedTracker
+      title: Verifica tu dirección de correo electrónico
+      instruction: Gracias por crear tu cuenta de MedTracker. Haz clic en el botón
+        de abajo para verificar tu dirección de correo electrónico y completar tu
+        registro.
+      button: Verificar mi cuenta
+      notice: Este enlace caducará. Si no creaste una cuenta, puedes ignorar este
+        correo de forma segura.
+    reset_password:
+      subject: Restablecer tu contraseña de MedTracker
+      title: Restablecer tu contraseña
+      instruction: Recibimos una solicitud para restablecer la contraseña de tu cuenta
+        de MedTracker. Haz clic en el botón de abajo para elegir una nueva contraseña.
+      button: Restablecer mi contraseña
+      notice: Este enlace caducará. Si no solicitaste un restablecimiento de contraseña,
+        puedes ignorar este correo de forma segura; tu contraseña no se cambiará.
+    unlock_account:
+      subject: Desbloquea tu cuenta de MedTracker
+      title: Tu cuenta ha sido bloqueada
+      instruction: Tu cuenta de MedTracker ha sido bloqueada temporalmente debido
+        a múltiples intentos fallidos de inicio de sesión. Haz clic en el botón de
+        abajo para desbloquear tu cuenta y recuperar el acceso.
+      button: Desbloquear mi cuenta
+      notice: Si no intentaste iniciar sesión, contáctanos de inmediato; alguien puede
+        estar intentando acceder a tu cuenta.
+    verify_login_change:
+      subject: Confirma tu nuevo inicio de sesión de MedTracker
+      title: Confirma tu nueva dirección de correo electrónico
+      instruction: Recientemente solicitaste cambiar la dirección de correo electrónico
+        de tu cuenta de MedTracker. Haz clic en el botón de abajo para confirmar tu
+        nueva dirección de correo electrónico.
+      button: Confirmar nueva dirección de correo electrónico
+      notice: Este enlace caducará. Si no solicitaste este cambio, contáctanos de
+        inmediato; alguien puede tener acceso a tu cuenta.
+    views:
+      create_account:
+        page_subtitle: Crea tu cuenta para empezar a gestionar medicamentos de forma
+          segura.
+        card_title: Crear cuenta
+        card_description: Completa tus datos para crear una cuenta nueva.
+        name_label: Nombre
+        name_placeholder: Introduce tu nombre completo
+        date_of_birth_label: Fecha de nacimiento
+        email_label: Correo electrónico
+        email_placeholder: Introduce tu correo electrónico
+        password_label: Contraseña
+        password_placeholder: Crea una contraseña (mínimo 12 caracteres)
+        confirm_password_label: Confirmar contraseña
+        confirm_password_placeholder: Confirma tu contraseña
+        submit: Crear cuenta
+        existing_account: "¿Ya tienes una cuenta?"
+        sign_in: Inicia sesión en tu cuenta
+      reset_password_request:
+        page_subtitle: Restablece tu contraseña para recuperar el acceso a tu cuenta.
+        card_title: Restablecer contraseña
+        card_description: Introduce tu correo electrónico y te enviaremos un enlace
+          para restablecer tu contraseña.
+        email_label: Correo electrónico
+        email_placeholder: Introduce tu correo electrónico
+        submit: Solicitar restablecimiento de contraseña
+        other_options: Otras opciones
+        back_to_login: Volver a iniciar sesión
+        create_account: Crear una cuenta nueva
+      reset_password:
+        page_subtitle: Crea una nueva contraseña para tu cuenta.
+        card_title: Establecer nueva contraseña
+        card_description: Introduce tu nueva contraseña a continuación.
+        new_password_label: Nueva contraseña
+        new_password_placeholder: Introduce tu nueva contraseña (mínimo 12 caracteres)
+        confirm_password_label: Confirmar nueva contraseña
+        confirm_password_placeholder: Confirma tu nueva contraseña
+        submit: Restablecer contraseña
+      verify_account:
+        page_subtitle: Verifica tu cuenta para completar el registro.
+        card_title: Verifica tu cuenta
+        card_description: Haz clic en el botón de abajo para verificar tu correo electrónico
+          y activar tu cuenta.
+        submit: Verificar cuenta
+      verify_account_resend:
+        page_subtitle: Reenviar el correo de verificación de tu cuenta.
+        card_title: Reenviar correo de verificación
+        card_description: Introduce tu correo electrónico y te enviaremos un nuevo
+          enlace de verificación.
+        email_label: Correo electrónico
+        email_placeholder: Introduce tu correo electrónico
+        submit: Reenviar correo de verificación
+        other_options: Otras opciones
+        back_to_login: Volver a iniciar sesión
+        create_account: Crear una cuenta nueva
+      otp_auth:
+        page_title: Introduce tu código de autenticación
+        page_subtitle: Usa el código de tu aplicación autenticadora para continuar.
+        card_title: Código de autenticación
+        card_description: Introduce el código de 6 dígitos para finalizar el inicio
+          de sesión.
+        code_placeholder: Introduce el código de 6 dígitos
+      otp_setup:
+        page_title: Configurar autenticación en dos pasos
+        page_subtitle: Escanea el código QR con tu aplicación autenticadora para activar
+          2FA.
+        card_title: Configuración del autenticador
+        card_description: Usa una app de autenticación como Google Authenticator,
+          Authy o 1Password para escanear el código QR.
+        qr_hint: Escanea este código QR con tu aplicación autenticadora
+        manual_entry_summary: "¿No puedes escanear? Introduce el código manualmente"
+        secret_key: Clave secreta
+        provisioning_url: URL de aprovisionamiento
+        copy_to_clipboard: Copiar al portapapeles
+        current_password_label: Contraseña actual
+        current_password_placeholder: Introduce tu contraseña para confirmar
+        current_password_hint: Necesario para verificar tu identidad
+        auth_code_label: Código de autenticación
+        auth_code_placeholder: Introduce el código de 6 dígitos de la app
+        auth_code_hint: Introduce el código mostrado en tu aplicación autenticadora
+        submit: Activar autenticación en dos pasos
+      otp_disable:
+        page_title: Desactivar aplicación autenticadora
+        page_subtitle: Confirma tu contraseña para desactivar los códigos temporales.
+        card_title: Desactivar códigos de dos factores
+        card_description: Puedes volver a activar tu aplicación autenticadora en cualquier
+          momento.
+        password_label: Contraseña
+        password_placeholder: Introduce tu contraseña
+      two_factor_auth:
+        page_title: Se requiere autenticación adicional
+        page_subtitle: Elige un método disponible para confirmar tu identidad.
+        card_title: Verificar con
+        card_description: Selecciona uno de los métodos de autenticación disponibles.
+      two_factor_manage:
+        page_title_configured: Gestionar autenticación en dos pasos
+        page_title_unconfigured: Configurar autenticación en dos pasos
+        page_subtitle_configured: Gestiona tus métodos de autenticación o añade seguridad
+          adicional.
+        page_subtitle_unconfigured: Elige un método para proteger tu cuenta con autenticación
+          en dos pasos.
+        card_title: Métodos de autenticación
+        card_description: Elige cómo quieres verificar tu identidad al iniciar sesión.
+        status_enabled: Activado
+        methods:
+          passkeys_title: Passkeys
+          passkeys_description: Usa biometría o una llave de seguridad para iniciar
+            sesión sin contraseña.
+          passkeys_setup: Configurar passkey
+          passkeys_manage: Gestionar passkeys
+          totp_title: Aplicación autenticadora (TOTP)
+          totp_description: Usa una aplicación como Google Authenticator o 1Password.
+          totp_setup: Configurar autenticador
+          totp_manage: Desactivar TOTP
+          recovery_codes_title: Códigos de recuperación
+          recovery_codes_description: Códigos de respaldo para cuando pierdas acceso
+            a tu dispositivo.
+          recovery_codes_setup: Ver códigos de recuperación
+      recovery_codes:
+        page_title: Códigos de recuperación
+        page_subtitle: Mantén disponible un acceso de respaldo si tu autenticador
+          o passkey no está disponible.
+        card_title: Ver códigos de recuperación
+        card_description: Confirma tu contraseña para ver o generar códigos de respaldo.
+        safety_title: Acceso de respaldo
+        safety_description: Los códigos de recuperación son claves de respaldo de
+          un solo uso. Guárdalos en un gestor de contraseñas u otro lugar seguro.
+        password_placeholder: Introduce tu contraseña
+      add_recovery_codes:
+        page_title: Códigos de recuperación
+        page_subtitle: Guarda estos códigos antes de cerrar esta página.
+        card_title: Tus códigos de recuperación
+        card_description: Usa un código cuando no puedas acceder a tu método habitual
+          de dos factores.
+        notice_title: Guarda estos códigos en un lugar seguro.
+        notice_description: Cada código funciona una sola vez. Cualquier persona con
+          un código puede completar el inicio de sesión de tu cuenta.
+        copy_to_clipboard: Copiar al portapapeles
+        password_placeholder: Introduce tu contraseña para añadir códigos de reemplazo
+      recovery_auth:
+        card_title: Código de recuperación
+        card_description: Introduce un código de respaldo para terminar de iniciar
+          sesión.
+        info_title: Verificación de respaldo
+        info_description: Usa uno de tus códigos de recuperación guardados. Cada código
+          solo se puede usar una vez.
+      webauthn_auth:
+        page_title: Usa tu passkey
+        page_subtitle: Confirma con la biometría de tu dispositivo o una llave de
+          seguridad.
+        card_title: Autenticación con passkey
+        card_description: Pulsa continuar para usar tu passkey en la verificación.
+      webauthn_setup:
+        page_title: Configurar autenticación con passkey
+        page_subtitle: Añade una passkey para iniciar sesión de forma rápida y segura
+          sin contraseña.
+        card_title: Registrar una passkey
+        card_description: Las passkeys usan la biometría de tu dispositivo o una llave
+          de seguridad para autenticación segura sin contraseña.
+        info_title: "¿Qué son las passkeys?"
+        info_description: Las passkeys son una alternativa segura a las contraseñas.
+          Usan la seguridad integrada de tu dispositivo (como Face ID, Touch ID o
+          Windows Hello) para verificar tu identidad.
+        nickname_label: Nombre de la passkey
+        nickname_placeholder: p. ej., iPhone, portátil del trabajo, YubiKey
+        nickname_hint: Usa un nombre que indique dónde está guardada esta passkey.
+        current_password_label: Contraseña actual
+        current_password_placeholder: Introduce tu contraseña para confirmar
+        current_password_hint: Necesario para verificar tu identidad antes de añadir
+          una passkey
+        submit: Registrar passkey
+      webauthn_remove:
+        page_title: Eliminar passkey
+        page_subtitle: Confirma tu contraseña para eliminar esta passkey.
+        card_title: Eliminar passkey
+        card_description: Esta acción no se puede deshacer. Ya no podrás iniciar sesión
+          con esta passkey.
+        password_label: Contraseña
+        password_placeholder: Introduce tu contraseña
+      change_login:
+        new_login_label: Nuevo inicio de sesión
+        password_label: Contraseña
+      change_password:
+        password_label: Contraseña
+        new_password_label: Nueva contraseña
+        confirm_password_label: Confirmar nueva contraseña
+  admin:
+    labels:
+      membership_roles:
+        owner: Propietario
+        administrator: Administrador
+        member: Miembro
+      relationship_types:
+        parent: Padre o madre
+        carer: Cuidador
+        family_member: Miembro de la familia
+        professional: Profesional
+      access_levels:
+        view: Ver
+        record: Registrar
+        manage: Gestionar
+    invitations:
+      created: Invitación enviada
+      resent: Invitación reenviada
+      cancelled: Invitación cancelada
+      cannot_resend_accepted: Las invitaciones aceptadas no se pueden reenviar
+      cannot_cancel_accepted: Las invitaciones aceptadas no se pueden cancelar
+      resend_failed: No se pudo reenviar esta invitación. Es posible que ya exista
+        una invitación pendiente para este correo electrónico.
+      index:
+        title: Invitaciones
+        subtitle: Invita a nuevos usuarios a unirse a MedTracker.
+        recent: Invitaciones recientes
+        resend: Reenviar
+        cancel: Cancelar
+        form:
+          email: Correo electrónico
+          role: Rol del hogar
+          relationship_type: Relación de la persona dependiente
+          select_relationship_type: Selecciona una relación
+          access_level: Acceso de la persona dependiente
+          select_access_level: Selecciona un nivel de acceso
+          dependents: Dependientes existentes
+          dependents_hint: Selecciona niños existentes o adultos dependientes que
+            este padre, madre o cuidador invitado debe gestionar.
+          submit: Enviar invitación
+        status:
+          accepted: Aceptada
+          expired: Caducada
+          pending: Pendiente
+        metadata:
+          accepted: Aceptada hace %{time}
+          expired: Caducó hace %{time}
+          expires: Caduca dentro de %{time}
+    carer_relationships:
+      created: La relación de cuidador se creó correctamente.
+      deactivated: La relación de cuidador ha sido desactivada.
+      activated: La relación de cuidador ha sido activada.
+      index:
+        title: Relaciones de Cuidador
+        subtitle: Gestionar asignaciones de cuidador-paciente.
+        new_relationship: Nueva Relación
+        table:
+          carer: Cuidador
+          patient: Paciente
+          type: Tipo
+          status: Estado
+          actions: Acciones
+        empty: No se encontraron relaciones de cuidador.
+        active: Activo
+        inactive: Inactivo
+        activate: Activar
+        deactivate: Desactivar
+        deactivate_dialog:
+          title: Desactivar Relación
+          confirm: "¿Está seguro de que desea desactivar la relación entre %{carer}
+            y %{patient}?"
+          cancel: Cancelar
+          submit: Desactivar
+        pagination:
+          showing: Mostrando
+          to: a
+          of: de
+          results: resultados
+          previous: Anterior
+          next: Siguiente
+          label: Paginación
+    ambiguous_person_access_grants:
+      index:
+        title: Concesiones de acceso ambiguas
+        subtitle: Revisa las concesiones activas que necesitan el origen de la relación antes de cambiar delegaciones.
+        table:
+          id: ID de concesión
+          carer: Cuidador
+          patient: Paciente
+          access_level: Nivel de acceso
+          relationship: Relación de concesión
+          status: Relación compatible
+          created_at: Creada
+          expires_at: Caduca
+          revoked_at: Revocada
+        empty: No se encontraron concesiones de acceso ambiguas.
+        active: Activa
+        inactive: Inactiva
+        not_available: No disponible
+        pagination:
+          showing: Mostrando
+          to: a
+          of: de
+          results: resultados
+          previous: Anterior
+          next: Siguiente
+          label: Paginación
+    users:
+      unauthorized: No está autorizado para realizar esta acción.
+      missing_account: El usuario no tiene una cuenta para verificar.
+      index:
+        title: Gestión de usuarios
+        new_user: Nuevo usuario
+        helper: Los roles del hogar se aplican solo a este hogar. Los administradores del sistema pueden gestionar todos los hogares.
+      form:
+        subtitle: Rellena los datos a continuación para crear una nueva cuenta de
+          usuario.
+        create_title: Crear nuevo usuario
+        edit_title: Editar usuario
+        name: Nombre
+        date_of_birth: Fecha de nacimiento
+        locations: Ubicaciones
+        email_address: Dirección de correo electrónico
+        password: Contraseña
+        password_confirmation: Confirmación de contraseña
+        role: Rol del hogar
+        membership_role_helper: Solo los administradores del sistema pueden asignar el rol de Propietario.
+        select_role: Selecciona un rol
+        dependent_relationship_type: Relación de la persona dependiente
+        select_dependent_relationship_type: Selecciona una relación
+        dependent_access_level: Acceso de la persona dependiente
+        select_dependent_access_level: Selecciona un nivel de acceso
+        dependents: Dependientes existentes
+        cancel: Cancelar
+        create_submit: Crear usuario
+        update_submit: Actualizar usuario
+      search:
+        search: Buscar
+        search_placeholder: Buscar por nombre o correo electrónico...
+        role: Rol del hogar
+        all_roles: Todos los roles del hogar
+        status: Estado
+        all: Todos
+        clear: Limpiar
+      table:
+        system_access: Administrador del sistema
+        system_administrator: Administrador del sistema
+        household_user: Usuario del hogar
+        system_administrator_yes: Sí
+        system_administrator_no: No
+        activation: Activación
+        verification: Verificación
+        actions: Acciones
+      pagination:
+        label: Paginación
+        showing: Mostrando
+        to: a
+        of: de
+        results: resultados
+        previous: Anterior
+        next: Siguiente
+      user_row:
+        edit: Editar
+        active: Activo
+        inactive: Inactivo
+        soft_deleted: Eliminado lógicamente
+        deactivate: Desactivar
+        activate: Activar
+        verify: Verificar
+        verified: Verificado
+        deactivate_dialog:
+          title: Desactivar Cuenta de Usuario
+          confirm: "¿Está seguro de que desea desactivar la cuenta de %{name}? Ya
+            no podrán iniciar sesión."
+          cancel: Cancelar
+          submit: Desactivar
+    audit_logs:
+      index:
+        title: Registro de Auditoría
+        subtitle: Historial completo de todos los cambios realizados en MedTracker.
+        filter:
+          record_type: Tipo de Registro
+          all_types: Todos los Tipos
+          event_type: Tipo de Evento
+          all_events: Todos los Eventos
+          filter_button: Filtrar
+          clear_filters: Limpiar filtros
+        table:
+          timestamp: Marca de Tiempo
+          activity: Actividad
+          record_type: Tipo de Registro
+          event: Evento
+          user: Usuario
+          ip_address: Dirección IP
+          actions: Acciones
+          view_details: Ver Detalles
+        empty:
+          no_logs: No se encontraron registros de auditoría
+          adjust_filters: Intente ajustar sus filtros
+        pagination:
+          showing: Mostrando
+          to: a
+          of: de
+          results: resultados
+          previous: Anterior
+          next: Siguiente
+        system: Sistema
+      show:
+        title: Detalles del Registro de Auditoría
+        back: "← Volver a Registros de Auditoría"
+        event_information: Información del Evento
+        event_information_description: Los datos clave registrados para este evento de auditoría
+        event_summary: Resumen del evento
+        timestamp: Marca de Tiempo
+        record_type: Tipo de Registro
+        record_id: ID de Registro
+        event_type: Tipo de Evento
+        user: Usuario
+        ip_address: Dirección IP
+        lookup: Búsqueda
+        result: Resultado
+        matches: Coincidencias
+        matched_guidance: Guía coincidente
+        matched_url: URL coincidente
+        medication: Medicamento
+        patient: Paciente
+        dose: Dosis
+        administered_at: Administrado a las
+        logged_by: Registrado por
+        stock_source: Origen del stock
+        audit_payload: Datos de auditoría
+        audit_payload_description: Los detalles estructurados de búsqueda registrados para este evento
+        na: N/D
+        system: Sistema
+        previous_state: Estado Anterior
+        previous_state_description: El estado del registro antes de este cambio
+        new_state: Nuevo Estado
+        new_state_create: El estado del registro cuando fue creado
+        new_state_update: El estado del registro después de este cambio
+        new_state_other: El estado actual del registro
+        changes: Cambios en los campos
+        field: Campo
+        previous: Valor anterior
+        new: Valor nuevo
+        record: Registro
+        view_title: Detalle de auditoría
+        view_subtitle: Detalles registrados para este evento
+        snapshot: Instantánea del objeto
+        snapshot_description: El estado completo del registro en este momento
+        no_data: No hay datos registrados para esta versión
+    dashboard:
+      title: Panel de administración
+      metrics:
+        total_users: Usuarios totales
+        active_users: Usuarios activos
+        recent_signups: Registros recientes
+        total_people: Personas totales
+        active_schedules: Planes activos
+        no_carers: Sin cuidadores
+      metrics_extra:
+        pending_invitations: Invitaciones pendientes
+        recent_audit_events: Cambios (24 h)
+      status:
+        all_clear: Todo en orden
+        needs_attention:
+          one: "%{count} elemento necesita atención"
+          other: "%{count} elementos necesitan atención"
+      attention:
+        title: Requiere revisión
+        empty_title: No hay trabajo administrativo urgente
+        empty_detail: Todo parece estar correcto ahora mismo.
+        actions:
+          view: Ver
+          review: Revisar
+          open: Abrir
+        no_carers:
+          title: Pacientes sin cuidadores
+          detail:
+            one: "%{count} paciente pendiente de asignación de cuidador"
+            other: "%{count} pacientes pendientes de asignación de cuidador"
+        expired_invitations:
+          title: Invitaciones caducadas
+          detail:
+            one: "%{count} caducada y necesita reenviarse"
+            other: "%{count} caducadas y necesitan reenviarse"
+        dmd_failed:
+          title: Error al importar dm+d
+          detail: Falló hace %{when}
+        dmd_stalled:
+          title: Importación dm+d en curso
+          detail: En ejecución desde hace %{when}
+        dmd_missing:
+          title: NHS dm+d no importado
+          detail: Importa la versión más reciente para mantener actualizados los datos de búsqueda de medicamentos.
+        dmd_stale:
+          title: Datos NHS dm+d desactualizados
+          detail: La última importación completada fue hace %{when}
+      sections:
+        user_access: Acceso de usuarios
+        operations: Operaciones
+      recent_activity:
+        title: Actividad reciente
+        empty: No hay actividad reciente
+        events:
+          create: creó
+          update: actualizó
+          destroy: eliminó
+      quick_actions:
+        title: Acciones rápidas
+        manage_users_title: Gestionar usuarios
+        manage_users_description: Ver y gestionar cuentas de usuario
+        invitations_title: Invitaciones
+        invitations_description: Invitar a nuevos usuarios a unirse
+        household_settings_title: Configuración del hogar
+        household_settings_description: Cambiar el nombre de este hogar
+        manage_people_title: Gestionar personas
+        manage_people_description: Ver y gestionar registros de personas
+        audit_trail_title: Registro de auditoría
+        audit_trail_description: Ver los registros de auditoría del sistema
+        import_dmd_description: Importar datos de medicamentos de NHS dm+d.
+        import_dmd_title: Importar dm+d
+    people:
+      index:
+        title: Pacientes que necesitan cuidador
+        subtitle: Personas sin capacidad que no tienen un cuidador activo asignado
+        empty: Ningún paciente carece de cuidador en este momento
+        table:
+          name: Nombre
+          type: Tipo
+          actions: Acciones
+          view: Ver
+    nhs_dmd_imports:
+      already_running: Ya se está ejecutando una importación de NHS dm+d. Espere a que termine.
+      created: 'Publicación NHS dm+d importada: %{imported} registros importados,
+        %{skipped} omitidos.'
+      form:
+        cancel: Cancelar
+        help: Seleccione el archivo ZIP de lanzamiento de NHS dm+d.
+        release_zip: Archivo ZIP de lanzamiento
+        submit: Iniciar importación
+      latest_run:
+        awaiting_count: Esperando el recuento total de registros...
+        breakdown_heading: Desglose de la importación
+        created: Creado
+        imported: Importado
+        log: Registro de importación
+        no_log: Aún no se ha registrado ningún progreso.
+        percentage: Porcentaje
+        progress: Progreso
+        skipped: Omitido
+        skipped_expired: Omitido (expirado)
+        skipped_heading: Omitidos
+        skipped_invalid: Omitido (inválido)
+        skipped_missing_name: Omitido (nombre faltante)
+        title: Última ejecución
+        unchanged: Sin cambios
+        updated: Actualizado
+      missing_file: Archivo faltante
+      started: Importación iniciada
+      statuses:
+        completed: Completado
+        counting: Contando
+        extracting: Extrayendo
+        failed: Fallido
+        importing: Importando
+        queued: En cola
+      subtitle: Importar datos de medicamentos de NHS dm+d
+      title: Importaciones dm+d
+    settings:
+      access:
+        invite_only:
+          hint: Solo los usuarios invitados pueden registrarse.
+          label: Registro solo por invitación
+        subtitle: Controlar quién puede acceder a la aplicación.
+        title: Acceso
+      env_override:
+        body: La variable de entorno %{var} está establecida en "%{value}". Elimínala
+          para gestionar este ajuste aquí.
+        title: Configuración de entorno
+      save: Guardar configuración
+      subtitle: Configurar los ajustes de la aplicación.
+      title: Configuración
+      updated: Configuración actualizada con éxito.
+    membership_roles:
+      invalid_role: Seleccione un rol de hogar válido.
+      owner_demotion_rejected: Solo los propietarios del hogar pueden cambiar las
+        membresías de propietario.
+      owner_rejected: La promoción a propietario requiere soporte de administración
+        de plataforma.
+      update_submit: Actualizar rol del hogar
+      updated: Rol de membresía actualizado.
+    households:
+      updated: Hogar guardado
+      title: Configuración del hogar
+      subtitle: Cambia el nombre del hogar actual y mantenlo reconocible para todas las personas con acceso.
+      name: Nombre del hogar
+      save: Guardar hogar
+  platform:
+    settings:
+      title: Configuración de plataforma
+      subtitle: Configurar los ajustes alojados de toda la aplicación.
+    support_access_sessions:
+      created: Acceso de soporte abierto.
+      ended: Acceso de soporte finalizado.
+    users:
+      title: Administradores del sistema
+      subtitle: Revisa los roles del hogar y concede acceso de administración para toda la plataforma.
+      settings: Configuración de la plataforma
+      household_role: Rol del hogar
+      system_access: Acceso al sistema
+      system_administrator: Administrador del sistema
+      household_user: Usuario del hogar
+      grant_system_access: Conceder acceso al sistema
+      remove_system_access: Retirar acceso al sistema
+      updated: Acceso al sistema actualizado
+      promote_to_owner: Promover a propietario
+      owner_promoted: Propietario del hogar promovido
+      owner_promotion_rejected: Se rechazó la promoción a propietario del hogar
+  authentication:
+    login_required: Por favor, inicie sesión para continuar
+    privileged_mfa_required:
+      setup: Configure MFA o una llave de acceso antes de continuar.
+      verify: Verifique MFA o una llave de acceso antes de continuar.
+    session_expired: Tu sesión ha caducado. Vuelve a iniciar sesión.
+    two_factor_required: Para mayor seguridad, configure la autenticación de dos factores
+      para su cuenta.
+  invitation_mailer:
+    subject: Invitación para unirse a MedTracker
+    invite:
+      title: Has sido invitado a MedTracker
+      invited_as: Has sido invitado a unirte a MedTracker como %{role}.
+      invited_as_html: Has sido invitado a unirte a MedTracker como %{role}.
+      accept_invitation: Aceptar invitación
+      accept_invitation_label: Acepta tu invitación
+      expiry_notice: Este enlace de invitación caducará después de su uso.
+  locations:
+    created: La ubicación se creó correctamente.
+    updated: La ubicación se actualizó correctamente.
+    deleted: La ubicación se eliminó correctamente.
+    form:
+      description_optional: Descripción (opcional)
+      save: Guardar ubicación
+    index:
+      manage_locations: Gestionar Ubicaciones
+      title: Ubicaciones
+      add_location: Añadir Ubicación
+      members: Miembros
+      medication_count:
+        one: "%{count} medicamento"
+        other: "%{count} medicamentos"
+      view: Ver
+      delete_dialog:
+        title: Eliminar Ubicación
+        confirm: "¿Está seguro de que desea eliminar %{name}? Esto también eliminará
+          todos los medicamentos en esta ubicación."
+        cancel: Cancelar
+        submit: Eliminar
+    show:
+      location: Ubicación
+      edit_location: Editar Ubicación
+      all_locations: Todas las Ubicaciones
+      medications_heading: Medicamentos en esta Ubicación
+      no_medications: Aún no hay medicamentos en esta ubicación.
+      members: Miembros
+      no_members: No hay miembros asignados.
+      details: Detalles
+      no_details: No se ha proporcionado ninguna descripción.
+      stock_warning: Stock bajo
+      add_member:
+        title: Añadir Miembro
+        description: Añadir una persona a %{name}
+        select_person: Seleccionar Persona
+        placeholder: Seleccione una persona...
+        submit: Añadir Miembro
+        all_assigned: Todos los usuarios ya son miembros de esta ubicación.
+      remove_member:
+        title: Eliminar Miembro
+        confirm: "¿Está seguro de que desea eliminar a %{name} de %{location}?"
+        cancel: Cancelar
+        submit: Eliminar
+  location_memberships:
+    create:
+      success: "%{name} añadido a %{location}"
+      failure: Error al añadir miembro
+    destroy:
+      success: "%{name} eliminado de %{location}"
+      failure: Error al eliminar miembro
+  medications:
+    stock:
+      title: "Gestionar existencias"
+      adjust: "Ajustar existencias"
+      new_quantity: "Nueva cantidad de existencias"
+      order: "Registrar pedido"
+      receive: "Marcar recibido"
+      ordered: "Pedido"
+      received: "Recibido"
+      not_ordered: "No hay pedido registrado"
+      edit_option: "Editar existencias de la opción"
+      option_total: "Cada opción tiene sus propias existencias y unidad. Cambie las cantidades en el editor de la opción."
+      scalar_fallback: "Todas las opciones tienen existencias sin seguimiento. Las dosis aún pueden usar las existencias del medicamento principal que se muestran aquí; establezca existencias en una opción para seguirlas por separado."
+      receipt_hint: "Recibir un pedido solo registra su estado. Ajuste las existencias por separado al contar la entrega."
+      date_hint: "Introduzca la fecha prevista como YYYY-MM-DD."
+      original_token: "Abra de nuevo el formulario de edición para cargar su versión original, revise y envíe los cambios."
+      option_readonly: "Las existencias y los umbrales de las opciones se gestionan en el editor de la opción."
+      invalid_quantity: "Introduzca una cantidad no negativa con un máximo de dos decimales."
+      household_inventory: "Inventario del hogar"
+    dose_dialog:
+      administration_title: 'Registrar administración para %{name}'
+      choose_person_source: 'Elija la persona y la fuente.'
+      close: 'Cerrar'
+      source: 'FUENTE DEL MEDICAMENTO'
+      calculated: 'Calculada para la hora seleccionada'
+      dose_calculated: 'Dosis calculada para la hora seleccionada'
+      log: 'Registrar'
+      view_only: 'Solo lectura'
+      no_stock: 'No hay existencias aptas'
+      record: 'Registrar dosis'
+      confirm: 'Confirme la persona, el medicamento, la hora y el origen de las existencias.'
+      review: 'Revise esta dosis.'
+      unavailable: 'Esta fuente no está disponible. Elija otra antes de enviar.'
+      choose_source: 'Elegir fuente'
+      person: 'PERSONA'
+      medication: 'MEDICAMENTO'
+      dose: 'DOSIS'
+      taken_at: 'Tomada a las'
+      stock_source: 'Origen de las existencias'
+      remaining: 'restantes'
+      invalid_time: 'La hora de la toma no es válida.'
+      foreign_source: 'Esta fuente no pertenece a este medicamento.'
+      forbidden: 'No puede registrar esta dosis.'
+      conflict: 'Esta solicitud de dosis entra en conflicto con un registro anterior.'
+    finder:
+      coming_soon: "¡Esta función llegará pronto! Integraremos con una API de base
+        de datos de medicamentos para proporcionar información detallada sobre los
+        medicamentos."
+      nhs_directory: Directorio del NHS
+      title: Buscador de Medicamentos
+      subtitle: Busca en NHS dm+d y fuentes de productos compatibles para añadir
+        medicamentos o reabastecer inventario existente.
+      placeholder: Buscar por nombre, categoría o ingrediente activo...
+      search_button: Buscar
+      idle_heading: "¿Listo para explorar?"
+      idle_text: Introduce arriba el nombre de un medicamento para buscar miles de
+        registros verificados en la base de datos del NHS.
+      loading: Buscando en la base de datos dm+d del NHS...
+      unavailable_title: Búsqueda no disponible
+      unavailable_message: No se pudo conectar con la base de datos de medicamentos.
+        Inténtelo de nuevo.
+      review_guidance_unavailable: La información sobre la revisión de medicamentos
+        no está disponible temporalmente. Es posible que los resultados de búsqueda
+        no incluyan orientación sobre interacciones.
+      no_results_title: No se encontraron medicamentos
+      no_results_message: Pruebe con otros términos o revise la ortografía.
+      results_title: Resultados de la búsqueda
+      source: Fuente
+      barcode: Código de barras
+      dmd_code: código dm+d
+      pil_link: Prospecto para el paciente
+      spc_link: Resumen de las Características del Producto
+      form_filter_label: Forma farmacéutica
+      strength_filter_label: Concentración
+      strength_filter_placeholder: p. ej., 500mg o 250mg/5ml
+      all_forms: Todas las formas
+      forms:
+        tablet: Comprimidos
+        capsule: Cápsulas
+        liquid: Líquidos
+        cream: Cremas y pomadas
+        inhaler: Inhaladores
+        injection: Inyecciones
+        patch: Parches
+        drops: Gotas
+        spray: Sprays
+        powder: Polvos y sobres
+      medicine_details_button: Ver detalles del medicamento
+      details:
+        description: Descripción
+        category: Categoría
+        package: Envase
+        directions: Instrucciones
+        warnings: Advertencias
+      review_prompt_summary:
+        one: "%{count} indicación de revisión de medicamentos (%{risk_level})"
+        other: "%{count} indicaciones de revisión de medicamentos (%{risk_level})"
+      review_prompt_filtered:
+        one: 1 elemento de revisión de menor confianza oculto para reducir el ruido
+        other: "%{count} elementos de revisión de menor confianza ocultos para reducir el ruido"
+      review_prompt_details_button: Ver detalles de la revisión
+      review_prompt_details: Detalles de la revisión
+      review_prompt_risk_level: Nivel de riesgo
+      review_prompt_source: Fuente de la evidencia
+      review_prompt_checked_on: Evidencia consultada el
+      review_prompt_description: Revisar con un profesional
+      related_medications_title: Medicamento relacionado en tu hogar
+      related_medications_message: Ya hay un medicamento relacionado registrado para tu hogar. Consulta su ficha antes de añadir este envase.
+      related_medications_location: Ubicación
+      related_medications_current_supply: Existencias actuales
+      update_stock: Actualizar stock
+      confirm_restock: Confirme que desea añadir %{quantity} unidades a %{medication}.
+      confirm_restock_without_quantity: Confirme cuántas unidades desea añadir a
+        %{medication}.
+      restock_quantity: Cantidad a añadir
+      restock_submit: Confirmar reabastecimiento
+      restock_cancel: Cancelar
+      result_count:
+        one: '%{count} resultado para "%{query}"'
+        other: '%{count} resultados para "%{query}"'
+    created: Medicamento creado correctamente.
+    updated: Medicamento actualizado correctamente.
+    deleted: Medicamento eliminado correctamente.
+    refilled: Inventario reabastecido correctamente.
+    scan_restocked: Stock escaneado añadido correctamente.
+    scan_restock_no_match: Ningún medicamento coincidió con ese código de barras.
+    ordered: Reabastecimiento marcado como solicitado
+    received: Reabastecimiento marcado como recibido
+    refill_button: Reabastecer
+    take_action:
+      loading: Tomando…
+      choose_location: Elegir ubicación
+      choose_location_description: Selecciona de qué ubicación deducir esta dosis.
+      untracked_inventory: Sin seguimiento
+      description: Confirme la persona, medicamento, hora y fuente de inventario.
+      dose: Dosis
+      medication: Medicamento
+      person: Persona
+      stock_source: Fuente de stock
+      taken_at: Tomado a las
+      title: Registrar dosis
+    prior_day_take_action:
+      menu_item: Registrar dosis anterior
+      title: Registrar una dosis anterior
+      description: Registre una dosis tomada hoy más temprano o en un día anterior.
+      taken_at: Fecha y hora
+      submit: Registrar dosis histórica
+    card:
+      more_actions: Más acciones
+    reorder_statuses:
+      ordered: Pedido
+      received: Recibido
+    administration:
+      title: Registrar administración para %{medication}
+      subtitle: Elige la persona y el plan contra el que quieres registrar esta dosis.
+      scheduled: Plan programado
+      as_needed: Medicamento según sea necesario
+      empty_title: No hay planes de medicación activos
+      empty_description: Este elemento de inventario no está vinculado actualmente
+        a un registro sobre el que puedas administrar.
+    refill_modal:
+      refill_inventory: Reabastecer inventario
+      title: Reabastecer %{medication}
+      description: Añadir cantidad de stock y registrar la fecha de reabastecimiento.
+      quantity: Cantidad
+      restock_date: Fecha de reabastecimiento
+    form:
+      new_title: Añadir Nuevo Medicamento
+      new_subtitle: Registrar detalles de inventario e información de dosificación.
+      edit_title: Editar Medicamento
+      edit_subtitle: Actualizar detalles de %{name}.
+    index:
+      your_inventory: Su Inventario
+      stock_remaining: "%{amount} %{unit} restantes"
+      add_for_person: Añadir medicación para alguien
+      title: Medicamentos
+      add_medication: Añadir Medicamento
+      scan_stock: Escanear stock
+      empty_title: No hay medicamentos todavía
+      empty_description: Añade tu primer medicamento para empezar a controlar el inventario
+        y la dosificación.
+      all: Todos
+      view: Ver
+      inventory_level: Nivel de Inventario
+      units:
+        one: unidad
+        other: unidades
+      in_stock: En Stock
+      delete_dialog:
+        title: Eliminar Medicamento
+        confirm: "¿Está seguro de que desea eliminar %{name}? Esta acción no se puede
+          deshacer."
+        submit: Eliminar
+        cancel: Cancelar
+    inventory_scan_modal:
+      title: Escanear stock
+      description: Escanea una caja de medicamento, introduce la cantidad suministrada
+        y añádela al artículo de inventario correspondiente.
+      barcode: Código de barras
+      quantity: Cantidad
+      submit: Añadir stock escaneado
+    show:
+      profile: Perfil del Medicamento
+      edit_details: Editar Detalles
+      inventory: Inventario
+      add_schedule: Programar
+      nhs_guidance_title: Guía del NHS sobre el medicamento
+      nhs_guidance_link: Ver la guía completa del NHS
+      nhs_guidance_source: 'Fuente: %{source}'
+      nhs_guidance_reviewed_on: Última revisión %{date}
+      mark_as_ordered: Pedir
+      mark_as_received: Recibido
+      order_details: Detalles del pedido
+      order_supplier: Proveedor
+      order_quantity: Cantidad
+      expected_arrival: Llegada prevista
+      refill_inventory: Reabastecer
+      complete_refill: Reabastecer
+      overview: Resumen
+      no_description: No se ha proporcionado descripción.
+      safety_warnings: Advertencias de Seguridad
+      inventory_status: Estado del Inventario
+      remaining:
+        one: unidad restante
+        other: unidades restantes
+      supply_level: Nivel de Suministro
+      reorder_at: reordenar en %{threshold}
+      forecast_unavailable: Pronóstico no disponible
+      standard_dosage: Dosis
+      no_dosage: No se ha especificado una dosis estándar.
+      dosages_heading: Dosis
+      no_dosages: Todavía no se han definido dosis.
+      add_dosage: Añadir dosis
+      edit_dosage: Editar
+      children: Niños
+      max_per_cycle: Máx. %{count}/ciclo
+      min_hours_apart: Mín. %{hours}h entre dosis
+      reorder_at_label: Reordenar En
+      log_administration: Registrar Administración
+      low_stock_alert: Alerta de Stock Bajo
+      forecast:
+        low_in_days: El suministro estará bajo en %{days} días
+        empty_in_days: El suministro se agotará en %{days} días
+      location: Ubicación
+      adjust_inventory: Ajustar Inventario
+    adjust_inventory_modal:
+      adjust_inventory: Ajustar Inventario
+      current_quantity: Cantidad actual
+      description: Establezca la cantidad exacta actual, por ejemplo, al incorporar
+        un paquete parcialmente usado.
+      new_quantity: Nueva cantidad
+      reason: Motivo (opcional)
+      reason_placeholder: p. ej. Paquete parcialmente usado
+      submit: Guardar Ajuste
+      title: Ajustar Inventario para %{medication}
+      units: unidades
+    inventory_adjusted: Inventario ajustado con éxito.
+    stock_check:
+      link: Comprobar existencias
+      eyebrow: Inventario del hogar · %{location}
+      title: Administración del inventario
+      mode: Modo de ajuste de existencias
+      description: Prepare un lote de ajustes de suministro y aplíquelos juntos.
+      choose_title: Elegir medicamentos
+      choose_description: Seleccione los medicamentos que ha contado.
+      search_label: Buscar medicamentos
+      search_placeholder: Buscar medicamentos...
+      location_label: Ubicación del inventario
+      all_locations: Todas las ubicaciones
+      selected: "%{count} seleccionados"
+      clear_selection: Borrar selección
+      in_stock: En stock
+      low_stock: Stock bajo
+      out_of_stock: Sin stock
+      batch_title: Lote de ajustes
+      batch_description: Introduzca la cantidad encontrada para cada medicamento seleccionado.
+      medicine: Medicamento
+      current: Actual
+      new_supply: Nuevo suministro restante
+      new_supply_for: Nuevo suministro restante de %{medication}
+      difference: Diferencia
+      actions: Acciones
+      empty_title: Ningún medicamento seleccionado
+      empty_description: Elija medicamentos de la lista para preparar un lote de ajustes.
+      set_to_zero: Establecer en cero
+      remove_from_batch: Quitar %{medication} del lote de ajustes
+      reason: Motivo de los ajustes
+      reasons:
+        house_stock_check: Comprobación de existencias del hogar
+        manual_correction: Corrección manual
+        damaged_or_disposed: Dañado o desechado
+        other: Otro
+      clear_batch: Borrar lote
+      apply:
+        one: Aplicar 1 ajuste
+        other: Aplicar %{count} ajustes
+      medicines: "%{count} medicamentos"
+      net_change: cambio neto total
+      units: unidades
+      increase: Aumento
+      decrease: Disminución
+      no_change: Sin cambios
+      dosage_not_set: Dosis no definida
+      success:
+        one: Se actualizó el suministro restante de %{count} medicamento.
+        other: Se actualizó el suministro restante de %{count} medicamentos.
+  people:
+    created: Persona creada correctamente.
+    updated: Persona actualizada correctamente.
+    deleted: Persona eliminada correctamente.
+    add_medication:
+      title: Add Medication
+      subtitle: How is this medication taken?
+      scheduled_title: Prescribed / Scheduled
+      scheduled_description: Has a specific dosage, start date, and fixed schedule
+      otc_title: As needed
+      otc_description: Taken as needed without a fixed schedule
+    actions:
+      title: Acciones de Cuidado
+      subtitle: Actualiza los planes y horarios de medicamentos.
+    carer_relationships:
+      created: Padre, madre o cuidador asignado.
+      invited: Invitación enviada con este dependiente adjunto.
+      invalid_role: Introduce una dirección de correo de una cuenta adulta de padre
+        o madre.
+      missing_carer: Selecciona un usuario adulto para asignar.
+      new_title: Gestionar padres
+      new_subtitle: Asigna otro padre, madre o cuidador a %{name}.
+      carer: Padre, madre o cuidador
+      select_carer: Selecciona un padre, madre o cuidador...
+      relationship_type: Tipo de relación
+      email: Email del padre o madre
+      email_placeholder: padre@example.com
+      cancel: Cancelar
+      submit: Guardar asignación
+    card:
+      born: 'Nacido:'
+      age: 'Edad:'
+      medications: 'Medicamentos:'
+      no_active_medications: No hay medicamentos activos
+      needs_carer: Necesita cuidador
+      view_medications: Ver medicamentos
+      add_medication: Agregar Medicamento
+      assign_carer: Asignar cuidador
+    show:
+      edit_person: Editar Persona
+      add_medication: Agregar Medicamento
+      manage_parents: Gestionar padres
+      health_events: Eventos de salud
+      back: Volver
+      born: 'Nacido:'
+      age: 'Edad:'
+      schedules_heading: Recetas
+      no_schedules: Sin recetas aún.
+      add_first_schedule: Agregar Primera Receta
+      my_medications_heading: Mis Medicamentos
+      no_medications: Sin medicamentos aún.
+      medications_hint: Agregue aquí medicamentos que se toman según sea necesario.
+      add_first_medication: Agregar Primer Medicamento
+      add_first_any_medication: Añadir medicamento
+      medications_heading: Medicamentos
+      no_any_medications: Todavía no hay medicamentos.
+    form:
+      edit_heading: Editar Persona
+      name: Nombre
+      date_of_birth: Fecha de Nacimiento
+      save: Guardar
+      cancel: Cancelar
+      new_heading: Nueva persona
+      new_subheading: Añadir una nueva persona para llevar el seguimiento de sus medicamentos
+      edit_subheading: Actualizando el perfil de %{name}
+      location_title: Ubicación
+      location_description: Esta persona se creará en %{location}.
+      email: Correo electrónico
+      person_type: Tipo de persona
+      select_person_type: Selecciona el tipo de persona
+      has_capacity: Tiene capacidad para gestionar su propia medicación
+      note: 'Nota:'
+      capacity_hint: Una persona sin capacidad debe tener al menos un cuidador asignado.
+      capacity_hint_assign_carer: Asigna un cuidador antes de quitar la capacidad.
+      create: Crear persona
+      update: Actualizar persona
+    overview:
+      title: Resumen del perfil
+      dob: Fecha de nacimiento
+      assigned_user: Usuario asignado
+      no_user: Ningún usuario asignado
+      capacity: Capacidad
+      has_capacity: Tiene capacidad
+      dependent: Dependiente
+  person_medications:
+    created: Medicamento añadido correctamente.
+    deleted: Medicamento eliminado correctamente.
+    medication_taken: Medicamento tomado correctamente.
+    updated: Medicamento actualizado correctamente.
+    paused: Medicamento pausado.
+    resumed: Medicamento reanudado.
+    invalid_dose_configured: La dosis configurada no es válida. Actualiza la dosis
+      del medicamento antes de tomarlo.
+    modal:
+      new_title: Agregar Medicamento para %{person}
+      subtitle: Agregar un medicamento rutinario o según necesidad
+      edit_title: Editar medicamento para %{person}
+    card:
+      paused: En pausa
+      notes: 'Notas:'
+      timing_restrictions: 'Restricciones de Tiempo:'
+      max_doses:
+        daily:
+          one: Máximo 1 dosis al día
+          other: Máximo %{count} dosis al día
+        weekly:
+          one: Máximo 1 dosis por semana
+          other: Máximo %{count} dosis por semana
+        monthly:
+          one: Máximo 1 dosis al mes
+          other: Máximo %{count} dosis al mes
+      wait_hours:
+        one: Esperar al menos 1 hora entre dosis
+        other: Esperar al menos %{count} horas entre dosis
+      next_dose_available: 'Próxima dosis disponible en:'
+      todays_doses: Dosis de Hoy
+      no_doses_today: No se han tomado dosis hoy
+      take: Tomar
+      give: Dar
+      out_of_stock: Sin Stock
+      move_up_aria_label: Mover medicamento hacia arriba
+      move_down_aria_label: Mover medicamento hacia abajo
+      delete_aria_label: Eliminar medicamento
+      remove: Eliminar
+      remove_medication: Eliminar Medicamento
+      remove_confirmation: "¿Está seguro de que desea eliminar %{medication}? Esta
+        acción no se puede deshacer."
+      invalid_dose: Dosis configurada no válida
+      actions: Acciones
+      move_up: Subir
+      move_down: Bajar
+      pause: Pausar medicamento
+      resume: Reanudar medicamento
+      edit: Editar
+    form:
+      add_medication: Agregar Medicamento
+      add_medication_for: Agregar Medicamento para %{person}
+      validation_errors:
+        one: '1 error impidió que este medicamento se guardara:'
+        other: "%{count} errores impidieron que este medicamento se guardara:"
+      cancel: Cancelar
+      add_medication_button: Agregar Medicamento
+      edit_medication_for: Editar medicamento para %{person}
+      medication: Medicamento
+      select_medication: Selecciona un medicamento
+      search_medications: Buscar medicamentos…
+      no_medications_found: No se encontraron medicamentos.
+      medication_hint: Selecciona un medicamento de la lista
+      dose: Dosis
+      select_dose: Selecciona una dosis
+      select_medication_first: Selecciona primero un medicamento
+      no_doses_available: No hay dosis disponibles
+      dose_hint: Todo medicamento requiere una dosis
+      notes: Notas
+      notes_placeholder: Añade cualquier instrucción especial o nota
+      notes_hint: Añade cualquier instrucción especial o nota
+      max_doses_per_cycle: Máximo de dosis / ciclo
+      max_doses_hint: Máximo de dosis permitidas por ciclo
+      min_hours_apart: Mínimo de horas entre dosis
+      min_hours_hint: Tiempo mínimo entre dosis
+      dose_cycle: Ciclo de dosis
+      default_dose_cycle: Diario
+      dose_cycle_hint: Periodo de reinicio del ciclo
+      administration_kind: Tipo de medicamento
+      administration_kind_hint: Las tareas rutinarias cuentan para hoy; los medicamentos
+        según necesidad solo se muestran cuando se pueden administrar.
+      administration_kinds:
+        routine:
+          label: Rutina
+          description: Una tarea diaria para completar cuando se reinicia el ciclo
+        as_needed:
+          label: Según necesidad
+          description: Solo se usa cuando los síntomas o las indicaciones lo requieren
+      no_options: No hay opciones.
+      optional: Opcional
+      back: Volver
+      next: Siguiente
+      save_changes_button: Guardar cambios
+      workflow:
+        choose_medication_title: Elige un medicamento
+        choose_medication_description: Empieza eligiendo el medicamento que quieres
+          añadir.
+        choose_dose_title: Elige la dosis
+        choose_dose_description: Elige la dosis antes de continuar.
+        add_guidance_title: Añade orientación opcional
+        add_guidance_description: Añade notas o límites de dosis que quieras seguir
+          con este medicamento.
+  medication_assignments:
+    modal:
+      subtitle: Añade detalles del medicamento desde los valores guardados
+    form:
+      review_title: Revisar
+      review_description: Comprueba la dosis seleccionada y los valores del medicamento
+        guardados.
+      frequency: Frecuencia
+      plan_type: Tipo de plan
+      active_dates: Fechas activas
+      not_set: Sin definir
+  schedules:
+    created: Receta creada correctamente.
+    updated: Receta actualizada correctamente.
+    deleted: Receta eliminada correctamente.
+    paused: Receta pausada.
+    resumed: Receta reanudada.
+    medication_taken: Medicamento tomado correctamente.
+    invalid_dose_configured: La dosis configurada no es válida. Actualiza la dosis
+      de la receta antes de tomarla.
+    modal:
+      new_title: Nueva Receta para %{person}
+      edit_title: Editar Receta para %{person}
+      subtitle: Añadir detalles del medicamento y programar
+    card:
+      paused: En pausa
+      invalid_dose: Dosis configurada no válida
+      started: 'Iniciado:'
+      ends: 'Termina:'
+      notes: 'Notas:'
+      next_dose_available: 'Próxima dosis disponible en:'
+      todays_doses: Dosis de Hoy
+      no_doses_today: No se han tomado dosis hoy
+      take: Tomar
+      give: Dar
+      out_of_stock: Sin Stock
+      move_up_aria_label: Mover medicamento hacia arriba
+      move_down_aria_label: Mover medicamento hacia abajo
+      delete_aria_label: Eliminar medicamento
+      ready_now: Listo Ahora
+      waiting: Esperando
+      actions: Acciones
+      edit: Editar
+      delete: Eliminar
+      pause: Pausar receta
+      resume: Reanudar receta
+      delete_dialog:
+        title: Eliminar Receta
+        confirm: "¿Está seguro de que desea eliminar la receta de %{medication}? Esta
+          acción no se puede deshacer."
+        cancel: Cancelar
+        submit: Eliminar
+    index:
+      title: Recetas activas
+      subtitle: Recetas actualmente activas para las personas a las que puedes acceder.
+      start_date: Fecha de inicio
+      empty: No se encontraron recetas activas.
+      ongoing: En curso
+    form:
+      choose_medication_title: Elige un medicamento
+      choose_medication_description: Seleccionar un medicamento abrirá los detalles
+        de la dosis y la receta.
+      medication: Medicamento
+      change: Cambiar
+      select_medication: Selecciona un medicamento
+      dose: Dosis
+      dosage: Dosificación
+      choose_one_dose: Elige una dosis antes de introducir los detalles de la receta.
+      no_dose_options: No hay opciones de dosis disponibles para este medicamento.
+        Añade una dosificación antes de crear una receta.
+      schedule_details_title: Detalles de la receta
+      schedule_details_description: Establece el horario y la guía de seguridad después
+        de elegir una dosis.
+      select_medication_first: Selecciona primero un medicamento
+      select_dosage: Selecciona una dosificación
+      frequency: Frecuencia
+      frequency_placeholder: p. ej., una vez al día, cada 4-6 horas
+      start_date: Fecha de inicio
+      end_date: Fecha de fin
+      select_date: Selecciona una fecha
+      max_doses_per_cycle: Máximo de dosis por ciclo
+      max_doses_hint: Número máximo de dosis permitidas por ciclo
+      max_doses_placeholder: p. ej., 4
+      min_hours_between_doses: Mínimo de horas entre dosis
+      min_hours_hint: Tiempo mínimo requerido entre dosis
+      min_hours_placeholder: p. ej., 6
+      dose_cycle: Ciclo de dosis
+      dose_cycle_hint: 'Cada cuánto se reinicia el ciclo de dosis (predeterminado:
+        diario)'
+      select_cycle: 'Selecciona un ciclo (predeterminado: diario)'
+      notes: Notas
+      notes_hint: Instrucciones o información adicional
+      notes_placeholder: Introduce notas o instrucciones adicionales...
+      cancel: Cancelar
+      add_plan: Añadir plan
+      update_plan: Actualizar plan
+      frequency_once_per_cycle: Una vez %{cycle}
+      frequency_up_to_per_cycle: Hasta %{count} veces %{cycle}
+      frequency_once: Una vez por ciclo
+      frequency_up_to: Hasta %{count} veces por ciclo
+      frequency_at_least_hours: al menos %{hours}h entre dosis
+    frequency_phrase:
+      preview_label: 'Esto significa:'
+      cycles:
+        day: día
+        week: semana
+        month: mes
+      once_per_cycle: Una vez por %{cycle}
+      up_to_per_cycle: Hasta %{count} veces por %{cycle}
+      minimum_spacing: Al menos %{duration} entre dosis
+      with_minimum_spacing: con al menos %{duration} entre dosis
+      durations:
+        hours:
+          one: "%{count} hora"
+          other: "%{count} horas"
+        minutes:
+          one: "%{count} minuto"
+          other: "%{count} minutos"
+    workflow:
+      eyebrow: Flujo de programación
+      title: Crear una receta de medicamentos
+      continue_button: Continuar a los detalles de la receta
+      schedule_type_label: Tipo (OTC o con receta)
+      schedule_type_placeholder: Selecciona el tipo
+      schedule_type_options:
+        otc: OTC
+        prescribed: Con receta
+      person_label: Nombre de la persona
+      person_placeholder: Selecciona una persona
+      medication_label: Medicamento
+      medication_placeholder: Selecciona medicamento
+      frequency_label: Frecuencia
+      frequency_placeholder: p. ej. una vez al día
+      summary_title: Resumen del horario
+      none: "-"
+  sessions:
+    rate_limit: Inténtelo de nuevo más tarde.
+    signed_in: Sesión iniciada correctamente.
+    invalid_credentials: Pruebe con otra dirección de correo electrónico o contraseña.
+    signed_out: Sesión cerrada correctamente.
+    login:
+      tagline: Portal de Bienestar
+      heading: Bienvenido de nuevo
+      subheading: Inicie sesión en su cuenta para continuar
+      email_label: Dirección de correo electrónico
+      email_placeholder: su@correo.com
+      password_label: Contraseña
+      password_placeholder: Introduzca su contraseña
+      forgot_password: "¿Olvidó?"
+      remember_me: Recordarme
+      submit: Iniciar Sesión en el Panel
+      medication_illustration_label: Ilustración de frasco de medicamento
+      other_sign_in_options: Otras opciones de inicio de sesión
+      benefits:
+        stay_on_track:
+          title: Manténgase al día
+          detail: No vuelva a olvidar una dosis
+        schedule:
+          title: Su horario
+          detail: Todos sus medicamentos en un solo lugar
+        progress:
+          title: Siga su progreso
+          detail: Mejores hábitos, mejor salud
+        insights:
+          title: Información útil
+          detail: Comprenda su salud
+      passkey_label: Passkey
+      passkey_helper: Usa Face ID, Touch ID, Windows Hello o una llave de seguridad.
+      passkey_cta: Continuar con Passkey
+      passkey_not_supported: Las passkeys no son compatibles con este navegador.
+      passkey_cancelled: Se canceló el inicio de sesión con passkey. Inténtelo de
+        nuevo o use su contraseña.
+      passkey_error: No pudimos iniciar sesión con esa passkey. Inténtelo de nuevo
+        o use su contraseña.
+      oauth_continue: Continuar con %{provider}
+      oauth_sso: Iniciar sesión con %{provider} (SSO)
+      oauth_divider: o
+      invite_only_oidc_notice: El inicio de sesión único está reservado para cuentas
+        invitadas.
+      invite_only_oidc_cta: Continuar con %{provider}
+      need_account: "¿Necesita una cuenta?"
+      create_account: Crear una
+      resend_verification: Reenviar correo de verificación
+  take_medications:
+    cooldown: Esta dosis no está disponible en este momento.
+    out_of_stock: 'No se puede tomar el medicamento: sin existencias'
+    success: Toma de medicamento registrada correctamente.
+    failure: Error al registrar la toma de medicamento.
+    json_success: Toma de medicamento registrada correctamente.
+    invalid_taken_at: Elige una hora de dosis válida.
+    future_taken_at: La hora de la dosis no puede ser más de una hora en el futuro.
+    paused: 'No se puede tomar el medicamento: está en pausa'
+    overlapping_prescription_restriction: 'No se puede tomar el medicamento: otra receta activa para este medicamento establece un límite de tiempo más estricto.'
+  profiles:
+    mobile_shortcuts:
+      title: "Accesos directos de la barra inferior"
+      description: "Elige de uno a tres accesos directos en el orden en que quieras que aparezcan."
+      slot: "Acceso directo %{number}"
+      none: "Sin acceso directo"
+      save: "Guardar accesos directos"
+      invalid: "Elige de uno a tres accesos directos diferentes."
+    common:
+      "on": Activado
+      "off": Desactivado
+    sections:
+      profile:
+        title: Perfil
+      security:
+        title: Seguridad
+        password_updated: Contraseña actualizada
+        two_factor_on: "2FA: Activado"
+        two_factor_off: "2FA: No activado"
+        passkeys: "%{count} claves de acceso"
+      notifications:
+        title: Notificaciones
+        reminders: "Recordatorios: %{state}"
+        categories: "%{count} categorías activadas"
+      advanced:
+        title: Avanzado
+        tokens: "%{count} tokens API activos"
+        exports: Exportación de datos disponible
+        data_backup: Copia de seguridad de datos
+        data_backup_description: Descarga una copia de tus registros de medicación y salud.
+        experiments: Experimentos
+        experiments_description: Prueba nuevas opciones de interfaz antes de su lanzamiento.
+    updated: Perfil actualizado correctamente.
+    email_change_requires_verification: Usa el flujo verificado de cambio de correo
+      para actualizar tu correo de inicio de sesión.
+    no_changes: No hay cambios que guardar.
+    profile_update_failed: 'Error al actualizar el perfil: %{errors}'
+    experiments:
+      dashboard:
+        title: Diseño del panel
+        options:
+          current:
+            label: Panel actual
+            description: Mantiene el panel conocido y sus secciones actuales.
+          time_first:
+            label: Primero el tiempo
+            description: Prioriza la siguiente dosis y una cronología de cuidados.
+          family_lanes:
+            label: Carriles familiares
+            description: Organiza el día por persona, con una vista horaria opcional.
+          calm_focus:
+            label: Enfoque tranquilo
+            description: Centra una única acción segura y mantiene el resto en calma.
+    api_tokens:
+      title: Tokens de API
+      description: Crea tokens revocables para scripts e integraciones de confianza.
+      created_title: Copia este token ahora. No volverá a mostrarse.
+      name_label: Nombre del token
+      create: Crear token
+      empty: Aún no hay tokens de API.
+      last_used_at: 'Último uso: %{time}'
+      expires_at: 'Caduca: %{time}'
+      revoke: Revocar
+      revoked: Token de API revocado.
+      locked: Tu cuenta está bloqueada. Los tokens de API no se pueden modificar ahora.
+      mfa_required: Completa la autenticación de dos factores antes de crear un token de API.
+    appearance:
+      title: Apariencia
+      description: Elige cómo se ve MedTracker en pantallas autenticadas y públicas.
+      mode_label: Modo
+      modes:
+        light: Claro
+        dark: Oscuro
+        system: Sistema
+    theme_picker:
+      title: Paleta de colores
+      description: Combina el modo de apariencia con una paleta que se adapte a tu
+        preferencia.
+      themes:
+        default: Estándar
+        serene_sage: Salvia Serena
+        modern_clinical: Clínico Moderno
+        warm_earth: Tierra Cálida
+        deep_lavender: Lavanda Profunda
+        forest_care: Cuidado del Bosque
+        sunset_support: Apoyo al Atardecer
+        tech_indigo: Índigo Tecnológico
+        soft_rose: Rosa Suave
+        minty_fresh: Menta Fresca
+    close_account:
+      title: Cerrar Cuenta
+      description: Eliminar permanentemente su cuenta y todos los datos asociados
+      dialog_title: "¿Está completamente seguro?"
+      dialog_description: Esta acción no se puede deshacer. Esto eliminará permanentemente
+        su cuenta y eliminará todos sus datos de nuestros servidores.
+      cancel_button: Cancelar
+      confirm_button: Sí, eliminar mi cuenta
+    password_sheet:
+      change_button: Cambiar
+      title: Cambiar contraseña
+      description: Actualiza tu contraseña para mantener segura tu cuenta.
+      current_password_label: Contraseña actual
+      current_password_placeholder: Introduce la contraseña actual
+      new_password_label: Nueva contraseña
+      new_password_placeholder: Introduce la nueva contraseña
+      confirm_password_label: Confirmar nueva contraseña
+      confirm_password_placeholder: Confirma la nueva contraseña
+      cancel: Cancelar
+      submit: Actualizar contraseña
+    show:
+      eyebrow: Configuración del perfil
+      title: Mi perfil
+      description: Organiza tu cuenta, las preferencias de seguridad y el ritmo de
+        notificaciones desde un solo panel.
+      not_set: No configurado
+      stats:
+        profile_name: Nombre
+        sign_in_email: Email
+      personal_information:
+        title: Información personal
+        description: Tu información básica de perfil
+    avatar:
+      title: Foto de perfil
+      description: Sube un avatar para los lugares donde aparece tu nombre.
+      supported_formats: PNG, JPEG o WebP hasta 5 MB.
+      upload_label: Subir un avatar personalizado
+      upload: Subir avatar
+      remove: Eliminar avatar
+      removed: Foto de perfil eliminada.
+      gravatar_label: Usar Gravatar
+      gravatar_description: Muestra tu Gravatar cuando no haya un avatar personalizado subido.
+      save_gravatar: Guardar elección de Gravatar
+    time_zone:
+      title: Zona horaria
+      description: Elige la zona horaria de los recordatorios y las dosis registradas.
+      save: Guardar zona horaria
+    account_security:
+      title: Seguridad de la cuenta
+      description: Gestiona tus credenciales de acceso y ajustes de seguridad
+      change_email_title: Cambiar dirección de correo
+      change_email_description: Actualiza la dirección de correo que usas para iniciar
+        sesión
+      change_password_title: Cambiar contraseña
+      change_password_description: Actualiza tu contraseña para mantener segura tu
+        cuenta
+      change_button: Cambiar
+    notifications:
+      title: Notificaciones
+      description: Gestiona los recordatorios de medicamentos y las notificaciones
+        del navegador
+      browser_title: Notificaciones del navegador
+      browser_description: Permite que este dispositivo reciba recordatorios de medicamentos
+      checking_status: Comprobando el estado de las notificaciones...
+      enable: Activar
+      disable: Desactivar
+      send_test_notification: Enviar notificación de prueba
+      save: Guardar
+      enable_reminders: Activar recordatorios
+      enable_reminders_description: Enviar notificaciones en los horarios de abajo
+      reminder_times_title: Horarios de recordatorio
+      reminder_times_description: Configura cuándo quieres recibir recordatorios cada
+        día
+      categories_description: Elige qué tipos de notificaciones quieres recibir
+      managed_people:
+        title: Personas que gestionas
+        description: Las alertas de dosis omitidas para niños y adultos dependientes
+          se incluyen automáticamente. Elige a los adultos que también quieras seguir.
+        automatic: Incluido automáticamente
+        notify_me: Notificarme
+        toggle_label: Notificarme cuando %{name} omita una dosis
+      periods:
+        morning: Mañana
+        afternoon: Tarde
+        evening: Atardecer
+        night: Noche
+    version_info:
+      title: Información del sistema
+      description: Versión de la aplicación y recursos
+      app_version: Versión de la aplicación
+      worktree: Árbol de trabajo
+      commit: Commit
+      release_notes: Notas de la versión
+      documentation: Documentación
+      view_docs: Ver documentación
+  users:
+    welcome: "¡Bienvenido! Su cuenta ha sido creada."
+    created: Usuario creado correctamente.
+    updated: Usuario actualizado correctamente.
+    deactivated: Cuenta de usuario desactivada.
+    activated: Cuenta de usuario activada.
+    cannot_deactivate_self: No puede desactivar su propia cuenta.
+    owner_deactivation_rejected: Las cuentas de propietario solo pueden ser desactivadas
+      por otro propietario del hogar mientras quede otro usuario propietario activo.
+    verified: La cuenta del usuario ha sido verificada manualmente.
+  layouts:
+    mailer:
+      footer_notice: Este correo electrónico fue enviado porque tienes una cuenta
+        con nosotros.
+    navigation:
+      skip_to_content: Saltar al contenido
+      brand: MedTracker
+      login: Iniciar sesión
+    desktop_nav:
+      medications: Medicamentos
+      people: Personas
+      medication_finder: Buscador de Medicamentos
+    profile_menu:
+      my_account: Mi Cuenta
+      dashboard: Panel
+      profile: Perfil
+      administration: Administración
+      logout: Cerrar sesión
+      account: Cuenta
+    mobile_menu:
+      brand: MedTracker
+      open_menu: Abrir menú
+      close_menu: Cerrar menú
+      medications: Medicamentos
+      people: Personas
+      medication_finder: Buscador de Medicamentos
+      profile: Perfil
+      administration: Administración
+      logout: Cerrar sesión
+    sidebar:
+      dashboard: Panel
+      inventory: Inventario
+      locations: Ubicaciones
+      finder: Buscador de Medicamentos
+      people: Personas
+      medicine_reviews: Revisiones de medicamentos
+      reports: Informes
+      administration: Administración
+      sign_out: Cerrar sesión
+      user_fallback: Usuario
+    mobile_rail:
+      primary_navigation: Navegación principal
+      home: Inicio
+      inventory: Inventario
+      finder: Buscador de Medicamentos
+  medication_reviews:
+    eyebrow: Registro de revisión profesional
+    title: Revisiones de medicamentos
+    subtitle: Evidencia pública de etiquetas de medicamentos organizada para su próxima conversación con un profesional.
+    boundary: Esta evidencia apoya una conversación con un profesional. No sustituye el juicio clínico ni indica que deba cambiar un medicamento.
+    export_pdf: Exportar PDF de revisión
+    export_title: Exportar revisión de medicamentos
+    export_description: Descargue un PDF para llevar a una conversación con un profesional.
+    export_scope: El PDF contiene el alcance visible predeterminado de la revisión de medicamentos.
+    hidden_count:
+      one: 1 elemento de revisión de menor confianza oculto para reducir el ruido
+      other: "%{count} elementos de revisión de menor confianza ocultos para reducir el ruido"
+    included_count:
+      one: 1 elemento de revisión de menor confianza incluido
+      other: "%{count} elementos de revisión de menor confianza incluidos"
+    show_hidden: Mostrar elementos filtrados
+    hide_hidden: Ocultar elementos filtrados
+    empty_title: No hay revisiones de medicamentos que mostrar
+    empty_description: Ningún par de evidencias revisado coincide con los medicamentos activos de los registros del hogar seleccionado.
+    review_reason: La evidencia pública de las etiquetas sugiere que puede ser útil revisar esta combinación con un farmacéutico, enfermero, médico de cabecera o prescriptor.
+    view_evidence: Ver evidencia
+    summaries:
+      contraindicated: La etiqueta del medicamento recomienda extremar la precaución al tomar estos medicamentos juntos.
+      avoid: La etiqueta del medicamento recomienda extremar la precaución al tomar estos medicamentos juntos.
+      monitor_or_adjust: La etiqueta del medicamento recomienda supervisar o ajustar el tratamiento al tomar estos medicamentos juntos.
+      possible_or_caution: La etiqueta del medicamento describe un posible motivo de preocupación al tomar estos medicamentos juntos.
+      unclassified: La etiqueta del medicamento menciona estos medicamentos juntos, pero no proporciona una indicación clara.
+    filters:
+      priority: Prioridad
+      include_filtered: Incluir elementos filtrados
+      apply: Aplicar filtros
+      review_statuses:
+        needs_review: Pendientes de revisión
+        reviewed: Revisados
+        all: Todos
+      priorities:
+        all: Todas
+        discuss_soon: Consultar pronto
+        ask_when_convenient: Consultar cuando sea conveniente
+        low_confidence: Confianza baja
+      short_priorities:
+        all: Todas
+        discuss_soon: Pronto
+        ask_when_convenient: Cuando convenga
+        low_confidence: Confianza baja
+    evidence_excerpt: Evidencia pública de la etiqueta
+    checked_on: Evidencia consultada el %{date}
+    confidence: Confianza de coincidencia %{value}
+    match_explanation: Por qué MedTracker incluyó esto
+    matched_term: "Término coincidente: %{term} (coincidencia de %{type})"
+    source_instruction: "Categoría de instrucción de la fuente: %{value}"
+    label_version: Versión de etiqueta %{version}, efectiva %{date}
+    match_types:
+      ingredient: ingrediente
+      class: clase pública
+      curated: curada
+      legacy: heredada
+    source_instructions:
+      contraindicated: La etiqueta dice contraindicado
+      avoid: La etiqueta dice evitar
+      monitor_or_adjust: La etiqueta dice supervisar o ajustar
+      possible_or_caution: La etiqueta describe una posible preocupación o precaución
+      unclassified: Sin categoría de instrucción asignada
+    recorded_outcome: Esta combinación se revisó con %{name} (%{role}) el %{date}.
+    updated: Registro de revisión actualizado.
+    risk_levels:
+      low: Riesgo bajo en la fuente
+      moderate: Riesgo moderado en la fuente
+      high: Riesgo alto en la fuente
+      unknown: Desconocido - sin clasificar
+    confidence_levels:
+      low: Baja
+      moderate: Moderada
+      high: Alta
+      unknown: Desconocida - sin clasificar
+    statuses:
+      needs_review: Pendiente de revisión
+      reviewed_with_practitioner: Revisado con un profesional
+      expected_prescribed_combination: Esperado según la prescripción
+      not_relevant: No relevante
+      hidden_low_signal: Elemento filtrado de menor confianza
+    form:
+      title: Registrar revisión profesional
+      status: Resultado
+      practitioner_role: Función del profesional
+      select_role: Seleccionar función
+      practitioner_name: Nombre del profesional
+      reviewed_on: Fecha de revisión
+      review_note: Nota de revisión
+      save: Guardar registro de revisión
+  forms:
+    locations:
+      new_title: Nueva ubicación
+      name_placeholder: p. ej. Casa, Escuela, Casa de la Abuela
+      description_placeholder: Describe esta ubicación...
+    people:
+      name_placeholder: e.g., Jane Doe
+      email_placeholder: e.g., jane@example.com
+    medications:
+      inventory_management: Gestión de Inventario
+      dosage_options_read_only: Este medicamento utiliza opciones de dosis. Permanecen sin cambios al guardar estos detalles.
+      name: Nombre
+      name_placeholder: p. ej., Paracetamol
+      friendly_name: Nombre para mostrar
+      friendly_name_placeholder: Déjalo en blanco para usar el nombre completo del
+        medicamento
+      friendly_name_hint: Se usa en listas, horarios e historial. El nombre completo
+        importado se conserva como referencia.
+      description: Descripción
+      description_placeholder: "¿Para qué se utiliza este medicamento?"
+      standard_dosage: Dosis
+      unit: Unidad
+      select_unit: Seleccionar unidad
+      current_supply: Suministro restante
+      reorder_threshold: Umbral de Reorden
+      warnings: Advertencias
+      warnings_placeholder: "¿Algún efecto secundario o advertencia de uso?"
+      save_medication: Guardar Medicamento
+      saving: Guardando...
+      back_to_medications: Volver a Medicamentos
+      back: Volver
+      select_location: Seleccione una ubicación...
+      select_category: Seleccione una categoría (opcional)...
+      filter_categories: Escriba para filtrar categorías...
+      no_categories_found: No se encontraron categorías.
+      standard_dosage_placeholder: e.g., 500
+      current_supply_placeholder: e.g., 30
+      reorder_threshold_placeholder: e.g., 5
+      wizard:
+        progress_label: Progreso de configuración del medicamento
+        continue: Continuar
+        steps:
+          details: Detalles
+          dose: Dosis
+          supply: Suministro
+          warnings: Advertencias
+        details:
+          title: Detalles del medicamento
+          description: Cuéntanos sobre este medicamento.
+        dose:
+          title: Dosis y plan
+          description: Crea el primer plan de medicación eligiendo quién lo toma,
+            la dosis y el ritmo.
+          person_title: "¿Quién tomará esto?"
+          person_description: Selecciona la persona o dependiente para este plan.
+          person_types:
+            adult: Adulto
+            minor: Menor
+            dependent_adult: Adulto dependiente
+          amount: Cantidad
+          unit: Unidad
+          schedule_type_title: "¿Con qué frecuencia se toma?"
+          schedule_types:
+            multiple_daily:
+              title: Varias al día
+              description: Varias dosis planificadas cada día
+            daily:
+              title: Diaria
+              description: Una dosis a la misma hora
+            weekly:
+              title: Semanal
+              description: Una dosis semanal repetida
+            specific_dates:
+              title: Fechas concretas
+              description: Solo en fechas seleccionadas
+            prn:
+              title: Según necesidad
+              description: PRN con límites de seguridad
+            tapering:
+              title: Reducción gradual
+              description: Un plan de dosis cambiante
+          doses_per_day: Dosis por día
+          hours_apart: Horas de separación
+          first_dose: Primera dosis
+          second_dose: Segunda dosis
+          dose_time: Hora de la dosis
+          weekly_day: Día
+          specific_dates: Fechas
+          specific_date_to_add: Fecha para añadir
+          add_specific_date: Añadir fecha
+          no_specific_dates: Aún no hay fechas seleccionadas
+          specific_dates_placeholder: 2026-04-24, 2026-04-25
+          max_daily_doses: Dosis máximas diarias
+          min_hours_between: Horas mínimas entre dosis
+          tapering_plan: Plan de reducción gradual
+          tapering_placeholder: Describe los cambios de dosis con el tiempo
+          start_date: Fecha de inicio
+          end_date: Fecha de fin
+          review_title: Revisión en lenguaje claro
+          review_placeholder: Revisa el plan de medicación antes de continuar.
+          review_button: Revisar plan de medicación
+          review_required: Revisa el plan de medicación antes de continuar.
+        supply:
+          title: Configuración de suministro
+          description: Controla cuánto hay en el envase y cuándo volver a pedir.
+      validation_errors:
+        one: '1 error impidió que este medicamento se guardara:'
+        other: "%{count} errores impidieron que este medicamento se guardara:"
+      starting_supply: Cantidad inicial
+  dashboard:
+    outcomes:
+      not_taken: No tomada
+      overdue: Atrasada
+      reasons:
+        refused: Rechazada
+        unwell: Malestar
+        asleep: Dormido
+        medicine_unavailable: Medicamento no disponible
+        clinician_advice: Indicación médica
+        other: Otro
+    title: Panel Familiar
+    greeting_morning: Buenos días, %{name}
+    greeting_afternoon: Buenas tardes, %{name}
+    greeting_evening: Buenas noches, %{name}
+    subtitle: El horario de medicamentos de su familia para hoy.
+    person_selector:
+      label: Persona del panel
+      all_family: Toda la Familia
+      all_family_initials: TF
+      change_person: Cambiar de persona
+      more_people: Más personas
+    as_needed:
+      title: Tomar según sea necesario
+    todays_schedule: Horario de Hoy
+    variants:
+      due_at: Hora prevista
+      empty_title: Todo despejado por ahora
+      no_more_tasks: No hay más tareas hoy
+      stock_to_review: Stock para revisar
+      stock_summary: "%{medication} • quedan %{count}"
+      review_stock: Revisar stock
+      periods:
+        morning: Mañana
+        afternoon: Tarde
+        evening: Noche
+        anytime: En cualquier momento
+      time_first:
+        next_up: A continuación
+        timeline: Cronología de cuidados de hoy
+        later_today: Más tarde hoy
+      family_lanes:
+        title: Cuidados de hoy
+        grouping_label: Agrupar las tareas del panel
+        by_person: Por persona
+        by_time: Por hora
+        task_count:
+          one: 1 tarea hoy
+          other: "%{count} tareas hoy"
+        all_caught_up: Todo al día durante el resto de la jornada.
+      calm_focus:
+        needs_attention: Necesita atención ahora
+        after_this: Después de esto
+        review_and_record: Revisar y registrar
+        confirmation_hint: Confirma la persona, el medicamento, la hora y el stock antes de registrar.
+        completed_today: Completado hoy
+        completed_count:
+          one: 1 dosis
+          other: "%{count} dosis"
+        none_completed: Aún no se han registrado dosis hoy.
+    no_active_schedules: No se encontraron prescripciones activas
+    add_schedules_hint: Agregue prescripciones para verlas aquí
+    dose_taken_at: "%{person} • Tomado a las %{time}"
+    overdue_alert: 'Atrasado: %{medication} para %{person} (programado a las %{time})'
+    out_of_stock_alert: 'Sin stock: %{medication}. No se pueden registrar dosis para
+      %{person}.'
+    empty_state: No hay medicamentos programados para hoy.
+    dose_progress:
+      complete: Completo hoy
+      aria_given:
+        zero: No se han administrado dosis hoy
+        one: 1 dosis administrada hoy
+        other: "%{count} dosis administradas hoy"
+      aria_slots:
+        one: 1 espacio de dosis hoy
+        other: "%{count} espacios de dosis hoy"
+      remaining:
+        one: 1 disponible hoy
+        other: "%{count} disponibles hoy"
+    dose_history:
+      title: Dosis anteriores de hoy
+    routine:
+      anytime: En cualquier momento
+      done_short: Hecho
+      done_today: Tareas rutinarias completadas hoy
+      empty: No hay tareas rutinarias pendientes hoy
+      left_today:
+        one: 1 tarea rutinaria pendiente hoy
+        other: "%{count} tareas rutinarias pendientes hoy"
+    insights:
+      title: Información inteligente
+      view_report: Ver informe completo
+    inventory:
+      title: Inventario de stock
+      left: "%{count} restantes"
+      order_refills: Pedir reabastecimientos
+    stats:
+      next_due: Próxima dosis
+      due_now: Ahora
+      tasks_left: Tareas restantes
+      now: Ahora
+      people: Personas
+      active_schedules: Prescripciones Activas
+      no_upcoming_doses: Ninguna hoy
+      next_dose: Próxima dosis
+      due_today: Hoy
+    statuses:
+      taken: Tomado
+      upcoming: Próximo
+      available_now: Disponible ahora
+      available_at: Disponible a las %{time}
+      cooldown: Esperar
+      missed: Perdido
+      max_reached: Máximo diario alcanzado
+      out_of_stock: Sin Stock
+    table:
+      person: Persona
+      medication: Medicamento
+      dosage: Dosis
+      quantity: Cantidad
+      frequency: Frecuencia
+      end_date: Fecha de Fin
+      actions: Acciones
+    delete_confirmation:
+      cancel: Cancelar
+    quick_actions:
+      add_medication: Agregar Medicamento
+      add_person: Agregar Persona
+  barcode_scanner:
+    title: Escanear código de barras
+    start: Iniciar escáner
+    stop: Detener escáner
+    manual:
+      label: O introduce el código de barras manualmente
+      placeholder: p. ej. 5000158100138
+      submit: Enviar
+    status:
+      requesting: Solicitando acceso a la cámara…
+      scanning: Apunta la cámara a un código de barras
+      decoded: "¡Código de barras escaneado correctamente!"
+      denied: Se denegó el acceso a la cámara. Usa la entrada manual abajo.
+      unavailable: No se encontró ninguna cámara. Usa la entrada manual abajo.
+      error: Error del escáner. Usa la entrada manual abajo.
+  dosages:
+    management:
+      daily: 'Diario'
+      weekly: 'Semanal'
+      monthly: 'Mensual'
+      untracked: 'Sin seguimiento'
+      stock_hint: 'Deje las existencias en blanco para un suministro sin seguimiento; cero significa que las existencias controladas están vacías. Un umbral en blanco sigue sin establecerse.'
+      confirm_mode: 'Entiendo que añadir la primera opción borra la dosis única del medicamento. Si esta opción controla existencias, sus cantidades sustituyen los totales del medicamento.'
+      confirm_required: 'Confirme el cambio a opciones de dosis antes de guardar.'
+      conflict: 'Esta dosis ha cambiado. Vuelva a cargar el formulario y revise los cambios antes de guardar de nuevo.'
+      retry_hint: 'Si no se puede guardar, revise la lista de dosis antes de volver a intentarlo. Repetir una solicitud de adición puede crear otra opción.'
+    created: La dosis se añadió correctamente.
+    updated: La dosis se actualizó correctamente.
+    deleted: La dosis se eliminó correctamente.
+    form:
+      amount: Cantidad
+      unit: Unidad
+      unit_placeholder: mg, tableta, ml…
+      frequency_label: Etiqueta de frecuencia
+      frequency_placeholder: Una vez al día
+      description: Descripción / notas
+      description_placeholder: Opcional
+      scheduling_defaults: Valores predeterminados de programación (se completan automáticamente
+        al crear una receta)
+      max_doses_per_cycle: Máximo de dosis / ciclo
+      max_doses_placeholder: p. ej., 4
+      min_hours_apart: Mínimo de horas entre dosis
+      min_hours_placeholder: p. ej., 6
+      dose_cycle: Ciclo de dosis
+      default_for_adults: Predeterminado para adultos
+      default_for_children: Predeterminado para niños / dependientes
+      cancel: Cancelar
+      add: Añadir dosis
+      update: Actualizar dosis
+  home:
+    title: MedTracker
+    description: Bienvenido a tu aplicación personal de seguimiento de medicamentos.
+    cards:
+      medications:
+        title: Medicamentos
+        description: Gestiona tu inventario de medicamentos, controla los niveles
+          de stock y consulta la información de dosificación.
+      people:
+        title: Personas
+        description: Gestiona personas y sus recetas, y controla los horarios de medicamentos.
+  invitations:
+    accept:
+      title: Completa tu cuenta
+      description: Rellena tus datos para aceptar la invitación.
+      welcome: "¡Bienvenido! Has sido invitado como %{role}."
+      form:
+        name: Nombre
+        name_placeholder: Introduce tu nombre completo
+        date_of_birth: Fecha de nacimiento
+        email: Correo electrónico
+        password: Contraseña
+        password_confirmation: Confirmar contraseña
+        submit: Crear cuenta
+  medication_workflow:
+    person_selection:
+      title: Añadir medicamento
+      subtitle: "¿Para quién es este medicamento?"
+      search_placeholder: Buscar personas…
+      no_results: No se encontraron personas.
+    back: "← Volver"
+  notification_preferences:
+    updated: La configuración de notificaciones se guardó.
+    update_failed: No se pudo guardar la configuración de notificaciones.
+  notification_settings:
+    categories:
+      title: Categorías de notificaciones
+      dose_due_enabled:
+        title: Recordatorios de dosis programadas
+        description: Recibe una notificación cuando sea la hora de una dosis.
+      missed_dose_enabled:
+        title: Recordatorios de dosis omitidas
+        description: Recibe una notificación cuando una dosis esté atrasada.
+      low_stock_enabled:
+        title: Avisos de bajo stock
+        description: Recibe una notificación cuando el nivel de medicamento sea bajo.
+      private_text_enabled:
+        title: Contenido privado en notificaciones
+        description: Oculta información sensible como nombres de medicamentos en las notificaciones.
+  reports:
+    browser:
+      title: Informes
+      intro: Descargue un PDF del historial de salud de una persona en un
+        intervalo de fechas elegido.
+      person_label: Persona
+      person_prompt: Seleccione una persona
+      start_date_label: Fecha de inicio
+      end_date_label: Fecha de fin
+      include_medication_takes: Incluir el registro de administración de
+        medicamentos
+      download: Descargar PDF
+      no_people: No gestiona a nadie cuyo historial de salud se pueda descargar.
+      errors:
+        person_required: Seleccione una persona para el informe.
+        start_date_invalid: Introduzca una fecha de inicio en formato AAAA-MM-DD.
+        end_date_invalid: Introduzca una fecha de fin en formato AAAA-MM-DD.
+        date_order: La fecha de fin debe ser igual o posterior a la de inicio.
+        date_range: El intervalo de fechas del informe no puede superar los 366
+          días.
+        takes_invalid: La opción del registro de administración de medicamentos
+          no es válida.
+        forbidden: No tiene permiso para descargar este informe.
+        not_found: No se ha encontrado la persona ni el hogar.
+        unavailable: El servicio de informes no está disponible temporalmente.
+          Inténtelo más tarde.
+        failed: No se ha podido generar el informe. Inténtelo de nuevo.
+    invalid_date: Se ha proporcionado un formato de fecha no válido.
+    end_before_start: La fecha de finalización debe ser igual o posterior a la fecha de inicio.
+    date_range_too_large: El intervalo de fechas del informe no puede superar los 180 dias.
+    gp_date_range_too_large: El intervalo del historial de salud para el médico de cabecera no puede superar los 366 días.
+    export:
+      pdf_unavailable: No se ha podido preparar el PDF. Inténtelo de nuevo.
+      preparing_pdf: Preparando PDF...
+    health_history:
+      cycles:
+        title: Ciclos de dosis habituales
+        description: Un ciclo no se considera omitido hasta que termina.
+        window: Periodo del ciclo
+      outcomes:
+        title: Resultados de las dosis
+        not_taken: No tomadas
+        date: Fecha
+        expected: Previstas
+        taken: Tomadas
+        unexplained_missed: Omisiones sin explicación
+        reason: Razón
+      person_required: Selecciona una persona para descargar un historial de salud para el médico de cabecera.
+      title: Informe del historial de salud de MedTracker
+      people: "Personas: %{people}"
+      no_people: No hay personas autorizadas
+      date_range: "Intervalo de fechas: %{start_date} a %{end_date}"
+      generated_at: "Generado: %{timestamp}"
+      empty_section: No hay registros en esta sección.
+      ongoing_from: En curso desde %{started_on}
+      event_date_range: "%{started_on} a %{ended_on}"
+      sources:
+        routine: Habitual
+        scheduled: Programado
+        as_needed: Según necesidad/directo
+      medication_takes:
+        title: Administraciones de medicamentos
+        time: Hora
+        person: Persona
+        medication: Medicamento
+        dose: Dosis
+        source: Origen
+        location: Ubicación
+      suspected_side_effects:
+        title: Posibles efectos secundarios
+      notable_illnesses:
+        title: Enfermedades destacables
+      events:
+        title: Título
+        dates: Fechas
+        severity: Gravedad
+        medications: Medicamentos sospechosos
+        notes: Notas
+        action: Medida adoptada
+      gp:
+        list:
+          words_connector: ", "
+          two_words_connector: " y "
+          last_word_connector: " y "
+        reporting_period: "Periodo del informe: %{start_date} a %{end_date}"
+        medication_takes_appendix: Apéndice de administraciones de medicamentos
+        page_number: Página <page> de <total>
+        identity:
+          title: Datos de la persona
+          date_of_birth: "Fecha de nacimiento: %{date}"
+        current_medicines:
+          title: Medicamentos actuales
+        chronology:
+          title: Cronología
+          kind_heading: Tipo
+          details_heading: Detalles
+          duration: "Duración: %{duration}"
+          ongoing: En curso
+          days: "%{count} días"
+          severity: "Gravedad: %{severity}"
+          notes: "Notas: %{notes}"
+          action: "Acción tomada: %{action}"
+          medical_help: "Se buscó ayuda médica: %{medical_help}"
+          medications: "Medicamentos relacionados: %{medications}"
+        not_recorded: No registrado
+        none: Ninguno
+        'yes': 'Sí'
+        'no': 'No'
+      illness_patterns:
+        title: Patrones de enfermedad registrados
+        summary: Se registraron %{count} episodios de "%{title}" entre %{first} y %{last}. El intervalo medio entre los inicios de los episodios fue de %{interval} días.
+      disclaimer:
+        title: Aviso
+        entered_information: Este informe refleja la información introducida en MedTracker.
+        causation: Los vínculos con posibles efectos secundarios no demuestran causalidad.
+        medical_advice: Este informe no es un diagnóstico ni sustituye el asesoramiento médico profesional.
+    medication_review:
+      title: Registro de revisión de medicamentos de MedTracker
+      context: Alcance visible predeterminado de la revisión de medicamentos
+      generated_at: "Preparado %{timestamp}"
+      date_format: "%{day} de %{month} de %{year}"
+      timestamp_format: "%{date} a las %{time} %{zone}"
+      months:
+        - enero
+        - febrero
+        - marzo
+        - abril
+        - mayo
+        - junio
+        - julio
+        - agosto
+        - septiembre
+        - octubre
+        - noviembre
+        - diciembre
+      boundary: Este registro organiza evidencia pública de etiquetas de medicamentos para hablarla con un profesional. No sustituye el juicio clínico ni indica que alguien deba cambiar un medicamento.
+      summary:
+        to_discuss: Para comentar
+        reviewed: Revisado
+        people: Personas
+      legend:
+        title: Niveles de riesgo en este registro
+        high: "Alto: La evidencia de la fuente describe un riesgo grave"
+        moderate: "Moderado: La evidencia de la fuente requiere revisión"
+        low: "Bajo: Riesgo menor de la fuente; filtrado de forma predeterminada"
+        unknown: "Desconocido: Sin clasificar; no es el riesgo más alto"
+      empty_title: Ningún elemento de revisión de medicamentos coincide con los filtros seleccionados.
+      empty_description: Esto puede significar que no hay pares de evidencia revisados para los medicamentos activos incluidos.
+      person_items:
+        one: "%{count} elemento de revisión"
+        other: "%{count} elementos de revisión"
+      risk_levels:
+        high: Riesgo alto de la fuente
+        moderate: Riesgo moderado de la fuente
+        low: Riesgo bajo de la fuente
+        unknown: Riesgo desconocido de la fuente
+      confidence: Confianza de coincidencia %{value}
+      confidence_levels:
+        high: Alta
+        moderate: Moderada
+        low: Baja
+        unknown: Desconocida
+      statuses:
+        needs_review: Pendiente de revisión
+        reviewed_with_practitioner: Revisado con un profesional
+        expected_prescribed_combination: Esperado según la prescripción
+        not_relevant: No relevante
+        hidden_low_signal: Elemento filtrado de menor confianza
+      evidence_title: Evidencia pública de la etiqueta
+      match_explanation_title: Por qué MedTracker incluyó esto
+      matched_term_name: "Término coincidente: %{term}"
+      matched_term_type: "coincidencia de %{type}"
+      source_instruction: "Categoría de instrucción de la fuente: %{value}"
+      match_types:
+        ingredient: ingrediente
+        class: clase pública
+        curated: curada
+        legacy: heredada
+      source_instructions:
+        contraindicated: La etiqueta dice contraindicado
+        avoid: La etiqueta dice evitar
+        monitor_or_adjust: La etiqueta dice supervisar o ajustar
+        possible_or_caution: La etiqueta describe una posible preocupación o precaución
+        unclassified: Sin categoría de instrucción asignada
+      source: "Fuente: %{source}"
+      label_version: "Versión de etiqueta: %{version} | Efectiva: %{date}"
+      retrieved: "Consultado: %{date}"
+      reviewed_with_name: "Revisado con %{name}"
+      reviewed_with_detail: "%{role} el %{date}."
+      outcomes:
+        reviewed_with_practitioner: "Resultado registrado: revisado con un profesional."
+        expected_prescribed_combination: "Resultado registrado: esperado según la prescripción."
+      outstanding_outcome: Aún no se ha registrado una revisión profesional.
+    index:
+      eyebrow: Análisis de bienestar
+      title: Informe de salud
+      person_filter_label: Persona
+      all_people: Todas las personas
+      start_date_label: Desde
+      end_date_label: Hasta
+      apply_filters_aria_label: Aplicar filtros de fecha
+      today:
+        title: Hoy
+        description: Medicamentos tomados hoy, agrupados por persona.
+        empty: No se han tomado medicamentos hoy.
+      summary:
+        overall_compliance: Adherencia diaria
+        total_doses_logged: Dosis diarias registradas
+        evidence_reviewed: Evidencia revisada
+        excellent: Excelente
+        needs_attention: Necesita atención
+        on_track: En buen camino
+        missed_doses: Dosis omitidas
+        based_on_logs: Basado en dosis registradas
+      timeline_title: Cronología de adherencia
+      download_pdf: Descargar PDF
+      gp_person_label: Persona para el informe del médico de cabecera
+      gp_person_prompt: Selecciona una persona
+      include_medication_takes: Incluir registro de administraciones de medicamentos
+      export:
+        health_history_title: Exportar historial de salud
+        health_history_description: Descargue un PDF de las personas y fechas mostradas actualmente.
+        health_history_scope: "Personas: %{people}. Intervalo de fechas: %{start_date} a %{end_date}."
+      timeline_compliance: "%{percentage}% de adherencia"
+      inventory_alert:
+        title: Alerta de inventario
+        out_of_stock: Sin stock
+        refill_pending: Reabastecimiento pendiente
+        description_zero: Tu suministro de %{medication_name} se ha agotado. Solicita
+          un reabastecimiento urgente.
+        description:
+          one: Tu suministro de %{medication_name} se agotará en %{count} día. Recomendamos
+            solicitar un reabastecimiento esta tarde.
+          other: Tu suministro de %{medication_name} se agotará en %{count} días.
+            Recomendamos solicitar un reabastecimiento esta tarde.
+      actionable_insight: Información accionable
+  smart_insights:
+    title: Información inteligente
+    evidence_summary:
+      one: "%{days} días revisados con %{events} evento de medicación"
+      other: "%{days} días revisados con %{events} eventos de medicación"
+    learning:
+      title: Aprendiendo tu rutina
+      summary: Sigue registrando dosis para que MedTracker pueda detectar patrones
+        reales.
+      detail: Smart Insights espera a tener suficiente evidencia antes de llamar patrón
+        a algo.
+    no_action:
+      title: Ningún patrón necesita atención
+      summary: Nada inusual destaca en este periodo del informe.
+      detail: Tu informe sigue mostrando el historial de dosis y el inventario para
+        que puedas revisar los detalles.
+    detectors:
+      adherence_streak:
+        title: Racha de rutina sólida
+        summary:
+          one: Todas las dosis esperadas se registraron ayer.
+          other: Todas las dosis esperadas se registraron durante %{count} días.
+        detail: Esa constancia da buen ritmo a tu rutina de cuidados.
+        metric_label: Racha actual
+        metric_value:
+          one: 1 día
+          other: "%{count} días"
+      missed_routine_cycles:
+        title: "Ciclos habituales omitidos"
+        summary: "Hay dosis omitidas sin explicación en %{count} ciclos consecutivos."
+        detail: "Revise los registros de dosis habituales de estos ciclos."
+        metric_label: "Racha más larga"
+        metric_value: "%{count} ciclos"
+      missed_dose_pattern:
+        title: Patrón de dosis omitidas
+        summary:
+          one: Ayer se omitieron dosis esperadas.
+          other: Se omitieron dosis esperadas durante %{count} días seguidos.
+        detail: Revisa el horario y los recordatorios de este periodo.
+        metric_label: Racha más larga
+        metric_value:
+          one: 1 día
+          other: "%{count} días"
+      timing_consistency:
+        title: Horario de dosis constante
+        summary: "%{percentage}% de las dosis registradas estuvieron cerca de su hora
+          programada."
+        detail: El horario registrado ha sido estable en este periodo del informe.
+        metric_label: Registros puntuales
+        metric_value:
+          one: 1 dosis
+          other: "%{count} dosis"
+      inventory_risk:
+        title: El suministro necesita atención
+        summary_zero: "%{medication_name} parece estar sin stock."
+        summary:
+          one: "%{medication_name} tiene aproximadamente 1 día de suministro."
+          other: "%{medication_name} tiene aproximadamente %{count} días de suministro."
+        detail: Revisa el registro de stock de %{medication_name} y planifica el próximo
+          reabastecimiento.
+        metric_label: Suministro restante
+        metric_value:
+          one: 1 día
+          other: "%{count} días"
+      prn_usage:
+        title: Uso según necesidad registrado
+        summary:
+          one: Se registró 1 dosis según necesidad en este periodo.
+          other: Se registraron %{count} dosis según necesidad en este periodo.
+        detail: Revisa estas entradas junto con las dosis rutinarias para mantener
+          el panorama completo.
+        metric_label: Registros PRN
+        metric_value:
+          one: 1 dosis
+          other: "%{count} dosis"
+      schedule_hygiene:
+        title: Detalle del horario para revisar
+        summary: "%{medication_name} está configurado para varias dosis diarias sin
+          horas específicas."
+        detail: Agregar horas puede aclarar los recordatorios, informes e insights
+          de horario.
+        metric_label: Revisar
+        metric_value: Horario
+  medication_pauses:
+    title: "Pausar medicamento"
+    reason: "Motivo"
+    note: "Nota (opcional)"
+    choose_reason: "Elige un motivo"
+    submit: "Pausar"
+    cancel: "Cancelar"
+    timing: "La pausa comienza cuando se guarda."
+    history: "Historial de pausas"
+    start_unknown: "Inicio desconocido"
+    actor_unknown: "Persona no registrada"
+    started: "Pausa: %{date} · %{actor}"
+    resumed: "Reanudación: %{date} · %{actor}"
+    reasons:
+      out_of_supply: "Sin existencias"
+      temporarily_not_needed: "No se necesita temporalmente"
+      clinician_advice: "Consejo clínico"
+      side_effects: "Efectos secundarios"
+      other: "Otro"
+      reason_not_recorded: "Motivo no registrado"
+
+  dose_outcomes:
+    title: "Registrar dosis no tomada"
+    description: "Esto registra que no se tomó la dosis. Las existencias no cambiarán."
+    dose: "Dosis"
+    reason: "Motivo (opcional)"
+    note: "Nota (opcional)"
+    unspecified: "Sin motivo seleccionado"
+    confirm: "Confirmar dosis no tomada"
+    cancel: "Cancelar"
+    empty: "No hay dosis pendientes de una decisión."
+    saved: "Dosis registrada como no tomada."
+    invalid: "No se pudo actualizar la dosis. Comprueba los datos e inténtalo de nuevo."
+    slot: "Dosis %{position} · %{date} · %{time}"
+    cycle_slot: "Dosis %{position} · %{start_date} a %{end_date}"
+    correct: "Corregir decisión"
+    correction_title: "Corregir decisión sobre la dosis"
+    reopen: "Reabrir dosis"
+    reopen_description: "Borra esta decisión y devuelve la dosis a la lista de pendientes. La decisión anterior permanece en el historial de auditoría."
+    take: "Registrar como tomada"
+    take_description: "Úsalo solo si se tomó la dosis. Esto registra una dosis real y descuenta existencias."
+    taken_at: "Fecha y hora de toma"
+    stock: "Origen de las existencias"
+    corrected: "Decisión sobre la dosis corregida."
+    resolved_elsewhere: "Esta dosis ya no está marcada como no tomada. Vuelve al panel para ver su estado actual."

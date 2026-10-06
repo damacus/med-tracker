@@ -1,0 +1,55 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-5xl mx-auto space-y-8">
+  <header>
+    <p class="text-sm uppercase tracking-wide text-base-content/60">{{ labels.reports.index.eyebrow }}</p>
+    <h1 class="text-3xl font-semibold">{{ labels.reports.index.title }}</h1>
+  </header>
+  {% if report.error %}<div role="alert" class="alert alert-error">{{ report.error }}</div>{% endif %}
+  <form class="card bg-base-100 border border-base-300" method="get" action="/households/{{ slug }}/reports">
+    <div class="card-body space-y-4">
+      <div class="grid gap-4 sm:grid-cols-3">
+        <label class="form-control"><span class="label-text">{{ labels.reports.index.person_filter_label }}</span><select class="select select-bordered" name="person_id"><option value="">{{ labels.reports.index.all_people }}</option>{% for person in report.people %}<option value="{{ person.id }}"{% if report.selected_person_id == person.id_string %} selected{% endif %}>{{ person.name }}</option>{% endfor %}</select></label>
+        <label class="form-control"><span class="label-text">{{ labels.reports.index.start_date_label }}</span><input class="input input-bordered" type="date" name="start_date" value="{{ report.start_date }}"></label>
+        <label class="form-control"><span class="label-text">{{ labels.reports.index.end_date_label }}</span><input class="input input-bordered" type="date" name="end_date" value="{{ report.end_date }}"></label>
+      </div>
+      <div><button class="btn btn-primary" type="submit">{{ labels.reports.index.apply_filters_aria_label }}</button></div>
+    </div>
+  </form>
+  {% if not report.error %}
+  <section class="card bg-base-100 border border-base-300" aria-labelledby="today-title">
+    <div class="card-body"><h2 class="card-title" id="today-title">{{ labels.reports.index.today.title }}</h2>
+      {% for person in report.today_taken %}<div><h3 class="font-semibold">{{ person.person_name }}</h3><ul>{% for medicine in person.medications %}<li>{{ medicine.name }}</li>{% endfor %}</ul></div>{% else %}<p>{{ labels.reports.index.today.empty }}</p>{% endfor %}
+    </div>
+  </section>
+  <section class="card bg-primary text-primary-content" aria-label="Report summary">
+    <div class="card-body grid gap-4 sm:grid-cols-3"><div><p>{{ labels.reports.index.summary.overall_compliance }}</p><p class="text-3xl font-bold">{{ report.summary.compliance }}%</p></div><div><p>{{ labels.reports.index.summary.total_doses_logged }}</p><p class="text-3xl font-bold">{{ report.summary.actual }}/{{ report.summary.expected }}</p></div><div><p>{{ labels.reports.index.summary.evidence_reviewed }}</p><p>{{ report.smart_insights.evidence_summary }}</p></div></div>
+  </section>
+  <section class="card bg-base-100 border border-base-300" aria-labelledby="timeline-title">
+    <div class="card-body"><h2 class="card-title" id="timeline-title">{{ labels.reports.index.timeline_title }}</h2><div class="flex h-48 items-end gap-2 overflow-x-auto" role="img" aria-label="{{ labels.reports.index.timeline_title }}">{% for day in report.daily_outcomes %}<div class="flex min-w-8 flex-1 flex-col items-center justify-end h-full"><span class="sr-only">{{ day.date }}: {{ day.percentage }}%</span><div data-testid="report-compliance-bar" class="w-full bg-primary rounded-t" style="height: {{ day.percentage }}%;" title="{{ day.date }}: {{ day.percentage }}%"></div><span class="text-xs">{{ day.day_name }}</span></div>{% endfor %}</div></div>
+  </section>
+  <section class="card bg-base-100 border border-base-300" aria-labelledby="daily-title">
+    <div class="card-body"><h2 class="card-title" id="daily-title">{{ labels.reports.health_history.outcomes.title }}</h2>
+      <div class="overflow-x-auto"><table class="table table-zebra"><thead><tr><th scope="col">{{ labels.reports.health_history.outcomes.date }}</th><th scope="col">{{ labels.reports.health_history.outcomes.expected }}</th><th scope="col">{{ labels.reports.health_history.outcomes.taken }}</th><th scope="col">{{ labels.reports.health_history.outcomes.not_taken }}</th><th scope="col">{{ labels.reports.health_history.outcomes.unexplained_missed }}</th></tr></thead><tbody>{% for day in report.daily_outcomes %}<tr><th scope="row">{{ day.date }}</th><td>{{ day.expected }}</td><td>{{ day.actual }}</td><td>{{ day.not_taken }}</td><td>{{ day.unexplained_missed }}</td></tr>{% else %}<tr><td colspan="5">{{ labels.reports.health_history.empty_section }}</td></tr>{% endfor %}</tbody></table></div>
+    </div>
+  </section>
+  {% if report.cycle_summaries | length > 0 %}<section class="card bg-base-100 border border-base-300" aria-labelledby="cycles-title"><div class="card-body"><h2 class="card-title" id="cycles-title">{{ labels.reports.health_history.cycles.title }}</h2><p>{{ labels.reports.health_history.cycles.description }}</p><div class="overflow-x-auto"><table class="table table-zebra"><thead><tr><th scope="col">{{ labels.reports.health_history.cycles.window }}</th><th scope="col">{{ labels.reports.health_history.medication_takes.person }}</th><th scope="col">{{ labels.reports.health_history.medication_takes.medication }}</th><th scope="col">{{ labels.reports.health_history.outcomes.expected }}</th><th scope="col">{{ labels.reports.health_history.outcomes.taken }}</th><th scope="col">{{ labels.reports.health_history.outcomes.not_taken }}</th><th scope="col">{{ labels.reports.health_history.outcomes.unexplained_missed }}</th></tr></thead><tbody>{% for row in report.cycle_summaries %}<tr><th scope="row">{{ row.window_starts_on }} – {{ row.window_ends_on }}</th><td>{{ row.person_name }}</td><td>{{ row.medication_name }}</td><td>{{ row.expected }}</td><td>{{ row.actual }}</td><td>{{ row.not_taken }}</td><td>{{ row.unexplained_missed }}</td></tr>{% endfor %}</tbody></table></div></div></section>{% endif %}
+  {% for alert in report.inventory_alerts %}<section class="card bg-base-100 border border-base-300" aria-label="{{ labels.reports.index.inventory_alert.title }}"><div class="card-body"><h2 class="card-title">{{ labels.reports.index.inventory_alert.title }}</h2><p>{{ alert.medication_name }} · {{ alert.days_left }}</p></div></section>{% endfor %}
+  <section class="card bg-base-100 border border-base-300" aria-labelledby="insights-title"><div class="card-body"><h2 class="card-title" id="insights-title">{{ labels.smart_insights.title }}</h2><p>{{ report.smart_insights.evidence_summary }}</p>{% if report.smart_insights.state == "learning" %}<h3>{{ labels.smart_insights.learning.title }}</h3><p>{{ labels.smart_insights.learning.summary }}</p>{% elif report.smart_insights.state == "no_action" %}<h3>{{ labels.smart_insights.no_action.title }}</h3><p>{{ labels.smart_insights.no_action.summary }}</p>{% else %}{% for insight in report.smart_insights.insights %}<article><h3 class="font-semibold">{{ insight.title }}</h3><p>{{ insight.summary }}</p>{% if insight.detail %}<p>{{ insight.detail }}</p>{% endif %}</article>{% endfor %}{% endif %}</div></section>
+  {% endif %}
+  <section class="card bg-base-100 border border-base-300" aria-labelledby="gp-title">
+    <div class="card-body space-y-4"><h2 class="card-title" id="gp-title">{{ labels.reports.index.export.health_history_title }}</h2><p>{{ labels.reports.browser.intro }}</p>
+      <form method="get" action="/households/{{ slug }}/reports/health-history" class="space-y-4">
+        <div class="grid gap-4 sm:grid-cols-3">
+          <label class="form-control"><span class="label-text">{{ labels.reports.index.gp_person_label }}</span><select class="select select-bordered" name="person_id" required><option value="">{{ labels.reports.index.gp_person_prompt }}</option>{% for person in report.manageable_people %}<option value="{{ person.id }}"{% if report.selected_person_id == person.id_string %} selected{% endif %}>{{ person.name }}</option>{% endfor %}</select></label>
+          <label class="form-control"><span class="label-text">{{ labels.reports.index.start_date_label }}</span><input class="input input-bordered" type="date" name="start_date" value="{{ report.start_date }}" required></label>
+          <label class="form-control"><span class="label-text">{{ labels.reports.index.end_date_label }}</span><input class="input input-bordered" type="date" name="end_date" value="{{ report.end_date }}" required></label>
+        </div>
+        <label class="label cursor-pointer justify-start gap-3"><input class="checkbox" type="checkbox" name="include_medication_takes" value="1"{% if report.include_medication_takes %} checked{% endif %}><span class="label-text">{{ labels.reports.index.include_medication_takes }}</span></label>
+        <button class="btn btn-primary" type="submit">{{ labels.reports.index.download_pdf }}</button>
+      </form>
+    </div>
+  </section>
+  <p><a class="link" href="/households/{{ slug }}/medicine-reviews/report">{{ labels.reports.medication_review.title }}</a></p>
+</section>
+{% endblock content %}

@@ -9,6 +9,23 @@ pub(super) struct RequestAudit {
 }
 
 impl RequestAudit {
+    pub fn report(is_reviews: bool) -> Self {
+        Self {
+            method: "GET",
+            controller: if is_reviews {
+                "api/v1/medication_review_reports"
+            } else {
+                "api/v1/health_history_reports"
+            },
+            action: "show",
+            policy: if is_reviews {
+                "MedicationReviewPromptPolicy"
+            } else {
+                "ReportPolicy"
+            },
+            query: "index?",
+        }
+    }
     pub fn dose_occurrence(
         method: &'static str,
         action: &'static str,

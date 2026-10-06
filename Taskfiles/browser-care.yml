@@ -297,6 +297,28 @@ tasks:
       - >-
         psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1
         -c "INSERT INTO public.schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83001,72001,73001,80001,true,current_date-1,current_date+7,2,'tablet',6,'{}',now(),now())"
+  report-seed:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -f tests/fixtures/browser-report-seed.sql'
+  report-history-seed:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -f tests/fixtures/browser-report-history.sql'
+  report-audit-probe:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align
+        -c "SELECT metadata FROM public.security_audit_events WHERE event_type='health_history_report.downloaded' ORDER BY id DESC LIMIT 1"
+  review-report-seed:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -f tests/fixtures/browser-review-report-seed.sql'
   oauth-probe:
     requires:
       vars: [CARE_DATABASE_URL]

@@ -15,6 +15,7 @@ mod people;
 mod projection;
 mod push_subscriptions;
 mod removals;
+mod reports;
 mod response;
 mod schedule_lifecycle;
 mod treatments;
@@ -54,6 +55,22 @@ pub fn invitation_routes() -> Routes {
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("/api/v1/households")
+        .add(
+            "/{household_id}/reports/health_history",
+            get(reports::health_json),
+        )
+        .add(
+            "/{household_id}/reports/health_history.pdf",
+            get(reports::health_pdf),
+        )
+        .add(
+            "/{household_id}/reports/medication_reviews",
+            get(reports::reviews_json),
+        )
+        .add(
+            "/{household_id}/reports/medication_reviews.pdf",
+            get(reports::reviews_pdf),
+        )
         .add(
             "/{household_id}/schedules/{id}/dose_occurrences",
             get(dose_occurrences::list_schedule),
