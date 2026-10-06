@@ -363,3 +363,127 @@ async fn insufficient_mobile_scope_preserves_the_bearer_challenge() {
     assert!(challenge.contains("insufficient_scope"));
     app.close().await;
 }
+
+#[tokio::test]
+async fn successful_mobile_bearer_use_extends_the_inactivity_deadline() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    let before = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT last_used_at FROM oauth_grants WHERE id=76001",
+        ))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get::<chrono::NaiveDateTime>("", "last_used_at")
+        .unwrap();
+    let response = app
+        .client
+        .get(format!("{}/api/v1/households/72001/people", app.origin))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status().as_u16(), 200);
+    let after = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT last_used_at FROM oauth_grants WHERE id=76001",
+        ))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get::<chrono::NaiveDateTime>("", "last_used_at")
+        .unwrap();
+    assert!(after > before + chrono::Duration::days(1));
+    app.close().await;
+}
+
+#[tokio::test]
+async fn rejected_mobile_bearers_do_not_restore_activity() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    for invalidation in [
+        "UPDATE oauth_grants SET last_used_at=now()-interval '31 days' WHERE id=76001",
+        "UPDATE oauth_grants SET last_used_at=now()-interval '1 day',expires_in=now()-interval '1 minute' WHERE id=76001",
+        "UPDATE oauth_grants SET expires_in=now()+interval '15 minutes',revoked_at=now() WHERE id=76001",
+    ] {
+        app.fixture
+            .admin
+            .execute_unprepared(invalidation)
+            .await
+            .unwrap();
+        let before = app
+            .fixture
+            .admin
+            .query_one_raw(Statement::from_string(
+                DbBackend::Postgres,
+                "SELECT last_used_at FROM oauth_grants WHERE id=76001",
+            ))
+            .await
+            .unwrap()
+            .unwrap()
+            .try_get::<chrono::NaiveDateTime>("", "last_used_at")
+            .unwrap();
+        let response = app
+            .client
+            .get(format!("{}/api/v1/households/72001/people", app.origin))
+            .bearer_auth(&token)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status().as_u16(), 401);
+        let after = app
+            .fixture
+            .admin
+            .query_one_raw(Statement::from_string(
+                DbBackend::Postgres,
+                "SELECT last_used_at FROM oauth_grants WHERE id=76001",
+            ))
+            .await
+            .unwrap()
+            .unwrap()
+            .try_get::<chrono::NaiveDateTime>("", "last_used_at")
+            .unwrap();
+        assert_eq!(after, before);
+    }
+    app.close().await;
+}
+
+#[tokio::test]
+async fn same_application_mobile_revocations_identify_each_grant_in_audit() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    app.fixture.admin.execute_unprepared("INSERT INTO oauth_grants(id,account_id,oauth_application_id,client_kind,redirect_uri,scopes,token_hash,expires_in,authenticated_at,last_used_at,device_name,created_at,updated_at) VALUES(76003,71001,75001,'mobile','io.damacus.medtracker:/oauth2redirect','medtracker offline_access','synthetic-second-mobile-hash',now()+interval '15 minutes',now()-interval '1 day',now()-interval '1 day','Second phone',now()-interval '1 day',now())").await.unwrap();
+    let path = format!("{}/api/v1/auth/sessions", app.origin);
+    for id in [76003, 76001] {
+        let response = app
+            .client
+            .delete(format!("{path}/{id}"))
+            .bearer_auth(&token)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status().as_u16(), 204);
+    }
+    let rows = app.fixture.admin.query_all_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT object FROM versions WHERE item_type='Account' AND item_id=71001 AND event='mobile_oauth.revoked' ORDER BY id"
+    )).await.unwrap();
+    assert_eq!(rows.len(), 2);
+    let ids = rows
+        .into_iter()
+        .map(|row| {
+            let object: String = row.try_get("", "object").unwrap();
+            let metadata: Value = serde_json::from_str(&object).unwrap();
+            metadata["oauth_grant_id"].as_i64().unwrap()
+        })
+        .collect::<Vec<_>>();
+    assert!(ids.contains(&76001));
+    assert!(ids.contains(&76003));
+    app.close().await;
+}
