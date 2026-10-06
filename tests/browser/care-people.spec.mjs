@@ -1,0 +1,40 @@
+import { test, expect } from './care-fixtures.mjs';
+
+test.use({ actionTimeout: 10000 });
+
+test('each permitted person has an independent dose form and submitted draft', async ({ page, careFixture }, testInfo) => {
+  test.setTimeout(180000);
+  await careFixture.secondPerson();
+  await page.goto('/login');
+  await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
+  await page.getByLabel('Password', { exact: true }).fill('password');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
+  await page.getByRole('link', { name: 'Synthetic tablets', exact: true }).click();
+  const adult = page.getByRole('form', { name: 'Record dose for Synthetic adult', exact: true });
+  const minor = page.getByRole('form', { name: 'Record dose for Synthetic minor', exact: true });
+  await expect(page.locator('form[data-dose-form]')).toHaveCount(2, { timeout: 5000 });
+  await expect(adult).toContainText('2 tablets');
+  await expect(minor).toContainText('1 tablet');
+  const adultUuid = await adult.locator('[name="client_uuid"]').inputValue();
+  const minorUuid = await minor.locator('[name="client_uuid"]').inputValue();
+  expect(adultUuid).not.toBe(minorUuid);
+  expect(await page.locator('[id]').evaluateAll(elements => new Set(elements.map(element => element.id)).size === elements.length)).toBe(true);
+  await adult.locator('[name="dose_amount"]').evaluate(input => { input.value = '999'; });
+  const invalid = page.waitForResponse(response => response.url().endsWith('/doses') && response.request().method() === 'POST');
+  await adult.getByRole('button', { name: 'Record dose', exact: true }).click();
+  expect((await invalid).status()).toBe(422);
+  await expect(adult.locator('[name="dose_amount"]')).toHaveValue('999');
+  await expect(adult.locator('[name="client_uuid"]')).toHaveValue(adultUuid);
+  await expect(minor.locator('[name="dose_amount"]')).toHaveValue('1');
+  expect(await minor.locator('[name="client_uuid"]').inputValue()).not.toBe(adultUuid);
+  await minor.getByRole('button', { name: 'Record dose', exact: true }).click();
+  await expect(page.getByTestId('current-supply')).toHaveText('9 tablets');
+  await adult.getByRole('button', { name: 'Record dose', exact: true }).click();
+  await expect(page.getByTestId('current-supply')).toHaveText('7 tablets');
+  const stored = await careFixture.probe();
+  expect(stored.takes).toBe(2);
+  expect(stored.supply).toBe('7.00');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath(`loco-care-people-${testInfo.project.name}.png`), fullPage: true });
+});

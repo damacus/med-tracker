@@ -1,0 +1,24 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-3xl mx-auto">
+  <a class="link" href="/households/{{ slug }}/people">People</a>
+  <a class="link ml-4" href="/households/{{ slug }}/medications">Medications</a>
+  <h1 class="text-3xl font-semibold mt-4">{{ person.name }}</h1>
+  <dl class="card bg-base-100 border border-base-300 mt-6"><div class="card-body">
+    <dt class="font-semibold">Date of Birth</dt><dd>{{ person.date_of_birth | default(value="Not recorded") }}</dd>
+    <dt class="font-semibold">Email</dt><dd>{{ person.email | default(value="Not recorded") }}</dd>
+    <dt class="font-semibold">Person Type</dt><dd>{{ type_label }}</dd>
+    <dt class="font-semibold">Has capacity to manage own medication</dt><dd>{% if person.has_capacity %}Yes{% else %}No{% endif %}</dd>
+  </div></dl>
+  {% if can_manage %}<a class="btn btn-neutral mt-6" href="/households/{{ slug }}/people/{{ person.id }}/edit">Edit Person</a>{% endif %}
+  <a class="btn btn-ghost mt-6" href="/households/{{ slug }}/people/{{ person.id }}/treatments">Manage treatments</a>
+  <h2 class="text-2xl font-semibold mt-8">Current medications</h2>
+  <ul class="flex flex-col gap-4 mt-4">
+  {% for medication in medications %}
+    <li class="card bg-base-100 border border-base-300"><div class="card-body">
+      <h3 class="card-title"><a class="link" href="/households/{{ slug }}/medications/{{ medication.id }}">{{ medication.name }}</a></h3>
+    </div></li>
+  {% else %}<li>No current medication assignments are recorded.</li>{% endfor %}
+  </ul>
+</section>
+{% endblock content %}

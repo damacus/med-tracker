@@ -19,6 +19,7 @@ jobs:
     runs-on: [ubuntu-latest]
     name: Classify Changes
     outputs:
+      loco: ${{ steps.filter.outputs.loco }}
       app: ${{ steps.filter.outputs.rails }}
       rails: ${{ steps.filter.outputs.rails }}
       rust: ${{ steps.filter.outputs.rust }}
@@ -72,6 +73,8 @@ jobs:
           repo-token: ${{ github.token }}
       - name: Install actionlint
         run: go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+      - name: Install Fish for contract runner tests
+        run: sudo apt-get update && sudo apt-get install --yes fish uuid-runtime
       - run: task ci:check
 
   markdown_check:
@@ -94,7 +97,43 @@ jobs:
           CI_EVENT: ${{ github.event_name }}
         run: task ci:markdown
 
+  loco_foundation:
+    needs: changes
+    if: ${{ needs.changes.outputs.loco == 'true' }}
+    name: Loco Foundation
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: medtracker
+          POSTGRES_PASSWORD: medtracker_password
+          POSTGRES_DB: medtracker_loco
+        ports: [5432:5432]
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://medtracker:medtracker_password@127.0.0.1:5432/medtracker_loco
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+      - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
+        with:
+          version: 3.52.0
+          repo-token: ${{ github.token }}
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+      - run: task ci
+
   scan_ruby:
+    defaults:
+      run:
+        working-directory: rails
     needs: changes
     if: ${{ needs.changes.outputs.app == 'true' }}
     runs-on: [ubuntu-latest]
@@ -107,11 +146,15 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           bundler-cache: true
+          working-directory: rails
 
       - name: Scan for common Rails security vulnerabilities using static analysis
         run: bin/brakeman --no-pager
 
   scan_js:
+    defaults:
+      run:
+        working-directory: rails
     needs: changes
     if: ${{ needs.changes.outputs.app == 'true' }}
     runs-on: [ubuntu-latest]
@@ -124,11 +167,15 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           bundler-cache: true
+          working-directory: rails
 
       - name: Scan for security vulnerabilities in JavaScript dependencies
         run: bin/importmap audit
 
   lint:
+    defaults:
+      run:
+        working-directory: rails
     needs: changes
     if: ${{ needs.changes.outputs.app == 'true' }}
     runs-on: [ubuntu-latest]
@@ -141,6 +188,7 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           bundler-cache: true
+          working-directory: rails
 
       - name: Lint code for consistent style
         run: bin/rubocop -f github
@@ -359,6 +407,9 @@ jobs:
         run: task docs:build
 
   test_non_system:
+    defaults:
+      run:
+        working-directory: rails
     needs: changes
     if: ${{ needs.changes.outputs.app == 'true' }}
     runs-on: [ubuntu-latest]
@@ -401,6 +452,7 @@ jobs:
         with:
           ruby-version: "4.0.7"
           bundler-cache: true
+          working-directory: rails
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
@@ -430,15 +482,18 @@ jobs:
           bundle exec rspec --format RSpec::Github::Formatter --tag ~browser "${non_browser_files[@]}"
 
       - name: Upload SimpleCov coverage report
-        if: ${{ !cancelled() && hashFiles('coverage/.resultset.json') != '' }}
+        if: ${{ !cancelled() && hashFiles('rails/coverage/.resultset.json') != '' }}
         uses: actions/upload-artifact@v7
         with:
           name: simplecov-non-system-${{ matrix.shard }}
-          path: coverage/.resultset.json
+          path: rails/coverage/.resultset.json
           include-hidden-files: true
           if-no-files-found: error
 
   coverage:
+    defaults:
+      run:
+        working-directory: rails
     needs: test_non_system
     if: ${{ needs.test_non_system.result == 'success' }}
     runs-on: [ubuntu-latest]
@@ -448,6 +503,7 @@ jobs:
     env:
       RAILS_ENV: test
       COVERAGE: true
+      RAILS_APPLICATION_ROOT: ${{ github.workspace }}/rails
 
     steps:
       - name: Checkout code
@@ -458,18 +514,19 @@ jobs:
         with:
           ruby-version: "4.0.7"
           bundler-cache: true
+          working-directory: rails
 
       - name: Download SimpleCov shard 1
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           name: simplecov-non-system-1
-          path: coverage/shard-1
+          path: rails/coverage/shard-1
 
       - name: Download SimpleCov shard 2
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           name: simplecov-non-system-2
-          path: coverage/shard-2
+          path: rails/coverage/shard-2
 
       - name: Verify coverage failure handling
         run: bundle exec ruby scripts/ci/tests/coverage.rb
@@ -478,6 +535,9 @@ jobs:
         run: bundle exec ruby scripts/ci/collate_simplecov.rb coverage/shard-1/.resultset.json coverage/shard-2/.resultset.json
 
   test_system:
+    defaults:
+      run:
+        working-directory: rails
     needs: changes
     if: ${{ needs.changes.outputs.app == 'true' }}
     runs-on: [ubuntu-latest]
@@ -517,12 +577,14 @@ jobs:
         with:
           ruby-version: "4.0.7"
           bundler-cache: true
+          working-directory: rails
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
           node-version: "24"
           cache: "npm"
+          cache-dependency-path: rails/package-lock.json
 
       - name: Install Node dependencies
         run: npm ci
@@ -531,7 +593,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          key: playwright-${{ runner.os }}-${{ hashFiles('rails/package-lock.json') }}
 
       - name: Install Playwright browsers and deps
         run: npx playwright install --with-deps chromium
@@ -566,8 +628,8 @@ jobs:
         with:
           name: capybara-failures-shard-${{ matrix.shard }}
           path: |
-            tmp/capybara/**/*.png
-            tmp/capybara/**/*.html
+            rails/tmp/capybara/**/*.png
+            rails/tmp/capybara/**/*.html
           if-no-files-found: ignore
           retention-days: 7
 
@@ -592,9 +654,12 @@ jobs:
         run: sudo apt-get update && sudo apt-get install --yes fish
 
       - name: Exercise medication search from the final app image
-        run: task prod:medication-search-smoke
+        run: task rails:prod:medication-search-smoke
 
   mutation:
+    defaults:
+      run:
+        working-directory: rails
     needs: changes
     if: ${{ needs.changes.outputs.app == 'true' }}
     runs-on: [ubuntu-latest]
@@ -630,6 +695,7 @@ jobs:
         with:
           ruby-version: "4.0.7"
           bundler-cache: true
+          working-directory: rails
 
       - name: Set up database
         run: bundle exec rails db:migrate
@@ -643,6 +709,9 @@ jobs:
         run: bundle exec mutant run --since origin/main
 
   lighthouse:
+    defaults:
+      run:
+        working-directory: rails
     runs-on: [ubuntu-latest]
     name: Lighthouse Mobile Audit
     needs: changes
@@ -679,12 +748,14 @@ jobs:
         with:
           ruby-version: "4.0.7"
           bundler-cache: true
+          working-directory: rails
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
           node-version: "24"
           cache: "npm"
+          cache-dependency-path: rails/package-lock.json
 
       - name: Install Chrome
         uses: browser-actions/setup-chrome@2e1d749697dd1612b833dba4a722266286fbefcd # v2.1.2
@@ -740,9 +811,9 @@ jobs:
         with:
           name: lighthouse-mobile-reports
           path: |
-            lighthouse-*.report.json
-            lighthouse-*.report.html
-            tmp/lighthouse-server.log
+            rails/lighthouse-*.report.json
+            rails/lighthouse-*.report.html
+            rails/tmp/lighthouse-server.log
           if-no-files-found: ignore
           retention-days: 30
 
@@ -750,6 +821,7 @@ jobs:
     if: ${{ always() }}
     needs:
       - changes
+      - loco_foundation
       - scan_ruby
       - scan_js
       - lint

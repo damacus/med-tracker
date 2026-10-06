@@ -1,0 +1,28 @@
+{
+  "column:public.oauth_grants.access_token_scope_hash": {
+    "acl": null,
+    "collation": "pg_catalog.default",
+    "compression": "",
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "not_null": false,
+    "options": null,
+    "position": 27,
+    "storage": "x",
+    "type": "text"
+  },
+  "column:public.oauth_grants.access_token_scopes": {
+    "acl": null,
+    "collation": "pg_catalog.default",
+    "compression": "",
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "not_null": false,
+    "options": null,
+    "position": 26,
+    "storage": "x",
+    "type": "text"
+  }
+}

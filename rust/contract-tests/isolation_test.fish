@@ -36,7 +36,7 @@ function isolation_task -a project
     end
     if test -n "$subnet"
         set -lx CONTRACT_TEST_SUBNET $subnet
-        set -lx COMPOSE_FILE compose.yaml:rust/contract-tests/runner-subnet.compose.yaml
+        set -lx COMPOSE_FILE "$root/rails/compose.yaml:$root/rust/contract-tests/runner-subnet.compose.yaml"
         rtk task $argv[2..-1]
     else
         rtk task $argv[2..-1]
@@ -68,22 +68,22 @@ for pair in "$first_project:$first_dir" "$second_project:$second_dir"
     set -l parts (string split : $pair)
     isolation_task $parts[1] contract:prepare-db CONTRACT_PROJECT=$parts[1]
     or exit $status
-    isolation_task $parts[1] test:server CONTRACT_PROJECT=$parts[1]
+    isolation_task $parts[1] rails:test:server CONTRACT_PROJECT=$parts[1]
     or exit $status
-    isolation_task $parts[1] --force test:exec CONTRACT_PROJECT=$parts[1] CMD="CONTRACT_FIXTURE_PATH=/app/$parts[2]/fixture.json rails runner scripts/contract_provision.rb"
+    isolation_task $parts[1] --force rails:test:exec CONTRACT_PROJECT=$parts[1] CMD="CONTRACT_FIXTURE_PATH=/app/$parts[2]/fixture.json rails runner scripts/contract_provision.rb"
     or exit $status
 end
 
 set -l first_email (rtk proxy jq -r .primary_email $first_fixture)
 set -l second_email (rtk proxy jq -r .primary_email $second_fixture)
-set -l first_port (isolation_task $first_project test:port CONTRACT_PROJECT=$first_project)
-set -l second_port (isolation_task $second_project test:port CONTRACT_PROJECT=$second_project)
+set -l first_port (isolation_task $first_project rails:test:port CONTRACT_PROJECT=$first_project)
+set -l second_port (isolation_task $second_project rails:test:port CONTRACT_PROJECT=$second_project)
 test "$first_port" != "$second_port"
 or begin; echo 'Runs share a web server port' >&2; exit 1; end
 
 for entry in "$first_project:$first_email:$second_email" "$second_project:$second_email:$first_email"
     set -l fields (string split : $entry)
-    set -l counts (isolation_task $fields[1] --force test:exec CONTRACT_PROJECT=$fields[1] CMD="rails runner \"puts [Account.where(email: '$fields[2]').count, Account.where(email: '$fields[3]').count, ActiveRecord::Base.connection.select_value('SHOW server_version')].join(':')\"" | string match -r '^[0-9]+:[0-9]+:[0-9].*' | tail -1)
+    set -l counts (isolation_task $fields[1] --force rails:test:exec CONTRACT_PROJECT=$fields[1] CMD="rails runner \"puts [Account.where(email: '$fields[2]').count, Account.where(email: '$fields[3]').count, ActiveRecord::Base.connection.select_value('SHOW server_version')].join(':')\"" | string match -r '^[0-9]+:[0-9]+:[0-9].*' | tail -1)
     string match -rq '^1:0:18\.' -- $counts
     or begin; echo "Fixture isolation or PostgreSQL version failed for $fields[1]: $counts" >&2; exit 1; end
     echo "$fields[1] accounts and PostgreSQL version: $counts"
@@ -98,7 +98,7 @@ test (rtk proxy docker volume ls -q --filter label=com.docker.compose.project=$f
 or begin; echo 'First run volumes survived cleanup' >&2; exit 1; end
 test (rtk proxy docker image ls -q --filter reference=$first_project-web-test | count) -eq 0
 or begin; echo 'First run web image survived cleanup' >&2; exit 1; end
-set -l remaining (isolation_task $second_project --force test:exec CONTRACT_PROJECT=$second_project CMD="rails runner \"puts Account.where(email: '$second_email').count\"" | string match -r '^[0-9]+$' | tail -1)
+set -l remaining (isolation_task $second_project --force rails:test:exec CONTRACT_PROJECT=$second_project CMD="rails runner \"puts Account.where(email: '$second_email').count\"" | string match -r '^[0-9]+$' | tail -1)
 test "$remaining" = 1
 or begin; echo 'Peer fixture disappeared after first run cleanup' >&2; exit 1; end
 
@@ -126,7 +126,7 @@ test (rtk proxy docker volume ls -q --filter label=com.docker.compose.project=$f
 or begin; echo 'Failure run volumes survived cleanup' >&2; exit 1; end
 test (rtk proxy docker image ls -q --filter reference=$failed_project-web-test | count) -eq 0
 or begin; echo 'Failure run web image survived cleanup' >&2; exit 1; end
-set -l after_failure (isolation_task $second_project --force test:exec CONTRACT_PROJECT=$second_project CMD="rails runner \"puts Account.where(email: '$second_email').count\"" | string match -r '^[0-9]+$' | tail -1)
+set -l after_failure (isolation_task $second_project --force rails:test:exec CONTRACT_PROJECT=$second_project CMD="rails runner \"puts Account.where(email: '$second_email').count\"" | string match -r '^[0-9]+$' | tail -1)
 test "$after_failure" = 1
 or begin; echo 'Peer fixture disappeared after failure cleanup' >&2; exit 1; end
 

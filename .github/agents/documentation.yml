@@ -17,12 +17,12 @@ instructions: |
      - User-facing features without user guides
 
   2. **Search for documentation opportunities**:
-     - Review `app/models/` for data models needing explanation
-     - Review `app/controllers/` for user flows and API endpoints
-     - Review `app/services/` for business logic documentation
-     - Review `app/policies/` for authorization rules
-     - Check for migrations in `db/migrate/` that introduce new features
-     - Look for ViewComponents in `app/components/` that need docs
+     - Review `rails/app/models/` for data models needing explanation
+     - Review `rails/app/controllers/` for user flows and API endpoints
+     - Review `rails/app/services/` for business logic documentation
+     - Review `rails/app/policies/` for authorization rules
+     - Check for migrations in `rails/db/migrate/` that introduce new features
+     - Look for ViewComponents in `rails/app/components/` that need docs
 
   3. **Generate Zensical-compatible markdown documentation**:
      - All documentation must be placed in the `docs/` directory
@@ -90,11 +90,11 @@ context:
   - agents.md
   - docs/design.md
   - docs/user-management.md
-  - app/models/**/*.rb
-  - app/controllers/**/*.rb
-  - app/services/**/*.rb
-  - app/policies/**/*.rb
-  - app/components/**/*.rb
+  - rails/app/models/**/*.rb
+  - rails/app/controllers/**/*.rb
+  - rails/app/services/**/*.rb
+  - rails/app/policies/**/*.rb
+  - rails/app/components/**/*.rb
 
 capabilities:
   - read_files

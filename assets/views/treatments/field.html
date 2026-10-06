@@ -1,0 +1,10 @@
+<div class="grid gap-2"><label for="{{ field.name }}">{{ field.label }}</label>
+{% if field.kind == "select" %}
+<select id="{{ field.name }}" name="{{ field.name }}" class="select shell-input w-full" {% if field.errors | length > 0 %}aria-invalid="true" aria-describedby="{{ field.name }}-error"{% endif %}><option value="">Select {{ field.label | lower }}</option>{% for option in field.options %}<option value="{{ option.value }}" {% if option.value == field.value %}selected{% endif %}>{{ option.label }}</option>{% endfor %}</select>
+{% elif field.kind == "textarea" %}
+<textarea id="{{ field.name }}" name="{{ field.name }}" class="textarea shell-input w-full" {% if field.errors | length > 0 %}aria-invalid="true" aria-describedby="{{ field.name }}-error"{% endif %}>{{ field.value }}</textarea>
+{% else %}
+<input id="{{ field.name }}" name="{{ field.name }}" type="{{ field.kind }}" class="input shell-input w-full" value="{{ field.value }}" {% if field.errors | length > 0 %}aria-invalid="true" aria-describedby="{{ field.name }}-error"{% endif %}>
+{% endif %}</div>
+{% if record_id and field.name == "max_daily_doses" %}<p class="shell-muted">Leave blank to keep the current limit.</p>{% endif %}
+{% if field.errors | length > 0 %}<p class="shell-error" id="{{ field.name }}-error" role="alert">{{ field.errors | join(sep=". ") }}</p>{% endif %}

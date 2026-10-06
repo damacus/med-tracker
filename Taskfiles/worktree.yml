@@ -9,7 +9,7 @@ tasks:
       Example: task worktree:add
     interactive: true
     cmds:
-      - ./scripts/worktree_add.fish
+      - ./rails/scripts/worktree_add.fish
 
   cleanup:
     desc: Clean up completed git worktrees
@@ -19,4 +19,4 @@ tasks:
       Example: task worktree:cleanup
     interactive: true
     cmds:
-      - ./scripts/worktree_cleanup.fish
+      - ./rails/scripts/worktree_cleanup.fish

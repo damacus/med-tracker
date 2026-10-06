@@ -52,7 +52,7 @@ function wait_for_contract_web -a base_url
 end
 
 function contract_web_port -a project
-    set -l port (rtk task test:port CONTRACT_PROJECT=$project)
+    set -l port (rtk task rails:test:port CONTRACT_PROJECT=$project)
     or begin
         echo "Contract web port lookup failed for $project" >&2
         return 1
@@ -93,7 +93,7 @@ function run_rails_contract_targets -a base_url fixture_path mailpit_url project
         end
         if test "$target" != auth
             if contains -- "$target" lookup web_json_read web_json_actions push_delivery; or contains -- "$previous_target" lookup web_json_read web_json_actions push_delivery; or uses_web_csrf $target; or uses_web_csrf $previous_target
-                rtk task test:server CONTRACT_PROJECT=$project
+                rtk task rails:test:server CONTRACT_PROJECT=$project
             else
                 rtk task contract:restart-web CONTRACT_PROJECT=$project CONTRACT_RUN_DIR=$run_dir
             end
@@ -114,7 +114,7 @@ function run_rails_contract_targets -a base_url fixture_path mailpit_url project
     end
     set -gx CONTRACT_AI_MEDICATION_HELP_ENABLED false
     set_web_json_adapter_environment
-    rtk task test:server CONTRACT_PROJECT=$project
+    rtk task rails:test:server CONTRACT_PROJECT=$project
     or return $status
     set -l port (contract_web_port $project)
     or return $status
@@ -167,6 +167,9 @@ end
 
 function run_contract
     set -l mode $argv[1]
+    set -l workspace (pwd)
+    rtk proxy mkdir -p "$workspace/rails/tmp"
+    or return $status
     rtk proxy mkdir -p tmp/contract-tests
     or return $status
     set -g contract_run_dir (rtk proxy mktemp -d tmp/contract-tests/run.XXXXXX)
@@ -182,11 +185,12 @@ function run_contract
     rtk proxy mkdir -p "$contract_run_dir/storage"
     or return $status
     set -gx CONTRACT_STORAGE_ROOT (rtk proxy realpath "$contract_run_dir/storage")
-    set -gx COMPOSE_FILE compose.yaml:rust/contract-tests/storage.compose.yaml
+    set -gx CONTRACT_API_BUILD_CONTEXT (pwd)
+    set -gx COMPOSE_FILE "$workspace/rails/compose.yaml:$workspace/rust/contract-tests/storage.compose.yaml"
     if set -q CONTRACT_TEST_SUBNET; and test -n "$CONTRACT_TEST_SUBNET"
         rtk task api:contract-subnet-check CONTRACT_TEST_SUBNET=$CONTRACT_TEST_SUBNET
         or return $status
-        set -gx COMPOSE_FILE "$COMPOSE_FILE:rust/contract-tests/runner-subnet.compose.yaml"
+        set -gx COMPOSE_FILE "$COMPOSE_FILE:$workspace/rust/contract-tests/runner-subnet.compose.yaml"
     end
     if contains -- "$argv[2]" medication-read-api web-session-api web-reads-api openapi-locations openapi-dosages openapi-people openapi-sessions openapi-notifications openapi-native-tokens openapi-push-subscriptions openapi-admin-settings openapi-person-medication-writes openapi-schedule-writes openapi-pause-lifecycle openapi-dose-occurrences openapi-review-prompts openapi-app-tokens openapi-memberships openapi-stock-workflows openapi-audit-logs openapi-person-grants openapi-invitations openapi-invitations-legacy openapi-profile openapi-profile-storage openapi-read-completion openapi-rate-limit openapi-reports openapi-health-events openapi-exports openapi-sync-reads openapi-external-integrations openapi-portable-writes openapi-portability-legacy openapi-sync-batch-legacy openapi-sync-batch-replay-focus openapi-replay-legacy openapi-envelopes-legacy openapi-medications openapi-medications-focused api-legacy-auth api-legacy-admin api-legacy-care api-legacy-devices api-legacy-lookup browser-journey-rails browser-journey-rust browser-dashboard-rust web-reads-rails
         set -gx CONTRACT_AUTH_SESSION_SECRET (rtk proxy openssl rand -hex 32)
@@ -201,7 +205,7 @@ function run_contract
             echo 'Disposable APNs key output was invalid' >&2
             return 1
         end
-        set -gx COMPOSE_FILE "$COMPOSE_FILE:rust/contract-tests/runner.compose.yaml"
+        set -gx COMPOSE_FILE "$COMPOSE_FILE:$workspace/rust/contract-tests/runner.compose.yaml"
         set -gx CONTRACT_FIXTURE_DIR (rtk proxy realpath "$contract_run_dir")
         if not contains -- "$argv[2]" browser-journey-rails web-reads-rails
             set -gx CONTRACT_API_BUILD_CONTEXT (pwd)/$contract_run_dir/source
@@ -221,9 +225,9 @@ function run_contract
     end
     if test "$argv[2]" = browser-dashboard-rust
         set -gx CONTRACT_DASHBOARD_NOW 2026-03-29T00:30:00Z
-        set -gx CONTRACT_RUST_BROWSER_SCREENSHOT_DIR ./docs/screenshots/dashboard-rust
+        set -gx CONTRACT_RUST_BROWSER_SCREENSHOT_DIR "$workspace/docs/screenshots/dashboard-rust"
     else if test "$argv[2]" = browser-journey-rust
-        set -gx CONTRACT_RUST_BROWSER_SCREENSHOT_DIR ./docs/screenshots/journey-medication-rust
+        set -gx CONTRACT_RUST_BROWSER_SCREENSHOT_DIR "$workspace/docs/screenshots/journey-medication-rust"
     end
     set -lx CONTRACT_PROJECT $contract_project
     echo "Contract run project: $contract_project"
@@ -251,7 +255,7 @@ function run_contract
     set -l startup_at (date +%s)
     rtk task contract:prepare-db CONTRACT_PROJECT=$contract_project
     or return $status
-    rtk task test:server CONTRACT_PROJECT=$contract_project
+    rtk task rails:test:server CONTRACT_PROJECT=$contract_project
     or begin
         set -l server_status $status
         rtk proxy docker compose -p $contract_project --profile test logs --no-color --tail=80 migrate-test
@@ -260,7 +264,7 @@ function run_contract
     set -l server_seconds (math (date +%s) - $startup_at)
     echo "Contract server ready after $server_seconds seconds"
 
-    rtk task --force test:exec CONTRACT_PROJECT=$contract_project CMD="CONTRACT_FIXTURE_PATH=/app/$contract_run_dir/fixture.json rails runner scripts/contract_provision.rb"
+    rtk task --force rails:test:exec CONTRACT_PROJECT=$contract_project CMD="CONTRACT_FIXTURE_PATH=/app/$contract_run_dir/fixture.json rails runner scripts/contract_provision.rb"
     or return $status
     set -l fixture_hash (rtk proxy shasum -a 256 "$contract_fixture_path")
     or return $status
@@ -299,7 +303,7 @@ function run_contract
         or return $status
         rtk task api:contract-ready CONTRACT_PROJECT=$contract_project
         or return $status
-        rtk task api:contract-browser-dashboard-rust CONTRACT_PROJECT=$contract_project
+        rtk proxy task api:contract-browser-dashboard-rust CONTRACT_PROJECT=$contract_project
         return $status
     end
 
@@ -477,7 +481,7 @@ function run_contract
             rtk task contract:run-profile BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
             or return $status
             set_web_device_environment
-            rtk task test:server CONTRACT_PROJECT=$contract_project
+            rtk task rails:test:server CONTRACT_PROJECT=$contract_project
             or return $status
             set port (contract_web_port $contract_project)
             or return $status

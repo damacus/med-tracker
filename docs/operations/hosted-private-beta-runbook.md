@@ -26,7 +26,7 @@ Before onboarding another household, verify:
 - Existing pre-0.5 databases have completed the
   [pre-0.5 database upgrade](../pre-0-5-database-upgrade.md) bootstrap.
 - Interactive session limits follow the [central authentication policy](../two-factor-authentication.md); enrolled login MFA remains enforced.
-- `task rubocop`, `task test`, and `task brakeman` pass on the release branch.
+- `task rails:rubocop`, `task rails:test`, and `task rails:brakeman` pass on the release branch.
 - The hosted hardening audit has no `NO-GO` rows.
 - Invite-only registration is pinned by environment or platform-admin policy.
 - Backup and Restore test evidence exists for the current deployment.
@@ -105,10 +105,10 @@ WHERE schemaname = 'public'
 
 The role membership/create checks must return `false`; the forced-RLS,
 nullable-column, and null-policy queries must return no rows. Release verification
-also runs `task test TEST_FILE=spec/lib/schema_inventory_spec.rb`,
-`task test TEST_FILE=spec/models/household_row_level_security_spec.rb`,
-`task test TEST_FILE=spec/config/yaml_compose_spec.rb`, and
-`task test TEST_FILE=spec/config/database_role_config_spec.rb`.
+also runs `task rails:test TEST_FILE=spec/lib/schema_inventory_spec.rb`,
+`task rails:test TEST_FILE=spec/models/household_row_level_security_spec.rb`,
+`task rails:test TEST_FILE=spec/config/yaml_compose_spec.rb`, and
+`task rails:test TEST_FILE=spec/config/database_role_config_spec.rb`.
 
 ## Command scope
 
@@ -166,7 +166,7 @@ an active owner or administrator membership for the target household.
 administrator inside an active audited support session for the target household.
 
 ```fish
-task household-lifecycle:export HOUSEHOLD_ID=123 ACTOR_ACCOUNT_ID=456 MEMBERSHIP_ID=789
+task rails:household-lifecycle:export HOUSEHOLD_ID=123 ACTOR_ACCOUNT_ID=456 MEMBERSHIP_ID=789
 ```
 
 Retain the sanitized JSON fields `event_type`, `outcome`, `household_id`,
@@ -181,7 +181,7 @@ destination subdirectory before running the command. Download refuses paths whos
 resolved parent is outside that root and never overwrites an existing file.
 
 ```fish
-task household-lifecycle:download HOUSEHOLD_ID=123 ACTOR_ACCOUNT_ID=456 EXPORT_ID=654 DESTINATION=/app/storage/exports/household-123.zip
+task rails:household-lifecycle:download HOUSEHOLD_ID=123 ACTOR_ACCOUNT_ID=456 EXPORT_ID=654 DESTINATION=/app/storage/exports/household-123.zip
 ```
 
 The destination is passed to the container as environment data, never interpolated
@@ -196,14 +196,14 @@ reason is stored in the protected hold record but excluded from command and audi
 metadata:
 
 ```fish
-task household-lifecycle:hold HOUSEHOLD_ID=123 ACTOR_ACCOUNT_ID=456 REASON="Approved legal preservation" REVIEW_ON=2026-08-13
+task rails:household-lifecycle:hold HOUSEHOLD_ID=123 ACTOR_ACCOUNT_ID=456 REASON="Approved legal preservation" REVIEW_ON=2026-08-13
 ```
 
 Release the hold only after approval, using the same household context so forced
 RLS remains effective:
 
 ```fish
-task household-lifecycle:release-hold HOLD_ID=321 HOUSEHOLD_ID=123 ACTOR_ACCOUNT_ID=456
+task rails:household-lifecycle:release-hold HOLD_ID=321 HOUSEHOLD_ID=123 ACTOR_ACCOUNT_ID=456
 ```
 
 Offboarding immediately disables normal and support access and revokes household
@@ -212,14 +212,14 @@ subscriptions, and native device tokens. The command is safe to retry and emits
 one successful offboarding audit event:
 
 ```fish
-task household-lifecycle:offboard HOUSEHOLD_ID=123 ACTOR_ACCOUNT_ID=456
+task rails:household-lifecycle:offboard HOUSEHOLD_ID=123 ACTOR_ACCOUNT_ID=456
 ```
 
 Start or resume purge only after the export has been verified and offboarding has
 completed:
 
 ```fish
-task household-lifecycle:purge HOUSEHOLD_ID=123 ACTOR_ACCOUNT_ID=456
+task rails:household-lifecycle:purge HOUSEHOLD_ID=123 ACTOR_ACCOUNT_ID=456
 ```
 
 Purge refuses an active retention hold before deleting anything. It is safe to
@@ -292,7 +292,7 @@ set -lx WORM_HEADS_JSON '{
 }'
 set -lx EVIDENCE_OUTPUT /approved-mounted-evidence/restore-2026-q3
 set -lx EVIDENCE_ROOT /approved-mounted-evidence
-task hosted-restore:rehearse
+task rails:hosted-restore:rehearse
 ```
 
 The command refuses missing, placeholder, duplicate sample, malformed WORM-head, relative

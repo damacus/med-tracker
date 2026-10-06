@@ -30,7 +30,21 @@ together without handing control of it to a hosted service.
 - Keep an attributable record of who did what and when
 - Run MedTracker on infrastructure you control
 
-## Try the self-hosted beta
+## Migration checkout
+
+This branch makes Loco 1.2 the root Rust application and retains Rails under
+`rails/` as the reference and rollback runtime. The foundation currently exposes
+`/up`, framework database readiness at `/_health`, and a Tera landing page.
+Product workflows remain migration work; use Rails for the existing application.
+
+Use `task deps` once to resolve dependencies, `task build` to compile and `task ci`
+to verify Loco. Set `DATABASE_URL` to a dedicated PostgreSQL 18 database and run
+`task dev`. Startup does not migrate, truncate or recreate the product schema.
+`task db:migrate`, `task db:seed` and `task release-image` remain guarded until
+their corresponding tranches pass. Do not point foundation verification at a
+live database. See [the migration plan](docs/plans/loco-migration-20261005/plan.md).
+
+## Try the Rails self-hosted beta
 
 We are looking for technically confident self-hosters to run MedTracker and try
 the journey from household setup to recording doses. Tell us where the app is
@@ -43,8 +57,8 @@ git clone https://github.com/damacus/med-tracker.git
 cd med-tracker
 npm install -g portless
 portless trust
-task dev:portless
-task dev:seed
+task rails:dev:portless
+task rails:dev:seed
 ```
 
 Open <https://med-tracker.localhost>. Development seed data contains sample

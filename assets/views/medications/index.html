@@ -1,0 +1,19 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-3xl mx-auto">
+  <a class="link" href="/">Households</a>
+  <a class="link ml-4" href="/households/{{ slug }}/locations">Locations</a>
+  <a class="link ml-4" href="/households/{{ slug }}/people">People</a>
+  {% if can_manage %}<a class="link ml-4" href="/households/{{ slug }}/admin">Administration</a>{% endif %}
+  <h1 class="text-3xl font-semibold mt-4">Medications</h1>
+  {% if can_create %}<a class="btn btn-neutral mt-4" href="/households/{{ slug }}/medications/new">Add Medication</a>{% endif %}
+  <ul class="flex flex-col gap-4 mt-6">
+  {% for medication in medications %}
+    <li class="card bg-base-100 border border-base-300"><div class="card-body">
+      <h2 class="card-title"><a class="link" href="/households/{{ slug }}/medications/{{ medication.id }}">{{ medication.name }}</a></h2>
+      <p>{% if medication.quantity %}Stock: {{ medication.quantity }} {{ medication.unit }}{% else %}Stock is not tracked.{% endif %}</p>
+    </div></li>
+  {% else %}<li>No medications are available in this household.</li>{% endfor %}
+  </ul>
+</section>
+{% endblock content %}

@@ -43,7 +43,7 @@ if test "$task_name" = --force
 end
 
 switch $task_name
-    case test:exec
+    case rails:test:exec
         set -q CONTRACT_FAKE_RUN_DIR_FILE
         or exit 62
         set -l run_dir (cat "$CONTRACT_FAKE_RUN_DIR_FILE")
@@ -68,7 +68,7 @@ switch $task_name
         end
         command task $argv[2..-1]
         exit $status
-    case api:contract-up api:contract-external-up api:contract-ready api:contract-test api:contract-openapi-dosages-test api:contract-openapi-people-test api:contract-openapi-sessions-test api:contract-openapi-notifications-test api:contract-openapi-native-tokens-test api:contract-openapi-push-subscriptions-test api:contract-openapi-admin-settings-test api:contract-openapi-person-medication-writes-test api:contract-openapi-schedule-writes-test api:contract-openapi-pause-lifecycle-test api:contract-openapi-dose-occurrences-test api:contract-openapi-review-prompts-test api:contract-openapi-app-tokens-test api:contract-openapi-memberships-test api:contract-openapi-stock-workflows-test api:contract-openapi-audit-logs-test api:contract-openapi-person-grants-test api:contract-openapi-invitations-test api:contract-openapi-profile-test api:contract-openapi-profile-storage-test api:contract-openapi-read-completion-test api:contract-openapi-rate-limit-test api:contract-openapi-reports-test api:contract-openapi-health-events-test api:contract-openapi-exports-test api:contract-openapi-sync-reads-test api:contract-openapi-external-integrations-test api:contract-openapi-portable-writes-test api:contract-openapi-portability-legacy-test api:contract-openapi-sync-batch-legacy-test api:contract-openapi-sync-batch-replay-focus-test api:contract-openapi-replay-legacy-test api:contract-openapi-envelopes-legacy-test api:contract-api-legacy-auth-test api:contract-api-legacy-admin-test api:contract-api-legacy-care-test api:contract-api-legacy-devices-test api:contract-api-legacy-lookup-test api:contract-existing-invitations-test api:contract-openapi-medications-test api:contract-openapi-medications-focused-test api:contract-web-session-test api:contract-web-reads-test api:contract-web-reads-rails-test api:contract-browser-test api:contract-browser-rails api:contract-browser-rust api:contract-image-remove api:contract-subnet-check
+    case api:contract-up api:contract-external-up api:contract-ready api:contract-test api:contract-openapi-dosages-test api:contract-openapi-people-test api:contract-openapi-sessions-test api:contract-openapi-notifications-test api:contract-openapi-native-tokens-test api:contract-openapi-push-subscriptions-test api:contract-openapi-admin-settings-test api:contract-openapi-person-medication-writes-test api:contract-openapi-schedule-writes-test api:contract-openapi-pause-lifecycle-test api:contract-openapi-dose-occurrences-test api:contract-openapi-review-prompts-test api:contract-openapi-app-tokens-test api:contract-openapi-memberships-test api:contract-openapi-stock-workflows-test api:contract-openapi-audit-logs-test api:contract-openapi-person-grants-test api:contract-openapi-invitations-test api:contract-openapi-profile-test api:contract-openapi-profile-storage-test api:contract-openapi-read-completion-test api:contract-openapi-rate-limit-test api:contract-openapi-reports-test api:contract-openapi-health-events-test api:contract-openapi-exports-test api:contract-openapi-sync-reads-test api:contract-openapi-external-integrations-test api:contract-openapi-portable-writes-test api:contract-openapi-portability-legacy-test api:contract-openapi-sync-batch-legacy-test api:contract-openapi-sync-batch-replay-focus-test api:contract-openapi-replay-legacy-test api:contract-openapi-envelopes-legacy-test api:contract-api-legacy-auth-test api:contract-api-legacy-admin-test api:contract-api-legacy-care-test api:contract-api-legacy-devices-test api:contract-api-legacy-lookup-test api:contract-existing-invitations-test api:contract-openapi-medications-test api:contract-openapi-medications-focused-test api:contract-web-session-test api:contract-web-reads-test api:contract-web-reads-rails-test api:contract-browser-test api:contract-browser-rails api:contract-browser-rust api:contract-browser-dashboard-rust api:contract-image-remove api:contract-subnet-check
         if set -q CONTRACT_FAKE_TRACE
             echo $task_name >>$CONTRACT_FAKE_TRACE
         end
@@ -77,7 +77,7 @@ switch $task_name
             or exit 44
             set -q CONTRACT_RUN_DIR
             and exit 45
-            contains -- rust/contract-tests/runner-subnet.compose.yaml (string split : -- "$COMPOSE_FILE")
+            contains -- "$PWD/rust/contract-tests/runner-subnet.compose.yaml" (string split : -- "$COMPOSE_FILE")
             or exit 46
         end
         if test "$task_name" = api:contract-up
@@ -91,19 +91,23 @@ switch $task_name
             or exit 57
             test -f "$CONTRACT_API_BUILD_CONTEXT/rust/api/Cargo.toml"
             or exit 50
-            test -f "$CONTRACT_API_BUILD_CONTEXT/config/nhs_dmd_curated_products.yml"
+            test -f "$CONTRACT_API_BUILD_CONTEXT/rails/config/nhs_dmd_curated_products.yml"
             or exit 51
-            test -f "$CONTRACT_API_BUILD_CONTEXT/vendor/fonts/OFL-1.1.txt"
+            test -f "$CONTRACT_API_BUILD_CONTEXT/rails/vendor/fonts/OFL-1.1.txt"
             or exit 52
             test ! -e "$CONTRACT_API_BUILD_CONTEXT/rust/api/target"
             or exit 53
         end
-        if test "$task_name" = api:contract-browser-rust
-            test "$CONTRACT_RUST_BROWSER_SCREENSHOT_DIR" = ./docs/screenshots/journey-medication-rust
+        if contains -- "$task_name" api:contract-browser-rust api:contract-browser-dashboard-rust
+            set -l screenshot_directory journey-medication-rust
+            if test "$task_name" = api:contract-browser-dashboard-rust
+                set screenshot_directory dashboard-rust
+            end
+            test "$CONTRACT_RUST_BROWSER_SCREENSHOT_DIR" = "$PWD/docs/screenshots/$screenshot_directory"
             or exit 47
             test -d "$CONTRACT_FIXTURE_DIR"
             or exit 48
-            contains -- rust/contract-tests/runner.compose.yaml (string split : -- "$COMPOSE_FILE")
+            contains -- "$PWD/rust/contract-tests/runner.compose.yaml" (string split : -- "$COMPOSE_FILE")
             or exit 49
             if test "$CONTRACT_FAKE_REQUIRE_BROWSER_SNAPSHOT" = 1
                 set -q CONTRACT_BROWSER_BUILD_CONTEXT
@@ -140,7 +144,7 @@ switch $task_name
         if test "$CONTRACT_FAKE_FAIL_STEP" = restart
             exit 31
         end
-    case test:port
+    case rails:test:port
         set -l port 43017
         set -l call_number 1
         if set -q CONTRACT_FAKE_TRACE

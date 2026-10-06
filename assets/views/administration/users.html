@@ -1,0 +1,16 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-3xl mx-auto">
+  <a class="link" href="/households/{{ slug }}/admin">Administration</a>
+  <h1 class="text-3xl font-semibold mt-4">Users</h1>
+  <ul class="flex flex-col gap-4 mt-6">
+  {% for member in members %}
+    <li class="card bg-base-100 border border-base-300"><div class="card-body">
+      <h2 class="card-title">{{ member.name }}</h2>
+      <p>{{ member.email }}</p><p>Household role: {{ member.role }}</p>
+      {% if member.user_id %}<a class="link" href="/households/{{ slug }}/admin/users/{{ member.user_id }}/edit">Edit household role for {{ member.name }}</a>{% endif %}
+    </div></li>
+  {% else %}<li>No household users are available.</li>{% endfor %}
+  </ul>
+</section>
+{% endblock content %}

@@ -1,0 +1,45 @@
+logger:
+  enable: true
+  pretty_backtrace: false
+  level: info
+  format: compact
+settings:
+  dose_occurrences:
+    signing_key: <%= get_env(name="AUTH_SESSION_SECRET", default="synthetic-test-dose-occurrence-signing-key") %>
+server:
+  port: <%= get_env(name="PORT", default="5150") %>
+  binding: <%= get_env(name="BINDING", default="127.0.0.1") %>
+  host: <%= get_env(name="MEDTRACKER_PUBLIC_HOST", default="http://localhost") %>
+  middlewares:
+    static:
+      enable: true
+      must_exist: true
+      folder:
+        uri: /static
+        path: assets/static
+      fallback: assets/static/404.html
+      cache_control: no-cache
+workers:
+  mode: BackgroundQueue
+mailer:
+  smtp:
+    enable: <%= get_env(name="MEDTRACKER_CAPTURE_MAIL", default="false") %>
+    host: 127.0.0.1
+    port: <%= get_env(name="MEDTRACKER_SMTP_PORT", default="1025") %>
+    secure: false
+queue:
+  kind: Postgres
+  uri: <%= get_env(name="DATABASE_URL", default="postgres://medtracker:medtracker_password@localhost:5432/medtracker_loco") %>
+  reaper:
+    age_minutes: 10
+    interval_seconds: 60
+database:
+  uri: <%= get_env(name="DATABASE_URL", default="postgres://medtracker:medtracker_password@localhost:5432/medtracker_loco") %>
+  enable_logging: false
+  connect_timeout: 5000
+  idle_timeout: 5000
+  min_connections: 1
+  max_connections: 4
+  auto_migrate: false
+  dangerously_truncate: false
+  dangerously_recreate: false

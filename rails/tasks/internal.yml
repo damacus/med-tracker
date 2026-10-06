@@ -24,7 +24,7 @@ tasks:
   # SERVICE is auto-derived as web-{{ .ENVIRONMENT }}
   # Example: task internal:run ENVIRONMENT=test COMMAND='rails console'
   run:
-    dir: "{{.TASKFILE_DIR}}/../.."
+    dir: "{{.TASKFILE_DIR}}/.."
     desc: Run arbitrary command in Docker container
     internal: true
     run: always
@@ -53,7 +53,7 @@ tasks:
   # Optional vars: NO_CACHE (set to "true" to force rebuild)
   # Example: task internal:build ENVIRONMENT=test NO_CACHE=true
   build:
-    dir: "{{.TASKFILE_DIR}}/../.."
+    dir: "{{.TASKFILE_DIR}}/.."
     desc: Build Docker images
     silent: false
     internal: true
@@ -73,7 +73,7 @@ tasks:
   # Removes orphaned containers and starts services
   # Example: task internal:up ENVIRONMENT=dev
   up:
-    dir: "{{.TASKFILE_DIR}}/../.."
+    dir: "{{.TASKFILE_DIR}}/.."
     desc: Start Docker containers
     internal: true
     run: always
@@ -93,7 +93,7 @@ tasks:
   # When REMOVE_VOLUMES=true, only removes volumes prefixed with the environment name.
   # Example: task internal:stop ENVIRONMENT=test
   stop:
-    dir: "{{.TASKFILE_DIR}}/../.."
+    dir: "{{.TASKFILE_DIR}}/.."
     desc: Stop and remove Docker containers
     internal: true
     run: always
@@ -121,7 +121,7 @@ tasks:
   # Start only the database container for a profile
   # Used by rebuild to prepare DB before starting the web service
   up-db:
-    dir: "{{.TASKFILE_DIR}}/../.."
+    dir: "{{.TASKFILE_DIR}}/.."
     desc: Start database container only
     internal: true
     run: always
@@ -134,7 +134,7 @@ tasks:
       - echo "✓ {{ .ENVIRONMENT | title }} database started"
 
   contract-down:
-    dir: "{{.TASKFILE_DIR}}/../.."
+    dir: "{{.TASKFILE_DIR}}/.."
     internal: true
     run: always
     requires:
@@ -143,7 +143,7 @@ tasks:
       - "{{ .COMPOSE_CMD }} --profile test down --volumes --remove-orphans --rmi local"
 
   db-migrate:
-    dir: "{{.TASKFILE_DIR}}/../.."
+    dir: "{{.TASKFILE_DIR}}/.."
     desc: Run Rails migrations
     internal: true
     run: always
@@ -158,7 +158,7 @@ tasks:
   # Press Ctrl+C to stop following logs
   # Example: task internal:logs ENVIRONMENT=dev
   logs:
-    dir: "{{.TASKFILE_DIR}}/../.."
+    dir: "{{.TASKFILE_DIR}}/.."
     desc: Follow container logs
     internal: true
     run: always
@@ -171,7 +171,7 @@ tasks:
       - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} logs -f {{ .DB_SERVICE }} {{ .WEB_SERVICE }}"
 
   ps:
-    dir: "{{.TASKFILE_DIR}}/../.."
+    dir: "{{.TASKFILE_DIR}}/.."
     desc: Get current status of Docker Compose Stack
     internal: true
     run: always
@@ -184,7 +184,7 @@ tasks:
       - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} ps {{ .DB_SERVICE }} {{ .WEB_SERVICE }}"
 
   seed:
-    dir: "{{.TASKFILE_DIR}}/../.."
+    dir: "{{.TASKFILE_DIR}}/.."
     desc: Seed database with fixtures
     summary: |
       Seed database with fixtures
@@ -204,7 +204,7 @@ tasks:
       - defer: echo "✓ Database seeding completed"
 
   port:
-    dir: "{{.TASKFILE_DIR}}/../.."
+    dir: "{{.TASKFILE_DIR}}/.."
     desc: Get port of running container
     internal: false
     run: always
@@ -218,7 +218,7 @@ tasks:
       - fish scripts/compose_port.fish '{{ .COMPOSE_PROJECT }}' '{{ .ENVIRONMENT }}' '{{ .SERVICE | default .WEB_SERVICE }}' '{{ .PORT | default "3000" }}'
 
   open-ui:
-    dir: "{{.TASKFILE_DIR}}/../.."
+    dir: "{{.TASKFILE_DIR}}/.."
     desc: Open WebUI
     internal: true
     run: always

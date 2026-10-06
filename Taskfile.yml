@@ -4,13 +4,15 @@ silent: true
 run: once
 
 includes:
+  browser-care:
+    taskfile: Taskfiles/browser-care.yml
+    dir: .
+  frontend:
+    taskfile: Taskfiles/frontend.yml
+    dir: .
   rails:
     taskfile: rails/Taskfile.yml
-    dir: .
-  legacy-rails:
-    taskfile: rails/Taskfile.yml
-    dir: .
-    flatten: true
+    dir: rails
   rust:
     taskfile: rust/Taskfile.yml
     dir: .
@@ -49,6 +51,158 @@ includes:
     flatten: true
 
 tasks:
+  slice:browser:
+    cmds:
+      - task: frontend:test-browser
+        vars:
+          GROUP: '{{.GROUP | default "shell"}}'
+  slice:test-runner:
+    cmds: [node --test scripts/migration/run-slice.test.mjs]
+  slice:test:
+    requires:
+      vars: [TARGET]
+    env:
+      SLICE_TARGET: '{{.TARGET}}'
+      SLICE_FILTER: '{{.FILTER | default ""}}'
+    cmds: [node scripts/migration/run-slice.mjs]
+  slice:test-all:
+    cmds: [node scripts/migration/run-slice.mjs --all]
+  slice:catalog:
+    env:
+      PERSISTENCE_CATALOG_OUTPUT_DIR: '{{.OUTPUT_DIR | default ""}}'
+    cmds: [node scripts/migration/run-slice.mjs --capture-catalog]
+  inventory:write:
+    desc: Record reconciled migration inputs
+    cmds: [node scripts/migration/inventory.mjs --write]
+  inventory:check:
+    desc: Reject unreconciled source inventory drift
+    cmds: [node scripts/migration/inventory.mjs]
+  preservation:write:
+    desc: Record relocation checksums and preserve source comments
+    cmds: [node scripts/migration/preservation.mjs --write]
+  preservation:check:
+    desc: Check preserved source files and comments
+    cmds: [node scripts/migration/preservation.mjs]
+  deps:
+    desc: Resolve the root Loco lockfile
+    cmds: [cargo generate-lockfile]
+  deps:migration:
+    vars:
+      ONLINE: '{{.ONLINE | default "false"}}'
+    cmds: ['cargo update {{if ne .ONLINE "true"}}--offline{{end}} --package migration']
+  foundation:db-up:
+    requires:
+      vars: [FOUNDATION_PROJECT]
+    cmds: ['docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} up -d --wait postgres']
+  foundation:db-port:
+    requires:
+      vars: [FOUNDATION_PROJECT]
+    cmds: ['docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} port postgres 5432']
+  foundation:db-provision:
+    requires:
+      vars: [FOUNDATION_PROJECT]
+    cmds:
+      - 'docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} exec -T postgres psql -X -v ON_ERROR_STOP=1 -U medtracker -d medtracker_loco -c "CREATE DATABASE medtracker_reference"'
+      - 'cat "{{.ROOT_DIR}}/tests/fixtures/persistence-roles.sql" "{{.ROOT_DIR}}/migration/baseline.sql" | docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} exec -T postgres psql -X -v ON_ERROR_STOP=1 --single-transaction -U medtracker -d medtracker_reference'
+  foundation:db-down:
+    requires:
+      vars: [FOUNDATION_PROJECT]
+    cmds: ['docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} down --volumes']
+  foundation:test-ci-paths:
+    cmds: [node --test scripts/ci/tests/loco_paths.test.mjs]
+  foundation:test-workspaces:
+    cmds: [node --test scripts/migration/workspaces.test.mjs]
+  dev:
+    desc: Start the Loco server
+    cmds:
+      - task: frontend:prepare
+      - 'cargo run --locked -- start {{if eq (.SERVER_AND_WORKER | default "false") "true"}}--server-and-worker{{end}} --environment {{.LOCO_ENV | default "development"}}'
+  build:
+    desc: Build Loco
+    cmds:
+      - task: frontend:prepare
+      - cargo build --locked
+  check:
+    desc: Check Loco targets
+    cmds: [cargo check --locked --all-targets]
+  lint:
+    desc: Lint Loco
+    cmds: [cargo clippy --locked --all-targets -- -D warnings]
+  lint:advisory:
+    desc: Report selected additional Clippy findings
+    cmds: [task --taskfile Taskfiles/lint-advisory.yml report]
+  fmt:
+    desc: Check Loco formatting
+    cmds: [cargo fmt --all -- --check]
+  fmt:apply:
+    cmds: [cargo fmt --all]
+  test:
+    desc: Verify Loco and root ownership contracts
+    cmds:
+      - task: frontend:prepare
+      - task: frontend:test
+      - task: slice:test-runner
+      - task: slice:test-all
+      - task: foundation:test-cleanup
+      - task: foundation:test-database
+      - task: browser
+  test:unit:
+    desc: Run Loco library tests with an optional name filter
+    cmds: ['cargo test --locked --lib {{.FILTER | default ""}} -- --test-threads=1']
+  migration:audit:
+    desc: Audit retained migration inputs explicitly
+    cmds:
+      - task: foundation:test
+      - task: foundation:test-workspaces
+      - task: foundation:test-relocation
+      - task: foundation:test-preservation
+      - task: inventory:check
+      - task: preservation:check
+  routes:
+    desc: List Loco routes
+    cmds: ['cargo run --locked -- routes --environment {{.LOCO_ENV | default "development"}}']
+  db:migrate:
+    desc: Adopt and migrate the configured PostgreSQL database
+    requires:
+      vars: [MIGRATION_DATABASE_URL]
+    env:
+      MEDTRACKER_MIGRATION_DATABASE_URL: '{{.MIGRATION_DATABASE_URL}}'
+    cmds: ['env DATABASE_URL="$MEDTRACKER_MIGRATION_DATABASE_URL" cargo run --locked -- db migrate --environment {{.LOCO_ENV | default "development"}}']
+  db:seed:
+    desc: Seed an empty development or test database with synthetic fixtures
+    requires:
+      vars: [SEED_DATABASE_URL]
+    env:
+      MEDTRACKER_SEED_DATABASE_URL: '{{.SEED_DATABASE_URL}}'
+    cmds: ['env DATABASE_URL="$MEDTRACKER_SEED_DATABASE_URL" cargo run --locked -- db seed --environment {{.LOCO_ENV | default "development"}}']
+  worker:
+    desc: Start the Loco worker process
+    cmds: ['cargo run --locked -- start --worker --environment {{.LOCO_ENV | default "development"}}']
+  browser:
+    desc: Exercise the application through desktop and mobile browsers
+    cmds:
+      - task: frontend:test-browser
+        vars:
+          GROUP: all
+  release-image:
+    desc: Release runtime gate (tranche 6)
+    cmds: ['fish -c ''echo "Production Loco image awaits full migration acceptance" >&2; exit 1''']
+  ci:
+    desc: Verify root Loco foundation
+    cmds:
+      - task: fmt
+      - task: lint
+      - task: test
+  foundation:test:
+    cmds: [node --test scripts/migration/foundation.test.mjs]
+  foundation:test-cleanup:
+    cmds: [node --test scripts/migration/process-cleanup.test.mjs]
+  foundation:test-preservation:
+    cmds: [node --test scripts/migration/preservation.test.mjs]
+  foundation:test-relocation:
+    cmds: [node --test scripts/migration/relocation.test.mjs]
+  foundation:test-database:
+    cmds: [node --test scripts/migration/foundation-database.test.mjs]
   default:
     desc: List all available tasks
     summary: Default task - shows all available commands

@@ -1,0 +1,36 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-3xl mx-auto">
+  <a class="link" href="/households/{{ slug }}/admin">Administration</a>
+  <h1 class="text-3xl font-semibold mt-4">Carer Relationships</h1>
+  <div class="mt-6">{% include "components/form_errors.html" %}</div>
+  <a class="btn btn-neutral mt-4" href="/households/{{ slug }}/admin/carer_relationships/new">New Relationship</a>
+  <ul class="flex flex-col gap-4 mt-6">
+  {% for relationship in relationships %}
+    <li class="card bg-base-100 border border-base-300"><div class="card-body">
+      <h2 class="card-title">{{ relationship.carer_name }} cares for {{ relationship.patient_name }}</h2>
+      <p>{{ relationship.relationship_type | replace(from="_", to=" ") | capitalize }} · {% if relationship.active %}Active{% else %}Inactive{% endif %}</p>
+      {% if relationship.active %}
+        <button class="btn btn-outline" type="button" data-dialog-open="deactivate-{{ relationship.id }}">Deactivate</button>
+        <dialog id="deactivate-{{ relationship.id }}" class="modal" aria-labelledby="deactivate-title-{{ relationship.id }}">
+          <div class="modal-box">
+            <h3 id="deactivate-title-{{ relationship.id }}" class="text-xl font-semibold">Deactivate Relationship</h3>
+            <p class="mt-4">Remove the access provided by this carer relationship?</p>
+            <form action="/households/{{ slug }}/admin/carer_relationships/{{ relationship.id }}/deactivate" method="post" class="modal-action">
+              <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+              <button class="btn btn-neutral" type="submit">Deactivate</button>
+              <button class="btn btn-ghost" type="button" data-dialog-close>Cancel</button>
+            </form>
+          </div>
+        </dialog>
+      {% else %}
+        <form action="/households/{{ slug }}/admin/carer_relationships/{{ relationship.id }}/activate" method="post">
+          <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+          <button class="btn btn-neutral" type="submit">Activate</button>
+        </form>
+      {% endif %}
+    </div></li>
+  {% else %}<li>No carer relationships are available.</li>{% endfor %}
+  </ul>
+</section>
+{% endblock content %}

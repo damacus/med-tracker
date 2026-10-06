@@ -1,0 +1,17 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="card shell-card max-w-lg mx-auto"><div class="card-body gap-5">
+  <h1 class="text-3xl font-semibold">Set Up Passkey Authentication</h1>
+  <p>Add a passkey for fast, secure passwordless sign-in.</p>
+  {% if error %}<p role="alert" class="shell-error">{{ error }}</p>{% endif %}
+  <form method="post" action="/webauthn-setup" id="webauthn-setup-form" data-credential-options="{{ options }}" class="grid gap-4">
+    <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+    <input type="hidden" name="webauthn_setup" value="">
+    <label for="nickname" class="grid gap-2">Passkey name<input id="nickname" name="nickname" class="input shell-input w-full" required maxlength="255" autocomplete="off"></label>
+    <label for="password" class="grid gap-2">Current Password<input id="password" name="password" type="password" class="input shell-input w-full" required autocomplete="current-password"></label>
+    <button class="btn shell-primary" type="submit">Register Passkey</button>
+    <a class="link" href="/multifactor-manage">Cancel</a>
+  </form>
+</div></section>
+<script src="/static/js/passkeys.js" defer></script>
+{% endblock content %}

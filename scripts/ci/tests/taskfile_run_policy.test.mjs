@@ -38,7 +38,7 @@ function taskSection(block, key) {
 }
 
 test('test:exec transports CMD through container env instead of the command line', () => {
-  const output = dryRun('test:exec', 'CMD=pwd');
+  const output = dryRun('rails:test:exec', 'CMD=pwd');
   const tailwind = output.indexOf('web-test rails tailwindcss:build');
   const command = output.indexOf('web-test sh -c \'eval "$CMD"\'');
   assert.notEqual(tailwind, -1, 'expected the tailwind build container command');
@@ -81,7 +81,7 @@ test('test:exec passes CMD to internal:run via vars and docker run env', () => {
 });
 
 test('stop-all stops the dev, test, and prod profiles', () => {
-  const output = dryRun('stop-all');
+  const output = dryRun('rails:stop-all');
   for (const env of ['dev', 'test', 'prod']) {
     assert.match(output, new RegExp(`--profile ${env} stop web-${env} migrate-${env} db-${env}`),
       `expected the ${env} stop command`);
@@ -90,7 +90,7 @@ test('stop-all stops the dev, test, and prod profiles', () => {
 });
 
 test('internal:run pre-starts the database inside the compose lock before one-off web runs', () => {
-  const output = dryRun('test');
+  const output = dryRun('rails:test');
   const preUp = output.search(
     /with_compose_lock\.rb "[^"]+" docker compose -p \S+ --profile test up -d --wait db-test/,
   );
@@ -104,7 +104,7 @@ test('internal:run pre-starts the database inside the compose lock before one-of
 });
 
 test('SERVICE callers like rubocop skip the database pre-start', () => {
-  const output = dryRun('rubocop');
+  const output = dryRun('rails:rubocop');
   assert.match(output, /run --rm\s+tools-test/, 'expected the tools-test run command');
   assert.ok(!/up -d/.test(output), 'SERVICE callers must not pre-start a database');
 });
@@ -135,14 +135,14 @@ test('internal:run first cmd is the locked db pre-up gated on not .SERVICE', () 
 
 test('test:exec keeps metacharacter CMD text off the host command line', () => {
   const cmd = 'echo "a b" && exit 7';
-  const output = dryRun('test:exec', `CMD=${cmd}`);
+  const output = dryRun('rails:test:exec', `CMD=${cmd}`);
   assert.match(output, /run --rm\s+-e CMD\s+web-test/, 'expected CMD to travel via docker run env');
   assert.match(output, /web-test sh -c 'eval "\$CMD"'/, 'expected the container to eval the transported CMD');
   assert.ok(!output.includes(cmd), 'CMD text must not appear on the host command line');
 });
 
 test('test:exec tailwind run does not forward CMD', () => {
-  const output = dryRun('test:exec', 'CMD=pwd');
+  const output = dryRun('rails:test:exec', 'CMD=pwd');
   const runLines = output.split('\n').filter(line => /run --rm/.test(line));
   assert.ok(runLines.length >= 2, 'expected the tailwind and CMD run lines');
   assert.match(runLines[0], /web-test rails tailwindcss:build/, 'expected the first run to build tailwind');
@@ -150,7 +150,7 @@ test('test:exec tailwind run does not forward CMD', () => {
 });
 
 test('test:assets-rebuild runs every internal:run call', () => {
-  const output = dryRun('test:assets-rebuild');
+  const output = dryRun('rails:test:assets-rebuild');
   assert.match(output, /find public\/assets/, 'expected the asset cleanup command');
   assert.match(output, /assets:precompile/, 'expected the precompile command');
   assert.ok(!output.includes('skipping execution'), output);

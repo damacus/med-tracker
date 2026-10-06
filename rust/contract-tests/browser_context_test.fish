@@ -10,9 +10,49 @@ function cleanup_browser_context_test --on-event fish_exit
 end
 
 set -l workspace (pwd)
+set -l filter_fixture "$browser_context_test_dir/filter-fixture"
+set -l filter_export "$browser_context_test_dir/filter-export"
+set -l filter_required rails/vendor/fonts/NotoSans-Regular.ttf rails/vendor/fonts/OFL-1.1.txt rails/config/ai_medication_sources.yml rails/config/nhs_dmd_curated_products.yml rails/config/locales/en.yml
+set -l filter_excluded rails/config/credentials/dummy.key rails/config/unrelated.yml rails/.env rails/app/unrelated.rb rails/log/generated.log
+for input in $filter_required $filter_excluded
+    rtk proxy mkdir -p "$filter_fixture/"(dirname "$input")
+    or exit $status
+    rtk proxy printf 'synthetic build-context marker\n' >"$filter_fixture/$input"
+    or exit $status
+end
+rtk proxy cp rust/contract-tests/Dockerfile.dockerignore "$filter_fixture/Dockerfile.dockerignore"
+or exit $status
+rtk proxy printf 'FROM scratch\nCOPY . /src/\n' >"$filter_fixture/Dockerfile"
+or exit $status
+rtk proxy docker buildx build --progress plain --file "$filter_fixture/Dockerfile" --output "type=local,dest=$filter_export" "$filter_fixture"
+or exit $status
+for input in $filter_required
+    test -f "$filter_export/src/$input"
+    or begin; echo "Required synthetic contract context input missing: $input" >&2; exit 1; end
+end
+for input in $filter_excluded
+    test ! -e "$filter_export/src/$input"
+    or begin; echo "Unrelated synthetic contract context input admitted: $input" >&2; exit 1; end
+end
+set -l context_probe "$browser_context_test_dir/context.Dockerfile"
+set -l context_export "$browser_context_test_dir/export"
+rtk proxy cp rust/contract-tests/Dockerfile.dockerignore "$context_probe.dockerignore"
+or exit $status
+rtk proxy printf 'FROM scratch\nCOPY rails/vendor/fonts/NotoSans-Regular.ttf rails/vendor/fonts/OFL-1.1.txt /src/rails/vendor/fonts/\nCOPY rails/config/ai_medication_sources.yml rails/config/nhs_dmd_curated_products.yml /src/rails/config/\nCOPY rails/config/locales /src/rails/config/locales\n' >"$context_probe"
+or exit $status
+rtk proxy docker buildx build --progress plain --file "$context_probe" --output "type=local,dest=$context_export" "$workspace"
+or begin; echo 'Contract image effective context is missing required Rails font, licence or configuration inputs' >&2; exit 1; end
+set -l required_inputs rails/vendor/fonts/NotoSans-Regular.ttf rails/vendor/fonts/OFL-1.1.txt rails/config/ai_medication_sources.yml rails/config/nhs_dmd_curated_products.yml (rtk proxy rg --files rails/config/locales)
+for input in $required_inputs
+    test -f "$context_export/src/$input"
+    or begin; echo "Contract image effective input missing: $input" >&2; exit 1; end
+    rtk proxy cmp -s "$workspace/$input" "$context_export/src/$input"
+    or begin; echo "Contract image effective input differs: $input" >&2; exit 1; end
+end
+echo 'Contract image effective context includes byte-identical font, licence and Rails configuration inputs'
 set -lx MEDTRACKER_GIT_COMMON_DIR (rtk git rev-parse --path-format=absolute --git-common-dir)
 or exit $status
-set -lx COMPOSE_FILE compose.yaml:rust/contract-tests/storage.compose.yaml:rust/contract-tests/runner.compose.yaml
+set -lx COMPOSE_FILE "$workspace/rails/compose.yaml:$workspace/rust/contract-tests/storage.compose.yaml:$workspace/rust/contract-tests/runner.compose.yaml"
 set -lx CONTRACT_PROJECT mtcontract-browser-context-$fish_pid
 set -lx CONTRACT_FIXTURE_DIR "$workspace/$browser_context_test_dir"
 set -lx CONTRACT_STORAGE_ROOT "$CONTRACT_FIXTURE_DIR/storage"

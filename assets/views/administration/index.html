@@ -1,0 +1,13 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-3xl mx-auto">
+  <a class="link" href="/households/{{ slug }}/medications">Medications</a>
+  <h1 class="text-3xl font-semibold mt-4">Administration</h1>
+  <ul class="flex flex-col gap-4 mt-6">
+    <li><a class="btn btn-neutral" href="/households/{{ slug }}/admin/household/edit">Household Settings</a></li>
+    <li><a class="btn btn-neutral" href="/households/{{ slug }}/admin/users">Users</a></li>
+    <li><a class="btn btn-neutral" href="/households/{{ slug }}/admin/carer_relationships">Carer Relationships</a></li>
+    <li><a class="btn btn-neutral" href="/households/{{ slug }}/admin/invitations">Invitations</a></li>
+  </ul>
+</section>
+{% endblock content %}

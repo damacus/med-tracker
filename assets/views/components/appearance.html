@@ -1,0 +1,24 @@
+<dialog id="appearance-dialog" class="modal" aria-labelledby="appearance-title">
+  <div class="modal-box w-11/12 max-w-3xl">
+    <h2 id="appearance-title" class="text-2xl font-semibold">Appearance</h2>
+    <p class="shell-muted mt-2">Choose your light balance and palette. Your palette is saved for signed-in pages.</p>
+    <fieldset class="mt-6">
+      <legend class="font-semibold mb-3">Light balance</legend>
+      <div class="flex flex-wrap gap-3">
+        {% for mode in appearances %}<button type="button" class="btn btn-ghost" data-appearance-choice="{{ mode.id }}" aria-pressed="false">{{ mode.label }}</button>{% endfor %}
+      </div>
+    </fieldset>
+    <fieldset class="mt-6">
+      <legend class="font-semibold mb-3">Palette</legend>
+      <div class="palette-grid">
+        {% for palette in palettes %}
+        <button type="button" class="btn palette-choice" data-palette-choice="{{ palette.id }}" aria-pressed="false">
+          <span data-theme="{{ palette.id }}-light" aria-hidden="true"><span class="palette-swatch"></span></span>
+          {{ palette.label }}
+        </button>
+        {% endfor %}
+      </div>
+    </fieldset>
+    <div class="modal-action"><button type="button" class="btn btn-ghost" data-dialog-close>Close</button></div>
+  </div>
+</dialog>

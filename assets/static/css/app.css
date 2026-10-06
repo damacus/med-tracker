@@ -1,0 +1,28 @@
+@import "tailwindcss";
+@import "./fonts.css";
+@import "./themes.css";
+@source "../../views";
+@plugin "daisyui" { themes: false; }
+
+body { margin: 0; font-family: var(--font-family); background: var(--background); color: var(--foreground); }
+.shell-header { border-bottom: 1px solid var(--border-color); background: var(--surface-container-lowest); }
+.shell-width { width: min(100% - 2rem, 72rem); margin-inline: auto; }
+.shell-header-inner { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-block: 1rem; }
+.shell-main { padding-block: 3rem; }
+.shell-card { background: var(--card); border: 1px solid var(--border-color); box-shadow: var(--elevation-1); }
+.shell-muted { color: var(--on-surface-variant); }
+.shell-footer { border-top: 1px solid var(--border-color); padding-block: 1.5rem; }
+.palette-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: 0.75rem; }
+.palette-choice { min-height: 5rem; height: auto; white-space: normal; border: 1px solid var(--border-color); background: var(--card); color: var(--foreground); }
+.palette-choice[aria-pressed="true"], [data-appearance-choice][aria-pressed="true"] { outline: 2px solid var(--ring); outline-offset: 2px; }
+.palette-swatch { display: block; width: 1.25rem; height: 1.25rem; border-radius: 50%; background: var(--palette-color); border: 1px solid var(--border-color); }
+:focus-visible { outline: 3px solid var(--ring); outline-offset: 3px; }
+.skip-link { position: absolute; left: 1rem; top: -5rem; z-index: 100; padding: 0.75rem; background: var(--card); color: var(--foreground); }
+.skip-link:focus { top: 1rem; }
+[hidden] { display: none !important; }
+.modal-box { background: var(--card); color: var(--foreground); max-height: min(90vh, 50rem); }
+.tabs { flex-wrap: wrap; }
+.tab { color: var(--foreground); }
+.btn { max-width: 100%; }
+@media (max-width: 480px) { .shell-main { padding-block: 1.5rem; } .shell-header-inner { gap: 0.5rem; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; } }

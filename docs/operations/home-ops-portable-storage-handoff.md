@@ -51,14 +51,14 @@ These repository commands start a local Docker Compose production service. Use
 them only for local production-image checks:
 
 ```fish
-task prod:storage-migration-start
-task prod:storage-migration-resume
-task prod:storage-migration-reconcile
-task prod:storage-migration-cutover-eligibility
-task prod:storage-migration-cutover
-task prod:storage-migration-rollback
-task prod:storage-migration-finalize
-task prod:storage-migration-retirement-eligibility
+task rails:prod:storage-migration-start
+task rails:prod:storage-migration-resume
+task rails:prod:storage-migration-reconcile
+task rails:prod:storage-migration-cutover-eligibility
+task rails:prod:storage-migration-cutover
+task rails:prod:storage-migration-rollback
+task rails:prod:storage-migration-finalize
+task rails:prod:storage-migration-retirement-eligibility
 ```
 
 Home-Ops must run `rails storage:migration` in an approved Kubernetes Job for a

@@ -1,7 +1,9 @@
 # Docker Development
 
-MedTracker uses one `compose.yaml` file and Task wrappers for development,
-tests, tooling, and local production-image checks.
+The root `compose.yaml` provides PostgreSQL 18 for the Loco foundation.
+The Rails rollback uses `rails/compose.yaml` and `task rails:*` wrappers for
+development, tests, tooling and production-image checks. The published product
+image remains Rails until the complete Loco migration is accepted.
 
 Do not copy old `docker-compose` commands or run Compose services directly.
 Use these current guides instead:
@@ -16,5 +18,5 @@ List every supported command with:
 task --list
 ```
 
-Use `task dev:rebuild` or `task test:rebuild` only when a destructive database
+Use `task rails:dev:rebuild` or `task rails:test:rebuild` only when a destructive database
 reset is intended.

@@ -39,7 +39,7 @@ cd med-tracker
 
 ## Start MedTracker
 
-> **Local evaluation only:** `task dev:portless` starts the development stack.
+> **Local evaluation only:** `task rails:dev:portless` starts the development stack.
 > Do not run this stack on a public or shared network, and do not use it as a
 > production server for real medication or person records. For a reachable
 > server, use a production deployment and create your first administrator
@@ -47,7 +47,7 @@ cd med-tracker
 > fixtures.
 
 ```fish
-task dev:portless
+task rails:dev:portless
 ```
 
 The first start can take a few minutes while Docker downloads and builds the
@@ -60,7 +60,7 @@ accounts with known passwords. Only run this command on a private development
 machine:
 
 ```fish
-task dev:seed
+task rails:dev:seed
 ```
 
 ## Open MedTracker

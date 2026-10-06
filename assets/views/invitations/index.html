@@ -1,0 +1,54 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-3xl mx-auto">
+  <a class="link" href="/households/{{ slug }}/admin">Administration</a>
+  <h1 class="text-3xl font-semibold mt-4">Invitations</h1>
+  <p class="mt-2">Invite new users to join MedTracker.</p>
+  <div class="mt-6">{% include "components/form_errors.html" %}</div>
+  <div class="card bg-base-100 border border-base-300 mt-6"><div class="card-body">
+    <form id="invitation-form" action="/households/{{ slug }}/admin/invitations" method="post" class="flex flex-col gap-4">
+      <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+      <label for="email" class="font-semibold">Email</label>
+      <input id="email" name="email" type="email" class="input w-full" value="{{ draft.email }}" required {% if email_invalid %}aria-invalid="true" aria-describedby="form-error-email"{% endif %}>
+      <label for="membership_role" class="font-semibold">Household role</label>
+      <select id="membership_role" name="membership_role" class="select w-full" {% if membership_role_invalid %}aria-invalid="true" aria-describedby="form-error-membership_role"{% endif %}>
+        {% for role in roles %}<option value="{{ role }}" {% if draft.membership_role == role %}selected{% endif %}>{{ role | capitalize }}</option>{% endfor %}
+      </select>
+      <label for="relationship_type" class="font-semibold">Dependent relationship</label>
+      <select id="relationship_type" name="relationship_type" class="select w-full" {% if relationship_type_invalid %}aria-invalid="true" aria-describedby="form-error-relationship_type"{% endif %}>
+        <option value="" {% if draft.relationship_type == "" %}selected{% endif %}>Select relationship</option>
+        {% for kind in relationship_types %}<option value="{{ kind }}" {% if draft.relationship_type == kind %}selected{% endif %}>{{ kind | replace(from="_", to=" ") | capitalize }}</option>{% endfor %}
+      </select>
+      <label for="access_level" class="font-semibold">Dependent access</label>
+      <select id="access_level" name="access_level" class="select w-full" {% if access_level_invalid %}aria-invalid="true" aria-describedby="form-error-access_level"{% endif %}>
+        {% for level in access_levels %}<option value="{{ level }}" {% if draft.access_level == level %}selected{% endif %}>{{ level | capitalize }}</option>{% endfor %}
+      </select>
+      {% if dependents | length > 0 %}
+      <fieldset id="dependent_ids" data-invitation-dependents {% if draft.relationship_type == "" %}hidden disabled{% endif %} {% if dependent_ids_invalid %}aria-invalid="true" aria-describedby="form-error-dependent_ids"{% endif %}>
+        <legend class="font-semibold">Existing dependents</legend>
+        <p class="mt-2">Select existing children or dependent adults this invited parent or carer should manage.</p>
+        <div class="flex flex-col gap-3 mt-3">
+        {% for dependent in dependents %}<label class="flex items-center gap-3"><input class="checkbox" type="checkbox" name="dependent_ids[]" value="{{ dependent.id }}" {% if dependent.selected %}checked{% endif %}>{{ dependent.name }}</label>{% endfor %}
+        </div>
+      </fieldset>
+      {% endif %}
+      <button class="btn btn-neutral mt-4" type="submit">Send invitation</button>
+    </form>
+  </div></div>
+  <h2 class="text-xl font-semibold mt-8">Recent invitations</h2>
+  <ul class="flex flex-col gap-4 mt-4">
+    {% for invitation in invitations %}
+    <li class="card bg-base-100 border border-base-300"><div class="card-body">
+      <h3 class="card-title break-all">{{ invitation.email }}</h3>
+      <p>{{ invitation.membership_role | capitalize }} · {{ invitation.status }}</p>
+      <p class="break-words">Expires: <time datetime="{{ invitation.expires_at }}">{{ invitation.expires_at }}</time></p>
+      {% if invitation.actionable %}<div class="flex flex-col sm:flex-row gap-3">
+        <form action="/households/{{ slug }}/admin/invitations/{{ invitation.id }}/resend" method="post"><input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><button class="btn btn-outline" type="submit">Resend</button></form>
+        <form action="/households/{{ slug }}/admin/invitations/{{ invitation.id }}/cancel" method="post"><input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><button class="btn btn-outline" type="submit">Cancel</button></form>
+      </div>{% endif %}
+    </div></li>
+    {% else %}<li>No invitations are available.</li>{% endfor %}
+  </ul>
+</section>
+<script src="/static/js/invitations.js" defer></script>
+{% endblock content %}

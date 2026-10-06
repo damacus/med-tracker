@@ -201,15 +201,15 @@ tasks:
     requires:
       vars: [CONTRACT_SOURCE_DIR]
     cmds:
-      - mkdir -p '{{ .CONTRACT_SOURCE_DIR }}/rust/api' '{{ .CONTRACT_SOURCE_DIR }}/rust/web' '{{ .CONTRACT_SOURCE_DIR }}/rust/ui-preview' '{{ .CONTRACT_SOURCE_DIR }}/rust/contract-tests' '{{ .CONTRACT_SOURCE_DIR }}/config/locales' '{{ .CONTRACT_SOURCE_DIR }}/vendor/fonts'
+      - mkdir -p '{{ .CONTRACT_SOURCE_DIR }}/rust/api' '{{ .CONTRACT_SOURCE_DIR }}/rust/web' '{{ .CONTRACT_SOURCE_DIR }}/rust/ui-preview' '{{ .CONTRACT_SOURCE_DIR }}/rust/contract-tests' '{{ .CONTRACT_SOURCE_DIR }}/rails/config/locales' '{{ .CONTRACT_SOURCE_DIR }}/rails/vendor/fonts'
       - rsync -a --exclude target/ rust/api/ '{{ .CONTRACT_SOURCE_DIR }}/rust/api/'
       - rsync -a --exclude target/ rust/vendor/ '{{ .CONTRACT_SOURCE_DIR }}/rust/vendor/'
       - rsync -a --exclude target/ rust/web/ '{{ .CONTRACT_SOURCE_DIR }}/rust/web/'
       - rsync -a --exclude target/ --exclude node_modules/ rust/ui-preview/ '{{ .CONTRACT_SOURCE_DIR }}/rust/ui-preview/'
       - rsync -a --exclude target/ rust/contract-tests/ '{{ .CONTRACT_SOURCE_DIR }}/rust/contract-tests/'
-      - cp config/ai_medication_sources.yml config/nhs_dmd_curated_products.yml '{{ .CONTRACT_SOURCE_DIR }}/config/'
-      - cp config/locales/*.yml '{{ .CONTRACT_SOURCE_DIR }}/config/locales/'
-      - cp vendor/fonts/NotoSans-Regular.ttf vendor/fonts/OFL-1.1.txt '{{ .CONTRACT_SOURCE_DIR }}/vendor/fonts/'
+      - cp rails/config/ai_medication_sources.yml rails/config/nhs_dmd_curated_products.yml '{{ .CONTRACT_SOURCE_DIR }}/rails/config/'
+      - cp rails/config/locales/*.yml '{{ .CONTRACT_SOURCE_DIR }}/rails/config/locales/'
+      - cp rails/vendor/fonts/NotoSans-Regular.ttf rails/vendor/fonts/OFL-1.1.txt '{{ .CONTRACT_SOURCE_DIR }}/rails/vendor/fonts/'
 
   contract-external-up:
     dir: "{{.TASKFILE_DIR}}/../.."

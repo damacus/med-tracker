@@ -1,0 +1,86 @@
+{
+  "column:public.seaql_migrations.applied_at": {
+    "acl": null,
+    "collation": null,
+    "compression": "",
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "not_null": true,
+    "options": null,
+    "position": 2,
+    "storage": "p",
+    "type": "bigint"
+  },
+  "column:public.seaql_migrations.version": {
+    "acl": null,
+    "collation": "pg_catalog.default",
+    "compression": "",
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "not_null": true,
+    "options": null,
+    "position": 1,
+    "storage": "x",
+    "type": "character varying"
+  },
+  "constraint:public.seaql_migrations.seaql_migrations_applied_at_not_null": {
+    "deferrable": false,
+    "deferred": false,
+    "definition": "NOT NULL applied_at",
+    "enforced": true,
+    "inherit_count": 0,
+    "local": true,
+    "no_inherit": false,
+    "validated": true
+  },
+  "constraint:public.seaql_migrations.seaql_migrations_pkey": {
+    "deferrable": false,
+    "deferred": false,
+    "definition": "PRIMARY KEY (version)",
+    "enforced": true,
+    "inherit_count": 0,
+    "local": true,
+    "no_inherit": true,
+    "validated": true
+  },
+  "constraint:public.seaql_migrations.seaql_migrations_version_not_null": {
+    "deferrable": false,
+    "deferred": false,
+    "definition": "NOT NULL version",
+    "enforced": true,
+    "inherit_count": 0,
+    "local": true,
+    "no_inherit": false,
+    "validated": true
+  },
+  "index:public.seaql_migrations_pkey": {
+    "clustered": false,
+    "definition": "CREATE UNIQUE INDEX seaql_migrations_pkey ON public.seaql_migrations USING btree (version)",
+    "live": true,
+    "options": null,
+    "owner": "med_tracker_owner",
+    "ready": true,
+    "replica_identity": false,
+    "tablespace": null,
+    "valid": true
+  },
+  "relation:public.seaql_migrations": {
+    "access_method": "heap",
+    "acl": [
+      "med_tracker_owner=arwdDxtm/med_tracker_owner"
+    ],
+    "force_rls": false,
+    "kind": "r",
+    "options": null,
+    "owner": "med_tracker_owner",
+    "partition": false,
+    "partition_bound": null,
+    "partition_key": null,
+    "persistence": "p",
+    "replica_identity": "d",
+    "rls": false,
+    "tablespace": null
+  }
+}

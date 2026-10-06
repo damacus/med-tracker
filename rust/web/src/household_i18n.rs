@@ -248,11 +248,26 @@ fn catalogues() -> Result<&'static HashMap<Locale, Value>, TranslationError> {
     CATALOGUES
         .get_or_init(|| {
             [
-                (Locale::En, include_str!("../../../config/locales/en.yml")),
-                (Locale::Cy, include_str!("../../../config/locales/cy.yml")),
-                (Locale::Ga, include_str!("../../../config/locales/ga.yml")),
-                (Locale::Es, include_str!("../../../config/locales/es.yml")),
-                (Locale::Pt, include_str!("../../../config/locales/pt.yml")),
+                (
+                    Locale::En,
+                    include_str!("../../../rails/config/locales/en.yml"),
+                ),
+                (
+                    Locale::Cy,
+                    include_str!("../../../rails/config/locales/cy.yml"),
+                ),
+                (
+                    Locale::Ga,
+                    include_str!("../../../rails/config/locales/ga.yml"),
+                ),
+                (
+                    Locale::Es,
+                    include_str!("../../../rails/config/locales/es.yml"),
+                ),
+                (
+                    Locale::Pt,
+                    include_str!("../../../rails/config/locales/pt.yml"),
+                ),
             ]
             .into_iter()
             .map(|(locale, source)| {

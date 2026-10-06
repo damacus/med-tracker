@@ -25,7 +25,17 @@ Follow Red-Green-Refactor — no production code without a failing test first.
 - **Fixture password** — All dev/test fixture users have password `password`
 - **JSON inspection** — Use `jq` for JSON search/filtering; do not write Ruby/Python scripts for ad hoc JSON parsing
 
-## Stack
+## Root application and rollback
+
+Loco 1.2 is the root application: `src/`, `config/*.yaml`, `assets/` and
+`migration/`. Rails lives under `rails/` and remains the independently runnable
+reference and rollback application during migration. Root `task dev`, `build`,
+`test`, `check`, `lint`, `fmt`, `routes`, `worker`, `browser` and `ci` belong to
+Loco. Schema adoption, fixtures and production images remain explicit gates until
+their migration tranches pass. Never deploy the foundation as the finished app.
+The existing `rust/` Axum/Leptos sources remain migration inputs, not root routing.
+
+## Rails rollback stack
 
 - Ruby 4.0.6
 - Rails 8.1.3
@@ -69,7 +79,7 @@ requirements materially prevent doing so.
 - Use RuboCop as the source of truth for Ruby style.
 - Prefer clear names, small private methods, guard clauses, and Enumerable methods where they improve readability.
 - Keep controllers focused on HTTP concerns; put business logic in models, POROs, or service objects.
-- Use Phlex components in `app/components/`.
+- Use Phlex components in `rails/app/components/`.
 - Add nil-safety guards in policy/component code when records or associations may be absent.
 - Use `respond_to?` guards where a policy record may be a Class, such as `new` actions.
 
@@ -94,8 +104,8 @@ requirements materially prevent doing so.
 
 ## Native mobile workspace
 
-- Rails remains at the repository root. `app/`, root Docker configuration, and
-  `docs/api/openapi.v1.yaml` are Rails-owned; do not open the root as an
+- Rails remains under `rails/`; its `app/` and Docker configuration are Rails-owned.
+  The shared root `docs/api/openapi.v1.yaml` is authoritative for every runtime; do not open the root as an
   Android Gradle or Xcode project.
 - Route Android work to `mobile/android` and its nested Gradle build after the
   Android application lands. Add root Android Task commands and CI only with
@@ -109,57 +119,59 @@ requirements materially prevent doing so.
 
 ## Commands
 
-Use `task` for everything. Never run `docker compose`, `bin/dev`, or `bundle exec rspec` directly.
+Use `task` for everything. Run `task ci` for Loco changes; the following commands
+apply to the Rails rollback application. Rails root entry commands use `rails:`;
+`task --dir rails ...` is supported for standalone rollback work. Never run `docker compose`, `bin/dev`, or `bundle exec rspec` directly.
 
-> **Note**: For most `task dev:*` commands, an equivalent `task test:*` command exists (e.g., `task test:up`, `task test:port`).
+> **Note**: For most `task rails:dev:*` commands, an equivalent `task rails:test:*` command exists (e.g., `task rails:test:up`, `task rails:test:port`).
 
 | What | Command |
 |---|---|
-| Run tests | `task test` |
-| Test Docker preflight | `task test:preflight` |
-| Lint | `task rubocop` |
-| Start dev server | `task dev:up` |
-| Build dev images | `task dev:build` |
-| View dev logs | `task dev:logs` |
-| Stop dev server | `task dev:stop` |
-| Get dev port | `task dev:port` |
-| Open in browser | `task dev:open-ui` |
-| Seed database | `task dev:seed` |
-| Migrate | `task dev:db-migrate` |
-| Rebuild (destructive) | `task dev:rebuild` |
-| Run Brakeman | `task brakeman` |
-| Run RuboCop autocorrect | `task rubocop AUTOCORRECT=true` |
-| Stop everything | `task stop-all` |
-| Run local Playwright browser tests | `task playwright` |
+| Run tests | `task rails:test` |
+| Test Docker preflight | `task rails:test:preflight` |
+| Lint | `task rails:rubocop` |
+| Start dev server | `task rails:dev:up` |
+| Build dev images | `task rails:dev:build` |
+| View dev logs | `task rails:dev:logs` |
+| Stop dev server | `task rails:dev:stop` |
+| Get dev port | `task rails:dev:port` |
+| Open in browser | `task rails:dev:open-ui` |
+| Seed database | `task rails:dev:seed` |
+| Migrate | `task rails:dev:db-migrate` |
+| Rebuild (destructive) | `task rails:dev:rebuild` |
+| Run Brakeman | `task rails:brakeman` |
+| Run RuboCop autocorrect | `task rails:rubocop AUTOCORRECT=true` |
+| Stop everything | `task rails:stop-all` |
+| Run local Playwright browser tests | `task rails:playwright` |
 | List all tasks | `task -l` |
 
 ## Docker Development
 
 - Development uses a bind mount, so Ruby, config, lib, spec, and database file changes sync into the container automatically.
-- Rebuild after changing `Gemfile`, `Gemfile.lock`, `package.json`, `yarn.lock`, or Docker configuration.
-- Use `task dev:db-migrate` after migrations.
-- Use `task dev:rebuild` only for a destructive fresh start.
+- Rebuild after changing `rails/Gemfile`, `rails/Gemfile.lock`, `rails/package.json`, `rails/yarn.lock`, or Docker configuration.
+- Use `task rails:dev:db-migrate` after migrations.
+- Use `task rails:dev:rebuild` only for a destructive fresh start.
 - Do not use Docker Compose watch; the bind mount and Rails reloader already provide live updates.
 
 ## Testing
 
 Documentation-only changes (`*.md` with no executable code or application
-configuration changes) do not require `task test:preflight`, the full RSpec
+configuration changes) do not require `task rails:test:preflight`, the full RSpec
 suite, system or Playwright tests, Lighthouse, or application end-to-end tests.
 Verify Markdown correctness with `task docs:build` and `git diff --check`, plus
 any narrower documentation-specific check relevant to the changed files.
 
-Run `task test:preflight` only before implementation work that changes Rails code. If it reports that Docker is unavailable or the test image is missing, fix that specific prerequisite. Use GitHub CI as the Rails verification authority only when local Docker remains unavailable.
+Run `task rails:test:preflight` only before implementation work that changes Rails code. If it reports that Docker is unavailable or the test image is missing, fix that specific prerequisite. Use GitHub CI as the Rails verification authority only when local Docker remains unavailable.
 
-Do not run `task test:preflight` or `task test` for changes confined to CI,
+Do not run `task rails:test:preflight` or `task rails:test` for changes confined to CI,
 Android, iOS, documentation, plans, or non-Rails tooling. Run the checks relevant
 to those areas instead. Mixed changes require Rails tests only when they also
 change Rails code.
 
 - Write RSpec tests in `_spec.rb` files using Rails/RSpec conventions.
 - Test public APIs and observable behavior, not implementation details.
-- Use Rails fixtures in `spec/fixtures/`; keep fixture relationships realistic and avoid duplicate unique attributes.
-- Use VCR cassettes in `spec/vcr_cassettes/` for external API mocking.
+- Use Rails fixtures in `rails/spec/fixtures/`; keep fixture relationships realistic and avoid duplicate unique attributes.
+- Use VCR cassettes in `rails/spec/vcr_cassettes/` for external API mocking.
 - Policy changes need explicit coverage for relevant roles: admin, clinician, self, carer, parent, and unauthorized users.
 - New model validations need positive and negative test cases.
 - Admin CRUD flows need success, validation error, duplicate handling, and immediate-usability coverage.
@@ -169,8 +181,8 @@ change Rails code.
 ## Screenshots for PRs
 
 ```fish
-task dev:up
-task dev:port          # → e.g. 3000
+task rails:dev:up
+task rails:dev:port          # → e.g. 3000
 # then use the playwright-cli skill to navigate and screenshot
 ```
 
@@ -178,20 +190,20 @@ Save PR screenshots under `docs/screenshots/` with page and viewport in the file
 
 ## Quality gates (run before every push)
 
-Run `task test` only when Rails code changes. Run `task rubocop` when Ruby code
+Run `task rails:test` only when Rails code changes. Run `task rails:rubocop` when Ruby code
 changes. Changes to CI or other non-Rails executable code or configuration do
 not, by themselves, require the Rails suite. Run each changed area's relevant
 checks; for documentation-only changes, use the verification rule above.
 
 ```fish
-task rubocop          # lint — must pass with no offenses
-task test             # full test suite in Docker — must be green
+task rails:rubocop          # lint — must pass with no offenses
+task rails:test             # full test suite in Docker — must be green
 ```
 
 When developing a Rails change, run a single file with:
 
 ```fish
-task test TEST_FILE=spec/path/to/file_spec.rb
+task rails:test TEST_FILE=spec/path/to/file_spec.rb
 ```
 
 Never push if an applicable required check fails.
@@ -201,7 +213,7 @@ Never push if an applicable required check fails.
 - Code review findings should prioritize correctness, missing coverage, authorization gaps, N+1 queries, nil safety, race conditions, unsafe SQL, mass assignment, and existing pattern violations.
 - PR review comments must be checked against the current code before changing anything; do not blindly apply Copilot or bot suggestions.
 - Address each actionable PR review comment directly after pushing the fix or explain why no code change was needed.
-- Security review should use `task brakeman` and manual review of authentication, authorization, strong parameters, model validations, raw SQL, secret handling, security headers, dependency risk, audit trails, and medication/health-data access controls.
+- Security review should use `task rails:brakeman` and manual review of authentication, authorization, strong parameters, model validations, raw SQL, secret handling, security headers, dependency risk, audit trails, and medication/health-data access controls.
 - Document false positives or accepted risks before ignoring security findings.
 
 ## PR and Commit Text
@@ -230,7 +242,7 @@ Work is not done until `git push` succeeds.
 **MANDATORY WORKFLOW:**
 
 1. **File issues for remaining work** - Create issues for anything that needs follow-up
-2. **Run applicable quality gates** - Use the changed-area rules above; run `task test` only when Rails code changes
+2. **Run applicable quality gates** - Use the changed-area rules above; run `task rails:test` only when Rails code changes
 3. **Update issue status** - Close finished work, update in-progress items
 4. **PUSH TO REMOTE** - This is MANDATORY:
    ```fish

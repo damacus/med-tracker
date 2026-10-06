@@ -1,0 +1,255 @@
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/static/fonts/geist/geist-v1.7.2-variable.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Inter';
+	font-style: normal;
+	font-weight: 300;
+	font-display: swap;
+	src: url('/static/fonts/inter/inter-v20-latin-300.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Inter';
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url('/static/fonts/inter/inter-v20-latin-regular.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Inter';
+	font-style: normal;
+	font-weight: 500;
+	font-display: swap;
+	src: url('/static/fonts/inter/inter-v20-latin-500.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Inter';
+	font-style: normal;
+	font-weight: 600;
+	font-display: swap;
+	src: url('/static/fonts/inter/inter-v20-latin-600.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Inter';
+	font-style: normal;
+	font-weight: 700;
+	font-display: swap;
+	src: url('/static/fonts/inter/inter-v20-latin-700.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Inter';
+	font-style: normal;
+	font-weight: 800;
+	font-display: swap;
+	src: url('/static/fonts/inter/inter-v20-latin-800.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Plus Jakarta Sans';
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url('/static/fonts/plus-jakarta-sans/plus-jakarta-sans-v12-latin-regular.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Plus Jakarta Sans';
+	font-style: normal;
+	font-weight: 500;
+	font-display: swap;
+	src: url('/static/fonts/plus-jakarta-sans/plus-jakarta-sans-v12-latin-500.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Plus Jakarta Sans';
+	font-style: normal;
+	font-weight: 600;
+	font-display: swap;
+	src: url('/static/fonts/plus-jakarta-sans/plus-jakarta-sans-v12-latin-600.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Plus Jakarta Sans';
+	font-style: normal;
+	font-weight: 700;
+	font-display: swap;
+	src: url('/static/fonts/plus-jakarta-sans/plus-jakarta-sans-v12-latin-700.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Plus Jakarta Sans';
+	font-style: normal;
+	font-weight: 800;
+	font-display: swap;
+	src: url('/static/fonts/plus-jakarta-sans/plus-jakarta-sans-v12-latin-800.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Lexend';
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url('/static/fonts/lexend/lexend-v26-latin-regular.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Lexend';
+	font-style: normal;
+	font-weight: 500;
+	font-display: swap;
+	src: url('/static/fonts/lexend/lexend-v26-latin-500.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Lexend';
+	font-style: normal;
+	font-weight: 600;
+	font-display: swap;
+	src: url('/static/fonts/lexend/lexend-v26-latin-600.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Lexend';
+	font-style: normal;
+	font-weight: 700;
+	font-display: swap;
+	src: url('/static/fonts/lexend/lexend-v26-latin-700.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Outfit';
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url('/static/fonts/outfit/outfit-v15-latin-regular.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Outfit';
+	font-style: normal;
+	font-weight: 500;
+	font-display: swap;
+	src: url('/static/fonts/outfit/outfit-v15-latin-500.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Outfit';
+	font-style: normal;
+	font-weight: 600;
+	font-display: swap;
+	src: url('/static/fonts/outfit/outfit-v15-latin-600.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Outfit';
+	font-style: normal;
+	font-weight: 700;
+	font-display: swap;
+	src: url('/static/fonts/outfit/outfit-v15-latin-700.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Figtree';
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url('/static/fonts/figtree/figtree-v9-latin-regular.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Figtree';
+	font-style: normal;
+	font-weight: 500;
+	font-display: swap;
+	src: url('/static/fonts/figtree/figtree-v9-latin-500.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Figtree';
+	font-style: normal;
+	font-weight: 600;
+	font-display: swap;
+	src: url('/static/fonts/figtree/figtree-v9-latin-600.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Figtree';
+	font-style: normal;
+	font-weight: 700;
+	font-display: swap;
+	src: url('/static/fonts/figtree/figtree-v9-latin-700.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Urbanist';
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url('/static/fonts/urbanist/urbanist-v18-latin-regular.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Urbanist';
+	font-style: normal;
+	font-weight: 500;
+	font-display: swap;
+	src: url('/static/fonts/urbanist/urbanist-v18-latin-500.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Urbanist';
+	font-style: normal;
+	font-weight: 600;
+	font-display: swap;
+	src: url('/static/fonts/urbanist/urbanist-v18-latin-600.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Urbanist';
+	font-style: normal;
+	font-weight: 700;
+	font-display: swap;
+	src: url('/static/fonts/urbanist/urbanist-v18-latin-700.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Public Sans';
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url('/static/fonts/public-sans/public-sans-v21-latin-regular.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Public Sans';
+	font-style: normal;
+	font-weight: 500;
+	font-display: swap;
+	src: url('/static/fonts/public-sans/public-sans-v21-latin-500.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Public Sans';
+	font-style: normal;
+	font-weight: 600;
+	font-display: swap;
+	src: url('/static/fonts/public-sans/public-sans-v21-latin-600.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Public Sans';
+	font-style: normal;
+	font-weight: 700;
+	font-display: swap;
+	src: url('/static/fonts/public-sans/public-sans-v21-latin-700.woff2') format('woff2');
+}

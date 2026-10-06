@@ -1,0 +1,9 @@
+{
+  "provenance": {
+    "library": "cose",
+    "version": "1.3.1",
+    "algorithm": "PS256",
+    "purpose": "Synthetic public key for unsupported-credential replacement tests; no assertion verification claim"
+  },
+  "public_key": "pAM4JAEDIFkBAMShsKE-wRv862ORfN6bNig-OiItiy9fKuGbtDgqaye1VLxDsBQap3jt5atX41B6BBQL24rZYgcXN7XPIknttjQscpR91Kjh_M2ZqXJ4lGYtHi0c0Y1_fS5c5u86QUBJDdjGCr21aHSNezfcIdpSzUk_eVd1SxhCwL9JiFraL5_RX7WW3BOuVjD7C-GWqEHhf4Jh8wy2wLcyk-5avYr0qAY7c9scsBC6iA6EHDJUcJjtIipmI3qK4kmKNJUeFCmGNwdv2RU25TQ2tLK6v4KkCgwdSPRzknKQPblRaOZvrzQgoyd-Mt7wunBsh9KHjlyg28lNcHFAkjCWCzKYDqrpN0UhQwEAAQ"
+}

@@ -1,0 +1,29 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<div class="max-w-3xl">
+  <p class="text-sm font-semibold uppercase tracking-widest shell-muted">Care, kept together</p>
+  <h1 class="text-4xl font-semibold mt-3">MedTracker</h1>
+  {% if auth_notice is defined and auth_notice %}<p role="status" class="mt-4">{{ auth_notice }}</p>{% endif %}
+  {% if signed_in %}
+  <nav class="mt-6" aria-label="Account">
+    <a class="link" href="/multifactor-manage">Security settings</a>
+  </nav>
+  <section class="mt-8">
+    <h2 class="text-2xl font-semibold">Your households</h2>
+    <ul class="flex flex-col gap-4 mt-4">
+    {% for household in households %}
+      <li class="card shell-card"><div class="card-body">
+        <h3 class="card-title"><a class="link" href="/households/{{ household.slug }}/medications">{{ household.name }}</a></h3>
+      </div></li>
+    {% else %}<li>You do not have an active household membership.</li>{% endfor %}
+    </ul>
+  </section>
+  {% else %}
+  <a class="btn btn-neutral mt-6" href="/login">Sign in</a>
+  <div class="card shell-card mt-8"><div class="card-body">
+    <h2 class="card-title">Your care, in one place</h2>
+    <p>Keep people, medicines and their care together.</p>
+  </div></div>
+  {% endif %}
+</div>
+{% endblock content %}

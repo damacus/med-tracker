@@ -1,0 +1,60 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-4xl mx-auto">
+  <a class="link" href="/households/{{ slug }}/people/{{ person_id }}">Back to Person</a>
+  <h1 class="text-3xl font-semibold mt-4">{{ title }}</h1>
+  {% if can_manage %}<nav class="flex flex-wrap gap-4 mt-6" aria-label="Add treatment">
+    <a class="btn btn-neutral" href="/households/{{ slug }}/people/{{ person_id }}/treatments/schedules/new">Add schedule</a>
+    <a class="btn btn-neutral" href="/households/{{ slug }}/people/{{ person_id }}/treatments/assignments/new">Assign medication</a>
+  </nav>{% endif %}
+  {% for group in groups %}
+  <section class="mt-8" aria-labelledby="{{ group.kind }}-heading">
+    <h2 class="text-2xl font-semibold" id="{{ group.kind }}-heading">{{ group.label }}</h2>
+    {% for record in group.records %}
+    <article class="card shell-card mt-4" aria-label="{{ record.medication_name }} {{ group.kind }}"><div class="card-body">
+      <h3 class="card-title"><a class="link" href="/households/{{ slug }}/medications/{{ record.medication_id }}">{{ record.medication_name }}</a></h3>
+      <p>{{ record.dose_amount | default(value="Not specified") }} {{ record.dose_unit | default(value="") }} · {% if record.paused %}Paused{% elif record.active %}Active{% else %}Outside scheduled dates{% endif %}</p>
+      <dl class="grid gap-2">
+        {% if record.schedule_type is defined %}<dt class="font-semibold">Schedule type</dt><dd>{{ record.schedule_type | replace(from="_", to=" ") }}</dd>{% endif %}
+        {% if record.administration_kind is defined %}<dt class="font-semibold">Administration</dt><dd>{{ record.administration_kind | replace(from="_", to=" ") }}</dd>{% endif %}
+        {% if record.start_date is defined %}<dt class="font-semibold">Dates</dt><dd>{{ record.start_date }} to {{ record.end_date }}</dd>{% endif %}
+        {% if record.frequency is defined and record.frequency %}<dt class="font-semibold">Frequency</dt><dd>{{ record.frequency }}</dd>{% endif %}
+        {% if record.dose_cycle %}<dt class="font-semibold">Dose cycle</dt><dd>{{ record.dose_cycle }}</dd>{% endif %}
+        {% if record.max_daily_doses %}<dt class="font-semibold">Maximum daily doses</dt><dd>{{ record.max_daily_doses }}</dd>{% endif %}
+        {% if record.min_hours_between_doses %}<dt class="font-semibold">Minimum hours between doses</dt><dd>{{ record.min_hours_between_doses }}</dd>{% endif %}
+        {% if record.notes %}<dt class="font-semibold">Notes</dt><dd>{{ record.notes }}</dd>{% endif %}
+        {% if record.schedule_config is defined %}
+          {% if record.schedule_config.times is defined %}<dt class="font-semibold">Times</dt><dd>{{ record.schedule_config.times | join(sep=", ") }}</dd>{% endif %}
+          {% if record.schedule_config.weekdays is defined %}<dt class="font-semibold">Weekdays</dt><dd>{{ record.schedule_config.weekdays | join(sep=", ") }}</dd>{% endif %}
+          {% if record.schedule_config.dates is defined %}<dt class="font-semibold">Specific dates</dt><dd>{{ record.schedule_config.dates | join(sep=", ") }}</dd>{% endif %}
+          {% if record.schedule_config.taper_steps is defined %}<dt class="font-semibold">Taper plan</dt><dd><ol class="list-decimal ml-6">{% for step in record.schedule_config.taper_steps %}<li>{{ step.start_date }} to {{ step.end_date }}: {% if step.amount is defined %}{{ step.amount }}{% elif step.dose_amount is defined %}{{ step.dose_amount }}{% endif %} {% if step.unit is defined %}{{ step.unit }}{% elif step.dose_unit is defined %}{{ step.dose_unit }}{% endif %}{% if step.times is defined %} at {{ step.times | join(sep=", ") }}{% endif %}{% if step.max_daily_doses is defined %}, maximum {{ step.max_daily_doses }} doses daily{% endif %}{% if step.min_hours_between_doses is defined %}, minimum {{ step.min_hours_between_doses }} hours between doses{% endif %}</li>{% endfor %}</ol></dd>{% endif %}
+        {% endif %}
+        {% if record.current_pause_period %}<dt class="font-semibold">Pause</dt><dd>{{ record.current_pause_period.reason | replace(from="_",to=" ") }}{% if record.current_pause_period.note %} · {{ record.current_pause_period.note }}{% endif %}</dd>{% endif %}
+      </dl>
+      {% if record.can_manage %}
+      <a class="btn btn-ghost self-start" href="/households/{{ slug }}/people/{{ person_id }}/treatments/{{ group.kind }}/{{ record.id }}/edit">{% if group.kind == "schedules" %}Edit schedule{% else %}Edit assignment{% endif %}</a>
+      {% if record.paused %}
+      <form method="post" action="/households/{{ slug }}/people/{{ person_id }}/treatments/{{ group.kind }}/{{ record.id }}/resume">
+        <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><button class="btn btn-neutral" type="submit">Resume treatment</button>
+      </form>
+      {% else %}
+      <form method="post" action="/households/{{ slug }}/people/{{ person_id }}/treatments/{{ group.kind }}/{{ record.id }}/pause" class="grid gap-4 mt-2">
+        <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+        <div class="grid gap-2"><label for="reason-{{ group.kind }}-{{ record.id }}">Pause reason</label><select class="select shell-input w-full" id="reason-{{ group.kind }}-{{ record.id }}" name="reason" required><option value="">Select a reason</option><option value="out_of_supply">Out of supply</option><option value="temporarily_not_needed">Temporarily not needed</option><option value="clinician_advice">Clinician advice</option><option value="side_effects">Side effects</option><option value="other">Other</option></select></div>
+        <div class="grid gap-2"><label for="note-{{ group.kind }}-{{ record.id }}">Pause note</label><textarea class="textarea shell-input w-full" id="note-{{ group.kind }}-{{ record.id }}" name="note"></textarea></div>
+        <button class="btn btn-neutral self-start" type="submit">Pause treatment</button>
+      </form>
+      {% endif %}
+      <form method="post" action="/households/{{ slug }}/people/{{ person_id }}/treatments/{{ group.kind }}/{{ record.id }}/retire" class="mt-4">
+        <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><button class="btn btn-ghost" type="submit">{% if group.kind == "schedules" %}Retire schedule{% else %}Unassign medication{% endif %}</button>
+      </form>
+      {% endif %}
+    </div></article>
+    {% else %}<p class="mt-4">No {{ group.label | lower }} recorded.</p>{% endfor %}
+  </section>{% endfor %}
+  <nav class="flex gap-4 mt-6" aria-label="Treatment pages">
+    {% if page > 1 %}<a class="link" href="?page={{ page - 1 }}">Previous page</a>{% endif %}
+    {% if has_next %}<a class="link" href="?page={{ page + 1 }}">Next page</a>{% endif %}
+  </nav>
+</section>
+{% endblock content %}

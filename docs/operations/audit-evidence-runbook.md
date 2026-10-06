@@ -13,7 +13,7 @@ production capacity from the six-thread serialization regression spec.
 
 ## Command scope
 
-The repository `task audit:*` commands start a local Docker Compose production
+The repository `task rails:audit:*` commands start a local Docker Compose production
 service. They do not select a deployed database or Kubernetes workload.
 
 For a hosted deployment, schedule the matching `rails audit:*` task in an

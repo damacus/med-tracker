@@ -1,0 +1,392 @@
+version: '3'
+tasks:
+  treatment-probe:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align -f tests/fixtures/browser-treatment-probe.sql'
+  fail-treatment-audit:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -f tests/fixtures/browser-treatment-audit-failure.sql'
+  binary:
+    cmds: ['cargo metadata --locked --no-deps --format-version 1 | jq -r ''.target_directory + "/debug/med-tracker"''']
+  serve:
+    vars:
+      BROWSER_BINARY:
+        sh: task browser-care:binary
+    cmds: ['{{.BROWSER_BINARY | shellQuote}} start {{if eq (.SERVER_AND_WORKER | default "false") "true"}}--server-and-worker{{end}} --environment {{.LOCO_ENV | default "test"}}']
+  migrate:
+    requires:
+      vars: [MIGRATION_DATABASE_URL]
+    vars:
+      BROWSER_BINARY:
+        sh: task browser-care:binary
+    env:
+      DATABASE_URL: '{{.MIGRATION_DATABASE_URL}}'
+    cmds: ['env DATABASE_URL={{.MIGRATION_DATABASE_URL | shellQuote}} {{.BROWSER_BINARY | shellQuote}} db migrate --environment {{.LOCO_ENV | default "test"}}']
+  snapshot:
+    requires:
+      vars: [FOUNDATION_PROJECT, SNAPSHOT_PATH]
+    cmds: ['docker compose -f {{printf "%s/compose.yaml" .ROOT_DIR | shellQuote}} --env-file /dev/null -p {{.FOUNDATION_PROJECT | shellQuote}} exec -T postgres pg_dump -U medtracker -d medtracker_reference --format=custom --data-only --exclude-table=public.seaql_migrations > {{.SNAPSHOT_PATH | shellQuote}}']
+  reset:
+    requires:
+      vars: [FOUNDATION_PROJECT, CARE_DATABASE_URL, SNAPSHOT_PATH]
+    cmds:
+      - 'psql {{.CARE_DATABASE_URL | shellQuote}} -X -v ON_ERROR_STOP=1 --single-transaction -f tests/fixtures/browser-reset.sql'
+      - 'docker compose -f {{printf "%s/compose.yaml" .ROOT_DIR | shellQuote}} --env-file /dev/null -p {{.FOUNDATION_PROJECT | shellQuote}} exec -T postgres pg_restore -U medtracker -d medtracker_reference --data-only --disable-triggers --single-transaction --exit-on-error < {{.SNAPSHOT_PATH | shellQuote}}'
+  order-probe:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align -f tests/fixtures/browser-order-probe.sql'
+  fail-order-audit:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -f tests/fixtures/browser-order-audit-failure.sql'
+  use-order-member:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -c "UPDATE public.household_memberships SET role=''member'' WHERE id=74001"'
+  age-verification-email:
+    requires:
+      vars: [CARE_DATABASE_URL, REGISTRATION_EMAIL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1
+        -v email={{.REGISTRATION_EMAIL | shellQuote}} -f tests/fixtures/verification-email-age.sql
+  verification-probe:
+    requires:
+      vars: [CARE_DATABASE_URL, REGISTRATION_EMAIL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align
+        -v email={{.REGISTRATION_EMAIL | shellQuote}} -f tests/fixtures/verification-email-probe.sql
+  registration-policy:
+    requires:
+      vars: [CARE_DATABASE_URL, REGISTRATION_INVITE_ONLY]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction
+        -v invite_only={{.REGISTRATION_INVITE_ONLY | shellQuote}} -f tests/fixtures/registration-policy.sql
+  clear-registration-policy:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -c "DELETE FROM public.app_settings;"'
+  registration-probe:
+    requires:
+      vars: [CARE_DATABASE_URL, REGISTRATION_EMAIL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align
+        -v email={{.REGISTRATION_EMAIL | shellQuote}} -f tests/fixtures/registration-probe.sql
+  invitation-signup-probe:
+    requires:
+      vars: [CARE_DATABASE_URL, INVITATION_EMAIL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align
+        -v email={{.INVITATION_EMAIL | shellQuote}} -f tests/fixtures/invitation-browser-signup-probe.sql
+  seed-invitation-account:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction -f tests/fixtures/invitation-browser-account.sql'
+  seed-invitation-otp:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1
+        -c "INSERT INTO public.account_otp_keys(id,key,last_use,num_failures) VALUES(71002,'abcdefghijklmnop',now()-interval '1 day',0);"
+  invitation-acceptance-probe:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align -f tests/fixtures/invitation-browser-acceptance-probe.sql'
+  invitation-probe:
+    requires:
+      vars: [CARE_DATABASE_URL, INVITATION_EMAIL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align
+        -v email={{.INVITATION_EMAIL | shellQuote}} -f tests/fixtures/invitation-browser-probe.sql
+  expire-invitation:
+    requires:
+      vars: [CARE_DATABASE_URL, INVITATION_EMAIL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1
+        -v email={{.INVITATION_EMAIL | shellQuote}} -f tests/fixtures/invitation-browser-expire.sql
+  revoke-invitation:
+    requires:
+      vars: [CARE_DATABASE_URL, INVITATION_EMAIL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1
+        -v email={{.INVITATION_EMAIL | shellQuote}} -f tests/fixtures/invitation-browser-revoke.sql
+  mail-up:
+    requires:
+      vars: [MAILPIT_NAME]
+    cmds:
+      - >-
+        docker run --detach --name {{.MAILPIT_NAME | shellQuote}}
+        --publish 127.0.0.1::1025 --publish 127.0.0.1::8025
+        axllent/mailpit:v1.31.4
+  mail-port:
+    requires:
+      vars: [MAILPIT_NAME, MAILPIT_PORT]
+    cmds:
+      - 'docker port {{.MAILPIT_NAME | shellQuote}} {{.MAILPIT_PORT | shellQuote}}'
+  mail-down:
+    requires:
+      vars: [MAILPIT_NAME]
+    cmds:
+      - 'docker rm --force {{.MAILPIT_NAME | shellQuote}}'
+  seed-unsupported-passkey:
+    requires:
+      vars: [CARE_DATABASE_URL, UNSUPPORTED_PUBLIC_KEY]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction
+        -v public_key={{.UNSUPPORTED_PUBLIC_KEY | shellQuote}}
+        -f tests/fixtures/identity/unsupported-passkey-seed.sql
+  seed-retained-passkey:
+    requires:
+      vars: [CARE_DATABASE_URL, RETAINED_WEBAUTHN_ID, RETAINED_PUBLIC_KEY, RETAINED_SIGN_COUNT, RETAINED_USER_HANDLE]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction
+        -v webauthn_id={{.RETAINED_WEBAUTHN_ID | shellQuote}} -v public_key={{.RETAINED_PUBLIC_KEY | shellQuote}}
+        -v sign_count={{.RETAINED_SIGN_COUNT | shellQuote}} -v user_handle={{.RETAINED_USER_HANDLE | shellQuote}}
+        -f tests/fixtures/identity/rails-passkey-seed.sql
+  passkey-removal-race:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -f tests/fixtures/identity/passkey-removal-race.sql'
+  passkey-removal-race-ready:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align
+        -c "SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND application_name='passkey-removal-race' AND xact_start IS NOT NULL AND state='active')"
+  seed-foreign-passkey:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction
+        -c "INSERT INTO public.account_webauthn_user_ids(account_id,webauthn_id,created_at,updated_at) VALUES(71002,'Zm9yZWlnbi1hY2NvdW50',now(),now());
+        INSERT INTO public.account_webauthn_keys(account_id,nickname,webauthn_id,public_key,sign_count,created_at,updated_at)
+        SELECT 71002,'Foreign synthetic device','Zm9yZWlnbi1jcmVkZW50aWFs',public_key,sign_count,now(),now() FROM public.account_webauthn_keys WHERE account_id=71001 ORDER BY id LIMIT 1;"
+  seed-administration:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction
+        -c "UPDATE public.household_memberships SET role='owner' WHERE id=74001;
+        UPDATE public.people SET date_of_birth=current_date-interval '10 years' WHERE id=73002;
+        INSERT INTO public.accounts(id,email,status,password_hash,created_at,updated_at) VALUES(71003,'administration-member@example.test',2,crypt('password',gen_salt('bf',4)),now(),now());
+        INSERT INTO public.people(id,account_id,household_id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73004,71003,72001,'Synthetic administration member',current_date-interval '30 years',0,true,now(),now());
+        INSERT INTO public.users(id,person_id,email_address,password_digest,created_at,updated_at) VALUES(77002,73004,'administration-member@example.test',crypt('password',gen_salt('bf',4)),now(),now());
+        INSERT INTO public.household_memberships(id,account_id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74002,71003,72001,73004,'member',now(),now(),now());
+        INSERT INTO public.person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,created_at,updated_at) VALUES(78004,72001,74002,73004,'manage','self',now(),now()),(78005,72001,74001,73002,'view','parent',now(),now()),(78006,72001,74001,73004,'view','family_member',now(),now());"
+  administration-probe:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align
+        -c "SELECT json_build_object(
+        'owner_role',(SELECT role FROM public.household_memberships WHERE id=74001),
+        'member_role',(SELECT role FROM public.household_memberships WHERE id=74002),
+        'member_permissions_version',(SELECT permissions_version FROM public.household_memberships WHERE id=74002),
+        'relationship_active',(SELECT active FROM public.carer_relationships WHERE household_id=72001 AND carer_id=73004 AND patient_id=73002 ORDER BY id DESC LIMIT 1),
+        'patient_grant_active',EXISTS(SELECT 1 FROM public.person_access_grants WHERE household_membership_id=74002 AND person_id=73002 AND revoked_at IS NULL),
+        'patient_grant_level',(SELECT access_level FROM public.person_access_grants WHERE household_membership_id=74002 AND person_id=73002 ORDER BY id DESC LIMIT 1))"
+  passkey-probe:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align
+        -c "SELECT json_build_object(
+        'count',(SELECT count(*) FROM public.account_webauthn_keys WHERE account_id=71001),
+        'user_handles',(SELECT count(*) FROM public.account_webauthn_user_ids WHERE account_id=71001),
+        'max_sign_count',(SELECT COALESCE(max(sign_count),0) FROM public.account_webauthn_keys WHERE account_id=71001),
+        'nickname',(SELECT nickname FROM public.account_webauthn_keys WHERE account_id=71001 ORDER BY id DESC LIMIT 1),
+        'created_audits',(SELECT count(*) FROM public.versions WHERE item_type='AuthenticationToken' AND item_id=71001 AND event='auth_token/webauthn_credential/created'),
+        'revoked_audits',(SELECT count(*) FROM public.versions WHERE item_type='AuthenticationToken' AND item_id=71001 AND event='auth_token/webauthn_credential/revoked'),
+        'active_sessions',(SELECT count(*) FROM public.account_active_session_keys WHERE account_id=71001),
+        'verified_audits',(SELECT count(*) FROM public.versions WHERE item_type='AuthenticationToken' AND item_id=71001 AND event='auth_token/webauthn_verification/succeeded'),
+        'failed_audits',(SELECT count(*) FROM public.versions WHERE item_type='AuthenticationToken' AND item_id=71001 AND event='auth_token/webauthn_verification/failed'))"
+  passkey-counter-ahead:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -c "UPDATE public.account_webauthn_keys SET sign_count=2147483647 WHERE account_id=71001"'
+  seed-recovery-passkey:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1
+        -c "INSERT INTO public.account_webauthn_keys(account_id,nickname,webauthn_id,public_key) VALUES(71001,'Recovery fixture','synthetic-recovery-passkey','test-public-key') ON CONFLICT DO NOTHING"
+  people-probe:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align
+        -c "WITH created AS (SELECT id,person_type,has_capacity FROM public.people WHERE household_id=72001 AND email='synthetic-browser-minor@example.test') SELECT json_build_object(
+        'person_type',(SELECT person_type FROM created),
+        'has_capacity',(SELECT has_capacity FROM created),
+        'manage_grant',EXISTS(SELECT 1 FROM public.person_access_grants WHERE person_id IN(SELECT id FROM created) AND household_membership_id=74001 AND access_level='manage' AND revoked_at IS NULL),
+        'carer',EXISTS(SELECT 1 FROM public.carer_relationships WHERE patient_id IN(SELECT id FROM created) AND carer_id=73001 AND active=true),
+        'home',EXISTS(SELECT 1 FROM public.location_memberships lm JOIN public.locations l ON l.id=lm.location_id WHERE lm.person_id IN(SELECT id FROM created) AND l.household_id=72001 AND l.name='Home'),
+        'permissions_version',(SELECT permissions_version FROM public.household_memberships WHERE id=74001))"
+  seed-recovery:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1
+        -c "INSERT INTO public.account_recovery_codes(id,code) VALUES(71001,'synthetic-recovery-one'),(71001,'synthetic-recovery-two') ON CONFLICT DO NOTHING"
+  recovery-probe:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align
+        -c "SELECT json_build_object('count',count(*)) FROM public.account_recovery_codes WHERE id=71001"
+  exhaust-otp:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -c "UPDATE public.account_otp_keys SET num_failures=5 WHERE id=71001"'
+  seed-otp:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1
+        -c "INSERT INTO public.account_otp_keys(id,key,last_use,num_failures) VALUES(71001,'abcdefghijklmnop',now()-interval '1 day',0)"
+  otp-probe:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align
+        -c "SELECT json_build_object('num_failures',num_failures,'recent_use',last_use>now()-interval '1 minute') FROM public.account_otp_keys WHERE id=71001"
+  close-otp-account:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -c "UPDATE public.accounts SET status=3 WHERE id=71001"'
+  scheduled-medicine:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1
+        -c "INSERT INTO public.schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83001,72001,73001,80001,true,current_date-1,current_date+7,2,'tablet',6,'{}',now(),now())"
+  oauth-probe:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align
+        -c "SELECT json_build_object(
+        'native_grants',(SELECT count(*) FROM public.oauth_grants WHERE account_id=71001 AND oauth_application_id=75002),
+        'smart_grants',(SELECT count(*) FROM public.oauth_grants WHERE account_id=71001 AND oauth_application_id=75003),
+        'native_code_seconds',(SELECT extract(epoch FROM expires_in-now()) FROM public.oauth_grants WHERE account_id=71001 AND oauth_application_id=75002 ORDER BY id DESC LIMIT 1),
+        'smart_code_seconds',(SELECT extract(epoch FROM expires_in-now()) FROM public.oauth_grants WHERE account_id=71001 AND oauth_application_id=75003 ORDER BY id DESC LIMIT 1),
+        'native_auth_time_preserved',(SELECT authenticated_at=(SELECT created_at FROM public.account_active_session_keys WHERE account_id=71001 ORDER BY created_at DESC LIMIT 1) FROM public.oauth_grants WHERE account_id=71001 AND oauth_application_id=75002 ORDER BY id DESC LIMIT 1),
+        'native_consent_audits',(SELECT count(*) FROM public.versions WHERE item_type='Account' AND item_id=71001 AND event='mobile_oauth.consent_granted' AND object::jsonb->>'oauth_application_id'='75002'),
+        'native_revoke_audits',(SELECT count(*) FROM public.versions WHERE item_type='Account' AND item_id=71001 AND event='mobile_oauth.token_revoked' AND object::jsonb->>'oauth_application_id'='75002'),
+        'smart_consent_audits',(SELECT count(*) FROM public.security_audit_events WHERE actor_account_id=71001 AND event_type='smart_oauth.consent_granted' AND metadata->>'oauth_application_id'='75003'),
+        'smart_revoke_audits',(SELECT count(*) FROM public.security_audit_events WHERE actor_account_id=71001 AND event_type='smart_oauth.token_revoked' AND metadata->>'oauth_application_id'='75003'));"
+  age-authentication:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1
+        -c "UPDATE public.account_active_session_keys SET created_at=now()-interval '2 hours' WHERE account_id=71001"
+  fail-oauth-audit:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction
+        -c "ALTER TABLE public.versions ADD CONSTRAINT browser_oauth_audit_failure CHECK(event NOT IN('mobile_oauth.consent_granted','mobile_oauth.token_revoked')) NOT VALID;
+        ALTER TABLE public.security_audit_events ADD CONSTRAINT browser_oauth_audit_failure CHECK(event_type NOT IN('smart_oauth.consent_granted','smart_oauth.token_revoked')) NOT VALID;"
+  restore-oauth-audit:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction
+        -c "ALTER TABLE public.versions DROP CONSTRAINT IF EXISTS browser_oauth_audit_failure;
+        ALTER TABLE public.security_audit_events DROP CONSTRAINT IF EXISTS browser_oauth_audit_failure;"
+  second-person:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction
+        -c "INSERT INTO public.person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,created_at,updated_at) VALUES(78002,72001,74001,73002,'manage','parent',now(),now());
+        INSERT INTO public.person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(81002,72001,73002,80001,1,'tablet',1,now(),now());"
+  seed:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction -f tests/fixtures/persistence-records.sql -f tests/fixtures/care-doses.sql -f tests/oauth_server/clients.sql'
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction
+        -c "CREATE ROLE medtracker_browser_runtime LOGIN PASSWORD 'password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS IN ROLE med_tracker_app;
+        INSERT INTO public.accounts(id,email,status,password_hash,created_at,updated_at) VALUES(71002,'foreign@example.test',2,crypt('password',gen_salt('bf',4)),now(),now());
+        INSERT INTO public.households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71002,'Synthetic foreign household','foreign-fixture','Europe/London',now(),now());
+        INSERT INTO public.locations(id,household_id,name,created_at,updated_at) VALUES(79002,72002,'Synthetic foreign cabinet',now(),now());
+        INSERT INTO public.medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at) VALUES(80002,72002,79002,'Synthetic foreign medicine',10,2,'tablet',now(),now());"
+  probe:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align
+        -c "SELECT json_build_object('supply',(SELECT current_supply::text FROM public.medications WHERE id=80001),'takes',(SELECT count(*) FROM public.medication_takes WHERE taken_from_medication_id=80001),'foreign_supply',(SELECT current_supply::text FROM public.medications WHERE id=80002),'foreign_takes',(SELECT count(*) FROM public.medication_takes WHERE taken_from_medication_id=80002),'runtime_superuser',(SELECT rolsuper FROM pg_roles WHERE rolname='medtracker_browser_runtime'),'runtime_bypassrls',(SELECT rolbypassrls FROM pg_roles WHERE rolname='medtracker_browser_runtime'),'stored_sessions',(SELECT count(*) FROM public.browser_sessions),'session_plaintext',(SELECT COALESCE(bool_or(session LIKE '%persistence@example.test%' OR session LIKE '%account_id%'),false) FROM public.browser_sessions),'registry_sessions',(SELECT count(*) FROM public.account_active_session_keys WHERE account_id=71001),'active_sessions',(SELECT count(*) FROM public.account_active_session_keys WHERE account_id=71001 AND last_use>now()-interval '30 days'));"
+  revoke:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -c "UPDATE public.person_access_grants SET revoked_at=now() WHERE id=78001"'
+  reactivate:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -c "UPDATE public.person_access_grants SET revoked_at=NULL WHERE id=78001"'
+  revoke-session:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -c "DELETE FROM public.account_active_session_keys WHERE account_id=71001"'
+  expire-session:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -c "UPDATE public.account_active_session_keys SET last_use=now()-interval ''31 days'' WHERE account_id=71001"'
+  dose-request-id:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align
+        -c "SELECT request_id FROM public.versions WHERE item_type='MedicationTake' AND item_id=(SELECT id FROM public.medication_takes WHERE taken_from_medication_id=80001 ORDER BY id DESC LIMIT 1) ORDER BY id DESC LIMIT 1"

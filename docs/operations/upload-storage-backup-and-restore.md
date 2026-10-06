@@ -37,7 +37,7 @@ and data-retention decision.
 
 ## Isolated restore
 
-The `task prod:verify-storage-restore` command starts a local Docker Compose
+The `task rails:prod:verify-storage-restore` command starts a local Docker Compose
 production service. Use it to check a local restored environment. It does not
 select a hosted restore target.
 
@@ -58,7 +58,7 @@ confirm the target database and storage service first.
    reference:
 
 ```fish
-task prod:verify-storage-restore \
+task rails:prod:verify-storage-restore \
   ATTACHMENT_ID=123 \
   DATABASE_RECOVERY_REFERENCE=db-snapshot-opaque \
   DISK_RECOVERY_REFERENCE=disk-snapshot-opaque \

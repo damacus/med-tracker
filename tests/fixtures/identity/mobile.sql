@@ -1,0 +1,4 @@
+DELETE FROM public.oauth_grants WHERE id = 76001;
+UPDATE public.oauth_applications SET client_kind = 'mobile', redirect_uri = 'io.damacus.medtracker:/oauth2redirect', scopes = 'medtracker offline_access' WHERE id = 75001;
+INSERT INTO public.oauth_grants(id, account_id, oauth_application_id, client_kind, code, code_challenge, code_challenge_method, redirect_uri, scopes, expires_in, authenticated_at, last_used_at, created_at, updated_at)
+VALUES (76001, 71001, 75001, 'mobile', 'synthetic-legacy-code', 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM', 'S256', 'io.damacus.medtracker:/oauth2redirect', 'medtracker offline_access', timezone('UTC', clock_timestamp()) + interval '5 minutes', timezone('UTC', clock_timestamp()) - interval '2 days', timezone('UTC', clock_timestamp()) - interval '2 days', now(), now());

@@ -63,7 +63,7 @@ Set Fish shell variables before starting local development:
 ```fish
 set -x NHS_DMD_CLIENT_ID "your-client-id"
 set -x NHS_DMD_CLIENT_SECRET "your-client-secret"
-task dev:up
+task rails:dev:up
 ```
 
 Use a Secret or ExternalSecret in production. Never put either value in a
@@ -86,8 +86,8 @@ release](kubernetes-nhs-dmd-import.md).
 Local development provides Task wrappers for a staged release:
 
 ```fish
-task dev:extract-dmd-release
-task dev:import-dmd-release RELEASE_DIR=storage/nhs_dmd/releases/current
+task rails:dev:extract-dmd-release
+task rails:dev:import-dmd-release RELEASE_DIR=storage/nhs_dmd/releases/current
 ```
 
 ## Verify the integration

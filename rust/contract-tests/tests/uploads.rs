@@ -4,7 +4,7 @@ use serde_json::json;
 use url::Url;
 
 const PREFIX: &str = "/rails/active_storage";
-const ICON: &[u8] = include_bytes!("../../../public/icon.png");
+const ICON: &[u8] = include_bytes!("../../../rails/public/icon.png");
 
 fn disk_path(response: Response) -> String {
     assert_eq!(response.status().as_u16(), 302);

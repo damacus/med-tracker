@@ -1,0 +1,16 @@
+pub mod administration;
+pub mod assignments;
+pub mod browser_query;
+pub mod browser_treatments;
+pub mod dosages;
+pub mod dose_history;
+pub mod dose_occurrences;
+pub mod doses;
+pub mod invitations;
+pub mod locations;
+pub mod medications;
+pub mod orders;
+pub mod pause_periods;
+pub mod people;
+pub mod push_subscriptions;
+pub mod treatments;

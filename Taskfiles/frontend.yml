@@ -1,0 +1,36 @@
+version: '3'
+tasks:
+  install:
+    sources: [package.json, package-lock.json]
+    generates: [node_modules/.package-lock.json]
+    cmds: [npm ci]
+  lock:
+    cmds: [npm install --package-lock-only --ignore-scripts]
+  deps:watcher:
+    cmds: [npm update @parcel/watcher --package-lock-only --ignore-scripts]
+  browsers:
+    cmds: [npx playwright install chromium]
+  audit:
+    cmds: [npm audit --json]
+  build:
+    sources:
+      - package.json
+      - package-lock.json
+      - assets/static/css/app.css
+      - assets/static/css/themes.css
+      - assets/static/css/fonts.css
+      - assets/views/**/*.html
+      - assets/static/js/*.js
+    generates: [assets/static/css/compiled.css]
+    cmds: [npm run build]
+  prepare:
+    cmds:
+      - task: install
+      - task: build
+  test:
+    cmds: [node --test tests/browser/appearance.test.mjs]
+  test-browser:
+    cmds:
+      - task: ':build'
+      - task: browsers
+      - 'npx playwright test --config playwright.config.mjs {{if .PROJECT}}--project={{.PROJECT}}{{end}} {{if .GREP}}--grep={{.GREP | shellQuote}}{{end}} {{if ne (.GROUP | default "shell") "all"}}tests/browser/{{.GROUP | default "shell"}}.spec.mjs{{end}}'

@@ -1,0 +1,22 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-3xl mx-auto">
+  <h1 class="text-3xl font-semibold">{{ title }}</h1>
+  <div class="mt-6">{% include "components/form_errors.html" %}</div>
+  {% if changed %}<a class="link mt-4 inline-block" href="{{ latest_url }}">Review latest details</a>{% endif %}
+  <div class="card bg-base-100 border border-base-300 mt-6"><div class="card-body">
+    <form id="location-form" method="post" action="{{ action }}" class="flex flex-col gap-4">
+      <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+      <input type="hidden" name="etag" value="{{ draft.etag }}">
+      <label for="name" class="font-semibold">Name</label>
+      <input id="name" name="name" class="input w-full" value="{{ draft.name }}" required {% if name_invalid %}aria-invalid="true" aria-describedby="form-error-name"{% endif %}>
+      <label for="description" class="font-semibold">Description</label>
+      <textarea id="description" name="description" class="textarea w-full" {% if description_invalid %}aria-invalid="true" aria-describedby="form-error-description"{% endif %}>{{ draft.description }}</textarea>
+      <div class="flex flex-col sm:flex-row gap-3 mt-4">
+        <button type="submit" class="btn btn-neutral">Save Location</button>
+        <a class="btn btn-ghost" href="/households/{{ slug }}/locations">Back to Locations</a>
+      </div>
+    </form>
+  </div></div>
+</section>
+{% endblock content %}

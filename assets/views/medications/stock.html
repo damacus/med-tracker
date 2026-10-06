@@ -1,0 +1,20 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-3xl mx-auto">
+  <h1 class="text-3xl font-semibold">Adjust stock</h1>
+  <p class="mt-2">{{ name }} · {{ quantity }} {{ unit }} remaining</p>
+  {% if error %}<p id="stock-error" role="alert" class="alert mt-6">{{ error }}{% if stock_changed %} <a class="link" href="/households/{{ slug }}/medications/{{ medication_id }}/stock/adjust">Review latest stock</a>{% endif %}</p>{% endif %}
+  <div class="card bg-base-100 border border-base-300 mt-6"><div class="card-body">
+    <form method="post" class="flex flex-col gap-4">
+      <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+      <input type="hidden" name="etag" value="{{ draft.etag }}">
+      <label for="new-quantity" class="font-semibold">New stock quantity</label>
+      <input id="new-quantity" name="new_quantity" type="number" min="0" step="0.01" class="input w-full" value="{{ draft.new_quantity }}" {% if error %}aria-describedby="stock-error"{% endif %} required>
+      <label for="reason" class="font-semibold">Reason</label>
+      <textarea id="reason" name="reason" class="textarea w-full">{{ draft.reason }}</textarea>
+      <button type="submit" class="btn btn-neutral self-start">Adjust stock</button>
+      <a class="link" href="/households/{{ slug }}/medications/{{ medication_id }}">Cancel</a>
+    </form>
+  </div></div>
+</section>
+{% endblock content %}

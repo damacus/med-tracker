@@ -4,7 +4,7 @@ x-contract-external-env: &contract-external-env
   APP_URL: http://127.0.0.1:39998
   ACTIVE_STORAGE_ROOT: /app/tmp/storage
   ACTIVE_STORAGE_SERVICE_NAME: test
-  REPORT_PDF_FONT_PATH: /src/vendor/fonts/NotoSans-Regular.ttf
+  REPORT_PDF_FONT_PATH: /src/rails/vendor/fonts/NotoSans-Regular.ttf
   AUTH_SESSION_SECRET: ${CONTRACT_AUTH_SESSION_SECRET:?Disposable authentication signing key required}
   MEDTRACKER_AI_MEDICATION_HELP_ENABLED: "true"
   MEDTRACKER_AI_MEDICATION_HELP_API_BASE_URL: http://127.0.0.1:20091
@@ -33,7 +33,7 @@ services:
   rust-api:
     profiles: [test]
     build:
-      context: ${CONTRACT_API_BUILD_CONTEXT:-.}
+      context: ${CONTRACT_API_BUILD_CONTEXT:-..}
       dockerfile: rust/contract-tests/Dockerfile
     image: medtracker-contract-runner:${CONTRACT_PROJECT}
     command: /src/rust/api/target/debug/medtracker-api
@@ -49,7 +49,7 @@ services:
       SMTP_STARTTLS: "false"
       ACTIVE_STORAGE_ROOT: /app/tmp/storage
       ACTIVE_STORAGE_SERVICE_NAME: test
-      REPORT_PDF_FONT_PATH: /src/vendor/fonts/NotoSans-Regular.ttf
+      REPORT_PDF_FONT_PATH: /src/rails/vendor/fonts/NotoSans-Regular.ttf
       NHS_DMD_CLIENT_ID: contract-nhs-id
       NHS_DMD_CLIENT_SECRET: contract-nhs-secret
       MEDTRACKER_NHS_DMD_BASE_URL: http://127.0.0.1:20090/production1/fhir
@@ -195,7 +195,7 @@ services:
       SMTP_STARTTLS: "false"
       ACTIVE_STORAGE_ROOT: /app/tmp/storage
       ACTIVE_STORAGE_SERVICE_NAME: test
-      REPORT_PDF_FONT_PATH: /src/vendor/fonts/NotoSans-Regular.ttf
+      REPORT_PDF_FONT_PATH: /src/rails/vendor/fonts/NotoSans-Regular.ttf
       AUTH_SESSION_SECRET: ${CONTRACT_AUTH_SESSION_SECRET:?Disposable authentication signing key required}
     volumes:
       - type: bind
@@ -226,7 +226,7 @@ services:
       SMTP_STARTTLS: "false"
       ACTIVE_STORAGE_ROOT: /proc/medtracker-avatar-unwritable
       ACTIVE_STORAGE_SERVICE_NAME: test
-      REPORT_PDF_FONT_PATH: /src/vendor/fonts/NotoSans-Regular.ttf
+      REPORT_PDF_FONT_PATH: /src/rails/vendor/fonts/NotoSans-Regular.ttf
       AUTH_SESSION_SECRET: ${CONTRACT_AUTH_SESSION_SECRET:?Disposable authentication signing key required}
     depends_on:
       db-test:
@@ -282,7 +282,7 @@ services:
     profiles: [test]
     image: medtracker-contract-browser:${CONTRACT_PROJECT}
     build:
-      context: ${CONTRACT_BROWSER_BUILD_CONTEXT:-./rust/web}
+      context: ${CONTRACT_BROWSER_BUILD_CONTEXT:-../rust/web}
       dockerfile: Dockerfile.smoke
     network_mode: service:rust-api
     shm_size: 1gb
@@ -292,7 +292,7 @@ services:
         target: /contract-run
         read_only: true
       - type: bind
-        source: ${CONTRACT_RUST_BROWSER_SCREENSHOT_DIR:-./docs/screenshots/journey-auth}
+        source: ${CONTRACT_RUST_BROWSER_SCREENSHOT_DIR:-../docs/screenshots/journey-auth}
         target: /screenshots
     environment:
       BASE_URL: http://127.0.0.1:39998
@@ -303,7 +303,7 @@ services:
     profiles: [test]
     image: medtracker-contract-browser:${CONTRACT_PROJECT}
     build:
-      context: ./rust/web
+      context: ../rust/web
       dockerfile: Dockerfile.smoke
     network_mode: service:web-test
     shm_size: 1gb
@@ -313,7 +313,7 @@ services:
         target: /contract-run
         read_only: true
       - type: bind
-        source: ./docs/screenshots/journey-medication-rails
+        source: ../docs/screenshots/journey-medication-rails
         target: /screenshots
     environment:
       BASE_URL: http://127.0.0.1:3000

@@ -1,0 +1,12 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="card shell-card max-w-lg mx-auto"><div class="card-body gap-5">
+  <h1 class="text-3xl font-semibold">Replace your older passkey</h1>
+  <p>Your saved passkey uses a format this application no longer supports. It has not been removed.</p>
+  <p>Your password alone cannot complete sign-in.</p>
+  <p>Use a saved recovery code or another enrolled authentication method. After signing in, add a new passkey in Security settings. If you have neither, account recovery is required.</p>
+  <a class="btn shell-primary" href="/recovery-auth">Use a recovery code</a>
+  {% if otp_available %}<a class="link" href="/otp-auth">Use an authentication code</a>{% endif %}
+  <a class="link" href="/login">Return to sign in</a>
+</div></section>
+{% endblock content %}

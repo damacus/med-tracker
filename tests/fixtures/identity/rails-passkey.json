@@ -1,0 +1,25 @@
+{
+  "provenance": {
+    "library": "webauthn",
+    "version": "3.4.3",
+    "generator": "WebAuthn::FakeClient and FakeAuthenticator; Credential.from_create/from_get verified with user_verification:true",
+    "purpose": "Synthetic retained Rails/Rodauth credential; private key is test-only",
+    "original_origin": "http://localhost:5150"
+  },
+  "stored": {
+    "webauthn_id": "ASg-COJA0vWuGVNEdHjIVg",
+    "public_key": "pQMmIAEhWCBG2ESJRMOdHZM2CtpxC6HXLCsuK1ZyecOtjzI9l9s42wECIlggEY9kevYw-QClCcsm0n72LFRlL8IaM1L4mkyw3YG-IG0",
+    "sign_count": "7",
+    "user_handle": "95EwBCstnFG_FPeZmKutT48KSnn5mrxNnOFsDCB8NS12YZKFSMDWyYUy6rA-AeHN2q5n0DvmI8gCipexkiFHZw"
+  },
+  "authenticator": {
+    "credentialId": "ASg+COJA0vWuGVNEdHjIVg==",
+    "isResidentCredential": true,
+    "rpId": "localhost",
+    "privateKey": "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgAZDFiPJnfK28pzZ5Ll52Apy5UWh94mqeyELSO7jJ232hRANCAARG2ESJRMOdHZM2CtpxC6HXLCsuK1ZyecOtjzI9l9s42xGPZHr2MPkApQnLJtJ+9ixUZS/CGjNS+JpMsN2BviBt",
+    "userHandle": "95EwBCstnFG/FPeZmKutT48KSnn5mrxNnOFsDCB8NS12YZKFSMDWyYUy6rA+AeHN2q5n0DvmI8gCipexkiFHZw==",
+    "signCount": "7",
+    "backupEligibility": true,
+    "backupState": true
+  }
+}

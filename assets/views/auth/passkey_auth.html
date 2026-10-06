@@ -1,0 +1,14 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="card shell-card max-w-lg mx-auto"><div class="card-body gap-5">
+  <h1 class="text-3xl font-semibold">Verify your identity</h1>
+  <p>Use your registered passkey to finish signing in.</p>
+  {% if error %}<p role="alert" class="shell-error">{{ error }}</p>{% endif %}
+  <form data-passkey-form data-credential-options="{{ options }}">
+    <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+    <button type="button" class="btn shell-primary" data-passkey-login data-passkey-action="/webauthn-auth">Use passkey</button>
+  </form>
+  <a class="link" href="/login">Return to sign in</a>
+</div></section>
+<script src="/static/js/passkeys.js" defer></script>
+{% endblock content %}

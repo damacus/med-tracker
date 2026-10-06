@@ -31,11 +31,11 @@ const composeConfig = (label, composeFile) => {
 
 composeConfig(
   'legacy (existing Rust URL)',
-  'compose.yaml:rust/contract-tests/storage.compose.yaml'
+  'rails/compose.yaml:rust/contract-tests/storage.compose.yaml'
 );
 composeConfig(
   'runner (self-provisioning)',
-  'compose.yaml:rust/contract-tests/storage.compose.yaml:rust/contract-tests/runner.compose.yaml'
+  'rails/compose.yaml:rust/contract-tests/storage.compose.yaml:rust/contract-tests/runner.compose.yaml'
 );
 
 console.log('Contract compose regression passed: legacy and runner configurations both resolve.');

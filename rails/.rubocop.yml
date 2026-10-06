@@ -1,0 +1,353 @@
+---
+plugins:
+  - rubocop-performance
+  - rubocop-rspec
+  - rubocop-rails
+  - rubocop-capybara
+  - rubocop-rspec_rails
+  - rubocop-factory_bot
+
+AllCops:
+  NewCops: enable
+  Preview: true
+  FailLevel: convention
+  inherit_mode:
+    override:
+      - Exclude
+  Exclude:
+    - "db/**/*"
+    - "config/**/*"
+    - "script/**/*"
+    - "scripts/**/*"
+    - "bin/{rails,rake}"
+    - "tmp/**/*"
+    - "log/**/*"
+    - "coverage/**/*"
+    - "storage/**/*"
+    - "vendor/**/*"
+    - "node_modules/**/*"
+    - ".bundle/**/*"
+    - ".mutant/**/*"
+    - "public/assets/**/*"
+    - "app/assets/builds/**/*"
+    - !ruby/regexp /old_and_unused\.rb$/
+
+Style/FrozenStringLiteralComment:
+  Exclude:
+    - "app/services/demo_baseline/public_mobile_clients.rb"
+    - "app/services/canary/mobile_client_registration.rb"
+    - "spec/services/canary/mobile_client_registration_spec.rb"
+    - "spec/tasks/rake/task_canary_register_mobile_clients_spec.rb"
+    - "spec/requests/test_setup_spec.rb"
+    - "app/services/api/sync/operation_catalog.rb"
+    - "app/services/api/sync/replay_authorization.rb"
+    - "spec/requests/api/v1/sync_replay_permissions_spec.rb"
+    - "spec/services/api/sync_boundaries_spec.rb"
+    - "spec/requests/api/v1/sync_assignment_actions_spec.rb"
+    - "app/services/api/sync/inventory_operation.rb"
+    - "spec/requests/api/v1/sync_inventory_spec.rb"
+    - "app/services/api/sync/care_record_operation.rb"
+    - "app/services/people/create.rb"
+    - "spec/requests/api/v1/sync_care_records_spec.rb"
+    - "app/controllers/api/v1/admin/invitation_resends_controller.rb"
+    - "app/services/household_invitations/resend.rb"
+    - "spec/requests/api/v1/invitation_resend_spec.rb"
+    - "app/controllers/api/v1/invitation_acceptances_controller.rb"
+    - "app/services/household_invitations/accept.rb"
+    - "app/services/household_invitations/create_membership.rb"
+    - "spec/requests/api/v1/invitation_acceptance_spec.rb"
+    - "app/controllers/api/v1/profile_avatars_controller.rb"
+    - "app/services/profiles/avatar.rb"
+    - "spec/requests/api/v1/profile_avatars_spec.rb"
+    - "app/controllers/api/v1/profiles_controller.rb"
+    - "app/services/profiles/update.rb"
+    - "app/serializers/api/v1/profile_serializer.rb"
+    - "spec/requests/api/v1/profile_spec.rb"
+    - "app/services/medication_review_report_query.rb"
+    - "app/controllers/api/v1/medication_review_reports_controller.rb"
+    - "spec/requests/api/v1/medication_review_reports_spec.rb"
+    - "app/controllers/concerns/api/v1/report_rendering.rb"
+    - "app/controllers/api/v1/health_history_reports_controller.rb"
+    - "app/serializers/api/v1/health_history_report_serializer.rb"
+    - "spec/requests/api/v1/protected_reports_spec.rb"
+    - "app/services/medication_review_prompt_query.rb"
+    - "app/services/medication_reviews/update_prompt.rb"
+    - "app/serializers/api/v1/medication_review_prompt_serializer.rb"
+    - "app/controllers/api/v1/medication_review_prompts_controller.rb"
+    - "spec/requests/api/v1/medication_review_prompts_spec.rb"
+    - "spec/services/medication_administration_history_spec.rb"
+    - "app/controllers/api/v1/location_memberships_controller.rb"
+    - "app/serializers/api/v1/location_membership_serializer.rb"
+    - "spec/requests/api/v1/location_membership_writes_spec.rb"
+    - "spec/requests/api/v1/location_writes_spec.rb"
+    - "app/controllers/api/v1/stock_removals_controller.rb"
+    - "app/serializers/api/v1/stock_removal_serializer.rb"
+    - "spec/requests/api/v1/stock_removals_spec.rb"
+    - "spec/requests/routine_dose_outcome_corrections_spec.rb"
+    - "spec/system/web_routine_dose_corrections_spec.rb"
+    - "app/services/api/dose_outcome_sync_projection.rb"
+    - "app/services/api/sync/dose_outcome_operation.rb"
+    - "spec/requests/api/v1/sync_outcome_writes_spec.rb"
+    - "spec/services/medication_administration/occurrence_projection_routine_spec.rb"
+    - "spec/services/medication_administration/occurrence_resolver_routine_spec.rb"
+    - "spec/services/family_dashboard/schedule_query_routine_outcomes_spec.rb"
+    - "spec/system/routine_dose_outcomes_spec.rb"
+    - "spec/requests/api/v1/sync_outcome_reads_spec.rb"
+    - "app/controllers/dose_occurrences_controller.rb"
+    - "app/components/dose_occurrences/edit_view.rb"
+    - "spec/requests/dose_outcome_corrections_spec.rb"
+    - "spec/system/web_dose_corrections_spec.rb"
+    - "app/components/dose_occurrences/new_view.rb"
+    - "spec/requests/dose_occurrences_spec.rb"
+    - "spec/system/web_dose_outcomes_spec.rb"
+    - "app/services/portable_data/health_event_import_writer.rb"
+    - "app/services/portable_data/dose_occurrence_import_validator.rb"
+    - "app/services/portable_data/dose_occurrence_import_links.rb"
+    - "app/services/portable_data/import_preflight_events.rb"
+    - "app/services/portable_data/dose_occurrence_import_preflight.rb"
+    - "app/services/portable_data/dose_occurrence_import_writer.rb"
+    - "spec/services/portable_data/importer_dose_occurrences_spec.rb"
+    - "spec/requests/api/v1/portable_dose_occurrences_spec.rb"
+    - "app/services/portable_data/dose_occurrence_serializer.rb"
+    - "spec/services/portable_data/exporter_dose_occurrences_spec.rb"
+    - "app/services/api/sync/occurrence_take_operation.rb"
+    - "spec/requests/api/v1/sync_dose_occurrences_spec.rb"
+    - "spec/requests/api/v1/dose_outcome_access_spec.rb"
+    - "spec/requests/api/v1/dose_outcome_corrections_spec.rb"
+    - "spec/requests/api/v1/dose_outcome_writes_spec.rb"
+    - "app/controllers/api/v1/dose_occurrences_controller.rb"
+    - "app/serializers/api/v1/dose_occurrence_serializer.rb"
+    - "spec/requests/api/v1/dose_occurrences_spec.rb"
+    - "spec/services/reports/health_history_query_outcomes_spec.rb"
+    - "app/services/reports/dose_occurrence_query.rb"
+    - "spec/services/reports/dose_occurrence_query_spec.rb"
+    - "app/services/reports/dose_outcome_summary.rb"
+    - "spec/services/reports/index_query_outcomes_spec.rb"
+    - "app/services/family_dashboard/routine_dose_progress.rb"
+    - "app/services/family_dashboard/not_taken_query.rb"
+    - "spec/system/dashboard_dose_outcomes_spec.rb"
+    - "spec/components/dashboard/person_task_card_spec.rb"
+    - "spec/services/family_dashboard/schedule_query_outcomes_spec.rb"
+    - "spec/services/medication_administration/occurrence_resolver_administration_spec.rb"
+    - "spec/services/medication_administration/occurrence_resolver_concurrency_spec.rb"
+    - "app/services/medication_administration/occurrence_resolver.rb"
+    - "spec/services/medication_administration/occurrence_resolver_spec.rb"
+    - "app/services/medication_administration/occurrence_projection.rb"
+    - "spec/services/medication_administration/occurrence_projection_spec.rb"
+    - "app/models/medication_dose_occurrence.rb"
+    - "spec/models/medication_dose_occurrence_spec.rb"
+    - "spec/lib/pdf_text_extractor_spec.rb"
+    - "spec/models/medication_dose_occurrence_window_spec.rb"
+    - "spec/services/reports/dose_outcome_summary_routine_spec.rb"
+    - "app/components/reports/routine_cycles.rb"
+    - "spec/system/routine_dose_reports_spec.rb"
+    - "app/services/smart_insights/detectors/missed_routine_cycles.rb"
+    - "spec/services/smart_insights/context_routine_spec.rb"
+    - "spec/services/smart_insights/detectors/missed_routine_cycles_spec.rb"
+    - "spec/requests/api/v1/routine_dose_occurrences_spec.rb"
+    - "spec/services/portable_data/importer_routine_outcomes_spec.rb"
+    - "spec/requests/routine_dose_occurrences_spec.rb"
+    - "spec/system/web_routine_dose_outcomes_spec.rb"
+    - "spec/migrations/add_window_end_to_medication_dose_occurrences_spec.rb"
+    - "app/components/medications/stock_removal_view.rb"
+    - "app/controllers/medication_stock_removals_controller.rb"
+    - "app/services/remove_medication_stock_service.rb"
+    - "spec/requests/medication_stock_removals_spec.rb"
+    - "spec/services/remove_medication_stock_service_spec.rb"
+    - "spec/services/remove_medication_stock_service_concurrency_spec.rb"
+    - "spec/system/medications/stock_removals_spec.rb"
+    - "app/controllers/api/v1/medication_pause_periods_controller.rb"
+    - "app/serializers/api/v1/medication_pause_period_serializer.rb"
+    - "spec/serializers/api/v1/medication_pause_period_serializer_spec.rb"
+    - "app/services/api/medication_pause_period_visibility.rb"
+    - "spec/requests/api/v1/medication_pause_periods_spec.rb"
+    - "app/services/portable_data/import_writer_pause_periods.rb"
+    - "app/services/portable_data/import_preflight_pause_periods.rb"
+    - "spec/services/portable_data/importer_pause_periods_spec.rb"
+    - "app/components/medication_pauses/form.rb"
+    - "app/components/medication_pauses/history.rb"
+    - "app/controllers/concerns/medication_pause_context.rb"
+    - "spec/components/medication_pauses/history_spec.rb"
+    - "spec/requests/medication_pause_context_spec.rb"
+    - "app/services/api/sync/medication_pause_period_operation.rb"
+    - "spec/requests/api/v1/sync_pause_periods_spec.rb"
+    - "spec/services/api/sync/medication_pause_period_operation_spec.rb"
+    - "app/services/api/sync/assignment_operation.rb"
+    - "spec/requests/api/v1/sync_assignments_spec.rb"
+    - "app/components/reports/pdf_document.rb"
+    - "app/components/reports/export_panel.rb"
+    - "app/components/reports/pdf_stylesheet.rb"
+    - "app/components/reports/medication_review_report.rb"
+    - "app/services/reports/pdf_renderer.rb"
+    - "spec/components/reports/pdf_document_spec.rb"
+    - "spec/components/reports/export_panel_spec.rb"
+    - "spec/components/reports/medication_review_report_spec.rb"
+    - "spec/services/reports/pdf_renderer_spec.rb"
+    - "spec/services/reports/medication_review_pdf_spec.rb"
+    - "spec/services/reports/sghtmltopdf_contract_spec.rb"
+    - "spec/system/report_exports_spec.rb"
+
+Rails/OutputSafety:
+  Exclude:
+    - "app/components/reports/pdf_stylesheet.rb"
+    - "spec/services/reports/pdf_renderer_spec.rb"
+
+Rails/SkipsModelValidations:
+  Exclude:
+    - "spec/models/medication_dose_occurrence_spec.rb"
+    - "spec/migrations/add_window_end_to_medication_dose_occurrences_spec.rb"
+
+RSpec/ExampleLength:
+  Max: 15
+  Exclude:
+    - "spec/system/**/*"
+    - "spec/features/**/*"
+    - "spec/requests/**/*"
+
+RSpec/MultipleExpectations:
+  Max: 5
+  Exclude:
+    - "spec/system/**/*"
+    - "spec/features/**/*"
+    - "spec/requests/**/*"
+
+RSpec/MultipleMemoizedHelpers:
+  Max: 5
+  Exclude:
+    - "spec/system/authorization/**/*"
+    - "spec/policies/**/*"
+
+RSpec/NestedGroups:
+  Max: 3
+  Exclude:
+    - "spec/policies/**/*"
+
+Metrics/BlockLength:
+  Enabled: true
+  Max: 100
+  Exclude:
+    - "spec/**/*_spec.rb"
+    - "config/routes.rb"
+  AllowedMethods:
+    - test
+
+Metrics/ClassLength:
+  Enabled: true
+  Max: 200
+  Exclude:
+    - "db/migrate/**/*"
+    - "app/components/**/*"
+    - "app/controllers/**/*"
+
+Metrics/MethodLength:
+  Enabled: true
+  Max: 15
+  Exclude:
+    - "db/migrate/**/*"
+    - "app/views/**/*"
+    - "app/components/**/*"
+    - "app/controllers/**/*"
+
+Metrics/AbcSize:
+  Enabled: true
+  Exclude:
+    - "db/migrate/**/*"
+    - "app/controllers/**/*"
+    - "app/models/**/*"
+    - "app/components/**/*"
+
+Metrics/CyclomaticComplexity:
+  Enabled: true
+  Exclude:
+    - "app/components/ruby_ui/**/*"
+
+RSpec/DescribeClass:
+  Exclude:
+    - "spec/features/**/*"
+    - "spec/requests/**/*"
+    - "spec/system/**/*"
+    - "spec/architecture/**/*"
+
+# Disable documentation requirement - not always necessary for Rails apps
+Style/Documentation:
+  Enabled: false
+
+# Allow long lines in certain contexts
+Layout/LineLength:
+  Max: 120
+  Exclude:
+    - "config/**/*"
+    - "db/**/*"
+    - "app/views/**/*"
+    - "app/controllers/**/*"
+    - "app/components/ruby_ui/**/*"
+    - "app/components/icons/**/*"
+
+# Allow case-when for size classes in UI components
+Style/HashLikeCase:
+  Exclude:
+    - "app/components/ruby_ui/**/*"
+
+# Allow missing super in component base classes
+Lint/MissingSuper:
+  Exclude:
+    - "app/components/**/*"
+
+# Allow single-letter form parameter names (f) in components
+Naming/MethodParameterName:
+  Exclude:
+    - "app/components/**/*"
+
+Metrics/ModuleLength:
+  Enabled: true
+
+Metrics/ParameterLists:
+  Enabled: true
+
+Layout/ArgumentAlignment:
+  EnforcedStyle: with_first_argument
+
+Layout/CaseIndentation:
+  EnforcedStyle: case
+
+Layout/EndAlignment:
+  EnforcedStyleAlignWith: keyword
+
+Layout/FirstArrayElementIndentation:
+  EnforcedStyle: special_inside_parentheses
+
+Layout/FirstHashElementIndentation:
+  EnforcedStyle: special_inside_parentheses
+
+Layout/MultilineMethodCallIndentation:
+  EnforcedStyle: aligned
+
+Layout/MultilineOperationIndentation:
+  EnforcedStyle: aligned
+
+Layout/ParameterAlignment:
+  EnforcedStyle: with_first_parameter
+
+Style/Alias:
+  EnforcedStyle: prefer_alias
+
+Style/EmptyMethod:
+  EnforcedStyle: compact
+
+Style/RescueStandardError:
+  EnforcedStyle: explicit
+
+Style/StringLiterals:
+  EnforcedStyle: single_quotes
+
+Style/StringLiteralsInInterpolation:
+  EnforcedStyle: single_quotes
+
+Style/SymbolArray:
+  EnforcedStyle: percent
+
+Style/TernaryParentheses:
+  EnforcedStyle: require_no_parentheses
+
+Style/WordArray:
+  EnforcedStyle: percent
