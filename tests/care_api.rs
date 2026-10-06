@@ -1,3 +1,5 @@
+#[path = "care_api/account_sessions.rs"]
+mod account_sessions;
 #[path = "care_api/administration.rs"]
 mod administration;
 #[path = "care_api/api_session.rs"]
