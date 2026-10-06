@@ -303,7 +303,7 @@ function run_contract
         or return $status
         rtk task api:contract-ready CONTRACT_PROJECT=$contract_project
         or return $status
-        rtk task api:contract-browser-dashboard-rust CONTRACT_PROJECT=$contract_project
+        rtk proxy task api:contract-browser-dashboard-rust CONTRACT_PROJECT=$contract_project
         return $status
     end
 

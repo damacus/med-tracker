@@ -157,3 +157,60 @@ test('dashboard ownership shim validates its captured browser source', () => wit
   assert.ok(existsSync(trace), 'Dashboard branch skipped captured-source validation');
   assert.match(readFileSync(trace, 'utf8'), /browser-source-snapshot-verified/);
 }));
+
+test('dashboard runner preserves complete inner failure details, exit status and owned cleanup', () => withShimFixture(({ root, fixture, run }) => {
+  const executable = join(fixture, 'rtk');
+  const trace = join(fixture, 'trace');
+  const original = readFileSync('rust/contract-tests/test_support/rtk', 'utf8');
+  const dispatch = `if test "$argv[1]" = proxy; and test "$argv[2]" = task
+    set -gx CONTRACT_FAKE_RAW_TASK 1
+    set -e argv[1]
+end
+if test "$argv[1]" = task; and test "$argv[2]" = api:contract-source-snapshot
+    set -l destination (string replace 'CONTRACT_SOURCE_DIR=' '' -- (string match 'CONTRACT_SOURCE_DIR=*' -- $argv))
+    command mkdir -p "$destination/rust/api" "$destination/rails/config" "$destination/rails/vendor/fonts"
+    or exit $status
+    echo 'Synthetic captured source' >"$destination/synthetic.txt"
+    echo 'Synthetic Cargo manifest' >"$destination/rust/api/Cargo.toml"
+    echo 'Synthetic NHS configuration' >"$destination/rails/config/nhs_dmd_curated_products.yml"
+    echo 'Synthetic font licence' >"$destination/rails/vendor/fonts/OFL-1.1.txt"
+    exit $status
+end
+`;
+  const failure = `if test "$CONTRACT_FAKE_FAIL_STEP" = "$task_name"
+            if test "$task_name" = api:contract-browser-dashboard-rust
+                echo 'Docker build completed before the browser failed'
+                if test "$CONTRACT_FAKE_RAW_TASK" = 1
+                    echo 'AssertionError: synthetic dashboard browser failure tail' >&2
+                else
+                    echo '[full output: rtk recall synthetic]' >&2
+                end
+            end
+            exit 42
+        end`;
+  const shim = original.replace('\n\n', `\n\n${dispatch}`).replaceAll(
+    'if test "$CONTRACT_FAKE_FAIL_STEP" = "$task_name"\n            exit 42\n        end', failure);
+  writeFileSync(executable, shim);
+  chmodSync(executable, 0o755);
+  const latest = join(fixture, 'latest-run');
+  try {
+    const result = spawnSync('fish', ['--no-config', 'rust/contract-tests/run.fish', 'rails', 'browser-dashboard-rust'], {
+      cwd: root,
+      env: { ...process.env, PATH: `${fixture}:${process.env.PATH}`, CONTRACT_FAKE_RUN_DIR_FILE: latest,
+        CONTRACT_FAKE_FAIL_STEP: 'api:contract-browser-dashboard-rust', CONTRACT_FAKE_RAW_TASK: '0',
+        CONTRACT_FAKE_TRACE: trace, CONTRACT_FAKE_CLEANUP_STATUS: '0', CONTRACT_FAKE_REQUIRE_RELATIVE_CLEANUP: '0',
+        CONTRACT_FAKE_REQUIRE_BROWSER_SNAPSHOT: '0' },
+      encoding: 'utf8', timeout: 15000,
+    });
+    assert.equal(result.status, 42, result.stdout + result.stderr);
+    assert.match(result.stdout + result.stderr, /AssertionError: synthetic dashboard browser failure tail/);
+    assert.match(readFileSync(trace, 'utf8'), /^cleanup$/m);
+    assert.notEqual(readFileSync(latest, 'utf8').trim(), relative(root, run));
+    assert.ok(!existsSync(join(root, readFileSync(latest, 'utf8').trim())), 'Owned failed run was not cleaned up');
+  } finally {
+    const ownedRun = readFileSync(latest, 'utf8').trim();
+    if (/^tmp\/contract-tests\/run\.[A-Za-z0-9]{6}$/.test(ownedRun) && ownedRun !== relative(root, run)) {
+      rmSync(join(root, ownedRun), { recursive: true, force: true });
+    }
+  }
+}));
