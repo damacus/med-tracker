@@ -81,6 +81,7 @@ test('schedule creation, editing and recorded pause and resume preserve stock an
   await page.getByLabel('Dose amount', { exact: true }).fill('3');
   await page.getByRole('button', { name: 'Edit schedule', exact: true }).click();
   expect(await careFixture.treatmentProbe()).toMatchObject({ schedule_amount: '3.00', schedule_audits: 2, supply: '10.00' });
+  await card.getByText('Pause options', { exact: true }).click();
   await card.getByLabel('Pause reason', { exact: true }).selectOption('clinician_advice');
   await card.getByLabel('Pause note', { exact: true }).fill('Synthetic planned pause');
   await card.getByRole('button', { name: 'Pause treatment', exact: true }).focus();
@@ -129,7 +130,7 @@ test('weekly, specific-date and taper plans preserve entered configuration when 
   await step.getByLabel('Dose amount', { exact: true }).fill('0.50');
   await step.getByLabel('Times', { exact: true }).fill('08:45, 20:15');
   await step.getByLabel('Maximum daily doses', { exact: true }).fill('2');
-  await step.getByLabel('Minimum hours between doses', { exact: true }).fill('1.5');
+  await step.getByLabel('Minimum hours between doses', { exact: true }).fill('2');
   const start = await step.getByLabel('Start date', { exact: true }).inputValue();
   const end = await step.getByLabel('End date', { exact: true }).inputValue();
   await page.getByRole('button', { name: 'Add taper step', exact: true }).click();
@@ -145,7 +146,7 @@ test('weekly, specific-date and taper plans preserve entered configuration when 
   await expect(step.getByLabel('Start date', { exact: true })).toHaveValue(start);
   await expect(step.getByLabel('End date', { exact: true })).toHaveValue(end);
   await expect(step.getByLabel('Times', { exact: true })).toHaveValue('08:45, 20:15');
-  await expect(step.getByLabel('Minimum hours between doses', { exact: true })).toHaveValue('1.5');
+  await expect(step.getByLabel('Minimum hours between doses', { exact: true })).toHaveValue('2');
   await page.screenshot({ path: info.outputPath(`loco-treatment-taper-${info.project.name}.png`), fullPage: true });
 });
 
@@ -239,6 +240,7 @@ test('medication assignment creation and editing work immediately for recorded c
   await page.getByRole('button', { name: 'Edit assignment', exact: true }).click();
   await expect(card).not.toContainText('Synthetic assignment instructions');
   await expect(card).not.toContainText('Minimum hours between doses');
+  await card.getByText('Pause options', { exact: true }).click();
   await card.getByLabel('Pause reason', { exact: true }).selectOption('temporarily_not_needed');
   await card.getByRole('button', { name: 'Pause treatment', exact: true }).click();
   await expect(card).toContainText('Paused');

@@ -12,8 +12,10 @@
       <input id="new-quantity" name="new_quantity" type="number" min="0" step="0.01" class="input w-full" value="{{ draft.new_quantity }}" {% if error %}aria-describedby="stock-error"{% endif %} required>
       <label for="reason" class="font-semibold">Reason</label>
       <textarea id="reason" name="reason" class="textarea w-full">{{ draft.reason }}</textarea>
-      <button type="submit" class="btn btn-neutral self-start">Adjust stock</button>
-      <a class="link" href="/households/{{ slug }}/medications/{{ medication_id }}">Cancel</a>
+      <div class="flex flex-wrap items-center justify-start gap-3">
+        <button type="submit" class="btn btn-neutral w-fit">Adjust stock</button>
+        <a class="btn btn-ghost w-fit" href="/households/{{ slug }}/medications/{{ medication_id }}">Cancel</a>
+      </div>
     </form>
   </div></div>
 </section>

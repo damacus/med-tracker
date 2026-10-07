@@ -106,7 +106,7 @@ async function withCareFixture(captureMail, registrationInviteOnly, reportAssets
       await measure('application-start', start);
       await use({ origin, mailpitUrl, runtimeTimings,
         reset: () => measure('reset', () => fixtureTask('reset', [`SNAPSHOT_PATH=${snapshotPath}`])),
-        probe: async () => JSON.parse(await fixtureTask('probe')), revoke: () => fixtureTask('revoke'), reactivate: () => fixtureTask('reactivate'),
+        probe: async () => JSON.parse(await fixtureTask('probe')), seedBarcodeMetadata: () => fixtureTask('seed-barcode-metadata'), barcodeMetadataProbe: async () => JSON.parse(await fixtureTask('barcode-metadata-probe')), seedLegacyCareHours: () => fixtureTask('legacy-care-hours'), legacyCareHoursProbe: async () => JSON.parse(await fixtureTask('legacy-care-hours-probe')), seedLegacySecondTaperHour: () => fixtureTask('legacy-second-taper-hour'), revoke: () => fixtureTask('revoke'), reactivate: () => fixtureTask('reactivate'),
         seedOtp: () => fixtureTask('seed-otp'), otpProbe: async () => JSON.parse((await fixtureTask('otp-probe')) || 'null'), closeOtpAccount: () => fixtureTask('close-otp-account'),
         seedRecovery: () => fixtureTask('seed-recovery'), recoveryProbe: async () => JSON.parse(await fixtureTask('recovery-probe')), exhaustOtp: () => fixtureTask('exhaust-otp'),
         seedRecoveryPasskey: () => fixtureTask('seed-recovery-passkey'),

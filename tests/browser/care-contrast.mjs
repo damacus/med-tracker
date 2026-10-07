@@ -16,7 +16,7 @@ export async function measureCareContrast(page) {
       const channel = value / 255;
       return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
     }).reduce((sum, channel, index) => sum + channel * [0.2126, 0.7152, 0.0722][index], 0);
-    return ['main h1', 'main section > p', '.card p', '.card label', '.card input', '.card textarea', '.btn-neutral', '[role="alert"]', '.shell-muted'].flatMap(selector => {
+    return ['main h1', 'main section > p', '.card p', '.card label', '.card input', '.card select', '.card textarea', '.btn-neutral', '.card .btn-ghost', '[role="alert"]', '.shell-muted'].flatMap(selector => {
       const element = document.querySelector(selector);
       if (!element) return [];
       const foreground = channels(getComputedStyle(element).color);

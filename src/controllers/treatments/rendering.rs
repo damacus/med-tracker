@@ -59,14 +59,16 @@ pub(super) fn form(
         _ => json!({}),
     };
     data["errors"] = errors.clone();
-    data["error"] = json!(error.map(
-        |error| if matches!(error, OperationError::Conflict { .. }) {
-            "Treatment changed while this form was open. Review the latest treatment before saving."
-                .into()
-        } else {
-            browser_forms::message(error)
-        }
-    ));
+    data["error"] = json!(error.map(|error| match error {
+        OperationError::Conflict { .. } =>
+            "Treatment changed while this form was open. Review the latest treatment before saving.".into(),
+        OperationError::Validation { details } => details["errors"]["schedule_config"]
+            .as_array()
+            .and_then(|messages| messages.first())
+            .and_then(Value::as_str)
+            .map_or_else(|| browser_forms::message(error), |message| format!("Taper plan {message}.")),
+        _ => browser_forms::message(error),
+    }));
     let mut fields = vec![
         field("medication_id", "Medication", "select", draft, &errors),
         field(
@@ -89,7 +91,7 @@ pub(super) fn form(
         field(
             "min_hours_between_doses",
             "Minimum hours between doses",
-            "text",
+            "number",
             draft,
             &errors,
         ),
@@ -139,7 +141,44 @@ pub(super) fn form(
         administration["options"] = choices(&["routine", "as_needed"]);
         fields.push(administration);
     }
-    data["fields"] = json!(fields);
+    for (group, names) in [
+        (
+            "dose_fields",
+            &[
+                "medication_id",
+                "source_dosage_option_id",
+                "dose_amount",
+                "dose_unit",
+            ][..],
+        ),
+        (
+            "timing_fields",
+            &[
+                "schedule_type",
+                "dose_cycle",
+                "start_date",
+                "end_date",
+                "frequency",
+                "times",
+                "dates",
+                "administration_kind",
+            ][..],
+        ),
+        (
+            "limit_fields",
+            &["max_daily_doses", "min_hours_between_doses"][..],
+        ),
+        ("note_fields", &["notes"][..]),
+    ] {
+        data[group] = json!(
+            names
+                .iter()
+                .filter_map(|name| fields
+                    .iter()
+                    .find(|field| field["name"].as_str() == Some(*name)))
+                .collect::<Vec<_>>()
+        );
+    }
     data["weekdays"] = json!(
         [
             "monday",
@@ -166,7 +205,7 @@ pub(super) fn form(
                 (
                     "min_hours_between_doses",
                     "Minimum hours between doses",
-                    "text",
+                    "number",
                 ),
             ]
             .iter()
@@ -174,7 +213,7 @@ pub(super) fn form(
                 field(&format!("step_{index}_{name}"), label, kind, draft, &errors)
             })
             .collect::<Vec<_>>();
-            json!({"index":index,"fields":fields})
+            json!({"index":index,"original_index":draft.get(&format!("step_{index}_original_index")),"fields":fields})
         })
         .collect::<Vec<_>>();
     data["steps"] = json!(steps);
@@ -189,7 +228,17 @@ fn field(
     draft: &HashMap<String, String>,
     errors: &Value,
 ) -> Value {
-    json!({"name":name,"label":label,"kind":kind,"value":browser_forms::field(draft,name),"errors":errors.get(name).cloned().unwrap_or(json!([])),"options":[]})
+    let original = browser_forms::field(draft, name);
+    let hours = name.ends_with("min_hours_between_doses");
+    let decimal = hours
+        .then(|| original.parse::<sea_orm::prelude::Decimal>().ok())
+        .flatten();
+    let whole = decimal.is_some_and(|value| value.fract().is_zero());
+    let value = decimal.filter(|_| whole).map_or_else(
+        || original.to_owned(),
+        |value| value.normalize().to_string(),
+    );
+    json!({"name":name,"label":label,"kind":kind,"value":value,"step":if hours && decimal.is_some_and(|number| !number.fract().is_zero()) {"any"} else {"1"},"errors":errors.get(name).cloned().unwrap_or(json!([])),"options":[]})
 }
 fn choices(values: &[&str]) -> Value {
     json!(
