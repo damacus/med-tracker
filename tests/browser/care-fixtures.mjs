@@ -4,7 +4,7 @@ import { promisify } from 'node:util';
 import { createServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
-import { mkdtemp, rm, mkdir, writeFile } from 'node:fs/promises';
+import { mkdtemp, rm, mkdir, writeFile, cp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { withOwnedDatabase } from '../../scripts/migration/foundation-database.mjs';
@@ -13,7 +13,7 @@ import { stopOwnedProcess } from '../../scripts/migration/process-cleanup.mjs';
 const execute = promisify(execFile);
 const root = fileURLToPath(new URL('../../', import.meta.url));
 
-async function withCareFixture(captureMail, registrationInviteOnly, use) {
+async function withCareFixture(captureMail, registrationInviteOnly, reportAssetsUnavailable, use) {
   const runtimeTimings = { phases: [] };
   const measure = async (name, action) => {
     const started = performance.now();
@@ -33,6 +33,19 @@ async function withCareFixture(captureMail, registrationInviteOnly, use) {
     await measure('seed', () => fixtureTask('seed'));
     const snapshotDirectory = await mkdtemp(join(tmpdir(), 'mtloco-browser-'));
     const snapshotPath = join(snapshotDirectory, 'baseline.dump');
+    let applicationRoot = root;
+    let applicationBinary;
+    if (reportAssetsUnavailable) {
+      applicationRoot = join(snapshotDirectory, 'application');
+      await mkdir(join(applicationRoot, 'assets'), { recursive: true });
+      await Promise.all(['config', 'assets/views', 'assets/static', 'assets/reports'].map(async path => {
+        const destination = join(applicationRoot, path);
+        await mkdir(join(destination, '..'), { recursive: true });
+        await cp(join(root, path), destination, { recursive: true });
+      }));
+      await rm(join(applicationRoot, 'assets/reports/fonts'), { recursive: true, force: true });
+      applicationBinary = (await execute('task', ['browser-care:binary'], { cwd: root, timeout: 30000 })).stdout.trim();
+    }
     const runtime = new URL(owner);
     runtime.username = 'medtracker_browser_runtime';
     runtime.password = 'password';
@@ -54,7 +67,9 @@ async function withCareFixture(captureMail, registrationInviteOnly, use) {
       const environment = { ...process.env, LOCO_ENV: 'test', PORT: String(port), MEDTRACKER_PUBLIC_HOST: 'http://localhost', DATABASE_URL: runtime.href, MEDTRACKER_CAPTURE_MAIL: String(captureMail), MEDTRACKER_SMTP_PORT: smtpPort ?? '1025', MEDTRACKER_SESSION_KEY: Buffer.alloc(64, 7).toString('base64'), MEDTRACKER_COOKIE_SECURE: 'false', RAILS_SECRET_KEY_BASE: 'synthetic-rails-secret-key-base-for-compatibility', RAILS_OLD_SECRET_KEY_BASE: 'synthetic-old-rails-secret-key-base', AUTH_SESSION_SECRET: 'synthetic-browser-occurrence-signing-key-32' };
       delete environment.INVITE_ONLY;
       if (registrationInviteOnly !== undefined) environment.INVITE_ONLY = String(registrationInviteOnly);
-      server = spawn('task', ['browser-care:serve', ...(captureMail ? ['SERVER_AND_WORKER=true'] : [])], { cwd: root, detached: true, env: environment, stdio: ['ignore', 'pipe', 'pipe'] });
+      server = reportAssetsUnavailable
+        ? spawn(applicationBinary, ['start', '--environment', 'test'], { cwd: applicationRoot, detached: true, env: environment, stdio: ['ignore', 'pipe', 'pipe'] })
+        : spawn('task', ['browser-care:serve', ...(captureMail ? ['SERVER_AND_WORKER=true'] : [])], { cwd: root, detached: true, env: environment, stdio: ['ignore', 'pipe', 'pipe'] });
       server.stdout.on('data', chunk => { output += chunk; });
       server.stderr.on('data', chunk => { output += chunk; });
       server.on('exit', () => { exited = true; });
@@ -125,6 +140,13 @@ async function withCareFixture(captureMail, registrationInviteOnly, use) {
         },
         secondPerson: () => fixtureTask('second-person'),
         scheduledMedicine: () => fixtureTask('scheduled-medicine'),
+        seedReport: () => fixtureTask('report-seed'),
+        seedReportHistory: () => fixtureTask('report-history-seed'),
+        reportAuditProbe: async () => JSON.parse(await fixtureTask('report-audit-probe')),
+        seedReviewReport: () => fixtureTask('review-report-seed'),
+        seedRefreshTrap: () => fixtureTask('report-refresh-trap'),
+        revokeGrantOnRefresh: () => fixtureTask('report-revoke-grant-on-refresh'),
+        revokeSessionOnRefresh: () => fixtureTask('report-revoke-session-on-refresh'),
         oauthProbe: async () => JSON.parse(await fixtureTask('oauth-probe')), ageAuthentication: () => fixtureTask('age-authentication'),
         failOAuthAudit: () => fixtureTask('fail-oauth-audit'), restoreOAuthAudit: () => fixtureTask('restore-oauth-audit'),
         restart: async () => { await measure('application-stop', () => stopOwnedProcess(server)); await measure('application-start', start); },
@@ -149,6 +171,7 @@ async function withCareFixture(captureMail, registrationInviteOnly, use) {
 export const test = base.extend({
   captureMail: [false, { option: true }],
   registrationInviteOnly: [undefined, { option: true }],
+  reportAssetsUnavailable: [false, { option: true }],
   isolatedCare: [false, { option: true }],
   sharedCare: [async ({}, use) => {
     let ready;
@@ -159,7 +182,7 @@ export const test = base.extend({
       get: () => {
         if (!ready) {
           ready = new Promise((resolve, reject) => {
-            completed = withCareFixture(false, undefined, async fixture => { resolve(fixture); await released; });
+            completed = withCareFixture(false, undefined, false, async fixture => { resolve(fixture); await released; });
             completed.catch(reject);
           });
         }
@@ -168,7 +191,7 @@ export const test = base.extend({
     };
     try { await use(pool); } finally { release(); if (completed) await completed; }
   }, { scope: 'worker', timeout: 180000 }],
-  careFixture: [async ({ captureMail, registrationInviteOnly, isolatedCare, sharedCare }, use, info) => {
+  careFixture: [async ({ captureMail, registrationInviteOnly, reportAssetsUnavailable, isolatedCare, sharedCare }, use, info) => {
     const started = performance.now();
     let fixture;
     let phaseStart = 0;
@@ -178,8 +201,8 @@ export const test = base.extend({
       try { await use(fixture); } finally { fixture.runtimeTimings.phases.push({ name: 'test-and-browser-cleanup', durationMs: performance.now() - bodyStarted }); }
     };
     try {
-      if (captureMail || registrationInviteOnly !== undefined || isolatedCare || info.tags.includes('@isolated-runtime')) {
-        await withCareFixture(captureMail, registrationInviteOnly, run);
+      if (captureMail || registrationInviteOnly !== undefined || reportAssetsUnavailable || isolatedCare || info.tags.includes('@isolated-runtime')) {
+        await withCareFixture(captureMail, registrationInviteOnly, reportAssetsUnavailable, run);
       } else {
         fixture = await sharedCare.get();
         phaseStart = fixture.runtimeTimings.reportedPhaseCount ?? 0;

@@ -10,6 +10,15 @@ pub(super) struct Failure {
 }
 
 impl Failure {
+    pub fn report_unavailable() -> Self {
+        Self {
+            status: StatusCode::SERVICE_UNAVAILABLE,
+            code: "report_unavailable".into(),
+            message: "Report is temporarily unavailable".into(),
+            details: None,
+            authenticate: None,
+        }
+    }
     pub fn invitation_delivery_unavailable() -> Self {
         Self {
             status: StatusCode::SERVICE_UNAVAILABLE,

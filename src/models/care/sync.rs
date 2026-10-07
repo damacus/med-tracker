@@ -8,7 +8,7 @@ mod persistence;
 mod portable;
 mod reading;
 mod replay;
-mod review_prompts;
+pub(crate) mod review_prompts;
 mod sources;
 
 use crate::models::{

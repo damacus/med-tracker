@@ -9,6 +9,10 @@ BEGIN
   ALTER TABLE public.versions DROP CONSTRAINT IF EXISTS synthetic_treatment_audit_failure;
   ALTER TABLE public.versions DROP CONSTRAINT IF EXISTS browser_oauth_audit_failure;
   ALTER TABLE public.security_audit_events DROP CONSTRAINT IF EXISTS browser_oauth_audit_failure;
+  DROP TRIGGER IF EXISTS browser_revoke_grant_on_prompt ON public.medication_review_prompts;
+  DROP TRIGGER IF EXISTS browser_revoke_session_on_prompt ON public.medication_review_prompts;
+  DROP FUNCTION IF EXISTS browser_revoke_grant_on_prompt();
+  DROP FUNCTION IF EXISTS browser_revoke_session_on_prompt();
   SELECT string_agg(format('%I.%I', schemaname, tablename), ',') INTO tables
     FROM pg_tables WHERE schemaname = 'public' AND tablename <> 'seaql_migrations';
   EXECUTE 'TRUNCATE ' || tables || ' RESTART IDENTITY';

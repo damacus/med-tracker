@@ -30,6 +30,8 @@ mod pause_periods;
 mod people;
 #[path = "care_api/push_subscriptions.rs"]
 mod push_subscriptions;
+#[path = "care_api/reports.rs"]
+mod reports;
 #[path = "care_api/resource_credentials.rs"]
 mod resource_credentials;
 #[path = "care_api/saved_status.rs"]

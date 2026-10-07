@@ -47,13 +47,7 @@ pub(super) async fn projected(
     start: NaiveDate,
     end: NaiveDate,
 ) -> Result<Vec<Occurrence>, ApiError> {
-    let (scan_start, scan_end) = if source.kind() == Kind::Assignment {
-        let (start, _) = cycle_bounds(start, source.dose_cycle());
-        let (_, end) = cycle_bounds(end, source.dose_cycle());
-        (start, end)
-    } else {
-        (start, end)
-    };
+    let (scan_start, scan_end) = scan_bounds(source, start, end);
     let mut query = dose_occurrence::Entity::find()
         .filter(dose_occurrence::Column::HouseholdId.eq(match source {
             Source::Schedule(row) => row.household_id,
@@ -91,6 +85,57 @@ pub(super) async fn projected(
         }
     }
     .map_err(database_error)?;
+    let linked = match source {
+        Source::Schedule(row) => {
+            dose_occurrence::Entity::find().filter(dose_occurrence::Column::ScheduleId.eq(row.id))
+        }
+        Source::Assignment(row) => dose_occurrence::Entity::find()
+            .filter(dose_occurrence::Column::PersonMedicationId.eq(row.id)),
+    }
+    .filter(dose_occurrence::Column::MedicationTakeId.is_not_null())
+    .select_only()
+    .column(dose_occurrence::Column::MedicationTakeId)
+    .into_query();
+    let mut takes = medication_take::Entity::find()
+        .filter(medication_take::Column::TakenAt.gte(local_midnight(scan_start)))
+        .filter(medication_take::Column::TakenAt.lt(local_midnight(scan_end + Duration::days(1))))
+        .filter(medication_take::Column::Id.not_in_subquery(linked))
+        .order_by_asc(medication_take::Column::TakenAt)
+        .order_by_asc(medication_take::Column::Id);
+    takes = match source {
+        Source::Schedule(row) => takes.filter(medication_take::Column::ScheduleId.eq(row.id)),
+        Source::Assignment(row) => {
+            takes.filter(medication_take::Column::PersonMedicationId.eq(row.id))
+        }
+    };
+    let takes = takes.all(db).await.map_err(database_error)?;
+    Ok(projected_loaded(
+        source, scan_start, scan_end, &persisted, &pauses, &takes,
+    ))
+}
+
+pub(super) fn scan_bounds(
+    source: &Source,
+    start: NaiveDate,
+    end: NaiveDate,
+) -> (NaiveDate, NaiveDate) {
+    if source.kind() == Kind::Assignment {
+        let (start, _) = cycle_bounds(start, source.dose_cycle());
+        let (_, end) = cycle_bounds(end, source.dose_cycle());
+        (start, end)
+    } else {
+        (start, end)
+    }
+}
+
+pub(super) fn projected_loaded(
+    source: &Source,
+    scan_start: NaiveDate,
+    scan_end: NaiveDate,
+    persisted: &[dose_occurrence::Model],
+    pauses: &[pause_period::Model],
+    takes: &[medication_take::Model],
+) -> Vec<Occurrence> {
     let mut rows: BTreeMap<(NaiveDate, i32), Occurrence> = BTreeMap::new();
     let mut day = scan_start;
     while day <= scan_end {
@@ -101,9 +146,9 @@ pub(super) async fn projected(
                     && (source.active() || !pauses.is_empty())
                     && let Some(config) = schedule_config_on(schedule, day)
                 {
-                    let times = config_times(&schedule.schedule_config, day);
+                    let times = config_times(config, day);
                     if times.is_empty() {
-                        if !fully_paused(source, day, day, &pauses) {
+                        if !fully_paused(source, day, day, pauses) {
                             let count = effective_count(config, source.max_daily_doses());
                             for position in 1..=count {
                                 rows.insert(
@@ -148,7 +193,7 @@ pub(super) async fn projected(
                 {
                     let (_, finish) = cycle_bounds(day, source.dose_cycle());
                     if finish >= source.created_at().date()
-                        && !fully_paused(source, day, finish, &pauses)
+                        && !fully_paused(source, day, finish, pauses)
                     {
                         for position in 1..=source.max_daily_doses().max(1) {
                             rows.insert(
@@ -185,35 +230,11 @@ pub(super) async fn projected(
                 position: record.position,
                 scheduled_at: record.scheduled_at,
                 expected,
-                record: Some(record),
+                record: Some(record.clone()),
                 legacy_take_id: None,
             },
         );
     }
-    let linked = match source {
-        Source::Schedule(row) => {
-            dose_occurrence::Entity::find().filter(dose_occurrence::Column::ScheduleId.eq(row.id))
-        }
-        Source::Assignment(row) => dose_occurrence::Entity::find()
-            .filter(dose_occurrence::Column::PersonMedicationId.eq(row.id)),
-    }
-    .filter(dose_occurrence::Column::MedicationTakeId.is_not_null())
-    .select_only()
-    .column(dose_occurrence::Column::MedicationTakeId)
-    .into_query();
-    let mut takes = medication_take::Entity::find()
-        .filter(medication_take::Column::TakenAt.gte(local_midnight(scan_start)))
-        .filter(medication_take::Column::TakenAt.lt(local_midnight(scan_end + Duration::days(1))))
-        .filter(medication_take::Column::Id.not_in_subquery(linked))
-        .order_by_asc(medication_take::Column::TakenAt)
-        .order_by_asc(medication_take::Column::Id);
-    takes = match source {
-        Source::Schedule(row) => takes.filter(medication_take::Column::ScheduleId.eq(row.id)),
-        Source::Assignment(row) => {
-            takes.filter(medication_take::Column::PersonMedicationId.eq(row.id))
-        }
-    };
-    let takes = takes.all(db).await.map_err(database_error)?;
     for take in takes {
         let Some(taken_at) = take.taken_at else {
             continue;
@@ -236,5 +257,5 @@ pub(super) async fn projected(
             row.legacy_take_id = Some(take.id);
         }
     }
-    Ok(rows.into_values().collect())
+    rows.into_values().collect()
 }
