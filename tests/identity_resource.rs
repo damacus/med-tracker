@@ -192,6 +192,40 @@ async fn revocation_between_authentication_and_operation_is_rechecked() {
 }
 
 #[tokio::test]
+async fn a_household_operation_does_not_block_another_mobile_authentication() {
+    let fixture = Fixture::new().await;
+    let headers = fixture.headers().await;
+    let principal = resource::authenticate(&fixture.runtime, &headers)
+        .await
+        .unwrap();
+    let tenant = principal
+        .begin_household(&fixture.runtime, 72001, "held-household".into())
+        .await
+        .unwrap();
+    let second = resource::authenticate(&fixture.runtime, &headers).await;
+    tenant.rollback().await.unwrap();
+    assert!(second.is_ok());
+    fixture.close().await;
+}
+
+#[tokio::test]
+async fn token_rotation_between_authentication_and_operation_is_rechecked() {
+    let fixture = Fixture::new().await;
+    let headers = fixture.headers().await;
+    let principal = resource::authenticate(&fixture.runtime, &headers)
+        .await
+        .unwrap();
+    fixture.admin.execute_unprepared("UPDATE oauth_grants SET token_hash = translate(encode(digest('rotated-token', 'sha256'), 'base64'), '+/', '-_') WHERE id = 76001").await.unwrap();
+    assert!(matches!(
+        principal
+            .begin_household(&fixture.runtime, 72001, "rotated".into())
+            .await,
+        Err(AuthenticationError::Unauthenticated)
+    ));
+    fixture.close().await;
+}
+
+#[tokio::test]
 async fn resource_rejects_ambiguous_expired_and_insufficient_scope_credentials() {
     let fixture = Fixture::new().await;
     let headers = fixture.headers().await;

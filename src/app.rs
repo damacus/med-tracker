@@ -41,6 +41,7 @@ impl Hooks for App {
         AppRoutes::with_default_routes()
             .add_route(crate::controllers::routes())
             .add_route(crate::controllers::api::care::routes())
+            .add_route(crate::controllers::api::account_sessions::routes())
             .add_route(crate::controllers::api::care::invitation_routes())
             .add_route(crate::controllers::oauth_server::routes())
             .add_route(browser(crate::controllers::browser_routes()))
