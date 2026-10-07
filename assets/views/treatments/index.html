@@ -15,7 +15,7 @@
       <h3 class="card-title"><a class="link" href="/households/{{ slug }}/medications/{{ record.medication_id }}">{{ record.medication_name }}</a></h3>
       <a class="btn btn-ghost self-start" href="/households/{{ slug }}/people/{{ person_id }}/treatments/{{ group.kind }}/{{ record.id }}/doses">Dose records</a>
       <p>{{ record.dose_amount | default(value="Not specified") }} {{ record.dose_unit | default(value="") }} · {% if record.paused %}Paused{% elif record.active %}Active{% else %}Outside scheduled dates{% endif %}</p>
-      <dl class="grid gap-2">
+      <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
         {% if record.schedule_type is defined %}<dt class="font-semibold">Schedule type</dt><dd>{{ record.schedule_type | replace(from="_", to=" ") }}</dd>{% endif %}
         {% if record.administration_kind is defined %}<dt class="font-semibold">Administration</dt><dd>{{ record.administration_kind | replace(from="_", to=" ") }}</dd>{% endif %}
         {% if record.start_date is defined %}<dt class="font-semibold">Dates</dt><dd>{{ record.start_date }} to {{ record.end_date }}</dd>{% endif %}
@@ -39,12 +39,13 @@
         <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><button class="btn btn-neutral" type="submit">Resume treatment</button>
       </form>
       {% else %}
-      <form method="post" action="/households/{{ slug }}/people/{{ person_id }}/treatments/{{ group.kind }}/{{ record.id }}/pause" class="grid gap-4 mt-2">
+      <details class="mt-2"><summary class="btn btn-ghost w-fit">Pause options</summary>
+      <form method="post" action="/households/{{ slug }}/people/{{ person_id }}/treatments/{{ group.kind }}/{{ record.id }}/pause" class="grid gap-4 mt-4">
         <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
         <div class="grid gap-2"><label for="reason-{{ group.kind }}-{{ record.id }}">Pause reason</label><select class="select shell-input w-full" id="reason-{{ group.kind }}-{{ record.id }}" name="reason" required><option value="">Select a reason</option><option value="out_of_supply">Out of supply</option><option value="temporarily_not_needed">Temporarily not needed</option><option value="clinician_advice">Clinician advice</option><option value="side_effects">Side effects</option><option value="other">Other</option></select></div>
         <div class="grid gap-2"><label for="note-{{ group.kind }}-{{ record.id }}">Pause note</label><textarea class="textarea shell-input w-full" id="note-{{ group.kind }}-{{ record.id }}" name="note"></textarea></div>
-        <button class="btn btn-neutral self-start" type="submit">Pause treatment</button>
-      </form>
+        <button class="btn btn-neutral justify-self-start w-fit" type="submit">Pause treatment</button>
+      </form></details>
       {% endif %}
       <form method="post" action="/households/{{ slug }}/people/{{ person_id }}/treatments/{{ group.kind }}/{{ record.id }}/retire" class="mt-4">
         <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><button class="btn btn-ghost" type="submit">{% if group.kind == "schedules" %}Retire schedule{% else %}Unassign medication{% endif %}</button>

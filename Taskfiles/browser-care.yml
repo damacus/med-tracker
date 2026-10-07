@@ -410,6 +410,31 @@ tasks:
       - >-
         psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align
         -c "SELECT json_build_object('supply',(SELECT current_supply::text FROM public.medications WHERE id=80001),'takes',(SELECT count(*) FROM public.medication_takes WHERE taken_from_medication_id=80001),'foreign_supply',(SELECT current_supply::text FROM public.medications WHERE id=80002),'foreign_takes',(SELECT count(*) FROM public.medication_takes WHERE taken_from_medication_id=80002),'runtime_superuser',(SELECT rolsuper FROM pg_roles WHERE rolname='medtracker_browser_runtime'),'runtime_bypassrls',(SELECT rolbypassrls FROM pg_roles WHERE rolname='medtracker_browser_runtime'),'stored_sessions',(SELECT count(*) FROM public.browser_sessions),'session_plaintext',(SELECT COALESCE(bool_or(session LIKE '%persistence@example.test%' OR session LIKE '%account_id%'),false) FROM public.browser_sessions),'registry_sessions',(SELECT count(*) FROM public.account_active_session_keys WHERE account_id=71001),'active_sessions',(SELECT count(*) FROM public.account_active_session_keys WHERE account_id=71001 AND last_use>now()-interval '30 days'));"
+  seed-barcode-metadata:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -c "UPDATE public.medications SET barcode=''1234567890123'' WHERE id=80001"'
+  barcode-metadata-probe:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align -c "SELECT json_build_object(''barcode'',barcode) FROM public.medications WHERE id=80001"'
+  legacy-care-hours:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -f tests/fixtures/browser-care-legacy-hours.sql'
+  legacy-care-hours-probe:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align -f tests/fixtures/browser-care-legacy-hours-probe.sql'
+  legacy-second-taper-hour:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -f tests/fixtures/browser-care-legacy-second-taper.sql'
   revoke:
     requires:
       vars: [CARE_DATABASE_URL]

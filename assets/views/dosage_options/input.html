@@ -1,0 +1,5 @@
+<div class="grid gap-2 min-w-0">
+  <label for="{{ field.name }}" class="font-semibold">{{ field.label }}</label>
+  <input id="{{ field.name }}" name="{{ field.name }}" type="{{ field.kind }}" {% if field.kind == "number" %}step="{{ field.step }}"{% endif %} class="input w-full min-w-0" value="{{ field.value }}" {% if field.required %}required{% endif %} {% if field.errors | length > 0 %}aria-invalid="true" aria-describedby="{{ field.name }}-error"{% endif %}>
+  {% if field.errors | length > 0 %}<p class="shell-error" id="{{ field.name }}-error" role="alert">{{ field.errors | join(sep=". ") }}</p>{% endif %}
+</div>

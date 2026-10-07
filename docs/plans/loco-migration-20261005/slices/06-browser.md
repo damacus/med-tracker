@@ -10,6 +10,28 @@ Small application scripts own interaction and offline outbox behaviour; CSS owns
 
 ## Global constraints
 
+### Care-page layout decision — 7 October 2026
+
+Keep secondary actions, especially Cancel, at their natural width on desktop and
+mobile. Group related short fields in rows where their labels remain readable.
+Lead with identity and dose, keep dose timing and limits together, group stock
+settings, and give secondary details and destructive actions less prominence.
+Apply this hierarchy across medication, dose-option, treatment, person and location
+journeys. Use retained Rails layouts selectively within the current themes.
+
+New or changed browser timing uses whole hours; integral values display without
+decimal zeros. Preserve existing fractional intervals during unrelated edits and
+taper-step removal without rounding them. A retained taper step must still match
+its saved dates, dose and times; changing those requires whole hours. The API and
+storage remain compatible.
+Keep barcode as record metadata, outside ordinary care forms, and retain it when
+other medication details are saved.
+
+Verify the rendered desktop/mobile journeys, narrow-screen reflow, keyboard
+operation, contrast and form errors. Review the visual result alongside automated
+checks; a passing accessibility score alone does not establish usability.
+See the [care-layout audit and screenshots](../care-layout-audit.md).
+
 The 6 October decision supersedes historical appearance and URL fidelity below:
 use daisyUI, the same colour schemes and clear Loco routes. Exact Rails pixels,
 CSS values/geometry and theme-export fidelity are unnecessary. Preserve required

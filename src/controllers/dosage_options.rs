@@ -86,6 +86,7 @@ impl Page<'_> {
         ));
         data["medication_name"] = json!(parent.representation["data"]["display_name"]);
         data["error"] = Value::Null;
+        data["errors"] = json!({});
         data["changed"] = json!(false);
         if listing {
             data["options"] =
@@ -119,7 +120,22 @@ impl Page<'_> {
         ]);
         data["cycles"] = json!(["daily", "weekly", "monthly"]);
         if !listing {
-            data["fields"] = form::fields(&data["draft"]);
+            data["dose_fields"] =
+                form::fields(&data["draft"], &data["errors"], &["amount", "description"]);
+            data["timing_fields"] = form::fields(
+                &data["draft"],
+                &data["errors"],
+                &[
+                    "frequency",
+                    "default_max_daily_doses",
+                    "default_min_hours_between_doses",
+                ],
+            );
+            data["stock_fields"] = form::fields(
+                &data["draft"],
+                &data["errors"],
+                &["current_supply", "reorder_threshold"],
+            );
         }
         let template = if listing {
             "dosage_options/index.html"
@@ -160,17 +176,22 @@ impl Page<'_> {
         let result = async {
             let parent = medications::read_stock_snapshot(&tenant, self.medication).await?;
             if let Some(id) = id {
-                let (body, _) = dosages::read(&tenant, id).await?;
+                let (body, current_etag) = dosages::read(&tenant, id).await?;
                 if body["data"]["medication_id"].as_i64() != Some(parent.medication.id) {
                     return Err(OperationError::NotFound);
                 }
                 if deleting {
                     return dosages::destroy(&tenant, id, Some(principal.provenance())).await;
                 }
-                if forms::field(&draft, "etag").is_empty() {
+                if forms::field(&draft, "etag") != current_etag {
                     return Err(OperationError::Conflict {
                         code: "conflict".into(),
                         details: json!({}),
+                    });
+                }
+                if !form::browser_hours_valid(&draft, body["data"].get("default_min_hours_between_doses")) {
+                    return Err(OperationError::Validation {
+                        details: json!({"error":"Minimum hours between doses must be a whole number.","errors":{"default_min_hours_between_doses":["must be a whole number"]}}),
                     });
                 }
                 dosages::update(
@@ -182,6 +203,11 @@ impl Page<'_> {
                 )
                 .await?;
             } else {
+                if !form::browser_hours_valid(&draft, None) {
+                    return Err(OperationError::Validation {
+                        details: json!({"error":"Minimum hours between doses must be a whole number.","errors":{"default_min_hours_between_doses":["must be a whole number"]}}),
+                    });
+                }
                 dosages::create(
                     &tenant,
                     form::attributes(&draft, Some(parent.medication.id)),
@@ -231,6 +257,9 @@ impl Page<'_> {
                     data["draft"] = json!(draft);
                 }
                 data["error"] = json!(forms::message(&error));
+                if let OperationError::Validation { details } = &error {
+                    data["errors"] = details["errors"].clone();
+                }
                 data["changed"] = json!(matches!(error, OperationError::Conflict { .. }));
                 let response = self.render(data, deleting, forms::status(&error));
                 if tenant.commit().await.is_err() {

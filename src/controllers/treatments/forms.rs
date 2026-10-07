@@ -65,6 +65,7 @@ pub(super) fn defaults(record: Option<&Value>) -> HashMap<String, String> {
         if let Some(steps) = config["taper_steps"].as_array() {
             draft.insert("step_count".into(), steps.len().to_string());
             for (index, step) in steps.iter().enumerate() {
+                draft.insert(format!("step_{index}_original_index"), index.to_string());
                 for (field, alternate) in [
                     ("start_date", "start_date"),
                     ("end_date", "end_date"),
@@ -110,6 +111,7 @@ pub(super) fn body(
     kind: Kind,
     person_id: &str,
     draft: &HashMap<String, String>,
+    existing: Option<&Value>,
 ) -> Result<Value, OperationError> {
     let mut attrs = serde_json::Map::new();
     attrs.insert("person_id".into(), json!(person_id));
@@ -123,6 +125,11 @@ pub(super) fn body(
         "min_hours_between_doses",
     ] {
         if let Some(value) = browser_forms::optional(draft, field) {
+            if field == "min_hours_between_doses"
+                && !whole_hours_or_unchanged(&value, existing.and_then(|record| record.get(field)))
+            {
+                return Err(invalid(field, "must be a whole number"));
+            }
             attrs.insert(field.into(), json!(value));
         }
     }
@@ -149,7 +156,7 @@ pub(super) fn body(
             for field in ["frequency", "start_date", "end_date", "schedule_type"] {
                 attrs.insert(field.into(), json!(browser_forms::field(draft, field)));
             }
-            attrs.insert("schedule_config".into(), configuration(draft)?);
+            attrs.insert("schedule_config".into(), configuration(draft, existing)?);
         }
         Kind::Assignment => {
             attrs.insert(
@@ -183,7 +190,64 @@ fn list(value: &str) -> Vec<&str> {
         .collect()
 }
 
-fn configuration(draft: &HashMap<String, String>) -> Result<Value, OperationError> {
+fn whole_hours_or_unchanged(value: &str, old: Option<&Value>) -> bool {
+    let Ok(entered) = value.parse::<sea_orm::prelude::Decimal>() else {
+        return false;
+    };
+    entered.fract().is_zero()
+        || old
+            .and_then(|stored| {
+                stored
+                    .as_str()
+                    .map(str::to_owned)
+                    .or_else(|| stored.as_number().map(ToString::to_string))
+            })
+            .and_then(|stored| stored.parse::<sea_orm::prelude::Decimal>().ok())
+            == Some(entered)
+}
+
+fn same_taper_step(draft: &HashMap<String, String>, index: usize, original: &Value) -> bool {
+    for field in ["start_date", "end_date", "unit"] {
+        let stored = if field == "unit" {
+            original.get("unit").or_else(|| original.get("dose_unit"))
+        } else {
+            original.get(field)
+        };
+        if stored.and_then(Value::as_str)
+            != Some(browser_forms::field(
+                draft,
+                &format!("step_{index}_{field}"),
+            ))
+        {
+            return false;
+        }
+    }
+    let stored_amount = original
+        .get("amount")
+        .or_else(|| original.get("dose_amount"))
+        .and_then(|value| {
+            value
+                .as_str()
+                .map(str::to_owned)
+                .or_else(|| value.as_number().map(ToString::to_string))
+        })
+        .and_then(|value| value.parse::<sea_orm::prelude::Decimal>().ok());
+    let entered_amount = browser_forms::field(draft, &format!("step_{index}_amount"))
+        .parse::<sea_orm::prelude::Decimal>()
+        .ok();
+    let stored_times = original["times"]
+        .as_array()
+        .map(|values| values.iter().filter_map(Value::as_str).collect::<Vec<_>>())
+        .unwrap_or_default();
+    stored_amount.is_some()
+        && stored_amount == entered_amount
+        && stored_times == list(browser_forms::field(draft, &format!("step_{index}_times")))
+}
+
+fn configuration(
+    draft: &HashMap<String, String>,
+    existing: Option<&Value>,
+) -> Result<Value, OperationError> {
     let mut config = serde_json::Map::new();
     for field in ["times", "dates"] {
         let values = list(browser_forms::field(draft, field));
@@ -210,7 +274,25 @@ fn configuration(draft: &HashMap<String, String>) -> Result<Value, OperationErro
         config.insert("as_needed".into(), json!(true));
     }
     let mut steps = Vec::new();
+    let mut used_origins = Vec::new();
     for index in 0..step_count(draft)? {
+        let original = browser_forms::optional(draft, &format!("step_{index}_original_index"))
+            .and_then(|value| value.parse::<usize>().ok());
+        let original_step = original.and_then(|original| {
+            existing
+                .and_then(|record| record.get("schedule_config"))
+                .and_then(|config| config.get("taper_steps"))
+                .and_then(|steps| steps.get(original))
+        });
+        if let Some(original) = original {
+            if used_origins.contains(&original) || original_step.is_none() {
+                return Err(invalid(
+                    "schedule_config",
+                    "contains an invalid taper step origin",
+                ));
+            }
+            used_origins.push(original);
+        }
         let mut step = serde_json::Map::new();
         for field in ["start_date", "end_date", "amount", "unit"] {
             step.insert(
@@ -233,6 +315,23 @@ fn configuration(draft: &HashMap<String, String>) -> Result<Value, OperationErro
                         "must use whole numbers for maximum doses"
                     ))?)
                 } else {
+                    let old = original_step.and_then(|step| step.get(field));
+                    if !whole_hours_or_unchanged(&value, old) {
+                        return Err(invalid(
+                            "schedule_config",
+                            "must use whole hours between doses",
+                        ));
+                    }
+                    if value
+                        .parse::<sea_orm::prelude::Decimal>()
+                        .is_ok_and(|hours| !hours.fract().is_zero())
+                        && !original_step.is_some_and(|step| same_taper_step(draft, index, step))
+                    {
+                        return Err(invalid(
+                            "schedule_config",
+                            "must use whole hours when a taper step changes",
+                        ));
+                    }
                     json!(value)
                 };
                 step.insert(field.into(), value);

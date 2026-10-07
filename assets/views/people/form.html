@@ -4,24 +4,32 @@
   <h1 class="text-3xl font-semibold">{{ title }}</h1>
   <div class="mt-6">{% include "components/form_errors.html" %}</div>
   <div class="card bg-base-100 border border-base-300 mt-6"><div class="card-body">
-    <form id="person-form" method="post" action="{{ action }}" class="flex flex-col gap-4">
+    <form id="person-form" method="post" action="{{ action }}" class="grid gap-6">
       <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
-      {% for field in fields %}
-      <label for="{{ field.name }}" class="font-semibold">{{ field.label }}</label>
-      <input id="{{ field.name }}" name="{{ field.name }}" type="{{ field.kind }}" class="input w-full" value="{{ field.value }}" {% if field.required %}required{% endif %} {% if field.invalid %}aria-invalid="true" aria-describedby="form-error-{{ field.name }}"{% endif %}>
-      {% endfor %}
-      <label for="person_type" class="font-semibold">Person Type</label>
-      <select id="person_type" name="person_type" class="select w-full" {% if type_invalid %}aria-invalid="true" aria-describedby="form-error-person_type"{% endif %}>
-        {% for type in types %}<option value="{{ type.value }}" {% if type.value == draft.person_type %}selected{% endif %}>{{ type.label }}</option>{% endfor %}
-      </select>
-      <label class="flex items-center gap-3" for="has_capacity">
-        <input id="has_capacity" name="has_capacity" type="checkbox" value="true" class="checkbox" {% if draft.has_capacity == "true" %}checked{% endif %} {% if capacity_invalid %}aria-invalid="true" aria-describedby="form-error-has_capacity"{% endif %}>
-        Has capacity to manage own medication
-      </label>
-      <p>A person without capacity must have at least one carer assigned. Minors and dependent adults do not have capacity.</p>
-      <div class="flex flex-col sm:flex-row gap-3 mt-4">
-        <button type="submit" class="btn btn-neutral">{% if editing %}Update Person{% else %}Create Person{% endif %}</button>
-        <a class="btn btn-ghost" href="/households/{{ slug }}/people">Cancel</a>
+      <fieldset class="grid gap-4 border-b border-base-300 pb-6">
+        <legend class="text-lg font-semibold mb-3">Identity</legend>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {% for field in fields %}
+          <div class="grid gap-2 min-w-0"><label for="{{ field.name }}" class="font-semibold">{{ field.label }}</label>
+            <input id="{{ field.name }}" name="{{ field.name }}" type="{{ field.kind }}" class="input w-full min-w-0" value="{{ field.value }}" {% if field.required %}required{% endif %} {% if field.invalid %}aria-invalid="true" aria-describedby="form-error-{{ field.name }}"{% endif %}></div>
+          {% endfor %}
+        </div>
+      </fieldset>
+      <fieldset class="grid gap-4">
+        <legend class="text-lg font-semibold mb-3">Medication support</legend>
+        <div class="grid gap-2 min-w-0"><label for="person_type" class="font-semibold">Person Type</label>
+          <select id="person_type" name="person_type" class="select w-full min-w-0" {% if type_invalid %}aria-invalid="true" aria-describedby="form-error-person_type"{% endif %}>
+            {% for type in types %}<option value="{{ type.value }}" {% if type.value == draft.person_type %}selected{% endif %}>{{ type.label }}</option>{% endfor %}
+          </select></div>
+        <label class="flex items-center gap-3" for="has_capacity">
+          <input id="has_capacity" name="has_capacity" type="checkbox" value="true" class="checkbox" {% if draft.has_capacity == "true" %}checked{% endif %} {% if capacity_invalid %}aria-invalid="true" aria-describedby="form-error-has_capacity"{% endif %}>
+          Has capacity to manage own medication
+        </label>
+        <p class="text-sm text-base-content/70">A person without capacity must have at least one carer assigned. Minors and dependent adults do not have capacity.</p>
+      </fieldset>
+      <div class="flex flex-wrap items-center justify-start gap-3 mt-2">
+        <button type="submit" class="btn btn-neutral w-fit">{% if editing %}Update Person{% else %}Create Person{% endif %}</button>
+        <a class="btn btn-ghost w-fit" href="/households/{{ slug }}/people">Cancel</a>
       </div>
     </form>
   </div></div>

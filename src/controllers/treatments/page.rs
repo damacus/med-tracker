@@ -152,9 +152,10 @@ impl<'a> Page<'a> {
             Ok(data) => data,
             Err(error) => return browser::operation_error(error),
         };
-        if let Err(error) = read_record(kind, &tenant, id, &options).await {
-            return browser::operation_error(error);
-        }
+        let record = match read_record(kind, &tenant, id, &options).await {
+            Ok(record) => record,
+            Err(error) => return browser::operation_error(error),
+        };
         if id.is_some() && browser_forms::field(&draft, "etag").trim().is_empty() {
             return (
                 StatusCode::PRECONDITION_REQUIRED,
@@ -219,36 +220,51 @@ impl<'a> Page<'a> {
             );
         }
         let person_id = options["person_id"].to_string();
-        let result = match forms::body(kind, &person_id, &draft) {
-            Ok(body) => match (kind, id) {
-                (Kind::Schedule, None) => {
-                    treatments::create(&tenant, &body, Some(principal.provenance())).await
-                }
-                (Kind::Schedule, Some(id)) => {
-                    treatments::lifecycle::update(
-                        &tenant,
-                        id,
-                        &body,
-                        browser_forms::optional(&draft, "etag").as_deref(),
-                        Some(principal.provenance()),
-                    )
-                    .await
-                }
-                (Kind::Assignment, None) => {
-                    assignments::create(&tenant, &body, Some(principal.provenance())).await
-                }
-                (Kind::Assignment, Some(id)) => {
-                    assignments::update(
-                        &tenant,
-                        id,
-                        &body,
-                        browser_forms::optional(&draft, "etag").as_deref(),
-                        Some(principal.provenance()),
-                    )
-                    .await
-                }
-            },
-            Err(error) => Err(error),
+        let result = if record
+            .as_ref()
+            .is_some_and(|(_, current_etag)| browser_forms::field(&draft, "etag") != current_etag)
+        {
+            Err(OperationError::Conflict {
+                code: "conflict".into(),
+                details: json!({}),
+            })
+        } else {
+            match forms::body(
+                kind,
+                &person_id,
+                &draft,
+                record.as_ref().map(|value| &value.0["data"]),
+            ) {
+                Ok(body) => match (kind, id) {
+                    (Kind::Schedule, None) => {
+                        treatments::create(&tenant, &body, Some(principal.provenance())).await
+                    }
+                    (Kind::Schedule, Some(id)) => {
+                        treatments::lifecycle::update(
+                            &tenant,
+                            id,
+                            &body,
+                            browser_forms::optional(&draft, "etag").as_deref(),
+                            Some(principal.provenance()),
+                        )
+                        .await
+                    }
+                    (Kind::Assignment, None) => {
+                        assignments::create(&tenant, &body, Some(principal.provenance())).await
+                    }
+                    (Kind::Assignment, Some(id)) => {
+                        assignments::update(
+                            &tenant,
+                            id,
+                            &body,
+                            browser_forms::optional(&draft, "etag").as_deref(),
+                            Some(principal.provenance()),
+                        )
+                        .await
+                    }
+                },
+                Err(error) => Err(error),
+            }
         };
         match result {
             Ok(_) => {

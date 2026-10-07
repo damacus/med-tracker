@@ -1,0 +1,8 @@
+<div class="grid gap-2 min-w-0">
+  <label for="{{ field.name }}" class="font-semibold">{{ field.label }}</label>
+  {% if field.kind == "textarea" %}
+  <textarea id="{{ field.name }}" name="{{ field.name }}" class="textarea w-full min-w-0" {% if field.invalid %}aria-invalid="true" aria-describedby="form-error-{{ field.name }}"{% endif %}>{{ field.value }}</textarea>
+  {% else %}
+  <input id="{{ field.name }}" name="{{ field.name }}" type="{{ field.kind }}" {% if field.kind == "number" %}step="any"{% endif %} class="input w-full min-w-0" value="{{ field.value }}" {% if field.required %}required{% endif %} {% if field.invalid %}aria-invalid="true" aria-describedby="form-error-{{ field.name }}"{% endif %}>
+  {% endif %}
+</div>

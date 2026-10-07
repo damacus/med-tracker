@@ -6,30 +6,44 @@
   <div class="mt-6">{% include "components/form_errors.html" %}</div>
   {% if changed %}<a class="link mt-4 inline-block" href="{{ latest_url }}">Review latest details</a>{% endif %}
   <div class="card bg-base-100 border border-base-300 mt-6"><div class="card-body">
-    <form id="medication-form" method="post" action="{{ action }}" class="flex flex-col gap-4">
+    <form id="medication-form" method="post" action="{{ action }}" class="grid gap-6">
       <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
       <input type="hidden" name="etag" value="{{ draft.etag }}">
-      <label for="location_id" class="font-semibold">Location</label>
-      <select id="location_id" name="location_id" class="select w-full" required {% if location_invalid %}aria-invalid="true" aria-describedby="form-error-location_id"{% endif %}>
-        <option value="">Select a location...</option>
-        {% for location in locations %}<option value="{{ location.id }}" {% if location.id == selected_location %}selected{% endif %}>{{ location.name }}</option>{% endfor %}
-      </select>
-      {% for field in fields %}
-      <label for="{{ field.name }}" class="font-semibold">{{ field.label }}</label>
-      {% if field.kind == "textarea" %}
-      <textarea id="{{ field.name }}" name="{{ field.name }}" class="textarea w-full" {% if field.invalid %}aria-invalid="true" aria-describedby="form-error-{{ field.name }}"{% endif %}>{{ field.value }}</textarea>
+      <fieldset class="grid gap-4 border-b border-base-300 pb-6">
+        <legend class="text-lg font-semibold mb-3">Medication</legend>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {% for field in identity_fields %}{% include "medications/input.html" %}{% endfor %}
+        </div>
+        <div class="grid gap-2 min-w-0"><label for="location_id" class="font-semibold">Location</label>
+          <select id="location_id" name="location_id" class="select w-full min-w-0" required {% if location_invalid %}aria-invalid="true" aria-describedby="form-error-location_id"{% endif %}>
+            <option value="">Select a location...</option>
+            {% for location in locations %}<option value="{{ location.id }}" {% if location.id == selected_location %}selected{% endif %}>{{ location.name }}</option>{% endfor %}
+          </select></div>
+      </fieldset>
+      {% if options_mode %}<p class="text-sm text-base-content/70">This medication uses dosage options. They remain unchanged when you save these details.</p>
       {% else %}
-      <input id="{{ field.name }}" name="{{ field.name }}" type="{{ field.kind }}" {% if field.kind == "number" %}step="any"{% endif %} class="input w-full" value="{{ field.value }}" {% if field.required %}required{% endif %} {% if field.invalid %}aria-invalid="true" aria-describedby="form-error-{{ field.name }}"{% endif %}>
+      <fieldset class="grid gap-4 border-b border-base-300 pb-6">
+        <legend class="text-lg font-semibold mb-3">Dose</legend>
+        <div class="grid grid-cols-2 gap-4">
+          {% for field in dose_fields %}{% include "medications/input.html" %}{% endfor %}
+          <div class="grid gap-2 min-w-0"><label for="dose_unit" class="font-semibold">Unit</label>
+            <select id="dose_unit" name="dose_unit" class="select w-full min-w-0" {% if unit_invalid %}aria-invalid="true" aria-describedby="form-error-dose_unit"{% endif %}><option value="">Select unit</option>{% for unit in units %}<option value="{{ unit }}" {% if unit == draft.dose_unit %}selected{% endif %}>{{ unit }}</option>{% endfor %}</select></div>
+        </div>
+      </fieldset>
+      <fieldset class="grid gap-4 border-b border-base-300 pb-6">
+        <legend class="text-lg font-semibold mb-3">Stock</legend>
+        <div class="grid grid-cols-2 gap-4">
+          {% for field in stock_fields %}{% include "medications/input.html" %}{% endfor %}
+        </div>
+      </fieldset>
       {% endif %}
-      {% endfor %}
-      {% if options_mode %}<p>This medication uses dosage options. They remain unchanged when you save these details.</p>
-      {% else %}
-      <label for="dose_unit" class="font-semibold">Unit</label>
-      <select id="dose_unit" name="dose_unit" class="select w-full" {% if unit_invalid %}aria-invalid="true" aria-describedby="form-error-dose_unit"{% endif %}><option value="">Select unit</option>{% for unit in units %}<option value="{{ unit }}" {% if unit == draft.dose_unit %}selected{% endif %}>{{ unit }}</option>{% endfor %}</select>
-      {% endif %}
-      <div class="flex flex-col sm:flex-row gap-3 mt-4">
-        <button type="submit" class="btn btn-neutral">Save Medication</button>
-        <a class="btn btn-ghost" href="/households/{{ slug }}/medications">Back to Medications</a>
+      <fieldset class="grid gap-4">
+        <legend class="text-lg font-semibold mb-3">Notes and warnings</legend>
+        {% for field in note_fields %}{% include "medications/input.html" %}{% endfor %}
+      </fieldset>
+      <div class="flex flex-wrap items-center justify-start gap-3 mt-4">
+        <button type="submit" class="btn btn-neutral w-fit">Save Medication</button>
+        <a class="btn btn-ghost w-fit" href="/households/{{ slug }}/medications">Back to Medications</a>
       </div>
     </form>
   </div></div>
