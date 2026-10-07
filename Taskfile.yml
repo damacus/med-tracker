@@ -145,6 +145,7 @@ tasks:
       - task: slice:test-all
       - task: foundation:test-cleanup
       - task: foundation:test-database
+      - task: release:test-rehearsal
       - task: browser
   test:unit:
     desc: Run Loco library tests with an optional name filter
@@ -208,3 +209,44 @@ tasks:
     summary: Default task - shows all available commands
     silent: true
     cmds: [task --list]
+
+  release:rehearse:
+    desc: Rehearse Loco writes and saved-state Rails rollback on an owned database
+    cmds:
+      - task: build
+      - task rails:test:build CONTRACT_PROJECT=mtloco-rollback-image
+      - >-
+        fish --no-config -c 'set -l rollback_image (docker image inspect mtloco-rollback-image-web-test | jq -er ".[0].Id");
+        or exit $status;
+        env RAILS_ROLLBACK_IMAGE="$rollback_image" node scripts/migration/cutover-rehearsal.mjs'
+  release:test-rehearsal:
+    desc: Verify saved-state rehearsal orchestration
+    cmds: [node --test scripts/migration/cutover-rehearsal.test.mjs]
+  release:cutover:loco-journey:
+    requires:
+      vars: [CUTOVER_DATABASE_URL, MEDTRACKER_OWNED_DATABASE]
+    env:
+      CUTOVER_DATABASE_URL: '{{.CUTOVER_DATABASE_URL}}'
+      MEDTRACKER_OWNED_DATABASE: '{{.MEDTRACKER_OWNED_DATABASE}}'
+    cmds: [cargo test --locked --features cutover-rehearsal --test cutover]
+  rails:rollback:journey:
+    requires:
+      vars: [FOUNDATION_PROJECT, CARE_DATABASE_URL, RAILS_ROLLBACK_IMAGE]
+    cmds:
+      - >-
+        fish --no-config -c 'set -l project $argv[1]; set -l endpoint $argv[2]; set -l image $argv[3];
+        string match -qr "^sha256:[0-9a-f]{64}\$" -- "$image"; or exit 1;
+        string match -qr "^mtloco-http-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\$" -- "$project"; or exit 1;
+        string match -qr "^postgres://medtracker:medtracker_password@127[.]0[.]0[.]1:[0-9]+/medtracker_reference\$" -- "$endpoint"; or exit 1;
+        docker network inspect "$project"_default |
+        jq -e --arg project "$project" ".[0].Labels[\"com.docker.compose.project\"] == \$project and .[0].Labels[\"com.docker.compose.network\"] == \"default\"" > /dev/null'
+        -- {{.FOUNDATION_PROJECT | shellQuote}} {{.CARE_DATABASE_URL | shellQuote}} {{.RAILS_ROLLBACK_IMAGE | shellQuote}}
+      - >-
+        docker run --rm --pull never
+        --network {{printf "%s_default" .FOUNDATION_PROJECT | shellQuote}}
+        --env RAILS_ENV=test
+        --env MEDTRACKER_OWNED_DATABASE=1
+        --env MEDTRACKER_REHEARSAL_RAILS_ROOT=/app
+        --env DATABASE_URL=postgresql://medtracker:medtracker_password@postgres:5432/medtracker_reference
+        --mount {{printf "type=bind,source=%s/scripts/migration/rails_rollback_spec.rb,target=/tmp/rails_rollback_spec.rb,readonly" .ROOT_DIR | shellQuote}}
+        {{.RAILS_ROLLBACK_IMAGE | shellQuote}} bundle exec rspec /tmp/rails_rollback_spec.rb
