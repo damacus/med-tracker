@@ -3333,7 +3333,7 @@ dependencies = [
  "axum_csrf",
  "axum_session",
  "axum_session_sqlx",
- "base64 0.22.1",
+ "base64 0.23.1",
  "bcrypt",
  "cedar-policy",
  "chrono",
