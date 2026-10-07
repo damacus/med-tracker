@@ -174,6 +174,66 @@ tasks:
         -v webauthn_id={{.RETAINED_WEBAUTHN_ID | shellQuote}} -v public_key={{.RETAINED_PUBLIC_KEY | shellQuote}}
         -v sign_count={{.RETAINED_SIGN_COUNT | shellQuote}} -v user_handle={{.RETAINED_USER_HANDLE | shellQuote}}
         -f tests/fixtures/identity/rails-passkey-seed.sql
+  expire-retained-factor-lock:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -c "UPDATE public.identity_onboarding SET legacy_totp_locked_until=now()-interval ''1 second'' WHERE account_id=71001"'
+  fail-retained-factor-audit:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1
+        -c "ALTER TABLE public.versions ADD CONSTRAINT browser_totp_audit_failure CHECK(event <> 'auth_token/totp/verified') NOT VALID;"
+  age-retained-factor-use:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -c "UPDATE public.account_otp_keys SET last_use=now()-interval ''1 minute'' WHERE id=71001"'
+  clear-adopted-onboarding:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -c "DELETE FROM public.identity_onboarding WHERE account_id=71001"'
+  security-revocation-race:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -f tests/fixtures/identity/security-revocation-race.sql'
+  security-factor-race:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -f tests/fixtures/identity/security-factor-race.sql'
+  framework-session-peer:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align
+        -c "SELECT ip_address FROM public.identity_sessions WHERE account_id=71001 ORDER BY created_at DESC LIMIT 1"
+  expire-authentication-limits:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1
+        -c "UPDATE public.identity_rate_limits SET expires_at=clock_timestamp()-interval '1 second'"
+  security-factor-race-ready:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align
+        -c "SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND application_name='security-factor-race' AND xact_start IS NOT NULL AND state='active')"
+  security-revocation-race-ready:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align
+        -c "SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND application_name='security-revocation-race' AND xact_start IS NOT NULL AND state='active')"
   passkey-removal-race:
     requires:
       vars: [CARE_DATABASE_URL]
@@ -338,6 +398,41 @@ tasks:
         psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction
         -c "ALTER TABLE public.versions ADD CONSTRAINT browser_oauth_audit_failure CHECK(event NOT IN('mobile_oauth.consent_granted','mobile_oauth.token_revoked')) NOT VALID;
         ALTER TABLE public.security_audit_events ADD CONSTRAINT browser_oauth_audit_failure CHECK(event_type NOT IN('smart_oauth.consent_granted','smart_oauth.token_revoked')) NOT VALID;"
+  fail-recovery-audit:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1
+        -c "ALTER TABLE public.versions ADD CONSTRAINT browser_recovery_audit_failure CHECK(event <> 'auth_token/recovery_code/used') NOT VALID;"
+  restore-recovery-audit:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1
+        -c "ALTER TABLE public.versions DROP CONSTRAINT browser_recovery_audit_failure;"
+  fail-totp-audit:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1
+        -c "ALTER TABLE public.versions ADD CONSTRAINT browser_totp_audit_failure CHECK(event <> 'auth_token/totp/enabled') NOT VALID;"
+  restore-totp-audit:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1
+        -c "ALTER TABLE public.versions DROP CONSTRAINT browser_totp_audit_failure;"
+  expire-totp-lock:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1
+        -c "UPDATE public.identity_two_factors SET locked_until=clock_timestamp()-interval '1 second' WHERE account_id=71001;"
   restore-oauth-audit:
     requires:
       vars: [CARE_DATABASE_URL]
@@ -363,6 +458,7 @@ tasks:
         psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction
         -c "CREATE ROLE medtracker_browser_runtime LOGIN PASSWORD 'password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS IN ROLE med_tracker_app;
         INSERT INTO public.accounts(id,email,status,password_hash,created_at,updated_at) VALUES(71002,'foreign@example.test',2,crypt('password',gen_salt('bf',4)),now(),now());
+        INSERT INTO public.identity_onboarding(account_id,recovery_saved_at) VALUES(71001,now()),(71002,now());
         INSERT INTO public.households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71002,'Synthetic foreign household','foreign-fixture','Europe/London',now(),now());
         INSERT INTO public.locations(id,household_id,name,created_at,updated_at) VALUES(79002,72002,'Synthetic foreign cabinet',now(),now());
         INSERT INTO public.medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at) VALUES(80002,72002,79002,'Synthetic foreign medicine',10,2,'tablet',now(),now());"

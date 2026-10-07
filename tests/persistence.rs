@@ -13,6 +13,7 @@ impl MigratorTrait for StandardLedger {
             Box::new(migration::m20261006_000004_browser_sessions::Migration),
             Box::new(migration::m20261006_000005_access_token_scopes::Migration),
             Box::new(migration::m20261006_000006_registration_policy::Migration),
+            Box::new(migration::m20261006_000007_better_auth_identity::Migration),
         ]
     }
 }
@@ -176,6 +177,14 @@ async fn capture_persistence_catalog() {
         .unwrap();
         previous = current;
     }
+    db.execute_unprepared("SET search_path = public, pg_temp").await.unwrap();
+    StandardLedger::up(&db, Some(1)).await.unwrap();
+    let current = catalog(&db).await;
+    let delta: serde_json::Map<String, serde_json::Value> = current.as_object().unwrap().iter()
+        .filter(|(key, value)| previous.get(*key) != Some(*value))
+        .map(|(key, value)| (key.clone(), value.clone())).collect();
+    assert!(previous.as_object().unwrap().keys().all(|key| current.get(key).is_some()));
+    std::fs::write(output.join("medtracker-identity-catalog.json"), serde_json::to_string_pretty(&delta).unwrap()).unwrap();
     db.close().await.unwrap();
 }
 

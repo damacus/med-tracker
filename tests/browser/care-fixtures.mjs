@@ -102,6 +102,10 @@ async function withCareFixture(captureMail, registrationInviteOnly, use) {
         invitationAcceptanceProbe: async () => JSON.parse(await fixtureTask('invitation-acceptance-probe')),
         invitationSignupProbe: async email => JSON.parse(await fixtureTask('invitation-signup-probe', [`INVITATION_EMAIL=${email}`])),
         signupDiagnostics: () => output.split('\n').filter(line => line.includes('Account setup operation failed')).join('\n'),
+        logsContain: value => output.includes(value),
+        frameworkSessionPeer: () => fixtureTask('framework-session-peer'),
+        expireAuthenticationLimits: () => fixtureTask('expire-authentication-limits'),
+        failureDiagnostics: () => output.split('\n').filter(line => /Account (confirmation|setup operation) (failed|rejected)/.test(line)).slice(-20).map(line => line.replace(/https?:\/\/\S+/g, '[redacted URL]').replace(/\b(token|password|authorization|cookie|secret)\s*[=:]\s*[^\s,]+/gi, '$1=[redacted]')).join('\n').slice(-4096),
         revokeInvitation: email => fixtureTask('revoke-invitation', [`INVITATION_EMAIL=${email}`]),
         setRegistrationPolicy: inviteOnly => fixtureTask('registration-policy', [`REGISTRATION_INVITE_ONLY=${Boolean(inviteOnly)}`]), clearRegistrationPolicy: () => fixtureTask('clear-registration-policy'),
         registrationProbe: async email => JSON.parse(await fixtureTask('registration-probe', [`REGISTRATION_EMAIL=${email}`])),
@@ -127,6 +131,14 @@ async function withCareFixture(captureMail, registrationInviteOnly, use) {
         scheduledMedicine: () => fixtureTask('scheduled-medicine'),
         oauthProbe: async () => JSON.parse(await fixtureTask('oauth-probe')), ageAuthentication: () => fixtureTask('age-authentication'),
         failOAuthAudit: () => fixtureTask('fail-oauth-audit'), restoreOAuthAudit: () => fixtureTask('restore-oauth-audit'),
+        failRecoveryAudit: () => fixtureTask('fail-recovery-audit'), restoreRecoveryAudit: () => fixtureTask('restore-recovery-audit'),
+        failTotpAudit: () => fixtureTask('fail-totp-audit'), restoreTotpAudit: () => fixtureTask('restore-totp-audit'),
+        expireTotpLock: () => fixtureTask('expire-totp-lock'),
+        clearAdoptedOnboarding: () => fixtureTask('clear-adopted-onboarding'),
+        ageRetainedFactorUse: () => fixtureTask('age-retained-factor-use'),
+        expireRetainedFactorLock: () => fixtureTask('expire-retained-factor-lock'), failRetainedFactorAudit: () => fixtureTask('fail-retained-factor-audit'),
+        securityRevocationRace: () => fixtureTask('security-revocation-race'), securityRevocationRaceReady: async () => (await fixtureTask('security-revocation-race-ready')) === 't',
+        securityFactorRace: () => fixtureTask('security-factor-race'), securityFactorRaceReady: async () => (await fixtureTask('security-factor-race-ready')) === 't',
         restart: async () => { await measure('application-stop', () => stopOwnedProcess(server)); await measure('application-start', start); },
         revokeSession: () => fixtureTask('revoke-session'), expireSession: () => fixtureTask('expire-session'), doseRequestId: () => fixtureTask('dose-request-id') });
     } finally {
@@ -175,7 +187,10 @@ export const test = base.extend({
     const run = async current => {
       fixture = current;
       const bodyStarted = performance.now();
-      try { await use(fixture); } finally { fixture.runtimeTimings.phases.push({ name: 'test-and-browser-cleanup', durationMs: performance.now() - bodyStarted }); }
+      try { await use(fixture); } finally {
+        fixture.runtimeTimings.phases.push({ name: 'test-and-browser-cleanup', durationMs: performance.now() - bodyStarted });
+        if (info.status !== info.expectedStatus) await info.attach('application-failure-diagnostics', { body: fixture.failureDiagnostics(), contentType: 'text/plain' });
+      }
     };
     try {
       if (captureMail || registrationInviteOnly !== undefined || isolatedCare || info.tags.includes('@isolated-runtime')) {

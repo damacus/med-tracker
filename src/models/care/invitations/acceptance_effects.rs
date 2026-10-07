@@ -6,7 +6,7 @@ use sea_orm::{DatabaseTransaction, IntoActiveModel, PaginatorTrait};
 use std::collections::{HashMap, HashSet};
 use uuid::Uuid;
 
-pub(super) async fn apply(
+pub(crate) async fn apply(
     db: &DatabaseTransaction,
     actor: &super::acceptance::AcceptanceActor,
     source: &person::Model,

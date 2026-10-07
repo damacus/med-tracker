@@ -8,6 +8,7 @@ pub mod api_session;
 mod audit;
 pub mod authorization;
 pub mod browser;
+pub mod better_auth;
 mod input;
 pub mod oauth;
 mod registrar;

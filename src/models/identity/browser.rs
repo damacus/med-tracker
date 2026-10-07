@@ -27,6 +27,8 @@ struct Identity {
     registry_key: String,
     #[serde(default)]
     additional_factor_verified: bool,
+    #[serde(default)]
+    better_auth: bool,
 }
 
 pub enum SignInOutcome {
@@ -186,6 +188,13 @@ async fn validate(
     identity: &Identity,
     touch: bool,
 ) -> Result<account::Model, AuthenticationError> {
+    if identity.better_auth {
+        transaction.execute_raw(sql("SELECT set_config('med_tracker.current_account_id',$1,true)", [identity.account_id.to_string().into()])).await.map_err(unavailable)?;
+        let valid = transaction.query_one_raw(sql("SELECT account_id FROM public.identity_sessions WHERE account_id=$1 AND token=$2 AND active AND purpose='authenticated' AND expires_at>clock_timestamp() AND created_at>clock_timestamp()-interval '30 days' FOR SHARE", [identity.account_id.into(), identity.registry_key.clone().into()])).await.map_err(unavailable)?;
+        if valid.is_none() { return Err(AuthenticationError::Unauthenticated); }
+        access::verify_account_actor(transaction, identity.account_id).await.map_err(super::resource::operation_error)?;
+        return account::Entity::find_by_id(identity.account_id).filter(account::Column::Status.eq(2)).one(transaction).await.map_err(unavailable)?.ok_or(AuthenticationError::Unauthenticated);
+    }
     access::verify_account_actor(transaction, identity.account_id)
         .await
         .map_err(super::resource::operation_error)?;
@@ -363,6 +372,7 @@ async fn issue_session(
             account_id,
             registry_key,
             additional_factor_verified,
+            better_auth: false,
         },
     );
     Ok(())
@@ -397,6 +407,10 @@ pub fn route_layers(
     ctx: &loco_rs::app::AppContext,
     routes: loco_rs::controller::Routes,
 ) -> loco_rs::controller::Routes {
+    let routes = match ctx.shared_store.get::<super::better_auth::IdentityService>() {
+        Some(service) => routes.layer(axum::middleware::from_fn(identity_bridge)).layer(axum::Extension(service)),
+        None => routes,
+    };
     match ctx.shared_store.get::<BrowserLayers>() {
         Some(layers) => routes
             .layer(axum_session::SessionLayer::new(layers.store))
@@ -404,6 +418,39 @@ pub fn route_layers(
             .layer(tower_http::csrf::CsrfLayer::new()),
         None => routes,
     }
+}
+
+async fn identity_bridge(
+    axum::Extension(service): axum::Extension<super::better_auth::IdentityService>,
+    session: Session<SessionPgPool>,
+    request: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    use axum::response::IntoResponse;
+    let mut auth = better_auth_core::AuthRequest::new(better_auth_core::HttpMethod::Get, "/get-session");
+    auth.headers = request.headers().iter().filter_map(|(name,value)| value.to_str().ok().map(|value| (name.to_string(),value.to_owned()))).collect();
+    match super::better_auth::browser_identity(&service, &auth).await {
+        Ok(super::better_auth::BrowserIdentity::Authenticated { user, session: identity }) => {
+            let Ok(account_id) = user.id.parse() else { return axum::http::StatusCode::UNAUTHORIZED.into_response(); };
+            session.set("identity", Identity { account_id, registry_key: identity.token, additional_factor_verified: true, better_auth: true });
+            session.set_store(true);
+        }
+        Ok(super::better_auth::BrowserIdentity::PendingFactor) => {
+            session.remove("identity");
+            if request.uri().path() == "/" { return axum::response::Redirect::to("/auth/totp").into_response(); }
+        }
+        Ok(super::better_auth::BrowserIdentity::Enrolment { .. }) => {
+            session.remove("identity");
+            if request.uri().path() == "/" {
+                return axum::response::Redirect::to("/auth/passkey/setup").into_response();
+            }
+        }
+        Ok(super::better_auth::BrowserIdentity::SignedOut) => {
+            if session.get::<Identity>("identity").is_some_and(|identity| identity.better_auth) { session.remove("identity"); }
+        }
+        Err(_) => return axum::http::StatusCode::SERVICE_UNAVAILABLE.into_response(),
+    }
+    next.run(request).await
 }
 
 pub async fn layers(

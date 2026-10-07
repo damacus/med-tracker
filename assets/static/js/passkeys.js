@@ -35,12 +35,21 @@ document.querySelector('[data-passkey-login]')?.addEventListener('click', async 
     if (source.dataset.credentialOptions) {
       options = JSON.parse(source.dataset.credentialOptions);
     } else {
-      const response = await fetch('/webauthn-login/options', { credentials: 'same-origin', cache: 'no-store' });
+      const response = await fetch('/api/auth/passkey/generate-authenticate-options', { credentials: 'same-origin', cache: 'no-store' });
       if (!response.ok) throw Error('Unavailable');
       options = await response.json();
     }
     const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(options.publicKey);
     const credential = await navigator.credentials.get({ publicKey });
+    if (!button.dataset.passkeyAction) {
+      const response = await fetch('/api/auth/passkey/verify-authentication', {
+        method: 'POST', credentials: 'same-origin', cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(credential.toJSON()),
+      });
+      if (!response.ok) throw Error('Unavailable');
+      window.location.assign('/');
+      return;
+    }
     const form = document.createElement('form');
     form.method = 'post';
     form.action = button.dataset.passkeyAction || '/webauthn-login';

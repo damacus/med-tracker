@@ -1,0 +1,9 @@
+<section class="max-w-xl mx-auto card shell-card" data-regenerated-recovery data-generation="{{ generation }}" {% if not recovery_codes %}hidden{% endif %}><div class="card-body gap-4">
+  <h1 class="text-3xl font-semibold" tabindex="-1" data-result-heading>Save your recovery codes</h1>
+  <p>Your previous codes no longer work. Save these ten new single-use codes. They become usable after you confirm you have saved them.</p>
+  <ul aria-label="Recovery codes" class="font-mono space-y-2" data-result-codes>{% for code in recovery_codes %}<li>{{ code }}</li>{% endfor %}</ul>
+  <div class="flex gap-3"><button class="btn" type="button" data-result-copy>Copy codes</button><button class="btn" type="button" data-result-download>Download codes</button></div>
+  <label><input type="checkbox" data-result-saved> I have saved my recovery codes</label>
+  <button class="btn shell-primary" type="button" data-result-continue>Continue</button>
+  <p role="status" data-result-status></p><p role="alert" tabindex="-1" data-result-error hidden></p>
+</div></section>

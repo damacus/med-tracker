@@ -27,7 +27,7 @@ pub async fn accept_browser(
     accept_validated(db, Principal::Browser(principal), token, request_id).await
 }
 
-pub(super) struct AcceptanceActor {
+pub(crate) struct AcceptanceActor {
     pub account_id: i64,
     pub person_id: i64,
     pub email: String,

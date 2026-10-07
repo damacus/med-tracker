@@ -20,6 +20,8 @@ use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrde
 use serde_json::{Value, json};
 
 pub use acceptance::{accept, accept_browser};
+pub(crate) use acceptance::AcceptanceActor;
+pub(crate) use acceptance_effects::apply as apply_acceptance;
 pub use issuing::create;
 pub use lifecycle::{cancel, resend, revoke};
 pub use reading::{list, list_api, options, preview};

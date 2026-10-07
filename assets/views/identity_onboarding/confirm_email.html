@@ -1,0 +1,15 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="card shell-card max-w-lg mx-auto"><div class="card-body gap-4">
+  <h1 class="text-3xl font-semibold">Verify your account</h1>
+  <p>You are about to verify and continue setting up this MedTracker account:</p>
+  <strong>{{ email }}</strong>
+  <p>Continue only if this is the account you intended to create.</p>
+  <form method="post" action="/verify-account-confirm">
+    <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+    <input type="hidden" name="token" value="{{ token }}">
+    <button class="btn shell-primary" type="submit">Verify and continue</button>
+  </form>
+  <a class="link" href="/login">Use another account</a>
+</div></section>
+{% endblock content %}

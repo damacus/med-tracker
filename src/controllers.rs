@@ -6,6 +6,7 @@ pub mod auth;
 pub mod dosage_options;
 pub mod dose_occurrences;
 pub mod home;
+pub mod identity_onboarding;
 pub mod invitations;
 pub mod locations;
 pub mod medication_orders;

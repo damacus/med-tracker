@@ -1,0 +1,30 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-3xl mx-auto space-y-6">
+  <h1 class="text-3xl font-semibold">Account security</h1>
+  <p>{{ email }}</p>
+  <section class="card shell-card"><div class="card-body gap-4">
+    <h2 class="text-xl font-semibold">Sign-in methods</h2>
+    <p>Password: {% if password %}enabled{% else %}not set{% endif %}</p>
+    <a class="link" href="/account/security/password">{% if password %}Change password{% else %}Add password{% endif %}</a>
+    <p>Authenticator app: {% if totp %}enabled{% else %}not enabled{% endif %}</p>
+    {% if password and not totp %}<a class="link" href="/account/security/totp">Enable authenticator app</a>{% endif %}
+    {% if totp %}<form method="post" action="/account/security/totp/disable"><input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><button class="btn" type="submit">Disable authenticator app</button></form>{% endif %}
+    <form method="post" action="/account/security/operation"><input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><input type="hidden" name="action" value="add_passkey"><button class="btn" type="submit">Add passkey</button></form>
+    {% if password %}<form method="post" action="/account/security/operation"><input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><input type="hidden" name="action" value="remove_password"><button class="btn" type="submit">Remove password</button></form>{% endif %}
+    {% for passkey in passkeys %}<div data-passkey-id="{{ passkey.id }}"><p>Passkey: {{ passkey.name }}</p><form method="post" action="/account/security/operation"><input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><input type="hidden" name="action" value="remove_passkey"><input type="hidden" name="target" value="{{ passkey.id }}"><button class="btn" type="submit">Remove passkey</button></form></div>{% endfor %}
+    <form method="post" action="/account/security/operation"><input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><input type="hidden" name="action" value="regenerate_recovery"><button class="btn" type="submit">Regenerate recovery codes</button></form>
+  </div></section>
+  <section class="card shell-card"><div class="card-body gap-4">
+    <h2 class="text-xl font-semibold">Active sessions</h2>
+    <ul class="space-y-4">{% for session in sessions %}<li>
+      {% if session.current %}<strong>Current session</strong>{% else %}<strong>Other session</strong>{% endif %}
+      <p>Signed in {{ session.created }}. Expires {{ session.expires }}.</p>
+    </li>{% endfor %}</ul>
+    <form method="post" action="/logout">
+      <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+      <button class="btn shell-primary" type="submit">Sign out</button>
+    </form>
+  </div></section>
+</section>
+{% endblock content %}

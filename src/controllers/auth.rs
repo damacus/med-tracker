@@ -95,6 +95,8 @@ async fn login_form(
 
 async fn sign_in(
     State(ctx): State<AppContext>,
+    axum::Extension(service): axum::Extension<crate::models::identity::better_auth::IdentityService>,
+    headers: axum::http::HeaderMap,
     session: Session<SessionPgPool>,
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
@@ -103,7 +105,21 @@ async fn sign_in(
     if token.verify(&form.authenticity_token).is_err() {
         return StatusCode::FORBIDDEN.into_response();
     }
-    match browser::sign_in(&ctx.db, &session, form.email, form.password).await {
+    let mut request = better_auth_core::AuthRequest::new(better_auth_core::HttpMethod::Post, "/sign-in/email");
+    request.headers = headers.iter().filter_map(|(name, value)| value.to_str().ok().map(|value| (name.as_str().to_owned(), value.to_owned()))).collect();
+    request.body = serde_json::to_vec(&serde_json::json!({"email":form.email,"password":form.password})).ok();
+    let result = crate::models::identity::better_auth::dispatch(&service, request, uuid::Uuid::new_v4().to_string()).await;
+    if let Ok(ref response) = result && response.status < 400 {
+        let requires_totp = serde_json::from_slice::<serde_json::Value>(&response.body).ok().is_some_and(|body| body.get("twoFactorRedirect").and_then(serde_json::Value::as_bool) == Some(true));
+        let mut redirect = if requires_totp { redirect("/auth/totp") } else { authenticated_redirect(&session) };
+        for cookie in response.headers.get_all("set-cookie") {
+            let Ok(value) = cookie.parse() else { return StatusCode::SERVICE_UNAVAILABLE.into_response(); };
+            redirect.headers_mut().append(header::SET_COOKIE, value);
+        }
+        return redirect;
+    }
+    let outcome: Result<browser::SignInOutcome, AuthenticationError> = Err(if result.as_ref().is_ok_and(|response| response.status < 500) || matches!(result, Err(better_auth_core::AuthError::InvalidCredentials | better_auth_core::AuthError::Unauthenticated)) { AuthenticationError::Unauthenticated } else { AuthenticationError::Unavailable });
+    match outcome {
         Ok(browser::SignInOutcome::Authenticated) => authenticated_redirect(&session),
         Ok(browser::SignInOutcome::OtpRequired) => redirect("/otp-auth"),
         Ok(browser::SignInOutcome::RecoveryRequired) => redirect("/recovery-auth"),
@@ -241,7 +257,8 @@ async fn verify_otp(
 }
 
 async fn sign_out(
-    State(ctx): State<AppContext>,
+    axum::Extension(service): axum::Extension<crate::models::identity::better_auth::IdentityService>,
+    headers: axum::http::HeaderMap,
     session: Session<SessionPgPool>,
     token: CsrfToken,
     AxumForm(form): AxumForm<Logout>,
@@ -249,15 +266,21 @@ async fn sign_out(
     if token.verify(&form.authenticity_token).is_err() {
         return StatusCode::FORBIDDEN.into_response();
     }
-    match browser::sign_out(&ctx.db, &session).await {
-        Ok(()) => (
-            StatusCode::SEE_OTHER,
-            [
-                (header::LOCATION, "/login"),
-                (header::CACHE_CONTROL, "no-store"),
-            ],
-        )
-            .into_response(),
+    let mut request = better_auth_core::AuthRequest::new(better_auth_core::HttpMethod::Post, "/sign-out");
+    request.headers = headers.iter().filter_map(|(name, value)| value.to_str().ok().map(|value| (name.as_str().to_owned(), value.to_owned()))).collect();
+    request.body = Some(b"{}".to_vec());
+    request.headers.insert("content-type".into(), "application/json".into());
+    match crate::models::identity::better_auth::dispatch(&service, request, uuid::Uuid::new_v4().to_string()).await {
+        Ok(response) if response.status < 400 => {
+            session.destroy();
+            let mut redirect = redirect("/login");
+            for cookie in response.headers.get_all("set-cookie") {
+                let Ok(value) = cookie.parse() else { return StatusCode::SERVICE_UNAVAILABLE.into_response(); };
+                redirect.headers_mut().append(header::SET_COOKIE, value);
+            }
+            redirect
+        }
+        Ok(_) => StatusCode::SERVICE_UNAVAILABLE.into_response(),
         Err(_) => StatusCode::SERVICE_UNAVAILABLE.into_response(),
     }
 }

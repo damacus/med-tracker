@@ -15,6 +15,9 @@ loco-rs = { version = "=1.2.0", default-features = false, features = ["cli", "wi
 async-trait = "0.1"
 base64 = "=0.22.1"
 bcrypt = "=0.19.3"
+better-auth = { git = "https://github.com/better-auth-rs/better-auth-rs", rev = "9f91cd7fdb8a5f73a9c69d5c56d363468a7dc281", default-features = false, features = ["axum", "rustls"] }
+better-auth-core = { git = "https://github.com/better-auth-rs/better-auth-rs", rev = "9f91cd7fdb8a5f73a9c69d5c56d363468a7dc281" }
+openidconnect = "=4.0.1"
 cedar-policy = { version = "=4.11.2", default-features = false }
 headers = "=0.4.1"
 hex = "=0.4.3"
@@ -26,6 +29,7 @@ serde_urlencoded = "=0.7.1"
 url = "=2.5.8"
 subtle = "=2.6.1"
 webauthn-rs-core = "=0.5.5"
+webauthn-rs = { version = "=0.5.5", features = ["danger-allow-state-serialisation", "conditional-ui"] }
 serde_cbor_2 = "0.13"
 getrandom = "=0.4.3"
 ulid = "=1.2.1"
