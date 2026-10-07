@@ -46,6 +46,7 @@ pub(super) async fn persist(
         row.id,
         &row.portable_id,
         action,
+        Some(row.medication_id),
     )
     .await
 }
@@ -56,8 +57,14 @@ pub(super) async fn sync(
     id: i64,
     portable: &str,
     action: &str,
+    medication_id: Option<i64>,
 ) -> Result<(), OperationError> {
     let now = Utc::now().naive_utc();
+    let mut metadata = json!({"record_type":kind,"record_id":id,"portable_id":portable});
+    if let Some(id) = medication_id {
+        metadata["medication_id"] = json!(id);
+    }
+
     api_change_event::ActiveModel {
         household_id: Set(tenant.scope().household_id),
         household_membership_id: Set(Some(tenant.membership().id)),
@@ -67,7 +74,7 @@ pub(super) async fn sync(
         record_id: Set(id),
         record_portable_id: Set(Some(portable.into())),
         request_id: Set(Some(tenant.scope().request_id.clone())),
-        metadata: Set(json!({"record_type":kind,"record_id":id,"portable_id":portable})),
+        metadata: Set(metadata),
         occurred_at: Set(now),
         created_at: Set(now),
         updated_at: Set(now),

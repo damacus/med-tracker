@@ -1,6 +1,6 @@
 mod audit;
 pub(crate) use audit::medication_snapshot;
-pub(crate) use projection::decimal_string;
+pub(crate) use projection::{decimal_string, serialize_many};
 pub mod crud;
 mod forecast;
 mod inventory;

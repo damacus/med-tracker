@@ -38,6 +38,8 @@ mod schedule_lifecycle;
 mod schedule_scope;
 #[path = "care_api/stock_orders.rs"]
 mod stock_orders;
+#[path = "care_api/sync.rs"]
+mod sync;
 #[path = "care_api/treatment_timestamps.rs"]
 mod treatment_timestamps;
 #[path = "care_api/treatments.rs"]

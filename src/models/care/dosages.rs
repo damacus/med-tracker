@@ -1,6 +1,7 @@
 mod inventory;
 mod persistence;
 mod reading;
+pub(crate) use reading::value;
 mod removal;
 mod validation;
 mod writing;

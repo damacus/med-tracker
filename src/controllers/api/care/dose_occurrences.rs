@@ -7,26 +7,9 @@ type Range = std::result::Result<
     axum::extract::rejection::QueryRejection,
 >;
 
-fn resolve_key(override_key: Option<&str>, settings: Option<&Value>) -> Option<Arc<[u8]>> {
-    let key = if let Some(value) = override_key {
-        value
-    } else {
-        settings?
-            .get("dose_occurrences")?
-            .get("signing_key")?
-            .as_str()?
-    };
-    (key.len() >= 32).then(|| Arc::from(key.as_bytes()))
-}
 fn signing_key(ctx: &AppContext) -> std::result::Result<Arc<[u8]>, response::Failure> {
-    let override_key = std::env::var("AUTH_SESSION_SECRET");
-    let override_key = match override_key {
-        Ok(value) => Some(value),
-        Err(std::env::VarError::NotPresent) => None,
-        Err(_) => return Err(response::unavailable()),
-    };
-    resolve_key(override_key.as_deref(), ctx.config.settings.as_ref())
-        .ok_or_else(response::unavailable)
+    dose_occurrences::configured_signing_key(ctx.config.settings.as_ref())
+        .map_err(|_| response::unavailable())
 }
 async fn list(
     ctx: AppContext,
@@ -351,35 +334,4 @@ pub(super) async fn take_assignment(
         ("person_medication", "take"),
     )
     .await
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn occurrence_signing_key_is_explicit_and_validated() {
-        assert!(resolve_key(None, None).is_none());
-        assert!(resolve_key(None, Some(&json!({"dose_occurrences":{"signing_key":42}}))).is_none());
-        assert!(
-            resolve_key(
-                None,
-                Some(&json!({"dose_occurrences":{"signing_key":"short"}}))
-            )
-            .is_none()
-        );
-        let configured = "synthetic-configured-occurrence-key-32";
-        let override_key = "synthetic-override-occurrence-key-32";
-        let settings = json!({"dose_occurrences":{"signing_key":configured}});
-        assert_eq!(
-            resolve_key(None, Some(&settings)).unwrap().as_ref(),
-            configured.as_bytes()
-        );
-        assert_eq!(
-            resolve_key(Some(override_key), Some(&settings))
-                .unwrap()
-                .as_ref(),
-            override_key.as_bytes()
-        );
-        assert!(resolve_key(Some("short"), Some(&settings)).is_none());
-    }
 }

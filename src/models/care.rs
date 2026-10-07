@@ -13,4 +13,5 @@ pub mod orders;
 pub mod pause_periods;
 pub mod people;
 pub mod push_subscriptions;
+pub mod sync;
 pub mod treatments;

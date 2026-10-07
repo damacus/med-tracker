@@ -9,6 +9,23 @@ pub(super) struct RequestAudit {
 }
 
 impl RequestAudit {
+    pub fn sync(method: &'static str, action: &'static str) -> Self {
+        Self {
+            method,
+            controller: if action == "create" {
+                "api/v1/sync/batches"
+            } else {
+                "api/v1/sync/feeds"
+            },
+            action,
+            policy: "HouseholdPolicy",
+            query: match action {
+                "snapshot" => "snapshot?",
+                "changes" => "changes?",
+                _ => "create?",
+            },
+        }
+    }
     pub fn dose_occurrence(
         method: &'static str,
         action: &'static str,

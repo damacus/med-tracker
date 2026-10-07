@@ -55,13 +55,45 @@ pub(super) async fn project(
     source: &Source,
 ) -> Result<(Value, String), OperationError> {
     let names = names(tenant.transaction(), std::slice::from_ref(row)).await?;
-    let mut body = json!({"data":value(row,source,&names)});
+    Ok(representation(value(row, source, &names)))
+}
+pub(crate) async fn period_values(
+    db: &DatabaseTransaction,
+    periods: &[pause_period::Model],
+    schedules: &HashMap<i64, schedule::Model>,
+    assignments: &HashMap<i64, person_medication::Model>,
+) -> Result<Vec<(Value, String)>, OperationError> {
+    let names = names(db, periods).await?;
+    periods
+        .iter()
+        .map(|row| {
+            let source = if let Some(id) = row.schedule_id {
+                Source::Schedule(
+                    schedules
+                        .get(&id)
+                        .cloned()
+                        .ok_or(OperationError::NotFound)?,
+                )
+            } else {
+                Source::Assignment(
+                    assignments
+                        .get(&row.person_medication_id.ok_or(OperationError::NotFound)?)
+                        .cloned()
+                        .ok_or(OperationError::NotFound)?,
+                )
+            };
+            Ok(representation(value(row, &source, &names)))
+        })
+        .collect()
+}
+fn representation(value: Value) -> (Value, String) {
+    let mut body = json!({"data":value});
     body.sort_all_objects();
     let etag = format!(
         "\"{}\"",
         hex::encode(Sha256::digest(body.to_string().as_bytes()))
     );
-    Ok((body, etag))
+    (body, etag)
 }
 pub async fn list(tenant: &TenantTransaction, page: Pagination) -> Result<Value, OperationError> {
     access::recheck(tenant).await?;

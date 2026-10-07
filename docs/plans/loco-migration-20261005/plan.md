@@ -74,12 +74,13 @@ rollback plus missing scratch assets (R1/R3). Each owning sub-plan assigns expli
 
 ## Progress and integration
 
-Foundation is accepted. Published deliveries include signed-in care, medication
-management, OAuth, household administration and supported passkeys. Account setup,
-invitations, stored API credentials, medication reads and dosage management have
-clean independent review; their final combined verification is running. The other
-migration areas remain unfinished. Use [progress.md](progress.md) and the readiness
-report for the current verification and publication state.
+Foundation is accepted and the verified baseline PR #2451 is merged.
+Continuation PR #2460 publishes the verified Rails ignore correction and passes
+hosted checks. Care sync and occurrence browser workflows have a passing local
+baseline; review corrections and final acceptance remain in progress.
+Identity, remaining care/API/browser work, workers and release acceptance remain
+unfinished. Use [progress.md](progress.md) and the readiness report for current
+verification and publication state.
 Do not repeat completed checks or treat Rails diagnostics as Rust implementation.
 
 Task reports live at `docs/plans/loco-migration-20261005/slices/<number>-report.md`;

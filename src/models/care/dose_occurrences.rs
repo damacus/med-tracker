@@ -1,3 +1,5 @@
+mod configuration;
+pub(crate) use configuration::configured_signing_key;
 mod calendar;
 mod identity;
 mod input;
@@ -27,7 +29,8 @@ use input::{attributes, parse_not_taken, parse_take};
 use keys::{decode_key, key};
 use persistence::{actionable, find_row, link_take, reopen_decision, save_decision};
 use projection::{Occurrence, projected};
-use representation::{record_etag, row_value, snapshot};
+pub(crate) use representation::record_etag;
+use representation::{row_value, snapshot};
 use scheduling::{effective_count, schedule_applies, schedule_as_needed, schedule_config_on};
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, Condition, DatabaseTransaction, EntityTrait, QueryFilter,

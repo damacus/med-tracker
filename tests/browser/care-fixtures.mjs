@@ -51,7 +51,7 @@ async function withCareFixture(captureMail, registrationInviteOnly, use) {
     const start = async () => {
       output = '';
       exited = false;
-      const environment = { ...process.env, LOCO_ENV: 'test', PORT: String(port), MEDTRACKER_PUBLIC_HOST: 'http://localhost', DATABASE_URL: runtime.href, MEDTRACKER_CAPTURE_MAIL: String(captureMail), MEDTRACKER_SMTP_PORT: smtpPort ?? '1025', MEDTRACKER_SESSION_KEY: Buffer.alloc(64, 7).toString('base64'), MEDTRACKER_COOKIE_SECURE: 'false', RAILS_SECRET_KEY_BASE: 'synthetic-rails-secret-key-base-for-compatibility', RAILS_OLD_SECRET_KEY_BASE: 'synthetic-old-rails-secret-key-base' };
+      const environment = { ...process.env, LOCO_ENV: 'test', PORT: String(port), MEDTRACKER_PUBLIC_HOST: 'http://localhost', DATABASE_URL: runtime.href, MEDTRACKER_CAPTURE_MAIL: String(captureMail), MEDTRACKER_SMTP_PORT: smtpPort ?? '1025', MEDTRACKER_SESSION_KEY: Buffer.alloc(64, 7).toString('base64'), MEDTRACKER_COOKIE_SECURE: 'false', RAILS_SECRET_KEY_BASE: 'synthetic-rails-secret-key-base-for-compatibility', RAILS_OLD_SECRET_KEY_BASE: 'synthetic-old-rails-secret-key-base', AUTH_SESSION_SECRET: 'synthetic-browser-occurrence-signing-key-32' };
       delete environment.INVITE_ONLY;
       if (registrationInviteOnly !== undefined) environment.INVITE_ONLY = String(registrationInviteOnly);
       server = spawn('task', ['browser-care:serve', ...(captureMail ? ['SERVER_AND_WORKER=true'] : [])], { cwd: root, detached: true, env: environment, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -108,6 +108,7 @@ async function withCareFixture(captureMail, registrationInviteOnly, use) {
         verificationProbe: async email => JSON.parse(await fixtureTask('verification-probe', [`REGISTRATION_EMAIL=${email}`])),
         ageVerificationEmail: email => fixtureTask('age-verification-email', [`REGISTRATION_EMAIL=${email}`]),
         orderProbe: async () => JSON.parse(await fixtureTask('order-probe')), failOrderAudit: () => fixtureTask('fail-order-audit'), useOrderMember: () => fixtureTask('use-order-member'),
+        occurrenceProbe: async () => JSON.parse(await fixtureTask('occurrence-probe')), failOccurrenceAudit: () => fixtureTask('fail-occurrence-audit'),
         treatmentProbe: async () => JSON.parse(await fixtureTask('treatment-probe')), failTreatmentAudit: () => fixtureTask('fail-treatment-audit'),
         passkeyProbe: async () => JSON.parse(await fixtureTask('passkey-probe')),
         passkeyCounterAhead: () => fixtureTask('passkey-counter-ahead'),

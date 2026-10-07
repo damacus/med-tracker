@@ -22,7 +22,7 @@ RSpec.describe Rails do
 
     expect(rails_ignore).to exist
     expect(shared_ignore).to exist
-    expect(File.identical?(rails_ignore, shared_ignore)).to be(true)
+    expect(rails_ignore.read).to eq(shared_ignore.read)
     expect(rails_ignore.read.lines.map(&:chomp)).to include('/tmp/*', '/rust/api/target/')
   end
 end

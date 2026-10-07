@@ -10,6 +10,43 @@ pub(super) struct CascadeSnapshot {
     pub(super) assignments: Vec<person_medication::Model>,
 }
 
+fn medication_visibility(
+    cascade: &CascadeSnapshot,
+    medication: &medication::Model,
+    person_portable_ids: &HashMap<i64, String>,
+) -> Value {
+    let mut visible_people: Vec<&str> = cascade
+        .schedules
+        .iter()
+        .filter(|source| source.medication_id == medication.id)
+        .filter_map(|source| {
+            person_portable_ids
+                .get(&source.person_id)
+                .map(String::as_str)
+        })
+        .chain(
+            cascade
+                .assignments
+                .iter()
+                .filter(|source| source.medication_id == medication.id)
+                .filter_map(|source| {
+                    person_portable_ids
+                        .get(&source.person_id)
+                        .map(String::as_str)
+                }),
+        )
+        .collect();
+    visible_people.sort_unstable();
+    visible_people.dedup();
+    if !visible_people.is_empty() {
+        json!({"sync_person_portable_ids": visible_people})
+    } else if let Some(creator) = medication.created_by_membership_id {
+        json!({"sync_creator_membership_id": creator.to_string()})
+    } else {
+        json!({})
+    }
+}
+
 pub(super) async fn record_cascade_effects(
     db: &DatabaseTransaction,
     context: &StockContext<'_>,
@@ -35,6 +72,16 @@ pub(super) async fn record_cascade_effects(
     let person_portable_ids: HashMap<i64, String> = people
         .into_iter()
         .map(|row| (row.id, row.portable_id))
+        .collect();
+    let medication_visibility: HashMap<i64, Value> = cascade
+        .medications
+        .iter()
+        .map(|row| {
+            (
+                row.id,
+                medication_visibility(cascade, row, &person_portable_ids),
+            )
+        })
         .collect();
     for row in &cascade.schedules {
         record_version(
@@ -88,41 +135,22 @@ pub(super) async fn record_cascade_effects(
             "MedicationDosageOption",
             row.id,
             &row.portable_id,
-            json!({}),
+            {
+                let mut metadata = medication_visibility
+                    .get(&row.medication_id)
+                    .cloned()
+                    .ok_or(OperationError::Unavailable)?;
+                metadata["medication_id"] = json!(row.medication_id);
+                metadata
+            },
         )
         .await?;
     }
     for row in &cascade.medications {
-        let mut visible_people: Vec<&str> = cascade
-            .schedules
-            .iter()
-            .filter(|source| source.medication_id == row.id)
-            .filter_map(|source| {
-                person_portable_ids
-                    .get(&source.person_id)
-                    .map(String::as_str)
-            })
-            .chain(
-                cascade
-                    .assignments
-                    .iter()
-                    .filter(|source| source.medication_id == row.id)
-                    .filter_map(|source| {
-                        person_portable_ids
-                            .get(&source.person_id)
-                            .map(String::as_str)
-                    }),
-            )
-            .collect();
-        visible_people.sort_unstable();
-        visible_people.dedup();
-        let visibility = if !visible_people.is_empty() {
-            json!({"sync_person_portable_ids": visible_people})
-        } else if let Some(creator) = row.created_by_membership_id {
-            json!({"sync_creator_membership_id": creator.to_string()})
-        } else {
-            json!({})
-        };
+        let visibility = medication_visibility
+            .get(&row.id)
+            .cloned()
+            .ok_or(OperationError::Unavailable)?;
         tombstone(
             db,
             context,
