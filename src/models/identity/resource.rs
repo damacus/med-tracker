@@ -9,8 +9,8 @@ use oxide_auth::primitives::{
     scope::Scope,
 };
 use sea_orm::{
-    ColumnTrait, ConnectionTrait, DatabaseConnection, DatabaseTransaction, EntityTrait,
-    QueryFilter, QuerySelect, TransactionTrait,
+    ColumnTrait, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, EntityTrait,
+    QueryFilter, QuerySelect, Statement, TransactionTrait,
 };
 
 use super::{
@@ -78,7 +78,7 @@ impl ValidatedPrincipal {
             Credential::OAuth {
                 authorization,
                 grant_id,
-            } => validate(tenant.transaction(), authorization)
+            } => validate(tenant.transaction(), authorization, false)
                 .await
                 .and_then(|row| {
                     if row.id == *grant_id && row.account_id == self.account_id {
@@ -142,9 +142,16 @@ pub(super) async fn authenticate_oauth(
     let result = async {
         transaction.execute_unprepared("SET LOCAL ROLE med_tracker_app; SET LOCAL search_path = pg_catalog, public, pg_temp; SET LOCAL lock_timeout = '5s'; SET LOCAL statement_timeout = '30s'").await.map_err(|_| AuthenticationError::Unavailable)?;
         transaction.execute_unprepared("SELECT set_config('med_tracker.current_account_id', '', true), set_config('med_tracker.current_household_id', '', true), set_config('med_tracker.current_membership_id', '', true), set_config('med_tracker.current_invitation_token_digest', '', true)").await.map_err(|_| AuthenticationError::Unavailable)?;
-        let row = validate(&transaction, authorization).await?;
+        let row = validate(&transaction, authorization, true).await?;
         let account = account::Entity::find_by_id(row.account_id).one(&transaction).await.map_err(|_| AuthenticationError::Unavailable)?.ok_or(AuthenticationError::Unauthenticated)?;
         let time_zone = super::time_zone::preferred(&account.preferences)?;
+        let updated = transaction.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+            "UPDATE oauth_grants SET last_used_at=timezone('UTC',clock_timestamp()),updated_at=timezone('UTC',clock_timestamp()) WHERE id=$1 AND account_id=$2 AND client_kind='mobile' AND token_hash=$3 AND revoked_at IS NULL AND expires_in>timezone('UTC',clock_timestamp())",
+            [row.id.into(),row.account_id.into(),row.token_hash.clone().into()]
+        )).await.map_err(|_| AuthenticationError::Unavailable)?;
+        if updated.rows_affected() != 1 {
+            return Err(AuthenticationError::Unauthenticated);
+        }
         Ok(ValidatedPrincipal {
             account_id: row.account_id,
             provenance: CredentialProvenance { method: CredentialMethod::OauthGrant, reference: row.id.to_string() },
@@ -193,6 +200,7 @@ struct ResourceIssuer<'a> {
     transaction: &'a DatabaseTransaction,
     selected: Option<oauth_grant::Model>,
     scopes: Vec<Scope>,
+    lock_grant: bool,
 }
 
 impl oxide_auth_async::code_grant::resource::Endpoint for ResourceIssuer<'_> {
@@ -216,14 +224,15 @@ impl oxide_auth_async::primitives::Issuer for ResourceIssuer<'_> {
         Err(())
     }
     async fn recover_token(&mut self, token: &str) -> Result<Option<Grant>, ()> {
-        let Some(row) = oauth_grant::Entity::find()
+        let query = oauth_grant::Entity::find()
             .filter(oauth_grant::Column::TokenHash.eq(store::digest(token)))
-            .filter(oauth_grant::Column::RevokedAt.is_null())
-            .lock_shared()
-            .one(self.transaction)
-            .await
-            .map_err(|_| ())?
-        else {
+            .filter(oauth_grant::Column::RevokedAt.is_null());
+        let query = if self.lock_grant {
+            query.lock_exclusive()
+        } else {
+            query
+        };
+        let Some(row) = query.one(self.transaction).await.map_err(|_| ())? else {
             return Ok(None);
         };
         if row.client_kind != "mobile" {
@@ -279,6 +288,7 @@ impl oxide_auth_async::primitives::Issuer for ResourceIssuer<'_> {
 async fn validate(
     transaction: &DatabaseTransaction,
     authorization: &str,
+    lock_grant: bool,
 ) -> Result<oauth_grant::Model, AuthenticationError> {
     let mut endpoint = ResourceIssuer {
         transaction,
@@ -288,6 +298,7 @@ async fn validate(
                 .parse()
                 .map_err(|_| AuthenticationError::Unavailable)?,
         ],
+        lock_grant,
     };
     oxide_auth_async::code_grant::resource::protect(&mut endpoint, &ResourceRequest(authorization))
         .await

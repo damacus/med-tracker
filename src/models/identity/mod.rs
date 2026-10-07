@@ -4,6 +4,7 @@ use sea_orm::{
     QuerySelect, Statement, TransactionTrait,
 };
 
+pub mod account_sessions;
 pub mod api_session;
 mod audit;
 pub mod authorization;
