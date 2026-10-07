@@ -1,7 +1,7 @@
 use crate::models::{
     access::{self, PersonAccess, TenantTransaction},
     authorization,
-    care::{dose_occurrences, review_prompts},
+    care::{dose_occurrences, doses, review_prompts},
     entities::{
         grant, health_event, health_event_medication, medication, medication_take, person,
         person_medication, review_prompt, schedule, security_audit_event,
@@ -12,7 +12,7 @@ use chrono::{DateTime, Datelike, Duration, NaiveDate, Utc};
 use chrono_tz::Tz;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, Condition, ConnectionTrait, DbBackend, EntityTrait, QueryFilter,
-    QueryOrder, Set, Statement,
+    QueryOrder, Set, Statement, prelude::Decimal,
 };
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -158,7 +158,7 @@ pub async fn gp_history(
                 if !(start..=end).contains(&local.date_naive()) {
                     return false;
                 }
-                row["taken_at"] = json!(local.format("%Y-%m-%d %H:%M").to_string());
+                row["taken_at"] = json!(local.to_rfc3339());
                 true
             });
         }
@@ -171,12 +171,28 @@ pub async fn gp_history(
         "start_date": start.to_string(),
         "end_date": end.to_string(),
         "generated_at": generated_at.to_rfc3339(),
-        "time_zone": zone.name(),
         "current_medicines": medicines,
         "chronology": chronology,
         "medication_takes": takes,
-        "include_medication_takes": include_takes,
     }))
+}
+
+pub fn gp_history_pdf(mut data: Value, zone: Tz, include_takes: bool) -> Value {
+    if let Some(takes) = data["medication_takes"].as_array_mut() {
+        for take in takes {
+            let Some(local) = take["taken_at"]
+                .as_str()
+                .and_then(|value| DateTime::parse_from_rfc3339(value).ok())
+                .map(|at| at.with_timezone(&zone))
+            else {
+                continue;
+            };
+            take["taken_at"] = json!(local.format("%Y-%m-%d %H:%M").to_string());
+        }
+    }
+    data["time_zone"] = json!(zone.name());
+    data["include_medication_takes"] = json!(include_takes);
+    data
 }
 
 pub async fn medication_reviews(
@@ -200,35 +216,47 @@ pub async fn medication_reviews(
         .order_by_asc(review_prompt::Column::Id)
         .all(tenant.transaction())
         .await?;
-    let to_discuss = rows
-        .iter()
-        .filter(|row| row.status == "needs_review")
-        .count();
-    let reviewed = rows
-        .iter()
-        .filter(|row| {
-            matches!(
-                row.status.as_str(),
-                "reviewed_with_practitioner" | "expected_prescribed_combination" | "not_relevant"
-            )
-        })
-        .count();
-    let prompts: Vec<Value> = rows
-        .iter()
-        .map(|row| {
-            let mut value = review_prompts::value(row);
-            value["person_name"] = json!(person.name);
-            value
-        })
-        .collect();
+    let prompts: Vec<Value> = rows.iter().map(review_prompts::value).collect();
     Ok(json!({
         "person": {"id": person.id.to_string(), "name": person.name},
-        "people_count": usize::from(!rows.is_empty()),
         "generated_at": generated_at.to_rfc3339(),
-        "to_discuss": to_discuss,
-        "reviewed": reviewed,
         "prompts": prompts,
     }))
+}
+
+pub fn medication_review_pdf(mut data: Value, people: &[person::Model], zone: Tz) -> Value {
+    let names: HashMap<i64, &str> = people
+        .iter()
+        .map(|row| (row.id, row.name.as_str()))
+        .collect();
+    let mut to_discuss = 0usize;
+    let mut reviewed = 0usize;
+    let mut represented: HashSet<i64> = HashSet::new();
+    if let Some(prompts) = data["prompts"].as_array_mut() {
+        for prompt in prompts {
+            if let Some(person_id) = prompt["person_id"]
+                .as_str()
+                .and_then(|value| value.parse::<i64>().ok())
+            {
+                prompt["person_name"] = json!(names.get(&person_id).copied().unwrap_or(""));
+                represented.insert(person_id);
+            }
+            match prompt["status"].as_str() {
+                Some("needs_review") => to_discuss += 1,
+                Some(
+                    "reviewed_with_practitioner"
+                    | "expected_prescribed_combination"
+                    | "not_relevant",
+                ) => reviewed += 1,
+                _ => {}
+            }
+        }
+    }
+    data["to_discuss"] = json!(to_discuss);
+    data["reviewed"] = json!(reviewed);
+    data["people_count"] = json!(represented.len());
+    data["time_zone"] = json!(zone.name());
+    data
 }
 
 pub async fn household_medication_reviews(
@@ -301,27 +329,30 @@ fn inventory_alerts(
     let mut alerts: Vec<(i64, Value)> = schedules.iter().filter_map(|source| {
         if !source.active || source.retired_at.is_some() || source.start_date.is_some_and(|date| date > today) || source.end_date.is_some_and(|date| date < today) { return None; }
         let medicine = medicines.get(&source.medication_id)?;
-        let supply = medicine.current_supply.as_ref().and_then(|value| value.to_string().parse::<f64>().ok()).unwrap_or(0.0);
+        let supply = medicine.current_supply.unwrap_or(Decimal::ZERO);
         let first = source.start_date.map_or(today, |day| day.max(today));
         let last = source.end_date.map_or(today + Duration::days(30), |day| day.min(today + Duration::days(30)));
         if last < first { return None; }
         let days = (last - first).num_days() + 1;
-        let amount = source.schedule_config.get("amount").and_then(Value::as_f64)
-            .or_else(|| source.schedule_config.get("dose_amount").and_then(Value::as_f64))
-            .or_else(|| source.dose_amount.as_ref().and_then(|value| value.to_string().parse::<f64>().ok()))
-            .unwrap_or(0.0);
-        let unit = source.schedule_config.get("unit").and_then(Value::as_str)
-            .or_else(|| source.schedule_config.get("dose_unit").and_then(Value::as_str))
-            .or(source.dose_unit.as_deref()).unwrap_or("");
-        let consumption = if matches!(unit, "tablet" | "capsule" | "gummy" | "sachet" | "spray" | "drop" | "pad" | "ml") { amount } else { 1.0 };
-        let expected: i64 = (0..days).map(|offset| i64::from(dose_occurrences::expected_schedule_doses_for_report(source, first + Duration::days(offset)))).sum();
-        let burn_rate = expected as f64 * consumption / days as f64;
-        if burn_rate <= 0.0 { return None; }
-        let days_left = (supply / burn_rate).floor() as i64;
+        let mut consumed = Decimal::ZERO;
+        for offset in 0..days {
+            let day = first + Duration::days(offset);
+            let expected = i64::from(dose_occurrences::expected_schedule_doses_for_report(source, day));
+            if expected == 0 { continue; }
+            let config = dose_occurrences::schedule_config_on(source, day).unwrap_or(&source.schedule_config);
+            let amount = doses::config_decimal(config, &["amount", "dose_amount"]).or(source.dose_amount);
+            let unit = doses::config_value(config, &["unit", "dose_unit"]).and_then(Value::as_str)
+                .filter(|value| !value.is_empty()).or(source.dose_unit.as_deref());
+            let quantity = if matches!(unit, Some("tablet" | "capsule" | "gummy" | "sachet" | "spray" | "drop" | "pad" | "ml")) { amount.unwrap_or(Decimal::ZERO) } else { Decimal::ONE };
+            consumed += Decimal::from(expected) * quantity;
+        }
+        let burn_rate = consumed / Decimal::from(days);
+        if burn_rate <= Decimal::ZERO { return None; }
+        let days_left = (supply / burn_rate).floor().to_string().parse::<i64>().unwrap_or(0);
         if days_left >= 14 { return None; }
         let name = medicine.friendly_name.as_deref().filter(|name| !name.is_empty())
             .or(medicine.name.as_deref()).unwrap_or("");
-        Some((days_left, json!({"medication_name":name,"days_left":days_left,"doses_left":supply,"low_stock":days_left <= 3})))
+        Some((days_left, json!({"medication_name":name,"days_left":days_left,"doses_left":supply.to_string().parse::<f64>().unwrap_or(0.0),"low_stock":days_left <= 3})))
     }).collect();
     alerts.sort_by_key(|(days, _)| *days);
     alerts.into_iter().take(2).map(|(_, value)| value).collect()
@@ -527,7 +558,11 @@ pub async fn ordinary_history(
         .collect();
     let db = tenant.transaction();
     let household_id = tenant.scope().household_id;
-    let outcomes = dose_occurrences::projected_for_report(tenant, &ids, start, end).await?;
+    let outcomes = dose_occurrences::with_dashboard_timezone(
+        zone,
+        dose_occurrences::projected_for_report(tenant, &ids, start, end),
+    )
+    .await?;
     let schedules = schedule::Entity::find()
         .filter(schedule::Column::HouseholdId.eq(household_id))
         .filter(schedule::Column::PersonId.is_in(ids.clone()))
@@ -672,8 +707,7 @@ pub async fn ordinary_history(
             "location_name": "",
         }));
     }
-    let now_local = generated_at.with_timezone(&zone).naive_local();
-    let today = now_local.date();
+    let now_utc = generated_at.naive_utc();
     let mut daily: BTreeMap<NaiveDate, (usize, usize, usize)> = BTreeMap::new();
     let mut cycles: BTreeMap<CycleKey<'_>, CycleCounts> = BTreeMap::new();
     let mut not_taken = Vec::new();
@@ -684,10 +718,10 @@ pub async fn ordinary_history(
         let missed = row.outcome == "open"
             && row
                 .scheduled_at
-                .map_or(row.window_end < today, |time| time < now_local);
+                .map_or(row.window_end < today, |time| time < now_utc);
         if row.outcome == "not_taken" {
             not_taken.push(json!({
-                "scheduled_at": row.scheduled_at.map(|at| at.to_string()).unwrap_or_else(|| row.window_start.to_string()),
+                "scheduled_at": row.scheduled_at.map(|at| at.and_utc().with_timezone(&zone).format("%Y-%m-%d %H:%M").to_string()).unwrap_or_else(|| row.window_start.to_string()),
                 "person_name": names.get(&row.person_id).copied().unwrap_or(""),
                 "medication_name": medication_name(row.medication_id),
                 "reason": row.reason,

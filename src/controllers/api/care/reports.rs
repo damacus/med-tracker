@@ -179,11 +179,11 @@ async fn execute(
             .map_err(response::operation)?;
         parameters(&query, kind, pdf)?;
         let generated_at = Utc::now();
-        let (data, filename, render_kind, metadata) = match kind {
+        let (data, filename, render_kind, metadata, person_id) = match kind {
             Kind::Health => {
                 let (start, end) = dates(&query, today).ok_or_else(validation)?;
                 let include_takes = query.include_medication_takes.as_deref() == Some("1");
-                let data = report_data::gp_history(
+                let mut data = report_data::gp_history(
                     &tenant,
                     &person,
                     start,
@@ -194,15 +194,19 @@ async fn execute(
                 )
                 .await
                 .map_err(response::operation)?;
+                if pdf {
+                    data = report_data::gp_history_pdf(data, principal.time_zone(), include_takes);
+                }
                 (
                     data,
                     format!("medtracker-health-history-{start}-to-{end}.pdf"),
                     report_pdf::Kind::GpHistory,
                     json!({"person_id":person.id,"start_date":start.to_string(),"end_date":end.to_string(),"include_medication_takes":include_takes,"format":"pdf","outcome":"success"}),
+                    person.id,
                 )
             }
             Kind::Reviews => {
-                let data = report_data::medication_reviews(
+                let mut data = report_data::medication_reviews(
                     &tenant,
                     &person,
                     query.status.as_deref(),
@@ -211,6 +215,13 @@ async fn execute(
                 )
                 .await
                 .map_err(response::operation)?;
+                if pdf {
+                    data = report_data::medication_review_pdf(
+                        data,
+                        std::slice::from_ref(&person),
+                        principal.time_zone(),
+                    );
+                }
                 (
                     data,
                     format!(
@@ -219,14 +230,15 @@ async fn execute(
                     ),
                     report_pdf::Kind::MedicationReview,
                     json!({"person_id":person.id,"status":query.status,"format":"pdf","outcome":"success"}),
+                    person.id,
                 )
             }
         };
-        Ok::<_, response::Failure>((data, filename, render_kind, metadata))
+        Ok::<_, response::Failure>((data, filename, render_kind, metadata, person_id))
     }
     .await;
     let audit_request = audit::RequestAudit::report(matches!(kind, Kind::Reviews));
-    let (data, filename, render_kind, metadata) = match result {
+    let (data, filename, render_kind, metadata, person_id) = match result {
         Ok(value) => value,
         Err(error) => {
             return no_store(
@@ -253,6 +265,10 @@ async fn execute(
             .await,
         );
     }
+    let snapshot_account = principal.account_id();
+    if tenant.commit().await.is_err() {
+        return no_store(response::error(response::unavailable(), &request_id));
+    }
     let locale = headers
         .get(header::ACCEPT_LANGUAGE)
         .and_then(|value| value.to_str().ok())
@@ -261,6 +277,16 @@ async fn execute(
     let rendered =
         tokio::task::spawn_blocking(move || report_pdf::render(&view, render_kind, data, &locale))
             .await;
+    let (principal, tenant) = match begin(&ctx, &headers, household_id, &request_id).await {
+        Ok(value) => value,
+        Err(error) => return no_store(response::error(error, &request_id)),
+    };
+    if principal.account_id() != snapshot_account {
+        return no_store(response::error(
+            response::operation(OperationError::Forbidden),
+            &request_id,
+        ));
+    }
     let bytes = match rendered {
         Ok(Ok(bytes)) => bytes,
         _ => {
@@ -276,6 +302,63 @@ async fn execute(
             );
         }
     };
+    let current_day = Utc::now()
+        .with_timezone(&principal.time_zone())
+        .date_naive();
+    let is_adult = match report_data::actor_adult(&tenant, current_day).await {
+        Ok(value) => value,
+        Err(error) => {
+            return no_store(
+                finish(
+                    tenant,
+                    principal.provenance(),
+                    audit_request,
+                    Err(response::operation(error)),
+                    &request_id,
+                )
+                .await,
+            );
+        }
+    };
+    let permitted = match kind {
+        Kind::Health => {
+            matches!(tenant.membership().role.as_str(), "owner" | "administrator") || is_adult
+        }
+        Kind::Reviews => is_adult,
+    };
+    if !permitted {
+        return no_store(
+            finish(
+                tenant,
+                principal.provenance(),
+                audit_request,
+                Err(response::operation(OperationError::Forbidden)),
+                &request_id,
+            )
+            .await,
+        );
+    }
+    let level = if matches!(kind, Kind::Health) {
+        PersonAccess::Manage
+    } else {
+        PersonAccess::View
+    };
+    if let Err(error) = access::require_person_access(&tenant, person_id, level).await {
+        let failure = response::operation(match error {
+            OperationError::Forbidden => OperationError::NotFound,
+            other => other,
+        });
+        return no_store(
+            finish(
+                tenant,
+                principal.provenance(),
+                audit_request,
+                Err(failure),
+                &request_id,
+            )
+            .await,
+        );
+    }
     let event_type = if matches!(kind, Kind::Health) {
         "health_history_report.downloaded"
     } else {

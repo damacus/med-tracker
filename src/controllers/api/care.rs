@@ -18,6 +18,7 @@ mod removals;
 mod reports;
 mod response;
 mod schedule_lifecycle;
+mod sync;
 mod treatments;
 
 use crate::models::{
@@ -55,6 +56,9 @@ pub fn invitation_routes() -> Routes {
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("/api/v1/households")
+        .add("/{household_id}/sync/snapshot", get(sync::snapshot))
+        .add("/{household_id}/sync/changes", get(sync::changes))
+        .add("/{household_id}/sync/batches", post(sync::create))
         .add(
             "/{household_id}/reports/health_history",
             get(reports::health_json),

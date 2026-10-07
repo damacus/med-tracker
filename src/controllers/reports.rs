@@ -286,10 +286,10 @@ async fn gp_download(
         let person = selection(&tenant, id, PersonAccess::Manage).await?;
         let (start, end) = gp_dates(&filters, today).ok_or(OperationError::Validation { details: json!({"error":"Report date range is invalid"}) })?;
         let include_takes = filters.include_medication_takes.as_deref() == Some("1");
-        let data = report_data::gp_history(&tenant, &person, start, end, include_takes, Utc::now(), principal.time_zone()).await?;
-        Ok::<_, OperationError>((data, format!("medtracker-health-history-{start}-to-{end}.pdf"), json!({"person_id":person.id,"start_date":start.to_string(),"end_date":end.to_string(),"include_medication_takes":include_takes})))
+        let data = report_data::gp_history_pdf(report_data::gp_history(&tenant, &person, start, end, include_takes, Utc::now(), principal.time_zone()).await?, principal.time_zone(), include_takes);
+        Ok::<_, OperationError>((data, format!("medtracker-health-history-{start}-to-{end}.pdf"), json!({"person_id":person.id,"start_date":start.to_string(),"end_date":end.to_string(),"include_medication_takes":include_takes}), vec![person.id]))
     }.await;
-    let (data, filename, metadata) = match result {
+    let (data, filename, metadata, people) = match result {
         Ok(value) => value,
         Err(OperationError::Validation { .. }) => return report_redirect(&slug),
         Err(error) => return operation_error(error),
@@ -299,6 +299,11 @@ async fn gp_download(
         .and_then(|value| value.to_str().ok())
         .unwrap_or("en");
     download(
+        DownloadContext {
+            ctx: &ctx,
+            session: &session,
+            slug: &slug,
+        },
         tenant,
         &view,
         DownloadPayload {
@@ -307,6 +312,9 @@ async fn gp_download(
             filename: &filename,
             event_type: "health_history_report.downloaded",
             metadata,
+            account: principal.account_id(),
+            level: PersonAccess::Manage,
+            people,
         },
         &request_id,
         language,
@@ -359,6 +367,7 @@ async fn review_download(
                 .collect(),
             _ => people,
         };
+        let people: Vec<i64> = selected.iter().map(|person| person.id).collect();
         let data = report_data::household_medication_reviews(
             &tenant,
             &selected,
@@ -371,10 +380,11 @@ async fn review_download(
             data,
             format!("medtracker-medication-review-{today}.pdf"),
             json!({"status":filters.status}),
+            people,
         ))
     }
     .await;
-    let (data, filename, metadata) = match result {
+    let (data, filename, metadata, people) = match result {
         Ok(value) => value,
         Err(error) => return operation_error(error),
     };
@@ -383,6 +393,11 @@ async fn review_download(
         .and_then(|value| value.to_str().ok())
         .unwrap_or("en");
     download(
+        DownloadContext {
+            ctx: &ctx,
+            session: &session,
+            slug: &slug,
+        },
         tenant,
         &view,
         DownloadPayload {
@@ -391,6 +406,9 @@ async fn review_download(
             filename: &filename,
             event_type: "medication_review_report.downloaded",
             metadata,
+            account: principal.account_id(),
+            level: PersonAccess::View,
+            people,
         },
         &request_id,
         language,
@@ -404,9 +422,19 @@ struct DownloadPayload<'a> {
     filename: &'a str,
     event_type: &'a str,
     metadata: Value,
+    account: i64,
+    level: PersonAccess,
+    people: Vec<i64>,
+}
+
+struct DownloadContext<'a> {
+    ctx: &'a AppContext,
+    session: &'a Session<SessionPgPool>,
+    slug: &'a str,
 }
 
 async fn download(
+    context: DownloadContext<'_>,
     tenant: TenantTransaction,
     view: &TeraView,
     payload: DownloadPayload<'_>,
@@ -419,7 +447,13 @@ async fn download(
         filename,
         event_type,
         metadata,
+        account,
+        level,
+        people,
     } = payload;
+    if tenant.commit().await.is_err() {
+        return unavailable();
+    }
     let view = view.clone();
     let language = language.to_owned();
     let rendered =
@@ -436,6 +470,47 @@ async fn download(
             );
         }
     };
+    let (principal, tenant) =
+        match begin(context.ctx, context.session, context.slug, request_id).await {
+            Ok(value) => value,
+            Err(error) => return authentication_error(error),
+        };
+    if principal.account_id() != account {
+        return operation_error(OperationError::Forbidden);
+    }
+    let today = Utc::now()
+        .with_timezone(&principal.time_zone())
+        .date_naive();
+    let permitted = match kind {
+        report_pdf::Kind::GpHistory | report_pdf::Kind::OrdinaryHistory => {
+            if access::can_manage_household(&tenant) {
+                true
+            } else {
+                match report_data::actor_adult(&tenant, today).await {
+                    Ok(adult) => adult,
+                    Err(error) => return operation_error(error),
+                }
+            }
+        }
+        report_pdf::Kind::MedicationReview => {
+            match report_data::actor_adult(&tenant, today).await {
+                Ok(adult) => adult,
+                Err(error) => return operation_error(error),
+            }
+        }
+    };
+    if !permitted {
+        return operation_error(OperationError::Forbidden);
+    }
+    let accessible = match report_data::accessible_people(&tenant, level).await {
+        Ok(people) => people,
+        Err(error) => return operation_error(error),
+    };
+    let accessible: std::collections::HashSet<i64> =
+        accessible.into_iter().map(|person| person.id).collect();
+    if people.iter().any(|id| !accessible.contains(id)) {
+        return operation_error(OperationError::Forbidden);
+    }
     let mut metadata = metadata;
     metadata["format"] = json!("pdf");
     metadata["outcome"] = json!("success");

@@ -35,14 +35,14 @@ pub async fn destroy(
             let before=super::super::medications::medication_snapshot(&parent);
             let parent=inventory::synchronize_inventory(&savepoint,parent,now,false).await?.ok_or_else(invalid)?;
             administration::persistence::record_version_as(tenant,"Medication",parent.id,"update",Some(before),super::super::medications::medication_snapshot(&parent),provenance).await?;
-            persistence::sync(tenant,"Medication",parent.id,&parent.portable_id,"update").await?;
+            persistence::sync(tenant,"Medication",parent.id,&parent.portable_id,"update",None).await?;
         }
         administration::persistence::record_version_as(tenant,"MedicationDosageOption",row.id,"destroy",Some(persistence::dosage_snapshot(&row)),json!({}),provenance).await?;
         api_tombstone::ActiveModel{
             household_id:Set(household_id),household_membership_id:Set(Some(tenant.membership().id)),account_id:Set(Some(tenant.scope().actor.account_id)),action:Set("delete".into()),
-            record_type:Set("MedicationDosageOption".into()),record_portable_id:Set(row.portable_id.clone()),metadata:Set(json!({"record_type":"MedicationDosageOption","record_id":row.id,"portable_id":row.portable_id})),deleted_at:Set(now),created_at:Set(now),updated_at:Set(now),..Default::default()
+            record_type:Set("MedicationDosageOption".into()),record_portable_id:Set(row.portable_id.clone()),metadata:Set(json!({"record_type":"MedicationDosageOption","record_id":row.id,"portable_id":row.portable_id,"medication_id":row.medication_id})),deleted_at:Set(now),created_at:Set(now),updated_at:Set(now),..Default::default()
         }.insert(&savepoint).await?;
-        persistence::sync(tenant,"MedicationDosageOption",row.id,&row.portable_id,"delete").await?;
+        persistence::sync(tenant,"MedicationDosageOption",row.id,&row.portable_id,"delete",Some(row.medication_id)).await?;
         Ok::<(),OperationError>(())
     }.await;
     match result {

@@ -44,6 +44,13 @@ freeze the corrected source before the final whole-suite check. This avoids
 finishing a long suite on code already known to need a repair. Publish only after
 review and checks pass; changed source needs new applicable evidence.
 
+Before the first final source freeze for a ported capability, compare retained
+mandatory inputs, each operation's response fields and flags, replay permissions
+and state guards, and the OpenAPI conditional-header contract. Put confirmed gaps
+in the existing owning tests and resolve them together. Include the relevant Rails
+and OpenAPI excerpts in the first review packet alongside the called helpers.
+This uses the existing review and tests, without adding another stage.
+
 Review a usable capability rather than each small repair. Start a fresh Devin
 session for a new capability and resume it for corrections. Send actual authorised
 diffs and concise evidence; unattended reviews must not need interactive tool

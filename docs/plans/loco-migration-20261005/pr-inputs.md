@@ -28,4 +28,16 @@ Acceptance/disposition remains in the capability inventory and progress ledger.
 | 2402 | 8bc8e335ac2e0a531182698711f8d4f8b0ce5538 | Profile control behavior |
 | 2403 | ac6cdc99d7e92e20433e78d405b94ed5e8a17fa6 | Shared-control behavior; retire Loom dependency |
 
-PR 2381 is unrelated release work and remains outside the migration.
+Release PR #2381 separately proposes the authorised minor version 0.6.0 after
+baseline PR #2451 merged. It is not merged or activated; release acceptance stays
+in the release slice.
+
+## Additional obsolete preview update — 6 October 2026
+
+PR #2454 updated only the retained Leptos preview's Cargo manifest and lockfile.
+The replacement Loco application uses Tera and daisyUI, so this preview dependency
+update is superseded. Its exact head
+`869c53ee1ba89d735ace8d128bb11b6ae25868f0` was fetched into
+`refs/loco-migration/input-pr-2454` and rechecked against GitHub before closure.
+GitHub confirms CLOSED at 18:40:29 UTC on 6 October. Its source branch is retained.
+No dependency source, scanner setting or frozen application behaviour changed.

@@ -37,6 +37,7 @@ pub fn value(record: &review_prompt::Model) -> Value {
         "source_instruction": record.source_instruction,
         "match_reason": record.match_reason,
         "evidence_text": record.evidence_text,
+        "etag": crate::models::care::sync::review_prompts::tag(record),
         "evidence_source_checked_on": record.evidence_source_checked_on.to_string(),
         "evidence_source_effective_on": record.evidence_source_effective_on.to_string(),
         "risk_level": record.risk_level,

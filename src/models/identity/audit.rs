@@ -28,7 +28,7 @@ pub(super) async fn record(
             item_id: Set(grant.account_id),
             event: Set(format!("mobile_oauth.{action}")),
             object: Set(Some(
-                json!({"oauth_application_id":grant.oauth_application_id}).to_string(),
+                json!({"oauth_application_id":grant.oauth_application_id,"oauth_grant_id":grant.id}).to_string(),
             )),
             whodunnit: Set(user_id.map(|id| id.to_string())),
             request_id: Set(request_id.map(str::to_owned)),

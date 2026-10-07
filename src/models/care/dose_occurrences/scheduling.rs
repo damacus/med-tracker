@@ -1,6 +1,6 @@
 use super::*;
 
-pub(super) fn schedule_config_on(schedule: &schedule::Model, day: NaiveDate) -> Option<&Value> {
+pub(crate) fn schedule_config_on(schedule: &schedule::Model, day: NaiveDate) -> Option<&Value> {
     if schedule.schedule_type != 5 {
         return Some(&schedule.schedule_config);
     }

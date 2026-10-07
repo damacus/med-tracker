@@ -94,6 +94,35 @@ test('review PDF filters to the selected visible person and accepts an unknown s
   expect(pages(await unknownStatus.body())).toBe(1);
 });
 
+test('review PDF is denied when a selected person grant is revoked during the snapshot', async ({ page, careFixture }) => {
+  test.setTimeout(180000);
+  await careFixture.seedReviewReport();
+  await careFixture.seedRefreshTrap();
+  await careFixture.revokeGrantOnRefresh();
+  await page.goto('/login');
+  await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
+  await page.getByLabel('Password', { exact: true }).fill('password');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  const response = await page.request.get('/households/persistence-fixture/medicine-reviews/report');
+  expect(response.status()).toBe(403);
+  expect(response.headers()['content-type']).not.toContain('application/pdf');
+});
+
+test('review PDF re-authenticates the browser session after rendering', async ({ page, careFixture }) => {
+  test.setTimeout(180000);
+  await careFixture.seedReviewReport();
+  await careFixture.seedRefreshTrap();
+  await careFixture.revokeSessionOnRefresh();
+  await page.goto('/login');
+  await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
+  await page.getByLabel('Password', { exact: true }).fill('password');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  const response = await page.request.get('/households/persistence-fixture/medicine-reviews/report', { maxRedirects: 0 });
+  expect(response.status()).toBe(303);
+  expect(response.headers().location).toContain('/login');
+  expect(response.headers()['content-type'] ?? '').not.toContain('application/pdf');
+});
+
 test.describe('Welsh report index', () => {
   test.use({ locale: 'cy-GB' });
 

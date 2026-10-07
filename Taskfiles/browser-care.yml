@@ -1,5 +1,15 @@
 version: '3'
 tasks:
+  occurrence-probe:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align -f tests/fixtures/browser-occurrence-probe.sql'
+  fail-occurrence-audit:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -f tests/fixtures/browser-occurrence-audit-failure.sql'
   treatment-probe:
     requires:
       vars: [CARE_DATABASE_URL]
@@ -319,6 +329,21 @@ tasks:
       vars: [CARE_DATABASE_URL]
     cmds:
       - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -f tests/fixtures/browser-review-report-seed.sql'
+  report-refresh-trap:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -f tests/fixtures/browser-report-refresh-trap.sql'
+  report-revoke-grant-on-refresh:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -f tests/fixtures/browser-revoke-grant-on-refresh.sql'
+  report-revoke-session-on-refresh:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -f tests/fixtures/browser-revoke-session-on-refresh.sql'
   oauth-probe:
     requires:
       vars: [CARE_DATABASE_URL]

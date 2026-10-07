@@ -188,7 +188,7 @@ async fn persist(
     .await?;
     Ok(())
 }
-fn representation(row: &schedule::Model) -> (Value, String) {
+pub(crate) fn representation(row: &schedule::Model) -> (Value, String) {
     let body = json!({"data":{"id":row.id,"portable_id":row.portable_id,"person_id":row.person_id,"medication_id":row.medication_id,"source_dosage_option_id":row.source_dosage_option_id,"active":row.active,"dose_amount":row.dose_amount.map(|value|medications::decimal_string(value.to_string())),"dose_unit":row.dose_unit,"frequency":row.frequency,"start_date":row.start_date,"end_date":row.end_date,"notes":row.notes,"max_daily_doses":row.max_daily_doses,"min_hours_between_doses":row.min_hours_between_doses.map(|value|format!("{value}.0")),"dose_cycle":row.dose_cycle.map(|value|match value{1=>"weekly",2=>"monthly",_=>"daily"}),"schedule_type":match row.schedule_type{1=>"multiple_daily",2=>"weekly",3=>"specific_dates",4=>"prn",5=>"tapering",6=>"every_other_day",_=>"daily"},"schedule_config":row.schedule_config,"updated_at":row.updated_at}});
     use sha2::{Digest, Sha256};
     let mut sorted = body.clone();

@@ -294,7 +294,7 @@ async fn finish(
     Ok(result)
 }
 
-pub(super) fn clinical_snapshot(row: &person_medication::Model) -> Value {
+pub(crate) fn clinical_snapshot(row: &person_medication::Model) -> Value {
     json!({
         "id": row.id,
         "household_id": row.household_id,

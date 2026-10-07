@@ -37,6 +37,7 @@ use source::{
     Source, effective_source, local_date_in_zone, source, source_from_assignment,
     source_from_schedule,
 };
+pub(crate) use source::{config_decimal, config_value};
 use std::{collections::HashSet, str::FromStr};
 use stock::decrement_stock;
 pub(crate) use stock::same_stock_signature;

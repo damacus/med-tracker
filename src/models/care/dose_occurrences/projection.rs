@@ -146,7 +146,7 @@ pub(super) fn projected_loaded(
                     && (source.active() || !pauses.is_empty())
                     && let Some(config) = schedule_config_on(schedule, day)
                 {
-                    let times = config_times(&schedule.schedule_config, day);
+                    let times = config_times(config, day);
                     if times.is_empty() {
                         if !fully_paused(source, day, day, pauses) {
                             let count = effective_count(config, source.max_daily_doses());
