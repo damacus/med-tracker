@@ -386,6 +386,8 @@ pub async fn sign_out(
 
 #[derive(Clone)]
 pub struct BrowserLayers {
+    pub(crate) identity_secret: String,
+    pub(crate) secure: bool,
     store: SessionStore<SessionPgPool>,
     csrf: axum_csrf::CsrfConfig,
 }
@@ -529,7 +531,7 @@ pub async fn layers(
         }
         Err(_) => return Err(AuthenticationError::Unavailable),
     };
-    let bytes = STANDARD.decode(encoded).map_err(unavailable)?;
+    let bytes = STANDARD.decode(&encoded).map_err(unavailable)?;
     if bytes.len() != 64 {
         return Err(AuthenticationError::Unavailable);
     }
@@ -542,6 +544,13 @@ pub async fn layers(
             .unwrap_or(true),
         _ => return Err(AuthenticationError::Unavailable),
     };
+    if matches!(
+        ctx.environment,
+        loco_rs::environment::Environment::Production
+    ) && !secure
+    {
+        return Err(AuthenticationError::Unavailable);
+    }
     let policy = Lifetime::from_environment().map_err(unavailable)?;
     db.query_one_raw(Statement::from_string(
         DbBackend::Postgres,
@@ -573,5 +582,10 @@ pub async fn layers(
         .with_http_only(true)
         .with_cookie_name("medtracker_csrf")
         .with_cookie_same_site(axum_csrf::SameSite::Lax);
-    Ok(Some(BrowserLayers { store, csrf }))
+    Ok(Some(BrowserLayers {
+        identity_secret: encoded,
+        secure,
+        store,
+        csrf,
+    }))
 }

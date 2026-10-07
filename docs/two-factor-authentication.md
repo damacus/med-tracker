@@ -1,5 +1,11 @@
 # Two-Factor Authentication
 
+The enrolment instructions below describe the independently retained Rails
+rollback application. Loco uses Better Auth through **Account security** and
+requires replacement of historical passkeys at cutover. Supported retained
+passwords and authenticator enrolments remain available.
+Its session policy is documented in the session-lifetime section below.
+
 MedTracker supports authenticator-app codes, passkeys, and recovery codes.
 Enrolment is optional, including for household owners and administrators.
 Once configured, Rodauth applies the account's sign-in requirements.
@@ -81,24 +87,23 @@ They do not impose an extra 15-minute MFA deadline.
 
 ## Session lifetime
 
-Web and PWA sessions default to 30 days of inactivity. Normal authenticated
-use renews this window. Installations can set these environment variables and
-restart the application:
+Loco web and PWA sessions expire after seven days of inactivity or 30 days
+from sign-in, whichever comes first. Normal authenticated use renews the idle
+window without extending the maximum age. Better Auth uses these fixed browser
+limits; mobile OAuth defaults to the same limits and permits shorter settings:
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `SESSION_INACTIVITY_TIMEOUT_DAYS` | `30` | Positive whole days of inactivity before interactive sign-in expires. |
-| `SESSION_MAX_AGE_DAYS` | `0` | Optional absolute login age in days; `0` disables this additional deadline. |
-| `API_APP_TOKEN_MAX_AGE_MONTHS` | `12` | Positive whole calendar months from API/MCP token issuance. |
+| `SESSION_INACTIVITY_TIMEOUT_DAYS` | `7` | Mobile inactivity limit, from 1 to 7 whole days. |
+| `SESSION_MAX_AGE_DAYS` | `30` | Mobile absolute login limit, from 1 to 30 whole days; it cannot be disabled. |
 
-Mobile OAuth sessions use the same interactive lifetime. Refreshing a mobile
-access token preserves the original login time and does not count as user
-activity. Expired or revoked logins must sign in through Rodauth again.
+Refreshing a mobile access token preserves the original login time and does not
+count as user activity. Expired or revoked Loco logins must sign in through
+Better Auth again. Personal API keys have an explicit expiry from 1 to 365 days;
+using a key does not extend it.
 
-API/MCP app tokens have a fixed expiry. Using a token does not extend it.
-Existing tokens receive an expiry measured from their original creation date.
-Reducing the configured maximum shortens existing tokens on application
-startup; increasing it later does not extend those stored deadlines.
+The independently preserved Rails rollback application retains its own session
+and legacy API-token policies. It does not provide session continuity with Loco.
 
 ## Recover access
 

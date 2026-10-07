@@ -66,16 +66,17 @@ impl Hooks for App {
             .await
             .map_err(|_| Error::string("Browser session configuration is unavailable"))?;
         if let Some(layers) = layers {
+            let mut config = better_auth::AuthConfig {
+                secret: layers.identity_secret.clone(),
+                ..Default::default()
+            };
+            config.session.cookie_secure = layers.secure;
             ctx.shared_store.insert(layers);
-            let mut config = better_auth::AuthConfig::default();
-            config.secret = std::env::var("MEDTRACKER_SESSION_KEY")
-                .map_err(|_| Error::string("Identity secret unavailable"))?;
             config.base_url = format!(
                 "{}/api/auth",
                 ctx.config.server.full_url().trim_end_matches('/')
             );
             config.trusted_origins = vec![ctx.config.server.full_url()];
-            config.session.cookie_secure = !ctx.config.server.full_url().starts_with("http://");
             config.password.require_uppercase = false;
             config.password.require_lowercase = false;
             config.password.require_numbers = false;

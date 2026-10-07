@@ -25,6 +25,7 @@ pub async fn boundary(mut request: Request, next: Next) -> Response {
     for name in ["x-forwarded-for", "x-real-ip", "x-medtracker-peer"] {
         request.headers_mut().remove(name);
     }
+    let missing_auth_peer = peer.is_none() && request.uri().path().starts_with("/api/auth/");
     let source = peer.as_deref().unwrap_or("unknown");
     if let Ok(value) = HeaderValue::from_str(source) {
         request
@@ -39,7 +40,12 @@ pub async fn boundary(mut request: Request, next: Next) -> Response {
         .to_owned();
     let method = request.method().clone();
     let started = Instant::now();
-    let response = next.run(request).await;
+    let response = if missing_auth_peer {
+        use axum::response::IntoResponse;
+        axum::http::StatusCode::SERVICE_UNAVAILABLE.into_response()
+    } else {
+        next.run(request).await
+    };
     let request_id = response
         .headers()
         .get("x-request-id")
@@ -49,4 +55,56 @@ pub async fn boundary(mut request: Request, next: Next) -> Response {
         duration_ms = started.elapsed().as_secs_f64() * 1000.0, request_id,
         "HTTP request completed");
     response
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::{Router, http::StatusCode, routing::get};
+
+    fn application() -> Router {
+        Router::new()
+            .route(
+                "/api/auth/get-session",
+                get(|headers: axum::http::HeaderMap| async move {
+                    headers
+                        .get("x-forwarded-for")
+                        .unwrap()
+                        .to_str()
+                        .unwrap()
+                        .to_owned()
+                }),
+            )
+            .layer(axum::middleware::from_fn(boundary))
+    }
+
+    async fn request(router: Router) -> reqwest::Response {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move { axum::serve(listener, router).await.unwrap() });
+        let response = reqwest::Client::new()
+            .get(format!("http://{address}/api/auth/get-session"))
+            .header("x-forwarded-for", "198.51.100.77")
+            .send()
+            .await
+            .unwrap();
+        server.abort();
+        response
+    }
+
+    #[tokio::test]
+    async fn authentication_requires_connection_metadata() {
+        let response = request(application()).await;
+        assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+    }
+
+    #[tokio::test]
+    async fn authentication_sources_remain_distinct_and_ignore_spoofed_headers() {
+        for address in ["192.0.2.1:1234", "192.0.2.2:1234"] {
+            let peer: SocketAddr = address.parse().unwrap();
+            let response = request(application().layer(axum::Extension(ConnectInfo(peer)))).await;
+            assert_eq!(response.status(), StatusCode::OK);
+            assert_eq!(response.text().await.unwrap(), peer.ip().to_string());
+        }
+    }
 }
