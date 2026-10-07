@@ -66,6 +66,8 @@ tasks:
       SLICE_FILTER: '{{.FILTER | default ""}}'
     cmds: [node scripts/migration/run-slice.mjs]
   slice:test-all:
+    env:
+      RUST_TEST_THREADS: "4"
     cmds: [node scripts/migration/run-slice.mjs --all]
   slice:catalog:
     env:
@@ -128,6 +130,9 @@ tasks:
   lint:
     desc: Lint Loco
     cmds: [cargo clippy --locked --all-targets -- -D warnings]
+  lint:fix:
+    desc: Apply safe Loco Clippy suggestions
+    cmds: [cargo clippy --locked --all-targets --fix --allow-dirty --allow-staged -- -D warnings]
   lint:advisory:
     desc: Report selected additional Clippy findings
     cmds: [task --taskfile Taskfiles/lint-advisory.yml report]

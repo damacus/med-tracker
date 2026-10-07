@@ -15,6 +15,7 @@ mod people;
 mod projection;
 mod push_subscriptions;
 mod removals;
+mod reports;
 mod response;
 mod schedule_lifecycle;
 mod sync;
@@ -58,6 +59,22 @@ pub fn routes() -> Routes {
         .add("/{household_id}/sync/snapshot", get(sync::snapshot))
         .add("/{household_id}/sync/changes", get(sync::changes))
         .add("/{household_id}/sync/batches", post(sync::create))
+        .add(
+            "/{household_id}/reports/health_history",
+            get(reports::health_json),
+        )
+        .add(
+            "/{household_id}/reports/health_history.pdf",
+            get(reports::health_pdf),
+        )
+        .add(
+            "/{household_id}/reports/medication_reviews",
+            get(reports::reviews_json),
+        )
+        .add(
+            "/{household_id}/reports/medication_reviews.pdf",
+            get(reports::reviews_pdf),
+        )
         .add(
             "/{household_id}/schedules/{id}/dose_occurrences",
             get(dose_occurrences::list_schedule),
@@ -239,7 +256,7 @@ async fn begin(
     household_id: i64,
     request_id: &str,
 ) -> std::result::Result<(ValidatedPrincipal, TenantTransaction), response::Failure> {
-    let principal = resource::authenticate(&ctx.db, headers)
+    let principal = resource::authenticate_care(ctx, headers)
         .await
         .map_err(response::authentication)?;
     let tenant = principal

@@ -1,3 +1,4 @@
+use crate::models::identity::store::digest as token_digest;
 use axum_session::{Session, SessionConfig, SessionMode, SessionStore};
 use axum_session_sqlx::SessionPgPool;
 use base64::{Engine, engine::general_purpose::STANDARD};
@@ -94,7 +95,18 @@ impl BrowserPrincipal {
     ) -> Result<(DatabaseTransaction, chrono::NaiveDateTime), AuthenticationError> {
         let transaction = transaction(db).await?;
         validate(&transaction, &self.identity, false).await?;
-        let row = transaction.query_one_raw(sql("SELECT created_at FROM account_active_session_keys WHERE account_id=$1 AND session_id=$2", [self.account_id().into(), self.identity.registry_key.clone().into()])).await.map_err(unavailable)?.ok_or(AuthenticationError::Unauthenticated)?;
+        let query = "SELECT created_at AT TIME ZONE 'UTC' AS created_at FROM public.identity_sessions WHERE account_id=$1 AND token=$2";
+        let row = transaction
+            .query_one_raw(sql(
+                query,
+                [
+                    self.account_id().into(),
+                    token_digest(&self.identity.registry_key).into(),
+                ],
+            ))
+            .await
+            .map_err(unavailable)?
+            .ok_or(AuthenticationError::Unauthenticated)?;
         let authenticated_at = row.try_get("", "created_at").map_err(unavailable)?;
         Ok((transaction, authenticated_at))
     }
@@ -186,52 +198,27 @@ pub(super) async fn transaction(
 async fn validate(
     transaction: &DatabaseTransaction,
     identity: &Identity,
-    touch: bool,
+    _touch: bool,
 ) -> Result<account::Model, AuthenticationError> {
-    if identity.better_auth {
-        transaction.execute_raw(sql("SELECT set_config('med_tracker.current_account_id',$1,true)", [identity.account_id.to_string().into()])).await.map_err(unavailable)?;
-        let valid = transaction.query_one_raw(sql("SELECT account_id FROM public.identity_sessions WHERE account_id=$1 AND token=$2 AND active AND purpose='authenticated' AND expires_at>clock_timestamp() AND created_at>clock_timestamp()-interval '30 days' FOR SHARE", [identity.account_id.into(), identity.registry_key.clone().into()])).await.map_err(unavailable)?;
-        if valid.is_none() { return Err(AuthenticationError::Unauthenticated); }
-        access::verify_account_actor(transaction, identity.account_id).await.map_err(super::resource::operation_error)?;
-        return account::Entity::find_by_id(identity.account_id).filter(account::Column::Status.eq(2)).one(transaction).await.map_err(unavailable)?.ok_or(AuthenticationError::Unauthenticated);
+    if !identity.better_auth {
+        return Err(AuthenticationError::Unauthenticated);
     }
-    access::verify_account_actor(transaction, identity.account_id)
-        .await
-        .map_err(super::resource::operation_error)?;
-    if !identity.additional_factor_verified {
-        let row = transaction.query_one_raw(sql("SELECT EXISTS (SELECT 1 FROM account_otp_keys WHERE id=$1) OR EXISTS (SELECT 1 FROM account_webauthn_keys WHERE account_id=$1) AS required", [identity.account_id.into()])).await.map_err(unavailable)?.ok_or(AuthenticationError::Unavailable)?;
-        if row.try_get::<bool>("", "required").map_err(unavailable)? {
-            return Err(AuthenticationError::Forbidden);
-        }
-    }
-    let policy = Lifetime::from_environment().map_err(unavailable)?;
-    let maximum = policy.maximum_age.map(|duration| duration.num_seconds());
-    let query = if touch {
-        "UPDATE account_active_session_keys SET last_use = timezone('UTC', clock_timestamp()) WHERE account_id = $1 AND session_id = $2 AND last_use + $3 * interval '1 second' > timezone('UTC', clock_timestamp()) AND ($4::bigint IS NULL OR created_at + $4 * interval '1 second' > timezone('UTC', clock_timestamp())) RETURNING account_id"
-    } else {
-        "SELECT account_id FROM account_active_session_keys WHERE account_id = $1 AND session_id = $2 AND last_use + $3 * interval '1 second' > timezone('UTC', clock_timestamp()) AND ($4::bigint IS NULL OR created_at + $4 * interval '1 second' > timezone('UTC', clock_timestamp())) FOR SHARE"
-    };
     transaction
-        .query_one_raw(sql(
-            query,
-            [
-                identity.account_id.into(),
-                identity.registry_key.clone().into(),
-                policy.inactivity.num_seconds().into(),
-                maximum.into(),
-            ],
-        ))
-        .await
-        .map_err(unavailable)?
-        .ok_or(AuthenticationError::Unauthenticated)?;
-    transaction
-        .query_one_raw(sql(
-            "SELECT set_config('med_tracker.current_account_id', $1, true)",
+        .execute_raw(sql(
+            "SELECT set_config('med_tracker.current_account_id',$1,true)",
             [identity.account_id.to_string().into()],
         ))
         .await
         .map_err(unavailable)?;
+    let valid = transaction.query_one_raw(sql("SELECT account_id FROM public.identity_sessions WHERE account_id=$1 AND token=$2 AND active AND purpose='authenticated' AND expires_at>clock_timestamp() AND created_at>clock_timestamp()-interval '30 days' FOR SHARE", [identity.account_id.into(), token_digest(&identity.registry_key).into()])).await.map_err(unavailable)?;
+    if valid.is_none() {
+        return Err(AuthenticationError::Unauthenticated);
+    }
+    access::verify_account_actor(transaction, identity.account_id)
+        .await
+        .map_err(super::resource::operation_error)?;
     account::Entity::find_by_id(identity.account_id)
+        .filter(account::Column::Status.eq(2))
         .one(transaction)
         .await
         .map_err(unavailable)?
@@ -252,7 +239,7 @@ pub async fn authenticate(
     Ok(BrowserPrincipal {
         provenance: CredentialProvenance {
             method: CredentialMethod::BrowserSession,
-            reference: identity.registry_key.clone(),
+            reference: token_digest(&identity.registry_key),
         },
         identity,
         time_zone,
@@ -407,8 +394,13 @@ pub fn route_layers(
     ctx: &loco_rs::app::AppContext,
     routes: loco_rs::controller::Routes,
 ) -> loco_rs::controller::Routes {
-    let routes = match ctx.shared_store.get::<super::better_auth::IdentityService>() {
-        Some(service) => routes.layer(axum::middleware::from_fn(identity_bridge)).layer(axum::Extension(service)),
+    let routes = match ctx
+        .shared_store
+        .get::<super::better_auth::IdentityService>()
+    {
+        Some(service) => routes
+            .layer(axum::middleware::from_fn(identity_bridge))
+            .layer(axum::Extension(service)),
         None => routes,
     };
     match ctx.shared_store.get::<BrowserLayers>() {
@@ -427,30 +419,92 @@ async fn identity_bridge(
     next: axum::middleware::Next,
 ) -> axum::response::Response {
     use axum::response::IntoResponse;
-    let mut auth = better_auth_core::AuthRequest::new(better_auth_core::HttpMethod::Get, "/get-session");
-    auth.headers = request.headers().iter().filter_map(|(name,value)| value.to_str().ok().map(|value| (name.to_string(),value.to_owned()))).collect();
+    let mut auth =
+        better_auth_core::AuthRequest::new(better_auth_core::HttpMethod::Get, "/get-session");
+    auth.headers = request
+        .headers()
+        .iter()
+        .filter_map(|(name, value)| {
+            value
+                .to_str()
+                .ok()
+                .map(|value| (name.to_string(), value.to_owned()))
+        })
+        .collect();
+    let mut destination = None;
     match super::better_auth::browser_identity(&service, &auth).await {
-        Ok(super::better_auth::BrowserIdentity::Authenticated { user, session: identity }) => {
-            let Ok(account_id) = user.id.parse() else { return axum::http::StatusCode::UNAUTHORIZED.into_response(); };
-            session.set("identity", Identity { account_id, registry_key: identity.token, additional_factor_verified: true, better_auth: true });
+        Ok(super::better_auth::BrowserIdentity::Authenticated {
+            user,
+            session: identity,
+        }) => {
+            let Ok(account_id) = user.id.parse() else {
+                return axum::http::StatusCode::UNAUTHORIZED.into_response();
+            };
+            session.set(
+                "identity",
+                Identity {
+                    account_id,
+                    registry_key: identity.token,
+                    additional_factor_verified: true,
+                    better_auth: true,
+                },
+            );
             session.set_store(true);
         }
         Ok(super::better_auth::BrowserIdentity::PendingFactor) => {
             session.remove("identity");
-            if request.uri().path() == "/" { return axum::response::Redirect::to("/auth/totp").into_response(); }
+            if request.uri().path() == "/" {
+                destination = Some("/auth/totp");
+            }
         }
         Ok(super::better_auth::BrowserIdentity::Enrolment { .. }) => {
             session.remove("identity");
             if request.uri().path() == "/" {
-                return axum::response::Redirect::to("/auth/passkey/setup").into_response();
+                destination = Some("/auth/passkey/setup");
             }
         }
         Ok(super::better_auth::BrowserIdentity::SignedOut) => {
-            if session.get::<Identity>("identity").is_some_and(|identity| identity.better_auth) { session.remove("identity"); }
+            session.remove("identity");
         }
         Err(_) => return axum::http::StatusCode::SERVICE_UNAVAILABLE.into_response(),
     }
-    next.run(request).await
+    let mut response = if let Some(destination) = destination {
+        axum::response::Redirect::to(destination).into_response()
+    } else {
+        next.run(request).await
+    };
+    let Ok(mut finalized) =
+        better_auth_core::AuthResponse::json(response.status().as_u16(), &serde_json::Value::Null)
+    else {
+        return axum::http::StatusCode::SERVICE_UNAVAILABLE.into_response();
+    };
+    for cookie in response.headers().get_all(axum::http::header::SET_COOKIE) {
+        let Ok(value) = cookie.to_str() else {
+            return axum::http::StatusCode::SERVICE_UNAVAILABLE.into_response();
+        };
+        finalized.headers.append("set-cookie", value.to_owned());
+    }
+    if service
+        .context()
+        .session_manager()
+        .finish_response(&auth, &mut finalized)
+        .await
+        .is_err()
+    {
+        return axum::http::StatusCode::SERVICE_UNAVAILABLE.into_response();
+    }
+    response
+        .headers_mut()
+        .remove(axum::http::header::SET_COOKIE);
+    for cookie in finalized.headers.get_all("set-cookie") {
+        let Ok(value) = cookie.parse() else {
+            return axum::http::StatusCode::SERVICE_UNAVAILABLE.into_response();
+        };
+        response
+            .headers_mut()
+            .append(axum::http::header::SET_COOKIE, value);
+    }
+    response
 }
 
 pub async fn layers(

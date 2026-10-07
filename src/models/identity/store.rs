@@ -67,19 +67,28 @@ impl Lifetime {
         })
     }
 
+    pub fn inactivity_days(&self) -> i64 {
+        self.inactivity.num_days()
+    }
+
+    pub fn maximum_age_days(&self) -> i64 {
+        self.maximum_age.map_or(0, |duration| duration.num_days())
+    }
+
     pub fn from_environment() -> Result<Self, super::ExchangeError> {
-        fn days(name: &str, default: i64) -> Result<i64, super::ExchangeError> {
+        fn days(name: &str, default: i64, maximum: i64) -> Result<i64, super::ExchangeError> {
             match std::env::var(name) {
-                Ok(value) => value
-                    .parse::<i64>()
-                    .map_err(|_| super::ExchangeError::Unavailable),
+                Ok(value) => match value.parse::<i64>() {
+                    Ok(configured) if (1..=maximum).contains(&configured) => Ok(configured),
+                    _ => Err(super::ExchangeError::Unavailable),
+                },
                 Err(std::env::VarError::NotPresent) => Ok(default),
                 Err(_) => Err(super::ExchangeError::Unavailable),
             }
         }
         Self::new(
-            days("SESSION_INACTIVITY_TIMEOUT_DAYS", 30)?,
-            days("SESSION_MAX_AGE_DAYS", 0)?,
+            days("SESSION_INACTIVITY_TIMEOUT_DAYS", 7, 7)?,
+            days("SESSION_MAX_AGE_DAYS", 30, 30)?,
         )
     }
 }

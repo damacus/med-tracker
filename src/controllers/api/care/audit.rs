@@ -9,6 +9,23 @@ pub(super) struct RequestAudit {
 }
 
 impl RequestAudit {
+    pub fn report(is_reviews: bool) -> Self {
+        Self {
+            method: "GET",
+            controller: if is_reviews {
+                "api/v1/medication_review_reports"
+            } else {
+                "api/v1/health_history_reports"
+            },
+            action: "show",
+            policy: if is_reviews {
+                "MedicationReviewPromptPolicy"
+            } else {
+                "ReportPolicy"
+            },
+            query: "index?",
+        }
+    }
     pub fn sync(method: &'static str, action: &'static str) -> Self {
         Self {
             method,
@@ -257,6 +274,7 @@ pub(super) async fn record(
         CredentialMethod::ApiSession => ("api_session", "api_session"),
         CredentialMethod::ApiAppToken => ("api_app_token", "api_app_token"),
         CredentialMethod::OauthGrant => ("oauth", "oauth_grant"),
+        CredentialMethod::PersonalApiKey => ("personal_api_key", "personal_api_key"),
         CredentialMethod::BrowserSession => ("browser_session", "browser_session"),
     };
     let mut context = json!({

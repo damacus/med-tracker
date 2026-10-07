@@ -5,7 +5,7 @@ import { stopOwnedProcess } from './process-cleanup.mjs';
 
 async function runCargo(args, databaseUrl, inheritedEnvironment, signal) {
   signal.throwIfAborted();
-  const environment = { ...inheritedEnvironment, DATABASE_URL: databaseUrl, MEDTRACKER_OWNED_DATABASE: '1' };
+  const environment = { ...inheritedEnvironment, DATABASE_URL: databaseUrl, MEDTRACKER_OWNED_DATABASE: '1', MEDTRACKER_SESSION_KEY: Buffer.alloc(64, 7).toString('base64') };
   for (const name of ['COMPOSE_FILE', 'COMPOSE_PROJECT_NAME', 'COMPOSE_PROFILES', 'DOCKER_HOST', 'DOCKER_CONTEXT', 'DOCKER_CONFIG', 'DOCKER_TLS_VERIFY', 'DOCKER_CERT_PATH']) delete environment[name];
   const root = fileURLToPath(new URL('../../', import.meta.url));
   const child = spawn('cargo', args, { cwd: root, env: environment, detached: true, stdio: 'inherit' });

@@ -61,6 +61,8 @@ test('real signin, dose replay, permission withdrawal and stale stock preserve c
   const afterReplay = await careFixture.probe();
   expect(afterReplay.supply).toBe('8.00');
   expect(afterReplay.takes).toBe(1);
+  expect(afterReplay.registry_digests).toBe(true);
+  expect(afterReplay.audit_session_digest).toBe(true);
   expect(afterReplay.runtime_superuser).toBe(false);
   expect(afterReplay.runtime_bypassrls).toBe(false);
   const { authenticity_token, ...withoutToken } = original;

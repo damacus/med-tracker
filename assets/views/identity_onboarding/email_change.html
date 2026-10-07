@@ -1,0 +1,25 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-xl mx-auto card shell-card"><div class="card-body gap-4">
+  <h1 class="text-3xl font-semibold">{{ title }}</h1>
+  {% if mode == "start" %}
+  <form method="post" action="/account/security/email" class="space-y-4">
+    <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+    <label class="form-control" for="new_email">New email address</label>
+    <input class="input input-bordered w-full" id="new_email" name="new_email" type="email" autocomplete="email" required>
+    <button class="btn shell-primary" type="submit">Continue</button>
+  </form>
+  {% elif mode == "confirm" %}
+  <p>Confirm the email address change you requested in this browser.</p>
+  <form method="post" action="/account/security/email/confirm">
+    <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+    <input type="hidden" name="operation_id" value="{{ operation_id }}">
+    <input type="hidden" name="token" value="{{ proof }}">
+    <button class="btn shell-primary" type="submit">Verify email change</button>
+  </form>
+  {% else %}
+  <p>Use the verification link in this browser within 30 minutes. Your current email remains active until you confirm.</p>
+  {% endif %}
+  <a class="link" href="/account/security">Back to account security</a>
+</div></section>
+{% endblock content %}

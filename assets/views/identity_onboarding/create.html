@@ -4,17 +4,7 @@
   <h1 class="text-2xl font-semibold">Create Account</h1>
   <p>Choose a password or passkey, verify your email, then save your recovery codes.</p>
   {% if invitation is defined %}<p>Join {{ invitation.household_name }}.</p>{% endif %}
-  {% if errors %}<div class="alert border border-error" role="alert"><div><h2 class="font-semibold">Check the following details</h2><ul>{% for field, messages in errors %}{% for message in messages %}<li>{{ message }}</li>{% endfor %}{% endfor %}</ul></div></div>{% endif %}
-  <form method="post" action="/create-account" class="flex flex-col gap-4">
-    <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
-    <fieldset class="flex gap-6"><legend>Sign-in method</legend><label><input type="radio" name="credential" value="password" checked> Password</label><label><input type="radio" name="credential" value="passkey"> Passkey</label></fieldset>
-    <div data-signup-password><label for="signup-password">Password</label><input class="input input-bordered w-full" id="signup-password" name="password" type="password" minlength="15" maxlength="1024" autocomplete="new-password" required><p>Use at least 15 characters.</p></div>
-    {% if invitation is defined %}<input type="hidden" name="invitation_token" value="{{ invitation_token }}">{% endif %}
-    <div><label for="name">Name</label><input class="input input-bordered w-full" id="name" name="name" value="{{ name }}" required autocomplete="name" {% if errors.name is defined %}aria-invalid="true" aria-describedby="name-error"{% endif %}>{% if errors.name is defined %}<p id="name-error">{% for message in errors.name %}{{ message }} {% endfor %}</p>{% endif %}</div>
-    <div><label for="date_of_birth">Date of birth</label><input class="input input-bordered w-full" id="date_of_birth" name="date_of_birth" type="date" value="{{ date_of_birth }}" required {% if errors.date_of_birth is defined %}aria-invalid="true" aria-describedby="date-of-birth-error"{% endif %}>{% if errors.date_of_birth is defined %}<p id="date-of-birth-error">{% for message in errors.date_of_birth %}{{ message }} {% endfor %}</p>{% endif %}</div>
-    <div><label for="email">Email</label><input class="input input-bordered w-full" id="email" name="email" type="email" value="{% if invitation is defined %}{{ invitation.email }}{% else %}{{ email }}{% endif %}" {% if invitation is defined %}readonly{% else %}required autocomplete="email"{% endif %} {% if errors.email is defined %}aria-invalid="true" aria-describedby="email-error"{% endif %}>{% if errors.email is defined %}<p id="email-error">{% for message in errors.email %}{{ message }} {% endfor %}</p>{% endif %}</div>
-    <button class="btn btn-neutral" type="submit">Create Account</button>
-  </form>
+  {% include "auth/account_form.html" %}
   <a class="link" href="/login">Sign in</a>
 </div></section>
 <script src="/static/js/identity-onboarding.js" defer></script>

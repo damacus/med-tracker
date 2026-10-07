@@ -33,14 +33,37 @@ pub(super) struct Create {
 
 impl Create {
     pub(super) fn empty(invitation_token: Option<String>) -> Self {
-        Self { name: String::new(), date_of_birth: String::new(), email: String::new(), credential: "password".into(), password: String::new(), invitation_token, authenticity_token: String::new() }
+        Self {
+            name: String::new(),
+            date_of_birth: String::new(),
+            email: String::new(),
+            credential: "password".into(),
+            password: String::new(),
+            invitation_token,
+            authenticity_token: String::new(),
+        }
     }
 
     pub(super) fn profile(&self) -> Result<AccountProfile, Errors> {
-        let date_of_birth = NaiveDate::parse_from_str(&self.date_of_birth, "%Y-%m-%d").map_err(|_| {
-            let message = if self.date_of_birth.trim().is_empty() { "Date of birth must be present" } else { "Date of birth must be a valid date" };
-            BTreeMap::from([("date_of_birth".to_owned(), vec![message.to_owned()])])
-        })?;
-        Ok(AccountProfile { name: self.name.clone(), email: self.email.clone(), date_of_birth, invitation_token: self.invitation_token.clone() })
+        let date_of_birth =
+            NaiveDate::parse_from_str(&self.date_of_birth, "%Y-%m-%d").map_err(|_| {
+                let message = if self.date_of_birth.trim().is_empty() {
+                    "Date of birth must be present"
+                } else {
+                    "Date of birth must be a valid date"
+                };
+                BTreeMap::from([("date_of_birth".to_owned(), vec![message.to_owned()])])
+            })?;
+        let errors =
+            crate::models::identity::signup::profile_errors(&self.name, Some(date_of_birth), false);
+        if !errors.is_empty() {
+            return Err(errors);
+        }
+        Ok(AccountProfile {
+            name: self.name.clone(),
+            email: self.email.clone(),
+            date_of_birth,
+            invitation_token: self.invitation_token.clone(),
+        })
     }
 }

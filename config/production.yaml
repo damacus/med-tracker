@@ -11,6 +11,8 @@ server:
   binding: <%= get_env(name="BINDING", default="127.0.0.1") %>
   host: http://localhost
   middlewares:
+    logger:
+      enable: false
     static:
       enable: true
       must_exist: true

@@ -6,6 +6,8 @@ mod administration;
 mod api_session;
 #[path = "care_api/assignments.rs"]
 mod assignments;
+#[path = "care_api/better_auth_store.rs"]
+mod better_auth_store;
 #[path = "care_api/crud.rs"]
 mod crud;
 #[path = "care_api/dosages.rs"]
@@ -30,6 +32,8 @@ mod pause_periods;
 mod people;
 #[path = "care_api/push_subscriptions.rs"]
 mod push_subscriptions;
+#[path = "care_api/reports.rs"]
+mod reports;
 #[path = "care_api/resource_credentials.rs"]
 mod resource_credentials;
 #[path = "care_api/saved_status.rs"]

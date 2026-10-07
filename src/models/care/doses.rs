@@ -37,6 +37,7 @@ use source::{
     Source, effective_source, local_date_in_zone, source, source_from_assignment,
     source_from_schedule,
 };
+pub(crate) use source::{config_decimal, config_value};
 use std::{collections::HashSet, str::FromStr};
 use stock::decrement_stock;
 pub(crate) use stock::same_stock_signature;
@@ -71,6 +72,7 @@ pub enum Outcome {
 
 #[derive(Clone, Copy, Debug)]
 pub enum CredentialMethod {
+    PersonalApiKey,
     ApiSession,
     ApiAppToken,
     OauthGrant,
@@ -80,6 +82,7 @@ pub enum CredentialMethod {
 impl CredentialMethod {
     fn label(self) -> &'static str {
         match self {
+            Self::PersonalApiKey => "personal_api_key",
             Self::ApiSession => "api_session",
             Self::ApiAppToken => "api_app_token",
             Self::OauthGrant => "oauth",
@@ -89,6 +92,7 @@ impl CredentialMethod {
 
     fn reference_prefix(self) -> &'static str {
         match self {
+            Self::PersonalApiKey => "personal_api_key",
             Self::ApiSession => "api_session",
             Self::ApiAppToken => "api_app_token",
             Self::OauthGrant => "oauth_grant",

@@ -4,7 +4,7 @@ import { promisify } from 'node:util';
 import { createServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
-import { mkdtemp, rm, mkdir, writeFile } from 'node:fs/promises';
+import { mkdtemp, rm, mkdir, writeFile, cp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { withOwnedDatabase } from '../../scripts/migration/foundation-database.mjs';
@@ -13,7 +13,7 @@ import { stopOwnedProcess } from '../../scripts/migration/process-cleanup.mjs';
 const execute = promisify(execFile);
 const root = fileURLToPath(new URL('../../', import.meta.url));
 
-async function withCareFixture(captureMail, registrationInviteOnly, use) {
+async function withCareFixture(captureMail, registrationInviteOnly, reportAssetsUnavailable, use, oidcProvider = false) {
   const runtimeTimings = { phases: [] };
   const measure = async (name, action) => {
     const started = performance.now();
@@ -33,6 +33,19 @@ async function withCareFixture(captureMail, registrationInviteOnly, use) {
     await measure('seed', () => fixtureTask('seed'));
     const snapshotDirectory = await mkdtemp(join(tmpdir(), 'mtloco-browser-'));
     const snapshotPath = join(snapshotDirectory, 'baseline.dump');
+    let applicationRoot = root;
+    let applicationBinary;
+    if (reportAssetsUnavailable) {
+      applicationRoot = join(snapshotDirectory, 'application');
+      await mkdir(join(applicationRoot, 'assets'), { recursive: true });
+      await Promise.all(['config', 'assets/views', 'assets/static', 'assets/reports'].map(async path => {
+        const destination = join(applicationRoot, path);
+        await mkdir(join(destination, '..'), { recursive: true });
+        await cp(join(root, path), destination, { recursive: true });
+      }));
+      await rm(join(applicationRoot, 'assets/reports/fonts'), { recursive: true, force: true });
+      applicationBinary = (await execute('task', ['browser-care:binary'], { cwd: root, timeout: 30000 })).stdout.trim();
+    }
     const runtime = new URL(owner);
     runtime.username = 'medtracker_browser_runtime';
     runtime.password = 'password';
@@ -46,15 +59,21 @@ async function withCareFixture(captureMail, registrationInviteOnly, use) {
     let mailpitUrl;
     let smtpPort;
     let server;
+    let provider;
     let output = '';
     let exited = false;
     const start = async () => {
       output = '';
       exited = false;
       const environment = { ...process.env, LOCO_ENV: 'test', PORT: String(port), MEDTRACKER_PUBLIC_HOST: 'http://localhost', DATABASE_URL: runtime.href, MEDTRACKER_CAPTURE_MAIL: String(captureMail), MEDTRACKER_SMTP_PORT: smtpPort ?? '1025', MEDTRACKER_SESSION_KEY: Buffer.alloc(64, 7).toString('base64'), MEDTRACKER_COOKIE_SECURE: 'false', RAILS_SECRET_KEY_BASE: 'synthetic-rails-secret-key-base-for-compatibility', RAILS_OLD_SECRET_KEY_BASE: 'synthetic-old-rails-secret-key-base', AUTH_SESSION_SECRET: 'synthetic-browser-occurrence-signing-key-32' };
+      for (const name of ['MEDTRACKER_ZITADEL_ISSUER', 'MEDTRACKER_ZITADEL_CLIENT_ID', 'MEDTRACKER_ZITADEL_CLIENT_SECRET']) delete environment[name];
+      if (provider) Object.assign(environment, { MEDTRACKER_ZITADEL_ISSUER: provider.origin, MEDTRACKER_ZITADEL_CLIENT_ID: 'medtracker-fixture', MEDTRACKER_ZITADEL_CLIENT_SECRET: 'password' });
+      delete environment.RUST_LOG;
       delete environment.INVITE_ONLY;
       if (registrationInviteOnly !== undefined) environment.INVITE_ONLY = String(registrationInviteOnly);
-      server = spawn('task', ['browser-care:serve', ...(captureMail ? ['SERVER_AND_WORKER=true'] : [])], { cwd: root, detached: true, env: environment, stdio: ['ignore', 'pipe', 'pipe'] });
+      server = reportAssetsUnavailable
+        ? spawn(applicationBinary, ['start', '--environment', 'test'], { cwd: applicationRoot, detached: true, env: environment, stdio: ['ignore', 'pipe', 'pipe'] })
+        : spawn('task', ['browser-care:serve', ...(captureMail ? ['SERVER_AND_WORKER=true'] : [])], { cwd: root, detached: true, env: environment, stdio: ['ignore', 'pipe', 'pipe'] });
       server.stdout.on('data', chunk => { output += chunk; });
       server.stderr.on('data', chunk => { output += chunk; });
       server.on('exit', () => { exited = true; });
@@ -70,6 +89,7 @@ async function withCareFixture(captureMail, registrationInviteOnly, use) {
       if (!ready) throw Error(`Owned care server did not start: ${output}`);
     };
     try {
+      if (oidcProvider) provider = await (await import('./oidc-provider.mjs')).startOidcProvider();
       if (captureMail) {
         await fixtureTask('mail-up', [`MAILPIT_NAME=${mailName}`]);
         mailStarted = true;
@@ -89,7 +109,7 @@ async function withCareFixture(captureMail, registrationInviteOnly, use) {
       }
       if (!captureMail && registrationInviteOnly === undefined) await measure('snapshot', () => fixtureTask('snapshot', [`SNAPSHOT_PATH=${snapshotPath}`]));
       await measure('application-start', start);
-      await use({ origin, mailpitUrl, runtimeTimings,
+      await use({ origin, mailpitUrl, runtimeTimings, provider,
         reset: () => measure('reset', () => fixtureTask('reset', [`SNAPSHOT_PATH=${snapshotPath}`])),
         probe: async () => JSON.parse(await fixtureTask('probe')), revoke: () => fixtureTask('revoke'), reactivate: () => fixtureTask('reactivate'),
         seedOtp: () => fixtureTask('seed-otp'), otpProbe: async () => JSON.parse((await fixtureTask('otp-probe')) || 'null'), closeOtpAccount: () => fixtureTask('close-otp-account'),
@@ -104,6 +124,8 @@ async function withCareFixture(captureMail, registrationInviteOnly, use) {
         signupDiagnostics: () => output.split('\n').filter(line => line.includes('Account setup operation failed')).join('\n'),
         logsContain: value => output.includes(value),
         frameworkSessionPeer: () => fixtureTask('framework-session-peer'),
+        ageFrameworkIdle: () => fixtureTask('age-framework-idle'), ageFrameworkAbsolute: () => fixtureTask('age-framework-absolute'), expireFrameworkIdle: () => fixtureTask('expire-framework-idle'),
+        agePendingFactorSession: () => fixtureTask('age-pending-factor-session'), frameworkSessionLimits: async () => JSON.parse(await fixtureTask('framework-session-limits')),
         expireAuthenticationLimits: () => fixtureTask('expire-authentication-limits'),
         failureDiagnostics: () => output.split('\n').filter(line => /Account (confirmation|setup operation) (failed|rejected)/.test(line)).slice(-20).map(line => line.replace(/https?:\/\/\S+/g, '[redacted URL]').replace(/\b(token|password|authorization|cookie|secret)\s*[=:]\s*[^\s,]+/gi, '$1=[redacted]')).join('\n').slice(-4096),
         revokeInvitation: email => fixtureTask('revoke-invitation', [`INVITATION_EMAIL=${email}`]),
@@ -129,10 +151,23 @@ async function withCareFixture(captureMail, registrationInviteOnly, use) {
         },
         secondPerson: () => fixtureTask('second-person'),
         scheduledMedicine: () => fixtureTask('scheduled-medicine'),
+        seedReport: () => fixtureTask('report-seed'),
+        seedReportHistory: () => fixtureTask('report-history-seed'),
+        reportAuditProbe: async () => JSON.parse(await fixtureTask('report-audit-probe')),
+        seedReviewReport: () => fixtureTask('review-report-seed'),
+        seedRefreshTrap: () => fixtureTask('report-refresh-trap'),
+        revokeGrantOnRefresh: () => fixtureTask('report-revoke-grant-on-refresh'),
+        revokeSessionOnRefresh: () => fixtureTask('report-revoke-session-on-refresh'),
         oauthProbe: async () => JSON.parse(await fixtureTask('oauth-probe')), ageAuthentication: () => fixtureTask('age-authentication'),
         failOAuthAudit: () => fixtureTask('fail-oauth-audit'), restoreOAuthAudit: () => fixtureTask('restore-oauth-audit'),
         failRecoveryAudit: () => fixtureTask('fail-recovery-audit'), restoreRecoveryAudit: () => fixtureTask('restore-recovery-audit'),
+        failPersonalKeyAudit: () => fixtureTask('fail-personal-key-audit'), restorePersonalKeyAudit: () => fixtureTask('restore-personal-key-audit'), expirePersonalKeys: () => fixtureTask('expire-personal-keys'), withdrawKeyMembership: () => fixtureTask('withdraw-key-membership'),
+        failProviderAudit: () => fixtureTask('fail-provider-audit'), restoreProviderAudit: () => fixtureTask('restore-provider-audit'), providerLinkProbe: async () => JSON.parse(await fixtureTask('provider-link-probe')),
         failTotpAudit: () => fixtureTask('fail-totp-audit'), restoreTotpAudit: () => fixtureTask('restore-totp-audit'),
+        failEmailAudit: () => fixtureTask('fail-email-audit'), restoreEmailAudit: () => fixtureTask('restore-email-audit'),
+        emailChangeProbe: async () => JSON.parse(await fixtureTask('email-change-probe')),
+        transferClosureOwnership: () => fixtureTask('transfer-closure-ownership'), closureProbe: async () => JSON.parse(await fixtureTask('closure-probe')),
+        failClosureAudit: () => fixtureTask('fail-closure-audit'), restoreClosureAudit: () => fixtureTask('restore-closure-audit'),
         expireTotpLock: () => fixtureTask('expire-totp-lock'),
         clearAdoptedOnboarding: () => fixtureTask('clear-adopted-onboarding'),
         ageRetainedFactorUse: () => fixtureTask('age-retained-factor-use'),
@@ -143,7 +178,7 @@ async function withCareFixture(captureMail, registrationInviteOnly, use) {
         revokeSession: () => fixtureTask('revoke-session'), expireSession: () => fixtureTask('expire-session'), doseRequestId: () => fixtureTask('dose-request-id') });
     } finally {
       try { if (server) await measure('application-stop', () => stopOwnedProcess(server)); } finally {
-        try { if (mailStarted) await fixtureTask('mail-down', [`MAILPIT_NAME=${mailName}`]); } finally { await rm(snapshotDirectory, { recursive: true, force: true }); }
+        try { if (mailStarted) await fixtureTask('mail-down', [`MAILPIT_NAME=${mailName}`]); } finally { try { if (provider) await provider.close(); } finally { await rm(snapshotDirectory, { recursive: true, force: true }); } }
       }
     }
   }); } finally {
@@ -161,6 +196,8 @@ async function withCareFixture(captureMail, registrationInviteOnly, use) {
 export const test = base.extend({
   captureMail: [false, { option: true }],
   registrationInviteOnly: [undefined, { option: true }],
+  reportAssetsUnavailable: [false, { option: true }],
+  oidcProvider: [false, { option: true }],
   isolatedCare: [false, { option: true }],
   sharedCare: [async ({}, use) => {
     let ready;
@@ -171,7 +208,7 @@ export const test = base.extend({
       get: () => {
         if (!ready) {
           ready = new Promise((resolve, reject) => {
-            completed = withCareFixture(false, undefined, async fixture => { resolve(fixture); await released; });
+            completed = withCareFixture(false, undefined, false, async fixture => { resolve(fixture); await released; });
             completed.catch(reject);
           });
         }
@@ -180,7 +217,7 @@ export const test = base.extend({
     };
     try { await use(pool); } finally { release(); if (completed) await completed; }
   }, { scope: 'worker', timeout: 180000 }],
-  careFixture: [async ({ captureMail, registrationInviteOnly, isolatedCare, sharedCare }, use, info) => {
+  careFixture: [async ({ captureMail, registrationInviteOnly, reportAssetsUnavailable, isolatedCare, sharedCare, oidcProvider }, use, info) => {
     const started = performance.now();
     let fixture;
     let phaseStart = 0;
@@ -193,8 +230,8 @@ export const test = base.extend({
       }
     };
     try {
-      if (captureMail || registrationInviteOnly !== undefined || isolatedCare || info.tags.includes('@isolated-runtime')) {
-        await withCareFixture(captureMail, registrationInviteOnly, run);
+      if (captureMail || registrationInviteOnly !== undefined || reportAssetsUnavailable || isolatedCare || oidcProvider || info.tags.includes('@isolated-runtime')) {
+        await withCareFixture(captureMail, registrationInviteOnly, reportAssetsUnavailable, run, oidcProvider);
       } else {
         fixture = await sharedCare.get();
         phaseStart = fixture.runtimeTimings.reportedPhaseCount ?? 0;

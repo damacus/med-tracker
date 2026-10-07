@@ -1,0 +1,17 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="card border border-base-300 bg-base-100 max-w-xl mx-auto"><div class="card-body gap-6">
+  <h1 class="text-2xl font-semibold">Complete your account</h1>
+  <p>ZITADEL verified {{ email }}. Add your details and a local sign-in method, then save recovery codes before accessing your household.</p>
+  <form method="post" action="/auth/zitadel/register" class="flex flex-col gap-4">
+    <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+    <input type="hidden" name="registration_id" value="{{ registration_id }}">
+    <fieldset class="flex gap-6"><legend>Local sign-in method</legend><label><input type="radio" name="credential" value="password" checked> Password</label><label><input type="radio" name="credential" value="passkey"> Passkey</label></fieldset>
+    <div data-signup-password><label for="signup-password">Password</label><input class="input input-bordered w-full" id="signup-password" name="password" type="password" minlength="15" maxlength="1024" autocomplete="new-password" required></div>
+    <div><label for="name">Name</label><input class="input input-bordered w-full" id="name" name="name" value="{{ name }}" required autocomplete="name"></div>
+    <div><label for="date_of_birth">Date of birth</label><input class="input input-bordered w-full" id="date_of_birth" name="date_of_birth" type="date" required></div>
+    <button class="btn btn-neutral" type="submit">Complete account</button>
+  </form>
+</div></section>
+<script src="/static/js/identity-onboarding.js" defer></script>
+{% endblock content %}

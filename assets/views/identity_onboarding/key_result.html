@@ -1,0 +1,9 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="card shell-card max-w-xl mx-auto"><div class="card-body gap-4">
+  <h1 class="text-2xl font-semibold">Save your API key</h1>
+  <p>{{ name }}</p><p>Copy this key to your integration now. It will not be shown again.</p>
+  <label for="created-api-key">API key</label><input class="input input-bordered w-full font-mono" id="created-api-key" value="{{ api_key }}" readonly autocomplete="off" spellcheck="false">
+  <a class="link" href="/account/security/keys">Return to personal API keys</a>
+</div></section>
+{% endblock content %}

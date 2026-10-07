@@ -54,6 +54,7 @@ impl Hooks for App {
             .add_route(browser(crate::controllers::locations::routes()))
             .add_route(browser(crate::controllers::people::routes()))
             .add_route(browser(crate::controllers::treatments::routes()))
+            .add_route(browser(crate::controllers::reports::routes()))
             .add_route(browser(crate::controllers::dose_occurrences::routes()))
             .add_route(browser(crate::controllers::administration::routes()))
             .add_route(browser(crate::controllers::invitations::routes()))
@@ -67,18 +68,29 @@ impl Hooks for App {
         if let Some(layers) = layers {
             ctx.shared_store.insert(layers);
             let mut config = better_auth::AuthConfig::default();
-            config.secret = std::env::var("MEDTRACKER_SESSION_KEY").map_err(|_| Error::string("Identity secret unavailable"))?;
-            config.base_url = format!("{}/api/auth", ctx.config.server.full_url().trim_end_matches('/'));
+            config.secret = std::env::var("MEDTRACKER_SESSION_KEY")
+                .map_err(|_| Error::string("Identity secret unavailable"))?;
+            config.base_url = format!(
+                "{}/api/auth",
+                ctx.config.server.full_url().trim_end_matches('/')
+            );
             config.trusted_origins = vec![ctx.config.server.full_url()];
             config.session.cookie_secure = !ctx.config.server.full_url().starts_with("http://");
             config.password.require_uppercase = false;
             config.password.require_lowercase = false;
             config.password.require_numbers = false;
             config.password.require_special = false;
-            let store = std::sync::Arc::new(crate::models::identity::better_auth::ClinicalStore::new(ctx.db.clone()));
-            let service = crate::models::identity::better_auth::build(config, store).await.map_err(|_| Error::string("Identity service unavailable"))?;
+            let store = std::sync::Arc::new(
+                crate::models::identity::better_auth::ClinicalStore::new(ctx.db.clone()),
+            );
+            let service = crate::models::identity::better_auth::build(config, store)
+                .await
+                .map_err(|_| Error::string("Identity service unavailable"))?;
             ctx.shared_store.insert(service.clone());
-            return Ok(axum::Router::new().nest("/api/auth", crate::models::identity::better_auth::router(service).with_state(())));
+            return Ok(axum::Router::new().nest(
+                "/api/auth",
+                crate::models::identity::better_auth::router(service).with_state(()),
+            ));
         }
         Ok(axum::Router::new())
     }
@@ -91,7 +103,9 @@ impl Hooks for App {
     }
 
     async fn after_routes(router: axum::Router, _ctx: &AppContext) -> Result<axum::Router> {
-        Ok(router.layer(axum::middleware::from_fn(crate::models::identity::better_auth::http_boundary)))
+        Ok(router.layer(axum::middleware::from_fn(
+            crate::models::identity::better_auth::http_boundary,
+        )))
     }
 
     fn register_tasks(_tasks: &mut Tasks) {}

@@ -72,6 +72,8 @@ async function enableCurrentTotp(page, password) {
 
 test('verified email permits enrolment only until a native passkey and independent recovery codes are stored', async ({ page, context, careFixture }, info) => {
   const email = 'passwordless-onboarding@example.test';
+  await page.goto('/create-account');
+  await page.screenshot({ path: `docs/screenshots/auth-create-account-${info.project.name}.png`, fullPage: true });
   const pending = await pendingAccount(page, careFixture, email);
   await deniesClinical(page, pending.clinicalPath);
   await confirmAccount(page, pending.verificationUrl);
@@ -86,10 +88,15 @@ test('verified email permits enrolment only until a native passkey and independe
   const codes = await page.getByRole('list', { name: 'Recovery codes', exact: true }).getByRole('listitem').allTextContents();
   expect(codes).toHaveLength(10);
   expect(new Set(codes).size).toBe(codes.length);
+  await page.screenshot({ path: `docs/screenshots/auth-recovery-codes-${info.project.name}.png`, fullPage: true, style: '[aria-label="Recovery codes"] li { visibility: hidden !important; }', mask: [page.getByRole('list', { name: 'Recovery codes', exact: true })], maskColor: '#94a3b8' });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(page.viewportSize().width);
   await deniesClinical(page, pending.clinicalPath);
   await page.getByLabel('I have saved my recovery codes', { exact: true }).check();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await page.waitForURL('/');
+  await page.goto('/account/security');
+  await expect(page.getByRole('heading', { name: 'Account security', exact: true })).toBeVisible();
+  await page.screenshot({ path: `docs/screenshots/auth-security-${info.project.name}.png`, fullPage: true });
   await page.goto(pending.clinicalPath);
   await expect(page.getByRole('heading', { name: 'Medications', exact: true })).toBeVisible();
   await page.screenshot({ path: info.outputPath('passwordless-onboarding-complete.png'), fullPage: true });
@@ -253,6 +260,151 @@ test('security settings lists the current session and logout revokes its cookie'
   await previous.close();
 });
 
+test('account sessions revoke another device without granting cross-account authority', async ({ page, browser, request: foreign, careFixture }) => {
+  await careFixture.seedInvitationAccount();
+  const headers = { Origin: careFixture.origin };
+  const outsider = await foreign.post(`${careFixture.origin}/api/auth/sign-in/email`, { headers, data: { email: 'foreign@example.test', password: 'password' } });
+  expect(outsider.status()).toBe(200);
+  const outsiderId = (await (await foreign.get(`${careFixture.origin}/api/auth/get-session`)).json()).session.id;
+  await page.goto('/login');
+  await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
+  await page.getByLabel('Password', { exact: true }).fill('password');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.waitForURL('/');
+  const other = await browser.newContext({ baseURL: careFixture.origin });
+  try {
+    expect((await other.request.post('/api/auth/sign-in/email', { headers, data: { email: 'persistence@example.test', password: 'password' } })).status()).toBe(200);
+    await page.goto('/account/security');
+    await page.getByRole('button', { name: 'Revoke session', exact: true }).click();
+    await page.waitForURL('/account/security');
+    expect((await other.request.get('/households/persistence-fixture/medications', { maxRedirects: 0 })).status()).toBe(303);
+    expect((await page.request.post('/api/auth/security/session/revoke', { headers, data: { session_id: outsiderId } })).status()).toBe(401);
+    expect((await foreign.get(`${careFixture.origin}/api/auth/get-session`)).status()).toBe(200);
+    await page.goto('/households/persistence-fixture/medications');
+    await expect(page.getByRole('heading', { name: 'Medications', exact: true })).toBeVisible();
+  } finally { await other.close(); }
+});
+
+test('framework browser sessions renew idle cookies but retain absolute and expiry limits', async ({ page, careFixture }) => {
+  await page.goto('/login');
+  await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
+  await page.getByLabel('Password', { exact: true }).fill('password');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.waitForURL('/');
+  await careFixture.ageFrameworkIdle();
+  const renewed = await page.goto('/households/persistence-fixture/medications');
+  await expect(page.getByRole('heading', { name: 'Medications', exact: true })).toBeVisible();
+  expect(((await renewed.allHeaders())['set-cookie'] || '').includes('better-auth.session_token=')).toBe(true);
+  expect((await careFixture.frameworkSessionLimits()).idle_seconds).toBeGreaterThan(6 * 86400);
+  await careFixture.ageFrameworkAbsolute();
+  await page.reload();
+  const capped = await careFixture.frameworkSessionLimits();
+  expect(capped.within_absolute).toBe(true);
+  expect(capped.idle_seconds).toBeLessThanOrEqual(86400);
+  await careFixture.expireFrameworkIdle();
+  await deniesClinical(page, '/households/persistence-fixture/medications');
+});
+
+test('pending historical factor sessions cannot renew beyond five minutes', async ({ page, careFixture }) => {
+  await careFixture.seedOtp();
+  await page.goto('/login');
+  await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
+  await page.getByLabel('Password', { exact: true }).fill('password');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.waitForURL('**/auth/totp');
+  await careFixture.agePendingFactorSession();
+  await page.reload();
+  expect((await careFixture.frameworkSessionLimits()).within_pending).toBe(true);
+  await deniesClinical(page, '/households/persistence-fixture/medications');
+});
+
+test('email change binds fresh proof and verifies the new address before activation', async ({ page, request: anonymous, careFixture }) => {
+  const email = 'changed-local-email@example.test';
+  const headers = { Origin: careFixture.origin };
+  await page.goto('/login');
+  await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
+  await page.getByLabel('Password', { exact: true }).fill('password');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.waitForURL('/');
+  await page.goto('/account/security');
+  await page.getByRole('link', { name: 'Change email', exact: true }).click();
+  await page.getByLabel('New email address', { exact: true }).fill(email);
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await page.getByLabel('Current password', { exact: true }).fill('password');
+  await page.getByRole('button', { name: 'Confirm change', exact: true }).click();
+  await page.waitForURL('**/account/security/email/pending');
+  await expect(page.getByRole('heading', { name: 'Check your new email', exact: true })).toBeVisible();
+  const messages = async (subject, address) => (await (await fetch(`${careFixture.mailpitUrl}/api/v1/messages?limit=50`)).json()).messages.filter(message => message.Subject === subject && message.To.some(recipient => recipient.Address === address));
+  await expect.poll(async () => (await messages('Verify your new email address', email)).length).toBe(1);
+  const message = await (await fetch(`${careFixture.mailpitUrl}/api/v1/message/${(await messages('Verify your new email address', email))[0].ID}`)).json();
+  const link = message.Text.match(/https?:\S+/)[0];
+  await page.goto(link);
+  await expect(page.getByRole('heading', { name: 'Verify your new email address', exact: true })).toBeVisible();
+  expect((await anonymous.post(`${careFixture.origin}/api/auth/sign-in/email`, { headers, data: { email, password: 'password' } })).status()).toBe(401);
+  expect((await anonymous.post(`${careFixture.origin}/api/auth/sign-in/email`, { headers, data: { email: 'persistence@example.test', password: 'password' } })).status()).toBe(200);
+  const query = new URL(link).searchParams;
+  const confirmation = { operation_id: query.get('operation_id'), token: query.get('token'), confirmed: true };
+  expect((await anonymous.post(`${careFixture.origin}/api/auth/security/email/confirm`, { headers, data: confirmation })).status()).toBe(401);
+  expect((await page.request.post('/account/security/email/confirm', { headers, form: { ...confirmation, authenticity_token: 'invalid' } })).status()).toBe(403);
+  const supersededEmail = 'superseded-local-email@example.test';
+  const second = await page.request.post('/api/auth/security/operation/start', { headers, data: { action: 'change_email', new_email: supersededEmail } });
+  expect(second.status()).toBe(200);
+  expect((await page.request.post('/api/auth/security/password/confirm', { headers, data: { operation_id: (await second.json()).operation_id, password: 'password' } })).status()).toBe(200);
+  await expect.poll(async () => (await messages('Verify your new email address', supersededEmail)).length).toBe(1);
+  const supersededMessage = await (await fetch(`${careFixture.mailpitUrl}/api/v1/message/${(await messages('Verify your new email address', supersededEmail))[0].ID}`)).json();
+  const supersededQuery = new URL(supersededMessage.Text.match(/https?:\S+/)[0]).searchParams;
+  await careFixture.failEmailAudit();
+  expect((await page.request.post('/api/auth/security/email/confirm', { headers, data: confirmation })).status()).toBe(500);
+  expect((await anonymous.post(`${careFixture.origin}/api/auth/sign-in/email`, { headers, data: { email, password: 'password' } })).status()).toBe(401);
+  await careFixture.restoreEmailAudit();
+  await page.getByRole('button', { name: 'Verify email change', exact: true }).click();
+  await page.waitForURL('/account/security');
+  await expect(page.getByText(email, { exact: true })).toBeVisible();
+  expect((await page.request.post('/api/auth/security/email/confirm', { headers, data: confirmation })).status()).toBe(401);
+  expect((await page.request.post('/api/auth/security/email/confirm', { headers, data: { operation_id: supersededQuery.get('operation_id'), token: supersededQuery.get('token'), confirmed: true } })).status()).toBe(401);
+  expect((await anonymous.post(`${careFixture.origin}/api/auth/sign-in/email`, { headers, data: { email: 'persistence@example.test', password: 'password' } })).status()).toBe(401);
+  expect((await anonymous.post(`${careFixture.origin}/api/auth/sign-in/email`, { headers, data: { email, password: 'password' } })).status()).toBe(200);
+  await expect.poll(async () => (await messages('Email address changed', 'persistence@example.test')).length).toBe(1);
+  expect((await careFixture.emailChangeProbe()).canonical_user_email_aligned).toBe(true);
+});
+
+test('account closure requires fresh proof and ownership transfer while preserving care', async ({ page, browser, careFixture }) => {
+  await careFixture.seedAdministration();
+  await page.goto('/login');
+  await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
+  await page.getByLabel('Password', { exact: true }).fill('password');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.waitForURL('/');
+  const stale = await browser.newContext({ baseURL: careFixture.origin, storageState: await page.context().storageState() });
+  const stalePage = await stale.newPage();
+  await page.goto('/account/security');
+  await page.getByRole('button', { name: 'Close account', exact: true }).click();
+  const operation = await page.locator('input[name="operation_id"]').inputValue();
+  const headers = { Origin: careFixture.origin };
+  expect((await page.request.post('/api/auth/security/password/confirm', { headers, data: { operation_id: operation, password: 'password' } })).status()).toBe(403);
+  expect((await careFixture.closureProbe()).closed).toBe(false);
+  await careFixture.transferClosureOwnership();
+  await careFixture.failClosureAudit();
+  expect((await page.request.post('/api/auth/security/password/confirm', { headers, data: { operation_id: operation, password: 'password' } })).status()).toBe(500);
+  const rolledBack = await careFixture.closureProbe();
+  expect(rolledBack.closed).toBe(false);
+  expect(rolledBack.memberships_ended).toBe(false);
+  expect(rolledBack.credentials_preserved).toBe(true);
+  expect(rolledBack.sessions_revoked).toBe(false);
+  await careFixture.restoreClosureAudit();
+  await page.getByLabel('Current password', { exact: true }).fill('password');
+  await page.getByRole('button', { name: 'Confirm change', exact: true }).click();
+  await page.waitForURL('/login');
+  expect(await careFixture.closureProbe()).toEqual({ closed: true, memberships_ended: true, credentials_preserved: true, sessions_revoked: true, care_preserved: true, rollback_preserved: true });
+  await deniesClinical(stalePage, '/households/persistence-fixture/medications');
+  await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
+  await page.getByLabel('Password', { exact: true }).fill('password');
+  const rejected = page.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname === '/login');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  expect((await rejected).status()).toBe(401);
+  await stale.close();
+});
+
 test('email verification requires explicit account confirmation and blocks raw automatic login', async ({ page, careFixture }) => {
   const pending = await pendingAccount(page, careFixture, 'confirmation-required@example.test');
   const confirmation = await page.goto(pending.verificationUrl);
@@ -401,11 +553,17 @@ test('retained factor lock expires and audit rollback preserves the pending onbo
   const headers = { Origin: careFixture.origin };
   const generator = new TOTP({ algorithm: 'SHA1', digits: 6, period: 30, secret: Secret.fromBase32('4TLXACQRZVPP3ASC') });
   const wrong = generator.generate() === '000000' ? '000001' : '000000';
-  for (let attempt = 0; attempt < 5; attempt++) {
+  for (let attempt = 0; attempt < 4; attempt++) {
     expect((await page.request.post('/api/auth/security/totp/login', { headers, data: { code: wrong } })).status()).toBe(401);
   }
-  expect((await page.request.post('/api/auth/security/totp/login', { headers, data: { code: generator.generate() } })).status()).toBe(429);
+  expect((await page.request.post('/api/auth/security/totp/login', { headers, data: { code: wrong } })).status()).toBe(429);
   await careFixture.expireRetainedFactorLock();
+  expect((await page.request.post('/api/auth/security/totp/login', { headers, data: { code: generator.generate() } })).status()).toBe(401);
+  await page.goto('/login');
+  await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
+  await page.getByLabel('Password', { exact: true }).fill('password');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.waitForURL('**/auth/totp');
   expect((await page.request.post('/api/auth/security/totp/login', { headers, data: { code: wrong } })).status()).toBe(401);
   await careFixture.failRetainedFactorAudit();
   const failed = await page.request.post('/api/auth/security/totp/login', { headers, data: { code: generator.generate() } });
@@ -483,10 +641,23 @@ test('a passkey account adds a password with fresh operation-bound passkey proof
   await page.unroute('**/api/auth/security/passkey/confirm');
   expect((await page.request.post('/api/auth/security/passkey/confirm', { headers, data: proof })).status()).toBe(401);
   await expect(page.getByRole('link', { name: 'Change password', exact: true })).toBeVisible();
+  const ordered = [];
+  for (const new_password of ['older signed assertion must not replace this password', 'newer signed assertion retains the correct password']) {
+    const operation = await page.request.post('/api/auth/security/password/start', { headers, data: { new_password } });
+    expect(operation.status()).toBe(200);
+    const { operation_id } = await operation.json();
+    const start = await page.request.post('/api/auth/security/passkey/start', { headers, data: { operation_id } });
+    expect(start.status()).toBe(200);
+    const challenge = await start.json();
+    const response = await page.evaluate(async publicKey => (await navigator.credentials.get({ publicKey: PublicKeyCredential.parseRequestOptionsFromJSON(publicKey) })).toJSON(), challenge.publicKey);
+    ordered.push({ operation_id, challenge_id: challenge.challenge_id, response });
+  }
+  expect((await page.request.post('/api/auth/security/passkey/confirm', { headers, data: ordered[1] })).status()).toBe(200);
+  expect((await page.request.post('/api/auth/security/passkey/confirm', { headers, data: ordered[0] })).status()).toBe(401);
   await context.clearCookies();
   await page.goto('/login');
   await page.getByLabel('Email address', { exact: true }).fill(email);
-  await page.getByLabel('Password', { exact: true }).fill('orchard comet lantern meadow violet');
+  await page.getByLabel('Password', { exact: true }).fill('newer signed assertion retains the correct password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.waitForURL('/');
   await page.goto(pending.clinicalPath);
@@ -550,6 +721,10 @@ test('credential removal preserves a local method and does not restore the adopt
   await page.getByRole('button', { name: 'Confirm with passkey', exact: true }).click();
   await page.waitForURL('/account/security');
   await expect(page.getByText('Password: not set', { exact: true })).toBeVisible();
+  await expect(page.getByText('Add a password before enabling an authenticator app.', { exact: true })).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath('auth-totp-password-required.png'), fullPage: true });
+  await expect(page.getByRole('link', { name: 'Add password', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Enable authenticator app', exact: true })).toHaveCount(0);
   expect((await anonymous.post(`${careFixture.origin}/api/auth/sign-in/email`, { headers, data: { email: 'persistence@example.test', password: 'password' } })).status()).toBe(401);
   await page.reload();
   await expect(page.getByText('Password: not set', { exact: true })).toBeVisible();
@@ -557,25 +732,41 @@ test('credential removal preserves a local method and does not restore the adopt
   expect(removal.status()).toBe(400);
 });
 
-test('authentication derives source from the peer and never logs query credentials', async ({ page, careFixture }) => {
-  await page.goto('/login');
-  const csrf = await page.locator('input[name="authenticity_token"]').inputValue();
-  const secret = 'synthetic-query-credential-must-remain-private';
-  await page.request.post(`/verify-account-confirm?token=${secret}`, { headers: { Origin: careFixture.origin }, form: { token: 'invalid-token', authenticity_token: csrf } });
-  await expect.poll(() => careFixture.logsContain('Account confirmation'), { timeout: 5000 }).toBe(true);
-  expect(careFixture.logsContain(secret)).toBe(false);
+test('authentication derives source from the actual peer', async ({ page, careFixture }) => {
   const login = await page.request.post('/api/auth/sign-in/email', { headers: { Origin: careFixture.origin, 'X-Forwarded-For': '198.51.100.77', 'X-Real-IP': '203.0.113.77' }, data: { email: 'persistence@example.test', password: 'password' } });
   expect(login.status()).toBe(200);
   expect(await careFixture.frameworkSessionPeer()).toBe('127.0.0.1');
 });
 
-test('authentication throttles account and actual source temporarily despite spoofed forwarding headers', async ({ request, careFixture }) => {
+test('HTTP logging omits query credentials and retains request correlation', async ({ page, careFixture }) => {
+  await page.goto('/login');
+  const csrf = await page.locator('input[name="authenticity_token"]').inputValue();
+  const secret = 'synthetic-query-credential-must-remain-private';
+  const response = await page.request.post(`/verify-account-confirm?token=${secret}`, { headers: { Origin: careFixture.origin }, form: { token: 'invalid-token', authenticity_token: csrf }, maxRedirects: 0 });
+  await expect.poll(() => careFixture.logsContain('Account confirmation'), { timeout: 5000 }).toBe(true);
+  expect(careFixture.logsContain(secret)).toBe(false);
+  expect(response.headers()['x-request-id']).toBeTruthy();
+  await expect.poll(() => careFixture.logsContain(response.headers()['x-request-id']), { timeout: 5000 }).toBe(true);
+  expect(careFixture.logsContain('HTTP request completed')).toBe(true);
+});
+
+test('authentication throttles account and actual source temporarily despite spoofed forwarding headers', async ({ page, request, careFixture }) => {
   let result;
   for (let attempt = 0; attempt < 11; attempt += 1) {
     result = await request.post(`${careFixture.origin}/api/auth/sign-in/email`, { headers: { Origin: careFixture.origin, 'X-Forwarded-For': `198.51.100.${attempt + 1}` }, data: { email: 'unknown-throttled@example.test', password: 'incorrect synthetic password' } });
   }
   expect(result.status()).toBe(429);
   expect(Number(result.headers()['retry-after'])).toBeGreaterThan(0);
+  await careFixture.restart();
+  expect((await request.post(`${careFixture.origin}/api/auth/sign-in/email`, { headers: { Origin: careFixture.origin }, data: { email: 'unknown-throttled@example.test', password: 'incorrect synthetic password' } })).status()).toBe(429);
+  await page.goto('/login');
+  await page.getByLabel('Email address', { exact: true }).fill('unknown-throttled@example.test');
+  await page.getByLabel('Password', { exact: true }).fill('incorrect synthetic password');
+  const browserLimit = page.waitForResponse(response => response.url().endsWith('/login') && response.request().method() === 'POST');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  const limited = await browserLimit;
+  expect(limited.status()).toBe(429);
+  expect(Number(limited.headers()['retry-after'])).toBeGreaterThan(0);
   for (let attempt = 0; attempt < 40; attempt += 1) {
     result = await request.post(`${careFixture.origin}/api/auth/sign-in/email`, { headers: { Origin: careFixture.origin, 'X-Forwarded-For': `203.0.113.${attempt + 1}` }, data: { email: `unknown-source-${attempt}@example.test`, password: 'incorrect synthetic password' } });
     if (result.status() === 429) break;
@@ -657,6 +848,51 @@ test('recovery password replacement requires bound email confirmation and preser
   await page.waitForURL('**/auth/totp');
   await page.getByLabel('Authentication code', { exact: true }).fill(generator.generate());
   await page.getByRole('button', { name: 'Verify', exact: true }).click();
+  await page.waitForURL('/');
+  await page.goto(pending.clinicalPath);
+  await expect(page.getByRole('heading', { name: 'Medications', exact: true })).toBeVisible();
+});
+
+test('recovery passkey replacement needs bound email and finishes with a usable new credential', async ({ page, context, careFixture }) => {
+  const email = 'recovery-passkey-proof@example.test';
+  const pending = await pendingAccount(page, careFixture, email);
+  await confirmAccount(page, pending.verificationUrl);
+  const original = await authenticator(page, context);
+  await page.getByLabel('Passkey name', { exact: true }).fill('Original local passkey');
+  await page.getByRole('button', { name: 'Register Passkey', exact: true }).click();
+  await expect(page.getByRole('list', { name: 'Recovery codes', exact: true }).getByRole('listitem')).toHaveCount(10);
+  const code = await page.getByRole('list', { name: 'Recovery codes', exact: true }).getByRole('listitem').first().textContent();
+  await page.getByLabel('I have saved my recovery codes', { exact: true }).check();
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await page.waitForURL('/');
+  await original.client.send('WebAuthn.removeVirtualAuthenticator', { authenticatorId: original.authenticatorId });
+  await context.clearCookies();
+  await page.goto('/recovery-login');
+  await page.getByLabel('Recovery code', { exact: true }).fill(code);
+  await page.getByRole('button', { name: 'Sign in with recovery code', exact: true }).click();
+  await page.waitForURL('/');
+  await page.goto('/account/security');
+  await page.getByRole('button', { name: 'Add passkey', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Check your email', exact: true })).toBeVisible();
+  const operation_id = await page.locator('[data-email-operation]').getAttribute('data-email-operation');
+  const headers = { Origin: careFixture.origin };
+  expect((await page.request.get(`/api/auth/passkey/generate-register-options?operation_id=${operation_id}`, { headers })).status()).toBe(401);
+  const messages = async () => (await (await fetch(`${careFixture.mailpitUrl}/api/v1/messages?limit=50`)).json()).messages.filter(message => message.Subject === 'Confirm passkey replacement' && message.To.some(recipient => recipient.Address === email));
+  await expect.poll(async () => (await messages()).length).toBe(1);
+  const message = await (await fetch(`${careFixture.mailpitUrl}/api/v1/message/${(await messages())[0].ID}`)).json();
+  const link = message.Text.match(/https?:\S+/)[0];
+  await page.goto(link);
+  await expect(page.getByRole('heading', { name: 'Confirm passkey replacement', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Confirm passkey replacement', exact: true }).click();
+  await page.waitForURL('**/account/security/passkey?**');
+  await authenticator(page, context);
+  await page.getByLabel('Passkey name', { exact: true }).fill('Recovered local passkey');
+  await page.getByRole('button', { name: 'Register Passkey', exact: true }).click();
+  await page.waitForURL('/account/security');
+  expect((await page.request.post('/api/auth/security/password/email/confirm', { headers, data: { operation_id, token: new URL(link).searchParams.get('token'), confirmed: true } })).status()).toBe(403);
+  await context.clearCookies();
+  await page.goto('/login');
+  await page.getByRole('button', { name: 'Sign in with a passkey', exact: true }).click();
   await page.waitForURL('/');
   await page.goto(pending.clinicalPath);
   await expect(page.getByRole('heading', { name: 'Medications', exact: true })).toBeVisible();
@@ -821,7 +1057,7 @@ test('disabling TOTP requires an explicit operation with password and current co
   const generator = await enabledTotp(page);
   await page.getByRole('button', { name: 'Disable authenticator app', exact: true }).click();
   const operationId = await page.locator('input[name="operation_id"]').inputValue();
-  const missingFactor = await page.request.post('/api/auth/security/totp/disable/confirm', { headers: { Origin: new URL(page.url()).origin }, data: { operation_id: operationId, password: 'password', code: 'invalid' } });
+  const missingFactor = await page.request.post('/api/auth/security/password/confirm', { headers: { Origin: new URL(page.url()).origin }, data: { operation_id: operationId, password: 'password', totp_code: 'invalid' } });
   expect(missingFactor.status()).toBe(401);
   await page.getByLabel('Current password', { exact: true }).fill('password');
   await page.getByLabel('Authentication code', { exact: true }).fill(generator.generate());
@@ -834,6 +1070,42 @@ test('disabling TOTP requires an explicit operation with password and current co
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.waitForURL('/');
+});
+
+test('fresh passkey proof disables TOTP without requiring the lost authenticator code', async ({ page, context }) => {
+  const generator = await enabledTotp(page);
+  await authenticator(page, context);
+  await page.getByRole('button', { name: 'Add passkey', exact: true }).click();
+  await page.getByLabel('Current password', { exact: true }).fill('password');
+  await page.getByLabel('Authentication code', { exact: true }).fill(generator.generate());
+  await page.getByRole('button', { name: 'Confirm change', exact: true }).click();
+  await page.getByLabel('Passkey name', { exact: true }).fill('Synthetic independent recovery credential');
+  await page.getByRole('button', { name: 'Register Passkey', exact: true }).click();
+  await page.waitForURL('/account/security');
+  await page.getByRole('button', { name: 'Disable authenticator app', exact: true }).click();
+  await page.getByRole('button', { name: 'Confirm with passkey', exact: true }).click();
+  await page.waitForURL('/account/security');
+  await expect(page.getByText('Authenticator app: not enabled', { exact: true })).toBeVisible();
+  await context.clearCookies();
+  await page.goto('/login');
+  await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
+  await page.getByLabel('Password', { exact: true }).fill('password');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.waitForURL('/');
+});
+
+test('retired authentication routes cannot bypass the framework account security contract', async ({ page, careFixture }) => {
+  await page.goto('/login');
+  await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
+  await page.getByLabel('Password', { exact: true }).fill('password');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.waitForURL('/');
+  for (const path of ['/multifactor-manage', '/webauthn-setup', '/webauthn-remove', '/webauthn-login/options', '/webauthn-auth', '/otp-auth', '/recovery-auth']) {
+    expect((await page.request.get(path, { maxRedirects: 0 })).status(), path).toBe(410);
+  }
+  for (const path of ['/webauthn-setup', '/webauthn-remove', '/webauthn-login', '/webauthn-auth', '/otp-auth', '/recovery-auth']) {
+    expect((await page.request.post(path, { headers: { Origin: careFixture.origin }, data: {} })).status(), path).toBe(410);
+  }
 });
 
 test('failed signed-in TOTP proofs retain temporary account throttling without changing the password', async ({ page, request: anonymous, careFixture }) => {

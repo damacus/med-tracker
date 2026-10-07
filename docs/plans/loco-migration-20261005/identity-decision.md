@@ -23,6 +23,10 @@ and discards the current authentication UV result. Use maintained webauthn-rs
 application AuthPlugin and Better Auth storage/session APIs. Keep upstream passkey
 handlers unregistered. Persist challenge state server-side, bind registration to
 its enrolment session and consume state atomically; reject missing UV and replay.
+Fresh-operation assertions use discoverable authentication state and load the
+current credential after locking its account. The maintained library checks the
+counter against that current state, including its supported zero-counter rules;
+an older signed assertion cannot overwrite a later successful operation.
 
 Pinned Better Auth applies TOTP account lockout only to pending sign-in challenges,
 not verification from an existing session. Pending security operations therefore
@@ -48,7 +52,10 @@ and validator without changing the framework token record. A separate record
 binds its hash to the recovery session, chosen operation and 30-minute deadline.
 An explicit CSRF-protected confirmation consumes both records with the credential
 change, audit, notification and session rotation. Email confirmation preserves
-any enabled authenticator requirement. Regenerated recovery codes use the same
+any enabled authenticator requirement. Passkey replacement consumes that email
+proof into a five-minute registration grant; the recovery session rotates only
+after successful verified registration. Existing local credentials remain available
+until explicitly removed through another fresh operation. Regenerated recovery codes use the same
 server API-key issuer as onboarding, with a generation-specific save acknowledgement;
 unacknowledged regenerated codes cannot sign in. Replacing that set again needs
 another operation-bound fresh proof.
@@ -58,6 +65,27 @@ passkey registration consumes a session-bound, short-lived proof grant. Removal
 rechecks the current local methods and authenticator state under the account lock.
 Removing an adopted password retains an empty credential-provider row, preventing
 the preserved Rails rollback hash from being adopted again.
+
+Local email changes use the upstream user-management and email-verification
+callbacks. Fresh operation proof authorises the old-account confirmation stage;
+the upstream verifier then issues the new-address token. A separate 30-minute
+binding ties its hash to the account, session and exact old/new addresses. The
+explicit CSRF-protected confirmation re-reads the canonical address under lock,
+delegates token verification, and atomically updates canonical email, consumes
+the binding, audits and notifies the old address. Raw framework mutation routes
+remain unavailable.
+
+The pinned framework limiter retains process-local buckets indefinitely and has
+no public durable or bounded backend. Authentication therefore uses a restricted
+PostgreSQL attempt ledger with atomic fixed windows, hashed identifiers, indexed
+expiry and bounded expired-row cleanup. The short preflight transaction completes
+before the domain transaction; rejected authentication cannot undo its count and
+domain failures still roll back. Defaults are 40 attempts per actual peer per
+minute, ten email/password attempts per account per 15 minutes, 30 signed-in
+security requests per account per minute, and a one-minute email resend cooldown.
+Only the actual socket peer supplies upstream client-IP headers. A missing peer
+uses one conservative shared bucket. Forwarded client headers are not trusted;
+proxy-aware deployment needs an explicit trust configuration.
 
 The auth owner is the sole implementation writer. The verifier owns costly builds,
 dependency resolution and tests; the coordinator owns review, reports, commits
@@ -95,6 +123,11 @@ and publication. Freeze verified source and preserve exact live-job handles.
 
 - Browser/native sessions expire after seven idle days or 30 absolute days.
   Refresh cannot extend the absolute limit. Check authoritative revocation state.
+- Native capabilities retain the existing v1 wire identifiers, including
+  `rodauth_authorization_code_pkce`, because pinned clients use the canonical
+  OpenAPI enums. This identifies the compatible code flow, not the library
+  providing browser authentication. Publish the configured bounded lifetimes,
+  registered public clients and required capability sections with `no-store`.
 - Every email, credential, TOTP, recovery-code, provider, key creation or closure
   operation requires fresh authentication bound to that single pending operation.
   Reject replay and substitution. Accept fresh passkey, password with applicable
@@ -103,10 +136,24 @@ and publication. Freeze verified source and preserve exact live-job handles.
 - Verify new local email before activation and notify the old address.
 - Closure disables login, revokes credentials/sessions and ends memberships while
   preserving shared care/audit history. Sole owners transfer ownership first.
+  Retain credential, provider, authenticator and passkey rows behind authoritative
+  closed-account denial; explicitly disable retained API-key payloads and revoke
+  native grants. Do not physically delete those records or expose generic user
+  deletion. Audit, notification, membership termination and access revocation
+  share the bound operation transaction.
 - Notify credential, MFA, email, provider, API-key changes, recovery and closure.
   Omit routine successful-login notifications.
 
 ## ZITADEL and households
+
+The maintained `openidconnect` verifier handles discovery, code exchange, PKCE,
+signature, issuer, audience, expiry and nonce before the bounded application
+transaction. Sensitive operations also require a present, nonfuture authentication
+time within five minutes. Browser-bound server verification records retain new
+provider claims for five minutes while profile details are collected. Canonical
+registration policy still applies. New accounts receive only database-enforced
+enrolment sessions; a real local password or verified passkey and the existing
+ten-code save acknowledgement remain mandatory before clinical access.
 
 - Optional ZITADEL follows local registration/invitation policy and grants no
   household access itself. Auto-link matching accounts only if both emails are
@@ -161,3 +208,27 @@ old-session/token and unsupported-credential invalidation on synthetic migrated
 accounts, preserving live credentials and rollback data. Production ZITADEL
 configuration/activation and live-provider verification remain separate; automated
 acceptance uses an owned OIDC fixture.
+
+
+## Final owner decisions, 7 October 2026
+
+- HTTP request logs contain method, route template, status, duration and request
+  ID. The stock full-URI HTTP logger is replaced in development, test and
+  production. Application and audit logs stay enabled. Query values, raw paths,
+  cookies and bodies are excluded.
+- At Loco auth cutover, pre-Better-Auth browser sessions require a fresh sign-in.
+  The model no longer accepts the old session registry as a fallback. This is a
+  conscious compatibility break; it does not delete care records, retained
+  history or the independently runnable Rails rollback application.
+- Enabling TOTP requires the current password through the official Better Auth
+  dependency. Passkey-only users add a password first; security settings explain
+  this requirement. No library source is copied or patched.
+
+Browser session bearer values are digested at the SeaORM adapter boundary with
+the same maintained SHA-256 helper used for native credentials. The historical
+`identity_sessions.token` column and its RLS setting contain the digest. Framework
+calls still receive the caller's raw token; a stored digest cannot authenticate.
+Session lists expose only non-reusable stored values, and individual revocation
+uses the authorised account/session ID. Pending passkey registration binds a
+session digest; clinical audit provenance also records a digest. The encrypted
+browser mirror retains the token needed to validate the framework session.

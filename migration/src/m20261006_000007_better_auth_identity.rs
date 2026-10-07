@@ -90,6 +90,7 @@ CREATE TABLE public.identity_provider_accounts (
     refresh_token_expires_at timestamptz,
     scope text,
     password text,
+    disabled_at timestamptz,
     created_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(provider_id,provider_account_id)

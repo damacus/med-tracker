@@ -33,9 +33,16 @@ pub(super) async fn provision_with_password_in(
     if !errors.is_empty() {
         return Err(SignupError::Invalid(errors));
     }
-    let invitation_token = profile.invitation_token.as_deref().filter(|token| !token.is_empty());
+    let invitation_token = profile
+        .invitation_token
+        .as_deref()
+        .filter(|token| !token.is_empty());
     let invitation = if let Some(token) = invitation_token {
-        Some(invitations::signup_invitation(transaction, token).await.map_err(operation_error)?)
+        Some(
+            invitations::signup_invitation(transaction, token)
+                .await
+                .map_err(operation_error)?,
+        )
     } else {
         if !policy::open(transaction).await? {
             return Err(SignupError::RegistrationClosed);
@@ -51,9 +58,13 @@ pub(super) async fn provision_with_password_in(
         [email.clone().into(),password_hash.map(str::to_owned).into()])).await.map_err(unavailable)?
         .ok_or_else(|| invalid("email", "is already registered"))?;
     let account_id: i64 = account.try_get("", "id").map_err(unavailable)?;
-    transaction.execute_raw(sql(
-        "SELECT set_config('med_tracker.current_account_id',$1,true)",
-        [format!("{account_id}").into()])).await.map_err(unavailable)?;
+    transaction
+        .execute_raw(sql(
+            "SELECT set_config('med_tracker.current_account_id',$1,true)",
+            [format!("{account_id}").into()],
+        ))
+        .await
+        .map_err(unavailable)?;
     let household_id = match &invitation {
         Some(invitation) => invitation.household_id,
         None => bootstrap::household(transaction, account_id, &profile.name).await?,
@@ -74,31 +85,57 @@ pub(super) async fn provision_with_password_in(
     };
     if let Some(token) = invitation_token {
         invitations::accept_signup(transaction, &context, token, request_id.unwrap_or(""))
-            .await.map_err(operation_error)?;
+            .await
+            .map_err(operation_error)?;
     } else {
-        bootstrap::owner(transaction, &context, household_id, &profile.name, request_id).await?;
+        bootstrap::owner(
+            transaction,
+            &context,
+            household_id,
+            &profile.name,
+            request_id,
+        )
+        .await?;
     }
-    Ok(ProvisionedAccount { account_id, person_id, user_id, household_id, email })
+    Ok(ProvisionedAccount {
+        account_id,
+        person_id,
+        user_id,
+        household_id,
+        email,
+    })
 }
 
-pub(super) fn profile_errors(
+pub(crate) fn profile_errors(
     name: &str,
     birth: Option<NaiveDate>,
     missing_birth: bool,
 ) -> BTreeMap<String, Vec<String>> {
     let mut errors = BTreeMap::<String, Vec<String>>::new();
     if name.trim().is_empty() {
-        errors.entry("name".into()).or_default().push("must be present".into());
+        errors
+            .entry("name".into())
+            .or_default()
+            .push("must be present".into());
     }
     let message = match birth {
         None if missing_birth => Some("must be present"),
         None => Some("must be a valid date"),
-        Some(birth) if Utc::now().date_naive().checked_sub_months(Months::new(18 * 12))
-            .is_none_or(|latest| birth > latest) => Some("Children must be added by a parent or carer."),
+        Some(birth)
+            if Utc::now()
+                .date_naive()
+                .checked_sub_months(Months::new(18 * 12))
+                .is_none_or(|latest| birth > latest) =>
+        {
+            Some("Children must be added by a parent or carer.")
+        }
         _ => None,
     };
     if let Some(message) = message {
-        errors.entry("date_of_birth".into()).or_default().push(message.into());
+        errors
+            .entry("date_of_birth".into())
+            .or_default()
+            .push(message.into());
     }
     errors
 }

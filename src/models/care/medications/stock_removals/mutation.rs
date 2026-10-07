@@ -148,6 +148,7 @@ async fn record(
             CredentialMethod::ApiSession => ("api_session", "api_session"),
             CredentialMethod::ApiAppToken => ("api_app_token", "api_app_token"),
             CredentialMethod::OauthGrant => ("oauth", "oauth_grant"),
+            CredentialMethod::PersonalApiKey => ("personal_api_key", "personal_api_key"),
             CredentialMethod::BrowserSession => ("browser_session", "browser_session"),
         };
         audit_context["authentication_method"] = json!(method);

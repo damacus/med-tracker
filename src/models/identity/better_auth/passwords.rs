@@ -1,18 +1,26 @@
-use std::{collections::HashSet, sync::LazyLock};
 use async_trait::async_trait;
-use better_auth_core::{AuthError, AuthResult, utils::password::{PasswordHasher, hash_password, verify_password}};
+use better_auth_core::{
+    AuthError, AuthResult,
+    utils::password::{PasswordHasher, hash_password, verify_password},
+};
+use std::{collections::HashSet, sync::LazyLock};
 
 pub(super) struct CompatibleHasher;
 
 #[async_trait]
 impl PasswordHasher for CompatibleHasher {
-    async fn hash(&self, password: &str) -> AuthResult<String> { hash_password(None, password).await }
+    async fn hash(&self, password: &str) -> AuthResult<String> {
+        hash_password(None, password).await
+    }
 
     async fn verify(&self, hash: &str, password: &str) -> AuthResult<bool> {
         if hash.starts_with("$2") {
             let hash = hash.to_owned();
             let password = password.to_owned();
-            return tokio::task::spawn_blocking(move || bcrypt::verify(password, &hash)).await.map_err(|_| AuthError::internal("Password verification unavailable"))?.map_err(|_| AuthError::InvalidCredentials);
+            return tokio::task::spawn_blocking(move || bcrypt::verify(password, &hash))
+                .await
+                .map_err(|_| AuthError::internal("Password verification unavailable"))?
+                .map_err(|_| AuthError::InvalidCredentials);
         }
         match verify_password(None, password, hash).await {
             Ok(()) => Ok(true),

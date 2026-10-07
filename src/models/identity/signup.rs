@@ -16,6 +16,7 @@ use crate::models::{care::invitations, errors::OperationError};
 mod bootstrap;
 mod policy;
 mod provisioning;
+pub(crate) use provisioning::profile_errors;
 pub use provisioning::{AccountProfile, ProvisionedAccount, provision_account_in};
 mod resend;
 

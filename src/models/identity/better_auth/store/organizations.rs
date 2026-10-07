@@ -1,12 +1,17 @@
 use async_trait::async_trait;
-use better_auth_core::{AuthError, AuthResult, CreateOrganization, Organization, UpdateOrganization, store::OrganizationStore};
+use better_auth_core::{
+    AuthError, AuthResult, CreateOrganization, Organization, UpdateOrganization,
+    store::OrganizationStore,
+};
 
 use super::ClinicalStore;
 
 #[async_trait]
 impl OrganizationStore for ClinicalStore {
     async fn create_organization(&self, _input: CreateOrganization) -> AuthResult<Organization> {
-        Err(AuthError::forbidden("Households are created during account registration"))
+        Err(AuthError::forbidden(
+            "Households are created during account registration",
+        ))
     }
 
     async fn get_organization_by_id(&self, id: &str) -> AuthResult<Option<Organization>> {
@@ -21,13 +26,21 @@ impl OrganizationStore for ClinicalStore {
         self.canonical_organizations_by_ids(ids).await
     }
 
-    async fn update_organization(&self, id: &str, update: UpdateOrganization) -> AuthResult<Organization> {
+    async fn update_organization(
+        &self,
+        id: &str,
+        update: UpdateOrganization,
+    ) -> AuthResult<Organization> {
         if update.slug.is_some() || update.logo.is_some() || update.metadata.is_some() {
-            return Err(AuthError::validation("Only the household name can be changed here"));
+            return Err(AuthError::validation(
+                "Only the household name can be changed here",
+            ));
         }
         match update.name {
             Some(name) => self.change_canonical_organization(id, &name).await,
-            None => self.canonical_organization(id).await?
+            None => self
+                .canonical_organization(id)
+                .await?
                 .ok_or_else(|| AuthError::not_found("Household not found")),
         }
     }

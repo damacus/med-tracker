@@ -156,6 +156,24 @@
     "generated": "",
     "compression": ""
   },
+  "relation:public.identity_rate_limits": {
+    "acl": [
+      "med_tracker_app=arwd/med_tracker_owner",
+      "med_tracker_owner=arwdDxtm/med_tracker_owner"
+    ],
+    "rls": true,
+    "kind": "r",
+    "owner": "med_tracker_owner",
+    "options": null,
+    "force_rls": true,
+    "partition": false,
+    "tablespace": null,
+    "persistence": "p",
+    "access_method": "heap",
+    "partition_key": null,
+    "partition_bound": null,
+    "replica_identity": "d"
+  },
   "relation:public.identity_two_factors": {
     "acl": [
       "med_tracker_app=arwd/med_tracker_owner",
@@ -279,6 +297,17 @@
     "generated": "",
     "compression": ""
   },
+  "index:public.identity_rate_limits_pkey": {
+    "live": true,
+    "owner": "med_tracker_owner",
+    "ready": true,
+    "valid": true,
+    "options": null,
+    "clustered": false,
+    "definition": "CREATE UNIQUE INDEX identity_rate_limits_pkey ON public.identity_rate_limits USING btree (bucket)",
+    "tablespace": null,
+    "replica_identity": false
+  },
   "index:public.identity_two_factors_pkey": {
     "live": true,
     "owner": "med_tracker_owner",
@@ -384,6 +413,17 @@
     "generated": "",
     "compression": ""
   },
+  "index:public.identity_rate_limits_expiry": {
+    "live": true,
+    "owner": "med_tracker_owner",
+    "ready": true,
+    "valid": true,
+    "options": null,
+    "clustered": false,
+    "definition": "CREATE INDEX identity_rate_limits_expiry ON public.identity_rate_limits USING btree (expires_at)",
+    "tablespace": null,
+    "replica_identity": false
+  },
   "index:public.identity_sessions_token_key": {
     "live": true,
     "owner": "med_tracker_owner",
@@ -429,6 +469,19 @@
     "not_null": true,
     "position": 8,
     "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "column:public.identity_rate_limits.bucket": {
+    "acl": null,
+    "type": "text",
+    "default": null,
+    "options": null,
+    "storage": "x",
+    "identity": "",
+    "not_null": true,
+    "position": 1,
+    "collation": "pg_catalog.default",
     "generated": "",
     "compression": ""
   },
@@ -741,6 +794,19 @@
     "generated": "",
     "compression": ""
   },
+  "column:public.identity_rate_limits.attempts": {
+    "acl": null,
+    "type": "integer",
+    "default": null,
+    "options": null,
+    "storage": "p",
+    "identity": "",
+    "not_null": true,
+    "position": 2,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
   "column:public.identity_two_factors.verified": {
     "acl": null,
     "type": "boolean",
@@ -825,6 +891,19 @@
     "not_null": true,
     "position": 5,
     "collation": "pg_catalog.default",
+    "generated": "",
+    "compression": ""
+  },
+  "column:public.identity_rate_limits.expires_at": {
+    "acl": null,
+    "type": "timestamp with time zone",
+    "default": null,
+    "options": null,
+    "storage": "p",
+    "identity": "",
+    "not_null": true,
+    "position": 3,
+    "collation": null,
     "generated": "",
     "compression": ""
   },
@@ -1202,7 +1281,7 @@
     "storage": "p",
     "identity": "",
     "not_null": true,
-    "position": 12,
+    "position": 13,
     "collation": null,
     "generated": "",
     "compression": ""
@@ -1215,7 +1294,7 @@
     "storage": "p",
     "identity": "",
     "not_null": true,
-    "position": 13,
+    "position": 14,
     "collation": null,
     "generated": "",
     "compression": ""
@@ -1242,6 +1321,19 @@
     "identity": "",
     "not_null": false,
     "position": 8,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "column:public.identity_provider_accounts.disabled_at": {
+    "acl": null,
+    "type": "timestamp with time zone",
+    "default": null,
+    "options": null,
+    "storage": "p",
+    "identity": "",
+    "not_null": false,
+    "position": 12,
     "collation": null,
     "generated": "",
     "compression": ""
@@ -1537,6 +1629,15 @@
     "command": "*",
     "permissive": true
   },
+  "policy:public.identity_rate_limits.identity_rate_limit_bucket": {
+    "check": "(bucket = current_setting('med_tracker.identity_rate_bucket'::text, true))",
+    "roles": [
+      "med_tracker_app"
+    ],
+    "using": "((bucket = current_setting('med_tracker.identity_rate_bucket'::text, true)) OR (expires_at <= clock_timestamp()))",
+    "command": "*",
+    "permissive": true
+  },
   "constraint:public.identity_onboarding.identity_onboarding_pkey": {
     "local": true,
     "deferred": false,
@@ -1605,6 +1706,16 @@
     "collation": null,
     "generated": "",
     "compression": ""
+  },
+  "constraint:public.identity_rate_limits.identity_rate_limits_pkey": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "PRIMARY KEY (bucket)",
+    "no_inherit": true,
+    "inherit_count": 0
   },
   "constraint:public.identity_two_factors.identity_two_factors_pkey": {
     "local": true,
@@ -2058,6 +2169,16 @@
     "no_inherit": false,
     "inherit_count": 0
   },
+  "constraint:public.identity_rate_limits.identity_rate_limits_attempts_check": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "CHECK ((attempts > 0))",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
   "constraint:public.identity_sessions.identity_sessions_impersonated_by_fkey": {
     "local": true,
     "deferred": false,
@@ -2086,6 +2207,16 @@
     "deferrable": false,
     "definition": "UNIQUE (user_code)",
     "no_inherit": true,
+    "inherit_count": 0
+  },
+  "constraint:public.identity_rate_limits.identity_rate_limits_bucket_not_null": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "NOT NULL bucket",
+    "no_inherit": false,
     "inherit_count": 0
   },
   "constraint:public.identity_two_factors.identity_two_factors_account_id_fkey": {
@@ -2189,6 +2320,16 @@
     "no_inherit": false,
     "inherit_count": 0
   },
+  "constraint:public.identity_rate_limits.identity_rate_limits_attempts_not_null": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "NOT NULL attempts",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
   "constraint:public.identity_two_factors.identity_two_factors_verified_not_null": {
     "local": true,
     "deferred": false,
@@ -2216,6 +2357,16 @@
     "validated": true,
     "deferrable": false,
     "definition": "NOT NULL value",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
+  "constraint:public.identity_rate_limits.identity_rate_limits_expires_at_not_null": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "NOT NULL expires_at",
     "no_inherit": false,
     "inherit_count": 0
   },

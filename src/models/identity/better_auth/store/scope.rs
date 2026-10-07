@@ -1,4 +1,10 @@
-use std::{ops::Deref, sync::{Arc, atomic::{AtomicBool, Ordering}}};
+use std::{
+    ops::Deref,
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
+};
 
 use sea_orm::{DatabaseTransaction, DbErr};
 
@@ -23,16 +29,26 @@ pub(crate) struct Transaction {
 
 impl Transaction {
     pub(super) fn owned(transaction: DatabaseTransaction) -> Self {
-        Self { inner: Some(Inner::Owned(transaction)), finished: false }
+        Self {
+            inner: Some(Inner::Owned(transaction)),
+            finished: false,
+        }
     }
 
     pub(super) fn shared(scope: Arc<Scope>) -> Self {
-        Self { inner: Some(Inner::Shared(scope)), finished: false }
+        Self {
+            inner: Some(Inner::Shared(scope)),
+            finished: false,
+        }
     }
 
     pub(crate) async fn commit(mut self) -> Result<(), DbErr> {
         self.finished = true;
-        match self.inner.take().expect("transaction exists until completion") {
+        match self
+            .inner
+            .take()
+            .expect("transaction exists until completion")
+        {
             Inner::Owned(transaction) => transaction.commit().await,
             Inner::Shared(_) => Ok(()),
         }
@@ -40,7 +56,11 @@ impl Transaction {
 
     pub(crate) async fn rollback(mut self) -> Result<(), DbErr> {
         self.finished = true;
-        match self.inner.take().expect("transaction exists until completion") {
+        match self
+            .inner
+            .take()
+            .expect("transaction exists until completion")
+        {
             Inner::Owned(transaction) => transaction.rollback().await,
             Inner::Shared(scope) => {
                 scope.rollback_only.store(true, Ordering::Release);
@@ -54,7 +74,11 @@ impl Deref for Transaction {
     type Target = DatabaseTransaction;
 
     fn deref(&self) -> &Self::Target {
-        match self.inner.as_ref().expect("transaction exists until completion") {
+        match self
+            .inner
+            .as_ref()
+            .expect("transaction exists until completion")
+        {
             Inner::Owned(transaction) => transaction,
             Inner::Shared(scope) => &scope.transaction,
         }
@@ -63,7 +87,9 @@ impl Deref for Transaction {
 
 impl Drop for Transaction {
     fn drop(&mut self) {
-        if !self.finished && let Some(Inner::Shared(scope)) = &self.inner {
+        if !self.finished
+            && let Some(Inner::Shared(scope)) = &self.inner
+        {
             scope.rollback_only.store(true, Ordering::Release);
         }
     }

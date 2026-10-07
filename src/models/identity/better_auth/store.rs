@@ -1,22 +1,25 @@
 use ::better_auth::AuthError;
-use sea_orm::{ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, DbErr, Statement, Value};
+use sea_orm::{
+    ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, DbErr, Statement, Value,
+};
 
-mod verifications;
-mod sessions;
-mod passkeys;
-mod tenant;
-mod canonical;
-mod organizations;
-mod members;
-mod users;
-mod invitations;
-mod two_factor;
 mod accounts;
-mod devices;
 mod api_keys;
+mod canonical;
+mod closure;
+mod devices;
+mod invitations;
+mod members;
+mod organizations;
+mod passkeys;
 mod provisioning;
-mod transactions;
 mod scope;
+mod sessions;
+mod tenant;
+mod transactions;
+mod two_factor;
+mod users;
+mod verifications;
 
 use scope::Transaction;
 
@@ -48,19 +51,40 @@ impl ClinicalStore {
         Ok(transaction)
     }
 
-    pub(super) async fn audit(&self, transaction: &DatabaseTransaction, account_id: i64, token_type: &str, action: &str) -> Result<(), AuthError> {
+    pub(super) async fn audit(
+        &self,
+        transaction: &DatabaseTransaction,
+        account_id: i64,
+        token_type: &str,
+        action: &str,
+    ) -> Result<(), AuthError> {
         let request_id = super::request::request_id();
-        super::super::browser::record_auth_token(transaction, account_id, token_type, action, request_id.as_deref()).await.map_err(|_| AuthError::internal("Identity audit unavailable"))
+        super::super::browser::record_auth_token(
+            transaction,
+            account_id,
+            token_type,
+            action,
+            request_id.as_deref(),
+        )
+        .await
+        .map_err(|_| AuthError::internal("Identity audit unavailable"))
     }
 
-    pub(super) async fn atomic<T>(&self, work: impl std::future::Future<Output = Result<T, AuthError>>, accept: impl FnOnce(&T) -> bool) -> Result<T, AuthError> {
+    pub(super) async fn atomic<T>(
+        &self,
+        work: impl std::future::Future<Output = Result<T, AuthError>>,
+        accept: impl FnOnce(&T) -> bool,
+    ) -> Result<T, AuthError> {
         let scope = std::sync::Arc::new(scope::Scope {
             transaction: self.begin_transaction().await?,
             rollback_only: std::sync::atomic::AtomicBool::new(false),
         });
         let result = scope::TRANSACTION.scope(scope.clone(), work).await;
-        let scope = std::sync::Arc::try_unwrap(scope).map_err(|_| AuthError::internal("Identity transaction still in use"))?;
-        let rollback_only = scope.rollback_only.load(std::sync::atomic::Ordering::Acquire);
+        let scope = std::sync::Arc::try_unwrap(scope)
+            .map_err(|_| AuthError::internal("Identity transaction still in use"))?;
+        let rollback_only = scope
+            .rollback_only
+            .load(std::sync::atomic::Ordering::Acquire);
         let acceptable = result.as_ref().is_ok_and(accept);
         let commit = acceptable && !rollback_only;
         if commit {
@@ -68,7 +92,12 @@ impl ClinicalStore {
             result
         } else {
             scope.transaction.rollback().await.map_err(database_error)?;
-            if rollback_only && acceptable { result.and_then(|_| Err(AuthError::internal("Identity transaction was rolled back"))) } else { result }
+            if rollback_only && acceptable {
+                result
+                    .and_then(|_| Err(AuthError::internal("Identity transaction was rolled back")))
+            } else {
+                result
+            }
         }
     }
 }
@@ -81,8 +110,18 @@ pub(super) fn database_error(_: DbErr) -> AuthError {
     AuthError::internal("Identity persistence unavailable")
 }
 
-pub(super) async fn context(transaction: &DatabaseTransaction, key: &str, value: &str) -> Result<(), AuthError> {
-    transaction.execute_raw(statement("SELECT set_config($1, $2, true)", [key.into(), value.into()])).await.map_err(database_error)?;
+pub(super) async fn context(
+    transaction: &DatabaseTransaction,
+    key: &str,
+    value: &str,
+) -> Result<(), AuthError> {
+    transaction
+        .execute_raw(statement(
+            "SELECT set_config($1, $2, true)",
+            [key.into(), value.into()],
+        ))
+        .await
+        .map_err(database_error)?;
     Ok(())
 }
 
