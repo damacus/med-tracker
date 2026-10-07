@@ -15,7 +15,7 @@ loco-rs = { version = "=1.2.0", default-features = false, features = ["cli", "wi
 async-trait = "0.1"
 base64 = "=0.22.1"
 bcrypt = "=0.19.3"
-cedar-policy = { version = "=4.11.2", default-features = false }
+cedar-policy = { version = "=4.13.0", default-features = false }
 headers = "=0.4.2"
 hex = "=0.4.3"
 hmac = "=0.13.0"
