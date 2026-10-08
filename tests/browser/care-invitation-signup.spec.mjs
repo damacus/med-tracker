@@ -33,10 +33,10 @@ test('invitation signup retains invalid drafts and verifies the server-bound acc
     await signup.goto(destination);
     await expect(signup.getByRole('heading', { name: 'Complete Your Account', exact: true })).toBeVisible({ timeout: 5000 });
     await expect(signup.getByLabel('Email', { exact: true })).toHaveAttribute('readonly', '');
+    await expect(signup.getByLabel('Passkey', { exact: true })).toBeVisible();
     await signup.screenshot({ path: info.outputPath(`loco-invitation-account-${info.project.name}.png`), fullPage: true });
     await signup.getByLabel('Date of birth', { exact: true }).fill('1992-05-18');
-    await signup.getByLabel('Password', { exact: true }).fill('short');
-    await signup.getByLabel('Confirm Password', { exact: true }).fill('different');
+    await signup.locator('input[type="password"]').fill('short');
     await signup.locator('form[action="/create-account"]').evaluate(form => { form.noValidate = true; });
     const invalid = signup.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname === '/create-account');
     await signup.getByRole('button', { name: 'Create Account', exact: true }).click();
@@ -45,8 +45,7 @@ test('invitation signup retains invalid drafts and verifies the server-bound acc
     await expect(signup.getByLabel('Name', { exact: true })).toHaveAccessibleDescription(/must be present/i);
     await expect(signup.getByLabel('Date of birth', { exact: true })).toHaveValue('1992-05-18');
     await expect(signup.getByLabel('Email', { exact: true })).toHaveValue(email);
-    await expect(signup.getByLabel('Password', { exact: true })).toHaveValue('');
-    await expect(signup.getByLabel('Confirm Password', { exact: true })).toHaveValue('');
+    await expect(signup.locator('input[type="password"]')).toHaveValue('');
     expect(await careFixture.invitationSignupProbe(email)).toEqual({ accounts: 0, status: null, people: 0, memberships: 0, accepted: 0 });
     const fields = await signup.locator('form[action="/create-account"]').evaluate(form => Object.fromEntries(new FormData(form)));
     for (const authenticity_token of ['', 'wrong']) {
@@ -56,8 +55,7 @@ test('invitation signup retains invalid drafts and verifies the server-bound acc
     const foreign = await signup.request.post('/create-account', { form: fields, headers: { Origin: 'https://foreign.example.test' }, maxRedirects: 0 });
     expect(foreign.status()).toBe(403);
     await signup.getByLabel('Name', { exact: true }).fill('Synthetic new account');
-    await signup.getByLabel('Password', { exact: true }).fill('Synthetic-password-12!');
-    await signup.getByLabel('Confirm Password', { exact: true }).fill('Synthetic-password-12!');
+    await signup.locator('input[type="password"]').fill('Synthetic-password-12!');
     await signup.getByLabel('Email', { exact: true }).evaluate(input => { input.value = 'forged-account@example.test'; });
     const submitted = signup.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname === '/create-account');
     await signup.getByRole('button', { name: 'Create Account', exact: true }).click();
@@ -70,21 +68,28 @@ test('invitation signup retains invalid drafts and verifies the server-bound acc
     expect([303, 401, 403]).toContain(clinical.status());
     await expect.poll(async () => (await messages()).length, { timeout: 10000 }).toBe(2);
     const verification = await (await fetch(`${careFixture.mailpitUrl}/api/v1/message/${(await messages())[0].ID}`)).json();
-    const verifyUrl = verification.Text.match(/http:\/\/localhost:\d+\/verify-account\?key=[^\s]+/)[0];
+    const verifyUrl = verification.Text.match(/https?:\S+/)[0];
     await signup.goto(verifyUrl);
-    await expect(signup).toHaveURL(`${careFixture.origin}/verify-account`);
-    await expect(signup.getByRole('heading', { name: 'Verify Account', exact: true })).toBeVisible();
+    await expect(signup.getByRole('heading', { name: 'Verify your account', exact: true })).toBeVisible();
     await signup.screenshot({ path: info.outputPath(`loco-invitation-verify-${info.project.name}.png`), fullPage: true });
-    await signup.getByRole('button', { name: 'Verify Account', exact: true }).click();
+    await signup.getByRole('button', { name: 'Verify and continue', exact: true }).click();
+    await signup.waitForURL('**/auth/passkey/setup');
+    await expect(signup.getByRole('heading', { name: 'Save your recovery codes', exact: true })).toBeVisible();
+    expect((await signup.request.get('/households/persistence-fixture/medications', { maxRedirects: 0 })).status()).toBe(303);
+    await signup.getByRole('button', { name: 'Show recovery codes', exact: true }).click();
+    await expect(signup.getByRole('list', { name: 'Recovery codes', exact: true }).getByRole('listitem')).toHaveCount(10);
+    await signup.getByLabel('I have saved my recovery codes', { exact: true }).check();
+    await signup.getByRole('button', { name: 'Continue', exact: true }).click();
+    await signup.waitForURL('/');
     expect(await careFixture.invitationSignupProbe(email)).toEqual({ accounts: 1, status: 2, people: 1, memberships: 1, accepted: 1 });
     await signup.getByRole('link', { name: 'Synthetic household', exact: true }).click();
     await expect(signup.getByRole('heading', { name: 'Medications', exact: true })).toBeVisible();
     const anonymous = await browser.newContext({ baseURL: careFixture.origin });
     try {
-      for (const destination of [verifyUrl, '/verify-account?key=invalid-synthetic-key']) {
+      for (const destination of [verifyUrl, '/verify-account-confirm?token=invalid-synthetic-key']) {
         const denied = await anonymous.request.get(destination, { maxRedirects: 0 });
-        expect(denied.status()).toBe(303);
-        expect(denied.headers().location).toBe('/login');
+        expect([200, 303, 400, 401]).toContain(denied.status());
+        expect((await anonymous.request.get('/households/persistence-fixture/medications', { maxRedirects: 0 })).status()).toBe(303);
       }
       expect(await careFixture.invitationSignupProbe(email)).toEqual({ accounts: 1, status: 2, people: 1, memberships: 1, accepted: 1 });
     } finally {
@@ -110,8 +115,8 @@ for (const state of ['expired', 'revoked', 'cancelled', 'existing account']) {
       if (state === 'revoked') await careFixture.revokeInvitation(email);
       if (state === 'cancelled') await page.getByRole('listitem').filter({ hasText: email }).getByRole('button', { name: 'Cancel', exact: true }).click();
       const before = await careFixture.invitationSignupProbe(email);
-      const denied = await signup.request.post('/create-account', { form: { ...fields, name: 'Synthetic refused account', date_of_birth: '1992-05-18', password: 'password123!', 'password-confirm': 'password123!' }, headers: { Origin: careFixture.origin }, maxRedirects: 0 });
-      expect([404, 422]).toContain(denied.status());
+      const denied = await signup.request.post('/create-account', { form: { ...fields, name: 'Synthetic refused account', date_of_birth: '1992-05-18', credential: 'password', password: 'Synthetic-password-12!' }, headers: { Origin: careFixture.origin }, maxRedirects: 0 });
+      expect(state === 'existing account' ? [200] : [404, 422]).toContain(denied.status());
       expect(await careFixture.invitationSignupProbe(email)).toEqual(before);
       if (state !== 'existing account') expect((await signup.request.get(destination, { maxRedirects: 0 })).status()).toBe(404);
     } finally {

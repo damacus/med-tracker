@@ -13,6 +13,7 @@ impl MigratorTrait for StandardLedger {
             Box::new(migration::m20261006_000004_browser_sessions::Migration),
             Box::new(migration::m20261006_000005_access_token_scopes::Migration),
             Box::new(migration::m20261006_000006_registration_policy::Migration),
+            Box::new(migration::m20261006_000007_better_auth_identity::Migration),
         ]
     }
 }
@@ -176,6 +177,30 @@ async fn capture_persistence_catalog() {
         .unwrap();
         previous = current;
     }
+    db.execute_unprepared("SET search_path = public, pg_temp")
+        .await
+        .unwrap();
+    StandardLedger::up(&db, Some(1)).await.unwrap();
+    let current = catalog(&db).await;
+    let delta: serde_json::Map<String, serde_json::Value> = current
+        .as_object()
+        .unwrap()
+        .iter()
+        .filter(|(key, value)| previous.get(*key) != Some(*value))
+        .map(|(key, value)| (key.clone(), value.clone()))
+        .collect();
+    assert!(
+        previous
+            .as_object()
+            .unwrap()
+            .keys()
+            .all(|key| current.get(key).is_some())
+    );
+    std::fs::write(
+        output.join("medtracker-identity-catalog.json"),
+        serde_json::to_string_pretty(&delta).unwrap(),
+    )
+    .unwrap();
     db.close().await.unwrap();
 }
 
@@ -409,8 +434,9 @@ async fn populated_adoption_preserves_records_and_rails_metadata() {
     assert!(!records["rails_metadata"].as_array().unwrap().is_empty());
     migration::Migrator::up(&db, None).await.unwrap();
     let adopted = ledger_rows(&db).await;
-    assert_eq!(adopted.len(), 6);
+    assert_eq!(adopted.len(), 7);
     assert_eq!(adopted[5].0, "m20261006_000006_registration_policy");
+    assert_eq!(adopted[6].0, "m20261006_000007_better_auth_identity");
     let after: String = db
         .query_one_raw(migration::sea_orm::Statement::from_string(
             migration::sea_orm::DbBackend::Postgres,
@@ -690,8 +716,9 @@ async fn cooperating_adoptions_serialize() {
     first.unwrap();
     second.unwrap();
     let adopted = ledger_rows(&db).await;
-    assert_eq!(adopted.len(), 6);
+    assert_eq!(adopted.len(), 7);
     assert_eq!(adopted[5].0, "m20261006_000006_registration_policy");
+    assert_eq!(adopted[6].0, "m20261006_000007_better_auth_identity");
     other.close().await.unwrap();
     db.close().await.unwrap();
 }
@@ -812,13 +839,14 @@ async fn baseline_only_adoption_upgrades_to_the_supported_runtime_state() {
     assert_eq!(baseline.len(), 1);
     migration::Migrator::up(&db, None).await.unwrap();
     let runtime = ledger_rows(&db).await;
-    assert_eq!(runtime.len(), 6);
+    assert_eq!(runtime.len(), 7);
     assert_eq!(runtime[0], baseline[0]);
     assert_eq!(runtime[1].0, "m20261005_000002_provision_runtime");
     assert_eq!(runtime[2].0, "m20261006_000003_canonical_take_identity");
     assert_eq!(runtime[3].0, "m20261006_000004_browser_sessions");
     assert_eq!(runtime[4].0, "m20261006_000005_access_token_scopes");
     assert_eq!(runtime[5].0, "m20261006_000006_registration_policy");
+    assert_eq!(runtime[6].0, "m20261006_000007_better_auth_identity");
     let before = catalog(&db).await;
     migration::Migrator::up(&db, None).await.unwrap();
     assert_eq!(ledger_rows(&db).await, runtime);

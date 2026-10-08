@@ -2,6 +2,8 @@ import { test, expect } from './care-fixtures.mjs';
 
 test.use({ actionTimeout: 10000 });
 
+const signupPassword = 'river lantern orchard violet afternoon';
+
 async function createAndVerify(page, fixture, info) {
   const email = 'registration-browser@example.test';
   await page.goto('/login');
@@ -13,8 +15,7 @@ async function createAndVerify(page, fixture, info) {
   await page.getByLabel('Name', { exact: true }).fill('Synthetic registration');
   await page.getByLabel('Date of birth', { exact: true }).fill('1990-04-12');
   await page.getByLabel('Email', { exact: true }).fill(email);
-  await page.getByLabel('Password', { exact: true }).fill('password123!');
-  await page.getByLabel('Confirm Password', { exact: true }).fill('password123!');
+  await page.locator('#signup-password').fill(signupPassword);
   await page.getByRole('button', { name: 'Create Account', exact: true }).click();
   await expect(page.getByText('An email has been sent to you with a link to verify your account', { exact: true })).toBeVisible();
   const pending = { accounts: 1, status: 1, people: 1, users: 1, households: 1, owners: 1, self_grants: 1, household_name: 'Synthetic registration Household' };
@@ -33,11 +34,20 @@ async function createAndVerify(page, fixture, info) {
   };
   await expect.poll(async () => (await messages()).length, { timeout: 10000 }).toBe(1);
   const verification = await (await fetch(`${fixture.mailpitUrl}/api/v1/message/${(await messages())[0].ID}`)).json();
-  await page.goto(verification.Text.match(/http:\/\/localhost:\d+\/verify-account\?key=[^\s]+/)[0]);
-  await expect(page).toHaveURL(`${fixture.origin}/verify-account`);
-  await expect(page.getByRole('heading', { name: 'Verify Account', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Verify Account', exact: true }).click();
+  await page.goto(verification.Text.match(/https?:\/\/\S+\/verify-account-confirm\?\S+/)[0]);
+  await expect(page.getByRole('heading', { name: 'Verify your account', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Verify and continue', exact: true }).click();
+  await page.waitForURL('**/auth/passkey/setup');
   expect(await fixture.registrationProbe(email)).toEqual({ ...effects, status: 2 });
+  await expect(page.getByRole('heading', { name: 'Save your recovery codes', exact: true })).toBeVisible();
+  const unready = await page.request.get(`/households/${effects.household_slug}/medications`, { maxRedirects: 0 });
+  expect(unready.status()).toBe(303);
+  expect(unready.headers().location).toBe('/login');
+  await page.getByRole('button', { name: 'Show recovery codes', exact: true }).click();
+  await expect(page.getByRole('list', { name: 'Recovery codes', exact: true }).getByRole('listitem')).toHaveCount(10);
+  await page.getByLabel('I have saved my recovery codes', { exact: true }).check();
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await page.waitForURL('/');
   await page.getByRole('link', { name: 'Synthetic registration Household', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Medications', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Add Medication', exact: true })).toBeVisible();
@@ -52,7 +62,7 @@ async function denyRegistration(page, fixture) {
   await page.goto('/login');
   await expect(page.getByRole('link', { name: 'Create one', exact: true })).toHaveCount(0);
   const authenticity_token = await page.locator('input[name="authenticity_token"]').inputValue();
-  const submission = await page.request.post('/create-account', { form: { authenticity_token, email, name: 'Synthetic denied registration', date_of_birth: '1990-04-12', password: 'password123!', 'password-confirm': 'password123!' }, headers: { Origin: fixture.origin }, maxRedirects: 0 });
+  const submission = await page.request.post('/create-account', { form: { authenticity_token, credential: 'password', email, name: 'Synthetic denied registration', date_of_birth: '1990-04-12', password: signupPassword }, headers: { Origin: fixture.origin }, maxRedirects: 0 });
   expect(submission.status()).toBe(303);
   expect(submission.headers().location).toBe('/login');
   expect(await fixture.registrationProbe(email)).toEqual({ accounts: 0, status: null, people: 0, users: 0, households: 0, owners: 0, self_grants: 0, household_name: null, household_slug: null });
@@ -103,24 +113,21 @@ test('general registration retains invalid drafts and allows a corrected retry',
   await page.getByLabel('Name', { exact: true }).fill('Synthetic retry');
   await page.getByLabel('Date of birth', { exact: true }).fill('1990-04-12');
   await page.getByLabel('Email', { exact: true }).fill(email);
-  await page.getByLabel('Password', { exact: true }).fill('weak');
-  await page.getByLabel('Confirm Password', { exact: true }).fill('different');
+  await page.locator('#signup-password').fill('weak');
   await page.locator('form[action="/create-account"]').evaluate(form => { form.noValidate = true; });
   const invalid = page.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname === '/create-account');
   await page.getByRole('button', { name: 'Create Account', exact: true }).click();
   expect((await invalid).status()).toBe(422);
   await expect(page.getByRole('heading', { name: 'Create Account', exact: true })).toBeVisible();
+  await expect(page.getByRole('alert')).toContainText('Password must contain between 15 and 1024 characters.');
   await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Synthetic retry');
   await expect(page.getByLabel('Date of birth', { exact: true })).toHaveValue('1990-04-12');
   await expect(page.getByLabel('Email', { exact: true })).toHaveValue(email);
   await expect(page.getByLabel('Email', { exact: true })).toBeEditable();
   await expect(page.locator('input[name="invitation_token"]')).toHaveCount(0);
-  await expect(page.getByLabel('Password', { exact: true })).toHaveValue('');
-  await expect(page.getByLabel('Confirm Password', { exact: true })).toHaveValue('');
-  await expect(page.getByLabel('Password', { exact: true })).toHaveAttribute('aria-describedby', 'password-error');
+  await expect(page.locator('#signup-password')).toHaveValue('');
   expect(await careFixture.registrationProbe(email)).toEqual(baseline);
-  await page.getByLabel('Password', { exact: true }).fill('password123!');
-  await page.getByLabel('Confirm Password', { exact: true }).fill('password123!');
+  await page.locator('#signup-password').fill(signupPassword);
   await page.getByRole('button', { name: 'Create Account', exact: true }).click();
   await expect(page.getByText('An email has been sent to you with a link to verify your account', { exact: true })).toBeVisible();
   expect(await careFixture.registrationProbe(email)).toMatchObject({ accounts: 1, status: 1, people: 1, owners: 1 });

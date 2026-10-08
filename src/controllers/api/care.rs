@@ -256,7 +256,7 @@ async fn begin(
     household_id: i64,
     request_id: &str,
 ) -> std::result::Result<(ValidatedPrincipal, TenantTransaction), response::Failure> {
-    let principal = resource::authenticate(&ctx.db, headers)
+    let principal = resource::authenticate_care(ctx, headers)
         .await
         .map_err(response::authentication)?;
     let tenant = principal

@@ -170,6 +170,21 @@ fn detail_with_state(
         data["refill_quantity"] = json!(super::forms::field(draft, "quantity"));
         data["refill_etag"] = json!(super::forms::field(draft, "etag"));
         data["refill_date"] = json!(super::forms::field(draft, "restock_date"));
+        data["refill_conflict"] = json!(matches!(error, OperationError::Conflict { .. }));
+        let field_errors = match error {
+            OperationError::Validation { details } => details.get("errors"),
+            _ => None,
+        };
+        data["refill_quantity_error"] = json!(
+            field_errors
+                .and_then(|errors| errors.get("quantity"))
+                .is_some()
+        );
+        data["refill_date_error"] = json!(
+            field_errors
+                .and_then(|errors| errors.get("restock_date"))
+                .is_some()
+        );
         data["refill_error"] = json!(if matches!(error, OperationError::Conflict { .. }) {
             "Stock changed while this form was open. Review the latest stock before saving."
                 .to_string()
@@ -180,6 +195,9 @@ fn detail_with_state(
     if let Some(error) = management_error {
         data["delete_open"] = json!(true);
         data["delete_error"] = json!(super::forms::message(error));
+        if !detail.can_adjust {
+            data["error"] = json!(super::forms::message(error));
+        }
     }
     data["can_adjust"] = json!(detail.can_adjust);
     data["can_record_any"] = json!(detail.assignments.iter().any(|source| source.can_record));
@@ -284,6 +302,7 @@ fn detail_with_state(
             "person_name": take.person_name,
             "dose_label": dose_label,
             "taken_at": take.taken_at.map(|value| value.and_utc().with_timezone(&zone).format("%d %b %Y, %H:%M").to_string()),
+            "taken_at_iso": take.taken_at.map(|value| value.and_utc().to_rfc3339()),
         })
     }).collect::<Vec<_>>());
     let selected = super::forms::field(dose_draft, "source_id")
@@ -298,6 +317,11 @@ fn detail_with_state(
         data["dose_unmatched_error"] = json!(message);
         data["dose_unmatched_error_lang"] = json!(message_language);
     }
+    let first_recordable = detail
+        .assignments
+        .iter()
+        .find(|source| source.can_record)
+        .map(|source| (source.source_type, source.id));
     data["assignments"] = json!(detail.assignments.iter().map(|source| {
         let submitted = selected == Some(source.id) && selected_type == source.source_type;
         let source_draft = if submitted { dose_draft.clone() } else { super::forms::dose_for(source, detail.stock.medication.id, zone) };
@@ -307,6 +331,7 @@ fn detail_with_state(
         let dose_label = format!("{} {}", source.amount, unit_label(&source.unit, &source.amount));
         json!({ "id":source.id, "source_type":source.source_type, "person_name":source.person_name, "can_record":source.can_record,
             "dose_label":dose_label, "draft":source_draft, "time_error":time_error,
+            "autofocus": first_recordable == Some((source.source_type, source.id)),
             "source_error":source_error_label.as_ref().map(|(message, _)| message),
             "source_error_lang":source_error_label.as_ref().map(|(_, language)| language) })
     }).collect::<Vec<_>>());

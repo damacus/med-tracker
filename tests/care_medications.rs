@@ -1,6 +1,6 @@
 use med_tracker::models::{
     access::{self, Actor, HouseholdScope},
-    care::medications::{self, AdjustStock, Command, ScalarPrecondition},
+    care::medications::{self, AdjustStock, Command, Restock, ScalarPrecondition},
     entities::medication,
     errors::OperationError,
 };
@@ -94,6 +94,39 @@ fn command(quantity: &str) -> Command {
         new_quantity: quantity.into(),
         reason: Some("cycle count".into()),
     })
+}
+
+#[tokio::test]
+async fn restock_validation_exposes_the_invalid_field() {
+    let fixture = Fixture::new().await;
+    for (quantity, date, field) in [
+        ("0", "2026-10-08", "quantity"),
+        ("5", "not-a-date", "restock_date"),
+    ] {
+        let tenant = access::begin(&fixture.runtime, &scope()).await.unwrap();
+        let snapshot = medications::read_stock_snapshot(&tenant, "90001")
+            .await
+            .unwrap();
+        let error = medications::restock(
+            &tenant,
+            Restock {
+                medication_id: "90001".into(),
+                quantity: quantity.into(),
+                restock_date: date.into(),
+                original_etag: snapshot.etag,
+            },
+            None,
+        )
+        .await
+        .unwrap_err();
+        let OperationError::Validation { details } = error else {
+            panic!("expected validation for {field}");
+        };
+        assert!(details["errors"][field][0].is_string(), "{details}");
+        tenant.rollback().await.unwrap();
+    }
+    assert_eq!(fixture.effect().await, ("10.00".into(), 0, 0));
+    fixture.close().await;
 }
 
 async fn adjust(fixture: &Fixture, command: Command) -> Result<medication::Model, OperationError> {

@@ -163,6 +163,12 @@ fn validation(message: &str) -> OperationError {
     }
 }
 
+fn field_validation(field: &str, message: &str) -> OperationError {
+    OperationError::Validation {
+        details: json!({"error": message, "errors": {field: [message]}}),
+    }
+}
+
 fn conflict() -> OperationError {
     OperationError::Conflict {
         code: "conflict".into(),

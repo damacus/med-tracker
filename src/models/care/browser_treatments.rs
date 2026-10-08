@@ -107,7 +107,9 @@ pub async fn person_cards(
                 "reason": period.reason,
                 "note": period.note,
                 "started_at": period.started_at.map(|value| value.and_utc().with_timezone(&zone).format("%d %b %Y").to_string()),
-                "ended_at": period.ended_at.map(|value| value.and_utc().with_timezone(&zone).format("%d %b %Y").to_string())
+                "started_at_iso": period.started_at.map(|value| value.and_utc().to_rfc3339()),
+                "ended_at": period.ended_at.map(|value| value.and_utc().with_timezone(&zone).format("%d %b %Y").to_string()),
+                "ended_at_iso": period.ended_at.map(|value| value.and_utc().to_rfc3339())
             }));
         }
     }
@@ -216,11 +218,11 @@ fn limit_summary(card: &Value) -> Option<String> {
     let spacing = card["min_hours_between_doses"]
         .as_str()
         .filter(|value| !matches!(*value, "0" | "0.0"));
-    if maximum.is_none() && spacing.is_none() {
+    if maximum.is_none_or(|value| value <= 0) && spacing.is_none() {
         return None;
     }
     let mut parts = Vec::new();
-    if let Some(maximum) = maximum {
+    if let Some(maximum) = maximum.filter(|value| *value > 0) {
         let period = match card["dose_cycle"].as_str() {
             Some("weekly") => "week",
             Some("monthly") => "month",

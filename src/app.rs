@@ -46,7 +46,7 @@ impl Hooks for App {
             .add_route(crate::controllers::oauth_server::routes())
             .add_route(browser(crate::controllers::browser_routes()))
             .add_route(browser(crate::controllers::auth::routes()))
-            .add_route(browser(crate::controllers::signup::routes()))
+            .add_route(browser(crate::controllers::identity_onboarding::routes()))
             .add_route(browser(crate::controllers::oauth_server::browser_routes()))
             .add_route(browser(crate::controllers::medications::routes()))
             .add_route(browser(crate::controllers::medication_orders::routes()))
@@ -66,7 +66,32 @@ impl Hooks for App {
             .await
             .map_err(|_| Error::string("Browser session configuration is unavailable"))?;
         if let Some(layers) = layers {
+            let mut config = better_auth::AuthConfig {
+                secret: layers.identity_secret.clone(),
+                ..Default::default()
+            };
+            config.session.cookie_secure = layers.secure;
             ctx.shared_store.insert(layers);
+            config.base_url = format!(
+                "{}/api/auth",
+                ctx.config.server.full_url().trim_end_matches('/')
+            );
+            config.trusted_origins = vec![ctx.config.server.full_url()];
+            config.password.require_uppercase = false;
+            config.password.require_lowercase = false;
+            config.password.require_numbers = false;
+            config.password.require_special = false;
+            let store = std::sync::Arc::new(
+                crate::models::identity::better_auth::ClinicalStore::new(ctx.db.clone()),
+            );
+            let service = crate::models::identity::better_auth::build(config, store)
+                .await
+                .map_err(|_| Error::string("Identity service unavailable"))?;
+            ctx.shared_store.insert(service.clone());
+            return Ok(axum::Router::new().nest(
+                "/api/auth",
+                crate::models::identity::better_auth::router(service).with_state(()),
+            ));
         }
         Ok(axum::Router::new())
     }
@@ -76,6 +101,12 @@ impl Hooks for App {
             .register(loco_rs::mailer::MailerWorker::build(ctx))
             .await?;
         Ok(())
+    }
+
+    async fn after_routes(router: axum::Router, _ctx: &AppContext) -> Result<axum::Router> {
+        Ok(router.layer(axum::middleware::from_fn(
+            crate::models::identity::better_auth::http_boundary,
+        )))
     }
 
     fn register_tasks(_tasks: &mut Tasks) {}

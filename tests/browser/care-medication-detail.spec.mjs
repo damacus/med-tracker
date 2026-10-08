@@ -15,6 +15,7 @@ async function openMedication(page) {
 test('record dialog presents each treatment as a clear dose confirmation', async ({ page, careFixture }, info) => {
   await careFixture.scheduledMedicine();
   await openMedication(page);
+  expect(await page.locator('noscript').textContent()).toContain('Recording doses here requires JavaScript.');
   await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Record dose', exact: true });
   await expect(page.getByText('Check the person, medication, dose and time before recording.', { exact: true }).first()).toBeVisible();
@@ -34,6 +35,22 @@ test('record dialog presents each treatment as a clear dose confirmation', async
     expect(box.height).toBeGreaterThanOrEqual(44);
     expect(box.width).toBeLessThan(page.viewportSize().width * 0.8);
   }
+});
+
+test('first recordable treatment receives focus when an earlier source is view only', async ({ page, careFixture }) => {
+  await careFixture.seedAdministration();
+  await careFixture.personViewOnly();
+  await careFixture.mixedRecordability();
+  await page.goto('/login');
+  await page.getByLabel('Email address', { exact: true }).fill('administration-member@example.test');
+  await page.getByLabel('Password', { exact: true }).fill('password');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
+  await page.getByRole('link', { name: 'Synthetic tablets', exact: true }).click();
+  await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Record dose', exact: true });
+  await expect(dialog.getByText(/Synthetic adult.*view only/i)).toBeVisible();
+  await expect(dialog.getByRole('form', { name: /Synthetic administration member.*Synthetic tablets.*1 tablet/ }).getByLabel('Taken at', { exact: true })).toBeFocused();
 });
 
 test('invalid dose time marks only its field and restores focus after rerender', async ({ page }) => {
@@ -248,6 +265,28 @@ test('medication details show saved dose options', async ({ page }) => {
   await expect(page.getByText('Default for adults', { exact: true })).toBeVisible();
   await expect(page.getByText('Maximum 3 doses a week', { exact: true })).toBeVisible();
   await expect(page.getByText('At least 2 hours between doses', { exact: true })).toBeVisible();
+  const originalStock = await page.getByTestId('current-supply').textContent();
+  await page.getByRole('button', { name: 'Refill inventory', exact: true }).click();
+  const refill = page.getByRole('dialog', { name: 'Refill inventory', exact: true });
+  await refill.getByLabel('Quantity to add', { exact: true }).fill('5');
+  const rejected = page.waitForResponse(value => value.request().method() === 'POST' && value.url().endsWith('/refill'));
+  await refill.getByRole('button', { name: 'Add stock', exact: true }).click();
+  expect((await rejected).status()).toBe(422);
+  await expect(page.getByRole('dialog', { name: 'Refill inventory', exact: true }).getByRole('alert')).toContainText('Update dose option stock');
+  await expect(page.getByTestId('current-supply')).toHaveText(originalStock);
+});
+
+test('blank stock adjustment version requests a fresh visible form', async ({ page, careFixture }) => {
+  await openMedication(page);
+  await page.getByRole('button', { name: 'Adjust stock', exact: true }).click();
+  const form = page.getByRole('dialog', { name: 'Adjust stock', exact: true }).locator('form');
+  const fields = await form.evaluate(element => Object.fromEntries(new FormData(element)));
+  const path = await form.getAttribute('action');
+  const missing = await page.request.post(path, { form: { ...fields, etag: '', new_quantity: '12' }, headers: { Origin: careFixture.origin }, maxRedirects: 0 });
+  expect(missing.status()).toBe(428);
+  const foreign = await page.request.post('/households/foreign-fixture/medications/80002/stock/adjust', { form: { ...fields, etag: '', new_quantity: '12' }, headers: { Origin: careFixture.origin }, maxRedirects: 0 });
+  expect([403, 404]).toContain(foreign.status());
+  expect((await careFixture.probe()).supply).toBe('10.00');
 });
 
 test('schedule-only medication can record a dose from its planned source', async ({ page, careFixture }) => {
@@ -290,6 +329,7 @@ test('medication details show the latest recorded dose without a second write', 
   await expect(page.getByTestId('current-supply')).toHaveText('8 tablets');
   await expect(page.getByRole('heading', { name: 'Dose history', exact: true })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Dose history', exact: true })).toContainText('Synthetic adult');
+  await expect(page.getByRole('region', { name: 'Dose history', exact: true }).locator('time')).toHaveAttribute('datetime', /^\d{4}-\d{2}-\d{2}T/);
   expect((await careFixture.probe()).takes).toBe(1);
 });
 
@@ -298,9 +338,11 @@ test('medication detail order and stock actions show their distinct effects', as
   await page.getByRole('link', { name: 'Order medication', exact: true }).click();
   await page.getByLabel('Supplier', { exact: true }).fill('Synthetic pharmacy');
   await page.getByLabel('Order quantity', { exact: true }).fill('20');
+  await page.getByLabel('Expected arrival', { exact: true }).fill('2026-10-14');
   await page.getByRole('button', { name: 'Mark as ordered', exact: true }).click();
   await page.getByRole('link', { name: 'Back to Medication', exact: true }).click();
   await expect(page.getByText(/Ordered.*20 tablets.*Synthetic pharmacy/)).toBeVisible();
+  await expect(page.locator('time[datetime="2026-10-14"]')).toContainText('14 Oct 2026');
   await expect(page.getByTestId('current-supply')).toHaveText('10 tablets');
   await page.locator('[data-dialog-open="adjust-stock-dialog"]').click();
   const adjustment = page.getByRole('dialog', { name: 'Adjust stock', exact: true });
@@ -327,6 +369,9 @@ test('medication actions open focused dialogs and restore keyboard focus on clos
   const refillDialog = page.getByRole('dialog', { name: 'Refill inventory', exact: true });
   await expect(refillDialog.getByLabel('Quantity to add', { exact: true })).toBeVisible();
   await expect(refillDialog.getByLabel('Restock date', { exact: true })).toBeVisible();
+  for (const button of await refillDialog.getByRole('button').all()) {
+    expect((await button.boundingBox()).height).toBeGreaterThanOrEqual(44);
+  }
   await page.screenshot({ path: info.outputPath(`care-medication-refill-${info.project.name}.png`), animations: 'disabled' });
   await refillDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(refillButton).toBeFocused();
@@ -334,8 +379,18 @@ test('medication actions open focused dialogs and restore keyboard focus on clos
   await adjustButton.click();
   const adjustDialog = page.getByRole('dialog', { name: 'Adjust stock', exact: true });
   await expect(adjustDialog.getByLabel('New stock quantity', { exact: true })).toBeVisible();
+  for (const button of await adjustDialog.getByRole('button').all()) {
+    expect((await button.boundingBox()).height).toBeGreaterThanOrEqual(44);
+  }
   await page.keyboard.press('Escape');
   await expect(adjustButton).toBeFocused();
+  await page.getByRole('button', { name: 'Delete Medication', exact: true }).click();
+  const deleteDialog = page.getByRole('dialog', { name: 'Delete Medication', exact: true });
+  await page.screenshot({ path: info.outputPath(`care-medication-delete-${info.project.name}.png`), animations: 'disabled' });
+  for (const button of await deleteDialog.getByRole('button').all()) {
+    expect((await button.boundingBox()).height).toBeGreaterThanOrEqual(44);
+  }
+  await page.keyboard.press('Escape');
 });
 
 test('refilling adds delivered stock once and rejects stale duplicate submission', async ({ page, careFixture }) => {
@@ -368,10 +423,41 @@ test('refill rejects invalid quantity, date and cross-household requests atomica
   }
   const foreign = await page.request.post('/households/foreign-fixture/medications/80002/refill', { form: { ...fields, quantity: '5' }, headers: { Origin: careFixture.origin }, maxRedirects: 0 });
   expect([403, 404]).toContain(foreign.status());
+  const foreignMalformed = await page.request.post('/households/foreign-fixture/medications/80002/refill', { form: { ...fields, quantity: 'invalid' }, headers: { Origin: careFixture.origin }, maxRedirects: 0 });
+  expect([403, 404]).toContain(foreignMalformed.status());
+  const missingVersion = await page.request.post(path, { form: { ...fields, quantity: '5', etag: '' }, headers: { Origin: careFixture.origin }, maxRedirects: 0 });
+  expect(missingVersion.status()).toBe(428);
   expect(await careFixture.restockProbe()).toMatchObject({ supply: '10.00', restock_audits: 0 });
 });
 
-test('stale refill keeps the entered quantity and points to current stock', async ({ page }) => {
+test('invalid refill identifies its field and focuses the visible error', async ({ page }, info) => {
+  await openMedication(page);
+  await page.getByRole('button', { name: 'Refill inventory', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Refill inventory', exact: true });
+  const quantity = dialog.getByLabel('Quantity to add', { exact: true });
+  await quantity.evaluate(input => { input.min = ''; });
+  await quantity.fill('0');
+  const response = page.waitForResponse(value => value.request().method() === 'POST' && value.url().endsWith('/refill'));
+  await dialog.getByRole('button', { name: 'Add stock', exact: true }).click();
+  expect((await response).status()).toBe(422);
+  const reopened = page.getByRole('dialog', { name: 'Refill inventory', exact: true });
+  await expect(reopened).toBeVisible();
+  await page.screenshot({ path: info.outputPath(`care-medication-refill-error-${info.project.name}.png`), animations: 'disabled' });
+  await expect(reopened.getByRole('alert')).toBeFocused();
+  await expect(reopened.getByLabel('Quantity to add', { exact: true })).toHaveAttribute('aria-invalid', 'true');
+  await expect(reopened.getByLabel('Restock date', { exact: true })).not.toHaveAttribute('aria-invalid', 'true');
+  await reopened.getByLabel('Quantity to add', { exact: true }).fill('5');
+  await reopened.getByLabel('Restock date', { exact: true }).evaluate(input => { input.value = ''; input.required = false; });
+  const dateResponse = page.waitForResponse(value => value.request().method() === 'POST' && value.url().endsWith('/refill'));
+  await reopened.getByRole('button', { name: 'Add stock', exact: true }).click();
+  expect((await dateResponse).status()).toBe(422);
+  const dateDialog = page.getByRole('dialog', { name: 'Refill inventory', exact: true });
+  await expect(dateDialog.getByRole('alert')).toBeFocused();
+  await expect(dateDialog.getByLabel('Restock date', { exact: true })).toHaveAttribute('aria-invalid', 'true');
+  await expect(dateDialog.getByLabel('Quantity to add', { exact: true })).not.toHaveAttribute('aria-invalid', 'true');
+});
+
+test('stale refill keeps the entered quantity and points to current stock', async ({ page }, info) => {
   await openMedication(page);
   await page.getByRole('button', { name: 'Refill inventory', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Refill inventory', exact: true });
@@ -387,6 +473,33 @@ test('stale refill keeps the entered quantity and points to current stock', asyn
   await expect(page.getByRole('dialog', { name: 'Refill inventory', exact: true })).toBeVisible();
   await expect(page.getByLabel('Quantity to add', { exact: true })).toHaveValue('5');
   await expect(page.getByRole('alert')).toContainText('Stock changed');
+  const reopened = page.getByRole('dialog', { name: 'Refill inventory', exact: true });
+  await page.screenshot({ path: info.outputPath(`care-medication-refill-conflict-${info.project.name}.png`), animations: 'disabled' });
+  await expect(reopened).toContainText('11 tablets');
+  const staleEtag = await reopened.locator('[name="etag"]').inputValue();
+  await reopened.getByRole('button', { name: 'Use latest stock', exact: true }).click();
+  await expect(reopened.locator('[name="etag"]')).not.toHaveValue(staleEtag);
+  await expect(reopened.getByLabel('Quantity to add', { exact: true })).toHaveValue('5');
+  await reopened.getByRole('button', { name: 'Add stock', exact: true }).click();
+  await expect(page.getByTestId('current-supply')).toHaveText('16 tablets');
+});
+
+test('a recorded dose changes stock and conflicts with an already open refill', async ({ page, careFixture }) => {
+  await openMedication(page);
+  await page.getByRole('button', { name: 'Refill inventory', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Refill inventory', exact: true });
+  await dialog.getByLabel('Quantity to add', { exact: true }).fill('5');
+  const concurrent = await page.context().newPage();
+  await concurrent.goto(page.url());
+  await concurrent.getByRole('button', { name: 'Record a dose', exact: true }).click();
+  await concurrent.getByRole('form', { name: /Synthetic adult.*Synthetic tablets.*2 tablets.*Ongoing medication/ }).getByRole('button', { name: 'Record dose', exact: true }).click();
+  await expect(concurrent.getByTestId('current-supply')).toHaveText('8 tablets');
+  await concurrent.close();
+  const response = page.waitForResponse(value => value.request().method() === 'POST' && value.url().endsWith('/refill'));
+  await dialog.getByRole('button', { name: 'Add stock', exact: true }).click();
+  expect((await response).status()).toBe(409);
+  await expect(page.getByRole('dialog', { name: 'Refill inventory', exact: true }).getByLabel('Quantity to add', { exact: true })).toHaveValue('5');
+  expect((await careFixture.probe()).supply).toBe('8.00');
 });
 
 test('refill audit failure rolls back delivered stock and its order-state change', async ({ page, careFixture }) => {
@@ -412,6 +525,12 @@ test('visible view-only carer may refill but loses that access when the grant en
   await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
   await page.getByRole('link', { name: 'Synthetic tablets', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Adjust stock', exact: true })).toHaveCount(0);
+  const forbiddenDestroy = await page.request.post('/households/persistence-fixture/medications/80001/destroy', {
+    form: { authenticity_token: await page.locator('#refill-inventory-dialog [name="authenticity_token"]').inputValue(), etag: await page.locator('#refill-inventory-dialog [name="etag"]').inputValue() },
+    headers: { Origin: careFixture.origin }, maxRedirects: 0
+  });
+  expect(forbiddenDestroy.status()).toBe(403);
+  expect(await forbiddenDestroy.text()).toContain('id="dose-error"');
   await page.getByRole('button', { name: 'Refill inventory', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Refill inventory', exact: true });
   await dialog.getByLabel('Quantity to add', { exact: true }).fill('2');
@@ -423,4 +542,21 @@ test('visible view-only carer may refill but loses that access when the grant en
   const denied = await page.request.post(path, { form: fields, headers: { Origin: careFixture.origin }, maxRedirects: 0 });
   expect([403, 404]).toContain(denied.status());
   expect((await careFixture.restockProbe()).supply).toBe('12.00');
+});
+
+test('forged dose source and stock remain rejected without a take', async ({ page, careFixture }) => {
+  await openMedication(page);
+  await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
+  const form = page.getByRole('form', { name: /Synthetic adult.*Synthetic tablets.*2 tablets.*Ongoing medication/ });
+  const fields = await form.evaluate(element => Object.fromEntries(new FormData(element)));
+  const path = await form.getAttribute('action');
+  for (const tampered of [
+    { source_type: 'schedule', source_id: fields.source_id },
+    { taken_from_medication_id: '80002' }
+  ]) {
+    const response = await page.request.post(path, { form: { ...fields, ...tampered }, headers: { Origin: careFixture.origin }, maxRedirects: 0 });
+    expect([403, 404, 422], JSON.stringify(tampered)).toContain(response.status());
+  }
+  expect((await careFixture.probe()).takes).toBe(0);
+  expect((await careFixture.probe()).supply).toBe('10.00');
 });

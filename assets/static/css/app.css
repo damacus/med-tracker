@@ -7,7 +7,7 @@
 body { margin: 0; font-family: var(--font-family); background: var(--background); color: var(--foreground); }
 .shell-header { border-bottom: 1px solid var(--border-color); background: var(--surface-container-lowest); }
 .shell-width { width: min(100% - 2rem, 72rem); margin-inline: auto; }
-.shell-header-inner { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-block: 1rem; }
+.shell-header-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; padding-block: 1rem; }
 .shell-main { padding-block: 3rem; }
 .shell-card { background: var(--card); border: 1px solid var(--border-color); box-shadow: var(--elevation-1); }
 .shell-muted { color: var(--on-surface-variant); }

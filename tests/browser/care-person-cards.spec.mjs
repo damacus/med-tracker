@@ -56,6 +56,7 @@ test('person card hides a stored zero-hour minimum that imposes no wait', async 
   await openPerson(page);
   const ongoing = page.getByRole('article', { name: 'Synthetic tablets ongoing medication', exact: true });
   await expect(ongoing).not.toContainText('At least 0 hours');
+  await expect(ongoing).not.toContainText('Maximum 0 doses');
 });
 
 test('person keeps a paused source visible and shows its recorded pause history', async ({ page, careFixture }, info) => {
@@ -79,6 +80,7 @@ test('person keeps a paused source visible and shows its recorded pause history'
   await expect(personCard.getByText('Pause history', { exact: true })).toBeVisible();
   await personCard.getByText('Pause history', { exact: true }).click();
   await expect(personCard).toContainText('Synthetic pause instruction');
+  await expect(personCard.locator('time[datetime]').first()).toBeVisible();
   await page.screenshot({ path: info.outputPath(`care-person-pause-${info.project.name}.png`), fullPage: true });
 });
 

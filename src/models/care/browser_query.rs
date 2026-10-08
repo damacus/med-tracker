@@ -1,13 +1,15 @@
 use crate::models::{
     access::{self, PersonAccess, TenantTransaction},
+    authorization,
     care::medications::{self, StockSnapshot},
     entities::{
-        dosage, location, medication, medication_take, person, person_medication, schedule,
+        dosage, grant, location, medication, medication_take, person, person_medication, schedule,
     },
     errors::OperationError,
 };
 use sea_orm::{
-    ColumnTrait, Condition, EntityTrait, QueryFilter, QueryOrder, QuerySelect, QueryTrait,
+    ColumnTrait, Condition, ConnectionTrait, DbBackend, EntityTrait, QueryFilter, QueryOrder,
+    QuerySelect, QueryTrait, Statement,
 };
 use serde::Serialize;
 use std::collections::HashMap;
@@ -277,7 +279,7 @@ pub async fn detail(
         .order_by_asc(schedule::Column::Id)
         .all(tenant.transaction())
         .await?;
-    let people: HashMap<i64, String> = person::Entity::find()
+    let people: HashMap<i64, person::Model> = person::Entity::find()
         .filter(person::Column::HouseholdId.eq(household_id))
         .filter(
             person::Column::Id.is_in(
@@ -290,25 +292,63 @@ pub async fn detail(
         .all(tenant.transaction())
         .await?
         .into_iter()
-        .map(|person| (person.id, person.name))
+        .map(|person| (person.id, person))
         .collect();
-    let mut permissions = HashMap::new();
+    access::recheck(tenant).await?;
+    let permission_grants: HashMap<i64, grant::Model> = grant::Entity::find()
+        .filter(grant::Column::HouseholdId.eq(household_id))
+        .filter(grant::Column::HouseholdMembershipId.eq(tenant.membership().id))
+        .filter(grant::Column::PersonId.is_in(people.keys().copied()))
+        .filter(grant::Column::RevokedAt.is_null())
+        .all(tenant.transaction())
+        .await?
+        .into_iter()
+        .map(|record| (record.person_id, record))
+        .collect();
+    let clock = tenant
+        .transaction()
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT timezone('UTC', clock_timestamp()) AS now",
+        ))
+        .await?
+        .ok_or(OperationError::Unavailable)?;
+    let now: chrono::NaiveDateTime = clock.try_get("", "now")?;
+    let permissions: HashMap<i64, (bool, bool)> = people
+        .iter()
+        .map(|(person_id, subject)| {
+            let view = permission_grants.get(person_id).is_some_and(|record| {
+                authorization::person_access(
+                    tenant.membership(),
+                    subject,
+                    record,
+                    PersonAccess::View,
+                    now,
+                )
+            });
+            let record = view
+                && permission_grants.get(person_id).is_some_and(|record| {
+                    authorization::person_access(
+                        tenant.membership(),
+                        subject,
+                        record,
+                        PersonAccess::Record,
+                        now,
+                    )
+                });
+            (*person_id, (view, record))
+        })
+        .collect();
     let mut assignments = Vec::new();
     for record in records {
-        let permission = match permissions.get(&record.person_id) {
-            Some(permission) => *permission,
-            None => {
-                let visible = permitted(tenant, record.person_id, PersonAccess::View).await?;
-                let recordable =
-                    visible && permitted(tenant, record.person_id, PersonAccess::Record).await?;
-                permissions.insert(record.person_id, (visible, recordable));
-                (visible, recordable)
-            }
-        };
+        let permission = permissions
+            .get(&record.person_id)
+            .copied()
+            .unwrap_or_default();
         if !permission.0 {
             continue;
         }
-        let Some(name) = people.get(&record.person_id) else {
+        let Some(subject) = people.get(&record.person_id) else {
             continue;
         };
         let (Some(amount), Some(unit)) = (record.dose_amount, record.dose_unit) else {
@@ -317,27 +357,21 @@ pub async fn detail(
         assignments.push(Assignment {
             id: record.id,
             source_type: "person_medication",
-            person_name: name.clone(),
+            person_name: subject.name.clone(),
             amount: amount.normalize().to_string(),
             unit,
             can_record: permission.1,
         });
     }
     for record in schedules {
-        let permission = match permissions.get(&record.person_id) {
-            Some(permission) => *permission,
-            None => {
-                let visible = permitted(tenant, record.person_id, PersonAccess::View).await?;
-                let recordable =
-                    visible && permitted(tenant, record.person_id, PersonAccess::Record).await?;
-                permissions.insert(record.person_id, (visible, recordable));
-                (visible, recordable)
-            }
-        };
+        let permission = permissions
+            .get(&record.person_id)
+            .copied()
+            .unwrap_or_default();
         if !permission.0 {
             continue;
         }
-        let (Some(name), Some(amount), Some(unit)) = (
+        let (Some(subject), Some(amount), Some(unit)) = (
             people.get(&record.person_id),
             record.dose_amount,
             record.dose_unit,
@@ -347,7 +381,7 @@ pub async fn detail(
         assignments.push(Assignment {
             id: record.id,
             source_type: "schedule",
-            person_name: name.clone(),
+            person_name: subject.name.clone(),
             amount: amount.normalize().to_string(),
             unit,
             can_record: permission.1,
@@ -365,16 +399,4 @@ pub async fn detail(
 
 pub fn can_adjust(tenant: &TenantTransaction) -> bool {
     access::can_manage_household(tenant)
-}
-
-async fn permitted(
-    tenant: &TenantTransaction,
-    person_id: i64,
-    level: PersonAccess,
-) -> Result<bool, OperationError> {
-    match access::require_person_access(tenant, person_id, level).await {
-        Ok(()) => Ok(true),
-        Err(OperationError::Forbidden | OperationError::NotFound) => Ok(false),
-        Err(error) => Err(error),
-    }
 }

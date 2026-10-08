@@ -1,6 +1,11 @@
 document.addEventListener('click', event => {
   const opener = event.target.closest('[data-dialog-open]');
   const closer = event.target.closest('[data-dialog-close]');
+  const latest = event.target.closest('[data-refill-use-latest]');
+  if (latest) {
+    latest.closest('dialog')?.querySelector('input[name="etag"]')?.setAttribute('value', latest.dataset.refillUseLatest);
+    latest.disabled = true;
+  }
   if (opener) {
     const dialog = document.getElementById(opener.dataset.dialogOpen);
     if (!(dialog instanceof HTMLDialogElement)) return;

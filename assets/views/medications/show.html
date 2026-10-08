@@ -24,13 +24,14 @@
     <p class="text-sm">{{ reorder_label }}</p>
     {% if days_until_low_stock %}<p class="text-sm">Forecast: reorder level in {{ days_until_low_stock }} days</p>{% endif %}
     {% if days_until_out_of_stock %}<p class="text-sm">Forecast: supply exhausted in {{ days_until_out_of_stock }} days</p>{% endif %}
-    {% if reorder_status == "ordered" %}<p class="text-sm font-semibold">Ordered{% if order_quantity %} · {{ order_quantity }} {{ unit }}{% endif %}{% if order_supplier %} from {{ order_supplier }}{% endif %}{% if expected_arrival_on %} · Expected {{ expected_arrival_on }}{% endif %}</p>{% elif reorder_status == "received" %}<p class="text-sm">Last order received</p>{% endif %}
+    {% if reorder_status == "ordered" %}<p class="text-sm font-semibold">Ordered{% if order_quantity %} · {{ order_quantity }} {{ unit }}{% endif %}{% if order_supplier %} from {{ order_supplier }}{% endif %}{% if expected_arrival_on %} · Expected <time datetime="{{ expected_arrival_on_iso }}">{{ expected_arrival_on }}</time>{% endif %}</p>{% elif reorder_status == "received" %}<p class="text-sm">Last order received</p>{% endif %}
     <div class="flex flex-wrap items-center gap-2"><button type="button" class="btn btn-neutral w-fit" data-dialog-open="refill-inventory-dialog">Refill inventory</button><a class="btn btn-ghost w-fit" href="/households/{{ slug }}/medications/{{ medication_id }}/order">Order medication</a></div>
   </div></section>
   <section class="card bg-base-100 border border-base-300 min-w-0 lg:col-start-1 {% if description and warnings %}lg:row-start-3{% elif description or warnings %}lg:row-start-2{% else %}lg:row-start-1{% endif %}"><div class="card-body">
     <h2 class="card-title">Record dose</h2>
     <p>Check the person, medication, dose and time before recording.</p>
     {% if can_record_any %}<button type="button" class="btn btn-neutral w-fit" data-dialog-open="record-dose-dialog">Record a dose</button>{% else %}<p>No available medication source.</p>{% endif %}
+    <noscript><p class="text-sm text-base-content/70">Recording doses here requires JavaScript.</p></noscript>
   </div></section>
   {% if dose_options | length > 0 %}<section class="card bg-base-100 border border-base-300 min-w-0 lg:col-start-1 {% if description and warnings %}lg:row-start-4{% elif description or warnings %}lg:row-start-3{% else %}lg:row-start-2{% endif %}" aria-labelledby="dose-options-heading"><div class="card-body">
     <h2 class="card-title" id="dose-options-heading">Dose options</h2>
@@ -52,7 +53,7 @@
   {% if dose_history | length > 0 %}<section class="card bg-base-100 border border-base-300 min-w-0 lg:col-start-1 {% if description and warnings %}lg:row-start-5{% elif description or warnings %}lg:row-start-4{% else %}lg:row-start-3{% endif %}" role="region" aria-labelledby="dose-history-heading"><div class="card-body">
     <h2 class="card-title" id="dose-history-heading">Dose history</h2>
     <ol class="space-y-2">{% for take in dose_history %}
-      <li class="flex flex-wrap gap-x-2"><strong>{{ take.person_name }}</strong>{% if take.dose_label %}<span>{{ take.dose_label }}</span>{% endif %}{% if take.taken_at %}<time>{{ take.taken_at }}</time>{% endif %}</li>
+      <li class="flex flex-wrap gap-x-2"><strong>{{ take.person_name }}</strong>{% if take.dose_label %}<span>{{ take.dose_label }}</span>{% endif %}{% if take.taken_at %}<time datetime="{{ take.taken_at_iso }}">{{ take.taken_at }}</time>{% endif %}</li>
     {% endfor %}</ol>
   </div></section>{% else %}<section class="border-b border-base-300 px-2 py-3 min-w-0 lg:col-start-1 {% if description and warnings %}lg:row-start-5{% elif description or warnings %}lg:row-start-4{% else %}lg:row-start-3{% endif %}" role="region" aria-label="Dose history">
     <details><summary class="cursor-pointer font-semibold text-base-content/70">Dose history</summary><p class="mt-2">No doses recorded yet.</p></details>
@@ -96,7 +97,7 @@
         {% if source.source_error %}<p role="alert" class="alert" lang="{{ source.source_error_lang }}" tabindex="-1" data-dialog-error-focus>{{ source.source_error }}</p>{% endif %}
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div class="grid gap-2 min-w-0"><label for="taken-at-{{ source.source_type }}-{{ source.id }}" class="font-semibold">{{ dose_i18n.taken_at }}</label>
-            <input id="taken-at-{{ source.source_type }}-{{ source.id }}" name="taken_at" type="datetime-local" class="input w-full min-w-0" value="{{ source.draft.taken_at }}" {% if source.time_error %}aria-invalid="true" aria-describedby="taken-at-error-{{ source.source_type }}-{{ source.id }}" data-dialog-error-focus{% endif %} {% if loop.first %}autofocus{% endif %} required>
+            <input id="taken-at-{{ source.source_type }}-{{ source.id }}" name="taken_at" type="datetime-local" class="input w-full min-w-0" value="{{ source.draft.taken_at }}" {% if source.time_error %}aria-invalid="true" aria-describedby="taken-at-error-{{ source.source_type }}-{{ source.id }}" data-dialog-error-focus{% endif %} {% if source.autofocus %}autofocus{% endif %} required>
             {% if source.time_error %}<p id="taken-at-error-{{ source.source_type }}-{{ source.id }}" role="alert" class="text-error text-sm">{{ dose_i18n.invalid_time }}</p>{% endif %}
           </div>
           <div class="grid gap-2 min-w-0"><p class="font-semibold">{{ dose_i18n.stock_remaining }}</p>
@@ -118,13 +119,14 @@
   <div class="modal-box max-w-xl">
     <h2 id="refill-inventory-title" class="text-xl font-semibold">Refill inventory</h2>
     <p class="mt-2">Add delivered stock to the current supply.</p>
-    {% if refill_error %}<p id="refill-dialog-error" role="alert" class="alert mt-4">{{ refill_error }}</p>{% endif %}
+    {% if refill_error %}<p id="refill-dialog-error" role="alert" class="alert mt-4" tabindex="-1" data-dialog-error-focus>{{ refill_error }}</p>{% endif %}
+    {% if refill_conflict %}<div class="rounded-box border border-base-300 p-3 mt-3"><p>Latest stock: <strong>{{ quantity }} {{ unit }}</strong></p><button type="button" class="btn btn-ghost min-h-11 mt-2" data-refill-use-latest="{{ etag }}">Use latest stock</button></div>{% endif %}
     <form method="post" action="/households/{{ slug }}/medications/{{ medication_id }}/refill" class="grid gap-4 mt-4">
       <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
       <input type="hidden" name="etag" value="{% if refill_open %}{{ refill_etag }}{% else %}{{ etag }}{% endif %}">
-      <label class="grid gap-2" for="refill-quantity">Quantity to add<input id="refill-quantity" name="quantity" type="number" min="0.01" step="0.01" class="input w-full" {% if refill_open %}value="{{ refill_quantity }}" aria-describedby="refill-dialog-error"{% endif %} autofocus required></label>
-      <label class="grid gap-2" for="refill-date">Restock date<input id="refill-date" name="restock_date" type="date" class="input w-full" value="{% if refill_open %}{{ refill_date }}{% else %}{{ restock_date }}{% endif %}" {% if refill_open %}aria-describedby="refill-dialog-error"{% endif %} required></label>
-      <div class="modal-action"><button type="button" class="btn btn-ghost" data-dialog-close>Cancel</button><button type="submit" class="btn btn-neutral">Add stock</button></div>
+      <label class="grid gap-2" for="refill-quantity">Quantity to add<input id="refill-quantity" name="quantity" type="number" min="0.01" step="0.01" class="input w-full" {% if refill_open %}value="{{ refill_quantity }}"{% endif %} {% if refill_quantity_error %}aria-invalid="true" aria-describedby="refill-dialog-error"{% endif %} autofocus required></label>
+      <label class="grid gap-2" for="refill-date">Restock date<input id="refill-date" name="restock_date" type="date" class="input w-full" value="{% if refill_open %}{{ refill_date }}{% else %}{{ restock_date }}{% endif %}" {% if refill_date_error %}aria-invalid="true" aria-describedby="refill-dialog-error"{% endif %} required></label>
+      <div class="modal-action"><button type="button" class="btn btn-ghost min-h-11" data-dialog-close>Cancel</button><button type="submit" class="btn btn-neutral min-h-11">Add stock</button></div>
     </form>
   </div>
 </dialog>
@@ -138,7 +140,7 @@
       <input type="hidden" name="etag" value="{{ etag }}">
       <label class="grid gap-2" for="adjust-new-quantity">New stock quantity<input id="adjust-new-quantity" name="new_quantity" type="number" min="0" step="0.01" class="input w-full" value="{% if quantity != 'Untracked' %}{{ quantity }}{% endif %}" autofocus required></label>
       <label class="grid gap-2" for="adjust-reason">Reason<textarea id="adjust-reason" name="reason" class="textarea w-full"></textarea></label>
-      <div class="modal-action"><button type="button" class="btn btn-ghost" data-dialog-close>Cancel</button><button type="submit" class="btn btn-neutral">Adjust stock</button></div>
+      <div class="modal-action"><button type="button" class="btn btn-ghost min-h-11" data-dialog-close>Cancel</button><button type="submit" class="btn btn-neutral min-h-11">Adjust stock</button></div>
     </form>
   </div>
 </dialog>
@@ -147,13 +149,13 @@
 <dialog id="delete-medication-dialog" class="modal" aria-labelledby="delete-medication-title" {% if delete_open %}data-dialog-auto-open{% endif %}>
   <div class="modal-box">
     <h2 id="delete-medication-title" class="text-xl font-semibold">Delete Medication</h2>
-    {% if delete_error %}<p id="delete-medication-error" role="alert" class="alert mt-4">{{ delete_error }}</p>{% endif %}
+    {% if delete_error %}<p id="delete-medication-error" role="alert" class="alert mt-4" tabindex="-1" data-dialog-error-focus>{{ delete_error }}</p>{% endif %}
     <p class="mt-4">Are you sure you want to delete {{ name }}? This action cannot be undone.</p>
     <form method="post" action="/households/{{ slug }}/medications/{{ medication_id }}/destroy" class="modal-action">
       <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
       <input type="hidden" name="etag" value="{{ etag }}">
-      <button type="button" class="btn btn-ghost" data-dialog-close>Cancel</button>
-      <button type="submit" class="btn btn-neutral">Delete</button>
+      <button type="button" class="btn btn-ghost min-h-11" data-dialog-close>Cancel</button>
+      <button type="submit" class="btn btn-neutral min-h-11">Delete</button>
     </form>
   </div>
 </dialog>

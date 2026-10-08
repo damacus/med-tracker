@@ -40,6 +40,7 @@ pub struct ValidatedPrincipal {
 }
 
 enum Credential {
+    PersonalKey(super::better_auth::personal_keys::Principal),
     OAuth {
         authorization: String,
         grant_id: i64,
@@ -75,6 +76,7 @@ impl ValidatedPrincipal {
         };
         let tenant = access::begin(db, &scope).await.map_err(operation_error)?;
         let checked = match &self.credential {
+            Credential::PersonalKey(principal) => principal.revalidate(&tenant).await,
             Credential::OAuth {
                 authorization,
                 grant_id,
@@ -121,6 +123,42 @@ pub async fn authenticate(
         });
     }
     authenticate_oauth(db, headers).await
+}
+
+pub async fn authenticate_care(
+    ctx: &loco_rs::app::AppContext,
+    headers: &HeaderMap,
+) -> Result<ValidatedPrincipal, AuthenticationError> {
+    let values = headers
+        .get_all(header::AUTHORIZATION)
+        .iter()
+        .collect::<Vec<_>>();
+    if values.len() == 1
+        && let Ok(value) = values[0].to_str()
+        && let Some(secret) = value.strip_prefix("Bearer ")
+        && secret.starts_with("medtracker_")
+    {
+        let permission = headers
+            .get("x-medtracker-key-permission")
+            .and_then(|value| value.to_str().ok())
+            .ok_or(AuthenticationError::Forbidden)?;
+        let service = ctx
+            .shared_store
+            .get::<super::better_auth::IdentityService>()
+            .ok_or(AuthenticationError::Unavailable)?;
+        let principal =
+            super::better_auth::personal_keys::authenticate(&service, secret, permission).await?;
+        return Ok(ValidatedPrincipal {
+            account_id: principal.account_id,
+            time_zone: principal.time_zone,
+            provenance: CredentialProvenance {
+                method: CredentialMethod::PersonalApiKey,
+                reference: principal.id.clone(),
+            },
+            credential: Credential::PersonalKey(principal),
+        });
+    }
+    authenticate(&ctx.db, headers).await
 }
 
 pub(super) async fn authenticate_oauth(

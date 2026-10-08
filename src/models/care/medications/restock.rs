@@ -5,18 +5,6 @@ pub(super) async fn execute(
     context: &StockContext<'_>,
     input: Restock,
 ) -> Result<medication::Model, OperationError> {
-    let quantity = Decimal::from_str(&input.quantity)
-        .map_err(|_| validation("Quantity must be greater than 0"))?;
-    if quantity <= Decimal::ZERO
-        || quantity.normalize().scale() > 2
-        || quantity >= Decimal::from(100_000_000)
-    {
-        return Err(validation("Quantity must be greater than 0"));
-    }
-    let restock_date = NaiveDate::parse_from_str(&input.restock_date, "%Y-%m-%d")
-        .ok()
-        .filter(|date| date.format("%Y-%m-%d").to_string() == input.restock_date)
-        .ok_or_else(|| validation("Restock date is invalid"))?;
     let tenant = context.tenant;
     let db = tenant.transaction();
     lock_row(db, "households", tenant.scope().household_id).await?;
@@ -43,6 +31,21 @@ pub(super) async fn execute(
             "Update dose option stock to refill this medication",
         ));
     }
+    let quantity = Decimal::from_str(&input.quantity)
+        .map_err(|_| field_validation("quantity", "Quantity must be greater than 0"))?;
+    if quantity <= Decimal::ZERO
+        || quantity.normalize().scale() > 2
+        || quantity >= Decimal::from(100_000_000)
+    {
+        return Err(field_validation(
+            "quantity",
+            "Quantity must be greater than 0",
+        ));
+    }
+    let restock_date = NaiveDate::parse_from_str(&input.restock_date, "%Y-%m-%d")
+        .ok()
+        .filter(|date| date.format("%Y-%m-%d").to_string() == input.restock_date)
+        .ok_or_else(|| field_validation("restock_date", "Restock date is invalid"))?;
     let new_supply = current.medication.current_supply.unwrap_or(Decimal::ZERO) + quantity;
     if new_supply >= Decimal::from(100_000_000) {
         return Err(validation("Resulting stock is outside stock precision"));

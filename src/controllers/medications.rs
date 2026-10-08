@@ -265,6 +265,20 @@ async fn refill(
         Ok(value) => value,
         Err(error) => return authentication_error(error),
     };
+    if forms::field(&draft, "etag").trim().is_empty() {
+        if let Err(error) = browser_query::detail(&tenant, &id, principal.time_zone()).await {
+            return operation_error(error);
+        }
+        if tenant.commit().await.is_err() {
+            return unavailable();
+        }
+        return (
+            StatusCode::PRECONDITION_REQUIRED,
+            [(header::CACHE_CONTROL, "no-store")],
+            "Reopen the refill form before saving.",
+        )
+            .into_response();
+    }
     let input = medications::Restock {
         medication_id: id.clone(),
         quantity: forms::field(&draft, "quantity").into(),
@@ -331,6 +345,23 @@ async fn adjust_stock(
         Ok(value) => value,
         Err(error) => return authentication_error(error),
     };
+    if forms::field(&draft, "etag").trim().is_empty() {
+        if let Err(error) = medications::read_stock_snapshot(&tenant, &id).await {
+            return operation_error(error);
+        }
+        if !forms::can_adjust(&tenant) {
+            return operation_error(OperationError::Forbidden);
+        }
+        if tenant.commit().await.is_err() {
+            return unavailable();
+        }
+        return (
+            StatusCode::PRECONDITION_REQUIRED,
+            [(header::CACHE_CONTROL, "no-store")],
+            "Reopen the stock adjustment form before saving.",
+        )
+            .into_response();
+    }
     let input = medications::AdjustStock {
         medication_id: id.clone(),
         new_quantity: forms::field(&draft, "new_quantity").into(),
