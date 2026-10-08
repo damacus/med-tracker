@@ -367,12 +367,17 @@ test.describe('review: localized error rerenders', () => {
     const refill = page.waitForResponse(value => value.request().method() === 'POST' && value.url().endsWith('/refill'));
     await dialog.getByRole('button', { name: 'Add stock', exact: true }).click();
     expect((await refill).status()).toBe(422);
+    await expect(page.getByRole('dialog', { name: 'Refill inventory', exact: true }).getByRole('alert')).toBeFocused();
     await expect(page.locator('#record-dose-dialog')).toHaveAttribute('lang', 'es');
     await page.getByRole('dialog', { name: 'Refill inventory', exact: true }).getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: 'Refill inventory', exact: true })).toBeHidden();
     const concurrent = await page.context().newPage();
     await concurrent.goto('/households/persistence-fixture/medications/80001/stock/adjust');
     await concurrent.getByLabel('New stock quantity', { exact: true }).fill('11');
+    const adjusted = concurrent.waitForResponse(value => value.request().method() === 'POST' && value.url().endsWith('/stock/adjust'));
     await concurrent.getByRole('button', { name: 'Adjust stock', exact: true }).click();
+    expect((await adjusted).status()).toBe(303);
+    await expect(concurrent.getByTestId('current-supply')).toHaveText('11 tablets');
     await concurrent.close();
     await page.getByRole('button', { name: 'Delete Medication', exact: true }).click();
     const deletion = page.waitForResponse(value => value.request().method() === 'POST' && value.url().endsWith('/destroy'));
