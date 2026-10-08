@@ -12,9 +12,9 @@
       <input id="name" name="name" class="input w-full" value="{{ draft.name }}" required {% if name_invalid %}aria-invalid="true" aria-describedby="form-error-name"{% endif %}>
       <label for="description" class="font-semibold">Description</label>
       <textarea id="description" name="description" class="textarea w-full" {% if description_invalid %}aria-invalid="true" aria-describedby="form-error-description"{% endif %}>{{ draft.description }}</textarea>
-      <div class="flex flex-col sm:flex-row gap-3 mt-4">
-        <button type="submit" class="btn btn-neutral">Save Location</button>
-        <a class="btn btn-ghost" href="/households/{{ slug }}/locations">Back to Locations</a>
+      <div class="flex flex-wrap items-center justify-start gap-3 mt-4">
+        <button type="submit" class="btn btn-neutral w-fit">Save Location</button>
+        <a class="btn btn-ghost w-fit" href="/households/{{ slug }}/locations">Back to Locations</a>
       </div>
     </form>
   </div></div>

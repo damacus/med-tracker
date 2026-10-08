@@ -4,7 +4,7 @@
 {% elif field.kind == "textarea" %}
 <textarea id="{{ field.name }}" name="{{ field.name }}" class="textarea shell-input w-full" {% if field.errors | length > 0 %}aria-invalid="true" aria-describedby="{{ field.name }}-error"{% endif %}>{{ field.value }}</textarea>
 {% else %}
-<input id="{{ field.name }}" name="{{ field.name }}" type="{{ field.kind }}" class="input shell-input w-full" value="{{ field.value }}" {% if field.errors | length > 0 %}aria-invalid="true" aria-describedby="{{ field.name }}-error"{% endif %}>
+<input id="{{ field.name }}" name="{{ field.name }}" type="{{ field.kind }}" {% if field.kind == "number" %}step="{{ field.step }}"{% endif %} class="input shell-input w-full min-w-0" value="{{ field.value }}" {% if field.errors | length > 0 %}aria-invalid="true" aria-describedby="{{ field.name }}-error"{% endif %}>
 {% endif %}</div>
 {% if record_id and field.name == "max_daily_doses" %}<p class="shell-muted">Leave blank to keep the current limit.</p>{% endif %}
 {% if field.errors | length > 0 %}<p class="shell-error" id="{{ field.name }}-error" role="alert">{{ field.errors | join(sep=". ") }}</p>{% endif %}

@@ -7,7 +7,6 @@ const FIELDS: &[(&str, &str, &str, bool)] = &[
     ("dose_amount", "Dose", "number", false),
     ("current_supply", "Starting Supply", "number", false),
     ("reorder_threshold", "Reorder Threshold", "number", true),
-    ("barcode", "Barcode", "text", false),
     ("description", "Description", "textarea", false),
     ("warnings", "Warnings", "textarea", false),
 ];
@@ -83,13 +82,7 @@ pub(super) fn attributes(
         });
     }
     let mut attributes = serde_json::Map::new();
-    for field in [
-        "name",
-        "friendly_name",
-        "description",
-        "barcode",
-        "warnings",
-    ] {
+    for field in ["name", "friendly_name", "description", "warnings"] {
         attributes.insert(field.into(), json!(forms::field(draft, field)));
     }
     let location = forms::field(draft, "location_id");
@@ -162,7 +155,14 @@ pub(super) fn view(
         "tablet", "capsule", "gummy", "mg", "ml", "g", "mcg", "IU", "spray", "drop", "sachet",
         "pad"
     ]);
-    data["fields"] = json!(FIELDS.iter().filter(|(field,_,_,_)| !context.options_mode || !["dose_amount","current_supply","reorder_threshold"].contains(field)).map(|(field,label,kind,required)| json!({"name":field,"label":if editing && *field=="current_supply" { "Remaining Supply" } else { label },"kind":kind,"required":required,"value":forms::field(draft,field),"invalid":errors.iter().any(|error| error["field"]==*field)})).collect::<Vec<_>>());
+    for (group, names) in [
+        ("identity_fields", &["name", "friendly_name"][..]),
+        ("dose_fields", &["dose_amount"][..]),
+        ("stock_fields", &["current_supply", "reorder_threshold"][..]),
+        ("note_fields", &["description", "warnings"][..]),
+    ] {
+        data[group] = json!(names.iter().filter_map(|name| FIELDS.iter().find(|(field,_,_,_)| field == name)).filter(|(field,_,_,_)| !context.options_mode || !["dose_amount","current_supply","reorder_threshold"].contains(field)).map(|(field,label,kind,required)| json!({"name":field,"label":if editing && *field=="current_supply" { "Remaining Supply" } else { label },"kind":kind,"required":required,"value":forms::field(draft,field),"invalid":errors.iter().any(|error| error["field"]==*field)})).collect::<Vec<_>>());
+    }
     data["errors"] = json!(errors);
     data
 }

@@ -2,8 +2,8 @@ import { test, expect } from './care-fixtures.mjs';
 
 test.use({ actionTimeout: 10000 });
 
-function householdDate(days = 0) {
-  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date(Date.now() + days * 86400000));
+function accountDate(days = 0) {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'UTC', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date(Date.now() + days * 86400000));
   return ['year', 'month', 'day'].map(type => parts.find(part => part.type === type).value).join('-');
 }
 
@@ -24,8 +24,8 @@ async function routineSources(page) {
   await page.getByLabel('Medication', { exact: true }).selectOption({ label: 'Synthetic tablets' });
   await page.getByLabel('Dose amount', { exact: true }).fill('2');
   await page.getByLabel('Dose unit', { exact: true }).selectOption('tablet');
-  await page.getByLabel('Start date', { exact: true }).fill(householdDate(-1));
-  await page.getByLabel('End date', { exact: true }).fill(householdDate(7));
+  await page.getByLabel('Start date', { exact: true }).fill(accountDate(-1));
+  await page.getByLabel('End date', { exact: true }).fill(accountDate(7));
   await page.getByLabel('Times', { exact: true }).fill('00:00');
   await page.getByRole('button', { name: 'Add schedule', exact: true }).click();
   const assignment = page.getByRole('article', { name: 'Synthetic tablets assignments', exact: true });
@@ -44,10 +44,10 @@ async function sourceDoses(page, index, kind) {
   await expect(page.getByRole('heading', { name: 'Dose records for Synthetic adult', exact: true })).toBeVisible();
   await expect(page.getByText('Medication: Synthetic tablets', { exact: true })).toBeVisible({ timeout: 5000 });
   await expect(page.getByText('Dose unit: tablet', { exact: true })).toBeVisible();
-  await page.getByLabel('Start date', { exact: true }).fill(householdDate());
-  await page.getByLabel('End date', { exact: true }).fill(householdDate());
+  await page.getByLabel('Start date', { exact: true }).fill(accountDate());
+  await page.getByLabel('End date', { exact: true }).fill(accountDate());
   await page.getByRole('button', { name: 'Show doses', exact: true }).click();
-  return page.getByRole('article', { name: `Dose 1 on ${householdDate()}`, exact: true });
+  return page.getByRole('article', { name: `Dose 1 on ${accountDate()}`, exact: true });
 }
 
 test('person navigation exposes current scheduled and assigned dose records', async ({ page }, info) => {
@@ -56,10 +56,10 @@ test('person navigation exposes current scheduled and assigned dose records', as
     const row = await sourceDoses(page, index, kind);
     await expect(row.locator('[data-dose-outcome]')).toHaveText('Open');
     if (kind === 'schedules') {
-      const date = new Date(`${householdDate()}T00:00:00Z`);
+      const date = new Date(`${accountDate()}T00:00:00Z`);
       const readableDate = new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', day: '2-digit', month: 'short', year: 'numeric' }).format(date);
       await expect(row.locator('[data-dose-scheduled]')).toHaveText(`${readableDate}, 00:00:00 UTC`);
-      await expect(row.locator('[data-dose-scheduled]')).toHaveAttribute('datetime', `${householdDate()}T00:00:00Z`);
+      await expect(row.locator('[data-dose-scheduled]')).toHaveAttribute('datetime', `${accountDate()}T00:00:00Z`);
     }
     await expect(row.getByRole('button', { name: 'Record not taken', exact: true })).toBeVisible();
     await expect(row.getByRole('button', { name: 'Record dose', exact: true })).toBeVisible();
@@ -129,7 +129,7 @@ test('a newer missed-dose decision rejects a stale take and retains its clinical
   const stale = await page.context().newPage();
   try {
     await stale.goto(page.url());
-    const oldRow = stale.getByRole('article', { name: `Dose 1 on ${householdDate()}`, exact: true });
+    const oldRow = stale.getByRole('article', { name: `Dose 1 on ${accountDate()}`, exact: true });
     await oldRow.getByLabel('Dose amount', { exact: true }).fill('4');
     const takenAt = await oldRow.getByLabel('Taken at', { exact: true }).inputValue();
     await row.getByRole('button', { name: 'Reopen dose', exact: true }).click();
@@ -161,8 +161,8 @@ test('historical dose rows preserve reopening without advertising invalid record
   await page.goto(index);
   const card = page.getByRole('article', { name: 'Synthetic tablets schedules', exact: true });
   await card.getByRole('link', { name: 'Edit schedule', exact: true }).click();
-  await expect(page.getByLabel('Start date', { exact: true })).toHaveValue(householdDate(-1));
-  await page.getByLabel('End date', { exact: true }).fill(householdDate(-1));
+  await expect(page.getByLabel('Start date', { exact: true })).toHaveValue(accountDate(-1));
+  await page.getByLabel('End date', { exact: true }).fill(accountDate(-1));
   await page.getByRole('button', { name: 'Edit schedule', exact: true }).click();
   await page.goto(dosePath);
   await expect(row.locator('[data-dose-outcome]')).toHaveText('Not taken');
@@ -179,15 +179,15 @@ test('invalid dose ranges recover safely with associated guidance and meaningful
   await sourceDoses(page, index, 'schedules');
   await expect(page.getByLabel('Start date', { exact: true })).toHaveAccessibleDescription('Choose up to 31 days.');
   await expect(page.getByLabel('End date', { exact: true })).toHaveAccessibleDescription('Choose up to 31 days.');
-  await page.getByLabel('End date', { exact: true }).fill(householdDate(32));
+  await page.getByLabel('End date', { exact: true }).fill(accountDate(32));
   const invalidRange = page.waitForResponse(response => response.request().isNavigationRequest() && response.request().method() === 'GET');
   await page.getByRole('button', { name: 'Show doses', exact: true }).click();
   expect((await invalidRange).status()).toBe(422);
   const recovery = page.waitForResponse(response => response.request().isNavigationRequest() && response.request().method() === 'GET');
   await page.getByRole('link', { name: 'Review latest dose records', exact: true }).click();
   expect((await recovery).status()).toBe(200);
-  await expect(page.getByLabel('Start date', { exact: true })).toHaveValue(householdDate());
-  await expect(page.getByLabel('End date', { exact: true })).toHaveValue(householdDate());
+  await expect(page.getByLabel('Start date', { exact: true })).toHaveValue(accountDate());
+  await expect(page.getByLabel('End date', { exact: true })).toHaveValue(accountDate());
   await expect(page.locator('[data-dose-outcome]')).toHaveText('Open');
   const row = await sourceDoses(page, index, 'schedules');
   await row.locator('form[data-outcome-action="not_taken"] input[name="key"]').evaluate(input => { input.value = 'invalid-occurrence-key'; });

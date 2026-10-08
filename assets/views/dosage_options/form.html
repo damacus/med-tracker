@@ -6,25 +6,48 @@
   {% if error %}<p id="dose-option-error" class="alert alert-error mt-4" role="alert">{{ error }}</p>{% endif %}
   {% if changed %}<a class="link mt-4 inline-block" href="{{ latest_url }}">Review latest details</a>{% endif %}
   <div class="card bg-base-100 border border-base-300 mt-6"><div class="card-body">
-    <form method="post" action="{{ action }}" aria-label="Dose option details" class="flex flex-col gap-4" {% if error %}aria-describedby="dose-option-error"{% endif %}>
+    <form method="post" action="{{ action }}" aria-label="Dose option details" class="grid gap-6" {% if error %}aria-describedby="dose-option-error"{% endif %}>
       <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
       <input type="hidden" name="etag" value="{{ draft.etag }}">
-      {% for field in fields %}
-      <label for="{{ field.name }}" class="font-semibold">{{ field.label }}</label>
-      <input id="{{ field.name }}" name="{{ field.name }}" type="{{ field.kind }}" {% if field.kind == "number" %}step="any"{% endif %} class="input w-full" value="{{ field.value }}" {% if field.required %}required{% endif %}>
-      {% endfor %}
-      <label for="unit" class="font-semibold">Unit</label>
-      <select id="unit" name="unit" class="select w-full" required>
-        {% if draft.unit not in units %}<option value="{{ draft.unit }}" selected>{{ draft.unit }}</option>{% endif %}
-        {% for unit in units %}<option value="{{ unit }}" {% if draft.unit == unit %}selected{% endif %}>{{ unit }}</option>{% endfor %}
-      </select>
-      <label for="default_dose_cycle" class="font-semibold">Dose cycle</label>
-      <select id="default_dose_cycle" name="default_dose_cycle" class="select w-full" required>
-        {% for cycle in cycles %}<option value="{{ cycle }}" {% if draft.default_dose_cycle == cycle %}selected{% endif %}>{{ cycle | capitalize }}</option>{% endfor %}
-      </select>
-      <label class="flex items-center gap-3"><input type="checkbox" name="default_for_adults" value="true" class="checkbox" {% if draft.default_for_adults is defined and draft.default_for_adults == "true" %}checked{% endif %}>Default for adults</label>
-      <label class="flex items-center gap-3"><input type="checkbox" name="default_for_children" value="true" class="checkbox" {% if draft.default_for_children is defined and draft.default_for_children == "true" %}checked{% endif %}>Default for children</label>
-      <div class="flex flex-col sm:flex-row gap-3 mt-4"><button type="submit" class="btn btn-neutral">Save Dose Option</button><a class="btn btn-ghost" href="{{ base }}">Cancel</a></div>
+      <fieldset class="grid gap-4 border-b border-base-300 pb-6">
+        <legend class="text-lg font-semibold mb-3">Dose</legend>
+        <div class="grid grid-cols-2 gap-4">
+          {% for field in dose_fields %}{% if field.name == "amount" %}{% include "dosage_options/input.html" %}{% endif %}{% endfor %}
+          <div class="grid gap-2 min-w-0"><label for="unit" class="font-semibold">Unit</label>
+            <select id="unit" name="unit" class="select w-full min-w-0" required>
+              {% if draft.unit not in units %}<option value="{{ draft.unit }}" selected>{{ draft.unit }}</option>{% endif %}
+              {% for unit in units %}<option value="{{ unit }}" {% if draft.unit == unit %}selected{% endif %}>{{ unit }}</option>{% endfor %}
+            </select>
+          </div>
+        </div>
+        {% for field in dose_fields %}{% if field.name == "description" %}{% include "dosage_options/input.html" %}{% endif %}{% endfor %}
+      </fieldset>
+      <fieldset class="grid gap-4 border-b border-base-300 pb-6">
+        <legend class="text-lg font-semibold mb-3">Timing</legend>
+        <div class="grid grid-cols-2 gap-4">
+          <div class="grid gap-2 min-w-0"><label for="default_dose_cycle" class="font-semibold">Dose cycle</label>
+            <select id="default_dose_cycle" name="default_dose_cycle" class="select w-full min-w-0" required>
+              {% for cycle in cycles %}<option value="{{ cycle }}" {% if draft.default_dose_cycle == cycle %}selected{% endif %}>{{ cycle | capitalize }}</option>{% endfor %}
+            </select>
+          </div>
+          {% for field in timing_fields %}{% if field.name == "frequency" %}{% include "dosage_options/input.html" %}{% endif %}{% endfor %}
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {% for field in timing_fields %}{% if field.name != "frequency" %}{% include "dosage_options/input.html" %}{% endif %}{% endfor %}
+        </div>
+      </fieldset>
+      <fieldset class="grid gap-4 border-b border-base-300 pb-6">
+        <legend class="text-lg font-semibold mb-3">Stock</legend>
+        <div class="grid grid-cols-2 gap-4">
+          {% for field in stock_fields %}{% include "dosage_options/input.html" %}{% endfor %}
+        </div>
+      </fieldset>
+      <fieldset class="grid gap-3">
+        <legend class="text-lg font-semibold mb-3">Defaults</legend>
+        <label class="flex items-center gap-3"><input type="checkbox" name="default_for_adults" value="true" class="checkbox" {% if draft.default_for_adults is defined and draft.default_for_adults == "true" %}checked{% endif %}>Default for adults</label>
+        <label class="flex items-center gap-3"><input type="checkbox" name="default_for_children" value="true" class="checkbox" {% if draft.default_for_children is defined and draft.default_for_children == "true" %}checked{% endif %}>Default for children</label>
+      </fieldset>
+      <div class="flex flex-wrap items-center justify-start gap-3 mt-2"><button type="submit" class="btn btn-neutral w-fit">Save Dose Option</button><a class="btn btn-ghost w-fit" href="{{ base }}">Cancel</a></div>
     </form>
   </div></div>
 </section>

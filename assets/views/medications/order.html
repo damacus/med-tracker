@@ -14,7 +14,7 @@
       {% if errors.quantity is defined %}<p id="quantity-error" class="shell-error" role="alert">{{ errors.quantity | join(sep=". ") }}</p>{% endif %}
       <label class="grid gap-2" for="arrival">Expected arrival<input id="arrival" name="expected_arrival_on" type="date" class="input shell-input w-full" value="{{ draft.expected_arrival_on }}" {% if errors.expected_arrival_on is defined %}aria-invalid="true" aria-describedby="arrival-error"{% endif %}></label>
       {% if errors.expected_arrival_on is defined %}<p id="arrival-error" class="shell-error" role="alert">{{ errors.expected_arrival_on | join(sep=". ") }}</p>{% endif %}
-      <button class="btn btn-neutral" type="submit">Mark as ordered</button>
+      <button class="btn btn-neutral justify-self-start w-fit" type="submit">Mark as ordered</button>
     </form>
   </div></div>
   <div class="card shell-card mt-6"><div class="card-body">

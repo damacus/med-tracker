@@ -48,8 +48,36 @@ pub(super) fn draft(record: &Value, etag: &str) -> HashMap<String, String> {
     draft
 }
 
-pub(super) fn fields(draft: &Value) -> Value {
-    json!(FIELDS.iter().map(|(name, label, kind, required)| json!({"name":name,"label":label,"kind":kind,"required":required,"value":draft[name].as_str().unwrap_or_default()})).collect::<Vec<_>>())
+pub(super) fn fields(draft: &Value, errors: &Value, names: &[&str]) -> Value {
+    json!(FIELDS.iter().filter(|(name, _, _, _)| names.contains(name)).map(|(name, label, kind, required)| {
+        let value = draft[name].as_str().unwrap_or_default();
+        let (value, step) = if *name == "default_min_hours_between_doses" {
+            let decimal = value.parse::<sea_orm::prelude::Decimal>().ok();
+            let whole = decimal.is_some_and(|number| number.fract().is_zero());
+            (decimal.filter(|_| whole).map_or_else(|| value.to_owned(), |number| number.normalize().to_string()), if whole { "1" } else { "any" })
+        } else {
+            (value.to_owned(), if *name == "default_max_daily_doses" { "1" } else { "any" })
+        };
+        json!({"name":name,"label":label,"kind":kind,"required":required,"value":value,"step":step,"errors":errors[name].as_array().cloned().unwrap_or_default()})
+    }).collect::<Vec<_>>())
+}
+
+pub(super) fn browser_hours_valid(
+    draft: &HashMap<String, String>,
+    existing: Option<&Value>,
+) -> bool {
+    let entered =
+        forms::field(draft, "default_min_hours_between_doses").parse::<sea_orm::prelude::Decimal>();
+    match entered {
+        Ok(value) if value.fract().is_zero() => true,
+        Ok(value) => {
+            existing
+                .and_then(Value::as_str)
+                .and_then(|stored| stored.parse::<sea_orm::prelude::Decimal>().ok())
+                == Some(value)
+        }
+        Err(_) => false,
+    }
 }
 
 pub(super) fn attributes(draft: &HashMap<String, String>, medication: Option<i64>) -> Value {

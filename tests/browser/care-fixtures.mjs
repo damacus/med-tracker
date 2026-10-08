@@ -52,7 +52,6 @@ async function withCareFixture(captureMail, registrationInviteOnly, reportAssets
     const reservation = createServer();
     await new Promise(resolve => reservation.listen(0, '127.0.0.1', resolve));
     const port = reservation.address().port;
-    await new Promise(resolve => reservation.close(resolve));
     const origin = `http://localhost:${port}`;
     const mailName = `mtloco-mail-${randomUUID()}`;
     let mailStarted = false;
@@ -65,12 +64,13 @@ async function withCareFixture(captureMail, registrationInviteOnly, reportAssets
     const start = async () => {
       output = '';
       exited = false;
-      const environment = { ...process.env, LOCO_ENV: 'test', PORT: String(port), MEDTRACKER_PUBLIC_HOST: 'http://localhost', DATABASE_URL: runtime.href, MEDTRACKER_CAPTURE_MAIL: String(captureMail), MEDTRACKER_SMTP_PORT: smtpPort ?? '1025', MEDTRACKER_SESSION_KEY: Buffer.alloc(64, 7).toString('base64'), MEDTRACKER_COOKIE_SECURE: 'false', RAILS_SECRET_KEY_BASE: 'synthetic-rails-secret-key-base-for-compatibility', RAILS_OLD_SECRET_KEY_BASE: 'synthetic-old-rails-secret-key-base', AUTH_SESSION_SECRET: 'synthetic-browser-occurrence-signing-key-32' };
+      const environment = { ...process.env, LOCO_ENV: 'test', TZ: 'UTC', BINDING: '127.0.0.1', PORT: String(port), MEDTRACKER_PUBLIC_HOST: 'http://localhost', DATABASE_URL: runtime.href, MEDTRACKER_CAPTURE_MAIL: String(captureMail), MEDTRACKER_SMTP_PORT: smtpPort ?? '1025', MEDTRACKER_SESSION_KEY: Buffer.alloc(64, 7).toString('base64'), MEDTRACKER_COOKIE_SECURE: 'false', RAILS_SECRET_KEY_BASE: 'synthetic-rails-secret-key-base-for-compatibility', RAILS_OLD_SECRET_KEY_BASE: 'synthetic-old-rails-secret-key-base', AUTH_SESSION_SECRET: 'synthetic-browser-occurrence-signing-key-32' };
       for (const name of ['MEDTRACKER_ZITADEL_ISSUER', 'MEDTRACKER_ZITADEL_CLIENT_ID', 'MEDTRACKER_ZITADEL_CLIENT_SECRET']) delete environment[name];
       if (provider) Object.assign(environment, { MEDTRACKER_ZITADEL_ISSUER: provider.origin, MEDTRACKER_ZITADEL_CLIENT_ID: 'medtracker-fixture', MEDTRACKER_ZITADEL_CLIENT_SECRET: 'password' });
       delete environment.RUST_LOG;
       delete environment.INVITE_ONLY;
       if (registrationInviteOnly !== undefined) environment.INVITE_ONLY = String(registrationInviteOnly);
+      if (reservation.listening) await new Promise(resolve => reservation.close(resolve));
       server = reportAssetsUnavailable
         ? spawn(applicationBinary, ['start', '--environment', 'test'], { cwd: applicationRoot, detached: true, env: environment, stdio: ['ignore', 'pipe', 'pipe'] })
         : spawn('task', ['browser-care:serve', ...(captureMail ? ['SERVER_AND_WORKER=true'] : [])], { cwd: root, detached: true, env: environment, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -111,7 +111,7 @@ async function withCareFixture(captureMail, registrationInviteOnly, reportAssets
       await measure('application-start', start);
       await use({ origin, mailpitUrl, runtimeTimings, provider,
         reset: () => measure('reset', () => fixtureTask('reset', [`SNAPSHOT_PATH=${snapshotPath}`])),
-        probe: async () => JSON.parse(await fixtureTask('probe')), revoke: () => fixtureTask('revoke'), reactivate: () => fixtureTask('reactivate'),
+        probe: async () => JSON.parse(await fixtureTask('probe')), seedBarcodeMetadata: () => fixtureTask('seed-barcode-metadata'), barcodeMetadataProbe: async () => JSON.parse(await fixtureTask('barcode-metadata-probe')), seedLegacyCareHours: () => fixtureTask('legacy-care-hours'), legacyCareHoursProbe: async () => JSON.parse(await fixtureTask('legacy-care-hours-probe')), seedLegacySecondTaperHour: () => fixtureTask('legacy-second-taper-hour'), revoke: () => fixtureTask('revoke'), reactivate: () => fixtureTask('reactivate'),
         seedOtp: () => fixtureTask('seed-otp'), otpProbe: async () => JSON.parse((await fixtureTask('otp-probe')) || 'null'), closeOtpAccount: () => fixtureTask('close-otp-account'),
         seedRecovery: () => fixtureTask('seed-recovery'), recoveryProbe: async () => JSON.parse(await fixtureTask('recovery-probe')), exhaustOtp: () => fixtureTask('exhaust-otp'),
         seedRecoveryPasskey: () => fixtureTask('seed-recovery-passkey'),
@@ -177,6 +177,7 @@ async function withCareFixture(captureMail, registrationInviteOnly, reportAssets
         restart: async () => { await measure('application-stop', () => stopOwnedProcess(server)); await measure('application-start', start); },
         revokeSession: () => fixtureTask('revoke-session'), expireSession: () => fixtureTask('expire-session'), doseRequestId: () => fixtureTask('dose-request-id') });
     } finally {
+      if (reservation.listening) await new Promise(resolve => reservation.close(resolve));
       try { if (server) await measure('application-stop', () => stopOwnedProcess(server)); } finally {
         try { if (mailStarted) await fixtureTask('mail-down', [`MAILPIT_NAME=${mailName}`]); } finally { try { if (provider) await provider.close(); } finally { await rm(snapshotDirectory, { recursive: true, force: true }); } }
       }

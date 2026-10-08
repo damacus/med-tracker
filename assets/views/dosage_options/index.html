@@ -4,7 +4,7 @@
   <h1 class="text-3xl font-semibold">Dose Options</h1>
   <p class="mt-2">{{ medication_name }}</p>
   {% if error %}<p class="alert alert-error mt-4" role="alert">{{ error }}</p>{% endif %}
-  <div class="flex flex-col sm:flex-row gap-3 mt-6"><a class="btn btn-neutral" href="{{ base }}/new">Add dose option</a><a class="btn btn-ghost" href="{{ medication_url }}">Back to Medication</a></div>
+  <div class="flex flex-wrap items-center gap-3 mt-6"><a class="btn btn-neutral w-fit" href="{{ base }}/new">Add dose option</a><a class="btn btn-ghost w-fit" href="{{ medication_url }}">Back to Medication</a></div>
   <div class="flex flex-col gap-4 mt-6">
     {% for option in options %}
     <article class="card bg-base-100 border border-base-300"><div class="card-body">
@@ -12,7 +12,7 @@
       {% if option.description %}<p>{{ option.description }}</p>{% endif %}
       <p>Frequency: {{ option.frequency }}</p>
       <p>Current supply: {% if option.current_supply %}{{ option.current_supply }}{% else %}Untracked{% endif %}</p>
-      <div class="flex flex-col sm:flex-row gap-3"><a class="btn btn-outline" href="{{ base }}/{{ option.id }}/edit">Edit dose option</a><button type="button" class="btn btn-ghost" data-dialog-open="delete-dose-option-{{ option.id }}">Delete dose option</button></div>
+      <div class="flex flex-wrap items-center gap-3"><a class="btn btn-outline w-fit" href="{{ base }}/{{ option.id }}/edit">Edit dose option</a><button type="button" class="btn btn-ghost w-fit" data-dialog-open="delete-dose-option-{{ option.id }}">Delete dose option</button></div>
       <dialog id="delete-dose-option-{{ option.id }}" class="modal" aria-labelledby="delete-dose-option-title-{{ option.id }}">
         <div class="modal-box">
           <h2 id="delete-dose-option-title-{{ option.id }}" class="text-xl font-semibold">Delete Dose Option</h2>
