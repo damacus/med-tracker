@@ -115,6 +115,8 @@ pub async fn apply(
                     .attributes
                     .get("taken_from_medication_id")
                     .and_then(Value::as_i64),
+                expected_effective_amount: None,
+                expected_effective_unit: None,
             };
             let outcome =
                 doses::execute_in_timezone(tenant, doses::Command::Take(take), zone, attribution)

@@ -426,6 +426,30 @@ tasks:
       - >-
         psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1
         -c "INSERT INTO public.schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83001,72001,73001,80001,true,current_date-1,current_date+7,2,'tablet',6,'{}',now(),now())"
+  date-sensitive-schedule:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -f tests/fixtures/browser-date-sensitive-schedule.sql'
+  offday-schedule:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -f tests/fixtures/browser-offday-schedule.sql'
+  change-taper-step:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1
+        -c "UPDATE public.schedules SET schedule_config=jsonb_set(schedule_config,'{taper_steps,1,amount}','\"4\"'::jsonb),updated_at=now() WHERE id=83001 AND household_id=72001"
+  london-preview-zone:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1
+        -c "UPDATE public.accounts SET preferences=jsonb_set(coalesce(preferences,'{}'::jsonb),'{time_zone}','\"Europe/London\"'::jsonb) WHERE id=71001"
   schedule-only-medicine:
     requires:
       vars: [CARE_DATABASE_URL]

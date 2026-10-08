@@ -987,6 +987,11 @@ cy:
       foreign_source: 'Nid yw’r ffynhonnell hon yn perthyn i’r feddyginiaeth hon.'
       forbidden: 'Ni allwch gofnodi’r dos hwn.'
       conflict: 'Mae’r cais dos hwn yn gwrthdaro â chofnod blaenorol.'
+      not_scheduled: 'Nid yw’r driniaeth hon wedi’i threfnu ar gyfer yr amser a ddewiswyd.'
+      checking: 'Wrthi’n gwirio’r amser a ddewiswyd.'
+      ready: "Mae'r dos a ddewiswyd yn barod i'w gofnodi."
+      dose_changed: 'Mae’r dos a gynlluniwyd wedi newid. Adolygwch y dos wedi’i ddiweddaru cyn ei gofnodi.'
+      use_updated_dose: 'Defnyddio’r dos wedi’i ddiweddaru'
     finder:
       nhs_directory: Cyfeiriadur GIG
       title: Darganfyddwr Meddyginiaethau

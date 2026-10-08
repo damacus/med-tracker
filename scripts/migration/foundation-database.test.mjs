@@ -2,22 +2,23 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { withOwnedDatabase } from './foundation-database.mjs';
 
-test('owned cleanup permits bounded Compose shutdown beyond twenty seconds without extending other phases', async () => {
+test('owned cleanup permits a bounded ninety-second Compose shutdown without extending other phases', async () => {
   const deadlines = new Map();
   let removed = false;
   await withOwnedDatabase(async () => {}, async (args, options) => {
     deadlines.set(args[0], options.timeout);
     if (args[0] === 'foundation:db-port') return '127.0.0.1:54321';
     if (args[0] === 'foundation:db-down') {
-      if (options.timeout < 25000) throw new Error('Compose shutdown exceeded its deadline before resource removal');
+      if (options.timeout < 90000) throw new Error('Compose shutdown exceeded its deadline before resource removal');
       assert.ok(options.timeout <= 120000, 'Cleanup must remain bounded');
       removed = true;
     }
     return '';
   }, {});
-  assert.equal(removed, true, 'The owned resource must be removed after a simulated 25-second shutdown');
+  assert.equal(removed, true, 'The owned resource must be removed after a simulated 90-second shutdown');
   assert.equal(deadlines.get('foundation:db-up'), 60000);
   assert.equal(deadlines.get('foundation:db-port'), 10000);
+  assert.equal(deadlines.get('foundation:db-down'), 120000);
 });
 
 test('HTTP fixtures use unique projects and explicit disposable loopback databases', async () => {

@@ -57,6 +57,67 @@ pub struct Take {
     pub dose_amount: Option<String>,
     pub dose_unit: Option<String>,
     pub taken_from_medication_id: Option<i64>,
+    pub expected_effective_amount: Option<String>,
+    pub expected_effective_unit: Option<String>,
+}
+
+#[derive(Clone, Debug, serde::Serialize)]
+pub struct BrowserDosePreview {
+    pub available: bool,
+    pub amount: Option<String>,
+    pub unit: Option<String>,
+}
+
+fn preview_source(mut source: Source, date: NaiveDate) -> BrowserDosePreview {
+    let available = source.active && !source.retired && applies_on(&source, date);
+    effective_source(&mut source, date);
+    BrowserDosePreview {
+        available,
+        amount: source
+            .dose_amount
+            .map(|value| value.normalize().to_string()),
+        unit: source.dose_unit,
+    }
+}
+
+pub fn browser_schedule_preview(record: schedule::Model, date: NaiveDate) -> BrowserDosePreview {
+    preview_source(source_from_schedule(record), date)
+}
+
+pub async fn browser_preview(
+    tenant: &TenantTransaction,
+    medication_id: i64,
+    kind: &str,
+    id: &str,
+    local_time: &str,
+    zone: chrono_tz::Tz,
+) -> Result<BrowserDosePreview, OperationError> {
+    let local = NaiveDateTime::parse_from_str(local_time, "%Y-%m-%dT%H:%M")
+        .map_err(|_| error(ErrorKind::Validation, "taken_at is invalid"))?;
+    let chrono::LocalResult::Single(taken_at) = zone.from_local_datetime(&local) else {
+        return Err(error(ErrorKind::Validation, "taken_at is invalid"));
+    };
+    access::recheck(tenant).await?;
+    let context = DoseContext {
+        tenant,
+        provenance: None,
+        zone,
+    };
+    let source = source(
+        tenant.transaction(),
+        &context,
+        tenant.scope().household_id,
+        kind,
+        id,
+    )
+    .await?;
+    if source.medication_id != medication_id {
+        return Err(OperationError::NotFound);
+    }
+    access::require_person_access(tenant, source.person_id, PersonAccess::Record).await?;
+    let mut preview = preview_source(source, taken_at.date_naive());
+    preview.available &= taken_at.with_timezone(&Utc) <= Utc::now() + Duration::hours(1);
+    Ok(preview)
 }
 
 #[derive(Clone, Debug)]
@@ -194,6 +255,12 @@ pub async fn execute_in_timezone(
     }
     if let Some(value) = take.taken_from_medication_id {
         attributes["taken_from_medication_id"] = json!(value);
+    }
+    if let Some(value) = take.expected_effective_amount {
+        attributes["expected_effective_amount"] = json!(value);
+    }
+    if let Some(value) = take.expected_effective_unit {
+        attributes["expected_effective_unit"] = json!(value);
     }
     let context = DoseContext {
         tenant,

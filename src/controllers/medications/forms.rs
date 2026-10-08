@@ -72,14 +72,24 @@ pub fn take(
     let stock_id = field(draft, "taken_from_medication_id")
         .parse()
         .map_err(|_| OperationError::NotFound)?;
+    let confirmed_amount =
+        optional(draft, "dose_amount").ok_or_else(|| OperationError::Validation {
+            details: serde_json::json!({"error":"Dose confirmation is incomplete."}),
+        })?;
+    let confirmed_unit =
+        optional(draft, "dose_unit").ok_or_else(|| OperationError::Validation {
+            details: serde_json::json!({"error":"Dose confirmation is incomplete."}),
+        })?;
     Ok(Take {
         client_uuid: optional(draft, "client_uuid"),
         source_type: field(draft, "source_type").into(),
         source_id: field(draft, "source_id").into(),
         taken_at: time.to_rfc3339(),
-        dose_amount: optional(draft, "dose_amount"),
-        dose_unit: optional(draft, "dose_unit"),
+        dose_amount: Some(confirmed_amount.clone()),
+        dose_unit: Some(confirmed_unit.clone()),
         taken_from_medication_id: Some(stock_id),
+        expected_effective_amount: Some(confirmed_amount),
+        expected_effective_unit: Some(confirmed_unit),
     })
 }
 

@@ -24,11 +24,15 @@ test('each permitted person has an independent dose form and submitted draft', a
   await adult.locator('[name="dose_amount"]').evaluate(input => { input.value = '999'; });
   const invalid = page.waitForResponse(response => response.url().endsWith('/doses') && response.request().method() === 'POST');
   await adult.getByRole('button', { name: 'Record dose', exact: true }).click();
-  expect((await invalid).status()).toBe(422);
+  expect((await invalid).status()).toBe(409);
   await expect(adult.locator('[name="dose_amount"]')).toHaveValue('999');
   await expect(adult.locator('[name="client_uuid"]')).toHaveValue(adultUuid);
   await expect(minor.locator('[name="dose_amount"]')).toHaveValue('1');
   expect(await minor.locator('[name="client_uuid"]').inputValue()).not.toBe(adultUuid);
+  expect((await careFixture.probe()).takes).toBe(0);
+  await expect(adult.getByRole('button', { name: 'Record dose', exact: true })).toBeDisabled();
+  await adult.getByRole('button', { name: 'Use updated dose', exact: true }).click();
+  await expect(adult.locator('[name="dose_amount"]')).toHaveValue('2');
   await minor.getByRole('button', { name: 'Record dose', exact: true }).click();
   await expect(page.getByTestId('current-supply')).toHaveText('9 tablets');
   await page.getByRole('button', { name: 'Record a dose', exact: true }).click();

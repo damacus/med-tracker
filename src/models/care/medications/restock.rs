@@ -23,6 +23,7 @@ pub(super) async fn execute(
     let has_options = dosage::Entity::find()
         .filter(dosage::Column::HouseholdId.eq(tenant.scope().household_id))
         .filter(dosage::Column::MedicationId.eq(found.id))
+        .filter(dosage::Column::CurrentSupply.is_not_null())
         .one(db)
         .await?
         .is_some();

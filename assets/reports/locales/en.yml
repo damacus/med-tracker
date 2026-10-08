@@ -944,6 +944,11 @@ en:
       foreign_source: 'This source does not belong to this medication.'
       forbidden: 'You cannot record this dose.'
       conflict: 'This dose request conflicts with a previous record.'
+      not_scheduled: 'This treatment is not scheduled for the selected time.'
+      checking: 'Checking the selected time.'
+      ready: 'Selected dose ready for recording.'
+      dose_changed: 'The planned dose changed. Review the updated dose before recording.'
+      use_updated_dose: 'Use updated dose'
     finder:
       nhs_directory: NHS Directory
       title: Medication Finder

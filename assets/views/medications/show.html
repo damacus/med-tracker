@@ -83,7 +83,7 @@
     {% if dose_unmatched_error %}<p role="alert" class="alert mt-4" lang="{{ dose_unmatched_error_lang }}" tabindex="-1" data-dialog-error-focus>{{ dose_unmatched_error }}</p>{% endif %}
     {% for source in assignments %}
       {% if source.can_record %}
-      <form method="post" action="/households/{{ slug }}/medications/{{ medication_id }}/doses" aria-labelledby="dose-confirm-{{ source.source_type }}-{{ source.id }} dose-classification-{{ source.source_type }}-{{ source.id }}" data-dose-form class="grid gap-4 mt-4 p-4 rounded-box border border-base-300 bg-base-200 min-w-0">
+      <form method="post" action="/households/{{ slug }}/medications/{{ medication_id }}/doses" aria-labelledby="dose-confirm-{{ source.source_type }}-{{ source.id }} dose-classification-{{ source.source_type }}-{{ source.id }}" data-dose-form data-dose-current-available="{{ source.available }}" data-dose-preview-url="/households/{{ slug }}/medications/{{ medication_id }}/doses/preview" class="grid gap-4 mt-4 p-4 rounded-box border border-base-300 bg-base-200 min-w-0">
         <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
         <input type="hidden" name="client_uuid" value="{{ source.draft.client_uuid }}">
         <input type="hidden" name="source_type" value="{{ source.draft.source_type }}">
@@ -91,10 +91,12 @@
         <input type="hidden" name="dose_amount" value="{{ source.draft.dose_amount }}">
         <input type="hidden" name="dose_unit" value="{{ source.draft.dose_unit }}">
         <div>
-          <h3 id="dose-confirm-{{ source.source_type }}-{{ source.id }}" class="text-lg font-semibold"><span class="block">{{ source.person_name }}</span><span class="block">{{ name }} · <span lang="en">{{ source.dose_label }}</span></span></h3>
+          <h3 id="dose-confirm-{{ source.source_type }}-{{ source.id }}" class="text-lg font-semibold"><span class="block">{{ source.person_name }}</span><span class="block">{{ name }} · <span lang="en" data-dose-label>{{ source.dose_label }}</span></span></h3>
           <p id="dose-classification-{{ source.source_type }}-{{ source.id }}" class="text-sm text-base-content/70">{% if source.source_type == 'schedule' %}{{ dose_i18n.scheduled_treatment }}{% else %}{{ dose_i18n.ongoing_medication }}{% endif %}</p>
         </div>
-        {% if source.source_error %}<p role="alert" class="alert" lang="{{ source.source_error_lang }}" tabindex="-1" data-dialog-error-focus>{{ source.source_error }}</p>{% endif %}
+        {% if source.source_error %}<p role="alert" class="alert" lang="{{ source.source_error_lang }}" tabindex="-1" data-dialog-error-focus {% if source.dose_changed %}data-dose-stale-alert{% endif %}>{{ source.source_error }}</p>{% endif %}
+        {% if source.dose_changed %}<button type="button" class="btn btn-ghost min-h-11 w-fit" data-dose-confirm-current data-dose-amount="{{ source.amount }}" data-dose-unit="{{ source.unit }}">{{ dose_i18n.use_updated_dose }}</button>{% endif %}
+        <p role="status" data-dose-availability data-unavailable-label="{{ dose_i18n.unavailable }}" data-not-scheduled-label="{{ dose_i18n.not_scheduled }}" data-checking-label="{{ dose_i18n.checking }}" data-ready-label="{{ dose_i18n.ready }}" {% if source.available %}hidden{% endif %}>{% if not source.available %}{{ dose_i18n.not_scheduled }}{% endif %}</p>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div class="grid gap-2 min-w-0"><label for="taken-at-{{ source.source_type }}-{{ source.id }}" class="font-semibold">{{ dose_i18n.taken_at }}</label>
             <input id="taken-at-{{ source.source_type }}-{{ source.id }}" name="taken_at" type="datetime-local" class="input w-full min-w-0" value="{{ source.draft.taken_at }}" {% if source.time_error %}aria-invalid="true" aria-describedby="taken-at-error-{{ source.source_type }}-{{ source.id }}" data-dialog-error-focus{% endif %} {% if source.autofocus %}autofocus{% endif %} required>
@@ -107,7 +109,7 @@
         </div>
         <div class="flex flex-wrap gap-2 justify-end">
           <button type="button" class="btn btn-ghost min-h-11 w-fit" data-dialog-close>{{ dose_cancel }}</button>
-          <button type="submit" class="btn btn-primary min-h-11 w-fit">{{ dose_i18n.record }}</button>
+          <button type="submit" class="btn btn-primary min-h-11 w-fit" {% if not source.available or source.dose_changed %}disabled{% endif %}>{{ dose_i18n.record }}</button>
         </div>
       </form>
       {% elif not source.can_record %}<p>{{ source.person_name }} · {{ dose_i18n.view_only }}</p>{% endif %}
@@ -131,15 +133,17 @@
   </div>
 </dialog>
 {% if can_adjust %}
-<dialog id="adjust-stock-dialog" class="modal" aria-labelledby="adjust-stock-title">
+<dialog id="adjust-stock-dialog" class="modal" aria-labelledby="adjust-stock-title" {% if adjust_open %}data-dialog-auto-open{% endif %}>
   <div class="modal-box max-w-xl">
     <h2 id="adjust-stock-title" class="text-xl font-semibold">Adjust stock</h2>
     <p class="mt-2">Current supply: {{ quantity }} {{ unit }}</p>
+    {% if adjust_error %}<p role="alert" class="alert mt-4" tabindex="-1" data-dialog-error-focus>{{ adjust_error }}</p>{% endif %}
+    {% if adjust_conflict %}<button type="button" class="btn btn-ghost min-h-11 mt-2" data-refill-use-latest="{{ etag }}">Use latest stock</button>{% endif %}
     <form method="post" action="/households/{{ slug }}/medications/{{ medication_id }}/stock/adjust" class="grid gap-4 mt-4">
       <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
-      <input type="hidden" name="etag" value="{{ etag }}">
-      <label class="grid gap-2" for="adjust-new-quantity">New stock quantity<input id="adjust-new-quantity" name="new_quantity" type="number" min="0" step="0.01" class="input w-full" value="{% if quantity != 'Untracked' %}{{ quantity }}{% endif %}" autofocus required></label>
-      <label class="grid gap-2" for="adjust-reason">Reason<textarea id="adjust-reason" name="reason" class="textarea w-full"></textarea></label>
+      <input type="hidden" name="etag" value="{% if adjust_open %}{{ adjust_etag }}{% else %}{{ etag }}{% endif %}">
+      <label class="grid gap-2" for="adjust-new-quantity">New stock quantity<input id="adjust-new-quantity" name="new_quantity" type="number" min="0" step="0.01" class="input w-full" value="{% if adjust_open %}{{ adjust_new_quantity }}{% elif quantity != 'Untracked' %}{{ quantity }}{% endif %}" autofocus required></label>
+      <div class="grid gap-2"><label for="adjust-reason">Reason</label><textarea id="adjust-reason" name="reason" class="textarea w-full">{% if adjust_open %}{{ adjust_reason }}{% endif %}</textarea></div>
       <div class="modal-action"><button type="button" class="btn btn-ghost min-h-11" data-dialog-close>Cancel</button><button type="submit" class="btn btn-neutral min-h-11">Adjust stock</button></div>
     </form>
   </div>

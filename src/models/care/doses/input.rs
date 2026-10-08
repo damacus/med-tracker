@@ -85,6 +85,24 @@ pub(super) async fn prepare(
         .into());
     }
     effective_source(&mut source, effective_date);
+    if attributes.get("expected_effective_amount").is_some()
+        || attributes.get("expected_effective_unit").is_some()
+    {
+        let expected_amount = attributes
+            .get("expected_effective_amount")
+            .and_then(Value::as_str)
+            .and_then(|value| Decimal::from_str(value).ok());
+        let expected_unit = attributes
+            .get("expected_effective_unit")
+            .and_then(Value::as_str);
+        if expected_amount != source.dose_amount || expected_unit != source.dose_unit.as_deref() {
+            return Err(OperationError::Conflict {
+                code: "dose_changed".into(),
+                details: json!({"error":"Dose changed. Review the updated dose before recording."}),
+            }
+            .into());
+        }
+    }
     if attributes.get("dose_amount").is_some_and(Value::is_number) {
         return Err(TakeFailure {
             error: error(ErrorKind::Validation, "dose_amount must be a string"),

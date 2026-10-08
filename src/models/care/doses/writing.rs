@@ -22,6 +22,8 @@ pub(crate) async fn create_with_failure(
         "dose_amount",
         "dose_unit",
         "taken_from_medication_id",
+        "expected_effective_amount",
+        "expected_effective_unit",
     ];
     if attributes
         .as_object()

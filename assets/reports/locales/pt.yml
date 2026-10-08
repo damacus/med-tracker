@@ -994,6 +994,11 @@ pt:
       foreign_source: 'Esta origem não pertence a este medicamento.'
       forbidden: 'Não pode registar esta dose.'
       conflict: 'Este pedido de dose entra em conflito com um registo anterior.'
+      not_scheduled: 'Este tratamento não está programado para a hora selecionada.'
+      checking: 'A verificar a hora selecionada.'
+      ready: 'A dose selecionada está pronta para registar.'
+      dose_changed: 'A dose planeada mudou. Reveja a dose atualizada antes de a registar.'
+      use_updated_dose: 'Usar a dose atualizada'
     finder:
       nhs_directory: Diretório NHS
       title: Pesquisador de Medicamentos

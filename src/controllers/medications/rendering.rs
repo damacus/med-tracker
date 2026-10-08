@@ -76,7 +76,7 @@ pub fn detail(
         detail,
         presentation.zone,
         presentation.language,
-        DetailState::Dose(presentation.draft, presentation.error),
+        DetailState::Dose(presentation.draft, presentation.error, presentation.open),
     )
 }
 
@@ -85,6 +85,7 @@ pub struct DosePresentation<'a> {
     pub language: &'a str,
     pub draft: &'a HashMap<String, String>,
     pub error: Option<&'a OperationError>,
+    pub open: bool,
 }
 
 pub fn refill_failure(
@@ -92,19 +93,24 @@ pub fn refill_failure(
     token: &CsrfToken,
     slug: &str,
     detail: Detail,
-    zone: chrono_tz::Tz,
-    draft: &HashMap<String, String>,
-    error: &OperationError,
+    presentation: RefillPresentation<'_>,
 ) -> Response {
     detail_with_state(
         view,
         token,
         slug,
         detail,
-        zone,
-        "en",
-        DetailState::Refill(draft, error),
+        presentation.zone,
+        presentation.language,
+        DetailState::Refill(presentation.draft, presentation.error),
     )
+}
+
+pub struct RefillPresentation<'a> {
+    pub zone: chrono_tz::Tz,
+    pub language: &'a str,
+    pub draft: &'a HashMap<String, String>,
+    pub error: &'a OperationError,
 }
 
 pub fn management_failure(
@@ -113,6 +119,7 @@ pub fn management_failure(
     slug: &str,
     detail: Detail,
     zone: chrono_tz::Tz,
+    language: &str,
     error: &OperationError,
 ) -> Response {
     detail_with_state(
@@ -121,15 +128,45 @@ pub fn management_failure(
         slug,
         detail,
         zone,
-        "en",
+        language,
         DetailState::Management(error),
     )
 }
 
+pub fn adjustment_failure(
+    view: &TeraView,
+    token: &CsrfToken,
+    slug: &str,
+    detail: Detail,
+    presentation: AdjustmentPresentation<'_>,
+) -> Response {
+    detail_with_state(
+        view,
+        token,
+        slug,
+        detail,
+        presentation.zone,
+        presentation.language,
+        DetailState::Adjustment(presentation.draft, presentation.error),
+    )
+}
+
+pub struct AdjustmentPresentation<'a> {
+    pub zone: chrono_tz::Tz,
+    pub language: &'a str,
+    pub draft: &'a HashMap<String, String>,
+    pub error: &'a OperationError,
+}
+
 enum DetailState<'a> {
-    Dose(&'a HashMap<String, String>, Option<&'a OperationError>),
+    Dose(
+        &'a HashMap<String, String>,
+        Option<&'a OperationError>,
+        bool,
+    ),
     Refill(&'a HashMap<String, String>, &'a OperationError),
     Management(&'a OperationError),
+    Adjustment(&'a HashMap<String, String>, &'a OperationError),
 }
 
 fn detail_with_state(
@@ -146,11 +183,17 @@ fn detail_with_state(
         return super::unavailable();
     };
     let dose_default = super::forms::dose(&detail, zone);
-    let (dose_draft, dose_error, refill_failure, management_error) = match state {
-        DetailState::Dose(draft, error) => (draft, error, None, None),
-        DetailState::Refill(draft, error) => (&dose_default, None, Some((draft, error)), None),
-        DetailState::Management(error) => (&dose_default, None, None, Some(error)),
-    };
+    let (dose_draft, dose_error, dose_open, refill_failure, management_error, adjustment_failure) =
+        match state {
+            DetailState::Dose(draft, error, open) => (draft, error, open, None, None, None),
+            DetailState::Refill(draft, error) => {
+                (&dose_default, None, false, Some((draft, error)), None, None)
+            }
+            DetailState::Management(error) => (&dose_default, None, false, None, Some(error), None),
+            DetailState::Adjustment(draft, error) => {
+                (&dose_default, None, false, None, None, Some((draft, error)))
+            }
+        };
     let mut data = context(
         slug,
         &detail.stock,
@@ -160,7 +203,7 @@ fn detail_with_state(
     data["dose_lang"] = json!(language);
     data["dose_i18n"] = labels["medications"]["dose_dialog"].clone();
     data["dose_cancel"] = labels["dose_outcomes"]["cancel"].clone();
-    data["dose_open"] = json!(dose_error.is_some());
+    data["dose_open"] = json!(dose_open);
     if dose_error.is_some() {
         data["error"] = Value::Null;
     }
@@ -195,6 +238,22 @@ fn detail_with_state(
     if let Some(error) = management_error {
         data["delete_open"] = json!(true);
         data["delete_error"] = json!(super::forms::message(error));
+        if !detail.can_adjust {
+            data["error"] = json!(super::forms::message(error));
+        }
+    }
+    if let Some((draft, error)) = adjustment_failure {
+        data["adjust_open"] = json!(true);
+        data["adjust_new_quantity"] = json!(super::forms::field(draft, "new_quantity"));
+        data["adjust_reason"] = json!(super::forms::field(draft, "reason"));
+        data["adjust_etag"] = json!(super::forms::field(draft, "etag"));
+        data["adjust_conflict"] = json!(matches!(error, OperationError::Conflict { .. }));
+        data["adjust_error"] = json!(if matches!(error, OperationError::Conflict { .. }) {
+            "Stock changed while this form was open. Review the latest stock before saving."
+                .to_string()
+        } else {
+            super::forms::message(error)
+        });
         if !detail.can_adjust {
             data["error"] = json!(super::forms::message(error));
         }
@@ -317,21 +376,28 @@ fn detail_with_state(
         data["dose_unmatched_error"] = json!(message);
         data["dose_unmatched_error_lang"] = json!(message_language);
     }
-    let first_recordable = detail
-        .assignments
-        .iter()
-        .find(|source| source.can_record)
-        .map(|source| (source.source_type, source.id));
+    let first_recordable = if dose_open {
+        detail.assignments.iter().find(|source| {
+            source.can_record && selected == Some(source.id) && selected_type == source.source_type
+        })
+    } else {
+        None
+    }
+    .or_else(|| detail.assignments.iter().find(|source| source.can_record))
+    .map(|source| (source.source_type, source.id));
     data["assignments"] = json!(detail.assignments.iter().map(|source| {
         let submitted = selected == Some(source.id) && selected_type == source.source_type;
         let source_draft = if submitted { dose_draft.clone() } else { super::forms::dose_for(source, detail.stock.medication.id, zone) };
         let time_error = submitted && dose_error.is_some_and(|error| super::forms::message(error) == super::forms::INVALID_TAKEN_AT);
         let source_error = submitted && dose_error.is_some() && !time_error;
+        let dose_changed = submitted && matches!(dose_error, Some(OperationError::Conflict { code, .. }) if code == "dose_changed");
         let source_error_label = dose_error.filter(|_| source_error).map(|error| dose_error_label(error, &labels, language));
         let dose_label = format!("{} {}", source.amount, unit_label(&source.unit, &source.amount));
-        json!({ "id":source.id, "source_type":source.source_type, "person_name":source.person_name, "can_record":source.can_record,
+        json!({ "id":source.id, "source_type":source.source_type, "person_name":source.person_name, "can_record":source.can_record, "available":source.available,
+            "amount":source.amount, "unit":source.unit,
             "dose_label":dose_label, "draft":source_draft, "time_error":time_error,
             "autofocus": first_recordable == Some((source.source_type, source.id)),
+            "dose_changed":dose_changed,
             "source_error":source_error_label.as_ref().map(|(message, _)| message),
             "source_error_lang":source_error_label.as_ref().map(|(_, language)| language) })
     }).collect::<Vec<_>>());
@@ -343,6 +409,7 @@ fn detail_with_state(
         dose_error
             .or(refill_failure.map(|(_, error)| error))
             .or(management_error)
+            .or(adjustment_failure.map(|(_, error)| error))
             .map(super::forms::status)
             .unwrap_or(StatusCode::OK),
     )
@@ -351,6 +418,7 @@ fn detail_with_state(
 fn dose_error_label(error: &OperationError, labels: &Value, language: &str) -> (String, String) {
     let key = match error {
         OperationError::Forbidden => Some("forbidden"),
+        OperationError::Conflict { code, .. } if code == "dose_changed" => Some("dose_changed"),
         OperationError::Conflict { .. } => Some("conflict"),
         _ => None,
     };
@@ -406,7 +474,7 @@ fn render(
     }
 }
 
-fn unit_label(unit: &str, amount: &str) -> String {
+pub(super) fn unit_label(unit: &str, amount: &str) -> String {
     if amount != "1" && matches!(unit, "tablet" | "capsule" | "puff" | "drop") {
         format!("{unit}s")
     } else {

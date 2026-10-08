@@ -1,7 +1,10 @@
 use crate::models::{
     access::{self, PersonAccess, TenantTransaction},
     authorization,
-    care::medications::{self, StockSnapshot},
+    care::{
+        doses,
+        medications::{self, StockSnapshot},
+    },
     entities::{
         dosage, grant, location, medication, medication_take, person, person_medication, schedule,
     },
@@ -17,11 +20,13 @@ use std::collections::HashMap;
 #[derive(Serialize)]
 pub struct Assignment {
     pub id: i64,
+    pub person_id: i64,
     pub source_type: &'static str,
     pub person_name: String,
     pub amount: String,
     pub unit: String,
     pub can_record: bool,
+    pub available: bool,
 }
 
 pub struct Detail {
@@ -356,11 +361,13 @@ pub async fn detail(
         };
         assignments.push(Assignment {
             id: record.id,
+            person_id: record.person_id,
             source_type: "person_medication",
             person_name: subject.name.clone(),
             amount: amount.normalize().to_string(),
             unit,
             can_record: permission.1,
+            available: true,
         });
     }
     for record in schedules {
@@ -371,20 +378,21 @@ pub async fn detail(
         if !permission.0 {
             continue;
         }
-        let (Some(subject), Some(amount), Some(unit)) = (
-            people.get(&record.person_id),
-            record.dose_amount,
-            record.dose_unit,
-        ) else {
+        let preview = doses::browser_schedule_preview(record.clone(), today);
+        let (Some(subject), Some(amount), Some(unit)) =
+            (people.get(&record.person_id), preview.amount, preview.unit)
+        else {
             continue;
         };
         assignments.push(Assignment {
             id: record.id,
+            person_id: record.person_id,
             source_type: "schedule",
             person_name: subject.name.clone(),
-            amount: amount.normalize().to_string(),
+            amount,
             unit,
             can_record: permission.1,
+            available: preview.available,
         });
     }
     Ok(Detail {

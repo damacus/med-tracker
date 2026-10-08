@@ -64,6 +64,8 @@ pub(super) fn take(body: Value) -> std::result::Result<doses::Take, response::Fa
         dose_amount,
         dose_unit,
         taken_from_medication_id,
+        expected_effective_amount: None,
+        expected_effective_unit: None,
     })
 }
 

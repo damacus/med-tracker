@@ -991,6 +991,11 @@ ga:
       foreign_source: 'Ní bhaineann an fhoinse seo leis an gcógas seo.'
       forbidden: 'Ní féidir leat an dáileog seo a thaifeadadh.'
       conflict: 'Tá an t-iarratas dáileoige seo ag teacht salach ar thaifead roimhe seo.'
+      not_scheduled: 'Níl an chóireáil seo sceidealaithe don am roghnaithe.'
+      checking: 'An t-am roghnaithe á sheiceáil.'
+      ready: 'Tá an dáileog roghnaithe réidh le taifeadadh.'
+      dose_changed: 'Tá an dáileog phleanáilte athraithe. Athbhreithnigh an dáileog nuashonraithe sula dtaifeadtar í.'
+      use_updated_dose: 'Úsáid an dáileog nuashonraithe'
     finder:
       nhs_directory: Eolaire NHS
       title: Aimsitheoir Leigheas

@@ -36,7 +36,7 @@
               {% if medication.pause_history | length > 0 %}<details class="text-sm"><summary class="cursor-pointer font-medium">Pause history</summary><ol class="list-disc ml-5 mt-2 space-y-2">{% for period in medication.pause_history %}<li>{{ period.reason | replace(from="_",to=" ") }}{% if period.note %} · {{ period.note }}{% endif %}{% if period.started_at %} · <time datetime="{{ period.started_at_iso }}">{{ period.started_at }}</time>{% endif %} to <time datetime="{{ period.ended_at_iso }}">{{ period.ended_at }}</time></li>{% endfor %}</ol></details>{% endif %}
             </div>
             <div class="flex flex-wrap gap-2 mt-auto pt-2">
-              {% if medication.can_record and medication.active and not medication.paused %}<a class="btn btn-neutral w-fit" href="/households/{{ slug }}/people/{{ person.id }}/treatments/{{ medication.source_kind }}/{{ medication.id }}/doses">Record dose</a>{% endif %}
+              {% if medication.can_record and medication.active and not medication.paused %}<a class="btn btn-neutral w-fit" href="/households/{{ slug }}/medications/{{ medication.medication_id }}?record_source_type={% if medication.source_kind == 'schedules' %}schedule{% else %}person_medication{% endif %}&record_source_id={{ medication.id }}&record_person_id={{ person.id }}">Record dose</a>{% endif %}
               <a class="btn btn-ghost w-fit" href="/households/{{ slug }}/people/{{ person.id }}/treatments/{{ medication.source_kind }}/{{ medication.id }}/doses">Dose records</a>
               {% if medication.can_manage %}<a class="btn btn-ghost w-fit" href="/households/{{ slug }}/people/{{ person.id }}/treatments/{{ medication.source_kind }}/{{ medication.id }}/edit">Edit treatment</a>{% endif %}
             </div>
