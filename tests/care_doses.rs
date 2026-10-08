@@ -93,6 +93,8 @@ fn command() -> Command {
         dose_amount: Some("2".into()),
         dose_unit: Some("tablet".into()),
         taken_from_medication_id: Some(80001),
+        expected_effective_amount: None,
+        expected_effective_unit: None,
     })
 }
 
@@ -448,6 +450,20 @@ async fn dose_take_schedule_date_kinds_and_taper_amounts() {
         }
         fixture.close().await;
     }
+}
+
+#[tokio::test]
+async fn public_take_keeps_an_explicit_amount_override_without_browser_confirmation() {
+    let fixture = Fixture::new().await;
+    let Command::Take(mut input) = command();
+    input.dose_amount = Some("3".into());
+    let outcome = take(&fixture, Command::Take(input)).await;
+    let Ok(Outcome::Created(record)) = outcome else {
+        panic!("Expected public dose override: {outcome:?}");
+    };
+    assert_eq!(record.dose_amount.unwrap().to_string(), "3.00");
+    assert_eq!(fixture.effect().await, (1, "7.00".into(), 1, 1));
+    fixture.close().await;
 }
 
 #[tokio::test]

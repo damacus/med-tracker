@@ -129,7 +129,7 @@ async fn insert_version(
         "active_role": context.tenant.membership().role,
         "permissions_version": context.tenant.membership().permissions_version,
         "policy_class": "MedicationPolicy",
-        "policy_query": match event { "api_create" => "create?", "api_update" => "update?", "api_destroy" | "destroy" => "destroy?", _ => "adjust_inventory?" }
+        "policy_query": match event { "api_create" => "create?", "api_update" => "update?", "api_destroy" | "destroy" => "destroy?", _ if event.starts_with("restock (") => "refill?", _ => "adjust_inventory?" }
     });
     if let Some(provenance) = context.provenance {
         let (method, prefix) = match provenance.method {

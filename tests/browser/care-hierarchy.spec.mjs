@@ -114,11 +114,13 @@ test('record-dose and care edit actions remain compact on desktop and mobile', a
   const management = page.getByRole('region', { name: 'Manage medication', exact: true });
   const [recordHeadingBox, managementBox] = await Promise.all([recordSection.boundingBox(), management.boundingBox()]);
   expect(recordHeadingBox.y).toBeLessThan(managementBox.y);
-  const record = page.getByRole('form', { name: 'Record dose for Synthetic adult', exact: true });
+  await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
+  const record = page.getByRole('form', { name: /Synthetic adult.*Synthetic tablets.*2 tablets.*Ongoing medication/ });
   const recordBox = await record.getByRole('button', { name: 'Record dose', exact: true }).boundingBox();
   const formBox = await record.boundingBox();
   expect(recordBox.width).toBeLessThan(240);
   expect(recordBox.width).toBeLessThan(formBox.width * 0.75);
+  await page.keyboard.press('Escape');
   await page.getByRole('link', { name: 'Edit Medication', exact: true }).click();
   await expectIntrinsicActions(page, 'Save Medication');
   await page.getByRole('link', { name: 'Back to Medications', exact: true }).click();
@@ -371,7 +373,7 @@ test('order and stock actions are intrinsic while inventory remains prominent', 
   const order = page.getByRole('button', { name: 'Mark as ordered', exact: true });
   expect((await order.boundingBox()).width).toBeLessThan(240);
   await page.getByRole('link', { name: 'Back to Medication', exact: true }).click();
-  await page.getByRole('link', { name: 'Adjust stock', exact: true }).click();
+  await page.getByRole('link', { name: 'Stock adjustment page', exact: true }).click();
   await page.screenshot({ path: info.outputPath(`care-hierarchy-stock-before-${info.project.name}.png`), fullPage: true });
   await expectIntrinsicActions(page, 'Adjust stock');
 });

@@ -10,6 +10,7 @@ struct Page<'a> {
     view: &'a TeraView,
     slug: &'a str,
     request_id: String,
+    language: String,
 }
 
 impl<'a> Page<'a> {
@@ -20,6 +21,7 @@ impl<'a> Page<'a> {
         view: &'a TeraView,
         slug: &'a str,
         request: Option<Extension<LocoRequestId>>,
+        language: &str,
     ) -> Self {
         Self {
             ctx,
@@ -28,6 +30,7 @@ impl<'a> Page<'a> {
             view,
             slug,
             request_id: super::request_id(request),
+            language: language.to_owned(),
         }
     }
 
@@ -171,18 +174,18 @@ impl<'a> Page<'a> {
             let Some(id) = id else {
                 return operation_error(OperationError::NotFound);
             };
-            let detail = match browser_query::detail(&tenant, id).await {
+            let detail = match browser_query::detail(&tenant, id, principal.time_zone()).await {
                 Ok(value) => value,
                 Err(error) => return operation_error(error),
             };
-            rendering::detail(
+            rendering::management_failure(
                 self.view,
                 self.token,
                 self.slug,
                 detail,
                 principal.time_zone(),
-                &HashMap::new(),
-                Some(error),
+                &self.language,
+                error,
             )
         } else {
             let context = match browser_query::form_context(&tenant, id).await {
@@ -228,7 +231,7 @@ pub(super) async fn new(
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
 ) -> Response {
-    Page::new(&ctx, &session, &token, &view, &slug, request)
+    Page::new(&ctx, &session, &token, &view, &slug, request, "en")
         .open(None)
         .await
 }
@@ -240,7 +243,7 @@ pub(super) async fn edit(
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
 ) -> Response {
-    Page::new(&ctx, &session, &token, &view, &slug, request)
+    Page::new(&ctx, &session, &token, &view, &slug, request, "en")
         .open(Some(&id))
         .await
 }
@@ -253,7 +256,7 @@ pub(super) async fn create(
     ViewEngine(view): ViewEngine<TeraView>,
     AxumForm(draft): AxumForm<HashMap<String, String>>,
 ) -> Response {
-    Page::new(&ctx, &session, &token, &view, &slug, request)
+    Page::new(&ctx, &session, &token, &view, &slug, request, "en")
         .save(None, draft, false)
         .await
 }
@@ -266,7 +269,7 @@ pub(super) async fn update(
     ViewEngine(view): ViewEngine<TeraView>,
     AxumForm(draft): AxumForm<HashMap<String, String>>,
 ) -> Response {
-    Page::new(&ctx, &session, &token, &view, &slug, request)
+    Page::new(&ctx, &session, &token, &view, &slug, request, "en")
         .save(Some(&id), draft, false)
         .await
 }
@@ -274,12 +277,23 @@ pub(super) async fn destroy(
     State(ctx): State<AppContext>,
     Path((slug, id)): Path<(String, String)>,
     session: Session<SessionPgPool>,
-    request: Option<Extension<LocoRequestId>>,
+    (request, headers): (Option<Extension<LocoRequestId>>, HeaderMap),
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
     AxumForm(draft): AxumForm<HashMap<String, String>>,
 ) -> Response {
-    Page::new(&ctx, &session, &token, &view, &slug, request)
-        .save(Some(&id), draft, true)
-        .await
+    Page::new(
+        &ctx,
+        &session,
+        &token,
+        &view,
+        &slug,
+        request,
+        headers
+            .get(header::ACCEPT_LANGUAGE)
+            .and_then(|value| value.to_str().ok())
+            .unwrap_or("en"),
+    )
+    .save(Some(&id), draft, true)
+    .await
 }

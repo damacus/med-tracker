@@ -498,6 +498,7 @@ async fn development_seed_creates_a_usable_account_and_household() {
             .args([
                 "db:seed",
                 &format!("SEED_DATABASE_URL={base}/{database}"),
+                &format!("SEED_EXECUTABLE={}", env!("CARGO_BIN_EXE_med-tracker")),
                 "LOCO_ENV=test",
             ])
             .env(

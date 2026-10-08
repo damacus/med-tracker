@@ -36,6 +36,8 @@ async fn take(
             dose_amount: Some("2".into()),
             dose_unit: Some("tablet".into()),
             taken_from_medication_id: Some(80001),
+            expected_effective_amount: None,
+            expected_effective_unit: None,
         }),
     )
     .await;

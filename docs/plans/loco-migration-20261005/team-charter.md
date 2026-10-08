@@ -28,6 +28,20 @@ candidate; use a merge-preserving update when needed. Verify hosted checks again
 the exact pushed head. Do not add empty trigger commits while investigating a
 missing check.
 
+## UI review gate
+
+Owner decision, 8 October 2026: every UI change requires three independent
+judges before it is called complete: vanilla Astra without design skills,
+UI Professional using its skill, and Accessibility using the requested
+addyosmani/web-quality-skills accessibility skill. Review the actual desktop
+and mobile result, including changed copy and states. Preserve a separate
+verdict from each judge. Fix actionable findings through the existing sole
+writer and have affected judges recheck the corrected result. Clearly record
+unverified behaviour and optional preferences; do not infer accessibility
+conformance from screenshots or automated checks. The owner does not require
+manual screen-reader testing. These UI judgments supplement the existing
+independent code/security review and publication gates.
+
 ## Delivery
 
 Use existing public Tasks. Write a failing behavioural test, implement the change,

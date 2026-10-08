@@ -27,6 +27,17 @@ Proposed files and Tasks are labelled as new; their presence in a plan is not co
 | 07 | [Workers](slices/07-workers.md) | W1 immediately after 02; W2/W3 after their domain operations | All durable jobs, schedules, permissions, restart and drain |
 | 08 | [Release](slices/08-release.md) | Every capability owner accepted | Both scratch runtimes, no legacy dependency, full rehearsal and rollback |
 
+## Browser subplans and progress mapping — 7 October 2026
+
+The owner-requested UI parity work refines slice 06 rather than adding slices or
+duplicate acceptance points. Its [mapping and current status](slices/06-browser.md#plan-to-progress-mapping)
+connects the existing report IDs to the
+[profile parity subplan](slices/06-profile-parity.md) and
+[care UI parity subplans](slices/06-care-ui-parity.md).
+Slice 06 owns delivery of required missing domain/worker operations for these
+journeys, while shared contracts retain their slice 04/05/07 acceptance evidence.
+Identity/security implementation stays with slice 03's existing owner.
+
 ## Execution correction from the retrospective
 
 The eight sub-plans track complete scope, not eight serial approval stops.

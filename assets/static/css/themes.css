@@ -245,7 +245,7 @@
   --popover: color-mix(in oklab, var(--palette-color) 1%, oklch(1 0 0));
   --popover-foreground: var(--foreground);
   --primary: oklch(from var(--palette-color) l c h);
-  --primary-foreground: oklch(1 0 0);
+  --primary-foreground: oklch(0 0 0);
   --secondary: color-mix(in oklab, var(--palette-color) 10%, oklch(1 0 0));
   --secondary-foreground: oklch(from #203454 l c h);
   --secondary-container: color-mix(in oklab, var(--palette-color) 11%, oklch(1 0 0));
@@ -361,7 +361,7 @@
   --popover: color-mix(in oklab, var(--palette-color) 10%, oklch(0.2 0.012 260));
   --popover-foreground: var(--foreground);
   --primary: oklch(from var(--palette-color) l c h);
-  --primary-foreground: oklch(1 0 0);
+  --primary-foreground: oklch(0 0 0);
   --secondary: color-mix(in oklab, var(--palette-color) 10%, oklch(0.28 0.012 260));
   --secondary-foreground: oklch(from #203454 l c h);
   --secondary-container: color-mix(in oklab, var(--palette-color) 20%, oklch(0.24 0.012 255));
@@ -709,7 +709,7 @@
   --popover: color-mix(in oklab, var(--palette-color) 1%, oklch(1 0 0));
   --popover-foreground: var(--foreground);
   --primary: oklch(from var(--palette-color) l c h);
-  --primary-foreground: oklch(1 0 0);
+  --primary-foreground: oklch(0 0 0);
   --secondary: color-mix(in oklab, var(--palette-color) 10%, oklch(1 0 0));
   --secondary-foreground: oklch(from #203454 l c h);
   --secondary-container: color-mix(in oklab, var(--palette-color) 11%, oklch(1 0 0));
@@ -825,7 +825,7 @@
   --popover: color-mix(in oklab, var(--palette-color) 10%, oklch(0.2 0.012 260));
   --popover-foreground: var(--foreground);
   --primary: oklch(from var(--palette-color) l c h);
-  --primary-foreground: oklch(1 0 0);
+  --primary-foreground: oklch(0 0 0);
   --secondary: color-mix(in oklab, var(--palette-color) 10%, oklch(0.28 0.012 260));
   --secondary-foreground: oklch(from #203454 l c h);
   --secondary-container: color-mix(in oklab, var(--palette-color) 20%, oklch(0.24 0.012 255));
@@ -941,7 +941,7 @@
   --popover: color-mix(in oklab, var(--palette-color) 1%, oklch(1 0 0));
   --popover-foreground: var(--foreground);
   --primary: oklch(from var(--palette-color) l c h);
-  --primary-foreground: oklch(1 0 0);
+  --primary-foreground: oklch(0 0 0);
   --secondary: color-mix(in oklab, var(--palette-color) 10%, oklch(1 0 0));
   --secondary-foreground: oklch(from #203454 l c h);
   --secondary-container: color-mix(in oklab, var(--palette-color) 11%, oklch(1 0 0));
@@ -1057,7 +1057,7 @@
   --popover: color-mix(in oklab, var(--palette-color) 10%, oklch(0.2 0.012 260));
   --popover-foreground: var(--foreground);
   --primary: oklch(from var(--palette-color) l c h);
-  --primary-foreground: oklch(1 0 0);
+  --primary-foreground: oklch(0 0 0);
   --secondary: color-mix(in oklab, var(--palette-color) 10%, oklch(0.28 0.012 260));
   --secondary-foreground: oklch(from #203454 l c h);
   --secondary-container: color-mix(in oklab, var(--palette-color) 20%, oklch(0.24 0.012 255));
@@ -1405,7 +1405,7 @@
   --popover: color-mix(in oklab, var(--palette-color) 1%, oklch(1 0 0));
   --popover-foreground: var(--foreground);
   --primary: oklch(from var(--palette-color) l c h);
-  --primary-foreground: oklch(1 0 0);
+  --primary-foreground: oklch(0 0 0);
   --secondary: color-mix(in oklab, var(--palette-color) 10%, oklch(1 0 0));
   --secondary-foreground: oklch(from #203454 l c h);
   --secondary-container: color-mix(in oklab, var(--palette-color) 11%, oklch(1 0 0));
@@ -1521,7 +1521,7 @@
   --popover: color-mix(in oklab, var(--palette-color) 10%, oklch(0.2 0.012 260));
   --popover-foreground: var(--foreground);
   --primary: oklch(from var(--palette-color) l c h);
-  --primary-foreground: oklch(1 0 0);
+  --primary-foreground: oklch(0 0 0);
   --secondary: color-mix(in oklab, var(--palette-color) 10%, oklch(0.28 0.012 260));
   --secondary-foreground: oklch(from #203454 l c h);
   --secondary-container: color-mix(in oklab, var(--palette-color) 20%, oklch(0.24 0.012 255));
@@ -1869,7 +1869,7 @@
   --popover: color-mix(in oklab, var(--palette-color) 1%, oklch(1 0 0));
   --popover-foreground: var(--foreground);
   --primary: oklch(from var(--palette-color) l c h);
-  --primary-foreground: oklch(1 0 0);
+  --primary-foreground: oklch(0 0 0);
   --secondary: color-mix(in oklab, var(--palette-color) 10%, oklch(1 0 0));
   --secondary-foreground: oklch(from #203454 l c h);
   --secondary-container: color-mix(in oklab, var(--palette-color) 11%, oklch(1 0 0));
@@ -1985,7 +1985,7 @@
   --popover: color-mix(in oklab, var(--palette-color) 10%, oklch(0.2 0.012 260));
   --popover-foreground: var(--foreground);
   --primary: oklch(from var(--palette-color) l c h);
-  --primary-foreground: oklch(1 0 0);
+  --primary-foreground: oklch(0 0 0);
   --secondary: color-mix(in oklab, var(--palette-color) 10%, oklch(0.28 0.012 260));
   --secondary-foreground: oklch(from #203454 l c h);
   --secondary-container: color-mix(in oklab, var(--palette-color) 20%, oklch(0.24 0.012 255));
@@ -2101,7 +2101,7 @@
   --popover: color-mix(in oklab, var(--palette-color) 1%, oklch(1 0 0));
   --popover-foreground: var(--foreground);
   --primary: oklch(from var(--palette-color) l c h);
-  --primary-foreground: oklch(1 0 0);
+  --primary-foreground: oklch(0 0 0);
   --secondary: color-mix(in oklab, var(--palette-color) 10%, oklch(1 0 0));
   --secondary-foreground: oklch(from #203454 l c h);
   --secondary-container: color-mix(in oklab, var(--palette-color) 11%, oklch(1 0 0));
@@ -2217,7 +2217,7 @@
   --popover: color-mix(in oklab, var(--palette-color) 10%, oklch(0.2 0.012 260));
   --popover-foreground: var(--foreground);
   --primary: oklch(from var(--palette-color) l c h);
-  --primary-foreground: oklch(1 0 0);
+  --primary-foreground: oklch(0 0 0);
   --secondary: color-mix(in oklab, var(--palette-color) 10%, oklch(0.28 0.012 260));
   --secondary-foreground: oklch(from #203454 l c h);
   --secondary-container: color-mix(in oklab, var(--palette-color) 20%, oklch(0.24 0.012 255));

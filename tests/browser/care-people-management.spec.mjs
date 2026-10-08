@@ -55,7 +55,8 @@ test('people creation and editing preserve dependent care and existing medicatio
   await expect(page.getByRole('link', { name: 'Synthetic edited minor', exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Synthetic adult', exact: true }).click();
   await page.getByRole('link', { name: 'Synthetic tablets', exact: true }).click();
-  await page.getByRole('button', { name: 'Record dose', exact: true }).click();
+  await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Record dose', exact: true }).getByRole('button', { name: 'Record dose', exact: true }).click();
   await expect(page.getByTestId('current-supply')).toHaveText('8 tablets');
   expect((await careFixture.probe()).takes).toBe(1);
   expect([403, 404]).toContain((await page.request.get(`${peopleUrl}/73002`, { maxRedirects: 0 })).status());

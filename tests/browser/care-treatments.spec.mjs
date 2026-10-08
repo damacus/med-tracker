@@ -248,7 +248,8 @@ test('medication assignment creation and editing work immediately for recorded c
   await expect(card).toContainText('Active');
   await card.getByRole('link', { name: 'Synthetic assigned medicine', exact: true }).click();
   await expect(page.locator('form[data-dose-form]')).toContainText('2 tablets');
-  await page.getByRole('button', { name: 'Record dose', exact: true }).click();
+  await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
+  await page.getByRole('form', { name: /Synthetic adult.*Synthetic assigned medicine.*2 tablets.*Ongoing medication/ }).getByRole('button', { name: 'Record dose', exact: true }).click();
   await expect(page.getByTestId('current-supply')).toHaveText('8 tablets');
 });
 
@@ -264,7 +265,8 @@ test('retiring a schedule and unassigning medication preserve historical clinica
   const assignment = page.getByRole('article', { name: 'Synthetic tablets assignments', exact: true });
   await expect(assignment.getByRole('button', { name: 'Unassign medication', exact: true })).toBeVisible();
   await assignment.getByRole('link', { name: 'Synthetic tablets', exact: true }).click();
-  await page.getByRole('button', { name: 'Record dose', exact: true }).click();
+  await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
+  await page.getByRole('form', { name: /Synthetic adult.*Synthetic tablets.*2 tablets.*Ongoing medication/ }).getByRole('button', { name: 'Record dose', exact: true }).click();
   await expect(page.getByTestId('current-supply')).toHaveText('8 tablets');
   await page.getByRole('link', { name: 'Medications', exact: true }).click();
   await page.getByRole('link', { name: 'People', exact: true }).click();
@@ -302,7 +304,8 @@ test('retirement audit failure preserves both treatment sources and historical d
   await careFixture.scheduledMedicine();
   await navigate(page);
   await page.getByRole('article', { name: 'Synthetic tablets assignments', exact: true }).getByRole('link', { name: 'Synthetic tablets', exact: true }).click();
-  await page.getByRole('button', { name: 'Record dose', exact: true }).click();
+  await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
+  await page.getByRole('form', { name: /Synthetic adult.*Synthetic tablets.*2 tablets.*Ongoing medication/ }).getByRole('button', { name: 'Record dose', exact: true }).click();
   await expect(page.getByTestId('current-supply')).toHaveText('8 tablets');
   const token = await page.locator('input[name="authenticity_token"]').first().inputValue();
   const before = await careFixture.treatmentProbe();

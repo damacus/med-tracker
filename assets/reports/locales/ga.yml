@@ -966,6 +966,8 @@ ga:
       invalid_quantity: "Cuir isteach cainníocht neamh-dhiúltach le dhá ionad de dheachúlacha ar a mhéad."
       household_inventory: "Fardal an teaghlaigh"
     dose_dialog:
+      ongoing_medication: 'Cógas leanúnach'
+      scheduled_treatment: 'Cóireáil sceidealta'
       administration_title: 'Taifead tabhairt cógais do %{name}'
       choose_person_source: 'Roghnaigh an duine agus an fhoinse.'
       close: 'Dún'
@@ -976,7 +978,7 @@ ga:
       view_only: 'Amharc amháin'
       no_stock: 'Níl stoc incháilithe ann'
       record: 'Taifead dáileog'
-      confirm: 'Deimhnigh an duine, an cógas, an t-am agus foinse an stoic.'
+      confirm: "Seiceáil an duine, an cógas, an dáileog agus an t-am sula dtaifeadann tú é."
       review: 'Athbhreithnigh an dáileog seo.'
       unavailable: 'Níl an fhoinse seo ar fáil. Roghnaigh foinse eile sula seolann tú.'
       choose_source: 'Roghnaigh foinse'
@@ -984,12 +986,16 @@ ga:
       medication: 'CÓGAS'
       dose: 'DÁILEOG'
       taken_at: 'Tógtha ag'
-      stock_source: 'Foinse stoic'
-      remaining: 'fágtha'
+      stock_remaining: 'Stoc fágtha'
       invalid_time: 'Tá an t-am tógála neamhbhailí.'
       foreign_source: 'Ní bhaineann an fhoinse seo leis an gcógas seo.'
       forbidden: 'Ní féidir leat an dáileog seo a thaifeadadh.'
       conflict: 'Tá an t-iarratas dáileoige seo ag teacht salach ar thaifead roimhe seo.'
+      not_scheduled: 'Níl an chóireáil seo sceidealaithe don am roghnaithe.'
+      checking: 'An t-am roghnaithe á sheiceáil.'
+      ready: 'Tá an dáileog roghnaithe réidh le taifeadadh.'
+      dose_changed: 'Tá an dáileog phleanáilte athraithe. Athbhreithnigh an dáileog nuashonraithe sula dtaifeadtar í.'
+      use_updated_dose: 'Úsáid an dáileog nuashonraithe'
     finder:
       nhs_directory: Eolaire NHS
       title: Aimsitheoir Leigheas

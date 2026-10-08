@@ -13,8 +13,8 @@ use crate::models::{
 };
 use axum::{
     Extension,
-    extract::Form as AxumForm,
-    http::{StatusCode, header},
+    extract::{Form as AxumForm, Query},
+    http::{HeaderMap, StatusCode, header},
     response::IntoResponse,
 };
 use axum_csrf::CsrfToken;
@@ -23,6 +23,20 @@ use axum_session_sqlx::SessionPgPool;
 use loco_rs::controller::middleware::request_id::LocoRequestId;
 use loco_rs::prelude::*;
 use std::collections::HashMap;
+
+#[derive(serde::Deserialize)]
+struct PreviewRequest {
+    source_type: String,
+    source_id: String,
+    taken_at: String,
+}
+
+#[derive(Default, serde::Deserialize)]
+struct ShowRequest {
+    record_source_type: Option<String>,
+    record_source_id: Option<i64>,
+    record_person_id: Option<i64>,
+}
 
 pub fn routes() -> Routes {
     Routes::new()
@@ -39,10 +53,61 @@ pub fn routes() -> Routes {
             post(management::destroy),
         )
         .add("/{slug}/medications/{id}/doses", post(take))
+        .add("/{slug}/medications/{id}/doses/preview", get(dose_preview))
+        .add("/{slug}/medications/{id}/refill", post(refill))
         .add(
             "/{slug}/medications/{id}/stock/adjust",
             get(edit_stock).post(adjust_stock),
         )
+}
+
+async fn dose_preview(
+    State(ctx): State<AppContext>,
+    Path((slug, id)): Path<(String, String)>,
+    session: Session<SessionPgPool>,
+    request: Option<Extension<LocoRequestId>>,
+    Query(input): Query<PreviewRequest>,
+) -> Response {
+    let (principal, tenant) = match begin(&ctx, &session, &slug, &request_id(request)).await {
+        Ok(value) => value,
+        Err(error) => return authentication_error(error),
+    };
+    let snapshot = match medications::read_stock_snapshot(&tenant, &id).await {
+        Ok(value) => value,
+        Err(error) => return operation_error(error),
+    };
+    let preview = match doses::browser_preview(
+        &tenant,
+        snapshot.medication.id,
+        &input.source_type,
+        &input.source_id,
+        &input.taken_at,
+        principal.time_zone(),
+    )
+    .await
+    {
+        Ok(value) => value,
+        Err(error) => return operation_error(error),
+    };
+    if tenant.commit().await.is_err() {
+        return unavailable();
+    }
+    let label = preview
+        .amount
+        .as_deref()
+        .zip(preview.unit.as_deref())
+        .map(|(amount, unit)| format!("{} {}", amount, rendering::unit_label(unit, amount)));
+    (
+        StatusCode::OK,
+        [(header::CACHE_CONTROL, "no-store")],
+        axum::Json(serde_json::json!({
+            "available": preview.available,
+            "amount": preview.amount,
+            "unit": preview.unit,
+            "label": label,
+        })),
+    )
+        .into_response()
 }
 
 async fn index(
@@ -93,8 +158,9 @@ async fn show(
     State(ctx): State<AppContext>,
     Path((slug, id)): Path<(String, String)>,
     session: Session<SessionPgPool>,
-    request: Option<Extension<LocoRequestId>>,
     token: CsrfToken,
+    (request, headers): (Option<Extension<LocoRequestId>>, HeaderMap),
+    Query(input): Query<ShowRequest>,
     ViewEngine(view): ViewEngine<TeraView>,
 ) -> Response {
     let request_id = request_id(request);
@@ -102,19 +168,52 @@ async fn show(
         Ok(value) => value,
         Err(error) => return authentication_error(error),
     };
-    let detail = match browser_query::detail(&tenant, &id).await {
+    let detail = match browser_query::detail(&tenant, &id, principal.time_zone()).await {
         Ok(detail) => detail,
         Err(error) => return operation_error(error),
     };
-    let draft = forms::dose(&detail, principal.time_zone());
+    let selected = match (
+        input.record_source_type.as_deref(),
+        input.record_source_id,
+        input.record_person_id,
+    ) {
+        (None, None, None) => None,
+        (Some(kind), Some(source_id), Some(person_id)) => {
+            let Some(source) = detail.assignments.iter().find(|source| {
+                source.can_record
+                    && source.source_type == kind
+                    && source.id == source_id
+                    && source.person_id == person_id
+            }) else {
+                return operation_error(OperationError::NotFound);
+            };
+            Some(forms::dose_for(
+                source,
+                detail.stock.medication.id,
+                principal.time_zone(),
+            ))
+        }
+        _ => return operation_error(OperationError::NotFound),
+    };
+    let draft = selected
+        .as_ref()
+        .cloned()
+        .unwrap_or_else(|| forms::dose(&detail, principal.time_zone()));
     let response = rendering::detail(
         &view,
         &token,
         &slug,
         detail,
-        principal.time_zone(),
-        &draft,
-        None,
+        rendering::DosePresentation {
+            zone: principal.time_zone(),
+            language: headers
+                .get(header::ACCEPT_LANGUAGE)
+                .and_then(|value| value.to_str().ok())
+                .unwrap_or("en"),
+            draft: &draft,
+            error: None,
+            open: selected.is_some(),
+        },
     );
     if tenant.commit().await.is_err() {
         return unavailable();
@@ -165,8 +264,8 @@ async fn take(
     State(ctx): State<AppContext>,
     Path((slug, id)): Path<(String, String)>,
     session: Session<SessionPgPool>,
-    request: Option<Extension<LocoRequestId>>,
     token: CsrfToken,
+    (request, headers): (Option<Extension<LocoRequestId>>, HeaderMap),
     ViewEngine(view): ViewEngine<TeraView>,
     AxumForm(draft): AxumForm<HashMap<String, String>>,
 ) -> Response {
@@ -182,7 +281,7 @@ async fn take(
         Err(error) => return authentication_error(error),
     };
     let result = async {
-        let detail = browser_query::detail(&tenant, &id).await?;
+        let detail = browser_query::detail(&tenant, &id, principal.time_zone()).await?;
         let input = forms::take(&detail, &draft, principal.time_zone())?;
         doses::execute_in_timezone(
             &tenant,
@@ -211,18 +310,45 @@ async fn take(
                 Ok(value) => value,
                 Err(error) => return authentication_error(error),
             };
-            let detail = match browser_query::detail(&tenant, &id).await {
+            let mut detail = match browser_query::detail(&tenant, &id, principal.time_zone()).await
+            {
                 Ok(value) => value,
                 Err(error) => return operation_error(error),
             };
+            if let Ok(preview) = doses::browser_preview(
+                &tenant,
+                detail.stock.medication.id,
+                forms::field(&draft, "source_type"),
+                forms::field(&draft, "source_id"),
+                forms::field(&draft, "taken_at"),
+                principal.time_zone(),
+            )
+            .await
+                && let (Some(amount), Some(unit)) = (preview.amount, preview.unit)
+                && let Some(source) = detail.assignments.iter_mut().find(|source| {
+                    source.source_type == forms::field(&draft, "source_type")
+                        && source.id.to_string() == forms::field(&draft, "source_id")
+                })
+            {
+                source.amount = amount;
+                source.unit = unit;
+                source.available = preview.available;
+            }
             let response = rendering::detail(
                 &view,
                 &token,
                 &slug,
                 detail,
-                principal.time_zone(),
-                &draft,
-                Some(&error),
+                rendering::DosePresentation {
+                    zone: principal.time_zone(),
+                    language: headers
+                        .get(header::ACCEPT_LANGUAGE)
+                        .and_then(|value| value.to_str().ok())
+                        .unwrap_or("en"),
+                    draft: &draft,
+                    error: Some(&error),
+                    open: true,
+                },
             );
             if tenant.commit().await.is_err() {
                 return unavailable();
@@ -232,11 +358,11 @@ async fn take(
     }
 }
 
-async fn adjust_stock(
+async fn refill(
     State(ctx): State<AppContext>,
     Path((slug, id)): Path<(String, String)>,
     session: Session<SessionPgPool>,
-    request: Option<Extension<LocoRequestId>>,
+    (request, headers): (Option<Extension<LocoRequestId>>, HeaderMap),
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
     AxumForm(draft): AxumForm<HashMap<String, String>>,
@@ -252,6 +378,109 @@ async fn adjust_stock(
         Ok(value) => value,
         Err(error) => return authentication_error(error),
     };
+    if forms::field(&draft, "etag").trim().is_empty() {
+        if let Err(error) = browser_query::detail(&tenant, &id, principal.time_zone()).await {
+            return operation_error(error);
+        }
+        if tenant.commit().await.is_err() {
+            return unavailable();
+        }
+        return (
+            StatusCode::PRECONDITION_REQUIRED,
+            [(header::CACHE_CONTROL, "no-store")],
+            "Reopen the refill form before saving.",
+        )
+            .into_response();
+    }
+    let input = medications::Restock {
+        medication_id: id.clone(),
+        quantity: forms::field(&draft, "quantity").into(),
+        restock_date: forms::field(&draft, "restock_date").into(),
+        original_etag: forms::field(&draft, "etag").into(),
+    };
+    let result = medications::restock(&tenant, input, Some(principal.provenance())).await;
+    match result {
+        Ok(_) => {
+            if tenant.commit().await.is_err() {
+                return unavailable();
+            }
+            redirect(&slug, &id)
+        }
+        Err(error) => {
+            if tenant.rollback().await.is_err() {
+                return unavailable();
+            }
+            let tenant = match principal
+                .begin_household_slug(&ctx.db, &slug, request_id)
+                .await
+            {
+                Ok(value) => value,
+                Err(error) => return authentication_error(error),
+            };
+            let detail = match browser_query::detail(&tenant, &id, principal.time_zone()).await {
+                Ok(value) => value,
+                Err(error) => return operation_error(error),
+            };
+            let response = rendering::refill_failure(
+                &view,
+                &token,
+                &slug,
+                detail,
+                rendering::RefillPresentation {
+                    zone: principal.time_zone(),
+                    language: headers
+                        .get(header::ACCEPT_LANGUAGE)
+                        .and_then(|value| value.to_str().ok())
+                        .unwrap_or("en"),
+                    draft: &draft,
+                    error: &error,
+                },
+            );
+            if tenant.commit().await.is_err() {
+                return unavailable();
+            }
+            response
+        }
+    }
+}
+
+async fn adjust_stock(
+    State(ctx): State<AppContext>,
+    Path((slug, id)): Path<(String, String)>,
+    session: Session<SessionPgPool>,
+    (request, headers): (Option<Extension<LocoRequestId>>, HeaderMap),
+    token: CsrfToken,
+    ViewEngine(view): ViewEngine<TeraView>,
+    AxumForm(draft): AxumForm<HashMap<String, String>>,
+) -> Response {
+    if token
+        .verify(forms::field(&draft, "authenticity_token"))
+        .is_err()
+    {
+        return operation_error(OperationError::Forbidden);
+    }
+    let request_id = request_id(request);
+    let (principal, tenant) = match begin(&ctx, &session, &slug, &request_id).await {
+        Ok(value) => value,
+        Err(error) => return authentication_error(error),
+    };
+    if forms::field(&draft, "etag").trim().is_empty() {
+        if let Err(error) = medications::read_stock_snapshot(&tenant, &id).await {
+            return operation_error(error);
+        }
+        if !forms::can_adjust(&tenant) {
+            return operation_error(OperationError::Forbidden);
+        }
+        if tenant.commit().await.is_err() {
+            return unavailable();
+        }
+        return (
+            StatusCode::PRECONDITION_REQUIRED,
+            [(header::CACHE_CONTROL, "no-store")],
+            "Reopen the stock adjustment form before saving.",
+        )
+            .into_response();
+    }
     let input = medications::AdjustStock {
         medication_id: id.clone(),
         new_quantity: forms::field(&draft, "new_quantity").into(),
@@ -285,18 +514,43 @@ async fn adjust_stock(
                 Ok(value) => value,
                 Err(error) => return authentication_error(error),
             };
-            let snapshot = match medications::read_stock_snapshot(&tenant, &id).await {
+            if forms::field(&draft, "presentation") == "stock" && forms::can_adjust(&tenant) {
+                let snapshot = match medications::read_stock_snapshot(&tenant, &id).await {
+                    Ok(value) => value,
+                    Err(error) => return operation_error(error),
+                };
+                let response = rendering::stock(
+                    &view,
+                    &token,
+                    &slug,
+                    snapshot,
+                    &draft,
+                    Some(forms::message(&error)),
+                    forms::status(&error),
+                );
+                if tenant.commit().await.is_err() {
+                    return unavailable();
+                }
+                return response;
+            }
+            let detail = match browser_query::detail(&tenant, &id, principal.time_zone()).await {
                 Ok(value) => value,
                 Err(error) => return operation_error(error),
             };
-            let response = rendering::stock(
+            let response = rendering::adjustment_failure(
                 &view,
                 &token,
                 &slug,
-                snapshot,
-                &draft,
-                Some(forms::message(&error)),
-                forms::status(&error),
+                detail,
+                rendering::AdjustmentPresentation {
+                    zone: principal.time_zone(),
+                    language: headers
+                        .get(header::ACCEPT_LANGUAGE)
+                        .and_then(|value| value.to_str().ok())
+                        .unwrap_or("en"),
+                    draft: &draft,
+                    error: &error,
+                },
             );
             if tenant.commit().await.is_err() {
                 return unavailable();

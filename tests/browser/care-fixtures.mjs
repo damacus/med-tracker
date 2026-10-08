@@ -116,7 +116,8 @@ async function withCareFixture(captureMail, registrationInviteOnly, reportAssets
         seedRecovery: () => fixtureTask('seed-recovery'), recoveryProbe: async () => JSON.parse(await fixtureTask('recovery-probe')), exhaustOtp: () => fixtureTask('exhaust-otp'),
         seedRecoveryPasskey: () => fixtureTask('seed-recovery-passkey'),
         peopleProbe: async () => JSON.parse(await fixtureTask('people-probe')),
-        seedAdministration: () => fixtureTask('seed-administration'), administrationProbe: async () => JSON.parse(await fixtureTask('administration-probe')),
+        restockProbe: async () => JSON.parse(await fixtureTask('restock-probe')), failRestockAudit: () => fixtureTask('fail-restock-audit'),
+        seedAdministration: () => fixtureTask('seed-administration'), administrationProbe: async () => JSON.parse(await fixtureTask('administration-probe')), personViewOnly: () => fixtureTask('person-view-only'), revokePersonViewOnly: () => fixtureTask('revoke-person-view-only'), personZeroHours: () => fixtureTask('person-zero-hours'), mixedRecordability: () => fixtureTask('mixed-recordability'),
         invitationProbe: async email => JSON.parse(await fixtureTask('invitation-probe', [`INVITATION_EMAIL=${email}`])), expireInvitation: email => fixtureTask('expire-invitation', [`INVITATION_EMAIL=${email}`]),
         seedInvitationAccount: () => fixtureTask('seed-invitation-account'), seedInvitationOtp: () => fixtureTask('seed-invitation-otp'),
         invitationAcceptanceProbe: async () => JSON.parse(await fixtureTask('invitation-acceptance-probe')),
@@ -150,7 +151,7 @@ async function withCareFixture(captureMail, registrationInviteOnly, reportAssets
           return fixtureTask('seed-retained-passkey', [...fields.map(field => `RETAINED_${field.toUpperCase()}=${stored[field]}`), `RETAINED_SIGN_COUNT=${stored.sign_count}`]);
         },
         secondPerson: () => fixtureTask('second-person'),
-        scheduledMedicine: () => fixtureTask('scheduled-medicine'),
+        scheduledMedicine: () => fixtureTask('scheduled-medicine'), scheduleOnlyMedicine: () => fixtureTask('schedule-only-medicine'), dateSensitiveSchedule: () => fixtureTask('date-sensitive-schedule'), offdaySchedule: () => fixtureTask('offday-schedule'), changeTaperStep: () => fixtureTask('change-taper-step'), londonPreviewZone: () => fixtureTask('london-preview-zone'), collidingDoseSources: () => fixtureTask('colliding-dose-sources'), emptyStandardDosage: () => fixtureTask('empty-standard-dosage'),
         seedReport: () => fixtureTask('report-seed'),
         seedReportHistory: () => fixtureTask('report-history-seed'),
         reportAuditProbe: async () => JSON.parse(await fixtureTask('report-audit-probe')),

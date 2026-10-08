@@ -20,8 +20,9 @@ test('the next check reuses the app with fresh clinical and authentication data'
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.goto('/households/persistence-fixture/medications/80001');
-  await expect(page.getByRole('button', { name: 'Record dose', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Record dose', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Record a dose', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Record dose', exact: true }).getByRole('button', { name: 'Record dose', exact: true }).click();
   await expect(page.getByTestId('current-supply')).toHaveText('8 tablets');
   await page.getByRole('link', { name: 'Order medication', exact: true }).click();
   await page.getByLabel('Supplier', { exact: true }).fill('Synthetic pharmacy');

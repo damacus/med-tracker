@@ -55,12 +55,15 @@ impl<'a> Page<'a> {
                 .as_i64()
                 .ok_or(OperationError::Unavailable)?;
             let can_manage = people::can_manage(&tenant, person_id).await?;
-            let medications = browser_query::person_medications(&tenant, person_id).await?;
+            let can_manage_household = administration::can_manage(&tenant).await?;
+            let medications =
+                browser_treatments::person_cards(&tenant, person_id, principal.time_zone()).await?;
             Ok::<_, OperationError>(rendering::detail(
                 self.slug,
                 projection["data"].clone(),
                 &medications,
                 can_manage,
+                can_manage_household,
             ))
         }
         .await;

@@ -8,10 +8,140 @@ Small application scripts own interaction and offline outbox behaviour; CSS owns
 **Tech Stack:** Loco/Tera, daisyUI theme exports, maintained browser tooling and service-worker APIs.
 **Spec:** [implementation-spec.md](../implementation-spec.md), captured profile/notification/theme/font PR inputs.
 
+## Plan-to-progress mapping
+
+These are subdivisions of existing slice 06 items, not new scored milestones.
+The report keeps its stable IDs. A partial PR cannot complete an entire row.
+
+| Existing report item | Owning task and detailed plan | Current evidence and remaining work |
+| --- | --- | --- |
+| s06-i01 Shell/themes | B1; profile P10–P11 consumes theme engine | Published baseline; preserve it and verify the new profile entry point |
+| s06-i02 Care pages | B2a; care C1 person cards, C2 medication details, C3 inventory presentation, C4 wizard; timing follow-up below | Care baseline exists; layout PR #2474 published with local checks. Full Rails interaction parity and readable timing remain planned |
+| s06-i03 Profile/settings | B2b; profile P01–P28 | Local operations partially work; complete four-tab composition and behaviour unimplemented. Auth-owned security integration remains dependent |
+| s06-i04 Admin/support | B2c | Existing household administration is partial evidence; broader admin/support retains auth-first sequencing |
+| s06-i05 Data/scanner/reviews | B2d; care C3 scanner and C4 entry handoff; profile P22 export presentation | Reports PR #2470 merged. Scanner-to-add, scanner-to-restock, catalogue import and review freshness remain incomplete |
+| s06-i06 Accessibility | B1/B2 across both new subplans; timing/localization follow-up below | Single-form audit and selected UI checks exist; find/fix/verify whole-journey keyboard, semantics and translation gaps |
+| s06-i07 Avatars | B2b; profile P06–P07 | Local storage/browser evidence partial; cleanup/retry/mobile verification remains, Gravatar permission pending |
+| s06-i08 Live care | B3 live-update portion; preserve across care C1–C4 | 54 selected cases pass; passive session renewal blocks acceptance; full checks/publication remain |
+| s06-i09 Offline | B3 offline portion | Deferred from first release, retained in full goal; not resumed by parity planning |
+
+Dependency mapping: care mutations use slice 04 shared operations. Catalogue
+resolution/private data/export contracts map to slice 05 A3; dm+d import,
+reconciliation, review refresh and push delivery map to slice 07 W1–W3. Scanner
+is accepted only when both user journeys and their necessary operations work.
+Profile security/tokens/closure consume slice 03 services; lifecycle/export work
+follows the agreed auth-first sequence. Do not dispatch paused unrelated work or
+double-count a single passing check as two completed capabilities.
+
+## Profile parity subplan
+
+The [care UI parity subplans](06-care-ui-parity.md) cover person pages, medication
+details, inventory/scanner and the Add Medication wizard. These require working
+ports of the established Rails interactions, not audit-only deliverables.
+
+The owner requires the complete Rails profile layout and every reachable item.
+Follow [Profile page parity](06-profile-parity.md), including the four tabs,
+settings sheets/dialogs, expandable groups and profile-hosted theme picker.
+
+## Owner follow-up: understandable timing and accessibility — 7 October 2026
+
+- [ ] Replace overlapping Frequency, Dose cycle and Schedule type presentation
+  across dose-option forms/lists, treatment forms and treatment cards. Follow the
+  Rails interaction: choose structured fields and generate a plain-language
+  summary, without requiring the same information to be entered again as text.
+  Keep planned timing distinct from dose limits. Present limits as maximum doses
+  per day/week/month and minimum hours between doses; do not label weekly or
+  monthly limits as daily. Preserve existing saved instructions and semantics.
+- [ ] Reuse the useful prior art in
+  `rails/app/components/schedules/frequency_preview.rb` and
+  `rails/app/components/person_medications/card/timing_status_component.rb`.
+  Adapt the interaction to the current themes rather than copying legacy labels.
+- [ ] Run a dedicated accessibility audit of representative new browser journeys
+  and their error, dialog, stale-draft and live-update states, using the local
+  `accessibility` skill alongside `web-quality-audit`. Cover keyboard-only use,
+  visible and restored focus, screen-reader names and announcements, understandable
+  labels, contrast across themes, zoom/reflow and touch targets. Record automated
+  evidence separately from manual and assistive-technology checks, with explicit
+  gaps where those checks cannot be completed. The existing single-form Lighthouse
+  accessibility score of 100 does not establish whole-application conformance.
+
+Find and fix the discovered defects, verify them, obtain independent review and
+publish PRs; an audit report alone is not completion. Per the owner, no dedicated
+screen-reader session is required: use standards-based source inspection,
+rendered accessibility-tree checks and browser automation without claiming
+screen-reader compatibility tested. Include keyboard shortcuts/navigation and
+language switching for visible and accessible text, plus document language.
+
+Current source checkpoint: reports already select translated labels through
+`report_pdf::locale` / `translations` and pass `lang` into the shared layout.
+Their locale files cover English, Welsh, Irish, Portuguese and Spanish. Other
+care templates currently use literal English strings and the layout defaults to
+`en-GB`; this is not evidence of an application-wide language picker or translated
+accessible names. Reuse the existing locale approach where suitable, inventory
+the supported selection/persistence contract, and translate visible and accessible
+strings together before marking the cross-journey requirement complete.
+
+These are recorded follow-up requirements, not implemented or audited outcomes.
+
+## Resumed delivery decisions — 7 October 2026
+
+The owner resumed slice 06 in the isolated `loco-browser` worktree on branch
+`codex/feat-loco-browser-experience`, based on main
+`1c3c3da954fb50370371fd019b924a93a547c2a7`. Preserve the existing Tera/daisyUI
+shell, care operations and merged report journeys from PR #2470.
+
+Owner Q&A established these additional requirements:
+
+- A dose or stock change appears on another authorised connected foreground
+  page within one second. Preserve unsaved forms and show a stale-data notice.
+  Show lost connections, catch up after reconnect, and refresh background tabs
+  when reopened. The implementation transport is an engineering decision.
+- This team owns missing domain and worker operations necessary to complete
+  these browser journeys. Missing operations are dependencies to implement,
+  not a reason to accept placeholder pages or defer required first-release work.
+- Authentication and security implementation retain their existing owner.
+  Do not edit the active identity worktree or resume its paused decisions.
+  Consume verified interfaces and preserve the separately agreed sequence for
+  platform administration/support and household exports/lifecycle after auth.
+- Existing first-release exclusions remain: offline capture/replay, portable
+  imports, native acceptance, FHIR/SMART, MCP and optional AI/provider lookup.
+  Retain them in the full goal. No merge, deployment or live-data action is authorised.
+
+The owner confirmed the shared brief and authorised implementation on 7 October.
+Discovery reports are
+`/private/tmp/medtracker-s06-care-discovery.md` and
+`/private/tmp/medtracker-s06-data-discovery.md`. They describe the inspected main
+revision; their initial five-second recommendation and outside-slice dependency
+boundary are superseded by the owner answers above.
+
+Proceed through coherent deliveries using one implementation writer, independent
+review, and one costly verification lane:
+
+1. Live care updates and remaining care actions, using existing tenant-scoped
+   operations and projections; include reconnect, access withdrawal and draft tests.
+2. Profile details/preferences and avatars; integrate security/session/device
+   controls through the existing auth owner's verified interfaces.
+3. Camera/manual scanner and catalogue resolution, review list/status journeys
+   and required background refresh; reuse merged PDF pages and retained worker work.
+4. Complete platform/support and data/lifecycle browser journeys with their
+   required operations, respecting the previously approved auth-first sequence.
+5. Verify accessibility and complete desktop/mobile journeys across the finished
+   browser application, including denial, validation and immediate-usability cases.
+
+Before each delivery, record exact owned paths, reused interfaces, behavioural
+RED test, focused Task commands and report/review paths in its file brief.
+Shared registration, schema, identity and fixture changes need explicit ownership
+in that brief. Freeze the candidate for verification. Run relevant focused Tasks
+and final `task ci`, meter CPU/RAM for full suites, obtain the required independent
+Devin review, and publish scoped PRs with passing hosted checks. Record outcomes
+in the existing progress ledger and render the authoritative
+`/private/tmp/medtracker-progress-report.md` to its existing HTML output.
+
 ## Global constraints
 
 ### Care-page layout decision — 7 October 2026
 
+The owner prioritised layout corrections before further profile implementation.
 Keep secondary actions, especially Cancel, at their natural width on desktop and
 mobile. Group related short fields in rows where their labels remain readable.
 Lead with identity and dose, keep dose timing and limits together, group stock

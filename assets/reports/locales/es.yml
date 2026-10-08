@@ -968,6 +968,8 @@ es:
       invalid_quantity: "Introduzca una cantidad no negativa con un máximo de dos decimales."
       household_inventory: "Inventario del hogar"
     dose_dialog:
+      ongoing_medication: 'Medicación continua'
+      scheduled_treatment: 'Tratamiento programado'
       administration_title: 'Registrar administración para %{name}'
       choose_person_source: 'Elija la persona y la fuente.'
       close: 'Cerrar'
@@ -978,7 +980,7 @@ es:
       view_only: 'Solo lectura'
       no_stock: 'No hay existencias aptas'
       record: 'Registrar dosis'
-      confirm: 'Confirme la persona, el medicamento, la hora y el origen de las existencias.'
+      confirm: 'Compruebe la persona, el medicamento, la dosis y la hora antes de registrar.'
       review: 'Revise esta dosis.'
       unavailable: 'Esta fuente no está disponible. Elija otra antes de enviar.'
       choose_source: 'Elegir fuente'
@@ -986,12 +988,16 @@ es:
       medication: 'MEDICAMENTO'
       dose: 'DOSIS'
       taken_at: 'Tomada a las'
-      stock_source: 'Origen de las existencias'
-      remaining: 'restantes'
+      stock_remaining: 'Existencias restantes'
       invalid_time: 'La hora de la toma no es válida.'
       foreign_source: 'Esta fuente no pertenece a este medicamento.'
       forbidden: 'No puede registrar esta dosis.'
       conflict: 'Esta solicitud de dosis entra en conflicto con un registro anterior.'
+      not_scheduled: 'Este tratamiento no está programado para la hora seleccionada.'
+      checking: 'Comprobando la hora seleccionada.'
+      ready: 'La dosis seleccionada está lista para registrar.'
+      dose_changed: 'La dosis prevista ha cambiado. Revise la dosis actualizada antes de registrarla.'
+      use_updated_dose: 'Usar la dosis actualizada'
     finder:
       coming_soon: "¡Esta función llegará pronto! Integraremos con una API de base
         de datos de medicamentos para proporcionar información detallada sobre los

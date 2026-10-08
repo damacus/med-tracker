@@ -919,6 +919,8 @@ en:
       invalid_quantity: "Enter a nonnegative quantity with at most two decimal places."
       household_inventory: "Household inventory"
     dose_dialog:
+      ongoing_medication: 'Ongoing medication'
+      scheduled_treatment: 'Scheduled treatment'
       administration_title: 'Log administration for %{name}'
       choose_person_source: 'Choose the person and source.'
       close: 'Close'
@@ -929,7 +931,7 @@ en:
       view_only: 'View only'
       no_stock: 'No eligible stock'
       record: 'Record dose'
-      confirm: 'Confirm the person, medication, time, and inventory source.'
+      confirm: 'Check the person, medication, dose and time before recording.'
       review: 'Please review this dose.'
       unavailable: 'This source is unavailable. Choose another source before submitting.'
       choose_source: 'Choose source'
@@ -937,12 +939,16 @@ en:
       medication: 'MEDICATION'
       dose: 'DOSE'
       taken_at: 'Taken at'
-      stock_source: 'Stock source'
-      remaining: 'remaining'
+      stock_remaining: 'Stock remaining'
       invalid_time: 'Taken at is invalid.'
       foreign_source: 'This source does not belong to this medication.'
       forbidden: 'You cannot record this dose.'
       conflict: 'This dose request conflicts with a previous record.'
+      not_scheduled: 'This treatment is not scheduled for the selected time.'
+      checking: 'Checking the selected time.'
+      ready: 'Selected dose ready for recording.'
+      dose_changed: 'The planned dose changed. Review the updated dose before recording.'
+      use_updated_dose: 'Use updated dose'
     finder:
       nhs_directory: NHS Directory
       title: Medication Finder

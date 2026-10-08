@@ -272,6 +272,8 @@ pub async fn change(
                 taken_from_medication_id: attrs
                     .get("taken_from_medication_id")
                     .and_then(Value::as_i64),
+                expected_effective_amount: None,
+                expected_effective_unit: None,
             });
             let outcome =
                 doses::execute_in_timezone(tenant, command, calendar::current_zone(), provenance)
