@@ -180,7 +180,7 @@ tasks:
       vars: [SEED_DATABASE_URL]
     env:
       MEDTRACKER_SEED_DATABASE_URL: '{{.SEED_DATABASE_URL}}'
-    cmds: ['env DATABASE_URL="$MEDTRACKER_SEED_DATABASE_URL" cargo run --locked -- db seed --environment {{.LOCO_ENV | default "development"}}']
+    cmds: ['{{if .SEED_EXECUTABLE}}env DATABASE_URL="$MEDTRACKER_SEED_DATABASE_URL" {{.SEED_EXECUTABLE | shellQuote}} db seed --environment {{.LOCO_ENV | default "development"}}{{else}}env DATABASE_URL="$MEDTRACKER_SEED_DATABASE_URL" cargo run --locked -- db seed --environment {{.LOCO_ENV | default "development"}}{{end}}']
   worker:
     desc: Start the Loco worker process
     cmds: ['cargo run --locked -- start --worker --environment {{.LOCO_ENV | default "development"}}']

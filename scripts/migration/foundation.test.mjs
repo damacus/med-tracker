@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readlinkSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import test from 'node:test';
 
 test('Rails rollback has its own complete runtime root', () => {
@@ -25,6 +25,28 @@ test('root commands use Loco and Rails commands are namespaced', () => {
   const root = readFileSync('Taskfile.yml', 'utf8');
   assert.ok(!root.includes('flatten: true\n  rust:'));
   assert.ok(!root.includes('legacy-rails:'));
+});
+
+test('development seed Task can use the binary Cargo prepared for its integration test', () => {
+  const preview = spawnSync('task', [
+    '--dry', '--verbose', 'db:seed',
+    'SEED_DATABASE_URL=postgres://127.0.0.1/owned_test',
+    'SEED_EXECUTABLE=/synthetic/med-tracker',
+    'LOCO_ENV=test'
+  ], { encoding: 'utf8' });
+  assert.equal(preview.status, 0, preview.stderr);
+  const output = `${preview.stdout}\n${preview.stderr}`;
+  assert.match(output, /\/synthetic\/med-tracker db seed --environment test/);
+  assert.doesNotMatch(output, /cargo run --locked -- db seed/);
+  for (const override of [[], ['SEED_EXECUTABLE=']]) {
+    const fallback = spawnSync('task', [
+      '--dry', '--verbose', 'db:seed',
+      'SEED_DATABASE_URL=postgres://127.0.0.1/owned_test',
+      'LOCO_ENV=test', ...override
+    ], { encoding: 'utf8' });
+    assert.equal(fallback.status, 0, fallback.stderr);
+    assert.match(`${fallback.stdout}\n${fallback.stderr}`, /cargo run --locked -- db seed --environment test/);
+  }
 });
 
 test('Rails helpers resolve in root and standalone namespaces', () => {
