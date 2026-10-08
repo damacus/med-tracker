@@ -962,6 +962,8 @@ cy:
       invalid_quantity: "Rhowch faint nad yw’n negatif gyda hyd at ddau le degol."
       household_inventory: "Stoc y cartref"
     dose_dialog:
+      ongoing_medication: 'Meddyginiaeth barhaus'
+      scheduled_treatment: 'Triniaeth wedi’i threfnu'
       administration_title: 'Cofnodi rhoi meddyginiaeth i %{name}'
       choose_person_source: 'Dewiswch y person a’r ffynhonnell.'
       close: 'Cau'
@@ -972,7 +974,7 @@ cy:
       view_only: 'Gweld yn unig'
       no_stock: 'Dim stoc gymwys'
       record: 'Cofnodi dos'
-      confirm: 'Cadarnhewch y person, y feddyginiaeth, yr amser a ffynhonnell y stoc.'
+      confirm: "Gwiriwch y person, y feddyginiaeth, y dos a'r amser cyn cofnodi."
       review: 'Adolygwch y dos hwn.'
       unavailable: 'Nid yw’r ffynhonnell hon ar gael. Dewiswch ffynhonnell arall cyn cyflwyno.'
       choose_source: 'Dewis ffynhonnell'
@@ -980,8 +982,7 @@ cy:
       medication: 'MEDDYGINIAETH'
       dose: 'DOS'
       taken_at: 'Cymerwyd am'
-      stock_source: 'Ffynhonnell stoc'
-      remaining: 'yn weddill'
+      stock_remaining: "Stoc sy'n weddill"
       invalid_time: 'Mae’r amser cymryd yn annilys.'
       foreign_source: 'Nid yw’r ffynhonnell hon yn perthyn i’r feddyginiaeth hon.'
       forbidden: 'Ni allwch gofnodi’r dos hwn.'

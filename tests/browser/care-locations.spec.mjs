@@ -54,7 +54,8 @@ test('locations can be created, edited, used by medication and safely deleted', 
   await page.getByRole('link', { name: 'Medications', exact: true }).click();
   await expect(page.getByRole('link', { name: 'Synthetic location medicine', exact: true })).toHaveCount(0);
   await page.getByRole('link', { name: 'Synthetic tablets', exact: true }).click();
-  await page.getByRole('button', { name: 'Record dose', exact: true }).click();
+  await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Record dose', exact: true }).getByRole('button', { name: 'Record dose', exact: true }).click();
   await expect(page.getByTestId('current-supply')).toHaveText('8 tablets');
   await page.goto(locationsUrl);
   await page.getByRole('link', { name: 'Synthetic cabinet', exact: true }).click();

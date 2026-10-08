@@ -6,7 +6,7 @@ use super::medications::{
 };
 use crate::models::{
     access::TenantTransaction,
-    care::{browser_query, people},
+    care::{administration, browser_treatments, people},
     errors::OperationError,
 };
 use axum::{

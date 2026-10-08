@@ -6,6 +6,7 @@ BEGIN
     RAISE EXCEPTION 'Browser reset requires the owned reference database';
   END IF;
   ALTER TABLE public.versions DROP CONSTRAINT IF EXISTS synthetic_order_audit_failure;
+  ALTER TABLE public.versions DROP CONSTRAINT IF EXISTS browser_restock_audit_failure;
   ALTER TABLE public.versions DROP CONSTRAINT IF EXISTS synthetic_treatment_audit_failure;
   ALTER TABLE public.versions DROP CONSTRAINT IF EXISTS browser_oauth_audit_failure;
   ALTER TABLE public.security_audit_events DROP CONSTRAINT IF EXISTS browser_oauth_audit_failure;

@@ -35,17 +35,43 @@ pub(super) fn index(slug: &str, collection: Value, can_create: bool) -> Value {
 pub(super) fn detail(
     slug: &str,
     person: Value,
-    medications: &[browser_query::MedicationCard],
+    medications: &[Value],
     can_manage: bool,
+    can_manage_household: bool,
 ) -> Value {
     let mut data = context(slug);
     data["title"] = person["name"].clone();
+    data["avatar_initials"] = json!(
+        person["name"]
+            .as_str()
+            .unwrap_or_default()
+            .split_whitespace()
+            .filter_map(|word| word.chars().next())
+            .take(2)
+            .map(|letter| letter.to_uppercase().to_string())
+            .collect::<Vec<_>>()
+            .join("")
+    );
     data["type_label"] = json!(type_label(
         person["person_type"].as_str().unwrap_or("adult")
     ));
     data["person"] = person;
+    data["age_present"] = json!(!data["person"]["age"].is_null());
+    data["date_of_birth_display"] = json!(
+        data["person"]["date_of_birth"]
+            .as_str()
+            .filter(|value| !value.is_empty())
+            .unwrap_or("Not recorded")
+    );
+    data["email_display"] = json!(
+        data["person"]["email"]
+            .as_str()
+            .filter(|value| !value.is_empty())
+            .unwrap_or("Not recorded")
+    );
     data["medications"] = json!(medications);
     data["can_manage"] = json!(can_manage);
+    data["can_manage_household"] = json!(can_manage_household);
     data
 }
 

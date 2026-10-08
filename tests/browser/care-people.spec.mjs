@@ -11,8 +11,9 @@ test('each permitted person has an independent dose form and submitted draft', a
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
   await page.getByRole('link', { name: 'Synthetic tablets', exact: true }).click();
-  const adult = page.getByRole('form', { name: 'Record dose for Synthetic adult', exact: true });
-  const minor = page.getByRole('form', { name: 'Record dose for Synthetic minor', exact: true });
+  await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
+  const adult = page.getByRole('form', { name: /Synthetic adult.*Synthetic tablets.*2 tablets.*Ongoing medication/ });
+  const minor = page.getByRole('form', { name: /Synthetic minor.*Synthetic tablets.*1 tablet.*Ongoing medication/ });
   await expect(page.locator('form[data-dose-form]')).toHaveCount(2, { timeout: 5000 });
   await expect(adult).toContainText('2 tablets');
   await expect(minor).toContainText('1 tablet');
@@ -30,6 +31,7 @@ test('each permitted person has an independent dose form and submitted draft', a
   expect(await minor.locator('[name="client_uuid"]').inputValue()).not.toBe(adultUuid);
   await minor.getByRole('button', { name: 'Record dose', exact: true }).click();
   await expect(page.getByTestId('current-supply')).toHaveText('9 tablets');
+  await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
   await adult.getByRole('button', { name: 'Record dose', exact: true }).click();
   await expect(page.getByTestId('current-supply')).toHaveText('7 tablets');
   const stored = await careFixture.probe();

@@ -1,16 +1,21 @@
 use crate::models::{
     access::{self, PersonAccess, TenantTransaction},
     care::medications::{self, StockSnapshot},
-    entities::{dosage, location, medication, person, person_medication},
+    entities::{
+        dosage, location, medication, medication_take, person, person_medication, schedule,
+    },
     errors::OperationError,
 };
-use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect, QueryTrait};
+use sea_orm::{
+    ColumnTrait, Condition, EntityTrait, QueryFilter, QueryOrder, QuerySelect, QueryTrait,
+};
 use serde::Serialize;
 use std::collections::HashMap;
 
 #[derive(Serialize)]
 pub struct Assignment {
     pub id: i64,
+    pub source_type: &'static str,
     pub person_name: String,
     pub amount: String,
     pub unit: String,
@@ -20,7 +25,17 @@ pub struct Assignment {
 pub struct Detail {
     pub stock: StockSnapshot,
     pub assignments: Vec<Assignment>,
+    pub dose_options: Vec<dosage::Model>,
+    pub dose_history: Vec<DoseHistory>,
     pub can_adjust: bool,
+    pub location_name: String,
+}
+
+pub struct DoseHistory {
+    pub person_name: String,
+    pub amount: Option<String>,
+    pub unit: Option<String>,
+    pub taken_at: Option<chrono::NaiveDateTime>,
 }
 
 #[derive(Serialize)]
@@ -146,9 +161,104 @@ fn medication_card(record: medication::Model) -> MedicationCard {
     }
 }
 
-pub async fn detail(tenant: &TenantTransaction, id: &str) -> Result<Detail, OperationError> {
+pub async fn detail(
+    tenant: &TenantTransaction,
+    id: &str,
+    zone: chrono_tz::Tz,
+) -> Result<Detail, OperationError> {
     let stock = medications::read_stock_snapshot(tenant, id).await?;
     let household_id = tenant.scope().household_id;
+    let location_name = location::Entity::find_by_id(stock.medication.location_id)
+        .filter(location::Column::HouseholdId.eq(household_id))
+        .one(tenant.transaction())
+        .await?
+        .ok_or(OperationError::NotFound)?
+        .name;
+    let dose_options = dosage::Entity::find()
+        .filter(dosage::Column::HouseholdId.eq(household_id))
+        .filter(dosage::Column::MedicationId.eq(stock.medication.id))
+        .order_by_asc(dosage::Column::Id)
+        .all(tenant.transaction())
+        .await?;
+    let visible_people = access::granted_people(tenant.membership());
+    let linked_schedules = schedule::Entity::find()
+        .select_only()
+        .column(schedule::Column::Id)
+        .filter(schedule::Column::HouseholdId.eq(household_id))
+        .filter(schedule::Column::MedicationId.eq(stock.medication.id))
+        .filter(schedule::Column::PersonId.in_subquery(visible_people.clone()))
+        .into_query();
+    let linked_assignments = person_medication::Entity::find()
+        .select_only()
+        .column(person_medication::Column::Id)
+        .filter(person_medication::Column::HouseholdId.eq(household_id))
+        .filter(person_medication::Column::MedicationId.eq(stock.medication.id))
+        .filter(person_medication::Column::PersonId.in_subquery(visible_people))
+        .into_query();
+    let takes = medication_take::Entity::find()
+        .filter(medication_take::Column::HouseholdId.eq(household_id))
+        .filter(
+            Condition::any()
+                .add(medication_take::Column::ScheduleId.in_subquery(linked_schedules))
+                .add(medication_take::Column::PersonMedicationId.in_subquery(linked_assignments)),
+        )
+        .order_by_desc(medication_take::Column::TakenAt)
+        .order_by_desc(medication_take::Column::Id)
+        .limit(5)
+        .all(tenant.transaction())
+        .await?;
+    let history_schedules: HashMap<i64, i64> = schedule::Entity::find()
+        .filter(schedule::Column::HouseholdId.eq(household_id))
+        .filter(schedule::Column::Id.is_in(takes.iter().filter_map(|take| take.schedule_id)))
+        .all(tenant.transaction())
+        .await?
+        .into_iter()
+        .map(|source| (source.id, source.person_id))
+        .collect();
+    let history_assignments: HashMap<i64, i64> = person_medication::Entity::find()
+        .filter(person_medication::Column::HouseholdId.eq(household_id))
+        .filter(
+            person_medication::Column::Id
+                .is_in(takes.iter().filter_map(|take| take.person_medication_id)),
+        )
+        .all(tenant.transaction())
+        .await?
+        .into_iter()
+        .map(|source| (source.id, source.person_id))
+        .collect();
+    let history_people: HashMap<i64, String> = person::Entity::find()
+        .filter(person::Column::HouseholdId.eq(household_id))
+        .filter(
+            person::Column::Id.is_in(
+                history_schedules
+                    .values()
+                    .chain(history_assignments.values())
+                    .copied(),
+            ),
+        )
+        .all(tenant.transaction())
+        .await?
+        .into_iter()
+        .map(|person| (person.id, person.name))
+        .collect();
+    let dose_history = takes
+        .into_iter()
+        .filter_map(|take| {
+            let person_id = take
+                .schedule_id
+                .and_then(|id| history_schedules.get(&id))
+                .or_else(|| {
+                    take.person_medication_id
+                        .and_then(|id| history_assignments.get(&id))
+                })?;
+            Some(DoseHistory {
+                person_name: history_people.get(person_id)?.clone(),
+                amount: take.dose_amount.map(|value| value.normalize().to_string()),
+                unit: take.dose_unit,
+                taken_at: take.taken_at,
+            })
+        })
+        .collect();
     let records = person_medication::Entity::find()
         .filter(person_medication::Column::HouseholdId.eq(household_id))
         .filter(person_medication::Column::MedicationId.eq(stock.medication.id))
@@ -158,9 +268,25 @@ pub async fn detail(tenant: &TenantTransaction, id: &str) -> Result<Detail, Oper
         .order_by_asc(person_medication::Column::Id)
         .all(tenant.transaction())
         .await?;
+    let today = chrono::Utc::now().with_timezone(&zone).date_naive();
+    let schedules = access::schedule_scope(tenant)
+        .filter(schedule::Column::MedicationId.eq(stock.medication.id))
+        .filter(schedule::Column::Active.eq(true))
+        .filter(schedule::Column::StartDate.lte(today))
+        .filter(schedule::Column::EndDate.gte(today))
+        .order_by_asc(schedule::Column::Id)
+        .all(tenant.transaction())
+        .await?;
     let people: HashMap<i64, String> = person::Entity::find()
         .filter(person::Column::HouseholdId.eq(household_id))
-        .filter(person::Column::Id.is_in(records.iter().map(|record| record.person_id)))
+        .filter(
+            person::Column::Id.is_in(
+                records
+                    .iter()
+                    .map(|record| record.person_id)
+                    .chain(schedules.iter().map(|record| record.person_id)),
+            ),
+        )
         .all(tenant.transaction())
         .await?
         .into_iter()
@@ -190,6 +316,37 @@ pub async fn detail(tenant: &TenantTransaction, id: &str) -> Result<Detail, Oper
         };
         assignments.push(Assignment {
             id: record.id,
+            source_type: "person_medication",
+            person_name: name.clone(),
+            amount: amount.normalize().to_string(),
+            unit,
+            can_record: permission.1,
+        });
+    }
+    for record in schedules {
+        let permission = match permissions.get(&record.person_id) {
+            Some(permission) => *permission,
+            None => {
+                let visible = permitted(tenant, record.person_id, PersonAccess::View).await?;
+                let recordable =
+                    visible && permitted(tenant, record.person_id, PersonAccess::Record).await?;
+                permissions.insert(record.person_id, (visible, recordable));
+                (visible, recordable)
+            }
+        };
+        if !permission.0 {
+            continue;
+        }
+        let (Some(name), Some(amount), Some(unit)) = (
+            people.get(&record.person_id),
+            record.dose_amount,
+            record.dose_unit,
+        ) else {
+            continue;
+        };
+        assignments.push(Assignment {
+            id: record.id,
+            source_type: "schedule",
             person_name: name.clone(),
             amount: amount.normalize().to_string(),
             unit,
@@ -199,7 +356,10 @@ pub async fn detail(tenant: &TenantTransaction, id: &str) -> Result<Detail, Oper
     Ok(Detail {
         stock,
         assignments,
+        dose_options,
+        dose_history,
         can_adjust: can_adjust(tenant),
+        location_name,
     })
 }
 

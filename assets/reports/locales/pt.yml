@@ -969,6 +969,8 @@ pt:
       invalid_quantity: "Introduza uma quantidade não negativa com até duas casas decimais."
       household_inventory: "Inventário do agregado"
     dose_dialog:
+      ongoing_medication: 'Medicação contínua'
+      scheduled_treatment: 'Tratamento programado'
       administration_title: 'Registar administração para %{name}'
       choose_person_source: 'Escolha a pessoa e a origem.'
       close: 'Fechar'
@@ -979,7 +981,7 @@ pt:
       view_only: 'Apenas leitura'
       no_stock: 'Sem stock elegível'
       record: 'Registar dose'
-      confirm: 'Confirme a pessoa, o medicamento, a hora e a origem do stock.'
+      confirm: 'Confirme a pessoa, o medicamento, a dose e a hora antes de registar.'
       review: 'Reveja esta dose.'
       unavailable: 'Esta origem não está disponível. Escolha outra antes de enviar.'
       choose_source: 'Escolher origem'
@@ -987,8 +989,7 @@ pt:
       medication: 'MEDICAMENTO'
       dose: 'DOSE'
       taken_at: 'Tomada às'
-      stock_source: 'Origem do stock'
-      remaining: 'restantes'
+      stock_remaining: 'Stock restante'
       invalid_time: 'A hora da toma é inválida.'
       foreign_source: 'Esta origem não pertence a este medicamento.'
       forbidden: 'Não pode registar esta dose.'

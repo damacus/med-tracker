@@ -171,18 +171,17 @@ impl<'a> Page<'a> {
             let Some(id) = id else {
                 return operation_error(OperationError::NotFound);
             };
-            let detail = match browser_query::detail(&tenant, id).await {
+            let detail = match browser_query::detail(&tenant, id, principal.time_zone()).await {
                 Ok(value) => value,
                 Err(error) => return operation_error(error),
             };
-            rendering::detail(
+            rendering::management_failure(
                 self.view,
                 self.token,
                 self.slug,
                 detail,
                 principal.time_zone(),
-                &HashMap::new(),
-                Some(error),
+                error,
             )
         } else {
             let context = match browser_query::form_context(&tenant, id).await {

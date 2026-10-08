@@ -1,27 +1,69 @@
 {% extends "layouts/base.html" %}
 {% block content %}
-<section class="max-w-3xl mx-auto">
+<section class="max-w-6xl mx-auto">
   <a class="link" href="/households/{{ slug }}/people">People</a>
   <a class="link ml-4" href="/households/{{ slug }}/medications">Medications</a>
-  <h1 class="text-3xl font-semibold mt-4">{{ person.name }}</h1>
-  <div class="flex flex-wrap items-center gap-3 mt-6">
-    <a class="btn btn-neutral w-fit" href="/households/{{ slug }}/people/{{ person.id }}/treatments">Manage treatments</a>
+  <div class="flex flex-wrap items-end justify-between gap-4 mt-4 border-b border-base-300 pb-6">
+    <div class="flex items-center gap-4 min-w-0">
+      <div role="img" aria-label="{{ person.name }} avatar" class="grid place-items-center bg-neutral text-neutral-content rounded-full w-16 h-16 shrink-0"><span class="text-xl font-semibold">{{ avatar_initials }}</span></div>
+      <div class="min-w-0">
+        <h1 class="text-3xl font-semibold">{{ person.name }}</h1>
+        <p class="text-base-content/70 mt-2">{{ type_label }}{% if age_present %} · Age {{ person.age }}{% endif %}</p>
+      </div>
+    </div>
     {% if can_manage %}<a class="btn btn-ghost w-fit" href="/households/{{ slug }}/people/{{ person.id }}/edit">Edit Person</a>{% endif %}
   </div>
-  <h2 class="text-2xl font-semibold mt-8">Current medications</h2>
-  <ul class="flex flex-col gap-4 mt-4">
-  {% for medication in medications %}
-    <li class="card bg-base-100 border border-base-300"><div class="card-body">
-      <h3 class="card-title"><a class="link" href="/households/{{ slug }}/medications/{{ medication.id }}">{{ medication.name }}</a></h3>
-    </div></li>
-  {% else %}<li>No current medication assignments are recorded.</li>{% endfor %}
-  </ul>
-  <h2 class="text-xl font-semibold mt-8">Profile details</h2>
-  <dl class="card bg-base-100 border border-base-300 mt-4"><div class="card-body grid grid-cols-1 sm:grid-cols-2 gap-4">
-    <div><dt class="font-semibold">Date of Birth</dt><dd>{{ person.date_of_birth | default(value="Not recorded") }}</dd></div>
-    <div><dt class="font-semibold">Email</dt><dd>{{ person.email | default(value="Not recorded") }}</dd></div>
-    <div><dt class="font-semibold">Person Type</dt><dd>{{ type_label }}</dd></div>
-    <div><dt class="font-semibold">Has capacity to manage own medication</dt><dd>{% if person.has_capacity %}Yes{% else %}No{% endif %}</dd></div>
-  </div></dl>
+  <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(16rem,1fr)] gap-8 mt-8">
+    <section aria-labelledby="current-medications-heading" class="min-w-0">
+      <h2 class="text-2xl font-semibold" id="current-medications-heading">Current medications</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+      {% for medication in medications %}
+        <article class="card bg-base-100 border border-base-300 min-w-0" aria-label="{{ medication.medication_name }} {{ medication.source_label }}">
+          <div class="card-body gap-3">
+            <div class="flex flex-wrap items-start justify-between gap-2">
+              <h3 class="card-title min-w-0"><a class="link break-words" href="/households/{{ slug }}/medications/{{ medication.medication_id }}">{{ medication.medication_name }}</a></h3>
+              <span class="badge badge-outline">{% if medication.paused %}Paused{% elif medication.active %}Active{% else %}Outside scheduled dates{% endif %}</span>
+            </div>
+            <div class="space-y-2">
+              <p class="text-sm text-base-content/70">{% if medication.source_kind == "schedules" %}Scheduled treatment{% else %}Ongoing medication{% endif %}</p>
+              <p class="font-semibold">{{ medication.dose_label }}</p>
+              <p class="badge badge-ghost">{{ medication.stock_label }}</p>
+              {% if medication.timing_summary %}<p>{{ medication.timing_summary }}</p>{% endif %}
+              {% if medication.date_range %}<p class="text-sm">{{ medication.date_range }}</p>{% endif %}
+              {% if medication.notes %}<p class="text-sm">{{ medication.notes }}</p>{% endif %}
+              {% if medication.limit_summary %}<p class="text-sm">{{ medication.limit_summary }}</p>{% endif %}
+              {% if medication.current_pause_period %}<p class="text-sm">Pause: {{ medication.current_pause_period.reason | replace(from="_",to=" ") }}{% if medication.current_pause_period.note %} · {{ medication.current_pause_period.note }}{% endif %}</p>{% endif %}
+              {% if medication.pause_history | length > 0 %}<details class="text-sm"><summary class="cursor-pointer font-medium">Pause history</summary><ol class="list-disc ml-5 mt-2 space-y-2">{% for period in medication.pause_history %}<li>{{ period.reason | replace(from="_",to=" ") }}{% if period.note %} · {{ period.note }}{% endif %}{% if period.started_at %} · {{ period.started_at }}{% endif %} to {{ period.ended_at }}</li>{% endfor %}</ol></details>{% endif %}
+            </div>
+            <div class="flex flex-wrap gap-2 mt-auto pt-2">
+              {% if medication.can_record and medication.active and not medication.paused %}<a class="btn btn-neutral w-fit" href="/households/{{ slug }}/people/{{ person.id }}/treatments/{{ medication.source_kind }}/{{ medication.id }}/doses">Record dose</a>{% endif %}
+              <a class="btn btn-ghost w-fit" href="/households/{{ slug }}/people/{{ person.id }}/treatments/{{ medication.source_kind }}/{{ medication.id }}/doses">Dose records</a>
+              {% if medication.can_manage %}<a class="btn btn-ghost w-fit" href="/households/{{ slug }}/people/{{ person.id }}/treatments/{{ medication.source_kind }}/{{ medication.id }}/edit">Edit treatment</a>{% endif %}
+            </div>
+          </div>
+        </article>
+      {% else %}<p class="card bg-base-100 border border-base-300 p-6 sm:col-span-2">No current medications are recorded for {{ person.name }}.</p>{% endfor %}
+      </div>
+    </section>
+    <aside class="space-y-6">
+      <section class="card bg-base-100 border border-base-300" aria-labelledby="person-actions-heading"><div class="card-body">
+        <h2 class="card-title" id="person-actions-heading">Quick actions</h2>
+        <div class="flex flex-wrap gap-2">
+          <a class="btn btn-neutral w-fit" href="/households/{{ slug }}/people/{{ person.id }}/treatments">{% if can_manage %}Manage treatments{% else %}View treatments{% endif %}</a>
+          {% if can_manage %}<a class="btn btn-ghost w-fit" href="/households/{{ slug }}/people/{{ person.id }}/treatments/schedules/new">Add schedule</a><a class="btn btn-ghost w-fit" href="/households/{{ slug }}/people/{{ person.id }}/treatments/assignments/new">Assign medication</a>{% endif %}
+          {% if can_manage_household %}<a class="btn btn-ghost w-fit" href="/households/{{ slug }}/admin/carer_relationships">Carer relationships</a>{% endif %}
+        </div>
+      </div></section>
+      <section class="card bg-base-100 border border-base-300" aria-labelledby="person-overview-heading"><div class="card-body">
+        <h2 class="card-title" id="person-overview-heading">Profile details</h2>
+        <dl class="grid gap-4">
+          <div><dt class="font-semibold">Date of Birth</dt><dd>{{ date_of_birth_display }}</dd></div>
+          <div><dt class="font-semibold">Email</dt><dd>{{ email_display }}</dd></div>
+          <div><dt class="font-semibold">Person Type</dt><dd>{{ type_label }}</dd></div>
+          <div><dt class="font-semibold">Has capacity to manage own medication</dt><dd>{% if person.has_capacity %}Yes{% else %}No{% endif %}</dd></div>
+        </dl>
+      </div></section>
+    </aside>
+  </div>
 </section>
 {% endblock content %}

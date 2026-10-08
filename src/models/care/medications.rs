@@ -6,6 +6,7 @@ mod forecast;
 mod inventory;
 mod projection;
 pub mod reading;
+mod restock;
 pub mod stock_removals;
 
 use crate::models::{
@@ -31,6 +32,21 @@ pub struct AdjustStock {
     pub medication_id: String,
     pub new_quantity: String,
     pub reason: Option<String>,
+}
+
+pub struct Restock {
+    pub medication_id: String,
+    pub quantity: String,
+    pub restock_date: String,
+    pub original_etag: String,
+}
+
+pub async fn restock(
+    tenant: &TenantTransaction,
+    input: Restock,
+    provenance: Option<&CredentialProvenance>,
+) -> Result<medication::Model, OperationError> {
+    restock::execute(&StockContext { tenant, provenance }, input).await
 }
 
 #[derive(Clone, Debug)]

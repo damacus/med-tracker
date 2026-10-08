@@ -21,8 +21,9 @@ body { margin: 0; font-family: var(--font-family); background: var(--background)
 .skip-link:focus { top: 1rem; }
 [hidden] { display: none !important; }
 .modal-box { background: var(--card); color: var(--foreground); max-height: min(90vh, 50rem); }
+dialog.modal:not([open]) { display: none; }
 .tabs { flex-wrap: wrap; }
 .tab { color: var(--foreground); }
 .btn { max-width: 100%; }
-@media (max-width: 480px) { .shell-main { padding-block: 1.5rem; } .shell-header-inner { gap: 0.5rem; } }
+@media (max-width: 480px) { .shell-main { padding-block: 1.5rem; } .shell-header-inner { gap: 0.5rem; flex-wrap: wrap; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; } }

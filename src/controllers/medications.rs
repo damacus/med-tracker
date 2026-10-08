@@ -14,7 +14,7 @@ use crate::models::{
 use axum::{
     Extension,
     extract::Form as AxumForm,
-    http::{StatusCode, header},
+    http::{HeaderMap, StatusCode, header},
     response::IntoResponse,
 };
 use axum_csrf::CsrfToken;
@@ -39,6 +39,7 @@ pub fn routes() -> Routes {
             post(management::destroy),
         )
         .add("/{slug}/medications/{id}/doses", post(take))
+        .add("/{slug}/medications/{id}/refill", post(refill))
         .add(
             "/{slug}/medications/{id}/stock/adjust",
             get(edit_stock).post(adjust_stock),
@@ -93,8 +94,8 @@ async fn show(
     State(ctx): State<AppContext>,
     Path((slug, id)): Path<(String, String)>,
     session: Session<SessionPgPool>,
-    request: Option<Extension<LocoRequestId>>,
     token: CsrfToken,
+    (request, headers): (Option<Extension<LocoRequestId>>, HeaderMap),
     ViewEngine(view): ViewEngine<TeraView>,
 ) -> Response {
     let request_id = request_id(request);
@@ -102,7 +103,7 @@ async fn show(
         Ok(value) => value,
         Err(error) => return authentication_error(error),
     };
-    let detail = match browser_query::detail(&tenant, &id).await {
+    let detail = match browser_query::detail(&tenant, &id, principal.time_zone()).await {
         Ok(detail) => detail,
         Err(error) => return operation_error(error),
     };
@@ -112,9 +113,15 @@ async fn show(
         &token,
         &slug,
         detail,
-        principal.time_zone(),
-        &draft,
-        None,
+        rendering::DosePresentation {
+            zone: principal.time_zone(),
+            language: headers
+                .get(header::ACCEPT_LANGUAGE)
+                .and_then(|value| value.to_str().ok())
+                .unwrap_or("en"),
+            draft: &draft,
+            error: None,
+        },
     );
     if tenant.commit().await.is_err() {
         return unavailable();
@@ -165,8 +172,8 @@ async fn take(
     State(ctx): State<AppContext>,
     Path((slug, id)): Path<(String, String)>,
     session: Session<SessionPgPool>,
-    request: Option<Extension<LocoRequestId>>,
     token: CsrfToken,
+    (request, headers): (Option<Extension<LocoRequestId>>, HeaderMap),
     ViewEngine(view): ViewEngine<TeraView>,
     AxumForm(draft): AxumForm<HashMap<String, String>>,
 ) -> Response {
@@ -182,7 +189,7 @@ async fn take(
         Err(error) => return authentication_error(error),
     };
     let result = async {
-        let detail = browser_query::detail(&tenant, &id).await?;
+        let detail = browser_query::detail(&tenant, &id, principal.time_zone()).await?;
         let input = forms::take(&detail, &draft, principal.time_zone())?;
         doses::execute_in_timezone(
             &tenant,
@@ -211,7 +218,7 @@ async fn take(
                 Ok(value) => value,
                 Err(error) => return authentication_error(error),
             };
-            let detail = match browser_query::detail(&tenant, &id).await {
+            let detail = match browser_query::detail(&tenant, &id, principal.time_zone()).await {
                 Ok(value) => value,
                 Err(error) => return operation_error(error),
             };
@@ -220,9 +227,81 @@ async fn take(
                 &token,
                 &slug,
                 detail,
+                rendering::DosePresentation {
+                    zone: principal.time_zone(),
+                    language: headers
+                        .get(header::ACCEPT_LANGUAGE)
+                        .and_then(|value| value.to_str().ok())
+                        .unwrap_or("en"),
+                    draft: &draft,
+                    error: Some(&error),
+                },
+            );
+            if tenant.commit().await.is_err() {
+                return unavailable();
+            }
+            response
+        }
+    }
+}
+
+async fn refill(
+    State(ctx): State<AppContext>,
+    Path((slug, id)): Path<(String, String)>,
+    session: Session<SessionPgPool>,
+    request: Option<Extension<LocoRequestId>>,
+    token: CsrfToken,
+    ViewEngine(view): ViewEngine<TeraView>,
+    AxumForm(draft): AxumForm<HashMap<String, String>>,
+) -> Response {
+    if token
+        .verify(forms::field(&draft, "authenticity_token"))
+        .is_err()
+    {
+        return operation_error(OperationError::Forbidden);
+    }
+    let request_id = request_id(request);
+    let (principal, tenant) = match begin(&ctx, &session, &slug, &request_id).await {
+        Ok(value) => value,
+        Err(error) => return authentication_error(error),
+    };
+    let input = medications::Restock {
+        medication_id: id.clone(),
+        quantity: forms::field(&draft, "quantity").into(),
+        restock_date: forms::field(&draft, "restock_date").into(),
+        original_etag: forms::field(&draft, "etag").into(),
+    };
+    let result = medications::restock(&tenant, input, Some(principal.provenance())).await;
+    match result {
+        Ok(_) => {
+            if tenant.commit().await.is_err() {
+                return unavailable();
+            }
+            redirect(&slug, &id)
+        }
+        Err(error) => {
+            if tenant.rollback().await.is_err() {
+                return unavailable();
+            }
+            let tenant = match principal
+                .begin_household_slug(&ctx.db, &slug, request_id)
+                .await
+            {
+                Ok(value) => value,
+                Err(error) => return authentication_error(error),
+            };
+            let detail = match browser_query::detail(&tenant, &id, principal.time_zone()).await {
+                Ok(value) => value,
+                Err(error) => return operation_error(error),
+            };
+            let response = rendering::refill_failure(
+                &view,
+                &token,
+                &slug,
+                detail,
                 principal.time_zone(),
                 &draft,
-                Some(&error),
+                &error,
             );
             if tenant.commit().await.is_err() {
                 return unavailable();
