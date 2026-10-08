@@ -1,0 +1,24 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-xl mx-auto card shell-card"><div class="card-body gap-4">
+  <h1 class="text-3xl font-semibold">{{ title }}</h1>
+  {% if error %}<p role="alert">{{ error }}</p>{% endif %}
+  {% if mode == "start" %}
+  <p>Your authenticator app will protect password login. Confirm your current password to start.</p>
+  <form method="post" action="/account/security/totp" class="space-y-4">
+    <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+    <label class="form-control" for="totp-password">Current password<input class="input input-bordered" id="totp-password" name="password" type="password" autocomplete="current-password" required></label>
+    <button class="btn shell-primary" type="submit">Continue</button>
+  </form>
+  {% else %}
+  {% if secret %}<p>Add this setup key to your authenticator app, then enter its six-digit code.</p><label class="form-control" for="totp-secret">Setup key<input class="input input-bordered font-mono" id="totp-secret" value="{{ secret }}" readonly></label>{% endif %}
+  <form method="post" action="{% if mode == 'login' %}/auth/totp{% elif mode == 'disable' %}/account/security/totp/disable/confirm{% else %}/account/security/totp/finish{% endif %}" class="space-y-4">
+    <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+    {% if operation_id %}<input type="hidden" name="operation_id" value="{{ operation_id }}">{% endif %}
+    {% if mode == 'disable' %}<label class="form-control" for="disable-password">Current password<input class="input input-bordered" id="disable-password" name="password" type="password" autocomplete="current-password" required></label>{% endif %}
+    <label class="form-control" for="totp-code">Authentication code<input class="input input-bordered" id="totp-code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></label>
+    <button class="btn shell-primary" type="submit">{% if mode == 'login' %}Verify{% elif mode == 'disable' %}Disable authenticator app{% else %}Enable authenticator app{% endif %}</button>
+  </form>
+  {% endif %}
+</div></section>
+{% endblock content %}

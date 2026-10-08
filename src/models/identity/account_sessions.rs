@@ -48,7 +48,9 @@ pub async fn sessions(
         CredentialMethod::ApiSession | CredentialMethod::ApiAppToken => {
             api_sessions(&transaction, account_id).await?
         }
-        CredentialMethod::BrowserSession => return Err(OperationError::Forbidden),
+        CredentialMethod::BrowserSession | CredentialMethod::PersonalApiKey => {
+            return Err(OperationError::Forbidden);
+        }
     };
     transaction.commit().await.map_err(unavailable)?;
     Ok(json!({"data":data}))
@@ -132,7 +134,9 @@ pub async fn revoke(
         CredentialMethod::OauthGrant => {
             revoke_mobile(&transaction, account_id, id, request_id).await
         }
-        CredentialMethod::BrowserSession => Err(OperationError::Forbidden),
+        CredentialMethod::BrowserSession | CredentialMethod::PersonalApiKey => {
+            Err(OperationError::Forbidden)
+        }
     };
     match result {
         Ok(()) => transaction.commit().await.map_err(unavailable),

@@ -98,9 +98,9 @@ impl Application {
     async fn new() -> Self {
         let fixture = Fixture::new().await;
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let origin = format!("http://{}", listener.local_addr().unwrap());
+        let origin = format!("http://localhost:{}", listener.local_addr().unwrap().port());
         let mut config = Config::new(&Environment::Test).unwrap();
-        config.server.host = "http://127.0.0.1".into();
+        config.server.host = "http://localhost".into();
         config.server.port = i32::from(listener.local_addr().unwrap().port());
         config.settings = Some(json!({"browser_session": {
             "key": "BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBw==",
@@ -114,7 +114,20 @@ impl Application {
         let boot = med_tracker::app::App::boot(StartMode::ServerOnly, &Environment::Test, config)
             .await
             .unwrap();
-        let router = boot.router.unwrap();
+        let store = axum_session::SessionStore::<axum_session_sqlx::SessionPgPool>::new(
+            None,
+            axum_session::SessionConfig::default(),
+        )
+        .await
+        .unwrap();
+        let legacy_fixture = axum::Router::new()
+            .route(
+                "/test/legacy-principal",
+                axum::routing::get(legacy_browser_principal),
+            )
+            .with_state(fixture.runtime.clone())
+            .layer(axum_session::SessionLayer::new(store));
+        let router = boot.router.unwrap().merge(legacy_fixture);
         let server = tokio::spawn(async move { axum::serve(listener, router).await.unwrap() });
         let client = reqwest::Client::builder()
             .redirect(reqwest::redirect::Policy::none())
@@ -220,11 +233,47 @@ async fn authorisation_code_capabilities_publish_the_registered_public_mobile_cl
         .await
         .unwrap();
     let status = response.status().as_u16();
+    let cache_control = response.headers().get("cache-control").cloned();
+    let origin = app.origin.clone();
     let text = response.text().await.unwrap();
     app.close().await;
     assert_eq!(status, 200);
     let body: Value = serde_json::from_str(&text).unwrap();
-    let mobile = &body["data"]["authentication"]["mobile_oauth"];
+    let contract: Value =
+        serde_yaml_ng::from_str(include_str!("../../docs/api/openapi.v1.yaml")).unwrap();
+    let schema = &contract["components"]["schemas"]["Capabilities"];
+    for required in schema["required"].as_array().unwrap() {
+        let name = required.as_str().unwrap();
+        assert!(
+            body["data"].get(name).is_some(),
+            "missing native capability: {name}"
+        );
+    }
+    for name in body["data"].as_object().unwrap().keys() {
+        assert!(
+            schema["properties"].get(name).is_some(),
+            "unknown native capability: {name}"
+        );
+    }
+    assert_eq!(cache_control.unwrap(), "no-store");
+    assert_eq!(body["data"]["format"], "medtracker.api.capabilities.v1");
+    assert_eq!(body["data"]["api_version"], "v1");
+    let authentication = &body["data"]["authentication"];
+    assert_eq!(
+        authentication["methods"],
+        json!(["oauth_bearer", "api_app_token"])
+    );
+    assert_eq!(
+        authentication["hosted_mobile"],
+        "rodauth_authorization_code_pkce"
+    );
+    let mobile = &authentication["mobile_oauth"];
+    assert_eq!(
+        mobile["discovery_url"],
+        format!("{origin}/.well-known/oauth-authorization-server")
+    );
+    assert_eq!(mobile["inactivity_timeout_days"], 7);
+    assert_eq!(mobile["maximum_age_days"], 30);
     assert_eq!(mobile["household_binding"], "account");
     let clients = mobile["clients"].as_array().unwrap();
     let native = clients
@@ -481,4 +530,39 @@ async fn authorisation_code_unregistered_redirect_never_receives_a_code_or_redir
     app.close().await;
     assert_ne!(status, 404);
     assert!(destination.is_none_or(|location| !location.starts_with("https://attacker.example")));
+}
+
+async fn legacy_browser_principal(
+    session: axum_session::Session<axum_session_sqlx::SessionPgPool>,
+    axum::extract::State(db): axum::extract::State<sea_orm::DatabaseConnection>,
+) -> axum::http::StatusCode {
+    session.set(
+        "identity",
+        json!({
+            "account_id": 71001, "registry_key": "retained-browser-fixture",
+            "additional_factor_verified": true, "better_auth": false
+        }),
+    );
+    match med_tracker::models::identity::browser::authenticate(&db, &session).await {
+        Ok(_) => axum::http::StatusCode::OK,
+        Err(_) => axum::http::StatusCode::UNAUTHORIZED,
+    }
+}
+
+#[tokio::test]
+async fn legacy_browser_principal_cannot_authenticate_after_cutover() {
+    let app = Application::new().await;
+    app.fixture.admin.execute_unprepared(
+        "INSERT INTO public.account_active_session_keys(account_id,session_id,created_at,last_use) VALUES(71001,'retained-browser-fixture',timezone('UTC',clock_timestamp()),timezone('UTC',clock_timestamp()))"
+    ).await.unwrap();
+    let status = app
+        .client
+        .get(format!("{}/test/legacy-principal", app.origin))
+        .send()
+        .await
+        .unwrap()
+        .status()
+        .as_u16();
+    app.close().await;
+    assert_eq!(status, 401);
 }

@@ -33,6 +33,12 @@ missing check.
 Use existing public Tasks. Write a failing behavioural test, implement the change,
 and run focused checks. Include final test edits in the compilation check before
 starting a database fixture. Freeze the tested source for review and verification.
+Once a test proves a shared prerequisite is missing, implement the complete related
+capability and run its distinct behaviour and security cases together. Do not
+restart the application separately for each missing button or form field. Keep
+real negative tests and required acceptance checks. Run the full suite once the
+complete, reviewed candidate is frozen; repeat it only for changed behaviour or a
+new unresolved failure.
 Before dispatching a new journey, check its expected behaviour against the latest
 explicit user decisions and the current implementation specification. A legacy
 reference or earlier draft does not override a newer decision. Replace obsolete
@@ -64,12 +70,23 @@ permission checks, projections, input contracts, locked queries and relevant sch
 constraints. Reviewers must be able to verify these contracts from supplied source.
 Check conditional findings against those implementations before changing behaviour.
 This uses the existing packet and review; it adds no separate review stage.
+The frozen review packet must name the candidate, changed helpers, exact passing
+checks and previous finding dispositions. Batch source reads and reuse unchanged
+helper evidence. Do not repeatedly explore upstream or generated data. Preserve
+complete security coverage; a shorter packet is not a narrower acceptance scope.
 
 Diagnose one evidenced failure at a time. Separate test setup failures from
 application failures. After two unsuccessful fixes, obtain the actual SQL error,
 HTTP response or persisted state before another attempt. Reuse a valid owned test
 image for source-only retries. Do not repeat a full
 suite solely to publish cleanup, a report or a small repair.
+Copy large versioned data files directly and verify their provenance and checksum;
+do not send whole datasets through a patch tool. If a writer stops making
+observable progress without a live job handle, obtain a checkpoint and inspect
+the blocked operation. Preserve running builds and tests.
+Use the existing browser fixture to attach bounded, redacted application errors
+on failure, so the next correction uses the actual rejection rather than another
+run solely to retrieve logs. Do not create another runner for diagnostics.
 Read the canonical fixture setup before asserting roles, account IDs or other
 baseline values. Do not infer them from display names or the operation under test.
 Before changing persistence, inspect only facts the change depends on: the existing

@@ -6,6 +6,8 @@ mod administration;
 mod api_session;
 #[path = "care_api/assignments.rs"]
 mod assignments;
+#[path = "care_api/better_auth_store.rs"]
+mod better_auth_store;
 #[path = "care_api/crud.rs"]
 mod crud;
 #[path = "care_api/dosages.rs"]
@@ -97,7 +99,14 @@ impl Application {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let origin = format!("http://{}", listener.local_addr().unwrap());
         let router = boot.router.unwrap();
-        let server = tokio::spawn(async move { axum::serve(listener, router).await.unwrap() });
+        let server = tokio::spawn(async move {
+            axum::serve(
+                listener,
+                router.into_make_service_with_connect_info::<std::net::SocketAddr>(),
+            )
+            .await
+            .unwrap()
+        });
         let client = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(5))
             .build()

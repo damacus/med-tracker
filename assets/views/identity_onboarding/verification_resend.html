@@ -1,0 +1,13 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="card shell-card max-w-lg mx-auto"><div class="card-body gap-4">
+  <h1 class="text-3xl font-semibold">Resend verification email</h1>
+  <p>Enter the email address you used to create your account and we will send a new verification link if one is needed.</p>
+  <form method="post" action="/verify-account-resend" class="grid gap-4">
+    <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+    <label class="grid gap-2" for="email">Email address<input class="input shell-input w-full" id="email" name="email" type="email" autocomplete="username" maxlength="320" required></label>
+    <button class="btn shell-primary" type="submit">Resend verification email</button>
+  </form>
+  <a class="link" href="/login">Back to sign in</a>
+</div></section>
+{% endblock content %}

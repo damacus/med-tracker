@@ -106,7 +106,9 @@ async fn resend_record(
         .map_err(response::operation)?;
     if !matches!(
         principal.provenance().method,
-        CredentialMethod::ApiSession | CredentialMethod::OauthGrant
+        CredentialMethod::ApiSession
+            | CredentialMethod::OauthGrant
+            | CredentialMethod::PersonalApiKey
     ) {
         return Err(response::operation(OperationError::Forbidden));
     }

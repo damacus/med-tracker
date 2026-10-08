@@ -448,6 +448,37 @@ async fn mobile_account_code_does_not_require_an_operational_household() {
 }
 
 #[tokio::test]
+async fn default_native_sessions_enforce_seven_idle_and_thirty_absolute_days() {
+    let fixture = Fixture::new().await;
+    fixture
+        .admin
+        .execute_unprepared(include_str!("fixtures/identity/mobile.sql"))
+        .await
+        .unwrap();
+    fixture.refresh_fixture().await;
+    for ageing in [
+        "UPDATE public.oauth_grants SET authenticated_at=now()-interval '8 days',last_used_at=now()-interval '8 days' WHERE id=76001",
+        "UPDATE public.oauth_grants SET authenticated_at=now()-interval '31 days',last_used_at=now()-interval '1 hour' WHERE id=76001",
+    ] {
+        fixture.admin.execute_unprepared(ageing).await.unwrap();
+        let before = fixture.row().await;
+        assert!(
+            identity::exchange(&fixture.runtime, request(refresh_body("hello")))
+                .await
+                .is_err()
+        );
+        assert_eq!(fixture.row().await, before);
+    }
+    fixture.admin.execute_unprepared("UPDATE public.oauth_grants SET authenticated_at=now()-interval '29 days',last_used_at=now()-interval '6 days' WHERE id=76001").await.unwrap();
+    assert!(
+        identity::exchange(&fixture.runtime, request(refresh_body("hello")))
+            .await
+            .is_ok()
+    );
+    fixture.close().await;
+}
+
+#[tokio::test]
 async fn mobile_refresh_preserves_authentication_and_activity_deadlines() {
     let fixture = Fixture::new().await;
     fixture

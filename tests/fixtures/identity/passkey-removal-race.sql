@@ -13,7 +13,7 @@ BEGIN
     END IF;
     PERFORM pg_sleep(0.02);
   END LOOP;
-  DELETE FROM public.account_webauthn_keys WHERE account_id=71001;
+  DELETE FROM public.identity_passkeys WHERE account_id=71001;
 END;
 $$;
 COMMIT;

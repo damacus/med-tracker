@@ -1,0 +1,27 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-3xl mx-auto space-y-6">
+  <h1 class="text-3xl font-semibold">Personal API keys</h1>
+  <p>Keys use the selected permissions within your current household access. Their permissions, households, name and expiry cannot be changed. Revoke and replace a key to change its access.</p>
+  <section class="card shell-card"><div class="card-body gap-4"><h2 class="text-xl font-semibold">Create an API key</h2>
+    <form method="post" action="/account/security/keys" class="flex flex-col gap-4">
+      <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+      <div><label for="key-name">Name</label><input class="input input-bordered w-full" id="key-name" name="name" required maxlength="100"></div>
+      <fieldset><legend>Households</legend>{% for household in households %}<label class="flex gap-2"><input type="checkbox" name="household_{{ household.id }}" value="1"> {{ household.name }}</label>{% endfor %}</fieldset>
+      <fieldset><legend>Permissions</legend>
+        <label class="flex gap-2"><input type="checkbox" name="permission_care:read" value="1"> Read care records</label>
+        <label class="flex gap-2"><input type="checkbox" name="permission_care:write" value="1"> Manage care records</label>
+        <label class="flex gap-2"><input type="checkbox" name="permission_doses:write" value="1"> Record doses</label>
+        <label class="flex gap-2"><input type="checkbox" name="permission_members:write" value="1"> Manage household memberships</label>
+        <label class="flex gap-2"><input type="checkbox" name="permission_invitations:write" value="1"> Manage household invitations</label>
+      </fieldset>
+      <div><label for="key-expiry">Expires in days</label><input class="input input-bordered" id="key-expiry" name="expires_days" type="number" value="90" min="1" max="365" required></div>
+      <button class="btn btn-neutral" type="submit">Create API key</button>
+    </form>
+  </div></section>
+  <section class="card shell-card"><div class="card-body gap-4"><h2 class="text-xl font-semibold">Existing keys</h2>
+    {% for key in keys %}<div><h3 class="font-semibold">{{ key.name }}</h3><p>Expires {{ key.expires }}.</p><p>Last used: {% if key.last_used %}{{ key.last_used }}{% else %}Never{% endif %}</p><form method="post" action="/account/security/keys/revoke"><input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><input type="hidden" name="key_id" value="{{ key.id }}"><button class="btn" type="submit">Revoke API key</button></form></div>{% else %}<p>No active personal API keys.</p>{% endfor %}
+  </div></section>
+  <a class="link" href="/account/security">Account security</a>
+</section>
+{% endblock content %}

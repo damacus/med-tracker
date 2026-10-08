@@ -1,0 +1,14 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="card shell-card max-w-lg mx-auto"><div class="card-body gap-4">
+  <h1 class="text-3xl font-semibold">Sign in with recovery code</h1>
+  <p>Use one of the codes you saved. This signs out your other sessions and revokes your personal API keys. Your unused recovery codes remain valid.</p>
+  {% if invalid %}<p role="alert" class="shell-error">Invalid or used recovery code. Try another unused code.</p>{% endif %}
+  <form method="post" action="/recovery-login" class="grid gap-4">
+    <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+    <label class="grid gap-2" for="recovery-code">Recovery code<input class="input shell-input w-full" id="recovery-code" name="code" type="password" autocomplete="off" maxlength="128" required></label>
+    <button class="btn shell-primary" type="submit">Sign in with recovery code</button>
+  </form>
+  <a class="link" href="/login">Use another sign-in method</a>
+</div></section>
+{% endblock content %}

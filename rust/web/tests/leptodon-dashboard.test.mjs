@@ -170,6 +170,7 @@ test('Enter on Close search closes the dialog with and without matching results'
       await close.focus();
       await page.keyboard.press('Enter');
       await dialog.waitFor({ state: 'hidden', timeout: 3000 });
+      await page.waitForFunction(() => document.activeElement === document.querySelector('#dashboard-search-island button'), null, { timeout: 3000 });
       assert.equal(await trigger.evaluate(element => element === document.activeElement), true);
     }
   } finally {
