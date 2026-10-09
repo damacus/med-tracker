@@ -353,7 +353,7 @@ async fn platform_users_search_filters_the_listing() {
 }
 
 #[tokio::test]
-async fn platform_users_paginates_beyond_the_listing() {
+async fn platform_users_clamps_pages_beyond_the_listing() {
     let app = Application::new().await;
     app.fixture.admin.execute_unprepared("INSERT INTO platform_admins(account_id,status,created_at,updated_at) VALUES(71001,'active',now(),now())").await.unwrap();
     let cookie = session(&app).await;
@@ -368,7 +368,7 @@ async fn platform_users_paginates_beyond_the_listing() {
     let body = response.text().await.unwrap();
     app.close().await;
     assert_eq!(status, reqwest::StatusCode::OK);
-    assert!(!body.contains("persistence@example.test"));
+    assert!(body.contains("persistence@example.test"));
 }
 
 #[tokio::test]
@@ -875,6 +875,7 @@ async fn platform_inactive_user_administrator_is_not_viable_remaining_admin() {
         .execute_unprepared("UPDATE users SET active=false WHERE id=77002")
         .await
         .unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71002,'Second profile household','second-profile-household','Europe/London',now(),now()); INSERT INTO people(id,account_id,household_id,name,person_type,has_capacity,created_at,updated_at) VALUES(73005,71002,72002,'Later active profile',0,true,now(),now()); INSERT INTO users(id,person_id,email_address,password_digest,active,created_at,updated_at) VALUES(77003,73005,'later-profile@example.test',crypt('password',gen_salt('bf',4)),true,now(),now())").await.unwrap();
     let cookie = admin_session(&app).await;
     let (status, body) = operation_start(
         &app,
@@ -904,8 +905,10 @@ async fn platform_administrator_grant_refuses_ineligible_accounts() {
         1,
     )
     .await;
+    synthetic_account(&app, 71005, 73007, 77005, "platform-mixed@example.test", 2).await;
+    app.fixture.admin.execute_unprepared("INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71005,'Second grant household','second-grant-household','Europe/London',now(),now()); UPDATE users SET active=false WHERE id=77005; INSERT INTO people(id,account_id,household_id,name,person_type,has_capacity,created_at,updated_at) VALUES(73008,71005,72002,'Later active profile',0,true,now(),now()); INSERT INTO users(id,person_id,email_address,password_digest,active,created_at,updated_at) VALUES(77006,73008,'later-grant@example.test',crypt('password',gen_salt('bf',4)),true,now(),now())").await.unwrap();
     let cookie = admin_session(&app).await;
-    for target in [71003, 71004, 79999] {
+    for target in [71003, 71004, 71005, 79999] {
         let (status, body) = operation_start(
             &app,
             &cookie,
@@ -1157,10 +1160,15 @@ async fn platform_users_page_links_are_bounded() {
     let app = Application::new().await;
     app.fixture.admin.execute_unprepared("INSERT INTO accounts(id,email,password_hash,status,created_at,updated_at) SELECT 80000+i,format('bulk-%s@example.test',i),crypt('password',gen_salt('bf',4)),2,now(),now() FROM generate_series(1,300) i").await.unwrap();
     let cookie = admin_session(&app).await;
-    let (_cookies, body) = form_page(&app, &cookie, "/platform/users?page=9999").await;
+    let (_cookies, body) =
+        form_page(&app, &cookie, "/platform/users?page=9223372036854775807").await;
     let links = body.matches("join-item").count();
     app.close().await;
     assert!(links <= 9, "page links must be bounded, got {links}");
+    assert!(
+        body.contains("bulk-300@example.test"),
+        "oversized pages must show the final page"
+    );
 }
 
 #[tokio::test]
@@ -2604,6 +2612,25 @@ async fn platform_support_requires_platform_administrator() {
     let body = response.text().await.unwrap();
     app.close().await;
     assert_eq!(status, reqwest::StatusCode::OK, "{body}");
+}
+
+#[tokio::test]
+async fn platform_support_pagination_keeps_older_approved_requests_reachable() {
+    let app = Application::new().await;
+    let cookie = admin_session(&app).await;
+    let support_id = active_support(&app, &cookie).await;
+    app.fixture.admin.execute_unprepared(&format!("UPDATE support_access_sessions SET activated_at=NULL WHERE id={support_id}; INSERT INTO support_access_sessions(household_id,platform_admin_id,reason,request_id,ip,starts_at,expires_at,ended_at,created_at,updated_at) SELECT household_id,platform_admin_id,'Newer support request '||g,request_id,ip,starts_at,expires_at,now(),now(),now() FROM support_access_sessions CROSS JOIN generate_series(1,50) g WHERE id={support_id}")).await.unwrap();
+    let (_, first) = form_page(&app, &cookie, "/platform/support").await;
+    let (_, second) = form_page(&app, &cookie, "/platform/support?page=2").await;
+    let (_, oversized) =
+        form_page(&app, &cookie, "/platform/support?page=9223372036854775807").await;
+    app.close().await;
+    assert!(first.contains("href=\"/platform/support?page=2\""));
+    assert!(!first.contains("Confidential support reason alpha"));
+    assert!(second.contains("Confidential support reason alpha"));
+    assert!(second.contains("action=\"/platform/support/activate\""));
+    assert!(second.contains(&format!("name=\"support_id\" value=\"{support_id}\"")));
+    assert!(oversized.contains("Confidential support reason alpha"));
 }
 
 #[tokio::test]

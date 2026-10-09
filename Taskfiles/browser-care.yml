@@ -324,6 +324,15 @@ tasks:
         'invite_only',(SELECT COALESCE(bool_or(invite_only),false) FROM public.app_settings),
         'support_state',(SELECT CASE WHEN ended_at IS NOT NULL THEN 'ended' WHEN activated_at IS NOT NULL THEN 'active' WHEN approved_at IS NOT NULL THEN 'approved' ELSE 'requested' END FROM public.support_access_sessions WHERE household_id=72602 ORDER BY id DESC LIMIT 1),
         'support_id',(SELECT id FROM public.support_access_sessions WHERE household_id=72602 ORDER BY id DESC LIMIT 1))"
+  seed-support-history:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction
+        -c "INSERT INTO public.support_access_sessions(household_id,platform_admin_id,reason,request_id,ip,starts_at,expires_at,ended_at,created_at,updated_at)
+        SELECT 72601,platform_admin_id,'Synthetic newer support history '||g,request_id,ip,starts_at,expires_at,now(),now(),now()
+        FROM public.support_access_sessions CROSS JOIN generate_series(1,50) g WHERE household_id=72602;"
   administration-probe:
     requires:
       vars: [CARE_DATABASE_URL]

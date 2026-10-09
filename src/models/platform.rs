@@ -214,10 +214,11 @@ pub async fn users(
         .try_get("", "count")
         .map_err(|_| OperationError::Unavailable)?;
     let pages = (total / PER_PAGE + i64::from(total % PER_PAGE > 0)).max(1);
+    let page = page.min(pages);
     let rows = transaction
         .query_all_raw(Statement::from_sql_and_values(
             DbBackend::Postgres,
-            "SELECT a.id,COALESCE((SELECT p.name FROM public.people p JOIN public.users u ON u.person_id=p.id WHERE p.account_id=a.id ORDER BY u.id LIMIT 1),'') AS name,a.email,a.status,EXISTS(SELECT 1 FROM public.people p JOIN public.users u ON u.person_id=p.id WHERE p.account_id=a.id) AS user_linked,EXISTS(SELECT 1 FROM public.people p JOIN public.users u ON u.person_id=p.id AND u.active WHERE p.account_id=a.id) AS user_active,pa.status AS administrator FROM accounts a LEFT JOIN platform_admins pa ON pa.account_id=a.id WHERE a.email ILIKE $1 ESCAPE '\\' ORDER BY a.id LIMIT $2 OFFSET $3",
+            "SELECT a.id,COALESCE((SELECT p.name FROM public.people p WHERE p.account_id=a.id ORDER BY p.id LIMIT 1),'') AS name,a.email,a.status,EXISTS(SELECT 1 FROM public.users u WHERE u.person_id=(SELECT p.id FROM public.people p WHERE p.account_id=a.id ORDER BY p.id LIMIT 1)) AS user_linked,EXISTS(SELECT 1 FROM public.users u WHERE u.person_id=(SELECT p.id FROM public.people p WHERE p.account_id=a.id ORDER BY p.id LIMIT 1) AND u.active) AS user_active,pa.status AS administrator FROM accounts a LEFT JOIN platform_admins pa ON pa.account_id=a.id WHERE a.email ILIKE $1 ESCAPE '\\' ORDER BY a.id LIMIT $2 OFFSET $3",
             [
                 pattern.into(),
                 PER_PAGE.into(),
@@ -300,7 +301,7 @@ async fn has_active_user(
 ) -> Result<bool, OperationError> {
     exists(
         transaction,
-        "SELECT EXISTS(SELECT 1 FROM public.people p JOIN public.users u ON u.person_id=p.id AND u.active WHERE p.account_id=$1) AS present",
+        "SELECT EXISTS(SELECT 1 FROM public.users u WHERE u.person_id=(SELECT p.id FROM public.people p WHERE p.account_id=$1 ORDER BY p.id LIMIT 1) AND u.active) AS present",
         account_id,
     )
     .await
@@ -312,7 +313,7 @@ async fn has_user(
 ) -> Result<bool, OperationError> {
     exists(
         transaction,
-        "SELECT EXISTS(SELECT 1 FROM public.people p JOIN public.users u ON u.person_id=p.id WHERE p.account_id=$1) AS present",
+        "SELECT EXISTS(SELECT 1 FROM public.users u WHERE u.person_id=(SELECT p.id FROM public.people p WHERE p.account_id=$1 ORDER BY p.id LIMIT 1)) AS present",
         account_id,
     )
     .await
@@ -324,7 +325,7 @@ async fn viable_administrator(
 ) -> Result<bool, OperationError> {
     exists(
         transaction,
-        "SELECT EXISTS(SELECT 1 FROM public.platform_admins pa JOIN public.accounts a ON a.id=pa.account_id WHERE pa.account_id=$1 AND pa.status='active' AND a.status=2 AND EXISTS(SELECT 1 FROM public.people p JOIN public.users u ON u.person_id=p.id AND u.active WHERE p.account_id=a.id)) AS present",
+        "SELECT EXISTS(SELECT 1 FROM public.platform_admins pa JOIN public.accounts a ON a.id=pa.account_id WHERE pa.account_id=$1 AND pa.status='active' AND a.status=2 AND EXISTS(SELECT 1 FROM public.users u WHERE u.person_id=(SELECT p.id FROM public.people p WHERE p.account_id=a.id ORDER BY p.id LIMIT 1) AND u.active)) AS present",
         account_id,
     )
     .await
@@ -334,7 +335,7 @@ async fn viable_administrators(transaction: &DatabaseTransaction) -> Result<i64,
     transaction
         .query_one_raw(Statement::from_sql_and_values(
             DbBackend::Postgres,
-            "SELECT count(*) AS count FROM public.platform_admins pa JOIN public.accounts a ON a.id=pa.account_id WHERE pa.status='active' AND a.status=2 AND EXISTS(SELECT 1 FROM public.people p JOIN public.users u ON u.person_id=p.id AND u.active WHERE p.account_id=a.id)",
+            "SELECT count(*) AS count FROM public.platform_admins pa JOIN public.accounts a ON a.id=pa.account_id WHERE pa.status='active' AND a.status=2 AND EXISTS(SELECT 1 FROM public.users u WHERE u.person_id=(SELECT p.id FROM public.people p WHERE p.account_id=a.id ORDER BY p.id LIMIT 1) AND u.active)",
             [],
         ))
         .await

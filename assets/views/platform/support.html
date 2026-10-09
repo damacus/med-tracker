@@ -62,5 +62,8 @@
     {% else %}<li class="platform-panel platform-empty-state"><h3>No support requests yet</h3><p>Requests and their approval status will appear here.</p></li>
     {% endfor %}
   </ul>
+  {% if pages > 1 %}<footer class="platform-pagination"><p class="shell-muted">Page {{ page }} of {{ pages }}</p><nav class="join" aria-label="Support session pages">
+    {% for number in page_links %}{% if number == page %}<span class="join-item btn btn-sm btn-active" aria-current="page">{{ number }}</span>{% else %}<a class="join-item btn btn-sm" aria-label="Page {{ number }}" href="/platform/support?page={{ number }}">{{ number }}</a>{% endif %}{% endfor %}
+  </nav></footer>{% endif %}
 </section>
 {% endblock content %}

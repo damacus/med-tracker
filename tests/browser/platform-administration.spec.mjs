@@ -230,7 +230,12 @@ test('temporary support access is requested, approved, activated, read and ended
   } finally {
     await ownerContext.close();
   }
+  await careFixture.seedSupportHistory();
   await page.goto('/platform/support');
+  await page.getByRole('navigation', { name: 'Support session pages' }).getByRole('link', { name: 'Page 2', exact: true }).click();
+  await expect(page).toHaveURL(/\/platform\/support\?page=2$/);
+  await shot(page, info, 'support-history');
+  await noOverflow(page);
   const adminRecord = page.locator('li', { hasText: 'Supported browser household' }).first();
   const activate = adminRecord.getByRole('button', { name: 'Activate', exact: true });
   await recordInViewport(adminRecord, activate);
@@ -238,6 +243,7 @@ test('temporary support access is requested, approved, activated, read and ended
   await confirmProof(page);
   const probe = await careFixture.platformProbe();
   expect(probe.support_state).toBe('active');
+  await page.getByRole('navigation', { name: 'Support session pages' }).getByRole('link', { name: 'Page 2', exact: true }).click();
   await page.getByRole('link', { name: 'Open', exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`/platform/support/${probe.support_id}`));
   await expect(page.getByRole('heading', { name: 'Household members' })).toBeVisible();
@@ -256,6 +262,7 @@ test('temporary support access is requested, approved, activated, read and ended
   await shot(page, info, 'support-read');
   await noOverflow(page);
   await page.getByRole('link', { name: 'Support access', exact: true }).click();
+  await page.getByRole('navigation', { name: 'Support session pages' }).getByRole('link', { name: 'Page 2', exact: true }).click();
   const endedRecord = page.locator('li', { hasText: 'Supported browser household' }).first();
   const endAccess = endedRecord.getByRole('button', { name: 'End access', exact: true });
   await recordInViewport(endedRecord, endAccess);

@@ -119,6 +119,7 @@ async function withCareFixture(captureMail, registrationInviteOnly, reportAssets
         restockProbe: async () => JSON.parse(await fixtureTask('restock-probe')), failRestockAudit: () => fixtureTask('fail-restock-audit'),
         seedAdministration: () => fixtureTask('seed-administration'), administrationProbe: async () => JSON.parse(await fixtureTask('administration-probe')), personViewOnly: () => fixtureTask('person-view-only'), revokePersonViewOnly: () => fixtureTask('revoke-person-view-only'), personZeroHours: () => fixtureTask('person-zero-hours'), mixedRecordability: () => fixtureTask('mixed-recordability'),
         seedPlatform: () => fixtureTask('seed-platform'), platformProbe: async () => JSON.parse(await fixtureTask('platform-probe')),
+        seedSupportHistory: () => fixtureTask('seed-support-history'),
         invitationProbe: async email => JSON.parse(await fixtureTask('invitation-probe', [`INVITATION_EMAIL=${email}`])), expireInvitation: email => fixtureTask('expire-invitation', [`INVITATION_EMAIL=${email}`]),
         seedInvitationAccount: () => fixtureTask('seed-invitation-account'), seedInvitationOtp: () => fixtureTask('seed-invitation-otp'),
         invitationAcceptanceProbe: async () => JSON.parse(await fixtureTask('invitation-acceptance-probe')),

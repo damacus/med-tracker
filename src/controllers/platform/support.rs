@@ -30,6 +30,9 @@ fn render_index(
     let mut data = crate::controllers::medications::rendering::appearance_context();
     data["title"] = json!("Support access");
     data["sessions"] = json!(sessions_json(&page.sessions));
+    data["page"] = json!(page.page);
+    data["pages"] = json!(page.pages);
+    data["page_links"] = json!(page.page_links);
     data["households"] = json!(
         page.households
             .iter()
@@ -116,6 +119,7 @@ async fn platform_account(
 
 pub(super) async fn index(
     State(ctx): State<AppContext>,
+    Query(params): Query<UsersQuery>,
     Extension(service): Extension<IdentityService>,
     headers: HeaderMap,
     request_id: Option<Extension<LocoRequestId>>,
@@ -130,20 +134,23 @@ pub(super) async fn index(
         return unavailable();
     };
     let meta = browser_meta(&session, request_id, &headers);
-    let page = match platform::support::page(&transaction, account_id, &meta).await {
-        Ok(page) => page,
-        Err(error) => {
-            let unauthenticated = matches!(error, OperationError::Unauthenticated);
-            if transaction.rollback().await.is_err() {
-                return unavailable();
+    let page =
+        match platform::support::page(&transaction, account_id, &meta, params.page.unwrap_or(1))
+            .await
+        {
+            Ok(page) => page,
+            Err(error) => {
+                let unauthenticated = matches!(error, OperationError::Unauthenticated);
+                if transaction.rollback().await.is_err() {
+                    return unavailable();
+                }
+                return if unauthenticated {
+                    Redirect::to("/login").into_response()
+                } else {
+                    operation_error(error)
+                };
             }
-            return if unauthenticated {
-                Redirect::to("/login").into_response()
-            } else {
-                operation_error(error)
-            };
-        }
-    };
+        };
     let response = render_index(&view, &token, &page);
     if transaction.commit().await.is_err() {
         return unavailable();

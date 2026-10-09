@@ -20,6 +20,9 @@ pub struct HouseholdOption {
 pub struct SupportPage {
     pub sessions: Vec<SupportEntry>,
     pub households: Vec<HouseholdOption>,
+    pub page: i64,
+    pub pages: i64,
+    pub page_links: Vec<i64>,
 }
 
 pub struct SupportAllocation {
@@ -336,12 +339,24 @@ pub async fn page(
     transaction: &DatabaseTransaction,
     actor_account_id: i64,
     meta: &RequestMeta,
+    requested_page: i64,
 ) -> Result<SupportPage, OperationError> {
     let actor = authorize(transaction, actor_account_id, "support_request").await?;
-    let rows = transaction
-        .query_all_raw(Statement::from_string(
+    let total: i64 = transaction
+        .query_one_raw(Statement::from_string(
             DbBackend::Postgres,
-            format!("{SESSION_LIST} ORDER BY s.id DESC LIMIT 50"),
+            "SELECT count(*) AS count FROM public.support_access_sessions",
+        ))
+        .await?
+        .ok_or(OperationError::Unavailable)
+        .and_then(|row| get(&row, "count"))?;
+    let pages = (total / 50 + i64::from(total % 50 > 0)).max(1);
+    let page = requested_page.clamp(1, pages);
+    let rows = transaction
+        .query_all_raw(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            format!("{SESSION_LIST} ORDER BY s.id DESC LIMIT 50 OFFSET $1"),
+            [((page - 1) * 50).into()],
         ))
         .await?;
     let mut sessions = Vec::with_capacity(rows.len());
@@ -374,6 +389,9 @@ pub async fn page(
     Ok(SupportPage {
         sessions,
         households,
+        page,
+        pages,
+        page_links: page_links(page, pages),
     })
 }
 

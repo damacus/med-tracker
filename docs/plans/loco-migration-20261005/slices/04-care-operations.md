@@ -143,6 +143,8 @@ This section supersedes conflicting older behaviour in this plan. The owner conf
 
 The 9 October UI correction uses the existing Rails administration components as its reference: a desktop users table, separate mobile records, user names and email addresses, distinct account/sign-in/platform access states, labelled search and result counts. Reuse the Rails heading, navigation and contained form patterns across settings, owner recovery and support. Do not add controls for capabilities the migrated application cannot perform. Verify desktop, 320px mobile navigation and dark appearance through the actual UI.
 
+The 9 October review correction aligns platform grant eligibility, remaining-administrator checks and directory sign-in state with authentication's first linked person. User page numbers clamp to the final result page before offset calculation. Support session history has bounded pages so older approved and active sessions retain their controls. Provider registration initialises its credential fields from the current selection even when the deferred script loads after that selection; CI retains browser failure diagnostics.
+
 - Browser pages cover platform users/admin rights, existing non-secret settings, owner recovery and support requests. INVITE_ONLY environment precedence remains visible/locked. Provider credentials stay externally configured.
 - Reuse the auth five-minute proof bound to action/target for privileged operations. Guard last-active-platform-admin removal/disable under a lock, including races.
 - Recover a household without an active eligible owner by promoting an existing eligible member, with fresh proof/reason/audit. A platform admin cannot grant themselves membership/ownership.
