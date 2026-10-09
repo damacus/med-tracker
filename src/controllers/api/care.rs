@@ -50,6 +50,29 @@ use sea_orm::{
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 
+#[derive(Clone)]
+pub struct AgeValidationClock {
+    instant: chrono::DateTime<Utc>,
+    zone: chrono_tz::Tz,
+}
+
+impl AgeValidationClock {
+    pub fn fixed(instant: chrono::DateTime<Utc>, zone: chrono_tz::Tz) -> Self {
+        Self { instant, zone }
+    }
+
+    pub fn today(&self) -> chrono::NaiveDate {
+        self.instant.with_timezone(&self.zone).date_naive()
+    }
+}
+
+fn age_reference_date(ctx: &AppContext) -> chrono::NaiveDate {
+    ctx.shared_store
+        .get::<AgeValidationClock>()
+        .unwrap_or_else(|| AgeValidationClock::fixed(Utc::now(), doses::app_zone()))
+        .today()
+}
+
 pub fn invitation_routes() -> Routes {
     Routes::new()
         .prefix("/api/v1")

@@ -66,7 +66,14 @@ tags:
       Successful revocations persist their revoked time and an audit event in the
       same database transaction; repeating an idempotent logout adds no event.
   - name: People
-    description: Household people and current-profile operations.
+    description: |
+      Household people and current-profile operations. Age and person-type
+      validation use the current date in the application timezone (TZ, default
+      UTC), independently of the authenticated account's timezone. Profile
+      requests that change date_of_birth and time_zone together use that same
+      application date; neither the existing nor submitted account timezone
+      changes validation. Failed validation rolls back both fields. New accounts
+      store the application timezone at creation; profile preferences can change it later.
   - name: Locations
     description: |
       Active household members can read all locations in their selected household. Only
