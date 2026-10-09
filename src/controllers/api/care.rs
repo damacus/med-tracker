@@ -9,9 +9,11 @@ mod invitations;
 mod locations;
 mod medication_crud;
 mod medication_reads;
+mod notification_preferences;
 mod orders;
 mod pause_periods;
 mod people;
+mod profile;
 mod projection;
 mod push_subscriptions;
 mod removals;
@@ -56,6 +58,18 @@ pub fn invitation_routes() -> Routes {
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("/api/v1/households")
+        .add(
+            "/{household_id}/profile",
+            get(profile::show)
+                .patch(profile::update)
+                .put(profile::update),
+        )
+        .add(
+            "/{household_id}/notification_preference",
+            get(notification_preferences::show)
+                .patch(notification_preferences::update)
+                .put(notification_preferences::update),
+        )
         .add("/{household_id}/sync/snapshot", get(sync::snapshot))
         .add("/{household_id}/sync/changes", get(sync::changes))
         .add("/{household_id}/sync/batches", post(sync::create))
@@ -261,6 +275,22 @@ async fn begin(
         .map_err(response::authentication)?;
     let tenant = principal
         .begin_household(&ctx.db, household_id, request_id.into())
+        .await
+        .map_err(response::authentication)?;
+    Ok((principal, tenant))
+}
+
+async fn begin_profile_write(
+    ctx: &AppContext,
+    headers: &HeaderMap,
+    household_id: i64,
+    request_id: &str,
+) -> std::result::Result<(ValidatedPrincipal, TenantTransaction), response::Failure> {
+    let principal = resource::authenticate_care(ctx, headers)
+        .await
+        .map_err(response::authentication)?;
+    let tenant = principal
+        .begin_household_for_profile_write(&ctx.db, household_id, request_id.into())
         .await
         .map_err(response::authentication)?;
     Ok((principal, tenant))

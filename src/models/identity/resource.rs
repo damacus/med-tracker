@@ -20,7 +20,7 @@ use super::{
 use crate::models::{
     access::{self, Actor, HouseholdScope, TenantTransaction},
     care::doses::{CredentialMethod, CredentialProvenance},
-    entities::{account, oauth_application, oauth_grant},
+    entities::{account, household, oauth_application, oauth_grant},
     errors::OperationError,
 };
 
@@ -67,6 +67,27 @@ impl ValidatedPrincipal {
         household_id: i64,
         request_id: String,
     ) -> Result<TenantTransaction, AuthenticationError> {
+        self.begin_household_transaction(db, household_id, request_id, false)
+            .await
+    }
+
+    pub(crate) async fn begin_household_for_profile_write(
+        &self,
+        db: &DatabaseConnection,
+        household_id: i64,
+        request_id: String,
+    ) -> Result<TenantTransaction, AuthenticationError> {
+        self.begin_household_transaction(db, household_id, request_id, true)
+            .await
+    }
+
+    async fn begin_household_transaction(
+        &self,
+        db: &DatabaseConnection,
+        household_id: i64,
+        request_id: String,
+        profile_write: bool,
+    ) -> Result<TenantTransaction, AuthenticationError> {
         let scope = HouseholdScope {
             actor: Actor {
                 account_id: self.account_id,
@@ -75,6 +96,28 @@ impl ValidatedPrincipal {
             request_id,
         };
         let tenant = access::begin(db, &scope).await.map_err(operation_error)?;
+        if profile_write {
+            let locked = async {
+                account::Entity::find_by_id(self.account_id)
+                    .lock(sea_orm::sea_query::LockType::NoKeyUpdate)
+                    .one(tenant.transaction())
+                    .await
+                    .map_err(|_| AuthenticationError::Unavailable)?
+                    .ok_or(AuthenticationError::Unauthenticated)?;
+                household::Entity::find_by_id(household_id)
+                    .lock_exclusive()
+                    .one(tenant.transaction())
+                    .await
+                    .map_err(|_| AuthenticationError::Unavailable)?
+                    .ok_or(AuthenticationError::Forbidden)?;
+                Ok::<_, AuthenticationError>(())
+            }
+            .await;
+            if let Err(error) = locked {
+                tenant.rollback().await.map_err(operation_error)?;
+                return Err(error);
+            }
+        }
         let checked = match &self.credential {
             Credential::PersonalKey(principal) => principal.revalidate(&tenant).await,
             Credential::OAuth {
