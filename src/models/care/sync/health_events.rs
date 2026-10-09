@@ -8,7 +8,49 @@ use uuid::Uuid;
 struct AuthContext<'a> {
     tenant: &'a TenantTransaction,
     provenance: &'a CredentialProvenance,
+    browser: Option<&'a BrowserInput>,
 }
+pub(crate) struct BrowserInput {
+    pub person_id: i64,
+    pub medications: Vec<medication::Model>,
+    pub editable_medication_ids: HashSet<i64>,
+    pub action_taken: Option<String>,
+    pub medical_help_sought: bool,
+    pub ongoing: bool,
+}
+
+pub(crate) async fn apply_browser(
+    tenant: &TenantTransaction,
+    operation: &Operation,
+    input: &BrowserInput,
+    provenance: &CredentialProvenance,
+) -> Result<Value, OperationError> {
+    let context = AuthContext {
+        tenant,
+        provenance,
+        browser: Some(input),
+    };
+    Ok(apply_sync_operation(
+        tenant.transaction(),
+        &context,
+        operation,
+        &tenant.scope().request_id,
+    )
+    .await?
+    .value())
+}
+
+pub(crate) fn browser_etag(
+    record: &health_event::Model,
+    links: &[health_event_medication::Model],
+) -> String {
+    let links = links.iter().map(|link| json!({
+        "id":link.id,"medication_id":link.medication_id,"medication_name":link.medication_name,
+        "updated_at":link.updated_at
+    })).collect::<Vec<_>>();
+    representation_etag(&json!({"event":snapshot(record),"links":links}))
+}
+
 fn database_error(_: sea_orm::DbErr) -> OperationError {
     OperationError::Unavailable
 }
@@ -23,12 +65,16 @@ fn representation_etag(value: &Value) -> String {
         hex::encode(Sha256::digest(value.to_string().as_bytes()))
     )
 }
-pub(super) async fn apply(
+pub(crate) async fn apply(
     tenant: &TenantTransaction,
     operation: &Operation,
     provenance: &CredentialProvenance,
 ) -> Result<Value, OperationError> {
-    let context = AuthContext { tenant, provenance };
+    let context = AuthContext {
+        tenant,
+        provenance,
+        browser: None,
+    };
     let row = apply_sync_operation(
         tenant.transaction(),
         &context,
@@ -45,7 +91,11 @@ pub(super) async fn authorize_replay(
     request_id: &str,
     provenance: &CredentialProvenance,
 ) -> Result<(), OperationError> {
-    let context = AuthContext { tenant, provenance };
+    let context = AuthContext {
+        tenant,
+        provenance,
+        browser: None,
+    };
     authorize_sync_replay(tenant.transaction(), &context, operation, saved, request_id).await
 }
 async fn access(
@@ -293,11 +343,38 @@ fn snapshot(record: &health_event::Model) -> Value {
         "notes": record.notes,
         "started_on": record.started_on,
         "ended_on": record.ended_on,
+        "action_taken":record.action_taken,
+        "medical_help_sought":record.medical_help_sought,
         "updated_at": record.updated_at
     })
 }
 
-pub(super) async fn values(
+async fn audit_snapshot(
+    db: &DatabaseTransaction,
+    record: &health_event::Model,
+) -> Result<Value, OperationError> {
+    let links = health_event_medication::Entity::find()
+        .filter(health_event_medication::Column::HouseholdId.eq(record.household_id))
+        .filter(health_event_medication::Column::HealthEventId.eq(record.id))
+        .order_by_asc(health_event_medication::Column::Id)
+        .all(db)
+        .await
+        .map_err(database_error)?;
+    let mut value = snapshot(record);
+    value["medication_links"] = json!(
+        links
+            .iter()
+            .map(|link| json!({
+                "id": link.id,
+                "medication_id": link.medication_id,
+                "medication_name": link.medication_name
+            }))
+            .collect::<Vec<_>>()
+    );
+    Ok(value)
+}
+
+pub(crate) async fn values(
     db: &DatabaseTransaction,
     records: &[health_event::Model],
 ) -> Result<Vec<Value>, OperationError> {
@@ -374,7 +451,7 @@ pub(super) async fn values(
         .collect())
 }
 
-pub(super) async fn representation(
+pub(crate) async fn representation(
     db: &DatabaseTransaction,
     record: &health_event::Model,
 ) -> Result<(Value, String), OperationError> {
@@ -494,7 +571,11 @@ async fn set_medications(
     let removed = existing
         .iter()
         .filter(|record| {
-            !record
+            context.browser.is_none_or(|input| {
+                record
+                    .medication_id
+                    .is_some_and(|id| input.editable_medication_ids.contains(&id))
+            }) && !record
                 .medication_id
                 .is_some_and(|id| selected_ids.contains(&id))
         })
@@ -508,11 +589,10 @@ async fn set_medications(
             .map_err(database_error)?;
     }
     let now = Utc::now().naive_utc();
-    for record in records {
-        if existing_ids.contains(&record.id) {
-            continue;
-        }
-        health_event_medication::ActiveModel {
+    let additions = records
+        .iter()
+        .filter(|record| !existing_ids.contains(&record.id))
+        .map(|record| health_event_medication::ActiveModel {
             household_id: Set(context.tenant.scope().household_id),
             health_event_id: Set(event_id),
             medication_id: Set(Some(record.id)),
@@ -525,10 +605,13 @@ async fn set_medications(
             created_at: Set(now),
             updated_at: Set(now),
             ..Default::default()
-        }
-        .insert(db)
-        .await
-        .map_err(database_error)?;
+        })
+        .collect::<Vec<_>>();
+    if !additions.is_empty() {
+        health_event_medication::Entity::insert_many(additions)
+            .exec(db)
+            .await
+            .map_err(database_error)?;
     }
     Ok(())
 }
@@ -549,9 +632,19 @@ async fn apply_sync_operation(
         if !access(db, context, person.id, "record").await? {
             return Err(sync_error(StatusCode::FORBIDDEN));
         }
-        let selected = medications(db, context, attrs.medication_ids.as_deref().unwrap_or(&[]))
-            .await?
-            .ok_or_else(|| sync_error(StatusCode::NOT_FOUND))?;
+        if context
+            .browser
+            .is_some_and(|input| input.person_id != person.id)
+        {
+            return Err(OperationError::NotFound);
+        }
+        let selected = if let Some(input) = context.browser {
+            input.medications.clone()
+        } else {
+            medications(db, context, attrs.medication_ids.as_deref().unwrap_or(&[]))
+                .await?
+                .ok_or_else(|| sync_error(StatusCode::NOT_FOUND))?
+        };
         let started_on = attrs.started_on.unwrap();
         if attrs.ended_on.is_some_and(|date| date < started_on) {
             return Err(sync_error(StatusCode::UNPROCESSABLE_ENTITY));
@@ -567,8 +660,10 @@ async fn apply_sync_operation(
             notes: Set(attrs.notes),
             started_on: Set(started_on),
             ended_on: Set(attrs.ended_on),
-            action_taken: Set(None),
-            medical_help_sought: Set(false),
+            action_taken: Set(context.browser.and_then(|input| input.action_taken.clone())),
+            medical_help_sought: Set(context
+                .browser
+                .is_some_and(|input| input.medical_help_sought)),
             created_at: Set(now),
             updated_at: Set(now),
             ..Default::default()
@@ -583,7 +678,7 @@ async fn apply_sync_operation(
             record.id,
             "create",
             None,
-            Some(snapshot(&record)),
+            Some(audit_snapshot(db, &record).await?),
         )
         .await?;
         record_change(
@@ -618,6 +713,12 @@ async fn apply_sync_operation(
     if !access(db, context, record.person_id, "manage").await? {
         return Err(sync_error(StatusCode::FORBIDDEN));
     }
+    if context
+        .browser
+        .is_some_and(|input| input.person_id != record.person_id)
+    {
+        return Err(OperationError::NotFound);
+    }
     let (before_body, current_etag) = representation(db, &record).await?;
     let expected = operation
         .if_match
@@ -651,7 +752,9 @@ async fn apply_sync_operation(
                 .medication_ids
                 .as_deref()
                 .map(|ids| medications(db, context, ids));
-            let selected = if let Some(selected) = selected {
+            let selected = if let Some(input) = context.browser {
+                Some(input.medications.clone())
+            } else if let Some(selected) = selected {
                 Some(
                     selected
                         .await?
@@ -661,23 +764,43 @@ async fn apply_sync_operation(
                 None
             };
             let started_on = attrs.started_on.unwrap_or(record.started_on);
-            let ended_on = attrs.ended_on.or(record.ended_on);
+            let ended_on = if context.browser.is_some_and(|input| input.ongoing) {
+                None
+            } else {
+                attrs.ended_on.or(record.ended_on)
+            };
+            let severity = if context.browser.is_some() {
+                attrs.severity
+            } else {
+                attrs.severity.or(record.severity)
+            };
+            let action_taken = context.browser.map_or_else(
+                || record.action_taken.clone(),
+                |input| input.action_taken.clone(),
+            );
+            let medical_help_sought = context.browser.map_or(record.medical_help_sought, |input| {
+                input.medical_help_sought
+            });
             if ended_on.is_some_and(|date| date < started_on) {
                 return Err(sync_error(StatusCode::UNPROCESSABLE_ENTITY));
             }
             let selected_ids = selected
                 .as_ref()
                 .map(|rows| rows.iter().map(|row| row.id).collect::<Vec<_>>());
-            let previous_ids = before_body["data"]["medication_ids"]
+            let mut previous_ids = before_body["data"]["medication_ids"]
                 .as_array()
                 .ok_or(OperationError::Unavailable)?
                 .iter()
                 .filter_map(Value::as_i64)
                 .collect::<Vec<_>>();
+            if let Some(input) = context.browser {
+                previous_ids.retain(|id| input.editable_medication_ids.contains(id));
+            }
             let unchanged = target_person.id == record.person_id
                 && attrs.event_kind.unwrap_or(record.event_kind) == record.event_kind
-                && attrs.severity.unwrap_or(record.severity.unwrap_or(-1))
-                    == record.severity.unwrap_or(-1)
+                && severity == record.severity
+                && action_taken == record.action_taken
+                && medical_help_sought == record.medical_help_sought
                 && attrs.title.as_deref().unwrap_or(&record.title) == record.title
                 && attrs.notes.as_deref().or(record.notes.as_deref()) == record.notes.as_deref()
                 && started_on == record.started_on
@@ -686,15 +809,17 @@ async fn apply_sync_operation(
             let updated = if unchanged {
                 record
             } else {
-                let before = snapshot(&record);
+                let before = audit_snapshot(db, &record).await?;
                 let mut active = record.clone().into_active_model();
                 active.person_id = Set(target_person.id);
                 active.event_kind = Set(attrs.event_kind.unwrap_or(record.event_kind));
-                active.severity = Set(attrs.severity.or(record.severity));
+                active.severity = Set(severity);
                 active.title = Set(attrs.title.unwrap_or(record.title.clone()));
                 active.notes = Set(attrs.notes.or(record.notes.clone()));
                 active.started_on = Set(started_on);
                 active.ended_on = Set(ended_on);
+                active.action_taken = Set(action_taken);
+                active.medical_help_sought = Set(medical_help_sought);
                 active.updated_at = Set(Utc::now().naive_utc());
                 let updated = active.update(db).await.map_err(database_error)?;
                 if let Some(selected) = selected {
@@ -706,7 +831,7 @@ async fn apply_sync_operation(
                     updated.id,
                     "update",
                     Some(before),
-                    Some(snapshot(&updated)),
+                    Some(audit_snapshot(db, &updated).await?),
                 )
                 .await?;
                 record_reassignment(db, context, &updated, &person, &target_person).await?;
@@ -738,6 +863,7 @@ async fn apply_sync_operation(
             if !operation.attributes.is_empty() {
                 return Err(sync_error(StatusCode::UNPROCESSABLE_ENTITY));
             }
+            let before = audit_snapshot(db, &record).await?;
             health_event_medication::Entity::delete_many()
                 .filter(health_event_medication::Column::HealthEventId.eq(record.id))
                 .exec(db)
@@ -752,7 +878,7 @@ async fn apply_sync_operation(
                 "HealthEvent",
                 record.id,
                 "destroy",
-                Some(snapshot(&record)),
+                Some(before),
                 None,
             )
             .await?;

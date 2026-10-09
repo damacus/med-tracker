@@ -8,6 +8,8 @@
   <ul class="flex flex-col gap-4 mt-6">
   {% for person in people %}
     <li class="card bg-base-100 border border-base-300"><div class="card-body">
+      {% set care_warning = person.care_warning %}
+      {% include "components/care_warning.html" %}
       <h2 class="card-title"><a class="link" href="/households/{{ slug }}/people/{{ person.id }}">{{ person.name }}</a></h2>
       <p>{% if person.age_present %}Age: {{ person.age }}{% else %}Date of birth is not recorded.{% endif %}</p>
     </div></li>

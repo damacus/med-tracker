@@ -18,6 +18,8 @@ mod dose_history;
 mod dose_outcomes;
 #[path = "care_api/fixture.rs"]
 mod fixture;
+#[path = "care_api/health_events.rs"]
+mod health_events;
 #[path = "care_api/invitations.rs"]
 mod invitations;
 #[path = "care_api/legacy_pause.rs"]
@@ -30,6 +32,8 @@ mod medication_reads;
 mod pause_periods;
 #[path = "care_api/people.rs"]
 mod people;
+#[path = "care_api/person_carers.rs"]
+mod person_carers;
 #[path = "care_api/push_subscriptions.rs"]
 mod push_subscriptions;
 #[path = "care_api/reports.rs"]

@@ -1,0 +1,54 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-3xl mx-auto space-y-6">
+  <a class="link" href="/households/{{ slug }}/people/{{ person.id }}">{{ back_label }}: {{ person.name }}</a>
+  <header><h1 class="text-3xl font-semibold">{{ title }}</h1><p class="mt-2">{{ labels.new_subtitle | replace(from="%{name}",to=person.name) }}</p></header>
+  {% include "components/care_warning.html" %}
+  {% if error %}<div class="alert alert-error" id="person-carer-error" role="alert">{{ error }}</div>{% endif %}
+  <div class="card bg-base-100 border border-base-300"><div class="card-body">
+    <form action="/households/{{ slug }}/people/{{ person.id }}/carer_relationships" method="post" class="space-y-5" {% if error %}aria-describedby="person-carer-error"{% endif %}>
+      <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+      <input type="hidden" name="locale" value="{{ lang }}">
+      {% if manager %}
+      <div class="grid gap-2"><label class="font-semibold" for="person-carer-id">{{ labels.carer }}</label>
+        <select class="select w-full" id="person-carer-id" name="carer_id" required>
+          <option value="">{{ labels.select_carer }}</option>
+          {% for carer in options %}<option value="{{ carer.id }}" {% if carer.selected %}selected{% endif %}>{{ carer.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="grid gap-2"><label class="font-semibold" for="person-carer-kind">{{ labels.relationship_type }}</label>
+        <select class="select w-full" id="person-carer-kind" name="relationship_type">
+          {% for kind in ["parent","family_member","professional_carer"] %}<option value="{{ kind }}" {% if draft.relationship_type == kind %}selected{% endif %}>{{ labels.browser[kind] }}</option>{% endfor %}
+        </select>
+      </div>
+      {% else %}
+      <div class="grid gap-2"><label class="font-semibold" for="person-carer-email">{{ labels.email }}</label>
+        <input class="input w-full" id="person-carer-email" name="email" type="email" value="{{ draft.email }}" placeholder="{{ labels.email_placeholder }}" autocomplete="email" required {% if error %}aria-invalid="true" aria-describedby="person-carer-error"{% endif %}>
+      </div>
+      {% endif %}
+      <div class="flex flex-wrap gap-3"><button class="btn btn-neutral" type="submit">{{ labels.submit }}</button><a class="btn btn-ghost" href="/households/{{ slug }}/people/{{ person.id }}">{{ labels.cancel }}</a></div>
+    </form>
+  </div></div>
+  <section aria-labelledby="person-carer-list-heading" class="space-y-4">
+    <h2 id="person-carer-list-heading" class="text-2xl font-semibold">{{ labels.browser.relationships }}</h2>
+    {% if records | length == 0 %}<p>{{ labels.browser.empty }}</p>{% endif %}
+    <ul class="space-y-3">
+      {% for relation in records %}
+      <li class="card bg-base-100 border border-base-300"><div class="card-body gap-3">
+        <h3 class="card-title">{{ relation.name }}</h3>
+        <p>{{ labels.browser[relation.kind] | default(value=relation.kind) }}</p>
+        <p class="badge badge-outline">{% if relation.active %}{{ labels.browser.active }}{% else %}{{ labels.browser.inactive }}{% endif %}</p>
+        {% if manager %}
+        <form action="/households/{{ slug }}/people/{{ person.id }}/carer_relationships/{{ relation.id }}/{% if relation.active %}remove{% else %}restore{% endif %}" method="post">
+          <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+          <input type="hidden" name="locale" value="{{ lang }}">
+          <input type="hidden" name="version" value="{{ relation.version }}">
+          <button class="btn btn-outline w-fit {% if relation.active %}btn-error{% endif %}" type="submit">{% if relation.active %}{{ labels.browser.remove }}{% else %}{{ labels.browser.restore }}{% endif %}</button>
+        </form>
+        {% endif %}
+      </div></li>
+      {% endfor %}
+    </ul>
+  </section>
+</section>
+{% endblock content %}
