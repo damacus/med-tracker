@@ -31,9 +31,6 @@ pub async fn create(
     } else {
         None
     };
-    if !record.has_capacity && (!dependent || carer.is_none()) {
-        return Err(invalid("has_capacity", "requires an active carer"));
-    }
     let saved = person::ActiveModel {
         account_id: Set(None),
         household_id: Set(record.household_id),
@@ -50,7 +47,7 @@ pub async fn create(
     .insert(tenant.transaction())
     .await
     .map_err(write_error)?;
-    let relationship = if dependent {
+    let relationship = if dependent && carer.is_some() {
         Some(
             carer_relationship::ActiveModel {
                 household_id: Set(tenant.scope().household_id),

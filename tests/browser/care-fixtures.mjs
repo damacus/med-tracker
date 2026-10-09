@@ -117,6 +117,7 @@ async function withCareFixture(captureMail, registrationInviteOnly, reportAssets
         seedRecoveryPasskey: () => fixtureTask('seed-recovery-passkey'),
         peopleProbe: async () => JSON.parse(await fixtureTask('people-probe')),
         restockProbe: async () => JSON.parse(await fixtureTask('restock-probe')), failRestockAudit: () => fixtureTask('fail-restock-audit'),
+        personHealthProbe: async () => JSON.parse(await fixtureTask('person-health-probe')), renamePersonHealthMedication: () => fixtureTask('rename-person-health-medication'), personCarerManager: () => fixtureTask('person-carer-manager'), personCarerNonmanager: () => fixtureTask('person-carer-nonmanager'), personCarerProbe: async () => JSON.parse(await fixtureTask('person-carer-probe')),
         seedAdministration: () => fixtureTask('seed-administration'), administrationProbe: async () => JSON.parse(await fixtureTask('administration-probe')), personViewOnly: () => fixtureTask('person-view-only'), revokePersonViewOnly: () => fixtureTask('revoke-person-view-only'), personZeroHours: () => fixtureTask('person-zero-hours'), mixedRecordability: () => fixtureTask('mixed-recordability'),
         invitationProbe: async email => JSON.parse(await fixtureTask('invitation-probe', [`INVITATION_EMAIL=${email}`])), expireInvitation: email => fixtureTask('expire-invitation', [`INVITATION_EMAIL=${email}`]),
         seedInvitationAccount: () => fixtureTask('seed-invitation-account'), seedInvitationOtp: () => fixtureTask('seed-invitation-otp'),

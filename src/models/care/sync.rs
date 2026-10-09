@@ -1,4 +1,4 @@
-mod health_events;
+pub(crate) mod health_events;
 mod input;
 mod medicines;
 mod occurrences;
@@ -26,7 +26,7 @@ use crate::models::{
     errors::OperationError,
 };
 use chrono::Utc;
-use input::Operation;
+pub(crate) use input::Operation;
 pub use reading::{changes, snapshot};
 pub use replay::authorize_replay;
 use sea_orm::{

@@ -4,6 +4,7 @@ mod audit;
 mod dosages;
 mod dose_history;
 mod dose_occurrences;
+mod health_events;
 mod input;
 mod invitations;
 mod locations;
@@ -58,6 +59,16 @@ pub fn invitation_routes() -> Routes {
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("/api/v1/households")
+        .add(
+            "/{household_id}/health_events",
+            get(health_events::index).post(health_events::create),
+        )
+        .add(
+            "/{household_id}/health_events/{id}",
+            get(health_events::show)
+                .patch(health_events::update)
+                .put(health_events::update),
+        )
         .add(
             "/{household_id}/profile",
             get(profile::show)

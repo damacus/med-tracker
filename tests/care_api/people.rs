@@ -400,3 +400,68 @@ async fn people_strong_parameters_preserve_rails_envelope_behaviour() {
     assert_eq!(name, "Synthetic inner parity");
     assert_eq!(account_id, Some(71001));
 }
+
+#[tokio::test]
+async fn people_without_carer_can_be_created_and_edited_without_capacity_change() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    app.fixture
+        .admin
+        .execute_unprepared("UPDATE household_memberships SET person_id=NULL WHERE id=74001")
+        .await
+        .unwrap();
+    let endpoint = format!("{}/api/v1/households/72001/people", app.origin);
+    for (kind, birth) in [("minor", "2020-01-01"), ("dependent_adult", "1990-01-01")] {
+        let response = app.client.post(&endpoint).bearer_auth(&token).json(&json!({"person":{"name":format!("Synthetic unsupported {kind}"),"date_of_birth":birth,"person_type":kind,"has_capacity":true}})).send().await.unwrap();
+        let status = response.status().as_u16();
+        let body: Value = response.json().await.unwrap_or(Value::Null);
+        let id = body["data"]["id"].as_i64().unwrap_or(-1);
+        let update = app
+            .client
+            .patch(format!("{endpoint}/{id}"))
+            .bearer_auth(&token)
+            .json(&json!({"person":{"name":format!("Synthetic edited unsupported {kind}")}}))
+            .send()
+            .await
+            .unwrap();
+        let update_status = update.status().as_u16();
+        let updated: Value = update.json().await.unwrap_or(Value::Null);
+        let row = app
+            .fixture
+            .admin
+            .query_one_raw(Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                "SELECT count(*) AS n FROM carer_relationships WHERE patient_id=$1 AND active",
+                [id.into()],
+            ))
+            .await
+            .unwrap()
+            .unwrap();
+        let carers: i64 = row.try_get("", "n").unwrap();
+        assert_eq!((status, update_status), (201, 200));
+        assert_eq!(updated["data"]["has_capacity"], false);
+        assert_eq!(updated["data"]["person_type"], kind);
+        assert_eq!(carers, 0);
+    }
+    app.close().await;
+}
+
+#[tokio::test]
+async fn people_existing_dependents_without_carer_can_be_edited() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    app.fixture.admin.execute_unprepared("UPDATE people SET date_of_birth='2020-01-01' WHERE id=73002; UPDATE people SET date_of_birth='1990-01-01' WHERE id=73003; INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,created_at,updated_at) VALUES(78002,72001,74001,73002,'manage','parent',now(),now()),(78003,72001,74001,73003,'manage','family_member',now(),now())").await.unwrap();
+    let mut statuses = Vec::new();
+    for id in [73002, 73003] {
+        let response = app.client.patch(format!("{}/api/v1/households/72001/people/{id}",app.origin)).bearer_auth(&token).json(&json!({"person":{"name":format!("Synthetic independent edit {id}"),"has_capacity":true}})).send().await.unwrap();
+        statuses.push(response.status().as_u16());
+    }
+    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM people WHERE id IN (73002,73003) AND NOT has_capacity AND name LIKE 'Synthetic independent edit%') AS edited,(SELECT count(*) FROM carer_relationships) AS carers,(SELECT count(*) FROM versions WHERE item_type='Person' AND event='update') AS audits")).await.unwrap().unwrap();
+    let counts: Vec<i64> = ["edited", "carers", "audits"]
+        .iter()
+        .map(|key| row.try_get("", key).unwrap())
+        .collect();
+    app.close().await;
+    assert_eq!(statuses, vec![200, 200]);
+    assert_eq!(counts, vec![2, 0, 2]);
+}
