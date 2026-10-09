@@ -1,4 +1,58 @@
 use super::*;
+
+#[tokio::test]
+async fn age_validation_ignores_existing_and_submitted_account_timezones() {
+    use chrono::TimeZone;
+    use med_tracker::controllers::api::care::AgeValidationClock;
+
+    let app = profile_application().await;
+    app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences='{\"time_zone\":\"Pacific/Kiritimati\"}' WHERE id=71001; UPDATE people SET person_type=2,has_capacity=false WHERE id=73001; UPDATE people SET person_type=0,has_capacity=true,date_of_birth='1980-01-01' WHERE id=73002; INSERT INTO carer_relationships(household_id,carer_id,patient_id,relationship_type,active,created_at,updated_at) VALUES(72001,73002,73001,'family_member',true,now(),now())").await.unwrap();
+    let token = app.token().await;
+    let endpoint = format!("{}/api/v1/households/72001/profile", app.origin);
+    for method in [reqwest::Method::PATCH, reqwest::Method::PUT] {
+        for (hour, minute, second, expected) in [(23, 59, 59, 422), (0, 0, 0, 200)] {
+            let day = if hour == 23 { 30 } else { 1 };
+            let month = if hour == 23 { 6 } else { 7 };
+            app.context.shared_store.insert(AgeValidationClock::fixed(
+                chrono::Utc
+                    .with_ymd_and_hms(2026, month, day, hour, minute, second)
+                    .unwrap(),
+                chrono_tz::UTC,
+            ));
+            let response = app.client.request(method.clone(), &endpoint).bearer_auth(&token)
+                .json(&json!({"profile":{"date_of_birth":"2008-07-01","time_zone":"America/Los_Angeles"}})).send().await.unwrap();
+            assert_eq!(response.status().as_u16(), expected);
+            let saved = app
+                .client
+                .get(&endpoint)
+                .bearer_auth(&token)
+                .send()
+                .await
+                .unwrap()
+                .json::<Value>()
+                .await
+                .unwrap();
+            assert_eq!(
+                saved["data"]["date_of_birth"],
+                if expected == 200 {
+                    "2008-07-01"
+                } else {
+                    "1985-02-03"
+                }
+            );
+            assert_eq!(
+                saved["data"]["time_zone"],
+                if expected == 200 {
+                    "America/Los_Angeles"
+                } else {
+                    "Pacific/Kiritimati"
+                }
+            );
+            app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences='{\"time_zone\":\"Pacific/Kiritimati\"}' WHERE id=71001; UPDATE people SET date_of_birth='1985-02-03' WHERE id=73001").await.unwrap();
+        }
+    }
+    app.close().await;
+}
 use sea_orm::TransactionTrait;
 
 #[tokio::test]

@@ -3,7 +3,7 @@ use super::*;
 pub async fn create(
     tenant: &TenantTransaction,
     attributes: Value,
-    zone: Tz,
+    today: NaiveDate,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<person::Model, OperationError> {
     authorize_create(tenant).await?;
@@ -22,7 +22,7 @@ pub async fn create(
         updated_at: now,
     };
     validation::assign(&mut record, &attributes, true)?;
-    let dependent = validation::capacity(&mut record, zone)?;
+    let dependent = validation::capacity(&mut record, today)?;
     let carer = if let Some(id) = tenant.membership().person_id {
         person::Entity::find_by_id(id)
             .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))

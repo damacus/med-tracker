@@ -191,7 +191,9 @@ impl<'a> Page<'a> {
                     &tenant,
                     id,
                     attributes,
-                    principal.time_zone(),
+                    chrono::Utc::now()
+                        .with_timezone(&principal.time_zone())
+                        .date_naive(),
                     Some(principal.provenance()),
                 )
                 .await
@@ -200,7 +202,9 @@ impl<'a> Page<'a> {
                 people::create(
                     &tenant,
                     attributes,
-                    principal.time_zone(),
+                    chrono::Utc::now()
+                        .with_timezone(&principal.time_zone())
+                        .date_naive(),
                     Some(principal.provenance()),
                 )
                 .await
