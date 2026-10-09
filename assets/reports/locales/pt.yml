@@ -143,6 +143,15 @@ pt:
       linked_to_health_event: já foi associado a este evento de saúde
       on_or_after_start_date: deve ser igual ou posterior à data de início
   health_events:
+    browser:
+      form_error: "Verifique os dados do evento de saúde."
+      date_error: "A data de fim deve ser igual ou posterior à data de início."
+      stale_error: "Este evento de saúde mudou. Reveja a versão mais recente antes de guardar novamente."
+      unavailable_error: "Não foi possível guardar o evento de saúde. Os seus dados continuam aqui; tente novamente."
+      delete_confirm: "Eliminar este evento de saúde?"
+      delete_body: "Isto elimina o evento e as suas ligações a medicamentos."
+      latest: "Rever a versão mais recente"
+      medications_empty: "Não há medicamentos atribuídos disponíveis."
     created: Evento de saúde registado.
     updated: Evento de saúde atualizado.
     deleted: Evento de saúde eliminado.
@@ -1302,6 +1311,22 @@ pt:
       title: Ações de Cuidado
       subtitle: Atualize planos e horários de medicação.
     carer_relationships:
+      browser:
+        invitation_unavailable: "Este endereço tem um convite expirado ou incompatível. Peça a um gestor do agregado familiar para o rever."
+        unknown: "Outra relação"
+        relationships: "Pais e cuidadores"
+        empty: "Não existem pais ou cuidadores atribuídos."
+        remove: "Remover cuidador"
+        restore: "Restaurar cuidador"
+        active: "Ativo"
+        inactive: "Inativo"
+        parent: "Progenitor"
+        family_member: "Familiar"
+        professional_carer: "Cuidador profissional"
+        invalid_assignment: "Selecione um cuidador adulto elegível e uma relação."
+        stale: "Esta relação foi alterada. Reveja a atribuição atual antes de tentar novamente."
+        forbidden: "Já não tem permissão para fazer esta alteração."
+        unavailable: "Não foi possível guardar a atribuição. Os seus dados continuam aqui; tente novamente."
       created: Pai/mãe ou cuidador atribuído.
       invited: Convite enviado com este dependente associado.
       invalid_role: Introduza o email de uma conta adulta de pai/mãe.
@@ -1329,8 +1354,8 @@ pt:
       select_person_type: Selecionar tipo de pessoa
       has_capacity: Tem capacidade para gerir a própria medicação
       note: 'Nota:'
-      capacity_hint: Uma pessoa sem capacidade tem de ter pelo menos um cuidador atribuído.
-      capacity_hint_assign_carer: Atribua um cuidador antes de remover a capacidade.
+      capacity_hint: "É possível guardar uma pessoa sem capacidade sem um cuidador ativo. Menores e adultos dependentes não têm capacidade."
+      capacity_hint_assign_carer: "Pode atribuir ou convidar um cuidador depois de guardar."
       save: Guardar
       cancel: Cancelar
       create: Criar Pessoa
@@ -2665,3 +2690,8 @@ pt:
     stock: "Origem do stock"
     corrected: "Decisão sobre a dose corrigida."
     resolved_elsewhere: "Esta dose já não está marcada como não tomada. Volte ao painel para ver o estado atual."
+
+  care_warning:
+    heading: "Não há cuidador ativo atribuído."
+    body: "Os cuidados podem continuar. Pode atribuir ou convidar um cuidador quando for adequado."
+    action: "Atribuir ou convidar um cuidador"

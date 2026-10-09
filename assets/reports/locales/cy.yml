@@ -143,6 +143,15 @@ cy:
       linked_to_health_event: eisoes wedi'i gysylltu â'r digwyddiad iechyd hwn
       on_or_after_start_date: rhaid iddo fod ar neu ar ôl y dyddiad dechrau
   health_events:
+    browser:
+      form_error: "Gwiriwch fanylion y digwyddiad iechyd."
+      date_error: "Rhaid i’r dyddiad gorffen fod ar neu ar ôl y dyddiad dechrau."
+      stale_error: "Mae’r digwyddiad iechyd hwn wedi newid. Adolygwch y fersiwn ddiweddaraf cyn cadw eto."
+      unavailable_error: "Ni ellid cadw’r digwyddiad iechyd. Mae eich cofnodion yma o hyd; ceisiwch eto."
+      delete_confirm: "Dileu’r digwyddiad iechyd hwn?"
+      delete_body: "Mae hyn yn dileu’r digwyddiad a’i gysylltiadau â meddyginiaethau."
+      latest: "Adolygu’r fersiwn ddiweddaraf"
+      medications_empty: "Nid oes meddyginiaethau wedi’u haseinio ar gael."
     created: Cofnodwyd y digwyddiad iechyd.
     updated: Diweddarwyd y digwyddiad iechyd.
     deleted: Dilëwyd y digwyddiad iechyd.
@@ -1287,6 +1296,22 @@ cy:
       no_any_medications: Dim meddyginiaethau eto.
       add_first_any_medication: Ychwanegu Meddyginiaeth
     carer_relationships:
+      browser:
+        invitation_unavailable: "Mae gan y cyfeiriad hwn wahoddiad sydd wedi dod i ben neu sy'n anghydnaws. Gofynnwch i reolwr yr aelwyd ei adolygu."
+        unknown: "Perthynas arall"
+        relationships: "Rhieni a gofalwyr"
+        empty: "Nid oes rhieni na gofalwyr wedi'u neilltuo."
+        remove: "Dileu gofalwr"
+        restore: "Adfer gofalwr"
+        active: "Gweithredol"
+        inactive: "Anweithredol"
+        parent: "Rhiant"
+        family_member: "Aelod o'r teulu"
+        professional_carer: "Gofalwr proffesiynol"
+        invalid_assignment: "Dewiswch ofalwr sy'n oedolyn cymwys a pherthynas."
+        stale: "Mae'r berthynas hon wedi newid. Adolygwch yr aseiniad presennol cyn rhoi cynnig arall arni."
+        forbidden: "Nid oes gennych ganiatâd mwyach i wneud y newid hwn."
+        unavailable: "Ni ellid cadw'r aseiniad. Mae eich cofnodion yma o hyd; rhowch gynnig arall arni."
       created: Rhiant neu ofalwr wedi'i aseinio.
       invited: Anfonwyd gwahoddiad gyda'r dibynnydd hwn wedi'i atodi.
       invalid_role: Rhowch gyfeiriad e-bost ar gyfer cyfrif rhiant sy'n oedolyn.
@@ -1314,8 +1339,8 @@ cy:
       select_person_type: Dewis math o berson
       has_capacity: Mae ganddo'r gallu i reoli ei feddyginiaeth ei hun
       note: 'Nodyn:'
-      capacity_hint: Rhaid i berson heb allu gael o leiaf un gofalwr wedi'i aseinio.
-      capacity_hint_assign_carer: Aseinwch ofalwr cyn tynnu gallu.
+      capacity_hint: "Gellir cadw person heb allu heb ofalwr gweithredol. Nid oes gan blant dan oed ac oedolion dibynnol allu."
+      capacity_hint_assign_carer: "Gallwch aseinio neu wahodd gofalwr ar ôl cadw."
       save: Cadw
       cancel: Canslo
       create: Creu Person
@@ -2659,3 +2684,8 @@ cy:
     stock: "Ffynhonnell y stoc"
     corrected: "Cywirwyd penderfyniad y dos."
     resolved_elsewhere: "Nid yw’r dos hwn bellach wedi’i farcio fel heb ei gymryd. Dychwelwch i’r dangosfwrdd i weld ei gyflwr presennol."
+
+  care_warning:
+    heading: "Nid oes gofalwr gweithredol wedi’i aseinio."
+    body: "Gall gofal barhau. Gallwch aseinio neu wahodd gofalwr pan fo’n briodol."
+    action: "Aseiniwch neu wahoddwch ofalwr"
