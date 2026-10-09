@@ -30,6 +30,8 @@ mod medication_reads;
 mod pause_periods;
 #[path = "care_api/people.rs"]
 mod people;
+#[path = "care_api/platform.rs"]
+mod platform;
 #[path = "care_api/push_subscriptions.rs"]
 mod push_subscriptions;
 #[path = "care_api/reports.rs"]

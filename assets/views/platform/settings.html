@@ -1,0 +1,40 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-2xl mx-auto">
+  <h1 class="text-3xl font-semibold mt-4">Platform settings</h1>
+  <p class="mt-2"><a class="link" href="/platform/users">Platform users</a> · <a class="link" href="/platform/support">Support access</a> · <a class="link" href="/platform/owner-recovery">Owner recovery</a></p>
+  <form method="post" action="/platform/settings" class="mt-6 flex flex-col gap-4">
+    <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+    <fieldset class="fieldset">
+      <label class="label" for="invite-only">Registration</label>
+      {% if invite_only_locked %}
+      <input type="hidden" name="invite_only" value="{{ invite_only }}">
+      <select id="invite-only" class="select select-bordered" disabled>
+        <option value="false"{% if not invite_only %} selected{% endif %}>Open registration</option>
+        <option value="true"{% if invite_only %} selected{% endif %}>Invite only</option>
+      </select>
+      <p class="text-sm text-base-content/70">Fixed by the INVITE_ONLY environment variable.</p>
+      {% else %}
+      <select id="invite-only" name="invite_only" class="select select-bordered">
+        <option value="false"{% if not invite_only %} selected{% endif %}>Open registration</option>
+        <option value="true"{% if invite_only %} selected{% endif %}>Invite only</option>
+      </select>
+      {% endif %}
+    </fieldset>
+    <fieldset class="fieldset">
+      <label class="label" for="medicine-lookup-base-url">Medicine lookup base URL</label>
+      <input class="input input-bordered w-full" id="medicine-lookup-base-url" name="medicine_lookup_base_url" type="url" value="{{ medicine_lookup_base_url }}" required>
+    </fieldset>
+    <fieldset class="fieldset">
+      <label class="label" for="medicine-lookup-token-url">Medicine lookup token URL</label>
+      <input class="input input-bordered w-full" id="medicine-lookup-token-url" name="medicine_lookup_token_url" type="url" value="{{ medicine_lookup_token_url }}" required>
+    </fieldset>
+    <fieldset class="fieldset">
+      <label class="label" for="medicine-lookup-source-priority">Medicine lookup source priority</label>
+      <input class="input input-bordered w-full" id="medicine-lookup-source-priority" name="medicine_lookup_source_priority" type="text" value="{{ medicine_lookup_source_priority }}" required>
+      <p class="text-sm text-base-content/70">Comma-separated. Allowed sources: {{ lookup_sources }}.</p>
+    </fieldset>
+    <button class="btn btn-primary self-start" type="submit">Save settings</button>
+  </form>
+</section>
+{% endblock content %}

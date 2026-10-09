@@ -1,0 +1,44 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-4xl mx-auto">
+  <h1 class="text-3xl font-semibold mt-4">Support access: {{ household_name }}</h1>
+  <p class="mt-2"><a class="link" href="/platform/support">Support access</a></p>
+  <p class="mt-2 text-sm text-base-content/70">Read-only support view. Access expires at {{ expires_at }}.</p>
+  <h2 class="text-xl font-semibold mt-6">Household members</h2>
+  <ul class="list-disc ml-6 mt-2">
+    {% for member in members %}
+    <li>{{ member }}</li>
+    {% endfor %}
+  </ul>
+  <h2 class="text-xl font-semibold mt-6">People</h2>
+  <ul class="list-disc ml-6 mt-2">
+    {% for person in people %}
+    <li>{{ person }}</li>
+    {% endfor %}
+  </ul>
+  <h2 class="text-xl font-semibold mt-6">Medications</h2>
+  <ul class="list-disc ml-6 mt-2">
+    {% for medication in medications %}
+    <li>{{ medication }}</li>
+    {% endfor %}
+  </ul>
+  <h2 class="text-xl font-semibold mt-6">Medication allocations</h2>
+  {% if allocations | length == 0 %}
+  <p class="mt-2 text-sm text-base-content/70">No active allocations.</p>
+  {% endif %}
+  <ul class="list-disc ml-6 mt-2">
+    {% for allocation in allocations %}
+    <li>{{ allocation.person }} — {{ allocation.medication }}: {{ allocation.dose }}{% if allocation.max_daily %} (max {{ allocation.max_daily }} per day){% endif %}</li>
+    {% endfor %}
+  </ul>
+  <h2 class="text-xl font-semibold mt-6">Schedules</h2>
+  {% if schedules | length == 0 %}
+  <p class="mt-2 text-sm text-base-content/70">No active schedules.</p>
+  {% endif %}
+  <ul class="list-disc ml-6 mt-2">
+    {% for schedule in schedules %}
+    <li>{{ schedule.person }} — {{ schedule.medication }}: {{ schedule.dose }} {{ schedule.frequency }}</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock content %}

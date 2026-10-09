@@ -127,40 +127,40 @@ fn delegated_person_management_preserves_capacity_and_owner_rules() {
         }
     }
     for role in ["member", "administrator", "owner"] {
-        for platform in [true, false] {
-            for next_owner in [true, false] {
-                assert_eq!(
-                    evaluate(
-                        member(role),
-                        subject(),
-                        "change_owner",
-                        json!({"platform_admin":platform,"next_owner":next_owner})
-                    ),
-                    platform || (role == "owner" && !next_owner)
-                );
-            }
+        for next_owner in [true, false] {
+            assert_eq!(
+                evaluate(
+                    member(role),
+                    subject(),
+                    "change_owner",
+                    json!({"next_owner":next_owner})
+                ),
+                role == "owner" && !next_owner
+            );
         }
     }
 }
 
 #[test]
 fn support_policy_requires_trusted_live_context_and_never_fills_missing_facts() {
-    let facts = json!({"trusted":true,"platform_admin":true,"household_id":21,"ended":false,"expired":false,"expires_at":101,"now":100});
-    assert!(evaluate(
-        member("member"),
+    let account = json!({"id":71,"active":true,"platform_admin":true});
+    let facts = json!({"trusted":true,"household_id":21,"ended":false,"expired":false,"expires_at":101,"now":100});
+    assert!(account_decision(
+        account.clone(),
+        "Resource",
         subject(),
         "support_household",
         facts.clone()
     ));
-    assert!(!evaluate(
-        member("owner"),
+    assert!(!account_decision(
+        account.clone(),
+        "Resource",
         subject(),
         "support_household",
         json!({})
     ));
     for (field, value) in [
         ("trusted", json!(false)),
-        ("platform_admin", json!(false)),
         ("household_id", json!(22)),
         ("ended", json!(true)),
         ("expired", json!(true)),
@@ -168,13 +168,104 @@ fn support_policy_requires_trusted_live_context_and_never_fills_missing_facts() 
     ] {
         let mut changed = facts.clone();
         changed[field] = value;
-        assert!(!evaluate(
-            member("owner"),
+        assert!(!account_decision(
+            account.clone(),
+            "Resource",
             subject(),
             "support_household",
             changed
         ));
     }
+    for (field, value) in [("active", json!(false)), ("platform_admin", json!(false))] {
+        let mut changed = account.clone();
+        changed[field] = value;
+        assert!(!account_decision(
+            changed,
+            "Resource",
+            subject(),
+            "support_household",
+            facts.clone()
+        ));
+    }
+}
+
+#[test]
+fn support_approval_and_end_respect_owner_and_admin_boundaries() {
+    let owner_account = json!({"id":71,"active":true,"platform_admin":false});
+    let admin_account = json!({"id":72,"active":true,"platform_admin":true});
+    for (owner, expected) in [(true, true), (false, false)] {
+        assert_eq!(
+            account_decision(
+                owner_account.clone(),
+                "Resource",
+                subject(),
+                "support_approve",
+                json!({"household_id":21,"owner":owner})
+            ),
+            expected
+        );
+    }
+    assert!(!account_decision(
+        admin_account.clone(),
+        "Resource",
+        subject(),
+        "support_approve",
+        json!({"household_id":21,"owner":false})
+    ));
+    assert!(account_decision(
+        admin_account.clone(),
+        "Resource",
+        subject(),
+        "support_end",
+        json!({"household_id":21,"owner":false})
+    ));
+    assert!(account_decision(
+        owner_account.clone(),
+        "Resource",
+        subject(),
+        "support_end",
+        json!({"household_id":21,"owner":true})
+    ));
+    let mut foreign = subject();
+    foreign["household_id"] = json!(22);
+    assert!(!account_decision(
+        admin_account.clone(),
+        "Resource",
+        foreign,
+        "support_end",
+        json!({"household_id":21,"owner":false})
+    ));
+    assert!(!account_decision(
+        json!({"id":71,"active":false,"platform_admin":false}),
+        "Resource",
+        subject(),
+        "support_end",
+        json!({"household_id":21,"owner":true})
+    ));
+}
+
+#[test]
+fn platform_user_listing_requires_active_account_and_active_administrator() {
+    let account = json!({"id":71,"active":true,"platform_admin":true});
+    for action in [
+        "read_platform_users",
+        "write_platform_users",
+        "read_platform_settings",
+        "write_platform_settings",
+        "platform_owner_recovery",
+        "support_request",
+        "support_activate",
+    ] {
+        assert!(evaluate_account(account.clone(), action), "{action}");
+        for (field, value) in [("active", json!(false)), ("platform_admin", json!(false))] {
+            let mut changed = account.clone();
+            changed[field] = value;
+            assert!(!evaluate_account(changed, action), "{action} {field}");
+        }
+        assert!(!evaluate_account(member("owner"), action), "{action}");
+        assert!(!evaluate_account(json!({}), action), "{action}");
+    }
+    assert!(!evaluate_account(account, "manage_household"));
 }
 
 #[test]

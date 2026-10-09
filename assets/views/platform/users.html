@@ -1,0 +1,52 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-3xl mx-auto">
+  <h1 class="text-3xl font-semibold mt-4">Platform users</h1>
+  <form method="get" action="/platform/users" class="mt-4 flex gap-2">
+    <label class="sr-only" for="platform-users-query">Search by email</label>
+    <input class="input input-bordered w-full" type="search" id="platform-users-query" name="q" value="{{ query }}" placeholder="Search by email">
+    <button class="btn btn-primary" type="submit">Search</button>
+  </form>
+  <p class="mt-4"><a class="link" href="/platform/settings">Platform settings</a> · <a class="link" href="/platform/support">Support access</a> · <a class="link" href="/platform/owner-recovery">Owner recovery</a></p>
+  <ul class="flex flex-col gap-4 mt-6">
+  {% for user in users %}
+    <li class="card bg-base-100 border border-base-300"><div class="card-body">
+      <h2 class="card-title">{{ user.email }}</h2>
+      <p>{% if user.active %}Account active{% else %}Account closed or unverified{% endif %} · {% if user.user_active %}Sign-in enabled{% else %}Sign-in disabled{% endif %}{% if user.administrator %} · Platform administrator{% endif %}</p>
+      <div class="card-actions mt-2">
+        <form method="post" action="/platform/users/administrator">
+          <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+          <input type="hidden" name="account_id" value="{{ user.id }}">
+          {% if user.administrator %}
+          <input type="hidden" name="grant" value="false">
+          <button class="btn btn-sm btn-outline" type="submit">Revoke administrator</button>
+          {% else %}
+          <input type="hidden" name="grant" value="true">
+          <button class="btn btn-sm btn-outline" type="submit">Grant administrator</button>
+          {% endif %}
+        </form>
+        <form method="post" action="/platform/users/active">
+          <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+          <input type="hidden" name="account_id" value="{{ user.id }}">
+          {% if user.user_active %}
+          <input type="hidden" name="active" value="false">
+          <button class="btn btn-sm btn-outline" type="submit">Disable sign-in</button>
+          {% else %}
+          <input type="hidden" name="active" value="true">
+          <button class="btn btn-sm btn-outline" type="submit">Enable sign-in</button>
+          {% endif %}
+        </form>
+      </div>
+    </div></li>
+  {% else %}<li>No platform users match.</li>{% endfor %}
+  </ul>
+  {% if page_links | length > 1 %}
+  <nav class="join mt-6" aria-label="User pages">
+  {% for number in page_links %}
+    {% if number == page %}<span class="join-item btn btn-disabled">{{ number }}</span>
+    {% else %}<a class="join-item btn" href="/platform/users?q={{ query_encoded }}&amp;page={{ number }}">{{ number }}</a>{% endif %}
+  {% endfor %}
+  </nav>
+  {% endif %}
+</section>
+{% endblock content %}

@@ -1,0 +1,43 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-4xl mx-auto">
+  <h1 class="text-3xl font-semibold mt-4">Support access requests</h1>
+  <p class="mt-4 text-sm text-base-content/70">Platform administrators may request temporary read-only access to a household you own. Support users cannot write, export, or download household data and cannot access files. A request expires after 24 hours. Approved access lasts 30 minutes from activation, and you can end access at any time. Approving requires fresh sign-in confirmation.</p>
+  <ul class="mt-4 flex flex-col gap-4">
+    {% for session in sessions %}
+    <li class="card bg-base-200 p-4">
+      <dl class="grid gap-x-4 gap-y-1 sm:grid-cols-[10rem_1fr]">
+        <dt class="font-medium">Household</dt>
+        <dd>{{ session.household_name }}</dd>
+        <dt class="font-medium">Requested by</dt>
+        <dd>{{ session.requester }}</dd>
+        <dt class="font-medium">Reason</dt>
+        <dd>{{ session.reason }}</dd>
+        <dt class="font-medium">State</dt>
+        <dd>{{ session.state }}</dd>
+        <dt class="font-medium">Deadline</dt>
+        <dd>{{ session.expires_at }}</dd>
+        <dt class="font-medium">Scope</dt>
+        <dd>read-only support access — the support user cannot write, export, or download household data</dd>
+      </dl>
+      <div class="mt-3 flex flex-wrap gap-2">
+        {% if session.state == "requested" %}
+        <form method="post" action="/account/support/approve">
+          <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+          <input type="hidden" name="support_id" value="{{ session.id }}">
+          <button class="btn btn-sm btn-primary" type="submit">Approve</button>
+        </form>
+        {% endif %}
+        {% if session.state == "requested" or session.state == "approved" or session.state == "active" %}
+        <form method="post" action="/account/support/end">
+          <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+          <input type="hidden" name="support_id" value="{{ session.id }}">
+          <button class="btn btn-sm btn-ghost" type="submit">End access</button>
+        </form>
+        {% endif %}
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock content %}

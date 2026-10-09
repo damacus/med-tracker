@@ -14,6 +14,7 @@ pub mod medication_orders;
 pub mod medications;
 pub mod oauth_server;
 pub mod people;
+pub mod platform;
 pub mod signup;
 pub mod treatments;
 
