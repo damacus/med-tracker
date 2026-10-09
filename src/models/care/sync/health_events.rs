@@ -786,13 +786,13 @@ async fn apply_sync_operation(
             }
             let selected_ids = selected
                 .as_ref()
-                .map(|rows| rows.iter().map(|row| row.id).collect::<Vec<_>>());
+                .map(|rows| rows.iter().map(|row| row.id).collect::<HashSet<_>>());
             let mut previous_ids = before_body["data"]["medication_ids"]
                 .as_array()
                 .ok_or(OperationError::Unavailable)?
                 .iter()
                 .filter_map(Value::as_i64)
-                .collect::<Vec<_>>();
+                .collect::<HashSet<_>>();
             if let Some(input) = context.browser {
                 previous_ids.retain(|id| input.editable_medication_ids.contains(id));
             }

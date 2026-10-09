@@ -540,3 +540,142 @@ async fn health_events_browser_preserves_unselectable_links_and_audits_link_chan
     assert_eq!(changes["medication_links"][1], json!([]));
     app.close().await;
 }
+
+#[tokio::test]
+async fn health_events_same_second_api_edits_reject_stale_content_etags() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    let endpoint = format!("{}/api/v1/households/72001/health_events", app.origin);
+    let created=app.client.post(&endpoint).bearer_auth(&token).json(&json!({"health_event":{
+        "person_id":"73001","event_kind":"illness","title":"Original synthetic title","notes":"Original synthetic notes","started_on":"2026-10-01"
+    }})).send().await.unwrap();
+    assert_eq!(created.status().as_u16(), 201);
+    let body: Value = created.json().await.unwrap();
+    let id = body["data"]["id"].as_i64().unwrap();
+    app.fixture
+        .admin
+        .execute_raw(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            "UPDATE health_events SET updated_at='2026-10-09 12:00:00.100' WHERE id=$1",
+            [id.into()],
+        ))
+        .await
+        .unwrap();
+    app.fixture.admin.execute_unprepared("CREATE FUNCTION fixed_health_timestamp() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN NEW.updated_at := timestamp '2026-10-09 12:00:00.300'; RETURN NEW; END $$; CREATE TRIGGER fixed_health_timestamp BEFORE UPDATE ON health_events FOR EACH ROW EXECUTE FUNCTION fixed_health_timestamp()").await.unwrap();
+    let resource = format!("{endpoint}/{id}");
+    let read = app
+        .client
+        .get(&resource)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let original_etag = read.headers()["etag"].to_str().unwrap().to_owned();
+    let original: Value = read.json().await.unwrap();
+    let updated=app.client.patch(&resource).bearer_auth(&token).header("if-match",&original_etag)
+        .json(&json!({"health_event":{"title":"Newer synthetic title","notes":"Newer synthetic notes"}})).send().await.unwrap();
+    assert_eq!(updated.status().as_u16(), 200);
+    let updated_etag = updated.headers()["etag"].to_str().unwrap().to_owned();
+    let updated: Value = updated.json().await.unwrap();
+    assert_eq!(
+        original["data"]["updated_at"],
+        updated["data"]["updated_at"]
+    );
+    assert_ne!(original_etag, updated_etag);
+    let stale=app.client.patch(&resource).bearer_auth(&token).header("if-match",&original_etag)
+        .json(&json!({"health_event":{"title":"Stale synthetic title","notes":"Stale synthetic notes"}})).send().await.unwrap();
+    assert_eq!(stale.status().as_u16(), 409);
+    let current: Value = app
+        .client
+        .get(&resource)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(current["data"]["title"], "Newer synthetic title");
+    assert_eq!(current["data"]["notes"], "Newer synthetic notes");
+    app.close().await;
+}
+
+#[tokio::test]
+async fn health_events_browser_unchanged_medication_set_keeps_revision_and_snapshots() {
+    use med_tracker::models::{
+        access::{self, Actor, HouseholdScope},
+        care::{
+            doses::{CredentialMethod, CredentialProvenance},
+            health_events::browser,
+        },
+    };
+    let app = Application::new().await;
+    app.fixture.admin.execute_unprepared("UPDATE medications SET name='Zulu synthetic tablets' WHERE id=80001; INSERT INTO medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at) SELECT 80002,household_id,location_id,'Alpha synthetic tablets',10,2,'tablet',now(),now() FROM medications WHERE id=80001; INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(81002,72001,73001,80002,2,'tablet',1,now(),now())").await.unwrap();
+    let token = app.token().await;
+    let created = app
+        .client
+        .post(format!(
+            "{}/api/v1/households/72001/health_events",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .json(&json!({"health_event":{
+            "person_id":"73001","event_kind":"suspected_side_effect","title":"Synthetic reaction",
+            "notes":"","started_on":"2026-10-01","medication_ids":["80001","80002"]
+        }}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(created.status().as_u16(), 201);
+    let body: Value = created.json().await.unwrap();
+    let id = body["data"]["id"].as_i64().unwrap();
+    let scope = HouseholdScope {
+        actor: Actor { account_id: 71001 },
+        household_id: 72001,
+        request_id: "synthetic-unordered-health-links".into(),
+    };
+    let provenance = CredentialProvenance {
+        method: CredentialMethod::BrowserSession,
+        reference: "synthetic-session".into(),
+    };
+    let tenant = access::begin(&app.fixture.runtime, &scope).await.unwrap();
+    let (_, links, etag) = browser::event(&tenant, 73001, &id.to_string())
+        .await
+        .unwrap();
+    assert_eq!(
+        links
+            .iter()
+            .map(|link| link.medication_id)
+            .collect::<Vec<_>>(),
+        vec![Some(80001), Some(80002)]
+    );
+    let options = browser::medication_options(&tenant, 73001).await.unwrap();
+    assert_eq!(
+        options.iter().map(|row| row.id).collect::<Vec<_>>(),
+        vec![80002, 80001]
+    );
+    let draft = std::collections::HashMap::from([
+        ("event_kind".into(), "suspected_side_effect".into()),
+        ("title".into(), "Synthetic reaction".into()),
+        ("notes".into(), "".into()),
+        ("started_on".into(), "2026-10-01".into()),
+        ("ongoing".into(), "1".into()),
+        ("etag".into(), etag.clone()),
+        ("medication_80001".into(), "1".into()),
+        ("medication_80002".into(), "1".into()),
+    ]);
+    browser::save(&tenant, 73001, Some(&id.to_string()), &draft, &provenance)
+        .await
+        .unwrap();
+    let (_, after_links, after_etag) = browser::event(&tenant, 73001, &id.to_string())
+        .await
+        .unwrap();
+    assert_eq!(etag, after_etag);
+    assert_eq!(links, after_links);
+    tenant.commit().await.unwrap();
+    let row=app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+        "SELECT (SELECT count(*) FROM versions WHERE item_type='HealthEvent' AND item_id=$1) AS audits,(SELECT count(*) FROM api_change_events WHERE record_type='HealthEvent' AND record_id=$1) AS changes",[id.into()])).await.unwrap().unwrap();
+    assert_eq!(row.try_get::<i64>("", "audits").unwrap(), 1);
+    assert_eq!(row.try_get::<i64>("", "changes").unwrap(), 1);
+    app.close().await;
+}
