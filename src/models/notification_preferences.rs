@@ -253,12 +253,24 @@ pub async fn update(
         .as_ref()
         .map(|value| representation(value, &owner).0["data"].clone());
     let new = representation(&row, &owner).0["data"].clone();
+    let changes: Map<String, Value> = new
+        .as_object()
+        .into_iter()
+        .flatten()
+        .filter_map(|(key, after)| {
+            let before = old
+                .as_ref()
+                .and_then(|value| value.get(key))
+                .unwrap_or(&Value::Null);
+            (before != after).then(|| (key.clone(), json!([before, after])))
+        })
+        .collect();
     version::ActiveModel {
         item_type: Set("NotificationPreference".into()),
         item_id: Set(row.id),
         event: Set(event.into()),
         object: Set(old.map(|value| value.to_string())),
-        object_changes: Set(Some(new.to_string())),
+        object_changes: Set(Some(Value::Object(changes).to_string())),
         whodunnit: Set(Some(tenant.user_id().to_string())),
         request_id: Set(Some(tenant.scope().request_id.clone())),
         household_id: Set(Some(tenant.scope().household_id)),

@@ -193,3 +193,82 @@ async fn notification_preference_api_keyed_replay_conflict_and_current_grant_den
     );
     app.close().await;
 }
+
+#[tokio::test]
+async fn notification_audit_versions_record_old_new_pairs_and_omit_unchanged_fields() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    let endpoint = format!(
+        "{}/api/v1/households/72001/notification_preference",
+        app.origin
+    );
+    let created = app
+        .client
+        .patch(&endpoint)
+        .bearer_auth(&token)
+        .json(&json!({"notification_preference":{"enabled":false}}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(created.status().as_u16(), 200);
+    let created: Value = created.json().await.unwrap();
+    let creation = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT object,object_changes::jsonb AS changes FROM versions WHERE item_type='NotificationPreference' AND event='create'"
+    )).await.unwrap().unwrap();
+    assert!(
+        creation
+            .try_get::<Option<String>>("", "object")
+            .unwrap()
+            .is_none()
+    );
+    let changes = creation.try_get::<Value>("", "changes").unwrap();
+    assert_eq!(changes["enabled"], json!([null, false]));
+    assert_eq!(changes["morning_time"], json!([null, "08:00:00"]));
+    let patch = json!({"notification_preference":{"morning_time":"07:05","night_time":null}});
+    let updated = app
+        .client
+        .patch(&endpoint)
+        .bearer_auth(&token)
+        .json(&patch)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(updated.status().as_u16(), 200);
+    let updated: Value = updated.json().await.unwrap();
+    let version = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT object::jsonb AS before,object_changes::jsonb AS changes FROM versions WHERE item_type='NotificationPreference' AND event='update'"
+    )).await.unwrap().unwrap();
+    assert_eq!(
+        version.try_get::<Value>("", "before").unwrap(),
+        created["data"]
+    );
+    assert_eq!(
+        version.try_get::<Value>("", "changes").unwrap(),
+        json!({
+            "morning_time":["08:00:00","07:05:00"],
+            "night_time":["22:00:00",null],
+            "updated_at":[created["data"]["updated_at"],updated["data"]["updated_at"]]
+        })
+    );
+    let no_op = app
+        .client
+        .patch(&endpoint)
+        .bearer_auth(&token)
+        .json(&patch)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(no_op.status().as_u16(), 200);
+    let count = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT count(*) AS versions FROM versions WHERE item_type='NotificationPreference'",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(count.try_get::<i64>("", "versions").unwrap(), 2);
+    app.close().await;
+}
