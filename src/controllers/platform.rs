@@ -77,8 +77,11 @@ fn render(view: &TeraView, token: &CsrfToken, page: &platform::UsersPage) -> Res
             .map(|entry| json!({
                 "id": entry.id,
                 "email": entry.email,
+                "name": entry.name,
+                "account_state": match entry.status { 2 => "Verified", 3 => "Closed", _ => "Unverified" },
                 "active": entry.status == 2,
                 "user_active": entry.user_active,
+                "user_linked": entry.user_linked,
                 "administrator": entry.administrator.as_deref() == Some("active"),
             }))
             .collect::<Vec<Value>>()

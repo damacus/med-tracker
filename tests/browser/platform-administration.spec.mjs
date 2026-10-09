@@ -3,6 +3,55 @@ import { fileURLToPath } from 'node:url';
 
 test.use({ actionTimeout: 10000 });
 
+test('platform administration keeps its navigation usable at narrow widths', async ({ page, careFixture }, info) => {
+  await careFixture.seedPlatform();
+  if (info.project.name === 'mobile') await page.setViewportSize({ width: 320, height: 844 });
+  await signIn(page);
+  await page.goto('/platform/users');
+  for (const label of ['Platform settings', 'Owner recovery', 'Support access', 'Platform users']) {
+    const nav = page.getByRole('navigation', { name: 'Platform administration' });
+    await nav.getByRole('link', { name: label, exact: true }).click();
+    await expect(page.getByRole('heading', { name: label, exact: true, level: 1 })).toBeVisible();
+    await expect(nav.getByRole('link', { name: label, exact: true })).toHaveAttribute('aria-current', 'page');
+    await noOverflow(page);
+  }
+});
+
+test('users directory reuses the Rails table and mobile identity layout', async ({ page, careFixture }, info) => {
+  await careFixture.seedPlatform();
+  await signIn(page);
+  await page.goto('/platform/users');
+  await expect(page.getByRole('navigation', { name: 'Platform administration' })).toBeVisible();
+  await expect(page.getByLabel('Search by email', { exact: true })).toBeVisible();
+  const directory = page.getByTestId(info.project.name === 'desktop' ? 'platform-users-table' : 'platform-users-mobile');
+  await expect(directory).toBeVisible();
+  const user = directory.locator('[data-platform-user="71004"]');
+  await expect(user).toContainText('Synthetic platform target');
+  await expect(user).toContainText('platform-target@example.test');
+  await expect(user).toContainText('Standard access');
+  await expect(user).toContainText('Verified');
+  const accountWithoutProfile = directory.locator('[data-platform-user="71002"]');
+  await expect(accountWithoutProfile).toContainText('No sign-in profile');
+  await expect(accountWithoutProfile.getByRole('button', { name: 'Enable sign-in', exact: true })).toBeDisabled();
+  await expect(accountWithoutProfile.getByRole('button', { name: 'Grant administrator', exact: true })).toBeDisabled();
+  await recordInViewport(user, user.getByRole('button', { name: 'Grant administrator', exact: true }));
+  if (info.project.name === 'desktop') {
+    await expect(directory.getByRole('columnheader')).toHaveText(['User', 'Platform access', 'Account', 'Sign-in', 'Actions']);
+  }
+  await page.getByLabel('Search by email', { exact: true }).fill('no-such-user@example.test');
+  await page.getByRole('button', { name: 'Search', exact: true }).click();
+  await expect(page.getByText('No users found', { exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'Clear search', exact: true }).click();
+  await expect(directory.locator('[data-platform-user="71004"]')).toBeVisible();
+  await noOverflow(page);
+  await page.getByRole('button', { name: 'Appearance', exact: true }).click();
+  await page.getByRole('button', { name: 'Dark', exact: true }).click();
+  await page.keyboard.press('Escape');
+  await expect(directory).toBeVisible();
+  await shot(page, info, 'users-dark');
+  await noOverflow(page);
+});
+
 function shot(page, info, name) {
   return page.screenshot({
     path: fileURLToPath(new URL(`../../docs/screenshots/platform-${name}-${info.project.name}.png`, import.meta.url)),
@@ -56,7 +105,7 @@ test('platform administrator grant, revoke and sign-in disable journeys keep sta
   await careFixture.seedPlatform();
   await signIn(page);
   await openPlatform(page);
-  const target = () => page.locator('li', { hasText: 'platform-target@example.test' });
+  const target = () => page.locator('[data-platform-user="71004"]:visible');
   await page.getByLabel('Search by email', { exact: true }).fill('platform-target');
   await page.getByLabel('Search by email', { exact: true }).press('Enter');
   await expect(target()).toContainText('platform-target@example.test');

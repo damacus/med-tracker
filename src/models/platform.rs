@@ -101,9 +101,11 @@ pub struct Administrator {
 
 pub struct UserEntry {
     pub id: i64,
+    pub name: String,
     pub email: String,
     pub status: i32,
     pub user_active: bool,
+    pub user_linked: bool,
     pub administrator: Option<String>,
 }
 
@@ -113,11 +115,17 @@ impl UserEntry {
             id: row
                 .try_get("", "id")
                 .map_err(|_| OperationError::Unavailable)?,
+            name: row
+                .try_get("", "name")
+                .map_err(|_| OperationError::Unavailable)?,
             email: row
                 .try_get("", "email")
                 .map_err(|_| OperationError::Unavailable)?,
             status: row
                 .try_get("", "status")
+                .map_err(|_| OperationError::Unavailable)?,
+            user_linked: row
+                .try_get("", "user_linked")
                 .map_err(|_| OperationError::Unavailable)?,
             user_active: row
                 .try_get("", "user_active")
@@ -209,7 +217,7 @@ pub async fn users(
     let rows = transaction
         .query_all_raw(Statement::from_sql_and_values(
             DbBackend::Postgres,
-            "SELECT a.id,a.email,a.status,EXISTS(SELECT 1 FROM public.people p JOIN public.users u ON u.person_id=p.id AND u.active WHERE p.account_id=a.id) AS user_active,pa.status AS administrator FROM accounts a LEFT JOIN platform_admins pa ON pa.account_id=a.id WHERE a.email ILIKE $1 ESCAPE '\\' ORDER BY a.id LIMIT $2 OFFSET $3",
+            "SELECT a.id,COALESCE((SELECT p.name FROM public.people p JOIN public.users u ON u.person_id=p.id WHERE p.account_id=a.id ORDER BY u.id LIMIT 1),'') AS name,a.email,a.status,EXISTS(SELECT 1 FROM public.people p JOIN public.users u ON u.person_id=p.id WHERE p.account_id=a.id) AS user_linked,EXISTS(SELECT 1 FROM public.people p JOIN public.users u ON u.person_id=p.id AND u.active WHERE p.account_id=a.id) AS user_active,pa.status AS administrator FROM accounts a LEFT JOIN platform_admins pa ON pa.account_id=a.id WHERE a.email ILIKE $1 ESCAPE '\\' ORDER BY a.id LIMIT $2 OFFSET $3",
             [
                 pattern.into(),
                 PER_PAGE.into(),

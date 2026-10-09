@@ -1,11 +1,11 @@
 {% extends "layouts/base.html" %}
 {% block content %}
-<section class="max-w-4xl mx-auto">
-  <h1 class="text-3xl font-semibold mt-4">Support access requests</h1>
+<section class="platform-page">
+  <header class="platform-page-header"><p class="platform-eyebrow">Account security</p><h1>Support access requests</h1></header>
   <p class="mt-4 text-sm text-base-content/70">Platform administrators may request temporary read-only access to a household you own. Support users cannot write, export, or download household data and cannot access files. A request expires after 24 hours. Approved access lasts 30 minutes from activation, and you can end access at any time. Approving requires fresh sign-in confirmation.</p>
   <ul class="mt-4 flex flex-col gap-4">
     {% for session in sessions %}
-    <li class="card bg-base-200 p-4">
+    <li class="platform-panel platform-record">
       <dl class="grid gap-x-4 gap-y-1 sm:grid-cols-[10rem_1fr]">
         <dt class="font-medium">Household</dt>
         <dd>{{ session.household_name }}</dd>

@@ -1,0 +1,14 @@
+<div class="platform-user-actions">
+  <form method="post" action="/platform/users/administrator">
+    <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+    <input type="hidden" name="account_id" value="{{ user.id }}">
+    <input type="hidden" name="grant" value="{% if user.administrator %}false{% else %}true{% endif %}">
+    <button class="btn btn-sm btn-outline" type="submit"{% if not user.administrator and (not user.active or not user.user_active) %} disabled{% endif %}>{% if user.administrator %}Revoke administrator{% else %}Grant administrator{% endif %}</button>
+  </form>
+  <form method="post" action="/platform/users/active">
+    <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+    <input type="hidden" name="account_id" value="{{ user.id }}">
+    <input type="hidden" name="active" value="{% if user.user_active %}false{% else %}true{% endif %}">
+    <button class="btn btn-sm btn-outline {% if user.user_active %}platform-action-danger{% endif %}" type="submit"{% if not user.user_active and (not user.active or not user.user_linked) %} disabled{% endif %}>{% if user.user_active %}Disable sign-in{% else %}Enable sign-in{% endif %}</button>
+  </form>
+</div>
