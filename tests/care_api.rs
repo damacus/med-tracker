@@ -28,12 +28,16 @@ mod legacy_pause;
 mod locations;
 #[path = "care_api/medication_reads.rs"]
 mod medication_reads;
+#[path = "care_api/notification_preferences.rs"]
+mod notification_preferences;
 #[path = "care_api/pause_periods.rs"]
 mod pause_periods;
 #[path = "care_api/people.rs"]
 mod people;
 #[path = "care_api/person_carers.rs"]
 mod person_carers;
+#[path = "care_api/profile.rs"]
+mod profile;
 #[path = "care_api/push_subscriptions.rs"]
 mod push_subscriptions;
 #[path = "care_api/reports.rs"]

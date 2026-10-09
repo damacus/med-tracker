@@ -24,6 +24,26 @@ impl RequestAudit {
         }
     }
 
+    pub fn profile(method: &'static str, action: &'static str) -> Self {
+        Self {
+            method,
+            controller: "api/v1/profiles",
+            action,
+            policy: "PersonPolicy",
+            query: if action == "show" { "show?" } else { "update?" },
+        }
+    }
+
+    pub fn notification_preference(method: &'static str, action: &'static str) -> Self {
+        Self {
+            method,
+            controller: "api/v1/notification_preferences",
+            action,
+            policy: "NotificationPreferencePolicy",
+            query: if action == "show" { "show?" } else { "update?" },
+        }
+    }
+
     pub fn report(is_reviews: bool) -> Self {
         Self {
             method: "GET",
