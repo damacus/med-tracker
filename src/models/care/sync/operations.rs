@@ -197,7 +197,9 @@ pub async fn apply(
                 people::create(
                     tenant,
                     Value::Object(operation.attributes.clone()),
-                    zone,
+                    chrono::Utc::now()
+                        .with_timezone(&doses::app_zone())
+                        .date_naive(),
                     attribution,
                 )
                 .await?
@@ -210,7 +212,9 @@ pub async fn apply(
                     tenant,
                     id(operation)?,
                     Value::Object(operation.attributes.clone()),
-                    zone,
+                    chrono::Utc::now()
+                        .with_timezone(&doses::app_zone())
+                        .date_naive(),
                     attribution,
                 )
                 .await?

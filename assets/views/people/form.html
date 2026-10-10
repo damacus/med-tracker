@@ -25,7 +25,7 @@
           <input id="has_capacity" name="has_capacity" type="checkbox" value="true" class="checkbox" {% if draft.has_capacity == "true" %}checked{% endif %} {% if capacity_invalid %}aria-invalid="true" aria-describedby="form-error-has_capacity"{% endif %}>
           Has capacity to manage own medication
         </label>
-        <p class="text-sm text-base-content/70">A person without capacity must have at least one carer assigned. Minors and dependent adults do not have capacity.</p>
+        <p class="text-sm text-base-content/70">{{ capacity_hint }}</p>
       </fieldset>
       <div class="flex flex-wrap items-center justify-start gap-3 mt-2">
         <button type="submit" class="btn btn-neutral w-fit">{% if editing %}Update Person{% else %}Create Person{% endif %}</button>

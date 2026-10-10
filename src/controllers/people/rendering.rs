@@ -9,6 +9,11 @@ const FIELDS: &[(&str, &str, &str, bool)] = &[
 fn context(slug: &str) -> Value {
     let mut data = super::super::medications::rendering::appearance_context();
     data["slug"] = json!(slug);
+    let labels = crate::models::care::report_pdf::translations("en").unwrap_or(Value::Null);
+    data["care_warning_labels"] = labels["care_warning"].clone();
+    data["health_events_label"] = labels["people"]["show"]["health_events"].clone();
+    data["manage_carers_label"] = labels["people"]["show"]["manage_parents"].clone();
+    data["capacity_hint"] = labels["people"]["form"]["capacity_hint"].clone();
     data
 }
 
