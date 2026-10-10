@@ -803,3 +803,105 @@ async fn household_membership_list_matches_documented_contract() {
 
     app.close().await;
 }
+
+#[tokio::test]
+async fn household_membership_list_matches_documented_contract() {
+    use super::contract::{assert_value, contract, resolve};
+    let app = Application::new().await;
+    let token = app.token().await;
+    let endpoint = format!("{}/api/v1/households/72001/admin/memberships", app.origin);
+    let contract = contract();
+    let operation = &contract["paths"]["/households/{household_id}/admin/memberships"]["get"];
+    assert_eq!(operation["operationId"], "listMemberships");
+    assert_eq!(
+        operation["responses"]["403"]["$ref"],
+        "#/components/responses/Forbidden"
+    );
+    let forbidden = resolve(contract, &operation["responses"]["403"]);
+    let forbidden_schema = resolve(
+        contract,
+        &forbidden["content"]["application/json"]["schema"],
+    );
+
+    let list = app
+        .client
+        .get(&endpoint)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let list_status = list.status().as_u16();
+    let body: Value = list.json().await.unwrap();
+    assert_eq!(list_status, 200);
+    assert_eq!(
+        operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"],
+        "#/components/schemas/HouseholdMembershipCollectionResponse"
+    );
+    assert_value(
+        contract,
+        resolve(
+            contract,
+            &operation["responses"]["200"]["content"]["application/json"]["schema"],
+        ),
+        &body,
+        "membership collection",
+    );
+    let members = body["data"].as_array().unwrap();
+    assert_eq!(members.len(), 1);
+    assert_eq!(members[0]["id"], 74001);
+    assert_eq!(members[0]["account_id"], 71001);
+    assert_eq!(members[0]["email"], "persistence@example.test");
+    assert_eq!(members[0]["person_id"], 73001);
+    assert_eq!(members[0]["person_name"], "Synthetic adult");
+    assert_eq!(members[0]["role"], "administrator");
+
+    app.fixture
+        .admin
+        .execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001")
+        .await
+        .unwrap();
+    let denied = app
+        .client
+        .get(&endpoint)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let denied_status = denied.status().as_u16();
+    let denied_request_id = denied.headers()["x-request-id"]
+        .to_str()
+        .unwrap()
+        .to_owned();
+    let denied_body: Value = denied.json().await.unwrap();
+    assert_eq!(denied_status, 403);
+    assert_value(
+        contract,
+        forbidden_schema,
+        &denied_body,
+        "member membership list",
+    );
+    assert_eq!(denied_body["error"]["code"], "forbidden");
+    assert_eq!(denied_body["error"]["request_id"], denied_request_id);
+
+    let foreign = app
+        .client
+        .get(format!(
+            "{}/api/v1/households/72002/admin/memberships",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let foreign_status = foreign.status().as_u16();
+    let foreign_body: Value = foreign.json().await.unwrap();
+    assert_eq!(foreign_status, 403);
+    assert_value(
+        contract,
+        forbidden_schema,
+        &foreign_body,
+        "foreign household memberships",
+    );
+    assert_eq!(foreign_body["error"]["code"], "forbidden");
+    app.close().await;
+}
