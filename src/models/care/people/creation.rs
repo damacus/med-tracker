@@ -3,7 +3,7 @@ use super::*;
 pub async fn create(
     tenant: &TenantTransaction,
     attributes: Value,
-    zone: Tz,
+    today: NaiveDate,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<person::Model, OperationError> {
     authorize_create(tenant).await?;
@@ -22,7 +22,7 @@ pub async fn create(
         updated_at: now,
     };
     validation::assign(&mut record, &attributes, true)?;
-    let dependent = validation::capacity(&mut record, zone)?;
+    let dependent = validation::capacity(&mut record, today)?;
     let carer = if let Some(id) = tenant.membership().person_id {
         person::Entity::find_by_id(id)
             .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
@@ -31,9 +31,6 @@ pub async fn create(
     } else {
         None
     };
-    if !record.has_capacity && (!dependent || carer.is_none()) {
-        return Err(invalid("has_capacity", "requires an active carer"));
-    }
     let saved = person::ActiveModel {
         account_id: Set(None),
         household_id: Set(record.household_id),
@@ -50,7 +47,7 @@ pub async fn create(
     .insert(tenant.transaction())
     .await
     .map_err(write_error)?;
-    let relationship = if dependent {
+    let relationship = if dependent && carer.is_some() {
         Some(
             carer_relationship::ActiveModel {
                 household_id: Set(tenant.scope().household_id),

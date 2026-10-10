@@ -5,7 +5,6 @@ use crate::models::{
     errors::OperationError,
 };
 use chrono::{NaiveDate, Utc};
-use chrono_tz::Tz;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QuerySelect, Set};
 use serde::Serialize;
 use serde_json::{Value, json};
@@ -205,7 +204,7 @@ pub async fn update(
     tenant: &TenantTransaction,
     account_id: i64,
     changes: Changes,
-    zone: Tz,
+    today: NaiveDate,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<Snapshot, OperationError> {
     validate(&changes)?;
@@ -220,7 +219,7 @@ pub async fn update(
             tenant,
             &current.id.to_string(),
             json!({"date_of_birth": date.to_string()}),
-            zone,
+            today,
             provenance,
         )
         .await?
