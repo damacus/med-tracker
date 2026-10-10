@@ -273,6 +273,117 @@ async fn notification_audit_versions_record_old_new_pairs_and_omit_unchanged_fie
     app.close().await;
 }
 
+fn resolve<'a>(contract: &'a Value, node: &'a Value) -> &'a Value {
+    let pointer = node["$ref"]
+        .as_str()
+        .expect("schema $ref")
+        .strip_prefix('#')
+        .expect("local $ref");
+    contract.pointer(pointer).expect("resolvable $ref")
+}
+
+fn assert_value(contract: &Value, schema: &Value, value: &Value, label: &str) {
+    let schema = if schema.get("$ref").is_some() {
+        resolve(contract, schema)
+    } else {
+        schema
+    };
+    if value.is_null() {
+        assert_eq!(schema["nullable"], true, "{label} null but not nullable");
+        return;
+    }
+    match schema["type"].as_str().expect("schema type") {
+        "object" => {
+            let object = value
+                .as_object()
+                .unwrap_or_else(|| panic!("{label} object"));
+            if let Some(properties) = schema["properties"].as_object() {
+                for name in schema["required"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter_map(Value::as_str)
+                {
+                    assert!(object.contains_key(name), "{label} missing {name}");
+                }
+                if schema["additionalProperties"] == Value::Bool(false) {
+                    for key in object.keys() {
+                        assert!(properties.contains_key(key), "{label} undeclared {key}");
+                    }
+                }
+                for (key, field) in object {
+                    if let Some(property) = properties.get(key) {
+                        assert_value(contract, property, field, &format!("{label}.{key}"));
+                    }
+                }
+            }
+            let additional = &schema["additionalProperties"];
+            if additional.is_object() {
+                for (key, field) in object {
+                    assert_value(contract, additional, field, &format!("{label}.{key}"));
+                }
+            }
+        }
+        "array" => {
+            for (index, item) in value
+                .as_array()
+                .unwrap_or_else(|| panic!("{label} array"))
+                .iter()
+                .enumerate()
+            {
+                assert_value(
+                    contract,
+                    &schema["items"],
+                    item,
+                    &format!("{label}[{index}]"),
+                );
+            }
+        }
+        "integer" => {
+            let number = value.as_i64().unwrap_or_else(|| panic!("{label} integer"));
+            if let Some(minimum) = schema["minimum"].as_i64() {
+                assert!(number >= minimum, "{label} below minimum");
+            }
+        }
+        "boolean" => assert!(value.is_boolean(), "{label} boolean"),
+        "string" => {
+            let text = value.as_str().unwrap_or_else(|| panic!("{label} string"));
+            if let Some(length) = schema["minLength"].as_u64() {
+                assert!(text.len() >= length as usize, "{label} below minLength");
+            }
+            match schema["format"].as_str() {
+                Some("uuid") => assert!(uuid::Uuid::parse_str(text).is_ok(), "{label} uuid format"),
+                Some("date-time") => assert!(
+                    chrono::DateTime::parse_from_rfc3339(text).is_ok(),
+                    "{label} date-time format"
+                ),
+                _ => {}
+            }
+            if let Some(pattern) = schema["pattern"].as_str() {
+                assert_eq!(
+                    pattern, r"^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$",
+                    "{label} pattern changed"
+                );
+                let bytes = text.as_bytes();
+                assert!(
+                    bytes.len() == 8
+                        && bytes[2] == b':'
+                        && bytes[5] == b':'
+                        && bytes
+                            .iter()
+                            .enumerate()
+                            .all(|(index, byte)| [2, 5].contains(&index) || byte.is_ascii_digit())
+                        && text[0..2].parse::<u8>().is_ok_and(|hour| hour <= 23)
+                        && text[3..5].parse::<u8>().is_ok_and(|minute| minute <= 59)
+                        && text[6..8].parse::<u8>().is_ok_and(|second| second <= 59),
+                    "{label} must match documented time pattern"
+                );
+            }
+        }
+        other => panic!("{label}: unhandled schema type {other}"),
+    }
+}
+
 #[tokio::test]
 async fn notification_preference_get_matches_documented_contract() {
     let app = Application::new().await;
@@ -289,6 +400,34 @@ async fn notification_preference_get_matches_documented_contract() {
         operation["responses"]["404"]["$ref"],
         "#/components/responses/NotFound"
     );
+    let not_found = resolve(&contract, &operation["responses"]["404"]);
+    let not_found_schema = resolve(
+        &contract,
+        &not_found["content"]["application/json"]["schema"],
+    );
+
+    let missing = app
+        .client
+        .get(&endpoint)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let missing_status = missing.status().as_u16();
+    let missing_request_id = missing.headers()["x-request-id"]
+        .to_str()
+        .unwrap()
+        .to_owned();
+    let missing_body: Value = missing.json().await.unwrap();
+    assert_eq!(missing_status, 404);
+    assert_value(
+        &contract,
+        not_found_schema,
+        &missing_body,
+        "absent preference",
+    );
+    assert_eq!(missing_body["error"]["code"], "not_found");
+    assert_eq!(missing_body["error"]["request_id"], missing_request_id);
 
     let created = app
         .client
@@ -307,7 +446,24 @@ async fn notification_preference_get_matches_documented_contract() {
         .send()
         .await
         .unwrap();
-    assert_eq!(read.status().as_u16(), 200);
+    let read_status = read.status().as_u16();
+    let etag = read
+        .headers()
+        .get("etag")
+        .and_then(|value| value.to_str().ok())
+        .map(str::to_owned);
+    let content_type = read
+        .headers()
+        .get("content-type")
+        .and_then(|value| value.to_str().ok())
+        .map(str::to_owned);
+    let body: Value = read.json().await.unwrap();
+    assert_eq!(read_status, 200);
+    assert!(
+        content_type
+            .as_deref()
+            .is_some_and(|value| value.starts_with("application/json"))
+    );
     assert_eq!(
         operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"],
         "#/components/schemas/NotificationPreferenceResponse"
@@ -316,9 +472,57 @@ async fn notification_preference_get_matches_documented_contract() {
         operation["responses"]["200"]["headers"]["ETag"]["$ref"],
         "#/components/headers/etag"
     );
-    assert!(read.headers().get("etag").is_some());
-    let body: Value = read.json().await.unwrap();
+    let etag_schema = resolve(&contract, &operation["responses"]["200"]["headers"]["ETag"]);
+    assert_eq!(etag_schema["required"], true);
+    assert_eq!(etag_schema["schema"]["type"], "string");
+    assert!(etag.as_deref().is_some_and(|value| !value.is_empty()));
+    assert_value(
+        &contract,
+        resolve(
+            &contract,
+            &operation["responses"]["200"]["content"]["application/json"]["schema"],
+        ),
+        &body,
+        "preference response",
+    );
     assert_eq!(body["data"]["person_id"], 73001);
     assert_eq!(body["data"]["evening_time"], "19:30:00");
+
+    app.fixture
+        .admin
+        .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78001")
+        .await
+        .unwrap();
+    let denied = app
+        .client
+        .get(&endpoint)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let denied_status = denied.status().as_u16();
+    let denied_body: Value = denied.json().await.unwrap();
+    assert_eq!(denied_status, 404);
+    assert_value(
+        &contract,
+        not_found_schema,
+        &denied_body,
+        "outside view scope",
+    );
+    assert_eq!(denied_body["error"]["code"], "not_found");
+
+    app.fixture
+        .admin
+        .execute_unprepared("UPDATE person_access_grants SET revoked_at=NULL WHERE id=78001")
+        .await
+        .unwrap();
+    let restored = app
+        .client
+        .get(&endpoint)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(restored.status().as_u16(), 200);
     app.close().await;
 }
