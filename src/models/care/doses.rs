@@ -41,6 +41,7 @@ pub(crate) use source::{config_decimal, config_value};
 use std::{collections::HashSet, str::FromStr};
 use stock::decrement_stock;
 pub(crate) use stock::same_stock_signature;
+pub(crate) use timing::dashboard_timing;
 use timing::{applies_on, timing_allowed};
 use uuid::Uuid;
 use validation::parse_decimal;

@@ -2,6 +2,7 @@ pub mod administration;
 pub mod assignments;
 pub mod browser_query;
 pub mod browser_treatments;
+pub mod dashboard;
 pub mod dosages;
 pub mod dose_history;
 pub mod dose_occurrences;

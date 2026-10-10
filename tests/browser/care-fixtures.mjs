@@ -151,6 +151,12 @@ async function withCareFixture(captureMail, registrationInviteOnly, reportAssets
           if (fields.some(field => typeof stored[field] !== 'string' || !/^[A-Za-z0-9_-]+$/.test(stored[field])) || !/^\d+$/.test(String(stored.sign_count))) throw Error('Invalid retained public passkey fixture');
           return fixtureTask('seed-retained-passkey', [...fields.map(field => `RETAINED_${field.toUpperCase()}=${stored[field]}`), `RETAINED_SIGN_COUNT=${stored.sign_count}`]);
         },
+        dashboardAlternativeStock: () => fixtureTask('dashboard-alternative-stock'),
+        dashboardStockProbe: async () => JSON.parse(await fixtureTask('dashboard-stock-probe')),
+        dashboardVariant: variant => {
+          if (!['current', 'time_first', 'family_lanes', 'calm_focus'].includes(variant)) throw Error('Invalid dashboard fixture variant');
+          return fixtureTask('dashboard-variant', [`DASHBOARD_VARIANT=${variant}`]);
+        },
         secondPerson: () => fixtureTask('second-person'),
         scheduledMedicine: () => fixtureTask('scheduled-medicine'), scheduleOnlyMedicine: () => fixtureTask('schedule-only-medicine'), dateSensitiveSchedule: () => fixtureTask('date-sensitive-schedule'), offdaySchedule: () => fixtureTask('offday-schedule'), changeTaperStep: () => fixtureTask('change-taper-step'), londonPreviewZone: () => fixtureTask('london-preview-zone'), collidingDoseSources: () => fixtureTask('colliding-dose-sources'), emptyStandardDosage: () => fixtureTask('empty-standard-dosage'),
         seedReport: () => fixtureTask('report-seed'),

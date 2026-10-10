@@ -16,13 +16,8 @@ pub(super) fn applies_on(source: &Source, date: NaiveDate) -> bool {
             .and_then(|v| v.get("weekdays"))
             .and_then(Value::as_array)
             .is_some_and(|days| {
-                days.iter().any(|day| {
-                    let weekday = date.format("%A").to_string().to_lowercase();
-                    let short = &weekday[..3];
-                    day.as_str().is_some_and(|value| {
-                        value.eq_ignore_ascii_case(&weekday) || value.eq_ignore_ascii_case(short)
-                    }) || day.as_u64() == Some(date.format("%w").to_string().parse().unwrap_or(7))
-                })
+                days.iter()
+                    .any(|day| crate::models::care::dose_occurrences::weekday_matches(day, date))
             }),
         3 => config
             .and_then(|v| v.get("dates"))
@@ -162,13 +157,19 @@ pub(super) async fn timing_allowed(
         .all(db)
         .await
         .map_err(database_error)?;
-    for mut source in related {
-        effective_source(
-            &mut source,
-            local_date_in_zone(proposed.taken_at, proposed.zone),
-        );
+    Ok(timing_block(&related, &takes, proposed.taken_at, proposed.zone)?.is_none())
+}
+
+fn timing_block(
+    related: &[Source],
+    takes: &[medication_take::Model],
+    taken_at: NaiveDateTime,
+    zone: chrono_tz::Tz,
+) -> Result<Option<&'static str>, ApiError> {
+    for mut source in related.iter().cloned() {
+        effective_source(&mut source, local_date_in_zone(taken_at, zone));
         if let Some(max_doses) = source.max_daily_doses {
-            let (start, end) = cycle_bounds(proposed.taken_at, source.dose_cycle, proposed.zone)?;
+            let (start, end) = cycle_bounds(taken_at, source.dose_cycle, zone)?;
             let count = takes
                 .iter()
                 .filter(|take| {
@@ -177,7 +178,7 @@ pub(super) async fn timing_allowed(
                 })
                 .count();
             if count >= max_doses.max(0) as usize {
-                return Ok(false);
+                return Ok(Some("max_reached"));
             }
         }
         if let Some(hours) = source.min_hours_between_doses
@@ -186,15 +187,78 @@ pub(super) async fn timing_allowed(
             let recent = takes
                 .iter()
                 .filter_map(|take| take.taken_at)
-                .filter(|time| *time <= proposed.taken_at)
+                .filter(|time| *time <= taken_at)
                 .max();
             if let Some(recent) = recent {
-                let elapsed = Decimal::from((proposed.taken_at - recent).num_seconds());
+                let elapsed = Decimal::from((taken_at - recent).num_seconds());
                 if elapsed < hours * Decimal::from(3600) {
-                    return Ok(false);
+                    return Ok(Some("cooldown"));
                 }
             }
         }
     }
-    Ok(true)
+    Ok(None)
+}
+
+pub(crate) async fn dashboard_timing(
+    tenant: &TenantTransaction,
+    schedules: &[schedule::Model],
+    assignments: &[person_medication::Model],
+    now: DateTime<Utc>,
+    zone: chrono_tz::Tz,
+) -> Result<std::collections::HashMap<(i64, i64), &'static str>, ApiError> {
+    let sources: Vec<_> = assignments
+        .iter()
+        .cloned()
+        .map(source_from_assignment)
+        .chain(schedules.iter().cloned().map(source_from_schedule))
+        .filter(|source| {
+            source.active
+                && !source.retired
+                && applies_on(source, now.with_timezone(&zone).date_naive())
+        })
+        .collect();
+    let schedule_ids: Vec<_> = sources
+        .iter()
+        .filter(|source| source.kind == "schedule")
+        .map(|source| source.id)
+        .collect();
+    let assignment_ids: Vec<_> = sources
+        .iter()
+        .filter(|source| source.kind == "person_medication")
+        .map(|source| source.id)
+        .collect();
+    let takes = medication_take::Entity::find()
+        .filter(medication_take::Column::HouseholdId.eq(tenant.scope().household_id))
+        .filter(
+            Condition::any()
+                .add(medication_take::Column::ScheduleId.is_in(schedule_ids))
+                .add(medication_take::Column::PersonMedicationId.is_in(assignment_ids)),
+        )
+        .all(tenant.transaction())
+        .await?;
+    let mut groups = std::collections::HashMap::<_, Vec<Source>>::new();
+    for source in sources {
+        groups
+            .entry((source.person_id, source.medication_id))
+            .or_default()
+            .push(source);
+    }
+    let mut result = std::collections::HashMap::new();
+    for (key, related) in groups {
+        let related_takes: Vec<_> = takes
+            .iter()
+            .filter(|take| {
+                related.iter().any(|source| match source.kind {
+                    "schedule" => take.schedule_id == Some(source.id),
+                    _ => take.person_medication_id == Some(source.id),
+                })
+            })
+            .cloned()
+            .collect();
+        if let Some(reason) = timing_block(&related, &related_takes, now.naive_utc(), zone)? {
+            result.insert(key, reason);
+        }
+    }
+    Ok(result)
 }

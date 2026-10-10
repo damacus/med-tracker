@@ -780,3 +780,33 @@ tasks:
       vars: [CARE_DATABASE_URL]
     cmds:
       - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align -f tests/fixtures/browser-person-health-probe.sql'
+
+  dashboard-variant:
+    requires:
+      vars:
+        - CARE_DATABASE_URL
+        - name: DASHBOARD_VARIANT
+          enum: [current, time_first, family_lanes, calm_focus]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1
+        -c "UPDATE public.accounts SET preferences=coalesce(preferences,'{}'::jsonb) || jsonb_build_object('dashboard_variant','{{.DASHBOARD_VARIANT}}') WHERE id=71001"
+
+  dashboard-alternative-stock:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1
+        -c "UPDATE public.medications SET current_supply=0 WHERE id=80001;
+        INSERT INTO public.locations(id,household_id,name,created_at,updated_at) VALUES(79003,72001,'Alternative cabinet',now(),now());
+        INSERT INTO public.medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at)
+        SELECT 80003,household_id,79003,name,10,dose_amount,dose_unit,now(),now() FROM public.medications WHERE id=80001;"
+
+  dashboard-stock-probe:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align
+        -c "SELECT json_build_object('supply',current_supply::text,'takes',(SELECT count(*) FROM public.medication_takes WHERE taken_from_medication_id=80003)) FROM public.medications WHERE id=80003"

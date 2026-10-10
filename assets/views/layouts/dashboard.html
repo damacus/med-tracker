@@ -1,0 +1,23 @@
+{% extends "layouts/base.html" %}
+{% block header %}
+<aside class="dashboard-sidebar">
+  <a class="dashboard-brand" href="/"><span aria-hidden="true">M</span>{{ labels.layouts.navigation.brand }}</a>
+  {% include "dashboard/navigation.html" %}
+  <div class="dashboard-sidebar-account"><a href="/households/{{ slug }}/profile">{% include "dashboard/avatar-image.html" %}<span><strong>{{ name }}</strong><small>{{ role_label }}</small></span></a>
+    <form method="post" action="/logout"><input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><button type="submit">{{ labels.layouts.sidebar.sign_out }}</button></form>
+  </div>
+</aside>
+<header class="dashboard-mobile-header"><button type="button" class="btn btn-ghost" data-dialog-open="dashboard-menu" aria-label="{{ labels.layouts.mobile_menu.open_menu }}"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button><a href="/">{{ labels.layouts.navigation.brand }}</a></header>
+<dialog id="dashboard-menu" class="modal dashboard-menu" aria-labelledby="dashboard-menu-title"><div class="modal-box"><h2 id="dashboard-menu-title">{{ labels.layouts.mobile_rail.primary_navigation }}</h2>
+  {% include "dashboard/navigation.html" %}
+  <button type="button" class="btn btn-ghost" data-dialog-close>{{ labels.layouts.mobile_menu.close_menu }}</button>
+</div></dialog>
+{% endblock header %}
+{% block main_class %}dashboard-main{% endblock main_class %}
+{% block footer %}
+<nav class="dashboard-mobile-rail" data-testid="dashboard-mobile-rail" aria-label="{{ labels.layouts.mobile_rail.primary_navigation }}">
+  <a href="/households/{{ slug }}/dashboard" aria-current="page"><svg aria-hidden="true" width="24" height="24"><use href="/static/dashboard-icons.svg#dashboard"/></svg><span>{{ labels.layouts.mobile_rail.home }}</span></a>
+  <a href="/households/{{ slug }}/medications"><svg aria-hidden="true" width="24" height="24"><use href="/static/dashboard-icons.svg#inventory"/></svg><span>{{ labels.layouts.mobile_rail.inventory }}</span></a>
+  <a href="/households/{{ slug }}/medication-finder"><svg aria-hidden="true" width="24" height="24"><use href="/static/dashboard-icons.svg#finder"/></svg><span>{{ labels.layouts.mobile_rail.finder }}</span></a>
+</nav>
+{% endblock footer %}

@@ -36,39 +36,7 @@ pub(super) fn schedule_applies(schedule: &schedule::Model, day: NaiveDate) -> bo
             .schedule_config
             .get("weekdays")
             .and_then(Value::as_array)
-            .is_some_and(|days| {
-                days.iter().any(|value| {
-                    let index = match value {
-                        Value::Number(value) => {
-                            value.as_u64().and_then(|value| u32::try_from(value).ok())
-                        }
-                        Value::String(value) => {
-                            let lower = value.trim().to_ascii_lowercase();
-                            lower.parse::<u32>().ok().or_else(|| {
-                                [
-                                    "sunday",
-                                    "monday",
-                                    "tuesday",
-                                    "wednesday",
-                                    "thursday",
-                                    "friday",
-                                    "saturday",
-                                ]
-                                .iter()
-                                .position(|name| {
-                                    *name == lower || name.starts_with(&lower) && lower.len() == 3
-                                })
-                                .map(|value| value as u32)
-                            })
-                        }
-                        _ => None,
-                    };
-                    index.is_some_and(|index| {
-                        index == day.weekday().num_days_from_sunday()
-                            || index == day.weekday().number_from_monday()
-                    })
-                })
-            }),
+            .is_some_and(|days| days.iter().any(|value| weekday_matches(value, day))),
         3 => schedule
             .schedule_config
             .get("dates")
@@ -83,7 +51,7 @@ pub(super) fn schedule_applies(schedule: &schedule::Model, day: NaiveDate) -> bo
     }
 }
 
-pub(super) fn schedule_as_needed(schedule: &schedule::Model) -> bool {
+pub(crate) fn schedule_as_needed(schedule: &schedule::Model) -> bool {
     schedule.schedule_type == 4
         || schedule
             .frequency
@@ -105,4 +73,31 @@ pub(super) fn effective_count(config: &Value, fallback: i32) -> i32 {
         .and_then(|value| i32::try_from(value).ok())
         .unwrap_or(fallback)
         .max(1)
+}
+
+pub(crate) fn weekday_matches(value: &Value, day: NaiveDate) -> bool {
+    let index = match value {
+        Value::Number(value) => value.as_u64().and_then(|value| u32::try_from(value).ok()),
+        Value::String(value) => {
+            let lower = value.trim().to_ascii_lowercase();
+            lower.parse::<u32>().ok().or_else(|| {
+                [
+                    "sunday",
+                    "monday",
+                    "tuesday",
+                    "wednesday",
+                    "thursday",
+                    "friday",
+                    "saturday",
+                ]
+                .iter()
+                .position(|name| *name == lower || name.starts_with(&lower) && lower.len() == 3)
+                .map(|value| value as u32)
+            })
+        }
+        _ => None,
+    };
+    index.is_some_and(|index| {
+        index == day.weekday().num_days_from_sunday() || index == day.weekday().number_from_monday()
+    })
 }
