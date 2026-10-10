@@ -1,5 +1,6 @@
 use super::*;
 
+#[derive(Clone)]
 pub(super) struct Source {
     pub(super) kind: &'static str,
     pub(super) id: i64,

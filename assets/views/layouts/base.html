@@ -11,6 +11,7 @@
   </head>
   <body>
     <a href="#main" class="skip-link">Skip to content</a>
+    {% block header %}
     <header class="shell-header">
       <div class="shell-width shell-header-inner">
         <a href="/" class="text-xl font-semibold" aria-label="MedTracker home">MedTracker</a>
@@ -18,8 +19,9 @@
         <a class="link" href="/account/security">Account security</a>
       </div>
     </header>
-    <main id="main" class="shell-width shell-main" tabindex="-1">{% block content %}{% endblock content %}</main>
-    <footer class="shell-footer"><div class="shell-width text-sm shell-muted">MedTracker · Care, kept together.</div></footer>
+    {% endblock header %}
+    <main id="main" class="{% block main_class %}shell-width shell-main{% endblock main_class %}" tabindex="-1">{% block content %}{% endblock content %}</main>
+    {% block footer %}<footer class="shell-footer"><div class="shell-width text-sm shell-muted">MedTracker · Care, kept together.</div></footer>{% endblock footer %}
     {% include "components/appearance.html" %}
   </body>
 </html>

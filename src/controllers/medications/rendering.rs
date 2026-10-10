@@ -179,9 +179,6 @@ fn detail_with_state(
     state: DetailState<'_>,
 ) -> Response {
     let language = crate::models::care::report_pdf::locale(requested_language);
-    let Ok(labels) = crate::models::care::report_pdf::translations(language) else {
-        return super::unavailable();
-    };
     let dose_default = super::forms::dose(&detail, zone);
     let (dose_draft, dose_error, dose_open, refill_failure, management_error, adjustment_failure) =
         match state {
@@ -194,19 +191,20 @@ fn detail_with_state(
                 (&dose_default, None, false, None, None, Some((draft, error)))
             }
         };
-    let mut data = context(
+    let mut data = match dose_context(
         slug,
-        &detail.stock,
-        dose_draft,
-        dose_error.map(super::forms::message),
-    );
-    data["dose_lang"] = json!(language);
-    data["dose_i18n"] = labels["medications"]["dose_dialog"].clone();
-    data["dose_cancel"] = labels["dose_outcomes"]["cancel"].clone();
-    data["dose_open"] = json!(dose_open);
-    if dose_error.is_some() {
-        data["error"] = Value::Null;
-    }
+        &detail,
+        DosePresentation {
+            zone,
+            language,
+            draft: dose_draft,
+            error: dose_error,
+            open: dose_open,
+        },
+    ) {
+        Ok(data) => data,
+        Err(_) => return super::unavailable(),
+    };
     data["etag"] = json!(detail.stock.etag);
     if let Some((draft, error)) = refill_failure {
         data["refill_open"] = json!(true);
@@ -364,6 +362,48 @@ fn detail_with_state(
             "taken_at_iso": take.taken_at.map(|value| value.and_utc().to_rfc3339()),
         })
     }).collect::<Vec<_>>());
+    render(
+        view,
+        token,
+        "medications/show.html",
+        data,
+        dose_error
+            .or(refill_failure.map(|(_, error)| error))
+            .or(management_error)
+            .or(adjustment_failure.map(|(_, error)| error))
+            .map(super::forms::status)
+            .unwrap_or(StatusCode::OK),
+    )
+}
+
+pub(crate) fn dose_context(
+    slug: &str,
+    detail: &Detail,
+    presentation: DosePresentation<'_>,
+) -> Result<Value, OperationError> {
+    let DosePresentation {
+        zone,
+        language: requested_language,
+        draft: dose_draft,
+        error: dose_error,
+        open: dose_open,
+    } = presentation;
+    let language = crate::models::care::report_pdf::locale(requested_language);
+    let labels = crate::models::care::report_pdf::translations(language)
+        .map_err(|_| OperationError::Unavailable)?;
+    let mut data = context(
+        slug,
+        &detail.stock,
+        dose_draft,
+        dose_error.map(super::forms::message),
+    );
+    data["dose_lang"] = json!(language);
+    data["dose_i18n"] = labels["medications"]["dose_dialog"].clone();
+    data["dose_cancel"] = labels["dose_outcomes"]["cancel"].clone();
+    data["dose_open"] = json!(dose_open);
+    if dose_error.is_some() {
+        data["error"] = Value::Null;
+    }
     let selected = super::forms::field(dose_draft, "source_id")
         .parse::<i64>()
         .ok();
@@ -401,18 +441,7 @@ fn detail_with_state(
             "source_error":source_error_label.as_ref().map(|(message, _)| message),
             "source_error_lang":source_error_label.as_ref().map(|(_, language)| language) })
     }).collect::<Vec<_>>());
-    render(
-        view,
-        token,
-        "medications/show.html",
-        data,
-        dose_error
-            .or(refill_failure.map(|(_, error)| error))
-            .or(management_error)
-            .or(adjustment_failure.map(|(_, error)| error))
-            .map(super::forms::status)
-            .unwrap_or(StatusCode::OK),
-    )
+    Ok(data)
 }
 
 fn dose_error_label(error: &OperationError, labels: &Value, language: &str) -> (String, String) {
@@ -462,6 +491,9 @@ fn render(
         return super::unavailable();
     };
     data["authenticity_token"] = json!(authenticity);
+    if template == "medications/show.html" {
+        data["dose"] = data.clone();
+    }
     match format::render().view(view, template, data) {
         Ok(response) => (
             status,

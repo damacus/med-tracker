@@ -1,0 +1,5 @@
+<article class="dashboard-task" data-dashboard-task>
+  <time class="text-xs font-black uppercase tracking-wide text-base-content/60">{{ row.time }}</time>
+  <div class="min-w-0"><h4 class="font-bold break-words">{{ row.medication }}</h4><p class="text-sm text-base-content/70">{{ row.dose }}</p></div>
+  <div class="flex flex-wrap items-center gap-2">{% if row.can_record %}<a class="btn btn-outline rounded-full" href="{{ row.record_url }}&dashboard_person_id={% if dashboard.selected %}{{ dashboard.selected }}{% else %}all{% endif %}&dashboard_grouping={{ grouping }}">{{ row.action_label }}</a>{% endif %}{% if row.can_record_outcome %}<a class="link text-sm" href="{{ row.history_url }}">{{ labels.dashboard.outcomes.not_taken }}</a>{% endif %}{% if row.status != 'available' and row.status != 'upcoming' %}<span class="badge text-xs">{{ row.status_label }}</span>{% endif %}</div>
+</article>

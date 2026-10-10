@@ -4,6 +4,7 @@ use loco_rs::prelude::*;
 pub mod administration;
 pub mod api;
 pub mod auth;
+pub mod dashboard;
 pub mod dosage_options;
 pub mod dose_occurrences;
 pub mod home;

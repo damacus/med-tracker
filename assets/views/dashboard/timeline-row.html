@@ -1,0 +1,6 @@
+<article class="dashboard-timeline-row border-b border-base-300 py-5" data-dashboard-task>
+  <time class="font-bold text-sm">{{ row.time }}</time>
+  {% include "dashboard/identity.html" %}
+  <div><h3 class="font-bold">{{ row.medication }}</h3><p class="text-sm text-base-content/70">{{ row.dose }}</p></div>
+  <span class="badge text-xs">{{ row.status_label }}</span>
+</article>

@@ -1,0 +1,45 @@
+<dialog id="record-dose-dialog" class="modal" aria-labelledby="record-dose-dialog-title" lang="{{ dose.dose_lang }}" {% if dose.dose_open %}data-dialog-auto-open{% endif %}>
+  <div class="modal-box max-w-2xl max-h-[85vh] overflow-y-auto">
+    <h2 id="record-dose-dialog-title" class="text-xl font-semibold">{{ dose.dose_i18n.record }}</h2>
+    <p class="mt-2 text-base-content/70">{{ dose.dose_i18n.confirm }}</p>
+    {% if dose.dose_unmatched_error %}<p role="alert" class="alert mt-4" lang="{{ dose.dose_unmatched_error_lang }}" tabindex="-1" data-dialog-error-focus>{{ dose.dose_unmatched_error }}</p>{% endif %}
+    {% for source in dose.assignments %}
+      {% if source.can_record %}
+      <form method="post" action="{% if dose.dashboard_return %}/households/{{ dose.slug }}/dashboard/doses/{{ dose.medication_id }}{% else %}/households/{{ dose.slug }}/medications/{{ dose.medication_id }}/doses{% endif %}" aria-labelledby="dose-confirm-{{ source.source_type }}-{{ source.id }} dose-classification-{{ source.source_type }}-{{ source.id }}" data-dose-form data-dose-current-available="{{ source.available }}" data-dose-preview-url="/households/{{ dose.slug }}/medications/{{ dose.medication_id }}/doses/preview" class="grid gap-4 mt-4 p-4 rounded-box border border-base-300 bg-base-200 min-w-0">
+        <input type="hidden" name="authenticity_token" value="{{ dose.authenticity_token }}">
+        {% if dose.dashboard_return %}<input type="hidden" name="dashboard_person_id" value="{{ dose.dashboard_person_id }}"><input type="hidden" name="dashboard_grouping" value="{{ dose.dashboard_grouping }}">{% endif %}
+        <input type="hidden" name="client_uuid" value="{{ source.draft.client_uuid }}">
+        <input type="hidden" name="source_type" value="{{ source.draft.source_type }}">
+        <input type="hidden" name="source_id" value="{{ source.draft.source_id }}">
+        <input type="hidden" name="dose_amount" value="{{ source.draft.dose_amount }}">
+        <input type="hidden" name="dose_unit" value="{{ source.draft.dose_unit }}">
+        <div>
+          <h3 id="dose-confirm-{{ source.source_type }}-{{ source.id }}" class="text-lg font-semibold"><span class="block">{{ source.person_name }}</span><span class="block">{{ dose.name }} · <span lang="en" data-dose-label>{{ source.dose_label }}</span></span></h3>
+          <p id="dose-classification-{{ source.source_type }}-{{ source.id }}" class="text-sm text-base-content/70">{% if source.source_type == 'schedule' %}{{ dose.dose_i18n.scheduled_treatment }}{% else %}{{ dose.dose_i18n.ongoing_medication }}{% endif %}</p>
+        </div>
+        {% if source.source_error %}<p role="alert" class="alert" lang="{{ source.source_error_lang }}" tabindex="-1" data-dialog-error-focus {% if source.dose_changed %}data-dose-stale-alert{% endif %}>{{ source.source_error }}</p>{% endif %}
+        {% if source.dose_changed %}<button type="button" class="btn btn-ghost min-h-11 w-fit" data-dose-confirm-current data-dose-amount="{{ source.amount }}" data-dose-unit="{{ source.unit }}">{{ dose.dose_i18n.use_updated_dose }}</button>{% endif %}
+        <p role="status" data-dose-availability data-unavailable-label="{{ dose.dose_i18n.unavailable }}" data-not-scheduled-label="{{ dose.dose_i18n.not_scheduled }}" data-checking-label="{{ dose.dose_i18n.checking }}" data-ready-label="{{ dose.dose_i18n.ready }}" {% if source.available %}hidden{% endif %}>{% if not source.available %}{{ dose.dose_i18n.not_scheduled }}{% endif %}</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="grid gap-2 min-w-0"><label for="taken-at-{{ source.source_type }}-{{ source.id }}" class="font-semibold">{{ dose.dose_i18n.taken_at }}</label>
+            <input id="taken-at-{{ source.source_type }}-{{ source.id }}" name="taken_at" type="datetime-local" class="input w-full min-w-0" value="{{ source.draft.taken_at }}" {% if source.time_error %}aria-invalid="true" aria-describedby="taken-at-error-{{ source.source_type }}-{{ source.id }}" data-dialog-error-focus{% endif %} {% if source.autofocus %}autofocus{% endif %} required>
+            {% if source.time_error %}<p id="taken-at-error-{{ source.source_type }}-{{ source.id }}" role="alert" class="text-error text-sm">{{ dose.dose_i18n.invalid_time }}</p>{% endif %}
+          </div>
+          <div class="grid gap-2 min-w-0">
+            {% if dose.dashboard_return %}<label for="stock-source-{{ source.source_type }}-{{ source.id }}" class="font-semibold">{{ dose.dose_i18n.stock_source }}</label>
+            <select id="stock-source-{{ source.source_type }}-{{ source.id }}" name="taken_from_medication_id" class="select w-full min-w-0" required>{% for stock in dose.stock_options %}<option value="{{ stock.id }}" {% if source.draft.taken_from_medication_id == stock.id %}selected{% endif %}>{{ stock.label }}</option>{% endfor %}</select>
+            {% else %}<p class="font-semibold">{{ dose.dose_i18n.stock_remaining }}</p>
+            <p lang="en">{{ dose.quantity }} {{ dose.unit }}</p>
+            <input type="hidden" name="taken_from_medication_id" value="{{ dose.medication_id }}">{% endif %}
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-2 justify-end">
+          <button type="button" class="btn btn-ghost min-h-11 w-fit" data-dialog-close>{{ dose.dose_cancel }}</button>
+          <button type="submit" class="btn btn-primary min-h-11 w-fit" {% if not source.available or source.dose_changed %}disabled{% endif %}>{{ dose.dose_i18n.record }}</button>
+        </div>
+      </form>
+      {% elif not source.can_record %}<p>{{ source.person_name }} · {{ dose.dose_i18n.view_only }}</p>{% endif %}
+    {% endfor %}
+    {% if not dose.can_record_any %}<div class="flex justify-end mt-4"><button type="button" class="btn btn-ghost min-h-11 w-fit" data-dialog-close>{{ dose.dose_cancel }}</button></div>{% endif %}
+  </div>
+</dialog>

@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "./fonts.css";
 @import "./themes.css";
+@import "./dashboard.css";
 @source "../../views";
 @plugin "daisyui" { themes: false; }
 
