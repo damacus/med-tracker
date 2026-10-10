@@ -493,7 +493,25 @@ tests or unfinished requirements is a profile acceptance gate.
 
 Implementation and the passing complete Loco gate cover the four tabs and their
 authorized actions. Final desktop/mobile light/dark captures are retained for
-review. Publish this verified candidate as a draft; independent source review
+review. The candidate is published as [draft PR #2504](https://github.com/damacus/med-tracker/pull/2504); independent source review
 and the Gravatar disclosure decision remain tracked in #2502. Do not promote
 passing checks or publication to migration acceptance, merge or deployment.
 P23–P25 remain excluded. The broader migration issue #2450 remains open.
+
+### Publication follow-up
+
+The profile implementation and comparison captures were committed as `5c68f4ed`
+and pushed to `codex/profile-parity-delivery`. PR #2504 targets `main` and remains
+a draft. Remote CI initially rejected the new root `build.rs` because its changed
+path was absent from the suite policy. A regression test reproduced that failure;
+the path now selects Loco checks, all 98 CI-script tests and workflow validation
+pass, and classification of the complete candidate succeeds.
+
+GitGuardian incident #38069243 flags `assets/reports/locales/ga.yml:1726`:
+`operation_password: "athrú an phasfhocail"`. This is the Irish presentation label
+for the password-change operation, not a credential. The false-positive evidence
+is documented here before any incident dismissal. GitGuardian's management tool
+requires an explicit user-provided ignore reason, which has been requested.
+No detector-wide exclusion, source obfuscation or history rewrite was introduced.
+Remote checks must be evaluated on the latest pushed commit independently of the
+passing local application gate. Nothing has been merged or deployed.
