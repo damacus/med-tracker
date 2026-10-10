@@ -129,9 +129,9 @@ async fn mutate(
         Err(error) => return response::error(error, &request_id),
     };
     let result = process(
+        age_reference_date(&ctx),
         &tenant,
         &principal,
-        household_id,
         id.as_deref(),
         &headers,
         body,
@@ -157,9 +157,9 @@ async fn mutate(
 }
 
 async fn process(
+    today: chrono::NaiveDate,
     tenant: &TenantTransaction,
     principal: &ValidatedPrincipal,
-    household_id: i64,
     id: Option<&str>,
     headers: &HeaderMap,
     body: std::result::Result<AxumJson<Value>, JsonRejection>,
@@ -197,6 +197,7 @@ async fn process(
         return Err(response::Failure::bad_request("Invalid request body"));
     }
     let attributes = Value::Object(attributes);
+    let household_id = tenant.scope().household_id;
     let path = match id {
         Some(id) => format!("/api/v1/households/{household_id}/people/{id}"),
         None => format!("/api/v1/households/{household_id}/people"),
@@ -218,24 +219,9 @@ async fn process(
         .map_err(|_| response::unavailable())?;
     let result = match id {
         Some(id) => {
-            people::update(
-                tenant,
-                id,
-                attributes,
-                principal.time_zone(),
-                Some(principal.provenance()),
-            )
-            .await
+            people::update(tenant, id, attributes, today, Some(principal.provenance())).await
         }
-        None => {
-            people::create(
-                tenant,
-                attributes,
-                principal.time_zone(),
-                Some(principal.provenance()),
-            )
-            .await
-        }
+        None => people::create(tenant, attributes, today, Some(principal.provenance())).await,
     };
     let reply = match result {
         Ok(record) => {

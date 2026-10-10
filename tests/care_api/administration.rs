@@ -901,3 +901,35 @@ async fn person_access_grant_list_matches_documented_contract() {
     assert_eq!(foreign_body["error"]["code"], "forbidden");
     app.close().await;
 }
+
+#[tokio::test]
+async fn household_relationship_removal_preserves_unrelated_grant_without_veto() {
+    use med_tracker::models::{
+        access::{self, Actor, HouseholdScope},
+        care::administration::delegation,
+    };
+    let app = Application::new().await;
+    app.fixture.admin.execute_unprepared("INSERT INTO carer_relationships(id,household_id,carer_id,patient_id,relationship_type,active,created_at,updated_at) VALUES(86001,72001,73001,73002,'parent',true,now(),now()); INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,created_at,updated_at) VALUES(78002,72001,74001,73002,'manage','family_member',now(),now())").await.unwrap();
+    let scope = HouseholdScope {
+        actor: Actor { account_id: 71001 },
+        household_id: 72001,
+        request_id: "synthetic-carer-removal-manual-grant".into(),
+    };
+    let tenant = access::begin(&app.fixture.runtime, &scope).await.unwrap();
+    let result = delegation::deactivate(&tenant, 86001, None).await;
+    let success = result.is_ok();
+    if success {
+        tenant.commit().await.unwrap();
+    } else {
+        tenant.rollback().await.unwrap();
+    }
+    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT active FROM carer_relationships WHERE id=86001) AS active,(SELECT revoked_at IS NULL FROM person_access_grants WHERE id=78002) AS manual,(SELECT has_capacity FROM people WHERE id=73002) AS capacity")).await.unwrap().unwrap();
+    let active: bool = row.try_get("", "active").unwrap();
+    let manual: bool = row.try_get("", "manual").unwrap();
+    let capacity: bool = row.try_get("", "capacity").unwrap();
+    app.close().await;
+    assert!(success);
+    assert!(!active);
+    assert!(manual);
+    assert!(!capacity);
+}
