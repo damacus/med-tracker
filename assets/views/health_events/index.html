@@ -1,0 +1,53 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-4xl mx-auto space-y-6">
+  <a class="link" href="/households/{{ slug }}/people/{{ person.id }}">{{ back_label }}: {{ person.name }}</a>
+  <header class="space-y-2">
+    <h1 class="text-3xl font-semibold">{{ title }}</h1>
+    <p class="text-base-content/70">{{ labels.index.subtitle }}</p>
+  </header>
+  {% if can_record %}
+  <div class="flex flex-wrap gap-3">
+    <a class="btn btn-neutral" href="/households/{{ slug }}/people/{{ person.id }}/health_events/new?event_kind=illness&amp;locale={{ lang }}">{{ labels.actions.record_illness }}</a>
+    <a class="btn btn-outline" href="/households/{{ slug }}/people/{{ person.id }}/health_events/new?event_kind=suspected_side_effect&amp;locale={{ lang }}">{{ labels.actions.record_suspected_side_effect }}</a>
+  </div>
+  {% endif %}
+  {% if events | length == 0 %}
+  <p class="rounded-box border border-base-300 bg-base-100 p-6">{{ labels.index.empty }}</p>
+  {% else %}
+  <ol class="space-y-4">
+    {% for event in events %}
+    <li><article class="card bg-base-100 border border-base-300"><div class="card-body">
+      <span class="badge badge-outline">{{ labels.kinds[event.event_kind] }}</span>
+      <h2 class="card-title">{{ event.title }}</h2>
+      {% if event.ongoing %}<p>{{ labels.index.ongoing_from | replace(from="%{started_on}",to=event.started_on) }}</p>{% else %}<p>{{ labels.index.date_range | replace(from="%{started_on}",to=event.started_on) | replace(from="%{ended_on}",to=event.ended_on) }}</p>{% endif %}
+      {% if event.severity %}<p>{{ labels.form.severity }}: {{ labels.severities[event.severity] }}</p>{% endif %}
+      {% if event.medication_names | length > 0 %}<p>{{ labels.form.suspected_medications }}: {{ event.medication_names | join(sep=", ") }}</p>{% endif %}
+      {% if event.notes %}<p class="whitespace-pre-wrap">{{ labels.form.notes }}: {{ event.notes }}</p>{% endif %}
+      {% if event.action_taken %}<p class="whitespace-pre-wrap">{{ labels.form.action_taken }}: {{ event.action_taken }}</p>{% endif %}
+      {% if event.medical_help_sought %}<p>{{ labels.form.medical_help_sought }}</p>{% endif %}
+      {% if can_manage %}
+      <div class="flex flex-wrap gap-3">
+        <a class="btn btn-outline w-fit" href="/households/{{ slug }}/people/{{ person.id }}/health_events/{{ event.id }}/edit?locale={{ lang }}">{{ labels.actions.edit }}</a>
+        <button type="button" class="btn btn-outline btn-error" data-dialog-open="health-delete-{{ event.id }}">{{ labels.actions.delete }}</button>
+      </div>
+      <dialog id="health-delete-{{ event.id }}" class="modal" aria-labelledby="health-delete-title-{{ event.id }}">
+        <div class="modal-box space-y-4">
+          <h2 id="health-delete-title-{{ event.id }}" class="text-xl font-semibold">{{ labels.browser.delete_confirm }}</h2>
+          <p>{{ event.title }}</p><p>{{ labels.browser.delete_body }}</p>
+          <form method="post" action="/households/{{ slug }}/people/{{ person.id }}/health_events/{{ event.id }}/delete" class="flex flex-wrap gap-3">
+            <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+            <input type="hidden" name="etag" value="{{ event.etag }}">
+            <input type="hidden" name="locale" value="{{ lang }}">
+            <button type="button" class="btn btn-ghost" data-dialog-close>{{ labels.actions.cancel }}</button>
+            <button type="submit" class="btn btn-error">{{ labels.actions.delete }}</button>
+          </form>
+        </div>
+      </dialog>
+      {% endif %}
+    </div></article></li>
+    {% endfor %}
+  </ol>
+  {% endif %}
+</section>
+{% endblock content %}
