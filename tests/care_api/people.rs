@@ -564,10 +564,38 @@ async fn people_list_matches_documented_contract() {
     );
     assert_eq!(body["data"][0]["id"], 73001);
     assert_eq!(body["data"][0]["name"], "Synthetic adult");
-    assert_eq!(
-        body["meta"]["total_count"],
-        body["data"].as_array().unwrap().len() as i64
-    );
+    assert_eq!(body["meta"]["total_count"], 1);
+
+    app.fixture
+        .admin
+        .execute_unprepared("INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,created_at,updated_at) VALUES(78002,72001,74001,73002,'view','carer',now(),now())")
+        .await
+        .unwrap();
+    for (page, expected_id) in [(1, 73001), (2, 73002)] {
+        let paginated = app
+            .client
+            .get(format!("{collection}?page={page}&per_page=1"))
+            .bearer_auth(&token)
+            .send()
+            .await
+            .unwrap();
+        let paginated_status = paginated.status().as_u16();
+        let paginated_body: Value = paginated.json().await.unwrap();
+        assert_eq!(paginated_status, 200);
+        assert_value(
+            contract,
+            resolve(
+                contract,
+                &operation["responses"]["200"]["content"]["application/json"]["schema"],
+            ),
+            &paginated_body,
+            "paginated people collection",
+        );
+        assert_eq!(paginated_body["meta"]["per_page"], 1);
+        assert_eq!(paginated_body["meta"]["total_count"], 2);
+        assert_eq!(paginated_body["data"].as_array().unwrap().len(), 1);
+        assert_eq!(paginated_body["data"][0]["id"], expected_id);
+    }
 
     let foreign = app
         .client

@@ -1016,12 +1016,10 @@ async fn dose_occurrence_lists_match_documented_contract() {
             &body,
             "dose occurrence collection",
         );
+        let items = body["data"].as_array().unwrap();
+        assert!(!items.is_empty(), "{operation_id} returned no occurrences");
         assert!(
-            body["data"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .all(|item| item["key"].as_str().is_some()),
+            items.iter().all(|item| item["key"].as_str().is_some()),
             "{operation_id}"
         );
 
