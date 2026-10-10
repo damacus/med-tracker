@@ -43,6 +43,11 @@ pub(super) async fn apply_to_person(
     request_id: &str,
 ) -> Result<membership::Model, OperationError> {
     let household_id = invitation.household_id;
+    if !crate::models::authorization::household_manager(inviter, household_id)
+        && (new_person.person_type != 0 || !new_person.has_capacity)
+    {
+        return Err(super::acceptance::unavailable());
+    }
     let now = Utc::now().naive_utc();
     let new_membership = membership::ActiveModel {
         account_id: Set(actor.account_id),

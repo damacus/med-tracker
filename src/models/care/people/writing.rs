@@ -4,7 +4,7 @@ pub async fn update(
     tenant: &TenantTransaction,
     id: &str,
     attributes: Value,
-    zone: Tz,
+    today: NaiveDate,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<person::Model, OperationError> {
     let found = authorize_update(tenant, id).await?;
@@ -16,18 +16,7 @@ pub async fn update(
         .ok_or(OperationError::NotFound)?;
     let mut proposed = record.clone();
     validation::assign(&mut proposed, &attributes, false)?;
-    validation::capacity(&mut proposed, zone)?;
-    if !proposed.has_capacity
-        && carer_relationship::Entity::find()
-            .filter(carer_relationship::Column::HouseholdId.eq(tenant.scope().household_id))
-            .filter(carer_relationship::Column::PatientId.eq(record.id))
-            .filter(carer_relationship::Column::Active.eq(true))
-            .one(tenant.transaction())
-            .await?
-            .is_none()
-    {
-        return Err(invalid("has_capacity", "requires an active carer"));
-    }
+    validation::capacity(&mut proposed, today)?;
     if proposed == record {
         return Ok(record);
     }
