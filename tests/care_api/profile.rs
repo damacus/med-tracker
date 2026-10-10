@@ -1,3 +1,4 @@
+use super::contract::{assert_value, resolve};
 use super::*;
 use sea_orm::TransactionTrait;
 
@@ -132,6 +133,111 @@ async fn profile_api_rejects_invalid_and_security_fields_atomically_and_rechecks
         .await
         .unwrap();
     assert!(matches!(revoked.status().as_u16(), 403 | 404));
+    app.close().await;
+}
+
+#[tokio::test]
+async fn profile_get_matches_documented_contract() {
+    let app = profile_application().await;
+    let token = app.token().await;
+    let endpoint = format!("{}/api/v1/households/72001/profile", app.origin);
+    let contract: Value =
+        serde_yaml_ng::from_str(include_str!("../../docs/api/openapi.v1.yaml")).unwrap();
+    let operation = &contract["paths"]["/households/{household_id}/profile"]["get"];
+    assert_eq!(operation["operationId"], "getHouseholdProfile");
+    assert_eq!(
+        operation["responses"]["404"]["$ref"],
+        "#/components/responses/NotFound"
+    );
+    let not_found = resolve(&contract, &operation["responses"]["404"]);
+    let not_found_schema = resolve(
+        &contract,
+        &not_found["content"]["application/json"]["schema"],
+    );
+
+    let read = app
+        .client
+        .get(&endpoint)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let read_status = read.status().as_u16();
+    let cache_control = read
+        .headers()
+        .get("cache-control")
+        .and_then(|value| value.to_str().ok())
+        .map(str::to_owned);
+    let body: Value = read.json().await.unwrap();
+    assert_eq!(read_status, 200);
+    assert_eq!(
+        operation["responses"]["200"]["headers"]["Cache-Control"]["$ref"],
+        "#/components/headers/no_store"
+    );
+    let no_store_header = resolve(
+        &contract,
+        &operation["responses"]["200"]["headers"]["Cache-Control"],
+    );
+    assert_eq!(no_store_header["schema"]["enum"], json!(["no-store"]));
+    assert_eq!(cache_control.as_deref(), Some("no-store"));
+    assert_eq!(
+        operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"],
+        "#/components/schemas/HouseholdProfileResponse"
+    );
+    assert_value(
+        &contract,
+        resolve(
+            &contract,
+            &operation["responses"]["200"]["content"]["application/json"]["schema"],
+        ),
+        &body,
+        "profile response",
+    );
+    assert_eq!(body["data"]["person_id"], "73001");
+    assert_eq!(body["data"]["account_id"], "71001");
+    assert_eq!(body["data"]["date_of_birth"], "1985-02-03");
+
+    app.fixture
+        .admin
+        .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78001")
+        .await
+        .unwrap();
+    let denied = app
+        .client
+        .get(&endpoint)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let denied_status = denied.status().as_u16();
+    let denied_request_id = denied.headers()["x-request-id"]
+        .to_str()
+        .unwrap()
+        .to_owned();
+    let denied_body: Value = denied.json().await.unwrap();
+    assert_eq!(denied_status, 404);
+    assert_value(
+        &contract,
+        not_found_schema,
+        &denied_body,
+        "outside view scope",
+    );
+    assert_eq!(denied_body["error"]["code"], "not_found");
+    assert_eq!(denied_body["error"]["request_id"], denied_request_id);
+
+    app.fixture
+        .admin
+        .execute_unprepared("UPDATE person_access_grants SET revoked_at=NULL WHERE id=78001")
+        .await
+        .unwrap();
+    let restored = app
+        .client
+        .get(&endpoint)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(restored.status().as_u16(), 200);
     app.close().await;
 }
 

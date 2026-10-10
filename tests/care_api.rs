@@ -8,6 +8,8 @@ mod api_session;
 mod assignments;
 #[path = "care_api/better_auth_store.rs"]
 mod better_auth_store;
+#[path = "care_api/contract.rs"]
+mod contract;
 #[path = "care_api/crud.rs"]
 mod crud;
 #[path = "care_api/dosages.rs"]

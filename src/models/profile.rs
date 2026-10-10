@@ -175,7 +175,12 @@ async fn snapshot(
 }
 
 pub async fn read(tenant: &TenantTransaction, account_id: i64) -> Result<Snapshot, OperationError> {
-    let current = linked_person(tenant, account_id, PersonAccess::View).await?;
+    let current = linked_person(tenant, account_id, PersonAccess::View)
+        .await
+        .map_err(|error| match error {
+            OperationError::Forbidden => OperationError::NotFound,
+            error => error,
+        })?;
     let account = account::Entity::find_by_id(account_id)
         .one(tenant.transaction())
         .await?
