@@ -701,6 +701,10 @@ async fn location_get_matches_documented_contract() {
         .await
         .unwrap();
     let foreign_status = foreign.status().as_u16();
+    let foreign_request_id = foreign.headers()["x-request-id"]
+        .to_str()
+        .unwrap()
+        .to_owned();
     let foreign_body: Value = foreign.json().await.unwrap();
     assert_eq!(foreign_status, 404);
     assert_value(
@@ -710,5 +714,6 @@ async fn location_get_matches_documented_contract() {
         "foreign location",
     );
     assert_eq!(foreign_body["error"]["code"], "not_found");
+    assert_eq!(foreign_body["error"]["request_id"], foreign_request_id);
     app.close().await;
 }
