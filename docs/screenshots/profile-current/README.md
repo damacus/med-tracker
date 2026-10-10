@@ -1,6 +1,7 @@
 # Loco profile captures
 
-These captures show the four-tab profile candidate on 10 October 2026.
+These captures show the four-tab profile candidate using the shared Loco header,
+cards and centred dialogs on 10 October 2026.
 They are review evidence, not a declaration of accepted Rails parity.
 
 ## Capture conditions
@@ -27,7 +28,7 @@ replace those tests.
 The retained Rails images are in `../profile-reference/`. The comparison covers
 the four-tab hierarchy, personal-information/settings layout, grouped security
 methods, summaries, disclosures and connected dialogs. It is not pixel-identical:
-the root Loco navigation lacks the broader Rails sidebar search, notification
+the profile uses the shared Loco page shell instead of a separate Rails sidebar, notification
 switches use accessible native checkbox controls, and sensitive actions retain
 the agreed Loco authentication and shared-history retention semantics.
 

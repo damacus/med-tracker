@@ -15,7 +15,7 @@ test('profile reference states retain readable desktop and mobile layouts', asyn
   await expect(page.getByTestId('profile-personal-info-card')).toContainText('Jane Doe');
   for (const appearance of ['light', 'dark']) {
     await page.getByRole('tab', { name: 'Profile', exact: true }).click();
-    await page.locator('[data-dialog-open="appearance-dialog"]').click();
+    await page.locator('.profile-settings [data-dialog-open="appearance-dialog"]').click();
     await page.locator(`[data-appearance-choice="${appearance}"]`).click();
     await page.locator('#appearance-dialog').press('Escape');
     for (const tab of ['Profile', 'Security', 'Notifications', 'Advanced']) {
@@ -26,7 +26,7 @@ test('profile reference states retain readable desktop and mobile layouts', asyn
     }
     await page.getByRole('tab', { name: 'Profile', exact: true }).click();
     for (const id of ['profile-avatar', 'profile-timezone', 'profile-shortcuts', 'appearance-dialog']) {
-      const opener = page.locator(`[data-dialog-open="${id}"]`);
+      const opener = page.locator(`.profile-settings [data-dialog-open="${id}"]`);
       await opener.click();
       const dialog = page.locator(`#${id}`);
       await expect(dialog).toBeVisible();

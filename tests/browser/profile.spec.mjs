@@ -55,7 +55,7 @@ test('account closure button meets normal-text contrast in light and dark appear
   await openProfile(page);
   for (const appearance of ['light', 'dark']) {
     await page.getByRole('tab', { name: 'Profile', exact: true }).click();
-    await page.locator('[data-dialog-open="appearance-dialog"]').click();
+    await page.locator('.profile-settings [data-dialog-open="appearance-dialog"]').click();
     await page.locator(`[data-appearance-choice="${appearance}"]`).click();
     await page.locator('#appearance-dialog').press('Escape');
     await page.getByRole('tab', { name: 'Advanced', exact: true }).click();
@@ -210,23 +210,32 @@ test('appearance sheet exposes the Rails modes and palettes with persistent imme
   await expect(page.locator('html')).toHaveAttribute('data-appearance', 'dark');
 });
 
-test('profile keeps the Rails desktop navigation and exposes a dismissible mobile menu', async ({ page }) => {
+test('profile shares the application header, content width, cards and centred dialogs', async ({ page }) => {
   test.setTimeout(180000);
-  await page.setViewportSize({ width: 1440, height: 1000 });
   await openProfile(page);
-  const sidebar = page.getByRole('complementary');
-  await expect(sidebar).toBeVisible();
-  await expect(sidebar.getByRole('link', { name: 'Inventory', exact: true })).toBeVisible();
+  await page.goto('/households/persistence-fixture/people/73001');
+  const referenceHeader = await page.getByRole('banner').innerText();
+  const referenceBounds = await page.getByRole('main').boundingBox();
+  const surface = element => {
+    const style = getComputedStyle(element);
+    return { background: style.backgroundColor, radius: style.borderRadius, border: style.borderColor, shadow: style.boxShadow };
+  };
+  const referenceCard = await page.locator('section').filter({ has: page.getByRole('heading', { name: 'Profile details', exact: true }) }).last().evaluate(surface);
+  await page.goto('/households/persistence-fixture/profile');
+  await expect(page.getByRole('banner')).toHaveText(referenceHeader);
   const bounds = await page.getByRole('main').boundingBox();
-  expect(bounds.x).toBeGreaterThanOrEqual(256);
-  await page.setViewportSize({ width: 390, height: 844 });
-  await expect(sidebar).toBeHidden();
-  const opener = page.getByRole('button', { name: 'Open menu', exact: true });
+  expect(bounds.x).toBe(referenceBounds.x);
+  expect(bounds.width).toBe(referenceBounds.width);
+  expect(await page.getByTestId('profile-personal-info-card').evaluate(surface)).toEqual(referenceCard);
+  await expect(page.getByRole('navigation', { name: 'Primary navigation', exact: true }).getByRole('link', { name: 'People', exact: true })).toBeVisible();
+  const opener = page.locator('[data-dialog-open="profile-avatar"]');
   await opener.click();
-  const menu = page.getByRole('dialog', { name: 'Primary navigation', exact: true });
-  await expect(menu.getByRole('link', { name: 'People', exact: true })).toBeVisible();
-  await menu.press('Escape');
-  await expect(menu).toBeHidden();
+  const dialog = page.locator('#profile-avatar');
+  const box = await dialog.locator('.modal-box').boundingBox();
+  const viewport = page.viewportSize();
+  expect(Math.abs(box.x + box.width / 2 - viewport.width / 2)).toBeLessThan(2);
+  expect(box.height).toBeLessThan(viewport.height * .9);
+  await dialog.press('Escape');
   await expect(opener).toBeFocused();
 });
 

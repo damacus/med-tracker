@@ -1,4 +1,4 @@
-<section class="profile-personal" aria-labelledby="profile-push-title" data-profile-push data-endpoint="/households/{{ slug }}/profile/push" data-token="{{ authenticity_token }}"
+<section class="profile-personal card card-body bg-base-100 border border-base-300 min-w-0 gap-3" aria-labelledby="profile-push-title" data-profile-push data-endpoint="/households/{{ slug }}/profile/push" data-token="{{ authenticity_token }}"
   {% for key in ['unconfigured', 'unsupported', 'denied', 'enabled', 'disabled', 'accepted', 'failed', 'expired'] %}data-{{ key }}="{{ labels.profiles.push[key] }}"{% endfor %}>
   <h3 id="profile-push-title">{{ labels.profiles.notifications.browser_title }}</h3><p>{{ labels.profiles.notifications.browser_description }}</p>
   <p role="status" aria-live="polite" data-push-status>{{ labels.profiles.notifications.checking_status }}</p>

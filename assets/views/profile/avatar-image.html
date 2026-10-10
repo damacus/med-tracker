@@ -1,1 +1,1 @@
-<span class="profile-avatar" data-profile-avatar>{% if avatar_attached %}<img src="/households/{{ slug }}/profile/avatar" alt="{{ name }}">{% else %}<span aria-hidden="true">{{ initials }}</span>{% endif %}</span>
+<span class="grid place-items-center bg-neutral text-neutral-content rounded-full w-16 h-16 shrink-0 text-xl font-semibold" data-profile-avatar>{% if avatar_attached %}<img class="rounded-full w-full h-full object-cover" src="/households/{{ slug }}/profile/avatar" alt="{{ name }}">{% else %}<span aria-hidden="true">{{ initials }}</span>{% endif %}</span>
