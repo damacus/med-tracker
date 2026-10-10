@@ -39,6 +39,17 @@ or `mobile_shortcuts`. Person and account changes save in one transaction.
 Unknown fields, including email and roles, are rejected. These operations are
 online only. Current person permissions are checked before cached retries.
 
+Age and person-type validation in the people and profile APIs uses the current
+date in the application timezone (`TZ`, default `UTC`). The authenticated
+account's timezone does not affect this reference date. A request that changes
+both DOB and account timezone uses the same application date, and validation
+failure rolls back both changes. This preserves the Rails API reference date.
+
+Loco stores the application timezone in new accounts during password and passkey
+signup. Account holders can change that preference later through their profile.
+Existing accounts are not backfilled; an absent preference retains the existing
+application-timezone fallback.
+
 `PUT /households/{household_id}/profile/avatar` accepts a multipart `avatar`
 file: PNG, JPEG or WebP, up to 5 MiB. `GET` on that path streams the image after
 checking current person access; `DELETE` removes the attachment. No public or

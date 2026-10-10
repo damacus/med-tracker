@@ -1,0 +1,7 @@
+{% if care_warning %}
+<section class="rounded-box border border-warning bg-warning/10 p-4 space-y-2" role="status">
+  <p class="font-semibold">{{ care_warning_labels.heading }}</p>
+  <p>{{ care_warning.person_name }}: {{ care_warning_labels.body }}</p>
+  {% if care_warning.can_assign %}<a class="btn btn-outline btn-sm w-fit" href="/households/{{ slug }}/people/{{ care_warning.person_id }}/carer_relationships/new">{{ care_warning_labels.action }}</a>{% endif %}
+</section>
+{% endif %}

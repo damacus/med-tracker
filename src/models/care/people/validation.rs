@@ -93,11 +93,14 @@ fn email_valid(value: &str) -> bool {
         })
 }
 
-pub(super) fn capacity(record: &mut person::Model, zone: Tz) -> Result<bool, OperationError> {
+pub(super) fn capacity(
+    record: &mut person::Model,
+    today: NaiveDate,
+) -> Result<bool, OperationError> {
     let birth = record
         .date_of_birth
         .ok_or_else(|| invalid("date_of_birth", "can't be blank"))?;
-    let years = age(birth, Utc::now().with_timezone(&zone).date_naive());
+    let years = age(birth, today);
     if (years < 18 && record.person_type == 2) || (years >= 18 && record.person_type == 1) {
         return Err(invalid("person_type", "does not match age"));
     }
