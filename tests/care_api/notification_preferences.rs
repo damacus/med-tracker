@@ -272,3 +272,53 @@ async fn notification_audit_versions_record_old_new_pairs_and_omit_unchanged_fie
     assert_eq!(count.try_get::<i64>("", "versions").unwrap(), 2);
     app.close().await;
 }
+
+#[tokio::test]
+async fn notification_preference_get_matches_documented_contract() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    let endpoint = format!(
+        "{}/api/v1/households/72001/notification_preference",
+        app.origin
+    );
+    let contract: Value =
+        serde_yaml_ng::from_str(include_str!("../../docs/api/openapi.v1.yaml")).unwrap();
+    let operation = &contract["paths"]["/households/{household_id}/notification_preference"]["get"];
+    assert_eq!(operation["operationId"], "getNotificationPreference");
+    assert_eq!(
+        operation["responses"]["404"]["$ref"],
+        "#/components/responses/NotFound"
+    );
+
+    let created = app
+        .client
+        .patch(&endpoint)
+        .bearer_auth(&token)
+        .json(&json!({"notification_preference": {"evening_time": "19:30"}}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(created.status().as_u16(), 200);
+
+    let read = app
+        .client
+        .get(&endpoint)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(read.status().as_u16(), 200);
+    assert_eq!(
+        operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"],
+        "#/components/schemas/NotificationPreferenceResponse"
+    );
+    assert_eq!(
+        operation["responses"]["200"]["headers"]["ETag"]["$ref"],
+        "#/components/headers/etag"
+    );
+    assert!(read.headers().get("etag").is_some());
+    let body: Value = read.json().await.unwrap();
+    assert_eq!(body["data"]["person_id"], 73001);
+    assert_eq!(body["data"]["evening_time"], "19:30:00");
+    app.close().await;
+}
