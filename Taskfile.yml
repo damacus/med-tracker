@@ -211,6 +211,7 @@ tasks:
   ci:
     desc: Verify root Loco foundation
     cmds:
+      - task: ci:paths
       - task: fmt
       - task: lint
       - task: test
