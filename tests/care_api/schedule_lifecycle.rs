@@ -1,3 +1,4 @@
+use super::contract::{assert_value, resolve};
 use super::*;
 
 async fn create_schedule(app: &Application, token: &str) -> i64 {
@@ -221,4 +222,116 @@ async fn schedule_lifecycle_replay_current_manage_and_audit_rollback() {
     assert!(replayed && reached);
     assert_eq!(notes.as_deref(), Some("Synthetic lifecycle"));
     assert_eq!((versions, changes), (1, 1));
+}
+
+#[tokio::test]
+async fn schedule_get_matches_documented_contract() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    let id = create_schedule(&app, &token).await;
+    let contract: Value =
+        serde_yaml_ng::from_str(include_str!("../../docs/api/openapi.v1.yaml")).unwrap();
+    let operation = &contract["paths"]["/households/{household_id}/schedules/{id}"]["get"];
+    assert_eq!(operation["operationId"], "getSchedule");
+    assert_eq!(
+        operation["responses"]["404"]["$ref"],
+        "#/components/responses/NotFound"
+    );
+    let not_found = resolve(&contract, &operation["responses"]["404"]);
+    let not_found_schema = resolve(
+        &contract,
+        &not_found["content"]["application/json"]["schema"],
+    );
+    assert_eq!(
+        operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"],
+        "#/components/schemas/ScheduleResponse"
+    );
+    assert_eq!(
+        operation["responses"]["200"]["headers"]["ETag"]["$ref"],
+        "#/components/headers/etag"
+    );
+    let etag_schema = resolve(&contract, &operation["responses"]["200"]["headers"]["ETag"]);
+    assert_eq!(etag_schema["required"], true);
+    assert_eq!(etag_schema["schema"]["type"], "string");
+
+    let read = app
+        .client
+        .get(format!(
+            "{}/api/v1/households/72001/schedules/{id}",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let read_status = read.status().as_u16();
+    let etag = read
+        .headers()
+        .get("etag")
+        .and_then(|value| value.to_str().ok())
+        .map(str::to_owned);
+    let body: Value = read.json().await.unwrap();
+    assert_eq!(read_status, 200);
+    assert!(etag.as_deref().is_some_and(|value| !value.is_empty()));
+    assert_value(
+        &contract,
+        resolve(
+            &contract,
+            &operation["responses"]["200"]["content"]["application/json"]["schema"],
+        ),
+        &body,
+        "schedule response",
+    );
+    assert_eq!(body["data"]["id"], id);
+    assert_eq!(body["data"]["person_id"], 73001);
+    assert_eq!(body["data"]["schedule_type"], "prn");
+
+    let missing = app
+        .client
+        .get(format!(
+            "{}/api/v1/households/72001/schedules/99999",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let missing_status = missing.status().as_u16();
+    let missing_request_id = missing.headers()["x-request-id"]
+        .to_str()
+        .unwrap()
+        .to_owned();
+    let missing_body: Value = missing.json().await.unwrap();
+    assert_eq!(missing_status, 404);
+    assert_value(
+        &contract,
+        not_found_schema,
+        &missing_body,
+        "absent schedule",
+    );
+    assert_eq!(missing_body["error"]["code"], "not_found");
+    assert_eq!(missing_body["error"]["request_id"], missing_request_id);
+
+    app.fixture.admin.execute_unprepared("INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(84998,72001,73002,80001,true,'2026-01-01','2027-01-01',2,'tablet',4,'{}',now(),now())").await.unwrap();
+    let outside_scope = app
+        .client
+        .get(format!(
+            "{}/api/v1/households/72001/schedules/84998",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let outside_status = outside_scope.status().as_u16();
+    let outside_body: Value = outside_scope.json().await.unwrap();
+    assert_eq!(outside_status, 404);
+    assert_value(
+        &contract,
+        not_found_schema,
+        &outside_body,
+        "schedule outside view scope",
+    );
+    assert_eq!(outside_body["error"]["code"], "not_found");
+    app.close().await;
 }
