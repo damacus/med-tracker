@@ -34,10 +34,10 @@ mod notification_preferences;
 mod pause_periods;
 #[path = "care_api/people.rs"]
 mod people;
-#[path = "care_api/platform.rs"]
-mod platform;
 #[path = "care_api/person_carers.rs"]
 mod person_carers;
+#[path = "care_api/platform.rs"]
+mod platform;
 #[path = "care_api/profile.rs"]
 mod profile;
 #[path = "care_api/push_subscriptions.rs"]
