@@ -4669,6 +4669,8 @@ components:
           type: string
           minLength: 1
           nullable: true
+        user_id:
+          $ref: "#/components/schemas/NullableNumericId"
         role:
           type: string
           enum:
