@@ -6,7 +6,7 @@ use loco_rs::prelude::*;
 
 use crate::models::identity::better_auth::{BrowserIdentity, IdentityService, browser_identity};
 
-pub(super) fn request(headers: &HeaderMap) -> AuthRequest {
+pub(crate) fn request(headers: &HeaderMap) -> AuthRequest {
     let mut request = AuthRequest::new(HttpMethod::Get, "/get-session");
     request.headers = headers
         .iter()

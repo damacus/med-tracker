@@ -1,3 +1,5 @@
+pub mod avatar;
+
 use crate::models::{
     access::{self, PersonAccess, TenantTransaction},
     care::{doses::CredentialProvenance, people},
@@ -208,7 +210,35 @@ pub async fn update(
     } else {
         current
     };
-    let mut account = account;
+    let account = save_preferences(tenant, account, changes).await?;
+    snapshot(tenant, &person, &account).await
+}
+
+pub async fn update_preferences(
+    tenant: &TenantTransaction,
+    account_id: i64,
+    changes: Changes,
+) -> Result<(), OperationError> {
+    validate(&changes)?;
+    if changes.date_of_birth.is_some() {
+        return Err(validation("profile", "contains an unsupported field"));
+    }
+    linked_person(tenant, account_id, PersonAccess::Manage).await?;
+    let account = account::Entity::find_by_id(account_id)
+        .lock(sea_orm::sea_query::LockType::NoKeyUpdate)
+        .one(tenant.transaction())
+        .await?
+        .ok_or(OperationError::Unauthenticated)?;
+    save_preferences(tenant, account, changes).await?;
+    Ok(())
+}
+
+async fn save_preferences(
+    tenant: &TenantTransaction,
+    mut account: account::Model,
+    changes: Changes,
+) -> Result<account::Model, OperationError> {
+    let account_id = account.id;
     let mut preferences = account.preferences.as_object().cloned().unwrap_or_default();
     if let Some(zone) = changes.time_zone {
         preferences.insert("time_zone".into(), json!(zone));
@@ -240,5 +270,5 @@ pub async fn update(
             ..Default::default()
         }.insert(tenant.transaction()).await?;
     }
-    snapshot(tenant, &person, &account).await
+    Ok(account)
 }

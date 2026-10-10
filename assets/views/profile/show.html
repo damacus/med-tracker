@@ -1,0 +1,149 @@
+{% extends "layouts/profile.html" %}
+{% block content %}
+<div class="profile-page">
+  <noscript><link rel="stylesheet" href="/static/css/profile-no-script.css"><nav class="profile-summary" aria-label="{{ labels.profiles.sections.profile.title }}"><a class="link" href="#profile-avatar">{{ labels.profiles.avatar.title }}</a><a class="link" href="#profile-timezone">{{ labels.profiles.time_zone.title }}</a><a class="link" href="#profile-shortcuts">{{ labels.profiles.mobile_shortcuts.title }}</a></nav></noscript>
+  <p role="status" aria-live="polite" data-profile-status data-saved-label="{{ labels.profiles.updated }}" data-failure-label="{{ labels.profiles.browser.failure }}"></p>
+  <header class="profile-hero">
+    {% include "profile/avatar-image.html" %}
+    <div><p class="profile-eyebrow">{{ labels.profiles.show.eyebrow }}</p>
+      <h1>{{ labels.profiles.show.title }}</h1><p>{{ email }}</p>
+    </div>
+    <p class="shell-muted profile-hero-description">{{ labels.profiles.show.description }}</p>
+  </header>
+  <nav class="profile-tabs" aria-label="{{ labels.profiles.show.title }}" data-profile-tabs>
+    {% for section in ['profile', 'security', 'notifications', 'advanced'] %}
+    <a id="profile-tab-{{ section }}" href="#{{ section }}" data-profile-tab="{{ section }}">{{ labels.profiles.sections[section].title }}</a>
+    {% endfor %}
+  </nav>
+  <section id="profile" class="profile-section" aria-labelledby="profile-tab-profile" data-profile-panel>
+    <header class="profile-section-heading"><span class="profile-section-icon" aria-hidden="true"><svg width="24" height="24"><use href="/static/profile-icons.svg#profile"/></svg></span><div><h2>{{ labels.profiles.sections.profile.title }}</h2><p class="profile-summary"><span>{{ name }}</span><span>{{ email }}</span><span data-profile-appearance data-light="{{ labels.profiles.appearance.modes.light }}" data-dark="{{ labels.profiles.appearance.modes.dark }}" data-system="{{ labels.profiles.appearance.modes.system }}"></span></p></div></header>
+    <div class="profile-grid">
+      <section class="profile-personal" data-testid="profile-personal-info-card">
+        <h3>{{ labels.profiles.show.personal_information.title }}</h3><p class="shell-muted">{{ labels.profiles.show.personal_information.description }}</p>
+        <dl>
+          <div><dt>{{ labels.profiles.show.stats.profile_name }}</dt><dd>{{ name }}</dd></div>
+          <div><dt>{{ labels.profiles.show.stats.sign_in_email }}</dt><dd>{{ email }}</dd></div>
+          <div><dt>{{ labels.profiles.time_zone.title }}</dt><dd>{{ time_zone }}</dd></div>
+          <div><dt>{{ labels.people.overview.dob }}</dt><dd>{% if date_of_birth %}{{ date_of_birth }}{% else %}{{ labels.profiles.show.not_set }}{% endif %}</dd></div>
+          {% if age_present %}<div><dt>{{ age_label }}</dt><dd>{{ age }}</dd></div>{% endif %}
+          <div><dt>{{ labels.people.form.person_type }}</dt><dd>{% if person_type == 0 %}{{ labels.profiles.browser.adult }}{% elif person_type == 1 %}{{ labels.profiles.browser.minor }}{% else %}{{ labels.profiles.browser.dependent_adult }}{% endif %}</dd></div>
+          <div><dt>{{ labels.people.overview.has_capacity }}</dt><dd>{% if has_capacity %}{{ labels.profiles.browser.yes }}{% else %}{{ labels.profiles.browser.no }}{% endif %}</dd></div>
+        </dl>
+      </section>
+      <div class="profile-settings">
+        <button class="profile-setting" type="button" data-dialog-open="profile-avatar"><strong>{{ labels.profiles.avatar.title }}</strong><span>{{ labels.profiles.avatar.description }}</span></button>
+        <button class="profile-setting" type="button" data-dialog-open="profile-timezone"><strong>{{ labels.profiles.time_zone.title }}</strong><span>{{ labels.profiles.time_zone.description }}</span></button>
+        <button class="profile-setting" type="button" data-dialog-open="profile-shortcuts"><strong>{{ labels.profiles.mobile_shortcuts.title }}</strong><span>{{ labels.profiles.mobile_shortcuts.description }}</span></button>
+        <button class="profile-setting" type="button" data-dialog-open="appearance-dialog"><strong>{{ labels.profiles.appearance.title }}</strong><span>{{ labels.profiles.appearance.description }}</span></button>
+      </div>
+    </div>
+  </section>
+  <section id="security" class="profile-section" aria-labelledby="profile-tab-security" data-profile-panel>
+    {% include "profile/security.html" %}
+  </section>
+  <section id="notifications" class="profile-section" aria-labelledby="profile-tab-notifications" data-profile-panel>
+    <header class="profile-section-heading"><span class="profile-section-icon" aria-hidden="true"><svg width="24" height="24"><use href="/static/profile-icons.svg#notifications"/></svg></span><div><h2>{{ labels.profiles.sections.notifications.title }}</h2><p id="profile-notification-summary" class="profile-summary" data-profile-summary>{% if notifications.enabled %}{% set reminder_state = labels.profiles.common.on %}{% else %}{% set reminder_state = labels.profiles.common.off %}{% endif %}<span>{{ labels.profiles.sections.notifications.reminders | replace(from="%{state}", to=reminder_state) }}</span><span>{{ labels.profiles.sections.notifications.categories | replace(from="%{count}", to=notifications.category_count) }}</span></p></div></header>
+    <div class="profile-panel-content"><div class="profile-personal"><h3>{{ labels.profiles.notifications.title }}</h3><p class="shell-muted">{{ labels.profiles.notifications.description }}</p>
+    {% include "profile/push.html" %}
+    {% include "profile/notifications.html" %}
+    </div></div>
+  </section>
+  <section id="advanced" class="profile-section" aria-labelledby="profile-tab-advanced" data-profile-panel>
+    <header class="profile-section-heading"><span class="profile-section-icon" aria-hidden="true"><svg width="24" height="24"><use href="/static/profile-icons.svg#advanced"/></svg></span><div><h2>{{ labels.profiles.sections.advanced.title }}</h2><p class="profile-summary"><span>{{ labels.profiles.sections.advanced.exports }}</span></p></div></header>
+    <div class="profile-panel-content">
+    <details class="profile-disclosure">
+      <summary><strong>{{ labels.profiles.sections.advanced.data_backup }}</strong><span>{{ labels.profiles.sections.advanced.data_backup_description }}</span></summary>
+      <div class="profile-card">
+        <p class="alert alert-warning">{{ labels.profiles.exports.warning }}</p>
+        <form method="post" action="/households/{{ slug }}/profile/export" class="flex flex-wrap gap-2">
+          <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+          <button class="btn" type="submit" name="mode" value="health_data_json">{{ labels.profiles.exports.json }}</button>
+          <button class="btn" type="submit" name="mode" value="backup_zip">{{ labels.profiles.exports.zip }}</button>
+        </form>
+      </div>
+    </details>
+    <details class="profile-disclosure">
+      <summary><strong>{{ labels.profiles.version_info.title }}</strong><span>{{ labels.profiles.version_info.description }}</span></summary>
+      <dl class="profile-card">
+        {% if system_info.development %}
+        <div class="profile-row"><dt>{{ labels.profiles.version_info.worktree }}</dt><dd class="break-all">{{ system_info.worktree }}</dd></div>
+        <div class="profile-row"><dt>{{ labels.profiles.version_info.commit }}</dt><dd>{{ system_info.commit }}</dd></div>
+        {% else %}
+        <div class="profile-row"><dt>{{ labels.profiles.version_info.app_version }}</dt><dd>v{{ system_info.version }}</dd></div>
+        <div class="profile-row"><dt>{{ labels.profiles.version_info.release_notes }}</dt><dd><a class="link" href="https://github.com/damacus/med-tracker/releases" target="_blank" rel="noopener">{{ labels.profiles.version_info.release_notes }}</a></dd></div>
+        {% endif %}
+        <div class="profile-row"><dt>{{ labels.profiles.version_info.documentation }}</dt><dd><a class="link" href="https://damacus.github.io/med-tracker" target="_blank" rel="noopener">{{ labels.profiles.version_info.view_docs }}</a></dd></div>
+      </dl>
+    </details>
+    <section class="profile-danger"><h3>{{ labels.profiles.browser.danger_zone }}</h3>
+      <p>{{ labels.profiles.browser.closure_description }}</p>
+      <form method="post" action="/account/security/operation" data-security-flow><input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><input type="hidden" name="action" value="close_account"><button class="btn btn-error" type="submit">{{ labels.profiles.browser.close_account }}</button></form>
+    </section>
+    </div>
+  </section>
+</div>
+<dialog id="profile-security-flow" class="modal profile-security-flow" aria-labelledby="profile-security-flow-title" data-loading-label="{{ labels.profiles.security.loading }}">
+  <div class="modal-box"><h2 id="profile-security-flow-title" class="sr-only">{{ labels.profiles.account_security.title }}</h2><div data-security-flow-content></div><button type="button" class="btn" data-dialog-close>{{ labels.profiles.security.close }}</button></div>
+</dialog>
+<script src="/static/js/profile-security.js" defer></script>
+<dialog id="profile-avatar" class="modal profile-sheet" aria-labelledby="profile-avatar-title" {% if avatar_error %}data-dialog-auto-open{% endif %}>
+  <div class="modal-box"><h2 id="profile-avatar-title">{{ labels.profiles.avatar.title }}</h2><p>{{ labels.profiles.avatar.description }}</p>
+    <div class="profile-avatar-identity">{% include "profile/avatar-image.html" %}<strong>{{ name }}</strong></div>
+    <p>{{ labels.profiles.avatar.supported_formats }}</p>
+    <div id="profile-avatar-controls" data-profile-form-region>
+      {% if avatar_error %}<p role="alert" tabindex="-1" data-dialog-error-focus>{{ avatar_error }}</p>{% endif %}
+      {% if can_edit_profile %}<form method="post" action="/households/{{ slug }}/profile/avatar" enctype="multipart/form-data" data-profile-form>
+        <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+        <label for="profile-avatar-file">{{ labels.profiles.avatar.upload_label }}</label><input id="profile-avatar-file" type="file" name="avatar" accept="image/png,image/jpeg,image/webp" required>
+        <button class="btn" type="submit">{{ labels.profiles.avatar.upload }}</button>
+      </form>
+      {% if avatar_attached %}<form method="post" action="/households/{{ slug }}/profile/avatar/remove" data-profile-form><input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><button type="submit" class="btn btn-ghost">{{ labels.profiles.avatar.remove }}</button></form>{% endif %}{% endif %}
+    </div>
+    <div class="modal-action"><button type="button" class="btn btn-ghost" data-dialog-close>{{ labels.ruby_ui.common.close }}</button></div>
+  </div>
+</dialog>
+<dialog id="profile-timezone" class="modal" aria-labelledby="profile-timezone-title" {% if timezone_error %}data-dialog-auto-open{% endif %}>
+  <div class="modal-box"><h2 id="profile-timezone-title">{{ labels.profiles.time_zone.title }}</h2>
+    <form method="post" action="/households/{{ slug }}/profile" data-profile-form>
+      <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+      <input type="hidden" name="setting" value="time_zone">
+      {% if timezone_error %}<p role="alert" tabindex="-1" data-dialog-error-focus>{{ labels.profiles.browser.timezone_invalid }}</p>{% endif %}
+      <label for="profile-timezone-select">{{ labels.profiles.time_zone.title }}</label>
+      <select id="profile-timezone-select" name="time_zone" class="select w-full" {% if timezone_error %}aria-invalid="true"{% endif %}>
+      {% for zone in zones %}<option value="{{ zone.value }}" {% if zone.value == selected_zone %}selected{% endif %}>{{ zone.name }}</option>{% endfor %}
+      </select>
+      <div class="modal-action"><button type="button" class="btn btn-ghost" data-dialog-close>{{ labels.ruby_ui.common.close }}</button><button class="btn" type="submit">{{ labels.profiles.time_zone.save }}</button></div>
+    </form>
+  </div>
+</dialog>
+<dialog id="profile-shortcuts" class="modal profile-sheet" aria-labelledby="profile-shortcuts-title" {% if shortcuts_error %}data-dialog-auto-open{% endif %}>
+  <div class="modal-box"><h2 id="profile-shortcuts-title">{{ labels.profiles.mobile_shortcuts.title }}</h2>
+    <p>{{ labels.profiles.mobile_shortcuts.description }}</p>
+    <form method="post" action="/households/{{ slug }}/profile" data-profile-form>
+      <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><input type="hidden" name="setting" value="shortcuts">
+      {% if shortcuts_error %}<p role="alert" tabindex="-1" data-dialog-error-focus>{{ labels.profiles.mobile_shortcuts.invalid }}</p>{% endif %}
+      {% for slot in shortcut_slots %}<label for="profile-shortcut-{{ slot.number }}">{{ slot.label }}</label>
+      <select class="select w-full" id="profile-shortcut-{{ slot.number }}" name="shortcut_{{ slot.number }}">
+        <option value="" {% if slot.selected == '' %}selected{% endif %}>{{ labels.profiles.mobile_shortcuts.none }}</option>
+        {% for choice in shortcut_choices %}<option value="{{ choice.id }}" {% if choice.id == slot.selected %}selected{% endif %}>{{ choice.label }}</option>{% endfor %}
+      </select>{% endfor %}
+      <div class="modal-action"><button type="button" class="btn btn-ghost" data-dialog-close>{{ labels.ruby_ui.common.close }}</button><button class="btn" type="submit">{{ labels.profiles.mobile_shortcuts.save }}</button></div>
+    </form>
+  </div>
+</dialog>
+<script src="/static/js/profile.js" defer></script>
+<script src="/static/js/profile-push.js" defer></script>
+{% endblock content %}
+{% block appearance %}
+<dialog id="appearance-dialog" class="modal profile-sheet" aria-labelledby="appearance-title">
+  <div class="modal-box"><h2 id="appearance-title">{{ labels.profiles.appearance.title }}</h2><p>{{ labels.profiles.appearance.description }}</p>
+    <fieldset class="mt-6"><legend>{{ labels.profiles.appearance.mode_label }}</legend><div class="flex flex-wrap gap-3">
+      {% for mode in appearances %}<button class="btn btn-ghost" type="button" data-appearance-choice="{{ mode.id }}" aria-pressed="false">{{ labels.profiles.appearance.modes[mode.id] }}</button>{% endfor %}
+    </div></fieldset>
+    <fieldset class="mt-6"><legend>{{ labels.profiles.theme_picker.title }}</legend><p>{{ labels.profiles.theme_picker.description }}</p><div class="palette-grid mt-4">
+      {% for palette in palettes %}<button class="btn palette-choice" type="button" data-palette-choice="{{ palette.id }}" aria-pressed="false"><span data-theme="{{ palette.id }}-light" aria-hidden="true"><span class="palette-swatch"></span></span>{{ palette.label }}</button>{% endfor %}
+    </div></fieldset>
+    <div class="modal-action"><button class="btn btn-ghost" type="button" data-dialog-close>{{ labels.ruby_ui.common.close }}</button></div>
+  </div>
+</dialog>
+{% endblock appearance %}

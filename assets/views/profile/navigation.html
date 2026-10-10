@@ -1,0 +1,3 @@
+<nav aria-label="{{ labels.layouts.mobile_rail.primary_navigation }}" class="profile-navigation">
+{% for link in sidebar_links %}<a href="{{ link.href }}"><svg aria-hidden="true" width="24" height="24"><use href="/static/profile-icons.svg#{{ link.id }}"/></svg><span>{{ link.label }}</span></a>{% endfor %}
+</nav>

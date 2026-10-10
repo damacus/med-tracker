@@ -1,0 +1,88 @@
+.profile-main { margin-left: 16rem; padding: 2rem; }
+.profile-sidebar { position: fixed; inset: 0 auto 0 0; display: flex; flex-direction: column; width: 16rem; padding: 2rem 1rem; border-right: 1px solid var(--border-color); background: var(--surface-container-lowest); }
+.profile-brand { display: flex; align-items: center; gap: .75rem; padding-inline: 1rem; font-size: 1.25rem; font-weight: 700; }
+.profile-brand > span { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; border-radius: 1rem; background: var(--primary); color: var(--primary-foreground); }
+.profile-navigation { display: grid; gap: .4rem; padding-block: 2rem; }
+.profile-navigation a { display: flex; align-items: center; gap: 1rem; border-radius: 1.5rem; padding: .85rem 1rem; color: var(--on-surface-variant); }
+.profile-navigation a:hover { background: var(--secondary); }
+.profile-navigation svg { flex-shrink: 0; }
+.profile-sidebar-account { margin-top: auto; display: grid; gap: 1rem; }
+.profile-sidebar-account > a { display: flex; align-items: center; gap: .75rem; border-radius: 2rem; padding: .5rem; background: var(--secondary); }
+.profile-sidebar-account strong, .profile-sidebar-account small { display: block; font-size: .75rem; }
+.profile-sidebar-account .profile-avatar { width: 2rem; height: 2rem; font-size: .7rem; }
+.profile-sidebar-account button { padding: .5rem 1.5rem; }
+.profile-mobile-header { display: none; }
+.profile-page { display: grid; gap: 1rem; overflow-wrap: anywhere; }
+.profile-page * { min-width: 0; }
+[data-profile-status]:empty { position: absolute; width: 1px; height: 1px; overflow: hidden; }
+.profile-hero { display: grid; grid-template-columns: auto minmax(0,1fr); align-items: center; gap: 1rem; padding: 1.5rem; border: 1px solid var(--border-color); border-radius: 1.75rem; background: var(--surface-container-lowest); margin-bottom: .5rem; box-shadow: var(--elevation-1); }
+.profile-hero h1 { font-size: 2.25rem; line-height: 1.2; font-weight: 650; }
+.profile-hero p { margin-block: .25rem; overflow-wrap: anywhere; font-size: .9rem; }
+.profile-hero .profile-eyebrow { text-transform: uppercase; font-size: .7rem; letter-spacing: .25em; font-weight: 500; margin-bottom: .3rem; }
+.profile-hero-description { grid-column: 1/-1; }
+.profile-avatar { display: grid; place-items: center; width: 3.5rem; height: 3.5rem; flex-shrink: 0; border-radius: 50%; background: var(--secondary); font-size: 1.1rem; font-weight: 600; box-shadow: var(--elevation-1); }
+.profile-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+.profile-avatar-identity { display: flex; align-items: center; gap: 1rem; margin-block: 1.5rem; }
+.profile-tabs { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: .5rem; padding: .35rem; border: 1px solid var(--border-color); border-radius: 1rem; background: var(--secondary); }
+.profile-tabs a { padding: .85rem .6rem; border-radius: .75rem; text-align: center; overflow-wrap: anywhere; font-size: .9rem; }
+.profile-tabs [aria-selected="true"] { background: var(--background); color: var(--primary); box-shadow: var(--elevation-1); }
+.profile-section { border: 1px solid var(--border-color); border-radius: 1.75rem; background: var(--card); overflow: clip; box-shadow: var(--elevation-1); }
+.profile-section-heading { display: flex; align-items: flex-start; gap: 1rem; padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-color); }
+.profile-section-icon { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; flex-shrink: 0; border-radius: 50%; background: var(--secondary); }
+.profile-section h2 { font-size: 1.3rem; font-weight: 600; }
+.profile-section h3 { font-size: 1rem; font-weight: 600; }
+.profile-summary { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .4rem; }
+.profile-summary span { background: var(--background); border: 1px solid var(--border-color); border-radius: 2rem; padding: .1rem .35rem; font-size: .75rem; }
+.profile-grid { display: grid; grid-template-columns: minmax(0,1.2fr) minmax(0,1fr); gap: 1.25rem; padding: 1.5rem; }
+.profile-personal { padding: 1.5rem; border: 1px solid var(--border-color); border-radius: 1.75rem; background: var(--surface-container-lowest); box-shadow: var(--elevation-1); }
+.profile-personal p { font-size: .9rem; }
+.profile-personal dl { display: grid; margin-top: 1.5rem; }
+.profile-personal dl > div { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; padding-block: 1.1rem; border-bottom: 1px solid var(--border-color); font-size: .9rem; }
+.profile-personal dl > div:last-child { border-bottom: 0; }
+.profile-personal dt { color: var(--on-surface-variant); }
+.profile-personal dd { overflow-wrap: anywhere; text-align: right; }
+.profile-settings { display: flex; flex-direction: column; gap: .75rem; }
+.profile-setting { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: .3rem 1rem; text-align: left; padding: 1rem; border: 1px solid var(--border-color); border-radius: 1.1rem; background: var(--card); box-shadow: var(--elevation-1); }
+.profile-setting::after { content: ''; grid-column: 2; grid-row: 1/3; align-self: center; width: .4rem; height: .4rem; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); }
+.profile-setting span { grid-column: 1; color: var(--on-surface-variant); font-size: .9rem; }
+.profile-danger { display: grid; gap: 1rem; padding: 1.5rem; }
+.profile-panel-content { display: grid; gap: .75rem; padding: 1.5rem; }
+.profile-card { padding: 1rem; }
+.profile-row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .75rem; padding-block: .5rem; }
+.profile-danger h3 { color: var(--error); }
+.profile-danger .btn-error { background: oklch(from var(--error) .55 c h); color: var(--on-error); border-radius: 2rem; min-height: 2.75rem; }
+.profile-notifications button[type="submit"] { justify-self: end; background: var(--primary); color: var(--primary-foreground); border-radius: 2rem; min-height: 2.75rem; }
+.profile-panel-content [data-profile-push] { margin-top: 1.5rem; padding: 0; border: 0; box-shadow: none; border-radius: 0; }
+.profile-panel-content .profile-notifications { padding: 1.5rem 0 0; }
+.profile-notifications .profile-toggle { padding: .5rem 0; border: 0; border-radius: 0; box-shadow: none; background: transparent; }
+.profile-sheet { justify-items: end; }
+.profile-sheet .modal-box { height: 100dvh; max-height: 100dvh; border-radius: 1.5rem 0 0 1.5rem; padding: 2rem; }
+.profile-sheet form { display: grid; gap: .8rem; margin-top: 1.5rem; }
+.profile-notifications { padding: 1.5rem; }
+.profile-notifications fieldset { display: grid; gap: 1rem; min-width: 0; }
+.profile-notifications h3 { font-weight: 600; }
+.profile-toggle { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem; border: 1px solid var(--border-color); border-radius: 1rem; background: var(--surface-container-lowest); }
+.profile-toggle small { display: block; margin-top: .25rem; color: var(--on-surface-variant); }
+.profile-toggle input { flex-shrink: 0; }
+.profile-disclosure { border: 1px solid var(--border-color); border-radius: 1rem; background: var(--surface-container-lowest); }
+.profile-disclosure summary { cursor: pointer; padding: 1rem; }
+.profile-disclosure summary span { display: block; margin-top: .25rem; font-size: .85rem; color: var(--on-surface-variant); }
+.profile-time-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,14rem),1fr)); gap: 1rem; padding: 1rem; }
+.profile-time-grid input { display: block; width: 100%; margin-top: .5rem; }
+.profile-managed-people { display: grid; gap: .75rem; padding: 0 1rem 1rem; }
+.profile-security-grid { display: grid; grid-template-columns: minmax(0,1fr); gap: 1.25rem; padding: 1.5rem; }
+.profile-security-method + .profile-security-method { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color); }
+.profile-security-status { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; margin-top: .75rem; padding: .75rem; border: 1px solid var(--border-color); border-radius: .75rem; background: var(--secondary); }
+.profile-security-grid .profile-security-status .btn { margin-top: 0; }
+.profile-security-grid .profile-setting::after { display: none; }
+.profile-security-grid .profile-setting .profile-setting-action { grid-column: 2; grid-row: 1/3; align-self: center; border: 1px solid var(--border-color); border-radius: 2rem; padding: .6rem .8rem; color: var(--foreground); }
+.profile-security-grid h3, .profile-security-grid h4 { font-weight: 600; }
+.profile-security-grid h4 { margin-block: 1.5rem .5rem; }
+.profile-security-grid .profile-setting { margin-top: 1rem; }
+.profile-security-grid .btn { margin-top: .75rem; }
+.profile-security-item { margin-block: 1rem; padding-block: .75rem; border-bottom: 1px solid var(--border-color); }
+.profile-security-flow .modal-box { width: min(100% - 1rem, 40rem); max-width: 40rem; }
+.profile-security-flow .card { border: 0; box-shadow: none; }
+.profile-mobile-shortcuts { display: none; }
+@media (max-width: 1023px) { .profile-sidebar { display: none; } .profile-main { margin-left: 0; padding: 5.75rem 1rem 2rem; } .profile-mobile-header { display: flex; align-items: center; gap: 1rem; position: fixed; top: 0; inset-inline: 0; height: 4rem; z-index: 20; padding: .5rem 1rem; border-bottom: 1px solid var(--border-color); background: var(--card); font-size: 1.25rem; font-weight: 600; } .profile-mobile-shortcuts { display: flex; position: fixed; bottom: 0; inset-inline: 0; z-index: 20; justify-content: space-around; gap: .5rem; padding: .75rem .5rem max(.75rem, env(safe-area-inset-bottom)); background: var(--card); border-top: 1px solid var(--border-color); } .profile-mobile-shortcuts a { min-width: 0; padding: .5rem; overflow-wrap: anywhere; text-align: center; } body:has(.profile-mobile-shortcuts) { padding-bottom: 6rem; } }
+@media (max-width: 700px) { .profile-grid { grid-template-columns: minmax(0,1fr); gap: 1.25rem; padding: 1rem; } .profile-tabs { grid-template-columns: repeat(2,minmax(0,1fr)); } .profile-hero { grid-template-columns: minmax(0,1fr); padding: .85rem; gap: 1rem; } .profile-hero h1 { font-size: 1.75rem; } .profile-section-heading { flex-direction: column; gap: 1rem; } .profile-personal dd { text-align: left; } .profile-personal dl > div { flex-direction: column; gap: .3rem; padding-block: 1rem; } .profile-sheet .modal-box { width: min(100%, 32rem); padding: 1.25rem; } }

@@ -123,8 +123,9 @@ the step order; file names alone are not the user journey.
   dosage, schedule and stock operations; complete missing necessary operations.
 - [ ] Reuse structured timing inputs and generated readable summaries rather than
   requiring duplicate free-text frequency. Keep dose limits distinct.
-- [ ] Preserve approved profile experiment selections for full page/modal/slide-over
-  and current/context-aware launchers; coordinate with the profile parity subplan.
+Experiment variants (full page/modal/slide-over and current/context-aware
+launchers) are deferred outside the profile migration by the 10 October owner
+correction. They impose no dependency or acceptance gate on profile delivery.
 - [ ] Integrate scanner/manual entry without making camera access mandatory.
 - [ ] Verify back/next preserves input, invalid steps do not create partial records,
   close/return preserves intended context, duplicate submission is safe and the

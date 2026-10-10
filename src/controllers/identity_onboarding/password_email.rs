@@ -42,7 +42,7 @@ pub(super) fn render(
     data["proof"] = json!(proof);
     data["email"] = json!(email);
     data["authenticity_token"] = json!(authenticity_token);
-    match format::render().view(view, "identity_onboarding/password_email.html", data) {
+    match super::security_locale::view(view, "identity_onboarding/password_email.html", data) {
         Ok(response) => (
             csrf,
             [

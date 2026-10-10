@@ -83,6 +83,11 @@ impl<'a> Page<'a> {
             );
             data["can_manage_carers"] =
                 json!(crate::models::care::person_carers::can_assign(&tenant, person_id).await?);
+            data["avatar_attached"] = json!(
+                crate::models::profile::avatar::person_attachment(&tenant, person_id)
+                    .await?
+                    .is_some()
+            );
             let notice_key = format!(
                 "person_care_notice:{}:{person_id}",
                 tenant.scope().household_id

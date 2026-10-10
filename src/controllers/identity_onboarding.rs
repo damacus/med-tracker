@@ -27,8 +27,11 @@ mod password_email;
 mod recovery;
 mod rendering;
 mod security;
+mod security_locale;
 mod totp;
 mod verification_resend;
+
+pub(crate) use passkeys::request as identity_request;
 
 pub fn routes() -> Routes {
     Routes::new()
@@ -89,6 +92,7 @@ pub fn routes() -> Routes {
             "/account/security/totp/disable/confirm",
             post(totp::disable_confirm),
         )
+        .layer(axum::middleware::from_fn(security_locale::scope))
 }
 
 async fn create_form(

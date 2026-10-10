@@ -1,12 +1,13 @@
 {% extends "layouts/base.html" %}
 {% block content %}
+{% include "identity_onboarding/security_labels.html" %}
 <section class="max-w-xl mx-auto card shell-card"><div class="card-body gap-4">
-  <h1 class="text-3xl font-semibold">Add passkey</h1>
-  <p>Register this passkey within five minutes of confirming your identity.</p>
+  <h1 class="text-3xl font-semibold">{{ flow.add_passkey }}</h1>
+  <p>{{ flow.passkey_hint }}</p>
   <p role="alert" tabindex="-1" data-registration-error hidden></p>
   <form data-add-passkey data-operation="{{ operation_id }}" class="space-y-4">
-    <label class="form-control" for="passkey-name">Passkey name<input id="passkey-name" name="name" class="input input-bordered" maxlength="100" required></label>
-    <button type="submit" class="btn shell-primary">Register Passkey</button>
+    <label class="form-control" for="passkey-name">{{ flow.passkey_name }}<input id="passkey-name" name="name" class="input input-bordered" maxlength="100" required></label>
+    <button type="submit" class="btn shell-primary">{{ flow.register_passkey }}</button>
   </form>
 </div></section>
 <script src="/static/js/add-passkey.js" defer></script>

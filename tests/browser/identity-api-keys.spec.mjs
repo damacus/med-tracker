@@ -29,6 +29,7 @@ test('personal key issuance and revocation roll back with audit failure and expi
   expect(created.status()).toBe(200);
   const bearer = { Authorization: `Bearer ${(await created.json()).apiKey}` };
   await page.goto('/account/security/keys');
+  await expect(page.getByText('Last used: Never', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Revoke API key', exact: true })).toHaveCount(1);
   const key_id = await page.locator('input[name="key_id"]').inputValue();
   await careFixture.failPersonalKeyAudit();

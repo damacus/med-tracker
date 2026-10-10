@@ -1,5 +1,6 @@
 pub mod administration;
 pub mod assignments;
+pub mod browser_push;
 pub mod browser_query;
 pub mod browser_treatments;
 pub mod dosages;
@@ -13,6 +14,7 @@ pub mod medications;
 pub mod orders;
 pub mod pause_periods;
 pub mod people;
+pub mod profile_export;
 pub mod push_subscriptions;
 pub mod report_pdf;
 pub mod reports;

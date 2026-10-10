@@ -32,7 +32,7 @@ async function runFoundationTask(args, options) {
   }
 }
 
-export async function withOwnedDatabase(callback, runTask = runFoundationTask, inheritedEnvironment = process.env) {
+export async function withOwnedDatabase(callback, runTask = runFoundationTask, inheritedEnvironment = process.env, { storage = false } = {}) {
   const project = `FOUNDATION_PROJECT=mtloco-http-${randomUUID()}`;
   const environment = { ...inheritedEnvironment };
   const timings = [];
@@ -47,7 +47,23 @@ export async function withOwnedDatabase(callback, runTask = runFoundationTask, i
     const endpoint = String(await run('foundation:db-port', 10000)).trim();
     const match = /^127\.0\.0\.1:(\d+)$/.exec(endpoint);
     if (!match || Number(match[1]) < 1 || Number(match[1]) > 65535) throw new Error(`Invalid owned PostgreSQL endpoint: ${endpoint}`);
-    return await callback(`postgres://medtracker:medtracker_password@127.0.0.1:${match[1]}/medtracker_loco`, () => run('foundation:db-provision', 60000), { project: project.slice('FOUNDATION_PROJECT='.length), timings });
+    let storageEnvironment = {};
+    if (storage) {
+      await run('foundation:storage-up', 180000);
+      const storageEndpoint = String(await run('foundation:storage-port', 10000)).trim();
+      const storageMatch = /^127\.0\.0\.1:(\d+)$/.exec(storageEndpoint);
+      if (!storageMatch || Number(storageMatch[1]) < 1 || Number(storageMatch[1]) > 65535) throw new Error(`Invalid owned storage endpoint: ${storageEndpoint}`);
+      storageEnvironment = {
+        ACTIVE_STORAGE_SERVICE: 's3',
+        ACTIVE_STORAGE_S3_ENDPOINT: `http://127.0.0.1:${storageMatch[1]}`,
+        ACTIVE_STORAGE_S3_BUCKET: 'medtracker-fixture',
+        ACTIVE_STORAGE_S3_REGION: 'us-east-1',
+        ACTIVE_STORAGE_S3_ACCESS_KEY_ID: 'storage-smoke-access',
+        ACTIVE_STORAGE_S3_SECRET_ACCESS_KEY: 'storage-smoke-secret',
+        ACTIVE_STORAGE_S3_FORCE_PATH_STYLE: 'true',
+      };
+    }
+    return await callback(`postgres://medtracker:medtracker_password@127.0.0.1:${match[1]}/medtracker_loco`, () => run('foundation:db-provision', 60000), { project: project.slice('FOUNDATION_PROJECT='.length), timings, storageEnvironment });
   } catch (error) {
     failed = true;
     throw error;

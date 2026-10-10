@@ -25,6 +25,7 @@ mod recovery;
 mod regeneration;
 mod request;
 mod schema;
+pub mod security;
 mod sessions;
 mod store;
 pub use http::boundary as http_boundary;

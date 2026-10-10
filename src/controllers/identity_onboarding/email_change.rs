@@ -43,7 +43,7 @@ fn render(view: &TeraView, csrf: CsrfToken, mode: &str, link: Option<&Link>) -> 
     data["authenticity_token"] = json!(token);
     data["operation_id"] = json!(link.map(|value| &value.operation_id));
     data["proof"] = json!(link.map(|value| &value.token));
-    match format::render().view(view, "identity_onboarding/email_change.html", data) {
+    match super::security_locale::view(view, "identity_onboarding/email_change.html", data) {
         Ok(response) => (
             csrf,
             [

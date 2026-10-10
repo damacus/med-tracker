@@ -83,7 +83,7 @@ pub(super) async fn link(
     data["title"] = json!("Link ZITADEL");
     data["authenticity_token"] = json!(token);
     data["link_id"] = json!(link.link_id);
-    match format::render().view(&view, "identity_onboarding/provider_link.html", data) {
+    match super::security_locale::view(&view, "identity_onboarding/provider_link.html", data) {
         Ok(response) => (csrf, [(header::CACHE_CONTROL, "no-store")], response).into_response(),
         Err(_) => super::rendering::unavailable(),
     }
@@ -115,7 +115,7 @@ pub(super) async fn registration(
     data["name"] = profile["name"].clone();
     data["authenticity_token"] = json!(token);
     data["registration_id"] = json!(link.registration_id);
-    match format::render().view(
+    match super::security_locale::view(
         &view,
         "identity_onboarding/provider_registration.html",
         data,
@@ -190,7 +190,7 @@ fn successful(response: better_auth_core::AuthResponse, view: &TeraView) -> Resp
 fn unavailable(view: &TeraView) -> Response {
     let mut data = crate::controllers::medications::rendering::appearance_context();
     data["title"] = json!("ZITADEL sign-in unavailable");
-    match format::render().view(view, "identity_onboarding/provider_error.html", data) {
+    match super::security_locale::view(view, "identity_onboarding/provider_error.html", data) {
         Ok(response) => (
             StatusCode::UNAUTHORIZED,
             [

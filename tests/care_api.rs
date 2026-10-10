@@ -6,8 +6,16 @@ mod administration;
 mod api_session;
 #[path = "care_api/assignments.rs"]
 mod assignments;
+#[path = "care_api/avatar.rs"]
+mod avatar;
+#[path = "care_api/avatar_storage.rs"]
+mod avatar_storage;
 #[path = "care_api/better_auth_store.rs"]
 mod better_auth_store;
+#[path = "care_api/browser_push.rs"]
+mod browser_push;
+#[path = "care_api/browser_push_reminders.rs"]
+mod browser_push_reminders;
 #[path = "care_api/crud.rs"]
 mod crud;
 #[path = "care_api/dosages.rs"]
@@ -38,6 +46,8 @@ mod people;
 mod person_carers;
 #[path = "care_api/profile.rs"]
 mod profile;
+#[path = "care_api/profile_export.rs"]
+mod profile_export;
 #[path = "care_api/push_subscriptions.rs"]
 mod push_subscriptions;
 #[path = "care_api/reports.rs"]
@@ -81,6 +91,35 @@ struct Application {
 }
 
 impl Application {
+    async fn avatar_bucket_server(
+        &self,
+        bucket: &str,
+    ) -> (String, AppContext, tokio::task::JoinHandle<()>) {
+        let mut config = Config::new(&Environment::Test).unwrap();
+        config.database.uri = self.fixture.runtime_uri.clone();
+        let Some(QueueConfig::Postgres(queue)) = config.queue.as_mut() else {
+            panic!("PostgreSQL queue required")
+        };
+        queue.uri = self.fixture.runtime_uri.clone();
+        config.settings.get_or_insert_with(|| json!({}))["avatar_storage"] =
+            json!({"bucket":bucket});
+        let boot = med_tracker::app::App::boot(StartMode::ServerOnly, &Environment::Test, config)
+            .await
+            .unwrap();
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let origin = format!("http://{}", listener.local_addr().unwrap());
+        let router = boot.router.unwrap();
+        let server = tokio::spawn(async move {
+            axum::serve(
+                listener,
+                router.into_make_service_with_connect_info::<std::net::SocketAddr>(),
+            )
+            .await
+            .unwrap()
+        });
+        (origin, boot.app_context, server)
+    }
+
     async fn new() -> Self {
         Self::new_with_occurrence_key(Some("synthetic-dose-occurrence-signing-key")).await
     }

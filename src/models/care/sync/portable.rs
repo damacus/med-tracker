@@ -117,11 +117,48 @@ pub(super) async fn payload(
     tenant: &TenantTransaction,
     zone: chrono_tz::Tz,
 ) -> Result<AppliedBatch, OperationError> {
+    scoped_payload(tenant, zone, false).await
+}
+
+pub(crate) async fn export_payload(
+    tenant: &TenantTransaction,
+    zone: chrono_tz::Tz,
+) -> Result<AppliedBatch, OperationError> {
+    scoped_payload(tenant, zone, true).await
+}
+
+async fn scoped_payload(
+    tenant: &TenantTransaction,
+    zone: chrono_tz::Tz,
+    exporting: bool,
+) -> Result<AppliedBatch, OperationError> {
     let db = tenant.transaction();
     let format = "medtracker.portable.v2";
     let include_health_events = true;
     let household_id = tenant.scope().household_id;
-    let people = visible_people(tenant).await?;
+    let mut people = visible_people(tenant).await?;
+    if exporting && !access::can_manage_household(tenant) {
+        let manageable = crate::models::entities::grant::Entity::find()
+            .filter(crate::models::entities::grant::Column::HouseholdId.eq(household_id))
+            .filter(
+                crate::models::entities::grant::Column::HouseholdMembershipId
+                    .eq(tenant.membership().id),
+            )
+            .filter(crate::models::entities::grant::Column::AccessLevel.eq("manage"))
+            .filter(crate::models::entities::grant::Column::RevokedAt.is_null())
+            .filter(
+                Condition::any()
+                    .add(crate::models::entities::grant::Column::ExpiresAt.is_null())
+                    .add(
+                        crate::models::entities::grant::Column::ExpiresAt
+                            .gt(Utc::now().naive_utc()),
+                    ),
+            )
+            .all(db)
+            .await?;
+        let ids: HashSet<i64> = manageable.iter().map(|grant| grant.person_id).collect();
+        people.retain(|person| ids.contains(&person.id));
+    }
     let person_ids: Vec<i64> = people.iter().map(|person| person.id).collect();
     let schedules = schedule::Entity::find()
         .filter(schedule::Column::HouseholdId.eq(household_id))
@@ -166,7 +203,25 @@ pub(super) async fn payload(
     } else {
         Vec::new()
     };
-    let medication_ids = super::reading::visible_medication_ids(db, tenant).await?;
+    let medication_ids = if exporting && !access::can_manage_household(tenant) {
+        let health_links = health_event_medication::Entity::find()
+            .filter(health_event_medication::Column::HouseholdId.eq(household_id))
+            .filter(
+                health_event_medication::Column::HealthEventId
+                    .is_in(health.iter().map(|row| row.id).collect::<Vec<_>>()),
+            )
+            .all(db)
+            .await?;
+        schedules
+            .iter()
+            .map(|row| row.medication_id)
+            .chain(assignments.iter().map(|row| row.medication_id))
+            .chain(takes.iter().filter_map(|row| row.taken_from_medication_id))
+            .chain(health_links.iter().filter_map(|row| row.medication_id))
+            .collect()
+    } else {
+        super::reading::visible_medication_ids(db, tenant).await?
+    };
     let medications = medication::Entity::find()
         .filter(medication::Column::HouseholdId.eq(household_id))
         .filter(medication::Column::Id.is_in(medication_ids.iter().copied().collect::<Vec<_>>()))
@@ -196,9 +251,15 @@ pub(super) async fn payload(
         .chain(takes.iter().filter_map(|row| row.taken_from_location_id))
         .collect();
     location_ids.retain(|id| *id > 0);
-    let locations = location::Entity::find()
-        .filter(location::Column::HouseholdId.eq(household_id))
-        .filter(location::Column::Id.is_in(location_ids.iter().copied().collect::<Vec<_>>()))
+    let locations_query =
+        location::Entity::find().filter(location::Column::HouseholdId.eq(household_id));
+    let locations_query = if exporting && access::can_manage_household(tenant) {
+        locations_query
+    } else {
+        locations_query
+            .filter(location::Column::Id.is_in(location_ids.iter().copied().collect::<Vec<_>>()))
+    };
+    let locations = locations_query
         .order_by_asc(location::Column::Id)
         .all(db)
         .await
