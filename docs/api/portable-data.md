@@ -16,6 +16,12 @@ Use the OpenAPI contract for endpoint parameters and response envelopes. This gu
 
 Every plaintext payload includes `scope`, `exported_at`, `source_instance_id`, and `records`. A sync snapshot also includes `cursor`.
 
+Profile JSON and ZIP downloads are plaintext archives. Neither the Rails portable
+importer nor the Loco application currently restores `medtracker.backup.v1` ZIP
+files directly. The Rails import path accepts encrypted portable v1/v2 bundles;
+changing an archive's format marker is not a supported restore procedure. Keep
+profile archives distinct from a tested, restorable migration bundle.
+
 Request `portable_format=medtracker.portable.v2` on the encrypted export endpoint to include saved dose outcomes. Omitting this parameter retains the v1 format and collection shape.
 
 ### Dose outcomes in v2 bundles
