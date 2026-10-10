@@ -34,6 +34,7 @@ if (command === 'docker') {
 } else {
   state.owned_endpoint_used = process.env.DATABASE_URL === 'postgres://medtracker:medtracker_password@127.0.0.1:54321/medtracker_loco';
   state.child_identity_key_synthetic = process.env.MEDTRACKER_SESSION_KEY === Buffer.alloc(64, 7).toString('base64');
+  state.child_verification_key_synthetic = process.env.RAILS_SECRET_KEY_BASE === 'synthetic-slice-rails-verification-secret';
   state.child_compose_environment_removed = ['COMPOSE_FILE', 'COMPOSE_PROJECT_NAME', 'COMPOSE_PROFILES'].every(name => process.env[name] === undefined);
   state.child_docker_environment_removed = ['DOCKER_HOST', 'DOCKER_CONTEXT', 'DOCKER_CONFIG', 'DOCKER_TLS_VERIFY', 'DOCKER_CERT_PATH'].every(name => process.env[name] === undefined);
   if (process.env.DATABASE_URL === ${JSON.stringify(ambientUrl)}) state.foreign_resources_touched += 1;
@@ -61,6 +62,7 @@ test('slice_runner_ignores_ambient_database', async () => {
   await withProcessFixture(0, (result, state) => {
     assert.equal(result.status, 0, result.stderr);
     assert.equal(state.owned_endpoint_used, true, 'The slice child used the ambient database instead of an owned endpoint');
+    assert.equal(state.child_verification_key_synthetic, true, 'Signup verification requires a synthetic Rails secret in the slice child');
     assert.equal(state.foreign_resources_touched, 0);
     assert.equal(state.child_compose_environment_removed, true);
     assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });

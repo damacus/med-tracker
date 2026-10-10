@@ -113,9 +113,7 @@ pub async fn accept_signup(
         .one(transaction)
         .await?
         .ok_or_else(super::acceptance::unavailable)?;
-    if !crate::models::authorization::household_manager(&inviter, household_id) {
-        return Err(super::acceptance::unavailable());
-    }
+    super::authority::authorize(transaction, &inviter, &invitation).await?;
     let actor = super::acceptance::AcceptanceActor {
         account_id: owner.id,
         person_id: person.id,

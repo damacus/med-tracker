@@ -102,9 +102,10 @@ pub async fn create(
         Some(invitation) => invitation.email.clone(),
         None => invitations::validated_email(&input.email).map_err(operation_error)?,
     };
+    let preferences = initial_preferences()?;
     let account = transaction.query_one_raw(sql(
-        "INSERT INTO accounts(email,password_hash,status,created_at,updated_at) VALUES($1,$2,1,now(),now()) ON CONFLICT(email) WHERE status = ANY(ARRAY[1,2]) DO NOTHING RETURNING id",
-        [email.clone().into(),hash.clone().into()])).await.map_err(unavailable)?
+        "INSERT INTO accounts(email,password_hash,status,preferences,created_at,updated_at) VALUES($1,$2,1,$3,now(),now()) ON CONFLICT(email) WHERE status = ANY(ARRAY[1,2]) DO NOTHING RETURNING id",
+        [email.clone().into(),hash.clone().into(),preferences.into()])).await.map_err(unavailable)?
         .ok_or_else(|| invalid("email", "is already registered"))?;
     let account_id: i64 = account.try_get("", "id").map_err(unavailable)?;
     transaction
@@ -165,6 +166,11 @@ pub async fn create(
     queue_verification(&transaction, account_id, email, &key, origin).await?;
     transaction.commit().await.map_err(unavailable)?;
     Ok(())
+}
+
+fn initial_preferences() -> Result<serde_json::Value, SignupError> {
+    let zone = super::time_zone::preferred(&serde_json::json!({})).map_err(unavailable)?;
+    Ok(serde_json::json!({"time_zone": zone.to_string()}))
 }
 
 async fn queue_verification(

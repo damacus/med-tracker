@@ -1,0 +1,46 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-3xl mx-auto space-y-6">
+  <h1 class="text-3xl font-semibold">{{ title }}</h1>
+  <p>{{ person.name }} · {{ labels.form.subtitle }}</p>
+  {% if error %}
+  <div id="health-event-error" class="alert alert-error" role="alert"><div><p>{{ error }}</p>{% if editing %}<a class="link" href="{{ latest_url }}">{{ labels.browser.latest }}</a>{% endif %}</div></div>
+  {% endif %}
+  <form method="post" action="{{ action }}" class="card bg-base-100 border border-base-300" {% if error %}aria-describedby="health-event-error"{% endif %}>
+    <div class="card-body gap-6">
+      <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+      <input type="hidden" name="etag" value="{{ draft.etag }}">
+      <input type="hidden" name="event_kind" value="{{ draft.event_kind }}">
+      <input type="hidden" name="locale" value="{{ lang }}">
+      <div class="grid gap-2"><label for="health-title" class="font-semibold">{{ labels.form.title }}</label><input id="health-title" name="title" value="{{ draft.title }}" class="input w-full" required></div>
+      <div class="grid sm:grid-cols-2 gap-6">
+        <div class="grid gap-2"><label for="health-started" class="font-semibold">{{ labels.form.started_on }}</label><input id="health-started" name="started_on" type="date" value="{{ draft.started_on }}" class="input w-full min-w-0" required></div>
+        <div class="grid gap-2"><label for="health-ended" class="font-semibold">{{ labels.form.ended_on }}</label><input id="health-ended" name="ended_on" type="date" value="{{ draft.ended_on }}" class="input w-full min-w-0" {% if end_error %}aria-invalid="true" aria-describedby="health-event-error"{% endif %}>
+          <label class="flex items-center gap-3"><input name="ongoing" type="checkbox" value="1" class="checkbox" {% if draft.ongoing | default(value="") == "1" %}checked{% endif %}>{{ labels.form.ongoing }}</label>
+        </div>
+      </div>
+      <div class="grid gap-2"><label for="health-severity" class="font-semibold">{{ labels.form.severity }}</label>
+        <select id="health-severity" name="severity" class="select w-full">
+          <option value="" {% if draft.severity == "" %}selected{% endif %}>{{ labels.form.no_severity }}</option>
+          {% for value in ["mild","moderate","severe"] %}<option value="{{ value }}" {% if draft.severity == value %}selected{% endif %}>{{ labels.severities[value] }}</option>{% endfor %}
+        </select>
+      </div>
+      {% if side_effect %}
+      <fieldset class="space-y-3"><legend class="font-semibold">{{ labels.form.suspected_medications }}</legend>
+        {% if medications | length == 0 %}<p>{{ labels.browser.medications_empty }}</p>{% endif %}
+        {% for medication in medications %}
+        <label class="flex items-center gap-3"><input name="medication_{{ medication.id }}" type="checkbox" value="1" class="checkbox" {% if medication.selected %}checked{% endif %}>{{ medication.name }}</label>
+        {% endfor %}
+      </fieldset>
+      {% endif %}
+      <div class="grid gap-2"><label for="health-notes" class="font-semibold">{{ labels.form.notes }}</label><textarea id="health-notes" name="notes" class="textarea w-full" rows="4">{{ draft.notes }}</textarea></div>
+      <div class="grid gap-2"><label for="health-action" class="font-semibold">{{ labels.form.action_taken }}</label><textarea id="health-action" name="action_taken" class="textarea w-full" rows="3">{{ draft.action_taken }}</textarea></div>
+      <label class="flex items-center gap-3"><input name="medical_help_sought" type="checkbox" value="1" class="checkbox" {% if draft.medical_help_sought | default(value="") == "1" %}checked{% endif %}>{{ labels.form.medical_help_sought }}</label>
+      <div class="flex flex-wrap gap-3">
+        <button type="submit" class="btn btn-neutral">{{ labels.actions.save }}</button>
+        <a class="btn btn-ghost" href="/households/{{ slug }}/people/{{ person.id }}/health_events?locale={{ lang }}">{{ labels.actions.cancel }}</a>
+      </div>
+    </div>
+  </form>
+</section>
+{% endblock content %}
