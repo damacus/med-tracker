@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { classify } from '../classify.mjs';
 
 test('Loco source and framework configuration select the Loco job', () => {
@@ -60,4 +64,33 @@ test('Loco CI avoids historical audit setup during application verification', ()
   assert.ok(job);
   assert.doesNotMatch(job, /apt-get|fetch-depth: 0/);
   assert.match(job, /run: task ci/);
+});
+
+test('dashboard fixtures validate layouts without a Fish dependency', () => {
+  const repoRoot = fileURLToPath(new URL('../../..', import.meta.url));
+  const taskPath = spawnSync('which', ['task'], { encoding: 'utf8' }).stdout.trim();
+  assert.ok(taskPath);
+  const directory = mkdtempSync(join(tmpdir(), 'dashboard-task-'));
+  writeFileSync(join(directory, 'psql'), '#!' + process.execPath + '\nprocess.stdout.write(JSON.stringify(process.argv.slice(2)));\n', { mode: 0o755 });
+  const run = variant => spawnSync(taskPath, [
+    '--taskfile', 'Taskfiles/browser-care.yml', 'dashboard-variant',
+    'CARE_DATABASE_URL=postgres://unused.invalid/fixture',
+    'DASHBOARD_VARIANT=' + variant,
+  ], { cwd: repoRoot, env: { ...process.env, PATH: directory }, encoding: 'utf8' });
+  try {
+    for (const variant of ['current', 'time_first', 'family_lanes', 'calm_focus']) {
+      const result = run(variant);
+      assert.equal(result.status, 0, result.stderr);
+      const args = JSON.parse(result.stdout);
+      assert.equal(args[0], 'postgres://unused.invalid/fixture');
+      assert.ok(args.at(-1).includes("jsonb_build_object('dashboard_variant','" + variant + "')"));
+    }
+    for (const variant of ['', 'unknown', "current'); SELECT 1; --"]) {
+      const result = run(variant);
+      assert.notEqual(result.status, 0);
+      assert.equal(result.stdout, '', 'invalid layout must not reach psql');
+    }
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });

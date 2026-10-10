@@ -783,9 +783,10 @@ tasks:
 
   dashboard-variant:
     requires:
-      vars: [CARE_DATABASE_URL, DASHBOARD_VARIANT]
-    preconditions:
-      - 'fish -c "contains -- {{.DASHBOARD_VARIANT}} current time_first family_lanes calm_focus"'
+      vars:
+        - CARE_DATABASE_URL
+        - name: DASHBOARD_VARIANT
+          enum: [current, time_first, family_lanes, calm_focus]
     cmds:
       - >-
         psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1
