@@ -2,6 +2,80 @@ use super::contract::{assert_value, resolve};
 use super::*;
 
 #[tokio::test]
+async fn age_validation_uses_application_date_at_birthday_boundaries() {
+    use chrono::TimeZone;
+    use med_tracker::controllers::api::care::AgeValidationClock;
+
+    let app = Application::new().await;
+    app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences='{\"time_zone\":\"Pacific/Kiritimati\"}' WHERE id=71001; UPDATE people SET person_type=2,has_capacity=false,date_of_birth='2000-01-01' WHERE id=73001; UPDATE people SET person_type=0,has_capacity=true,date_of_birth='1980-01-01' WHERE id=73002; INSERT INTO carer_relationships(household_id,carer_id,patient_id,relationship_type,active,created_at,updated_at) VALUES(72001,73002,73001,'family_member',true,now(),now())").await.unwrap();
+    let token = app.token().await;
+    let endpoint = format!("{}/api/v1/households/72001/people/73001", app.origin);
+    for (instant, expected) in [("2026-06-30T23:59:59Z", 422), ("2026-07-01T00:00:00Z", 200)] {
+        let instant = chrono::DateTime::parse_from_rfc3339(instant)
+            .unwrap()
+            .with_timezone(&chrono::Utc);
+        app.context
+            .shared_store
+            .insert(AgeValidationClock::fixed(instant, chrono_tz::UTC));
+        let response = app
+            .client
+            .patch(&endpoint)
+            .bearer_auth(&token)
+            .json(&json!({"person":{"date_of_birth":"2008-07-01"}}))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status().as_u16(), expected);
+    }
+    app.context.shared_store.insert(AgeValidationClock::fixed(
+        chrono::Utc.with_ymd_and_hms(2026, 7, 1, 0, 30, 0).unwrap(),
+        chrono_tz::America::Los_Angeles,
+    ));
+    let rejected = app
+        .client
+        .patch(&endpoint)
+        .bearer_auth(&token)
+        .json(&json!({"person":{"date_of_birth":"2008-07-01"}}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(rejected.status().as_u16(), 422);
+    app.close().await;
+}
+
+#[tokio::test]
+async fn age_validation_rejects_minor_creation_on_eighteenth_birthday() {
+    use med_tracker::controllers::api::care::AgeValidationClock;
+
+    for (instant, expected) in [("2026-06-30T23:59:59Z", 201), ("2026-07-01T00:00:00Z", 422)] {
+        let app = Application::new().await;
+        app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences='{\"time_zone\":\"America/Los_Angeles\"}' WHERE id=71001").await.unwrap();
+        app.context.shared_store.insert(AgeValidationClock::fixed(
+            chrono::DateTime::parse_from_rfc3339(instant)
+                .unwrap()
+                .with_timezone(&chrono::Utc),
+            chrono_tz::UTC,
+        ));
+        let token = app.token().await;
+        let response = app.client.post(format!("{}/api/v1/households/72001/people", app.origin))
+            .bearer_auth(&token)
+            .json(&json!({"person":{"name":"Birthday boundary","date_of_birth":"2008-07-01","person_type":"minor"}}))
+            .send().await.unwrap();
+        assert_eq!(response.status().as_u16(), expected);
+        let body: Value = response.json().await.unwrap();
+        if expected == 201 {
+            assert_eq!(body["data"]["has_capacity"], false);
+        } else {
+            assert_eq!(
+                body["error"]["errors"]["person_type"],
+                json!(["does not match age"])
+            );
+        }
+        app.close().await;
+    }
+}
+
+#[tokio::test]
 async fn people_audit_failure_rolls_back_person_grants_carer_home_and_permissions() {
     let app = Application::new().await;
     let token = app.token().await;
@@ -519,4 +593,69 @@ async fn person_get_matches_documented_contract() {
     assert_eq!(outside_body["error"]["code"], "not_found");
     assert_eq!(outside_body["error"]["request_id"], outside_request_id);
     app.close().await;
+}
+
+#[tokio::test]
+async fn people_without_carer_can_be_created_and_edited_without_capacity_change() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    app.fixture
+        .admin
+        .execute_unprepared("UPDATE household_memberships SET person_id=NULL WHERE id=74001")
+        .await
+        .unwrap();
+    let endpoint = format!("{}/api/v1/households/72001/people", app.origin);
+    for (kind, birth) in [("minor", "2020-01-01"), ("dependent_adult", "1990-01-01")] {
+        let response = app.client.post(&endpoint).bearer_auth(&token).json(&json!({"person":{"name":format!("Synthetic unsupported {kind}"),"date_of_birth":birth,"person_type":kind,"has_capacity":true}})).send().await.unwrap();
+        let status = response.status().as_u16();
+        let body: Value = response.json().await.unwrap_or(Value::Null);
+        let id = body["data"]["id"].as_i64().unwrap_or(-1);
+        let update = app
+            .client
+            .patch(format!("{endpoint}/{id}"))
+            .bearer_auth(&token)
+            .json(&json!({"person":{"name":format!("Synthetic edited unsupported {kind}")}}))
+            .send()
+            .await
+            .unwrap();
+        let update_status = update.status().as_u16();
+        let updated: Value = update.json().await.unwrap_or(Value::Null);
+        let row = app
+            .fixture
+            .admin
+            .query_one_raw(Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                "SELECT count(*) AS n FROM carer_relationships WHERE patient_id=$1 AND active",
+                [id.into()],
+            ))
+            .await
+            .unwrap()
+            .unwrap();
+        let carers: i64 = row.try_get("", "n").unwrap();
+        assert_eq!((status, update_status), (201, 200));
+        assert_eq!(updated["data"]["has_capacity"], false);
+        assert_eq!(updated["data"]["person_type"], kind);
+        assert_eq!(carers, 0);
+    }
+    app.close().await;
+}
+
+#[tokio::test]
+async fn people_existing_dependents_without_carer_can_be_edited() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    app.fixture.admin.execute_unprepared("UPDATE people SET date_of_birth='2020-01-01' WHERE id=73002; UPDATE people SET date_of_birth='1990-01-01' WHERE id=73003; INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,created_at,updated_at) VALUES(78002,72001,74001,73002,'manage','parent',now(),now()),(78003,72001,74001,73003,'manage','family_member',now(),now())").await.unwrap();
+    let mut statuses = Vec::new();
+    for id in [73002, 73003] {
+        let response = app.client.patch(format!("{}/api/v1/households/72001/people/{id}",app.origin)).bearer_auth(&token).json(&json!({"person":{"name":format!("Synthetic independent edit {id}"),"has_capacity":true}})).send().await.unwrap();
+        statuses.push(response.status().as_u16());
+    }
+    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM people WHERE id IN (73002,73003) AND NOT has_capacity AND name LIKE 'Synthetic independent edit%') AS edited,(SELECT count(*) FROM carer_relationships) AS carers,(SELECT count(*) FROM versions WHERE item_type='Person' AND event='update') AS audits")).await.unwrap().unwrap();
+    let counts: Vec<i64> = ["edited", "carers", "audits"]
+        .iter()
+        .map(|key| row.try_get("", key).unwrap())
+        .collect();
+    app.close().await;
+    assert_eq!(statuses, vec![200, 200]);
+    assert_eq!(counts, vec![2, 0, 2]);
 }

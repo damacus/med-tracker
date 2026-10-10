@@ -1,5 +1,6 @@
 mod acceptance;
 mod acceptance_effects;
+mod authority;
 mod delivery;
 mod input;
 pub(crate) use input::validated_email;
@@ -21,6 +22,7 @@ use serde_json::{Value, json};
 
 pub use acceptance::{accept, accept_browser};
 pub use issuing::create;
+pub(crate) use issuing::create_for_parent;
 pub use lifecycle::{cancel, resend, revoke};
 pub use reading::{list, list_api, options, preview};
 pub use signup::accept_signup;
