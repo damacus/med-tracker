@@ -209,6 +209,11 @@ async fn medication_get_matches_documented_contract() {
     );
 
     let endpoint = format!("{}/api/v1/households/72001/medications/80001", app.origin);
+    app.fixture
+        .admin
+        .execute_unprepared("UPDATE medications SET reorder_status=1 WHERE id=80001")
+        .await
+        .unwrap();
     let read = app
         .client
         .get(&endpoint)
@@ -238,6 +243,7 @@ async fn medication_get_matches_documented_contract() {
     assert_eq!(body["data"]["id"], 80001);
     assert_eq!(body["data"]["name"], "Synthetic tablets");
     assert_eq!(body["data"]["location_id"], 79001);
+    assert_eq!(body["data"]["reorder_status"], "ordered");
 
     let unchanged = app
         .client
@@ -256,7 +262,7 @@ async fn medication_get_matches_documented_contract() {
     let unchanged_bytes = unchanged.bytes().await.unwrap();
     assert_eq!(unchanged_status, 304);
     assert_eq!(unchanged_etag.as_deref(), Some(etag.as_str()));
-    assert!(unchanged_bytes.is_empty() || unchanged_bytes == "null");
+    assert!(unchanged_bytes.is_empty());
 
     let missing = app
         .client
