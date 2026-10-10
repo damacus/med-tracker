@@ -576,3 +576,106 @@ async fn household_administration_strong_parameters_filter_protected_fields_and_
     assert_eq!(statuses, vec![200, 200, 201, 400, 400, 400, 409]);
     assert_eq!((status, version, n), ("active".into(), 3, 1));
 }
+
+#[tokio::test]
+async fn household_admin_settings_get_matches_documented_contract() {
+    use super::contract::{assert_value, contract, resolve};
+    let app = Application::new().await;
+    let token = app.token().await;
+    let endpoint = format!("{}/api/v1/households/72001/admin/settings", app.origin);
+    let contract = contract();
+    let operation = &contract["paths"]["/households/{household_id}/admin/settings"]["get"];
+    assert_eq!(operation["operationId"], "getHouseholdAdminSettings");
+    assert_eq!(
+        operation["responses"]["403"]["$ref"],
+        "#/components/responses/Forbidden"
+    );
+    assert!(
+        operation["responses"]["200"].get("headers").is_none(),
+        "getHouseholdAdminSettings must not promise cache headers"
+    );
+    let forbidden = resolve(contract, &operation["responses"]["403"]);
+    let forbidden_schema = resolve(
+        contract,
+        &forbidden["content"]["application/json"]["schema"],
+    );
+
+    let read = app
+        .client
+        .get(&endpoint)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let read_status = read.status().as_u16();
+    let body: Value = read.json().await.unwrap();
+    assert_eq!(read_status, 200);
+    assert_eq!(
+        operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"],
+        "#/components/schemas/HouseholdAdminSettingsResponse"
+    );
+    assert_value(
+        contract,
+        resolve(
+            contract,
+            &operation["responses"]["200"]["content"]["application/json"]["schema"],
+        ),
+        &body,
+        "household settings response",
+    );
+    assert_eq!(body["data"]["id"], 72001);
+    assert_eq!(body["data"]["name"], "Synthetic household");
+    assert_eq!(body["data"]["slug"], "persistence-fixture");
+    assert_eq!(body["data"]["timezone"], "Europe/London");
+    assert_eq!(body["data"]["subscription_plan"], "free");
+
+    app.fixture
+        .admin
+        .execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001")
+        .await
+        .unwrap();
+    let denied = app
+        .client
+        .get(&endpoint)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let denied_status = denied.status().as_u16();
+    let denied_request_id = denied.headers()["x-request-id"]
+        .to_str()
+        .unwrap()
+        .to_owned();
+    let denied_body: Value = denied.json().await.unwrap();
+    assert_eq!(denied_status, 403);
+    assert_value(
+        contract,
+        forbidden_schema,
+        &denied_body,
+        "member settings read",
+    );
+    assert_eq!(denied_body["error"]["code"], "forbidden");
+    assert_eq!(denied_body["error"]["request_id"], denied_request_id);
+
+    let foreign = app
+        .client
+        .get(format!(
+            "{}/api/v1/households/72002/admin/settings",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let foreign_status = foreign.status().as_u16();
+    let foreign_body: Value = foreign.json().await.unwrap();
+    assert_eq!(foreign_status, 403);
+    assert_value(
+        contract,
+        forbidden_schema,
+        &foreign_body,
+        "foreign household settings",
+    );
+    assert_eq!(foreign_body["error"]["code"], "forbidden");
+    app.close().await;
+}
