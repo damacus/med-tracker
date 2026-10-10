@@ -11,9 +11,9 @@
     </div>
     <p class="shell-muted col-span-full">{{ labels.profiles.show.description }}</p>
   </header>
-  <nav class="tabs tabs-border grid grid-cols-2 sm:grid-cols-4" aria-label="{{ labels.profiles.show.title }}" data-profile-tabs>
+  <nav class="profile-tabs" aria-label="{{ labels.profiles.show.title }}" data-profile-tabs>
     {% for section in ['profile', 'security', 'notifications', 'advanced'] %}
-    <a class="tab h-auto min-h-12 py-3 whitespace-normal" id="profile-tab-{{ section }}" href="#{{ section }}" data-profile-tab="{{ section }}">{{ labels.profiles.sections[section].title }}</a>
+    <a class="profile-tab" id="profile-tab-{{ section }}" href="#{{ section }}" data-profile-tab="{{ section }}">{{ labels.profiles.sections[section].title }}</a>
     {% endfor %}
   </nav>
   <section id="profile" class="profile-section min-w-0" aria-labelledby="profile-tab-profile" data-profile-panel>

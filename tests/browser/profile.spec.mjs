@@ -108,6 +108,27 @@ test('profile retains the four Rails panels, summaries and keyboard navigation',
   await expect(page.getByRole('heading', { name: 'Personal Information', exact: true })).toHaveCount(0);
 });
 
+test('profile section navigation uses the inset selected-tab treatment', async ({ page }) => {
+  await openProfile(page);
+  const tablist = page.getByRole('tablist');
+  const treatment = await tablist.evaluate(element => {
+    const list = getComputedStyle(element);
+    const tabs = [...element.querySelectorAll('[role="tab"]')];
+    const active = getComputedStyle(tabs.find(tab => tab.getAttribute('aria-selected') === 'true'));
+    return {
+      borderWidths: ['Top', 'Right', 'Bottom', 'Left'].map(side => Number.parseFloat(list[`border${side}Width`])),
+      borderRadius: Number.parseFloat(list.borderTopLeftRadius),
+      background: list.backgroundColor,
+      activeBackground: active.backgroundColor,
+      activeShadow: active.boxShadow
+    };
+  });
+  expect(treatment.borderWidths.every(width => width > 0)).toBe(true);
+  expect(treatment.borderRadius).toBeGreaterThan(8);
+  expect(treatment.activeBackground).not.toBe(treatment.background);
+  expect(treatment.activeShadow).not.toBe('none');
+});
+
 test('ordered shortcuts retain invalid entries and control the mobile navigation after saving', async ({ page }) => {
   test.setTimeout(180000);
   await openProfile(page);
