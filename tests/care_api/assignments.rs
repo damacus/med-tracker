@@ -639,18 +639,36 @@ async fn person_medication_list_matches_documented_contract() {
     );
     assert_eq!(body["data"][0]["id"], 81001);
 
-    let paginated = app
-        .client
-        .get(format!("{collection}?page=1&per_page=1"))
-        .bearer_auth(&token)
-        .send()
+    app.fixture
+        .admin
+        .execute_unprepared("INSERT INTO medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at) VALUES(92005,72001,79001,'Second synthetic tablets',10,2,'tablet',now(),now()); INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(92010,72001,73001,92005,2,'tablet',1,now(),now()); INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(92011,72001,73002,80001,2,'tablet',1,now(),now())")
         .await
         .unwrap();
-    let paginated_status = paginated.status().as_u16();
-    let paginated_body: Value = paginated.json().await.unwrap();
-    assert_eq!(paginated_status, 200);
-    assert_eq!(paginated_body["meta"]["per_page"], 1);
-    assert_eq!(paginated_body["meta"]["total_count"], 1);
+
+    for (page, expected_id) in [(1, 81001), (2, 92010)] {
+        let paginated = app
+            .client
+            .get(format!("{collection}?page={page}&per_page=1"))
+            .bearer_auth(&token)
+            .send()
+            .await
+            .unwrap();
+        let paginated_status = paginated.status().as_u16();
+        let paginated_body: Value = paginated.json().await.unwrap();
+        assert_eq!(paginated_status, 200);
+        assert_value(
+            contract,
+            resolve(
+                contract,
+                &operation["responses"]["200"]["content"]["application/json"]["schema"],
+            ),
+            &paginated_body,
+            "paginated person medication collection",
+        );
+        assert_eq!(paginated_body["meta"]["per_page"], 1);
+        assert_eq!(paginated_body["meta"]["total_count"], 2);
+        assert_eq!(paginated_body["data"][0]["id"], expected_id);
+    }
 
     for query in ["page=0", "per_page=101", "updated_since=invalid"] {
         let rejected = app
@@ -673,7 +691,7 @@ async fn person_medication_list_matches_documented_contract() {
 
     app.fixture
         .admin
-        .execute_unprepared("INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(92011,72001,73002,80001,2,'tablet',1,now(),now()); UPDATE household_memberships SET role='member' WHERE id=74001")
+        .execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001")
         .await
         .unwrap();
     let scoped = app
@@ -695,9 +713,10 @@ async fn person_medication_list_matches_documented_contract() {
         &scoped_body,
         "grant scoped collection",
     );
-    assert_eq!(scoped_body["meta"]["total_count"], 1);
-    assert_eq!(scoped_body["data"].as_array().unwrap().len(), 1);
+    assert_eq!(scoped_body["meta"]["total_count"], 2);
+    assert_eq!(scoped_body["data"].as_array().unwrap().len(), 2);
     assert_eq!(scoped_body["data"][0]["id"], 81001);
+    assert_eq!(scoped_body["data"][1]["id"], 92010);
 
     let foreign = app
         .client
