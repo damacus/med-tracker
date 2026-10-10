@@ -123,6 +123,19 @@ pub fn assert_value(contract: &Value, schema: &Value, value: &Value, label: &str
                             "{label} must match documented identifier pattern"
                         );
                     }
+                    r"^-?[0-9]+(?:\.[0-9]+)?$" => {
+                        let rest = text.strip_prefix('-').unwrap_or(text);
+                        let (integer, fraction) = rest
+                            .split_once('.')
+                            .map_or((rest, None), |(whole, part)| (whole, Some(part)));
+                        assert!(
+                            !integer.is_empty()
+                                && integer.bytes().all(|byte| byte.is_ascii_digit())
+                                && fraction.is_none_or(|part| !part.is_empty()
+                                    && part.bytes().all(|byte| byte.is_ascii_digit())),
+                            "{label} must match documented decimal pattern"
+                        );
+                    }
                     other => panic!("{label}: unhandled pattern {other}"),
                 }
             }
