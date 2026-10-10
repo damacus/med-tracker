@@ -515,3 +515,33 @@ requires an explicit user-provided ignore reason, which has been requested.
 No detector-wide exclusion, source obfuscation or history rewrite was introduced.
 Remote checks must be evaluated on the latest pushed commit independently of the
 passing local application gate. Nothing has been merged or deployed.
+
+### Drawer and profile annotations, 10 October 2026
+
+The owner requested a follow-up stacked on #2504. Reuse the Rails
+`Layouts::MobileMenu`, `Layouts::ProfileMenu`, `Layouts::NavigationItems` and
+`Layouts::MobileRail` actions and icons within the existing Loco theme. The
+household header gains a hamburger drawer and account avatar; the profile's
+inline primary links move into the drawer. Administration remains conditional
+on the existing household management permission. Account actions retain the
+existing profile destination and CSRF-protected sign-out.
+
+The four browser annotations require icons in the mobile shortcuts, primary
+navigation in the drawer, Appearance on the profile page, and visible current
+values for profile photo, time zone, shortcuts and appearance. The owner
+explicitly chose **accordions** for those four settings. Editing therefore stays
+inline, with native disclosure controls, saved-value summaries and preserved
+unsaved values in other sections. Security confirmation dialogs remain intact.
+
+This changes presentation and navigation only: existing profile writes, sessions,
+permissions, avatar storage and audit operations remain the authority. The shell
+projection uses the existing private, household-authorised navigation endpoint;
+it is not cached. The signed-out shell retains its appearance control. No schema,
+API-client, worker, production-data or deployment change is included.
+
+Acceptance covers desktop/mobile navigation, focus return, icon links, sign-out,
+ordinary-member menu filtering, expired sessions, inline saves and reloads,
+validation failures, no-JavaScript forms and the existing profile regressions.
+The initial navigation and accordion tests failed on the previous UI, then
+passed after implementation. Screenshots use synthetic records and are saved
+under `docs/screenshots/app-navigation-*`, `app-drawer-*` and `account-menu-*`.

@@ -64,8 +64,8 @@ test('schedule creation, editing and recorded pause and resume preserve stock an
   await expect(page.getByLabel('Dose amount', { exact: true })).toHaveAccessibleDescription('must fit two decimal places');
   expect((await careFixture.treatmentProbe()).schedules).toBe(0);
   await page.getByLabel('Dose amount', { exact: true }).fill('2');
-  const fields = await page.locator('form[method="post"]').evaluate(form => Object.fromEntries(new FormData(form)));
-  const createPath = new URL(await page.locator('form[method="post"]').getAttribute('action'), careFixture.origin).pathname;
+  const fields = await page.getByRole('main').locator('form[method="post"]').evaluate(form => Object.fromEntries(new FormData(form)));
+  const createPath = new URL(await page.getByRole('main').locator('form[method="post"]').getAttribute('action'), careFixture.origin).pathname;
   for (const authenticity_token of ['', 'wrong']) {
     expect((await page.request.post(createPath, { form: { ...fields, authenticity_token }, headers: { Origin: careFixture.origin }, maxRedirects: 0 })).status()).toBe(403);
   }
@@ -92,8 +92,8 @@ test('schedule creation, editing and recorded pause and resume preserve stock an
   await card.getByRole('button', { name: 'Resume treatment', exact: true }).click();
   expect(await careFixture.treatmentProbe()).toMatchObject({ schedule_active: true, open_pauses: 0 });
   await card.getByRole('link', { name: 'Edit schedule', exact: true }).click();
-  const updateFields = await page.locator('form[method="post"]').evaluate(form => Object.fromEntries(new FormData(form)));
-  const updatePath = await page.locator('form[method="post"]').getAttribute('action');
+  const updateFields = await page.getByRole('main').locator('form[method="post"]').evaluate(form => Object.fromEntries(new FormData(form)));
+  const updatePath = await page.getByRole('main').locator('form[method="post"]').getAttribute('action');
   const before = await careFixture.treatmentProbe();
   await careFixture.revoke();
   expect([403, 404]).toContain((await page.request.post(updatePath, { form: { ...updateFields, dose_amount: '4' }, headers: { Origin: careFixture.origin }, maxRedirects: 0 })).status());
@@ -158,8 +158,8 @@ test('treatment edits require the captured version and preserve a stale draft wi
   const before = await careFixture.treatmentProbe();
   for (const [kind, id] of sources) {
     await page.goto(`/households/persistence-fixture/people/73001/treatments/${kind}/${id}/edit`);
-    const fields = await page.locator('form[method="post"]').evaluate(form => Object.fromEntries(new FormData(form)));
-    const path = await page.locator('form[method="post"]').getAttribute('action');
+    const fields = await page.getByRole('main').locator('form[method="post"]').evaluate(form => Object.fromEntries(new FormData(form)));
+    const path = await page.getByRole('main').locator('form[method="post"]').getAttribute('action');
     const { etag, ...withoutVersion } = fields;
     for (const form of [withoutVersion, { ...fields, etag: ' ' }]) {
       statuses.push((await page.request.post(path, { form, headers: { Origin: careFixture.origin }, maxRedirects: 0 })).status());
@@ -192,8 +192,8 @@ test('treatment audit failure rolls back a newly created schedule', { tag: '@iso
   await navigate(page);
   await page.getByRole('link', { name: 'Add schedule', exact: true }).click();
   await scheduleFields(page);
-  const fields = await page.locator('form[method="post"]').evaluate(form => Object.fromEntries(new FormData(form)));
-  const path = await page.locator('form[method="post"]').getAttribute('action');
+  const fields = await page.getByRole('main').locator('form[method="post"]').evaluate(form => Object.fromEntries(new FormData(form)));
+  const path = await page.getByRole('main').locator('form[method="post"]').getAttribute('action');
   await careFixture.failTreatmentAudit();
   expect((await page.request.post(path, { form: fields, headers: { Origin: careFixture.origin }, maxRedirects: 0 })).status()).toBe(503);
   expect(await careFixture.treatmentProbe()).toMatchObject({ schedules: 0, schedule_audits: 0, supply: '10.00' });

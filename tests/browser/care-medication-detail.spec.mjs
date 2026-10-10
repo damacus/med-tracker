@@ -1,3 +1,4 @@
+import { chooseProfileAppearance } from './profile-appearance.mjs';
 import { test, expect } from './care-fixtures.mjs';
 import { measureCareContrast } from './care-contrast.mjs';
 
@@ -102,11 +103,7 @@ test('record confirmation remains readable in color and neutral themes at narrow
   await openMedication(page);
   const palettes = ['default', 'serene-sage', 'modern-clinical', 'warm-earth', 'deep-lavender', 'forest-care', 'sunset-support', 'tech-indigo', 'soft-rose', 'minty-fresh'];
   for (const appearance of ['light', 'dark']) for (const palette of palettes) {
-    await page.getByRole('button', { name: 'Appearance', exact: true }).click();
-    const chooser = page.getByRole('dialog', { name: 'Appearance', exact: true });
-    await chooser.locator(`[data-palette-choice="${palette}"]`).click();
-    await chooser.getByRole('button', { name: appearance === 'dark' ? 'Dark' : 'Light', exact: true }).click();
-    await chooser.getByRole('button', { name: 'Close', exact: true }).click();
+    await chooseProfileAppearance(page, appearance, palette);
     await expect(page.locator('html')).toHaveAttribute('data-theme', `${palette}-${appearance}`);
     await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
     const dialog = page.getByRole('dialog', { name: 'Record dose', exact: true });
@@ -234,10 +231,7 @@ test('medication details surface safety warnings and low-stock decisions', async
     const record = await page.getByRole('heading', { name: 'Record dose', exact: true }).boundingBox();
     expect(supply.y).toBeLessThan(record.y);
   }
-  await page.getByRole('button', { name: 'Appearance', exact: true }).click();
-  await page.getByRole('button', { name: 'Dark', exact: true }).click();
-  await page.keyboard.press('Escape');
-  await expect(page.getByRole('dialog', { name: 'Appearance', exact: true })).not.toBeVisible();
+  await chooseProfileAppearance(page, 'dark');
   const darkContrast = await measureCareContrast(page);
   for (const sample of darkContrast.filter(sample => ['.badge-warning', '.badge-error'].includes(sample.selector))) {
     expect(sample.ratio, `dark ${sample.selector} contrast ${sample.ratio}`).toBeGreaterThanOrEqual(4.5);

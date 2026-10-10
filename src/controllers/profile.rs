@@ -247,6 +247,7 @@ async fn navigation(
     Path(slug): Path<String>,
     session: Session<SessionPgPool>,
     (headers, request): (HeaderMap, Option<Extension<LocoRequestId>>),
+    token: CsrfToken,
 ) -> Response {
     let (principal, tenant) = match begin(&ctx, &session, &slug, &request_id(request)).await {
         Ok(value) => value,
@@ -278,13 +279,52 @@ async fn navigation(
         .into_iter()
         .filter_map(|id| choices.iter().find(|choice| choice["id"] == id).cloned())
         .collect::<Vec<_>>();
+    let person =
+        match profile::linked_person(&tenant, principal.account_id(), PersonAccess::View).await {
+            Ok(person) => Some(person),
+            Err(OperationError::Forbidden | OperationError::NotFound) => None,
+            Err(error) => return operation_error(error),
+        };
+    let name = person
+        .as_ref()
+        .map_or(account.email.as_str(), |person| person.name.as_str());
+    let initials = name
+        .split_whitespace()
+        .filter_map(|word| word.chars().next())
+        .take(2)
+        .flat_map(char::to_uppercase)
+        .collect::<String>();
+    let avatar_attached = if person.is_some() {
+        match profile::avatar::attachment(&tenant, principal.account_id(), PersonAccess::View).await
+        {
+            Ok(value) => value.is_some(),
+            Err(error) => return operation_error(error),
+        }
+    } else {
+        false
+    };
+    let Ok(authenticity_token) = token.authenticity_token() else {
+        return unavailable();
+    };
+    let sidebar = choices
+        .iter()
+        .filter(|link| link["id"] != "profile")
+        .map(|link| {
+            let mut link = link.clone();
+            link["label"] =
+                labels["layouts"]["sidebar"][link["id"].as_str().unwrap_or_default()].clone();
+            link
+        })
+        .collect::<Vec<_>>();
+    let shell = json!({"name":name,"initials":initials,"avatar_attached":avatar_attached,"authenticity_token":authenticity_token,"sidebar":sidebar,"choices":choices,"labels":labels["layouts"],"navigation_label":labels["ruby_ui"]["common"]["navigation_menu"]});
     if tenant.commit().await.is_err() {
         return unavailable();
     }
     (
         StatusCode::OK,
+        token,
         [(header::CACHE_CONTROL, "no-store")],
-        axum::Json(json!({"label":labels["profiles"]["mobile_shortcuts"]["title"],"links":links})),
+        axum::Json(json!({"label":labels["profiles"]["mobile_shortcuts"]["title"],"links":links,"shell":shell})),
     )
         .into_response()
 }

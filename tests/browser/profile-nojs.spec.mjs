@@ -10,11 +10,12 @@ test('profile setting forms remain usable without JavaScript', async ({ page }) 
   await page.waitForURL('/');
   await page.goto('/households/persistence-fixture/profile');
   const timezone = page.locator('#profile-timezone');
-  await expect(timezone).toBeVisible();
+  await timezone.locator('summary').click();
   await timezone.getByLabel('Time Zone', { exact: true }).selectOption('Europe/London');
   await timezone.getByRole('button', { name: 'Save time zone', exact: true }).click();
   await expect(page.locator('[data-testid="profile-personal-info-card"]')).toContainText('Europe/London');
   const shortcuts = page.locator('#profile-shortcuts');
+  await shortcuts.locator('summary').click();
   await shortcuts.getByLabel('Shortcut 1', { exact: true }).selectOption('profile');
   await shortcuts.getByLabel('Shortcut 2', { exact: true }).selectOption('');
   await shortcuts.getByLabel('Shortcut 3', { exact: true }).selectOption('');

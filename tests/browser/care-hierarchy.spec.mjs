@@ -1,3 +1,4 @@
+import { chooseProfileAppearance } from './profile-appearance.mjs';
 import { test, expect } from './care-fixtures.mjs';
 import { measureCareContrast } from './care-contrast.mjs';
 
@@ -55,6 +56,7 @@ test('dose-option details group dose, timing, stock and defaults with compact ac
   await page.getByRole('link', { name: 'Edit Medication', exact: true }).click();
   await page.getByRole('link', { name: 'Manage Dose Options', exact: true }).click();
   await page.getByRole('link', { name: 'Add dose option', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Open menu', exact: true })).toBeVisible();
   await page.screenshot({ path: info.outputPath(`care-hierarchy-dose-before-${info.project.name}.png`), fullPage: true });
 
   const groups = ['Dose', 'Timing', 'Stock', 'Defaults'];
@@ -90,10 +92,7 @@ test('dose-option details group dose, timing, stock and defaults with compact ac
   for (const sample of ratios.filter(sample => ['.card label', '.card input', '.card select', '.btn-neutral', '.card .btn-ghost'].includes(sample.selector))) {
     expect(sample.ratio, `${sample.selector} contrast ${sample.ratio}`).toBeGreaterThanOrEqual(4.5);
   }
-  await page.getByRole('button', { name: 'Appearance', exact: true }).click();
-  await page.getByRole('button', { name: 'Dark', exact: true }).click();
-  await page.keyboard.press('Escape');
-  await expect(page.getByRole('dialog', { name: 'Appearance' })).not.toBeVisible();
+  await chooseProfileAppearance(page, 'dark');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'default-dark');
   const darkRatios = await measureCareContrast(page);
   for (const sample of darkRatios.filter(sample => ['.card label', '.card input', '.card select', '.btn-neutral', '.card .btn-ghost'].includes(sample.selector))) {
@@ -189,7 +188,7 @@ test('a stale treatment edit reports conflict before whole-hour validation', asy
   await page.getByLabel('Minimum hours between doses', { exact: true }).fill('2');
   await page.getByRole('button', { name: 'Add schedule', exact: true }).click();
   await page.getByRole('article', { name: 'Synthetic tablets schedules', exact: true }).getByRole('link', { name: 'Edit schedule', exact: true }).click();
-  const form = page.locator('form[method="post"]');
+  const form = page.getByRole('main').locator('form[method="post"]');
   const stale = await form.evaluate(element => Object.fromEntries(new FormData(element)));
   const action = await form.getAttribute('action');
   await page.getByLabel('Minimum hours between doses', { exact: true }).fill('3');
@@ -208,7 +207,7 @@ test('schedule and assignment browser edits reject changed fractional hours', as
   const before = await careFixture.treatmentProbe();
   for (const kind of ['schedules', 'assignments']) {
     await page.goto(`/households/persistence-fixture/people/73001/treatments/${kind}/${kind === 'schedules' ? '83001' : '81001'}/edit`);
-    const form = page.locator('form[method="post"]');
+    const form = page.getByRole('main').locator('form[method="post"]');
     const fields = await form.evaluate(element => Object.fromEntries(new FormData(element)));
     const response = await page.request.post(await form.getAttribute('action'), {
       form: { ...fields, min_hours_between_doses: '1.5' },
@@ -386,7 +385,7 @@ test('new taper timing rejects fractional hours submitted outside the browser co
   const step = page.getByRole('group', { name: 'Taper step 1', exact: true });
   await step.getByLabel('Dose amount', { exact: true }).fill('2');
   await step.getByLabel('Times', { exact: true }).fill('09:00, 18:00');
-  const form = page.locator('form[method="post"]');
+  const form = page.getByRole('main').locator('form[method="post"]');
   const fields = await form.evaluate(element => Object.fromEntries(new FormData(element)));
   const response = await page.request.post(await form.getAttribute('action'), {
     form: { ...fields, step_0_min_hours_between_doses: '1.5' },
@@ -489,7 +488,7 @@ test('a claimed taper origin cannot move a fractional interval to another step',
   const edit = page.url();
   await careFixture.seedLegacySecondTaperHour();
   await page.goto(edit);
-  const form = page.locator('form[method="post"]');
+  const form = page.getByRole('main').locator('form[method="post"]');
   const fields = await form.evaluate(element => Object.fromEntries(new FormData(element)));
   const response = await page.request.post(await form.getAttribute('action'), {
     form: {
