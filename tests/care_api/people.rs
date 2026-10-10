@@ -431,6 +431,7 @@ async fn person_get_matches_documented_contract() {
     assert_eq!(etag_schema["required"], true);
     assert_eq!(etag_schema["schema"]["type"], "string");
 
+    app.fixture.admin.execute_unprepared("UPDATE people SET date_of_birth='1985-02-03',email='synthetic-adult@example.test' WHERE id=73001; INSERT INTO location_memberships(household_id,location_id,person_id,created_at,updated_at) VALUES(72001,79001,73001,now(),now()); INSERT INTO notification_preferences(id,household_id,person_id,portable_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,morning_time,afternoon_time,evening_time,night_time,created_at,updated_at) VALUES(87997,72001,73001,'00000000-0000-4000-8000-000000008797',true,true,false,true,false,'08:30:00',NULL,NULL,NULL,now(),now())").await.unwrap();
     let read = app
         .client
         .get(format!(
@@ -462,6 +463,14 @@ async fn person_get_matches_documented_contract() {
     assert_eq!(body["data"]["id"], 73001);
     assert_eq!(body["data"]["person_type"], "adult");
     assert_eq!(body["data"]["has_capacity"], true);
+    assert_eq!(body["data"]["date_of_birth"], "1985-02-03");
+    assert_eq!(body["data"]["email"], "synthetic-adult@example.test");
+    assert_eq!(body["data"]["location_ids"], json!([79001]));
+    assert_eq!(body["data"]["notification_preference_id"], 87997);
+    assert_eq!(
+        body["data"]["notification_preference_portable_id"],
+        "00000000-0000-4000-8000-000000008797"
+    );
 
     let missing = app
         .client
@@ -495,6 +504,10 @@ async fn person_get_matches_documented_contract() {
         .await
         .unwrap();
     let outside_status = outside_scope.status().as_u16();
+    let outside_request_id = outside_scope.headers()["x-request-id"]
+        .to_str()
+        .unwrap()
+        .to_owned();
     let outside_body: Value = outside_scope.json().await.unwrap();
     assert_eq!(outside_status, 404);
     assert_value(
@@ -504,5 +517,6 @@ async fn person_get_matches_documented_contract() {
         "outside view scope",
     );
     assert_eq!(outside_body["error"]["code"], "not_found");
+    assert_eq!(outside_body["error"]["request_id"], outside_request_id);
     app.close().await;
 }
