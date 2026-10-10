@@ -198,16 +198,26 @@ async fn reserve(
         "INSERT INTO notification_events(household_id,person_id,event_type,event_key,metadata,created_at,updated_at) SELECT $1,$2,$3,$4,$5,timezone('UTC',clock_timestamp()),timezone('UTC',clock_timestamp()) WHERE NOT EXISTS(SELECT 1 FROM notification_events WHERE household_id=$1 AND event_type=$3 AND event_key=$6) ON CONFLICT DO NOTHING RETURNING id",
         [scope.household_id.into(),intent.person_id.into(),intent.kind.into(),intent.key.clone().into(),json!({"account_id":scope.actor.account_id,"delivery_status":"pending"}).into(),intent.legacy_key.clone().into()]
     )).await?;
+    let created = row.is_some();
+    let row = match row {
+        Some(row) => Some(row),
+        None => tenant.transaction().query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+            "SELECT id FROM notification_events WHERE household_id=$1 AND person_id=$2 AND event_type=$3 AND event_key=$4 AND metadata->>'account_id'=$5 AND metadata->>'delivery_status'='pending' AND NOT EXISTS(SELECT 1 FROM notification_events WHERE household_id=$1 AND event_type=$3 AND event_key=$6)",
+            [scope.household_id.into(),intent.person_id.into(),intent.kind.into(),intent.key.clone().into(),scope.actor.account_id.to_string().into(),intent.legacy_key.clone().into()]
+        )).await?,
+    };
     let Some(row) = row else {
         return Ok(None);
     };
     let id = row.try_get("", "id")?;
-    audit(
-        &tenant,
-        "reminder.requested",
-        json!({"notification_event_id":id,"kind":intent.kind}),
-    )
-    .await?;
+    if created {
+        audit(
+            &tenant,
+            "reminder.requested",
+            json!({"notification_event_id":id,"kind":intent.kind}),
+        )
+        .await?;
+    }
     tenant.commit().await?;
     Ok(Some(id))
 }
@@ -222,6 +232,13 @@ async fn deliver(
 ) -> Result<bool, OperationError> {
     let tenant = access::begin(&ctx.db, scope).await?;
     push_subscriptions::lock_account(&tenant).await?;
+    let pending = tenant.transaction().query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+        "SELECT id FROM notification_events WHERE id=$1 AND household_id=$2 AND metadata->>'account_id'=$3 AND metadata->>'delivery_status'='pending'",
+        [event_id.into(),scope.household_id.into(),scope.actor.account_id.to_string().into()]
+    )).await?;
+    if pending.is_none() {
+        return Ok(false);
+    }
     let eligible = plans(&tenant, now).await?.contains(intent);
     let subscriptions = if eligible {
         push_subscription::Entity::find()

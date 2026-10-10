@@ -10,6 +10,82 @@ use std::sync::{Arc, Mutex};
 struct Reminders(Mutex<Vec<Value>>);
 
 #[tokio::test]
+async fn browser_reminder_retries_a_pending_reservation_once_after_database_failure() {
+    let app = Application::new().await;
+    let now = Utc::now()
+        .with_second(0)
+        .unwrap()
+        .with_nanosecond(0)
+        .unwrap();
+    app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences=jsonb_build_object('time_zone','UTC') WHERE id=71001; UPDATE person_medications SET administration_kind=0,dose_cycle=0,max_daily_doses=1,created_at=now()-interval '2 days' WHERE id=81001; INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/retry','synthetic','synthetic',now(),now())").await.unwrap();
+    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+        "INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,morning_time,afternoon_time,evening_time,night_time,created_at,updated_at) VALUES(72001,73001,true,true,false,false,true,$1,NULL,NULL,NULL,now(),now())", [now.time().into()])).await.unwrap();
+    app.fixture.admin.execute_unprepared("CREATE FUNCTION fail_reminder_delivery_read() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS $$ BEGIN REVOKE SELECT ON public.push_subscriptions FROM med_tracker_app; RETURN NEW; END $$; CREATE TRIGGER fail_reminder_delivery_read AFTER INSERT ON security_audit_events FOR EACH ROW WHEN (NEW.event_type='browser_push.reminder.requested') EXECUTE FUNCTION fail_reminder_delivery_read()").await.unwrap();
+    let transport = Arc::new(Reminders(Mutex::new(vec![])));
+    app.context.shared_store.insert(Service {
+        public_key: String::new(),
+        transport: transport.clone(),
+    });
+    let scope = HouseholdScope {
+        actor: Actor { account_id: 71001 },
+        household_id: 72001,
+        request_id: "synthetic-reminder-retry".into(),
+    };
+    assert!(
+        browser_push::reminders::deliver_account(&app.context, &scope, now)
+            .await
+            .is_err()
+    );
+    assert!(transport.0.lock().unwrap().is_empty());
+    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT count(*) AS count FROM notification_events WHERE event_type='dose_due' AND metadata->>'delivery_status'='pending'")).await.unwrap().unwrap();
+    assert_eq!(row.try_get::<i64>("", "count").unwrap(), 1);
+    app.fixture.admin.execute_unprepared("DROP TRIGGER fail_reminder_delivery_read ON security_audit_events; DROP FUNCTION fail_reminder_delivery_read(); GRANT SELECT ON public.push_subscriptions TO med_tracker_app").await.unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO notification_events(household_id,person_id,event_type,event_key,metadata,created_at,updated_at) SELECT household_id,person_id,event_type,replace(event_key,'browser:71001:',''),'{}'::jsonb,now(),now() FROM notification_events WHERE event_type='dose_due'").await.unwrap();
+    assert_eq!(
+        browser_push::reminders::deliver_account(&app.context, &scope, now)
+            .await
+            .unwrap(),
+        0
+    );
+    assert!(transport.0.lock().unwrap().is_empty());
+    app.fixture.admin.execute_unprepared("DELETE FROM notification_events WHERE event_type='dose_due' AND event_key LIKE 'dose-due:%'").await.unwrap();
+    let (first, second) = tokio::join!(
+        browser_push::reminders::deliver_account(&app.context, &scope, now),
+        browser_push::reminders::deliver_account(&app.context, &scope, now)
+    );
+    assert_eq!(first.unwrap() + second.unwrap(), 1);
+    assert_eq!(transport.0.lock().unwrap().len(), 1);
+    assert_eq!(
+        browser_push::reminders::deliver_account(&app.context, &scope, now)
+            .await
+            .unwrap(),
+        0
+    );
+    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT count(*) AS count FROM notification_events WHERE event_type='dose_due' AND metadata->>'delivery_status'='accepted' AND sent_at IS NOT NULL")).await.unwrap().unwrap();
+    assert_eq!(row.try_get::<i64>("", "count").unwrap(), 1);
+    for event in [
+        "browser_push.reminder.requested",
+        "browser_push.reminder.completed",
+    ] {
+        let row = app
+            .fixture
+            .admin
+            .query_one_raw(Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                "SELECT count(*) AS count FROM security_audit_events WHERE event_type=$1",
+                [event.into()],
+            ))
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(row.try_get::<i64>("", "count").unwrap(), 1);
+    }
+    app.close().await;
+}
+
+#[tokio::test]
 async fn browser_low_stock_reminder_follows_committed_threshold_crossing_once() {
     let app = Application::new().await;
     app.fixture.admin.execute_unprepared("UPDATE medications SET current_supply=11,reorder_threshold=10 WHERE id=80001; INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,created_at,updated_at) VALUES(72001,73001,true,false,false,true,false,now(),now()); INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/stock-reminder','synthetic','synthetic',now(),now())").await.unwrap();
