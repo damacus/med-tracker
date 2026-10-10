@@ -9,6 +9,15 @@ pub async fn create(
     provenance: Option<&CredentialProvenance>,
 ) -> Result<Value, OperationError> {
     administration::authorize(tenant).await?;
+    create_authorized(tenant, attributes, acceptance_url, provenance).await
+}
+
+async fn create_authorized(
+    tenant: &TenantTransaction,
+    attributes: Value,
+    acceptance_url: Option<&url::Url>,
+    provenance: Option<&CredentialProvenance>,
+) -> Result<Value, OperationError> {
     let (email, role) = input::attributes(&attributes)?;
     if household_invitation::Entity::find()
         .filter(household_invitation::Column::HouseholdId.eq(tenant.scope().household_id))
@@ -151,4 +160,104 @@ async fn dependent_grants(
             .await?;
     }
     Ok(())
+}
+
+pub(crate) async fn create_for_parent(
+    tenant: &TenantTransaction,
+    person_id: i64,
+    email: &str,
+    acceptance_url: &url::Url,
+    provenance: Option<&CredentialProvenance>,
+) -> Result<Value, OperationError> {
+    use sea_orm::QuerySelect;
+    crate::models::care::sync::lock(tenant).await?;
+    crate::models::care::person_carers::selected(tenant, person_id).await?;
+    let email = input::validated_email(email)?;
+    let pending = household_invitation::Entity::find()
+        .filter(household_invitation::Column::HouseholdId.eq(tenant.scope().household_id))
+        .filter(household_invitation::Column::Email.eq(&email))
+        .filter(household_invitation::Column::AcceptedAt.is_null())
+        .filter(household_invitation::Column::RevokedAt.is_null())
+        .lock_exclusive()
+        .one(tenant.transaction())
+        .await?;
+    if let Some(row) = pending {
+        let now = Utc::now().naive_utc();
+        if row.membership_role != "member" || row.expires_at <= now {
+            return Err(invalid(
+                "invitation",
+                "has an incompatible or expired invitation",
+            ));
+        }
+        let grants = household_invitation_grant::Entity::find()
+            .filter(household_invitation_grant::Column::HouseholdId.eq(tenant.scope().household_id))
+            .filter(household_invitation_grant::Column::HouseholdInvitationId.eq(row.id))
+            .lock_exclusive()
+            .all(tenant.transaction())
+            .await?;
+        if grants.iter().any(|grant| {
+            grant.relationship_type != "parent"
+                || grant.access_level != "manage"
+                || grant.expires_at.is_some()
+        }) {
+            return Err(invalid(
+                "invitation",
+                "has an incompatible invitation grant",
+            ));
+        }
+        if !grants.iter().any(|grant| grant.person_id == person_id) {
+            let grant = household_invitation_grant::ActiveModel {
+                household_id: Set(tenant.scope().household_id),
+                household_invitation_id: Set(row.id),
+                person_id: Set(person_id),
+                access_level: Set("manage".into()),
+                relationship_type: Set("parent".into()),
+                expires_at: Set(None),
+                created_at: Set(now),
+                updated_at: Set(now),
+                ..Default::default()
+            }
+            .insert(tenant.transaction())
+            .await?;
+            let state = json!({"household_id":grant.household_id,"household_invitation_id":grant.household_invitation_id,
+                "person_id":grant.person_id,"access_level":grant.access_level,"relationship_type":grant.relationship_type,"expires_at":grant.expires_at});
+            administration::persistence::record_version_as(
+                tenant,
+                "HouseholdInvitationGrant",
+                grant.id,
+                "create",
+                None,
+                state,
+                provenance,
+            )
+            .await?;
+            administration::persistence::event(tenant,"household_access.parent_invitation_attached",
+                json!({"target_invitation_id":row.id,"target_grant_id":grant.id,"person_id":person_id,"access_level":"manage","relationship_type":"parent","outcome":"success"}),provenance).await?;
+        }
+        let inviter =
+            crate::models::entities::membership::Entity::find_by_id(row.invited_by_membership_id)
+                .filter(
+                    crate::models::entities::membership::Column::HouseholdId
+                        .eq(tenant.scope().household_id),
+                )
+                .lock_exclusive()
+                .one(tenant.transaction())
+                .await?
+                .ok_or_else(|| invalid("invitation", "has unavailable inviter authority"))?;
+        super::authority::authorize(tenant.transaction(), &inviter, &row)
+            .await
+            .map_err(|error| match error {
+                OperationError::Unavailable => error,
+                _ => invalid("invitation", "has unavailable inviter authority"),
+            })?;
+        return Ok(json!({"data":summary(&row,now)}));
+    }
+    create_authorized(
+        tenant,
+        json!({"email":email,"membership_role":"member",
+        "dependent_ids":[person_id],"relationship_type":"parent","access_level":"manage"}),
+        Some(acceptance_url),
+        provenance,
+    )
+    .await
 }

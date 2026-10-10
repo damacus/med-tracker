@@ -18,6 +18,8 @@ mod dose_history;
 mod dose_outcomes;
 #[path = "care_api/fixture.rs"]
 mod fixture;
+#[path = "care_api/health_events.rs"]
+mod health_events;
 #[path = "care_api/invitations.rs"]
 mod invitations;
 #[path = "care_api/legacy_pause.rs"]
@@ -32,6 +34,8 @@ mod notification_preferences;
 mod pause_periods;
 #[path = "care_api/people.rs"]
 mod people;
+#[path = "care_api/person_carers.rs"]
+mod person_carers;
 #[path = "care_api/platform.rs"]
 mod platform;
 #[path = "care_api/profile.rs"]
@@ -48,6 +52,8 @@ mod saved_status;
 mod schedule_lifecycle;
 #[path = "care_api/schedule_scope.rs"]
 mod schedule_scope;
+#[path = "care_api/signup_timezone.rs"]
+mod signup_timezone;
 #[path = "care_api/stock_orders.rs"]
 mod stock_orders;
 #[path = "care_api/sync.rs"]

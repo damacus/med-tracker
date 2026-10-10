@@ -1249,6 +1249,22 @@ en:
       title: Care Actions
       subtitle: Update medication plans and schedules.
     carer_relationships:
+      browser:
+        invitation_unavailable: "This address has an expired or incompatible invitation. Ask a household manager to review it."
+        unknown: "Other relationship"
+        relationships: "Parents and carers"
+        empty: "No parents or carers are assigned."
+        remove: "Remove carer"
+        restore: "Restore carer"
+        active: "Active"
+        inactive: "Inactive"
+        parent: "Parent"
+        family_member: "Family member"
+        professional_carer: "Professional carer"
+        invalid_assignment: "Select an eligible adult carer and relationship."
+        stale: "This relationship changed. Review the current assignment before trying again."
+        forbidden: "You no longer have permission to make this change."
+        unavailable: "The assignment could not be saved. Your entries are still here; try again."
       created: Parent or carer assigned.
       invited: Invitation sent with this dependent attached.
       invalid_role: Enter an email address for an adult parent account.
@@ -1276,8 +1292,8 @@ en:
       select_person_type: Select person type
       has_capacity: Has capacity to manage own medication
       note: 'Note:'
-      capacity_hint: A person without capacity must have at least one carer assigned.
-      capacity_hint_assign_carer: Please assign a carer before removing capacity.
+      capacity_hint: "A person without capacity can be saved without an active carer. Minors and dependent adults do not have capacity."
+      capacity_hint_assign_carer: "You can assign or invite a carer after saving."
       save: Save
       cancel: Cancel
       create: Create Person
@@ -1635,6 +1651,15 @@ en:
     updated: Notification settings saved.
     update_failed: Failed to save notification settings.
   health_events:
+    browser:
+      form_error: "Check the health-event details."
+      date_error: "End date must be on or after the start date."
+      stale_error: "This health event changed. Review the latest version before saving again."
+      unavailable_error: "The health event could not be saved. Your entries are still here; try again."
+      delete_confirm: "Delete this health event?"
+      delete_body: "This removes the event and its medication links."
+      latest: "Review latest version"
+      medications_empty: "No assigned medications are available."
     created: Health event recorded.
     updated: Health event updated.
     deleted: Health event deleted.
@@ -2634,3 +2659,8 @@ en:
     stock: "Stock source"
     corrected: "Dose decision corrected."
     resolved_elsewhere: "This dose is no longer marked as not taken. Return to the dashboard to see its current state."
+
+  care_warning:
+    heading: "No active carer is assigned."
+    body: "Care can continue. You can assign or invite a carer when appropriate."
+    action: "Assign or invite a carer"
