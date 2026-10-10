@@ -520,3 +520,71 @@ async fn person_get_matches_documented_contract() {
     assert_eq!(outside_body["error"]["request_id"], outside_request_id);
     app.close().await;
 }
+#[tokio::test]
+async fn people_list_matches_documented_contract() {
+    use super::contract::{assert_value, contract, resolve};
+    let app = Application::new().await;
+    let token = app.token().await;
+    let collection = format!("{}/api/v1/households/72001/people", app.origin);
+    let contract = contract();
+    let operation = &contract["paths"]["/households/{household_id}/people"]["get"];
+    assert_eq!(operation["operationId"], "listPeople");
+    assert_eq!(
+        operation["responses"]["403"]["$ref"],
+        "#/components/responses/Forbidden"
+    );
+    let forbidden = resolve(contract, &operation["responses"]["403"]);
+    let forbidden_schema = resolve(
+        contract,
+        &forbidden["content"]["application/json"]["schema"],
+    );
+
+    let list = app
+        .client
+        .get(&collection)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let list_status = list.status().as_u16();
+    let body: Value = list.json().await.unwrap();
+    assert_eq!(list_status, 200);
+    assert_eq!(
+        operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"],
+        "#/components/schemas/PersonCollectionResponse"
+    );
+    assert_value(
+        contract,
+        resolve(
+            contract,
+            &operation["responses"]["200"]["content"]["application/json"]["schema"],
+        ),
+        &body,
+        "people collection",
+    );
+    assert_eq!(body["data"][0]["id"], 73001);
+    assert_eq!(body["data"][0]["name"], "Synthetic adult");
+    assert_eq!(
+        body["meta"]["total_count"],
+        body["data"].as_array().unwrap().len() as i64
+    );
+
+    let foreign = app
+        .client
+        .get(format!("{}/api/v1/households/72002/people", app.origin))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let foreign_status = foreign.status().as_u16();
+    let foreign_body: Value = foreign.json().await.unwrap();
+    assert_eq!(foreign_status, 403);
+    assert_value(
+        contract,
+        forbidden_schema,
+        &foreign_body,
+        "foreign household people",
+    );
+    assert_eq!(foreign_body["error"]["code"], "forbidden");
+    app.close().await;
+}

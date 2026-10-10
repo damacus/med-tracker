@@ -344,3 +344,190 @@ async fn medication_get_matches_documented_contract() {
     assert_eq!(granted.status().as_u16(), 200);
     app.close().await;
 }
+#[tokio::test]
+async fn medication_list_matches_documented_contract() {
+    use super::contract::{assert_value, contract, resolve};
+    let app = Application::new().await;
+    let token = app.token().await;
+    let collection = format!("{}/api/v1/households/72001/medications", app.origin);
+    let contract = contract();
+    let operation = &contract["paths"]["/households/{household_id}/medications"]["get"];
+    assert_eq!(operation["operationId"], "listMedications");
+    assert_eq!(
+        operation["responses"]["422"]["$ref"],
+        "#/components/responses/ValidationFailed"
+    );
+    assert_eq!(
+        operation["responses"]["403"]["$ref"],
+        "#/components/responses/Forbidden"
+    );
+    let invalid = resolve(contract, &operation["responses"]["422"]);
+    let invalid_schema = resolve(contract, &invalid["content"]["application/json"]["schema"]);
+    let forbidden = resolve(contract, &operation["responses"]["403"]);
+    let forbidden_schema = resolve(
+        contract,
+        &forbidden["content"]["application/json"]["schema"],
+    );
+
+    let list = app
+        .client
+        .get(&collection)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let list_status = list.status().as_u16();
+    let body: Value = list.json().await.unwrap();
+    assert_eq!(list_status, 200);
+    assert_eq!(
+        operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"],
+        "#/components/schemas/MedicationCollectionResponse"
+    );
+    assert_value(
+        contract,
+        resolve(
+            contract,
+            &operation["responses"]["200"]["content"]["application/json"]["schema"],
+        ),
+        &body,
+        "medication collection",
+    );
+    assert_eq!(body["data"][0]["id"], 80001);
+    assert_eq!(body["meta"]["total_count"], 1);
+
+    for query in ["page=0", "per_page=101", "updated_since=invalid"] {
+        let rejected = app
+            .client
+            .get(format!("{collection}?{query}"))
+            .bearer_auth(&token)
+            .send()
+            .await
+            .unwrap();
+        let rejected_status = rejected.status().as_u16();
+        let rejected_request_id = rejected.headers()["x-request-id"]
+            .to_str()
+            .unwrap()
+            .to_owned();
+        let rejected_body: Value = rejected.json().await.unwrap();
+        assert_eq!(rejected_status, 422, "{query}");
+        assert_value(contract, invalid_schema, &rejected_body, "invalid filter");
+        assert_eq!(rejected_body["error"]["request_id"], rejected_request_id);
+    }
+
+    let foreign = app
+        .client
+        .get(format!(
+            "{}/api/v1/households/72002/medications",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let foreign_status = foreign.status().as_u16();
+    let foreign_body: Value = foreign.json().await.unwrap();
+    assert_eq!(foreign_status, 403);
+    assert_value(
+        contract,
+        forbidden_schema,
+        &foreign_body,
+        "foreign household medications",
+    );
+    assert_eq!(foreign_body["error"]["code"], "forbidden");
+    app.close().await;
+}
+
+#[tokio::test]
+async fn stock_removal_list_matches_documented_contract() {
+    use super::contract::{assert_value, contract, resolve};
+    let app = Application::new().await;
+    let token = app.token().await;
+    let endpoint = format!(
+        "{}/api/v1/households/72001/medications/80001/stock_removals",
+        app.origin
+    );
+    let contract = contract();
+    let operation = &contract["paths"]["/households/{household_id}/medications/{medication_id}/stock_removals"]
+        ["get"];
+    assert_eq!(operation["operationId"], "listMedicationStockRemovals");
+    assert_eq!(
+        operation["responses"]["422"]["$ref"],
+        "#/components/responses/ValidationFailed"
+    );
+    assert_eq!(
+        operation["responses"]["403"]["$ref"],
+        "#/components/responses/Forbidden"
+    );
+    let invalid = resolve(contract, &operation["responses"]["422"]);
+    let invalid_schema = resolve(contract, &invalid["content"]["application/json"]["schema"]);
+    let forbidden = resolve(contract, &operation["responses"]["403"]);
+    let forbidden_schema = resolve(
+        contract,
+        &forbidden["content"]["application/json"]["schema"],
+    );
+
+    let created = app.client.post(&endpoint).bearer_auth(&token).json(&json!({"stock_removal":{"quantity":"2","reason":"dropped","submission_id":"206b49d9-1da2-42f1-800b-8c80867aee1c"}})).send().await.unwrap();
+    assert_eq!(created.status().as_u16(), 201);
+    let list = app
+        .client
+        .get(&endpoint)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let list_status = list.status().as_u16();
+    let body: Value = list.json().await.unwrap();
+    assert_eq!(list_status, 200);
+    assert_eq!(
+        operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"],
+        "#/components/schemas/StockRemovalCollectionResponse"
+    );
+    assert_value(
+        contract,
+        resolve(
+            contract,
+            &operation["responses"]["200"]["content"]["application/json"]["schema"],
+        ),
+        &body,
+        "stock removal collection",
+    );
+    assert_eq!(body["data"][0]["reason"], "dropped");
+    assert_eq!(body["data"][0]["medication_id"], "80001");
+    assert_eq!(body["meta"]["total_count"], 1);
+
+    for query in ["page=0", "per_page=101"] {
+        let rejected = app
+            .client
+            .get(format!("{endpoint}?{query}"))
+            .bearer_auth(&token)
+            .send()
+            .await
+            .unwrap();
+        let rejected_status = rejected.status().as_u16();
+        let rejected_body: Value = rejected.json().await.unwrap();
+        assert_eq!(rejected_status, 422, "{query}");
+        assert_value(contract, invalid_schema, &rejected_body, "invalid filter");
+    }
+
+    let foreign = app
+        .client
+        .get(format!(
+            "{}/api/v1/households/72002/medications/80001/stock_removals",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let foreign_status = foreign.status().as_u16();
+    let foreign_body: Value = foreign.json().await.unwrap();
+    assert_eq!(foreign_status, 403);
+    assert_value(
+        contract,
+        forbidden_schema,
+        &foreign_body,
+        "foreign household stock removals",
+    );
+    assert_eq!(foreign_body["error"]["code"], "forbidden");
+    app.close().await;
+}

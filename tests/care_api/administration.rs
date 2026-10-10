@@ -803,16 +803,19 @@ async fn household_membership_list_matches_documented_contract() {
 
     app.close().await;
 }
-
 #[tokio::test]
-async fn household_membership_list_matches_documented_contract() {
+async fn person_access_grant_list_matches_documented_contract() {
     use super::contract::{assert_value, contract, resolve};
     let app = Application::new().await;
     let token = app.token().await;
-    let endpoint = format!("{}/api/v1/households/72001/admin/memberships", app.origin);
+    let endpoint = format!(
+        "{}/api/v1/households/72001/admin/person_access_grants",
+        app.origin
+    );
     let contract = contract();
-    let operation = &contract["paths"]["/households/{household_id}/admin/memberships"]["get"];
-    assert_eq!(operation["operationId"], "listMemberships");
+    let operation =
+        &contract["paths"]["/households/{household_id}/admin/person_access_grants"]["get"];
+    assert_eq!(operation["operationId"], "listPersonAccessGrants");
     assert_eq!(
         operation["responses"]["403"]["$ref"],
         "#/components/responses/Forbidden"
@@ -835,7 +838,7 @@ async fn household_membership_list_matches_documented_contract() {
     assert_eq!(list_status, 200);
     assert_eq!(
         operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"],
-        "#/components/schemas/HouseholdMembershipCollectionResponse"
+        "#/components/schemas/PersonAccessGrantCollectionResponse"
     );
     assert_value(
         contract,
@@ -844,16 +847,14 @@ async fn household_membership_list_matches_documented_contract() {
             &operation["responses"]["200"]["content"]["application/json"]["schema"],
         ),
         &body,
-        "membership collection",
+        "person access grant collection",
     );
-    let members = body["data"].as_array().unwrap();
-    assert_eq!(members.len(), 1);
-    assert_eq!(members[0]["id"], 74001);
-    assert_eq!(members[0]["account_id"], 71001);
-    assert_eq!(members[0]["email"], "persistence@example.test");
-    assert_eq!(members[0]["person_id"], 73001);
-    assert_eq!(members[0]["person_name"], "Synthetic adult");
-    assert_eq!(members[0]["role"], "administrator");
+    let grants = body["data"].as_array().unwrap();
+    assert_eq!(grants.len(), 1);
+    assert_eq!(grants[0]["id"], 78001);
+    assert_eq!(grants[0]["person_id"], 73001);
+    assert_eq!(grants[0]["access_level"], "manage");
+    assert_eq!(grants[0]["relationship_type"], "self");
 
     app.fixture
         .admin
@@ -868,25 +869,20 @@ async fn household_membership_list_matches_documented_contract() {
         .await
         .unwrap();
     let denied_status = denied.status().as_u16();
-    let denied_request_id = denied.headers()["x-request-id"]
-        .to_str()
-        .unwrap()
-        .to_owned();
     let denied_body: Value = denied.json().await.unwrap();
     assert_eq!(denied_status, 403);
     assert_value(
         contract,
         forbidden_schema,
         &denied_body,
-        "member membership list",
+        "member grant list",
     );
     assert_eq!(denied_body["error"]["code"], "forbidden");
-    assert_eq!(denied_body["error"]["request_id"], denied_request_id);
 
     let foreign = app
         .client
         .get(format!(
-            "{}/api/v1/households/72002/admin/memberships",
+            "{}/api/v1/households/72002/admin/person_access_grants",
             app.origin
         ))
         .bearer_auth(&token)
@@ -900,7 +896,7 @@ async fn household_membership_list_matches_documented_contract() {
         contract,
         forbidden_schema,
         &foreign_body,
-        "foreign household memberships",
+        "foreign household grants",
     );
     assert_eq!(foreign_body["error"]["code"], "forbidden");
     app.close().await;

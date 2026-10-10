@@ -966,3 +966,86 @@ async fn dose_outcomes_reopened_take_checks_supplied_version_and_allows_no_heade
         ]
     );
 }
+
+#[tokio::test]
+async fn dose_occurrence_lists_match_documented_contract() {
+    use super::contract::{assert_value, contract, resolve};
+    let app = Application::new().await;
+    let token = app.token().await;
+    outcome_sources(&app).await;
+    let contract = contract();
+    for (source, id, path, operation_id) in [
+        (
+            "schedules",
+            83997,
+            "/households/{household_id}/schedules/{schedule_id}/dose_occurrences",
+            "listScheduleDoseOccurrences",
+        ),
+        (
+            "person_medications",
+            81001,
+            "/households/{household_id}/person_medications/{person_medication_id}/dose_occurrences",
+            "listPersonMedicationDoseOccurrences",
+        ),
+    ] {
+        let operation = &contract["paths"][path]["get"];
+        assert_eq!(operation["operationId"], operation_id);
+        assert_eq!(
+            operation["responses"]["422"]["$ref"],
+            "#/components/responses/ValidationFailed"
+        );
+        let invalid = resolve(contract, &operation["responses"]["422"]);
+        let invalid_schema = resolve(contract, &invalid["content"]["application/json"]["schema"]);
+        let endpoint = format!(
+            "{}/api/v1/households/72001/{source}/{id}/dose_occurrences",
+            app.origin
+        );
+        let date = chrono::Utc::now().date_naive().to_string();
+        let (status, body) = occurrence(&app, &token, &endpoint).await;
+        assert_eq!(status, 200, "{operation_id}");
+        assert_eq!(
+            operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"],
+            "#/components/schemas/DoseOccurrenceCollectionResponse"
+        );
+        assert_value(
+            contract,
+            resolve(
+                contract,
+                &operation["responses"]["200"]["content"]["application/json"]["schema"],
+            ),
+            &body,
+            "dose occurrence collection",
+        );
+        assert!(
+            body["data"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(|item| item["key"].as_str().is_some()),
+            "{operation_id}"
+        );
+
+        let rejected = app
+            .client
+            .get(format!("{endpoint}?start_date={date}&end_date=2020-01-01"))
+            .bearer_auth(&token)
+            .send()
+            .await
+            .unwrap();
+        let rejected_status = rejected.status().as_u16();
+        let rejected_request_id = rejected.headers()["x-request-id"]
+            .to_str()
+            .unwrap()
+            .to_owned();
+        let rejected_body: Value = rejected.json().await.unwrap();
+        assert_eq!(rejected_status, 422, "{operation_id}");
+        assert_value(
+            contract,
+            invalid_schema,
+            &rejected_body,
+            "invalid date range",
+        );
+        assert_eq!(rejected_body["error"]["request_id"], rejected_request_id);
+    }
+    app.close().await;
+}

@@ -246,3 +246,109 @@ async fn pause_periods_audit_rejection_rolls_back_source_period_and_key() {
     assert!(active);
     assert_eq!(counts, vec![0, 0, 0, 0, 1]);
 }
+
+#[tokio::test]
+async fn pause_period_list_matches_documented_contract() {
+    use super::contract::{assert_value, contract, resolve};
+    let app = Application::new().await;
+    let token = app.token().await;
+    let source = pause_source(&app, false).await;
+    let collection = format!(
+        "{}/api/v1/households/72001/medication_pause_periods",
+        app.origin
+    );
+    let contract = contract();
+    let operation =
+        &contract["paths"]["/households/{household_id}/medication_pause_periods"]["get"];
+    assert_eq!(operation["operationId"], "listMedicationPausePeriods");
+    assert_eq!(
+        operation["responses"]["422"]["$ref"],
+        "#/components/responses/ValidationFailed"
+    );
+    assert_eq!(
+        operation["responses"]["403"]["$ref"],
+        "#/components/responses/Forbidden"
+    );
+    let invalid = resolve(contract, &operation["responses"]["422"]);
+    let invalid_schema = resolve(contract, &invalid["content"]["application/json"]["schema"]);
+    let forbidden = resolve(contract, &operation["responses"]["403"]);
+    let forbidden_schema = resolve(
+        contract,
+        &forbidden["content"]["application/json"]["schema"],
+    );
+
+    let created = app
+        .client
+        .post(&collection)
+        .bearer_auth(&token)
+        .json(&pause_body("person_medication", &source))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(created.status().as_u16(), 201);
+    let list = app
+        .client
+        .get(format!(
+            "{collection}?source_type=person_medication&source_id={source}"
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let list_status = list.status().as_u16();
+    let body: Value = list.json().await.unwrap();
+    assert_eq!(list_status, 200);
+    assert_eq!(
+        operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"],
+        "#/components/schemas/MedicationPausePeriodCollectionResponse"
+    );
+    assert_value(
+        contract,
+        resolve(
+            contract,
+            &operation["responses"]["200"]["content"]["application/json"]["schema"],
+        ),
+        &body,
+        "pause period collection",
+    );
+    assert_eq!(body["data"][0]["reason"], "clinician_advice");
+    assert_eq!(body["meta"]["total_count"], 1);
+
+    for query in ["page=0", "per_page=101"] {
+        let rejected = app
+            .client
+            .get(format!(
+                "{collection}?{query}&source_type=person_medication&source_id={source}"
+            ))
+            .bearer_auth(&token)
+            .send()
+            .await
+            .unwrap();
+        let rejected_status = rejected.status().as_u16();
+        let rejected_body: Value = rejected.json().await.unwrap();
+        assert_eq!(rejected_status, 422, "{query}");
+        assert_value(contract, invalid_schema, &rejected_body, "invalid filter");
+    }
+
+    let foreign = app
+        .client
+        .get(format!(
+            "{}/api/v1/households/72002/medication_pause_periods",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let foreign_status = foreign.status().as_u16();
+    let foreign_body: Value = foreign.json().await.unwrap();
+    assert_eq!(foreign_status, 403);
+    assert_value(
+        contract,
+        forbidden_schema,
+        &foreign_body,
+        "foreign household pause periods",
+    );
+    assert_eq!(foreign_body["error"]["code"], "forbidden");
+    app.close().await;
+}
