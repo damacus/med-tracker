@@ -113,18 +113,30 @@ pub(crate) async fn linked_person(
     account_id: i64,
     access_level: PersonAccess,
 ) -> Result<person::Model, OperationError> {
+    linked_person_scoped(tenant, account_id, access_level, OperationError::Forbidden).await
+}
+
+pub(crate) async fn linked_person_scoped(
+    tenant: &TenantTransaction,
+    account_id: i64,
+    access_level: PersonAccess,
+    out_of_scope: OperationError,
+) -> Result<person::Model, OperationError> {
     let person_id = tenant
         .membership()
         .person_id
-        .ok_or(OperationError::Forbidden)?;
+        .ok_or_else(|| out_of_scope.clone())?;
     let current = person::Entity::find_by_id(person_id)
         .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
         .filter(person::Column::AccountId.eq(account_id))
         .one(tenant.transaction())
         .await?
-        .ok_or(OperationError::Forbidden)?;
-    access::require_person_access(tenant, current.id, access_level).await?;
-    Ok(current)
+        .ok_or_else(|| out_of_scope.clone())?;
+    if access::can_access_person(tenant, current.id, access_level).await? {
+        Ok(current)
+    } else {
+        Err(out_of_scope)
+    }
 }
 
 async fn snapshot(
@@ -175,12 +187,13 @@ async fn snapshot(
 }
 
 pub async fn read(tenant: &TenantTransaction, account_id: i64) -> Result<Snapshot, OperationError> {
-    let current = linked_person(tenant, account_id, PersonAccess::View)
-        .await
-        .map_err(|error| match error {
-            OperationError::Forbidden => OperationError::NotFound,
-            error => error,
-        })?;
+    let current = linked_person_scoped(
+        tenant,
+        account_id,
+        PersonAccess::View,
+        OperationError::NotFound,
+    )
+    .await?;
     let account = account::Entity::find_by_id(account_id)
         .one(tenant.transaction())
         .await?

@@ -980,3 +980,41 @@ async fn profile_requires_a_date_of_birth_and_rejects_incomplete_records_without
     );
     app.close().await;
 }
+
+#[tokio::test]
+async fn membership_change_during_read_reports_forbidden_not_missing_profile() {
+    use med_tracker::models::{
+        access::{self, Actor, HouseholdScope},
+        errors::OperationError,
+        notification_preferences, profile,
+    };
+    let app = profile_application().await;
+    let scope = HouseholdScope {
+        actor: Actor { account_id: 71001 },
+        household_id: 72001,
+        request_id: "synthetic-midread-membership".into(),
+    };
+    let tenant = access::begin(&app.fixture.runtime, &scope).await.unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared(
+            "UPDATE household_memberships SET permissions_version=permissions_version+1 WHERE id=74001",
+        )
+        .await
+        .unwrap();
+    let snapshot = profile::read(&tenant, 71001).await;
+    let preferences = notification_preferences::read(&tenant, 71001).await;
+    tenant.rollback().await.unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78001")
+        .await
+        .unwrap();
+    let unscoped_tenant = access::begin(&app.fixture.runtime, &scope).await.unwrap();
+    let unscoped = profile::read(&unscoped_tenant, 71001).await;
+    unscoped_tenant.rollback().await.unwrap();
+    app.close().await;
+    assert_eq!(snapshot.err(), Some(OperationError::Forbidden));
+    assert_eq!(preferences.err(), Some(OperationError::Forbidden));
+    assert_eq!(unscoped.err(), Some(OperationError::NotFound));
+}
