@@ -1,4 +1,4 @@
-use super::contract::{assert_value, resolve};
+use super::contract::{assert_value, contract, resolve};
 use super::*;
 
 #[tokio::test]
@@ -344,9 +344,9 @@ async fn medication_get_matches_documented_contract() {
     assert_eq!(granted.status().as_u16(), 200);
     app.close().await;
 }
+
 #[tokio::test]
 async fn medication_list_matches_documented_contract() {
-    use super::contract::{assert_value, contract, resolve};
     let app = Application::new().await;
     let token = app.token().await;
     let collection = format!("{}/api/v1/households/72001/medications", app.origin);
@@ -439,7 +439,6 @@ async fn medication_list_matches_documented_contract() {
 
 #[tokio::test]
 async fn stock_removal_list_matches_documented_contract() {
-    use super::contract::{assert_value, contract, resolve};
     let app = Application::new().await;
     let token = app.token().await;
     let endpoint = format!(

@@ -1,4 +1,4 @@
-use super::contract::{assert_value, resolve};
+use super::contract::{assert_value, contract, resolve};
 use super::*;
 
 async fn create_schedule(app: &Application, token: &str) -> i64 {
@@ -354,9 +354,9 @@ async fn schedule_get_matches_documented_contract() {
     assert_eq!(outside_body["error"]["request_id"], outside_request_id);
     app.close().await;
 }
+
 #[tokio::test]
 async fn schedule_list_matches_documented_contract() {
-    use super::contract::{assert_value, contract, resolve};
     let app = Application::new().await;
     let token = app.token().await;
     let id = create_schedule(&app, &token).await;

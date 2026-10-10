@@ -1,4 +1,4 @@
-use super::contract::{assert_value, resolve};
+use super::contract::{assert_value, contract, resolve};
 use super::*;
 
 #[tokio::test]
@@ -520,9 +520,9 @@ async fn person_get_matches_documented_contract() {
     assert_eq!(outside_body["error"]["request_id"], outside_request_id);
     app.close().await;
 }
+
 #[tokio::test]
 async fn people_list_matches_documented_contract() {
-    use super::contract::{assert_value, contract, resolve};
     let app = Application::new().await;
     let token = app.token().await;
     let collection = format!("{}/api/v1/households/72001/people", app.origin);
@@ -538,6 +538,12 @@ async fn people_list_matches_documented_contract() {
         contract,
         &forbidden["content"]["application/json"]["schema"],
     );
+    assert_eq!(
+        operation["responses"]["422"]["$ref"],
+        "#/components/responses/ValidationFailed"
+    );
+    let invalid = resolve(contract, &operation["responses"]["422"]);
+    let invalid_schema = resolve(contract, &invalid["content"]["application/json"]["schema"]);
 
     let list = app
         .client
@@ -595,6 +601,25 @@ async fn people_list_matches_documented_contract() {
         assert_eq!(paginated_body["meta"]["total_count"], 2);
         assert_eq!(paginated_body["data"].as_array().unwrap().len(), 1);
         assert_eq!(paginated_body["data"][0]["id"], expected_id);
+    }
+
+    for query in ["page=0", "per_page=101", "updated_since=invalid"] {
+        let rejected = app
+            .client
+            .get(format!("{collection}?{query}"))
+            .bearer_auth(&token)
+            .send()
+            .await
+            .unwrap();
+        let rejected_status = rejected.status().as_u16();
+        let rejected_request_id = rejected.headers()["x-request-id"]
+            .to_str()
+            .unwrap()
+            .to_owned();
+        let rejected_body: Value = rejected.json().await.unwrap();
+        assert_eq!(rejected_status, 422, "{query}");
+        assert_value(contract, invalid_schema, &rejected_body, "invalid filter");
+        assert_eq!(rejected_body["error"]["request_id"], rejected_request_id);
     }
 
     let foreign = app
