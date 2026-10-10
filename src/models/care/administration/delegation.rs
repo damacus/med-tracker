@@ -329,35 +329,6 @@ pub async fn deactivate(
         .await?
         .ok_or(OperationError::NotFound)?;
     if !(row.carer_id == row.patient_id && row.relationship_type.as_deref() == Some("self")) {
-        let member = membership::Entity::find()
-            .filter(membership::Column::HouseholdId.eq(tenant.scope().household_id))
-            .filter(membership::Column::PersonId.eq(row.carer_id))
-            .one(tenant.transaction())
-            .await?;
-        if let Some(member) = member
-            && grant::Entity::find()
-                .filter(grant::Column::HouseholdId.eq(tenant.scope().household_id))
-                .filter(grant::Column::HouseholdMembershipId.eq(member.id))
-                .filter(grant::Column::PersonId.eq(row.patient_id))
-                .filter(grant::Column::CarerRelationshipId.is_null())
-                .filter(grant::Column::RevokedAt.is_null())
-                .filter(
-                    sea_orm::Condition::any()
-                        .add(grant::Column::ExpiresAt.is_null())
-                        .add(
-                            Expr::col(grant::Column::ExpiresAt)
-                                .gt(Expr::cust("timezone('UTC', clock_timestamp())")),
-                        ),
-                )
-                .one(tenant.transaction())
-                .await?
-                .is_some()
-        {
-            return Err(invalid(
-                "base",
-                "an active unowned grant still authorizes this patient",
-            ));
-        }
         let grants = grant::Entity::find()
             .filter(grant::Column::HouseholdId.eq(tenant.scope().household_id))
             .filter(grant::Column::CarerRelationshipId.eq(id))

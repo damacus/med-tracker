@@ -141,9 +141,7 @@ async fn accept_validated(
                 .one(&transaction)
                 .await?
                 .ok_or_else(unavailable)?;
-            if !crate::models::authorization::household_manager(&inviter, invitation.household_id) {
-                return Err(unavailable());
-            }
+            super::authority::authorize(&transaction, &inviter, &invitation).await?;
             if membership::Entity::find()
                 .filter(membership::Column::HouseholdId.eq(invitation.household_id))
                 .filter(membership::Column::AccountId.eq(actor.account_id))

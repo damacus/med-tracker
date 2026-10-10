@@ -77,7 +77,16 @@ impl<'a> Page<'a> {
         administration::authorize(tenant).await?;
         let mut data = rendering::context(self.slug, error);
         let template = match screen {
-            Screen::Index => "administration/index.html",
+            Screen::Index => {
+                let warnings = crate::models::care::care_warning::project(tenant, None).await?;
+                let mut warnings = warnings.into_values().collect::<Vec<_>>();
+                warnings.sort_by(|a, b| a["person_name"].as_str().cmp(&b["person_name"].as_str()));
+                data["care_warnings"] = json!(warnings);
+                data["care_warning_labels"] = crate::models::care::report_pdf::translations("en")
+                    .map_err(|_| OperationError::Unavailable)?["care_warning"]
+                    .clone();
+                "administration/index.html"
+            }
             Screen::Settings => {
                 let current = administration::settings::read(tenant).await?;
                 data["draft"] = submitted.map_or_else(

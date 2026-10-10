@@ -1,3 +1,5 @@
+mod carer_relationships;
+mod health_events;
 mod page;
 mod rendering;
 
@@ -30,6 +32,42 @@ pub fn routes() -> Routes {
         .add("/{slug}/people/new", get(new))
         .add("/{slug}/people/{id}", get(show).post(update))
         .add("/{slug}/people/{id}/edit", get(edit))
+        .add(
+            "/{slug}/people/{id}/carer_relationships",
+            get(carer_relationships::index).post(carer_relationships::create),
+        )
+        .add(
+            "/{slug}/people/{id}/carer_relationships/new",
+            get(carer_relationships::index),
+        )
+        .add(
+            "/{slug}/people/{id}/carer_relationships/{relationship_id}/remove",
+            post(carer_relationships::remove),
+        )
+        .add(
+            "/{slug}/people/{id}/carer_relationships/{relationship_id}/restore",
+            post(carer_relationships::restore),
+        )
+        .add(
+            "/{slug}/people/{id}/health_events",
+            get(health_events::index).post(health_events::create),
+        )
+        .add(
+            "/{slug}/people/{id}/health_events/new",
+            get(health_events::new),
+        )
+        .add(
+            "/{slug}/people/{id}/health_events/{event_id}/edit",
+            get(health_events::edit),
+        )
+        .add(
+            "/{slug}/people/{id}/health_events/{event_id}",
+            post(health_events::update),
+        )
+        .add(
+            "/{slug}/people/{id}/health_events/{event_id}/delete",
+            post(health_events::delete),
+        )
 }
 
 async fn index(

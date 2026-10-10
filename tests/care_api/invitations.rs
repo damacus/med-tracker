@@ -408,3 +408,67 @@ async fn invitations_acceptance_rejects_mobile_and_resend_requires_authenticatio
     app.close().await;
     assert_eq!(statuses, (403, 401));
 }
+
+#[tokio::test]
+async fn parent_invitation_acceptance_requires_current_scoped_manage_authority() {
+    let app = Application::new().await;
+    let access = seed_acceptance(&app).await;
+    app.fixture.admin.execute_unprepared(
+        "UPDATE household_memberships SET role='member' WHERE id=74002;
+         INSERT INTO users(id,person_id,email_address,password_digest,created_at,updated_at) VALUES(77002,73103,'synthetic-inviter@example.test',crypt('password',gen_salt('bf',4)),now(),now());
+         INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,created_at,updated_at) VALUES(78010,72002,74002,73104,'manage','parent',now(),now());"
+    ).await.unwrap();
+    let endpoint = format!("{}/api/v1/invitations/accept", app.origin);
+    for mutation in [
+        "UPDATE person_access_grants SET revoked_at=now() WHERE id=78010",
+        "UPDATE person_access_grants SET revoked_at=NULL,access_level='record' WHERE id=78010",
+        "UPDATE person_access_grants SET access_level='manage',expires_at=now()-interval '1 second' WHERE id=78010",
+        "UPDATE person_access_grants SET expires_at=NULL WHERE id=78010; UPDATE household_invitation_grants SET relationship_type='professional' WHERE id=87002",
+        "UPDATE household_invitation_grants SET relationship_type='parent',access_level='record' WHERE id=87002",
+        "UPDATE household_invitation_grants SET access_level='manage' WHERE id=87002; UPDATE household_invitations SET membership_role='administrator' WHERE id=87001",
+        "UPDATE household_invitations SET membership_role='member' WHERE id=87001; UPDATE household_memberships SET revoked_at=now() WHERE id=74002",
+        "UPDATE household_memberships SET revoked_at=NULL WHERE id=74002; UPDATE people SET person_type=0,has_capacity=true WHERE id=73104",
+    ] {
+        app.fixture
+            .admin
+            .execute_unprepared(mutation)
+            .await
+            .unwrap();
+        let response = app
+            .client
+            .post(&endpoint)
+            .bearer_auth(access)
+            .json(&json!({"token":"synthetic-account-invitation"}))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status().as_u16(), 422, "{mutation}");
+        let row=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+            "SELECT (SELECT count(*) FROM household_memberships WHERE household_id=72002 AND account_id=71001) AS memberships,(SELECT count(*) FROM carer_relationships WHERE household_id=72002) AS relationships,(SELECT count(*) FROM versions WHERE item_type='HouseholdInvitation') AS audits"
+        )).await.unwrap().unwrap();
+        for field in ["memberships", "relationships", "audits"] {
+            assert_eq!(
+                row.try_get::<i64>("", field).unwrap(),
+                0,
+                "{mutation}: {field}"
+            );
+        }
+    }
+    app.fixture
+        .admin
+        .execute_unprepared("UPDATE people SET person_type=1,has_capacity=false WHERE id=73104")
+        .await
+        .unwrap();
+    let accepted = app
+        .client
+        .post(&endpoint)
+        .bearer_auth(access)
+        .json(&json!({"token":"synthetic-account-invitation"}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(accepted.status().as_u16(), 200);
+    let body: Value = accepted.json().await.unwrap();
+    assert_eq!(body["data"]["role"], "member");
+    app.close().await;
+}

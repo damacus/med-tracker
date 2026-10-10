@@ -143,6 +143,15 @@ ga:
       linked_to_health_event: ceangailte leis an imeacht sláinte seo cheana
       on_or_after_start_date: caithfidh sé a bheith ar an dáta tosaithe nó ina dhiaidh
   health_events:
+    browser:
+      form_error: "Seiceáil sonraí an imeachta sláinte."
+      date_error: "Caithfidh an dáta deiridh a bheith ar an dáta tosaigh nó ina dhiaidh."
+      stale_error: "Athraíodh an t-imeacht sláinte seo. Athbhreithnigh an leagan is déanaí sula sábhálann tú arís."
+      unavailable_error: "Níorbh fhéidir an t-imeacht sláinte a shábháil. Tá d’iontrálacha anseo fós; bain triail eile as."
+      delete_confirm: "Scrios an t-imeacht sláinte seo?"
+      delete_body: "Bainfear an t-imeacht agus a naisc le cógais."
+      latest: "Athbhreithnigh an leagan is déanaí"
+      medications_empty: "Níl aon chógais sannta ar fáil."
     created: Taifeadadh an t-imeacht sláinte.
     updated: Nuashonraíodh an t-imeacht sláinte.
     deleted: Scriosadh an t-imeacht sláinte.
@@ -1300,6 +1309,22 @@ ga:
       title: Gníomhartha Cúraim
       subtitle: Nuashonraigh pleananna leigheasanna agus oideas leigheasanna.
     carer_relationships:
+      browser:
+        invitation_unavailable: "Tá cuireadh éagtha nó neamh-chomhoiriúnach ag an seoladh seo. Iarr ar bhainisteoir an teaghlaigh é a athbhreithniú."
+        unknown: "Gaol eile"
+        relationships: "Tuismitheoirí agus cúramóirí"
+        empty: "Níl aon tuismitheoirí ná cúramóirí sannta."
+        remove: "Bain cúramóir"
+        restore: "Athchóirigh cúramóir"
+        active: "Gníomhach"
+        inactive: "Neamhghníomhach"
+        parent: "Tuismitheoir"
+        family_member: "Ball teaghlaigh"
+        professional_carer: "Cúramóir gairmiúil"
+        invalid_assignment: "Roghnaigh cúramóir fásta incháilithe agus gaol."
+        stale: "Tá an gaol seo athraithe. Athbhreithnigh an sannadh reatha sula ndéanann tú iarracht eile."
+        forbidden: "Níl cead agat an t-athrú seo a dhéanamh a thuilleadh."
+        unavailable: "Níorbh fhéidir an sannadh a shábháil. Tá d'iontrálacha anseo fós; bain triail eile as."
       created: Sannadh tuismitheoir nó cúramóir.
       invited: Seoladh cuireadh leis an gcleithiúnaí seo ceangailte.
       invalid_role: Cuir isteach seoladh ríomhphoist do chuntas tuismitheora fásta.
@@ -1327,9 +1352,8 @@ ga:
       select_person_type: Roghnaigh cineál duine
       has_capacity: Tá cumas aige/aici a leigheas féin a bhainistiú
       note: 'Nóta:'
-      capacity_hint: Caithfidh duine gan chumas cúramóir amháin ar a laghad a bheith
-        sannta dó.
-      capacity_hint_assign_carer: Sann cúramóir sula mbaintear an cumas.
+      capacity_hint: "Is féidir duine gan chumas a shábháil gan cúramóir gníomhach. Níl cumas ag mionaoisigh ná ag daoine fásta cleithiúnacha."
+      capacity_hint_assign_carer: "Is féidir cúramóir a shannadh nó cuireadh a thabhairt dó tar éis sábhála."
       save: Sábháil
       cancel: Cealaigh
       create: Cruthaigh Duine
@@ -2668,3 +2692,8 @@ ga:
     stock: "Foinse stoic"
     corrected: "Ceartaíodh cinneadh na dáileoige."
     resolved_elsewhere: "Níl an dáileog seo marcáilte a thuilleadh mar dháileog nár tógadh. Fill ar an deais chun a staid reatha a fheiceáil."
+
+  care_warning:
+    heading: "Níl cúramóir gníomhach sannta."
+    body: "Is féidir leanúint leis an gcúram. Is féidir cúramóir a shannadh nó cuireadh a thabhairt dó nuair is cuí."
+    action: "Sann cúramóir nó tabhair cuireadh dó"
