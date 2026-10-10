@@ -1,4 +1,13 @@
 use serde_json::Value;
+use std::sync::OnceLock;
+
+pub fn contract() -> &'static Value {
+    static CONTRACT: OnceLock<Value> = OnceLock::new();
+    CONTRACT.get_or_init(|| {
+        serde_yaml_ng::from_str(include_str!("../../docs/api/openapi.v1.yaml"))
+            .expect("valid OpenAPI document")
+    })
+}
 
 pub fn resolve<'a>(contract: &'a Value, node: &'a Value) -> &'a Value {
     let pointer = node["$ref"]
@@ -7,6 +16,14 @@ pub fn resolve<'a>(contract: &'a Value, node: &'a Value) -> &'a Value {
         .strip_prefix('#')
         .expect("local $ref");
     contract.pointer(pointer).expect("resolvable $ref")
+}
+
+fn hyphenated_uuid(text: &str) -> bool {
+    text.len() == 36
+        && text.bytes().enumerate().all(|(index, byte)| match index {
+            8 | 13 | 18 | 23 => byte == b'-',
+            _ => byte.is_ascii_hexdigit(),
+        })
 }
 
 pub fn assert_value(contract: &Value, schema: &Value, value: &Value, label: &str) {
@@ -22,45 +39,62 @@ pub fn assert_value(contract: &Value, schema: &Value, value: &Value, label: &str
     if let Some(allowed) = schema["enum"].as_array() {
         assert!(allowed.contains(value), "{label} not in documented enum");
     }
+    if let Some(all_of) = schema["allOf"].as_array() {
+        for (index, part) in all_of.iter().enumerate() {
+            assert_value(contract, part, value, &format!("{label}.allOf[{index}]"));
+        }
+        if schema.get("type").is_none() {
+            return;
+        }
+    }
     match schema["type"].as_str().expect("schema type") {
         "object" => {
             let object = value
                 .as_object()
                 .unwrap_or_else(|| panic!("{label} object"));
-            if let Some(properties) = schema["properties"].as_object() {
-                for name in schema["required"]
-                    .as_array()
-                    .into_iter()
-                    .flatten()
-                    .filter_map(Value::as_str)
-                {
-                    assert!(object.contains_key(name), "{label} missing {name}");
-                }
-                if schema["additionalProperties"] == Value::Bool(false) {
-                    for key in object.keys() {
-                        assert!(properties.contains_key(key), "{label} undeclared {key}");
-                    }
-                }
-                for (key, field) in object {
-                    if let Some(property) = properties.get(key) {
-                        assert_value(contract, property, field, &format!("{label}.{key}"));
-                    }
+            for name in schema["required"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_str)
+            {
+                assert!(object.contains_key(name), "{label} missing {name}");
+            }
+            let properties = schema["properties"].as_object();
+            if schema["additionalProperties"] == Value::Bool(false) {
+                for key in object.keys() {
+                    assert!(
+                        properties.is_some_and(|declared| declared.contains_key(key)),
+                        "{label} undeclared {key}"
+                    );
                 }
             }
-            let additional = &schema["additionalProperties"];
-            if additional.is_object() {
-                for (key, field) in object {
-                    assert_value(contract, additional, field, &format!("{label}.{key}"));
+            for (key, field) in object {
+                if let Some(property) = properties.and_then(|declared| declared.get(key)) {
+                    assert_value(contract, property, field, &format!("{label}.{key}"));
+                } else if schema["additionalProperties"].is_object() {
+                    assert_value(
+                        contract,
+                        &schema["additionalProperties"],
+                        field,
+                        &format!("{label}.{key}"),
+                    );
                 }
             }
         }
         "array" => {
-            for (index, item) in value
-                .as_array()
-                .unwrap_or_else(|| panic!("{label} array"))
-                .iter()
-                .enumerate()
-            {
+            let items = value.as_array().unwrap_or_else(|| panic!("{label} array"));
+            if let Some(minimum) = schema["minItems"].as_u64() {
+                assert!(items.len() >= minimum as usize, "{label} below minItems");
+            }
+            if let Some(maximum) = schema["maxItems"].as_u64() {
+                assert!(items.len() <= maximum as usize, "{label} above maxItems");
+            }
+            if schema["uniqueItems"] == Value::Bool(true) {
+                let unique = items.iter().collect::<std::collections::HashSet<_>>();
+                assert_eq!(unique.len(), items.len(), "{label} not unique");
+            }
+            for (index, item) in items.iter().enumerate() {
                 assert_value(
                     contract,
                     &schema["items"],
@@ -74,15 +108,30 @@ pub fn assert_value(contract: &Value, schema: &Value, value: &Value, label: &str
             if let Some(minimum) = schema["minimum"].as_i64() {
                 assert!(number >= minimum, "{label} below minimum");
             }
+            if let Some(maximum) = schema["maximum"].as_i64() {
+                assert!(number <= maximum, "{label} above maximum");
+            }
         }
         "boolean" => assert!(value.is_boolean(), "{label} boolean"),
         "string" => {
             let text = value.as_str().unwrap_or_else(|| panic!("{label} string"));
             if let Some(length) = schema["minLength"].as_u64() {
-                assert!(text.len() >= length as usize, "{label} below minLength");
+                assert!(
+                    text.chars().count() >= length as usize,
+                    "{label} below minLength"
+                );
+            }
+            if let Some(length) = schema["maxLength"].as_u64() {
+                assert!(
+                    text.chars().count() <= length as usize,
+                    "{label} above maxLength"
+                );
             }
             match schema["format"].as_str() {
-                Some("uuid") => assert!(uuid::Uuid::parse_str(text).is_ok(), "{label} uuid format"),
+                Some("uuid") => assert!(
+                    hyphenated_uuid(text) && uuid::Uuid::parse_str(text).is_ok(),
+                    "{label} uuid format"
+                ),
                 Some("date-time") => assert!(
                     chrono::DateTime::parse_from_rfc3339(text).is_ok(),
                     "{label} date-time format"
@@ -91,55 +140,179 @@ pub fn assert_value(contract: &Value, schema: &Value, value: &Value, label: &str
                     chrono::NaiveDate::parse_from_str(text, "%Y-%m-%d").is_ok(),
                     "{label} date format"
                 ),
+                Some("email") => assert!(
+                    text.matches('@').count() == 1
+                        && !text.starts_with('@')
+                        && !text.ends_with('@'),
+                    "{label} email format"
+                ),
                 _ => {}
             }
             if let Some(pattern) = schema["pattern"].as_str() {
-                match pattern {
-                    r"^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$" => {
-                        let bytes = text.as_bytes();
-                        assert!(
-                            bytes.len() == 8
-                                && bytes[2] == b':'
-                                && bytes[5] == b':'
-                                && bytes
-                                    .iter()
-                                    .enumerate()
-                                    .all(|(index, byte)| [2, 5].contains(&index)
-                                        || byte.is_ascii_digit())
-                                && text[0..2].parse::<u8>().is_ok_and(|hour| hour <= 23)
-                                && text[3..5].parse::<u8>().is_ok_and(|minute| minute <= 59)
-                                && text[6..8].parse::<u8>().is_ok_and(|second| second <= 59),
-                            "{label} must match documented time pattern"
-                        );
-                    }
-                    r"^(?:[1-9][0-9]*|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$" =>
-                    {
-                        let numeric = !text.starts_with('0')
-                            && text.bytes().all(|byte| byte.is_ascii_digit());
-                        let portable = uuid::Uuid::parse_str(text)
-                            .is_ok_and(|id| id.get_variant() == uuid::Variant::RFC4122);
-                        assert!(
-                            numeric || portable,
-                            "{label} must match documented identifier pattern"
-                        );
-                    }
-                    r"^-?[0-9]+(?:\.[0-9]+)?$" => {
-                        let rest = text.strip_prefix('-').unwrap_or(text);
-                        let (integer, fraction) = rest
-                            .split_once('.')
-                            .map_or((rest, None), |(whole, part)| (whole, Some(part)));
-                        assert!(
-                            !integer.is_empty()
-                                && integer.bytes().all(|byte| byte.is_ascii_digit())
-                                && fraction.is_none_or(|part| !part.is_empty()
-                                    && part.bytes().all(|byte| byte.is_ascii_digit())),
-                            "{label} must match documented decimal pattern"
-                        );
-                    }
-                    other => panic!("{label}: unhandled pattern {other}"),
-                }
+                let pattern = regex::Regex::new(pattern)
+                    .unwrap_or_else(|error| panic!("{label} invalid documented pattern: {error}"));
+                assert!(
+                    pattern.is_match(text),
+                    "{label} must match documented pattern"
+                );
             }
         }
         other => panic!("{label}: unhandled schema type {other}"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn document() -> Value {
+        json!({})
+    }
+
+    #[test]
+    fn contract_helper_accepts_nested_objects_and_all_of() {
+        let document = document();
+        let schema = json!({
+            "type":"object",
+            "allOf":[{"type":"object","required":["id"],"properties":{"id":{"type":"integer","minimum":1,"maximum":5}}}],
+            "required":["id","name"],
+            "additionalProperties":false,
+            "properties":{"id":{"type":"integer"},"name":{"type":"string","minLength":1}}
+        });
+        assert_value(
+            &document,
+            &schema,
+            &json!({"id":3,"name":"synthetic"}),
+            "value",
+        );
+    }
+
+    #[test]
+    fn contract_helper_applies_additional_properties_schema_only_to_undeclared_keys() {
+        let document = document();
+        let schema = json!({
+            "type":"object",
+            "properties":{"kind":{"type":"string","enum":["fixed"]}},
+            "additionalProperties":{"type":"string","minLength":2}
+        });
+        assert_value(
+            &document,
+            &schema,
+            &json!({"kind":"fixed","extra":"long-enough"}),
+            "value",
+        );
+    }
+
+    #[test]
+    fn contract_helper_required_check_does_not_depend_on_properties() {
+        let document = document();
+        let schema = json!({"type":"object","required":["id"]});
+        assert_value(&document, &schema, &json!({"id":1}), "value");
+    }
+
+    #[test]
+    #[should_panic(expected = "missing id")]
+    fn contract_helper_missing_required_without_properties() {
+        let document = document();
+        let schema = json!({"type":"object","required":["id"]});
+        assert_value(&document, &schema, &json!({}), "value");
+    }
+
+    #[test]
+    #[should_panic(expected = "undeclared extra")]
+    fn contract_helper_rejects_undeclared_key_without_properties() {
+        let document = document();
+        let schema = json!({"type":"object","additionalProperties":false});
+        assert_value(&document, &schema, &json!({"extra":1}), "value");
+    }
+
+    #[test]
+    #[should_panic(expected = "below minItems")]
+    fn contract_helper_rejects_min_items() {
+        let document = document();
+        let schema = json!({"type":"array","minItems":1});
+        assert_value(&document, &schema, &json!([]), "value");
+    }
+
+    #[test]
+    #[should_panic(expected = "above maxItems")]
+    fn contract_helper_rejects_max_items() {
+        let document = document();
+        let schema = json!({"type":"array","maxItems":1});
+        assert_value(&document, &schema, &json!([1, 2]), "value");
+    }
+
+    #[test]
+    #[should_panic(expected = "not unique")]
+    fn contract_helper_rejects_duplicate_items() {
+        let document = document();
+        let schema = json!({"type":"array","uniqueItems":true});
+        assert_value(&document, &schema, &json!(["a", "a"]), "value");
+    }
+
+    #[test]
+    #[should_panic(expected = "above maximum")]
+    fn contract_helper_rejects_integer_above_maximum() {
+        let document = document();
+        let schema = json!({"type":"integer","maximum":100});
+        assert_value(&document, &schema, &json!(101), "value");
+    }
+
+    #[test]
+    #[should_panic(expected = "below minLength")]
+    fn contract_helper_counts_min_length_in_characters() {
+        let document = document();
+        let schema = json!({"type":"string","minLength":3});
+        assert_value(&document, &schema, &json!("éx"), "value");
+    }
+
+    #[test]
+    #[should_panic(expected = "uuid format")]
+    fn contract_helper_rejects_simple_form_uuid() {
+        let document = document();
+        let schema = json!({"type":"string","format":"uuid"});
+        assert_value(
+            &document,
+            &schema,
+            &json!("550e8400e29b41d4a716446655440000"),
+            "value",
+        );
+    }
+
+    #[test]
+    fn contract_helper_accepts_hyphenated_uuid_and_documented_pattern() {
+        let document = document();
+        let schema = json!({"type":"string","format":"uuid"});
+        assert_value(
+            &document,
+            &schema,
+            &json!("550e8400-e29b-41d4-a716-446655440000"),
+            "value",
+        );
+        let schema = json!({"type":"string","pattern":"^-?[0-9]+(?:\\.[0-9]+)?$"});
+        assert_value(&document, &schema, &json!("-10.5"), "value");
+    }
+
+    #[test]
+    #[should_panic(expected = "must match documented pattern")]
+    fn contract_helper_rejects_pattern_mismatch() {
+        let document = document();
+        let schema =
+            json!({"type":"string","pattern":"^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$"});
+        assert_value(&document, &schema, &json!("24:00:00"), "value");
+    }
+
+    #[test]
+    #[should_panic(expected = "email format")]
+    fn contract_helper_rejects_invalid_email() {
+        let document = document();
+        let schema = json!({"type":"string","format":"email"});
+        assert_value(
+            &document,
+            &schema,
+            &json!("persistence.example.test"),
+            "value",
+        );
     }
 }

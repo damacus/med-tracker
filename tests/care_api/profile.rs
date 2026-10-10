@@ -1,4 +1,4 @@
-use super::contract::{assert_value, resolve};
+use super::contract::{assert_value, contract, resolve};
 use super::*;
 use sea_orm::TransactionTrait;
 
@@ -141,17 +141,16 @@ async fn profile_get_matches_documented_contract() {
     let app = profile_application().await;
     let token = app.token().await;
     let endpoint = format!("{}/api/v1/households/72001/profile", app.origin);
-    let contract: Value =
-        serde_yaml_ng::from_str(include_str!("../../docs/api/openapi.v1.yaml")).unwrap();
+    let contract = contract();
     let operation = &contract["paths"]["/households/{household_id}/profile"]["get"];
     assert_eq!(operation["operationId"], "getHouseholdProfile");
     assert_eq!(
         operation["responses"]["404"]["$ref"],
         "#/components/responses/NotFound"
     );
-    let not_found = resolve(&contract, &operation["responses"]["404"]);
+    let not_found = resolve(contract, &operation["responses"]["404"]);
     let not_found_schema = resolve(
-        &contract,
+        contract,
         &not_found["content"]["application/json"]["schema"],
     );
 
@@ -175,7 +174,7 @@ async fn profile_get_matches_documented_contract() {
         "#/components/headers/no_store"
     );
     let no_store_header = resolve(
-        &contract,
+        contract,
         &operation["responses"]["200"]["headers"]["Cache-Control"],
     );
     assert_eq!(no_store_header["schema"]["enum"], json!(["no-store"]));
@@ -185,9 +184,9 @@ async fn profile_get_matches_documented_contract() {
         "#/components/schemas/HouseholdProfileResponse"
     );
     assert_value(
-        &contract,
+        contract,
         resolve(
-            &contract,
+            contract,
             &operation["responses"]["200"]["content"]["application/json"]["schema"],
         ),
         &body,
@@ -217,7 +216,7 @@ async fn profile_get_matches_documented_contract() {
     let denied_body: Value = denied.json().await.unwrap();
     assert_eq!(denied_status, 404);
     assert_value(
-        &contract,
+        contract,
         not_found_schema,
         &denied_body,
         "outside view scope",
