@@ -199,7 +199,7 @@ pub(super) async fn update(
             &tenant,
             principal.account_id(),
             changes,
-            principal.time_zone(),
+            age_reference_date(&ctx),
             Some(principal.provenance()),
         )
         .await

@@ -3,6 +3,8 @@
 <section class="max-w-6xl mx-auto">
   <a class="link" href="/households/{{ slug }}/people">People</a>
   <a class="link ml-4" href="/households/{{ slug }}/medications">Medications</a>
+  {% include "components/care_warning.html" %}
+  {% if care_notice %}<p class="alert alert-success mt-4" role="status">{{ care_notice }}</p>{% endif %}
   <div class="flex flex-wrap items-end justify-between gap-4 mt-4 border-b border-base-300 pb-6">
     <div class="flex items-center gap-4 min-w-0">
       <div role="img" aria-label="{{ person.name }} avatar" class="grid place-items-center bg-neutral text-neutral-content rounded-full w-16 h-16 shrink-0"><span class="text-xl font-semibold">{{ avatar_initials }}</span></div>
@@ -49,6 +51,8 @@
       <section class="card bg-base-100 border border-base-300" aria-labelledby="person-actions-heading"><div class="card-body">
         <h2 class="card-title" id="person-actions-heading">Quick actions</h2>
         <div class="flex flex-wrap gap-2">
+          <a class="btn btn-ghost w-fit" href="/households/{{ slug }}/people/{{ person.id }}/health_events">{{ health_events_label }}</a>
+          {% if can_manage_carers %}<a class="btn btn-ghost w-fit" href="/households/{{ slug }}/people/{{ person.id }}/carer_relationships">{{ manage_carers_label }}</a>{% endif %}
           <a class="btn btn-neutral w-fit" href="/households/{{ slug }}/people/{{ person.id }}/treatments">{% if can_manage %}Manage treatments{% else %}View treatments{% endif %}</a>
           {% if can_manage %}<a class="btn btn-ghost w-fit" href="/households/{{ slug }}/people/{{ person.id }}/treatments/schedules/new">Add schedule</a><a class="btn btn-ghost w-fit" href="/households/{{ slug }}/people/{{ person.id }}/treatments/assignments/new">Assign medication</a>{% endif %}
           {% if can_manage_household %}<a class="btn btn-ghost w-fit" href="/households/{{ slug }}/admin/carer_relationships">Carer relationships</a>{% endif %}
