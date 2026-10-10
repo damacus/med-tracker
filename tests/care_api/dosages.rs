@@ -400,3 +400,182 @@ async fn dosage_api_member_write_denial_precedes_validation_and_foreign_reads_ar
     app.close().await;
     assert_eq!(statuses, (403, 403));
 }
+
+#[tokio::test]
+async fn dosage_option_get_matches_documented_contract() {
+    use super::contract::{assert_value, contract, resolve};
+    let app = Application::new().await;
+    let token = app.token().await;
+    let collection = format!("{}/api/v1/households/72001/dosage_options", app.origin);
+    let contract = contract();
+    let operation = &contract["paths"]["/households/{household_id}/dosage_options/{id}"]["get"];
+    assert_eq!(operation["operationId"], "getDosageOption");
+    assert_eq!(
+        operation["responses"]["404"]["$ref"],
+        "#/components/responses/NotFound"
+    );
+    assert_eq!(
+        operation["responses"]["403"]["$ref"],
+        "#/components/responses/Forbidden"
+    );
+    assert!(
+        operation["parameters"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|parameter| parameter["$ref"] == "#/components/parameters/if_none_match"),
+        "getDosageOption must document If-None-Match"
+    );
+    assert_eq!(
+        operation["responses"]["304"]["headers"]["ETag"]["$ref"],
+        "#/components/headers/etag"
+    );
+    let not_found = resolve(contract, &operation["responses"]["404"]);
+    let not_found_schema = resolve(
+        contract,
+        &not_found["content"]["application/json"]["schema"],
+    );
+    let forbidden = resolve(contract, &operation["responses"]["403"]);
+    let forbidden_schema = resolve(
+        contract,
+        &forbidden["content"]["application/json"]["schema"],
+    );
+
+    let created = app
+        .client
+        .post(&collection)
+        .bearer_auth(&token)
+        .json(&dosage_body())
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(created.status().as_u16(), 201);
+    let created_body: Value = created.json().await.unwrap();
+    let id = created_body["data"]["id"].as_i64().unwrap();
+    let endpoint = format!("{collection}/{id}");
+
+    let read = app
+        .client
+        .get(&endpoint)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let read_status = read.status().as_u16();
+    let etag = read
+        .headers()
+        .get("etag")
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or("missing")
+        .to_owned();
+    let body: Value = read.json().await.unwrap();
+    assert_eq!(read_status, 200);
+    assert_eq!(
+        operation["responses"]["200"]["headers"]["ETag"]["$ref"],
+        "#/components/headers/etag"
+    );
+    assert_ne!(etag, "missing");
+    assert_eq!(
+        operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"],
+        "#/components/schemas/DosageOptionResponse"
+    );
+    assert_value(
+        contract,
+        resolve(
+            contract,
+            &operation["responses"]["200"]["content"]["application/json"]["schema"],
+        ),
+        &body,
+        "dosage option response",
+    );
+    assert_eq!(body["data"]["medication_id"], 80001);
+    assert_eq!(body["data"]["amount"], "2.0");
+
+    let cached = app
+        .client
+        .get(&endpoint)
+        .bearer_auth(&token)
+        .header("if-none-match", &etag)
+        .send()
+        .await
+        .unwrap();
+    let cached_status = cached.status().as_u16();
+    let cached_etag = cached
+        .headers()
+        .get("etag")
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or("missing")
+        .to_owned();
+    let cached_body = cached.text().await.unwrap();
+    assert_eq!(cached_status, 304);
+    assert_eq!(cached_etag, etag);
+    assert!(cached_body.is_empty());
+
+    let missing = app
+        .client
+        .get(format!("{collection}/99999"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let missing_status = missing.status().as_u16();
+    let missing_request_id = missing.headers()["x-request-id"]
+        .to_str()
+        .unwrap()
+        .to_owned();
+    let missing_body: Value = missing.json().await.unwrap();
+    assert_eq!(missing_status, 404);
+    assert_value(
+        contract,
+        not_found_schema,
+        &missing_body,
+        "absent dosage option",
+    );
+    assert_eq!(missing_body["error"]["code"], "not_found");
+    assert_eq!(missing_body["error"]["request_id"], missing_request_id);
+
+    app.fixture.admin.execute_unprepared("INSERT INTO medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at) VALUES(92005,72001,79001,'Synthetic ungranted medicine',10,2,'tablet',now(),now()); INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(92006,72001,73002,92005,2,'tablet',0,now(),now()); INSERT INTO dosages(id,household_id,medication_id,amount,unit,frequency,current_supply,reorder_threshold,default_dose_cycle,default_max_daily_doses,default_min_hours_between_doses,created_at,updated_at) VALUES(92007,72001,92005,2,'tablet','daily',6,3,0,4,0,now(),now()); UPDATE household_memberships SET role='member' WHERE id=74001").await.unwrap();
+    let ungranted = app
+        .client
+        .get(format!("{collection}/92007"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let ungranted_status = ungranted.status().as_u16();
+    let ungranted_body: Value = ungranted.json().await.unwrap();
+    assert_eq!(ungranted_status, 404);
+    assert_value(
+        contract,
+        not_found_schema,
+        &ungranted_body,
+        "ungranted medication dosage option",
+    );
+
+    let foreign = app
+        .client
+        .get(format!(
+            "{}/api/v1/households/72002/dosage_options/{id}",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let foreign_status = foreign.status().as_u16();
+    let foreign_request_id = foreign.headers()["x-request-id"]
+        .to_str()
+        .unwrap()
+        .to_owned();
+    let foreign_body: Value = foreign.json().await.unwrap();
+    assert_eq!(foreign_status, 403);
+    assert_value(
+        contract,
+        forbidden_schema,
+        &foreign_body,
+        "foreign household",
+    );
+    assert_eq!(foreign_body["error"]["code"], "forbidden");
+    assert_eq!(foreign_body["error"]["request_id"], foreign_request_id);
+    app.close().await;
+}
