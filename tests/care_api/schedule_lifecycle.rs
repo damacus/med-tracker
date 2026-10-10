@@ -254,6 +254,8 @@ async fn schedule_get_matches_documented_contract() {
     assert_eq!(etag_schema["required"], true);
     assert_eq!(etag_schema["schema"]["type"], "string");
 
+    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"UPDATE schedules SET schedule_config='{\"weekdays\":[\"Monday\"],\"dates\":[\"2026-10-05\"]}' WHERE id=$1",[id.into()])).await.unwrap();
+    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"INSERT INTO medication_pause_periods(id,household_id,portable_id,schedule_id,reason,note,legacy_context,recorded_by_membership_id,started_at,created_at,updated_at) VALUES(84999,72001,'aaa00000-0000-4000-8000-000000084999',$1,'clinician_advice','Synthetic pause',false,74001,now(),now(),now())",[id.into()])).await.unwrap();
     let read = app
         .client
         .get(format!(
@@ -285,6 +287,18 @@ async fn schedule_get_matches_documented_contract() {
     assert_eq!(body["data"]["id"], id);
     assert_eq!(body["data"]["person_id"], 73001);
     assert_eq!(body["data"]["schedule_type"], "prn");
+    assert_eq!(
+        body["data"]["schedule_config"]["weekdays"],
+        json!(["Monday"])
+    );
+    assert_eq!(
+        body["data"]["schedule_config"]["dates"],
+        json!(["2026-10-05"])
+    );
+    assert_eq!(
+        body["data"]["current_pause_period"]["portable_id"],
+        "aaa00000-0000-4000-8000-000000084999"
+    );
 
     let missing = app
         .client
@@ -324,6 +338,10 @@ async fn schedule_get_matches_documented_contract() {
         .await
         .unwrap();
     let outside_status = outside_scope.status().as_u16();
+    let outside_request_id = outside_scope.headers()["x-request-id"]
+        .to_str()
+        .unwrap()
+        .to_owned();
     let outside_body: Value = outside_scope.json().await.unwrap();
     assert_eq!(outside_status, 404);
     assert_value(
@@ -333,5 +351,6 @@ async fn schedule_get_matches_documented_contract() {
         "schedule outside view scope",
     );
     assert_eq!(outside_body["error"]["code"], "not_found");
+    assert_eq!(outside_body["error"]["request_id"], outside_request_id);
     app.close().await;
 }
