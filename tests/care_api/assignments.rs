@@ -404,3 +404,183 @@ async fn assignment_invalid_option_and_audit_failure_preserve_all_writes() {
     assert!(reached);
     assert_eq!(counts, vec![0, 0, 0, 0, 1]);
 }
+
+#[tokio::test]
+async fn person_medication_get_matches_documented_contract() {
+    use super::contract::{assert_value, contract, resolve};
+    let app = Application::new().await;
+    let token = app.token().await;
+    let endpoint = format!(
+        "{}/api/v1/households/72001/person_medications/81001",
+        app.origin
+    );
+    let contract = contract();
+    let operation = &contract["paths"]["/households/{household_id}/person_medications/{id}"]["get"];
+    assert_eq!(operation["operationId"], "getPersonMedication");
+    assert_eq!(
+        operation["responses"]["404"]["$ref"],
+        "#/components/responses/NotFound"
+    );
+    assert_eq!(
+        operation["responses"]["403"]["$ref"],
+        "#/components/responses/Forbidden"
+    );
+    assert!(
+        operation["parameters"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|parameter| parameter["$ref"] == "#/components/parameters/if_none_match"),
+        "getPersonMedication must document If-None-Match"
+    );
+    assert_eq!(
+        operation["responses"]["304"]["headers"]["ETag"]["$ref"],
+        "#/components/headers/etag"
+    );
+    let not_found = resolve(contract, &operation["responses"]["404"]);
+    let not_found_schema = resolve(
+        contract,
+        &not_found["content"]["application/json"]["schema"],
+    );
+    let forbidden = resolve(contract, &operation["responses"]["403"]);
+    let forbidden_schema = resolve(
+        contract,
+        &forbidden["content"]["application/json"]["schema"],
+    );
+
+    let read = app
+        .client
+        .get(&endpoint)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let read_status = read.status().as_u16();
+    let etag = read
+        .headers()
+        .get("etag")
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or("missing")
+        .to_owned();
+    let body: Value = read.json().await.unwrap();
+    assert_eq!(read_status, 200);
+    assert_eq!(
+        operation["responses"]["200"]["headers"]["ETag"]["$ref"],
+        "#/components/headers/etag"
+    );
+    assert_ne!(etag, "missing");
+    assert_eq!(
+        operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"],
+        "#/components/schemas/PersonMedicationResponse"
+    );
+    assert_value(
+        contract,
+        resolve(
+            contract,
+            &operation["responses"]["200"]["content"]["application/json"]["schema"],
+        ),
+        &body,
+        "person medication response",
+    );
+    assert_eq!(body["data"]["id"], 81001);
+    assert_eq!(body["data"]["person_id"], 73001);
+    assert_eq!(body["data"]["medication_id"], 80001);
+
+    let cached = app
+        .client
+        .get(&endpoint)
+        .bearer_auth(&token)
+        .header("if-none-match", &etag)
+        .send()
+        .await
+        .unwrap();
+    let cached_status = cached.status().as_u16();
+    let cached_etag = cached
+        .headers()
+        .get("etag")
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or("missing")
+        .to_owned();
+    let cached_body = cached.text().await.unwrap();
+    assert_eq!(cached_status, 304);
+    assert_eq!(cached_etag, etag);
+    assert!(cached_body.is_empty());
+
+    let missing = app
+        .client
+        .get(format!(
+            "{}/api/v1/households/72001/person_medications/99999",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let missing_status = missing.status().as_u16();
+    let missing_request_id = missing.headers()["x-request-id"]
+        .to_str()
+        .unwrap()
+        .to_owned();
+    let missing_body: Value = missing.json().await.unwrap();
+    assert_eq!(missing_status, 404);
+    assert_value(
+        contract,
+        not_found_schema,
+        &missing_body,
+        "absent assignment",
+    );
+    assert_eq!(missing_body["error"]["code"], "not_found");
+    assert_eq!(missing_body["error"]["request_id"], missing_request_id);
+
+    app.fixture
+        .admin
+        .execute_unprepared("INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(92010,72001,73002,80001,2,'tablet',0,now(),now()); UPDATE household_memberships SET role='member' WHERE id=74001")
+        .await
+        .unwrap();
+    let ungranted = app
+        .client
+        .get(format!(
+            "{}/api/v1/households/72001/person_medications/92010",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let ungranted_status = ungranted.status().as_u16();
+    let ungranted_body: Value = ungranted.json().await.unwrap();
+    assert_eq!(ungranted_status, 404);
+    assert_value(
+        contract,
+        not_found_schema,
+        &ungranted_body,
+        "ungranted person assignment",
+    );
+
+    let foreign = app
+        .client
+        .get(format!(
+            "{}/api/v1/households/72002/person_medications/81001",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let foreign_status = foreign.status().as_u16();
+    let foreign_request_id = foreign.headers()["x-request-id"]
+        .to_str()
+        .unwrap()
+        .to_owned();
+    let foreign_body: Value = foreign.json().await.unwrap();
+    assert_eq!(foreign_status, 403);
+    assert_value(
+        contract,
+        forbidden_schema,
+        &foreign_body,
+        "foreign household",
+    );
+    assert_eq!(foreign_body["error"]["code"], "forbidden");
+    assert_eq!(foreign_body["error"]["request_id"], foreign_request_id);
+    app.close().await;
+}
