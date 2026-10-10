@@ -546,7 +546,7 @@ async fn avatar_retirement_enqueue_failure_preserves_current_attachment() {
 }
 
 #[tokio::test]
-async fn profile_avatar_api_reads_s3_primary_mirror_without_purging_unmigrated_services() {
+async fn profile_avatar_api_updates_s3_primary_mirror_without_purging_unmigrated_services() {
     crate::avatar_storage::ensure_owned_bucket().await;
     let app = avatar_application().await;
     let token = app.token().await;
@@ -583,6 +583,26 @@ async fn profile_avatar_api_reads_s3_primary_mirror_without_purging_unmigrated_s
             .as_u16(),
         200
     );
+    let replaced = app
+        .client
+        .put(&endpoint)
+        .bearer_auth(&token)
+        .header(
+            "content-type",
+            "multipart/form-data; boundary=avatar-boundary",
+        )
+        .body(multipart_avatar(&png, "image/png"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(replaced.status().as_u16(), 200);
+    app.fixture
+        .admin
+        .execute_unprepared(
+            "UPDATE active_storage_blobs SET service_name='s3_with_persistent_mirror'",
+        )
+        .await
+        .unwrap();
     assert_eq!(
         app.client
             .delete(&endpoint)
@@ -592,8 +612,21 @@ async fn profile_avatar_api_reads_s3_primary_mirror_without_purging_unmigrated_s
             .unwrap()
             .status()
             .as_u16(),
-        500
+        204
     );
+    let uploaded = app
+        .client
+        .put(&endpoint)
+        .bearer_auth(&token)
+        .header(
+            "content-type",
+            "multipart/form-data; boundary=avatar-boundary",
+        )
+        .body(multipart_avatar(&png, "image/png"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(uploaded.status().as_u16(), 200);
     app.fixture
         .admin
         .execute_unprepared(
@@ -612,6 +645,33 @@ async fn profile_avatar_api_reads_s3_primary_mirror_without_purging_unmigrated_s
             .as_u16(),
         500 | 503
     ));
+    let replacement = app
+        .client
+        .put(&endpoint)
+        .bearer_auth(&token)
+        .header(
+            "content-type",
+            "multipart/form-data; boundary=avatar-boundary",
+        )
+        .body(multipart_avatar(&png, "image/png"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(replacement.status().as_u16(), 500);
+    assert_eq!(
+        app.client
+            .delete(&endpoint)
+            .bearer_auth(&token)
+            .send()
+            .await
+            .unwrap()
+            .status()
+            .as_u16(),
+        500
+    );
+    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT count(*) AS count FROM active_storage_attachments a JOIN active_storage_blobs b ON b.id=a.blob_id WHERE a.record_id=73001 AND b.service_name='persistent_with_s3_mirror'")).await.unwrap().unwrap();
+    assert_eq!(row.try_get::<i64>("", "count").unwrap(), 1);
     app.close().await;
 }
 

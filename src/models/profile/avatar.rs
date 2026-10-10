@@ -425,10 +425,12 @@ pub async fn replace(
     let current = lock_current(tenant, account_id).await?;
     lock_avatar_key(tenant.transaction(), &key).await?;
     let previous = attachment(tenant, account_id, PersonAccess::Manage).await?;
-    if previous
-        .as_ref()
-        .is_some_and(|old| old.service_name != "s3")
-    {
+    if previous.as_ref().is_some_and(|old| {
+        !matches!(
+            old.service_name.as_str(),
+            "s3" | "s3_with_persistent_mirror"
+        )
+    }) {
         return Err(OperationError::Unavailable);
     }
     let now = Utc::now().naive_utc();
@@ -486,10 +488,12 @@ pub async fn remove(
 ) -> Result<Option<String>, OperationError> {
     let current = lock_current(tenant, account_id).await?;
     let previous = attachment(tenant, account_id, PersonAccess::Manage).await?;
-    if previous
-        .as_ref()
-        .is_some_and(|old| old.service_name != "s3")
-    {
+    if previous.as_ref().is_some_and(|old| {
+        !matches!(
+            old.service_name.as_str(),
+            "s3" | "s3_with_persistent_mirror"
+        )
+    }) {
         return Err(OperationError::Unavailable);
     }
     if previous.is_some() {
