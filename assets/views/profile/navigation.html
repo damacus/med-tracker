@@ -1,0 +1,6 @@
+<div class="flex flex-wrap items-center justify-between gap-4">
+  <nav aria-label="{{ labels.layouts.mobile_rail.primary_navigation }}" class="flex flex-wrap gap-x-4 gap-y-2">
+  {% for link in sidebar_links %}<a class="link" href="{{ link.href }}">{{ link.label }}</a>{% endfor %}
+  </nav>
+  <form method="post" action="/logout"><input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><button class="btn btn-ghost" type="submit">{{ labels.layouts.sidebar.sign_out }}</button></form>
+</div>

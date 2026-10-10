@@ -92,6 +92,10 @@ tasks:
     vars:
       ONLINE: '{{.ONLINE | default "false"}}'
     cmds: ['cargo update {{if ne .ONLINE "true"}}--offline{{end}} --package migration']
+  deps:push:
+    cmds: [cargo update --workspace]
+  deps:profile-export:
+    cmds: [cargo update --workspace]
   foundation:db-up:
     requires:
       vars: [FOUNDATION_PROJECT]
@@ -100,6 +104,14 @@ tasks:
     requires:
       vars: [FOUNDATION_PROJECT]
     cmds: ['docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} port postgres 5432']
+  foundation:storage-up:
+    requires:
+      vars: [FOUNDATION_PROJECT]
+    cmds: ['docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} --profile fixture-storage up -d --wait rustfs']
+  foundation:storage-port:
+    requires:
+      vars: [FOUNDATION_PROJECT]
+    cmds: ['docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} --profile fixture-storage port rustfs 9000']
   foundation:db-provision:
     requires:
       vars: [FOUNDATION_PROJECT]
@@ -109,7 +121,7 @@ tasks:
   foundation:db-down:
     requires:
       vars: [FOUNDATION_PROJECT]
-    cmds: ['docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} down --volumes']
+    cmds: ['docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} --profile fixture-storage down --volumes']
   foundation:test-ci-paths:
     cmds: [node --test scripts/ci/tests/loco_paths.test.mjs]
   foundation:test-workspaces:
@@ -119,6 +131,9 @@ tasks:
     cmds:
       - task: frontend:prepare
       - 'cargo run --locked -- start {{if eq (.SERVER_AND_WORKER | default "false") "true"}}--server-and-worker{{end}} --environment {{.LOCO_ENV | default "development"}}'
+  scheduler:
+    desc: Run configured Loco scheduled tasks
+    cmds: ['cargo run --locked -- scheduler --environment {{.LOCO_ENV | default "development"}} {{.CLI_ARGS}}']
   build:
     desc: Build Loco
     cmds:
@@ -196,6 +211,7 @@ tasks:
   ci:
     desc: Verify root Loco foundation
     cmds:
+      - task: ci:paths
       - task: fmt
       - task: lint
       - task: test

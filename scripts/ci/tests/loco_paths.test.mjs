@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { classify } from '../classify.mjs';
 
 test('Loco source and framework configuration select the Loco job', () => {
-  for (const path of ['src/app.rs', 'Cargo.toml', 'Cargo.lock', 'migration/src/lib.rs', 'config/development.yaml', 'assets/views/home/index.html', 'scripts/migration/foundation.test.mjs']) {
+  for (const path of ['src/app.rs', 'build.rs', 'Cargo.toml', 'Cargo.lock', 'migration/src/lib.rs', 'config/development.yaml', 'assets/views/home/index.html', 'scripts/migration/foundation.test.mjs']) {
     const selected = classify([path]).selected;
     assert.equal(selected.loco, true, path);
     assert.equal(selected.rails, false, path);

@@ -1,5 +1,47 @@
 version: '3'
 tasks:
+  profile-reference:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction
+        -c "UPDATE public.people SET name='Jane Doe',date_of_birth='1980-01-02' WHERE id=73001;
+        UPDATE public.accounts SET email='jane.doe@example.com',preferences=coalesce(preferences,'{}'::jsonb)||jsonb_build_object('time_zone','London') WHERE id=71001;
+        UPDATE public.household_memberships SET role='member' WHERE id=74001;"
+  profile-birthday:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds: ['psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -c "UPDATE public.people SET date_of_birth=''1980-06-15'' WHERE id=73001"']
+  profile-newborn:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds: ['psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -c "UPDATE public.people SET date_of_birth=timezone(''UTC'',clock_timestamp())::date,person_type=1,has_capacity=false WHERE id=73001"']
+  profile-closure-devices:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction
+        -c "INSERT INTO public.push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) SELECT id,'https://web.push.apple.com/synthetic-'||id,'synthetic-key','synthetic-auth',now(),now() FROM public.accounts WHERE id IN(71001,71002);
+        INSERT INTO public.native_device_tokens(account_id,device_token,platform,apns_environment,created_at,updated_at) SELECT id,'synthetic-device-'||id,'ios','sandbox',now(),now() FROM public.accounts WHERE id IN(71001,71002);"
+  profile-device-probe:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align
+        -c "SELECT json_build_object('browser',(SELECT count(*) FROM public.push_subscriptions WHERE account_id=71001),'native',(SELECT count(*) FROM public.native_device_tokens WHERE account_id=71001),'other_browser',(SELECT count(*) FROM public.push_subscriptions WHERE account_id=71002),'other_native',(SELECT count(*) FROM public.native_device_tokens WHERE account_id=71002));"
+  profile-notification-fixture:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds: ['psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction -f tests/fixtures/browser-profile-notifications.sql']
+  profile-notification-probe:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds: ['psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align -c "SELECT json_object_agg(person_id,missed_dose_notifications_enabled) FROM public.person_access_grants WHERE household_membership_id=74001"']
+  prepare-avatar-storage:
+    cmds: ['cargo test --locked --test care_api avatar_storage::prepare_owned_bucket -- --ignored --exact']
   occurrence-probe:
     requires:
       vars: [CARE_DATABASE_URL]
@@ -455,6 +497,13 @@ tasks:
       - >-
         psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1
         -c "UPDATE public.accounts SET preferences=jsonb_set(coalesce(preferences,'{}'::jsonb),'{time_zone}','\"Europe/London\"'::jsonb) WHERE id=71001"
+  profile-retained-zone:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1
+        -c "UPDATE public.accounts SET preferences=jsonb_set(coalesce(preferences,'{}'::jsonb),'{time_zone}','\"Europe/Belfast\"'::jsonb) WHERE id=71001"
   schedule-only-medicine:
     requires:
       vars: [CARE_DATABASE_URL]

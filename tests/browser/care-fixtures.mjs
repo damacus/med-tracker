@@ -3,7 +3,7 @@ import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, generateKeyPairSync } from 'node:crypto';
 import { mkdtemp, rm, mkdir, writeFile, cp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -13,7 +13,7 @@ import { stopOwnedProcess } from '../../scripts/migration/process-cleanup.mjs';
 const execute = promisify(execFile);
 const root = fileURLToPath(new URL('../../', import.meta.url));
 
-async function withCareFixture(captureMail, registrationInviteOnly, reportAssetsUnavailable, use, oidcProvider = false) {
+async function withCareFixture(captureMail, registrationInviteOnly, reportAssetsUnavailable, use, oidcProvider = false, avatarStorage = false, webPush = false) {
   const runtimeTimings = { phases: [] };
   const measure = async (name, action) => {
     const started = performance.now();
@@ -31,6 +31,7 @@ async function withCareFixture(captureMail, registrationInviteOnly, reportAssets
     await measure('migration', () => execute('task', ['browser-care:migrate', `MIGRATION_DATABASE_URL=${owner.href}`, 'LOCO_ENV=test'], { cwd: root, timeout: 60000 }));
     const fixtureTask = async (name, variables = []) => (await execute('task', [`browser-care:${name}`, `CARE_DATABASE_URL=${owner.href}`, `FOUNDATION_PROJECT=${ownership.project}`, ...variables], { cwd: root, timeout: 60000 })).stdout.trim();
     await measure('seed', () => fixtureTask('seed'));
+    if (avatarStorage) await measure('avatar-storage', () => execute('task', ['browser-care:prepare-avatar-storage'], { cwd: root, timeout: 180000, env: { ...process.env, ...ownership.storageEnvironment, MEDTRACKER_OWNED_DATABASE: '1' } }));
     const snapshotDirectory = await mkdtemp(join(tmpdir(), 'mtloco-browser-'));
     const snapshotPath = join(snapshotDirectory, 'baseline.dump');
     let applicationRoot = root;
@@ -66,8 +67,14 @@ async function withCareFixture(captureMail, registrationInviteOnly, reportAssets
       exited = false;
       const environment = { ...process.env, LOCO_ENV: 'test', TZ: 'UTC', BINDING: '127.0.0.1', PORT: String(port), MEDTRACKER_PUBLIC_HOST: 'http://localhost', DATABASE_URL: runtime.href, MEDTRACKER_CAPTURE_MAIL: String(captureMail), MEDTRACKER_SMTP_PORT: smtpPort ?? '1025', MEDTRACKER_SESSION_KEY: Buffer.alloc(64, 7).toString('base64'), MEDTRACKER_COOKIE_SECURE: 'false', RAILS_SECRET_KEY_BASE: 'synthetic-rails-secret-key-base-for-compatibility', RAILS_OLD_SECRET_KEY_BASE: 'synthetic-old-rails-secret-key-base', AUTH_SESSION_SECRET: 'synthetic-browser-occurrence-signing-key-32' };
       for (const name of ['MEDTRACKER_ZITADEL_ISSUER', 'MEDTRACKER_ZITADEL_CLIENT_ID', 'MEDTRACKER_ZITADEL_CLIENT_SECRET']) delete environment[name];
+      for (const name of ['MEDTRACKER_WEB_PUSH_PRIVATE_KEY', 'MEDTRACKER_WEB_PUSH_SUBJECT']) delete environment[name];
+      if (webPush) {
+        const signing = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
+        Object.assign(environment, { MEDTRACKER_WEB_PUSH_PRIVATE_KEY: signing.privateKey.export({ format: 'jwk' }).d, MEDTRACKER_WEB_PUSH_SUBJECT: 'mailto:fixture@example.test' });
+      }
       if (provider) Object.assign(environment, { MEDTRACKER_ZITADEL_ISSUER: provider.origin, MEDTRACKER_ZITADEL_CLIENT_ID: 'medtracker-fixture', MEDTRACKER_ZITADEL_CLIENT_SECRET: 'password' });
       delete environment.RUST_LOG;
+      Object.assign(environment, ownership.storageEnvironment);
       delete environment.INVITE_ONLY;
       if (registrationInviteOnly !== undefined) environment.INVITE_ONLY = String(registrationInviteOnly);
       if (reservation.listening) await new Promise(resolve => reservation.close(resolve));
@@ -111,6 +118,7 @@ async function withCareFixture(captureMail, registrationInviteOnly, reportAssets
       await measure('application-start', start);
       await use({ origin, mailpitUrl, runtimeTimings, provider,
         reset: () => measure('reset', () => fixtureTask('reset', [`SNAPSHOT_PATH=${snapshotPath}`])),
+        profileNotificationFixture: () => fixtureTask('profile-notification-fixture'), profileNotificationProbe: async () => JSON.parse(await fixtureTask('profile-notification-probe')),
         probe: async () => JSON.parse(await fixtureTask('probe')), seedBarcodeMetadata: () => fixtureTask('seed-barcode-metadata'), barcodeMetadataProbe: async () => JSON.parse(await fixtureTask('barcode-metadata-probe')), seedLegacyCareHours: () => fixtureTask('legacy-care-hours'), legacyCareHoursProbe: async () => JSON.parse(await fixtureTask('legacy-care-hours-probe')), seedLegacySecondTaperHour: () => fixtureTask('legacy-second-taper-hour'), revoke: () => fixtureTask('revoke'), reactivate: () => fixtureTask('reactivate'),
         seedOtp: () => fixtureTask('seed-otp'), otpProbe: async () => JSON.parse((await fixtureTask('otp-probe')) || 'null'), closeOtpAccount: () => fixtureTask('close-otp-account'),
         seedRecovery: () => fixtureTask('seed-recovery'), recoveryProbe: async () => JSON.parse(await fixtureTask('recovery-probe')), exhaustOtp: () => fixtureTask('exhaust-otp'),
@@ -152,6 +160,8 @@ async function withCareFixture(captureMail, registrationInviteOnly, reportAssets
           return fixtureTask('seed-retained-passkey', [...fields.map(field => `RETAINED_${field.toUpperCase()}=${stored[field]}`), `RETAINED_SIGN_COUNT=${stored.sign_count}`]);
         },
         secondPerson: () => fixtureTask('second-person'),
+        profileRetainedZone: () => fixtureTask('profile-retained-zone'),
+        profileReference: () => fixtureTask('profile-reference'),
         scheduledMedicine: () => fixtureTask('scheduled-medicine'), scheduleOnlyMedicine: () => fixtureTask('schedule-only-medicine'), dateSensitiveSchedule: () => fixtureTask('date-sensitive-schedule'), offdaySchedule: () => fixtureTask('offday-schedule'), changeTaperStep: () => fixtureTask('change-taper-step'), londonPreviewZone: () => fixtureTask('london-preview-zone'), collidingDoseSources: () => fixtureTask('colliding-dose-sources'), emptyStandardDosage: () => fixtureTask('empty-standard-dosage'),
         seedReport: () => fixtureTask('report-seed'),
         seedReportHistory: () => fixtureTask('report-history-seed'),
@@ -169,6 +179,8 @@ async function withCareFixture(captureMail, registrationInviteOnly, reportAssets
         failEmailAudit: () => fixtureTask('fail-email-audit'), restoreEmailAudit: () => fixtureTask('restore-email-audit'),
         emailChangeProbe: async () => JSON.parse(await fixtureTask('email-change-probe')),
         transferClosureOwnership: () => fixtureTask('transfer-closure-ownership'), closureProbe: async () => JSON.parse(await fixtureTask('closure-probe')),
+        profileClosureDevices: () => fixtureTask('profile-closure-devices'), profileDeviceProbe: async () => JSON.parse(await fixtureTask('profile-device-probe')),
+        profileBirthday: () => fixtureTask('profile-birthday'), profileNewborn: () => fixtureTask('profile-newborn'),
         failClosureAudit: () => fixtureTask('fail-closure-audit'), restoreClosureAudit: () => fixtureTask('restore-closure-audit'),
         expireTotpLock: () => fixtureTask('expire-totp-lock'),
         clearAdoptedOnboarding: () => fixtureTask('clear-adopted-onboarding'),
@@ -184,7 +196,7 @@ async function withCareFixture(captureMail, registrationInviteOnly, reportAssets
         try { if (mailStarted) await fixtureTask('mail-down', [`MAILPIT_NAME=${mailName}`]); } finally { try { if (provider) await provider.close(); } finally { await rm(snapshotDirectory, { recursive: true, force: true }); } }
       }
     }
-  }); } finally {
+  }, undefined, process.env, { storage: avatarStorage }); } finally {
     if (databaseOwnership) {
       const teardown = databaseOwnership.timings.find(phase => phase.name === 'foundation:db-down');
       if (teardown) runtimeTimings.phases.push({ name: 'database-stop', durationMs: teardown.durationMs });
@@ -201,6 +213,8 @@ export const test = base.extend({
   registrationInviteOnly: [undefined, { option: true }],
   reportAssetsUnavailable: [false, { option: true }],
   oidcProvider: [false, { option: true }],
+  avatarStorage: [false, { option: true }],
+  webPush: [false, { option: true }],
   isolatedCare: [false, { option: true }],
   sharedCare: [async ({}, use) => {
     let ready;
@@ -220,7 +234,7 @@ export const test = base.extend({
     };
     try { await use(pool); } finally { release(); if (completed) await completed; }
   }, { scope: 'worker', timeout: 180000 }],
-  careFixture: [async ({ captureMail, registrationInviteOnly, reportAssetsUnavailable, isolatedCare, sharedCare, oidcProvider }, use, info) => {
+  careFixture: [async ({ captureMail, registrationInviteOnly, reportAssetsUnavailable, isolatedCare, sharedCare, oidcProvider, avatarStorage, webPush }, use, info) => {
     const started = performance.now();
     let fixture;
     let phaseStart = 0;
@@ -233,8 +247,8 @@ export const test = base.extend({
       }
     };
     try {
-      if (captureMail || registrationInviteOnly !== undefined || reportAssetsUnavailable || isolatedCare || oidcProvider || info.tags.includes('@isolated-runtime')) {
-        await withCareFixture(captureMail, registrationInviteOnly, reportAssetsUnavailable, run, oidcProvider);
+      if (captureMail || registrationInviteOnly !== undefined || reportAssetsUnavailable || isolatedCare || oidcProvider || avatarStorage || webPush || info.tags.includes('@isolated-runtime')) {
+        await withCareFixture(captureMail, registrationInviteOnly, reportAssetsUnavailable, run, oidcProvider, avatarStorage, webPush);
       } else {
         fixture = await sharedCare.get();
         phaseStart = fixture.runtimeTimings.reportedPhaseCount ?? 0;

@@ -1,9 +1,10 @@
 {% extends "layouts/base.html" %}
 {% block content %}
+{% include "identity_onboarding/security_labels.html" %}
 <section class="card shell-card max-w-xl mx-auto"><div class="card-body gap-4">
-  <h1 class="text-2xl font-semibold">Save your API key</h1>
-  <p>{{ name }}</p><p>Copy this key to your integration now. It will not be shown again.</p>
-  <label for="created-api-key">API key</label><input class="input input-bordered w-full font-mono" id="created-api-key" value="{{ api_key }}" readonly autocomplete="off" spellcheck="false">
-  <a class="link" href="/account/security/keys">Return to personal API keys</a>
+  <h1 class="text-2xl font-semibold">{{ flow.save_key }}</h1>
+  <p>{{ name }}</p><p>{{ flow.key_copy_hint }}</p>
+  <label for="created-api-key">{{ flow.api_key }}</label><input class="input input-bordered w-full font-mono" id="created-api-key" value="{{ api_key }}" readonly autocomplete="off" spellcheck="false">
+  <a class="link" href="/account/security/keys">{{ flow.return_keys }}</a>
 </div></section>
 {% endblock content %}

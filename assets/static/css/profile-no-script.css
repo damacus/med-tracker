@@ -1,0 +1,24 @@
+#profile-avatar, #profile-timezone, #profile-shortcuts {
+  display: block;
+  position: static;
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  width: 100%;
+  height: auto;
+  margin-block: 2rem;
+  padding: 0;
+  background: none;
+}
+#profile-avatar .modal-box, #profile-timezone .modal-box, #profile-shortcuts .modal-box {
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  opacity: 1;
+  transform: none;
+  translate: none;
+  scale: 1;
+}
+.profile-settings, #profile-avatar [data-dialog-close], #profile-timezone [data-dialog-close], #profile-shortcuts [data-dialog-close] {
+  display: none;
+}

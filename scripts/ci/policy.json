@@ -16,7 +16,7 @@
     "api_clients": ["generation", "kotlin", "swift"]
   },
   "rules": [
-    {"pattern": "^(src/|tests/|migration/|assets/|config/.*[.]yaml$|Cargo[.](toml|lock)$|compose[.]yaml$|scripts/(migration|lint-advisory)/|Taskfiles/(browser-care|frontend|lint-advisory)[.]yml$|playwright[.]config[.]mjs$|package(?:-lock)?[.]json$)", "suites": ["loco"]},
+    {"pattern": "^(src/|tests/|migration/|assets/|config/.*[.]yaml$|Cargo[.](toml|lock)$|build[.]rs$|compose[.]yaml$|scripts/(migration|lint-advisory)/|Taskfiles/(browser-care|frontend|lint-advisory)[.]yml$|playwright[.]config[.]mjs$|package(?:-lock)?[.]json$)", "suites": ["loco"]},
     {"pattern": "^rails/(app/(components|views|javascript|assets)/|public/|config/routes[.]rb$|config/initializers/content_security_policy[.]rb$|db/seeds[.]rb$|spec/fixtures/|tasks/lighthouse[.]yml$|bin/lighthouse_score_gate[.]js$)", "suites": ["rails", "lighthouse"]},
     {"pattern": "^(scripts/ci/|Taskfiles/ci\\.yml$|\\.github/workflows/ci\\.yml$|Taskfile\\.yml$|mise\\.toml$)", "suites": ["all"], "prose": true},
     {"pattern": "^mobile/android/", "suites": ["android"]},

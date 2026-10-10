@@ -1,8 +1,9 @@
 {% extends "layouts/base.html" %}
 {% block content %}
+{% include "identity_onboarding/security_labels.html" %}
 <section class="max-w-xl mx-auto card shell-card"><div class="card-body gap-4">
-  <h1 class="text-3xl font-semibold">ZITADEL sign-in unavailable</h1>
-  <p>The provider could not verify this sign-in. Try again or use your local password, passkey or recovery code.</p>
-  <a class="link" href="/login">Return to sign in</a>
+  <h1 class="text-3xl font-semibold">{{ flow.provider_unavailable }}</h1>
+  <p>{{ flow.provider_error_hint }}</p>
+  <a class="link" href="/login">{{ flow.return_signin }}</a>
 </div></section>
 {% endblock content %}

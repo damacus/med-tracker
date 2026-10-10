@@ -1,6 +1,7 @@
 mod administration;
 mod assignments;
 mod audit;
+mod avatar;
 mod dosages;
 mod dose_history;
 mod dose_occurrences;
@@ -82,6 +83,13 @@ pub fn invitation_routes() -> Routes {
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("/api/v1/households")
+        .add(
+            "/{household_id}/profile/avatar",
+            get(avatar::show)
+                .put(avatar::upload)
+                .delete(avatar::remove)
+                .layer(axum::extract::DefaultBodyLimit::max(6 * 1024 * 1024)),
+        )
         .add(
             "/{household_id}/health_events",
             get(health_events::index).post(health_events::create),

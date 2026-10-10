@@ -9,6 +9,15 @@ pub(super) struct RequestAudit {
 }
 
 impl RequestAudit {
+    pub fn avatar(method: &'static str, action: &'static str) -> Self {
+        Self {
+            method,
+            controller: "api/v1/profile_avatars",
+            action,
+            policy: "PersonPolicy",
+            query: if action == "show" { "show?" } else { "update?" },
+        }
+    }
     pub fn health_event(method: &'static str, action: &'static str) -> Self {
         Self {
             method,

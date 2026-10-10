@@ -21,6 +21,36 @@ RSpec.describe 'Record dose dialog accessibility', :browser do
     sign_in(admin)
   end
 
+  context 'when the dialog controller loads slowly' do
+    before do
+      page.driver.with_playwright_page do |browser|
+        browser.route('**/ruby_ui/dialog_controller-*.js', lambda { |route, _request|
+          response = route.fetch
+          delayed_body = "await new Promise(resolve => setTimeout(resolve, 3000));\n#{response.text}"
+          route.fulfill(response: response, body: delayed_body)
+        })
+      end
+    end
+
+    it 'opens Record dose on the first click' do
+      visit dashboard_path(dashboard_person_id: schedule.person.id)
+
+      using_wait_time(10) do
+        find("[data-testid='take-dose-schedule_#{schedule.id}']").click
+        expect(page).to have_css('dialog[open][role="dialog"]', text: 'Record dose')
+      end
+    end
+
+    it 'opens Scan stock on the first click' do
+      visit medications_path
+
+      using_wait_time(10) do
+        click_on 'Scan stock'
+        expect(page).to have_field('inventory_scan_barcode')
+      end
+    end
+  end
+
   [[1400, 1000], [390, 844]].each do |width, height|
     it "dismisses Record dose with Escape and restores focus at #{width}x#{height}" do
       page.current_window.resize_to(width, height)
