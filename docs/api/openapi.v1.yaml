@@ -4374,7 +4374,7 @@ components:
       name: If-None-Match
       in: header
       required: false
-      description: Return an empty 304 response when a visible medication's serialized response still matches this ETag.
+      description: Return an empty 304 response when a visible resource's serialized representation still matches this ETag.
       schema:
         type: string
     portable_passphrase:
