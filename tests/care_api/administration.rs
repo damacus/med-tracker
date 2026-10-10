@@ -657,10 +657,15 @@ async fn household_admin_settings_get_matches_documented_contract() {
     assert_eq!(denied_body["error"]["code"], "forbidden");
     assert_eq!(denied_body["error"]["request_id"], denied_request_id);
 
+    app.fixture
+        .admin
+        .execute_unprepared("INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(92001,71001,'Foreign synthetic household','api-settings-foreign','UTC',now(),now())")
+        .await
+        .unwrap();
     let foreign = app
         .client
         .get(format!(
-            "{}/api/v1/households/72002/admin/settings",
+            "{}/api/v1/households/92001/admin/settings",
             app.origin
         ))
         .bearer_auth(&token)
@@ -668,6 +673,10 @@ async fn household_admin_settings_get_matches_documented_contract() {
         .await
         .unwrap();
     let foreign_status = foreign.status().as_u16();
+    let foreign_request_id = foreign.headers()["x-request-id"]
+        .to_str()
+        .unwrap()
+        .to_owned();
     let foreign_body: Value = foreign.json().await.unwrap();
     assert_eq!(foreign_status, 403);
     assert_value(
@@ -677,5 +686,6 @@ async fn household_admin_settings_get_matches_documented_contract() {
         "foreign household settings",
     );
     assert_eq!(foreign_body["error"]["code"], "forbidden");
+    assert_eq!(foreign_body["error"]["request_id"], foreign_request_id);
     app.close().await;
 }
