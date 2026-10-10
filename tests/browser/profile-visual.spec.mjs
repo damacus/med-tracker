@@ -15,9 +15,9 @@ test('profile reference states retain readable desktop and mobile layouts', asyn
   await expect(page.getByTestId('profile-personal-info-card')).toContainText('Jane Doe');
   for (const appearance of ['light', 'dark']) {
     await page.getByRole('tab', { name: 'Profile', exact: true }).click();
-    await page.locator('.profile-settings [data-dialog-open="appearance-dialog"]').click();
+    await page.locator('#appearance-dialog summary').click();
     await page.locator(`[data-appearance-choice="${appearance}"]`).click();
-    await page.locator('#appearance-dialog').press('Escape');
+    await page.locator('#appearance-dialog summary').click();
     for (const tab of ['Profile', 'Security', 'Notifications', 'Advanced']) {
       await page.getByRole('tab', { name: tab, exact: true }).click();
       await expect(page.getByRole('tabpanel', { name: tab, exact: true })).toBeVisible();
@@ -26,12 +26,12 @@ test('profile reference states retain readable desktop and mobile layouts', asyn
     }
     await page.getByRole('tab', { name: 'Profile', exact: true }).click();
     for (const id of ['profile-avatar', 'profile-timezone', 'profile-shortcuts', 'appearance-dialog']) {
-      const opener = page.locator(`.profile-settings [data-dialog-open="${id}"]`);
+      const opener = page.locator(`#${id} summary`);
       await opener.click();
       const dialog = page.locator(`#${id}`);
       await expect(dialog).toBeVisible();
       await page.screenshot({ path: testInfo.outputPath(`${id}-${appearance}-${testInfo.project.name}.png`), fullPage: false, animations: 'disabled' });
-      await dialog.press('Escape');
+      await opener.click();
       await expect(opener).toBeFocused();
     }
     await page.getByRole('tab', { name: 'Security', exact: true }).click();

@@ -55,9 +55,9 @@ test('account closure button meets normal-text contrast in light and dark appear
   await openProfile(page);
   for (const appearance of ['light', 'dark']) {
     await page.getByRole('tab', { name: 'Profile', exact: true }).click();
-    await page.locator('.profile-settings [data-dialog-open="appearance-dialog"]').click();
+    await page.locator('#appearance-dialog summary').click();
     await page.locator(`[data-appearance-choice="${appearance}"]`).click();
-    await page.locator('#appearance-dialog').press('Escape');
+    await page.locator('#appearance-dialog summary').click();
     await page.getByRole('tab', { name: 'Advanced', exact: true }).click();
     const contrast = await page.getByRole('button', { name: 'Close account', exact: true }).evaluate(button => {
       const context = document.createElement('canvas').getContext('2d');
@@ -132,8 +132,8 @@ test('profile section navigation uses the inset selected-tab treatment', async (
 test('ordered shortcuts retain invalid entries and control the mobile navigation after saving', async ({ page }) => {
   test.setTimeout(180000);
   await openProfile(page);
-  await page.getByRole('button', { name: 'Bottom bar shortcuts Choose one to three shortcuts in the order you want them to appear.', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: 'Bottom bar shortcuts', exact: true });
+  await page.locator('#profile-shortcuts summary').click();
+  const dialog = page.locator('#profile-shortcuts');
   for (const slot of [1, 2, 3]) await dialog.getByLabel(`Shortcut ${slot}`, { exact: true }).selectOption('');
   await dialog.getByRole('button', { name: 'Save shortcuts', exact: true }).click();
   await expect(dialog.getByRole('alert')).toContainText('Choose one to three different shortcuts.');
@@ -142,7 +142,7 @@ test('ordered shortcuts retain invalid entries and control the mobile navigation
   await dialog.getByLabel('Shortcut 1', { exact: true }).selectOption('profile');
   await dialog.getByLabel('Shortcut 2', { exact: true }).selectOption('inventory');
   await dialog.getByRole('button', { name: 'Save shortcuts', exact: true }).click();
-  await expect(dialog).toBeHidden();
+  await expect(dialog).toHaveAttribute('open', '');
   await page.reload();
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByRole('navigation', { name: 'Bottom bar shortcuts', exact: true }).getByRole('link')).toHaveText(['Profile', 'Inventory']);
@@ -165,13 +165,13 @@ test('profile tabs reflow at 320px with doubled text and exclude hidden panels f
   expect(await page.evaluate(() => !document.activeElement.closest('[hidden]'))).toBe(true);
 });
 
-test('retained timezone survives saving and cancelling a dialog returns focus without saving', async ({ page, careFixture }) => {
+test('retained timezone survives saving and collapsing an accordion leaves changes unsaved', async ({ page, careFixture }) => {
   test.setTimeout(180000);
   await careFixture.profileRetainedZone();
   await openProfile(page);
-  const trigger = page.getByRole('button', { name: 'Time Zone Choose the time zone used for reminders and recorded doses.', exact: true });
+  const trigger = page.locator('#profile-timezone summary');
   await trigger.click();
-  const dialog = page.getByRole('dialog', { name: 'Time Zone', exact: true });
+  const dialog = page.locator('#profile-timezone');
   await expect(dialog.getByRole('combobox', { name: 'Time Zone', exact: true })).toHaveValue('Europe/Belfast');
   await dialog.getByRole('button', { name: 'Save time zone', exact: true }).click();
   await page.reload();
@@ -179,8 +179,8 @@ test('retained timezone survives saving and cancelling a dialog returns focus wi
   await trigger.click();
   await expect(dialog.getByRole('combobox', { name: 'Time Zone', exact: true })).toHaveValue('Europe/Belfast');
   await dialog.getByRole('combobox', { name: 'Time Zone', exact: true }).selectOption('UTC');
-  await dialog.press('Escape');
-  await expect(dialog).toBeHidden();
+  await dialog.locator('summary').click();
+  await expect(dialog).not.toHaveAttribute('open');
   await expect(trigger).toBeFocused();
   await page.reload();
   await expect(page.getByTestId('profile-personal-info-card')).toContainText('Europe/Belfast');
@@ -189,29 +189,29 @@ test('retained timezone survives saving and cancelling a dialog returns focus wi
 test('saving one profile setting preserves other unsaved entries and announces the result', async ({ page }) => {
   test.setTimeout(180000);
   await openProfile(page);
-  const shortcutTrigger = page.getByRole('button', { name: 'Bottom bar shortcuts Choose one to three shortcuts in the order you want them to appear.', exact: true });
+  const shortcutTrigger = page.locator('#profile-shortcuts summary');
   await shortcutTrigger.click();
-  const shortcuts = page.getByRole('dialog', { name: 'Bottom bar shortcuts', exact: true });
+  const shortcuts = page.locator('#profile-shortcuts');
   await shortcuts.getByLabel('Shortcut 1', { exact: true }).selectOption('profile');
-  await shortcuts.press('Escape');
-  const zoneTrigger = page.getByRole('button', { name: 'Time Zone Choose the time zone used for reminders and recorded doses.', exact: true });
+  await shortcuts.locator('summary').click();
+  const zoneTrigger = page.locator('#profile-timezone summary');
   await zoneTrigger.click();
-  const zone = page.getByRole('dialog', { name: 'Time Zone', exact: true });
+  const zone = page.locator('#profile-timezone');
   await zone.getByRole('combobox', { name: 'Time Zone', exact: true }).selectOption('Europe/London');
   await zone.getByRole('button', { name: 'Save time zone', exact: true }).click();
-  await expect(zone).toBeHidden();
-  await expect(zoneTrigger).toBeFocused();
+  await expect(zone).toHaveAttribute('open', '');
+  await expect(zone.getByRole('button', { name: 'Save time zone', exact: true })).toBeFocused();
   await expect(page.getByRole('status')).toContainText('Profile updated successfully.');
   await shortcutTrigger.click();
   await expect(shortcuts.getByLabel('Shortcut 1', { exact: true })).toHaveValue('profile');
 });
 
-test('appearance sheet exposes the Rails modes and palettes with persistent immediate effects', async ({ page }) => {
+test('appearance accordion exposes the Rails modes and palettes with persistent immediate effects', async ({ page }) => {
   test.setTimeout(180000);
   await openProfile(page);
-  const trigger = page.getByRole('button', { name: 'Appearance Choose how MedTracker looks across signed-in and signed-out screens.', exact: true });
+  const trigger = page.locator('#appearance-dialog summary');
   await trigger.click();
-  const sheet = page.getByRole('dialog', { name: 'Appearance', exact: true });
+  const sheet = page.locator('#appearance-dialog');
   await expect(sheet.getByRole('group', { name: 'Mode', exact: true })).toBeVisible();
   const palettes = [['Command Centre', 'default'], ['Serene Sage', 'serene-sage'], ['Modern Clinical', 'modern-clinical'], ['Warm Earth', 'warm-earth'], ['Deep Lavender', 'deep-lavender'], ['Forest Care', 'forest-care'], ['Sunset Support', 'sunset-support'], ['Tech Indigo', 'tech-indigo'], ['Soft Rose', 'soft-rose'], ['Minty Fresh', 'minty-fresh']];
   for (const [label, id] of palettes) {
@@ -224,17 +224,18 @@ test('appearance sheet exposes the Rails modes and palettes with persistent imme
     await expect(sheet.getByRole('button', { name: mode, exact: true })).toHaveAttribute('aria-pressed', 'true');
   }
   await sheet.getByRole('button', { name: 'Dark', exact: true }).click();
-  await sheet.press('Escape');
+  await sheet.locator('summary').click();
   await expect(trigger).toBeFocused();
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'minty-fresh-dark');
   await expect(page.locator('html')).toHaveAttribute('data-appearance', 'dark');
 });
 
-test('profile shares the application header, content width, cards and centred dialogs', async ({ page }) => {
+test('profile shares the application header, content width, cards and inline settings', async ({ page }) => {
   test.setTimeout(180000);
   await openProfile(page);
   await page.goto('/households/persistence-fixture/people/73001');
+  await expect(page.getByRole('button', { name: 'Open menu', exact: true })).toBeVisible();
   const referenceHeader = await page.getByRole('banner').innerText();
   const referenceBounds = await page.getByRole('main').boundingBox();
   const surface = element => {
@@ -243,35 +244,34 @@ test('profile shares the application header, content width, cards and centred di
   };
   const referenceCard = await page.locator('section').filter({ has: page.getByRole('heading', { name: 'Profile details', exact: true }) }).last().evaluate(surface);
   await page.goto('/households/persistence-fixture/profile');
-  await expect(page.getByRole('banner')).toHaveText(referenceHeader);
+  await expect(page.getByRole('banner')).toHaveText(referenceHeader, { useInnerText: true });
   const bounds = await page.getByRole('main').boundingBox();
   expect(bounds.x).toBe(referenceBounds.x);
   expect(bounds.width).toBe(referenceBounds.width);
   expect(await page.getByTestId('profile-personal-info-card').evaluate(surface)).toEqual(referenceCard);
+  await page.getByRole('button', { name: 'Open menu', exact: true }).click();
   await expect(page.getByRole('navigation', { name: 'Primary navigation', exact: true }).getByRole('link', { name: 'People', exact: true })).toBeVisible();
-  const opener = page.locator('[data-dialog-open="profile-avatar"]');
+  await page.locator('#app-drawer').press('Escape');
+  const opener = page.locator('#profile-avatar summary');
   await opener.click();
   const dialog = page.locator('#profile-avatar');
-  const box = await dialog.locator('.modal-box').boundingBox();
-  const viewport = page.viewportSize();
-  expect(Math.abs(box.x + box.width / 2 - viewport.width / 2)).toBeLessThan(2);
-  expect(box.height).toBeLessThan(viewport.height * .9);
-  await dialog.press('Escape');
+  await expect(dialog.getByLabel('Upload a custom avatar', { exact: true })).toBeVisible();
+  await dialog.locator('summary').click();
   await expect(opener).toBeFocused();
 });
 
-test('profile photo opens its sheet and rejects invalid image bytes without losing the page', async ({ page }) => {
+test('profile photo opens its accordion and rejects invalid image bytes without losing the page', async ({ page }) => {
   test.setTimeout(180000);
   await openProfile(page);
-  const trigger = page.getByRole('button', { name: 'Profile photo Upload an avatar for places where your name appears.', exact: true });
+  const trigger = page.locator('#profile-avatar summary');
   await trigger.click();
-  const sheet = page.getByRole('dialog', { name: 'Profile photo', exact: true });
+  const sheet = page.locator('#profile-avatar');
   await expect(sheet.getByText('PNG, JPEG, or WebP up to 5 MB.', { exact: true })).toBeVisible();
   await sheet.getByLabel('Upload a custom avatar', { exact: true }).setInputFiles({ name: 'broken.png', mimeType: 'image/png', buffer: Buffer.from('invalid image') });
   await sheet.getByRole('button', { name: 'Upload avatar', exact: true }).click();
   await expect(sheet.getByRole('alert')).toContainText('Avatar image is invalid');
   await expect(sheet.getByRole('alert')).toBeFocused();
-  await sheet.press('Escape');
+  await sheet.locator('summary').click();
   await expect(trigger).toBeFocused();
   await expect(page.getByRole('tabpanel', { name: 'Profile', exact: true })).toBeVisible();
 });

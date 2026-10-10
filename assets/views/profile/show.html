@@ -32,10 +32,56 @@
         </dl>
       </section>
       <div class="profile-settings grid gap-3">
-        <button class="profile-setting btn btn-ghost grid h-auto w-full whitespace-normal text-left border border-base-300 p-4 font-normal" type="button" data-dialog-open="profile-avatar"><strong>{{ labels.profiles.avatar.title }}</strong><span>{{ labels.profiles.avatar.description }}</span></button>
-        <button class="profile-setting btn btn-ghost grid h-auto w-full whitespace-normal text-left border border-base-300 p-4 font-normal" type="button" data-dialog-open="profile-timezone"><strong>{{ labels.profiles.time_zone.title }}</strong><span>{{ labels.profiles.time_zone.description }}</span></button>
-        <button class="profile-setting btn btn-ghost grid h-auto w-full whitespace-normal text-left border border-base-300 p-4 font-normal" type="button" data-dialog-open="profile-shortcuts"><strong>{{ labels.profiles.mobile_shortcuts.title }}</strong><span>{{ labels.profiles.mobile_shortcuts.description }}</span></button>
-        <button class="profile-setting btn btn-ghost grid h-auto w-full whitespace-normal text-left border border-base-300 p-4 font-normal" type="button" data-dialog-open="appearance-dialog"><strong>{{ labels.profiles.appearance.title }}</strong><span>{{ labels.profiles.appearance.description }}</span></button>
+<details id="profile-avatar" class="profile-setting card bg-base-100 border border-base-300" {% if avatar_error %}open{% endif %}><summary class="p-4 cursor-pointer"><strong>{{ labels.profiles.avatar.title }}</strong><span>{{ labels.profiles.avatar.description }}</span>{% include "profile/avatar-image.html" %}</summary>  <div class="profile-setting-content p-4"><h2 class="text-2xl font-semibold" id="profile-avatar-title">{{ labels.profiles.avatar.title }}</h2><p>{{ labels.profiles.avatar.description }}</p>
+    <div class="flex items-center gap-4 my-6">{% include "profile/avatar-image.html" %}<strong>{{ name }}</strong></div>
+    <p>{{ labels.profiles.avatar.supported_formats }}</p>
+    <div id="profile-avatar-controls" data-profile-form-region>
+      {% if avatar_error %}<p role="alert" tabindex="-1" data-dialog-error-focus>{{ avatar_error }}</p>{% endif %}
+      {% if can_edit_profile %}<form method="post" action="/households/{{ slug }}/profile/avatar" enctype="multipart/form-data" class="grid gap-3 mt-6" data-profile-form>
+        <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+        <label for="profile-avatar-file">{{ labels.profiles.avatar.upload_label }}</label><input id="profile-avatar-file" class="file-input w-full" type="file" name="avatar" accept="image/png,image/jpeg,image/webp" required>
+        <button class="btn" type="submit">{{ labels.profiles.avatar.upload }}</button>
+      </form>
+      {% if avatar_attached %}<form method="post" action="/households/{{ slug }}/profile/avatar/remove" class="grid gap-3 mt-6" data-profile-form><input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><button type="submit" class="btn btn-ghost">{{ labels.profiles.avatar.remove }}</button></form>{% endif %}{% endif %}
+    </div>
+  </div>
+</details>
+<details id="profile-timezone" class="profile-setting card bg-base-100 border border-base-300" {% if timezone_error %}open{% endif %}><summary class="p-4 cursor-pointer"><strong>{{ labels.profiles.time_zone.title }}</strong><span>{{ labels.profiles.time_zone.description }}</span><span id="profile-timezone-summary" data-profile-summary>{{ time_zone }}</span></summary>  <div class="profile-setting-content p-4"><h2 class="text-2xl font-semibold" id="profile-timezone-title">{{ labels.profiles.time_zone.title }}</h2>
+    <form id="profile-timezone-form" data-profile-form-region method="post" action="/households/{{ slug }}/profile" class="grid gap-3 mt-6" data-profile-form>
+      <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+      <input type="hidden" name="setting" value="time_zone">
+      {% if timezone_error %}<p role="alert" tabindex="-1" data-dialog-error-focus>{{ labels.profiles.browser.timezone_invalid }}</p>{% endif %}
+      <label for="profile-timezone-select">{{ labels.profiles.time_zone.title }}</label>
+      <select id="profile-timezone-select" name="time_zone" class="select w-full" {% if timezone_error %}aria-invalid="true"{% endif %}>
+      {% for zone in zones %}<option value="{{ zone.value }}" {% if zone.value == selected_zone %}selected{% endif %}>{{ zone.name }}</option>{% endfor %}
+      </select>
+      <div class="modal-action"><button class="btn" type="submit">{{ labels.profiles.time_zone.save }}</button></div>
+    </form>
+  </div>
+</details>
+<details id="profile-shortcuts" class="profile-setting card bg-base-100 border border-base-300" {% if shortcuts_error %}open{% endif %}><summary class="p-4 cursor-pointer"><strong>{{ labels.profiles.mobile_shortcuts.title }}</strong><span>{{ labels.profiles.mobile_shortcuts.description }}</span><span id="profile-shortcuts-summary" data-profile-summary>{% for slot in shortcut_slots %}{% for choice in shortcut_choices %}{% if choice.id == slot.selected %}<span>{{ choice.label }}</span> {% endif %}{% endfor %}{% endfor %}</span></summary>  <div class="profile-setting-content p-4"><h2 class="text-2xl font-semibold" id="profile-shortcuts-title">{{ labels.profiles.mobile_shortcuts.title }}</h2>
+    <p>{{ labels.profiles.mobile_shortcuts.description }}</p>
+    <form id="profile-shortcuts-form" data-profile-form-region method="post" action="/households/{{ slug }}/profile" class="grid gap-3 mt-6" data-profile-form>
+      <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><input type="hidden" name="setting" value="shortcuts">
+      {% if shortcuts_error %}<p role="alert" tabindex="-1" data-dialog-error-focus>{{ labels.profiles.mobile_shortcuts.invalid }}</p>{% endif %}
+      {% for slot in shortcut_slots %}<label for="profile-shortcut-{{ slot.number }}">{{ slot.label }}</label>
+      <select class="select w-full" id="profile-shortcut-{{ slot.number }}" name="shortcut_{{ slot.number }}">
+        <option value="" {% if slot.selected == '' %}selected{% endif %}>{{ labels.profiles.mobile_shortcuts.none }}</option>
+        {% for choice in shortcut_choices %}<option value="{{ choice.id }}" {% if choice.id == slot.selected %}selected{% endif %}>{{ choice.label }}</option>{% endfor %}
+      </select>{% endfor %}
+      <div class="modal-action"><button class="btn" type="submit">{{ labels.profiles.mobile_shortcuts.save }}</button></div>
+    </form>
+  </div>
+</details>
+<details id="appearance-dialog" class="profile-setting card bg-base-100 border border-base-300"><summary class="p-4 cursor-pointer"><strong>{{ labels.profiles.appearance.title }}</strong><span>{{ labels.profiles.appearance.description }}</span><span data-profile-appearance data-light="{{ labels.profiles.appearance.modes.light }}" data-dark="{{ labels.profiles.appearance.modes.dark }}" data-system="{{ labels.profiles.appearance.modes.system }}"></span><span data-profile-palette></span></summary>  <div class="profile-setting-content p-4"><h2 class="text-2xl font-semibold" id="appearance-title">{{ labels.profiles.appearance.title }}</h2><p>{{ labels.profiles.appearance.description }}</p>
+    <fieldset class="mt-6"><legend class="font-semibold mb-3">{{ labels.profiles.appearance.mode_label }}</legend><div class="flex flex-wrap gap-3">
+      {% for mode in appearances %}<button class="btn btn-ghost" type="button" data-appearance-choice="{{ mode.id }}" aria-pressed="false">{{ labels.profiles.appearance.modes[mode.id] }}</button>{% endfor %}
+    </div></fieldset>
+    <fieldset class="mt-6"><legend class="font-semibold mb-3">{{ labels.profiles.theme_picker.title }}</legend><p>{{ labels.profiles.theme_picker.description }}</p><div class="palette-grid mt-4">
+      {% for palette in palettes %}<button class="btn palette-choice" type="button" data-palette-choice="{{ palette.id }}" aria-pressed="false"><span data-theme="{{ palette.id }}-light" aria-hidden="true"><span class="palette-swatch"></span></span>{{ palette.label }}</button>{% endfor %}
+    </div></fieldset>
+  </div>
+</details>
       </div>
     </div>
   </section>
@@ -87,64 +133,9 @@
   <div class="modal-box"><h2 id="profile-security-flow-title" class="sr-only">{{ labels.profiles.account_security.title }}</h2><div data-security-flow-content></div><button type="button" class="btn" data-dialog-close>{{ labels.profiles.security.close }}</button></div>
 </dialog>
 <script src="/static/js/profile-security.js" defer></script>
-<dialog id="profile-avatar" class="modal" aria-labelledby="profile-avatar-title" {% if avatar_error %}data-dialog-auto-open{% endif %}>
-  <div class="modal-box"><h2 class="text-2xl font-semibold" id="profile-avatar-title">{{ labels.profiles.avatar.title }}</h2><p>{{ labels.profiles.avatar.description }}</p>
-    <div class="flex items-center gap-4 my-6">{% include "profile/avatar-image.html" %}<strong>{{ name }}</strong></div>
-    <p>{{ labels.profiles.avatar.supported_formats }}</p>
-    <div id="profile-avatar-controls" data-profile-form-region>
-      {% if avatar_error %}<p role="alert" tabindex="-1" data-dialog-error-focus>{{ avatar_error }}</p>{% endif %}
-      {% if can_edit_profile %}<form method="post" action="/households/{{ slug }}/profile/avatar" enctype="multipart/form-data" class="grid gap-3 mt-6" data-profile-form>
-        <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
-        <label for="profile-avatar-file">{{ labels.profiles.avatar.upload_label }}</label><input id="profile-avatar-file" class="file-input w-full" type="file" name="avatar" accept="image/png,image/jpeg,image/webp" required>
-        <button class="btn" type="submit">{{ labels.profiles.avatar.upload }}</button>
-      </form>
-      {% if avatar_attached %}<form method="post" action="/households/{{ slug }}/profile/avatar/remove" class="grid gap-3 mt-6" data-profile-form><input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><button type="submit" class="btn btn-ghost">{{ labels.profiles.avatar.remove }}</button></form>{% endif %}{% endif %}
-    </div>
-    <div class="modal-action"><button type="button" class="btn btn-ghost" data-dialog-close>{{ labels.ruby_ui.common.close }}</button></div>
-  </div>
-</dialog>
-<dialog id="profile-timezone" class="modal" aria-labelledby="profile-timezone-title" {% if timezone_error %}data-dialog-auto-open{% endif %}>
-  <div class="modal-box"><h2 class="text-2xl font-semibold" id="profile-timezone-title">{{ labels.profiles.time_zone.title }}</h2>
-    <form method="post" action="/households/{{ slug }}/profile" class="grid gap-3 mt-6" data-profile-form>
-      <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
-      <input type="hidden" name="setting" value="time_zone">
-      {% if timezone_error %}<p role="alert" tabindex="-1" data-dialog-error-focus>{{ labels.profiles.browser.timezone_invalid }}</p>{% endif %}
-      <label for="profile-timezone-select">{{ labels.profiles.time_zone.title }}</label>
-      <select id="profile-timezone-select" name="time_zone" class="select w-full" {% if timezone_error %}aria-invalid="true"{% endif %}>
-      {% for zone in zones %}<option value="{{ zone.value }}" {% if zone.value == selected_zone %}selected{% endif %}>{{ zone.name }}</option>{% endfor %}
-      </select>
-      <div class="modal-action"><button type="button" class="btn btn-ghost" data-dialog-close>{{ labels.ruby_ui.common.close }}</button><button class="btn" type="submit">{{ labels.profiles.time_zone.save }}</button></div>
-    </form>
-  </div>
-</dialog>
-<dialog id="profile-shortcuts" class="modal" aria-labelledby="profile-shortcuts-title" {% if shortcuts_error %}data-dialog-auto-open{% endif %}>
-  <div class="modal-box"><h2 class="text-2xl font-semibold" id="profile-shortcuts-title">{{ labels.profiles.mobile_shortcuts.title }}</h2>
-    <p>{{ labels.profiles.mobile_shortcuts.description }}</p>
-    <form method="post" action="/households/{{ slug }}/profile" class="grid gap-3 mt-6" data-profile-form>
-      <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><input type="hidden" name="setting" value="shortcuts">
-      {% if shortcuts_error %}<p role="alert" tabindex="-1" data-dialog-error-focus>{{ labels.profiles.mobile_shortcuts.invalid }}</p>{% endif %}
-      {% for slot in shortcut_slots %}<label for="profile-shortcut-{{ slot.number }}">{{ slot.label }}</label>
-      <select class="select w-full" id="profile-shortcut-{{ slot.number }}" name="shortcut_{{ slot.number }}">
-        <option value="" {% if slot.selected == '' %}selected{% endif %}>{{ labels.profiles.mobile_shortcuts.none }}</option>
-        {% for choice in shortcut_choices %}<option value="{{ choice.id }}" {% if choice.id == slot.selected %}selected{% endif %}>{{ choice.label }}</option>{% endfor %}
-      </select>{% endfor %}
-      <div class="modal-action"><button type="button" class="btn btn-ghost" data-dialog-close>{{ labels.ruby_ui.common.close }}</button><button class="btn" type="submit">{{ labels.profiles.mobile_shortcuts.save }}</button></div>
-    </form>
-  </div>
-</dialog>
 <script src="/static/js/profile.js" defer></script>
 <script src="/static/js/profile-push.js" defer></script>
 {% endblock content %}
 {% block appearance %}
-<dialog id="appearance-dialog" class="modal" aria-labelledby="appearance-title">
-  <div class="modal-box w-11/12 max-w-3xl"><h2 class="text-2xl font-semibold" id="appearance-title">{{ labels.profiles.appearance.title }}</h2><p>{{ labels.profiles.appearance.description }}</p>
-    <fieldset class="mt-6"><legend class="font-semibold mb-3">{{ labels.profiles.appearance.mode_label }}</legend><div class="flex flex-wrap gap-3">
-      {% for mode in appearances %}<button class="btn btn-ghost" type="button" data-appearance-choice="{{ mode.id }}" aria-pressed="false">{{ labels.profiles.appearance.modes[mode.id] }}</button>{% endfor %}
-    </div></fieldset>
-    <fieldset class="mt-6"><legend class="font-semibold mb-3">{{ labels.profiles.theme_picker.title }}</legend><p>{{ labels.profiles.theme_picker.description }}</p><div class="palette-grid mt-4">
-      {% for palette in palettes %}<button class="btn palette-choice" type="button" data-palette-choice="{{ palette.id }}" aria-pressed="false"><span data-theme="{{ palette.id }}-light" aria-hidden="true"><span class="palette-swatch"></span></span>{{ palette.label }}</button>{% endfor %}
-    </div></fieldset>
-    <div class="modal-action"><button class="btn btn-ghost" type="button" data-dialog-close>{{ labels.ruby_ui.common.close }}</button></div>
-  </div>
-</dialog>
+
 {% endblock appearance %}
