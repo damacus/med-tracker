@@ -346,6 +346,11 @@ tasks:
         'relationship_active',(SELECT active FROM public.carer_relationships WHERE household_id=72001 AND carer_id=73004 AND patient_id=73002 ORDER BY id DESC LIMIT 1),
         'patient_grant_active',EXISTS(SELECT 1 FROM public.person_access_grants WHERE household_membership_id=74002 AND person_id=73002 AND revoked_at IS NULL),
         'patient_grant_level',(SELECT access_level FROM public.person_access_grants WHERE household_membership_id=74002 AND person_id=73002 ORDER BY id DESC LIMIT 1))"
+  person-carer-nonmanager:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction -f tests/fixtures/browser-person-carer-nonmanager.sql'
   person-view-only:
     requires:
       vars: [CARE_DATABASE_URL]
@@ -782,3 +787,24 @@ tasks:
       - >-
         psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align
         -c "SELECT request_id FROM public.versions WHERE item_type='MedicationTake' AND item_id=(SELECT id FROM public.medication_takes WHERE taken_from_medication_id=80001 ORDER BY id DESC LIMIT 1) ORDER BY id DESC LIMIT 1"
+  person-carer-manager:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -c "UPDATE public.person_access_grants SET access_level=''manage'' WHERE id=78005"'
+  person-carer-probe:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align -f tests/fixtures/browser-person-carer-probe.sql'
+
+  rename-person-health-medication:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -c "UPDATE public.medications SET name=''Renamed synthetic tablets'',updated_at=clock_timestamp() WHERE id=80001"'
+  person-health-probe:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align -f tests/fixtures/browser-person-health-probe.sql'

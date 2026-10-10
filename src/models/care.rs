@@ -6,6 +6,7 @@ pub mod dosages;
 pub mod dose_history;
 pub mod dose_occurrences;
 pub mod doses;
+pub mod health_events;
 pub mod invitations;
 pub mod locations;
 pub mod medications;
@@ -18,3 +19,7 @@ pub mod reports;
 pub mod review_prompts;
 pub mod sync;
 pub mod treatments;
+
+pub mod care_warning;
+
+pub mod person_carers;
