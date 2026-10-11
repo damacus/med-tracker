@@ -59,12 +59,21 @@ test('verified ZITADEL login links an existing local account and preserves local
 });
 
 test('new ZITADEL passkey choice cannot issue codes before a verified local ceremony', async ({ page, context, careFixture }) => {
+  let releaseScript;
+  const scriptReady = new Promise(resolve => { releaseScript = resolve; });
+  await page.route('**/static/js/identity-onboarding.js', async route => {
+    await scriptReady;
+    await route.continue();
+  });
   const email = 'provider-passkey-account@example.test';
   careFixture.provider.setClaims({ sub: 'provider-passkey-subject', email });
   await page.goto('/login');
-  await page.getByRole('button', { name: 'Sign in with ZITADEL', exact: true }).click();
+  await page.getByRole('button', { name: 'Sign in with ZITADEL', exact: true }).click({ noWaitAfter: true });
   await expect(page.getByRole('heading', { name: 'Complete your account', exact: true })).toBeVisible();
   await page.getByLabel('Passkey', { exact: true }).check();
+  releaseScript();
+  await page.waitForLoadState();
+  await expect(page.locator('#signup-password')).toBeDisabled();
   await page.getByLabel('Name', { exact: true }).fill('Synthetic provider passkey');
   await page.getByLabel('Date of birth', { exact: true }).fill('1990-04-12');
   await page.getByRole('button', { name: 'Complete account', exact: true }).click();

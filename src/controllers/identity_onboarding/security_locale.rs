@@ -31,6 +31,7 @@ pub(super) fn view(
     let source = english["profiles"]["security_flow"]
         .as_object()
         .ok_or_else(|| Error::string("Security translations unavailable"))?;
+    data["operation_text"] = data["operation_label"].clone();
     for field in ["title", "error", "operation_label"] {
         if let Some(original) = data[field].as_str()
             && let Some((key, _)) = source

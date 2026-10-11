@@ -1,0 +1,55 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="platform-page">
+  <header class="platform-page-header"><p class="platform-eyebrow">Administration</p><h1>Owner recovery</h1><p class="platform-description">Promote an eligible member to owner for households that have no usable owner. This change requires fresh sign-in confirmation.</p></header>
+  {% include "platform/navigation.html" %}
+  <form method="get" action="/platform/owner-recovery" class="platform-search-panel">
+    <div class="platform-search-field"><label for="household-search">Household search</label>
+    <input class="input input-bordered w-full" id="household-search" type="search" name="search" value="{{ search }}">
+    </div><button class="btn btn-primary" type="submit">Search</button>
+  </form>
+  <div class="platform-recovery-layout"><aside class="platform-panel"><h2>Households</h2>
+  {% if households | length == 0 %}
+  <p class="mt-6">No households found.</p>
+  {% endif %}
+  <ul class="platform-household-list">
+    {% for household in households %}
+    <li><a class="link" href="/platform/owner-recovery?household={{ household.id }}">{{ household.name }}</a></li>
+    {% endfor %}
+  </ul>
+  </aside>
+  {% if selected %}
+  <section class="platform-panel platform-recovery-detail">
+    <h2 class="text-xl font-semibold">{{ selected.name }}</h2>
+    {% if selected.has_owner %}
+    <p class="mt-2">This household already has a usable owner.</p>
+    {% elif selected.members | length == 0 %}
+    <p class="mt-2">No members are eligible for owner recovery.</p>
+    {% else %}
+    <ul class="mt-2 flex flex-col gap-4">
+      {% for member in selected.members %}
+      <li class="platform-recovery-member">
+        <dl class="grid gap-x-4 gap-y-1 sm:grid-cols-[10rem_1fr]">
+          <dt class="font-medium">Member</dt>
+          <dd>{{ member.name }}</dd>
+          <dt class="font-medium">Email</dt>
+          <dd>{{ member.email }}</dd>
+        </dl>
+        <form method="post" action="/platform/owner-recovery" class="platform-recovery-form">
+          <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+          <input type="hidden" name="household_id" value="{{ selected.id }}">
+          <input type="hidden" name="membership_id" value="{{ member.id }}">
+          <label class="label" for="reason-{{ selected.id }}-{{ member.id }}">Recovery reason</label>
+          <textarea class="textarea textarea-bordered w-full" id="reason-{{ selected.id }}-{{ member.id }}" name="reason" rows="3" maxlength="2000" required></textarea>
+          <button class="btn btn-sm btn-primary" type="submit">Promote to owner</button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </section>
+  {% else %}<section class="platform-panel platform-empty-state"><h2>Select a household</h2><p>Review its current ownership and eligible members before starting a recovery.</p></section>
+  {% endif %}
+  </div>
+</section>
+{% endblock content %}

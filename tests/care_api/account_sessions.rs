@@ -487,3 +487,117 @@ async fn same_application_mobile_revocations_identify_each_grant_in_audit() {
     assert!(ids.contains(&76003));
     app.close().await;
 }
+
+#[tokio::test]
+async fn auth_household_list_matches_documented_contract() {
+    use super::contract::{assert_value, contract, resolve};
+    let app = Application::new().await;
+    stored_credentials(&app).await;
+    let contract = contract();
+    let operation = &contract["paths"]["/auth/households"]["get"];
+    assert_eq!(operation["operationId"], "listHouseholds");
+    assert_eq!(
+        operation["responses"]["401"]["$ref"],
+        "#/components/responses/Unauthorized"
+    );
+
+    let list = app
+        .client
+        .get(format!("{}/api/v1/auth/households", app.origin))
+        .bearer_auth("synthetic-current-session")
+        .send()
+        .await
+        .unwrap();
+    let list_status = list.status().as_u16();
+    let body: Value = list.json().await.unwrap();
+    assert_eq!(list_status, 200);
+    assert_eq!(
+        operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"],
+        "#/components/schemas/AuthHouseholdCollectionResponse"
+    );
+    assert_value(
+        contract,
+        resolve(
+            contract,
+            &operation["responses"]["200"]["content"]["application/json"]["schema"],
+        ),
+        &body,
+        "auth household collection",
+    );
+    assert_eq!(body["account_id"], 71001);
+    let households = body["data"].as_array().unwrap();
+    assert_eq!(households.len(), 1);
+    assert_eq!(households[0]["id"], 72001);
+    assert_eq!(households[0]["membership_id"], 74001);
+
+    let anonymous = app
+        .client
+        .get(format!("{}/api/v1/auth/households", app.origin))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(anonymous.status().as_u16(), 401);
+    app.close().await;
+}
+
+#[tokio::test]
+async fn auth_session_list_matches_documented_contract() {
+    use super::contract::{assert_value, contract, resolve};
+    let app = Application::new().await;
+    stored_credentials(&app).await;
+    let contract = contract();
+    let operation = &contract["paths"]["/auth/sessions"]["get"];
+    assert_eq!(operation["operationId"], "listSessions");
+    assert_eq!(
+        operation["responses"]["401"]["$ref"],
+        "#/components/responses/Unauthorized"
+    );
+
+    let list = app
+        .client
+        .get(format!("{}/api/v1/auth/sessions", app.origin))
+        .bearer_auth("synthetic-current-session")
+        .send()
+        .await
+        .unwrap();
+    let list_status = list.status().as_u16();
+    let text = list.text().await.unwrap();
+    assert_eq!(list_status, 200);
+    for secret in [
+        "synthetic-current-session",
+        "synthetic-current-refresh",
+        "synthetic-expired-digest",
+        "synthetic-revoked-digest",
+    ] {
+        assert!(!text.contains(secret), "leaked {secret}");
+    }
+    let body: Value = serde_json::from_str(&text).unwrap();
+    assert_eq!(
+        operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"],
+        "#/components/schemas/AuthSessionCollectionResponse"
+    );
+    assert_value(
+        contract,
+        resolve(
+            contract,
+            &operation["responses"]["200"]["content"]["application/json"]["schema"],
+        ),
+        &body,
+        "auth session collection",
+    );
+    let sessions = body["data"].as_array().unwrap();
+    assert_eq!(sessions.len(), 2);
+    assert_eq!(sessions[0]["id"], 88001);
+    assert_eq!(sessions[0]["device_name"], "Current phone");
+    assert_eq!(sessions[1]["id"], 88002);
+    assert!(sessions.iter().all(|session| session["id"] != 88003));
+
+    let anonymous = app
+        .client
+        .get(format!("{}/api/v1/auth/sessions", app.origin))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(anonymous.status().as_u16(), 401);
+    app.close().await;
+}
