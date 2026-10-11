@@ -7,10 +7,10 @@
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",
-    "@tailwindcss/cli": "4.3.0",
+    "@tailwindcss/cli": "4.3.3",
     "daisyui": "5.7.47",
     "jose": "6.2.12",
     "otpauth": "9.5.2",
-    "tailwindcss": "4.3.0"
+    "tailwindcss": "4.3.3"
   }
 }
