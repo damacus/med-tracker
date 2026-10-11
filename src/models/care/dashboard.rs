@@ -91,9 +91,23 @@ pub async fn read(
         })
         .collect();
     let blocked = doses::dashboard_timing(tenant, &schedules, &assignments, now, zone).await?;
+    let previews: HashMap<_, _> = schedules
+        .iter()
+        .map(|record| {
+            (
+                record.id,
+                doses::browser_schedule_preview(record.clone(), today),
+            )
+        })
+        .collect();
     let mut cards = treatments::projection::serialize_schedules(db, tenant, schedules).await?;
     for card in &mut cards {
         card["source_type"] = json!("schedule");
+        if let Some(preview) = card["id"].as_i64().and_then(|id| previews.get(&id)) {
+            card["active"] = json!(preview.available);
+            card["dose_amount"] = json!(preview.amount);
+            card["dose_unit"] = json!(preview.unit);
+        }
     }
     let mut assigned =
         treatments::projection::serialize_assignments(db, tenant, assignments).await?;

@@ -389,10 +389,20 @@ pub(crate) async fn dashboard_stock(
     access::recheck(context).await?;
     let medications = medicines.iter().cloned().map(|row| (row.id, row)).collect();
     let mut result = HashMap::new();
+    for card in cards.iter().filter(|card| card["can_record"] == true) {
+        if let (Some(kind), Some(id)) = (card["source_type"].as_str(), card["id"].as_i64()) {
+            result.insert(
+                (kind.to_owned(), id),
+                card["eligible_stock_medication_ids"]
+                    .as_array()
+                    .is_some_and(|ids| !ids.is_empty()),
+            );
+        }
+    }
     for kind in ["schedule", "person_medication"] {
         let sources: Vec<_> = cards
             .iter()
-            .filter(|card| card["source_type"] == kind)
+            .filter(|card| card["source_type"] == kind && card["can_record"] != true)
             .filter_map(|card| {
                 Some(SourceRef {
                     id: card["id"].as_i64()?,

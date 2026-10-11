@@ -74,6 +74,10 @@ async fn dashboard_respects_shared_dose_limits_and_person_access() {
 }
 
 async fn snapshot(app: &Application) -> serde_json::Value {
+    snapshot_in_zone(app, chrono_tz::UTC).await
+}
+
+async fn snapshot_in_zone(app: &Application, zone: chrono_tz::Tz) -> serde_json::Value {
     let tenant = access::begin(
         &app.context.db,
         &HouseholdScope {
@@ -86,7 +90,7 @@ async fn snapshot(app: &Application) -> serde_json::Value {
     .unwrap();
     let data = dashboard::read(
         &tenant,
-        chrono_tz::UTC,
+        zone,
         Some(73001),
         "persistence-fixture",
         &json!({}),
@@ -95,6 +99,90 @@ async fn snapshot(app: &Application) -> serde_json::Value {
     .unwrap();
     tenant.commit().await.unwrap();
     data
+}
+
+#[tokio::test]
+async fn dashboard_uses_local_date_for_routine_and_as_needed_schedules() {
+    let app = Application::new().await;
+    for zone in [
+        chrono_tz::Pacific::Kiritimati,
+        "Etc/GMT+12".parse().unwrap(),
+    ] {
+        let today = chrono::Utc::now().with_timezone(&zone).date_naive();
+        app.fixture.admin.execute_unprepared(&format!(
+            "DELETE FROM schedules WHERE id IN (83993,83994); INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,frequency,created_at,updated_at) VALUES(83993,72001,73001,80001,true,'{today}','{today}',2,'tablet',4,'{{}}','As needed',now(),now()),(83994,72001,73001,80001,true,'{today}','{today}',2,'tablet',0,'{{\"times\":[\"00:00\"]}}','daily',now(),now())"
+        )).await.unwrap();
+        let data = snapshot_in_zone(&app, zone).await;
+        for id in [83993, 83994] {
+            let row = data["rows"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|row| row["source_type"] == "schedule" && row["source_id"] == id)
+                .unwrap_or_else(|| panic!("schedule {id} missing in {zone}: {data}"));
+            assert_eq!(row["status"], "available", "{zone}: {row}");
+            assert_eq!(row["can_record"], true);
+        }
+    }
+    app.fixture.close().await;
+}
+
+#[tokio::test]
+async fn dashboard_taper_dose_matches_preview_and_preserves_recorded_doses() {
+    let app = Application::new().await;
+    let today = chrono::Utc::now().date_naive();
+    let config = json!({"taper_steps":[{"start_date":today.to_string(),"end_date":today.to_string(),"amount":"1.5","unit":"ml","times":["00:00","23:59"]}]});
+    app.fixture.admin.execute_unprepared(&format!(
+        "INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83992,72001,73001,80001,true,'{today}','{today}',2,'tablet',5,'{config}',now(),now())"
+    )).await.unwrap();
+    let data = snapshot(&app).await;
+    let row = data["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| {
+            row["source_type"] == "schedule"
+                && row["source_id"] == 83992
+                && row["outcome"] == "open"
+        })
+        .unwrap();
+    assert_eq!(row["dose"], "1.5 ml");
+    let tenant = access::begin(
+        &app.context.db,
+        &HouseholdScope {
+            actor: Actor { account_id: 71001 },
+            household_id: 72001,
+            request_id: "dashboard-taper-preview".into(),
+        },
+    )
+    .await
+    .unwrap();
+    let preview = med_tracker::models::care::doses::browser_preview(
+        &tenant,
+        80001,
+        "schedule",
+        "83992",
+        &format!("{today}T00:00"),
+        chrono_tz::UTC,
+    )
+    .await
+    .unwrap();
+    assert!(preview.available);
+    assert_eq!(
+        row["dose"],
+        format!("{} {}", preview.amount.unwrap(), preview.unit.unwrap())
+    );
+    tenant.commit().await.unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO medication_takes(id,household_id,schedule_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(84992,72001,83992,3,'tablet',timezone('UTC',now()),now(),now())").await.unwrap();
+    let data = snapshot(&app).await;
+    let taken = data["completed"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["source_type"] == "schedule" && row["source_id"] == 83992)
+        .unwrap();
+    assert_eq!(taken["dose"], "3 tablets");
+    app.fixture.close().await;
 }
 
 #[tokio::test]
@@ -136,7 +224,23 @@ async fn dashboard_view_only_does_not_mean_out_of_stock() {
         .unwrap();
     assert_eq!(row["status"], "available");
     assert_eq!(row["can_record"], false);
+    assert_eq!(row["stock_ids"], json!([]));
     assert_eq!(data["people"].as_array().unwrap().len(), 1);
+    app.fixture
+        .admin
+        .execute_unprepared("UPDATE medications SET current_supply=0 WHERE id=80001")
+        .await
+        .unwrap();
+    let data = snapshot(&app).await;
+    let row = data["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["source_id"] == 81001)
+        .unwrap();
+    assert_eq!(row["status"], "out_of_stock");
+    assert_eq!(row["can_record"], false);
+    assert_eq!(row["stock_ids"], json!([]));
     app.fixture.close().await;
 }
 
