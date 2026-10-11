@@ -1,0 +1,44 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="platform-page">
+  <header class="platform-page-header"><p class="platform-eyebrow">Administration</p><h1>Platform settings</h1><p class="platform-description">Control registration and medicine lookup for MedTracker. Changes require fresh sign-in confirmation.</p></header>
+  {% include "platform/navigation.html" %}
+  <form method="post" action="/platform/settings" class="platform-settings-form">
+    <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+    <section class="platform-panel"><h2>Registration access</h2><p class="platform-panel-description">Choose whether new accounts need an invitation.</p>
+    <fieldset class="fieldset">
+      <label class="label" for="invite-only">Registration</label>
+      {% if invite_only_locked %}
+      <input type="hidden" name="invite_only" value="{{ invite_only }}">
+      <select id="invite-only" class="select select-bordered" disabled>
+        <option value="false"{% if not invite_only %} selected{% endif %}>Open registration</option>
+        <option value="true"{% if invite_only %} selected{% endif %}>Invite only</option>
+      </select>
+      <p class="platform-notice">Fixed by the INVITE_ONLY environment variable.</p>
+      {% else %}
+      <select id="invite-only" name="invite_only" class="select select-bordered">
+        <option value="false"{% if not invite_only %} selected{% endif %}>Open registration</option>
+        <option value="true"{% if invite_only %} selected{% endif %}>Invite only</option>
+      </select>
+      {% endif %}
+    </fieldset>
+    </section>
+    <section class="platform-panel"><h2>Medicine lookup</h2><p class="platform-panel-description">Configure the terminology service and the order used to find medicine information.</p>
+    <fieldset class="fieldset">
+      <label class="label" for="medicine-lookup-base-url">Medicine lookup base URL</label>
+      <input class="input input-bordered w-full" id="medicine-lookup-base-url" name="medicine_lookup_base_url" type="url" value="{{ medicine_lookup_base_url }}" required>
+    </fieldset>
+    <fieldset class="fieldset">
+      <label class="label" for="medicine-lookup-token-url">Medicine lookup token URL</label>
+      <input class="input input-bordered w-full" id="medicine-lookup-token-url" name="medicine_lookup_token_url" type="url" value="{{ medicine_lookup_token_url }}" required>
+    </fieldset>
+    <fieldset class="fieldset">
+      <label class="label" for="medicine-lookup-source-priority">Medicine lookup source priority</label>
+      <input class="input input-bordered w-full" id="medicine-lookup-source-priority" name="medicine_lookup_source_priority" type="text" value="{{ medicine_lookup_source_priority }}" required>
+      <p class="text-sm text-base-content/70">Comma-separated. Allowed sources: {{ lookup_sources }}.</p>
+    </fieldset>
+    </section>
+    <div class="platform-form-footer"><span class="shell-muted text-sm">You will confirm your identity before saving.</span><button class="btn btn-primary" type="submit">Save settings</button></div>
+  </form>
+</section>
+{% endblock content %}

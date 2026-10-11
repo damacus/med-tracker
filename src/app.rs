@@ -59,6 +59,7 @@ impl Hooks for App {
             .add_route(browser(crate::controllers::administration::routes()))
             .add_route(browser(crate::controllers::invitations::routes()))
             .add_route(browser(crate::controllers::invitations::acceptance_routes()))
+            .add_route(browser(crate::controllers::platform::routes()))
     }
 
     async fn before_routes(ctx: &AppContext) -> Result<axum::Router<AppContext>> {

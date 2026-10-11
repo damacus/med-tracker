@@ -305,6 +305,34 @@ tasks:
         INSERT INTO public.identity_onboarding(account_id,recovery_saved_at) VALUES(71003,now());
         INSERT INTO public.household_memberships(id,account_id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74002,71003,72001,73004,'member',now(),now(),now());
         INSERT INTO public.person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,created_at,updated_at) VALUES(78004,72001,74002,73004,'manage','self',now(),now()),(78005,72001,74001,73002,'view','parent',now(),now()),(78006,72001,74001,73004,'view','family_member',now(),now());"
+  seed-platform:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction -f tests/fixtures/platform-seed.sql'
+  platform-probe:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align
+        -c "SELECT json_build_object(
+        'admin_target',EXISTS(SELECT 1 FROM public.platform_admins WHERE account_id=71004 AND status='active'),
+        'target_active',(SELECT active FROM public.users WHERE id=77006),
+        'recovery_member_role',(SELECT role FROM public.household_memberships WHERE id=74601),
+        'admin_membership_fabricated',EXISTS(SELECT 1 FROM public.household_memberships WHERE account_id=71001 AND household_id IN (72601,72602)),
+        'invite_only',(SELECT COALESCE(bool_or(invite_only),false) FROM public.app_settings),
+        'support_state',(SELECT CASE WHEN ended_at IS NOT NULL THEN 'ended' WHEN activated_at IS NOT NULL THEN 'active' WHEN approved_at IS NOT NULL THEN 'approved' ELSE 'requested' END FROM public.support_access_sessions WHERE household_id=72602 ORDER BY id DESC LIMIT 1),
+        'support_id',(SELECT id FROM public.support_access_sessions WHERE household_id=72602 ORDER BY id DESC LIMIT 1))"
+  seed-support-history:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction
+        -c "INSERT INTO public.support_access_sessions(household_id,platform_admin_id,reason,request_id,ip,starts_at,expires_at,ended_at,created_at,updated_at)
+        SELECT 72601,platform_admin_id,'Synthetic newer support history '||g,request_id,ip,starts_at,expires_at,now(),now(),now()
+        FROM public.support_access_sessions CROSS JOIN generate_series(1,50) g WHERE household_id=72602;"
   administration-probe:
     requires:
       vars: [CARE_DATABASE_URL]

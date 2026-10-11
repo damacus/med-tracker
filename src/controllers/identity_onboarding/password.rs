@@ -46,7 +46,7 @@ pub(super) fn render(
     )
 }
 
-pub(super) fn render_named(
+pub(crate) fn render_named(
     view: &TeraView,
     token: CsrfToken,
     operation_id: Option<&str>,

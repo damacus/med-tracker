@@ -5,5 +5,6 @@ pub mod entities;
 pub mod errors;
 pub mod identity;
 pub mod notification_preferences;
+pub mod platform;
 pub mod profile;
 pub(crate) mod seed;

@@ -125,7 +125,7 @@ pub(super) async fn context(
     Ok(())
 }
 
-pub(super) fn clinical_id(value: &str) -> Result<i64, AuthError> {
+pub(crate) fn clinical_id(value: &str) -> Result<i64, AuthError> {
     let id = value
         .parse::<i64>()
         .map_err(|_| AuthError::bad_request("Invalid identity identifier"))?;

@@ -29,12 +29,31 @@ permit(principal, action == Action::"change_owner", resource)
 when {
     principal.household_id == resource.household_id &&
     principal.status == "active" && !principal.revoked &&
-    (context.platform_admin || (!context.next_owner && principal.role == "owner"))
+    !context.next_owner && principal.role == "owner"
+};
+
+permit(principal, action == Action::"support_approve", resource)
+when {
+    principal.active && context.owner &&
+    context.household_id == resource.household_id
+};
+
+permit(principal, action == Action::"support_end", resource)
+when {
+    principal.active &&
+    context.household_id == resource.household_id &&
+    (context.owner || principal.platform_admin)
 };
 
 permit(principal, action == Action::"support_household", resource)
 when {
-    context.trusted && context.platform_admin &&
+    principal.active && principal.platform_admin &&
+    context.trusted &&
     context.household_id == resource.household_id &&
     !context.ended && !context.expired && context.expires_at > context.now
+};
+
+permit(principal, action in [Action::"read_platform_users", Action::"write_platform_users", Action::"read_platform_settings", Action::"write_platform_settings", Action::"platform_owner_recovery", Action::"support_request", Action::"support_activate"], resource)
+when {
+    principal.active && principal.platform_admin
 };

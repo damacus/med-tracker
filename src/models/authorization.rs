@@ -7,7 +7,7 @@ use std::sync::OnceLock;
 
 use super::{
     access::PersonAccess,
-    entities::{grant, membership, person},
+    entities::{account, grant, membership, person, platform_admin},
 };
 
 #[cfg(test)]
@@ -87,6 +87,56 @@ fn evaluate(member: Value, resource: Value, action: &str, facts: Value) -> bool 
     result.unwrap_or(false)
 }
 
+fn account_decision(
+    account: Value,
+    resource_kind: &str,
+    resource: Value,
+    action: &str,
+    facts: Value,
+) -> bool {
+    let Some(engine) = engine() else {
+        return false;
+    };
+    let result = (|| {
+        let principal: EntityUid = "Account::\"actor\"".parse().ok()?;
+        let resource_id: EntityUid = format!("{resource_kind}::\"target\"").parse().ok()?;
+        let action: EntityUid = format!("Action::\"{action}\"").parse().ok()?;
+        let entities = Entities::from_json_value(
+            json!([
+                {"uid":{"type":"Account","id":"actor"},"attrs":account,"parents":[]},
+                {"uid":{"type":resource_kind,"id":"target"},"attrs":resource,"parents":[]}
+            ]),
+            Some(&engine.schema),
+        )
+        .ok()?;
+        let context = if facts.is_null() {
+            Context::empty()
+        } else {
+            Context::from_json_value(facts, Some((&engine.schema, &action))).ok()?
+        };
+        let request = Request::new(
+            principal,
+            action,
+            resource_id,
+            context,
+            Some(&engine.schema),
+        )
+        .ok()?;
+        Some(
+            strict_decision(&Authorizer::new().is_authorized(
+                &request,
+                &engine.policies,
+                &entities,
+            )) == Decision::Allow,
+        )
+    })();
+    result.unwrap_or(false)
+}
+
+fn evaluate_account(account: Value, action: &str) -> bool {
+    account_decision(account, "Platform", json!({"id":0}), action, Value::Null)
+}
+
 fn member_facts(member: &membership::Model) -> Value {
     json!({"id":member.id,"household_id":member.household_id,"role":member.role,"status":member.status,"revoked":member.revoked_at.is_some()})
 }
@@ -137,14 +187,78 @@ pub(crate) fn may_delegate(member: &membership::Model, subject: &person::Model) 
 pub(crate) fn may_change_owner(
     member: &membership::Model,
     household_id: i64,
-    platform_admin: bool,
     next_owner: bool,
 ) -> bool {
     evaluate(
         member_facts(member),
         json!({"id":household_id,"household_id":household_id}),
         "change_owner",
-        json!({"platform_admin":platform_admin,"next_owner":next_owner}),
+        json!({"next_owner":next_owner}),
+    )
+}
+
+pub(crate) fn platform_access(
+    account: &account::Model,
+    admin: &platform_admin::Model,
+    action: &str,
+) -> bool {
+    evaluate_account(
+        json!({
+            "id": account.id,
+            "active": account.status == 2,
+            "platform_admin": admin.status == "active"
+        }),
+        action,
+    )
+}
+
+pub(crate) fn support_action(
+    account: &account::Model,
+    admin: Option<&platform_admin::Model>,
+    household_id: i64,
+    owner: bool,
+    action: &str,
+) -> bool {
+    account_decision(
+        json!({
+            "id": account.id,
+            "active": account.status == 2,
+            "platform_admin": admin.is_some_and(|record| record.status == "active")
+        }),
+        "Resource",
+        json!({"id":household_id,"household_id":household_id}),
+        action,
+        json!({"household_id":household_id,"owner":owner}),
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn support_household_access(
+    account: &account::Model,
+    admin: &platform_admin::Model,
+    household_id: i64,
+    ended: bool,
+    expired: bool,
+    expires_at: i64,
+    now: i64,
+) -> bool {
+    account_decision(
+        json!({
+            "id": account.id,
+            "active": account.status == 2,
+            "platform_admin": admin.status == "active"
+        }),
+        "Resource",
+        json!({"id":household_id,"household_id":household_id}),
+        "support_household",
+        json!({
+            "trusted": true,
+            "household_id": household_id,
+            "ended": ended,
+            "expired": expired,
+            "expires_at": expires_at,
+            "now": now,
+        }),
     )
 }
 

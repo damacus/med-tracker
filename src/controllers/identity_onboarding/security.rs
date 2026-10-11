@@ -8,9 +8,13 @@ use axum_csrf::CsrfToken;
 use loco_rs::prelude::*;
 use serde_json::json;
 
-use crate::models::identity::better_auth::{BrowserIdentity, IdentityService, browser_identity};
+use crate::models::{
+    identity::better_auth::{BrowserIdentity, IdentityService, browser_identity, clinical_id},
+    platform,
+};
 
 pub(super) async fn settings(
+    State(ctx): State<AppContext>,
     Extension(service): Extension<IdentityService>,
     headers: HeaderMap,
     token: CsrfToken,
@@ -62,6 +66,21 @@ pub(super) async fn settings(
             .collect::<Vec<_>>()
     );
     data["sessions"] = json!(sessions.into_iter().map(|entry| json!({"id":entry.id,"current":entry.id == session.id,"created":entry.created_at.format("%d %b %Y %H:%M UTC").to_string(),"expires":entry.expires_at.format("%d %b %Y %H:%M UTC").to_string()})).collect::<Vec<_>>());
+    let Ok(account_id) = clinical_id(&user.id) else {
+        return super::rendering::unavailable();
+    };
+    let (mut platform_admin, mut support_access) = (false, false);
+    if let Ok(transaction) = platform::begin(&ctx.db).await {
+        platform_admin = platform::administrator(&transaction, account_id)
+            .await
+            .is_ok();
+        support_access = platform::support::support_link(&transaction, account_id)
+            .await
+            .unwrap_or(false);
+        let _ = transaction.rollback().await;
+    }
+    data["platform_admin"] = json!(platform_admin);
+    data["support_access"] = json!(support_access);
     data["authenticity_token"] = json!(authenticity_token);
     match format::render().view(&view, "identity_onboarding/security.html", data) {
         Ok(response) => (

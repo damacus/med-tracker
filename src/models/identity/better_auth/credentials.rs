@@ -14,20 +14,57 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::Arc;
 
+use crate::models::errors::OperationError;
+
 #[derive(Serialize, Deserialize, PartialEq)]
 #[serde(tag = "action", rename_all = "snake_case", deny_unknown_fields)]
 pub(super) enum Action {
     Password,
     RemovePassword,
-    RemovePasskey { target: String },
+    RemovePasskey {
+        target: String,
+    },
     AddPasskey,
     RegenerateRecovery,
-    ChangeEmail { new_email: String },
+    ChangeEmail {
+        new_email: String,
+    },
     CloseAccount,
     LinkProvider,
     UnlinkProvider,
     DisableTotp,
-    CreateApiKey { key: super::personal_keys::Creation },
+    CreateApiKey {
+        key: super::personal_keys::Creation,
+    },
+    PlatformAdministrator {
+        account_id: i64,
+        grant: bool,
+    },
+    PlatformUser {
+        account_id: i64,
+        active: bool,
+    },
+    PlatformSettings {
+        invite_only: bool,
+        medicine_lookup_base_url: String,
+        medicine_lookup_token_url: String,
+        medicine_lookup_source_priority: Vec<String>,
+    },
+    PlatformOwnerRecovery {
+        household_id: i64,
+        membership_id: i64,
+        reason: String,
+    },
+    SupportRequest {
+        household_id: i64,
+        reason: String,
+    },
+    SupportApprove {
+        support_id: i64,
+    },
+    SupportActivate {
+        support_id: i64,
+    },
 }
 
 #[derive(Serialize, Deserialize)]
@@ -106,8 +143,148 @@ async fn validate(
             Err(AuthError::bad_request("Keep a local password or passkey"))
         }
         Action::Password => Err(AuthError::bad_request("Use the password change operation")),
+        Action::PlatformAdministrator { account_id, grant } => {
+            let transaction = store.transaction().await?;
+            crate::models::platform::check_rights(
+                &transaction,
+                clinical_id(&user.id)?,
+                *account_id,
+                *grant,
+            )
+            .await
+            .map_err(platform_error)?;
+            transaction.commit().await.map_err(database_error)
+        }
+        Action::PlatformUser { account_id, active } => {
+            let transaction = store.transaction().await?;
+            crate::models::platform::check_user(
+                &transaction,
+                clinical_id(&user.id)?,
+                *account_id,
+                *active,
+            )
+            .await
+            .map_err(platform_error)?;
+            transaction.commit().await.map_err(database_error)
+        }
+        Action::PlatformSettings {
+            invite_only,
+            medicine_lookup_base_url,
+            medicine_lookup_token_url,
+            medicine_lookup_source_priority,
+        } => {
+            let transaction = store.transaction().await?;
+            crate::models::platform::check_settings(
+                &transaction,
+                clinical_id(&user.id)?,
+                *invite_only,
+                medicine_lookup_base_url,
+                medicine_lookup_token_url,
+                medicine_lookup_source_priority,
+            )
+            .await
+            .map_err(platform_error)?;
+            transaction.commit().await.map_err(database_error)
+        }
+        Action::PlatformOwnerRecovery {
+            household_id,
+            membership_id,
+            reason,
+        } => {
+            let transaction = store.transaction().await?;
+            crate::models::platform::recovery::check(
+                &transaction,
+                clinical_id(&user.id)?,
+                *household_id,
+                *membership_id,
+                reason,
+            )
+            .await
+            .map_err(platform_error)?;
+            transaction.commit().await.map_err(database_error)
+        }
+        Action::SupportRequest {
+            household_id,
+            reason,
+        } => {
+            let transaction = store.transaction().await?;
+            crate::models::platform::support::check_request(
+                &transaction,
+                clinical_id(&user.id)?,
+                *household_id,
+                reason,
+            )
+            .await
+            .map_err(platform_error)?;
+            transaction.commit().await.map_err(database_error)
+        }
+        Action::SupportApprove { support_id } => {
+            let transaction = store.transaction().await?;
+            crate::models::platform::support::check_approve(
+                &transaction,
+                clinical_id(&user.id)?,
+                *support_id,
+            )
+            .await
+            .map_err(platform_error)?;
+            transaction.commit().await.map_err(database_error)
+        }
+        Action::SupportActivate { support_id } => {
+            let transaction = store.transaction().await?;
+            crate::models::platform::support::check_activate(
+                &transaction,
+                clinical_id(&user.id)?,
+                *support_id,
+            )
+            .await
+            .map_err(platform_error)?;
+            transaction.commit().await.map_err(database_error)
+        }
         _ => Ok(()),
     }
+}
+
+fn request_meta(
+    session: &SessionView,
+    request: &AuthRequest,
+) -> crate::models::platform::RequestMeta {
+    let (session_reference, request_id, ip) = platform_audit(session, request);
+    crate::models::platform::RequestMeta {
+        session_reference,
+        request_id,
+        ip,
+    }
+}
+
+fn platform_error(error: OperationError) -> AuthError {
+    match error {
+        OperationError::Unauthenticated => AuthError::Unauthenticated,
+        OperationError::Forbidden => {
+            AuthError::forbidden("Platform administrator rights are required")
+        }
+        OperationError::NotFound => AuthError::bad_request("Platform target is unavailable"),
+        OperationError::Validation { .. } => {
+            AuthError::bad_request("The platform target is not eligible for this change")
+        }
+        OperationError::Conflict { .. } => {
+            AuthError::forbidden("At least one usable platform administrator must remain")
+        }
+        OperationError::Unavailable => AuthError::internal("Platform persistence unavailable"),
+    }
+}
+
+fn platform_audit(
+    session: &SessionView,
+    request: &AuthRequest,
+) -> (Option<String>, Option<String>, Option<String>) {
+    (
+        Some(crate::models::identity::store::digest(&session.token)),
+        super::request::request_id(),
+        request
+            .headers
+            .get("x-forwarded-for")
+            .map(std::string::ToString::to_string),
+    )
 }
 
 impl Credentials {
@@ -208,7 +385,178 @@ pub(super) async fn complete(
     if let Action::CreateApiKey { key } = &pending.action {
         return super::personal_keys::create(store, ctx, user, key).await;
     }
+    if let Action::PlatformAdministrator { account_id, grant } = &pending.action {
+        let transaction = store.transaction().await?;
+        let (session_reference, request_id, ip) = platform_audit(session, request);
+        crate::models::platform::change_rights(
+            &transaction,
+            clinical_id(&user.id)?,
+            *account_id,
+            *grant,
+            session_reference.as_deref(),
+            request_id.as_deref(),
+            ip.as_deref(),
+        )
+        .await
+        .map_err(platform_error)?;
+        transaction.commit().await.map_err(database_error)?;
+        return Ok(AuthResponse::json(
+            200,
+            &json!({"status":true,"redirect":"/platform/users"}),
+        )?);
+    }
+    if let Action::PlatformUser { account_id, active } = &pending.action {
+        let transaction = store.transaction().await?;
+        let (session_reference, request_id, ip) = platform_audit(session, request);
+        crate::models::platform::change_user(
+            &transaction,
+            clinical_id(&user.id)?,
+            *account_id,
+            *active,
+            session_reference.as_deref(),
+            request_id.as_deref(),
+            ip.as_deref(),
+        )
+        .await
+        .map_err(platform_error)?;
+        transaction.commit().await.map_err(database_error)?;
+        return Ok(AuthResponse::json(
+            200,
+            &json!({"status":true,"redirect":"/platform/users"}),
+        )?);
+    }
+    if let Action::PlatformSettings {
+        invite_only,
+        medicine_lookup_base_url,
+        medicine_lookup_token_url,
+        medicine_lookup_source_priority,
+    } = &pending.action
+    {
+        let transaction = store.transaction().await?;
+        let meta = request_meta(session, request);
+        crate::models::platform::change_settings(
+            &transaction,
+            clinical_id(&user.id)?,
+            *invite_only,
+            medicine_lookup_base_url,
+            medicine_lookup_token_url,
+            medicine_lookup_source_priority,
+            &meta,
+        )
+        .await
+        .map_err(platform_error)?;
+        transaction.commit().await.map_err(database_error)?;
+        return Ok(AuthResponse::json(
+            200,
+            &json!({"status":true,"redirect":"/platform/settings"}),
+        )?);
+    }
+    if let Action::PlatformOwnerRecovery {
+        household_id,
+        membership_id,
+        reason,
+    } = &pending.action
+    {
+        let transaction = store.transaction().await?;
+        crate::models::platform::recovery::promote(
+            &transaction,
+            clinical_id(&user.id)?,
+            *household_id,
+            *membership_id,
+            reason,
+            &request_meta(session, request),
+        )
+        .await
+        .map_err(platform_error)?;
+        transaction.commit().await.map_err(database_error)?;
+        return Ok(AuthResponse::json(
+            200,
+            &json!({"status":true,"redirect":"/platform/owner-recovery"}),
+        )?);
+    }
+    if let Action::SupportRequest {
+        household_id,
+        reason,
+    } = &pending.action
+    {
+        let transaction = store.transaction().await?;
+        crate::models::platform::support::request(
+            &transaction,
+            clinical_id(&user.id)?,
+            *household_id,
+            reason,
+            &request_meta(session, request),
+        )
+        .await
+        .map_err(platform_error)?;
+        transaction.commit().await.map_err(database_error)?;
+        return Ok(AuthResponse::json(
+            200,
+            &json!({"status":true,"redirect":"/platform/support"}),
+        )?);
+    }
+    if let Action::SupportApprove { support_id } = &pending.action {
+        let transaction = store.transaction().await?;
+        let result = crate::models::platform::support::approve(
+            &transaction,
+            clinical_id(&user.id)?,
+            *support_id,
+            &request_meta(session, request),
+        )
+        .await;
+        match result {
+            Ok(crate::models::platform::support::SupportDecision::Applied) => {
+                transaction.commit().await.map_err(database_error)?;
+                return Ok(AuthResponse::json(
+                    200,
+                    &json!({"status":true,"redirect":"/account/support"}),
+                )?);
+            }
+            Ok(crate::models::platform::support::SupportDecision::Expired) => {
+                transaction.commit().await.map_err(database_error)?;
+                super::request::persist_support_expiry()?;
+                return Ok(AuthResponse::json(
+                    403,
+                    &json!({"code":"FORBIDDEN","message":"The requested change is not permitted."}),
+                )?);
+            }
+            Err(error) => return Err(platform_error(error)),
+        }
+    }
+    if let Action::SupportActivate { support_id } = &pending.action {
+        let transaction = store.transaction().await?;
+        let result = crate::models::platform::support::activate(
+            &transaction,
+            clinical_id(&user.id)?,
+            *support_id,
+            &request_meta(session, request),
+        )
+        .await;
+        match result {
+            Ok(crate::models::platform::support::SupportDecision::Applied) => {
+                transaction.commit().await.map_err(database_error)?;
+                return Ok(AuthResponse::json(
+                    200,
+                    &json!({"status":true,"redirect":"/platform/support"}),
+                )?);
+            }
+            Ok(crate::models::platform::support::SupportDecision::Expired) => {
+                transaction.commit().await.map_err(database_error)?;
+                super::request::persist_support_expiry()?;
+                return Ok(AuthResponse::json(
+                    403,
+                    &json!({"code":"FORBIDDEN","message":"The requested change is not permitted."}),
+                )?);
+            }
+            Err(error) => return Err(platform_error(error)),
+        }
+    }
     if pending.action == Action::CloseAccount {
+        let transaction = store.transaction().await?;
+        crate::models::platform::guard_closure(&transaction, clinical_id(&user.id)?)
+            .await
+            .map_err(platform_error)?;
+        transaction.commit().await.map_err(database_error)?;
         store.close_account(&user.id).await?;
         return Ok(
             AuthResponse::json(200, &json!({"status":true,"redirect":"/login"}))?.with_header(

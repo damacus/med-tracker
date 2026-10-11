@@ -1,12 +1,14 @@
 (() => {
   const passwordField = document.querySelector('[data-signup-password]');
   if (passwordField) {
+    const updateCredential = () => {
+      const password = document.querySelector('input[name="credential"]:checked').value === 'password';
+      passwordField.hidden = !password;
+      passwordField.querySelector('input').disabled = !password;
+    };
+    updateCredential();
     for (const choice of document.querySelectorAll('input[name="credential"]')) {
-      choice.addEventListener('change', () => {
-        const password = document.querySelector('input[name="credential"]:checked').value === 'password';
-        passwordField.hidden = !password;
-        passwordField.querySelector('input').disabled = !password;
-      });
+      choice.addEventListener('change', updateCredential);
     }
   }
   const form = document.querySelector('[data-passkey-enrolment]');

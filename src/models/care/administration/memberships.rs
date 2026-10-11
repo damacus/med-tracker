@@ -161,16 +161,9 @@ async fn change_record(
     let previous_owner = current.role == "owner" && current.status == "active";
     let next_owner = next.role == "owner" && next.status == "active";
     if previous_owner != next_owner {
-        let platform = platform_admin::Entity::find()
-            .filter(platform_admin::Column::AccountId.eq(tenant.scope().actor.account_id))
-            .filter(platform_admin::Column::Status.eq("active"))
-            .one(tenant.transaction())
-            .await?
-            .is_some();
         if !crate::models::authorization::may_change_owner(
             tenant.membership(),
             tenant.scope().household_id,
-            platform,
             next_owner,
         ) {
             return rejected(

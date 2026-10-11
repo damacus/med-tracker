@@ -134,3 +134,37 @@ the Take and Replay tasks own the concurrency/idempotency assertions.
 
 **Done:** Every named operation works through Loco and has positive, validation, role, concurrency and
 replay evidence. API and browser callers reuse these operations; no read-only substitute counts as migration.
+
+## Approved completion plan — 7 October 2026
+
+This section supersedes conflicting older behaviour in this plan. The owner confirmed the complete plan after questions Q1–Q17. Finish the existing auth PR first; invitations remain there. Only after accepted auth is on main, deliver two independent PRs based on main: platform administration/support, then household lifecycle. Other migration work stays paused. No deployment or live-data action is authorised.
+
+### Platform administration and temporary support
+
+The 9 October UI correction uses the existing Rails administration components as its reference: a desktop users table, separate mobile records, user names and email addresses, distinct account/sign-in/platform access states, labelled search and result counts. Reuse the Rails heading, navigation and contained form patterns across settings, owner recovery and support. Do not add controls for capabilities the migrated application cannot perform. Verify desktop, 320px mobile navigation and dark appearance through the actual UI.
+
+The 9 October review correction aligns platform grant eligibility, remaining-administrator checks and directory sign-in state with authentication's first linked person. User page numbers clamp to the final result page before offset calculation. Support session history has bounded pages so older approved and active sessions retain their controls. Provider registration initialises its credential fields from the current selection even when the deferred script loads after that selection; CI retains browser failure diagnostics.
+
+- Browser pages cover platform users/admin rights, existing non-secret settings, owner recovery and support requests. INVITE_ONLY environment precedence remains visible/locked. Provider credentials stay externally configured.
+- Reuse the auth five-minute proof bound to action/target for privileged operations. Guard last-active-platform-admin removal/disable under a lock, including races.
+- Recover a household without an active eligible owner by promoting an existing eligible member, with fresh proof/reason/audit. A platform admin cannot grant themselves membership/ownership.
+- Support requests require an administrator reason and expire after24 hours. A current owner approves with fresh proof; administrator activation also requires fresh proof and starts30 minutes. Either party can end access.
+- Support retains the real administrator actor and grants read-only household configuration/clinical access. No care writes, permission changes, exports or file downloads. Recheck operator status, approving-owner authority, household state and expiry on every request. Never create a fake membership/impersonation identity.
+- Reuse adopted support records, RLS and explicit validated support context. Audit request, approval, activation, termination and expiry; keep protected reasons out of general logs.
+
+### Household export, closure, holds and deletion
+
+- Browser exports are available to owners/admins. Owners/platform admins can close and reopen; platform admins alone manage holds/purge. Fresh proof binds closure, reopening, hold changes and purge to the target/action.
+- Closure immediately blocks clinical access and revokes affected tokens/support, preserving access to other households. Keep membership/grant states for conditional reopening; do not restore old tokens, expired grants or previously revoked access.
+- Add durable closure generation/deadline; deletion becomes eligible after30 days. Any still-valid owner or platform admin may reopen before purge starts; reopening invalidates the closure's deletion eligibility.
+- Holds block deletion and cleanup, not normal care. Keep immutable protected reason/review/release evidence; review dates never auto-release.
+- Queue a private versioned JSON+files ZIP with checksum manifest. Include clinical/membership records and owned files, never authentication secrets. Reuse maintained S3 SDK, chosen S3-compatible configuration, canonical blob keys and shared-reference checks. No live bucket provisioning.
+- Reuse adopted export states. Downloads recheck authority; exports expire after30 days unless held. Add only the necessary generation/expiry jobs, not unrelated workers.
+- Purge is an explicit platform-admin confirmation after closure+30 days, no active hold and a valid verified export bound to the current closure generation. Regenerate expired exports. No automatic purge.
+- Reuse resumable purge ledger; protect shared identities/other-household files, immutable audit history and minimal completion tombstone. Delete blobs only after their final attachment reference is removed.
+
+### Acceptance and delivery
+
+Use TDD, PostgreSQL18, canonical fixtures and existing task runners. One source writer and one costly verification lane. Cover cross-household/role withdrawal, support approval/expiry/termination/forbidden writes/downloads, last-admin races, owner-recovery abuse, closure/reopen/stale tokens/other households, holds/purge races, exact deadlines, export checksums/expiry/generation binding, shared files, interrupted retry and audit rollback/preservation. All deletion checks use disposable owned fixtures.
+
+Verify actual desktop/mobile journeys, save safe screenshots, use Devin SWE-2 High for bounded implementation and SWE-2 Max for coherent security review. Run required complete checks, publish each independent PR and verify exact-head hosted checks. Update the existing progress report at meaningful checkpoints. Merge/deployment/live support/closure/deletion need their own authority; this plan does not authorise them.
