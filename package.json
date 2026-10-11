@@ -6,7 +6,7 @@
     "build": "tailwindcss -i assets/static/css/app.css -o assets/static/css/compiled.css --minify"
   },
   "devDependencies": {
-    "@playwright/test": "1.63.0",
+    "@playwright/test": "1.64.0",
     "@tailwindcss/cli": "4.3.0",
     "daisyui": "5.7.47",
     "jose": "6.2.12",
