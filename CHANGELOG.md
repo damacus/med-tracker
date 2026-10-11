@@ -1,5 +1,70 @@
 # Changelog
 
+## [0.6.0](https://github.com/damacus/med-tracker/compare/v0.5.35...v0.6.0) (2026-10-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* **auth:** Existing browser sessions must sign in again and all historical Rails passkeys require secure replacement. Unsupported password formats require reset. Supported retained passwords and authenticator factors remain usable; passkey-only accounts add a password before enabling TOTP. Preserve account IDs, care records, household permissions and the independently saved Rails rollback state. No deployment or live credential deletion is performed by this merge.
+
+### Features
+
+* **accounts:** add verified signup, invitation onboarding and verification resend ([5784650](https://github.com/damacus/med-tracker/commit/578465046e0344e0f8af6575ee3da467c3c5a3e2))
+* **api-keys:** add scoped expiring personal keys and revocation ([5784650](https://github.com/damacus/med-tracker/commit/578465046e0344e0f8af6575ee3da467c3c5a3e2))
+* **api:** add profile and notification settings ([#2492](https://github.com/damacus/med-tracker/issues/2492)) ([2c8a476](https://github.com/damacus/med-tracker/commit/2c8a4762f46af063f5c811b3607ee9521536ac16))
+* **api:** cover getDosageOption contract responses ([#2516](https://github.com/damacus/med-tracker/issues/2516)) ([e006489](https://github.com/damacus/med-tracker/commit/e0064891202acf520848488662eba8744aeadf52))
+* **api:** cover getHouseholdAdminSettings contract responses ([#2517](https://github.com/damacus/med-tracker/issues/2517)) ([4ced3c8](https://github.com/damacus/med-tracker/commit/4ced3c8a3402720a30d2b855d47e4ae02240c4fc))
+* **api:** cover listMemberships contract responses ([#2519](https://github.com/damacus/med-tracker/issues/2519)) ([93abddd](https://github.com/damacus/med-tracker/commit/93abdddbccf7db23ca03ed7d120e69056a44404b))
+* **api:** cover listPersonMedications contract responses ([#2518](https://github.com/damacus/med-tracker/issues/2518)) ([c48f653](https://github.com/damacus/med-tracker/commit/c48f6537a06e1d3cd8d5034017ed1967ac181dde))
+* **api:** cover remaining list endpoint contract responses ([#2520](https://github.com/damacus/med-tracker/issues/2520)) ([6fe3b72](https://github.com/damacus/med-tracker/commit/6fe3b7239a9e454e5b7e9fd1b99820aea7004dfa))
+* **api:** harden OpenAPI contract assertions ([#2514](https://github.com/damacus/med-tracker/issues/2514)) ([1aead26](https://github.com/damacus/med-tracker/commit/1aead26a3bc551bd8b06238c82deb969773f24cc))
+* **api:** manage account sessions and logout ([#2469](https://github.com/damacus/med-tracker/issues/2469)) ([8a9889f](https://github.com/damacus/med-tracker/commit/8a9889f5c3f62994146ca3040f0164ca7fe2a179))
+* **auth:** add password and verified passkey sign-in with optional TOTP ([5784650](https://github.com/damacus/med-tracker/commit/578465046e0344e0f8af6575ee3da467c3c5a3e2))
+* **auth:** complete Loco account security ([5784650](https://github.com/damacus/med-tracker/commit/578465046e0344e0f8af6575ee3da467c3c5a3e2))
+* **care:** add person health and carer journeys ([#2497](https://github.com/damacus/med-tracker/issues/2497)) ([b96762f](https://github.com/damacus/med-tracker/commit/b96762f474987360a7b4ceae6623f53172ab83ad))
+* **care:** improve medication care journeys ([#2481](https://github.com/damacus/med-tracker/issues/2481)) ([f3e7c13](https://github.com/damacus/med-tracker/commit/f3e7c1321af08683329e01a79a64735166d135b8))
+* **care:** sync changes and manage dose records ([#2460](https://github.com/damacus/med-tracker/issues/2460)) ([f65b52a](https://github.com/damacus/med-tracker/commit/f65b52aac76d2546a39d3c7276c106b77ec08415))
+* **identity:** add verified email changes and ZITADEL registration, linking and unlinking ([5784650](https://github.com/damacus/med-tracker/commit/578465046e0344e0f8af6575ee3da467c3c5a3e2))
+* **loco:** establish the migrated application baseline ([3f4a7f9](https://github.com/damacus/med-tracker/commit/3f4a7f952ef857b0f4f6e26105d9c39747771b0a))
+* **passwords:** reject common compromised passwords using a local blocklist ([5784650](https://github.com/damacus/med-tracker/commit/578465046e0344e0f8af6575ee3da467c3c5a3e2))
+* **platform:** add owner-approved support access ([#2489](https://github.com/damacus/med-tracker/issues/2489)) ([1e2184f](https://github.com/damacus/med-tracker/commit/1e2184fb4e2f753a63e254dbc5aec29cb61e7fa1))
+* **recovery:** add acknowledged single-use recovery codes and secure email recovery ([5784650](https://github.com/damacus/med-tracker/commit/578465046e0344e0f8af6575ee3da467c3c5a3e2))
+* **release:** rehearse saved-state rollback ([#2468](https://github.com/damacus/med-tracker/issues/2468)) ([01a8a93](https://github.com/damacus/med-tracker/commit/01a8a9359dcec1ddcff496a4ee4931291dee6415))
+* **reports:** add health and review PDFs ([#2470](https://github.com/damacus/med-tracker/issues/2470)) ([1c3c3da](https://github.com/damacus/med-tracker/commit/1c3c3da954fb50370371fd019b924a93a547c2a7))
+* **rust:** add browser health-history PDF download page ([#2388](https://github.com/damacus/med-tracker/issues/2388)) ([596cb6f](https://github.com/damacus/med-tracker/commit/596cb6f062af8232b01bddedeccd8e7a969f24d9))
+* **rust:** add NHS dm+d admin import slice ([1db3993](https://github.com/damacus/med-tracker/commit/1db399334290b762f8ba6498a895ec7b30df1306))
+* **security:** add operation-bound proof, session revocation and account closure ([5784650](https://github.com/damacus/med-tracker/commit/578465046e0344e0f8af6575ee3da467c3c5a3e2))
+
+
+### Bug Fixes
+
+* **api:** preserve native v1 wire identifiers and publish accurate capabilities ([5784650](https://github.com/damacus/med-tracker/commit/578465046e0344e0f8af6575ee3da467c3c5a3e2))
+* **api:** return 404 for out-of-scope preference reads ([#2506](https://github.com/damacus/med-tracker/issues/2506)) ([5f4ece6](https://github.com/damacus/med-tracker/commit/5f4ece63359da366b6f8a6fc309fbbb9d25edc73))
+* **api:** return 404 for out-of-scope profile reads ([#2508](https://github.com/damacus/med-tracker/issues/2508)) ([484c35c](https://github.com/damacus/med-tracker/commit/484c35cc957935920e5f1ac971fdcd63ee93c7c9))
+* **api:** validate age in application timezone ([#2499](https://github.com/damacus/med-tracker/issues/2499)) ([ce02755](https://github.com/damacus/med-tracker/commit/ce02755847cac913a794f3fc0bfc89e5d4201f7b))
+* **auth:** consume passkey challenges after first use ([a349bdc](https://github.com/damacus/med-tracker/commit/a349bdc94dc96dddb66a2e9e270a29493916d7f0))
+* **auth:** keep production authentication and CSRF cookies secure behind HTTP proxies ([5784650](https://github.com/damacus/med-tracker/commit/578465046e0344e0f8af6575ee3da467c3c5a3e2))
+* **auth:** reuse the validated development key and reject missing connection metadata ([5784650](https://github.com/damacus/med-tracker/commit/578465046e0344e0f8af6575ee3da467c3c5a3e2))
+* **auth:** roll back recovery use and account changes when audit or notification writes fail ([5784650](https://github.com/damacus/med-tracker/commit/578465046e0344e0f8af6575ee3da467c3c5a3e2))
+* **ci:** retain browser fixture ports during setup and align dates with the account timezone ([5784650](https://github.com/damacus/med-tracker/commit/578465046e0344e0f8af6575ee3da467c3c5a3e2))
+* **ci:** wait for the exact dashboard search trigger to regain focus after closing ([5784650](https://github.com/damacus/med-tracker/commit/578465046e0344e0f8af6575ee3da467c3c5a3e2))
+* **deps:** update rust crate base64 to v0.23.1 ([#2465](https://github.com/damacus/med-tracker/issues/2465)) ([1de9343](https://github.com/damacus/med-tracker/commit/1de93430e239e508c358365d011205fd9ef1d624))
+* **deps:** update rust crate cedar-policy to v4.13.0 ([#2466](https://github.com/damacus/med-tracker/issues/2466)) ([6b07a09](https://github.com/damacus/med-tracker/commit/6b07a09626f8324e53e928ffd0ec22579b1ce1c2))
+* **deps:** update rust crate headers to v0.4.2 ([#2463](https://github.com/damacus/med-tracker/issues/2463)) ([9e70f64](https://github.com/damacus/med-tracker/commit/9e70f648ce48140ca0cb548feb0050e95b0a9499))
+* **docs:** document retained credentials, historical passkey replacement and session limits ([5784650](https://github.com/damacus/med-tracker/commit/578465046e0344e0f8af6575ee3da467c3c5a3e2))
+* execute task commands and count routine dashboard work ([#2135](https://github.com/damacus/med-tracker/issues/2135)) ([ecb4de2](https://github.com/damacus/med-tracker/commit/ecb4de292652f971161c0f4856075ed23edc77a8))
+* **logging:** exclude credential-bearing queries while retaining request diagnostics ([5784650](https://github.com/damacus/med-tracker/commit/578465046e0344e0f8af6575ee3da467c3c5a3e2))
+* **push:** reject malformed VAPID private keys without panicking ([#2385](https://github.com/damacus/med-tracker/issues/2385)) ([5f41f8c](https://github.com/damacus/med-tracker/commit/5f41f8cffbb2b275f4f0bc8baa2dead47e9c94a9))
+* **reports:** enforce authentication revocation during PDF downloads ([5784650](https://github.com/damacus/med-tracker/commit/578465046e0344e0f8af6575ee3da467c3c5a3e2))
+* **rust:** delegate auth and close write races ([bb73d58](https://github.com/damacus/med-tracker/commit/bb73d5877adcf9cf5181a53ea778658e080a089a))
+* **rust:** scope contract storage overlay to defined services ([#2379](https://github.com/damacus/med-tracker/issues/2379)) ([7a8e885](https://github.com/damacus/med-tracker/commit/7a8e885804c90f41e26e4eaecf17a52df082f8ca))
+* **security:** make browser session records and audit references non-reusable digests ([5784650](https://github.com/damacus/med-tracker/commit/578465046e0344e0f8af6575ee3da467c3c5a3e2))
+* **security:** remove RustCrypto RSA from push dependencies ([85af9da](https://github.com/damacus/med-tracker/commit/85af9da02e2200f1c094e5d7c144b81c7beed5a8))
+* **sessions:** enforce seven-day idle and thirty-day maximum native login expiry ([5784650](https://github.com/damacus/med-tracker/commit/578465046e0344e0f8af6575ee3da467c3c5a3e2))
+* **ui:** clarify care forms and actions ([#2474](https://github.com/damacus/med-tracker/issues/2474)) ([7a8c6f6](https://github.com/damacus/med-tracker/commit/7a8c6f6b5c07c62a81c9d5a5c7e3202bd0ef8b30))
+* **ui:** keep success flash visible until navigation ([#2380](https://github.com/damacus/med-tracker/issues/2380)) ([1e63a7f](https://github.com/damacus/med-tracker/commit/1e63a7faf897c7b21411264ec7bd2a8d859cda69))
+* **ui:** wrap account-security navigation without horizontal overflow on narrow screens ([5784650](https://github.com/damacus/med-tracker/commit/578465046e0344e0f8af6575ee3da467c3c5a3e2))
+
 ## [0.5.35](https://github.com/damacus/med-tracker/compare/v0.5.34...v0.5.35) (2026-10-02)
 
 
