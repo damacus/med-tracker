@@ -22,8 +22,14 @@ tasks:
       - assets/static/css/platform.css
       - assets/views/**/*.html
       - assets/static/js/*.js
-    generates: [assets/static/css/compiled.css]
-    cmds: [npm run build]
+      - exclude: assets/static/js/html5-qrcode.min.js
+      - node_modules/html5-qrcode/html5-qrcode.min.js
+    generates:
+      - assets/static/css/compiled.css
+      - assets/static/js/html5-qrcode.min.js
+    cmds:
+      - ./node_modules/.bin/tailwindcss -i assets/static/css/app.css -o assets/static/css/compiled.css --minify
+      - cp node_modules/html5-qrcode/html5-qrcode.min.js assets/static/js/html5-qrcode.min.js
   prepare:
     cmds:
       - task: install

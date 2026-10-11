@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { execFileSync, spawnSync } from 'node:child_process';
 import test from 'node:test';
 
-test('root CI verifies the application without rerunning relocation snapshot audits', () => {
+test('root CI checks relocation contracts without rerunning other snapshot audits', () => {
   const result = spawnSync('task', ['--dry', '--force', '--verbose', 'ci'], { encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
   const output = result.stdout + result.stderr;
@@ -13,7 +13,8 @@ test('root CI verifies the application without rerunning relocation snapshot aud
   assert.match(output, /run-slice\.mjs --all/);
   assert.match(output, /foundation-database\.test\.mjs/);
   assert.match(output, /process-cleanup\.test\.mjs/);
-  assert.doesNotMatch(output, /foundation\.test\.mjs|workspaces\.test\.mjs|relocation\.test\.mjs|preservation(?:\.test)?\.mjs|inventory\.mjs/);
+  assert.match(output, /relocation\.test\.mjs/);
+  assert.doesNotMatch(output, /foundation\.test\.mjs|workspaces\.test\.mjs|preservation(?:\.test)?\.mjs|inventory\.mjs/);
 });
 
 test('relocation snapshot audits remain available through an explicit task', () => {

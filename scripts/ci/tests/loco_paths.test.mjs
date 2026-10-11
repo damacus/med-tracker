@@ -36,8 +36,8 @@ test('root browser tooling and dependencies select the Loco runtime', () => {
   }
 });
 
-test('scanner build script selects the Loco runtime', () => {
-  const selected = classify(['scripts/build-scanner.mjs']).selected;
+test('frontend scripts select the Loco runtime', () => {
+  const selected = classify(['scripts/frontend/new-helper.mjs']).selected;
   assert.equal(selected.loco, true);
   assert.equal(selected.rails, false);
   assert.equal(selected.rust_port, false);
