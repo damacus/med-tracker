@@ -1,6 +1,28 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 import { withOwnedDatabase } from './foundation-database.mjs';
+
+test('owned PostgreSQL healthcheck waits for TCP rather than the temporary Unix-only server', () => {
+  const compose = readFileSync(new URL('../../compose.yaml', import.meta.url), 'utf8');
+  const probe = compose.match(/postgres:\n[\s\S]*?healthcheck:\n\s+test: \["CMD-SHELL", "([^"]+)"\]/)?.[1];
+  assert.ok(probe, 'PostgreSQL healthcheck is missing');
+  const directory = mkdtempSync(join(tmpdir(), 'medtracker-pg-ready-'));
+  try {
+    const binary = join(directory, 'pg_isready');
+    writeFileSync(binary, '#!/usr/bin/env node\nconst tcp = process.argv.includes("-h") && process.argv.includes("127.0.0.1");\nprocess.exit(process.env.SERVER_MODE === "unix-only" && tcp ? 2 : 0);\n');
+    chmodSync(binary, 0o755);
+    const env = { ...process.env, PATH: `${directory}:${process.env.PATH}` };
+    const check = mode => spawnSync('sh', ['-c', probe], { env: { ...env, SERVER_MODE: mode }, encoding: 'utf8' });
+    assert.equal(check('unix-only').status, 2, 'Temporary socket-only startup must not be healthy');
+    assert.equal(check('tcp-ready').status, 0, 'Final TCP listener must be healthy');
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
 
 test('owned cleanup permits a bounded ninety-second Compose shutdown without extending other phases', async () => {
   const deadlines = new Map();
