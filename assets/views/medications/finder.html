@@ -1,0 +1,28 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-3xl mx-auto" data-medication-finder data-household="{{ slug }}">
+  <a class="link" href="/households/{{ slug }}/medications">Back to medications</a>
+  <h1 class="text-3xl font-semibold mt-4">Medication Finder</h1>
+  <p class="mt-2">Scan a pack or enter its barcode to find a medicine and add stock.</p>
+  <div class="card border border-base-300 bg-base-100 mt-6"><div class="card-body">
+    <h2 class="card-title">Scan a barcode</h2>
+    <div id="barcode-camera" class="w-full overflow-hidden"></div>
+    <div class="flex flex-wrap gap-2"><button type="button" class="btn btn-outline" data-camera-start>Start Scanner</button><button type="button" class="btn btn-outline" data-camera-stop hidden>Stop Scanner</button></div>
+    <p data-camera-status aria-live="polite"></p>
+    <form data-barcode-form class="flex flex-col gap-3">
+      <label for="barcode">Barcode</label><input class="input w-full" id="barcode" name="q" inputmode="numeric" autocomplete="off" required maxlength="256">
+      <button class="btn btn-neutral" type="submit">Find barcode</button>
+    </form>
+  </div></div>
+  <form data-medicine-form class="card card-body border border-base-300 bg-base-100 mt-4 gap-3">
+    <h2 class="card-title">Search the medicine catalogue</h2>
+    <label for="medicine-name">Medicine name</label><input id="medicine-name" name="q" class="input w-full" maxlength="256">
+    <div class="grid sm:grid-cols-2 gap-3"><div class="grid gap-2"><label for="medicine-form">Form</label><select id="medicine-form" name="form" class="select w-full"><option value="">Any form</option><option value="tablet">Tablet</option><option value="capsule">Capsule</option><option value="liquid">Liquid</option><option value="cream">Cream</option><option value="inhaler">Inhaler</option><option value="patch">Patch</option><option value="drops">Drops</option><option value="spray">Spray</option></select></div><div class="grid gap-2"><label for="medicine-strength">Strength</label><input id="medicine-strength" name="strength" class="input w-full"></div></div>
+    <button type="submit" class="btn btn-neutral w-fit">Search medicines</button>
+  </form>
+  <p role="status" class="mt-4" data-lookup-status></p>
+  <div data-lookup-results class="flex flex-col gap-4 mt-4"></div>
+  {% if can_create %}<a class="link mt-4 inline-block" data-manual-entry href="/households/{{ slug }}/medications/new">Enter medication manually</a>{% endif %}
+</section>
+<script src="/static/js/medication-finder.js" defer></script>
+{% endblock content %}

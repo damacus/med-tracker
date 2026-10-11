@@ -107,7 +107,7 @@ pub(super) fn defaults(record: Option<&Value>) -> HashMap<String, String> {
     draft
 }
 
-pub(super) fn body(
+pub(crate) fn body(
     kind: Kind,
     person_id: &str,
     draft: &HashMap<String, String>,
@@ -244,7 +244,7 @@ fn same_taper_step(draft: &HashMap<String, String>, index: usize, original: &Val
         && stored_times == list(browser_forms::field(draft, &format!("step_{index}_times")))
 }
 
-fn configuration(
+pub(crate) fn configuration(
     draft: &HashMap<String, String>,
     existing: Option<&Value>,
 ) -> Result<Value, OperationError> {
@@ -338,6 +338,16 @@ fn configuration(
             }
         }
         steps.push(Value::Object(step));
+    }
+    if browser_forms::field(draft, "schedule_type") == "tapering"
+        && draft.contains_key("tapering_plan")
+    {
+        let instruction = browser_forms::optional(draft, "tapering_plan")
+            .ok_or_else(|| invalid("tapering_plan", "is required"))?;
+        config.insert("tapering_plan".into(), json!(instruction));
+        if steps.is_empty() {
+            steps.push(json!({"start_date":browser_forms::field(draft,"start_date"),"end_date":browser_forms::field(draft,"end_date"),"amount":browser_forms::field(draft,"dose_amount"),"unit":browser_forms::field(draft,"dose_unit"),"max_daily_doses":browser_forms::field(draft,"max_daily_doses").parse::<i64>().map_err(|_|invalid("max_daily_doses","must be a whole number"))?,"min_hours_between_doses":browser_forms::field(draft,"min_hours_between_doses")}));
+        }
     }
     if !steps.is_empty() {
         config.insert("taper_steps".into(), json!(steps));

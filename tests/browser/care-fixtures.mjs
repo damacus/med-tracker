@@ -62,10 +62,11 @@ async function withCareFixture(captureMail, registrationInviteOnly, reportAssets
     let provider;
     let output = '';
     let exited = false;
+    let storageEnvironment = {};
     const start = async () => {
       output = '';
       exited = false;
-      const environment = { ...process.env, LOCO_ENV: 'test', TZ: 'UTC', BINDING: '127.0.0.1', PORT: String(port), MEDTRACKER_PUBLIC_HOST: 'http://localhost', DATABASE_URL: runtime.href, MEDTRACKER_CAPTURE_MAIL: String(captureMail), MEDTRACKER_SMTP_PORT: smtpPort ?? '1025', MEDTRACKER_SESSION_KEY: Buffer.alloc(64, 7).toString('base64'), MEDTRACKER_COOKIE_SECURE: 'false', RAILS_SECRET_KEY_BASE: 'synthetic-rails-secret-key-base-for-compatibility', RAILS_OLD_SECRET_KEY_BASE: 'synthetic-old-rails-secret-key-base', AUTH_SESSION_SECRET: 'synthetic-browser-occurrence-signing-key-32' };
+      const environment = { ...process.env, ...storageEnvironment, LOCO_ENV: 'test', TZ: 'UTC', BINDING: '127.0.0.1', PORT: String(port), MEDTRACKER_PUBLIC_HOST: 'http://localhost', DATABASE_URL: runtime.href, MEDTRACKER_CAPTURE_MAIL: String(captureMail), MEDTRACKER_SMTP_PORT: smtpPort ?? '1025', MEDTRACKER_SESSION_KEY: Buffer.alloc(64, 7).toString('base64'), MEDTRACKER_COOKIE_SECURE: 'false', RAILS_SECRET_KEY_BASE: 'synthetic-rails-secret-key-base-for-compatibility', RAILS_OLD_SECRET_KEY_BASE: 'synthetic-old-rails-secret-key-base', AUTH_SESSION_SECRET: 'synthetic-browser-occurrence-signing-key-32' };
       for (const name of ['MEDTRACKER_ZITADEL_ISSUER', 'MEDTRACKER_ZITADEL_CLIENT_ID', 'MEDTRACKER_ZITADEL_CLIENT_SECRET']) delete environment[name];
       for (const name of ['MEDTRACKER_WEB_PUSH_PRIVATE_KEY', 'MEDTRACKER_WEB_PUSH_SUBJECT']) delete environment[name];
       if (webPush) {
@@ -119,12 +120,12 @@ async function withCareFixture(captureMail, registrationInviteOnly, reportAssets
       await use({ origin, mailpitUrl, runtimeTimings, provider,
         reset: () => measure('reset', () => fixtureTask('reset', [`SNAPSHOT_PATH=${snapshotPath}`])),
         profileNotificationFixture: () => fixtureTask('profile-notification-fixture'), profileNotificationProbe: async () => JSON.parse(await fixtureTask('profile-notification-probe')),
-        probe: async () => JSON.parse(await fixtureTask('probe')), seedBarcodeMetadata: () => fixtureTask('seed-barcode-metadata'), barcodeMetadataProbe: async () => JSON.parse(await fixtureTask('barcode-metadata-probe')), seedLegacyCareHours: () => fixtureTask('legacy-care-hours'), legacyCareHoursProbe: async () => JSON.parse(await fixtureTask('legacy-care-hours-probe')), seedLegacySecondTaperHour: () => fixtureTask('legacy-second-taper-hour'), revoke: () => fixtureTask('revoke'), reactivate: () => fixtureTask('reactivate'),
+        probe: async () => JSON.parse(await fixtureTask('probe')), seedBarcodeMetadata: () => fixtureTask('seed-barcode-metadata'), barcodeMetadataProbe: async () => JSON.parse(await fixtureTask('barcode-metadata-probe')), wizardModal: () => fixtureTask('wizard-modal'), wizardSlideover: () => fixtureTask('wizard-slideover'), contextAwareLauncher: () => fixtureTask('launcher-context-aware'), scannerPlatformAdmin: () => fixtureTask('scanner-platform-admin'), revokeScannerPlatformAdmin: () => fixtureTask('scanner-revoke-platform-admin'), seedLegacyCareHours: () => fixtureTask('legacy-care-hours'), legacyCareHoursProbe: async () => JSON.parse(await fixtureTask('legacy-care-hours-probe')), seedLegacySecondTaperHour: () => fixtureTask('legacy-second-taper-hour'), revoke: () => fixtureTask('revoke'), reactivate: () => fixtureTask('reactivate'),
         seedOtp: () => fixtureTask('seed-otp'), otpProbe: async () => JSON.parse((await fixtureTask('otp-probe')) || 'null'), closeOtpAccount: () => fixtureTask('close-otp-account'),
         seedRecovery: () => fixtureTask('seed-recovery'), recoveryProbe: async () => JSON.parse(await fixtureTask('recovery-probe')), exhaustOtp: () => fixtureTask('exhaust-otp'),
         seedRecoveryPasskey: () => fixtureTask('seed-recovery-passkey'),
         peopleProbe: async () => JSON.parse(await fixtureTask('people-probe')),
-        restockProbe: async () => JSON.parse(await fixtureTask('restock-probe')), failRestockAudit: () => fixtureTask('fail-restock-audit'),
+        restockProbe: async () => JSON.parse(await fixtureTask('restock-probe')), failRestockAudit: () => fixtureTask('fail-restock-audit'), wizardProbe: async name => JSON.parse(await fixtureTask('wizard-probe', [`WIZARD_NAME=${name}`]) || 'null'),
         personHealthProbe: async () => JSON.parse(await fixtureTask('person-health-probe')), renamePersonHealthMedication: () => fixtureTask('rename-person-health-medication'), personCarerManager: () => fixtureTask('person-carer-manager'), personCarerNonmanager: () => fixtureTask('person-carer-nonmanager'), personCarerProbe: async () => JSON.parse(await fixtureTask('person-carer-probe')),
         seedAdministration: () => fixtureTask('seed-administration'), administrationProbe: async () => JSON.parse(await fixtureTask('administration-probe')), personViewOnly: () => fixtureTask('person-view-only'), revokePersonViewOnly: () => fixtureTask('revoke-person-view-only'), personZeroHours: () => fixtureTask('person-zero-hours'), mixedRecordability: () => fixtureTask('mixed-recordability'),
         seedPlatform: () => fixtureTask('seed-platform'), platformProbe: async () => JSON.parse(await fixtureTask('platform-probe')),
@@ -191,6 +192,7 @@ async function withCareFixture(captureMail, registrationInviteOnly, reportAssets
         securityRevocationRace: () => fixtureTask('security-revocation-race'), securityRevocationRaceReady: async () => (await fixtureTask('security-revocation-race-ready')) === 't',
         securityFactorRace: () => fixtureTask('security-factor-race'), securityFactorRaceReady: async () => (await fixtureTask('security-factor-race-ready')) === 't',
         restart: async () => { await measure('application-stop', () => stopOwnedProcess(server)); await measure('application-start', start); },
+        startStorage: async () => { storageEnvironment = await ownership.storage(); await measure('application-stop', () => stopOwnedProcess(server)); await measure('application-start', start); },
         revokeSession: () => fixtureTask('revoke-session'), expireSession: () => fixtureTask('expire-session'), doseRequestId: () => fixtureTask('dose-request-id') });
     } finally {
       if (reservation.listening) await new Promise(resolve => reservation.close(resolve));

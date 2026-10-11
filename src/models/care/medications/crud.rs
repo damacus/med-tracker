@@ -13,6 +13,15 @@ pub async fn create(
     attributes: Value,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<medication::Model, OperationError> {
+    create_with_schedule_config(tenant, attributes, None, provenance).await
+}
+
+pub(crate) async fn create_with_schedule_config(
+    tenant: &TenantTransaction,
+    attributes: Value,
+    schedule_config: Option<Value>,
+    provenance: Option<&CredentialProvenance>,
+) -> Result<medication::Model, OperationError> {
     let context = StockContext { tenant, provenance };
     lock_row(
         tenant.transaction(),
@@ -34,6 +43,9 @@ pub async fn create(
         ..Default::default()
     };
     validation::assign_attributes(&mut active, &attributes).map_err(field_error)?;
+    if let Some(config) = schedule_config {
+        active.default_schedule_config = Set(config);
+    }
     let saved = active
         .insert(tenant.transaction())
         .await

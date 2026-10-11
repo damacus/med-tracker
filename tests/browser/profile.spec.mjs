@@ -21,8 +21,11 @@ test('security keeps full-width account and authentication cards with current su
   for (const name of ['Authenticator App (TOTP)', 'Recovery Codes', 'Passkeys']) {
     await expect(methods.getByRole('heading', { name, exact: true })).toBeVisible();
   }
-  const accountBounds = await account.boundingBox();
-  const methodsBounds = await methods.boundingBox();
+  const methodsHandle = await methods.elementHandle();
+  const { accountBounds, methodsBounds } = await account.evaluate((element, methodsElement) => ({
+    accountBounds: element.getBoundingClientRect().toJSON(),
+    methodsBounds: methodsElement.getBoundingClientRect().toJSON()
+  }), methodsHandle);
   expect(methodsBounds.y).toBeGreaterThanOrEqual(accountBounds.y + accountBounds.height);
   expect(Math.abs(methodsBounds.width - accountBounds.width)).toBeLessThan(2);
   await expect(panel.locator('.profile-summary')).toContainText('Password updated');

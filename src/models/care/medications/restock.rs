@@ -5,6 +5,14 @@ pub(super) async fn execute(
     context: &StockContext<'_>,
     input: Restock,
 ) -> Result<medication::Model, OperationError> {
+    execute_selected(context, input, None).await
+}
+
+pub(super) async fn execute_selected(
+    context: &StockContext<'_>,
+    input: Restock,
+    option_id: Option<&str>,
+) -> Result<medication::Model, OperationError> {
     let tenant = context.tenant;
     let db = tenant.transaction();
     lock_row(db, "households", tenant.scope().household_id).await?;
@@ -27,7 +35,7 @@ pub(super) async fn execute(
         .one(db)
         .await?
         .is_some();
-    if has_options {
+    if has_options && option_id.is_none() {
         return Err(validation(
             "Update dose option stock to refill this medication",
         ));
@@ -47,7 +55,20 @@ pub(super) async fn execute(
         .ok()
         .filter(|date| date.format("%Y-%m-%d").to_string() == input.restock_date)
         .ok_or_else(|| field_validation("restock_date", "Restock date is invalid"))?;
-    let new_supply = current.medication.current_supply.unwrap_or(Decimal::ZERO) + quantity;
+    let new_supply = match option_id {
+        Some(id) if has_options => {
+            crate::models::care::dosages::add_stock(
+                tenant,
+                found.id,
+                id,
+                quantity,
+                context.provenance,
+            )
+            .await?
+        }
+        Some(_) => return Err(validation("Choose an inventory-tracked dose option")),
+        None => current.medication.current_supply.unwrap_or(Decimal::ZERO) + quantity,
+    };
     if new_supply >= Decimal::from(100_000_000) {
         return Err(validation("Resulting stock is outside stock precision"));
     }

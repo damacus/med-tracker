@@ -36,6 +36,13 @@ test('root browser tooling and dependencies select the Loco runtime', () => {
   }
 });
 
+test('scanner build script selects the Loco runtime', () => {
+  const selected = classify(['scripts/build-scanner.mjs']).selected;
+  assert.equal(selected.loco, true);
+  assert.equal(selected.rails, false);
+  assert.equal(selected.rust_port, false);
+});
+
 test('advisory lint files remain classified as Loco tooling', () => {
   for (const path of ['Taskfiles/lint-advisory.yml', 'scripts/lint-advisory/clippy.toml', 'scripts/lint-advisory/report.mjs', 'scripts/lint-advisory/report.test.mjs']) {
     const selected = classify([path]).selected;

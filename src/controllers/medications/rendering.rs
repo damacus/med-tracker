@@ -50,16 +50,24 @@ pub fn index(
     token: &CsrfToken,
     slug: &str,
     medications: &[MedicationCard],
-    can_create: bool,
-    can_manage: bool,
+    permissions: IndexPermissions,
 ) -> Response {
     let mut data = appearance_context();
     data["title"] = json!("Medications");
     data["slug"] = json!(slug);
     data["medications"] = json!(medications);
-    data["can_create"] = json!(can_create);
-    data["can_manage"] = json!(can_manage);
+    data["can_create"] = json!(permissions.create);
+    data["can_adjust"] = json!(permissions.adjust);
+    data["can_assign"] = json!(permissions.assign);
+    data["can_manage"] = json!(permissions.manage);
     render(view, token, "medications/index.html", data, StatusCode::OK)
+}
+
+pub struct IndexPermissions {
+    pub create: bool,
+    pub adjust: bool,
+    pub assign: bool,
+    pub manage: bool,
 }
 
 pub fn detail(
@@ -354,6 +362,7 @@ fn detail_with_state(
             "spacing": spacing,
         })
     }).collect::<Vec<_>>());
+    data["refill_options"] = json!(detail.dose_options.iter().filter_map(|option|option.current_supply.map(|supply|json!({"id":option.id,"label":format!("{} {} · Current supply: {}",option.amount.normalize(),option.unit,supply.normalize())}))).collect::<Vec<_>>());
     data["dose_history"] = json!(detail.dose_history.iter().map(|take| {
         let dose_label = take.amount.as_deref().zip(take.unit.as_deref())
             .map(|(amount, unit)| format!("{} {}", amount, unit_label(unit, amount)));

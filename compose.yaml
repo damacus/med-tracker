@@ -1,4 +1,36 @@
 services:
+  storage-permissions:
+    image: rustfs/rustfs:1.0.0-alpha.90
+    profiles: [fixture-storage]
+    user: "0:0"
+    entrypoint: ["/bin/sh", "-c", "chown 10001:10001 /data /logs"]
+    volumes:
+      - scanner-data:/data
+      - scanner-logs:/logs
+  rustfs:
+    image: rustfs/rustfs:1.0.0-alpha.90
+    profiles: [fixture-storage]
+    depends_on:
+      storage-permissions:
+        condition: service_completed_successfully
+    environment:
+      RUSTFS_ACCESS_KEY: storage-smoke-access
+      RUSTFS_SECRET_KEY: storage-smoke-secret
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ADDRESS: 0.0.0.0:9000
+      RUSTFS_CONSOLE_ENABLE: "false"
+      RUSTFS_OBS_LOG_DIRECTORY: /logs
+    ports:
+      - target: 9000
+        host_ip: 127.0.0.1
+    volumes:
+      - scanner-data:/data
+      - scanner-logs:/logs
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:9000/health"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
   postgres:
     image: postgres:18-alpine
     environment:
@@ -9,22 +41,10 @@ services:
       - target: 5432
         host_ip: 127.0.0.1
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U medtracker -d medtracker_loco"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U medtracker -d medtracker_loco"]
       interval: 2s
       timeout: 2s
       retries: 30
-  rustfs:
-    image: rustfs/rustfs:1.0.0-alpha.90
-    profiles: [fixture-storage]
-    environment:
-      RUSTFS_ACCESS_KEY: storage-smoke-access
-      RUSTFS_SECRET_KEY: storage-smoke-secret
-      RUSTFS_VOLUMES: /data
-    command: [/data]
-    ports:
-      - target: 9000
-        host_ip: 127.0.0.1
-    volumes:
-      - rustfs-fixture:/data
 volumes:
-  rustfs-fixture:
+  scanner-data:
+  scanner-logs:

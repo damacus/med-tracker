@@ -193,6 +193,41 @@ pub(crate) async fn has_person_access(
     }))
 }
 
+pub(crate) async fn people_with_access(
+    transaction: &TenantTransaction,
+    access: PersonAccess,
+) -> Result<Vec<person::Model>, OperationError> {
+    recheck(transaction).await?;
+    let grants = grant::Entity::find()
+        .filter(grant::Column::HouseholdId.eq(transaction.scope().household_id))
+        .filter(grant::Column::HouseholdMembershipId.eq(transaction.membership().id))
+        .filter(grant::Column::RevokedAt.is_null())
+        .all(transaction.transaction())
+        .await?;
+    let mut people = person::Entity::find()
+        .filter(person::Column::HouseholdId.eq(transaction.scope().household_id))
+        .filter(
+            person::Column::Id.is_in(grants.iter().map(|row| row.person_id).collect::<Vec<_>>()),
+        )
+        .order_by_asc(person::Column::Name)
+        .all(transaction.transaction())
+        .await?;
+    let now = database_time(transaction).await?;
+    people.retain(|subject| {
+        grants.iter().any(|grant| {
+            grant.person_id == subject.id
+                && authorization::person_access(
+                    transaction.membership(),
+                    subject,
+                    grant,
+                    access,
+                    now,
+                )
+        })
+    });
+    Ok(people)
+}
+
 async fn database_time(
     transaction: &TenantTransaction,
 ) -> Result<chrono::NaiveDateTime, OperationError> {

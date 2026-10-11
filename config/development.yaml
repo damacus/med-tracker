@@ -28,6 +28,9 @@ workers:
   mode: BackgroundQueue
 scheduler:
   jobs:
+    nhs_dmd_reconcile:
+      run: nhs_dmd_reconcile
+      schedule: "0 */5 * * * *"
     browser_reminders:
       run: browser-reminders
       schedule: "0 * * * * *"

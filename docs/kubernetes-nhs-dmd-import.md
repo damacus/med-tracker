@@ -4,6 +4,11 @@ MedTracker imports NHSBSA dm+d release files into its local barcode and product
 reference tables. Use the admin upload for routine imports. Use a one-off
 Kubernetes Job only when an operator cannot use the admin page.
 
+This page describes the Rails reference application's import commands and
+storage. For the root Loco application's private archive storage, PostgreSQL
+worker and restart behaviour, see [Loco migration
+checkout](nhs-dmd-integration.md#loco-migration-checkout).
+
 ## Required release files
 
 Download the NHSBSA dm+d release ZIP without changing its contents. The import

@@ -49,6 +49,15 @@ pub async fn restock(
     restock::execute(&StockContext { tenant, provenance }, input).await
 }
 
+pub async fn restock_option(
+    tenant: &TenantTransaction,
+    input: Restock,
+    option_id: &str,
+    provenance: Option<&CredentialProvenance>,
+) -> Result<medication::Model, OperationError> {
+    restock::execute_selected(&StockContext { tenant, provenance }, input, Some(option_id)).await
+}
+
 #[derive(Clone, Debug)]
 pub enum Command {
     AdjustStock(AdjustStock),
@@ -136,7 +145,11 @@ async fn visible_medication(
         .map_err(database_error)
 }
 
-async fn lock_row(db: &DatabaseTransaction, table: &str, id: i64) -> Result<(), OperationError> {
+pub(crate) async fn lock_row(
+    db: &DatabaseTransaction,
+    table: &str,
+    id: i64,
+) -> Result<(), OperationError> {
     let sql = match table {
         "households" => "SELECT id FROM households WHERE id=$1 FOR UPDATE",
         "medications" => "SELECT id FROM medications WHERE id=$1 FOR UPDATE",

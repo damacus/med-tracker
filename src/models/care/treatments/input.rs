@@ -161,6 +161,9 @@ pub(super) fn valid_config(config: &Value) -> bool {
                     .all(|date| parse_date(date, "schedule_config").is_ok())
             }),
             "as_needed" => value.is_boolean(),
+            "tapering_plan" => value
+                .as_str()
+                .is_some_and(|instruction| !instruction.trim().is_empty()),
             "taper_steps" => value
                 .as_array()
                 .is_some_and(|steps| steps.iter().all(valid_taper_step)),
