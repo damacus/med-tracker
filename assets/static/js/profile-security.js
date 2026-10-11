@@ -2,6 +2,10 @@
   const dialog = document.getElementById('profile-security-flow');
   if (!dialog) return;
   const content = dialog.querySelector('[data-security-flow-content]');
+  const loading = document.createElement('p');
+  loading.textContent = dialog.dataset.loadingLabel;
+  loading.hidden = true;
+  content.before(loading);
   const scripts = new Set(['/static/js/security-proof.js', '/static/js/add-passkey.js', '/static/js/recovery-result.js']);
   let opener;
   let pending = false;
@@ -39,6 +43,8 @@
     pending = true;
     const current = ++generation;
     dialog.setAttribute('aria-busy', 'true');
+    content.hidden = true;
+    loading.hidden = false;
     try {
       const response = await fetch(url, { credentials: 'same-origin', cache: 'no-store', ...options });
       if (current !== generation) return;
@@ -76,13 +82,17 @@
           content.append(script);
         });
       }
-      const focus = content.querySelector('[role="alert"]:not([hidden]), h3');
-      if (focus) { focus.tabIndex = -1; focus.focus(); }
     } catch {
       if (current === generation) error();
     } finally {
       pending = false;
+      content.hidden = false;
+      loading.hidden = true;
       dialog.removeAttribute('aria-busy');
+      if (dialog.open && current === generation) {
+        const focus = content.querySelector('[role="alert"]:not([hidden]), h3');
+        if (focus) { focus.tabIndex = -1; focus.focus(); }
+      }
     }
   }
   function open(trigger) {

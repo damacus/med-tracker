@@ -252,10 +252,17 @@ test('profile shares the application header, content width, cards and centred di
   const opener = page.locator('[data-dialog-open="profile-avatar"]');
   await opener.click();
   const dialog = page.locator('#profile-avatar');
-  const box = await dialog.locator('.modal-box').boundingBox();
-  const viewport = page.viewportSize();
-  expect(Math.abs(box.x + box.width / 2 - viewport.width / 2)).toBeLessThan(2);
-  expect(box.height).toBeLessThan(viewport.height * .9);
+  const layout = await dialog.locator('.modal-box').evaluate(element => {
+    const box = element.getBoundingClientRect();
+    const container = element.closest('dialog');
+    const bounds = container.getBoundingClientRect();
+    return {
+      centreOffset: Math.abs(box.x + box.width / 2 - (bounds.x + container.clientLeft + container.clientWidth / 2)),
+      heightRatio: box.height / container.clientHeight,
+    };
+  });
+  expect(layout.centreOffset).toBeLessThan(2);
+  expect(layout.heightRatio).toBeLessThan(.9);
   await dialog.press('Escape');
   await expect(opener).toBeFocused();
 });

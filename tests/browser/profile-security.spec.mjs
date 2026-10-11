@@ -34,6 +34,34 @@ test('security cards open credential changes in a cancellable dialog on the same
   await expect(page).toHaveURL(/\/profile#security$/);
 });
 
+test('security forms wait for their handlers before accepting interaction', async ({ page }) => {
+  await openSecurity(page);
+  let release;
+  let started;
+  const held = new Promise(resolve => { release = resolve; });
+  const requested = new Promise(resolve => { started = resolve; });
+  await page.route('**/static/js/security-proof.js', async route => {
+    started();
+    await held;
+    await route.continue();
+  });
+  await page.getByRole('link', { name: 'Change Password', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Account Security', exact: true });
+  await requested;
+  try {
+    await expect(dialog).toHaveAttribute('aria-busy', 'true');
+    await expect(dialog.getByRole('button', { name: 'Continue', exact: true })).toHaveCount(0);
+    await dialog.press('Escape');
+    await expect(dialog).toBeVisible();
+  } finally { release(); }
+  await expect(dialog).not.toHaveAttribute('aria-busy');
+  await dialog.getByLabel('New password', { exact: true }).fill('orchard comet lantern meadow violet');
+  await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
+  await expect(dialog.getByRole('heading', { name: 'Confirm password change', exact: true })).toBeVisible();
+  await dialog.press('Escape');
+  await expect(dialog).toBeHidden();
+});
+
 test('recovery regeneration stays on the profile and clears its one-time result after acknowledgement', async ({ page }) => {
   test.setTimeout(180000);
   await openSecurity(page);
@@ -176,7 +204,9 @@ test('Advanced closure confirms in place and retains care while revoking owned d
   await page.getByRole('button', { name: 'Close account', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Account Security', exact: true });
   await expect(dialog.getByRole('heading', { name: 'Confirm closing your account', exact: true })).toBeVisible();
+  await expect(dialog).not.toHaveAttribute('aria-busy');
   await dialog.press('Escape');
+  await expect(dialog).toBeHidden();
   await expect(page).toHaveURL(/\/profile#advanced$/);
   expect((await careFixture.closureProbe()).closed).toBe(false);
   await page.getByRole('button', { name: 'Close account', exact: true }).click();
