@@ -1956,7 +1956,7 @@ cy:
       remove: Tynnu avatar
       removed: Tynnwyd y llun proffil.
       gravatar_label: Defnyddio Gravatar
-      gravatar_description: Dangos eich Gravatar pan nad oes avatar personol wedi'i uwchlwytho.
+      gravatar_description: Dangos eich Gravatar pan nad oes llun personol wedi'i uwchlwytho. Mae hyn yn rhannu hash o'ch cyfeiriad e-bost a chyfeiriad IP y sawl sy'n edrych gyda Gravatar bob tro y dangosir eich llun. Gallwch ddiffodd hyn unrhyw bryd.
       save_gravatar: Cadw dewis Gravatar
     time_zone:
       title: Parth Amser

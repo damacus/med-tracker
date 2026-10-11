@@ -1929,7 +1929,7 @@ ga:
       remove: Bain avatar
       removed: Baineadh an grianghraf próifíle.
       gravatar_label: Úsáid Gravatar
-      gravatar_description: Taispeáin do Gravatar nuair nach bhfuil avatar saincheaptha uaslódáilte.
+      gravatar_description: Taispeáin do Gravatar nuair nach bhfuil grianghraf saincheaptha uaslódáilte agat. Roinneann sé seo hais de do sheoladh ríomhphoist agus seoladh IP an duine atá ag féachaint le Gravatar gach uair a thaispeántar do ghrianghraf. Is féidir leat é seo a mhúchadh am ar bith.
       save_gravatar: Sábháil rogha Gravatar
     time_zone:
       title: Crios Ama

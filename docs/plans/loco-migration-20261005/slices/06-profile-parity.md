@@ -384,9 +384,11 @@ are incorporated as implementation requirements, not accepted delivery evidence:
 
 The latest 10 October correction excludes P23–P25 and all experiment destinations
 from this migration. They are deferred work, not incomplete profile deliverables.
-Gravatar disclosure remains a deferred decision tracked in #2502;
-any enabled implementation must honour the depicted person's own opt-in and
-avoid leaking another person's email hash.
+On 11 October the owner confirmed Gravatar as core scope and requested its
+implementation. It honours the depicted person's own account opt-in, discloses
+the external request in the photo accordion and omits the page referrer. See
+[the integration decision](../gravatar.md). Independent profile review remains
+tracked in #2502.
 
 Local implementation evidence, 9 October: `tests/browser/profile.spec.mjs` has four
 passing focused desktop tests (`/private/tmp/medtracker-profile-shortcuts-green.log`):
@@ -407,7 +409,7 @@ or empty Notifications panel for delivered parity.
 | P04 | Personal information card: name, email, time zone, date of birth, conditional age, person type, capacity and unset values | Read-only personal rows implemented, including nullable DOB and conditional age; API validation unchanged. |
 | P05 | Desktop two-column Profile layout, stacked responsive layout | Two-column desktop and stacked mobile layout implemented; narrow doubled-text reflow tested. |
 | P06 | Avatar sheet: current identity, supported formats, upload, conditional removal, save/errors and close | Avatar sheet, bounded image handling, access checks, audit, replacement and durable cleanup implemented and tested. |
-| P07 | Gravatar preference and explanation within avatar sheet | Disabled pending the external disclosure decision; tracked in #2502. |
+| P07 | Gravatar preference and explanation within avatar sheet | Implemented with the depicted person's opt-in, SHA-256 URLs, uploaded-photo priority and initials fallback. Saving and withdrawal refresh profile and account avatars. Independent review remains in #2502. |
 | P08 | Time-zone dialog with selection, save, cancel/close and error feedback | Time-zone dialog saves and reloads retained Rails aliases; cancel and focus return tested. |
 | P09 | Mobile navigation shortcuts: three ordered slots, None choice and permitted destinations | Three ordered slots with None and permitted destinations implemented; persistence and actual navigation tested. |
 | P10 | Appearance sheet: Light, Dark, System; selected states and immediate application | Profile appearance sheet reuses the shared theme engine; immediate application and persistence tested. |

@@ -159,6 +159,7 @@ fn parse_preferences(
     let setting = draft.get("setting").map(String::as_str).unwrap_or("");
     let allowed: &[&str] = match setting {
         "time_zone" => &["authenticity_token", "setting", "time_zone"],
+        "gravatar" => &["authenticity_token", "setting", "gravatar_enabled"],
         "shortcuts" => &[
             "authenticity_token",
             "setting",
@@ -187,6 +188,12 @@ fn parse_preferences(
                 .ok_or_else(|| profile::validation("time_zone", "is required"))?
                 .clone(),
         );
+    } else if setting == "gravatar" {
+        changes.gravatar_enabled = Some(match draft.get("gravatar_enabled").map(String::as_str) {
+            Some("true") => true,
+            None | Some("false") => false,
+            _ => return Err(profile::validation("gravatar_enabled", "is invalid")),
+        });
     } else {
         changes.mobile_shortcuts = Some(
             (1..=3)
@@ -303,6 +310,14 @@ async fn navigation(
     } else {
         false
     };
+    let gravatar_url = if let Some(person) = &person {
+        match profile::gravatar::for_person(&tenant, person.id, avatar_attached).await {
+            Ok(value) => value,
+            Err(error) => return operation_error(error),
+        }
+    } else {
+        None
+    };
     let Ok(authenticity_token) = token.authenticity_token() else {
         return unavailable();
     };
@@ -316,7 +331,7 @@ async fn navigation(
             link
         })
         .collect::<Vec<_>>();
-    let shell = json!({"name":name,"initials":initials,"avatar_attached":avatar_attached,"authenticity_token":authenticity_token,"sidebar":sidebar,"choices":choices,"labels":labels["layouts"],"navigation_label":labels["ruby_ui"]["common"]["navigation_menu"]});
+    let shell = json!({"name":name,"initials":initials,"avatar_attached":avatar_attached,"gravatar_url":gravatar_url,"authenticity_token":authenticity_token,"sidebar":sidebar,"choices":choices,"labels":labels["layouts"],"navigation_label":labels["ruby_ui"]["common"]["navigation_menu"]});
     if tenant.commit().await.is_err() {
         return unavailable();
     }
@@ -435,6 +450,29 @@ impl Page<'_> {
             Err(OperationError::Forbidden) => json!(false),
             Err(error) => return operation_error(error),
         };
+        data["gravatar_enabled"] = json!(profile::gravatar::enabled(&account.preferences));
+        data["selected_gravatar"] = json!(
+            draft
+                .as_ref()
+                .filter(|draft| draft
+                    .get("setting")
+                    .is_some_and(|setting| setting == "gravatar"))
+                .map_or(profile::gravatar::enabled(&account.preferences), |draft| {
+                    draft
+                        .get("gravatar_enabled")
+                        .is_some_and(|value| value == "true")
+                })
+        );
+        data["gravatar_url"] = match profile::gravatar::for_person(
+            &tenant,
+            person.id,
+            data["avatar_attached"].as_bool().unwrap_or(false),
+        )
+        .await
+        {
+            Ok(value) => json!(value),
+            Err(error) => return operation_error(error),
+        };
         data["time_zone"] = json!(
             account.preferences["time_zone"]
                 .as_str()
@@ -464,6 +502,7 @@ impl Page<'_> {
             .map(String::as_str);
         data["timezone_error"] = json!(setting == Some("time_zone"));
         data["shortcuts_error"] = json!(setting == Some("shortcuts"));
+        data["gravatar_error"] = json!(setting == Some("gravatar"));
         data["avatar_error"] = draft
             .as_ref()
             .and_then(|draft| draft.get("avatar_error"))

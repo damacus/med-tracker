@@ -2258,7 +2258,7 @@ en:
       remove: Remove avatar
       removed: Profile photo removed.
       gravatar_label: Use Gravatar
-      gravatar_description: Show your Gravatar when no custom avatar is uploaded.
+      gravatar_description: Show your Gravatar when no custom photo is uploaded. This shares a hash of your email address and the viewer's IP address with Gravatar whenever your photo is displayed. You can turn this off at any time.
       save_gravatar: Save Gravatar choice
     time_zone:
       title: Time Zone

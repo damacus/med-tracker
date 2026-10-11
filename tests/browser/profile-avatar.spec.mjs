@@ -22,6 +22,78 @@ async function upload(page) {
   await expect(page.locator('.profile-hero img')).toHaveJSProperty('naturalWidth', 1);
 }
 
+test('Gravatar opt-in persists, uploaded photos take priority and withdrawal restores initials', async ({ page }, info) => {
+  test.setTimeout(240000);
+  const requests = [];
+  await page.route('https://www.gravatar.com/avatar/**', async route => {
+    requests.push(route.request());
+    await route.fulfill({ contentType: 'image/png', body: png });
+  });
+  await openProfile(page);
+  await page.locator('#profile-avatar summary').click();
+  const choice = page.getByLabel('Use Gravatar', { exact: true });
+  await expect(choice).not.toBeChecked();
+  expect(requests).toHaveLength(0);
+  await choice.check();
+  await page.getByRole('button', { name: 'Save Gravatar choice', exact: true }).click();
+  await expect(page.locator('.profile-hero img')).toHaveJSProperty('naturalWidth', 1);
+  await expect(page.locator('[data-app-account] img')).toHaveJSProperty('naturalWidth', 1);
+  expect(requests.length).toBeGreaterThan(0);
+  expect(new URL(requests[0].url()).searchParams.get('d')).toBe('404');
+  expect(requests[0].headers().referer).toBeUndefined();
+  await page.reload();
+  await page.locator('#profile-avatar summary').click();
+  await expect(choice).toBeChecked();
+  await expect(page.locator('[data-app-account] img')).toHaveJSProperty('naturalWidth', 1);
+  await page.screenshot({ path: info.outputPath('gravatar-profile.png'), fullPage: true });
+  const gravatarSource = await page.locator('.profile-hero img').getAttribute('src');
+  await page.goto('/households/persistence-fixture/people/73001');
+  const personImage = page.getByRole('img', { name: 'Synthetic adult avatar', exact: true }).locator('img');
+  await expect(personImage).toHaveAttribute('src', gravatarSource);
+  await expect(personImage).toHaveJSProperty('naturalWidth', 1);
+  await page.goto('/households/persistence-fixture/profile');
+  await upload(page);
+  await expect(page.locator('.profile-hero img')).toHaveAttribute('src', avatar);
+  await page.getByRole('button', { name: 'Remove avatar', exact: true }).click();
+  await expect(page.locator('.profile-hero img')).toHaveAttribute('src', /https:\/\/www.gravatar.com\/avatar\//);
+  await choice.uncheck();
+  await page.getByRole('button', { name: 'Save Gravatar choice', exact: true }).click();
+  await expect(page.locator('.profile-hero img')).toHaveCount(0);
+  await expect(page.locator('[data-app-account] img')).toHaveCount(0);
+  const count = requests.length;
+  await page.reload();
+  await expect(page.locator('.profile-hero')).toContainText('SA');
+  expect(requests).toHaveLength(count);
+});
+
+test('missing Gravatars keep initials and consent cannot be changed by a forged request', async ({ page, careFixture }) => {
+  await page.route('https://www.gravatar.com/avatar/**', route => route.fulfill({ status: 404, body: '' }));
+  await openProfile(page);
+  const endpoint = '/households/persistence-fixture/profile';
+  for (const authenticity_token of ['', 'forged']) {
+    expect((await page.request.post(endpoint, { form: { setting: 'gravatar', gravatar_enabled: 'true', authenticity_token } })).status()).toBe(403);
+  }
+  await page.locator('#profile-avatar summary').focus();
+  await page.locator('#profile-avatar summary').press('Enter');
+  const choice = page.getByLabel('Use Gravatar', { exact: true });
+  await expect(choice).not.toBeChecked();
+  const token = await page.locator('#profile-avatar-controls input[name="authenticity_token"]').first().inputValue();
+  const invalid = await page.request.post(endpoint, { form: { setting: 'gravatar', gravatar_enabled: 'true', account_id: '71002', authenticity_token: token } });
+  expect(invalid.status()).toBe(422);
+  expect(await invalid.text()).toContain('Could not save this setting.');
+  await choice.check();
+  await page.getByRole('button', { name: 'Save Gravatar choice', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText('Profile updated successfully.');
+  await expect(page.locator('.profile-hero img')).toHaveCount(0);
+  await expect(page.locator('.profile-hero')).toContainText('SA');
+  await page.goto('/households/persistence-fixture/people/73001');
+  await expect(page.getByRole('img', { name: 'Synthetic adult avatar', exact: true })).toContainText('SA');
+  await careFixture.secondPerson();
+  const other = await page.request.get('/households/persistence-fixture/people/73002');
+  expect(other.status()).toBe(200);
+  expect(await other.text()).not.toContain('gravatar.com/avatar');
+});
+
 test('photo upload replacement removal and forged requests preserve the protected attachment contract', async ({ page }, info) => {
   test.setTimeout(240000);
   await openProfile(page);
@@ -117,7 +189,7 @@ test('the uploaded profile photo appears on its person page and respects revoked
   await openProfile(page);
   await upload(page);
   await page.goto('/households/persistence-fixture/people/73001');
-  const image = page.getByRole('img', { name: 'Synthetic adult avatar', exact: true });
+  const image = page.getByRole('img', { name: 'Synthetic adult avatar', exact: true }).locator('img');
   await expect(image).toHaveJSProperty('naturalWidth', 1);
   const source = await image.getAttribute('src');
   expect((await page.request.get(source)).status()).toBe(200);

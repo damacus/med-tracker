@@ -88,6 +88,14 @@ impl<'a> Page<'a> {
                     .await?
                     .is_some()
             );
+            data["gravatar_url"] = json!(
+                crate::models::profile::gravatar::for_person(
+                    &tenant,
+                    person_id,
+                    data["avatar_attached"].as_bool().unwrap_or(false),
+                )
+                .await?
+            );
             let notice_key = format!(
                 "person_care_notice:{}:{person_id}",
                 tenant.scope().household_id
