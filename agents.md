@@ -2,6 +2,20 @@
 
 > Keep `AGENTS.md` and `agents.md` in sync. `CLAUDE.md` is a separate Claude Code guide.
 
+## Skill source
+
+Maintained skills live in [damacus/skills](https://github.com/damacus/skills)
+and are installed globally. Do not create or edit skill definitions in this
+repository, including generated OpenSpec copies under `.codex/skills`.
+Keep project facts and commands here; edit reusable workflows in the skills
+repository, validate them there, then refresh their global installations.
+
+Use `medtracker-rust` for this project's Rust migration work and the global
+`openspec-*` skills for specification work. Use `migrate` to establish the
+reference and approved differences, then `team-slice-development` for delivery.
+`adaptive-model-routing` owns model selection. The old
+`team-tranche-development` and `team-development` names are retired.
+
 ## Mandatory First Steps
 
 - **Serena MCP** — For coding, review, or architecture tasks, use tool discovery for `serena initial_instructions` if Serena tools are not already visible, then call Serena `initial_instructions` before broad code exploration or implementation. Activate the project if needed. Prefer Serena symbolic navigation for code structure; if Serena is unavailable or lacks the needed tool, say so briefly and continue with `rg`, `sed`, and normal repo tools.

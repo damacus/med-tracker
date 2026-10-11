@@ -1,0 +1,67 @@
+{
+  "column:public.support_access_sessions.approved_at": {
+    "acl": null,
+    "type": "timestamp(6) without time zone",
+    "default": null,
+    "options": null,
+    "storage": "p",
+    "identity": "",
+    "not_null": false,
+    "position": 15,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "column:public.support_access_sessions.activated_at": {
+    "acl": null,
+    "type": "timestamp(6) without time zone",
+    "default": null,
+    "options": null,
+    "storage": "p",
+    "identity": "",
+    "not_null": false,
+    "position": 14,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "column:public.support_access_sessions.approved_by_account_id": {
+    "acl": null,
+    "type": "bigint",
+    "default": null,
+    "options": null,
+    "storage": "p",
+    "identity": "",
+    "not_null": false,
+    "position": 16,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "column:public.support_access_sessions.approved_by_membership_id": {
+    "acl": null,
+    "type": "bigint",
+    "default": null,
+    "options": null,
+    "storage": "p",
+    "identity": "",
+    "not_null": false,
+    "position": 17,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "column:public.support_access_sessions.approved_permissions_version": {
+    "acl": null,
+    "type": "integer",
+    "default": null,
+    "options": null,
+    "storage": "p",
+    "identity": "",
+    "not_null": false,
+    "position": 18,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  }
+}

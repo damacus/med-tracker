@@ -2,6 +2,7 @@
 @import "./fonts.css";
 @import "./themes.css";
 @import "./profile.css";
+@import "./platform.css";
 @source "../../views";
 @plugin "daisyui" { themes: false; }
 

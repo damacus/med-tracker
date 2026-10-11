@@ -11,8 +11,8 @@ use crate::models::{
         locations,
     },
     entities::{
-        account, carer_relationship, grant, household, membership, person, platform_admin,
-        security_audit_event, user, version,
+        account, carer_relationship, grant, household, membership, person, security_audit_event,
+        user, version,
     },
     errors::OperationError,
 };
