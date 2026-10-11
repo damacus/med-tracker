@@ -803,6 +803,104 @@ async fn household_membership_list_matches_documented_contract() {
 
     app.close().await;
 }
+#[tokio::test]
+async fn person_access_grant_list_matches_documented_contract() {
+    use super::contract::{assert_value, contract, resolve};
+    let app = Application::new().await;
+    let token = app.token().await;
+    let endpoint = format!(
+        "{}/api/v1/households/72001/admin/person_access_grants",
+        app.origin
+    );
+    let contract = contract();
+    let operation =
+        &contract["paths"]["/households/{household_id}/admin/person_access_grants"]["get"];
+    assert_eq!(operation["operationId"], "listPersonAccessGrants");
+    assert_eq!(
+        operation["responses"]["403"]["$ref"],
+        "#/components/responses/Forbidden"
+    );
+    let forbidden = resolve(contract, &operation["responses"]["403"]);
+    let forbidden_schema = resolve(
+        contract,
+        &forbidden["content"]["application/json"]["schema"],
+    );
+
+    let list = app
+        .client
+        .get(&endpoint)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let list_status = list.status().as_u16();
+    let body: Value = list.json().await.unwrap();
+    assert_eq!(list_status, 200);
+    assert_eq!(
+        operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"],
+        "#/components/schemas/PersonAccessGrantCollectionResponse"
+    );
+    assert_value(
+        contract,
+        resolve(
+            contract,
+            &operation["responses"]["200"]["content"]["application/json"]["schema"],
+        ),
+        &body,
+        "person access grant collection",
+    );
+    let grants = body["data"].as_array().unwrap();
+    assert_eq!(grants.len(), 1);
+    assert_eq!(grants[0]["id"], 78001);
+    assert_eq!(grants[0]["person_id"], 73001);
+    assert_eq!(grants[0]["access_level"], "manage");
+    assert_eq!(grants[0]["relationship_type"], "self");
+
+    app.fixture
+        .admin
+        .execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001")
+        .await
+        .unwrap();
+    let denied = app
+        .client
+        .get(&endpoint)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let denied_status = denied.status().as_u16();
+    let denied_body: Value = denied.json().await.unwrap();
+    assert_eq!(denied_status, 403);
+    assert_value(
+        contract,
+        forbidden_schema,
+        &denied_body,
+        "member grant list",
+    );
+    assert_eq!(denied_body["error"]["code"], "forbidden");
+
+    let foreign = app
+        .client
+        .get(format!(
+            "{}/api/v1/households/72002/admin/person_access_grants",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let foreign_status = foreign.status().as_u16();
+    let foreign_body: Value = foreign.json().await.unwrap();
+    assert_eq!(foreign_status, 403);
+    assert_value(
+        contract,
+        forbidden_schema,
+        &foreign_body,
+        "foreign household grants",
+    );
+    assert_eq!(foreign_body["error"]["code"], "forbidden");
+    app.close().await;
+}
 
 #[tokio::test]
 async fn household_relationship_removal_preserves_unrelated_grant_without_veto() {
