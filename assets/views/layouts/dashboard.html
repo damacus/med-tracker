@@ -16,8 +16,8 @@
 {% block main_class %}dashboard-main{% endblock main_class %}
 {% block footer %}
 <nav class="dashboard-mobile-rail" data-testid="dashboard-mobile-rail" aria-label="{{ labels.layouts.mobile_rail.primary_navigation }}">
-  <a href="/households/{{ slug }}/dashboard" aria-current="page"><svg aria-hidden="true" width="24" height="24"><use href="/static/dashboard-icons.svg#dashboard"/></svg><span>{{ labels.layouts.mobile_rail.home }}</span></a>
-  <a href="/households/{{ slug }}/medications"><svg aria-hidden="true" width="24" height="24"><use href="/static/dashboard-icons.svg#inventory"/></svg><span>{{ labels.layouts.mobile_rail.inventory }}</span></a>
-  <a href="/households/{{ slug }}/medication-finder"><svg aria-hidden="true" width="24" height="24"><use href="/static/dashboard-icons.svg#finder"/></svg><span>{{ labels.layouts.mobile_rail.finder }}</span></a>
+  <a href="/households/{{ slug }}/dashboard" aria-current="page"><svg aria-hidden="true" width="24" height="24"><use href="/static/profile-icons.svg#dashboard"/></svg><span>{{ labels.layouts.mobile_rail.home }}</span></a>
+  <a href="/households/{{ slug }}/medications"><svg aria-hidden="true" width="24" height="24"><use href="/static/profile-icons.svg#inventory"/></svg><span>{{ labels.layouts.mobile_rail.inventory }}</span></a>
+  <a href="/households/{{ slug }}/medication-finder"><svg aria-hidden="true" width="24" height="24"><use href="/static/profile-icons.svg#finder"/></svg><span>{{ labels.layouts.mobile_rail.finder }}</span></a>
 </nav>
 {% endblock footer %}
