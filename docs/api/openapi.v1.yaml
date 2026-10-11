@@ -1852,6 +1852,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/household_id"
         - $ref: "#/components/parameters/resource_id"
+        - $ref: "#/components/parameters/if_none_match"
       responses:
         "200":
           description: Dosage option resource.
@@ -1862,6 +1863,11 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DosageOptionResponse"
+        "304":
+          description: Dosage option has not changed since the supplied ETag.
+          headers:
+            ETag:
+              $ref: "#/components/headers/etag"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -4375,7 +4381,7 @@ components:
       name: If-None-Match
       in: header
       required: false
-      description: Return an empty 304 response when a visible medication's serialized response still matches this ETag.
+      description: Return an empty 304 response when a visible resource's serialized representation still matches this ETag.
       schema:
         type: string
     portable_passphrase:
