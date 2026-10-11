@@ -1,9 +1,13 @@
 const tablist = document.querySelector('[data-profile-tabs]');
-const appearanceSummary = document.querySelector('[data-profile-appearance]');
-if (appearanceSummary) {
-  const updateSummary = () => { appearanceSummary.textContent = appearanceSummary.dataset[document.documentElement.dataset.appearance] || ''; };
+const appearanceSummaries = document.querySelectorAll('[data-profile-appearance]');
+if (appearanceSummaries.length) {
+  const updateSummary = () => {
+    for (const summary of appearanceSummaries) summary.textContent = summary.dataset[document.documentElement.dataset.appearance] || '';
+    const palette = document.querySelector('[data-palette-choice][aria-pressed="true"]');
+    for (const summary of document.querySelectorAll('[data-profile-palette]')) summary.textContent = palette?.textContent.trim() || '';
+  };
   updateSummary();
-  new MutationObserver(updateSummary).observe(document.documentElement, { attributes: true, attributeFilter: ['data-appearance'] });
+  new MutationObserver(updateSummary).observe(document.documentElement, { attributes: true, attributeFilter: ['data-appearance', 'data-theme'] });
 }
 if (tablist) {
   const tabs = [...tablist.querySelectorAll('[data-profile-tab]')];
@@ -53,11 +57,13 @@ document.addEventListener('submit', async event => {
   const dialog = form?.closest('dialog');
   if (!form) return;
   event.preventDefault();
-  if (form.dataset.submitting === 'true') return;
-  form.dataset.submitting = 'true';
-  const submit = form.querySelector('[type="submit"]');
+  const region = form.closest('[data-profile-form-region]');
+  const pendingRegion = region || form;
+  if (pendingRegion.dataset.submitting === 'true') return;
+  pendingRegion.dataset.submitting = 'true';
   const body = form.enctype === 'multipart/form-data' ? new FormData(form) : new URLSearchParams(new FormData(form));
-  if (submit) submit.disabled = true;
+  const controls = [...pendingRegion.querySelectorAll('button, input, select, textarea')].filter(control => !control.disabled);
+  controls.forEach(control => { control.disabled = true; });
   try {
     const response = await fetch(form.action, { method: 'POST', body, headers: { Accept: 'text/html' }, cache: 'no-store' });
     const destination = new URL(response.url);
@@ -72,7 +78,6 @@ document.addEventListener('submit', async event => {
     }
     if (!response.ok && response.status !== 422) throw new Error('Setting unavailable');
     const documentResult = new DOMParser().parseFromString(await response.text(), 'text/html');
-    const region = form.closest('[data-profile-form-region]');
     const replacement = region ? documentResult.getElementById(region.id) : documentResult.getElementById(dialog?.id)?.querySelector('form');
     if (!replacement) throw new Error('Missing setting response');
     const expanded = [...(region || form).querySelectorAll('details[open][id]')].map(element => element.id);
@@ -104,7 +109,7 @@ document.addEventListener('submit', async event => {
     error.textContent = document.querySelector('[data-profile-status]')?.dataset.failureLabel || '';
     error.focus();
   } finally {
-    delete form.dataset.submitting;
-    if (submit) submit.disabled = false;
+    delete pendingRegion.dataset.submitting;
+    controls.forEach(control => { control.disabled = false; });
   }
 });

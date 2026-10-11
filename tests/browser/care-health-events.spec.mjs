@@ -30,8 +30,8 @@ test('person health event journey preserves invalid draft and records ongoing il
   await page.getByLabel('Title', { exact: true }).focus();
   await page.keyboard.press('Tab');
   await expect(page.getByLabel('Start date', { exact: true })).toBeFocused();
-  const formFields = await page.locator('form[method="post"]').first().evaluate(form => Object.fromEntries(new FormData(form)));
-  const formAction = await page.locator('form[method="post"]').first().getAttribute('action');
+  const formFields = await page.getByRole('main').locator('form[method="post"]').first().evaluate(form => Object.fromEntries(new FormData(form)));
+  const formAction = await page.getByRole('main').locator('form[method="post"]').first().getAttribute('action');
   const beforeForged = await careFixture.personHealthProbe();
   for (const authenticity_token of ['', 'wrong']) {
     const denied = await page.request.post(formAction, { form: { ...formFields, authenticity_token }, headers: { Origin: careFixture.origin }, maxRedirects: 0 });
@@ -83,8 +83,8 @@ test('person side effect rejects forged medication links and keeps assigned snap
   await page.getByRole('link', { name: 'Health events', exact: true }).click();
   await page.getByRole('link', { name: 'Record suspected side effect', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Record suspected side effect', exact: true })).toBeVisible();
-  const token = await page.locator('input[name="authenticity_token"]').inputValue();
-  const action = await page.locator('form[method="post"]').getAttribute('action');
+  const token = await page.getByRole('main').locator('input[name="authenticity_token"]').inputValue();
+  const action = await page.getByRole('main').locator('form[method="post"]').getAttribute('action');
   const forged = await page.request.post(action, { form: {
     authenticity_token: token, event_kind: 'suspected_side_effect', title: 'Forged synthetic reaction',
     started_on: '2026-10-03', ongoing: '1', medication_80002: '1', notes: '', severity: '', action_taken: ''

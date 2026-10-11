@@ -35,8 +35,8 @@ test('dependent care page assigns removes and restores the last carer without bl
   await page.getByLabel('Parent or carer', { exact: true }).focus();
   await page.keyboard.press('Tab');
   await expect(page.getByLabel('Relationship type', { exact: true })).toBeFocused();
-  const formFields = await page.locator('form[method="post"]').first().evaluate(form => Object.fromEntries(new FormData(form)));
-  const formAction = await page.locator('form[method="post"]').first().getAttribute('action');
+  const formFields = await page.getByRole('main').locator('form[method="post"]').first().evaluate(form => Object.fromEntries(new FormData(form)));
+  const formAction = await page.getByRole('main').locator('form[method="post"]').first().getAttribute('action');
   const beforeForged = await careFixture.personCarerProbe();
   for (const authenticity_token of ['', 'wrong']) {
     const denied = await page.request.post(formAction, { form: { ...formFields, authenticity_token }, headers: { Origin: careFixture.origin }, maxRedirects: 0 });

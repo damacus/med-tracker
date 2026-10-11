@@ -15,11 +15,23 @@ async function refreshMobileShortcuts() {
       if (url.origin !== location.origin || !url.pathname.startsWith(`/households/${match[1]}/`)) return [];
       const anchor = document.createElement('a');
       anchor.href = url.pathname;
-      anchor.textContent = link.label;
+      anchor.setAttribute('aria-label', link.label);
+      const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      icon.setAttribute('width', '24');
+      icon.setAttribute('height', '24');
+      icon.setAttribute('aria-hidden', 'true');
+      const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+      if (!/^[a-z_]+$/.test(link.id)) return [];
+      use.setAttribute('href', `/static/profile-icons.svg#${link.id}`);
+      icon.append(use);
+      const label = document.createElement('span');
+      label.textContent = link.label;
+      anchor.append(icon, label);
       if (location.pathname === url.pathname) anchor.setAttribute('aria-current', 'page');
       return [anchor];
     }));
     if (!navigation.isConnected) document.body.append(navigation);
+    document.dispatchEvent(new CustomEvent('app-navigation', { detail: { ...data.shell, slug: match[1] } }));
   } catch { }
 }
 document.addEventListener('DOMContentLoaded', refreshMobileShortcuts);
