@@ -61,10 +61,8 @@ tasks:
   slice:test:
     requires:
       vars: [TARGET]
-    env:
-      SLICE_TARGET: '{{.TARGET}}'
-      SLICE_FILTER: '{{.FILTER | default ""}}'
-    cmds: [node scripts/migration/run-slice.mjs]
+    cmds:
+      - node scripts/migration/run-slice.mjs --target '{{.TARGET}}' --filter '{{.FILTER | default ""}}'
   slice:test-all:
     env:
       RUST_TEST_THREADS: "4"
@@ -96,6 +94,18 @@ tasks:
     requires:
       vars: [FOUNDATION_PROJECT]
     cmds: ['docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} up -d --wait postgres']
+  foundation:storage-up:
+    requires:
+      vars: [FOUNDATION_PROJECT]
+    cmds: ['docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} up -d --wait rustfs']
+  foundation:storage-port:
+    requires:
+      vars: [FOUNDATION_PROJECT]
+    cmds: ['docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} port rustfs 9000']
+  foundation:storage-init:
+    requires:
+      vars: [STORAGE_ENDPOINT]
+    cmds: ['curl --fail --silent --show-error --aws-sigv4 aws:amz:us-east-1:s3 --user scanner-fixture:synthetic-scanner-fixture-password --request PUT {{printf "%s/scanner-fixture" .STORAGE_ENDPOINT | shellQuote}}']
   foundation:db-port:
     requires:
       vars: [FOUNDATION_PROJECT]
@@ -183,7 +193,7 @@ tasks:
     cmds: ['{{if .SEED_EXECUTABLE}}env DATABASE_URL="$MEDTRACKER_SEED_DATABASE_URL" {{.SEED_EXECUTABLE | shellQuote}} db seed --environment {{.LOCO_ENV | default "development"}}{{else}}env DATABASE_URL="$MEDTRACKER_SEED_DATABASE_URL" cargo run --locked -- db seed --environment {{.LOCO_ENV | default "development"}}{{end}}']
   worker:
     desc: Start the Loco worker process
-    cmds: ['cargo run --locked -- start --worker --environment {{.LOCO_ENV | default "development"}}']
+    cmds: ['cargo run --locked -- start --worker --scheduler --environment {{.LOCO_ENV | default "development"}}']
   browser:
     desc: Exercise the application through desktop and mobile browsers
     cmds:

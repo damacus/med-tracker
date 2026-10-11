@@ -16,7 +16,7 @@ static ALIASES: LazyLock<Value> = LazyLock::new(|| {
     .expect("review terminology aliases JSON")
 });
 
-pub(super) struct EvidenceMatch<'a> {
+pub(crate) struct EvidenceMatch<'a> {
     pub evidence: &'a review_evidence::Model,
     pub primary_is_first: bool,
     pub matched_term: String,
@@ -359,7 +359,7 @@ fn curated_pair(evidence: &review_evidence::Model, first: &str, second: &str) ->
     matches(first, second) || matches(second, first)
 }
 
-pub(super) fn matches<'a>(
+pub(crate) fn matches<'a>(
     first: &str,
     second: &str,
     evidence: &'a [review_evidence::Model],

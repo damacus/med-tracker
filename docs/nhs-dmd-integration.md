@@ -4,6 +4,39 @@ MedTracker uses the NHS Dictionary of Medicines and Devices (dm+d) as its main
 UK medication catalogue. It combines dm+d with local barcode records, curated
 fallbacks, and Open Food Facts supplement data.
 
+## Loco migration checkout
+
+The root Loco application uses local NHS release records, custom CSV products,
+cached products and the curated catalogue. Its scanner and Medicine Finder do
+not call live NHS or Open Food Facts services. The live-provider instructions
+below apply to the Rails reference application.
+
+Platform administrators upload releases at `/admin/nhs-dmd`. Configure the same
+private object store for the web process and worker:
+
+| Variable | Purpose |
+| --- | --- |
+| `S3_ENDPOINT` | S3-compatible endpoint, including a RustFS endpoint |
+| `S3_BUCKET` | Existing private bucket for uploaded archives |
+| `AWS_ACCESS_KEY_ID` | Storage credential with object read, write and delete access |
+| `AWS_SECRET_ACCESS_KEY` | Matching storage secret |
+| `AWS_REGION` | Storage region; defaults to `us-east-1` |
+
+Keep credentials outside the repository. Run `task worker` with the same database
+and storage configuration as the web application. This starts the PostgreSQL
+queue worker and the configured scheduler. The upload is read back and checked
+before its import ID is queued, so queued work survives an application restart.
+
+The scheduler checks imports every five minutes. A run with no progress for
+30 minutes becomes failed. Failed imports do not restart automatically; review
+the error and upload the release again. Archive deletion is retried separately.
+Only one import can be active at a time.
+
+Archives are limited to 500 MiB, with at most 200 extracted entries, 150 MiB per
+entry and 500 MiB total extracted bytes. Traversal paths and symbolic links are
+rejected. The page retains status and counters after the archive is removed.
+These local migration capabilities do not authorise production cutover.
+
 ## What dm+d provides
 
 dm+d assigns SNOMED CT identifiers to medicines and packs used in the UK. The

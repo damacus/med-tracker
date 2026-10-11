@@ -47,9 +47,11 @@ export async function runSlice({ all = false, target, filter = '', captureCatalo
   process.on('SIGTERM', onTerm);
   process.on('SIGINT', onInt);
   try {
-    await withOwnedDatabase(async (url, provision) => {
+    await withOwnedDatabase(async (url, provision, {storage}) => {
       if (all || ['persistence', 'tenant_access', 'care_doses', 'care_medications', 'care_api', 'identity_compatibility', 'identity_resource', 'oauth_server', 'queue_runtime'].includes(target)) await provision();
-      await runCargo(args, url, inheritedEnvironment, controller.signal);
+      const needsStorage = all || (target === 'care_api' && (!filter || filter.includes('nhs_dmd')));
+      const storageEnvironment = needsStorage ? await storage() : {};
+      await runCargo(args, url, {...inheritedEnvironment,...storageEnvironment}, controller.signal);
     }, undefined, inheritedEnvironment);
   } finally {
     process.off('SIGTERM', onTerm);
@@ -59,11 +61,15 @@ export async function runSlice({ all = false, target, filter = '', captureCatalo
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
-    if (process.argv.slice(2).some(argument => !['--all', '--capture-catalog'].includes(argument))) throw new Error('Only --all and --capture-catalog are supported; TARGET and FILTER are Task variables');
+    const arguments_ = process.argv.slice(2);
+    if (arguments_.some((argument, index) => !['--all', '--capture-catalog', '--target', '--filter'].includes(argument) && !['--target', '--filter'].includes(arguments_[index - 1]))) throw new Error('Unsupported slice runner argument');
     const all = process.argv.includes('--all');
     const captureCatalog = process.argv.includes('--capture-catalog');
+    const target = arguments_[arguments_.indexOf('--target') + 1];
+    const filter = arguments_[arguments_.indexOf('--filter') + 1];
+    if ((arguments_.includes('--target') && target === undefined) || (arguments_.includes('--filter') && filter === undefined)) throw new Error('Missing slice runner argument value');
     if (all && captureCatalog) throw new Error('Catalog capture requires its dedicated test');
-    await runSlice({ all, captureCatalog, target: captureCatalog ? 'persistence' : process.env.SLICE_TARGET, filter: captureCatalog ? 'capture_persistence_catalog' : all ? '' : process.env.SLICE_FILTER });
+    await runSlice({ all, captureCatalog, target: captureCatalog ? 'persistence' : target, filter: captureCatalog ? 'capture_persistence_catalog' : all ? '' : filter });
   } catch (error) {
     process.stderr.write(`${error.message}\n`);
     process.exitCode = 1;

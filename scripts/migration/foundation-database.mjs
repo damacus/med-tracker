@@ -47,7 +47,16 @@ export async function withOwnedDatabase(callback, runTask = runFoundationTask, i
     const endpoint = String(await run('foundation:db-port', 10000)).trim();
     const match = /^127\.0\.0\.1:(\d+)$/.exec(endpoint);
     if (!match || Number(match[1]) < 1 || Number(match[1]) > 65535) throw new Error(`Invalid owned PostgreSQL endpoint: ${endpoint}`);
-    return await callback(`postgres://medtracker:medtracker_password@127.0.0.1:${match[1]}/medtracker_loco`, () => run('foundation:db-provision', 60000), { project: project.slice('FOUNDATION_PROJECT='.length), timings });
+    const storage = async () => {
+      await run('foundation:storage-up',60000);
+      const endpoint = String(await run('foundation:storage-port',10000)).trim();
+      const storagePort = /^127\.0\.0\.1:(\d+)$/.exec(endpoint);
+      if (!storagePort || Number(storagePort[1])<1 || Number(storagePort[1])>65535) throw new Error('Invalid owned object storage endpoint');
+      const url = `http://${endpoint}`;
+      await runTask(['foundation:storage-init',`STORAGE_ENDPOINT=${url}`],{env:environment,timeout:10000});
+      return {MEDTRACKER_OWNED_STORAGE:'1',S3_ENDPOINT:url,S3_BUCKET:'scanner-fixture',AWS_REGION:'us-east-1',AWS_ACCESS_KEY_ID:'scanner-fixture',AWS_SECRET_ACCESS_KEY:'synthetic-scanner-fixture-password'};
+    };
+    return await callback(`postgres://medtracker:medtracker_password@127.0.0.1:${match[1]}/medtracker_loco`, () => run('foundation:db-provision', 60000), { project: project.slice('FOUNDATION_PROJECT='.length), timings, storage });
   } catch (error) {
     failed = true;
     throw error;

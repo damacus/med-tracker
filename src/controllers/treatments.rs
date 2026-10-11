@@ -1,4 +1,4 @@
-mod forms;
+pub(crate) mod forms;
 mod page;
 mod rendering;
 
@@ -23,7 +23,7 @@ use std::collections::HashMap;
 use std::result::Result;
 
 #[derive(Clone, Copy)]
-enum Kind {
+pub(crate) enum Kind {
     Schedule,
     Assignment,
 }

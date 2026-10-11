@@ -33,6 +33,7 @@ if (command === 'docker') {
   if (operation === 'exec') process.exit(Number(process.env.SLICE_FIXTURE_PROVISION_EXIT));
 } else {
   state.owned_endpoint_used = process.env.DATABASE_URL === 'postgres://medtracker:medtracker_password@127.0.0.1:54321/medtracker_loco';
+  state.owned_storage_used = process.env.S3_ENDPOINT === 'http://127.0.0.1:54321' && process.env.S3_BUCKET === 'scanner-fixture' && process.env.AWS_ACCESS_KEY_ID === 'scanner-fixture' && process.env.MEDTRACKER_OWNED_STORAGE === '1';
   state.child_identity_key_synthetic = process.env.MEDTRACKER_SESSION_KEY === Buffer.alloc(64, 7).toString('base64');
   state.child_verification_key_synthetic = process.env.RAILS_SECRET_KEY_BASE === 'synthetic-slice-rails-verification-secret';
   state.child_compose_environment_removed = ['COMPOSE_FILE', 'COMPOSE_PROJECT_NAME', 'COMPOSE_PROFILES'].every(name => process.env[name] === undefined);
@@ -40,10 +41,10 @@ if (command === 'docker') {
   if (process.env.DATABASE_URL === ${JSON.stringify(ambientUrl)}) state.foreign_resources_touched += 1;
   state.calls.push({ command, args });
   fs.writeFileSync(statePath, JSON.stringify(state));
-  process.exit(Number(process.env.SLICE_FIXTURE_EXIT));
+  process.exit(command === 'cargo' ? Number(process.env.SLICE_FIXTURE_EXIT) : 0);
 }
 `;
-  for (const command of ['docker', 'cargo']) await writeFile(join(directory, command), executable, { mode: 0o755 });
+  for (const command of ['docker', 'cargo', 'curl']) await writeFile(join(directory, command), executable, { mode: 0o755 });
   try {
     const result = spawnSync('task', ['--taskfile', join(root, 'Taskfile.yml'), taskName, ...assignments], {
       cwd: root,
@@ -68,6 +69,14 @@ test('slice_runner_ignores_ambient_database', async () => {
     assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
     assert.deepEqual(state.calls.filter(call => call.command === 'docker').map(call => call.operation), ['up', 'port', 'exec', 'exec', 'down']);
   });
+});
+
+test('scanner import tests provision owned object storage and clean it on failure', async () => {
+  await withProcessFixture(42, (result,state) => {
+    assert.notEqual(result.status,0);
+    assert.equal(state.owned_storage_used,true,`Import tests require real isolated storage, without silent skipping: ${JSON.stringify(state.calls)} ${result.stderr}`);
+    assert.deepEqual(state.resources,{unrelated:['existing-volume']});
+  },'slice:test',['TARGET=care_api','FILTER=nhs_dmd']);
 });
 
 test('fixture and Cargo subprocesses remove ambient Docker endpoint and credential settings', async () => {

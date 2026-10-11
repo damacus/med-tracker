@@ -1,0 +1,76 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+{% if wizard_variant != "fullpage" %}<dialog id="medication-wizard-dialog" class="modal" aria-labelledby="medication-wizard-heading" data-wizard-variant="{{ wizard_variant }}" data-dialog-auto-open><div class="modal-box w-[calc(100vw-1rem)] max-w-3xl max-h-[90dvh] overflow-y-auto {% if wizard_variant == "slideover" %}!fixed !inset-y-0 !right-0 !left-auto !m-0 !h-[100dvh] !max-h-[100dvh] !max-w-xl !rounded-none{% endif %}">{% endif %}
+<section class="max-w-3xl mx-auto" data-medication-wizard data-wizard-variant="{{ wizard_variant }}">
+  <a class="link" href="/households/{{ slug }}/medications">Cancel</a>
+  <h1 id="medication-wizard-heading" class="text-3xl font-semibold mt-4">Add a New Medication</h1>
+  <div class="mt-4">{% include "components/form_errors.html" %}</div>
+  {% if error %}<div role="alert" class="alert alert-error mt-4">{{ error }}</div>{% endif %}
+  {% if duplicate_choices %}<section aria-label="Matching medicines" class="card card-body border border-base-300 mt-4"><h2 class="card-title">Choose the medicine and location</h2>{% for choice in duplicate_choices %}<a class="btn btn-outline w-fit" href="{{ choice.path }}">Refill {{ choice.name }} at {{ choice.location }}</a>{% endfor %}</section>{% endif %}
+  <ol class="steps w-full my-6" aria-label="Medication setup"><li class="step step-primary">Details</li><li class="step">Dose</li><li class="step">Supply</li><li class="step">Warnings</li></ol>
+  <form action="/households/{{ slug }}/medications/wizard" method="post" class="card card-body border border-base-300 bg-base-100" novalidate>
+    <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+    <input type="hidden" name="wizard_step" value="{{ draft.wizard_step | default(value="0") }}">
+    <input type="hidden" name="suggested_doses" value="{{ draft.suggested_doses | default(value="") }}">
+    <input type="hidden" name="extra_options" value="{{ draft.extra_options | default(value="") }}">
+    {% for key in ["barcode","dmd_code","dmd_system","dmd_concept_class","category"] %}<input type="hidden" name="{{ key }}" value="{{ draft[key] }}">{% endfor %}
+    <div data-stage="0" class="flex flex-col gap-3">
+      <h2 class="card-title" tabindex="-1">Medication details</h2>
+      <label for="name">Name</label><input id="name" name="name" class="input w-full" required value="{{ draft.name }}" {% if invalid_name %}aria-invalid="true" aria-describedby="form-error-name"{% endif %}>
+      <label for="friendly_name">Display name</label><input id="friendly_name" name="friendly_name" class="input w-full" value="{{ draft.friendly_name }}" {% if invalid_friendly_name %}aria-invalid="true" aria-describedby="form-error-friendly_name"{% endif %}>
+      <label for="description">Description</label><textarea id="description" name="description" class="textarea w-full" {% if invalid_description %}aria-invalid="true" aria-describedby="form-error-description"{% endif %}>{{ draft.description }}</textarea>
+      <label for="location_id">Location</label><select id="location_id" name="location_id" class="select w-full" required {% if invalid_location_id %}aria-invalid="true" aria-describedby="form-error-location_id"{% endif %}>{% for location in locations %}<option value="{{ location.id }}" {% if selected_location == location.id %}selected{% endif %}>{{ location.name }}</option>{% endfor %}</select>
+    </div>
+    <div data-stage="1" class="flex flex-col gap-3" hidden>
+      <h2 class="card-title" tabindex="-1">Dose and plan</h2>
+      <label for="person_id">Person</label><select id="person_id" name="person_id" class="select w-full"><option value="">No person plan</option>{% for person in people %}<option value="{{ person.id }}" {% if selected_person == person.id %}selected{% endif %}>{{ person.name }}</option>{% endfor %}</select>
+      <label for="dose_amount">Dose</label><input id="dose_amount" name="dose_amount" type="number" min="0.01" step="0.01" class="input w-full" value="{{ draft.dose_amount }}" {% if invalid_dose_amount %}aria-invalid="true" aria-describedby="form-error-dose_amount"{% endif %}>
+      <label for="dose_unit">Unit</label><select id="dose_unit" name="dose_unit" class="select w-full" {% if invalid_dose_unit %}aria-invalid="true" aria-describedby="form-error-dose_unit"{% endif %}>{% for unit in units %}<option {% if draft.dose_unit == unit %}selected{% endif %}>{{ unit }}</option>{% endfor %}</select>
+      <label for="schedule_type">Frequency</label><select id="schedule_type" name="schedule_type" class="select w-full" {% if invalid_schedule_type %}aria-invalid="true" aria-describedby="form-error-schedule_type"{% endif %}>{% for kind in ["multiple_daily","daily","weekly","specific_dates","prn","tapering"] %}<option value="{{ kind }}" {% if draft.schedule_type == kind %}selected{% endif %}>{{ kind | replace(from="_",to=" ") | title }}</option>{% endfor %}</select>
+      <input type="hidden" name="frequency" value="{{ draft.frequency }}">
+      <input type="hidden" name="max_daily_doses" value="{{ draft.max_daily_doses }}">
+      <input type="hidden" name="min_hours_between_doses" value="{{ draft.min_hours_between_doses }}">
+      <input type="hidden" name="dose_cycle" value="{{ draft.dose_cycle | default(value="daily") }}">
+      <input type="hidden" name="times" value="{{ draft.times }}">
+      <input type="hidden" name="dates" value="{{ draft.dates }}">
+      {% for day in ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"] %}<input type="checkbox" name="weekday_{{ day }}" class="hidden" {% if draft["weekday_" ~ day] | default(value="") == "on" %}checked{% endif %}>{% endfor %}
+      <div data-schedule-panel="multiple_daily" class="grid gap-3">
+        <label for="daily-count">Doses per day</label><input id="daily-count" name="multiple_daily_count" data-plan-input="count" type="number" min="1" max="12" step="1" value="{{ draft.multiple_daily_count | default(value="2") }}" class="input w-full">
+        <label for="daily-hours">Hours apart</label><input id="daily-hours" name="multiple_daily_hours" data-plan-input="hours" type="number" min="1" max="24" step="1" value="{{ draft.multiple_daily_hours | default(value="12") }}" class="input w-full">
+        <label for="first-dose-time">First dose time</label><input id="first-dose-time" name="multiple_daily_first_time" data-plan-input="first" type="time" value="{{ draft.multiple_daily_first_time | default(value="08:00") }}" class="input w-full">
+        <label for="second-dose-time">Second dose time</label><input id="second-dose-time" name="multiple_daily_second_time" data-plan-input="second" type="time" value="{{ draft.multiple_daily_second_time | default(value="20:00") }}" class="input w-full">
+      </div>
+      <div data-schedule-panel="daily" class="grid gap-3" hidden><label for="daily-time">Dose time</label><input id="daily-time" name="daily_time" data-plan-input="daily-time" type="time" value="{{ draft.daily_time | default(value="08:00") }}" class="input w-full"></div>
+      <div data-schedule-panel="weekly" class="grid gap-3" hidden>
+        <label for="weekly-day">Weekly day</label><select id="weekly-day" name="weekly_day" data-plan-input="weekly-day" class="select w-full">{% for day in ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"] %}<option value="{{ day }}" {% if draft.weekly_day | default(value="monday") == day %}selected{% endif %}>{{ day | title }}</option>{% endfor %}</select>
+        <label for="weekly-time">Weekly time</label><input id="weekly-time" name="weekly_time" data-plan-input="weekly-time" type="time" value="{{ draft.weekly_time | default(value="08:00") }}" class="input w-full">
+      </div>
+      <div data-schedule-panel="specific_dates" class="grid gap-3" hidden><label for="specific-date">Specific date</label><div class="flex gap-2"><input id="specific-date" data-plan-input="specific-date" type="date" class="input w-full"><button type="button" data-add-date class="btn btn-outline">Add date</button></div><p data-specific-dates-list></p></div>
+      <div data-schedule-panel="prn" class="grid gap-3" hidden>
+        <label for="prn-max">Maximum daily doses</label><input id="prn-max" name="prn_max" data-plan-input="prn-max" type="number" min="1" step="1" value="{{ draft.prn_max | default(value="4") }}" class="input w-full">
+        <label for="prn-hours">Minimum hours between doses</label><input id="prn-hours" name="prn_hours" data-plan-input="prn-hours" type="number" min="1" step="1" value="{{ draft.prn_hours | default(value="4") }}" class="input w-full">
+      </div>
+      <div data-schedule-panel="tapering" class="grid gap-3" hidden><label for="tapering-plan">Tapering plan</label><textarea id="tapering-plan" name="tapering_plan" class="textarea w-full">{{ draft.tapering_plan | default(value="") }}</textarea></div>
+      <label for="start_date">Start date</label><input id="start_date" name="start_date" type="date" class="input w-full" value="{{ draft.start_date }}">
+      <label for="end_date">End date</label><input id="end_date" name="end_date" type="date" class="input w-full" value="{{ draft.end_date }}">
+      <input type="hidden" name="step_count" value="{{ draft.step_count }}">
+      <p>Review the medication plan before continuing.</p><button type="button" class="btn btn-outline" data-review-plan>Review medication plan</button><p data-plan-summary aria-live="polite"></p>
+    </div>
+    <div data-stage="2" class="flex flex-col gap-3" hidden>
+      <h2 class="card-title" tabindex="-1">Supply</h2>
+      <label for="current_supply">Starting Supply</label><input id="current_supply" name="current_supply" type="number" min="0" step="0.01" class="input w-full" value="{{ draft.current_supply }}" {% if invalid_current_supply %}aria-invalid="true" aria-describedby="form-error-current_supply"{% endif %}>
+      <label for="reorder_threshold">Reorder Threshold</label><input id="reorder_threshold" name="reorder_threshold" type="number" min="0" step="0.01" required class="input w-full" value="{{ draft.reorder_threshold }}" {% if invalid_reorder_threshold %}aria-invalid="true" aria-describedby="form-error-reorder_threshold"{% endif %}>
+      <div data-extra-options class="grid gap-3"></div>
+      <button type="button" data-add-option class="btn btn-outline w-fit">Add dose option</button>
+    </div>
+    <div data-stage="3" class="flex flex-col gap-3" hidden>
+      <h2 class="card-title" tabindex="-1">Warnings</h2>
+      <label for="warnings">Warnings</label><textarea id="warnings" name="warnings" class="textarea w-full" {% if invalid_warnings %}aria-invalid="true" aria-describedby="form-error-warnings"{% endif %}>{{ draft.warnings }}</textarea>
+      <p>Review the pack instructions before saving this medication.</p>
+    </div>
+    <div class="flex flex-wrap gap-3 mt-6"><button type="button" class="btn btn-outline" data-back hidden>Back</button><button type="button" class="btn btn-neutral" data-continue>Continue</button><button type="submit" class="btn btn-neutral" data-save hidden>Save Medication</button></div>
+  </form>
+</section>
+{% if wizard_variant != "fullpage" %}</div></dialog>{% endif %}
+<script src="/static/js/medication-wizard.js" defer></script>
+{% endblock content %}

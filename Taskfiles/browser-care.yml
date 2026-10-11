@@ -700,6 +700,11 @@ tasks:
         INSERT INTO public.households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71002,'Synthetic foreign household','foreign-fixture','Europe/London',now(),now());
         INSERT INTO public.locations(id,household_id,name,created_at,updated_at) VALUES(79002,72002,'Synthetic foreign cabinet',now(),now());
         INSERT INTO public.medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at) VALUES(80002,72002,79002,'Synthetic foreign medicine',10,2,'tablet',now(),now());"
+  wizard-probe:
+    requires:
+      vars: [CARE_DATABASE_URL, WIZARD_NAME]
+    cmds:
+      - 'psql {{.CARE_DATABASE_URL | shellQuote}} -X -v ON_ERROR_STOP=1 --tuples-only --no-align -v name={{.WIZARD_NAME | shellQuote}} -f tests/fixtures/browser-wizard-probe.sql'
   probe:
     requires:
       vars: [CARE_DATABASE_URL]
@@ -712,6 +717,31 @@ tasks:
       vars: [CARE_DATABASE_URL]
     cmds:
       - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -c "UPDATE public.medications SET barcode=''1234567890123'' WHERE id=80001"'
+  wizard-modal:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql {{.CARE_DATABASE_URL | shellQuote}} -X -v ON_ERROR_STOP=1 -c "UPDATE public.accounts SET preferences=jsonb_set(coalesce(preferences,''{}''::jsonb),''{wizard_variant}'',''\"modal\"''::jsonb) WHERE id=71001"'
+  wizard-slideover:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql {{.CARE_DATABASE_URL | shellQuote}} -X -v ON_ERROR_STOP=1 -c "UPDATE public.accounts SET preferences=jsonb_set(coalesce(preferences,''{}''::jsonb),''{wizard_variant}'',''\"slideover\"''::jsonb) WHERE id=71001"'
+  launcher-context-aware:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql {{.CARE_DATABASE_URL | shellQuote}} -X -v ON_ERROR_STOP=1 -c "UPDATE public.accounts SET preferences=jsonb_set(coalesce(preferences,''{}''::jsonb),''{medication_launcher_variant}'',''\"context_aware\"''::jsonb) WHERE id=71001"'
+  scanner-platform-admin:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql {{.CARE_DATABASE_URL | shellQuote}} -X -v ON_ERROR_STOP=1 -c "INSERT INTO public.platform_admins(id,account_id,created_at,status,updated_at) VALUES(95001,71001,now(),''active'',now())"'
+  scanner-revoke-platform-admin:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql {{.CARE_DATABASE_URL | shellQuote}} -X -v ON_ERROR_STOP=1 -c "UPDATE public.platform_admins SET status=''revoked'' WHERE account_id=71001"'
   barcode-metadata-probe:
     requires:
       vars: [CARE_DATABASE_URL]

@@ -1,5 +1,9 @@
 mod form;
 
+pub(super) fn errors(error: Option<&OperationError>) -> Vec<serde_json::Value> {
+    form::errors(error)
+}
+
 use super::*;
 use browser_query::FormContext;
 
@@ -230,10 +234,21 @@ pub(super) async fn new(
     request: Option<Extension<LocoRequestId>>,
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
+    Query(draft): Query<HashMap<String, String>>,
 ) -> Response {
-    Page::new(&ctx, &session, &token, &view, &slug, request, "en")
-        .open(None)
-        .await
+    super::wizard::open(
+        &ctx,
+        &session,
+        &token,
+        &view,
+        super::wizard::WizardRequest {
+            slug: &slug,
+            request_id: super::request_id(request),
+            draft,
+            error: None,
+        },
+    )
+    .await
 }
 pub(super) async fn edit(
     State(ctx): State<AppContext>,

@@ -23,6 +23,11 @@ server:
       cache_control: no-cache
 workers:
   mode: BackgroundQueue
+scheduler:
+  jobs:
+    nhs_dmd_reconcile:
+      run: nhs_dmd_reconcile
+      schedule: "0 */5 * * * *"
 queue:
   kind: Postgres
   uri: <%= get_env(name="DATABASE_URL", default="postgres://medtracker:medtracker_password@localhost:5432/medtracker_loco") %>

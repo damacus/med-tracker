@@ -49,6 +49,7 @@ impl Hooks for App {
             .add_route(browser(crate::controllers::identity_onboarding::routes()))
             .add_route(browser(crate::controllers::oauth_server::browser_routes()))
             .add_route(browser(crate::controllers::medications::routes()))
+            .add_route(browser(crate::controllers::nhs_dmd::routes()))
             .add_route(browser(crate::controllers::medication_orders::routes()))
             .add_route(browser(crate::controllers::dosage_options::routes()))
             .add_route(browser(crate::controllers::locations::routes()))
@@ -98,6 +99,9 @@ impl Hooks for App {
 
     async fn connect_workers(ctx: &AppContext, queue: &Queue) -> Result<()> {
         queue
+            .register(crate::models::nhs_dmd::ImportWorker::build(ctx))
+            .await?;
+        queue
             .register(loco_rs::mailer::MailerWorker::build(ctx))
             .await?;
         Ok(())
@@ -109,7 +113,9 @@ impl Hooks for App {
         )))
     }
 
-    fn register_tasks(_tasks: &mut Tasks) {}
+    fn register_tasks(tasks: &mut Tasks) {
+        tasks.register(crate::models::nhs_dmd::ReconcileTask);
+    }
 
     async fn truncate(_ctx: &AppContext) -> Result<()> {
         Err(Error::string(

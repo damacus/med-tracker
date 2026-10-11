@@ -6,7 +6,10 @@
   <a class="link ml-4" href="/households/{{ slug }}/people">People</a>
   {% if can_manage %}<a class="link ml-4" href="/households/{{ slug }}/admin">Administration</a>{% endif %}
   <h1 class="text-3xl font-semibold mt-4">Medications</h1>
+  <a class="btn btn-outline mt-4" href="/households/{{ slug }}/medications/finder">Medication Finder</a>
   {% if can_create %}<a class="btn btn-neutral mt-4" href="/households/{{ slug }}/medications/new">Add Medication</a>{% endif %}
+  {% if can_assign %}<a class="btn btn-outline mt-4" href="/households/{{ slug }}/medications/workflow">Add for person</a>{% endif %}
+  {% if can_adjust %}<button type="button" class="btn btn-outline mt-4" data-dialog-open="inventory-scan-dialog">Scan stock</button>{% endif %}
   <ul class="flex flex-col gap-4 mt-6">
   {% for medication in medications %}
     <li class="card bg-base-100 border border-base-300"><div class="card-body">
@@ -16,4 +19,26 @@
   {% else %}<li>No medications are available in this household.</li>{% endfor %}
   </ul>
 </section>
+{% if can_adjust %}
+<dialog id="inventory-scan-dialog" class="modal" aria-labelledby="inventory-scan-title">
+  <div class="modal-box w-[calc(100vw-1rem)] max-w-2xl max-h-[90dvh] overflow-y-auto">
+    <h2 id="inventory-scan-title" class="text-2xl font-semibold">Scan stock</h2>
+    <p class="mt-2">Scan a pack or enter its barcode to choose the medicine and location before adding stock.</p>
+    <div data-medication-finder data-household="{{ slug }}" class="mt-4 space-y-3">
+      <div id="barcode-camera" class="w-full overflow-hidden"></div>
+      <div class="flex flex-wrap gap-2"><button type="button" class="btn btn-outline" data-camera-start>Start Scanner</button><button type="button" class="btn btn-outline" data-camera-stop hidden>Stop Scanner</button></div>
+      <p data-camera-status aria-live="polite"></p>
+      <form data-barcode-form class="flex flex-col gap-3">
+        <label for="inventory-scan-barcode">Barcode</label><input id="inventory-scan-barcode" name="q" class="input w-full" inputmode="numeric" autocomplete="off" required maxlength="256">
+        <button class="btn btn-neutral w-fit" type="submit">Find barcode</button>
+      </form>
+      <p role="status" data-lookup-status></p>
+      <div data-lookup-results class="flex flex-col gap-3"></div>
+      {% if can_create %}<a class="link" data-manual-entry href="/households/{{ slug }}/medications/new">Enter medication manually</a>{% endif %}
+    </div>
+    <div class="modal-action"><button type="button" class="btn btn-ghost" data-dialog-close>Close scanner</button></div>
+  </div>
+</dialog>
+<script src="/static/js/medication-finder.js" defer></script>
+{% endif %}
 {% endblock content %}

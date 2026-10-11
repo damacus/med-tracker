@@ -1,4 +1,4 @@
-mod evidence;
+pub(crate) mod evidence;
 
 use crate::models::{
     access::TenantTransaction,

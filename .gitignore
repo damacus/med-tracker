@@ -107,6 +107,7 @@ vendor/**/*
 !/rails/vendor/fonts/NotoSans-Regular.ttf
 !/rails/vendor/fonts/OFL-1.1.txt
 /assets/static/css/compiled.css
+/assets/static/js/html5-qrcode.min.js
 /playwright-report/
 /test-results/
 /.task/

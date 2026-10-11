@@ -9,6 +9,7 @@ pub mod doses;
 pub mod health_events;
 pub mod invitations;
 pub mod locations;
+pub mod medication_lookup;
 pub mod medications;
 pub mod orders;
 pub mod pause_periods;

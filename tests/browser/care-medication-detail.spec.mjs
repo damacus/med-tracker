@@ -244,7 +244,7 @@ test('medication details surface safety warnings and low-stock decisions', async
   }
 });
 
-test('medication details show saved dose options', async ({ page }) => {
+test('medication details show saved dose options', async ({ page, careFixture }) => {
   await openMedication(page);
   await page.getByRole('link', { name: 'Edit Medication', exact: true }).click();
   await page.getByRole('link', { name: 'Manage Dose Options', exact: true }).click();
@@ -269,11 +269,17 @@ test('medication details show saved dose options', async ({ page }) => {
   await page.getByRole('button', { name: 'Refill inventory', exact: true }).click();
   const refill = page.getByRole('dialog', { name: 'Refill inventory', exact: true });
   await refill.getByLabel('Quantity to add', { exact: true }).fill('5');
-  const rejected = page.waitForResponse(value => value.request().method() === 'POST' && value.url().endsWith('/refill'));
+  await expect(refill.getByLabel('Dose option', { exact: true })).toHaveValue('');
   await refill.getByRole('button', { name: 'Add stock', exact: true }).click();
-  expect((await rejected).status()).toBe(422);
-  await expect(page.getByRole('dialog', { name: 'Refill inventory', exact: true }).getByRole('alert')).toContainText('Update dose option stock');
+  await expect(refill).toBeVisible();
+  expect(await refill.getByLabel('Dose option', { exact: true }).evaluate(input => input.validity.valueMissing)).toBe(true);
   await expect(page.getByTestId('current-supply')).toHaveText(originalStock);
+  await refill.getByLabel('Dose option', { exact: true }).selectOption({ label: '2 tablet · Current supply: 12' });
+  const saved = page.waitForResponse(value => value.request().method() === 'POST' && value.url().endsWith('/refill'));
+  await refill.getByRole('button', { name: 'Add stock', exact: true }).click();
+  expect((await saved).status()).toBe(303);
+  await expect(page.getByTestId('current-supply')).toHaveText('17 tablets');
+  expect((await careFixture.restockProbe()).restock_audits).toBe(1);
 });
 
 test('review: untracked dose options keep parent inventory refillable', async ({ page, careFixture }) => {

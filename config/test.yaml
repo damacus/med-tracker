@@ -23,6 +23,11 @@ server:
       cache_control: no-cache
 workers:
   mode: BackgroundQueue
+scheduler:
+  jobs:
+    nhs_dmd_reconcile:
+      run: nhs_dmd_reconcile
+      schedule: "0 */5 * * * *"
 mailer:
   smtp:
     enable: <%= get_env(name="MEDTRACKER_CAPTURE_MAIL", default="false") %>

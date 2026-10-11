@@ -167,7 +167,7 @@ pub(super) fn view(
     data
 }
 
-fn errors(error: Option<&OperationError>) -> Vec<Value> {
+pub(super) fn errors(error: Option<&OperationError>) -> Vec<Value> {
     let Some(error) = error else {
         return Vec::new();
     };

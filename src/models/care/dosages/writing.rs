@@ -1,5 +1,38 @@
 use super::*;
 
+pub(crate) async fn add_stock(
+    tenant: &TenantTransaction,
+    medication_id: i64,
+    id: &str,
+    quantity: Decimal,
+    provenance: Option<&CredentialProvenance>,
+) -> Result<Decimal, OperationError> {
+    let row = record(tenant, id, true).await?;
+    if row.medication_id != medication_id || quantity <= Decimal::ZERO {
+        return Err(OperationError::NotFound);
+    }
+    let supply = row.current_supply.ok_or_else(invalid)? + quantity;
+    if storage_decimal(supply, 8, 2).is_none() {
+        return Err(invalid());
+    }
+    let before = persistence::dosage_snapshot(&row);
+    let mut active = row.into_active_model();
+    active.current_supply = Set(Some(supply));
+    active.updated_at = Set(Utc::now().naive_utc());
+    let row = active.update(tenant.transaction()).await?;
+    persistence::persist(tenant, &row, Some(before), provenance).await?;
+    let rows = dosage::Entity::find()
+        .filter(dosage::Column::HouseholdId.eq(tenant.scope().household_id))
+        .filter(dosage::Column::MedicationId.eq(medication_id))
+        .all(tenant.transaction())
+        .await?;
+    rows.into_iter()
+        .filter_map(|row| row.current_supply)
+        .try_fold(Decimal::ZERO, |total, value| {
+            total.checked_add(value).ok_or_else(invalid)
+        })
+}
+
 pub async fn create(
     tenant: &TenantTransaction,
     body: Value,
@@ -14,6 +47,16 @@ pub async fn create(
     )
     .await?;
     access::recheck(tenant).await?;
+    create_with_parent(tenant, body, parent, provenance).await
+}
+
+pub(crate) async fn create_with_parent(
+    tenant: &TenantTransaction,
+    body: Value,
+    parent: medication::Model,
+    provenance: Option<&CredentialProvenance>,
+) -> Result<(Value, String), OperationError> {
+    let attrs = attributes(&body, true).ok_or_else(invalid)?;
     let now = Utc::now().naive_utc();
     let active = dosage::ActiveModel {
         household_id: Set(tenant.scope().household_id),

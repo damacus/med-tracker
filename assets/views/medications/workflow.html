@@ -1,0 +1,12 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-2xl mx-auto">
+  <a class="link" href="/households/{{ slug }}/medications">Back to medications</a>
+  <h1 class="text-3xl font-semibold mt-4">Choose a person</h1>
+  <p class="mt-2">Choose whose medication you want to manage.</p>
+  <ul class="grid gap-3 mt-6">
+    {% for person in people %}<li class="card card-body border border-base-300 bg-base-100"><h2 class="card-title">{{ person.name }}</h2><div class="flex flex-wrap gap-2"><a class="btn btn-neutral" href="/households/{{ slug }}/people/{{ person.id }}/treatments/assignments/new">Assign medication to {{ person.name }}</a>{% if can_create %}<a class="btn btn-outline" href="/households/{{ slug }}/medications/new?person_id={{ person.id }}">Create medication for {{ person.name }}</a>{% endif %}</div></li>
+    {% else %}<li>No people are available for medication management.</li>{% endfor %}
+  </ul>
+</section>
+{% endblock content %}

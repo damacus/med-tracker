@@ -26,6 +26,7 @@ use uuid::Uuid;
 pub use reading::{Pagination, for_medication, list, read};
 pub use removal::destroy;
 use validation::{attributes, storage_decimal, valid_persisted_dosage};
+pub(crate) use writing::{add_stock, create_with_parent};
 pub use writing::{create, update};
 
 fn invalid() -> OperationError {

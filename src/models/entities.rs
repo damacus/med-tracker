@@ -628,6 +628,7 @@ entity!(medication, "medications", {
     reordered_at: Option<DateTime>,
     warnings: Option<String>,
     default_schedule_type: i32,
+    default_schedule_config: Json,
     location_id: i64,
     updated_at: DateTime,
 });
@@ -667,6 +668,17 @@ entity!(nhs_dmd_barcode, "nhs_dmd_barcodes", {
     system: String,
     updated_at: DateTime,
     vmp_name: Option<String>,
+});
+
+entity!(barcode_catalog_entry, "barcode_catalog_entries", {
+    code: Option<String>,
+    concept_class: Option<String>,
+    created_at: DateTime,
+    display: String,
+    gtin: String,
+    source: String,
+    system: Option<String>,
+    updated_at: DateTime,
 });
 
 entity!(nhs_dmd_ampp_relationship, "nhs_dmd_ampp_relationships", {

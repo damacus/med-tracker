@@ -26,8 +26,12 @@ mod invitations;
 mod legacy_pause;
 #[path = "care_api/locations.rs"]
 mod locations;
+#[path = "care_api/medication_lookup.rs"]
+mod medication_lookup;
 #[path = "care_api/medication_reads.rs"]
 mod medication_reads;
+#[path = "care_api/nhs_dmd.rs"]
+mod nhs_dmd;
 #[path = "care_api/notification_preferences.rs"]
 mod notification_preferences;
 #[path = "care_api/pause_periods.rs"]

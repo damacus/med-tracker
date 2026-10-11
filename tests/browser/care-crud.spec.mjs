@@ -14,12 +14,17 @@ test('medication creation, stale editing and guarded deletion work through real 
   await page.getByRole('link', { name: 'Add Medication', exact: true }).click();
   await page.getByLabel('Name', { exact: true }).fill('Synthetic browser medicine');
   await page.getByLabel('Location', { exact: true }).selectOption({ label: 'Synthetic cabinet' });
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await page.getByLabel('Dose', { exact: true }).fill('2');
   await page.getByLabel('Unit', { exact: true }).selectOption('tablet');
+  await page.getByRole('button', { name: 'Review medication plan', exact: true }).click();
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await page.getByLabel('Starting Supply', { exact: true }).fill('10');
   await page.getByLabel('Reorder Threshold', { exact: true }).fill('2');
+  await page.getByLabel('Reorder Threshold', { exact: true }).evaluate(input => { input.min = ''; });
   await page.getByLabel('Reorder Threshold', { exact: true }).fill('-1');
-  const invalid = page.waitForResponse(response => response.request().method() === 'POST' && response.url().endsWith('/medications'));
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  const invalid = page.waitForResponse(response => response.request().method() === 'POST' && response.url().endsWith('/medications/wizard'));
   await page.getByRole('button', { name: 'Save Medication', exact: true }).click();
   expect((await invalid).status()).toBe(422);
   await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Synthetic browser medicine');
@@ -29,7 +34,9 @@ test('medication creation, stale editing and guarded deletion work through real 
   await expect(page.getByLabel('Reorder Threshold', { exact: true })).toHaveAccessibleDescription(thresholdMessage);
   await measureCareContrast(page);
   await page.getByLabel('Reorder Threshold', { exact: true }).fill('2');
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await page.getByRole('button', { name: 'Save Medication', exact: true }).click();
+  await page.getByRole('link', { name: 'Done', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Synthetic browser medicine', exact: true })).toBeVisible();
   await expect(page.getByTestId('current-supply')).toHaveText('10 tablets');
   const createdDetail = page.url();
