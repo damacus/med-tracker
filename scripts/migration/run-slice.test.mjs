@@ -29,10 +29,11 @@ if (command === 'docker') {
   if (operation === 'up') state.resources[project] = ['owned-volume'];
   if (operation === 'down') delete state.resources[project];
   fs.writeFileSync(statePath, JSON.stringify(state));
-  if (operation === 'port') process.stdout.write('127.0.0.1:54321\\n');
+  if (operation === 'port') process.stdout.write(args.includes('rustfs') ? '127.0.0.1:54322\\n' : '127.0.0.1:54321\\n');
   if (operation === 'exec') process.exit(Number(process.env.SLICE_FIXTURE_PROVISION_EXIT));
 } else {
   state.owned_endpoint_used = process.env.DATABASE_URL === 'postgres://medtracker:medtracker_password@127.0.0.1:54321/medtracker_loco';
+  state.owned_storage_endpoint_used = process.env.ACTIVE_STORAGE_S3_ENDPOINT === 'http://127.0.0.1:54322';
   state.child_identity_key_synthetic = process.env.MEDTRACKER_SESSION_KEY === Buffer.alloc(64, 7).toString('base64');
   state.child_verification_key_synthetic = process.env.RAILS_SECRET_KEY_BASE === 'synthetic-slice-rails-verification-secret';
   state.child_compose_environment_removed = ['COMPOSE_FILE', 'COMPOSE_PROJECT_NAME', 'COMPOSE_PROFILES'].every(name => process.env[name] === undefined);
@@ -153,4 +154,18 @@ test('owned application tests use a synthetic identity key instead of the inheri
     assert.equal(result.status, 0);
     assert.equal(state.child_identity_key_synthetic, true);
   });
+});
+
+test('care API and complete runs use owned storage and clean it after test failures', async () => {
+  for (const [taskName, assignments] of [['slice:test', ['TARGET=care_api']], ['slice:test-all', []]]) {
+    await withProcessFixture(42, (result, state) => {
+      assert.notEqual(result.status, 0);
+      assert.equal(state.owned_endpoint_used, true);
+      assert.equal(state.owned_storage_endpoint_used, true);
+      const calls = state.calls.filter(call => call.command === 'docker');
+      assert.deepEqual(calls.map(call => call.operation), ['up', 'port', 'up', 'port', 'exec', 'exec', 'down']);
+      assert.ok(calls.every(call => call.project === calls[0].project));
+      assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
+    }, taskName, assignments);
+  }
 });

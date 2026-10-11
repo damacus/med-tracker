@@ -27,8 +27,13 @@ mod password_email;
 mod recovery;
 mod rendering;
 mod security;
+mod security_locale;
+mod support;
 mod totp;
 mod verification_resend;
+
+pub(crate) use passkeys::request as identity_request;
+pub(crate) use password::render_named;
 
 pub fn routes() -> Routes {
     Routes::new()
@@ -80,6 +85,9 @@ pub fn routes() -> Routes {
             get(password_email::show).post(password_email::confirm),
         )
         .add("/account/security/operation", post(credentials::start))
+        .add("/account/support", get(support::page))
+        .add("/account/support/approve", post(support::approve))
+        .add("/account/support/end", post(support::end))
         .add("/account/security/passkey", get(credentials::passkey))
         .add("/account/security/totp", get(totp::show).post(totp::start))
         .add("/account/security/totp/finish", post(totp::finish))
@@ -89,6 +97,7 @@ pub fn routes() -> Routes {
             "/account/security/totp/disable/confirm",
             post(totp::disable_confirm),
         )
+        .layer(axum::middleware::from_fn(security_locale::scope))
 }
 
 async fn create_form(

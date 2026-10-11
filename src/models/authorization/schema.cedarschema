@@ -6,6 +6,8 @@ entity Membership {
     revoked: Bool
 };
 entity Resource { id: Long, household_id: Long };
+entity Account { id: Long, active: Bool, platform_admin: Bool };
+entity Platform { id: Long };
 type Grant = {
     household_id: Long,
     membership_id: Long,
@@ -28,12 +30,19 @@ action "delegate_person" appliesTo {
 };
 action "change_owner" appliesTo {
     principal: Membership, resource: Resource,
-    context: { platform_admin: Bool, next_owner: Bool }
+    context: { next_owner: Bool }
+};
+action "support_approve", "support_end" appliesTo {
+    principal: Account, resource: Resource,
+    context: { household_id: Long, owner: Bool }
 };
 action "support_household" appliesTo {
-    principal: Membership, resource: Resource,
+    principal: Account, resource: Resource,
     context: {
-        trusted: Bool, platform_admin: Bool, household_id: Long,
+        trusted: Bool, household_id: Long,
         ended: Bool, expired: Bool, expires_at: Long, now: Long
     }
+};
+action "read_platform_users", "write_platform_users", "read_platform_settings", "write_platform_settings", "platform_owner_recovery", "support_request", "support_activate" appliesTo {
+    principal: Account, resource: Platform, context: {}
 };

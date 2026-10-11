@@ -102,7 +102,7 @@ jobs:
     if: ${{ needs.changes.outputs.loco == 'true' }}
     name: Loco Foundation
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     services:
       postgres:
         image: postgres:18-alpine
@@ -129,6 +129,14 @@ jobs:
           repo-token: ${{ github.token }}
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
       - run: task ci
+      - name: Preserve Loco browser failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: loco-browser-failure-${{ github.run_attempt }}
+          path: test-results/
+          retention-days: 7
+          if-no-files-found: ignore
 
   scan_ruby:
     defaults:

@@ -54,12 +54,24 @@ impl Hooks for App {
             .add_route(browser(crate::controllers::dosage_options::routes()))
             .add_route(browser(crate::controllers::locations::routes()))
             .add_route(browser(crate::controllers::people::routes()))
+            .add_route(browser(crate::controllers::profile::routes()))
+            .add_route(browser(crate::controllers::profile::avatar::routes()))
             .add_route(browser(crate::controllers::treatments::routes()))
             .add_route(browser(crate::controllers::reports::routes()))
             .add_route(browser(crate::controllers::dose_occurrences::routes()))
             .add_route(browser(crate::controllers::administration::routes()))
             .add_route(browser(crate::controllers::invitations::routes()))
             .add_route(browser(crate::controllers::invitations::acceptance_routes()))
+            .add_route(browser(crate::controllers::platform::routes()))
+    }
+
+    async fn after_context(ctx: AppContext) -> Result<AppContext> {
+        if let Some(push) =
+            crate::models::care::browser_push::Service::from_context(&ctx).map_err(Error::string)?
+        {
+            ctx.shared_store.insert(push);
+        }
+        Ok(ctx)
     }
 
     async fn before_routes(ctx: &AppContext) -> Result<axum::Router<AppContext>> {
@@ -99,7 +111,13 @@ impl Hooks for App {
 
     async fn connect_workers(ctx: &AppContext, queue: &Queue) -> Result<()> {
         queue
+            .register(crate::models::care::browser_push::scheduler::ReminderWorker::build(ctx))
+            .await?;
+        queue
             .register(loco_rs::mailer::MailerWorker::build(ctx))
+            .await?;
+        queue
+            .register(crate::models::profile::avatar::AvatarRetirementWorker::build(ctx))
             .await?;
         Ok(())
     }
@@ -110,7 +128,9 @@ impl Hooks for App {
         )))
     }
 
-    fn register_tasks(_tasks: &mut Tasks) {}
+    fn register_tasks(tasks: &mut Tasks) {
+        tasks.register(crate::models::care::browser_push::scheduler::ReminderTask);
+    }
 
     async fn truncate(_ctx: &AppContext) -> Result<()> {
         Err(Error::string(

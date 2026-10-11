@@ -25,6 +25,7 @@ mod recovery;
 mod regeneration;
 mod request;
 mod schema;
+pub mod security;
 mod sessions;
 mod store;
 pub use http::boundary as http_boundary;
@@ -37,6 +38,11 @@ pub use recovery_email::confirmation_label as recovery_confirmation_label;
 pub use request::{BrowserIdentity, browser_identity, dispatch, router};
 pub use schema::ClinicalAuthSchema;
 pub use store::ClinicalStore;
+pub(crate) use store::clinical_id;
+
+pub(crate) fn session_digest(token: &str) -> String {
+    crate::models::identity::store::digest(token)
+}
 
 #[derive(Clone)]
 pub struct IdentityService {

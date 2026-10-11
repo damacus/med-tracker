@@ -5,6 +5,8 @@
   <p>{{ email }}</p>
   <a class="link" href="/account/security/email">Change email</a>
   <a class="link" href="/account/security/keys">Personal API keys</a>
+  {% if platform_admin %}<a class="link" href="/platform/users">Platform administration</a>{% endif %}
+  {% if support_access %}<a class="link" href="/account/support">Support access requests</a>{% endif %}
   <section class="card shell-card"><div class="card-body gap-4">
     <h2 class="text-xl font-semibold">Sign-in methods</h2>
     <p>ZITADEL: {% if zitadel %}linked{% else %}not linked{% endif %}</p>

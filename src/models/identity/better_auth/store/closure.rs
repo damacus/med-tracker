@@ -44,6 +44,20 @@ impl ClinicalStore {
             transaction.execute_raw(statement("UPDATE public.person_access_grants SET revoked_at=timezone('UTC',clock_timestamp()),updated_at=timezone('UTC',clock_timestamp()) WHERE household_id=$1 AND household_membership_id IN(SELECT id FROM public.household_memberships WHERE household_id=$1 AND account_id=$2) AND revoked_at IS NULL", [household_id.into(), account_id.into()])).await.map_err(database_error)?;
             transaction.execute_raw(statement("UPDATE public.household_memberships SET status='revoked',revoked_at=timezone('UTC',clock_timestamp()),permissions_version=permissions_version+1,updated_at=timezone('UTC',clock_timestamp()) WHERE household_id=$1 AND account_id=$2 AND revoked_at IS NULL", [household_id.into(), account_id.into()])).await.map_err(database_error)?;
         }
+        transaction
+            .execute_raw(statement(
+                "DELETE FROM public.push_subscriptions WHERE account_id=$1",
+                [account_id.into()],
+            ))
+            .await
+            .map_err(database_error)?;
+        transaction
+            .execute_raw(statement(
+                "DELETE FROM public.native_device_tokens WHERE account_id=$1",
+                [account_id.into()],
+            ))
+            .await
+            .map_err(database_error)?;
         self.audit(&transaction, account_id, "account", "closed")
             .await?;
         super::super::mail::notice(self, &user, "Account closed", "Your MedTracker account was closed. Your sign-in methods, sessions and personal API keys are no longer usable. Shared care records and audit history are preserved.").await?;

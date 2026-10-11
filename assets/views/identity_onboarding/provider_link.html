@@ -1,8 +1,9 @@
 {% extends "layouts/base.html" %}
 {% block content %}
+{% include "identity_onboarding/security_labels.html" %}
 <section class="card border border-base-300 bg-base-100 max-w-xl mx-auto"><div class="card-body gap-6">
-  <h1 class="text-2xl font-semibold">Link ZITADEL</h1>
-  <p>Sign in again with ZITADEL using your verified MedTracker email address. Your local sign-in methods will remain available.</p>
-  <form method="post" action="/auth/zitadel"><input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><input type="hidden" name="link_id" value="{{ link_id }}"><button class="btn btn-neutral" type="submit">Continue with ZITADEL</button></form>
+  <h1 class="text-2xl font-semibold">{{ flow.link_provider }}</h1>
+  <p>{{ flow.provider_hint }}</p>
+  <form method="post" action="/auth/zitadel"><input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><input type="hidden" name="link_id" value="{{ link_id }}"><button class="btn btn-neutral" type="submit">{{ flow.continue_provider }}</button></form>
 </div></section>
 {% endblock content %}

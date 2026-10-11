@@ -11,6 +11,8 @@ use sea_orm::{
 use serde_json::{Map, Value, json};
 use sha2::{Digest, Sha256};
 
+pub mod managed;
+
 #[derive(Default)]
 pub struct Changes {
     pub enabled: Option<bool>,
@@ -195,7 +197,13 @@ pub async fn read(
     tenant: &TenantTransaction,
     account_id: i64,
 ) -> Result<(notification_preference::Model, person::Model), OperationError> {
-    let owner = profile::linked_person(tenant, account_id, PersonAccess::View).await?;
+    let owner = profile::linked_person_scoped(
+        tenant,
+        account_id,
+        PersonAccess::View,
+        OperationError::NotFound,
+    )
+    .await?;
     let row = notification_preference::Entity::find()
         .filter(notification_preference::Column::HouseholdId.eq(tenant.scope().household_id))
         .filter(notification_preference::Column::PersonId.eq(owner.id))

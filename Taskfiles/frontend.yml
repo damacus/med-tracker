@@ -19,6 +19,7 @@ tasks:
       - assets/static/css/app.css
       - assets/static/css/themes.css
       - assets/static/css/fonts.css
+      - assets/static/css/platform.css
       - assets/views/**/*.html
       - assets/static/js/*.js
     generates: [assets/static/css/compiled.css]
@@ -28,7 +29,7 @@ tasks:
       - task: install
       - task: build
   test:
-    cmds: [node --test tests/browser/appearance.test.mjs]
+    cmds: [node --test tests/browser/appearance.test.mjs tests/browser/profile-push-worker.test.mjs]
   test-browser:
     cmds:
       - task: ':build'

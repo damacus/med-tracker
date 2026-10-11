@@ -13,3 +13,18 @@ services:
       interval: 2s
       timeout: 2s
       retries: 30
+  rustfs:
+    image: rustfs/rustfs:1.0.0-alpha.90
+    profiles: [fixture-storage]
+    environment:
+      RUSTFS_ACCESS_KEY: storage-smoke-access
+      RUSTFS_SECRET_KEY: storage-smoke-secret
+      RUSTFS_VOLUMES: /data
+    command: [/data]
+    ports:
+      - target: 9000
+        host_ip: 127.0.0.1
+    volumes:
+      - rustfs-fixture:/data
+volumes:
+  rustfs-fixture:

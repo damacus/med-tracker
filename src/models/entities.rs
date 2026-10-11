@@ -425,6 +425,7 @@ entity!(grant, "person_access_grants", {
     relationship_type: String,
     granted_by_membership_id: Option<i64>,
     carer_relationship_id: Option<i64>,
+    missed_dose_notifications_enabled: bool,
     created_at: DateTime,
     updated_at: DateTime,
 });

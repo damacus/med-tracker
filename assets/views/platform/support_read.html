@@ -1,0 +1,55 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="platform-page">
+  <header class="platform-page-header"><p class="platform-eyebrow">Temporary support</p><h1>Support access: {{ household_name }}</h1><p class="platform-description">Read-only support view. Access expires at {{ expires_at }}.</p></header>
+  {% include "platform/navigation.html" %}
+  <div class="platform-read-grid">
+  <section class="platform-panel">
+  <h2 class="platform-section-title">Household members</h2>
+  <ul class="list-disc ml-6 mt-2">
+    {% for member in members %}
+    <li>{{ member }}</li>
+    {% endfor %}
+  </ul>
+  </section>
+  <section class="platform-panel">
+  <h2 class="platform-section-title">People</h2>
+  <ul class="list-disc ml-6 mt-2">
+    {% for person in people %}
+    <li>{{ person }}</li>
+    {% endfor %}
+  </ul>
+  </section>
+  <section class="platform-panel">
+  <h2 class="platform-section-title">Medications</h2>
+  <ul class="list-disc ml-6 mt-2">
+    {% for medication in medications %}
+    <li>{{ medication }}</li>
+    {% endfor %}
+  </ul>
+  </section>
+  <section class="platform-panel">
+  <h2 class="platform-section-title">Medication allocations</h2>
+  {% if allocations | length == 0 %}
+  <p class="mt-2 text-sm text-base-content/70">No active allocations.</p>
+  {% endif %}
+  <ul class="list-disc ml-6 mt-2">
+    {% for allocation in allocations %}
+    <li>{{ allocation.person }} — {{ allocation.medication }}: {{ allocation.dose }}{% if allocation.max_daily %} (max {{ allocation.max_daily }} per day){% endif %}</li>
+    {% endfor %}
+  </ul>
+  </section>
+  <section class="platform-panel">
+  <h2 class="platform-section-title">Schedules</h2>
+  {% if schedules | length == 0 %}
+  <p class="mt-2 text-sm text-base-content/70">No active schedules.</p>
+  {% endif %}
+  <ul class="list-disc ml-6 mt-2">
+    {% for schedule in schedules %}
+    <li>{{ schedule.person }} — {{ schedule.medication }}: {{ schedule.dose }} {{ schedule.frequency }}</li>
+    {% endfor %}
+  </ul>
+  </section>
+  </div>
+</section>
+{% endblock content %}

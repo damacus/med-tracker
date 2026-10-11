@@ -46,7 +46,7 @@ pub(super) fn render(
     )
 }
 
-pub(super) fn render_named(
+pub(crate) fn render_named(
     view: &TeraView,
     token: CsrfToken,
     operation_id: Option<&str>,
@@ -69,7 +69,7 @@ pub(super) fn render_named(
     data["operation_label"] = json!(operation_label);
     data["recovery_codes"] = json!([]);
     data["generation"] = json!("");
-    match format::render().view(view, "identity_onboarding/password.html", data) {
+    match super::security_locale::view(view, "identity_onboarding/password.html", data) {
         Ok(response) => (
             status,
             token,

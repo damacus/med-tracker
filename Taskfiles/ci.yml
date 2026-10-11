@@ -41,6 +41,11 @@ tasks:
     cmds:
       - node scripts/ci/classify.mjs
 
+  paths:
+    desc: Reject tracked files that have no CI suite mapping
+    cmds:
+      - node scripts/ci/tracked_paths.mjs
+
   gate:
     desc: Require every selected CI suite to succeed
     cmds:

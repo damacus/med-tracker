@@ -410,6 +410,77 @@ async fn invitations_acceptance_rejects_mobile_and_resend_requires_authenticatio
 }
 
 #[tokio::test]
+async fn invitation_list_matches_documented_contract() {
+    use super::contract::{assert_value, contract, resolve};
+    let app = Application::new().await;
+    let token = app.token().await;
+    let endpoint = format!("{}/api/v1/households/72001/admin/invitations", app.origin);
+    let contract = contract();
+    let operation = &contract["paths"]["/households/{household_id}/admin/invitations"]["get"];
+    assert_eq!(operation["operationId"], "listInvitations");
+    assert_eq!(
+        operation["responses"]["403"]["$ref"],
+        "#/components/responses/Forbidden"
+    );
+    let forbidden = resolve(contract, &operation["responses"]["403"]);
+    let forbidden_schema = resolve(
+        contract,
+        &forbidden["content"]["application/json"]["schema"],
+    );
+
+    let created = app.client.post(&endpoint).bearer_auth(&token).json(&json!({"household_invitation":{"email":"synthetic-contract@example.test","membership_role":"member"}})).send().await.unwrap();
+    assert_eq!(created.status().as_u16(), 201);
+    let list = app
+        .client
+        .get(&endpoint)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let list_status = list.status().as_u16();
+    let body: Value = list.json().await.unwrap();
+    assert_eq!(list_status, 200);
+    assert_eq!(
+        operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"],
+        "#/components/schemas/HouseholdInvitationCollectionResponse"
+    );
+    assert_value(
+        contract,
+        resolve(
+            contract,
+            &operation["responses"]["200"]["content"]["application/json"]["schema"],
+        ),
+        &body,
+        "invitation collection",
+    );
+    assert_eq!(body["data"][0]["email"], "synthetic-contract@example.test");
+    assert_eq!(body["data"][0]["pending"], true);
+
+    app.fixture
+        .admin
+        .execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001")
+        .await
+        .unwrap();
+    let denied = app
+        .client
+        .get(&endpoint)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let denied_status = denied.status().as_u16();
+    let denied_body: Value = denied.json().await.unwrap();
+    assert_eq!(denied_status, 403);
+    assert_value(
+        contract,
+        forbidden_schema,
+        &denied_body,
+        "member invitation list",
+    );
+    app.close().await;
+}
+
+#[tokio::test]
 async fn parent_invitation_acceptance_requires_current_scoped_manage_authority() {
     let app = Application::new().await;
     let access = seed_acceptance(&app).await;

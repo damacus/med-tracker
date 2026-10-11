@@ -54,11 +54,11 @@ pub async fn list(
 ) -> Result<Value, OperationError> {
     access::recheck(tenant).await?;
     let number = page.page.unwrap_or(1);
-    let size = std::cmp::min(page.per_page.unwrap_or(20), 100);
-    if number < 1 || size < 1 {
+    let size = page.per_page.unwrap_or(20);
+    if number < 1 || !(1..=100).contains(&size) {
         return Err(invalid(
             "page",
-            "must be positive and per_page must be positive",
+            "page must be positive and per_page must be between 1 and 100",
         ));
     }
     let mut query = scope(tenant);

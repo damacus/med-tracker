@@ -4,7 +4,7 @@ let dialogId = 0
 
 // Connects to data-controller="dialog"
 export default class extends Controller {
-  static targets = ["content"]
+  static targets = ["content", "trigger"]
   static values = {
     open: {
       type: Boolean,
@@ -14,6 +14,7 @@ export default class extends Controller {
 
   connect() {
     this.sourceFrame = this.element.closest("turbo-frame")
+    this.triggerTargets.forEach((trigger) => { trigger.inert = false })
 
     if (this.openValue) {
       this.open()
@@ -21,6 +22,7 @@ export default class extends Controller {
   }
 
   disconnect() {
+    this.triggerTargets.forEach((trigger) => { trigger.inert = true })
     if (this.contentTarget.open) {
       this.contentTarget.close()
     }
