@@ -1,4 +1,4 @@
-use super::contract::{assert_value, resolve};
+use super::contract::{assert_value, contract, resolve};
 use super::*;
 
 #[tokio::test]
@@ -282,17 +282,16 @@ async fn notification_preference_get_matches_documented_contract() {
         "{}/api/v1/households/72001/notification_preference",
         app.origin
     );
-    let contract: Value =
-        serde_yaml_ng::from_str(include_str!("../../docs/api/openapi.v1.yaml")).unwrap();
+    let contract = contract();
     let operation = &contract["paths"]["/households/{household_id}/notification_preference"]["get"];
     assert_eq!(operation["operationId"], "getNotificationPreference");
     assert_eq!(
         operation["responses"]["404"]["$ref"],
         "#/components/responses/NotFound"
     );
-    let not_found = resolve(&contract, &operation["responses"]["404"]);
+    let not_found = resolve(contract, &operation["responses"]["404"]);
     let not_found_schema = resolve(
-        &contract,
+        contract,
         &not_found["content"]["application/json"]["schema"],
     );
 
@@ -311,7 +310,7 @@ async fn notification_preference_get_matches_documented_contract() {
     let missing_body: Value = missing.json().await.unwrap();
     assert_eq!(missing_status, 404);
     assert_value(
-        &contract,
+        contract,
         not_found_schema,
         &missing_body,
         "absent preference",
@@ -362,14 +361,14 @@ async fn notification_preference_get_matches_documented_contract() {
         operation["responses"]["200"]["headers"]["ETag"]["$ref"],
         "#/components/headers/etag"
     );
-    let etag_schema = resolve(&contract, &operation["responses"]["200"]["headers"]["ETag"]);
+    let etag_schema = resolve(contract, &operation["responses"]["200"]["headers"]["ETag"]);
     assert_eq!(etag_schema["required"], true);
     assert_eq!(etag_schema["schema"]["type"], "string");
     assert!(etag.as_deref().is_some_and(|value| !value.is_empty()));
     assert_value(
-        &contract,
+        contract,
         resolve(
-            &contract,
+            contract,
             &operation["responses"]["200"]["content"]["application/json"]["schema"],
         ),
         &body,
@@ -394,7 +393,7 @@ async fn notification_preference_get_matches_documented_contract() {
     let denied_body: Value = denied.json().await.unwrap();
     assert_eq!(denied_status, 404);
     assert_value(
-        &contract,
+        contract,
         not_found_schema,
         &denied_body,
         "outside view scope",
