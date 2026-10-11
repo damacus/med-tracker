@@ -382,7 +382,21 @@ Documentation build and diff checks passed. Physical phone-camera verification
 is tracked in [#2524](https://github.com/damacus/med-tracker/issues/2524).
 The owned review listener and synthetic database/storage stack have been removed;
 the earlier Rails reference and storage-probe stacks were already removed.
-The reviewed candidate is ready for publication. No merge or deployment is authorised.
+The reviewed candidate is ready for publication. No PR merge or deployment is authorised.
+
+Published as [PR #2525](https://github.com/damacus/med-tracker/pull/2525), commit
+`44100d5e`. GitHub reported a conflict with main `6fe3b7239`, which includes platform
+support and API contract work absent from the tested candidate. The sole conflict
+was the lockfile dependency list; Sol retained both quick-xml and regex. Application
+and fixture registrations merged cleanly. Locked all-target compilation, formatting
+and staged diff checks pass. Final combined `task ci` session 94388 passed:
+558 Rust tests and all 524 desktop/mobile browser cases, with one deliberate
+catalogue-capture test ignored. The browser phase took 23.0 minutes. Evidence:
+`/Users/damacus/Library/Application Support/rtk/tee/1791685811_task_ci.log`.
+Documentation build passed on the combined tree. The live GitHub main ref was
+confirmed as `6fe3b7239` after verification. Generated authentication/platform
+screenshots were restored to the staged main versions. The integration is ready
+to commit and push to the same PR; hosted acceptance remains a separate gate.
 
 ## C4: Add Medication wizard
 

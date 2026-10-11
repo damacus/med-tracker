@@ -1,3 +1,4 @@
+use super::contract::{assert_value, contract, resolve};
 use super::*;
 
 #[tokio::test]
@@ -473,6 +474,246 @@ async fn people_strong_parameters_preserve_rails_envelope_behaviour() {
     assert_eq!(statuses, (200, 200, 400));
     assert_eq!(name, "Synthetic inner parity");
     assert_eq!(account_id, Some(71001));
+}
+
+#[tokio::test]
+async fn person_get_matches_documented_contract() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    let contract: Value =
+        serde_yaml_ng::from_str(include_str!("../../docs/api/openapi.v1.yaml")).unwrap();
+    let operation = &contract["paths"]["/households/{household_id}/people/{id}"]["get"];
+    assert_eq!(operation["operationId"], "getPerson");
+    assert_eq!(
+        operation["responses"]["404"]["$ref"],
+        "#/components/responses/NotFound"
+    );
+    let not_found = resolve(&contract, &operation["responses"]["404"]);
+    let not_found_schema = resolve(
+        &contract,
+        &not_found["content"]["application/json"]["schema"],
+    );
+    assert_eq!(
+        operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"],
+        "#/components/schemas/PersonResponse"
+    );
+    assert_eq!(
+        operation["responses"]["200"]["headers"]["ETag"]["$ref"],
+        "#/components/headers/etag"
+    );
+    let etag_schema = resolve(&contract, &operation["responses"]["200"]["headers"]["ETag"]);
+    assert_eq!(etag_schema["required"], true);
+    assert_eq!(etag_schema["schema"]["type"], "string");
+
+    app.fixture.admin.execute_unprepared("UPDATE people SET date_of_birth='1985-02-03',email='synthetic-adult@example.test' WHERE id=73001; INSERT INTO location_memberships(household_id,location_id,person_id,created_at,updated_at) VALUES(72001,79001,73001,now(),now()); INSERT INTO notification_preferences(id,household_id,person_id,portable_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,morning_time,afternoon_time,evening_time,night_time,created_at,updated_at) VALUES(87997,72001,73001,'00000000-0000-4000-8000-000000008797',true,true,false,true,false,'08:30:00',NULL,NULL,NULL,now(),now())").await.unwrap();
+    let read = app
+        .client
+        .get(format!(
+            "{}/api/v1/households/72001/people/73001",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let read_status = read.status().as_u16();
+    let etag = read
+        .headers()
+        .get("etag")
+        .and_then(|value| value.to_str().ok())
+        .map(str::to_owned);
+    let body: Value = read.json().await.unwrap();
+    assert_eq!(read_status, 200);
+    assert!(etag.as_deref().is_some_and(|value| !value.is_empty()));
+    assert_value(
+        &contract,
+        resolve(
+            &contract,
+            &operation["responses"]["200"]["content"]["application/json"]["schema"],
+        ),
+        &body,
+        "person response",
+    );
+    assert_eq!(body["data"]["id"], 73001);
+    assert_eq!(body["data"]["person_type"], "adult");
+    assert_eq!(body["data"]["has_capacity"], true);
+    assert_eq!(body["data"]["date_of_birth"], "1985-02-03");
+    assert_eq!(body["data"]["email"], "synthetic-adult@example.test");
+    assert_eq!(body["data"]["location_ids"], json!([79001]));
+    assert_eq!(body["data"]["notification_preference_id"], 87997);
+    assert_eq!(
+        body["data"]["notification_preference_portable_id"],
+        "00000000-0000-4000-8000-000000008797"
+    );
+
+    let missing = app
+        .client
+        .get(format!(
+            "{}/api/v1/households/72001/people/99999",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let missing_status = missing.status().as_u16();
+    let missing_request_id = missing.headers()["x-request-id"]
+        .to_str()
+        .unwrap()
+        .to_owned();
+    let missing_body: Value = missing.json().await.unwrap();
+    assert_eq!(missing_status, 404);
+    assert_value(&contract, not_found_schema, &missing_body, "absent person");
+    assert_eq!(missing_body["error"]["code"], "not_found");
+    assert_eq!(missing_body["error"]["request_id"], missing_request_id);
+
+    let outside_scope = app
+        .client
+        .get(format!(
+            "{}/api/v1/households/72001/people/73002",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let outside_status = outside_scope.status().as_u16();
+    let outside_request_id = outside_scope.headers()["x-request-id"]
+        .to_str()
+        .unwrap()
+        .to_owned();
+    let outside_body: Value = outside_scope.json().await.unwrap();
+    assert_eq!(outside_status, 404);
+    assert_value(
+        &contract,
+        not_found_schema,
+        &outside_body,
+        "outside view scope",
+    );
+    assert_eq!(outside_body["error"]["code"], "not_found");
+    assert_eq!(outside_body["error"]["request_id"], outside_request_id);
+    app.close().await;
+}
+
+#[tokio::test]
+async fn people_list_matches_documented_contract() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    let collection = format!("{}/api/v1/households/72001/people", app.origin);
+    let contract = contract();
+    let operation = &contract["paths"]["/households/{household_id}/people"]["get"];
+    assert_eq!(operation["operationId"], "listPeople");
+    assert_eq!(
+        operation["responses"]["403"]["$ref"],
+        "#/components/responses/Forbidden"
+    );
+    let forbidden = resolve(contract, &operation["responses"]["403"]);
+    let forbidden_schema = resolve(
+        contract,
+        &forbidden["content"]["application/json"]["schema"],
+    );
+    assert_eq!(
+        operation["responses"]["422"]["$ref"],
+        "#/components/responses/ValidationFailed"
+    );
+    let invalid = resolve(contract, &operation["responses"]["422"]);
+    let invalid_schema = resolve(contract, &invalid["content"]["application/json"]["schema"]);
+
+    let list = app
+        .client
+        .get(&collection)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let list_status = list.status().as_u16();
+    let body: Value = list.json().await.unwrap();
+    assert_eq!(list_status, 200);
+    assert_eq!(
+        operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"],
+        "#/components/schemas/PersonCollectionResponse"
+    );
+    assert_value(
+        contract,
+        resolve(
+            contract,
+            &operation["responses"]["200"]["content"]["application/json"]["schema"],
+        ),
+        &body,
+        "people collection",
+    );
+    assert_eq!(body["data"][0]["id"], 73001);
+    assert_eq!(body["data"][0]["name"], "Synthetic adult");
+    assert_eq!(body["meta"]["total_count"], 1);
+
+    app.fixture
+        .admin
+        .execute_unprepared("INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,created_at,updated_at) VALUES(78002,72001,74001,73002,'view','carer',now(),now())")
+        .await
+        .unwrap();
+    for (page, expected_id) in [(1, 73001), (2, 73002)] {
+        let paginated = app
+            .client
+            .get(format!("{collection}?page={page}&per_page=1"))
+            .bearer_auth(&token)
+            .send()
+            .await
+            .unwrap();
+        let paginated_status = paginated.status().as_u16();
+        let paginated_body: Value = paginated.json().await.unwrap();
+        assert_eq!(paginated_status, 200);
+        assert_value(
+            contract,
+            resolve(
+                contract,
+                &operation["responses"]["200"]["content"]["application/json"]["schema"],
+            ),
+            &paginated_body,
+            "paginated people collection",
+        );
+        assert_eq!(paginated_body["meta"]["per_page"], 1);
+        assert_eq!(paginated_body["meta"]["total_count"], 2);
+        assert_eq!(paginated_body["data"].as_array().unwrap().len(), 1);
+        assert_eq!(paginated_body["data"][0]["id"], expected_id);
+    }
+
+    for query in ["page=0", "per_page=101", "updated_since=invalid"] {
+        let rejected = app
+            .client
+            .get(format!("{collection}?{query}"))
+            .bearer_auth(&token)
+            .send()
+            .await
+            .unwrap();
+        let rejected_status = rejected.status().as_u16();
+        let rejected_request_id = rejected.headers()["x-request-id"]
+            .to_str()
+            .unwrap()
+            .to_owned();
+        let rejected_body: Value = rejected.json().await.unwrap();
+        assert_eq!(rejected_status, 422, "{query}");
+        assert_value(contract, invalid_schema, &rejected_body, "invalid filter");
+        assert_eq!(rejected_body["error"]["request_id"], rejected_request_id);
+    }
+
+    let foreign = app
+        .client
+        .get(format!("{}/api/v1/households/72002/people", app.origin))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let foreign_status = foreign.status().as_u16();
+    let foreign_body: Value = foreign.json().await.unwrap();
+    assert_eq!(foreign_status, 403);
+    assert_value(
+        contract,
+        forbidden_schema,
+        &foreign_body,
+        "foreign household people",
+    );
+    assert_eq!(foreign_body["error"]["code"], "forbidden");
+    app.close().await;
 }
 
 #[tokio::test]

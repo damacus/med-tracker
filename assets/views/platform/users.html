@@ -1,0 +1,51 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="platform-page">
+  <header class="platform-page-header">
+    <p class="platform-eyebrow">Administration</p>
+    <h1>Platform users</h1>
+    <p class="platform-description">Manage who can sign in and who can administer MedTracker. Household roles are managed within each household.</p>
+  </header>
+  {% include "platform/navigation.html" %}
+  <form method="get" action="/platform/users" class="platform-search-panel">
+    <div class="platform-search-field">
+      <label for="platform-users-query">Search by email</label>
+      <input class="input input-bordered w-full" type="search" id="platform-users-query" name="q" value="{{ query }}" placeholder="e.g. name@example.com">
+    </div>
+    <button class="btn btn-primary" type="submit">Search</button>
+    {% if query %}<a class="btn btn-ghost" href="/platform/users">Clear search</a>{% endif %}
+  </form>
+  <section class="platform-directory" aria-labelledby="platform-directory-heading">
+    <div class="platform-directory-heading">
+      <div><h2 id="platform-directory-heading">User directory</h2><p class="shell-muted">{% if query %}Results for “{{ query }}”{% else %}Sign-in access and platform permissions{% endif %}</p></div>
+      <span class="platform-count">{{ total }} {% if total == 1 %}user{% else %}users{% endif %}</span>
+    </div>
+    {% if users | length > 0 %}
+    <div class="platform-desktop-directory" data-testid="platform-users-table">
+      <table class="table platform-users-table">
+        <caption class="sr-only">Platform users and their account access</caption>
+        <thead><tr><th scope="col">User</th><th scope="col">Platform access</th><th scope="col">Account</th><th scope="col">Sign-in</th><th scope="col">Actions</th></tr></thead>
+        <tbody>{% for user in users %}
+          <tr data-platform-user="{{ user.id }}"><th scope="row">{% include "platform/user_identity.html" %}</th><td>{% include "platform/user_access.html" %}</td><td>{% include "platform/user_account.html" %}</td><td>{% include "platform/user_sign_in.html" %}</td><td>{% include "platform/user_actions.html" %}</td></tr>
+        {% endfor %}</tbody>
+      </table>
+    </div>
+    <div class="platform-mobile-directory" data-testid="platform-users-mobile">
+      {% for user in users %}<article class="platform-user-card" data-platform-user="{{ user.id }}">
+        {% include "platform/user_identity.html" %}
+        <dl class="platform-user-details"><div><dt>Platform access</dt><dd>{% include "platform/user_access.html" %}</dd></div><div><dt>Account</dt><dd>{% include "platform/user_account.html" %}</dd></div><div><dt>Sign-in</dt><dd>{% include "platform/user_sign_in.html" %}</dd></div></dl>
+        {% include "platform/user_actions.html" %}
+      </article>{% endfor %}
+    </div>
+    {% else %}
+    <div class="platform-empty-state"><h3>No users found</h3><p>Try a different email address or clear the search to see all users.</p></div>
+    {% endif %}
+    <footer class="platform-pagination">
+      <p class="shell-muted">Showing {{ users | length }} of {{ total }} {% if total == 1 %}user{% else %}users{% endif %}{% if pages > 1 %} · Page {{ page }} of {{ pages }}{% endif %}</p>
+      {% if page_links | length > 1 %}<nav class="join" aria-label="User pages">
+      {% for number in page_links %}{% if number == page %}<span class="join-item btn btn-sm btn-active" aria-current="page">{{ number }}</span>{% else %}<a class="join-item btn btn-sm" aria-label="Page {{ number }}" href="/platform/users?q={{ query_encoded }}&amp;page={{ number }}">{{ number }}</a>{% endif %}{% endfor %}
+      </nav>{% endif %}
+    </footer>
+  </section>
+</section>
+{% endblock content %}

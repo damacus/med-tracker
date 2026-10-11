@@ -29,6 +29,7 @@ struct RequestContext {
     principal: Option<AuthenticatedRequest>,
     recovery_issuance_account: Option<i64>,
     totp_failure_status: Option<u16>,
+    support_expiry_denial: bool,
     password_login: bool,
     email_change: Option<(String, String)>,
 }
@@ -65,10 +66,20 @@ pub(super) fn persist_totp_failure(status: u16) -> AuthResult<()> {
         .map_err(|_| AuthError::internal("Identity request context missing"))
 }
 
+pub(super) fn persist_support_expiry() -> AuthResult<()> {
+    REQUEST
+        .try_with(|state| state.borrow_mut().support_expiry_denial = true)
+        .map_err(|_| AuthError::internal("Identity request context missing"))
+}
+
 fn commits_status(status: u16) -> bool {
     status < 400
         || REQUEST
-            .try_with(|state| state.borrow().totp_failure_status == Some(status))
+            .try_with(|state| {
+                let state = state.borrow();
+                state.totp_failure_status == Some(status)
+                    || (status == 403 && state.support_expiry_denial)
+            })
             .unwrap_or(false)
 }
 
@@ -318,6 +329,7 @@ async fn request_context(
                 principal: None,
                 recovery_issuance_account: None,
                 totp_failure_status: None,
+                support_expiry_denial: false,
                 password_login,
                 email_change: None,
             }),
@@ -360,6 +372,7 @@ pub async fn dispatch(
                 principal: None,
                 recovery_issuance_account: None,
                 totp_failure_status: None,
+                support_expiry_denial: false,
                 password_login,
                 email_change: None,
             }),
@@ -400,6 +413,7 @@ pub(super) async fn trusted<T>(
                 principal: None,
                 recovery_issuance_account: None,
                 totp_failure_status: None,
+                support_expiry_denial: false,
                 password_login: false,
                 email_change: None,
             }),

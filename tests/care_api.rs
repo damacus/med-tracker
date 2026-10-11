@@ -8,6 +8,8 @@ mod api_session;
 mod assignments;
 #[path = "care_api/better_auth_store.rs"]
 mod better_auth_store;
+#[path = "care_api/contract.rs"]
+mod contract;
 #[path = "care_api/crud.rs"]
 mod crud;
 #[path = "care_api/dosages.rs"]
@@ -40,6 +42,8 @@ mod pause_periods;
 mod people;
 #[path = "care_api/person_carers.rs"]
 mod person_carers;
+#[path = "care_api/platform.rs"]
+mod platform;
 #[path = "care_api/profile.rs"]
 mod profile;
 #[path = "care_api/push_subscriptions.rs"]

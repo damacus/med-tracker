@@ -14,6 +14,22 @@ C1–C3 supply care operations; I3 supplies protocol flows. Queue infrastructure
 any endpoint that enqueues work. No private compatibility adapter becomes a second business-logic owner.
 Writer owns API/integration code; existing contracts/native pinned files are reference inputs.
 
+## The work in plain English
+
+This slice is about programmatic interfaces: APIs used by software, not the app features behind them.
+
+1. **Complete the public API.** Preserve the documented API v1 routes, permissions, responses and
+   errors on Loco, and check compatibility with the pinned iOS and Android API definitions.
+2. **Add the other API protocols.** Preserve FHIR/SMART and MCP interfaces. They can follow the first
+   production release, but remain part of the full migration.
+3. **Check the API contracts for data services.** Keep the routes and responses for files, reports,
+   portability, lookup and reviews documented and authorised. Their product behavior belongs to the
+   care, browser and worker slices; this slice owns only the programmatic interface.
+4. **Prove the interfaces.** Check documented routes, client contracts, permissions, errors and safe
+   handling of retries and service failures.
+
+A1–A3 below retain the detailed API implementation and acceptance checks.
+
 ## Review focus
 
 Malformed requests preserve status/envelope (A1). Stale tokens and wrong households fail all transports
@@ -57,6 +73,10 @@ adapters invoke shared care operations with verified actors and current scopes/c
 - [ ] Review and commit `feat(integrations): preserve FHIR SMART and MCP access`.
 
 ### A3: Attachments, reports, portability, lookup and review workflows
+
+This sub-plan owns the programmatic API contracts and adapters for these capabilities. The underlying
+product behavior is owned by its care, browser or worker slice; API routes do not make that feature
+implementation API work.
 
 On 6 October, the owner excluded historical download-signature and system-export
 format compatibility. Preserve underlying files/data, issue new authorised links

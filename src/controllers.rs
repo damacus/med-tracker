@@ -15,6 +15,7 @@ pub mod medications;
 pub mod nhs_dmd;
 pub mod oauth_server;
 pub mod people;
+pub mod platform;
 pub mod signup;
 pub mod treatments;
 
