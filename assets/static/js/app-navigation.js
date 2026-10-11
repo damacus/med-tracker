@@ -74,12 +74,17 @@
     const accountTrigger = header.querySelector('[data-app-account]');
     header.querySelector('[data-account-name]').textContent = data.name;
     const avatar = header.querySelector('[data-profile-avatar]');
-    if (data.avatar_attached) {
+    avatar.classList.add('relative');
+    avatar.append(element('span', data.initials));
+    if (data.avatar_attached || data.gravatar_url) {
       const image = element('img');
-      image.src = `/households/${data.slug}/profile/avatar`;
+      image.src = data.avatar_attached ? `/households/${data.slug}/profile/avatar` : data.gravatar_url;
       image.alt = '';
+      image.dataset.avatarImage = '';
+      image.referrerPolicy = 'no-referrer';
+      image.className = 'absolute inset-0';
       avatar.append(image);
-    } else avatar.textContent = data.initials;
+    }
     const account = dialog('app-account', labels.profile_menu.my_account, accountTrigger);
     for (const id of ['dashboard', 'profile', 'administration']) {
       const item = data.choices.find(item => item.id === id);

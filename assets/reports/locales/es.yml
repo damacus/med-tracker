@@ -1948,7 +1948,7 @@ es:
       remove: Eliminar avatar
       removed: Foto de perfil eliminada.
       gravatar_label: Usar Gravatar
-      gravatar_description: Muestra tu Gravatar cuando no haya un avatar personalizado subido.
+      gravatar_description: Muestra tu Gravatar cuando no hayas subido una foto personalizada. Esto comparte un hash de tu dirección de correo electrónico y la dirección IP de quien la ve con Gravatar cada vez que se muestra tu foto. Puedes desactivarlo en cualquier momento.
       save_gravatar: Guardar elección de Gravatar
     time_zone:
       title: Zona horaria
