@@ -6,14 +6,14 @@ exclude = ["rust", "client-tools"]
 name = "med-tracker"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.94"
+rust-version = "1.94.1"
 publish = false
 default-run = "med-tracker"
 
 [dependencies]
 loco-rs = { version = "=1.2.0", default-features = false, features = ["cli", "with-db", "worker"] }
 async-trait = "0.1"
-aws-sdk-s3 = { version = "=1.152.0", default-features = false, features = ["rt-tokio", "rustls", "default-https-client", "http-1x"] }
+aws-sdk-s3 = { version = "=1.152.0", default-features = false, features = ["default-https-client", "http-1x", "rt-tokio", "rustls", "behavior-version-latest"] }
 csv = "=1.4.0"
 md-5 = "=0.11.0"
 quick-xml = "=0.41.0"
@@ -28,6 +28,7 @@ openidconnect = "=4.0.1"
 cedar-policy = { version = "=4.13.0", default-features = false }
 headers = "=0.4.2"
 hex = "=0.4.3"
+image = { version = "=0.25.10", default-features = false, features = ["png", "jpeg", "webp"] }
 hmac = "=0.13.0"
 totp-rs = { version = "=6.0.0", features = ["otpauth"] }
 oxide-auth = "=0.6.1"
@@ -37,6 +38,7 @@ url = "=2.5.8"
 subtle = "=2.6.1"
 webauthn-rs-core = "=0.5.5"
 webauthn-rs = { version = "=0.5.5", features = ["danger-allow-state-serialisation", "conditional-ui"] }
+web-push = { version = "=0.11.0", default-features = false, features = ["hyper-client"] }
 serde_cbor_2 = "0.13"
 getrandom = "=0.4.3"
 ulid = "=1.2.1"

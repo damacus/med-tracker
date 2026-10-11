@@ -34,7 +34,7 @@ pub(super) async fn show(
     data["authenticity_token"] = json!(token);
     data["keys"] = listing["keys"].clone();
     data["households"] = listing["households"].clone();
-    match format::render().view(&view, "identity_onboarding/keys.html", data) {
+    match super::security_locale::view(&view, "identity_onboarding/keys.html", data) {
         Ok(response) => (csrf, [(header::CACHE_CONTROL, "no-store")], response).into_response(),
         Err(_) => super::rendering::unavailable(),
     }
@@ -161,7 +161,7 @@ pub(super) fn result(view: &TeraView, body: &serde_json::Value) -> Response {
     data["title"] = json!("Save your API key");
     data["api_key"] = body["apiKey"].clone();
     data["name"] = body["name"].clone();
-    match format::render().view(view, "identity_onboarding/key_result.html", data) {
+    match super::security_locale::view(view, "identity_onboarding/key_result.html", data) {
         Ok(response) => (
             [
                 (header::CACHE_CONTROL, "no-store"),

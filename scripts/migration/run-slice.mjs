@@ -47,12 +47,12 @@ export async function runSlice({ all = false, target, filter = '', captureCatalo
   process.on('SIGTERM', onTerm);
   process.on('SIGINT', onInt);
   try {
-    await withOwnedDatabase(async (url, provision, {storage}) => {
+    await withOwnedDatabase(async (url, provision, ownership) => {
       if (all || ['persistence', 'tenant_access', 'care_doses', 'care_medications', 'care_api', 'identity_compatibility', 'identity_resource', 'oauth_server', 'queue_runtime'].includes(target)) await provision();
-      const needsStorage = all || (target === 'care_api' && (!filter || filter.includes('nhs_dmd')));
-      const storageEnvironment = needsStorage ? await storage() : {};
-      await runCargo(args, url, {...inheritedEnvironment,...storageEnvironment}, controller.signal);
-    }, undefined, inheritedEnvironment);
+      const needsScannerStorage = all || (target === 'care_api' && (!filter || filter.includes('nhs_dmd')));
+      const scannerEnvironment = needsScannerStorage ? await ownership.storage() : {};
+      await runCargo(args, url, { ...inheritedEnvironment, ...ownership.storageEnvironment, ...scannerEnvironment }, controller.signal);
+    }, undefined, inheritedEnvironment, { storage: all || target === 'care_api' });
   } finally {
     process.off('SIGTERM', onTerm);
     process.off('SIGINT', onInt);

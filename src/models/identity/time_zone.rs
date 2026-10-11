@@ -7,7 +7,7 @@ static RAILS_NAMES: LazyLock<BTreeMap<&'static str, &'static str>> = LazyLock::n
         .expect("Retained Rails timezone mapping must be valid")
 });
 
-pub(super) fn preferred(
+pub(crate) fn preferred(
     preferences: &serde_json::Value,
 ) -> Result<chrono_tz::Tz, AuthenticationError> {
     let fallback = std::env::var("TZ").unwrap_or_else(|_| "UTC".into());

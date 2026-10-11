@@ -1,6 +1,7 @@
 mod administration;
 mod assignments;
 mod audit;
+mod avatar;
 mod dosages;
 mod dose_history;
 mod dose_occurrences;
@@ -86,6 +87,13 @@ pub fn routes() -> Routes {
         .add(
             "/{household_id}/medication_lookup",
             get(medication_lookup::show),
+        )
+        .add(
+            "/{household_id}/profile/avatar",
+            get(avatar::show)
+                .put(avatar::upload)
+                .delete(avatar::remove)
+                .layer(axum::extract::DefaultBodyLimit::max(6 * 1024 * 1024)),
         )
         .add(
             "/{household_id}/health_events",

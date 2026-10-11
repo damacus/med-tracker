@@ -72,7 +72,7 @@ pub(super) async fn passkey(
     let mut data = crate::controllers::medications::rendering::appearance_context();
     data["title"] = json!("Add passkey");
     data["operation_id"] = json!(link.operation_id);
-    match format::render().view(&view, "identity_onboarding/add_passkey.html", data) {
+    match super::security_locale::view(&view, "identity_onboarding/add_passkey.html", data) {
         Ok(response) => ([(header::CACHE_CONTROL, "no-store")], response).into_response(),
         Err(_) => super::rendering::unavailable(),
     }
@@ -83,7 +83,7 @@ pub(super) fn recovery_codes(view: &TeraView, body: &serde_json::Value) -> Respo
     data["title"] = json!("Save your recovery codes");
     data["recovery_codes"] = body["recoveryCodes"].clone();
     data["generation"] = body["generation"].clone();
-    match format::render().view(view, "identity_onboarding/regenerated.html", data) {
+    match super::security_locale::view(view, "identity_onboarding/regenerated.html", data) {
         Ok(response) => ([(header::CACHE_CONTROL, "no-store")], response).into_response(),
         Err(_) => super::rendering::unavailable(),
     }

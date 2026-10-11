@@ -44,7 +44,7 @@ fn write_error(error: sea_orm::DbErr) -> OperationError {
         OperationError::Unavailable
     }
 }
-fn age(date: NaiveDate, today: NaiveDate) -> i32 {
+pub(crate) fn age(date: NaiveDate, today: NaiveDate) -> i32 {
     today.year()
         - date.year()
         - i32::from((today.month(), today.day()) < (date.month(), date.day()))

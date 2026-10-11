@@ -10,6 +10,15 @@ pub(super) struct Failure {
 }
 
 impl Failure {
+    pub fn avatar_unavailable() -> Self {
+        Self {
+            status: StatusCode::SERVICE_UNAVAILABLE,
+            code: "avatar_unavailable".into(),
+            message: "Avatar storage is temporarily unavailable".into(),
+            details: None,
+            authenticate: None,
+        }
+    }
     pub fn report_unavailable() -> Self {
         Self {
             status: StatusCode::SERVICE_UNAVAILABLE,
