@@ -1,10 +1,50 @@
 # Migration progress
 
-Updated 6 October 2026. Complete every slice in [the plan](plan.md).
+Updated 11 October 2026. Complete every slice in [the plan](plan.md).
 Foundation is accepted. The verified baseline PR #2451 is merged; all remaining
 migration areas stay in scope. No live deployment has occurred.
 
 ## Current delivery
+
+Session close-out on 11 October 2026:
+
+- [Profile PR #2504](https://github.com/damacus/med-tracker/pull/2504) is merged
+  as `b50951e09323060ec7a8d6c6f08a0750db0c3b25`.
+  [Drawer/account-menu PR #2521](https://github.com/damacus/med-tracker/pull/2521)
+  is merged as `a1e18b0172c398c18c33cf967e7857104692aa52`. Profile settings use
+  accordions showing current values; navigation belongs in the drawer and
+  appearance settings live on the profile page. Parent CI issue #2522 is closed.
+- [Dashboard PR #2505](https://github.com/damacus/med-tracker/pull/2505) remains
+  open at signed commit `ab0ad668acc8586443d8c6557738c1022dc28873`.
+  Review fixes preserve account-local schedule dates, taper previews and recorded
+  doses, and avoid repeated stock resolution. The dashboard reuses nine existing
+  profile/navigation SVG symbols instead of duplicating them.
+- Local `task ci` passed, including all 586 desktop/mobile browser cases.
+  Fresh [hosted run 38121077030](https://github.com/damacus/med-tracker/actions/runs/38121077030)
+  passed all Rails unit and system shards on `ab0ad668`. At the close-out snapshot,
+  Loco Foundation was still running; all other reported checks passed. This does
+  not establish complete hosted acceptance, merge or deployment.
+- The earlier Rails scanned-stock failure passed on hosted rerun. Intermittent
+  notice, menu and lookup assertions remain tracked in
+  [#2526](https://github.com/damacus/med-tracker/issues/2526). No Rails assertions
+  were weakened and no automatic retries were added.
+- A screenshot alleged a dashboard Cedar view-access bypass. Current grant and
+  membership checks were inspected; eight dashboard tests and the Cedar
+  grant/expiry test passed. No bypass was reproduced. No security finding was
+  dismissed, and no corresponding unresolved GitHub review thread was present.
+- [Profile acceptance #2502](https://github.com/damacus/med-tracker/issues/2502)
+  and [archive restoration #2513](https://github.com/damacus/med-tracker/issues/2513)
+  remain open. Gravatar remains disabled. Production cutover is not ready and
+  no deployment is authorised by this close-out.
+
+Next: inspect the final Loco result for `ab0ad668`, address any failure on that
+revision, then obtain dashboard acceptance. The shared HTML report remains at
+`/private/tmp/medtracker-migration-status.html`; its authoritative structured
+input is `/private/tmp/medtracker-progress-report.md`. This ledger update is
+published directly to `main` at the owner's request, separately from PR #2505.
+Other sections below retain their historical evidence dates.
+
+## Earlier delivery checkpoint — 6 October
 
 Continuation [PR #2460](https://github.com/damacus/med-tracker/pull/2460) publishes
 the Rails shared-ignore correction at signed Dan Webb commit
