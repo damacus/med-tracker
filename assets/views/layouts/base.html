@@ -8,18 +8,20 @@
     <script src="/static/js/appearance.js"></script>
     <link rel="stylesheet" href="/static/css/compiled.css">
     <script src="/static/js/interaction.js" defer></script>
+    <script src="/static/js/mobile-shortcuts.js" defer></script>
+    <script src="/static/js/security-return.js" defer></script>
   </head>
   <body>
     <a href="#main" class="skip-link">Skip to content</a>
-    <header class="shell-header">
+    {% block header %}<header class="shell-header">
       <div class="shell-width shell-header-inner">
         <a href="/" class="text-xl font-semibold" aria-label="MedTracker home">MedTracker</a>
         <button type="button" class="btn btn-ghost" data-dialog-open="appearance-dialog">Appearance</button>
         <a class="link" href="/account/security">Account security</a>
       </div>
-    </header>
-    <main id="main" class="shell-width shell-main" tabindex="-1">{% block content %}{% endblock content %}</main>
-    <footer class="shell-footer"><div class="shell-width text-sm shell-muted">MedTracker · Care, kept together.</div></footer>
-    {% include "components/appearance.html" %}
+    </header>{% endblock header %}
+    <main id="main" class="{% block main_class %}shell-width shell-main{% endblock main_class %}" tabindex="-1">{% block content %}{% endblock content %}</main>
+    {% block footer %}<footer class="shell-footer"><div class="shell-width text-sm shell-muted">MedTracker · Care, kept together.</div></footer>{% endblock footer %}
+    {% block appearance %}{% include "components/appearance.html" %}{% endblock appearance %}
   </body>
 </html>

@@ -22,7 +22,7 @@ fn invalid(message: &str) -> OperationError {
     }
 }
 
-fn allowed_endpoint(endpoint: &str) -> bool {
+pub(crate) fn allowed_endpoint(endpoint: &str) -> bool {
     if endpoint.trim() != endpoint
         || endpoint.chars().any(char::is_whitespace)
         || endpoint.contains('\\')
@@ -107,7 +107,7 @@ impl Attributes {
     }
 }
 
-async fn lock_account(tenant: &TenantTransaction) -> Result<(), OperationError> {
+pub(crate) async fn lock_account(tenant: &TenantTransaction) -> Result<(), OperationError> {
     household::Entity::find_by_id(tenant.scope().household_id)
         .lock_exclusive()
         .one(tenant.transaction())

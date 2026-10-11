@@ -44,7 +44,7 @@ fn render(
     data["secret"] = json!(secret);
     data["error"] = json!(error);
     data["authenticity_token"] = json!(authenticity_token);
-    match format::render().view(view, "identity_onboarding/totp.html", data) {
+    match super::security_locale::view(view, "identity_onboarding/totp.html", data) {
         Ok(response) => (token, [(header::CACHE_CONTROL, "no-store")], response).into_response(),
         Err(_) => super::rendering::unavailable(),
     }

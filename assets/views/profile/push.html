@@ -1,0 +1,6 @@
+<section class="profile-personal card card-body bg-base-100 border border-base-300 min-w-0 gap-3" aria-labelledby="profile-push-title" data-profile-push data-endpoint="/households/{{ slug }}/profile/push" data-token="{{ authenticity_token }}"
+  {% for key in ['unconfigured', 'unsupported', 'denied', 'enabled', 'disabled', 'accepted', 'failed', 'expired'] %}data-{{ key }}="{{ labels.profiles.push[key] }}"{% endfor %}>
+  <h3 id="profile-push-title">{{ labels.profiles.notifications.browser_title }}</h3><p>{{ labels.profiles.notifications.browser_description }}</p>
+  <p role="status" aria-live="polite" data-push-status>{{ labels.profiles.notifications.checking_status }}</p>
+  <div class="flex flex-wrap gap-3"><button class="btn" type="button" data-push-enable disabled>{{ labels.profiles.notifications.enable }}</button><button class="btn btn-ghost" type="button" data-push-disable disabled>{{ labels.profiles.notifications.disable }}</button><button class="btn" type="button" data-push-test hidden>{{ labels.profiles.notifications.send_test_notification }}</button></div>
+</section>

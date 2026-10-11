@@ -69,3 +69,42 @@ test('application failure survives database cleanup failure', async () => {
     return args[0] === 'foundation:db-port' ? '127.0.0.1:54321' : '';
   }), /Original application failure/);
 });
+
+test('storage fixtures share only their owned project and supply an isolated loopback endpoint', async () => {
+  const calls = [];
+  await withOwnedDatabase(async (_url, _provision, ownership) => {
+    assert.equal(ownership.storageEnvironment?.ACTIVE_STORAGE_S3_ENDPOINT, 'http://127.0.0.1:54322');
+    assert.equal(ownership.storageEnvironment?.ACTIVE_STORAGE_S3_BUCKET, 'medtracker-fixture');
+    assert.equal(ownership.storageEnvironment?.ACTIVE_STORAGE_S3_ACCESS_KEY_ID, 'storage-smoke-access');
+  }, args => {
+    calls.push(args);
+    if (args[0] === 'foundation:db-port') return '127.0.0.1:54321';
+    if (args[0] === 'foundation:storage-port') return '127.0.0.1:54322';
+    return '';
+  }, { ACTIVE_STORAGE_S3_ENDPOINT: 'https://unowned.invalid' }, { storage: true });
+  assert.deepEqual(calls.map(args => args[0]), ['foundation:db-up', 'foundation:db-port', 'foundation:storage-up', 'foundation:storage-port', 'foundation:db-down']);
+  assert.ok(calls.every(args => args[1] === calls[0][1]));
+});
+
+test('storage fixture rejects non-loopback endpoints before starting the application', async () => {
+  const calls = [];
+  await assert.rejects(withOwnedDatabase(async () => assert.fail('Application must not start'), args => {
+    calls.push(args);
+    if (args[0] === 'foundation:db-port') return '127.0.0.1:54321';
+    if (args[0] === 'foundation:storage-port') return '0.0.0.0:9000';
+    return '';
+  }, {}, { storage: true }), /Invalid owned storage endpoint/);
+  assert.equal(calls.at(-1)[0], 'foundation:db-down');
+});
+
+test('failed storage setup cleans the attempted project without changing the original error', async () => {
+  const calls = [];
+  await assert.rejects(withOwnedDatabase(async () => assert.fail('Application must not start'), args => {
+    calls.push(args);
+    if (args[0] === 'foundation:db-port') return '127.0.0.1:54321';
+    if (args[0] === 'foundation:storage-up') throw new Error('Owned storage unavailable');
+    return '';
+  }, {}, { storage: true }), /Owned storage unavailable/);
+  assert.equal(calls.at(-1)[0], 'foundation:db-down');
+  assert.ok(calls.every(args => args[1] === calls[0][1]));
+});

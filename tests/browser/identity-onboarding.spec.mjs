@@ -370,6 +370,7 @@ test('email change binds fresh proof and verifies the new address before activat
 
 test('account closure requires fresh proof and ownership transfer while preserving care', async ({ page, browser, careFixture }) => {
   await careFixture.seedAdministration();
+  await careFixture.profileClosureDevices();
   await page.goto('/login');
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
@@ -391,11 +392,13 @@ test('account closure requires fresh proof and ownership transfer while preservi
   expect(rolledBack.memberships_ended).toBe(false);
   expect(rolledBack.credentials_preserved).toBe(true);
   expect(rolledBack.sessions_revoked).toBe(false);
+  expect(await careFixture.profileDeviceProbe()).toEqual({ browser: 1, native: 1, other_browser: 1, other_native: 1 });
   await careFixture.restoreClosureAudit();
   await page.getByLabel('Current password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Confirm change', exact: true }).click();
   await page.waitForURL('/login');
   expect(await careFixture.closureProbe()).toEqual({ closed: true, memberships_ended: true, credentials_preserved: true, sessions_revoked: true, care_preserved: true, rollback_preserved: true });
+  expect(await careFixture.profileDeviceProbe()).toEqual({ browser: 0, native: 0, other_browser: 1, other_native: 1 });
   await deniesClinical(stalePage, '/households/persistence-fixture/medications');
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');

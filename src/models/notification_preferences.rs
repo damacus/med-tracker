@@ -11,6 +11,8 @@ use sea_orm::{
 use serde_json::{Map, Value, json};
 use sha2::{Digest, Sha256};
 
+pub mod managed;
+
 #[derive(Default)]
 pub struct Changes {
     pub enabled: Option<bool>,

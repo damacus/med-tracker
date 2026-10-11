@@ -124,6 +124,12 @@ pub(crate) async fn create_with_failure(
             details: json!({"message": "Medication take idempotency key is unavailable"}),
         })?;
     decrement_stock(db, context, request_id, &proposed).await?;
+    crate::models::care::browser_push::low_stock::record_crossing(
+        context.tenant,
+        &proposed.selected,
+        take.id,
+    )
+    .await?;
     record_domain_audit(db, context, request_id, &take, &proposed).await?;
     Ok((false, take))
 }

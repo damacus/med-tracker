@@ -47,10 +47,10 @@ export async function runSlice({ all = false, target, filter = '', captureCatalo
   process.on('SIGTERM', onTerm);
   process.on('SIGINT', onInt);
   try {
-    await withOwnedDatabase(async (url, provision) => {
+    await withOwnedDatabase(async (url, provision, ownership) => {
       if (all || ['persistence', 'tenant_access', 'care_doses', 'care_medications', 'care_api', 'identity_compatibility', 'identity_resource', 'oauth_server', 'queue_runtime'].includes(target)) await provision();
-      await runCargo(args, url, inheritedEnvironment, controller.signal);
-    }, undefined, inheritedEnvironment);
+      await runCargo(args, url, { ...inheritedEnvironment, ...ownership.storageEnvironment }, controller.signal);
+    }, undefined, inheritedEnvironment, { storage: all || target === 'care_api' });
   } finally {
     process.off('SIGTERM', onTerm);
     process.off('SIGINT', onInt);

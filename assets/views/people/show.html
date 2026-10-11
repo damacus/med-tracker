@@ -7,7 +7,7 @@
   {% if care_notice %}<p class="alert alert-success mt-4" role="status">{{ care_notice }}</p>{% endif %}
   <div class="flex flex-wrap items-end justify-between gap-4 mt-4 border-b border-base-300 pb-6">
     <div class="flex items-center gap-4 min-w-0">
-      <div role="img" aria-label="{{ person.name }} avatar" class="grid place-items-center bg-neutral text-neutral-content rounded-full w-16 h-16 shrink-0"><span class="text-xl font-semibold">{{ avatar_initials }}</span></div>
+      {% if avatar_attached %}<img src="/households/{{ slug }}/people/{{ person.id }}/avatar" alt="{{ person.name }} avatar" class="rounded-full w-16 h-16 shrink-0 object-cover">{% else %}<div role="img" aria-label="{{ person.name }} avatar" class="grid place-items-center bg-neutral text-neutral-content rounded-full w-16 h-16 shrink-0"><span class="text-xl font-semibold">{{ avatar_initials }}</span></div>{% endif %}
       <div class="min-w-0">
         <h1 class="text-3xl font-semibold">{{ person.name }}</h1>
         <p class="text-base-content/70 mt-2">{{ type_label }}{% if age_present %} · Age {{ person.age }}{% endif %}</p>
