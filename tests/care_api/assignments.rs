@@ -584,3 +584,164 @@ async fn person_medication_get_matches_documented_contract() {
     assert_eq!(foreign_body["error"]["request_id"], foreign_request_id);
     app.close().await;
 }
+
+#[tokio::test]
+async fn person_medication_list_matches_documented_contract() {
+    use super::contract::{assert_value, contract, resolve};
+    let app = Application::new().await;
+    let token = app.token().await;
+    let collection = format!("{}/api/v1/households/72001/person_medications", app.origin);
+    let contract = contract();
+    let operation = &contract["paths"]["/households/{household_id}/person_medications"]["get"];
+    assert_eq!(operation["operationId"], "listPersonMedications");
+    assert_eq!(
+        operation["responses"]["422"]["$ref"],
+        "#/components/responses/ValidationFailed"
+    );
+    assert_eq!(
+        operation["responses"]["403"]["$ref"],
+        "#/components/responses/Forbidden"
+    );
+    let invalid = resolve(contract, &operation["responses"]["422"]);
+    let invalid_schema = resolve(contract, &invalid["content"]["application/json"]["schema"]);
+    let forbidden = resolve(contract, &operation["responses"]["403"]);
+    let forbidden_schema = resolve(
+        contract,
+        &forbidden["content"]["application/json"]["schema"],
+    );
+
+    let list = app
+        .client
+        .get(&collection)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let list_status = list.status().as_u16();
+    let body: Value = list.json().await.unwrap();
+    assert_eq!(list_status, 200);
+    assert_eq!(
+        operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"],
+        "#/components/schemas/PersonMedicationCollectionResponse"
+    );
+    assert_value(
+        contract,
+        resolve(
+            contract,
+            &operation["responses"]["200"]["content"]["application/json"]["schema"],
+        ),
+        &body,
+        "person medication collection",
+    );
+    assert_eq!(
+        body["meta"],
+        json!({"page":1,"per_page":20,"total_count":1})
+    );
+    assert_eq!(body["data"][0]["id"], 81001);
+
+    app.fixture
+        .admin
+        .execute_unprepared("INSERT INTO medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at) VALUES(92005,72001,79001,'Second synthetic tablets',10,2,'tablet',now(),now()); INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(92010,72001,73001,92005,2,'tablet',1,now(),now()); INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(92011,72001,73002,80001,2,'tablet',1,now(),now())")
+        .await
+        .unwrap();
+
+    for (page, expected_id) in [(1, 81001), (2, 92010)] {
+        let paginated = app
+            .client
+            .get(format!("{collection}?page={page}&per_page=1"))
+            .bearer_auth(&token)
+            .send()
+            .await
+            .unwrap();
+        let paginated_status = paginated.status().as_u16();
+        let paginated_body: Value = paginated.json().await.unwrap();
+        assert_eq!(paginated_status, 200);
+        assert_value(
+            contract,
+            resolve(
+                contract,
+                &operation["responses"]["200"]["content"]["application/json"]["schema"],
+            ),
+            &paginated_body,
+            "paginated person medication collection",
+        );
+        assert_eq!(paginated_body["meta"]["per_page"], 1);
+        assert_eq!(paginated_body["meta"]["total_count"], 2);
+        assert_eq!(paginated_body["data"][0]["id"], expected_id);
+    }
+
+    for query in ["page=0", "per_page=101", "updated_since=invalid"] {
+        let rejected = app
+            .client
+            .get(format!("{collection}?{query}"))
+            .bearer_auth(&token)
+            .send()
+            .await
+            .unwrap();
+        let rejected_status = rejected.status().as_u16();
+        let rejected_request_id = rejected.headers()["x-request-id"]
+            .to_str()
+            .unwrap()
+            .to_owned();
+        let rejected_body: Value = rejected.json().await.unwrap();
+        assert_eq!(rejected_status, 422, "{query}");
+        assert_value(contract, invalid_schema, &rejected_body, "invalid filter");
+        assert_eq!(rejected_body["error"]["request_id"], rejected_request_id);
+    }
+
+    app.fixture
+        .admin
+        .execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001")
+        .await
+        .unwrap();
+    let scoped = app
+        .client
+        .get(&collection)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let scoped_status = scoped.status().as_u16();
+    let scoped_body: Value = scoped.json().await.unwrap();
+    assert_eq!(scoped_status, 200);
+    assert_value(
+        contract,
+        resolve(
+            contract,
+            &operation["responses"]["200"]["content"]["application/json"]["schema"],
+        ),
+        &scoped_body,
+        "grant scoped collection",
+    );
+    assert_eq!(scoped_body["meta"]["total_count"], 2);
+    assert_eq!(scoped_body["data"].as_array().unwrap().len(), 2);
+    assert_eq!(scoped_body["data"][0]["id"], 81001);
+    assert_eq!(scoped_body["data"][1]["id"], 92010);
+
+    let foreign = app
+        .client
+        .get(format!(
+            "{}/api/v1/households/72002/person_medications",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let foreign_status = foreign.status().as_u16();
+    let foreign_request_id = foreign.headers()["x-request-id"]
+        .to_str()
+        .unwrap()
+        .to_owned();
+    let foreign_body: Value = foreign.json().await.unwrap();
+    assert_eq!(foreign_status, 403);
+    assert_value(
+        contract,
+        forbidden_schema,
+        &foreign_body,
+        "foreign household",
+    );
+    assert_eq!(foreign_body["error"]["code"], "forbidden");
+    assert_eq!(foreign_body["error"]["request_id"], foreign_request_id);
+    app.close().await;
+}
