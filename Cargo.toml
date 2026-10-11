@@ -32,7 +32,7 @@ webauthn-rs-core = "=0.5.5"
 webauthn-rs = { version = "=0.5.5", features = ["danger-allow-state-serialisation", "conditional-ui"] }
 serde_cbor_2 = "0.13"
 getrandom = "=0.4.3"
-ulid = "=1.2.1"
+ulid = "=3.0.0"
 chrono = { version = "0.4", features = ["serde"] }
 chrono-tz = "0.10"
 axum = "0.8"
