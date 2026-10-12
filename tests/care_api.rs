@@ -20,6 +20,8 @@ mod browser_push_reminders;
 mod contract;
 #[path = "care_api/crud.rs"]
 mod crud;
+#[path = "care_api/dashboard.rs"]
+mod dashboard;
 #[path = "care_api/dosages.rs"]
 mod dosages;
 #[path = "care_api/dose_history.rs"]

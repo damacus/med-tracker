@@ -381,3 +381,53 @@ fn assignment_row(record: person_medication::Model, associations: &SourceContext
         "current_pause_period": associations.pauses.get(&record.id)
     })
 }
+
+pub(crate) async fn dashboard_stock(
+    context: &AuthContext,
+    cards: &[Value],
+    medicines: &[medication::Model],
+) -> Result<HashMap<(String, i64), bool>, ApiError> {
+    access::recheck(context).await?;
+    let medications = medicines.iter().cloned().map(|row| (row.id, row)).collect();
+    let mut result = HashMap::new();
+    for card in cards.iter().filter(|card| card["can_record"] == true) {
+        if let (Some(kind), Some(id)) = (card["source_type"].as_str(), card["id"].as_i64()) {
+            result.insert(
+                (kind.to_owned(), id),
+                card["eligible_stock_medication_ids"]
+                    .as_array()
+                    .is_some_and(|ids| !ids.is_empty()),
+            );
+        }
+    }
+    for kind in ["schedule", "person_medication"] {
+        let sources: Vec<_> = cards
+            .iter()
+            .filter(|card| card["source_type"] == kind && card["can_record"] != true)
+            .filter_map(|card| {
+                Some(SourceRef {
+                    id: card["id"].as_i64()?,
+                    person_id: card["person_id"].as_i64()?,
+                    medication_id: card["medication_id"].as_i64()?,
+                    portable_id: String::new(),
+                })
+            })
+            .collect();
+        let visible_people = sources.iter().map(|source| source.person_id).collect();
+        let stock = source_stock(
+            context.transaction(),
+            context,
+            &sources,
+            &medications,
+            &visible_people,
+        )
+        .await?;
+        for source in sources {
+            result.insert(
+                (kind.to_owned(), source.id),
+                stock.get(&source.id).is_some_and(|ids| !ids.is_empty()),
+            );
+        }
+    }
+    Ok(result)
+}

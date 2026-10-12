@@ -1,0 +1,19 @@
+{% if dashboard.next %}{% set row = dashboard.next %}
+{% if variant == 'time_first' %}
+<section><h2 class="text-xl font-black mb-3">{{ labels.dashboard.variants.time_first.next_up }}</h2><div class="dashboard-panel dashboard-next-compact p-6 sm:p-8">
+  <div>{% include "dashboard/identity.html" %}<div class="mt-6 flex items-center gap-4"><span class="dashboard-icon-tile">{% include "dashboard/medication-icon.html" %}</span><div><h3 class="text-xl font-black">{{ row.medication }}</h3><p class="text-base-content/70">{{ row.dose }}</p></div></div></div>
+  <div class="dashboard-next-action"><p class="text-sm text-base-content/70">{{ labels.dashboard.variants.due_at }}</p><p class="font-bold text-primary mb-2">{{ row.time }}</p>{% if row.can_record %}<a class="btn btn-primary rounded-full w-full font-black" href="{{ row.record_url }}&dashboard_person_id={% if dashboard.selected %}{{ dashboard.selected }}{% else %}all{% endif %}&dashboard_grouping={{ grouping }}"><svg aria-hidden="true" width="20" height="20"><use href="/static/dashboard-icons.svg#hand_package"/></svg>{{ row.action_label }}</a>{% endif %}</div>
+</div></section>
+{% else %}
+<section class="dashboard-panel dashboard-attention p-6 sm:p-8">
+  <div class="flex items-center gap-4"><span class="dashboard-bell"><svg aria-hidden="true" width="24" height="24"><use href="/static/dashboard-icons.svg#bell"/></svg></span><h2 class="text-2xl font-black tracking-tight">{{ labels.dashboard.variants.calm_focus.needs_attention }}</h2></div>
+  <div class="mt-7 border-b border-base-300 pb-6">{% include "dashboard/identity.html" %}</div>
+  <div class="grid sm:grid-cols-[1fr_auto] items-center gap-6 py-7">
+    <div class="flex items-center gap-4 min-w-0"><span class="dashboard-icon-tile dashboard-icon-large">{% set icon_size = 32 %}{% include "dashboard/medication-icon.html" %}</span><div class="min-w-0"><h3 class="text-2xl font-black truncate">{{ row.medication }}</h3><p class="text-base-content/70">{{ row.dose }}</p></div></div>
+    <div class="flex items-center gap-3 sm:border-l sm:border-base-300 sm:pl-6"><span class="dashboard-clock"><svg aria-hidden="true" width="22" height="22"><use href="/static/dashboard-icons.svg#clock"/></svg></span><div><p class="text-2xl font-black">{{ row.time }}</p><p class="text-sm font-black text-primary">{{ row.status_label }}</p></div></div>
+  </div>
+  {% if row.can_record %}<a class="btn btn-primary rounded-full w-full font-black" href="{{ row.record_url }}&dashboard_person_id={% if dashboard.selected %}{{ dashboard.selected }}{% else %}all{% endif %}&dashboard_grouping={{ grouping }}"><svg aria-hidden="true" width="20" height="20"><use href="/static/dashboard-icons.svg#hand_package"/></svg>{{ labels.dashboard.variants.calm_focus.review_and_record }}</a>{% endif %}
+  <p class="text-center text-sm text-base-content/70 mt-4">{{ labels.dashboard.variants.calm_focus.confirmation_hint }}</p>
+</section>
+{% endif %}
+{% else %}<section class="dashboard-panel border-dashed p-12 text-center"><h2 class="text-2xl font-black">{{ labels.dashboard.variants.empty_title }}</h2><p>{{ labels.dashboard.empty_state }}</p></section>{% endif %}
