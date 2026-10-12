@@ -85,7 +85,12 @@ pub fn invitation_routes() -> Routes {
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("/api/v1/households")
-        .add("/{household_id}/me", get(me::show))
+        .add(
+            "/{household_id}/me",
+            get(me::show).layer(axum::middleware::map_response(|response| async {
+                profile::no_store(response)
+            })),
+        )
         .add(
             "/{household_id}/medication_lookup",
             get(medication_lookup::show),
