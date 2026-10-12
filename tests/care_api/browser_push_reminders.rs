@@ -1304,7 +1304,7 @@ async fn browser_low_stock_reminder_follows_committed_threshold_crossing_once() 
     );
     assert_eq!(
         transport.0.lock().unwrap()[0],
-        json!({"title":"Stock reminder","body":"A medication may be running low.","path":"/households/persistence-fixture/dashboard"})
+        json!({"title":"Stock reminder","body":"A medication may be running low.","path":"/households/persistence-fixture/dashboard","account_id":"71001"})
     );
     app.close().await;
 }
@@ -1393,7 +1393,7 @@ async fn reminders_use_saved_zone(saved_zone: &str, zone: chrono_tz::Tz) {
     assert_eq!(
         transport.0.lock().unwrap().as_slice(),
         &[
-            json!({"title":"Medication reminder","body":"A dose is due.","path":"/households/persistence-fixture/dashboard"})
+            json!({"title":"Medication reminder","body":"A dose is due.","path":"/households/persistence-fixture/dashboard","account_id":"71001"})
         ]
     );
     app.fixture

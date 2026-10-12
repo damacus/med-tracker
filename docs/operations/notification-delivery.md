@@ -28,6 +28,56 @@ The public and private keys must belong to the same VAPID key pair. The private
 key is a secret. A missing public key prevents the browser from creating a
 working subscription.
 
+### Loco browser reminder worker
+
+The root Loco application reads `MEDTRACKER_WEB_PUSH_PRIVATE_KEY` and
+`MEDTRACKER_WEB_PUSH_SUBJECT`. Keep the VAPID signing key consistent across web
+and worker replicas. Apply the root PostgreSQL migrations before starting the
+worker; `notification_events` and `notification_deliveries` hold reminder intent
+and each device's durable outcome. The root `config/production.yaml` schedules
+`browser-reminders` once per minute, using the existing PostgreSQL queue. Run
+`task worker LOCO_ENV=production` in the approved worker environment. Do not
+start a second scheduler for the same deployment by accident.
+
+The scheduler rediscovers due and missed reminders from the preceding hour and
+low-stock crossings from the preceding 24 hours. It also queues accounts with
+pending or sending deliveries, so retry drain does not require rediscovery of
+the original intent. The worker uses its current clock and checks access,
+subscription ownership, preferences and dose or stock relevance before each
+device attempt. Due and missed deliveries expire one hour after their intended
+notification time; the missed time includes the 30-minute grace period.
+Low-stock deliveries expire 24 hours after threshold crossing.
+
+Each device has its own row. `accepted` means the push service accepted the
+request; it does not prove the browser displayed it. `pending` with outcome
+`confirmed_rejection` is retryable after 1, 5, 15 and 30 minutes, subject to
+`Retry-After` and the deadline; no device is sent more than five times.
+`uncertain` means transport acceptance could not be determined and is never
+retried automatically. `expired` removes only the affected subscription;
+`permanent` is terminal. `invalid` records that a deadline, eligibility check
+or retry limit prevented another attempt. A sending claim stranded for more
+than 120 seconds becomes `uncertain` on the next drain. Do not reset terminal
+rows or manually replay an uncertain send: the provider may already have
+accepted it.
+
+For safe inspection, use an approved read-only database session and aggregate
+only status, bounded outcome and age. For example:
+
+```sql
+SELECT status, outcome, count(*)
+FROM notification_deliveries
+GROUP BY status, outcome
+ORDER BY status, outcome;
+```
+
+Check the minute scheduler and worker are running, queue health, the count of
+old `sending` rows, and whether pending rows are past `next_attempt_at`.
+Restart the existing worker under the normal process supervisor to recover a
+stalled queue; the next drain classifies old claims without replaying them.
+Investigate persistent `pending` or `sending` counts before changing the
+schedule. Never print subscription endpoints, keys, credentials, payloads,
+event metadata, person names or medication text in logs or support output.
+
 The same values can be stored in encrypted credentials:
 
 ```yaml

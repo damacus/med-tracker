@@ -171,7 +171,7 @@ async fn plans(
         person_id: person.id,
         key: format!("browser:{}:{legacy_key}", owner.id),
         legacy_key,
-        payload: json!({"title":"Medication reminder","body":body,"path":format!("/households/{}/dashboard", household.slug)}),
+        payload: json!({"title":"Medication reminder","body":body,"path":format!("/households/{}/dashboard", household.slug),"account_id":owner.id.to_string()}),
         intended_at,
         expires_at: intended_at + chrono::Duration::hours(1),
     });
@@ -213,7 +213,7 @@ async fn plans(
                 person_id: occurrence.person_id,
                 key: format!("browser:{}:{legacy_key}", owner.id),
                 legacy_key,
-                payload: json!({"title":"Medication reminder","body":body,"path":format!("/households/{}/dashboard", household.slug)}),
+                payload: json!({"title":"Medication reminder","body":body,"path":format!("/households/{}/dashboard", household.slug),"account_id":owner.id.to_string()}),
                 intended_at: scheduled.with_timezone(&Utc) + chrono::Duration::minutes(30),
                 expires_at: scheduled.with_timezone(&Utc) + chrono::Duration::minutes(90),
             });
@@ -229,7 +229,7 @@ async fn plans(
                 row.try_get::<NaiveDateTime>("", "created_at")?,
                 Utc,
             );
-            intents.push(Intent { kind: "low_stock", person_id: person.id, key: format!("browser:{}:{legacy_key}",owner.id), legacy_key, payload: json!({"title":"Stock reminder","body":"A medication may be running low.","path":format!("/households/{}/dashboard", household.slug)}), intended_at, expires_at: intended_at + chrono::Duration::hours(24) });
+            intents.push(Intent { kind: "low_stock", person_id: person.id, key: format!("browser:{}:{legacy_key}",owner.id), legacy_key, payload: json!({"title":"Stock reminder","body":"A medication may be running low.","path":format!("/households/{}/dashboard", household.slug),"account_id":owner.id.to_string()}), intended_at, expires_at: intended_at + chrono::Duration::hours(24) });
         }
     }
     Ok(intents)

@@ -169,7 +169,7 @@ pub(super) async fn status(
     session: Session<SessionPgPool>,
     request: Option<Extension<LocoRequestId>>,
 ) -> Response {
-    let (_, tenant) = match begin(&ctx, &session, &slug, &request_id(request)).await {
+    let (principal, tenant) = match begin(&ctx, &session, &slug, &request_id(request)).await {
         Ok(value) => value,
         Err(error) => return authentication_error(error),
     };
@@ -177,7 +177,7 @@ pub(super) async fn status(
         return unavailable();
     }
     let service = ctx.shared_store.get::<Service>();
-    ([(header::CACHE_CONTROL, "no-store")], axum::Json(json!({"configured":service.is_some(),"public_key":service.map(|service| service.public_key.clone())}))).into_response()
+    ([(header::CACHE_CONTROL, "no-store")], axum::Json(json!({"configured":service.is_some(),"public_key":service.map(|service| service.public_key.clone()),"account_id":principal.account_id().to_string()}))).into_response()
 }
 
 pub(super) async fn send_test(

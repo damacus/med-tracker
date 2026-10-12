@@ -1,5 +1,18 @@
 (() => {
   let installed = false;
+  document.addEventListener('submit', event => {
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement) || !['/login', '/logout'].includes(new URL(form.action).pathname)) return;
+    event.preventDefault();
+    void (async () => {
+      try {
+        const registration = await navigator.serviceWorker?.getRegistration('/');
+        const notifications = await registration?.getNotifications?.();
+        notifications?.forEach(notification => notification.close());
+      } catch {}
+      HTMLFormElement.prototype.submit.call(form);
+    })();
+  }, true);
   const element = (tag, text, className) => {
     const node = document.createElement(tag);
     if (text) node.textContent = text;

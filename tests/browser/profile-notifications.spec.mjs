@@ -53,7 +53,40 @@ test('browser notification availability is truthful when delivery is not configu
   const response = await page.request.get('/households/persistence-fixture/profile/push');
   expect(response.status()).toBe(200);
   expect(response.headers()['cache-control']).toBe('no-store');
-  expect(await response.json()).toEqual({ configured: false, public_key: null });
+  expect(await response.json()).toEqual({ configured: false, public_key: null, account_id: '71001' });
+});
+
+test('signing out closes notifications already displayed by this browser', async ({ page }) => {
+  test.setTimeout(180000);
+  let closed = 0;
+  await page.exposeFunction('recordClosedNotification', () => { closed += 1; });
+  await page.addInitScript(() => {
+    navigator.serviceWorker.getRegistration = async () => ({
+      getNotifications: async () => [{ close: () => window.recordClosedNotification() }],
+    });
+  });
+  await openNotifications(page);
+  closed = 0;
+  await page.locator('form[action="/logout"]').first().evaluate(form => form.requestSubmit());
+  await page.waitForURL('/login');
+  expect(closed).toBe(1);
+});
+
+test('signing in closes notifications retained from a previous account', async ({ page }) => {
+  test.setTimeout(180000);
+  let closed = 0;
+  await page.exposeFunction('recordClosedNotification', () => { closed += 1; });
+  await page.addInitScript(() => {
+    navigator.serviceWorker.getRegistration = async () => ({
+      getNotifications: async () => [{ close: () => window.recordClosedNotification() }],
+    });
+  });
+  await page.goto('/login');
+  await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
+  await page.getByLabel('Password', { exact: true }).fill('password');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.waitForURL('/');
+  expect(closed).toBe(1);
 });
 
 test('managed adult opt-ins exclude self, view-only and revoked grants while dependants remain automatic', async ({ page, careFixture }) => {
@@ -147,6 +180,10 @@ test.describe('configured browser push', () => {
     await section.getByRole('button', { name: 'Enable', exact: true }).click();
     await expect(section.getByRole('status')).toHaveText('Browser notifications are enabled.');
     await expect(section.getByRole('button', { name: 'Send Test Notification', exact: true })).toBeVisible();
+    await page.route('**/profile/push/test', route => route.fulfill({ json: { status: 'accepted' } }));
+    await section.getByRole('button', { name: 'Send Test Notification', exact: true }).click();
+    await expect(section.getByRole('status')).toHaveText('The push service accepted the test notification. Delivery to this device is not guaranteed.');
+    await page.unroute('**/profile/push/test');
     await page.route('**/profile/push/test', route => route.fulfill({ json: { status: 'expired' } }));
     await section.getByRole('button', { name: 'Send Test Notification', exact: true }).click();
     await expect(section.getByRole('status')).toHaveText('This subscription has expired. Enable notifications again.');
@@ -172,6 +209,7 @@ test.describe('configured browser push', () => {
     const endpoint = '/households/persistence-fixture/profile/push';
     const configuration = await (await page.request.get(endpoint)).json();
     expect(configuration.configured).toBe(true);
+    expect(configuration.account_id).toBe('71001');
     expect(Buffer.from(configuration.public_key, 'base64url')).toHaveLength(65);
     const authenticity_token = await page.locator('#profile-notification-form [name="authenticity_token"]').inputValue();
     const key = createECDH('prime256v1');

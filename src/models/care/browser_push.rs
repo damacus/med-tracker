@@ -60,7 +60,7 @@ pub async fn send_test(
         json!({"subscription_id":subscription.id}),
     )
     .await?;
-    let payload = serde_json::to_vec(&json!({"title":"MedTracker","body":"Test notification","path":format!("/households/{}/profile#notifications",household.slug)})).map_err(|_| OperationError::Unavailable)?;
+    let payload = serde_json::to_vec(&json!({"title":"MedTracker","body":"Test notification","path":format!("/households/{}/profile#notifications",household.slug),"account_id":tenant.scope().actor.account_id.to_string()})).map_err(|_| OperationError::Unavailable)?;
     let outcome = service.transport.send(&subscription, &payload).await;
     if outcome == Delivery::Expired {
         push_subscription::Entity::delete_by_id(subscription.id)
