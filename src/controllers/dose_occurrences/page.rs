@@ -9,6 +9,7 @@ pub(super) struct Page<'a> {
     view: &'a TeraView,
     path: &'a (String, String, String, String),
     request_id: String,
+    locale: &'static str,
 }
 impl<'a> Page<'a> {
     pub(super) fn new(
@@ -18,6 +19,7 @@ impl<'a> Page<'a> {
         view: &'a TeraView,
         path: &'a (String, String, String, String),
         request_id: String,
+        locale: &'static str,
     ) -> Self {
         Self {
             ctx,
@@ -26,6 +28,7 @@ impl<'a> Page<'a> {
             view,
             path,
             request_id,
+            locale,
         }
     }
     fn location(&self, query: &dose_occurrences::RangeQuery) -> String {
@@ -53,6 +56,9 @@ impl<'a> Page<'a> {
             return Err(OperationError::NotFound);
         }
         let medications = browser_query::index(tenant).await?;
+        let locations = browser_query::form_context(tenant, None).await?.locations;
+        let labels =
+            report_pdf::translations(self.locale).map_err(|_| OperationError::Unavailable)?;
         let medication_name = medications
             .iter()
             .find(|medication| source["medication_id"].as_i64() == Some(medication.id))
@@ -65,10 +71,10 @@ impl<'a> Page<'a> {
         let medicines = medications
             .iter()
             .filter(|medicine| eligible.iter().any(|id| id.as_i64() == Some(medicine.id)))
-            .map(|medicine| json!({"id":medicine.id.to_string(),"name":medicine.name}))
+            .map(|medicine| json!({"id":medicine.id.to_string(),"name":medicine.name,"quantity":medicine.quantity,"unit":medicine.unit,"location":locations.iter().find(|location| location.id == medicine.location_id).map(|location| location.name.as_str()).unwrap_or_default()}))
             .collect::<Vec<_>>();
         Ok(
-            json!({"person":person["data"],"source":source,"medications":medicines,"medication_name":medication_name}),
+            json!({"person":person["data"],"source":source,"medications":medicines,"medication_name":medication_name,"locale":self.locale,"labels":labels}),
         )
     }
     async fn list(

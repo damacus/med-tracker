@@ -49,6 +49,82 @@ that route is integrated. These items remain open after the first card-layout PR
 
 ## C2: Medication details and stock interactions
 
+### Scheduled-dose UI decision — 12 October 2026
+
+The owner selected the existing confirmation-dialog pattern for scheduled-dose
+recording, with focused not-taken and correction forms matching Rails. Implement
+on `codex/dose-recording-ui` in `/private/tmp/medtracker-dose-recording`, based on
+`4f20f4b49`; keep the main checkout clean. Reuse the current native dialog handling,
+theme tokens and Rails labels. Preserve person access, prescribed-dose semantics,
+stock eligibility, audit atomicity, idempotency, stale drafts and immutable taken
+history. Cover confirmation/cancel, invalid input, not-taken/reopen, stock effects,
+keyboard focus, desktop/mobile and all five locales. The medication-detail dialog
+already exists; the scheduled-dose records page is this slice's first delivery.
+Focused regression tests precede implementation; full `task ci`, actual UI
+comparison and independent review remain publication gates. The existing owner
+retains implementation and verification; no additional writers are needed.
+
+Live reference inspection on 12 October used the isolated Rails project
+`medtracker-dose-recording-f6241076` at `http://localhost:55826`, seeded with
+the repository's synthetic Jane Doe fixture (`fixture-household`, English,
+UTC, light theme). Captures are `rails-dose-confirm-reference.png`,
+`rails-dose-not-taken-reference.png` and `rails-dose-correction-reference.png`
+under `docs/screenshots/`. Loco checks use Synthetic adult, UTC, light theme,
+1440×1000 desktop and 390×844 mobile. The fixtures have different medicines;
+the comparison establishes flow and information hierarchy, not pixel identity.
+
+The live comparison added selected-slot/cycle context and explicit stock-effect
+disclosure to the Loco dialogs. All 22 focused browser cases pass, including
+all five locales, validation focus, stale drafts, exactly-once stock effects,
+CSRF/access denial and audit rollback. The generated-time bound regression
+passes in the 34-test unit suite. Lint and locale-tree checks pass. Full CI was
+interrupted deliberately when the live comparison identified those UI fixes;
+it has not accepted the final candidate.
+
+The owner explicitly approved keeping the dose amount editable on 12 October.
+This is a deliberate difference from Rails, which fixes the prescribed amount
+during routine confirmation. The prescribed amount remains prominent as context;
+the entered actual amount retains the existing validation and stock behaviour.
+The earlier dialog-layout decision remains approved. Final CI and one independent
+read-only review proceed on the frozen source candidate.
+
+Independent Sol review found English outcome labels and month names in other
+locales, plus a reopen-conflict error hidden behind the modal. Failing browser
+and unit regressions reproduced these findings. The fixes translate outcomes,
+use numeric dates with timezone in non-English locales, and show/focus the reopen
+error inside its dialog. The affected re-review found no remaining actionable
+issues. All 24 final desktop/mobile browser cases and the three focused rendering
+unit tests pass; the documentation build passes. Full CI remains blocked by the
+fixture-startup timeout tracked in #2498. The first run had three pool timeouts
+and two HTTP timeouts; all five tests passed in isolated reruns. An unchanged
+full rerun passed 402 API cases but failed location creation at application boot
+with `Sqlx(PoolTimedOut)` (`tests/care_api.rs:155`). No behaviour assertion failed
+in that case. The owner approved fixing the runner before publication.
+
+The runner investigation reproduced a fixture resource leak: closing an API
+fixture left its database and login role behind until the whole runner exited.
+A failing cleanup regression now passes after teardown removes both owned
+resources. Independent review found no actionable issue in that fix. The full
+Rust gate passed after cleanup (404 API cases). The browser run passed 633 cases
+but one isolated server hit the same pool timeout. Loco's queue default was
+500 ms while the test database allowed 5000 ms. A TCP-relay regression delaying
+the database handshake by 750 ms reproduced the exact error; it passes with
+the test queue explicitly configured for 5000 ms. Production is unchanged.
+The exact registration browser failure then passed in isolation. Independent
+review accepted the bounded test configuration and regression.
+
+The final rerun passed every Rust suite but encountered a different browser
+navigation timeout during a password-change test. Host diagnostics showed 99%
+CPU use, load above 30, and 31 GB RAM used with 14 GB compressed. The already
+failed run was interrupted to release owned resources. Full acceptance and
+publication were held for a browser gate under adequate host capacity.
+
+After the owner-requested one-hour cooling pause, the exact navigation test
+passed. The branch fast-forwarded over two Rails-only dependency updates to
+`41b81e1dc`. Final `task ci` then passed every Rust suite and all 634 browser
+checks (29.7 minutes). Both runner fixes and the dose UI have independent review
+and passing acceptance evidence. The main checkout remains separate and clean.
+
 Reference: `rails/app/components/medications/show_view.rb`, SupplyStatusCard,
 WarningsComponent, StandardDosageComponent, DoseHistoryComponent, RefillModal,
 AdjustInventoryModal and AdministrationModal.

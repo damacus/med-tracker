@@ -98,6 +98,7 @@ pub async fn form_context(
 #[derive(Serialize)]
 pub struct MedicationCard {
     pub id: i64,
+    pub location_id: i64,
     pub name: String,
     pub quantity: Option<String>,
     pub unit: String,
@@ -156,6 +157,7 @@ pub async fn person_medications(
 fn medication_card(record: medication::Model) -> MedicationCard {
     MedicationCard {
         id: record.id,
+        location_id: record.location_id,
         name: record
             .friendly_name
             .filter(|name| !name.is_empty())
