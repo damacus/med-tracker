@@ -19,6 +19,7 @@ mod notification_preferences;
 mod orders;
 mod pause_periods;
 mod people;
+mod portable_imports;
 mod profile;
 mod projection;
 mod push_subscriptions;
@@ -149,6 +150,16 @@ pub fn routes() -> Routes {
         .add(
             "/{household_id}/portable_export",
             get(data_exports::portable_export),
+        )
+        .add(
+            "/{household_id}/portable_imports",
+            post(portable_imports::apply)
+                .layer(axum::extract::DefaultBodyLimit::max(24 * 1024 * 1024)),
+        )
+        .add(
+            "/{household_id}/portable_imports/dry_run",
+            post(portable_imports::dry_run)
+                .layer(axum::extract::DefaultBodyLimit::max(24 * 1024 * 1024)),
         )
         .add(
             "/{household_id}/mobile_snapshot",

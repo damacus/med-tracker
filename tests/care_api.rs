@@ -72,6 +72,8 @@ mod person_medication_reorder;
 mod platform;
 #[path = "care_api/portable_export.rs"]
 mod portable_export;
+#[path = "care_api/portable_imports.rs"]
+mod portable_imports;
 #[path = "care_api/profile.rs"]
 mod profile;
 #[path = "care_api/profile_export.rs"]
