@@ -38,6 +38,8 @@ mod health_events;
 mod invitations;
 #[path = "care_api/legacy_pause.rs"]
 mod legacy_pause;
+#[path = "care_api/location_memberships.rs"]
+mod location_memberships;
 #[path = "care_api/locations.rs"]
 mod locations;
 #[path = "care_api/me.rs"]

@@ -2,10 +2,11 @@ use super::*;
 use crate::models::entities::{api_tombstone, location_membership, medication};
 use sea_orm::QueryOrder;
 
-async fn record_membership_destroy(
+pub(super) async fn record_membership_destroy(
     tenant: &TenantTransaction,
     record: &location_membership::Model,
     provenance: Option<&CredentialProvenance>,
+    policy_class: &str,
 ) -> Result<(), OperationError> {
     let before = json!({"id":record.id,"household_id":record.household_id,"location_id":record.location_id,"person_id":record.person_id,"created_at":record.created_at,"updated_at":record.updated_at});
     let changes: serde_json::Map<String, Value> = before
@@ -14,7 +15,7 @@ async fn record_membership_destroy(
         .iter()
         .map(|(key, value)| (key.clone(), json!([value, null])))
         .collect();
-    let mut context = json!({"actor_account_id":tenant.scope().actor.account_id,"actor_user_id":tenant.user_id(),"actor_membership_id":tenant.membership().id,"household_id":tenant.scope().household_id,"request_id":tenant.scope().request_id,"active_role":tenant.membership().role,"permissions_version":tenant.membership().permissions_version,"policy_class":"LocationPolicy","policy_query":"destroy?"});
+    let mut context = json!({"actor_account_id":tenant.scope().actor.account_id,"actor_user_id":tenant.user_id(),"actor_membership_id":tenant.membership().id,"household_id":tenant.scope().household_id,"request_id":tenant.scope().request_id,"active_role":tenant.membership().role,"permissions_version":tenant.membership().permissions_version,"policy_class":policy_class,"policy_query":"destroy?"});
     if let Some(provenance) = provenance {
         let (method, prefix) = match provenance.method {
             CredentialMethod::ApiSession => ("api_session", "api_session"),
@@ -162,7 +163,7 @@ pub async fn retire(
         .await
         .map_err(|_| OperationError::Unavailable)?;
     for membership in memberships {
-        record_membership_destroy(tenant, &membership, provenance).await?;
+        record_membership_destroy(tenant, &membership, provenance, "LocationPolicy").await?;
         location_membership::Entity::delete_by_id(membership.id)
             .exec(tenant.transaction())
             .await
