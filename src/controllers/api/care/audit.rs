@@ -18,6 +18,15 @@ impl RequestAudit {
             query: "show?",
         }
     }
+    pub fn ui_capabilities() -> Self {
+        Self {
+            method: "GET",
+            controller: "api/v1/ui_capabilities",
+            action: "show",
+            policy: "HouseholdPolicy",
+            query: "show?",
+        }
+    }
     pub fn medication_lookup() -> Self {
         Self {
             method: "GET",

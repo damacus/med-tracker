@@ -26,6 +26,7 @@ mod response;
 mod schedule_lifecycle;
 mod sync;
 mod treatments;
+mod ui_capabilities;
 
 use crate::models::{
     access::TenantTransaction,
@@ -90,6 +91,10 @@ pub fn routes() -> Routes {
             get(me::show).layer(axum::middleware::map_response(|response| async {
                 profile::no_store(response)
             })),
+        )
+        .add(
+            "/{household_id}/ui_capabilities",
+            get(ui_capabilities::show),
         )
         .add(
             "/{household_id}/medication_lookup",
