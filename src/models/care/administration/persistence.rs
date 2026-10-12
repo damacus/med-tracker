@@ -38,6 +38,54 @@ pub(crate) async fn event(
     .await?;
     Ok(())
 }
+pub(crate) async fn token_event(
+    tenant: &TenantTransaction,
+    action: &str,
+    name: &str,
+    provenance: Option<&CredentialProvenance>,
+) -> Result<(), OperationError> {
+    let event = format!("auth_token/api_app_token/{action}");
+    let metadata = json!({
+        "account_id": tenant.scope().actor.account_id,
+        "token_type": "api_app_token",
+        "action": action,
+        "device_name_present": !name.trim().is_empty(),
+        "device_name_length": name.chars().count(),
+    });
+    let audit_context = context(tenant, provenance);
+    let now = Utc::now().naive_utc();
+    version::ActiveModel {
+        item_type: Set("AuthenticationToken".into()),
+        item_id: Set(tenant.scope().actor.account_id),
+        event: Set(event.clone()),
+        object: Set(Some(metadata.to_string())),
+        object_changes: Set(None),
+        whodunnit: Set(Some(tenant.user_id().to_string())),
+        request_id: Set(Some(tenant.scope().request_id.clone())),
+        household_id: Set(Some(tenant.scope().household_id)),
+        actor_membership_id: Set(Some(tenant.membership().id)),
+        audit_context: Set(audit_context.clone()),
+        created_at: Set(Some(now)),
+        ..Default::default()
+    }
+    .insert(tenant.transaction())
+    .await?;
+    security_audit_event::ActiveModel {
+        household_id: Set(tenant.scope().household_id),
+        actor_account_id: Set(Some(tenant.scope().actor.account_id)),
+        actor_membership_id: Set(Some(tenant.membership().id)),
+        event_type: Set(event),
+        request_id: Set(Some(tenant.scope().request_id.clone())),
+        metadata: Set(metadata),
+        audit_context: Set(audit_context),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(tenant.transaction())
+    .await?;
+    Ok(())
+}
 pub(super) async fn record_version(
     tenant: &TenantTransaction,
     kind: &str,

@@ -231,6 +231,7 @@ impl RequestAudit {
             "settings" => ("api/v1/admin/settings", "HouseholdPolicy"),
             "memberships" => ("api/v1/admin/memberships", "HouseholdMembershipPolicy"),
             "audit_logs" => ("api/v1/admin/audit_logs", "AuditLogPolicy"),
+            "app_tokens" => ("api/v1/admin/app_tokens", "HouseholdPolicy"),
             _ => (
                 "api/v1/admin/person_access_grants",
                 "PersonAccessGrantPolicy",
