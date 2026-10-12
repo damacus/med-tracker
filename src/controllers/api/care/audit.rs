@@ -9,6 +9,15 @@ pub(super) struct RequestAudit {
 }
 
 impl RequestAudit {
+    pub fn me() -> Self {
+        Self {
+            method: "GET",
+            controller: "api/v1/me",
+            action: "show",
+            policy: "MePolicy",
+            query: "show?",
+        }
+    }
     pub fn medication_lookup() -> Self {
         Self {
             method: "GET",
