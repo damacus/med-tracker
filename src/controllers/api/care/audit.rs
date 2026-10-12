@@ -80,6 +80,19 @@ impl RequestAudit {
         }
     }
 
+    pub fn review_prompt(method: &'static str, action: &'static str) -> Self {
+        Self {
+            method,
+            controller: "api/v1/medication_review_prompts",
+            action,
+            policy: "MedicationReviewPromptPolicy",
+            query: match action {
+                "update" => "update?",
+                "show" => "show?",
+                _ => "index?",
+            },
+        }
+    }
     pub fn report(is_reviews: bool) -> Self {
         Self {
             method: "GET",

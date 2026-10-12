@@ -1,12 +1,16 @@
 pub(crate) mod evidence;
 
 use crate::models::{
-    access::TenantTransaction,
-    entities::{medication, person_medication, review_evidence, review_prompt, schedule},
+    access::{self, TenantTransaction},
+    care::{doses, sync},
+    entities::{medication, person, person_medication, review_evidence, review_prompt, schedule},
     errors::OperationError,
 };
 use chrono::{NaiveDate, Utc};
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, Condition, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
+    QuerySelect, Set,
+};
 use serde_json::{Value, json};
 use std::collections::{HashMap, HashSet};
 
@@ -50,6 +54,152 @@ pub fn value(record: &review_prompt::Model) -> Value {
         "reviewed_by_membership_id": record.reviewed_by_membership_id.map(|id| id.to_string()),
         "updated_at": record.updated_at.and_utc().to_rfc3339(),
     })
+}
+
+#[derive(serde::Deserialize, Default)]
+pub struct ListQuery {
+    pub page: Option<String>,
+    pub per_page: Option<String>,
+    pub review_status: Option<String>,
+    pub priority: Option<String>,
+    pub show_hidden: Option<String>,
+}
+
+pub struct Filters {
+    page: u64,
+    size: u64,
+    review_status: String,
+    priority: String,
+    show_hidden: bool,
+}
+
+impl Filters {
+    pub fn parse(query: ListQuery) -> Option<Self> {
+        let page = query
+            .page
+            .map_or(Some(1), |value| value.parse::<u64>().ok())?;
+        let size = query
+            .per_page
+            .map_or(Some(20), |value| value.parse::<u64>().ok())?;
+        let review_status = query
+            .review_status
+            .unwrap_or_else(|| "needs_review".to_owned());
+        let priority = query.priority.unwrap_or_else(|| "all".to_owned());
+        let show_hidden = query.show_hidden.unwrap_or_else(|| "0".to_owned());
+        if page == 0
+            || size == 0
+            || size > 100
+            || page
+                .checked_sub(1)
+                .and_then(|page| page.checked_mul(size))
+                .is_none_or(|offset| offset > i64::MAX as u64)
+            || !matches!(review_status.as_str(), "needs_review" | "reviewed" | "all")
+            || !matches!(
+                priority.as_str(),
+                "all" | "discuss_soon" | "ask_when_convenient" | "low_confidence"
+            )
+            || !matches!(show_hidden.as_str(), "0" | "1")
+        {
+            return None;
+        }
+        Some(Self {
+            page,
+            size,
+            review_status,
+            priority,
+            show_hidden: show_hidden == "1",
+        })
+    }
+}
+
+fn today_in_app_zone() -> NaiveDate {
+    Utc::now().with_timezone(&doses::app_zone()).date_naive()
+}
+
+pub async fn index(
+    tenant: &TenantTransaction,
+    query: Option<ListQuery>,
+) -> Result<Value, OperationError> {
+    access::recheck(tenant).await?;
+    let context = sync::review_prompts::AuthContext { tenant };
+    if !sync::review_prompts::actor_adult(tenant.transaction(), &context).await? {
+        return Err(OperationError::Forbidden);
+    }
+    let Some(filters) = query.and_then(Filters::parse) else {
+        return Err(OperationError::Validation {
+            details: json!({"error":"Review filters are invalid"}),
+        });
+    };
+    sync::lock(tenant).await?;
+    if !sync::review_prompts::actor_adult(tenant.transaction(), &context).await? {
+        return Err(OperationError::Forbidden);
+    }
+    let people = person::Entity::find()
+        .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
+        .filter(person::Column::Id.in_subquery(access::granted_people(tenant.membership())))
+        .all(tenant.transaction())
+        .await?;
+    let ids: Vec<i64> = people.iter().map(|row| row.id).collect();
+    refresh_many(tenant, &ids, today_in_app_zone()).await?;
+    let mut query = review_prompt::Entity::find()
+        .filter(review_prompt::Column::HouseholdId.eq(tenant.scope().household_id))
+        .filter(
+            review_prompt::Column::PersonId
+                .in_subquery(access::granted_people(tenant.membership())),
+        );
+    if !filters.show_hidden {
+        query = query.filter(review_prompt::Column::Status.ne("hidden_low_signal"));
+    }
+    query = match filters.review_status.as_str() {
+        "needs_review" if filters.show_hidden => {
+            query.filter(review_prompt::Column::Status.is_in(["needs_review", "hidden_low_signal"]))
+        }
+        "needs_review" => query.filter(review_prompt::Column::Status.eq("needs_review")),
+        "reviewed" => query
+            .filter(review_prompt::Column::Status.is_not_in(["needs_review", "hidden_low_signal"])),
+        _ => query,
+    };
+    query = match filters.priority.as_str() {
+        "discuss_soon" => query.filter(review_prompt::Column::RiskLevel.eq("high")),
+        "ask_when_convenient" => query.filter(review_prompt::Column::RiskLevel.eq("moderate")),
+        "low_confidence" => query.filter(
+            Condition::any()
+                .add(review_prompt::Column::RiskLevel.is_in(["low", "unknown"]))
+                .add(review_prompt::Column::MatchConfidence.is_in(["low", "unknown"])),
+        ),
+        _ => query,
+    };
+    let total = query.clone().count(tenant.transaction()).await?;
+    let rows = query
+        .order_by_asc(review_prompt::Column::PersonId)
+        .order_by_asc(review_prompt::Column::CreatedAt)
+        .order_by_asc(review_prompt::Column::Id)
+        .offset((filters.page - 1) * filters.size)
+        .limit(filters.size)
+        .all(tenant.transaction())
+        .await?;
+    Ok(
+        json!({"data": rows.iter().map(value).collect::<Vec<_>>(), "meta": {
+            "page": filters.page, "per_page": filters.size, "total_count": total
+        }}),
+    )
+}
+
+pub async fn show(tenant: &TenantTransaction, id: &str) -> Result<(Value, String), OperationError> {
+    access::recheck(tenant).await?;
+    let context = sync::review_prompts::AuthContext { tenant };
+    if !sync::review_prompts::actor_adult(tenant.transaction(), &context).await? {
+        return Err(OperationError::Forbidden);
+    }
+    let Some(record) =
+        sync::review_prompts::visible_prompt(tenant.transaction(), &context, id).await?
+    else {
+        return Err(OperationError::NotFound);
+    };
+    Ok((
+        json!({"data": value(&record)}),
+        sync::review_prompts::tag(&record),
+    ))
 }
 
 pub async fn refresh(
