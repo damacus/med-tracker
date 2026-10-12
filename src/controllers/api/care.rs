@@ -208,6 +208,10 @@ pub fn routes() -> Routes {
             patch(pause_periods::legacy::resume_assignment),
         )
         .add(
+            "/{household_id}/person_medications/{id}/reorder",
+            patch(pause_periods::legacy::reorder_assignment),
+        )
+        .add(
             "/{household_id}/medication_pause_periods",
             get(pause_periods::index).post(pause_periods::create),
         )

@@ -104,3 +104,89 @@ pub async fn resume_assignment(
 ) -> Result<(Value, String), OperationError> {
     change(tenant, id, body, provenance, Kind::Assignment, false).await
 }
+pub async fn reorder_assignment(
+    tenant: &TenantTransaction,
+    id: &str,
+    body: &Value,
+    provenance: Option<&CredentialProvenance>,
+) -> Result<(Value, String), OperationError> {
+    lock(tenant).await?;
+    let Source::Assignment(source) = source_path(tenant, Kind::Assignment, id).await? else {
+        return Err(OperationError::NotFound);
+    };
+    access::require_person_access(tenant, source.person_id, PersonAccess::Manage).await?;
+    let direction = body
+        .as_object()
+        .filter(|map| map.len() == 1)
+        .and_then(|map| map.get("direction"))
+        .and_then(Value::as_str);
+    if !matches!(direction, Some("up" | "down")) {
+        return Err(invalid("direction", "must be up or down"));
+    }
+    let direction = direction.expect("validated direction");
+    let mut query = person_medication::Entity::find()
+        .filter(person_medication::Column::HouseholdId.eq(tenant.scope().household_id))
+        .filter(person_medication::Column::PersonId.eq(source.person_id))
+        .filter(person_medication::Column::RetiredAt.is_null())
+        .filter(if direction == "up" {
+            person_medication::Column::Position.lt(source.position)
+        } else {
+            person_medication::Column::Position.gt(source.position)
+        });
+    query = if direction == "up" {
+        query
+            .order_by_desc(person_medication::Column::Position)
+            .order_by_desc(person_medication::Column::Id)
+    } else {
+        query
+            .order_by_asc(person_medication::Column::Position)
+            .order_by_asc(person_medication::Column::Id)
+    };
+    let adjacent = query.one(tenant.transaction()).await?;
+    let context = AuthContext { tenant, provenance };
+    let updated = if let Some(adjacent) = adjacent {
+        let original_position = source.position;
+        let adjacent_position = adjacent.position;
+        let mut moving: person_medication::ActiveModel = source.clone().into();
+        moving.position = Set(adjacent_position);
+        moving.updated_at = Set(Utc::now().naive_utc());
+        let moving = moving.update(tenant.transaction()).await?;
+        let mut swapping: person_medication::ActiveModel = adjacent.clone().into();
+        swapping.position = Set(original_position);
+        swapping.updated_at = Set(Utc::now().naive_utc());
+        let swapping = swapping.update(tenant.transaction()).await?;
+        let person_portable_id = person::Entity::find_by_id(source.person_id)
+            .one(tenant.transaction())
+            .await?
+            .ok_or(OperationError::NotFound)?
+            .portable_id;
+        for (before, after) in [(&source, &moving), (&adjacent, &swapping)] {
+            record_version(
+                &context,
+                "PersonMedication",
+                after.id,
+                "update",
+                Some(json!({"position": before.position})),
+                Some(json!({"position": after.position})),
+            )
+            .await?;
+            record_change(
+                tenant.transaction(),
+                &context,
+                &tenant.scope().request_id,
+                SyncRecord {
+                    record_type: "PersonMedication",
+                    record_id: after.id,
+                    portable_id: &after.portable_id,
+                    action: "update",
+                    person_portable_id: Some(&person_portable_id),
+                },
+            )
+            .await?;
+        }
+        moving
+    } else {
+        source
+    };
+    crate::models::care::assignments::read(tenant, &updated.id.to_string()).await
+}
