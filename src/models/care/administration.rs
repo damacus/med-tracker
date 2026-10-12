@@ -1,3 +1,4 @@
+pub mod audit_logs;
 pub mod delegation;
 pub mod grants;
 pub mod memberships;

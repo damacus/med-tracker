@@ -3,9 +3,11 @@ use crate::models::care::{
     administration,
     locations::{self, SavedResponse},
 };
+mod audit_logs;
 mod grants;
 mod memberships;
 mod settings;
+pub(super) use audit_logs::index as audit_logs_index;
 pub(super) use grants::{
     create as grants_create, destroy as grants_destroy, index as grants_index,
 };
