@@ -1,12 +1,14 @@
-use super::{Delivery, Service, audit};
+use super::{Service, audit};
+mod delivery;
 use crate::models::{
     access::{self, HouseholdScope, TenantTransaction},
     care::{dose_occurrences, push_subscriptions},
-    entities::{account, household, medication, push_subscription},
+    entities::{account, household, medication},
     errors::OperationError,
     notification_preferences,
 };
-use chrono::{DateTime, Timelike, Utc};
+use chrono::{DateTime, NaiveDateTime, Timelike, Utc};
+pub use delivery::drain_pending;
 use loco_rs::app::AppContext;
 use loco_rs::model::TenantQueryExt;
 use sea_orm::{ColumnTrait, ConnectionTrait, DbBackend, EntityTrait, QueryFilter, Statement};
@@ -19,6 +21,8 @@ struct Intent {
     key: String,
     legacy_key: String,
     payload: Value,
+    intended_at: DateTime<Utc>,
+    expires_at: DateTime<Utc>,
 }
 
 async fn plans(
@@ -129,6 +133,8 @@ async fn plans(
         key: format!("browser:{}:{legacy_key}", owner.id),
         legacy_key,
         payload: json!({"title":"Medication reminder","body":body,"path":format!("/households/{}/dashboard", household.slug)}),
+        intended_at: now,
+        expires_at: now + chrono::Duration::hours(1),
     });
     }
     if preference.missed_dose_enabled {
@@ -169,16 +175,22 @@ async fn plans(
                 key: format!("browser:{}:{legacy_key}", owner.id),
                 legacy_key,
                 payload: json!({"title":"Medication reminder","body":body,"path":format!("/households/{}/dashboard", household.slug)}),
+                intended_at: now,
+                expires_at: now + chrono::Duration::hours(1),
             });
         }
     }
     if preference.low_stock_enabled {
         let rows = tenant.transaction().query_all_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-            "SELECT e.event_key FROM notification_events e JOIN medications m ON m.household_id=e.household_id AND m.id=(e.metadata->>'medication_id')::bigint WHERE e.household_id=$1 AND e.person_id=$2 AND e.event_type='browser_low_stock_pending' AND (e.metadata->>'account_id')::bigint=$3 AND e.created_at>timezone('UTC',clock_timestamp())-interval '24 hours' AND m.current_supply<=m.reorder_threshold AND (EXISTS(SELECT 1 FROM person_medications pm WHERE pm.household_id=e.household_id AND pm.person_id=e.person_id AND pm.medication_id=m.id AND pm.active) OR EXISTS(SELECT 1 FROM schedules s WHERE s.household_id=e.household_id AND s.person_id=e.person_id AND s.medication_id=m.id AND s.active))",
+            "SELECT e.event_key,e.created_at FROM notification_events e JOIN medications m ON m.household_id=e.household_id AND m.id=(e.metadata->>'medication_id')::bigint WHERE e.household_id=$1 AND e.person_id=$2 AND e.event_type='browser_low_stock_pending' AND (e.metadata->>'account_id')::bigint=$3 AND e.created_at>timezone('UTC',clock_timestamp())-interval '24 hours' AND m.current_supply<=m.reorder_threshold AND (EXISTS(SELECT 1 FROM person_medications pm WHERE pm.household_id=e.household_id AND pm.person_id=e.person_id AND pm.medication_id=m.id AND pm.active) OR EXISTS(SELECT 1 FROM schedules s WHERE s.household_id=e.household_id AND s.person_id=e.person_id AND s.medication_id=m.id AND s.active))",
             [tenant.scope().household_id.into(),person.id.into(),owner.id.into()])).await?;
         for row in rows {
             let legacy_key: String = row.try_get("", "event_key")?;
-            intents.push(Intent { kind: "low_stock", person_id: person.id, key: format!("browser:{}:{legacy_key}",owner.id), legacy_key, payload: json!({"title":"Stock reminder","body":"A medication may be running low.","path":format!("/households/{}/dashboard", household.slug)}) });
+            let intended_at = DateTime::<Utc>::from_naive_utc_and_offset(
+                row.try_get::<NaiveDateTime>("", "created_at")?,
+                Utc,
+            );
+            intents.push(Intent { kind: "low_stock", person_id: person.id, key: format!("browser:{}:{legacy_key}",owner.id), legacy_key, payload: json!({"title":"Stock reminder","body":"A medication may be running low.","path":format!("/households/{}/dashboard", household.slug)}), intended_at, expires_at: intended_at + chrono::Duration::hours(24) });
         }
     }
     Ok(intents)
@@ -196,94 +208,25 @@ async fn reserve(
         return Ok(None);
     }
     let row = tenant.transaction().query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "INSERT INTO notification_events(household_id,person_id,event_type,event_key,metadata,created_at,updated_at) SELECT $1,$2,$3,$4,$5,timezone('UTC',clock_timestamp()),timezone('UTC',clock_timestamp()) WHERE NOT EXISTS(SELECT 1 FROM notification_events WHERE household_id=$1 AND event_type=$3 AND event_key=$6) ON CONFLICT DO NOTHING RETURNING id",
-        [scope.household_id.into(),intent.person_id.into(),intent.kind.into(),intent.key.clone().into(),json!({"account_id":scope.actor.account_id,"delivery_status":"pending"}).into(),intent.legacy_key.clone().into()]
+        "INSERT INTO notification_events(household_id,person_id,event_type,event_key,metadata,intended_at,expires_at,created_at,updated_at) SELECT $1,$2,$3,$4,$5,$7,$8,timezone('UTC',clock_timestamp()),timezone('UTC',clock_timestamp()) WHERE NOT EXISTS(SELECT 1 FROM notification_events WHERE household_id=$1 AND event_type=$3 AND event_key=$6) ON CONFLICT DO NOTHING RETURNING id",
+        [scope.household_id.into(),intent.person_id.into(),intent.kind.into(),intent.key.clone().into(),json!({"account_id":scope.actor.account_id,"delivery_status":"pending"}).into(),intent.legacy_key.clone().into(),intent.intended_at.naive_utc().into(),intent.expires_at.naive_utc().into()]
     )).await?;
-    let created = row.is_some();
-    let row = match row {
-        Some(row) => Some(row),
-        None => tenant.transaction().query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-            "SELECT id FROM notification_events WHERE household_id=$1 AND person_id=$2 AND event_type=$3 AND event_key=$4 AND metadata->>'account_id'=$5 AND metadata->>'delivery_status'='pending' AND NOT EXISTS(SELECT 1 FROM notification_events WHERE household_id=$1 AND event_type=$3 AND event_key=$6)",
-            [scope.household_id.into(),intent.person_id.into(),intent.kind.into(),intent.key.clone().into(),scope.actor.account_id.to_string().into(),intent.legacy_key.clone().into()]
-        )).await?,
-    };
     let Some(row) = row else {
         return Ok(None);
     };
-    let id = row.try_get("", "id")?;
-    if created {
-        audit(
-            &tenant,
-            "reminder.requested",
-            json!({"notification_event_id":id,"kind":intent.kind}),
-        )
-        .await?;
-    }
-    tenant.commit().await?;
-    Ok(Some(id))
-}
-
-async fn deliver(
-    ctx: &AppContext,
-    scope: &HouseholdScope,
-    service: &Service,
-    now: DateTime<Utc>,
-    intent: &Intent,
-    event_id: i64,
-) -> Result<bool, OperationError> {
-    let tenant = access::begin(&ctx.db, scope).await?;
-    push_subscriptions::lock_account(&tenant).await?;
-    let pending = tenant.transaction().query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "SELECT id FROM notification_events WHERE id=$1 AND household_id=$2 AND metadata->>'account_id'=$3 AND metadata->>'delivery_status'='pending'",
-        [event_id.into(),scope.household_id.into(),scope.actor.account_id.to_string().into()]
-    )).await?;
-    if pending.is_none() {
-        return Ok(false);
-    }
-    let eligible = plans(&tenant, now).await?.contains(intent);
-    let subscriptions = if eligible {
-        push_subscription::Entity::find()
-            .filter(push_subscription::Column::AccountId.eq(scope.actor.account_id))
-            .all(tenant.transaction())
-            .await?
-    } else {
-        vec![]
-    };
-    let payload = serde_json::to_vec(&intent.payload).map_err(|_| OperationError::Unavailable)?;
-    let (mut accepted, mut expired, mut failed) = (0, 0, 0);
-    for subscription in subscriptions {
-        match service.transport.send(&subscription, &payload).await {
-            Delivery::Accepted => accepted += 1,
-            Delivery::Failed => failed += 1,
-            Delivery::Expired => {
-                expired += 1;
-                push_subscription::Entity::delete_by_id(subscription.id)
-                    .exec(tenant.transaction())
-                    .await?;
-            }
-        }
-    }
-    let status = if !eligible {
-        "ineligible"
-    } else if accepted > 0 {
-        "accepted"
-    } else if failed > 0 {
-        "failed"
-    } else {
-        "no_active_subscriptions"
-    };
+    let id: i64 = row.try_get("", "id")?;
     tenant.transaction().execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "UPDATE notification_events SET metadata=metadata||$2::jsonb,sent_at=CASE WHEN $3 THEN timezone('UTC',clock_timestamp()) ELSE NULL END,skipped_reason=CASE WHEN $3 THEN NULL ELSE $4 END,updated_at=timezone('UTC',clock_timestamp()) WHERE id=$1 AND household_id=$5",
-        [event_id.into(),json!({"delivery_status":status,"accepted":accepted,"expired":expired,"failed":failed}).into(),(accepted>0).into(),status.into(),scope.household_id.into()]
-    )).await?;
+            "INSERT INTO notification_deliveries(notification_event_id,subscription_id,household_id,account_id,next_attempt_at) SELECT $1,id,$2,$3,$4 FROM push_subscriptions WHERE account_id=$3",
+            [id.into(),scope.household_id.into(),scope.actor.account_id.into(),intent.intended_at.naive_utc().into()]
+        )).await?;
     audit(
         &tenant,
-        "reminder.completed",
-        json!({"notification_event_id":event_id,"status":status}),
+        "reminder.requested",
+        json!({"notification_event_id":id,"kind":intent.kind}),
     )
     .await?;
     tenant.commit().await?;
-    Ok(accepted > 0)
+    Ok(Some(id))
 }
 
 pub async fn deliver_account(
@@ -291,7 +234,7 @@ pub async fn deliver_account(
     scope: &HouseholdScope,
     now: DateTime<Utc>,
 ) -> Result<usize, OperationError> {
-    let Some(service) = ctx.shared_store.get::<Service>() else {
+    let Some(_service) = ctx.shared_store.get::<Service>() else {
         return Ok(0);
     };
     let tenant = access::begin(&ctx.db, scope).await?;
@@ -299,9 +242,8 @@ pub async fn deliver_account(
     tenant.commit().await?;
     let mut delivered = 0;
     for intent in intents {
-        if let Some(id) = reserve(ctx, scope, now, &intent).await? {
-            delivered += usize::from(deliver(ctx, scope, &service, now, &intent, id).await?);
-        }
+        reserve(ctx, scope, now, &intent).await?;
     }
+    delivered += drain_pending(ctx, scope, now).await?;
     Ok(delivered)
 }

@@ -6,8 +6,490 @@ use med_tracker::models::{
     entities::push_subscription,
 };
 use std::sync::{Arc, Mutex};
+use tokio::sync::Notify;
 
 struct Reminders(Mutex<Vec<Value>>);
+
+struct PartialDelivery(Mutex<Vec<i64>>);
+
+struct ScriptedDelivery(Mutex<Vec<Delivery>>, Mutex<usize>);
+
+#[async_trait::async_trait]
+impl Transport for ScriptedDelivery {
+    async fn send(&self, _: &push_subscription::Model, _: &[u8]) -> Delivery {
+        *self.1.lock().unwrap() += 1;
+        self.0.lock().unwrap().remove(0)
+    }
+}
+
+struct BlockedAcceptance {
+    started: Notify,
+    release: Notify,
+}
+
+#[async_trait::async_trait]
+impl Transport for BlockedAcceptance {
+    async fn send(&self, _: &push_subscription::Model, _: &[u8]) -> Delivery {
+        self.started.notify_one();
+        self.release.notified().await;
+        Delivery::Accepted
+    }
+}
+
+async fn prepare_due_delivery(
+    app: &Application,
+    request_id: &str,
+) -> (chrono::DateTime<Utc>, HouseholdScope) {
+    let now = Utc::now()
+        .with_second(0)
+        .unwrap()
+        .with_nanosecond(0)
+        .unwrap();
+    app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences=jsonb_build_object('time_zone','UTC') WHERE id=71001; UPDATE person_medications SET administration_kind=0,dose_cycle=0,max_daily_doses=1,created_at=now()-interval '2 days' WHERE id=81001; INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/failed','synthetic','synthetic',now(),now())").await.unwrap();
+    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+        "INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,morning_time,created_at,updated_at) VALUES(72001,73001,true,true,false,false,true,$1,now(),now())", [now.time().into()])).await.unwrap();
+    (
+        now,
+        HouseholdScope {
+            actor: Actor { account_id: 71001 },
+            household_id: 72001,
+            request_id: request_id.into(),
+        },
+    )
+}
+
+#[tokio::test]
+async fn browser_reminder_obeys_retry_after_and_attempt_limit() {
+    let app = Application::new().await;
+    let (now, scope) = prepare_due_delivery(&app, "synthetic-backoff").await;
+    let transport = Arc::new(ScriptedDelivery(
+        Mutex::new(vec![
+            Delivery::Temporary(Some(std::time::Duration::from_secs(600))),
+            Delivery::Temporary(None),
+        ]),
+        Mutex::new(0),
+    ));
+    app.context.shared_store.insert(Service {
+        public_key: String::new(),
+        transport: transport.clone(),
+    });
+    assert_eq!(
+        browser_push::reminders::deliver_account(&app.context, &scope, now)
+            .await
+            .unwrap(),
+        0
+    );
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT status,attempt_count,next_attempt_at FROM notification_deliveries LIMIT 1",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(row.try_get::<String>("", "status").unwrap(), "pending");
+    assert_eq!(row.try_get::<i32>("", "attempt_count").unwrap(), 1);
+    assert!(
+        row.try_get::<chrono::NaiveDateTime>("", "next_attempt_at")
+            .unwrap()
+            >= (now + chrono::Duration::minutes(10)).naive_utc()
+    );
+    assert_eq!(
+        browser_push::reminders::drain_pending(
+            &app.context,
+            &scope,
+            now + chrono::Duration::minutes(9)
+        )
+        .await
+        .unwrap(),
+        0
+    );
+    assert_eq!(*transport.1.lock().unwrap(), 1);
+    app.fixture.admin.execute_unprepared("UPDATE notification_deliveries SET attempt_count=4,next_attempt_at=now()-interval '1 second' WHERE status='pending'").await.unwrap();
+    assert_eq!(
+        browser_push::reminders::drain_pending(
+            &app.context,
+            &scope,
+            now + chrono::Duration::minutes(1)
+        )
+        .await
+        .unwrap(),
+        0
+    );
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT status,attempt_count FROM notification_deliveries LIMIT 1",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(row.try_get::<String>("", "status").unwrap(), "invalid");
+    assert_eq!(row.try_get::<i32>("", "attempt_count").unwrap(), 5);
+    assert_eq!(*transport.1.lock().unwrap(), 2);
+    app.close().await;
+}
+
+#[tokio::test]
+async fn browser_reminder_deadline_and_revoked_preference_stop_retries() {
+    let app = Application::new().await;
+    let (now, scope) = prepare_due_delivery(&app, "synthetic-deadline").await;
+    let transport = Arc::new(ScriptedDelivery(
+        Mutex::new(vec![Delivery::Temporary(Some(
+            std::time::Duration::from_secs(3600),
+        ))]),
+        Mutex::new(0),
+    ));
+    app.context.shared_store.insert(Service {
+        public_key: String::new(),
+        transport: transport.clone(),
+    });
+    assert_eq!(
+        browser_push::reminders::deliver_account(&app.context, &scope, now)
+            .await
+            .unwrap(),
+        0
+    );
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT status,outcome FROM notification_deliveries LIMIT 1",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(row.try_get::<String>("", "status").unwrap(), "invalid");
+    assert_eq!(
+        row.try_get::<String>("", "outcome").unwrap(),
+        "retry_deadline"
+    );
+    assert_eq!(
+        browser_push::reminders::drain_pending(
+            &app.context,
+            &scope,
+            now + chrono::Duration::hours(2)
+        )
+        .await
+        .unwrap(),
+        0
+    );
+    assert_eq!(*transport.1.lock().unwrap(), 1);
+    app.close().await;
+
+    let app = Application::new().await;
+    let (now, scope) = prepare_due_delivery(&app, "synthetic-revoked-preference").await;
+    let transport = Arc::new(ScriptedDelivery(
+        Mutex::new(vec![Delivery::Temporary(None)]),
+        Mutex::new(0),
+    ));
+    app.context.shared_store.insert(Service {
+        public_key: String::new(),
+        transport: transport.clone(),
+    });
+    assert_eq!(
+        browser_push::reminders::deliver_account(&app.context, &scope, now)
+            .await
+            .unwrap(),
+        0
+    );
+    app.fixture
+        .admin
+        .execute_unprepared(
+            "UPDATE notification_preferences SET enabled=false WHERE person_id=73001",
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        browser_push::reminders::drain_pending(
+            &app.context,
+            &scope,
+            now + chrono::Duration::minutes(2)
+        )
+        .await
+        .unwrap(),
+        0
+    );
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT status,outcome FROM notification_deliveries LIMIT 1",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(row.try_get::<String>("", "status").unwrap(), "invalid");
+    assert_eq!(
+        row.try_get::<String>("", "outcome").unwrap(),
+        "no_longer_eligible"
+    );
+    assert_eq!(*transport.1.lock().unwrap(), 1);
+    app.close().await;
+}
+
+#[tokio::test]
+async fn browser_reminder_claim_audit_failure_rolls_back_before_transport() {
+    let app = Application::new().await;
+    let (now, scope) = prepare_due_delivery(&app, "synthetic-claim-audit").await;
+    app.fixture.admin.execute_unprepared("CREATE FUNCTION public.reject_browser_push_sending_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.event_type='browser_push.reminder.sending' THEN RAISE EXCEPTION 'synthetic sending audit failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_browser_push_sending_audit BEFORE INSERT ON security_audit_events FOR EACH ROW EXECUTE FUNCTION public.reject_browser_push_sending_audit()").await.unwrap();
+    let transport = Arc::new(ScriptedDelivery(
+        Mutex::new(vec![Delivery::Accepted]),
+        Mutex::new(0),
+    ));
+    app.context.shared_store.insert(Service {
+        public_key: String::new(),
+        transport: transport.clone(),
+    });
+    assert!(
+        browser_push::reminders::deliver_account(&app.context, &scope, now)
+            .await
+            .is_err()
+    );
+    assert_eq!(*transport.1.lock().unwrap(), 0);
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT status,attempt_count FROM notification_deliveries LIMIT 1",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(row.try_get::<String>("", "status").unwrap(), "pending");
+    assert_eq!(row.try_get::<i32>("", "attempt_count").unwrap(), 0);
+    app.close().await;
+}
+
+#[tokio::test]
+async fn browser_reminder_uncertain_transport_result_is_never_retried() {
+    let app = Application::new().await;
+    let (now, scope) = prepare_due_delivery(&app, "synthetic-uncertain-send").await;
+    let transport = Arc::new(ScriptedDelivery(
+        Mutex::new(vec![Delivery::Uncertain]),
+        Mutex::new(0),
+    ));
+    app.context.shared_store.insert(Service {
+        public_key: String::new(),
+        transport: transport.clone(),
+    });
+    assert_eq!(
+        browser_push::reminders::deliver_account(&app.context, &scope, now)
+            .await
+            .unwrap(),
+        0
+    );
+    assert_eq!(
+        browser_push::reminders::drain_pending(
+            &app.context,
+            &scope,
+            now + chrono::Duration::minutes(10)
+        )
+        .await
+        .unwrap(),
+        0
+    );
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT status,attempt_count FROM notification_deliveries LIMIT 1",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(row.try_get::<String>("", "status").unwrap(), "uncertain");
+    assert_eq!(row.try_get::<i32>("", "attempt_count").unwrap(), 1);
+    assert_eq!(*transport.1.lock().unwrap(), 1);
+    app.close().await;
+}
+
+#[tokio::test]
+async fn browser_reminder_stale_accepted_result_cannot_overwrite_uncertain_recovery() {
+    let app = Application::new().await;
+    let (now, scope) = prepare_due_delivery(&app, "synthetic-stale-result").await;
+    let transport = Arc::new(BlockedAcceptance {
+        started: Notify::new(),
+        release: Notify::new(),
+    });
+    app.context.shared_store.insert(Service {
+        public_key: String::new(),
+        transport: transport.clone(),
+    });
+    let ctx = app.context.clone();
+    let sending_scope = scope.clone();
+    let sender = tokio::spawn(async move {
+        browser_push::reminders::deliver_account(&ctx, &sending_scope, now).await
+    });
+    transport.started.notified().await;
+    app.fixture.admin.execute_unprepared("UPDATE notification_deliveries SET claimed_at=now()-interval '121 seconds' WHERE status='sending'").await.unwrap();
+    assert_eq!(
+        browser_push::reminders::drain_pending(&app.context, &scope, Utc::now())
+            .await
+            .unwrap(),
+        0
+    );
+    transport.release.notify_one();
+    assert_eq!(sender.await.unwrap().unwrap(), 0);
+    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT d.status,e.sent_at FROM notification_deliveries d JOIN notification_events e ON e.id=d.notification_event_id LIMIT 1")).await.unwrap().unwrap();
+    assert_eq!(row.try_get::<String>("", "status").unwrap(), "uncertain");
+    assert!(
+        row.try_get::<Option<chrono::NaiveDateTime>>("", "sent_at")
+            .unwrap()
+            .is_none()
+    );
+    app.close().await;
+}
+
+#[async_trait::async_trait]
+impl Transport for PartialDelivery {
+    async fn send(&self, subscription: &push_subscription::Model, _: &[u8]) -> Delivery {
+        self.0.lock().unwrap().push(subscription.id);
+        if subscription.endpoint.ends_with("/accepted") {
+            Delivery::Accepted
+        } else {
+            Delivery::Temporary(None)
+        }
+    }
+}
+
+#[tokio::test]
+async fn browser_reminder_keeps_independent_device_outcomes() {
+    let app = Application::new().await;
+    let now = Utc::now()
+        .with_second(0)
+        .unwrap()
+        .with_nanosecond(0)
+        .unwrap();
+    app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences=jsonb_build_object('time_zone','UTC') WHERE id=71001; UPDATE person_medications SET administration_kind=0,dose_cycle=0,max_daily_doses=1,created_at=now()-interval '2 days' WHERE id=81001; INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/accepted','synthetic','synthetic',now(),now()),(71001,'https://fcm.googleapis.com/fcm/send/failed','synthetic','synthetic',now(),now())").await.unwrap();
+    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+        "INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,morning_time,created_at,updated_at) VALUES(72001,73001,true,true,false,false,true,$1,now(),now())", [now.time().into()])).await.unwrap();
+    let transport = Arc::new(PartialDelivery(Mutex::new(vec![])));
+    app.context.shared_store.insert(Service {
+        public_key: String::new(),
+        transport: transport.clone(),
+    });
+    let scope = HouseholdScope {
+        actor: Actor { account_id: 71001 },
+        household_id: 72001,
+        request_id: "synthetic-two-devices".into(),
+    };
+    assert_eq!(
+        browser_push::reminders::deliver_account(&app.context, &scope, now)
+            .await
+            .unwrap(),
+        1
+    );
+    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT count(*) FILTER (WHERE status='accepted') AS accepted, count(*) FILTER (WHERE status='pending' AND attempt_count=1) AS retryable FROM notification_deliveries")).await.unwrap().unwrap();
+    assert_eq!(row.try_get::<i64>("", "accepted").unwrap(), 1);
+    assert_eq!(row.try_get::<i64>("", "retryable").unwrap(), 1);
+    assert_eq!(transport.0.lock().unwrap().len(), 2);
+    app.fixture
+        .admin
+        .execute_unprepared("DELETE FROM push_subscriptions WHERE account_id=71001")
+        .await
+        .unwrap();
+    assert_eq!(
+        browser_push::reminders::drain_pending(
+            &app.context,
+            &scope,
+            now + chrono::Duration::minutes(2)
+        )
+        .await
+        .unwrap(),
+        0
+    );
+    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT count(*) FILTER (WHERE status='accepted') AS accepted, count(*) FILTER (WHERE status='invalid') AS invalid FROM notification_deliveries")).await.unwrap().unwrap();
+    assert_eq!(row.try_get::<i64>("", "accepted").unwrap(), 1);
+    assert_eq!(row.try_get::<i64>("", "invalid").unwrap(), 1);
+    assert_eq!(transport.0.lock().unwrap().len(), 2);
+    app.close().await;
+}
+
+#[tokio::test]
+async fn browser_reminder_recovers_stale_claim_as_uncertain_without_resending() {
+    let app = Application::new().await;
+    let now = Utc::now()
+        .with_second(0)
+        .unwrap()
+        .with_nanosecond(0)
+        .unwrap();
+    app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences=jsonb_build_object('time_zone','UTC') WHERE id=71001; UPDATE person_medications SET administration_kind=0,dose_cycle=0,max_daily_doses=1,created_at=now()-interval '2 days' WHERE id=81001; INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/failed','synthetic','synthetic',now(),now())").await.unwrap();
+    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+        "INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,morning_time,created_at,updated_at) VALUES(72001,73001,true,true,false,false,true,$1,now(),now())", [now.time().into()])).await.unwrap();
+    let transport = Arc::new(PartialDelivery(Mutex::new(vec![])));
+    app.context.shared_store.insert(Service {
+        public_key: String::new(),
+        transport: transport.clone(),
+    });
+    let scope = HouseholdScope {
+        actor: Actor { account_id: 71001 },
+        household_id: 72001,
+        request_id: "synthetic-recover-claim".into(),
+    };
+    assert_eq!(
+        browser_push::reminders::deliver_account(&app.context, &scope, now)
+            .await
+            .unwrap(),
+        0
+    );
+    app.fixture.admin.execute_unprepared("UPDATE notification_deliveries SET status='sending',claimed_at=now()-interval '119 seconds' WHERE status='pending'").await.unwrap();
+    assert_eq!(
+        browser_push::reminders::drain_pending(&app.context, &scope, Utc::now())
+            .await
+            .unwrap(),
+        0
+    );
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT status FROM notification_deliveries LIMIT 1",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(row.try_get::<String>("", "status").unwrap(), "sending");
+    app.fixture.admin.execute_unprepared("UPDATE notification_deliveries SET claimed_at=now()-interval '121 seconds' WHERE status='sending'").await.unwrap();
+    assert_eq!(
+        browser_push::reminders::drain_pending(&app.context, &scope, Utc::now())
+            .await
+            .unwrap(),
+        0
+    );
+    assert_eq!(
+        browser_push::reminders::drain_pending(&app.context, &scope, Utc::now())
+            .await
+            .unwrap(),
+        0
+    );
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT status,attempt_count FROM notification_deliveries LIMIT 1",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(row.try_get::<String>("", "status").unwrap(), "uncertain");
+    assert_eq!(row.try_get::<i32>("", "attempt_count").unwrap(), 1);
+    assert_eq!(transport.0.lock().unwrap().len(), 1);
+    app.close().await;
+}
 
 #[tokio::test]
 async fn browser_reminder_retries_a_pending_reservation_once_after_database_failure() {

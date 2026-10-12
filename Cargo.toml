@@ -39,6 +39,7 @@ subtle = "=2.6.1"
 webauthn-rs-core = "=0.5.5"
 webauthn-rs = { version = "=0.5.5", features = ["danger-allow-state-serialisation", "conditional-ui"] }
 web-push = { version = "=0.11.0", default-features = false, features = ["hyper-client"] }
+reqwest = { version = "=0.13.5", default-features = false, features = ["json", "rustls"] }
 serde_cbor_2 = "0.13"
 getrandom = "=0.4.3"
 ulid = "=3.0.0"
@@ -64,7 +65,6 @@ migration = { path = "migration" }
 [dev-dependencies]
 loco-rs = { version = "=1.2.0", default-features = false, features = ["testing"] }
 regex = "=1.13.1"
-reqwest = { version = "=0.13.5", default-features = false, features = ["json"] }
 
 [features]
 cutover-rehearsal = []
