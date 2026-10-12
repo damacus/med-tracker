@@ -3,9 +3,18 @@ import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
 import { withOwnedDatabase } from '../../scripts/migration/foundation-database.mjs';
 import { stopOwnedProcess } from '../../scripts/migration/process-cleanup.mjs';
+import { sharedBrowserDatabase } from '../../scripts/ci/browser-database.mjs';
 
 export const test = base.extend({
-  ownedOrigin: [async ({}, use) => withOwnedDatabase(async databaseUrl => {
+  ownedOrigin: [async ({}, use) => {
+    const database = process.env.LOCO_BROWSER_DATABASE ? await sharedBrowserDatabase(process.env.LOCO_BROWSER_DATABASE) : withOwnedDatabase;
+    return database(async (databaseUrl, _provision, ownership) => {
+    if (ownership.runtimeRole) {
+      const runtime = new URL(databaseUrl);
+      runtime.username = ownership.runtimeRole;
+      runtime.password = 'password';
+      databaseUrl = runtime.href;
+    }
     const reservation = createServer();
     await new Promise(resolve => reservation.listen(0, '127.0.0.1', resolve));
     const port = reservation.address().port;
@@ -32,7 +41,7 @@ export const test = base.extend({
     } finally {
       await stopOwnedProcess(server);
     }
-  }), { scope: 'worker', timeout: 120000 }],
+  }); }, { scope: 'worker', timeout: 120000 }],
   baseURL: async ({ ownedOrigin }, use) => use(ownedOrigin)
 });
 export { expect };

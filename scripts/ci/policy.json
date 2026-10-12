@@ -1,6 +1,6 @@
 {
   "jobs": {
-    "loco": ["loco_foundation"],
+    "loco": ["loco_foundation", "loco_lint", "loco_integration", "loco_browser"],
     "rails": ["scan_ruby", "scan_js", "lint", "test_non_system", "coverage", "test_system", "production_image_medication_search"],
     "rust": ["client_tools"],
     "rust_port": ["rust_port", "rust_dashboard_browser", "rust_household_browser"],

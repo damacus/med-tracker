@@ -1,7 +1,7 @@
 DO $$
 DECLARE tables text;
 BEGIN
-  IF current_database() <> 'medtracker_reference' OR current_user <> 'medtracker'
+  IF (current_database() <> 'medtracker_reference' AND current_database() !~ '^browser_[a-f0-9]{32}$') OR current_user <> 'medtracker'
      OR NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'medtracker_browser_runtime') THEN
     RAISE EXCEPTION 'Browser reset requires the owned reference database';
   END IF;

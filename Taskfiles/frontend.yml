@@ -40,4 +40,4 @@ tasks:
     cmds:
       - task: ':build'
       - task: browsers
-      - 'npx playwright test --config playwright.config.mjs {{if .PROJECT}}--project={{.PROJECT}}{{end}} {{if .GREP}}--grep={{.GREP | shellQuote}}{{end}} {{if ne (.GROUP | default "shell") "all"}}tests/browser/{{.GROUP | default "shell"}}.spec.mjs{{end}}'
+      - 'node scripts/ci/loco-browser.mjs {{if .PROJECT}}--project={{.PROJECT}}{{end}} {{if .GREP}}--grep={{.GREP | shellQuote}}{{end}} {{if ne (.GROUP | default "shell") "all"}}tests/browser/{{.GROUP | default "shell"}}.spec.mjs{{end}}'

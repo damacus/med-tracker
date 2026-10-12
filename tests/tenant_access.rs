@@ -1,3 +1,5 @@
+#[path = "support/template.rs"]
+mod template;
 use loco_rs::model::{TenantActiveModelExt, TenantQueryExt};
 use med_tracker::models::access::{self, Actor, HouseholdScope, PersonAccess};
 use med_tracker::models::entities::{grant, location};
@@ -104,27 +106,8 @@ impl Fixture {
             .unwrap();
         let (port, _) = endpoint.split_once('/').unwrap();
         assert!(port.parse::<u16>().unwrap() > 0);
-        let suffix = uuid::Uuid::new_v4().simple();
-        let name = format!("tenant_{suffix}");
-        let role = format!("runtime_{suffix}");
-        let control = Database::connect(&uri).await.unwrap();
-        control
-            .execute_unprepared(&format!(
-                "CREATE DATABASE {name} TEMPLATE medtracker_reference"
-            ))
-            .await
-            .unwrap();
-        control.execute_unprepared(&format!("CREATE ROLE {role} LOGIN PASSWORD 'password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS IN ROLE med_tracker_app")).await.unwrap();
-        control.close().await.unwrap();
-        let admin = Database::connect(format!(
-            "postgres://medtracker:medtracker_password@127.0.0.1:{port}/{name}"
-        ))
-        .await
-        .unwrap();
-        <migration::Migrator as migration::MigratorTrait>::up(&admin, None)
-            .await
-            .unwrap();
-        admin
+        template::prepare(&uri, "tenant_access_template", |admin| async move {
+admin
             .execute_unprepared(include_str!("fixtures/persistence-records.sql"))
             .await
             .unwrap();
@@ -147,6 +130,24 @@ impl Fixture {
              INSERT INTO public.person_access_grants(id, household_id, household_membership_id, person_id, access_level, relationship_type, created_at, updated_at)
              VALUES (78002, 72002, 74002, 73004, 'view', 'self', now(), now());"
         ).await.unwrap();
+        }).await;
+        let suffix = uuid::Uuid::new_v4().simple();
+        let name = format!("tenant_{suffix}");
+        let role = format!("runtime_{suffix}");
+        let control = Database::connect(&uri).await.unwrap();
+        control
+            .execute_unprepared(&format!(
+                "CREATE DATABASE {name} TEMPLATE tenant_access_template"
+            ))
+            .await
+            .unwrap();
+        control.execute_unprepared(&format!("CREATE ROLE {role} LOGIN PASSWORD 'password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS IN ROLE med_tracker_app")).await.unwrap();
+        control.close().await.unwrap();
+        let admin = Database::connect(format!(
+            "postgres://medtracker:medtracker_password@127.0.0.1:{port}/{name}"
+        ))
+        .await
+        .unwrap();
         let runtime_uri = format!("postgres://{role}:password@127.0.0.1:{port}/{name}");
         let mut options = sea_orm::ConnectOptions::new(runtime_uri.clone());
         options.max_connections(1).min_connections(1);

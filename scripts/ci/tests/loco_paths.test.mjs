@@ -57,14 +57,15 @@ test('Loco CI provisions the compiler components required by root checks', () =>
   const job = workflow.match(/\n  loco_foundation:\n([\s\S]*?)(?=\n  [a-z_]+:\n)/)?.[1];
   assert.ok(job);
   assert.match(job, /components: rustfmt, clippy/);
-  assert.match(job, /run: task ci/);
-  assert.match(job, /image: postgres:18-alpine/);
+  assert.match(job, /run: task test:unit/);
+  assert.match(job, /run: task ci:prepare/);
+  assert.doesNotMatch(job, /services:/);
 });
 
 test('Loco CI avoids historical audit setup during application verification', () => {
   const workflow = readFileSync(new URL('../../../.github/workflows/ci.yml', import.meta.url), 'utf8');
   const job = workflow.match(/\n  loco_foundation:\n([\s\S]*?)(?=\n  [a-z_]+:\n)/)?.[1];
   assert.ok(job);
-  assert.doesNotMatch(job, /apt-get|fetch-depth: 0/);
-  assert.match(job, /run: task ci/);
+  assert.doesNotMatch(job, /fetch-depth: 0/);
+  assert.match(job, /run: task test:unit/);
 });

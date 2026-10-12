@@ -2,6 +2,12 @@
 name: CI
 
 "on":
+  workflow_dispatch:
+    inputs:
+      cold_cache:
+        description: Run the Loco benchmark without restoring compiler, npm or browser caches
+        type: boolean
+        default: false
   pull_request:
   push:
     branches: [main]
@@ -100,25 +106,19 @@ jobs:
   loco_foundation:
     needs: changes
     if: ${{ needs.changes.outputs.loco == 'true' }}
-    name: Loco Foundation
+    name: Rust and JavaScript unit tests / compile test binaries
     runs-on: ubuntu-latest
-    timeout-minutes: 90
-    services:
-      postgres:
-        image: postgres:18-alpine
-        env:
-          POSTGRES_USER: medtracker
-          POSTGRES_PASSWORD: medtracker_password
-          POSTGRES_DB: medtracker_loco
-        ports: [5432:5432]
-        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    timeout-minutes: 15
     env:
-      DATABASE_URL: postgres://medtracker:medtracker_password@127.0.0.1:5432/medtracker_loco
+      CARGO_INCREMENTAL: '0'
+      CARGO_PROFILE_DEV_DEBUG: '0'
+      CARGO_PROFILE_TEST_DEBUG: '0'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: actions/setup-node@v7
         with:
           node-version: "24"
+          cache: ${{ !inputs.cold_cache && 'npm' || '' }}
       - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87
         with:
           toolchain: stable
@@ -128,15 +128,143 @@ jobs:
           version: 3.52.0
           repo-token: ${{ github.token }}
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
-      - run: task ci
-      - name: Preserve Loco browser failure diagnostics
-        if: failure()
+        if: ${{ !inputs.cold_cache }}
+        with:
+          shared-key: loco-tests-v1
+      - name: Check path ownership and relocation before compilation
+        run: task ci:paths foundation:test-relocation fmt
+      - name: Install test-runner prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes fish uuid-runtime
+      - name: Run database-free unit and orchestration tests
+        run: task test:unit
+      - name: Compile application and integration tests once
+        run: task ci:prepare
+      - name: Package executable artifacts with permissions
+        run: task ci:package
+      - uses: actions/upload-artifact@v7
+        with:
+          name: loco-tests
+          path: target/loco-tests.tar.gz
+          compression-level: 0
+          retention-days: 1
+      - name: Preserve build timings
+        if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: loco-browser-failure-${{ github.run_attempt }}
+          name: loco-build-timings
+          path: test-results/
+          if-no-files-found: ignore
+      - name: Summarise build timings
+        if: always()
+        run: task ci:report
+
+  loco_lint:
+    needs: loco_foundation
+    name: Rust lint and formatting
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CARGO_INCREMENTAL: '0'
+      CARGO_PROFILE_DEV_DEBUG: '0'
+      CARGO_PROFILE_TEST_DEBUG: '0'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+      - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
+        with:
+          version: 3.52.0
+          repo-token: ${{ github.token }}
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+        if: ${{ !inputs.cold_cache }}
+        with:
+          shared-key: loco-tests-v1
+          save-if: false
+      - run: task fmt lint
+
+  loco_integration:
+    needs: loco_foundation
+    name: API, security and database integration tests (${{ matrix.shard }}/4)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      LOCO_CI_ARTIFACT: '1'
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
+        with:
+          version: 3.52.0
+          repo-token: ${{ github.token }}
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: loco-tests
+      - run: tar -xzf loco-tests.tar.gz
+      - run: task test:integration SHARD=${{ matrix.shard }}/4
+      - name: Preserve integration timings and selection
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: loco-integration-${{ matrix.shard }}
+          path: test-results/
+          if-no-files-found: ignore
+      - name: Summarise integration timings
+        if: always()
+        run: task ci:report
+
+  loco_browser:
+    needs: loco_foundation
+    name: Desktop and mobile browser tests (${{ matrix.shard }}/12)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      LOCO_CI_ARTIFACT: '1'
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: ${{ !inputs.cold_cache && 'npm' || '' }}
+      - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
+        with:
+          version: 3.52.0
+          repo-token: ${{ github.token }}
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: loco-tests
+      - run: tar -xzf loco-tests.tar.gz
+      - run: task frontend:install
+      - uses: actions/cache@v6
+        if: ${{ !inputs.cold_cache }}
+        with:
+          path: ~/.cache/ms-playwright
+          key: loco-chromium-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - run: task test:browser SHARD=${{ matrix.shard }}/12
+      - name: Preserve browser results and fixture timings
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: loco-browser-${{ matrix.shard }}
           path: test-results/
           retention-days: 7
           if-no-files-found: ignore
+      - name: Summarise browser timings
+        if: always()
+        run: task ci:report
 
   scan_ruby:
     defaults:
@@ -830,6 +958,9 @@ jobs:
     needs:
       - changes
       - loco_foundation
+      - loco_lint
+      - loco_integration
+      - loco_browser
       - scan_ruby
       - scan_js
       - lint

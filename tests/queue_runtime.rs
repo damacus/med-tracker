@@ -1,9 +1,10 @@
+#[path = "support/template.rs"]
+mod template;
 use loco_rs::{
     bgworker::{Queue, pg},
     config::{Config, PostgresQueueConfig, QueueConfig},
     environment::Environment,
 };
-use migration::MigratorTrait;
 use sea_orm::{ConnectionTrait, Database, DatabaseConnection};
 use serde_json::json;
 
@@ -50,13 +51,14 @@ impl Fixture {
             .unwrap();
         let (port, _) = endpoint.split_once('/').unwrap();
         assert!(port.parse::<u16>().unwrap() > 0);
+        template::prepare(&uri, "queue_runtime_template", |_admin| async move {}).await;
         let suffix = uuid::Uuid::new_v4().simple();
         let name = format!("queue_{suffix}");
         let role = format!("queue_runtime_{suffix}");
         let control = Database::connect(&uri).await.unwrap();
         control
             .execute_unprepared(&format!(
-                "CREATE DATABASE {name} TEMPLATE medtracker_reference"
+                "CREATE DATABASE {name} TEMPLATE queue_runtime_template"
             ))
             .await
             .unwrap();
@@ -67,7 +69,6 @@ impl Fixture {
         ))
         .await
         .unwrap();
-        migration::Migrator::up(&admin, None).await.unwrap();
         let runtime_uri = format!("postgres://{role}:password@127.0.0.1:{port}/{name}");
         let runtime = Database::connect(&runtime_uri).await.unwrap();
         let config = serde_json::from_value(json!({

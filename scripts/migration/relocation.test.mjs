@@ -10,7 +10,7 @@ test('root CI checks relocation contracts without rerunning other snapshot audit
   assert.equal(result.status, 0, result.stderr);
   const output = result.stdout + result.stderr;
   assert.match(output, /cargo clippy/);
-  assert.match(output, /run-slice\.mjs --all/);
+  assert.match(output, /loco-integration\.mjs/);
   assert.match(output, /foundation-database\.test\.mjs/);
   assert.match(output, /process-cleanup\.test\.mjs/);
   assert.match(output, /relocation\.test\.mjs/);
