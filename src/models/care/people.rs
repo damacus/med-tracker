@@ -1,10 +1,12 @@
 mod creation;
+mod me;
 mod persistence;
 mod projection;
 mod validation;
 mod writing;
 
 pub use creation::create;
+pub(crate) use me::me_read;
 pub(crate) use projection::values;
 pub use projection::{Pagination, list, read, representation};
 pub use writing::update;

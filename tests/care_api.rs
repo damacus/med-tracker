@@ -36,6 +36,8 @@ mod invitations;
 mod legacy_pause;
 #[path = "care_api/locations.rs"]
 mod locations;
+#[path = "care_api/me.rs"]
+mod me;
 #[path = "care_api/medication_lookup.rs"]
 mod medication_lookup;
 #[path = "care_api/medication_reads.rs"]
