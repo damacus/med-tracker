@@ -89,6 +89,22 @@ test('signing in closes notifications retained from a previous account', async (
   expect(closed).toBe(1);
 });
 
+test('recovery sign-in closes notifications retained from a previous account', async ({ page }) => {
+  test.setTimeout(180000);
+  let closed = 0;
+  await page.exposeFunction('recordClosedNotification', () => { closed += 1; });
+  await page.addInitScript(() => {
+    navigator.serviceWorker.getRegistration = async () => ({
+      getNotifications: async () => [{ close: () => window.recordClosedNotification() }],
+    });
+  });
+  await page.goto('/recovery-login');
+  await page.getByLabel('Recovery code', { exact: true }).fill('synthetic-invalid-code');
+  await page.getByRole('button', { name: 'Sign in with recovery code', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('Invalid or used recovery code');
+  expect(closed).toBe(1);
+});
+
 test('managed adult opt-ins exclude self, view-only and revoked grants while dependants remain automatic', async ({ page, careFixture }) => {
   test.setTimeout(180000);
   await careFixture.profileNotificationFixture();

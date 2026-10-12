@@ -48,6 +48,21 @@ device attempt. Due and missed deliveries expire one hour after their intended
 notification time; the missed time includes the 30-minute grace period.
 Low-stock deliveries expire 24 hours after threshold crossing.
 
+Browser payloads identify their owning account. Before displaying a reminder or
+opening its destination, the service worker fetches the authenticated profile
+push status and requires that account to match. This check has a three-second
+timeout and fails closed while signed out or offline. An account transition
+waits for any in-flight display, closes notifications already shown by this
+browser, and pauses new display while sign-in or sign-out completes. The page
+waits up to five seconds for the worker's acknowledgement. If the worker cannot
+confirm cleanup, the authentication form stays on the page with retry guidance.
+The transition belongs to the initiating tab, survives a service-worker
+restart, and expires after 30 minutes if that tab never completes navigation.
+This coordinates browser display only; authenticated session checks and
+subscription ownership remain server-side. A transition lasting longer than
+30 minutes can resume browser delivery, still subject to the current-account
+check.
+
 Each device has its own row. `accepted` means the push service accepted the
 request; it does not prove the browser displayed it. `pending` with outcome
 `confirmed_rejection` is retryable after 1, 5, 15 and 30 minutes, subject to

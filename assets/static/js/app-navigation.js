@@ -1,15 +1,58 @@
 (() => {
   let installed = false;
+  const authPaths = new Set(['/login', '/logout', '/recovery-login', '/auth/totp', '/auth/zitadel']);
+  const transitionKey = 'medtracker.push.transition';
+  function workerMessage(worker, type, id) {
+    return new Promise((resolve, reject) => {
+      const channel = new MessageChannel();
+      const timeout = setTimeout(() => { channel.port1.close(); reject(Error('Notification transition timed out')); }, 5000);
+      channel.port1.onmessage = event => {
+        clearTimeout(timeout);
+        channel.port1.close();
+        if (event.data?.ok) resolve(event.data);
+        else reject(Error('Notification transition failed'));
+      };
+      worker.postMessage({ type, id }, [channel.port2]);
+    });
+  }
+  async function closeNotifications(registration) {
+    (await registration?.getNotifications?.())?.forEach(notification => notification.close());
+  }
+  async function finishAuthTransition() {
+    const id = sessionStorage.getItem(transitionKey);
+    if (!id) return;
+    const registration = await navigator.serviceWorker?.getRegistration('/');
+    if (!registration?.active) { sessionStorage.removeItem(transitionKey); return; }
+    const status = await workerMessage(registration.active, 'auth-transition-status');
+    if (status.id !== id) { sessionStorage.removeItem(transitionKey); return; }
+    await closeNotifications(registration);
+    await workerMessage(registration.active, 'auth-transition-end', id);
+    sessionStorage.removeItem(transitionKey);
+  }
+  const ready = finishAuthTransition().catch(() => {});
+  async function beginAuthTransition() {
+    await ready;
+    const registration = await navigator.serviceWorker?.getRegistration('/');
+    if (registration?.active) {
+      const id = sessionStorage.getItem(transitionKey) || crypto.randomUUID();
+      sessionStorage.setItem(transitionKey, id);
+      await workerMessage(registration.active, 'auth-transition-begin', id);
+    }
+    await closeNotifications(registration);
+  }
+  window.medTrackerBeginPushTransition = beginAuthTransition;
+  window.medTrackerEndPushTransition = finishAuthTransition;
   document.addEventListener('submit', event => {
     const form = event.target;
-    if (!(form instanceof HTMLFormElement) || !['/login', '/logout'].includes(new URL(form.action).pathname)) return;
+    if (!(form instanceof HTMLFormElement) || !authPaths.has(new URL(form.action).pathname)) return;
     event.preventDefault();
     void (async () => {
       try {
-        const registration = await navigator.serviceWorker?.getRegistration('/');
-        const notifications = await registration?.getNotifications?.();
-        notifications?.forEach(notification => notification.close());
-      } catch {}
+        await beginAuthTransition();
+      } catch {
+        window.alert('Could not clear browser notifications. Retry, or disable notifications in browser settings before signing in or out.');
+        return;
+      }
       HTMLFormElement.prototype.submit.call(form);
     })();
   }, true);
