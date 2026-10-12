@@ -36,6 +36,7 @@ mailer:
     secure: false
 queue:
   kind: Postgres
+  connect_timeout: 5000
   uri: <%= get_env(name="DATABASE_URL", default="postgres://medtracker:medtracker_password@localhost:5432/medtracker_loco") %>
   reaper:
     age_minutes: 10
