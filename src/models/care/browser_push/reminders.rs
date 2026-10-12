@@ -8,7 +8,7 @@ use crate::models::{
     notification_preferences,
 };
 use chrono::{DateTime, NaiveDateTime, Timelike, Utc};
-pub use delivery::drain_pending;
+pub use delivery::{drain_candidates, drain_pending};
 use loco_rs::app::AppContext;
 use loco_rs::model::TenantQueryExt;
 use sea_orm::{ColumnTrait, ConnectionTrait, DbBackend, EntityTrait, QueryFilter, Statement};

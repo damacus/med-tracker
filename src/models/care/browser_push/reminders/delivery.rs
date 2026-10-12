@@ -19,8 +19,13 @@ struct Claim {
     claimed_at: NaiveDateTime,
     subscription: push_subscription::Model,
     payload: Vec<u8>,
-    ttl: u32,
     expires_at: DateTime<Utc>,
+}
+
+#[derive(Clone, Copy)]
+enum AttemptOutcome {
+    Provider(Delivery),
+    Deadline,
 }
 
 async fn terminal(
@@ -45,12 +50,13 @@ async fn claim(
     let tenant = access::begin(&ctx.db, scope).await?;
     push_subscriptions::lock_account(&tenant).await?;
     let row = tenant.transaction().query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "SELECT d.notification_event_id,d.subscription_id,d.status,d.attempt_count,d.claimed_at,e.event_key,e.event_type,e.intended_at,e.expires_at FROM notification_deliveries d JOIN notification_events e ON e.id=d.notification_event_id AND e.household_id=d.household_id WHERE d.id=$1 AND d.household_id=$2 AND d.account_id=$3 FOR UPDATE OF d SKIP LOCKED",
+        "SELECT d.notification_event_id,d.subscription_id,d.status,d.attempt_count,d.next_attempt_at,d.claimed_at,e.event_key,e.event_type,e.intended_at,e.expires_at FROM notification_deliveries d JOIN notification_events e ON e.id=d.notification_event_id AND e.household_id=d.household_id WHERE d.id=$1 AND d.household_id=$2 AND d.account_id=$3 FOR UPDATE OF d SKIP LOCKED",
         [id.into(),scope.household_id.into(),scope.actor.account_id.into()]
     )).await?;
     let Some(row) = row else {
         return Ok(None);
     };
+    let now = now.max(Utc::now());
     let status: String = row.try_get("", "status")?;
     if status == "sending" {
         let claimed_at: Option<NaiveDateTime> = row.try_get("", "claimed_at")?;
@@ -68,6 +74,10 @@ async fn claim(
         return Ok(None);
     }
     if status != "pending" {
+        return Ok(None);
+    }
+    let next_attempt_at: NaiveDateTime = row.try_get("", "next_attempt_at")?;
+    if next_attempt_at > now.naive_utc() {
         return Ok(None);
     }
     let event_id: i64 = row.try_get("", "notification_event_id")?;
@@ -119,8 +129,6 @@ async fn claim(
         return Ok(None);
     };
     let payload = serde_json::to_vec(&intent.payload).map_err(|_| OperationError::Unavailable)?;
-    let remaining = (expires_at - now).num_seconds().max(0) as u32;
-    let ttl = remaining.min(300);
     let claimed_at = now.naive_utc();
     tenant.transaction().execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
         "UPDATE notification_deliveries SET status='sending',attempt_count=attempt_count+1,claimed_at=$2,outcome=NULL,updated_at=timezone('UTC',clock_timestamp()) WHERE id=$1 AND status='pending'",
@@ -139,7 +147,6 @@ async fn claim(
         claimed_at,
         subscription,
         payload,
-        ttl,
         expires_at,
     }))
 }
@@ -149,16 +156,17 @@ async fn complete(
     scope: &HouseholdScope,
     id: i64,
     claim: &Claim,
-    result: Delivery,
+    result: AttemptOutcome,
     now: DateTime<Utc>,
 ) -> Result<bool, OperationError> {
     let tenant = access::begin(&ctx.db, scope).await?;
     push_subscriptions::lock_account(&tenant).await?;
     let (status, outcome, next_attempt_at) = match result {
-        Delivery::Accepted => ("accepted", "accepted", now),
-        Delivery::Expired => ("expired", "expired_endpoint", now),
-        Delivery::Permanent => ("permanent", "permanent_rejection", now),
-        Delivery::Temporary(retry_after) => {
+        AttemptOutcome::Deadline => ("invalid", "deadline_before_send", now),
+        AttemptOutcome::Provider(Delivery::Accepted) => ("accepted", "accepted", now),
+        AttemptOutcome::Provider(Delivery::Expired) => ("expired", "expired_endpoint", now),
+        AttemptOutcome::Provider(Delivery::Permanent) => ("permanent", "permanent_rejection", now),
+        AttemptOutcome::Provider(Delivery::Temporary(retry_after)) => {
             let delay = match claim.attempt {
                 1 => 1,
                 2 => 5,
@@ -181,7 +189,9 @@ async fn complete(
                 ("pending", "confirmed_rejection", next)
             }
         }
-        Delivery::Uncertain | Delivery::Failed => ("uncertain", "uncertain_outcome", now),
+        AttemptOutcome::Provider(Delivery::Uncertain | Delivery::Failed) => {
+            ("uncertain", "uncertain_outcome", now)
+        }
     };
     let updated = tenant.transaction().execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
         "UPDATE notification_deliveries SET status=$5,outcome=$6,next_attempt_at=$7,claimed_at=NULL,updated_at=timezone('UTC',clock_timestamp()) WHERE id=$1 AND household_id=$2 AND account_id=$3 AND status='sending' AND attempt_count=$4 AND claimed_at=$8",
@@ -190,7 +200,7 @@ async fn complete(
     if updated.rows_affected() == 0 {
         return Ok(false);
     }
-    if result == Delivery::Expired {
+    if matches!(result, AttemptOutcome::Provider(Delivery::Expired)) {
         push_subscription::Entity::delete_by_id(claim.subscription.id)
             .exec(tenant.transaction())
             .await?;
@@ -211,23 +221,46 @@ pub async fn drain_pending(
     scope: &HouseholdScope,
     now: DateTime<Utc>,
 ) -> Result<usize, OperationError> {
-    let Some(service) = ctx.shared_store.get::<Service>() else {
+    if ctx.shared_store.get::<Service>().is_none() {
         return Ok(0);
-    };
+    }
     let tenant = access::begin(&ctx.db, scope).await?;
     let rows = tenant.transaction().query_all_raw(Statement::from_sql_and_values(DbBackend::Postgres,
         "SELECT id FROM notification_deliveries WHERE household_id=$1 AND account_id=$2 AND ((status='pending' AND next_attempt_at<=$3) OR (status='sending' AND claimed_at<$4)) ORDER BY id LIMIT 100",
         [scope.household_id.into(),scope.actor.account_id.into(),now.naive_utc().into(),(now-chrono::Duration::seconds(120)).naive_utc().into()]
     )).await?;
     tenant.commit().await?;
+    let ids = rows
+        .into_iter()
+        .map(|row| row.try_get("", "id"))
+        .collect::<Result<Vec<i64>, _>>()?;
+    drain_candidates(ctx, scope, now, &ids).await
+}
+
+pub async fn drain_candidates(
+    ctx: &AppContext,
+    scope: &HouseholdScope,
+    now: DateTime<Utc>,
+    ids: &[i64],
+) -> Result<usize, OperationError> {
+    let Some(service) = ctx.shared_store.get::<Service>() else {
+        return Ok(0);
+    };
     let mut accepted_events = std::collections::HashSet::new();
-    for row in rows {
-        let id: i64 = row.try_get("", "id")?;
-        if let Some(claim) = claim(ctx, scope, id, now).await? {
-            let result = service
-                .transport
-                .send_with_ttl(&claim.subscription, &claim.payload, claim.ttl)
-                .await;
+    for &id in ids {
+        if let Some(claim) = claim(ctx, scope, id, now.max(Utc::now())).await? {
+            let send_at = now.max(Utc::now());
+            let result = if send_at >= claim.expires_at {
+                AttemptOutcome::Deadline
+            } else {
+                let ttl = (claim.expires_at - send_at).num_seconds().max(0) as u32;
+                AttemptOutcome::Provider(
+                    service
+                        .transport
+                        .send_with_ttl(&claim.subscription, &claim.payload, ttl.min(300))
+                        .await,
+                )
+            };
             if complete(ctx, scope, id, &claim, result, now.max(Utc::now())).await? {
                 accepted_events.insert(claim.event_id);
             }

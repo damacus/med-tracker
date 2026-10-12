@@ -27,6 +27,228 @@ struct BlockedAcceptance {
     release: Notify,
 }
 
+struct FirstBlockedDelivery {
+    started: Notify,
+    release: Notify,
+    calls: Mutex<Vec<(i64, u32)>>,
+}
+
+struct TtlCapture(Mutex<Vec<(u32, chrono::DateTime<Utc>)>>);
+
+#[async_trait::async_trait]
+impl Transport for TtlCapture {
+    async fn send(&self, _: &push_subscription::Model, _: &[u8]) -> Delivery {
+        unreachable!()
+    }
+
+    async fn send_with_ttl(&self, _: &push_subscription::Model, _: &[u8], ttl: u32) -> Delivery {
+        self.0.lock().unwrap().push((ttl, Utc::now()));
+        Delivery::Accepted
+    }
+}
+
+#[async_trait::async_trait]
+impl Transport for FirstBlockedDelivery {
+    async fn send(&self, _: &push_subscription::Model, _: &[u8]) -> Delivery {
+        unreachable!()
+    }
+
+    async fn send_with_ttl(
+        &self,
+        subscription: &push_subscription::Model,
+        _: &[u8],
+        ttl: u32,
+    ) -> Delivery {
+        let first = {
+            let mut calls = self.calls.lock().unwrap();
+            calls.push((subscription.id, ttl));
+            calls.len() == 1
+        };
+        if first {
+            self.started.notify_one();
+            self.release.notified().await;
+        }
+        Delivery::Accepted
+    }
+}
+
+#[tokio::test]
+async fn browser_reminder_stale_selected_candidate_cannot_bypass_retry_time() {
+    let app = Application::new().await;
+    let (now, scope) = prepare_due_delivery(&app, "synthetic-stale-candidate").await;
+    let transport = Arc::new(ScriptedDelivery(
+        Mutex::new(vec![
+            Delivery::Temporary(None),
+            Delivery::Temporary(None),
+            Delivery::Temporary(None),
+        ]),
+        Mutex::new(0),
+    ));
+    app.context.shared_store.insert(Service {
+        public_key: String::new(),
+        transport: transport.clone(),
+    });
+    assert_eq!(
+        browser_push::reminders::deliver_account(&app.context, &scope, now)
+            .await
+            .unwrap(),
+        0
+    );
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT id FROM notification_deliveries LIMIT 1",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    let id = row.try_get::<i64>("", "id").unwrap();
+    let selected_by_both_drainers = [id];
+    let retry_clock = now + chrono::Duration::minutes(2);
+    app.fixture.admin.execute_unprepared("UPDATE notification_deliveries SET next_attempt_at=now()-interval '1 second' WHERE status='pending'").await.unwrap();
+    assert_eq!(
+        browser_push::reminders::drain_candidates(
+            &app.context,
+            &scope,
+            retry_clock,
+            &selected_by_both_drainers
+        )
+        .await
+        .unwrap(),
+        0
+    );
+    assert_eq!(
+        browser_push::reminders::drain_candidates(
+            &app.context,
+            &scope,
+            retry_clock,
+            &selected_by_both_drainers
+        )
+        .await
+        .unwrap(),
+        0
+    );
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            "SELECT status,attempt_count,next_attempt_at FROM notification_deliveries WHERE id=$1",
+            [id.into()],
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(row.try_get::<String>("", "status").unwrap(), "pending");
+    assert_eq!(row.try_get::<i32>("", "attempt_count").unwrap(), 2);
+    assert!(
+        row.try_get::<chrono::NaiveDateTime>("", "next_attempt_at")
+            .unwrap()
+            > retry_clock.naive_utc()
+    );
+    assert_eq!(*transport.1.lock().unwrap(), 2);
+    app.close().await;
+}
+
+#[tokio::test]
+async fn browser_reminder_refreshes_clock_between_device_sends() {
+    let app = Application::new().await;
+    let (now, scope) = prepare_due_delivery(&app, "synthetic-batch-expiry").await;
+    app.fixture.admin.execute_unprepared("INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/second','synthetic','synthetic',now(),now())").await.unwrap();
+    let transport = Arc::new(FirstBlockedDelivery {
+        started: Notify::new(),
+        release: Notify::new(),
+        calls: Mutex::new(vec![]),
+    });
+    app.context.shared_store.insert(Service {
+        public_key: String::new(),
+        transport: transport.clone(),
+    });
+    let ctx = app.context.clone();
+    let sending_scope = scope.clone();
+    let sender = tokio::spawn(async move {
+        browser_push::reminders::deliver_account(&ctx, &sending_scope, now).await
+    });
+    transport.started.notified().await;
+    app.fixture
+        .admin
+        .execute_raw(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            "UPDATE notification_events SET expires_at=$1 WHERE event_key LIKE 'browser:%'",
+            [(now + chrono::Duration::seconds(1)).naive_utc().into()],
+        ))
+        .await
+        .unwrap();
+    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+    transport.release.notify_one();
+    assert_eq!(sender.await.unwrap().unwrap(), 1);
+    assert_eq!(transport.calls.lock().unwrap().len(), 1);
+    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT count(*) FILTER (WHERE status='accepted') AS accepted,count(*) FILTER (WHERE status='invalid') AS invalid FROM notification_deliveries")).await.unwrap().unwrap();
+    assert_eq!(row.try_get::<i64>("", "accepted").unwrap(), 1);
+    assert_eq!(row.try_get::<i64>("", "invalid").unwrap(), 1);
+    app.close().await;
+}
+
+#[tokio::test]
+async fn browser_reminder_ttl_uses_remaining_lifetime_at_send() {
+    let app = Application::new().await;
+    let (now, scope) = prepare_due_delivery(&app, "synthetic-send-ttl").await;
+    let first = Arc::new(ScriptedDelivery(
+        Mutex::new(vec![Delivery::Temporary(None)]),
+        Mutex::new(0),
+    ));
+    app.context.shared_store.insert(Service {
+        public_key: String::new(),
+        transport: first,
+    });
+    assert_eq!(
+        browser_push::reminders::deliver_account(&app.context, &scope, now)
+            .await
+            .unwrap(),
+        0
+    );
+    app.fixture.admin.execute_unprepared("UPDATE notification_events SET expires_at=now()+interval '100 seconds' WHERE event_key LIKE 'browser:%'; UPDATE notification_deliveries SET next_attempt_at=now()-interval '10 minutes' WHERE status='pending'").await.unwrap();
+    let transport = Arc::new(TtlCapture(Mutex::new(vec![])));
+    app.context.shared_store.insert(Service {
+        public_key: String::new(),
+        transport: transport.clone(),
+    });
+    assert_eq!(
+        browser_push::reminders::drain_pending(
+            &app.context,
+            &scope,
+            now - chrono::Duration::minutes(5)
+        )
+        .await
+        .unwrap(),
+        1
+    );
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT expires_at FROM notification_events WHERE event_key LIKE 'browser:%' LIMIT 1",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    let expires_at = row
+        .try_get::<chrono::NaiveDateTime>("", "expires_at")
+        .unwrap()
+        .and_utc();
+    let recorded = transport.0.lock().unwrap();
+    assert_eq!(recorded.len(), 1);
+    let (ttl, sent_at) = recorded[0];
+    assert!(ttl <= 100);
+    assert!(i64::from(ttl) <= (expires_at - sent_at).num_seconds() + 1);
+    drop(recorded);
+    app.close().await;
+}
+
 #[async_trait::async_trait]
 impl Transport for BlockedAcceptance {
     async fn send(&self, _: &push_subscription::Model, _: &[u8]) -> Delivery {
@@ -766,13 +988,16 @@ async fn reminders_use_saved_zone(saved_zone: &str, zone: chrono_tz::Tz) {
 async fn browser_missed_reminders_respect_grace_managed_opt_in_and_private_content() {
     let app = Application::new().await;
     let now = Utc::now()
-        .date_naive()
-        .and_hms_opt(12, 30, 0)
+        .with_second(0)
         .unwrap()
-        .and_utc();
+        .with_nanosecond(0)
+        .unwrap();
+    let scheduled = (now - chrono::Duration::minutes(30))
+        .format("%H:%M")
+        .to_string();
     app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences=jsonb_build_object('time_zone','UTC') WHERE id=71001; INSERT INTO people(id,household_id,name,person_type,has_capacity,created_at,updated_at) VALUES(73004,72001,'Managed adult',0,true,now(),now()),(73005,72001,'View-only adult',0,true,now(),now()); INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,missed_dose_notifications_enabled,created_at,updated_at) VALUES(78002,72001,74001,73002,'manage','parent',false,now(),now()),(78004,72001,74001,73004,'manage','carer',false,now(),now()),(78005,72001,74001,73005,'view','carer',true,now(),now()); INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,created_at,updated_at) VALUES(72001,73001,true,false,true,false,false,now(),now()); INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/managed-reminder','synthetic','synthetic',now(),now())").await.unwrap();
     app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) SELECT 83000+id-73000,72001,id,80001,true,$1,$2,2,'tablet',0,'{\"times\":[\"12:00\"]}'::jsonb,now(),now() FROM people WHERE id IN(73002,73004,73005)", [(now.date_naive()-chrono::Duration::days(1)).into(),(now.date_naive()+chrono::Duration::days(2)).into()]
+        "INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) SELECT 83000+id-73000,72001,id,80001,true,$1,$2,2,'tablet',0,jsonb_build_object('times',jsonb_build_array($3::text)),now(),now() FROM people WHERE id IN(73002,73004,73005)", [(now.date_naive()-chrono::Duration::days(1)).into(),(now.date_naive()+chrono::Duration::days(2)).into(),scheduled.into()]
     )).await.unwrap();
     let transport = Arc::new(Reminders(Mutex::new(vec![])));
     app.context.shared_store.insert(Service {
