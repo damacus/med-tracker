@@ -1,9 +1,18 @@
 let transitionStarting = false;
 const pendingDisplays = new Set();
 
+self.addEventListener('install', event => { event.waitUntil(self.skipWaiting()); });
+self.addEventListener('activate', event => {
+  event.waitUntil((async () => {
+    (await self.registration.getNotifications()).forEach(notification => notification.close());
+    await self.clients.claim();
+  })());
+});
+
 self.addEventListener('message', event => {
   const type = event.data?.type;
   const id = event.data?.id;
+  if (type === 'activate') { event.waitUntil(self.skipWaiting()); return; }
   if (!['auth-transition-begin', 'auth-transition-status', 'auth-transition-end'].includes(type) || !event.ports?.[0]) return;
   if (type !== 'auth-transition-status' && (typeof id !== 'string' || !id)) return;
   if (type === 'auth-transition-begin') transitionStarting = true;
@@ -17,7 +26,7 @@ self.addEventListener('message', event => {
       } else if (type === 'auth-transition-end') {
         await transitionState(null, id);
       }
-      event.ports[0].postMessage({ ok: true, id: await transitionState() });
+      event.ports[0].postMessage({ ok: true, protocol: 1, id: await transitionState() });
     } catch {
       if (await transitionState().catch(() => null)) transitionStarting = false;
       event.ports[0].postMessage({ ok: false });

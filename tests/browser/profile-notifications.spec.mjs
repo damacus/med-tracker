@@ -1,14 +1,103 @@
 import { test, expect } from './care-fixtures.mjs';
 import { createECDH, randomBytes } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { workerUpgradeServer } from './worker-upgrade-server.mjs';
 
 test.use({ actionTimeout: 10000 });
+
+test('baseline worker upgrades with controlled tabs before authentication cleanup', async ({ browser, careFixture }) => {
+  test.setTimeout(180000);
+  const oldSource = readFileSync(new URL('./baseline-profile-push-worker.js', import.meta.url), 'utf8');
+  const newSource = await (await fetch(`${careFixture.origin}/profile-service-worker.js`)).text();
+  const server = await workerUpgradeServer(careFixture.origin, oldSource);
+  const directory = await mkdtemp(join(tmpdir(), 'notification-upgrade-'));
+  const context = await browser.browserType().launchPersistentContext(directory, { channel: 'chromium', headless: true, baseURL: server.origin });
+  let oldWorker;
+  try {
+    const page = await context.newPage();
+    await openNotifications(page);
+    await context.grantPermissions(['notifications'], { origin: new URL(page.url()).origin });
+    await page.evaluate(async () => {
+      await navigator.serviceWorker.register('/profile-service-worker.js', { scope: '/' });
+      await navigator.serviceWorker.ready;
+    });
+    await page.reload();
+    await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
+    oldWorker = context.serviceWorkers()[0];
+    const retained = await context.newPage();
+    await retained.goto(page.url());
+    await expect.poll(() => retained.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
+    expect(await page.evaluate(() => Notification.permission)).toBe('granted');
+    await page.evaluate(async () => (await navigator.serviceWorker.ready).showNotification('Private medication name', { body: 'Retained private text' }));
+    await expect.poll(() => page.evaluate(async () => (await (await navigator.serviceWorker.ready).getNotifications()).length)).toBe(1);
+    server.setWorker(`${oldSource}\n`);
+    await page.evaluate(async () => (await navigator.serviceWorker.ready).update());
+    await expect.poll(() => page.evaluate(async () => (await navigator.serviceWorker.ready).waiting?.state)).toBe('installed');
+    await oldWorker.evaluate(() => {
+      const show = self.registration.showNotification.bind(self.registration);
+      self.registration.showNotification = async (...args) => {
+        self.upgradeDisplayStarted = true;
+        await new Promise(resolve => { self.releaseUpgradeDisplay = resolve; });
+        return show(...args);
+      };
+    });
+    const session = await context.newCDPSession(page);
+    let registrationId;
+    session.on('ServiceWorker.workerRegistrationUpdated', ({ registrations }) => {
+      registrationId = registrations.find(registration => registration.scopeURL === `${server.origin}/`)?.registrationId || registrationId;
+    });
+    await session.send('ServiceWorker.enable');
+    await expect.poll(() => registrationId).toBeTruthy();
+    let pushError;
+    const pushed = session.send('ServiceWorker.deliverPushMessage', { origin: server.origin, registrationId, data: JSON.stringify({ title: 'In-flight private medication', body: 'Private dose', path: '/households/persistence-fixture/dashboard' }) }).catch(error => { pushError = error.message; });
+    await expect.poll(async () => pushError || await oldWorker.evaluate(() => self.upgradeDisplayStarted)).toBe(true);
+    server.setWorker(newSource);
+    const previousRequests = server.workerRequests;
+    const dialogs = [];
+    page.on('dialog', async dialog => { dialogs.push(dialog.message()); await dialog.dismiss().catch(() => {}); });
+    await page.locator('form[action="/logout"]').first().evaluate(form => form.requestSubmit());
+    await expect.poll(() => server.workerRequests, { timeout: 15000 }).toBeGreaterThan(previousRequests);
+    expect(new URL(page.url()).pathname).toBe('/households/persistence-fixture/profile');
+    await oldWorker.evaluate(() => self.releaseUpgradeDisplay());
+    await pushed;
+    expect(pushError).toBeUndefined();
+    await page.waitForURL('/login', { timeout: 20000 });
+    expect(dialogs).toEqual([]);
+    await expect.poll(() => retained.evaluate(async () => {
+      const registration = await navigator.serviceWorker.ready;
+      return navigator.serviceWorker.controller === registration.active && registration.active.state === 'activated';
+    })).toBe(true);
+    expect(await page.evaluate(async () => (await (await navigator.serviceWorker.ready).getNotifications()).length)).toBe(0);
+    await page.bringToFront();
+    let loginSubmits = 0;
+    await page.exposeFunction('recordUpgradeLoginSubmit', () => { loginSubmits += 1; });
+    await page.evaluate(() => document.addEventListener('submit', () => { void window.recordUpgradeLoginSubmit(); }, true));
+    await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
+    await page.getByLabel('Password', { exact: true }).fill('password');
+    const signedIn = page.waitForResponse(response => response.request().method() === 'POST' && response.url().endsWith('/login') && response.status() === 303);
+    await page.locator('form[action="/login"]').evaluate(form => form.requestSubmit());
+    await expect.poll(() => loginSubmits).toBe(1);
+    await signedIn;
+    await page.waitForURL('/', { timeout: 20000 });
+    expect(dialogs).toEqual([]);
+    await retained.close();
+  } finally {
+    await oldWorker?.evaluate(() => self.releaseUpgradeDisplay?.()).catch(() => {});
+    await context.close();
+    await server.close();
+    await rm(directory, { recursive: true, force: true });
+  }
+});
 
 async function openNotifications(page) {
   await page.goto('/login');
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/', { timeout: 20000 });
   await page.goto('/households/persistence-fixture/profile#notifications');
 }
 

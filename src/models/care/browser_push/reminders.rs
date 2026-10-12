@@ -1,4 +1,5 @@
 use super::{Service, audit};
+mod cleanup;
 mod delivery;
 use crate::models::{
     access::{self, HouseholdScope, TenantTransaction},
@@ -8,6 +9,7 @@ use crate::models::{
     notification_preferences,
 };
 use chrono::{DateTime, NaiveDateTime, NaiveTime, Utc};
+pub(crate) use cleanup::terminal_cleanup;
 pub use delivery::{drain_candidates, drain_pending};
 use loco_rs::app::AppContext;
 use loco_rs::model::TenantQueryExt;
@@ -277,6 +279,13 @@ pub async fn deliver_account(
     scope: &HouseholdScope,
     now: DateTime<Utc>,
 ) -> Result<usize, OperationError> {
+    terminal_cleanup(
+        ctx,
+        scope.household_id,
+        Some(scope.actor.account_id),
+        Utc::now(),
+    )
+    .await?;
     let Some(_service) = ctx.shared_store.get::<Service>() else {
         return Ok(0);
     };

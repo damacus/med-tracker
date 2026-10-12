@@ -48,13 +48,30 @@ device attempt. Due and missed deliveries expire one hour after their intended
 notification time; the missed time includes the 30-minute grace period.
 Low-stock deliveries expire 24 hours after threshold crossing.
 
+Every poll also performs terminal cleanup within the existing restricted
+household database role, including inactive households and former recipients.
+It visits households in batches of 100 and changes at most 100 outstanding
+deliveries per household per poll; it does not scan terminal delivery history.
+Revoked memberships, closed accounts and inactive households invalidate pending
+deliveries. Sending claims at least 120 seconds old become `uncertain`, even
+when the former recipient can no longer authenticate. Cleanup and its audit
+commit together. It cannot send, create retries or revive terminal rows.
+Completion still requires recipient access: if access disappears while a send
+is in flight, the known provider result cannot be recorded through that path
+and the claim becomes `uncertain` on cleanup. Restoring access does not resend it.
+
 Browser payloads identify their owning account. Before displaying a reminder or
 opening its destination, the service worker fetches the authenticated profile
 push status and requires that account to match. This check has a three-second
 timeout and fails closed while signed out or offline. An account transition
 waits for any in-flight display, closes notifications already shown by this
 browser, and pauses new display while sign-in or sign-out completes. The page
-waits up to five seconds for the worker's acknowledgement. If the worker cannot
+checks the active worker protocol and upgrades an old worker before starting
+the transition. The upgrade has a ten-second deadline and activates across
+open tabs, including when another worker is already waiting. Activation closes
+retained notifications after the old worker's in-flight events finish and
+claims the open tabs. The page then waits up to five seconds for the compatible
+worker's acknowledgement. If the worker cannot
 confirm cleanup, the authentication form stays on the page with retry guidance.
 The transition belongs to the initiating tab, survives a service-worker
 restart, and expires after 30 minutes if that tab never completes navigation.
@@ -70,8 +87,8 @@ request; it does not prove the browser displayed it. `pending` with outcome
 `uncertain` means transport acceptance could not be determined and is never
 retried automatically. `expired` removes only the affected subscription;
 `permanent` is terminal. `invalid` records that a deadline, eligibility check
-or retry limit prevented another attempt. A sending claim stranded for more
-than 120 seconds becomes `uncertain` on the next drain. Do not reset terminal
+or retry limit prevented another attempt. A sending claim stranded for at least
+120 seconds becomes `uncertain` on the next drain. Do not reset terminal
 rows or manually replay an uncertain send: the provider may already have
 accepted it.
 
@@ -164,6 +181,11 @@ Provider failures do not expose provider response bodies in application logs.
 Operational events use bounded channel, provider, stage, and outcome values.
 
 ## Verification
+
+Physical browser receipt, operating-system tray behaviour, iPhone Home Screen
+delivery and release-image trust/static-link checks remain tracked in
+[issue #2559](https://github.com/damacus/med-tracker/issues/2559). Local browser
+automation and provider acceptance do not close those gates.
 
 Use test accounts and devices that contain no real health data.
 

@@ -53,6 +53,24 @@ function worker(currentAccount = '71001', gate = { blocked: null }, statusWait =
   return { handlers, shown, opened, fetched, self };
 }
 
+test('worker activation closes retained notifications before claiming open tabs', async () => {
+  const state = worker();
+  let skipped = false;
+  let closed = false;
+  let claimed = false;
+  state.self.skipWaiting = async () => { skipped = true; };
+  state.shown.push({ close: () => { closed = true; } });
+  state.self.clients.claim = async () => { assert.equal(closed, true); claimed = true; };
+  let installed;
+  state.handlers.install({ waitUntil: value => { installed = value; } });
+  await installed;
+  assert.equal(skipped, true);
+  let activated;
+  state.handlers.activate({ waitUntil: value => { activated = value; } });
+  await activated;
+  assert.equal(claimed, true);
+});
+
 test('auth transition drains an in-flight display before acknowledging tray cleanup', async () => {
   const state = worker();
   let entered;

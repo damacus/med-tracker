@@ -221,10 +221,23 @@ pub async fn drain_pending(
     scope: &HouseholdScope,
     now: DateTime<Utc>,
 ) -> Result<usize, OperationError> {
+    super::terminal_cleanup(
+        ctx,
+        scope.household_id,
+        Some(scope.actor.account_id),
+        now.max(Utc::now()),
+    )
+    .await?;
     if ctx.shared_store.get::<Service>().is_none() {
         return Ok(0);
     }
-    let tenant = access::begin(&ctx.db, scope).await?;
+    let tenant = match access::begin(&ctx.db, scope).await {
+        Ok(tenant) => tenant,
+        Err(
+            OperationError::Forbidden | OperationError::NotFound | OperationError::Unauthenticated,
+        ) => return Ok(0),
+        Err(error) => return Err(error),
+    };
     let rows = tenant.transaction().query_all_raw(Statement::from_sql_and_values(DbBackend::Postgres,
         "SELECT id FROM notification_deliveries WHERE household_id=$1 AND account_id=$2 AND ((status='pending' AND next_attempt_at<=$3) OR (status='sending' AND claimed_at<$4)) ORDER BY id LIMIT 100",
         [scope.household_id.into(),scope.actor.account_id.into(),now.naive_utc().into(),(now-chrono::Duration::seconds(120)).naive_utc().into()]

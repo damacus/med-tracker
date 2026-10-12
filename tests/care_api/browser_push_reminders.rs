@@ -8,6 +8,245 @@ use med_tracker::models::{
 use std::sync::{Arc, Mutex};
 use tokio::sync::Notify;
 
+#[tokio::test]
+async fn browser_reminder_terminal_cleanup_audit_failure_is_atomic() {
+    let app = Application::new().await;
+    let (now, scope) = prepare_due_delivery(&app, "synthetic-cleanup-audit").await;
+    let transport = Arc::new(ScriptedDelivery(
+        Mutex::new(vec![Delivery::Temporary(None)]),
+        Mutex::new(0),
+    ));
+    app.context.shared_store.insert(Service {
+        public_key: String::new(),
+        transport: transport.clone(),
+    });
+    browser_push::reminders::deliver_account(&app.context, &scope, now)
+        .await
+        .unwrap();
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET revoked_at=now() WHERE account_id=71001; CREATE FUNCTION public.reject_browser_cleanup_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.event_type='browser_push.reminder.invalid' THEN RAISE EXCEPTION 'synthetic cleanup audit failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_browser_cleanup_audit BEFORE INSERT ON security_audit_events FOR EACH ROW EXECUTE FUNCTION public.reject_browser_cleanup_audit()").await.unwrap();
+    assert!(
+        browser_push::scheduler::recipients(&app.context, Utc::now())
+            .await
+            .is_err()
+    );
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT status FROM notification_deliveries LIMIT 1",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(row.try_get::<String>("", "status").unwrap(), "pending");
+    app.fixture
+        .admin
+        .execute_unprepared("DROP TRIGGER reject_browser_cleanup_audit ON security_audit_events")
+        .await
+        .unwrap();
+    browser_push::scheduler::recipients(&app.context, Utc::now())
+        .await
+        .unwrap();
+    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres, "SELECT d.status,a.actor_membership_id,a.actor_account_id FROM notification_deliveries d JOIN security_audit_events a ON (a.metadata->>'delivery_id')::bigint=d.id WHERE a.event_type='browser_push.reminder.invalid'")).await.unwrap().unwrap();
+    assert_eq!(row.try_get::<String>("", "status").unwrap(), "invalid");
+    assert_eq!(
+        row.try_get::<Option<i64>>("", "actor_membership_id")
+            .unwrap(),
+        None
+    );
+    assert_eq!(
+        row.try_get::<Option<i64>>("", "actor_account_id").unwrap(),
+        None
+    );
+    assert_eq!(*transport.1.lock().unwrap(), 1);
+    app.close().await;
+}
+
+#[tokio::test]
+async fn browser_reminder_profile_update_uses_same_lock_order() {
+    use med_tracker::models::{access, profile};
+    let app = Application::new().await;
+    let (now, scope) = prepare_due_delivery(&app, "synthetic-profile-lock").await;
+    app.context.shared_store.insert(Service {
+        public_key: String::new(),
+        transport: Arc::new(Reminders(Mutex::new(vec![]))),
+    });
+    let tenant = access::begin(&app.context.db, &scope).await.unwrap();
+    tenant
+        .transaction()
+        .execute_unprepared("SELECT id FROM accounts WHERE id=71001 FOR NO KEY UPDATE")
+        .await
+        .unwrap();
+    let ctx = app.context.clone();
+    let sender =
+        tokio::spawn(
+            async move { browser_push::reminders::deliver_account(&ctx, &scope, now).await },
+        );
+    tokio::time::timeout(std::time::Duration::from_secs(10), async {
+        loop {
+            let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres, "SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE '%accounts%') AS waiting")).await.unwrap().unwrap();
+            if row.try_get::<bool>("", "waiting").unwrap() { break; }
+            tokio::task::yield_now().await;
+        }
+    }).await.unwrap();
+    let updated = profile::update(
+        &tenant,
+        71001,
+        profile::Changes {
+            date_of_birth: Some(chrono::NaiveDate::from_ymd_opt(1990, 1, 1).unwrap()),
+            ..Default::default()
+        },
+        now.date_naive(),
+        None,
+    )
+    .await;
+    if updated.is_ok() {
+        tenant.commit().await.unwrap();
+    } else {
+        tenant.rollback().await.unwrap();
+    }
+    let sent = sender.await.unwrap();
+    assert!(updated.is_ok(), "profile failed: {:?}", updated.err());
+    assert!(sent.is_ok(), "reminder failed: {sent:?}");
+    app.close().await;
+}
+
+#[tokio::test]
+async fn browser_reminder_lifecycle_revocation_recovers_without_resend() {
+    for mutation in [
+        "UPDATE household_memberships SET revoked_at=now() WHERE account_id=71001",
+        "UPDATE accounts SET status=3 WHERE id=71001",
+        "UPDATE households SET status='archived',lifecycle_state='offboarded' WHERE id=72001",
+    ] {
+        let app = Application::new().await;
+        let (now, scope) = prepare_due_delivery(&app, "synthetic-lifecycle").await;
+        let transport = Arc::new(BlockedAcceptance {
+            started: Notify::new(),
+            release: Notify::new(),
+        });
+        app.context.shared_store.insert(Service {
+            public_key: String::new(),
+            transport: transport.clone(),
+        });
+        let ctx = app.context.clone();
+        let sending_scope = scope.clone();
+        let sender = tokio::spawn(async move {
+            browser_push::reminders::deliver_account(&ctx, &sending_scope, now).await
+        });
+        transport.started.notified().await;
+        app.fixture
+            .admin
+            .execute_unprepared(mutation)
+            .await
+            .unwrap();
+        transport.release.notify_one();
+        let _ = sender.await.unwrap();
+        app.fixture.admin.execute_unprepared("UPDATE notification_deliveries SET claimed_at=now()-interval '121 seconds' WHERE status='sending'").await.unwrap();
+        let runs = browser_push::scheduler::recipients(&app.context, Utc::now())
+            .await
+            .unwrap();
+        for run in runs {
+            use loco_rs::bgworker::BackgroundWorker;
+            browser_push::scheduler::ReminderWorker::build(&app.context)
+                .perform(run)
+                .await
+                .unwrap();
+        }
+        let row = app
+            .fixture
+            .admin
+            .query_one_raw(Statement::from_string(
+                DbBackend::Postgres,
+                "SELECT status,attempt_count FROM notification_deliveries LIMIT 1",
+            ))
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(row.try_get::<String>("", "status").unwrap(), "uncertain");
+        assert_eq!(row.try_get::<i32>("", "attempt_count").unwrap(), 1);
+        app.fixture.admin.execute_unprepared("UPDATE household_memberships SET revoked_at=NULL WHERE account_id=71001; UPDATE accounts SET status=2 WHERE id=71001; UPDATE households SET status='active',lifecycle_state='active' WHERE id=72001").await.unwrap();
+        assert_eq!(
+            browser_push::reminders::drain_pending(&app.context, &scope, Utc::now())
+                .await
+                .unwrap(),
+            0
+        );
+        app.close().await;
+    }
+}
+
+#[tokio::test]
+async fn browser_reminder_lifecycle_revocation_invalidates_pending() {
+    for mutation in [
+        "UPDATE household_memberships SET revoked_at=now() WHERE account_id=71001",
+        "UPDATE accounts SET status=3 WHERE id=71001",
+        "UPDATE households SET status='archived',lifecycle_state='offboarded' WHERE id=72001",
+    ] {
+        let app = Application::new().await;
+        let (now, scope) = prepare_due_delivery(&app, "synthetic-lifecycle-pending").await;
+        let transport = Arc::new(ScriptedDelivery(
+            Mutex::new(vec![Delivery::Temporary(None)]),
+            Mutex::new(0),
+        ));
+        app.context.shared_store.insert(Service {
+            public_key: String::new(),
+            transport: transport.clone(),
+        });
+        browser_push::reminders::deliver_account(&app.context, &scope, now)
+            .await
+            .unwrap();
+        app.fixture
+            .admin
+            .execute_unprepared(mutation)
+            .await
+            .unwrap();
+        let other_scope = HouseholdScope {
+            household_id: 72002,
+            ..scope.clone()
+        };
+        let _ = browser_push::reminders::deliver_account(&app.context, &other_scope, now).await;
+        let row = app
+            .fixture
+            .admin
+            .query_one_raw(Statement::from_string(
+                DbBackend::Postgres,
+                "SELECT status FROM notification_deliveries WHERE household_id=72001 LIMIT 1",
+            ))
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(row.try_get::<String>("", "status").unwrap(), "pending");
+        let runs = browser_push::scheduler::recipients(&app.context, Utc::now())
+            .await
+            .unwrap();
+        for run in runs {
+            use loco_rs::bgworker::BackgroundWorker;
+            browser_push::scheduler::ReminderWorker::build(&app.context)
+                .perform(run)
+                .await
+                .unwrap();
+        }
+        let row = app
+            .fixture
+            .admin
+            .query_one_raw(Statement::from_string(
+                DbBackend::Postgres,
+                "SELECT status FROM notification_deliveries LIMIT 1",
+            ))
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(row.try_get::<String>("", "status").unwrap(), "invalid");
+        app.fixture.admin.execute_unprepared("UPDATE household_memberships SET revoked_at=NULL WHERE account_id=71001; UPDATE accounts SET status=2 WHERE id=71001; UPDATE households SET status='active',lifecycle_state='active' WHERE id=72001").await.unwrap();
+        browser_push::reminders::deliver_account(&app.context, &scope, now)
+            .await
+            .unwrap();
+        assert_eq!(*transport.1.lock().unwrap(), 1);
+        app.close().await;
+    }
+}
+
 struct Reminders(Mutex<Vec<Value>>);
 
 struct PartialDelivery(Mutex<Vec<i64>>);

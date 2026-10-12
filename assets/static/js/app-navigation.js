@@ -2,10 +2,10 @@
   let installed = false;
   const authPaths = new Set(['/login', '/logout', '/recovery-login', '/auth/totp', '/auth/zitadel']);
   const transitionKey = 'medtracker.push.transition';
-  function workerMessage(worker, type, id) {
+  function workerMessage(worker, type, id, timeoutMs = 5000) {
     return new Promise((resolve, reject) => {
       const channel = new MessageChannel();
-      const timeout = setTimeout(() => { channel.port1.close(); reject(Error('Notification transition timed out')); }, 5000);
+      const timeout = setTimeout(() => { channel.port1.close(); reject(Error('Notification transition timed out')); }, timeoutMs);
       channel.port1.onmessage = event => {
         clearTimeout(timeout);
         channel.port1.close();
@@ -18,10 +18,35 @@
   async function closeNotifications(registration) {
     (await registration?.getNotifications?.())?.forEach(notification => notification.close());
   }
+  async function compatibleRegistration() {
+    const registration = await navigator.serviceWorker?.getRegistration('/');
+    if (!registration?.active) return registration;
+    try {
+      const status = await workerMessage(registration.active, 'auth-transition-status', undefined, 250);
+      if (status.protocol === 1 && registration.active.state === 'activated') return registration;
+    } catch {}
+    let timer;
+    const deadline = Date.now() + 10000;
+    try {
+      await Promise.race([
+        registration.update(),
+        new Promise((_, reject) => { timer = setTimeout(() => reject(Error('Notification worker upgrade timed out')), 10000); }),
+      ]);
+      while (registration.installing || registration.waiting || registration.active?.state !== 'activated') {
+        if (Date.now() >= deadline) throw Error('Notification worker upgrade timed out');
+        registration.waiting?.postMessage({ type: 'activate' });
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+      if (Date.now() >= deadline) throw Error('Notification worker upgrade timed out');
+      const status = await workerMessage(registration.active, 'auth-transition-status', undefined, deadline - Date.now());
+      if (status.protocol !== 1) throw Error('Notification worker is incompatible');
+      return registration;
+    } finally { clearTimeout(timer); }
+  }
   async function finishAuthTransition() {
     const id = sessionStorage.getItem(transitionKey);
     if (!id) return;
-    const registration = await navigator.serviceWorker?.getRegistration('/');
+    const registration = await compatibleRegistration();
     if (!registration?.active) { sessionStorage.removeItem(transitionKey); return; }
     const status = await workerMessage(registration.active, 'auth-transition-status');
     if (status.id !== id) { sessionStorage.removeItem(transitionKey); return; }
@@ -29,10 +54,10 @@
     await workerMessage(registration.active, 'auth-transition-end', id);
     sessionStorage.removeItem(transitionKey);
   }
-  const ready = finishAuthTransition().catch(() => {});
+  const ready = compatibleRegistration().then(finishAuthTransition).catch(() => {});
   async function beginAuthTransition() {
     await ready;
-    const registration = await navigator.serviceWorker?.getRegistration('/');
+    const registration = await compatibleRegistration();
     if (registration?.active) {
       const id = sessionStorage.getItem(transitionKey) || crypto.randomUUID();
       sessionStorage.setItem(transitionKey, id);
@@ -50,7 +75,7 @@
       try {
         await beginAuthTransition();
       } catch {
-        window.alert('Could not clear browser notifications. Retry, or disable notifications in browser settings before signing in or out.');
+        window.alert('Could not update or clear browser notifications. Check your connection and retry signing in or out.');
         return;
       }
       HTMLFormElement.prototype.submit.call(form);
