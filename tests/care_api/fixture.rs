@@ -1,4 +1,30 @@
+#[path = "../support/template.rs"]
+mod template;
 use sea_orm::{ConnectionTrait, Database, DatabaseConnection, DbBackend, Statement};
+
+#[tokio::test]
+async fn prepared_template_is_frozen_and_clones_are_isolated() {
+    let first = Fixture::new().await;
+    first
+        .admin
+        .execute_unprepared("UPDATE medications SET current_supply=123 WHERE id=80001")
+        .await
+        .unwrap();
+    let second = Fixture::new().await;
+    assert_ne!(first.effect().await.1, second.effect().await.1);
+    let row = second
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT datallowconn FROM pg_database WHERE datname='care_api_template'",
+        ))
+        .await
+        .unwrap()
+        .expect("prepared template must exist");
+    assert!(!row.try_get::<bool>("", "datallowconn").unwrap());
+    first.close().await;
+    second.close().await;
+}
 
 #[tokio::test]
 async fn closing_fixture_removes_its_database_and_role() {
@@ -31,13 +57,34 @@ impl Fixture {
             .unwrap();
         let (port, _) = endpoint.split_once('/').unwrap();
         assert!(port.parse::<u16>().unwrap() > 0);
+        template::prepare(&uri, "care_api_template", |admin| async move {
+            admin
+                .execute_unprepared(include_str!("../fixtures/persistence-records.sql"))
+                .await
+                .unwrap();
+            admin
+                .execute_unprepared(include_str!("../fixtures/care-doses.sql"))
+                .await
+                .unwrap();
+            admin
+                .execute_unprepared(
+                    "UPDATE oauth_applications SET client_id='native' WHERE id=75001",
+                )
+                .await
+                .unwrap();
+            admin
+                .execute_unprepared(include_str!("../fixtures/identity/mobile.sql"))
+                .await
+                .unwrap();
+        })
+        .await;
         let suffix = uuid::Uuid::new_v4().simple();
         let name = format!("care_api_{suffix}");
         let role = format!("care_runtime_{suffix}");
         let control = Database::connect(&uri).await.unwrap();
         control
             .execute_unprepared(&format!(
-                "CREATE DATABASE {name} TEMPLATE medtracker_reference"
+                "CREATE DATABASE {name} TEMPLATE care_api_template"
             ))
             .await
             .unwrap();
@@ -48,25 +95,6 @@ impl Fixture {
         ))
         .await
         .unwrap();
-        <migration::Migrator as migration::MigratorTrait>::up(&admin, None)
-            .await
-            .unwrap();
-        admin
-            .execute_unprepared(include_str!("../fixtures/persistence-records.sql"))
-            .await
-            .unwrap();
-        admin
-            .execute_unprepared(include_str!("../fixtures/care-doses.sql"))
-            .await
-            .unwrap();
-        admin
-            .execute_unprepared("UPDATE oauth_applications SET client_id='native' WHERE id=75001")
-            .await
-            .unwrap();
-        admin
-            .execute_unprepared(include_str!("../fixtures/identity/mobile.sql"))
-            .await
-            .unwrap();
         let runtime_uri = format!("postgres://{role}:password@127.0.0.1:{port}/{name}");
         let runtime = Database::connect(&runtime_uri).await.unwrap();
         Self {

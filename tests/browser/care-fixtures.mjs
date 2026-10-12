@@ -9,11 +9,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { withOwnedDatabase } from '../../scripts/migration/foundation-database.mjs';
 import { stopOwnedProcess } from '../../scripts/migration/process-cleanup.mjs';
+import { browserDatabasePool, sharedBrowserDatabase } from '../../scripts/ci/browser-database.mjs';
 
 const execute = promisify(execFile);
 const root = fileURLToPath(new URL('../../', import.meta.url));
 
-async function withCareFixture(captureMail, registrationInviteOnly, reportAssetsUnavailable, use, oidcProvider = false, avatarStorage = false, webPush = false) {
+async function withCareFixture(captureMail, registrationInviteOnly, reportAssetsUnavailable, use, oidcProvider = false, avatarStorage = false, webPush = false, databasePool = withOwnedDatabase) {
   const runtimeTimings = { phases: [] };
   const measure = async (name, action) => {
     const started = performance.now();
@@ -21,17 +22,18 @@ async function withCareFixture(captureMail, registrationInviteOnly, reportAssets
   };
   const databaseStarted = performance.now();
   let databaseOwnership;
-  try { await withOwnedDatabase(async (databaseUrl, provision, ownership) => {
+  try { await databasePool(async (databaseUrl, provision, ownership) => {
     databaseOwnership = ownership;
     runtimeTimings.phases.push({ name: 'database', durationMs: performance.now() - databaseStarted });
     await measure('provision', provision);
     const owner = new URL(databaseUrl);
-    owner.pathname = '/medtracker_reference';
+    owner.pathname = `/${ownership.databaseName ?? 'medtracker_reference'}`;
     if (owner.hostname !== '127.0.0.1') throw Error('Care fixture must use the owned loopback database');
-    await measure('migration', () => execute('task', ['browser-care:migrate', `MIGRATION_DATABASE_URL=${owner.href}`, 'LOCO_ENV=test'], { cwd: root, timeout: 60000 }));
-    const fixtureTask = async (name, variables = []) => (await execute('task', [`browser-care:${name}`, `CARE_DATABASE_URL=${owner.href}`, `FOUNDATION_PROJECT=${ownership.project}`, ...variables], { cwd: root, timeout: 60000 })).stdout.trim();
-    await measure('seed', () => fixtureTask('seed'));
-    if (avatarStorage) await measure('avatar-storage', () => execute('task', ['browser-care:prepare-avatar-storage'], { cwd: root, timeout: 180000, env: { ...process.env, ...ownership.storageEnvironment, MEDTRACKER_OWNED_DATABASE: '1' } }));
+    if (!ownership.templatePrepared) await measure('migration', () => execute('task', ['browser-care:migrate', `MIGRATION_DATABASE_URL=${owner.href}`, 'LOCO_ENV=test'], { cwd: root, timeout: 60000 }));
+    const fixtureTask = async (name, variables = []) => (await execute('task', [`browser-care:${name}`, `CARE_DATABASE_URL=${owner.href}`, `CARE_DATABASE_NAME=${ownership.databaseName ?? 'medtracker_reference'}`, `CARE_RUNTIME_ROLE=${ownership.runtimeRole ?? 'medtracker_browser_runtime'}`, `FOUNDATION_PROJECT=${ownership.project}`, ...variables], { cwd: root, timeout: 60000 })).stdout.trim();
+    if (!ownership.templatePrepared) await measure('seed', () => fixtureTask('seed'));
+    if (avatarStorage && ownership.avatarStorage) ownership.storageEnvironment = await ownership.avatarStorage();
+    if (avatarStorage && !ownership.templatePrepared) await measure('avatar-storage', () => execute('task', ['browser-care:prepare-avatar-storage'], { cwd: root, timeout: 180000, env: { ...process.env, ...ownership.storageEnvironment, MEDTRACKER_OWNED_DATABASE: '1' } }));
     const snapshotDirectory = await mkdtemp(join(tmpdir(), 'mtloco-browser-'));
     const snapshotPath = join(snapshotDirectory, 'baseline.dump');
     let applicationRoot = root;
@@ -48,7 +50,7 @@ async function withCareFixture(captureMail, registrationInviteOnly, reportAssets
       applicationBinary = (await execute('task', ['browser-care:binary'], { cwd: root, timeout: 30000 })).stdout.trim();
     }
     const runtime = new URL(owner);
-    runtime.username = 'medtracker_browser_runtime';
+    runtime.username = ownership.runtimeRole ?? 'medtracker_browser_runtime';
     runtime.password = 'password';
     const reservation = createServer();
     await new Promise(resolve => reservation.listen(0, '127.0.0.1', resolve));
@@ -227,7 +229,16 @@ export const test = base.extend({
   avatarStorage: [false, { option: true }],
   webPush: [false, { option: true }],
   isolatedCare: [false, { option: true }],
-  sharedCare: [async ({}, use) => {
+  browserDatabase: [async ({}, use) => {
+    if (process.env.LOCO_BROWSER_DATABASE) {
+      await use(await sharedBrowserDatabase(process.env.LOCO_BROWSER_DATABASE));
+      return;
+    }
+    await withOwnedDatabase(async (url, provision, ownership) => {
+      await use(await browserDatabasePool(url, provision, ownership));
+    });
+  }, { scope: 'worker', timeout: 180000 }],
+  sharedCare: [async ({ browserDatabase }, use) => {
     let ready;
     let release;
     let completed;
@@ -236,7 +247,7 @@ export const test = base.extend({
       get: () => {
         if (!ready) {
           ready = new Promise((resolve, reject) => {
-            completed = withCareFixture(false, undefined, false, async fixture => { resolve(fixture); await released; });
+            completed = withCareFixture(false, undefined, false, async fixture => { resolve(fixture); await released; }, false, false, false, browserDatabase);
             completed.catch(reject);
           });
         }
@@ -245,7 +256,7 @@ export const test = base.extend({
     };
     try { await use(pool); } finally { release(); if (completed) await completed; }
   }, { scope: 'worker', timeout: 180000 }],
-  careFixture: [async ({ captureMail, registrationInviteOnly, reportAssetsUnavailable, isolatedCare, sharedCare, oidcProvider, avatarStorage, webPush }, use, info) => {
+  careFixture: [async ({ captureMail, registrationInviteOnly, reportAssetsUnavailable, isolatedCare, sharedCare, oidcProvider, avatarStorage, webPush, browserDatabase }, use, info) => {
     const started = performance.now();
     let fixture;
     let phaseStart = 0;
@@ -259,7 +270,7 @@ export const test = base.extend({
     };
     try {
       if (captureMail || registrationInviteOnly !== undefined || reportAssetsUnavailable || isolatedCare || oidcProvider || avatarStorage || webPush || info.tags.includes('@isolated-runtime')) {
-        await withCareFixture(captureMail, registrationInviteOnly, reportAssetsUnavailable, run, oidcProvider, avatarStorage, webPush);
+        await withCareFixture(captureMail, registrationInviteOnly, reportAssetsUnavailable, run, oidcProvider, avatarStorage, webPush, browserDatabase);
       } else {
         fixture = await sharedCare.get();
         phaseStart = fixture.runtimeTimings.reportedPhaseCount ?? 0;

@@ -1,14 +1,64 @@
 # Testing
 
-Root `task ci` verifies Loco formatting, lint, compilation and actual HTTP
-health/Tera behaviour against a dedicated PostgreSQL 18 database. Set
-`DATABASE_URL` to the disposable verification database. `task inventory:check`
-and `task preservation:check` protect migration inputs and relocation records.
+Root `task ci` runs path and relocation checks, formatting and database-free
+unit tests first. It then prepares application binaries and frontend assets
+once, followed by lint, API integration and desktop/mobile browser tests.
+Test runners create disposable PostgreSQL 18 services and ignore an ambient
+`DATABASE_URL`. `task inventory:check` and `task preservation:check` protect
+migration inputs and relocation records.
 The Rails suite below runs through `task rails:*` and remains the reference for
 product behaviour until each complete Loco journey passes its migration gates.
 
 MedTracker uses RSpec, Capybara, and Playwright. Application tests run against
 PostgreSQL 18.
+
+## Loco stages and build reuse
+
+| Command | Coverage |
+| --- | --- |
+| `task test:unit` | Rust library and doc tests, JavaScript units and runner contracts; no database |
+| `task test:integration` | API, access control, persistence, identity and queue integration tests |
+| `task test:browser` | Desktop and mobile browser journeys |
+| `task test:browser GROUP=runtime-isolation PROJECT=desktop` | One browser file and viewport |
+| `task slice:test TARGET=care_api FILTER=fixture` | Focused Rust integration tests |
+| `task ci:report` | Recorded command timings |
+
+Integration and browser tasks prepare their prerequisites automatically.
+`task ci` runs units before either acceptance stage and shares preparation
+within the Task invocation. Focused commands do not rerun unrelated stages.
+GitHub uses four integration shards and twelve browser shards after units and
+compilation succeed. `SHARD=1/4` selects an integration shard;
+`SHARD=1/12` selects a browser shard. Browser shards keep whole files and serial
+groups together for each viewport, balanced using
+`scripts/ci/browser-timings.json`. Initial weights come from run 38279707957;
+refresh them from successful runtime reports when the test mix changes.
+
+CI transfers compiled executables and generated assets from the same run.
+`LOCO_CI_ARTIFACT=1` is reserved for jobs that have downloaded that artifact;
+ordinary local runs must leave it unset. Tests themselves are never cached.
+Integration fixtures clone a migrated and seeded template for each fixture
+family into private databases. The browser-stage runner owns one PostgreSQL
+service and prepares one template for all its workers. Each runtime gets a
+private database and role; storage runtimes get private buckets. Migration
+tests retain their original unmigrated baseline.
+
+Cargo normally reuses its existing local build directory. This machine's global
+Cargo configuration stores intermediates by worktree hash, so a new worktree
+can still require compilation. `task ci:cached-build` explicitly selects an
+installed `sccache`, disables incremental compilation for that invocation and
+prints cache statistics. Its default machine-wide disk cache can reuse eligible
+compiler results across worktrees; linker outputs are not cached. Normal builds
+keep Cargo incremental compilation. No remote cache service is required.
+
+The performance target is the entire Loco chain under 15 minutes, including
+cold caches, setup, artifact transfers and cleanup. Acceptance requires two
+cold and three warm consecutive successful hosted runs on the finished
+candidate. Report initial runner queue delay separately; never use individual
+shard durations as the complete-chain measurement.
+The CI workflow's manual dispatch runs only the complete Loco chain. Enable
+`cold_cache` to skip compiler, npm and Chromium cache restores. Successful
+browser reports produce `test-results/browser-timings-proposed.json` through
+`task ci:report`; review complete-run weights before updating the tracked file.
 
 ## Prepare the test environment
 

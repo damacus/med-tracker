@@ -159,19 +159,38 @@ tasks:
   fmt:apply:
     cmds: [cargo fmt --all]
   test:
-    desc: Verify Loco and root ownership contracts
+    desc: Run unit tests, then API integration and desktop/mobile browser tests
     cmds:
-      - task: frontend:prepare
+      - task: test:unit
+      - task: ci:prepare
+      - task: test:acceptance
+  test:unit:
+    desc: Run database-free Rust library, JavaScript and test-runner unit tests
+    cmds:
+      - task: ci:test
       - task: frontend:test
       - task: slice:test-runner
-      - task: slice:test-all
       - task: foundation:test-cleanup
       - task: foundation:test-database
       - task: release:test-rehearsal
-      - task: browser
-  test:unit:
-    desc: Run Loco library tests with an optional name filter
-    cmds: ['cargo test --locked --lib {{.FILTER | default ""}} -- --test-threads=1']
+      - 'cargo test --locked --lib {{.FILTER | default ""}} -- --test-threads=2'
+      - cargo test --locked --doc
+  test:integration:
+    desc: Run compiled API, security and database integration tests
+    deps: [ci:prepare]
+    cmds: ['node scripts/ci/loco-integration.mjs {{.SHARD | default "1/1"}}']
+  test:browser:
+    desc: Run desktop and mobile browser journeys against the prepared application
+    deps: [ci:prepare]
+    env:
+      LOCO_PREBUILT: '1'
+      LOCO_BROWSER_SHARD: '{{.SHARD | default "1/1"}}'
+    cmds:
+      - task: frontend:browsers
+      - 'node scripts/ci/loco-browser.mjs {{if .PROJECT}}--project={{.PROJECT}}{{end}} {{if .GREP}}--grep={{.GREP | shellQuote}}{{end}} {{if .GROUP}}tests/browser/{{.GROUP}}.spec.mjs{{end}}'
+  test:acceptance:
+    desc: Run independent integration and browser stages in parallel
+    deps: [test:integration, test:browser]
   migration:audit:
     desc: Audit retained migration inputs explicitly
     cmds:
@@ -211,12 +230,14 @@ tasks:
     desc: Release runtime gate (tranche 6)
     cmds: ['fish -c ''echo "Production Loco image awaits full migration acceptance" >&2; exit 1''']
   ci:
-    desc: Verify root Loco foundation
+    desc: Verify tooling and units first, then API integration and browser journeys
     cmds:
       - task: ci:paths
+      - task: foundation:test-relocation
       - task: fmt
-      - task: lint
-      - task: test
+      - task: test:unit
+      - task: ci:prepare
+      - task: ci:acceptance
   foundation:test:
     cmds: [node --test scripts/migration/foundation.test.mjs]
   foundation:test-cleanup:

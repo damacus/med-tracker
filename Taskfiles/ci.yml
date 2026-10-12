@@ -1,6 +1,36 @@
 version: "3"
 
 tasks:
+  prepare:
+    desc: Compile application and integration binaries once and prepare frontend assets
+    run: once
+    status:
+      - 'test "$LOCO_CI_ARTIFACT" = "1" && test -x target/ci/med-tracker && test -f target/ci/tests.json && test -f assets/static/css/compiled.css && test -f assets/static/js/html5-qrcode.min.js'
+    cmds:
+      - task: :frontend:prepare
+      - node scripts/ci/loco-build.mjs
+      - node scripts/ci/loco-compiled-units.mjs
+  acceptance:
+    deps: [':lint', ':test:acceptance']
+  report:
+    desc: Summarise Loco stage and fixture timings
+    cmds: [node scripts/ci/loco-report.mjs]
+  package:
+    desc: Package prepared executables and assets without duplicating binaries in the Cargo cache
+    cmds:
+      - tar -czf target/loco-tests.tar.gz target/ci assets/static/css/compiled.css assets/static/js/html5-qrcode.min.js
+      - node -e "require('node:fs').rmSync('target/ci', { recursive:true, force:true })"
+  cached-build:
+    desc: Build using an optional machine-wide sccache instead of Cargo incremental compilation
+    preconditions:
+      - sh: command -v sccache
+        msg: Install sccache before selecting the shared compiler cache
+    env:
+      RUSTC_WRAPPER: sccache
+      CARGO_INCREMENTAL: '0'
+    cmds:
+      - task: :build
+      - sccache --show-stats
   rust-port:
     desc: Check Rust dashboard UI, API, web and contract-test compilation
     cmds:

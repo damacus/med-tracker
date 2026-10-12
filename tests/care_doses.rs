@@ -1,3 +1,5 @@
+#[path = "support/template.rs"]
+mod template;
 use med_tracker::models::{
     access::{self, Actor, HouseholdScope},
     care::doses::{self, Command, Outcome, Take},
@@ -19,13 +21,24 @@ impl Fixture {
             .unwrap();
         let (port, _) = endpoint.split_once('/').unwrap();
         assert!(port.parse::<u16>().unwrap() > 0);
+        template::prepare(&uri, "care_doses_template", |admin| async move {
+            admin
+                .execute_unprepared(include_str!("fixtures/persistence-records.sql"))
+                .await
+                .unwrap();
+            admin
+                .execute_unprepared(include_str!("fixtures/care-doses.sql"))
+                .await
+                .unwrap();
+        })
+        .await;
         let suffix = uuid::Uuid::new_v4().simple();
         let name = format!("care_doses_{suffix}");
         let role = format!("care_runtime_{suffix}");
         let control = Database::connect(&uri).await.unwrap();
         control
             .execute_unprepared(&format!(
-                "CREATE DATABASE {name} TEMPLATE medtracker_reference"
+                "CREATE DATABASE {name} TEMPLATE care_doses_template"
             ))
             .await
             .unwrap();
@@ -36,17 +49,6 @@ impl Fixture {
         ))
         .await
         .unwrap();
-        <migration::Migrator as migration::MigratorTrait>::up(&admin, None)
-            .await
-            .unwrap();
-        admin
-            .execute_unprepared(include_str!("fixtures/persistence-records.sql"))
-            .await
-            .unwrap();
-        admin
-            .execute_unprepared(include_str!("fixtures/care-doses.sql"))
-            .await
-            .unwrap();
         let runtime = Database::connect(format!(
             "postgres://{role}:password@127.0.0.1:{port}/{name}"
         ))

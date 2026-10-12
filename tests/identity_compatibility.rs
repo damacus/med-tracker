@@ -1,3 +1,5 @@
+#[path = "support/template.rs"]
+mod template;
 use axum::{body::Body, http::Request};
 use med_tracker::models::identity::{self, ExchangeError};
 use sea_orm::{
@@ -22,13 +24,28 @@ impl Fixture {
             .unwrap();
         let (port, _) = endpoint.split_once('/').unwrap();
         assert!(port.parse::<u16>().unwrap() > 0);
+        template::prepare(
+            &uri,
+            "identity_compatibility_template",
+            |admin| async move {
+                admin
+                    .execute_unprepared(include_str!("fixtures/persistence-records.sql"))
+                    .await
+                    .unwrap();
+                admin
+                    .execute_unprepared(include_str!("fixtures/identity/oauth.sql"))
+                    .await
+                    .unwrap();
+            },
+        )
+        .await;
         let suffix = uuid::Uuid::new_v4().simple();
         let name = format!("identity_{suffix}");
         let role = format!("identity_runtime_{suffix}");
         let control = Database::connect(&uri).await.unwrap();
         control
             .execute_unprepared(&format!(
-                "CREATE DATABASE {name} TEMPLATE medtracker_reference"
+                "CREATE DATABASE {name} TEMPLATE identity_compatibility_template"
             ))
             .await
             .unwrap();
@@ -39,15 +56,6 @@ impl Fixture {
         ))
         .await
         .unwrap();
-        migration::Migrator::up(&admin, None).await.unwrap();
-        admin
-            .execute_unprepared(include_str!("fixtures/persistence-records.sql"))
-            .await
-            .unwrap();
-        admin
-            .execute_unprepared(include_str!("fixtures/identity/oauth.sql"))
-            .await
-            .unwrap();
         let mut options = sea_orm::ConnectOptions::new(format!(
             "postgres://{role}:password@127.0.0.1:{port}/{name}"
         ));
@@ -80,8 +88,6 @@ impl Fixture {
         self.admin.close().await.unwrap();
     }
 }
-
-use migration::MigratorTrait;
 
 fn request(body: String) -> Request<Body> {
     Request::builder()

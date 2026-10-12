@@ -49,7 +49,7 @@ export function changedPaths(base, head = 'HEAD', event = 'pull_request') {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const result = classify(changedPaths(process.env.CI_BASE, process.env.CI_HEAD, process.env.CI_EVENT));
+  const result = classify(process.env.CI_EVENT === 'workflow_dispatch' ? ['src/app.rs'] : changedPaths(process.env.CI_BASE, process.env.CI_HEAD, process.env.CI_EVENT));
   if (process.env.GITHUB_OUTPUT) {
     appendFileSync(process.env.GITHUB_OUTPUT, Object.entries(result.selected).map(([key, value]) => `${key}=${value}\n`).join(''));
   }

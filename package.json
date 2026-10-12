@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tailwindcss -i assets/static/css/app.css -o assets/static/css/compiled.css --minify && node scripts/build-scanner.mjs"
+    "build": "task frontend:build"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",

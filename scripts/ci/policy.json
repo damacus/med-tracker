@@ -1,6 +1,6 @@
 {
   "jobs": {
-    "loco": ["loco_foundation"],
+    "loco": ["loco_foundation", "loco_lint", "loco_integration", "loco_browser"],
     "rails": ["scan_ruby", "scan_js", "lint", "test_non_system", "coverage", "test_system", "production_image_medication_search"],
     "rust": ["client_tools"],
     "rust_port": ["rust_port", "rust_dashboard_browser", "rust_household_browser"],
@@ -16,7 +16,7 @@
     "api_clients": ["generation", "kotlin", "swift"]
   },
   "rules": [
-    {"pattern": "^(src/|tests/|migration/|assets/|config/.*[.]yaml$|Cargo[.](toml|lock)$|build[.]rs$|compose[.]yaml$|scripts/(migration|lint-advisory)/|scripts/build-scanner[.]mjs$|Taskfiles/(browser-care|frontend|lint-advisory)[.]yml$|playwright[.]config[.]mjs$|package(?:-lock)?[.]json$)", "suites": ["loco"]},
+    {"pattern": "^(src/|tests/|migration/|assets/|config/.*[.]yaml$|Cargo[.](toml|lock)$|build[.]rs$|compose[.]yaml$|scripts/(migration|lint-advisory|frontend)/|scripts/build-scanner[.]mjs$|Taskfiles/(browser-care|frontend|lint-advisory)[.]yml$|playwright[.]config[.]mjs$|package(?:-lock)?[.]json$)", "suites": ["loco"]},
     {"pattern": "^rails/(app/(components|views|javascript|assets)/|public/|config/routes[.]rb$|config/initializers/content_security_policy[.]rb$|db/seeds[.]rb$|spec/fixtures/|tasks/lighthouse[.]yml$|bin/lighthouse_score_gate[.]js$)", "suites": ["rails", "lighthouse"]},
     {"pattern": "^(scripts/ci/|Taskfiles/ci\\.yml$|\\.github/workflows/ci\\.yml$|Taskfile\\.yml$|mise\\.toml$)", "suites": ["all"], "prose": true},
     {"pattern": "^mobile/android/", "suites": ["android"]},

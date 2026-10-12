@@ -1,3 +1,5 @@
+#[path = "support/template.rs"]
+mod template;
 use axum::{
     body::Body,
     http::{HeaderMap, Request},
@@ -6,7 +8,6 @@ use med_tracker::models::identity::{
     self,
     resource::{self, AuthenticationError},
 };
-use migration::MigratorTrait;
 use sea_orm::{ConnectionTrait, Database, DatabaseConnection};
 
 struct Fixture {
@@ -23,13 +24,23 @@ impl Fixture {
             .unwrap();
         let (port, _) = endpoint.split_once('/').unwrap();
         assert!(port.parse::<u16>().unwrap() > 0);
+        template::prepare(&uri, "identity_resource_template", |admin| async move {
+            for sql in [
+                include_str!("fixtures/persistence-records.sql"),
+                include_str!("fixtures/identity/oauth.sql"),
+                include_str!("fixtures/identity/mobile.sql"),
+            ] {
+                admin.execute_unprepared(sql).await.unwrap();
+            }
+        })
+        .await;
         let suffix = uuid::Uuid::new_v4().simple();
         let name = format!("resource_{suffix}");
         let role = format!("resource_runtime_{suffix}");
         let control = Database::connect(&uri).await.unwrap();
         control
             .execute_unprepared(&format!(
-                "CREATE DATABASE {name} TEMPLATE medtracker_reference"
+                "CREATE DATABASE {name} TEMPLATE identity_resource_template"
             ))
             .await
             .unwrap();
@@ -40,14 +51,6 @@ impl Fixture {
         ))
         .await
         .unwrap();
-        migration::Migrator::up(&admin, None).await.unwrap();
-        for sql in [
-            include_str!("fixtures/persistence-records.sql"),
-            include_str!("fixtures/identity/oauth.sql"),
-            include_str!("fixtures/identity/mobile.sql"),
-        ] {
-            admin.execute_unprepared(sql).await.unwrap();
-        }
         let runtime = Database::connect(format!(
             "postgres://{role}:password@127.0.0.1:{port}/{name}"
         ))

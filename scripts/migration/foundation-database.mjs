@@ -65,10 +65,9 @@ export async function withOwnedDatabase(callback, runTask = runFoundationTask, i
       scannerEnvironment = { MEDTRACKER_OWNED_STORAGE: '1', S3_ENDPOINT: endpoint, S3_BUCKET: 'scanner-fixture', AWS_REGION: 'us-east-1', AWS_ACCESS_KEY_ID: 'storage-smoke-access', AWS_SECRET_ACCESS_KEY: 'storage-smoke-secret' };
       return scannerEnvironment;
     };
-    let storageEnvironment = {};
-    if (storage) {
+    const avatarStorage = async () => {
       const endpoint = await ensureStorage();
-      storageEnvironment = {
+      return {
         ACTIVE_STORAGE_SERVICE: 's3',
         ACTIVE_STORAGE_S3_ENDPOINT: endpoint,
         ACTIVE_STORAGE_S3_BUCKET: 'medtracker-fixture',
@@ -77,8 +76,9 @@ export async function withOwnedDatabase(callback, runTask = runFoundationTask, i
         ACTIVE_STORAGE_S3_SECRET_ACCESS_KEY: 'storage-smoke-secret',
         ACTIVE_STORAGE_S3_FORCE_PATH_STYLE: 'true',
       };
-    }
-    return await callback(`postgres://medtracker:medtracker_password@127.0.0.1:${match[1]}/medtracker_loco`, () => run('foundation:db-provision', 60000), { project: project.slice('FOUNDATION_PROJECT='.length), timings, storageEnvironment, storage: scannerStorage });
+    };
+    const storageEnvironment = storage ? await avatarStorage() : {};
+    return await callback(`postgres://medtracker:medtracker_password@127.0.0.1:${match[1]}/medtracker_loco`, () => run('foundation:db-provision', 60000), { project: project.slice('FOUNDATION_PROJECT='.length), timings, storageEnvironment, storage: scannerStorage, avatarStorage });
   } catch (error) {
     failed = true;
     throw error;
