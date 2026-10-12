@@ -2,10 +2,16 @@
 mod account_sessions;
 #[path = "care_api/administration.rs"]
 mod administration;
+#[path = "care_api/ai_suggestions.rs"]
+mod ai_suggestions;
 #[path = "care_api/api_session.rs"]
 mod api_session;
+#[path = "care_api/app_tokens.rs"]
+mod app_tokens;
 #[path = "care_api/assignments.rs"]
 mod assignments;
+#[path = "care_api/audit_logs.rs"]
+mod audit_logs;
 #[path = "care_api/avatar.rs"]
 mod avatar;
 #[path = "care_api/avatar_storage.rs"]
@@ -22,6 +28,8 @@ mod contract;
 mod crud;
 #[path = "care_api/dashboard.rs"]
 mod dashboard;
+#[path = "care_api/data_exports.rs"]
+mod data_exports;
 #[path = "care_api/dosages.rs"]
 mod dosages;
 #[path = "care_api/dose_history.rs"]
@@ -36,6 +44,8 @@ mod health_events;
 mod invitations;
 #[path = "care_api/legacy_pause.rs"]
 mod legacy_pause;
+#[path = "care_api/location_memberships.rs"]
+mod location_memberships;
 #[path = "care_api/locations.rs"]
 mod locations;
 #[path = "care_api/me.rs"]
@@ -44,6 +54,10 @@ mod me;
 mod medication_lookup;
 #[path = "care_api/medication_reads.rs"]
 mod medication_reads;
+#[path = "care_api/mobile_snapshot.rs"]
+mod mobile_snapshot;
+#[path = "care_api/native_device_tokens.rs"]
+mod native_device_tokens;
 #[path = "care_api/nhs_dmd.rs"]
 mod nhs_dmd;
 #[path = "care_api/notification_preferences.rs"]
@@ -54,8 +68,14 @@ mod pause_periods;
 mod people;
 #[path = "care_api/person_carers.rs"]
 mod person_carers;
+#[path = "care_api/person_medication_reorder.rs"]
+mod person_medication_reorder;
 #[path = "care_api/platform.rs"]
 mod platform;
+#[path = "care_api/portable_export.rs"]
+mod portable_export;
+#[path = "care_api/portable_imports.rs"]
+mod portable_imports;
 #[path = "care_api/profile.rs"]
 mod profile;
 #[path = "care_api/profile_export.rs"]
@@ -66,6 +86,8 @@ mod push_subscriptions;
 mod reports;
 #[path = "care_api/resource_credentials.rs"]
 mod resource_credentials;
+#[path = "care_api/review_prompts.rs"]
+mod review_prompts;
 #[path = "care_api/saved_status.rs"]
 mod saved_status;
 #[path = "care_api/schedule_lifecycle.rs"]
@@ -82,6 +104,8 @@ mod sync;
 mod treatment_timestamps;
 #[path = "care_api/treatments.rs"]
 mod treatments;
+#[path = "care_api/ui_capabilities.rs"]
+mod ui_capabilities;
 
 use axum::{body::Body, http::Request};
 use fixture::Fixture;
@@ -137,6 +161,36 @@ impl Application {
     }
 
     async fn new_with_occurrence_key(signing_key: Option<&str>) -> Self {
+        Self::new_configured(signing_key, |_| ()).await
+    }
+
+    async fn new_with_ai_help(enabled: bool) -> Self {
+        Self::new_configured(
+            Some("synthetic-dose-occurrence-signing-key"),
+            move |settings| {
+                settings["ai_medication_help"] = json!({"enabled": enabled});
+            },
+        )
+        .await
+    }
+
+    async fn new_with_ai_generation(port: u16) -> Self {
+        Self::new_configured(
+            Some("synthetic-dose-occurrence-signing-key"),
+            move |settings| {
+                settings["ai_medication_help"] = json!({
+                    "enabled": true,
+                    "provider": "openai",
+                    "model": "gpt-4o",
+                    "api_base_url": format!("http://127.0.0.1:{port}/v1/"),
+                    "source_proxy_origin": format!("http://127.0.0.1:{port}")
+                });
+            },
+        )
+        .await
+    }
+
+    async fn new_configured(signing_key: Option<&str>, configure: impl FnOnce(&mut Value)) -> Self {
         let fixture = Fixture::new().await;
         let mut config = Config::new(&Environment::Test).unwrap();
         config.settings.get_or_insert_with(|| json!({}))["browser_session"] = json!({
@@ -149,6 +203,7 @@ impl Application {
         } else {
             settings.as_object_mut().unwrap().remove("dose_occurrences");
         }
+        configure(settings);
         config.database.uri = fixture.runtime_uri.clone();
         let Some(QueueConfig::Postgres(queue)) = config.queue.as_mut() else {
             panic!("PostgreSQL queue required")

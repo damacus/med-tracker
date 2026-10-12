@@ -1,9 +1,11 @@
 pub mod administration;
+pub mod ai_suggestions;
 pub mod assignments;
 pub mod browser_push;
 pub mod browser_query;
 pub mod browser_treatments;
 pub mod dashboard;
+pub mod data_exports;
 pub mod dosages;
 pub mod dose_history;
 pub mod dose_occurrences;
@@ -13,9 +15,12 @@ pub mod invitations;
 pub mod locations;
 pub mod medication_lookup;
 pub mod medications;
+pub mod native_device_tokens;
 pub mod orders;
 pub mod pause_periods;
 pub mod people;
+pub mod portable_crypto;
+pub mod portable_imports;
 pub mod profile_export;
 pub mod push_subscriptions;
 pub mod report_pdf;
@@ -23,6 +28,7 @@ pub mod reports;
 pub mod review_prompts;
 pub mod sync;
 pub mod treatments;
+pub mod ui_capabilities;
 
 pub mod care_warning;
 
