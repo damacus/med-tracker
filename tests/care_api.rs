@@ -80,6 +80,8 @@ mod sync;
 mod treatment_timestamps;
 #[path = "care_api/treatments.rs"]
 mod treatments;
+#[path = "care_api/ui_capabilities.rs"]
+mod ui_capabilities;
 
 use axum::{body::Body, http::Request};
 use fixture::Fixture;

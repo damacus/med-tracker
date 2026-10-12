@@ -22,6 +22,7 @@ pub mod reports;
 pub mod review_prompts;
 pub mod sync;
 pub mod treatments;
+pub mod ui_capabilities;
 
 pub mod care_warning;
 
