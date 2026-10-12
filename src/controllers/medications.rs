@@ -1,9 +1,12 @@
 pub(super) mod forms;
 mod management;
 pub(super) mod rendering;
+mod scanner;
+mod wizard;
+mod workflow;
 
 use crate::models::{
-    access::TenantTransaction,
+    access::{self, PersonAccess, TenantTransaction},
     care::{browser_query, doses, medications},
     errors::OperationError,
     identity::{
@@ -43,6 +46,10 @@ pub fn routes() -> Routes {
         .prefix("/households")
         .add("/{slug}/medications", get(index).post(management::create))
         .add("/{slug}/medications/new", get(management::new))
+        .add("/{slug}/medications/finder", get(scanner::finder))
+        .add("/{slug}/medications/workflow", get(workflow::open))
+        .add("/{slug}/medications/lookup", get(scanner::lookup))
+        .add("/{slug}/medications/wizard", post(wizard::create))
         .add(
             "/{slug}/medications/{id}",
             get(show).post(management::update),
@@ -134,7 +141,22 @@ async fn index(
         Ok(value) => value,
         Err(error) => return operation_error(error),
     };
-    let response = rendering::index(&view, &token, &slug, &medications, can_create, can_manage);
+    let can_assign = match access::has_person_access(&tenant, PersonAccess::Manage).await {
+        Ok(value) => value,
+        Err(error) => return operation_error(error),
+    };
+    let response = rendering::index(
+        &view,
+        &token,
+        &slug,
+        &medications,
+        rendering::IndexPermissions {
+            create: can_create,
+            adjust: forms::can_adjust(&tenant),
+            assign: can_assign,
+            manage: can_manage,
+        },
+    );
     if tenant.commit().await.is_err() {
         return unavailable();
     }
@@ -398,7 +420,12 @@ async fn refill(
         restock_date: forms::field(&draft, "restock_date").into(),
         original_etag: forms::field(&draft, "etag").into(),
     };
-    let result = medications::restock(&tenant, input, Some(principal.provenance())).await;
+    let result = match forms::optional(&draft, "dosage_option_id") {
+        Some(id) => {
+            medications::restock_option(&tenant, input, &id, Some(principal.provenance())).await
+        }
+        None => medications::restock(&tenant, input, Some(principal.provenance())).await,
+    };
     match result {
         Ok(_) => {
             if tenant.commit().await.is_err() {

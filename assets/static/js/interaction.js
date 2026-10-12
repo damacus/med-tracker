@@ -80,6 +80,9 @@ document.addEventListener('change', async event => {
 });
 
 document.addEventListener('DOMContentLoaded', () => {
+  if (new URLSearchParams(window.location.search).get('refill') === 'true') {
+    document.getElementById('refill-inventory-dialog')?.setAttribute('data-dialog-auto-open', '');
+  }
   for (const dialog of document.querySelectorAll('dialog[data-dialog-auto-open]')) {
     if (dialog instanceof HTMLDialogElement) {
       dialog.showModal();

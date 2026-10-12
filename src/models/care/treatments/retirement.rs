@@ -1,4 +1,5 @@
 use super::*;
+use loco_rs::model::TenantQueryExt;
 use sea_orm::IntoActiveModel;
 
 pub async fn retire(
@@ -13,7 +14,7 @@ pub async fn retire(
         .ok_or(OperationError::NotFound)?;
     access::recheck(tenant).await?;
     let mut query = schedule::Entity::find()
-        .filter(schedule::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(schedule::Column::RetiredAt.is_null());
     if !valid_identifier(id) {
         return Err(OperationError::NotFound);
@@ -53,7 +54,7 @@ pub async fn retire(
     )
     .await?;
     let person = person::Entity::find_by_id(row.person_id)
-        .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::NotFound)?;

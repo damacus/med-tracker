@@ -4,6 +4,7 @@ use crate::models::{
     errors::OperationError,
 };
 use chrono::NaiveDateTime;
+use loco_rs::model::TenantQueryExt;
 use sea_orm::{
     ColumnTrait, Condition, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect,
     QueryTrait,
@@ -27,20 +28,19 @@ pub async fn list(
         });
     }
     let household_id = tenant.scope().household_id;
-    let mut query = medication_take::Entity::find()
-        .filter(medication_take::Column::HouseholdId.eq(household_id));
+    let mut query = medication_take::Entity::find().in_tenant(household_id);
     if !access::can_manage_household(tenant) {
         let people = access::granted_people(tenant.membership());
         let schedules = schedule::Entity::find()
             .select_only()
             .column(schedule::Column::Id)
-            .filter(schedule::Column::HouseholdId.eq(household_id))
+            .in_tenant(household_id)
             .filter(schedule::Column::PersonId.in_subquery(people.clone()))
             .into_query();
         let assignments = person_medication::Entity::find()
             .select_only()
             .column(person_medication::Column::Id)
-            .filter(person_medication::Column::HouseholdId.eq(household_id))
+            .in_tenant(household_id)
             .filter(person_medication::Column::PersonId.in_subquery(people))
             .into_query();
         query = query.filter(

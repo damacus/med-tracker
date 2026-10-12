@@ -5,6 +5,7 @@ use crate::models::{
     entities::{grant, membership, pause_period, person_medication},
 };
 use chrono::NaiveDate;
+use loco_rs::model::TenantQueryExt;
 use sea_orm::sea_query::{Expr, ExprTrait};
 use sea_orm::{Condition, ConnectionTrait, DbBackend, Statement};
 use std::collections::{HashMap, HashSet};
@@ -54,7 +55,7 @@ async fn source_context(
     let person_ids: Vec<i64> = sources.iter().map(|source| source.person_id).collect();
     let medication_ids: Vec<i64> = sources.iter().map(|source| source.medication_id).collect();
     let subjects = person::Entity::find()
-        .filter(person::Column::HouseholdId.eq(context.scope().household_id))
+        .in_tenant(context.scope().household_id)
         .filter(person::Column::Id.is_in(person_ids.clone()))
         .all(db)
         .await
@@ -64,7 +65,7 @@ async fn source_context(
         .map(|person| (person.id, person.portable_id.clone()))
         .collect();
     let source_medications: HashMap<i64, medication::Model> = medication::Entity::find()
-        .filter(medication::Column::HouseholdId.eq(context.scope().household_id))
+        .in_tenant(context.scope().household_id)
         .filter(medication::Column::Id.is_in(medication_ids))
         .all(db)
         .await
@@ -73,7 +74,7 @@ async fn source_context(
         .map(|medication| (medication.id, medication))
         .collect();
     let permission_grants = grant::Entity::find()
-        .filter(grant::Column::HouseholdId.eq(context.scope().household_id))
+        .in_tenant(context.scope().household_id)
         .filter(grant::Column::HouseholdMembershipId.eq(context.membership().id))
         .filter(grant::Column::PersonId.is_in(person_ids))
         .filter(grant::Column::AccessLevel.is_in(["record", "manage"]))
@@ -151,7 +152,7 @@ async fn source_context(
         SourceKind::Assignment => pause_period::Column::PersonMedicationId,
     };
     let pauses = pause_period::Entity::find()
-        .filter(pause_period::Column::HouseholdId.eq(context.scope().household_id))
+        .in_tenant(context.scope().household_id)
         .filter(source_column.is_in(source_ids))
         .filter(pause_period::Column::EndedAt.is_null())
         .all(db)
@@ -171,7 +172,7 @@ async fn source_context(
         Vec::new()
     } else {
         membership::Entity::find()
-            .filter(membership::Column::HouseholdId.eq(context.scope().household_id))
+            .in_tenant(context.scope().household_id)
             .filter(membership::Column::Id.is_in(actor_ids))
             .all(db)
             .await
@@ -185,7 +186,7 @@ async fn source_context(
         HashMap::new()
     } else {
         person::Entity::find()
-            .filter(person::Column::HouseholdId.eq(context.scope().household_id))
+            .in_tenant(context.scope().household_id)
             .filter(person::Column::Id.is_in(actor_person_ids))
             .all(db)
             .await

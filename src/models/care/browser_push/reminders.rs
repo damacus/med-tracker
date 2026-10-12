@@ -8,6 +8,7 @@ use crate::models::{
 };
 use chrono::{DateTime, Timelike, Utc};
 use loco_rs::app::AppContext;
+use loco_rs::model::TenantQueryExt;
 use sea_orm::{ColumnTrait, ConnectionTrait, DbBackend, EntityTrait, QueryFilter, Statement};
 use serde_json::{Value, json};
 
@@ -95,7 +96,7 @@ async fn plans(
                 .map(|occurrence| occurrence.medication_id)
                 .collect::<Vec<_>>();
             let mut names = medication::Entity::find()
-                .filter(medication::Column::HouseholdId.eq(tenant.scope().household_id))
+                .in_tenant(tenant.scope().household_id)
                 .filter(medication::Column::Id.is_in(ids))
                 .all(tenant.transaction())
                 .await?

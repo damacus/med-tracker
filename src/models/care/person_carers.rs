@@ -5,6 +5,7 @@ use crate::models::{
     entities::{account, carer_relationship, membership, person, user},
     errors::OperationError,
 };
+use loco_rs::model::TenantQueryExt;
 use sea_orm::sea_query::Expr;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect, QueryTrait};
 use serde_json::{Value, json};
@@ -23,7 +24,7 @@ pub async fn selected(
     access::recheck(tenant).await?;
     access::require_person_access(tenant, id, PersonAccess::View).await?;
     let row = person::Entity::find_by_id(id)
-        .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::NotFound)?;
@@ -58,7 +59,7 @@ fn eligible(tenant: &TenantTransaction, visible: bool) -> sea_orm::Select<person
         .filter(account::Column::Id.in_subquery(user_accounts))
         .into_query();
     let mut query = person::Entity::find()
-        .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(person::Column::PersonType.eq(0))
         .filter(person::Column::HasCapacity.eq(true))
         .filter(person::Column::AccountId.in_subquery(active_accounts));
@@ -73,7 +74,7 @@ pub async fn page(tenant: &TenantTransaction, id: i64) -> Result<Value, Operatio
     let patient = selected(tenant, id).await?;
     let manager = access::can_manage_household(tenant);
     let mut query = carer_relationship::Entity::find()
-        .filter(carer_relationship::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(carer_relationship::Column::PatientId.eq(id));
     if !manager {
         query = query.filter(carer_relationship::Column::Active.eq(true));
@@ -83,7 +84,7 @@ pub async fn page(tenant: &TenantTransaction, id: i64) -> Result<Value, Operatio
         .all(tenant.transaction())
         .await?;
     let names: HashMap<_, _> = person::Entity::find()
-        .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(person::Column::Id.is_in(rows.iter().map(|row| row.carer_id)))
         .all(tenant.transaction())
         .await?
@@ -161,7 +162,7 @@ pub async fn assign(
             .await?
             .ok_or_else(invalid)?;
         let self_relation = carer_relationship::Entity::find()
-            .filter(carer_relationship::Column::HouseholdId.eq(tenant.scope().household_id))
+            .in_tenant(tenant.scope().household_id)
             .filter(carer_relationship::Column::CarerId.eq(carer.id))
             .filter(carer_relationship::Column::PatientId.eq(carer.id))
             .filter(carer_relationship::Column::Active.eq(true))
@@ -172,13 +173,13 @@ pub async fn assign(
             return Err(invalid());
         }
         let existing = carer_relationship::Entity::find()
-            .filter(carer_relationship::Column::HouseholdId.eq(tenant.scope().household_id))
+            .in_tenant(tenant.scope().household_id)
             .filter(carer_relationship::Column::CarerId.eq(carer.id))
             .filter(carer_relationship::Column::PatientId.eq(id))
             .one(tenant.transaction())
             .await?;
         let member = membership::Entity::find()
-            .filter(membership::Column::HouseholdId.eq(tenant.scope().household_id))
+            .in_tenant(tenant.scope().household_id)
             .filter(membership::Column::AccountId.eq(account.id))
             .one(tenant.transaction())
             .await?;
@@ -219,7 +220,7 @@ pub async fn change(
     administration::authorize(tenant).await?;
     selected(tenant, patient_id).await?;
     let row = carer_relationship::Entity::find_by_id(id)
-        .filter(carer_relationship::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(carer_relationship::Column::PatientId.eq(patient_id))
         .lock_exclusive()
         .one(tenant.transaction())

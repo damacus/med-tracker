@@ -1,5 +1,6 @@
 use crate::models::{access::TenantTransaction, entities::medication, errors::OperationError};
-use sea_orm::{ColumnTrait, ConnectionTrait, DbBackend, EntityTrait, QueryFilter, Statement};
+use loco_rs::model::TenantQueryExt;
+use sea_orm::{ConnectionTrait, DbBackend, EntityTrait, Statement};
 
 pub(crate) async fn record_crossing(
     tenant: &TenantTransaction,
@@ -10,7 +11,7 @@ pub(crate) async fn record_crossing(
         return Ok(());
     };
     let current = medication::Entity::find_by_id(previous.id)
-        .filter(medication::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::NotFound)?;

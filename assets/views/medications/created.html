@@ -1,0 +1,9 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-3xl mx-auto">
+  <h1 class="text-3xl font-semibold">{{ name }} created!</h1>
+  <p class="mt-4">Your medication has been saved. You can manage its dose options or return to the medication.</p>
+  {% if dose_summaries | length > 0 %}<h2 class="text-xl font-semibold mt-6">Saved dose options</h2><ul class="list-disc list-inside mt-2">{% for summary in dose_summaries %}<li>{{ summary }}</li>{% endfor %}</ul>{% endif %}
+  <div class="flex flex-wrap gap-3 mt-6"><a class="btn btn-outline" href="/households/{{ slug }}/medications/{{ id }}/dosage_options">Manage dose options</a><a class="btn btn-neutral" href="/households/{{ slug }}/medications/{{ id }}">Done</a></div>
+</section>
+{% endblock content %}

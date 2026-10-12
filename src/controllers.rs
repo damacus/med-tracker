@@ -13,6 +13,7 @@ pub mod invitations;
 pub mod locations;
 pub mod medication_orders;
 pub mod medications;
+pub mod nhs_dmd;
 pub mod oauth_server;
 pub mod people;
 pub mod platform;

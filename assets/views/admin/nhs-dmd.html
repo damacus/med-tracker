@@ -1,0 +1,25 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-3xl mx-auto">
+  <a href="/" class="link">Households</a>
+  <h1 class="text-3xl font-semibold mt-4">NHS dm+d catalogue</h1>
+  <p class="mt-2">Upload a release archive to update the local barcode catalogue. Imports continue when you leave this page.</p>
+  {% if error %}<p role="alert" class="alert alert-error mt-4">{{ error }}</p>{% endif %}
+  <form method="post" enctype="multipart/form-data" class="card card-body border border-base-300 mt-6">
+    <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+    <label for="archive">Release archive</label><input type="file" name="archive" id="archive" accept=".zip,application/zip" class="file-input w-full" required aria-describedby="archive-help">
+    <p id="archive-help" class="text-sm">ZIP archive, up to 500 MB. Include the AMPP and GTIN release files.</p>
+    <button type="submit" class="btn btn-neutral">Import release</button>
+  </form>
+  <h2 class="text-2xl font-semibold mt-8">Import history</h2>
+  <a href="/admin/nhs-dmd" class="btn btn-outline mt-3">Refresh import status</a>
+  <div class="flex flex-col gap-4 mt-4">{% for import in imports %}
+    <article class="card card-body border border-base-300" aria-labelledby="import-{{ import.id }}"><h3 id="import-{{ import.id }}" class="card-title break-all">{{ import.filename }}</h3>
+      <p role="status">{{ import.status }} · {{ import.processed }} / {{ import.total }} processed</p>
+      <p>{{ import.created }} new · {{ import.updated }} updated · {{ import.unchanged }} unchanged · {{ import.skipped }} skipped</p>
+      {% if import.error %}<p role="alert" class="alert alert-error">{{ import.error }}</p>{% endif %}
+      {% if import.active %}<p>The import is running in the background. Refresh to see its latest progress.</p>{% endif %}
+    </article>
+  {% else %}<p>No imports yet.</p>{% endfor %}</div>
+</section>
+{% endblock content %}

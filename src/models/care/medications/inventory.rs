@@ -1,4 +1,5 @@
 use super::*;
+use loco_rs::model::TenantQueryExt;
 
 pub(super) async fn adjust(
     context: &StockContext<'_>,
@@ -22,7 +23,7 @@ pub(super) async fn adjust(
             .ok_or(OperationError::NotFound)?;
         let current = snapshot(db, current).await?;
         let has_options = dosage::Entity::find()
-            .filter(dosage::Column::HouseholdId.eq(tenant.scope().household_id))
+            .in_tenant(tenant.scope().household_id)
             .filter(dosage::Column::MedicationId.eq(found.id))
             .one(db)
             .await

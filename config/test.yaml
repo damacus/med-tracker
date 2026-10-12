@@ -23,6 +23,11 @@ server:
       cache_control: no-cache
 workers:
   mode: BackgroundQueue
+scheduler:
+  jobs:
+    nhs_dmd_reconcile:
+      run: nhs_dmd_reconcile
+      schedule: "0 */5 * * * *"
 mailer:
   smtp:
     enable: <%= get_env(name="MEDTRACKER_CAPTURE_MAIL", default="false") %>
@@ -31,6 +36,7 @@ mailer:
     secure: false
 queue:
   kind: Postgres
+  connect_timeout: 5000
   uri: <%= get_env(name="DATABASE_URL", default="postgres://medtracker:medtracker_password@localhost:5432/medtracker_loco") %>
   reaper:
     age_minutes: 10

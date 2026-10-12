@@ -1,3 +1,4 @@
+use loco_rs::model::TenantQueryExt;
 mod cascade;
 mod dose_mode;
 mod persistence;
@@ -11,6 +12,15 @@ use std::collections::HashMap;
 pub async fn create(
     tenant: &TenantTransaction,
     attributes: Value,
+    provenance: Option<&CredentialProvenance>,
+) -> Result<medication::Model, OperationError> {
+    create_with_schedule_config(tenant, attributes, None, provenance).await
+}
+
+pub(crate) async fn create_with_schedule_config(
+    tenant: &TenantTransaction,
+    attributes: Value,
+    schedule_config: Option<Value>,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<medication::Model, OperationError> {
     let context = StockContext { tenant, provenance };
@@ -34,6 +44,9 @@ pub async fn create(
         ..Default::default()
     };
     validation::assign_attributes(&mut active, &attributes).map_err(field_error)?;
+    if let Some(config) = schedule_config {
+        active.default_schedule_config = Set(config);
+    }
     let saved = active
         .insert(tenant.transaction())
         .await
@@ -75,7 +88,7 @@ pub async fn update(
         found.dose_amount.is_none() && attributes.get("dose_amount").is_some_and(|v| !v.is_null());
     if switching
         && schedule::Entity::find()
-            .filter(schedule::Column::HouseholdId.eq(tenant.scope().household_id))
+            .in_tenant(tenant.scope().household_id)
             .filter(schedule::Column::MedicationId.eq(found.id))
             .one(tenant.transaction())
             .await

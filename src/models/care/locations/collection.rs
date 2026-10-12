@@ -1,5 +1,6 @@
 use super::*;
 use chrono::DateTime;
+use loco_rs::model::TenantQueryExt;
 use sea_orm::{PaginatorTrait, QueryOrder};
 
 #[derive(serde::Deserialize, Default)]
@@ -28,8 +29,7 @@ pub async fn collection(
         .map_err(|_| OperationError::Validation {
             details: json!({"error":"updated_since must be ISO8601"}),
         })?;
-    let mut query = location::Entity::find()
-        .filter(location::Column::HouseholdId.eq(tenant.scope().household_id));
+    let mut query = location::Entity::find().in_tenant(tenant.scope().household_id);
     if let Some(updated) = updated {
         query = query.filter(location::Column::UpdatedAt.gte(updated));
     }

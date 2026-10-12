@@ -1,4 +1,5 @@
 use super::*;
+use loco_rs::model::TenantQueryExt;
 
 async fn record_transition(
     db: &DatabaseTransaction,
@@ -19,7 +20,7 @@ async fn record_transition(
     )
     .await?;
     let person_portable_id = person::Entity::find_by_id(source.person_id())
-        .filter(person::Column::HouseholdId.eq(context.tenant.scope().household_id))
+        .in_tenant(context.tenant.scope().household_id)
         .one(db)
         .await
         .map_err(database_error)?

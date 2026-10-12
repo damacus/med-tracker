@@ -1,4 +1,5 @@
 use super::*;
+use loco_rs::model::TenantQueryExt;
 use sea_orm::QueryTrait;
 use std::collections::HashMap;
 
@@ -44,7 +45,7 @@ pub(super) async fn representation(
 
 fn scope(tenant: &TenantTransaction) -> sea_orm::Select<dosage::Entity> {
     dosage::Entity::find()
-        .filter(dosage::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(
             dosage::Column::MedicationId.in_subquery(
                 access::medication_scope(tenant)
@@ -71,7 +72,7 @@ pub async fn for_medication(
         .await?
         .ok_or(OperationError::NotFound)?;
     let rows = dosage::Entity::find()
-        .filter(dosage::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(dosage::Column::MedicationId.eq(parent.id))
         .order_by_asc(dosage::Column::Id)
         .all(tenant.transaction())
@@ -119,7 +120,7 @@ pub async fn list(
         .all(tenant.transaction())
         .await?;
     let parents = medication::Entity::find()
-        .filter(medication::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(medication::Column::Id.is_in(rows.iter().map(|row| row.medication_id)))
         .all(tenant.transaction())
         .await?

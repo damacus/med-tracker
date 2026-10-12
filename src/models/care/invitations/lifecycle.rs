@@ -1,6 +1,7 @@
 use super::*;
 use crate::models::care::doses::CredentialProvenance;
 use loco_rs::mailer::Email;
+use loco_rs::model::TenantQueryExt;
 use sea_orm::QuerySelect;
 
 async fn current(
@@ -9,7 +10,7 @@ async fn current(
 ) -> Result<household_invitation::Model, OperationError> {
     administration::authorize(tenant).await?;
     household_invitation::Entity::find_by_id(id)
-        .filter(household_invitation::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .lock_exclusive()
         .one(tenant.transaction())
         .await?
@@ -36,12 +37,12 @@ pub async fn cancel(
     )
     .await?;
     household_invitation_grant::Entity::delete_many()
-        .filter(household_invitation_grant::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(household_invitation_grant::Column::HouseholdInvitationId.eq(row.id))
         .exec(tenant.transaction())
         .await?;
     household_invitation::Entity::delete_many()
-        .filter(household_invitation::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(household_invitation::Column::Id.eq(row.id))
         .exec(tenant.transaction())
         .await?;

@@ -1,3 +1,4 @@
+use loco_rs::model::TenantQueryExt;
 use sea_orm::{
     ColumnTrait, Condition, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend,
     EntityTrait, QueryFilter, QueryOrder, QuerySelect, QueryTrait, Statement, TransactionTrait,
@@ -140,14 +141,14 @@ pub(crate) async fn can_access_person(
     recheck(transaction).await?;
     let membership = transaction.membership();
     let Some(subject) = person::Entity::find_by_id(person_id)
-        .filter(person::Column::HouseholdId.eq(transaction.scope.household_id))
+        .in_tenant(transaction.scope.household_id)
         .one(transaction.transaction())
         .await?
     else {
         return Ok(false);
     };
     let record = grant::Entity::find()
-        .filter(grant::Column::HouseholdId.eq(transaction.scope.household_id))
+        .in_tenant(transaction.scope.household_id)
         .filter(grant::Column::HouseholdMembershipId.eq(membership.id))
         .filter(grant::Column::PersonId.eq(person_id))
         .filter(grant::Column::RevokedAt.is_null())
@@ -165,13 +166,13 @@ pub(crate) async fn has_person_access(
 ) -> Result<bool, OperationError> {
     recheck(transaction).await?;
     let grants = grant::Entity::find()
-        .filter(grant::Column::HouseholdId.eq(transaction.scope().household_id))
+        .in_tenant(transaction.scope().household_id)
         .filter(grant::Column::HouseholdMembershipId.eq(transaction.membership().id))
         .filter(grant::Column::RevokedAt.is_null())
         .all(transaction.transaction())
         .await?;
     let people = person::Entity::find()
-        .filter(person::Column::HouseholdId.eq(transaction.scope().household_id))
+        .in_tenant(transaction.scope().household_id)
         .filter(
             person::Column::Id.is_in(
                 grants
@@ -191,6 +192,41 @@ pub(crate) async fn has_person_access(
                 authorization::person_access(transaction.membership(), subject, record, access, now)
             })
     }))
+}
+
+pub(crate) async fn people_with_access(
+    transaction: &TenantTransaction,
+    access: PersonAccess,
+) -> Result<Vec<person::Model>, OperationError> {
+    recheck(transaction).await?;
+    let grants = grant::Entity::find()
+        .in_tenant(transaction.scope().household_id)
+        .filter(grant::Column::HouseholdMembershipId.eq(transaction.membership().id))
+        .filter(grant::Column::RevokedAt.is_null())
+        .all(transaction.transaction())
+        .await?;
+    let mut people = person::Entity::find()
+        .in_tenant(transaction.scope().household_id)
+        .filter(
+            person::Column::Id.is_in(grants.iter().map(|row| row.person_id).collect::<Vec<_>>()),
+        )
+        .order_by_asc(person::Column::Name)
+        .all(transaction.transaction())
+        .await?;
+    let now = database_time(transaction).await?;
+    people.retain(|subject| {
+        grants.iter().any(|grant| {
+            grant.person_id == subject.id
+                && authorization::person_access(
+                    transaction.membership(),
+                    subject,
+                    grant,
+                    access,
+                    now,
+                )
+        })
+    });
+    Ok(people)
 }
 
 async fn database_time(
@@ -227,7 +263,7 @@ pub async fn recheck(transaction: &TenantTransaction) -> Result<(), OperationErr
 pub fn medication_scope(transaction: &TenantTransaction) -> sea_orm::Select<medication::Entity> {
     let membership = transaction.membership();
     let household_id = transaction.scope().household_id;
-    let query = medication::Entity::find().filter(medication::Column::HouseholdId.eq(household_id));
+    let query = medication::Entity::find().in_tenant(household_id);
     if !authorization::ready() {
         return query.filter(Expr::cust("FALSE"));
     }
@@ -237,24 +273,24 @@ pub fn medication_scope(transaction: &TenantTransaction) -> sea_orm::Select<medi
     let granted_schedules = schedule::Entity::find()
         .select_only()
         .column(schedule::Column::MedicationId)
-        .filter(schedule::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(schedule::Column::PersonId.in_subquery(granted_people(membership)))
         .into_query();
     let granted_assignments = person_medication::Entity::find()
         .select_only()
         .column(person_medication::Column::MedicationId)
-        .filter(person_medication::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(person_medication::Column::PersonId.in_subquery(granted_people(membership)))
         .into_query();
     let linked_schedules = schedule::Entity::find()
         .select_only()
         .column(schedule::Column::MedicationId)
-        .filter(schedule::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .into_query();
     let linked_assignments = person_medication::Entity::find()
         .select_only()
         .column(person_medication::Column::MedicationId)
-        .filter(person_medication::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .into_query();
     query.filter(
         Condition::any()
@@ -272,7 +308,7 @@ pub fn medication_scope(transaction: &TenantTransaction) -> sea_orm::Select<medi
 pub(crate) fn schedule_scope(transaction: &TenantTransaction) -> sea_orm::Select<schedule::Entity> {
     let household_id = transaction.scope().household_id;
     let query = schedule::Entity::find()
-        .filter(schedule::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(schedule::Column::RetiredAt.is_null());
     if !authorization::ready() {
         return query.filter(Expr::cust("FALSE"));
@@ -286,7 +322,7 @@ pub(crate) fn granted_people(
     grant::Entity::find()
         .select_only()
         .column(grant::Column::PersonId)
-        .filter(grant::Column::HouseholdId.eq(membership.household_id))
+        .in_tenant(membership.household_id)
         .filter(grant::Column::HouseholdMembershipId.eq(membership.id))
         .filter(grant::Column::RevokedAt.is_null())
         .filter(grant::Column::AccessLevel.is_in(["view", "record", "manage"]))
@@ -315,7 +351,7 @@ pub(crate) async fn verify_membership(
     }
     let membership = membership::Entity::find()
         .filter(membership::Column::AccountId.eq(scope.actor.account_id))
-        .filter(membership::Column::HouseholdId.eq(scope.household_id))
+        .in_tenant(scope.household_id)
         .filter(membership::Column::Status.eq("active"))
         .filter(membership::Column::RevokedAt.is_null())
         .one(transaction)

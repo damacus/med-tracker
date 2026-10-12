@@ -1,4 +1,21 @@
 use sea_orm::{ConnectionTrait, Database, DatabaseConnection, DbBackend, Statement};
+
+#[tokio::test]
+async fn closing_fixture_removes_its_database_and_role() {
+    let fixture = Fixture::new().await;
+    let uri = url::Url::parse(&fixture.runtime_uri).unwrap();
+    let name = uri.path().trim_start_matches('/');
+    let role = uri.username();
+    fixture.close().await;
+    let control = Database::connect(std::env::var("DATABASE_URL").unwrap())
+        .await
+        .unwrap();
+    let row = control.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+        "SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname=$1) AS database_exists, EXISTS(SELECT 1 FROM pg_roles WHERE rolname=$2) AS role_exists", [name.into(), role.into()])).await.unwrap().unwrap();
+    assert!(!row.try_get::<bool>("", "database_exists").unwrap());
+    assert!(!row.try_get::<bool>("", "role_exists").unwrap());
+    control.close().await.unwrap();
+}
 pub struct Fixture {
     pub admin: DatabaseConnection,
     pub runtime: DatabaseConnection,
@@ -60,8 +77,31 @@ impl Fixture {
     }
 
     pub async fn close(self) {
+        let uri = url::Url::parse(&self.runtime_uri).unwrap();
+        let name = uri.path().trim_start_matches('/');
+        let role = uri.username();
+        assert!(
+            name.strip_prefix("care_api_")
+                .is_some_and(|suffix| uuid::Uuid::parse_str(suffix).is_ok())
+        );
+        assert!(
+            role.strip_prefix("care_runtime_")
+                .is_some_and(|suffix| uuid::Uuid::parse_str(suffix).is_ok())
+        );
         self.runtime.close().await.unwrap();
         self.admin.close().await.unwrap();
+        let control = Database::connect(std::env::var("DATABASE_URL").unwrap())
+            .await
+            .unwrap();
+        control
+            .execute_unprepared(&format!("DROP DATABASE {name} WITH (FORCE)"))
+            .await
+            .unwrap();
+        control
+            .execute_unprepared(&format!("DROP ROLE {role}"))
+            .await
+            .unwrap();
+        control.close().await.unwrap();
     }
 
     pub async fn effect(&self) -> (i64, String, i64, i64) {

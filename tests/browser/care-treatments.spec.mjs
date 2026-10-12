@@ -207,11 +207,16 @@ test('medication assignment creation and editing work immediately for recorded c
   await page.getByRole('link', { name: 'Add Medication', exact: true }).click();
   await page.getByLabel('Name', { exact: true }).fill('Synthetic assigned medicine');
   await page.getByLabel('Location', { exact: true }).selectOption({ label: 'Synthetic cabinet' });
-  await page.getByLabel('Dose', { exact: true }).fill('1');
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await page.getByLabel('Dose', { exact: true }).fill('2');
   await page.getByLabel('Unit', { exact: true }).selectOption('tablet');
+  await page.getByRole('button', { name: 'Review medication plan', exact: true }).click();
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await page.getByLabel('Starting Supply', { exact: true }).fill('10');
   await page.getByLabel('Reorder Threshold', { exact: true }).fill('2');
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await page.getByRole('button', { name: 'Save Medication', exact: true }).click();
+  await page.getByRole('link', { name: 'Done', exact: true }).click();
   await page.getByRole('link', { name: 'Medications', exact: true }).click();
   await page.getByRole('link', { name: 'People', exact: true }).click();
   await page.getByRole('link', { name: 'Synthetic adult', exact: true }).click();
@@ -228,6 +233,7 @@ test('medication assignment creation and editing work immediately for recorded c
   await expect(card).toContainText('as needed');
   await card.getByRole('link', { name: 'Edit assignment', exact: true }).click();
   await expect(page.getByLabel('Administration', { exact: true })).toHaveValue('as_needed');
+  await page.getByLabel('Dose option', { exact: true }).selectOption('');
   await page.getByLabel('Dose amount', { exact: true }).fill('2');
   await page.getByLabel('Notes', { exact: true }).fill('Synthetic assignment instructions');
   await page.getByRole('button', { name: 'Edit assignment', exact: true }).click();

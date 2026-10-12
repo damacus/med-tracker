@@ -1,4 +1,5 @@
 pub mod avatar;
+pub mod gravatar;
 
 use crate::models::{
     access::{self, PersonAccess, TenantTransaction},
@@ -166,13 +167,7 @@ async fn snapshot(
             .date_of_birth
             .ok_or_else(|| validation("date_of_birth", "can't be blank"))?,
         time_zone,
-        gravatar_enabled: preferences["gravatar_enabled"]
-            .as_bool()
-            .unwrap_or_else(|| {
-                preferences["gravatar_enabled"]
-                    .as_str()
-                    .is_some_and(|value| matches!(value, "true" | "1"))
-            }),
+        gravatar_enabled: gravatar::enabled(preferences),
         mobile_shortcuts: preferences["mobile_shortcuts"]
             .as_array()
             .map(|values| {

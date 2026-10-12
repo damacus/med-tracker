@@ -3,6 +3,92 @@ use base64::{Engine, engine::general_purpose::STANDARD};
 
 const AVATAR: &str = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABAQMAAAAl21bKAAAAA1BMVEX/AAAZ4gk3AAAACklEQVQI12NgAAAAAgAB4iG8MwAAAABJRU5ErkJggg==";
 
+#[tokio::test]
+async fn gravatar_uses_depicted_person_consent_and_rechecks_access() {
+    use med_tracker::models::{
+        access::{self, Actor, HouseholdScope},
+        profile::gravatar,
+    };
+    use sha2::Digest;
+    let app = avatar_application().await;
+    app.fixture.admin.execute_unprepared("INSERT INTO accounts(id,email,created_at,updated_at) VALUES(71002,'other@example.test',now(),now()); UPDATE people SET account_id=71002,email=' MyEmailAddress@example.com ' WHERE id=73002; UPDATE accounts SET preferences='{\"gravatar_enabled\":true}' WHERE id=71001; INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,created_at,updated_at) VALUES(78002,72001,74001,73002,'view','clinician',now(),now())").await.unwrap();
+    let scope = HouseholdScope {
+        actor: Actor { account_id: 71001 },
+        household_id: 72001,
+        request_id: uuid::Uuid::new_v4().to_string(),
+    };
+    let tenant = access::begin(&app.fixture.runtime, &scope).await.unwrap();
+    assert!(
+        gravatar::for_person(&tenant, 73002, false)
+            .await
+            .unwrap()
+            .is_none()
+    );
+    tenant.commit().await.unwrap();
+    app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences='{\"gravatar_enabled\":\"1\"}' WHERE id=71002; UPDATE accounts SET preferences='{\"gravatar_enabled\":false}' WHERE id=71001").await.unwrap();
+    let tenant = access::begin(&app.fixture.runtime, &scope).await.unwrap();
+    assert_eq!(
+        gravatar::for_person(&tenant, 73002, false)
+            .await
+            .unwrap()
+            .unwrap(),
+        "https://www.gravatar.com/avatar/84059b07d4be67b806386c0aad8070a23f18836bbaae342275dc0a83414c32ee?s=128&d=404&r=g"
+    );
+    assert!(
+        gravatar::for_person(&tenant, 73002, true)
+            .await
+            .unwrap()
+            .is_none()
+    );
+    tenant.commit().await.unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared("UPDATE people SET email=NULL WHERE id=73002")
+        .await
+        .unwrap();
+    let tenant = access::begin(&app.fixture.runtime, &scope).await.unwrap();
+    let fallback = gravatar::for_person(&tenant, 73002, false)
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(fallback.contains(&hex::encode(sha2::Sha256::digest(b"other@example.test"))));
+    tenant.commit().await.unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO users(person_id,email_address,created_at,updated_at) VALUES(73002,'legacy@example.test',now(),now())").await.unwrap();
+    let tenant = access::begin(&app.fixture.runtime, &scope).await.unwrap();
+    let legacy = gravatar::for_person(&tenant, 73002, false)
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(legacy.contains(&hex::encode(sha2::Sha256::digest(b"legacy@example.test"))));
+    tenant.commit().await.unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared(
+            "UPDATE accounts SET preferences='{\"gravatar_enabled\":false}' WHERE id=71002",
+        )
+        .await
+        .unwrap();
+    let tenant = access::begin(&app.fixture.runtime, &scope).await.unwrap();
+    assert!(
+        gravatar::for_person(&tenant, 73002, false)
+            .await
+            .unwrap()
+            .is_none()
+    );
+    tenant.commit().await.unwrap();
+    app.fixture.admin.execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78002; UPDATE household_memberships SET role='member' WHERE id=74001").await.unwrap();
+    let tenant = access::begin(&app.fixture.runtime, &scope).await.unwrap();
+    for uploaded in [false, true] {
+        assert!(
+            gravatar::for_person(&tenant, 73002, uploaded)
+                .await
+                .is_err()
+        );
+    }
+    tenant.commit().await.unwrap();
+    app.close().await;
+}
+
 async fn avatar_application() -> Application {
     let app = Application::new().await;
     app.fixture

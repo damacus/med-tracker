@@ -1,6 +1,7 @@
 use super::*;
 use crate::models::{care::doses::CredentialMethod, entities::api_idempotency_key};
 use chrono::Duration;
+use loco_rs::model::TenantQueryExt;
 
 pub enum KeyedResponse {
     New,
@@ -16,7 +17,7 @@ pub async fn lookup(
     body: &Value,
 ) -> Result<KeyedResponse, OperationError> {
     let saved = api_idempotency_key::Entity::find()
-        .filter(api_idempotency_key::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(api_idempotency_key::Column::Key.eq(key))
         .one(tenant.transaction())
         .await

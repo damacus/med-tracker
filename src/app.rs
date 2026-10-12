@@ -50,6 +50,7 @@ impl Hooks for App {
             .add_route(browser(crate::controllers::oauth_server::browser_routes()))
             .add_route(browser(crate::controllers::medications::routes()))
             .add_route(browser(crate::controllers::dashboard::routes()))
+            .add_route(browser(crate::controllers::nhs_dmd::routes()))
             .add_route(browser(crate::controllers::medication_orders::routes()))
             .add_route(browser(crate::controllers::dosage_options::routes()))
             .add_route(browser(crate::controllers::locations::routes()))
@@ -111,6 +112,9 @@ impl Hooks for App {
 
     async fn connect_workers(ctx: &AppContext, queue: &Queue) -> Result<()> {
         queue
+            .register(crate::models::nhs_dmd::ImportWorker::build(ctx))
+            .await?;
+        queue
             .register(crate::models::care::browser_push::scheduler::ReminderWorker::build(ctx))
             .await?;
         queue
@@ -129,6 +133,7 @@ impl Hooks for App {
     }
 
     fn register_tasks(tasks: &mut Tasks) {
+        tasks.register(crate::models::nhs_dmd::ReconcileTask);
         tasks.register(crate::models::care::browser_push::scheduler::ReminderTask);
     }
 

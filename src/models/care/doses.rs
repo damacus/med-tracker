@@ -13,8 +13,8 @@ mod writing;
 use crate::models::{
     access::{self, HouseholdScope, PersonAccess, TenantTransaction},
     entities::{
-        api_change_event, dosage, medication, medication_take, membership, person,
-        person_medication, schedule,
+        api_change_event, dosage, medication, medication_take, membership, person_medication,
+        schedule,
     },
     errors::OperationError,
 };

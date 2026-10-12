@@ -1,4 +1,5 @@
 use super::*;
+use loco_rs::model::TenantQueryExt;
 
 pub(super) struct ProposedTake {
     pub(super) source: Source,
@@ -120,7 +121,7 @@ pub(super) async fn prepare(
         .clone()
         .ok_or_else(|| error(ErrorKind::Validation, "Invalid dose configured"))?;
     let original = medication::Entity::find_by_id(source.medication_id)
-        .filter(medication::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .one(db)
         .await
         .map_err(database_error)?
@@ -133,7 +134,7 @@ pub(super) async fn prepare(
         candidates.iter().map(|value| value.id).collect()
     } else {
         let schedule_ids = schedule::Entity::find()
-            .filter(schedule::Column::HouseholdId.eq(household_id))
+            .in_tenant(household_id)
             .filter(schedule::Column::PersonId.eq(source.person_id))
             .all(db)
             .await
@@ -141,7 +142,7 @@ pub(super) async fn prepare(
             .into_iter()
             .map(|value| value.medication_id);
         let assignment_ids = person_medication::Entity::find()
-            .filter(person_medication::Column::HouseholdId.eq(household_id))
+            .in_tenant(household_id)
             .filter(person_medication::Column::PersonId.eq(source.person_id))
             .all(db)
             .await

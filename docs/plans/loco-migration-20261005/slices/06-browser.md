@@ -21,7 +21,7 @@ The report keeps its stable IDs. A partial PR cannot complete an entire row.
 | s06-i04 Admin/support | B2c | Existing household administration is partial evidence; broader admin/support retains auth-first sequencing |
 | s06-i05 Data/scanner/reviews | B2d; care C3 scanner and C4 entry handoff; profile P22 export presentation | Reports PR #2470 merged. Scanner-to-add, scanner-to-restock, catalogue import and review freshness remain incomplete |
 | s06-i06 Accessibility | B1/B2 across both new subplans; timing/localization follow-up below | Single-form audit and selected UI checks exist; find/fix/verify whole-journey keyboard, semantics and translation gaps |
-| s06-i07 Avatars | B2b; profile P06–P07 | Local storage/browser evidence partial; cleanup/retry/mobile verification remains, Gravatar permission pending |
+| s06-i07 Avatars | B2b; profile P06–P07 | Local avatars published in #2504; Gravatar opt-in implemented with Rails precedence and local fallbacks, independent review pending in #2502. See [Gravatar integration](../gravatar.md). |
 | s06-i08 Live care | B3 live-update portion; preserve across care C1–C4 | 54 selected cases pass; passive session renewal blocks acceptance; full checks/publication remain |
 | s06-i09 Offline | B3 offline portion | Deferred from first release, retained in full goal; not resumed by parity planning |
 

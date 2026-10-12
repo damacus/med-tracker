@@ -37,10 +37,15 @@ test('locations can be created, edited, used by medication and safely deleted', 
   await page.getByRole('link', { name: 'Add Medication', exact: true }).click();
   await page.getByLabel('Location', { exact: true }).selectOption({ label: 'Synthetic edited location' });
   await page.getByLabel('Name', { exact: true }).fill('Synthetic location medicine');
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await page.getByLabel('Dose', { exact: true }).fill('1');
   await page.getByLabel('Unit', { exact: true }).selectOption('tablet');
+  await page.getByRole('button', { name: 'Review medication plan', exact: true }).click();
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await page.getByLabel('Starting Supply', { exact: true }).fill('5');
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await page.getByRole('button', { name: 'Save Medication', exact: true }).click();
+  await page.getByRole('link', { name: 'Done', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Synthetic location medicine', exact: true })).toBeVisible();
   await page.goto(locationDetail);
   await expect(page.getByRole('link', { name: 'Synthetic location medicine', exact: true })).toBeVisible();

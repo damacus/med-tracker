@@ -1,4 +1,5 @@
 use super::*;
+use loco_rs::model::TenantQueryExt;
 pub(super) async fn sync_single_dose_mode(
     context: &StockContext<'_>,
     medication_id: i64,
@@ -6,21 +7,21 @@ pub(super) async fn sync_single_dose_mode(
     let db = context.tenant.transaction();
     let request_id = &context.tenant.scope().request_id;
     let sources = person_medication::Entity::find()
-        .filter(person_medication::Column::HouseholdId.eq(context.tenant.scope().household_id))
+        .in_tenant(context.tenant.scope().household_id)
         .filter(person_medication::Column::MedicationId.eq(medication_id))
         .filter(person_medication::Column::SourceDosageOptionId.is_not_null())
         .all(db)
         .await
         .map_err(database_error)?;
     let options = dosage::Entity::find()
-        .filter(dosage::Column::HouseholdId.eq(context.tenant.scope().household_id))
+        .in_tenant(context.tenant.scope().household_id)
         .filter(dosage::Column::MedicationId.eq(medication_id))
         .all(db)
         .await
         .map_err(database_error)?;
     let person_ids: Vec<i64> = sources.iter().map(|source| source.person_id).collect();
     let people = person::Entity::find()
-        .filter(person::Column::HouseholdId.eq(context.tenant.scope().household_id))
+        .in_tenant(context.tenant.scope().household_id)
         .filter(person::Column::Id.is_in(person_ids))
         .all(db)
         .await
@@ -37,7 +38,7 @@ pub(super) async fn sync_single_dose_mode(
         active.update(db).await.map_err(database_error)?;
     }
     dosage::Entity::delete_many()
-        .filter(dosage::Column::HouseholdId.eq(context.tenant.scope().household_id))
+        .in_tenant(context.tenant.scope().household_id)
         .filter(dosage::Column::MedicationId.eq(medication_id))
         .exec(db)
         .await

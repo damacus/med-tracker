@@ -1,4 +1,5 @@
 use super::*;
+use loco_rs::model::TenantQueryExt;
 
 fn context(tenant: &TenantTransaction, provenance: Option<&CredentialProvenance>) -> Value {
     let mut context = json!({"actor_account_id":tenant.scope().actor.account_id,"actor_user_id":tenant.user_id(),"actor_membership_id":tenant.membership().id,"active_role":tenant.membership().role,"permissions_version":tenant.membership().permissions_version,"household_id":tenant.scope().household_id,"request_id":tenant.scope().request_id});
@@ -118,7 +119,7 @@ pub(crate) async fn bump(tenant: &TenantTransaction, id: i64) -> Result<(), Oper
             Expr::value(Utc::now().naive_utc()),
         )
         .filter(membership::Column::Id.eq(id))
-        .filter(membership::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .exec(tenant.transaction())
         .await?;
     Ok(())

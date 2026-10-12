@@ -1,4 +1,5 @@
 use super::*;
+use loco_rs::model::TenantQueryExt;
 use sea_orm::{
     ConnectionTrait, DatabaseConnection, DbBackend, QuerySelect, Statement, TransactionTrait,
 };
@@ -17,7 +18,7 @@ async fn collection(
 ) -> Result<Value, OperationError> {
     administration::authorize(tenant).await?;
     let rows = household_invitation::Entity::find()
-        .filter(household_invitation::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .order_by_desc(household_invitation::Column::CreatedAt)
         .order_by_desc(household_invitation::Column::Id)
         .limit(limit)
@@ -37,7 +38,7 @@ pub async fn options(tenant: &TenantTransaction) -> Result<Value, OperationError
         .filter_map(|value| value["id"].as_i64())
         .collect();
     let people = person::Entity::find()
-        .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(person::Column::Id.is_in(ids))
         .filter(person::Column::PersonType.is_in([1, 2]))
         .filter(person::Column::HasCapacity.eq(false))

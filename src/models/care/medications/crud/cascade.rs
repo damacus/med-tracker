@@ -2,6 +2,7 @@ use super::super::audit::record_version;
 use super::persistence::tombstone;
 use super::*;
 use crate::models::entities::{dose_occurrence, medication_take, pause_period};
+use loco_rs::model::TenantQueryExt;
 use std::collections::HashSet;
 pub(super) struct CascadeSnapshot {
     pub(super) medications: Vec<medication::Model>,
@@ -63,7 +64,7 @@ pub(super) async fn record_cascade_effects(
         Vec::new()
     } else {
         person::Entity::find()
-            .filter(person::Column::HouseholdId.eq(context.tenant.scope().household_id))
+            .in_tenant(context.tenant.scope().household_id)
             .filter(person::Column::Id.is_in(person_ids))
             .all(db)
             .await
@@ -175,7 +176,7 @@ pub(crate) async fn delete_medication_tree(
         return Err(OperationError::NotFound);
     }
     let schedules = schedule::Entity::find()
-        .filter(schedule::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(schedule::Column::MedicationId.eq(medication.id))
         .order_by_asc(schedule::Column::Id)
         .lock_exclusive()
@@ -183,7 +184,7 @@ pub(crate) async fn delete_medication_tree(
         .await
         .map_err(database_error)?;
     let assignments = person_medication::Entity::find()
-        .filter(person_medication::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(person_medication::Column::MedicationId.eq(medication.id))
         .order_by_asc(person_medication::Column::Id)
         .lock_exclusive()
@@ -191,7 +192,7 @@ pub(crate) async fn delete_medication_tree(
         .await
         .map_err(database_error)?;
     let dosages = dosage::Entity::find()
-        .filter(dosage::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(dosage::Column::MedicationId.eq(medication.id))
         .order_by_asc(dosage::Column::Id)
         .lock_exclusive()
@@ -210,7 +211,7 @@ pub(crate) async fn delete_medication_tree(
             takes.add(medication_take::Column::PersonMedicationId.is_in(assignment_ids.clone()));
     }
     if medication_take::Entity::find()
-        .filter(medication_take::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(takes)
         .one(db)
         .await
@@ -233,7 +234,7 @@ pub(crate) async fn delete_medication_tree(
                 pauses.add(pause_period::Column::PersonMedicationId.is_in(assignment_ids.clone()));
         }
         if dose_occurrence::Entity::find()
-            .filter(dose_occurrence::Column::HouseholdId.eq(household_id))
+            .in_tenant(household_id)
             .filter(sources)
             .one(db)
             .await

@@ -1,3 +1,4 @@
+use loco_rs::model::TenantQueryExt;
 mod configuration;
 pub(crate) use configuration::configured_signing_key;
 mod calendar;
@@ -92,7 +93,7 @@ fn report_pause_scope(
 ) -> Select<pause_period::Entity> {
     let end = local_midnight(scan_end + Duration::days(1));
     pause_period::Entity::find()
-        .filter(pause_period::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(
             Condition::any()
                 .add(pause_period::Column::ScheduleId.is_in(schedule_ids.to_vec()))
@@ -116,7 +117,7 @@ fn report_pause_scope(
 
 fn report_linked_scope(household_id: i64, take_ids: &[i64]) -> Select<dose_occurrence::Entity> {
     dose_occurrence::Entity::find()
-        .filter(dose_occurrence::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(dose_occurrence::Column::MedicationTakeId.is_in(take_ids.to_vec()))
         .select_only()
         .column(dose_occurrence::Column::ScheduleId)
@@ -154,7 +155,7 @@ async fn projected_for_range(
     let db = tenant.transaction();
     let household_id = tenant.scope().household_id;
     let schedules = schedule::Entity::find()
-        .filter(schedule::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(schedule::Column::PersonId.is_in(person_ids.to_vec()))
         .filter(
             Condition::any()
@@ -164,7 +165,7 @@ async fn projected_for_range(
         .all(db)
         .await?;
     let assignments = person_medication::Entity::find()
-        .filter(person_medication::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(person_medication::Column::PersonId.is_in(person_ids.to_vec()))
         .filter(person_medication::Column::CreatedAt.lte(local_midnight(end + Duration::days(1))))
         .all(db)
@@ -221,7 +222,7 @@ async fn projected_for_range(
         })
         .collect();
     let persisted = dose_occurrence::Entity::find()
-        .filter(dose_occurrence::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(report_source_scope(&schedule_ids, &assignment_ids))
         .filter(dose_occurrence::Column::WindowStartsOn.lte(scan_end))
         .filter(
@@ -245,7 +246,7 @@ async fn projected_for_range(
     .all(db)
     .await?;
     let takes: Vec<medication_take::Model> = medication_take::Entity::find()
-        .filter(medication_take::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(
             Condition::any()
                 .add(medication_take::Column::ScheduleId.is_in(schedule_ids))

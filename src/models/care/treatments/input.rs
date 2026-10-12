@@ -1,4 +1,5 @@
 use super::*;
+use loco_rs::model::TenantQueryExt;
 
 pub(super) fn identifier<'a>(
     value: &'a Value,
@@ -161,6 +162,9 @@ pub(super) fn valid_config(config: &Value) -> bool {
                     .all(|date| parse_date(date, "schedule_config").is_ok())
             }),
             "as_needed" => value.is_boolean(),
+            "tapering_plan" => value
+                .as_str()
+                .is_some_and(|instruction| !instruction.trim().is_empty()),
             "taper_steps" => value
                 .as_array()
                 .is_some_and(|steps| steps.iter().all(valid_taper_step)),
@@ -367,7 +371,7 @@ pub(super) async fn apply_attributes(
         )
     {
         let matches = dosage::Entity::find()
-            .filter(dosage::Column::HouseholdId.eq(context.scope().household_id))
+            .in_tenant(context.scope().household_id)
             .filter(dosage::Column::MedicationId.eq(medication_id))
             .filter(dosage::Column::Amount.eq(amount))
             .filter(dosage::Column::Unit.eq(unit))

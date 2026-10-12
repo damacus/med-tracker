@@ -1,3 +1,4 @@
+use loco_rs::model::TenantQueryExt;
 pub mod browser;
 
 use crate::models::{
@@ -11,7 +12,7 @@ use serde_json::{Value, json};
 
 fn scope(tenant: &TenantTransaction) -> sea_orm::Select<health_event::Entity> {
     health_event::Entity::find()
-        .filter(health_event::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(
             health_event::Column::PersonId.in_subquery(access::granted_people(tenant.membership())),
         )

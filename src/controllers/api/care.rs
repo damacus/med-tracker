@@ -10,6 +10,7 @@ mod input;
 mod invitations;
 mod locations;
 mod medication_crud;
+mod medication_lookup;
 mod medication_reads;
 mod notification_preferences;
 mod orders;
@@ -83,6 +84,10 @@ pub fn invitation_routes() -> Routes {
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("/api/v1/households")
+        .add(
+            "/{household_id}/medication_lookup",
+            get(medication_lookup::show),
+        )
         .add(
             "/{household_id}/profile/avatar",
             get(avatar::show)

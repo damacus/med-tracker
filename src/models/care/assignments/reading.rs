@@ -1,4 +1,5 @@
 use super::*;
+use loco_rs::model::TenantQueryExt;
 use serde::Deserialize;
 
 #[derive(Default, Deserialize)]
@@ -9,7 +10,7 @@ pub struct Pagination {
 }
 fn scope(tenant: &TenantTransaction) -> sea_orm::Select<person_medication::Entity> {
     person_medication::Entity::find()
-        .filter(person_medication::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(person_medication::Column::RetiredAt.is_null())
         .filter(
             person_medication::Column::PersonId

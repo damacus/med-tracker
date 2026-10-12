@@ -1,6 +1,28 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 import { withOwnedDatabase } from './foundation-database.mjs';
+
+test('owned PostgreSQL healthcheck waits for TCP rather than the temporary Unix-only server', () => {
+  const compose = readFileSync(new URL('../../compose.yaml', import.meta.url), 'utf8');
+  const probe = compose.match(/postgres:\n[\s\S]*?healthcheck:\n\s+test: \["CMD-SHELL", "([^"]+)"\]/)?.[1];
+  assert.ok(probe, 'PostgreSQL healthcheck is missing');
+  const directory = mkdtempSync(join(tmpdir(), 'medtracker-pg-ready-'));
+  try {
+    const binary = join(directory, 'pg_isready');
+    writeFileSync(binary, '#!/usr/bin/env node\nconst tcp = process.argv.includes("-h") && process.argv.includes("127.0.0.1");\nprocess.exit(process.env.SERVER_MODE === "unix-only" && tcp ? 2 : 0);\n');
+    chmodSync(binary, 0o755);
+    const env = { ...process.env, PATH: `${directory}:${process.env.PATH}` };
+    const check = mode => spawnSync('sh', ['-c', probe], { env: { ...env, SERVER_MODE: mode }, encoding: 'utf8' });
+    assert.equal(check('unix-only').status, 2, 'Temporary socket-only startup must not be healthy');
+    assert.equal(check('tcp-ready').status, 0, 'Final TCP listener must be healthy');
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
 
 test('owned cleanup permits a bounded ninety-second Compose shutdown without extending other phases', async () => {
   const deadlines = new Map();
@@ -84,6 +106,22 @@ test('storage fixtures share only their owned project and supply an isolated loo
   }, { ACTIVE_STORAGE_S3_ENDPOINT: 'https://unowned.invalid' }, { storage: true });
   assert.deepEqual(calls.map(args => args[0]), ['foundation:db-up', 'foundation:db-port', 'foundation:storage-up', 'foundation:storage-port', 'foundation:db-down']);
   assert.ok(calls.every(args => args[1] === calls[0][1]));
+});
+
+test('profile and scanner share one owned storage service and initialise the scanner bucket once', async () => {
+  const calls = [];
+  await withOwnedDatabase(async (_url, _provision, ownership) => {
+    const scanner = await ownership.storage();
+    assert.equal(scanner.S3_ENDPOINT, ownership.storageEnvironment.ACTIVE_STORAGE_S3_ENDPOINT);
+    assert.equal(scanner.AWS_ACCESS_KEY_ID, ownership.storageEnvironment.ACTIVE_STORAGE_S3_ACCESS_KEY_ID);
+    assert.deepEqual(await ownership.storage(), scanner);
+  }, args => {
+    calls.push(args);
+    if (args[0] === 'foundation:db-port') return '127.0.0.1:54321';
+    if (args[0] === 'foundation:storage-port') return '127.0.0.1:54322';
+    return '';
+  }, {}, { storage: true });
+  assert.deepEqual(calls.map(args => args[0]), ['foundation:db-up', 'foundation:db-port', 'foundation:storage-up', 'foundation:storage-port', 'foundation:storage-init', 'foundation:db-down']);
 });
 
 test('storage fixture rejects non-loopback endpoints before starting the application', async () => {

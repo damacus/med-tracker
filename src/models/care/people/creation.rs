@@ -1,4 +1,5 @@
 use super::*;
+use loco_rs::model::TenantQueryExt;
 
 pub async fn create(
     tenant: &TenantTransaction,
@@ -25,7 +26,7 @@ pub async fn create(
     let dependent = validation::capacity(&mut record, today)?;
     let carer = if let Some(id) = tenant.membership().person_id {
         person::Entity::find_by_id(id)
-            .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
+            .in_tenant(tenant.scope().household_id)
             .one(tenant.transaction())
             .await?
     } else {
@@ -71,7 +72,7 @@ pub async fn create(
         None
     };
     let home = location::Entity::find()
-        .filter(location::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(location::Column::Name.eq("Home"))
         .one(tenant.transaction())
         .await?;
@@ -136,7 +137,7 @@ pub async fn create(
         )
         .col_expr(membership::Column::UpdatedAt, Expr::value(now))
         .filter(membership::Column::Id.eq(tenant.membership().id))
-        .filter(membership::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .exec(tenant.transaction())
         .await?;
     persistence::record_version(
@@ -175,7 +176,7 @@ async fn ensure_self_grant(
     now: chrono::NaiveDateTime,
 ) -> Result<Option<(Option<Value>, grant::Model)>, OperationError> {
     let query = grant::Entity::find()
-        .filter(grant::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(grant::Column::HouseholdMembershipId.eq(tenant.membership().id))
         .filter(grant::Column::PersonId.eq(person_id));
     let active = query
