@@ -78,6 +78,7 @@
         window.alert('Could not update or clear browser notifications. Check your connection and retry signing in or out.');
         return;
       }
+      if (!form.isConnected) document.body.append(form);
       HTMLFormElement.prototype.submit.call(form);
     })();
   }, true);
