@@ -1,4 +1,5 @@
 use super::*;
+use loco_rs::model::TenantQueryExt;
 
 pub(crate) async fn add_stock(
     tenant: &TenantTransaction,
@@ -22,7 +23,7 @@ pub(crate) async fn add_stock(
     let row = active.update(tenant.transaction()).await?;
     persistence::persist(tenant, &row, Some(before), provenance).await?;
     let rows = dosage::Entity::find()
-        .filter(dosage::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(dosage::Column::MedicationId.eq(medication_id))
         .all(tenant.transaction())
         .await?;

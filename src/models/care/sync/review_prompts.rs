@@ -1,6 +1,7 @@
 use super::*;
 use axum::http::StatusCode;
 use chrono::{Datelike, NaiveDate};
+use loco_rs::model::TenantQueryExt;
 use sea_orm::DatabaseTransaction;
 use sha2::{Digest, Sha256};
 struct AuthContext<'a> {
@@ -116,7 +117,7 @@ async fn visible_prompt(
         return Ok(None);
     };
     review_prompt::Entity::find_by_id(id)
-        .filter(review_prompt::Column::HouseholdId.eq(context.tenant.scope().household_id))
+        .in_tenant(context.tenant.scope().household_id)
         .filter(
             review_prompt::Column::PersonId
                 .in_subquery(access::granted_people(context.tenant.membership())),

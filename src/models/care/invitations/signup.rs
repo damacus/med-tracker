@@ -3,6 +3,7 @@ use crate::models::{
     entities::{account, household, membership, person, user},
     identity::signup::SignupInvitationContext,
 };
+use loco_rs::model::TenantQueryExt;
 use sea_orm::{ConnectionTrait, DatabaseTransaction, DbBackend, QuerySelect, Statement};
 
 pub(crate) async fn signup_invitation(
@@ -44,7 +45,7 @@ pub(crate) async fn signup_invitation(
         return Err(super::acceptance::unavailable());
     }
     let invitation = household_invitation::Entity::find_by_id(invitation.id)
-        .filter(household_invitation::Column::HouseholdId.eq(home.id))
+        .in_tenant(home.id)
         .lock_exclusive()
         .one(transaction)
         .await?
@@ -85,7 +86,7 @@ pub async fn accept_signup(
         .await?
         .ok_or_else(super::acceptance::unavailable)?;
     let person = person::Entity::find_by_id(context.person_id())
-        .filter(person::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(person::Column::AccountId.eq(owner.id))
         .one(transaction)
         .await?
@@ -99,7 +100,7 @@ pub async fn accept_signup(
         return Err(super::acceptance::unavailable());
     }
     if membership::Entity::find()
-        .filter(membership::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(membership::Column::AccountId.eq(owner.id))
         .one(transaction)
         .await?
@@ -108,7 +109,7 @@ pub async fn accept_signup(
         return Err(super::acceptance::unavailable());
     }
     let inviter = membership::Entity::find_by_id(invitation.invited_by_membership_id)
-        .filter(membership::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .lock_exclusive()
         .one(transaction)
         .await?

@@ -1,6 +1,7 @@
 use super::*;
 use crate::models::care::doses::CredentialProvenance;
 use loco_rs::mailer::Email;
+use loco_rs::model::TenantQueryExt;
 
 pub async fn create(
     tenant: &TenantTransaction,
@@ -20,7 +21,7 @@ async fn create_authorized(
 ) -> Result<Value, OperationError> {
     let (email, role) = input::attributes(&attributes)?;
     if household_invitation::Entity::find()
-        .filter(household_invitation::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(household_invitation::Column::Email.eq(&email))
         .filter(household_invitation::Column::AcceptedAt.is_null())
         .filter(household_invitation::Column::RevokedAt.is_null())
@@ -134,7 +135,7 @@ async fn dependent_grants(
             "record"
         });
     let dependents = person::Entity::find()
-        .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(person::Column::Id.is_in(ids))
         .filter(person::Column::PersonType.is_in([1, 2]))
         .filter(person::Column::HasCapacity.eq(false))
@@ -174,7 +175,7 @@ pub(crate) async fn create_for_parent(
     crate::models::care::person_carers::selected(tenant, person_id).await?;
     let email = input::validated_email(email)?;
     let pending = household_invitation::Entity::find()
-        .filter(household_invitation::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(household_invitation::Column::Email.eq(&email))
         .filter(household_invitation::Column::AcceptedAt.is_null())
         .filter(household_invitation::Column::RevokedAt.is_null())
@@ -190,7 +191,7 @@ pub(crate) async fn create_for_parent(
             ));
         }
         let grants = household_invitation_grant::Entity::find()
-            .filter(household_invitation_grant::Column::HouseholdId.eq(tenant.scope().household_id))
+            .in_tenant(tenant.scope().household_id)
             .filter(household_invitation_grant::Column::HouseholdInvitationId.eq(row.id))
             .lock_exclusive()
             .all(tenant.transaction())

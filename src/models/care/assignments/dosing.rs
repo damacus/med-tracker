@@ -1,4 +1,5 @@
 use super::*;
+use loco_rs::model::TenantQueryExt;
 
 pub(super) fn option_matches(option: &dosage::Model, amount: Decimal, unit: &str) -> bool {
     option.amount == amount && option.unit == unit
@@ -14,7 +15,7 @@ pub(super) async fn resolved_dose(
     selected_option: Option<&dosage::Model>,
 ) -> Result<Option<(Decimal, String, Option<i64>)>, ApiError> {
     let options = dosage::Entity::find()
-        .filter(dosage::Column::HouseholdId.eq(context.scope().household_id))
+        .in_tenant(context.scope().household_id)
         .filter(dosage::Column::MedicationId.eq(medication.id))
         .order_by_asc(dosage::Column::Amount)
         .order_by_asc(dosage::Column::Id)

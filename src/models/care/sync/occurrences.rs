@@ -1,5 +1,6 @@
 use super::*;
 use crate::models::care::dose_occurrences;
+use loco_rs::model::TenantQueryExt;
 use sea_orm::PaginatorTrait;
 
 fn invalid() -> OperationError {
@@ -22,7 +23,7 @@ pub(super) async fn apply(
     let secret = secret.ok_or(OperationError::Unavailable)?;
     if operation.action == "create" {
         let changes_before = api_change_event::Entity::find()
-            .filter(api_change_event::Column::HouseholdId.eq(tenant.scope().household_id))
+            .in_tenant(tenant.scope().household_id)
             .filter(api_change_event::Column::RecordType.eq("MedicationDoseOccurrence"))
             .count(tenant.transaction())
             .await?;
@@ -74,7 +75,7 @@ pub(super) async fn apply(
             .and_then(|position| i32::try_from(position).ok())
             .ok_or(OperationError::Unavailable)?;
         let query = dose_occurrence::Entity::find()
-            .filter(dose_occurrence::Column::HouseholdId.eq(tenant.scope().household_id))
+            .in_tenant(tenant.scope().household_id)
             .filter(dose_occurrence::Column::WindowStartsOn.eq(date))
             .filter(dose_occurrence::Column::Position.eq(position));
         let query = match kind {
@@ -89,7 +90,7 @@ pub(super) async fn apply(
             .await?
             .ok_or(OperationError::Unavailable)?;
         let changes_after = api_change_event::Entity::find()
-            .filter(api_change_event::Column::HouseholdId.eq(tenant.scope().household_id))
+            .in_tenant(tenant.scope().household_id)
             .filter(api_change_event::Column::RecordType.eq("MedicationDoseOccurrence"))
             .count(tenant.transaction())
             .await?;
@@ -107,8 +108,7 @@ pub(super) async fn apply(
         return Err(invalid());
     }
     let id = operation.id.as_deref().ok_or(OperationError::NotFound)?;
-    let query = dose_occurrence::Entity::find()
-        .filter(dose_occurrence::Column::HouseholdId.eq(tenant.scope().household_id));
+    let query = dose_occurrence::Entity::find().in_tenant(tenant.scope().household_id);
     let query = if let Ok(id) = id.parse::<i64>() {
         query.filter(dose_occurrence::Column::Id.eq(id))
     } else {

@@ -1,5 +1,6 @@
 use super::*;
 use crate::models::entities::location;
+use loco_rs::model::TenantQueryExt;
 pub(super) async fn valid_location(
     db: &DatabaseTransaction,
     household_id: i64,
@@ -13,7 +14,7 @@ pub(super) async fn valid_location(
         return Ok(true);
     };
     Ok(location::Entity::find_by_id(id)
-        .filter(location::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .one(db)
         .await
         .map_err(database_error)?

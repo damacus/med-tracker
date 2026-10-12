@@ -1,3 +1,4 @@
+use loco_rs::model::TenantQueryExt;
 pub(crate) mod evidence;
 
 use crate::models::{
@@ -71,14 +72,14 @@ pub async fn refresh_many(
     let db = tenant.transaction();
     let household_id = tenant.scope().household_id;
     let assignments = person_medication::Entity::find()
-        .filter(person_medication::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(person_medication::Column::PersonId.is_in(person_ids.to_vec()))
         .filter(person_medication::Column::Active.eq(true))
         .filter(person_medication::Column::RetiredAt.is_null())
         .all(db)
         .await?;
     let schedules = schedule::Entity::find()
-        .filter(schedule::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(schedule::Column::PersonId.is_in(person_ids.to_vec()))
         .filter(schedule::Column::Active.eq(true))
         .filter(schedule::Column::RetiredAt.is_null())
@@ -98,7 +99,7 @@ pub async fn refresh_many(
         return Ok(());
     }
     let medications: HashMap<i64, medication::Model> = medication::Entity::find()
-        .filter(medication::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(medication::Column::Id.is_in(all_medication_ids))
         .all(db)
         .await?
@@ -111,7 +112,7 @@ pub async fn refresh_many(
         .all(db)
         .await?;
     let mut existing: HashSet<(i64, i64, i64, i64)> = review_prompt::Entity::find()
-        .filter(review_prompt::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(review_prompt::Column::PersonId.is_in(person_ids.to_vec()))
         .all(db)
         .await?

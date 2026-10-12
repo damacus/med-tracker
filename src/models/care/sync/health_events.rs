@@ -2,6 +2,7 @@ use super::*;
 use crate::models::entities::version;
 use axum::http::StatusCode;
 use chrono::NaiveDate;
+use loco_rs::model::TenantQueryExt;
 use sea_orm::DatabaseTransaction;
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
@@ -354,7 +355,7 @@ async fn audit_snapshot(
     record: &health_event::Model,
 ) -> Result<Value, OperationError> {
     let links = health_event_medication::Entity::find()
-        .filter(health_event_medication::Column::HouseholdId.eq(record.household_id))
+        .in_tenant(record.household_id)
         .filter(health_event_medication::Column::HealthEventId.eq(record.id))
         .order_by_asc(health_event_medication::Column::Id)
         .all(db)
@@ -473,8 +474,7 @@ async fn visible_person(
     if !valid_identifier(id) {
         return Ok(None);
     }
-    let mut query = person::Entity::find()
-        .filter(person::Column::HouseholdId.eq(context.tenant.scope().household_id));
+    let mut query = person::Entity::find().in_tenant(context.tenant.scope().household_id);
     query = if let Ok(id) = id.parse::<i64>() {
         query.filter(person::Column::Id.eq(id))
     } else {
@@ -499,8 +499,7 @@ async fn visible_event(
     if !valid_identifier(id) {
         return Ok(None);
     }
-    let mut query = health_event::Entity::find()
-        .filter(health_event::Column::HouseholdId.eq(context.tenant.scope().household_id));
+    let mut query = health_event::Entity::find().in_tenant(context.tenant.scope().household_id);
     query = if let Ok(id) = id.parse::<i64>() {
         query.filter(health_event::Column::Id.eq(id))
     } else {
@@ -941,7 +940,7 @@ async fn authorize_sync_replay(
         return Err(OperationError::Forbidden);
     }
     let record = health_event::Entity::find()
-        .filter(health_event::Column::HouseholdId.eq(context.tenant.scope().household_id))
+        .in_tenant(context.tenant.scope().household_id)
         .filter(health_event::Column::PortableId.eq(portable_id))
         .one(db)
         .await
@@ -953,7 +952,7 @@ async fn authorize_sync_replay(
         record.person_id
     } else if operation.action == "delete" {
         let tombstone = api_tombstone::Entity::find()
-            .filter(api_tombstone::Column::HouseholdId.eq(context.tenant.scope().household_id))
+            .in_tenant(context.tenant.scope().household_id)
             .filter(api_tombstone::Column::RecordType.eq("HealthEvent"))
             .filter(api_tombstone::Column::RecordPortableId.eq(portable_id))
             .all(db)
@@ -971,7 +970,7 @@ async fn authorize_sync_replay(
             .and_then(Value::as_str)
             .ok_or(OperationError::Forbidden)?;
         person::Entity::find()
-            .filter(person::Column::HouseholdId.eq(context.tenant.scope().household_id))
+            .in_tenant(context.tenant.scope().household_id)
             .filter(person::Column::PortableId.eq(person_portable_id))
             .one(db)
             .await

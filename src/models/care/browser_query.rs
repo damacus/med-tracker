@@ -10,6 +10,7 @@ use crate::models::{
     },
     errors::OperationError,
 };
+use loco_rs::model::TenantQueryExt;
 use sea_orm::{
     ColumnTrait, Condition, ConnectionTrait, DbBackend, EntityTrait, QueryFilter, QueryOrder,
     QuerySelect, QueryTrait, Statement,
@@ -64,7 +65,7 @@ pub async fn form_context(
     access::recheck(tenant).await?;
     let household_id = tenant.scope().household_id;
     let locations = location::Entity::find()
-        .filter(location::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .order_by_asc(location::Column::Name)
         .order_by_asc(location::Column::Id)
         .all(tenant.transaction())
@@ -81,7 +82,7 @@ pub async fn form_context(
     };
     let options_mode = match &snapshot {
         Some(snapshot) => dosage::Entity::find()
-            .filter(dosage::Column::HouseholdId.eq(household_id))
+            .in_tenant(household_id)
             .filter(dosage::Column::MedicationId.eq(snapshot.medication.id))
             .one(tenant.transaction())
             .await?
@@ -139,7 +140,7 @@ pub async fn person_medications(
     let assignments = person_medication::Entity::find()
         .select_only()
         .column(person_medication::Column::MedicationId)
-        .filter(person_medication::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(person_medication::Column::PersonId.eq(person_id))
         .filter(person_medication::Column::Active.eq(true))
         .filter(person_medication::Column::RetiredAt.is_null())
@@ -176,13 +177,13 @@ pub async fn detail(
     let stock = medications::read_stock_snapshot(tenant, id).await?;
     let household_id = tenant.scope().household_id;
     let location_name = location::Entity::find_by_id(stock.medication.location_id)
-        .filter(location::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::NotFound)?
         .name;
     let dose_options = dosage::Entity::find()
-        .filter(dosage::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(dosage::Column::MedicationId.eq(stock.medication.id))
         .order_by_asc(dosage::Column::Id)
         .all(tenant.transaction())
@@ -191,19 +192,19 @@ pub async fn detail(
     let linked_schedules = schedule::Entity::find()
         .select_only()
         .column(schedule::Column::Id)
-        .filter(schedule::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(schedule::Column::MedicationId.eq(stock.medication.id))
         .filter(schedule::Column::PersonId.in_subquery(visible_people.clone()))
         .into_query();
     let linked_assignments = person_medication::Entity::find()
         .select_only()
         .column(person_medication::Column::Id)
-        .filter(person_medication::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(person_medication::Column::MedicationId.eq(stock.medication.id))
         .filter(person_medication::Column::PersonId.in_subquery(visible_people))
         .into_query();
     let takes = medication_take::Entity::find()
-        .filter(medication_take::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(
             Condition::any()
                 .add(medication_take::Column::ScheduleId.in_subquery(linked_schedules))
@@ -215,7 +216,7 @@ pub async fn detail(
         .all(tenant.transaction())
         .await?;
     let history_schedules: HashMap<i64, i64> = schedule::Entity::find()
-        .filter(schedule::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(schedule::Column::Id.is_in(takes.iter().filter_map(|take| take.schedule_id)))
         .all(tenant.transaction())
         .await?
@@ -223,7 +224,7 @@ pub async fn detail(
         .map(|source| (source.id, source.person_id))
         .collect();
     let history_assignments: HashMap<i64, i64> = person_medication::Entity::find()
-        .filter(person_medication::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(
             person_medication::Column::Id
                 .is_in(takes.iter().filter_map(|take| take.person_medication_id)),
@@ -234,7 +235,7 @@ pub async fn detail(
         .map(|source| (source.id, source.person_id))
         .collect();
     let history_people: HashMap<i64, String> = person::Entity::find()
-        .filter(person::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(
             person::Column::Id.is_in(
                 history_schedules
@@ -267,7 +268,7 @@ pub async fn detail(
         })
         .collect();
     let records = person_medication::Entity::find()
-        .filter(person_medication::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(person_medication::Column::MedicationId.eq(stock.medication.id))
         .filter(person_medication::Column::Active.eq(true))
         .filter(person_medication::Column::RetiredAt.is_null())
@@ -285,7 +286,7 @@ pub async fn detail(
         .all(tenant.transaction())
         .await?;
     let people: HashMap<i64, person::Model> = person::Entity::find()
-        .filter(person::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(
             person::Column::Id.is_in(
                 records
@@ -301,7 +302,7 @@ pub async fn detail(
         .collect();
     access::recheck(tenant).await?;
     let permission_grants: HashMap<i64, grant::Model> = grant::Entity::find()
-        .filter(grant::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(grant::Column::HouseholdMembershipId.eq(tenant.membership().id))
         .filter(grant::Column::PersonId.is_in(people.keys().copied()))
         .filter(grant::Column::RevokedAt.is_null())

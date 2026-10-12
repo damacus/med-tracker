@@ -1,5 +1,6 @@
 use super::*;
 use crate::models::entities::health_event_medication;
+use loco_rs::model::TenantQueryExt;
 use std::collections::HashMap;
 
 pub async fn collection(
@@ -9,7 +10,7 @@ pub async fn collection(
     access::recheck(tenant).await?;
     access::require_person_access(tenant, person_id, PersonAccess::View).await?;
     let rows = health_event::Entity::find()
-        .filter(health_event::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(health_event::Column::PersonId.eq(person_id))
         .order_by_desc(health_event::Column::StartedOn)
         .order_by_desc(health_event::Column::Id)
@@ -19,7 +20,7 @@ pub async fn collection(
         return Ok(Vec::new());
     }
     let links = health_event_medication::Entity::find()
-        .filter(health_event_medication::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(health_event_medication::Column::HealthEventId.is_in(rows.iter().map(|row| row.id)))
         .order_by_asc(health_event_medication::Column::Id)
         .all(tenant.transaction())
@@ -63,7 +64,7 @@ pub async fn event(
         return Err(OperationError::NotFound);
     }
     let links = health_event_medication::Entity::find()
-        .filter(health_event_medication::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(health_event_medication::Column::HealthEventId.eq(row.id))
         .order_by_asc(health_event_medication::Column::Id)
         .all(tenant.transaction())
@@ -83,13 +84,13 @@ pub async fn medication_options(
     let schedules = schedule::Entity::find()
         .select_only()
         .column(schedule::Column::MedicationId)
-        .filter(schedule::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(schedule::Column::PersonId.eq(person_id))
         .into_query();
     let assignments = person_medication::Entity::find()
         .select_only()
         .column(person_medication::Column::MedicationId)
-        .filter(person_medication::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(person_medication::Column::PersonId.eq(person_id))
         .into_query();
     access::medication_scope(tenant)

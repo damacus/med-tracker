@@ -1,4 +1,5 @@
 use super::*;
+use loco_rs::model::TenantQueryExt;
 
 #[derive(Clone, Debug)]
 pub struct RemoveStock {
@@ -31,7 +32,7 @@ pub async fn create(
     let found = authorize(tenant, &input.medication_id).await?;
     if let Some(id) = input.dosage_id.as_deref() {
         let owned = dosage::Entity::find_by_id(id.parse::<i64>().map_err(|_| invalid())?)
-            .filter(dosage::Column::HouseholdId.eq(tenant.scope().household_id))
+            .in_tenant(tenant.scope().household_id)
             .filter(dosage::Column::MedicationId.eq(found.id))
             .one(tenant.transaction())
             .await

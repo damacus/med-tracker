@@ -1,4 +1,5 @@
 use super::*;
+use loco_rs::model::TenantQueryExt;
 #[derive(Default, Deserialize)]
 pub struct RangeQuery {
     pub start_date: Option<String>,
@@ -21,7 +22,7 @@ async fn source(
     let source = match kind {
         Kind::Schedule => {
             let query = schedule::Entity::find()
-                .filter(schedule::Column::HouseholdId.eq(tenant.scope().household_id))
+                .in_tenant(tenant.scope().household_id)
                 .filter(schedule::Column::RetiredAt.is_null());
             let query = if let Ok(id) = id.parse::<i64>() {
                 query.filter(schedule::Column::Id.eq(id))
@@ -37,7 +38,7 @@ async fn source(
         }
         Kind::Assignment => {
             let query = person_medication::Entity::find()
-                .filter(person_medication::Column::HouseholdId.eq(tenant.scope().household_id))
+                .in_tenant(tenant.scope().household_id)
                 .filter(person_medication::Column::RetiredAt.is_null());
             let query = if let Ok(id) = id.parse::<i64>() {
                 query.filter(person_medication::Column::Id.eq(id))

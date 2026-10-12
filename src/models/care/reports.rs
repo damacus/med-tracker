@@ -10,6 +10,7 @@ use crate::models::{
 };
 use chrono::{DateTime, Datelike, Duration, NaiveDate, Utc};
 use chrono_tz::Tz;
+use loco_rs::model::TenantQueryExt;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, Condition, ConnectionTrait, DbBackend, EntityTrait, QueryFilter,
     QueryOrder, Set, Statement, prelude::Decimal,
@@ -58,13 +59,13 @@ pub async fn accessible_people(
         return Err(OperationError::Unavailable);
     }
     let people = person::Entity::find()
-        .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .order_by_asc(person::Column::Name)
         .order_by_asc(person::Column::Id)
         .all(tenant.transaction())
         .await?;
     let grants = grant::Entity::find()
-        .filter(grant::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(grant::Column::HouseholdMembershipId.eq(tenant.membership().id))
         .filter(grant::Column::RevokedAt.is_null())
         .all(tenant.transaction())
@@ -204,7 +205,7 @@ pub async fn medication_reviews(
 ) -> Result<Value, OperationError> {
     review_prompts::refresh(tenant, person.id, today).await?;
     let mut query = review_prompt::Entity::find()
-        .filter(review_prompt::Column::HouseholdId.eq(person.household_id))
+        .in_tenant(person.household_id)
         .filter(review_prompt::Column::PersonId.eq(person.id));
     query = if let Some(status) = status {
         query.filter(review_prompt::Column::Status.eq(status))
@@ -269,7 +270,7 @@ pub async fn household_medication_reviews(
     let ids: Vec<i64> = people.iter().map(|row| row.id).collect();
     review_prompts::refresh_many(tenant, &ids, today).await?;
     let mut query = review_prompt::Entity::find()
-        .filter(review_prompt::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(review_prompt::Column::PersonId.is_in(ids));
     query = if let Some(status) = status {
         query.filter(review_prompt::Column::Status.eq(status))
@@ -564,12 +565,12 @@ pub async fn ordinary_history(
     )
     .await?;
     let schedules = schedule::Entity::find()
-        .filter(schedule::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(schedule::Column::PersonId.is_in(ids.clone()))
         .all(db)
         .await?;
     let assignments = person_medication::Entity::find()
-        .filter(person_medication::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(person_medication::Column::PersonId.is_in(ids.clone()))
         .all(db)
         .await?;
@@ -605,7 +606,7 @@ pub async fn ordinary_history(
         }))
         .collect();
     let medicines: HashMap<i64, medication::Model> = medication::Entity::find()
-        .filter(medication::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .all(db)
         .await?
         .into_iter()
@@ -627,7 +628,7 @@ pub async fn ordinary_history(
     let take_scan_start = start.min(today) - Duration::days(1);
     let take_scan_end = end.max(today) + Duration::days(2);
     let takes = medication_take::Entity::find()
-        .filter(medication_take::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(
             medication_take::Column::TakenAt.gte(
                 take_scan_start
@@ -768,7 +769,7 @@ pub async fn ordinary_history(
         day += Duration::days(1);
     }
     let events = health_event::Entity::find()
-        .filter(health_event::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(health_event::Column::PersonId.is_in(ids))
         .filter(health_event::Column::StartedOn.lte(end))
         .filter(
@@ -785,7 +786,7 @@ pub async fn ordinary_history(
         Vec::new()
     } else {
         health_event_medication::Entity::find()
-            .filter(health_event_medication::Column::HouseholdId.eq(household_id))
+            .in_tenant(household_id)
             .filter(health_event_medication::Column::HealthEventId.is_in(event_ids))
             .all(db)
             .await?

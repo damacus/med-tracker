@@ -1,4 +1,5 @@
 use super::*;
+use loco_rs::model::TenantQueryExt;
 
 pub(super) async fn apply(
     context: &StockContext<'_>,
@@ -12,7 +13,7 @@ pub(super) async fn apply(
         let id = id.parse::<i64>().map_err(|_| invalid())?;
         db.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,"SELECT id FROM dosages WHERE id=$1 AND household_id=$2 AND medication_id=$3 FOR UPDATE",[id.into(),context.tenant.scope().household_id.into(),medication.id.into()])).await.map_err(database_error)?.ok_or_else(invalid)?;
         let option = dosage::Entity::find_by_id(id)
-            .filter(dosage::Column::HouseholdId.eq(context.tenant.scope().household_id))
+            .in_tenant(context.tenant.scope().household_id)
             .filter(dosage::Column::MedicationId.eq(medication.id))
             .one(db)
             .await
@@ -40,7 +41,7 @@ pub(super) async fn apply(
         .await?;
         change(context, "MedicationDosageOption", id, &portable).await?;
         let tracked = dosage::Entity::find()
-            .filter(dosage::Column::HouseholdId.eq(context.tenant.scope().household_id))
+            .in_tenant(context.tenant.scope().household_id)
             .filter(dosage::Column::MedicationId.eq(medication.id))
             .filter(dosage::Column::CurrentSupply.is_not_null())
             .all(db)
@@ -71,7 +72,7 @@ pub(super) async fn apply(
         (previous, remaining, unit)
     } else {
         let tracked = dosage::Entity::find()
-            .filter(dosage::Column::HouseholdId.eq(context.tenant.scope().household_id))
+            .in_tenant(context.tenant.scope().household_id)
             .filter(dosage::Column::MedicationId.eq(medication.id))
             .filter(dosage::Column::CurrentSupply.is_not_null())
             .one(db)

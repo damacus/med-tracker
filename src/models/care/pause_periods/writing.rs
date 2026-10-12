@@ -1,4 +1,5 @@
 use super::*;
+use loco_rs::model::TenantQueryExt;
 fn source_identity(body: &Value) -> Result<(Kind, &str), OperationError> {
     let attrs = body
         .get("medication_pause_period")
@@ -33,7 +34,7 @@ async fn period(
         return Err(OperationError::NotFound);
     }
     pause_period::Entity::find()
-        .filter(pause_period::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(pause_period::Column::PortableId.eq(id))
         .lock_exclusive()
         .one(tenant.transaction())

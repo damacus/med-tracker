@@ -4,6 +4,7 @@ use crate::models::{
     entities::{barcode_catalog_entry, household, location, medication, nhs_dmd_barcode},
     errors::OperationError,
 };
+use loco_rs::model::TenantQueryExt;
 use sea_orm::sea_query::{Expr, ExprTrait, Func};
 use sea_orm::{
     ColumnTrait, ConnectionTrait, DbBackend, EntityTrait, QueryFilter, QueryOrder, QuerySelect,
@@ -330,7 +331,7 @@ pub async fn search(tenant: &TenantTransaction, search: &Search) -> Result<Found
         .as_deref()
         .and_then(matching::normalize_strength);
     let locations: HashMap<i64, String> = location::Entity::find()
-        .filter(location::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .all(tenant.transaction())
         .await?
         .into_iter()
