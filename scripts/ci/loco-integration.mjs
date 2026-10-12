@@ -1,4 +1,5 @@
 import { readFile, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { withOwnedDatabase } from '../migration/foundation-database.mjs';
 import { execute } from './loco-process.mjs';
 import { parseShard, partition } from './loco-shards.mjs';
@@ -18,7 +19,7 @@ await writeFile(`test-results/integration-selection-${index + 1}.json`, JSON.str
 await withOwnedDatabase(async (url, provision, ownership) => {
   await provision();
   const storage = [...selected].some(name => name.startsWith('care_api/')) ? await ownership.storage() : {};
-  const env = { ...process.env, ...ownership.storageEnvironment, ...storage, DATABASE_URL: url, MEDTRACKER_OWNED_DATABASE: '1', MEDTRACKER_SESSION_KEY: Buffer.alloc(64, 7).toString('base64'), RAILS_SECRET_KEY_BASE: 'synthetic-slice-rails-verification-secret' };
+  const env = { ...process.env, ...ownership.storageEnvironment, ...storage, LOCO_TEST_APPLICATION: resolve('target/ci/med-tracker'), DATABASE_URL: url, MEDTRACKER_OWNED_DATABASE: '1', MEDTRACKER_SESSION_KEY: Buffer.alloc(64, 7).toString('base64'), RAILS_SECRET_KEY_BASE: 'synthetic-slice-rails-verification-secret' };
   for (const name of ['COMPOSE_FILE', 'COMPOSE_PROJECT_NAME', 'COMPOSE_PROFILES', 'DOCKER_HOST', 'DOCKER_CONTEXT', 'DOCKER_CONFIG', 'DOCKER_TLS_VERIFY', 'DOCKER_CERT_PATH']) delete env[name];
   for (const binary of manifest) {
     const tests = names.get(binary.name);
