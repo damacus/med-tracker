@@ -13,6 +13,7 @@ mod me;
 mod medication_crud;
 mod medication_lookup;
 mod medication_reads;
+mod native_device_tokens;
 mod notification_preferences;
 mod orders;
 mod pause_periods;
@@ -227,6 +228,14 @@ pub fn routes() -> Routes {
         .add(
             "/{household_id}/push_subscription",
             post(push_subscriptions::create).delete(push_subscriptions::destroy),
+        )
+        .add(
+            "/{household_id}/native_device_tokens",
+            post(native_device_tokens::create),
+        )
+        .add(
+            "/{household_id}/native_device_tokens/{id}",
+            delete(native_device_tokens::destroy),
         )
         .add(
             "/{household_id}/schedules",

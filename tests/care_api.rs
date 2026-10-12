@@ -48,6 +48,8 @@ mod me;
 mod medication_lookup;
 #[path = "care_api/medication_reads.rs"]
 mod medication_reads;
+#[path = "care_api/native_device_tokens.rs"]
+mod native_device_tokens;
 #[path = "care_api/nhs_dmd.rs"]
 mod nhs_dmd;
 #[path = "care_api/notification_preferences.rs"]
