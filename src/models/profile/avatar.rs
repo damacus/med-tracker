@@ -288,7 +288,7 @@ pub async fn enqueue_retirement(
     tenant.transaction().execute_raw(Statement::from_sql_and_values(
         DbBackend::Postgres,
         "INSERT INTO pg_loco_queue(id,task_data,name,run_at,priority) VALUES($1,$2,$3,clock_timestamp(),$4)",
-        [ulid::Ulid::new().to_string().into(),payload.into(),AvatarRetirementWorker::class_name().into(),0.into()],
+        [ulid::Ulid::generate().to_string().into(),payload.into(),AvatarRetirementWorker::class_name().into(),0.into()],
     )).await?;
     Ok(())
 }
