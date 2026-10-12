@@ -32,7 +32,7 @@ pub(super) async fn notice(
         text: body.into(),
         ..Default::default()
     };
-    transaction.execute_raw(statement("INSERT INTO pg_loco_queue(id,task_data,name,run_at,priority) VALUES($1,$2,$3,clock_timestamp(),$4)", [ulid::Ulid::new().to_string().into(), serde_json::to_value(email)?.into(), MailerWorker::class_name().into(), DEFAULT_MAILER_PRIORITY.into()])).await.map_err(database_error)?;
+    transaction.execute_raw(statement("INSERT INTO pg_loco_queue(id,task_data,name,run_at,priority) VALUES($1,$2,$3,clock_timestamp(),$4)", [ulid::Ulid::generate().to_string().into(), serde_json::to_value(email)?.into(), MailerWorker::class_name().into(), DEFAULT_MAILER_PRIORITY.into()])).await.map_err(database_error)?;
     transaction.commit().await.map_err(database_error)
 }
 
@@ -62,7 +62,7 @@ impl SendVerificationEmail for VerificationMailer {
         };
         transaction.execute_raw(statement(
             "INSERT INTO pg_loco_queue(id,task_data,name,run_at,priority) VALUES($1,$2,$3,clock_timestamp(),$4)",
-            [ulid::Ulid::new().to_string().into(), serde_json::to_value(email)?.into(), MailerWorker::class_name().into(), DEFAULT_MAILER_PRIORITY.into()],
+            [ulid::Ulid::generate().to_string().into(), serde_json::to_value(email)?.into(), MailerWorker::class_name().into(), DEFAULT_MAILER_PRIORITY.into()],
         )).await.map_err(database_error)?;
         transaction.commit().await.map_err(database_error)
     }
