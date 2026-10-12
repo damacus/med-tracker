@@ -1,4 +1,5 @@
 pub mod administration;
+pub mod ai_suggestions;
 pub mod assignments;
 pub mod browser_push;
 pub mod browser_query;

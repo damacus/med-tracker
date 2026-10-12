@@ -2,6 +2,8 @@
 mod account_sessions;
 #[path = "care_api/administration.rs"]
 mod administration;
+#[path = "care_api/ai_suggestions.rs"]
+mod ai_suggestions;
 #[path = "care_api/api_session.rs"]
 mod api_session;
 #[path = "care_api/app_tokens.rs"]
@@ -159,6 +161,36 @@ impl Application {
     }
 
     async fn new_with_occurrence_key(signing_key: Option<&str>) -> Self {
+        Self::new_configured(signing_key, |_| ()).await
+    }
+
+    async fn new_with_ai_help(enabled: bool) -> Self {
+        Self::new_configured(
+            Some("synthetic-dose-occurrence-signing-key"),
+            move |settings| {
+                settings["ai_medication_help"] = json!({"enabled": enabled});
+            },
+        )
+        .await
+    }
+
+    async fn new_with_ai_generation(port: u16) -> Self {
+        Self::new_configured(
+            Some("synthetic-dose-occurrence-signing-key"),
+            move |settings| {
+                settings["ai_medication_help"] = json!({
+                    "enabled": true,
+                    "provider": "openai",
+                    "model": "gpt-4o",
+                    "api_base_url": format!("http://127.0.0.1:{port}/v1/"),
+                    "source_proxy_origin": format!("http://127.0.0.1:{port}")
+                });
+            },
+        )
+        .await
+    }
+
+    async fn new_configured(signing_key: Option<&str>, configure: impl FnOnce(&mut Value)) -> Self {
         let fixture = Fixture::new().await;
         let mut config = Config::new(&Environment::Test).unwrap();
         config.settings.get_or_insert_with(|| json!({}))["browser_session"] = json!({
@@ -171,6 +203,7 @@ impl Application {
         } else {
             settings.as_object_mut().unwrap().remove("dose_occurrences");
         }
+        configure(settings);
         config.database.uri = fixture.runtime_uri.clone();
         let Some(QueueConfig::Postgres(queue)) = config.queue.as_mut() else {
             panic!("PostgreSQL queue required")

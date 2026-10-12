@@ -1,4 +1,5 @@
 mod administration;
+mod ai_suggestions;
 mod assignments;
 mod audit;
 mod avatar;
@@ -150,6 +151,10 @@ pub fn routes() -> Routes {
         .add(
             "/{household_id}/portable_export",
             get(data_exports::portable_export),
+        )
+        .add(
+            "/{household_id}/ai_medication_suggestions",
+            post(ai_suggestions::create),
         )
         .add(
             "/{household_id}/portable_imports",

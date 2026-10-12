@@ -4670,6 +4670,7 @@ dependencies = [
  "quick-xml",
  "regex",
  "reqwest 0.13.5",
+ "scraper",
  "sea-orm",
  "serde",
  "serde_cbor_2",
