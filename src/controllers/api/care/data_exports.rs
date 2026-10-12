@@ -45,3 +45,31 @@ pub(super) async fn show(
     }
     response
 }
+
+pub(super) async fn mobile_snapshot(
+    State(ctx): State<AppContext>,
+    Path(household_id): Path<i64>,
+    headers: HeaderMap,
+    request: Option<Extension<LocoRequestId>>,
+) -> Response {
+    let request_id = request.map_or_else(
+        || uuid::Uuid::new_v4().to_string(),
+        |Extension(id)| id.get().to_owned(),
+    );
+    let (principal, tenant) = match begin(&ctx, &headers, household_id, &request_id).await {
+        Ok(value) => value,
+        Err(error) => return response::error(error, &request_id),
+    };
+    let reply = care::data_exports::mobile_snapshot(&tenant)
+        .await
+        .map(|data| (StatusCode::OK, json!({"data": data}), None))
+        .map_err(response::operation);
+    finish(
+        tenant,
+        principal.provenance(),
+        audit::RequestAudit::mobile_snapshot(),
+        reply,
+        &request_id,
+    )
+    .await
+}

@@ -36,6 +36,15 @@ impl RequestAudit {
             query: "show?",
         }
     }
+    pub fn mobile_snapshot() -> Self {
+        Self {
+            method: "GET",
+            controller: "api/v1/mobile_snapshots",
+            action: "show",
+            policy: "HouseholdPolicy",
+            query: "show?",
+        }
+    }
     pub fn medication_lookup() -> Self {
         Self {
             method: "GET",
