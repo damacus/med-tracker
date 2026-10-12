@@ -146,6 +146,10 @@ pub fn routes() -> Routes {
             "/{household_id}/data_exports/{mode}",
             get(data_exports::show),
         )
+        .add(
+            "/{household_id}/mobile_snapshot",
+            get(data_exports::mobile_snapshot),
+        )
         .add("/{household_id}/sync/snapshot", get(sync::snapshot))
         .add("/{household_id}/sync/changes", get(sync::changes))
         .add("/{household_id}/sync/batches", post(sync::create))

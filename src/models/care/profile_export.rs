@@ -28,6 +28,7 @@ pub(crate) fn record_counts(payload: &Value) -> Value {
 
 pub(crate) async fn record_export(
     tenant: &TenantTransaction,
+    event_type: &str,
     mode: &str,
     encrypted: bool,
     counts: Value,
@@ -37,7 +38,7 @@ pub(crate) async fn record_export(
         household_id: Set(tenant.scope().household_id),
         actor_account_id: Set(Some(tenant.scope().actor.account_id)),
         actor_membership_id: Set(Some(tenant.membership().id)),
-        event_type: Set("portable_data.exported".into()),
+        event_type: Set(event_type.into()),
         request_id: Set(Some(tenant.scope().request_id.clone())),
         metadata: Set(json!({"record_counts":counts,"encrypted":encrypted,"export_mode":mode})),
         audit_context: Set(json!({"household_id":tenant.scope().household_id,"actor_membership_id":tenant.membership().id})),
@@ -89,7 +90,14 @@ pub async fn build(tenant: &TenantTransaction, mode: &str) -> Result<Download, O
     } else {
         json_bytes
     };
-    record_export(tenant, mode, false, record_counts(&payload)).await?;
+    record_export(
+        tenant,
+        "portable_data.exported",
+        mode,
+        false,
+        record_counts(&payload),
+    )
+    .await?;
     Ok(Download {
         bytes,
         filename: format!(

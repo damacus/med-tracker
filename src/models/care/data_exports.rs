@@ -77,6 +77,22 @@ pub async fn export(
             })
         }
     };
-    profile_export::record_export(tenant, mode, encrypted, counts).await?;
+    profile_export::record_export(tenant, "portable_data.exported", mode, encrypted, counts)
+        .await?;
     Ok(data)
+}
+
+pub async fn mobile_snapshot(tenant: &TenantTransaction) -> Result<Value, OperationError> {
+    sync::lock(tenant).await?;
+    let payload = sync::mobile_payload(tenant, chrono_tz::UTC).await?.body;
+    let counts = profile_export::record_counts(&payload);
+    profile_export::record_export(
+        tenant,
+        "portable_data.mobile_snapshot_read",
+        "mobile_snapshot",
+        false,
+        counts,
+    )
+    .await?;
+    Ok(payload)
 }

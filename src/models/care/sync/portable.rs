@@ -137,6 +137,13 @@ pub(crate) async fn api_export_payload(
     scoped_payload(tenant, zone, true, false, format, include_health_events).await
 }
 
+pub(crate) async fn mobile_payload(
+    tenant: &TenantTransaction,
+    zone: chrono_tz::Tz,
+) -> Result<AppliedBatch, OperationError> {
+    api_export_payload(tenant, zone, "medtracker.portable.v1", true).await
+}
+
 async fn scoped_payload(
     tenant: &TenantTransaction,
     zone: chrono_tz::Tz,
