@@ -479,12 +479,13 @@ async fn browser_reminder_ttl_uses_remaining_lifetime_at_send() {
         .try_get::<chrono::NaiveDateTime>("", "expires_at")
         .unwrap()
         .and_utc();
-    let recorded = transport.0.lock().unwrap();
-    assert_eq!(recorded.len(), 1);
-    let (ttl, sent_at) = recorded[0];
-    assert!(ttl <= 100);
-    assert!(i64::from(ttl) <= (expires_at - sent_at).num_seconds() + 1);
-    drop(recorded);
+    {
+        let recorded = transport.0.lock().unwrap();
+        assert_eq!(recorded.len(), 1);
+        let (ttl, sent_at) = recorded[0];
+        assert!(ttl <= 100);
+        assert!(i64::from(ttl) <= (expires_at - sent_at).num_seconds() + 1);
+    }
     app.close().await;
 }
 

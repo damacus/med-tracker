@@ -105,13 +105,14 @@ async fn plans(
     let period_times = due_period_instants(zone, earliest_due, now, times);
     let mut due_times = period_times.clone();
     for occurrence in &occurrences {
-        if occurrence.person_id == person.id && occurrence.expected && occurrence.outcome == "open"
+        if occurrence.person_id == person.id
+            && occurrence.expected
+            && occurrence.outcome == "open"
+            && let Some(intended) = occurrence.scheduled_at.map(|value| value.and_utc())
+            && earliest_due < intended
+            && intended <= now
         {
-            if let Some(intended) = occurrence.scheduled_at.map(|value| value.and_utc()) {
-                if earliest_due < intended && intended <= now {
-                    due_times.insert(intended);
-                }
-            }
+            due_times.insert(intended);
         }
     }
     let mut intents = Vec::new();
