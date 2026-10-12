@@ -120,28 +120,16 @@ async fn insert_version(
             changes.insert(field, json!([old, new]));
         }
     }
-    let mut audit_context = json!({
-        "actor_account_id": context.tenant.scope().actor.account_id,
-        "actor_user_id": context.tenant.user_id(),
-        "actor_membership_id": context.tenant.membership().id,
-        "household_id": context.tenant.membership().household_id,
-        "request_id": request_id,
-        "active_role": context.tenant.membership().role,
-        "permissions_version": context.tenant.membership().permissions_version,
-        "policy_class": "MedicationPolicy",
-        "policy_query": match event { "api_create" => "create?", "api_update" => "update?", "api_destroy" | "destroy" => "destroy?", _ if event.starts_with("restock (") => "refill?", _ => "adjust_inventory?" }
+    let mut audit_context =
+        crate::models::audit_context::for_request(context.tenant, request_id, context.provenance);
+    audit_context["policy_class"] = json!("MedicationPolicy");
+    audit_context["policy_query"] = json!(match event {
+        "api_create" => "create?",
+        "api_update" => "update?",
+        "api_destroy" | "destroy" => "destroy?",
+        _ if event.starts_with("restock (") => "refill?",
+        _ => "adjust_inventory?",
     });
-    if let Some(provenance) = context.provenance {
-        let (method, prefix) = match provenance.method {
-            CredentialMethod::ApiSession => ("api_session", "api_session"),
-            CredentialMethod::ApiAppToken => ("api_app_token", "api_app_token"),
-            CredentialMethod::OauthGrant => ("oauth", "oauth_grant"),
-            CredentialMethod::PersonalApiKey => ("personal_api_key", "personal_api_key"),
-            CredentialMethod::BrowserSession => ("browser_session", "browser_session"),
-        };
-        audit_context["authentication_method"] = json!(method);
-        audit_context["session_reference"] = json!(format!("{prefix}:{}", provenance.reference));
-    }
     if let Some(adjustment) = inventory_adjustment {
         audit_context["inventory_adjustment"] = adjustment;
     }

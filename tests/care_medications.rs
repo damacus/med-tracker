@@ -435,6 +435,14 @@ async fn stock_adjustment_portable_id_and_trusted_provenance_preserve_audit() {
         .unwrap()
         .unwrap();
     let audit: serde_json::Value = row.try_get("", "audit_context").unwrap();
+    assert_eq!(audit["actor_account_id"], 71001);
+    assert_eq!(audit["actor_user_id"], 77001);
+    assert_eq!(audit["actor_membership_id"], 74001);
+    assert_eq!(audit["household_id"], 72001);
+    assert_eq!(audit["request_id"], "synthetic-stock-adjustment");
+    assert_eq!(audit["active_role"], "administrator");
+    assert_eq!(audit["policy_class"], "MedicationPolicy");
+    assert_eq!(audit["policy_query"], "adjust_inventory?");
     assert_eq!(audit["authentication_method"], "oauth");
     assert_eq!(
         audit["session_reference"],

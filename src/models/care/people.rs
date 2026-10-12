@@ -12,7 +12,7 @@ pub use writing::update;
 
 use crate::models::{
     access::{self, PersonAccess, TenantTransaction},
-    care::doses::{CredentialMethod, CredentialProvenance},
+    care::doses::CredentialProvenance,
     entities::{
         api_change_event, carer_relationship, grant, household, location, location_membership,
         membership, notification_preference, person, security_audit_event, version,

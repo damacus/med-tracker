@@ -141,7 +141,7 @@ pub enum CredentialMethod {
 }
 
 impl CredentialMethod {
-    fn label(self) -> &'static str {
+    pub(crate) fn label(self) -> &'static str {
         match self {
             Self::PersonalApiKey => "personal_api_key",
             Self::ApiSession => "api_session",
@@ -151,7 +151,7 @@ impl CredentialMethod {
         }
     }
 
-    fn reference_prefix(self) -> &'static str {
+    pub(crate) fn reference_prefix(self) -> &'static str {
         match self {
             Self::PersonalApiKey => "personal_api_key",
             Self::ApiSession => "api_session",
