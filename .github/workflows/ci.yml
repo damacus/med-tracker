@@ -131,12 +131,12 @@ jobs:
         if: ${{ !inputs.cold_cache }}
         with:
           shared-key: loco-tests-v1
-      - name: Check path ownership and relocation before compilation
-        run: task ci:paths foundation:test-relocation fmt
       - name: Install test-runner prerequisites
         run: |
           sudo apt-get update
-          sudo apt-get install --yes fish uuid-runtime
+          sudo apt-get install --yes fish uuid-runtime ripgrep
+      - name: Check path ownership and relocation before compilation
+        run: task ci:paths foundation:test-relocation fmt
       - name: Run database-free unit and orchestration tests
         run: task test:unit
       - name: Compile application and integration tests once

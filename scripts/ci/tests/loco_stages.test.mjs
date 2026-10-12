@@ -5,6 +5,13 @@ import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+test('hosted relocation checks run after their tools are installed', () => {
+  const workflow = readFileSync('.github/workflows/ci.yml', 'utf8').split('  loco_foundation:')[1].split('  loco_lint:')[0];
+  const install = workflow.indexOf('sudo apt-get install --yes fish uuid-runtime ripgrep');
+  assert.ok(install >= 0, 'Install every relocation and runner prerequisite');
+  assert.ok(install < workflow.indexOf('run: task ci:paths foundation:test-relocation fmt'));
+});
+
 test('CI runs cheap contracts and units before preparation and integration or browsers', () => {
   const result = spawnSync('task', ['--dry', '--force', '--verbose', 'ci'], { encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
