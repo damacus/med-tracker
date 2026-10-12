@@ -102,6 +102,43 @@ test('scheduled dose confirmation identifies the person and prescription and res
   expect(await careFixture.probe()).toMatchObject({ supply: '10.00', takes: 0 });
 });
 
+test('review: occurrence confirmation uses the current taper step and deducts that amount', async ({ page, careFixture }) => {
+  await careFixture.scheduledMedicine();
+  await careFixture.scheduleOnlyMedicine();
+  await careFixture.dateSensitiveSchedule();
+  await treatments(page);
+  const row = await sourceDoses(page, new URL(page.url()).pathname, 'schedules');
+  await careFixture.taperBaseUnit();
+  await page.reload();
+  const dialog = await openOutcome(row, 'take');
+  await expect(dialog).toContainText('1 tablet');
+  await expect(dialog.getByLabel('Dose amount', { exact: true })).toHaveValue('1');
+  await submitOutcome(row, 'take');
+  await expect(row.locator('[data-dose-outcome]')).toHaveText('Taken');
+  expect(await careFixture.probe()).toMatchObject({ supply: '9.00', takes: 1 });
+});
+
+test('review: an open confirmation accepts a later elapsed time and rejects future time on the server', async ({ page, careFixture }) => {
+  const index = await routineSources(page);
+  const row = await sourceDoses(page, index, 'schedules');
+  const dialog = await openOutcome(row, 'take');
+  const takenAt = dialog.getByLabel('Taken at', { exact: true });
+  const initial = Date.parse(`${await takenAt.inputValue()}Z`);
+  await expect.poll(() => Date.now()).toBeGreaterThan(initial + 2000);
+  const elapsed = new Date(Date.now() - 100).toISOString().slice(0, 19);
+  await takenAt.fill(elapsed);
+  expect(await takenAt.evaluate(element => element.checkValidity())).toBe(true);
+  await takenAt.fill(new Date(Date.now() + 86400000).toISOString().slice(0, 19));
+  const invalid = page.waitForResponse(response => response.request().method() === 'POST');
+  await submitOutcome(row, 'take');
+  expect((await invalid).status()).toBe(422);
+  expect(await careFixture.probe()).toMatchObject({ supply: '10.00', takes: 0 });
+  await takenAt.fill(elapsed);
+  await submitOutcome(row, 'take');
+  await expect(row.locator('[data-dose-outcome]')).toHaveText('Taken');
+  expect(await careFixture.probe()).toMatchObject({ supply: '8.00', takes: 1 });
+});
+
 test('not-taken confirmation names the dose slot and explains that stock is unchanged', async ({ page, careFixture }, info) => {
   const index = await routineSources(page);
   const row = await sourceDoses(page, index, 'schedules');

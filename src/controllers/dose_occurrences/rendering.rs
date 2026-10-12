@@ -27,13 +27,6 @@ pub(super) fn index(
             .replace("%{name}", person)
     );
     data["source"] = context["source"].clone();
-    data["prescribed_amount"] = json!(
-        context["source"]["dose_amount"]
-            .as_str()
-            .and_then(|value| value.parse::<sea_orm::prelude::Decimal>().ok())
-            .map(|value| value.normalize().to_string())
-            .unwrap_or_default()
-    );
     data["medication_name"] = context["medication_name"].clone();
     data["person_name"] = context["person"]["name"].clone();
     data["medications"] = context["medications"].clone();
@@ -134,12 +127,6 @@ pub(super) fn index(
             })
             .collect::<Vec<_>>()
     );
-    data["max_taken_at"] = json!(
-        chrono::Utc::now()
-            .with_timezone(&zone)
-            .format("%Y-%m-%dT%H:%M:%S%.3f")
-            .to_string()
-    );
     data
 }
 
@@ -161,27 +148,6 @@ mod tests {
             assert_eq!(
                 rendered["rows"][0]["scheduled_at_display"],
                 "2026-01-06, 23:30:00 UTC"
-            );
-        }
-    }
-
-    #[test]
-    fn default_dose_times_are_not_later_than_the_form_maximum() {
-        let rows = (0..128)
-            .map(|id| json!({"key":id.to_string()}))
-            .collect::<Vec<_>>();
-        let data = index(
-            json!({"person":{"name":"Synthetic adult"},"source":{"medication_id":1,"dose_amount":"2"}}),
-            json!({"data":rows}),
-            &dose_occurrences::RangeQuery::default(),
-            chrono_tz::UTC,
-            None,
-            None,
-        );
-        for row in data["rows"].as_array().unwrap() {
-            assert!(
-                row["draft"]["taken_at"].as_str().unwrap()
-                    <= data["max_taken_at"].as_str().unwrap()
             );
         }
     }

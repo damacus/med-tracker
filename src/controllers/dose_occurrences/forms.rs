@@ -63,7 +63,7 @@ pub(super) fn defaults(
         ("client_uuid".into(), uuid::Uuid::new_v4().to_string()),
         (
             "dose_amount".into(),
-            source["dose_amount"].as_str().unwrap_or_default().into(),
+            row["prescribed_amount"].as_str().unwrap_or_default().into(),
         ),
         (
             "taken_from_medication_id".into(),

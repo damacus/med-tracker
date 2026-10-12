@@ -3,5 +3,5 @@
   <p>{{ medication_name }}</p>
   <p class="text-sm" data-dose-slot>{{ ui.dose }} {{ row.position }} {{ ui.on }} <time>{{ row.window_starts_on }}</time>{% if row.window_ends_on != row.window_starts_on %} – <time>{{ row.window_ends_on }}</time>{% endif %}</p>
   {% if row.scheduled_at %}<p class="text-sm">{{ ui.scheduled }} <time datetime="{{ row.scheduled_at }}">{{ row.scheduled_at_display }}</time></p>{% endif %}
-  <p><span class="text-sm text-base-content/70">{{ ui.prescribed }}</span><strong class="block text-xl">{{ prescribed_amount }} {{ source.dose_unit }}</strong></p>
+  <p><span class="text-sm text-base-content/70">{{ ui.prescribed }}</span><strong class="block text-xl">{{ row.prescribed_amount }} {{ row.prescribed_unit }}</strong></p>
 </div>

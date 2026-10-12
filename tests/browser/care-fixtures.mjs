@@ -165,6 +165,7 @@ async function withCareFixture(captureMail, registrationInviteOnly, reportAssets
         secondPerson: () => fixtureTask('second-person'),
         profileRetainedZone: () => fixtureTask('profile-retained-zone'),
         profileReference: () => fixtureTask('profile-reference'),
+        taperBaseUnit: () => fixtureTask('taper-base-unit'),
         scheduledMedicine: () => fixtureTask('scheduled-medicine'), scheduleOnlyMedicine: () => fixtureTask('schedule-only-medicine'), dateSensitiveSchedule: () => fixtureTask('date-sensitive-schedule'), offdaySchedule: () => fixtureTask('offday-schedule'), changeTaperStep: () => fixtureTask('change-taper-step'), londonPreviewZone: () => fixtureTask('london-preview-zone'), collidingDoseSources: () => fixtureTask('colliding-dose-sources'), emptyStandardDosage: () => fixtureTask('empty-standard-dosage'),
         seedReport: () => fixtureTask('report-seed'),
         seedReportHistory: () => fixtureTask('report-history-seed'),

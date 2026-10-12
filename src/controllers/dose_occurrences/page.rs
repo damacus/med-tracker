@@ -87,7 +87,7 @@ impl<'a> Page<'a> {
         let secret = dose_occurrences::configured_signing_key(self.ctx.config.settings.as_ref())?;
         dose_occurrences::with_dashboard_timezone(
             principal.time_zone(),
-            dose_occurrences::list(tenant, kind.model(), &self.path.3, query, &secret),
+            dose_occurrences::browser_list(tenant, kind.model(), &self.path.3, query, &secret),
         )
         .await
     }

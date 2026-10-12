@@ -125,6 +125,22 @@ passed. The branch fast-forwarded over two Rails-only dependency updates to
 checks (29.7 minutes). Both runner fixes and the dose UI have independent review
 and passing acceptance evidence. The main checkout remains separate and clean.
 
+PR #2555 review found two dose-confirmation defects. Browser occurrence rows now
+reuse the existing effective-dose preview for their date, including taper amount
+and unit, without changing the public API representation. The actual amount stays
+editable. The taken-time input no longer freezes its maximum at page rendering;
+server validation remains authoritative. Both defects were reproduced before
+implementation. Desktop/mobile regressions verify a later taper step with a
+different base unit, exact stock deduction, elapsed-time submission and rejection
+of future input. Independent review accepted the bounded fixes. The first full
+review-fix CI run passed every Rust suite but hit an unrelated scanner keyboard
+focus timeout. That exact browser test passed unchanged in isolation; the failed
+run was stopped to release CPU while another chat completed its browser gate.
+After that run finished, the unchanged executable candidate passed full
+`task ci`: every Rust suite and all 638 browser checks (23.7 minutes), including
+the scanner keyboard case. Compilation was limited to two jobs. The documentation
+build also passed.
+
 Reference: `rails/app/components/medications/show_view.rb`, SupplyStatusCard,
 WarningsComponent, StandardDosageComponent, DoseHistoryComponent, RefillModal,
 AdjustInventoryModal and AdministrationModal.

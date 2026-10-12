@@ -96,6 +96,45 @@ pub async fn list(
     query: RangeQuery,
     secret: &Arc<[u8]>,
 ) -> Result<Value, OperationError> {
+    list_with_projection(tenant, kind, id, query, secret, row_value).await
+}
+
+pub(crate) async fn browser_list(
+    tenant: &TenantTransaction,
+    kind: &str,
+    id: &str,
+    query: RangeQuery,
+    secret: &Arc<[u8]>,
+) -> Result<Value, OperationError> {
+    list_with_projection(tenant, kind, id, query, secret, |secret, source, row| {
+        let mut value = row_value(secret, source, row);
+        let (amount, unit) = match source {
+            Source::Schedule(schedule) => {
+                let preview = doses::browser_schedule_preview(schedule.clone(), row.window_start);
+                (preview.amount, preview.unit)
+            }
+            Source::Assignment(assignment) => (
+                assignment
+                    .dose_amount
+                    .map(|amount| amount.normalize().to_string()),
+                assignment.dose_unit.clone(),
+            ),
+        };
+        value["prescribed_amount"] = json!(amount);
+        value["prescribed_unit"] = json!(unit);
+        value
+    })
+    .await
+}
+
+async fn list_with_projection(
+    tenant: &TenantTransaction,
+    kind: &str,
+    id: &str,
+    query: RangeQuery,
+    secret: &Arc<[u8]>,
+    project: impl Fn(&Arc<[u8]>, &Source, &Occurrence) -> Value,
+) -> Result<Value, OperationError> {
     access::recheck(tenant).await?;
     let source = source(tenant, kind, id, false).await?;
     let (start, end) = query
@@ -108,7 +147,7 @@ pub async fn list(
     let rows = projected(tenant.transaction(), &source, start, end).await?;
     let data: Vec<Value> = rows
         .iter()
-        .map(|row| row_value(secret, &source, row))
+        .map(|row| project(secret, &source, row))
         .collect();
     Ok(json!({"data":data}))
 }
