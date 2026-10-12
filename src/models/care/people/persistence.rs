@@ -12,18 +12,9 @@ fn context(
     event: &str,
     provenance: Option<&CredentialProvenance>,
 ) -> Value {
-    let mut value = json!({"actor_account_id":tenant.scope().actor.account_id,"actor_user_id":tenant.user_id(),"actor_membership_id":tenant.membership().id,"active_role":tenant.membership().role,"permissions_version":tenant.membership().permissions_version,"household_id":tenant.scope().household_id,"request_id":tenant.scope().request_id,"policy_class":"PersonPolicy","policy_query":format!("{event}?")});
-    if let Some(provenance) = provenance {
-        let (method, prefix) = match provenance.method {
-            CredentialMethod::ApiSession => ("api_session", "api_session"),
-            CredentialMethod::ApiAppToken => ("api_app_token", "api_app_token"),
-            CredentialMethod::OauthGrant => ("oauth", "oauth_grant"),
-            CredentialMethod::PersonalApiKey => ("personal_api_key", "personal_api_key"),
-            CredentialMethod::BrowserSession => ("browser_session", "browser_session"),
-        };
-        value["authentication_method"] = json!(method);
-        value["session_reference"] = json!(format!("{prefix}:{}", provenance.reference));
-    }
+    let mut value = crate::models::audit_context::household(tenant, provenance);
+    value["policy_class"] = json!("PersonPolicy");
+    value["policy_query"] = json!(format!("{event}?"));
     value
 }
 

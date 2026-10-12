@@ -8,7 +8,7 @@ pub use lifecycle::{can_manage, list, read, retire, update};
 
 use crate::models::{
     access::{self, TenantTransaction},
-    care::doses::{CredentialMethod, CredentialProvenance},
+    care::doses::CredentialProvenance,
     entities::{api_change_event, household, location, version},
     errors::OperationError,
 };
@@ -155,18 +155,8 @@ async fn record_change(
             changes.insert(field, json!([old, new]));
         }
     }
-    let mut context = json!({"actor_account_id":tenant.scope().actor.account_id,"actor_user_id":tenant.user_id(),"actor_membership_id":tenant.membership().id,"household_id":tenant.scope().household_id,"request_id":tenant.scope().request_id,"active_role":tenant.membership().role,"permissions_version":tenant.membership().permissions_version,"policy_class":"LocationPolicy","policy_query":"create?"});
-    if let Some(provenance) = provenance {
-        let (method, prefix) = match provenance.method {
-            CredentialMethod::ApiSession => ("api_session", "api_session"),
-            CredentialMethod::ApiAppToken => ("api_app_token", "api_app_token"),
-            CredentialMethod::OauthGrant => ("oauth", "oauth_grant"),
-            CredentialMethod::PersonalApiKey => ("personal_api_key", "personal_api_key"),
-            CredentialMethod::BrowserSession => ("browser_session", "browser_session"),
-        };
-        context["authentication_method"] = json!(method);
-        context["session_reference"] = json!(format!("{}:{}", prefix, provenance.reference));
-    }
+    let mut context = crate::models::audit_context::household(tenant, provenance);
+    context["policy_class"] = json!("LocationPolicy");
     context["policy_query"] = json!(format!("{event}?"));
     version::ActiveModel {
         item_type: Set("Location".into()),

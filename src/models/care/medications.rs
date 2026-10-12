@@ -11,7 +11,7 @@ pub mod stock_removals;
 
 use crate::models::{
     access::{self, TenantTransaction},
-    care::doses::{CredentialMethod, CredentialProvenance},
+    care::doses::CredentialProvenance,
     entities::{api_change_event, dosage, medication, version},
     errors::OperationError,
 };

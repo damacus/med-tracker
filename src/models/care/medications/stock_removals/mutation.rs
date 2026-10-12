@@ -142,18 +142,9 @@ async fn record(
     after: Option<Value>,
 ) -> Result<version::Model, OperationError> {
     let tenant = context.tenant;
-    let mut audit_context = json!({"actor_account_id":tenant.scope().actor.account_id,"actor_user_id":tenant.user_id(),"actor_membership_id":tenant.membership().id,"household_id":tenant.scope().household_id,"request_id":tenant.scope().request_id,"active_role":tenant.membership().role,"permissions_version":tenant.membership().permissions_version,"policy_class":"MedicationPolicy","policy_query":"update?"});
-    if let Some(provenance) = context.provenance {
-        let (method, prefix) = match provenance.method {
-            CredentialMethod::ApiSession => ("api_session", "api_session"),
-            CredentialMethod::ApiAppToken => ("api_app_token", "api_app_token"),
-            CredentialMethod::OauthGrant => ("oauth", "oauth_grant"),
-            CredentialMethod::PersonalApiKey => ("personal_api_key", "personal_api_key"),
-            CredentialMethod::BrowserSession => ("browser_session", "browser_session"),
-        };
-        audit_context["authentication_method"] = json!(method);
-        audit_context["session_reference"] = json!(format!("{prefix}:{}", provenance.reference));
-    }
+    let mut audit_context = crate::models::audit_context::household(tenant, context.provenance);
+    audit_context["policy_class"] = json!("MedicationPolicy");
+    audit_context["policy_query"] = json!("update?");
     let changes = after.as_ref().map(|new| {
         let mut changes = serde_json::Map::new();
         if let Some(fields) = new.as_object() {

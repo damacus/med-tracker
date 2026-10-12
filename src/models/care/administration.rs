@@ -6,10 +6,7 @@ pub mod settings;
 
 use crate::models::{
     access::{self, TenantTransaction},
-    care::{
-        doses::{CredentialMethod, CredentialProvenance},
-        locations,
-    },
+    care::{doses::CredentialProvenance, locations},
     entities::{
         account, carer_relationship, grant, household, membership, person, security_audit_event,
         user, version,
