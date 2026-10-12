@@ -680,7 +680,9 @@ async fn prepare_pending_low_stock(
 #[tokio::test]
 async fn browser_low_stock_catches_up_and_stops_pending_delivery_after_refill() {
     let app = Application::new().await;
-    let crossed_at = Utc::now() - chrono::Duration::hours(2);
+    let crossed_at = (Utc::now() - chrono::Duration::hours(2))
+        .with_nanosecond(0)
+        .unwrap();
     let scope = prepare_pending_low_stock(&app, crossed_at).await;
     let transport = Arc::new(ScriptedDelivery(
         Mutex::new(vec![Delivery::Temporary(None)]),
