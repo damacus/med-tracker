@@ -13,6 +13,7 @@ pub mod invitations;
 pub mod locations;
 pub mod medication_lookup;
 pub mod medications;
+pub mod native_device_tokens;
 pub mod orders;
 pub mod pause_periods;
 pub mod people;

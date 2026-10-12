@@ -108,17 +108,17 @@ impl Attributes {
 }
 
 pub(crate) async fn lock_account(tenant: &TenantTransaction) -> Result<(), OperationError> {
+    account::Entity::find_by_id(tenant.scope().actor.account_id)
+        .lock_exclusive()
+        .one(tenant.transaction())
+        .await?
+        .ok_or(OperationError::Forbidden)?;
     household::Entity::find_by_id(tenant.scope().household_id)
         .lock_exclusive()
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::NotFound)?;
     access::recheck(tenant).await?;
-    account::Entity::find_by_id(tenant.scope().actor.account_id)
-        .lock_exclusive()
-        .one(tenant.transaction())
-        .await?
-        .ok_or(OperationError::Forbidden)?;
     Ok(())
 }
 

@@ -192,6 +192,19 @@ impl RequestAudit {
             },
         }
     }
+    pub fn native_device_token(method: &'static str, action: &'static str) -> Self {
+        Self {
+            method,
+            controller: "api/v1/native_device_tokens",
+            action,
+            policy: "NativeDeviceTokenPolicy",
+            query: if action == "create" {
+                "create?"
+            } else {
+                "destroy?"
+            },
+        }
+    }
     pub fn treatment(method: &'static str, action: &'static str) -> Self {
         Self {
             method,
