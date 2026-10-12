@@ -3,10 +3,14 @@ use crate::models::care::{
     administration,
     locations::{self, SavedResponse},
 };
+mod app_tokens;
 mod audit_logs;
 mod grants;
 mod memberships;
 mod settings;
+pub(super) use app_tokens::{
+    create as app_tokens_create, destroy as app_tokens_destroy, index as app_tokens_index,
+};
 pub(super) use audit_logs::index as audit_logs_index;
 pub(super) use grants::{
     create as grants_create, destroy as grants_destroy, index as grants_index,

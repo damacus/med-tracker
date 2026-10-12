@@ -237,6 +237,14 @@ pub fn routes() -> Routes {
             get(dosages::show).patch(dosages::patch).put(dosages::put),
         )
         .add(
+            "/{household_id}/admin/app_tokens",
+            get(administration::app_tokens_index).post(administration::app_tokens_create),
+        )
+        .add(
+            "/{household_id}/admin/app_tokens/{id}",
+            delete(administration::app_tokens_destroy),
+        )
+        .add(
             "/{household_id}/admin/audit_logs",
             get(administration::audit_logs_index),
         )

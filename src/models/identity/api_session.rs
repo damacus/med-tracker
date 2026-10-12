@@ -186,16 +186,19 @@ impl StoredPrincipal {
     }
 }
 
-async fn app_lifetime(
-    transaction: &DatabaseTransaction,
-    created_at: chrono::NaiveDateTime,
-) -> Result<(), AuthenticationError> {
-    let months = match std::env::var("API_APP_TOKEN_MAX_AGE_MONTHS") {
+pub(crate) fn app_token_max_age_months() -> Option<u32> {
+    match std::env::var("API_APP_TOKEN_MAX_AGE_MONTHS") {
         Ok(value) => value.parse::<u32>().ok().filter(|months| *months > 0),
         Err(std::env::VarError::NotPresent) => Some(12),
         Err(std::env::VarError::NotUnicode(_)) => None,
     }
-    .ok_or(AuthenticationError::Unauthenticated)?;
+}
+
+async fn app_lifetime(
+    transaction: &DatabaseTransaction,
+    created_at: chrono::NaiveDateTime,
+) -> Result<(), AuthenticationError> {
+    let months = app_token_max_age_months().ok_or(AuthenticationError::Unauthenticated)?;
     let maximum = created_at
         .checked_add_months(chrono::Months::new(months))
         .ok_or(AuthenticationError::Unauthenticated)?;

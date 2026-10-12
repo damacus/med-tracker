@@ -4,6 +4,8 @@ mod account_sessions;
 mod administration;
 #[path = "care_api/api_session.rs"]
 mod api_session;
+#[path = "care_api/app_tokens.rs"]
+mod app_tokens;
 #[path = "care_api/assignments.rs"]
 mod assignments;
 #[path = "care_api/audit_logs.rs"]
