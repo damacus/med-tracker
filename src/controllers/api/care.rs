@@ -147,6 +147,10 @@ pub fn routes() -> Routes {
             get(data_exports::show),
         )
         .add(
+            "/{household_id}/portable_export",
+            get(data_exports::portable_export),
+        )
+        .add(
             "/{household_id}/mobile_snapshot",
             get(data_exports::mobile_snapshot),
         )
