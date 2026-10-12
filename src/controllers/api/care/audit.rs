@@ -27,6 +27,15 @@ impl RequestAudit {
             query: "show?",
         }
     }
+    pub fn data_export() -> Self {
+        Self {
+            method: "GET",
+            controller: "api/v1/data_exports",
+            action: "show",
+            policy: "HouseholdPolicy",
+            query: "show?",
+        }
+    }
     pub fn medication_lookup() -> Self {
         Self {
             method: "GET",

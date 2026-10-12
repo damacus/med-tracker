@@ -4640,6 +4640,7 @@ dependencies = [
 name = "med-tracker"
 version = "0.1.0"
 dependencies = [
+ "aes-gcm 0.11.1",
  "async-trait",
  "aws-sdk-s3",
  "axum",
@@ -4665,6 +4666,7 @@ dependencies = [
  "openidconnect",
  "oxide-auth",
  "oxide-auth-async",
+ "pbkdf2",
  "quick-xml",
  "regex",
  "reqwest 0.13.5",
@@ -5466,6 +5468,16 @@ name = "pastey"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "35fb2e5f958ec131621fdd531e9fc186ed768cbe395337403ae56c17a74c68ec"
+
+[[package]]
+name = "pbkdf2"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "112d82ceb8c5bf524d9af484d4e4970c9fd5a0cc15ba14ad93dccd28873b0629"
+dependencies = [
+ "digest 0.11.3",
+ "hmac 0.13.0",
+]
 
 [[package]]
 name = "pdf-writer"

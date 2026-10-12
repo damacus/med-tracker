@@ -26,6 +26,8 @@ mod contract;
 mod crud;
 #[path = "care_api/dashboard.rs"]
 mod dashboard;
+#[path = "care_api/data_exports.rs"]
+mod data_exports;
 #[path = "care_api/dosages.rs"]
 mod dosages;
 #[path = "care_api/dose_history.rs"]

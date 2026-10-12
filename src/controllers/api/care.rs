@@ -2,6 +2,7 @@ mod administration;
 mod assignments;
 mod audit;
 mod avatar;
+mod data_exports;
 mod dosages;
 mod dose_history;
 mod dose_occurrences;
@@ -140,6 +141,10 @@ pub fn routes() -> Routes {
             get(notification_preferences::show)
                 .patch(notification_preferences::update)
                 .put(notification_preferences::update),
+        )
+        .add(
+            "/{household_id}/data_exports/{mode}",
+            get(data_exports::show),
         )
         .add("/{household_id}/sync/snapshot", get(sync::snapshot))
         .add("/{household_id}/sync/changes", get(sync::changes))
