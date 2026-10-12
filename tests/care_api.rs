@@ -56,6 +56,8 @@ mod pause_periods;
 mod people;
 #[path = "care_api/person_carers.rs"]
 mod person_carers;
+#[path = "care_api/person_medication_reorder.rs"]
+mod person_medication_reorder;
 #[path = "care_api/platform.rs"]
 mod platform;
 #[path = "care_api/profile.rs"]

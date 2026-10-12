@@ -174,6 +174,7 @@ impl RequestAudit {
                 "show" => "show?",
                 "pause" => "pause?",
                 "resume" => "resume?",
+                "reorder" => "update?",
                 _ => "index?",
             },
         }
