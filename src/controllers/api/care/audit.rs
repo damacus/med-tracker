@@ -36,6 +36,15 @@ impl RequestAudit {
             query: "show?",
         }
     }
+    pub fn portable_export() -> Self {
+        Self {
+            method: "GET",
+            controller: "api/v1/portable_exports",
+            action: "show",
+            policy: "HouseholdPolicy",
+            query: "show?",
+        }
+    }
     pub fn mobile_snapshot() -> Self {
         Self {
             method: "GET",

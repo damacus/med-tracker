@@ -9,6 +9,7 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 
 const MAX_PLAINTEXT_BYTES: usize = 16 * 1024 * 1024;
+const MAX_CIPHERTEXT_BYTES: usize = MAX_PLAINTEXT_BYTES + 16;
 const KDF_ROUNDS: u32 = 65_536;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -71,4 +72,83 @@ pub fn encrypt(payload: &Value, passphrase: &str) -> Result<Value, PortableCrypt
         "checksum": checksum,
         "ciphertext": ciphertext,
     }))
+}
+
+pub fn decrypt(envelope: &Value, passphrase: &str) -> Result<Value, PortableCryptoError> {
+    let object = envelope
+        .as_object()
+        .ok_or(PortableCryptoError::InvalidEnvelope)?;
+    if object.len() != 7
+        || envelope["format"] != "medtracker.portable.encrypted.v1"
+        || envelope["cipher"] != "aes-256-gcm"
+        || envelope["kdf"] != "pbkdf2_sha256"
+        || passphrase.is_empty()
+    {
+        return Err(PortableCryptoError::InvalidEnvelope);
+    }
+    let salt = envelope["salt"]
+        .as_str()
+        .ok_or(PortableCryptoError::InvalidEnvelope)?;
+    if salt.len() != 64 || !salt.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return Err(PortableCryptoError::InvalidEnvelope);
+    }
+    let checksum = envelope["checksum"]
+        .as_str()
+        .ok_or(PortableCryptoError::InvalidEnvelope)?;
+    if checksum.len() != 64 || !checksum.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return Err(PortableCryptoError::InvalidEnvelope);
+    }
+    let encrypted_at = envelope["encrypted_at"]
+        .as_str()
+        .ok_or(PortableCryptoError::InvalidEnvelope)?;
+    chrono::DateTime::parse_from_rfc3339(encrypted_at)
+        .map_err(|_| PortableCryptoError::InvalidEnvelope)?;
+    let ciphertext = envelope["ciphertext"]
+        .as_str()
+        .ok_or(PortableCryptoError::InvalidEnvelope)?;
+    if ciphertext.len() > MAX_CIPHERTEXT_BYTES.div_ceil(3) * 4 + 64 {
+        return Err(PortableCryptoError::TooLarge);
+    }
+    let mut parts = ciphertext.split("--");
+    let encoded_data = parts.next().ok_or(PortableCryptoError::InvalidEnvelope)?;
+    let encoded_iv = parts.next().ok_or(PortableCryptoError::InvalidEnvelope)?;
+    let encoded_tag = parts.next().ok_or(PortableCryptoError::InvalidEnvelope)?;
+    if parts.next().is_some() || encoded_iv.len() != 16 || encoded_tag.len() != 24 {
+        return Err(PortableCryptoError::InvalidEnvelope);
+    }
+    let mut data = STANDARD
+        .decode(encoded_data)
+        .map_err(|_| PortableCryptoError::InvalidEnvelope)?;
+    let iv = STANDARD
+        .decode(encoded_iv)
+        .map_err(|_| PortableCryptoError::InvalidEnvelope)?;
+    let tag = STANDARD
+        .decode(encoded_tag)
+        .map_err(|_| PortableCryptoError::InvalidEnvelope)?;
+    if data.len() > MAX_PLAINTEXT_BYTES {
+        return Err(PortableCryptoError::TooLarge);
+    }
+    if iv.len() != 12 || tag.len() != 16 {
+        return Err(PortableCryptoError::InvalidEnvelope);
+    }
+    data.extend_from_slice(&tag);
+    let cipher = Aes256Gcm::new_from_slice(&key(passphrase, salt))
+        .map_err(|_| PortableCryptoError::InvalidEnvelope)?;
+    let iv: [u8; 12] = iv
+        .try_into()
+        .map_err(|_| PortableCryptoError::InvalidEnvelope)?;
+    let serialized = cipher
+        .decrypt(&Nonce::from(iv), data.as_slice())
+        .map_err(|_| PortableCryptoError::InvalidEnvelope)?;
+    if serialized.len() > MAX_PLAINTEXT_BYTES {
+        return Err(PortableCryptoError::TooLarge);
+    }
+    let plaintext: String =
+        serde_json::from_slice(&serialized).map_err(|_| PortableCryptoError::InvalidEnvelope)?;
+    if plaintext.len() > MAX_PLAINTEXT_BYTES
+        || hex::encode(Sha256::digest(plaintext.as_bytes())) != checksum.to_ascii_lowercase()
+    {
+        return Err(PortableCryptoError::InvalidEnvelope);
+    }
+    serde_json::from_str(&plaintext).map_err(|_| PortableCryptoError::InvalidEnvelope)
 }

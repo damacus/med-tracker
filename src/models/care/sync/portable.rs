@@ -143,6 +143,14 @@ pub(crate) async fn mobile_payload(
     api_export_payload(tenant, zone, "medtracker.portable.v1", true).await
 }
 
+pub(crate) async fn bundle_payload(
+    tenant: &TenantTransaction,
+    zone: chrono_tz::Tz,
+    format: &str,
+) -> Result<AppliedBatch, OperationError> {
+    api_export_payload(tenant, zone, format, false).await
+}
+
 async fn scoped_payload(
     tenant: &TenantTransaction,
     zone: chrono_tz::Tz,
