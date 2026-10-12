@@ -4,8 +4,8 @@ use chrono::{Datelike, NaiveDate};
 use loco_rs::model::TenantQueryExt;
 use sea_orm::DatabaseTransaction;
 use sha2::{Digest, Sha256};
-struct AuthContext<'a> {
-    tenant: &'a TenantTransaction,
+pub(crate) struct AuthContext<'a> {
+    pub(crate) tenant: &'a TenantTransaction,
 }
 fn database_error(_: sea_orm::DbErr) -> OperationError {
     OperationError::Unavailable
@@ -13,7 +13,7 @@ fn database_error(_: sea_orm::DbErr) -> OperationError {
 fn today_in_app_zone() -> NaiveDate {
     Utc::now().with_timezone(&doses::app_zone()).date_naive()
 }
-async fn person_access(
+pub(crate) async fn person_access(
     _: &DatabaseTransaction,
     context: &AuthContext<'_>,
     id: i64,
@@ -78,7 +78,7 @@ pub(crate) fn tag(record: &review_prompt::Model) -> String {
     format!("\"{}\"", hex::encode(Sha256::digest(canonical.as_bytes())))
 }
 
-async fn actor_adult(
+pub(crate) async fn actor_adult(
     db: &DatabaseTransaction,
     context: &AuthContext<'_>,
 ) -> Result<bool, OperationError> {
@@ -104,7 +104,7 @@ async fn actor_adult(
         && (actor.person_type == 0 || adult_by_age))
 }
 
-async fn visible_prompt(
+pub(crate) async fn visible_prompt(
     db: &DatabaseTransaction,
     context: &AuthContext<'_>,
     id: &str,
@@ -127,7 +127,7 @@ async fn visible_prompt(
         .map_err(database_error)
 }
 
-struct Changes {
+pub(crate) struct Changes {
     status: Option<String>,
     practitioner_name: Option<String>,
     practitioner_role: Option<String>,
@@ -136,7 +136,7 @@ struct Changes {
 }
 
 impl Changes {
-    fn parse(body: &Value) -> Result<Self, StatusCode> {
+    pub(crate) fn parse(body: &Value) -> Result<Self, StatusCode> {
         let root = body.as_object().ok_or(StatusCode::BAD_REQUEST)?;
         let Some(inner) = root
             .get("medication_review_prompt")
@@ -205,7 +205,7 @@ impl Changes {
         })
     }
 
-    fn apply(
+    pub(crate) fn apply(
         self,
         record: &review_prompt::Model,
         membership_id: i64,
@@ -263,6 +263,33 @@ impl Changes {
         }
         Some(changed)
     }
+}
+
+pub(crate) async fn record_rest_update(
+    tenant: &TenantTransaction,
+    previous: &review_prompt::Model,
+    updated: &review_prompt::Model,
+) -> Result<(), OperationError> {
+    let now = Utc::now().naive_utc();
+    security_audit_event::ActiveModel {
+        household_id: Set(tenant.scope().household_id),
+        actor_account_id: Set(Some(tenant.scope().actor.account_id)),
+        actor_membership_id: Set(Some(tenant.membership().id)),
+        event_type: Set("medication_review_prompt.updated".to_owned()),
+        request_id: Set(None),
+        audit_context: Set(json!({})),
+        metadata: Set(
+            json!({"prompt_id": updated.id, "person_id": updated.person_id,
+            "previous_status": previous.status, "status": updated.status}),
+        ),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(tenant.transaction())
+    .await
+    .map_err(database_error)?;
+    Ok(())
 }
 
 async fn apply_sync_operation(

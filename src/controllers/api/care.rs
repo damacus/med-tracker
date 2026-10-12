@@ -23,6 +23,7 @@ mod push_subscriptions;
 mod removals;
 mod reports;
 mod response;
+mod review_prompts;
 mod schedule_lifecycle;
 mod sync;
 mod treatments;
@@ -116,6 +117,16 @@ pub fn routes() -> Routes {
             get(health_events::show)
                 .patch(health_events::update)
                 .put(health_events::update),
+        )
+        .add(
+            "/{household_id}/medication_review_prompts",
+            get(review_prompts::index),
+        )
+        .add(
+            "/{household_id}/medication_review_prompts/{id}",
+            get(review_prompts::show)
+                .patch(review_prompts::update)
+                .put(review_prompts::update),
         )
         .add(
             "/{household_id}/profile",

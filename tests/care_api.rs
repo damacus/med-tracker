@@ -70,6 +70,8 @@ mod push_subscriptions;
 mod reports;
 #[path = "care_api/resource_credentials.rs"]
 mod resource_credentials;
+#[path = "care_api/review_prompts.rs"]
+mod review_prompts;
 #[path = "care_api/saved_status.rs"]
 mod saved_status;
 #[path = "care_api/schedule_lifecycle.rs"]
