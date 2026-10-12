@@ -484,10 +484,11 @@ async fn populated_adoption_preserves_records_and_rails_metadata() {
     assert!(!records["rails_metadata"].as_array().unwrap().is_empty());
     migration::Migrator::up(&db, None).await.unwrap();
     let adopted = ledger_rows(&db).await;
-    assert_eq!(adopted.len(), 8);
+    assert_eq!(adopted.len(), 9);
     assert_eq!(adopted[5].0, "m20261006_000006_registration_policy");
     assert_eq!(adopted[6].0, "m20261006_000007_better_auth_identity");
     assert_eq!(adopted[7].0, "m20261008_000008_support_access");
+    assert_eq!(adopted[8].0, "m20261012_000009_notification_deliveries");
     let after: String = db
         .query_one_raw(migration::sea_orm::Statement::from_string(
             migration::sea_orm::DbBackend::Postgres,
@@ -772,10 +773,11 @@ async fn cooperating_adoptions_serialize() {
     first.unwrap();
     second.unwrap();
     let adopted = ledger_rows(&db).await;
-    assert_eq!(adopted.len(), 8);
+    assert_eq!(adopted.len(), 9);
     assert_eq!(adopted[5].0, "m20261006_000006_registration_policy");
     assert_eq!(adopted[6].0, "m20261006_000007_better_auth_identity");
     assert_eq!(adopted[7].0, "m20261008_000008_support_access");
+    assert_eq!(adopted[8].0, "m20261012_000009_notification_deliveries");
     other.close().await.unwrap();
     db.close().await.unwrap();
 }
@@ -896,7 +898,7 @@ async fn baseline_only_adoption_upgrades_to_the_supported_runtime_state() {
     assert_eq!(baseline.len(), 1);
     migration::Migrator::up(&db, None).await.unwrap();
     let runtime = ledger_rows(&db).await;
-    assert_eq!(runtime.len(), 8);
+    assert_eq!(runtime.len(), 9);
     assert_eq!(runtime[0], baseline[0]);
     assert_eq!(runtime[1].0, "m20261005_000002_provision_runtime");
     assert_eq!(runtime[2].0, "m20261006_000003_canonical_take_identity");
@@ -905,6 +907,7 @@ async fn baseline_only_adoption_upgrades_to_the_supported_runtime_state() {
     assert_eq!(runtime[5].0, "m20261006_000006_registration_policy");
     assert_eq!(runtime[6].0, "m20261006_000007_better_auth_identity");
     assert_eq!(runtime[7].0, "m20261008_000008_support_access");
+    assert_eq!(runtime[8].0, "m20261012_000009_notification_deliveries");
     let before = catalog(&db).await;
     migration::Migrator::up(&db, None).await.unwrap();
     assert_eq!(ledger_rows(&db).await, runtime);
