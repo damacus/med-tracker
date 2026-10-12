@@ -237,6 +237,10 @@ pub fn routes() -> Routes {
             get(dosages::show).patch(dosages::patch).put(dosages::put),
         )
         .add(
+            "/{household_id}/admin/audit_logs",
+            get(administration::audit_logs_index),
+        )
+        .add(
             "/{household_id}/admin/invitations",
             get(invitations::index).post(invitations::create),
         )

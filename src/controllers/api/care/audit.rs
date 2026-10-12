@@ -230,6 +230,7 @@ impl RequestAudit {
         let (controller, policy) = match resource {
             "settings" => ("api/v1/admin/settings", "HouseholdPolicy"),
             "memberships" => ("api/v1/admin/memberships", "HouseholdMembershipPolicy"),
+            "audit_logs" => ("api/v1/admin/audit_logs", "AuditLogPolicy"),
             _ => (
                 "api/v1/admin/person_access_grants",
                 "PersonAccessGrantPolicy",

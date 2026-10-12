@@ -6,6 +6,8 @@ mod administration;
 mod api_session;
 #[path = "care_api/assignments.rs"]
 mod assignments;
+#[path = "care_api/audit_logs.rs"]
+mod audit_logs;
 #[path = "care_api/avatar.rs"]
 mod avatar;
 #[path = "care_api/avatar_storage.rs"]
