@@ -41,6 +41,7 @@ pub(crate) use source::{config_decimal, config_value};
 use std::{collections::HashSet, str::FromStr};
 use stock::decrement_stock;
 pub(crate) use stock::same_stock_signature;
+pub(crate) use timing::dashboard_timing;
 use timing::{applies_on, timing_allowed};
 use uuid::Uuid;
 use validation::parse_decimal;
@@ -141,7 +142,7 @@ pub enum CredentialMethod {
 }
 
 impl CredentialMethod {
-    fn label(self) -> &'static str {
+    pub(crate) fn label(self) -> &'static str {
         match self {
             Self::PersonalApiKey => "personal_api_key",
             Self::ApiSession => "api_session",
@@ -151,7 +152,7 @@ impl CredentialMethod {
         }
     }
 
-    fn reference_prefix(self) -> &'static str {
+    pub(crate) fn reference_prefix(self) -> &'static str {
         match self {
             Self::PersonalApiKey => "personal_api_key",
             Self::ApiSession => "api_session",

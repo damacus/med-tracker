@@ -5,13 +5,13 @@ mod rendering;
 use super::medications::{self as browser, forms as browser_forms};
 use crate::models::{
     access::TenantTransaction,
-    care::{assignments, browser_query, dose_occurrences, people, treatments},
+    care::{assignments, browser_query, dose_occurrences, people, report_pdf, treatments},
     errors::OperationError,
 };
 use axum::{
     Extension,
     extract::{Form as AxumForm, Query},
-    http::{StatusCode, header},
+    http::{HeaderMap, StatusCode, header},
     response::IntoResponse,
 };
 use axum_csrf::CsrfToken;
@@ -66,7 +66,7 @@ async fn index(
     State(ctx): State<AppContext>,
     Path(path): Path<(String, String, String, String)>,
     session: Session<SessionPgPool>,
-    request: Option<Extension<LocoRequestId>>,
+    (headers, request): (HeaderMap, Option<Extension<LocoRequestId>>),
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
     Query(query): Query<dose_occurrences::RangeQuery>,
@@ -78,6 +78,12 @@ async fn index(
         &view,
         &path,
         browser::request_id(request),
+        report_pdf::locale(
+            headers
+                .get(header::ACCEPT_LANGUAGE)
+                .and_then(|value| value.to_str().ok())
+                .unwrap_or("en"),
+        ),
     )
     .index(query)
     .await
@@ -87,7 +93,7 @@ async fn change(
     State(ctx): State<AppContext>,
     Path((slug, person, kind, id, action)): Path<(String, String, String, String, String)>,
     session: Session<SessionPgPool>,
-    request: Option<Extension<LocoRequestId>>,
+    (headers, request): (HeaderMap, Option<Extension<LocoRequestId>>),
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
     AxumForm(draft): AxumForm<HashMap<String, String>>,
@@ -100,6 +106,12 @@ async fn change(
         &view,
         &path,
         browser::request_id(request),
+        report_pdf::locale(
+            headers
+                .get(header::ACCEPT_LANGUAGE)
+                .and_then(|value| value.to_str().ok())
+                .unwrap_or("en"),
+        ),
     )
     .change(&action, draft)
     .await

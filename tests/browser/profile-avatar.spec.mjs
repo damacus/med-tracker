@@ -55,7 +55,7 @@ test('Gravatar opt-in persists, uploaded photos take priority and withdrawal res
   await upload(page);
   await expect(page.locator('.profile-hero img')).toHaveAttribute('src', avatar);
   await page.getByRole('button', { name: 'Remove avatar', exact: true }).click();
-  await expect(page.locator('.profile-hero img')).toHaveAttribute('src', /https:\/\/www.gravatar.com\/avatar\//);
+  await expect(page.locator('.profile-hero img')).toHaveAttribute('src', /https:\/\/www\.gravatar\.com\/avatar\//);
   await choice.uncheck();
   await page.getByRole('button', { name: 'Save Gravatar choice', exact: true }).click();
   await expect(page.locator('.profile-hero img')).toHaveCount(0);

@@ -9,23 +9,68 @@ pub(super) fn index(
     error: Option<&OperationError>,
 ) -> Value {
     let mut data = browser::rendering::appearance_context();
+    let labels = if context["labels"].is_object() {
+        context["labels"].clone()
+    } else {
+        report_pdf::translations("en").unwrap_or_default()
+    };
+    let ui = &labels["dose_records"];
+    data["ui"] = ui.clone();
+    data["outcomes"] = labels["dose_outcomes"].clone();
+    data["reasons"] = labels["dashboard"]["outcomes"]["reasons"].clone();
+    data["lang"] = json!(context["locale"].as_str().unwrap_or("en"));
     let person = context["person"]["name"].as_str().unwrap_or("Person");
-    data["title"] = json!(format!("Dose records for {person}"));
+    data["title"] = json!(
+        ui["title"]
+            .as_str()
+            .unwrap_or("Dose records for %{name}")
+            .replace("%{name}", person)
+    );
     data["source"] = context["source"].clone();
     data["medication_name"] = context["medication_name"].clone();
+    data["person_name"] = context["person"]["name"].clone();
     data["medications"] = context["medications"].clone();
     data["start_date"] = json!(query.start_date);
     data["end_date"] = json!(query.end_date);
-    let errors = match error {
+    let mut errors = match error {
         Some(OperationError::Validation { details }) => {
             details.get("errors").cloned().unwrap_or(json!({}))
         }
         _ => json!({}),
     };
+    if context["locale"]
+        .as_str()
+        .is_some_and(|locale| locale != "en")
+        && let Some(fields) = errors.as_object_mut()
+    {
+        for (field, messages) in fields {
+            let key = match field.as_str() {
+                "dose_amount" => "amount_error",
+                "taken_at" => "time_error",
+                "taken_from_medication_id" => "stock_error",
+                "date_range" => "range_hint",
+                _ => "invalid",
+            };
+            *messages = json!([ui[key]]);
+        }
+    }
     let message = error.map(|error| match error {
-        OperationError::Conflict {code,..} if code == "sync_conflict" => "Dose record changed while this form was open. Review the latest dose record before saving.".into(),
-        OperationError::Conflict {code,..} if code == "precondition_required" => "Review the latest dose record before saving.".into(),
-        OperationError::Validation { details } => details.get("message").and_then(Value::as_str).map(str::to_owned).unwrap_or_else(|| browser_forms::message(error)),
+        OperationError::Conflict { code, .. } if code == "sync_conflict" => {
+            ui["conflict"].as_str().unwrap_or_default().to_owned()
+        }
+        OperationError::Conflict { code, .. } if code == "precondition_required" => {
+            ui["review"].as_str().unwrap_or_default().to_owned()
+        }
+        OperationError::Validation { details } if details["code"] == "invalid_occurrence" => {
+            ui["unavailable"].as_str().unwrap_or_default().to_owned()
+        }
+        OperationError::Validation { .. } => ui["invalid"].as_str().unwrap_or_default().to_owned(),
+        _ if context["locale"]
+            .as_str()
+            .is_some_and(|locale| locale != "en") =>
+        {
+            ui["invalid"].as_str().unwrap_or_default().to_owned()
+        }
         _ => browser_forms::message(error),
     });
     data["error"] = json!(message);
@@ -45,7 +90,16 @@ pub(super) fn index(
                             .and_then(|value| chrono::DateTime::parse_from_rfc3339(value).ok())
                             .map(|time| time
                                 .with_timezone(&zone)
-                                .format("%d %b %Y, %H:%M:%S %Z")
+                                .format(
+                                    if context["locale"]
+                                        .as_str()
+                                        .is_some_and(|locale| locale != "en")
+                                    {
+                                        "%Y-%m-%d, %H:%M:%S %Z"
+                                    } else {
+                                        "%d %b %Y, %H:%M:%S %Z"
+                                    }
+                                )
                                 .to_string())
                     );
                 }
@@ -64,6 +118,11 @@ pub(super) fn index(
                 row["draft"] = json!(fields);
                 row["errors"] = if matches { errors.clone() } else { json!({}) };
                 row["error"] = if matches { json!(message) } else { Value::Null };
+                row["open_action"] = if matches {
+                    json!(draft.and_then(|draft| draft.get("intent")))
+                } else {
+                    Value::Null
+                };
                 row
             })
             .collect::<Vec<_>>()
@@ -74,6 +133,24 @@ pub(super) fn index(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn non_english_dates_do_not_include_english_month_names() {
+        for locale in ["es", "pt", "cy", "ga"] {
+            let rendered = index(
+                json!({"locale":locale,"person":{"name":"Synthetic adult"},"source":{"dose_amount":"2"}}),
+                json!({"data":[{"scheduled_at":"2026-01-06T23:30:00Z"}]}),
+                &dose_occurrences::RangeQuery::default(),
+                chrono_tz::UTC,
+                None,
+                None,
+            );
+            assert_eq!(
+                rendered["rows"][0]["scheduled_at_display"],
+                "2026-01-06, 23:30:00 UTC"
+            );
+        }
+    }
 
     #[test]
     fn occurrence_timestamps_use_account_zone_across_midnight() {

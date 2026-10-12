@@ -194,7 +194,7 @@ async fn queue_verification(
         ..Default::default()
     };
     let payload = serde_json::to_value(email).map_err(unavailable)?;
-    transaction.execute_raw(sql("INSERT INTO pg_loco_queue(id,task_data,name,run_at,priority) VALUES($1,$2,$3,clock_timestamp(),$4)", [ulid::Ulid::new().to_string().into(),payload.into(),MailerWorker::class_name().into(),DEFAULT_MAILER_PRIORITY.into()])).await.map_err(unavailable)?;
+    transaction.execute_raw(sql("INSERT INTO pg_loco_queue(id,task_data,name,run_at,priority) VALUES($1,$2,$3,clock_timestamp(),$4)", [ulid::Ulid::generate().to_string().into(),payload.into(),MailerWorker::class_name().into(),DEFAULT_MAILER_PRIORITY.into()])).await.map_err(unavailable)?;
     Ok(())
 }
 

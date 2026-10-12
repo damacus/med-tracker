@@ -32,8 +32,8 @@ use persistence::{actionable, find_row, link_take, reopen_decision, save_decisio
 use projection::{Occurrence, projected};
 pub(crate) use representation::record_etag;
 use representation::{row_value, snapshot};
-pub(crate) use scheduling::schedule_config_on;
-use scheduling::{effective_count, schedule_applies, schedule_as_needed};
+use scheduling::{effective_count, schedule_applies};
+pub(crate) use scheduling::{schedule_as_needed, schedule_config_on, weekday_matches};
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, Condition, DatabaseTransaction, EntityTrait, QueryFilter,
     QueryOrder, QuerySelect, QueryTrait, Select, Set,
@@ -43,6 +43,7 @@ use serde_json::{Map, Value, json};
 use sha2::{Digest, Sha256};
 use std::{collections::BTreeMap, str::FromStr, sync::Arc};
 use uuid::Uuid;
+pub(crate) use writing::browser_list;
 pub use writing::{RangeQuery, authorize, change, list};
 
 pub(crate) struct ReportOccurrence {
@@ -131,6 +132,24 @@ pub(crate) async fn projected_for_report(
     start: NaiveDate,
     end: NaiveDate,
 ) -> Result<Vec<ReportOccurrence>, OperationError> {
+    projected_for_range(tenant, person_ids, start, end, false).await
+}
+
+pub(crate) async fn projected_for_dashboard(
+    tenant: &TenantTransaction,
+    person_ids: &[i64],
+    today: NaiveDate,
+) -> Result<Vec<ReportOccurrence>, OperationError> {
+    projected_for_range(tenant, person_ids, today, today, true).await
+}
+
+async fn projected_for_range(
+    tenant: &TenantTransaction,
+    person_ids: &[i64],
+    start: NaiveDate,
+    end: NaiveDate,
+    dashboard: bool,
+) -> Result<Vec<ReportOccurrence>, OperationError> {
     if person_ids.is_empty() {
         return Ok(Vec::new());
     }
@@ -154,7 +173,26 @@ pub(crate) async fn projected_for_report(
         .await?;
     let sources: Vec<Source> = schedules
         .into_iter()
-        .map(Source::Schedule)
+        .map(|mut source| {
+            if dashboard
+                && source.max_daily_doses.is_none()
+                && !schedule_as_needed(&source)
+                && let Some(config) = schedule_config_on(&source, start)
+                && config_times(config, start).is_empty()
+                && let Some(hours) =
+                    doses::config_decimal(config, &["min_hours_between_doses", "min_hours"]).or(
+                        source
+                            .min_hours_between_doses
+                            .map(sea_orm::prelude::Decimal::from),
+                    )
+                && hours > sea_orm::prelude::Decimal::ZERO
+            {
+                use sea_orm::prelude::Decimal;
+                source.max_daily_doses =
+                    (Decimal::from(24) / hours).ceil().to_string().parse().ok();
+            }
+            Source::Schedule(source)
+        })
         .chain(assignments.into_iter().map(Source::Assignment))
         .collect();
     if sources.is_empty() {

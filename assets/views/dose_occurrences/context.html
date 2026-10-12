@@ -1,0 +1,7 @@
+<div class="rounded-box border border-base-300 bg-base-200 p-4 space-y-2">
+  <p class="font-semibold text-lg">{{ person_name }}</p>
+  <p>{{ medication_name }}</p>
+  <p class="text-sm" data-dose-slot>{{ ui.dose }} {{ row.position }} {{ ui.on }} <time>{{ row.window_starts_on }}</time>{% if row.window_ends_on != row.window_starts_on %} – <time>{{ row.window_ends_on }}</time>{% endif %}</p>
+  {% if row.scheduled_at %}<p class="text-sm">{{ ui.scheduled }} <time datetime="{{ row.scheduled_at }}">{{ row.scheduled_at_display }}</time></p>{% endif %}
+  <p><span class="text-sm text-base-content/70">{{ ui.prescribed }}</span><strong class="block text-xl">{{ row.prescribed_amount }} {{ row.prescribed_unit }}</strong></p>
+</div>

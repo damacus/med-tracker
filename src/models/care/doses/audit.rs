@@ -10,18 +10,10 @@ pub(super) struct StockVersionChange<'a> {
 }
 
 fn domain_audit_context(context: &DoseContext<'_>, request_id: &str) -> Value {
-    let mut value = json!({"actor_account_id": context.scope().actor.account_id, "actor_user_id": context.tenant.user_id(),
-        "actor_membership_id": context.membership().id, "household_id": context.membership().household_id,
-        "active_role": context.membership().role, "permissions_version": context.membership().permissions_version,
-        "policy_class": "MedicationTakePolicy", "policy_query": "create?", "request_id": request_id});
-    if let Some(provenance) = context.provenance {
-        value["authentication_method"] = json!(provenance.method.label());
-        value["session_reference"] = json!(format!(
-            "{}:{}",
-            provenance.method.reference_prefix(),
-            provenance.reference
-        ));
-    }
+    let mut value =
+        crate::models::audit_context::for_request(context.tenant, request_id, context.provenance);
+    value["policy_class"] = json!("MedicationTakePolicy");
+    value["policy_query"] = json!("create?");
     value
 }
 

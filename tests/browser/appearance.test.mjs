@@ -5,6 +5,14 @@ import test from 'node:test';
 
 const source = () => readFileSync('assets/static/js/appearance.js', 'utf8');
 const classes = new Set();
+
+test('dashboard reuses shared symbols without duplicating the profile sprite', () => {
+  const symbols = file => [...readFileSync(file, 'utf8').matchAll(/<symbol id="([^"]+)"/g)].map(match => match[1]);
+  const shared = new Set(symbols('assets/static/profile-icons.svg'));
+  const duplicated = symbols('assets/static/dashboard-icons.svg').filter(id => shared.has(id));
+  assert.deepEqual(duplicated, []);
+});
+
 function boot(saved, dark = false, allowPalette = true, throws = false) {
   classes.clear();
   const listeners = {};
