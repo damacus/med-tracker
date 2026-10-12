@@ -1,3 +1,4 @@
+use loco_rs::model::TenantQueryExt;
 mod creation;
 mod persistence;
 mod projection;
@@ -51,7 +52,7 @@ pub(crate) fn age(date: NaiveDate, today: NaiveDate) -> i32 {
 }
 fn active_grants(tenant: &TenantTransaction) -> sea_orm::Select<grant::Entity> {
     grant::Entity::find()
-        .filter(grant::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(grant::Column::HouseholdMembershipId.eq(tenant.membership().id))
         .filter(grant::Column::RevokedAt.is_null())
         .filter(

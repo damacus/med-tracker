@@ -1,6 +1,93 @@
+use loco_rs::model::{TenantActiveModelExt, TenantQueryExt};
 use med_tracker::models::access::{self, Actor, HouseholdScope, PersonAccess};
+use med_tracker::models::entities::{grant, location};
 use med_tracker::models::errors::OperationError;
 use sea_orm::{ConnectionTrait, Database, DatabaseConnection, DbBackend, Statement};
+use sea_orm::{EntityTrait, Set};
+
+#[test]
+fn household_assignment_rejects_conflicting_ownership() {
+    let model = location::ActiveModel::default().set_tenant(72001).unwrap();
+    assert_eq!(model.household_id, Set(72001));
+    assert!(matches!(
+        model.set_tenant(72002),
+        Err(loco_rs::model::ModelError::TenantMismatch)
+    ));
+}
+
+#[tokio::test]
+async fn loco_scoping_and_rls_independently_reject_other_households() {
+    let fixture = Fixture::new().await;
+    assert!(
+        grant::Entity::find_by_id(78002)
+            .one(&fixture.admin)
+            .await
+            .unwrap()
+            .is_some()
+    );
+    assert!(
+        grant::Entity::find_by_id(78002)
+            .in_tenant(72001)
+            .one(&fixture.admin)
+            .await
+            .unwrap()
+            .is_none()
+    );
+    let tenant = access::begin(&fixture.runtime, &scope(71001, 72001))
+        .await
+        .unwrap();
+    let db = tenant.transaction();
+    assert!(
+        grant::Entity::find_by_id(78002)
+            .in_tenant(72001)
+            .one(db)
+            .await
+            .unwrap()
+            .is_none()
+    );
+    assert!(
+        grant::Entity::find_by_id(78002)
+            .one(db)
+            .await
+            .unwrap()
+            .is_none()
+    );
+    assert!(
+        grant::Entity::find()
+            .in_tenant(72002)
+            .all(db)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+    assert_eq!(
+        grant::Entity::find()
+            .in_tenant(72001)
+            .all(db)
+            .await
+            .unwrap()
+            .len(),
+        1
+    );
+    let updated = grant::Entity::update_many()
+        .col_expr(
+            grant::Column::AccessLevel,
+            sea_orm::sea_query::Expr::value("manage"),
+        )
+        .in_tenant(72002)
+        .exec(db)
+        .await
+        .unwrap();
+    assert_eq!(updated.rows_affected, 0);
+    let deleted = grant::Entity::delete_many()
+        .in_tenant(72002)
+        .exec(db)
+        .await
+        .unwrap();
+    assert_eq!(deleted.rows_affected, 0);
+    tenant.rollback().await.unwrap();
+    fixture.close().await;
+}
 
 struct Fixture {
     admin: DatabaseConnection,

@@ -1,4 +1,5 @@
 use super::*;
+use loco_rs::model::TenantQueryExt;
 
 fn state(row: &membership::Model) -> Value {
     json!({"role":row.role,"status":row.status,"person_id":row.person_id})
@@ -6,7 +7,7 @@ fn state(row: &membership::Model) -> Value {
 pub async fn list(tenant: &TenantTransaction) -> Result<Value, OperationError> {
     authorize(tenant).await?;
     let rows = membership::Entity::find()
-        .filter(membership::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .order_by_asc(membership::Column::Id)
         .all(tenant.transaction())
         .await?;
@@ -27,7 +28,7 @@ async fn values(
         .collect();
     let ids: Vec<i64> = rows.iter().filter_map(|row| row.person_id).collect();
     let people: HashMap<i64, person::Model> = person::Entity::find()
-        .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(person::Column::Id.is_in(ids.clone()))
         .all(tenant.transaction())
         .await?
@@ -77,7 +78,7 @@ async fn change_record(
     provenance: Option<&CredentialProvenance>,
 ) -> Result<Value, OperationError> {
     let current = membership::Entity::find_by_id(id)
-        .filter(membership::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .lock_exclusive()
         .one(tenant.transaction())
         .await?
@@ -126,7 +127,7 @@ async fn change_record(
     }
     if let Some(person_id) = next.person_id
         && person::Entity::find_by_id(person_id)
-            .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
+            .in_tenant(tenant.scope().household_id)
             .one(tenant.transaction())
             .await?
             .is_none()
@@ -142,7 +143,7 @@ async fn change_record(
     }
     if let Some(person_id) = next.person_id
         && membership::Entity::find()
-            .filter(membership::Column::HouseholdId.eq(tenant.scope().household_id))
+            .in_tenant(tenant.scope().household_id)
             .filter(membership::Column::PersonId.eq(person_id))
             .filter(membership::Column::Id.ne(id))
             .one(tenant.transaction())
@@ -181,7 +182,7 @@ async fn change_record(
             .ok_or(OperationError::NotFound)?;
         if previous_owner && home.status == "active" && home.lifecycle_state == "active" {
             let owners = membership::Entity::find()
-                .filter(membership::Column::HouseholdId.eq(home.id))
+                .in_tenant(home.id)
                 .filter(membership::Column::Role.eq("owner"))
                 .filter(membership::Column::Status.eq("active"))
                 .filter(membership::Column::Id.ne(id))

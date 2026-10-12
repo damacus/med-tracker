@@ -1,3 +1,4 @@
+use loco_rs::model::TenantQueryExt;
 mod cascade;
 mod dose_mode;
 mod persistence;
@@ -87,7 +88,7 @@ pub async fn update(
         found.dose_amount.is_none() && attributes.get("dose_amount").is_some_and(|v| !v.is_null());
     if switching
         && schedule::Entity::find()
-            .filter(schedule::Column::HouseholdId.eq(tenant.scope().household_id))
+            .in_tenant(tenant.scope().household_id)
             .filter(schedule::Column::MedicationId.eq(found.id))
             .one(tenant.transaction())
             .await

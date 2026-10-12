@@ -1,4 +1,5 @@
 use super::*;
+use loco_rs::model::TenantQueryExt;
 
 pub async fn unassign(
     tenant: &TenantTransaction,
@@ -31,7 +32,7 @@ pub async fn unassign(
     )
     .await?;
     let person = person::Entity::find_by_id(row.person_id)
-        .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::NotFound)?;

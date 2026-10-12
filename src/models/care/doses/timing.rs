@@ -1,4 +1,5 @@
 use super::*;
+use loco_rs::model::TenantQueryExt;
 
 pub(super) fn applies_on(source: &Source, date: NaiveDate) -> bool {
     let Some(kind) = source.schedule_type else {
@@ -106,7 +107,7 @@ pub(super) async fn timing_allowed(
     proposed: &ProposedTake,
 ) -> Result<bool, ApiError> {
     let assignments = person_medication::Entity::find()
-        .filter(person_medication::Column::HouseholdId.eq(proposed.selected.household_id))
+        .in_tenant(proposed.selected.household_id)
         .filter(person_medication::Column::PersonId.eq(proposed.source.person_id))
         .filter(person_medication::Column::MedicationId.eq(proposed.source.medication_id))
         .filter(person_medication::Column::Active.eq(true))
@@ -115,7 +116,7 @@ pub(super) async fn timing_allowed(
         .await
         .map_err(database_error)?;
     let schedules = schedule::Entity::find()
-        .filter(schedule::Column::HouseholdId.eq(proposed.selected.household_id))
+        .in_tenant(proposed.selected.household_id)
         .filter(schedule::Column::PersonId.eq(proposed.source.person_id))
         .filter(schedule::Column::MedicationId.eq(proposed.source.medication_id))
         .filter(schedule::Column::Active.eq(true))
@@ -157,7 +158,7 @@ pub(super) async fn timing_allowed(
             condition.add(medication_take::Column::PersonMedicationId.is_in(assignment_ids));
     }
     let takes = medication_take::Entity::find()
-        .filter(medication_take::Column::HouseholdId.eq(proposed.selected.household_id))
+        .in_tenant(proposed.selected.household_id)
         .filter(condition)
         .all(db)
         .await

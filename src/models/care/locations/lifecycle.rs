@@ -1,5 +1,6 @@
 use super::*;
 use crate::models::entities::{api_tombstone, location_membership, medication};
+use loco_rs::model::TenantQueryExt;
 use sea_orm::QueryOrder;
 
 async fn record_membership_destroy(
@@ -54,7 +55,7 @@ pub async fn can_manage(tenant: &TenantTransaction) -> Result<bool, OperationErr
 pub async fn list(tenant: &TenantTransaction) -> Result<Vec<location::Model>, OperationError> {
     access::recheck(tenant).await?;
     location::Entity::find()
-        .filter(location::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .order_by_asc(location::Column::Id)
         .all(tenant.transaction())
         .await
@@ -63,8 +64,7 @@ pub async fn list(tenant: &TenantTransaction) -> Result<Vec<location::Model>, Op
 
 pub async fn read(tenant: &TenantTransaction, id: &str) -> Result<location::Model, OperationError> {
     access::recheck(tenant).await?;
-    let query = location::Entity::find()
-        .filter(location::Column::HouseholdId.eq(tenant.scope().household_id));
+    let query = location::Entity::find().in_tenant(tenant.scope().household_id);
     let query = if let Ok(id) = id.parse::<i64>() {
         query.filter(location::Column::Id.eq(id))
     } else {
@@ -85,7 +85,7 @@ async fn locked(
     authorize(tenant).await?;
     let found = read(tenant, id).await?;
     let found = location::Entity::find_by_id(found.id)
-        .filter(location::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .lock_exclusive()
         .one(tenant.transaction())
         .await
@@ -138,7 +138,7 @@ pub async fn retire(
 ) -> Result<(), OperationError> {
     let found = locked(tenant, id, etag).await?;
     let medicines = medication::Entity::find()
-        .filter(medication::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(medication::Column::LocationId.eq(found.id))
         .order_by_asc(medication::Column::Id)
         .lock_exclusive()
@@ -155,7 +155,7 @@ pub async fn retire(
         .await?;
     }
     let memberships = location_membership::Entity::find()
-        .filter(location_membership::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(location_membership::Column::LocationId.eq(found.id))
         .lock_exclusive()
         .all(tenant.transaction())

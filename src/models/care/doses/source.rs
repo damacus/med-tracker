@@ -1,4 +1,5 @@
 use super::*;
+use loco_rs::model::TenantQueryExt;
 
 pub(super) struct Source {
     pub(super) kind: &'static str,
@@ -155,8 +156,7 @@ pub(super) async fn source(
 ) -> Result<Source, ApiError> {
     match kind {
         "person_medication" => {
-            let mut query = person_medication::Entity::find()
-                .filter(person_medication::Column::HouseholdId.eq(household_id));
+            let mut query = person_medication::Entity::find().in_tenant(household_id);
             query = match id.parse::<i64>() {
                 Ok(id) => query.filter(person_medication::Column::Id.eq(id)),
                 Err(_) => query.filter(person_medication::Column::PortableId.eq(id)),
@@ -172,8 +172,7 @@ pub(super) async fn source(
             Ok(source_from_assignment(value))
         }
         "schedule" => {
-            let mut query =
-                schedule::Entity::find().filter(schedule::Column::HouseholdId.eq(household_id));
+            let mut query = schedule::Entity::find().in_tenant(household_id);
             query = match id.parse::<i64>() {
                 Ok(id) => query.filter(schedule::Column::Id.eq(id)),
                 Err(_) => query.filter(schedule::Column::PortableId.eq(id)),

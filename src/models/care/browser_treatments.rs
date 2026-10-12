@@ -5,6 +5,7 @@ use crate::models::{
     errors::OperationError,
 };
 use chrono::NaiveDate;
+use loco_rs::model::TenantQueryExt;
 use sea_orm::{
     ColumnTrait, Condition, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect,
 };
@@ -23,7 +24,7 @@ pub async fn person_cards(
         .all(tenant.transaction())
         .await?;
     let assignments = person_medication::Entity::find()
-        .filter(person_medication::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(person_medication::Column::PersonId.eq(person_id))
         .filter(person_medication::Column::RetiredAt.is_null())
         .order_by_asc(person_medication::Column::Position)
@@ -83,7 +84,7 @@ pub async fn person_cards(
         Vec::new()
     } else {
         pause_period::Entity::find()
-            .filter(pause_period::Column::HouseholdId.eq(tenant.scope().household_id))
+            .in_tenant(tenant.scope().household_id)
             .filter(
                 Condition::any()
                     .add(pause_period::Column::ScheduleId.is_in(schedule_ids))
@@ -259,7 +260,7 @@ pub async fn index(
     let schedule_query =
         access::schedule_scope(tenant).filter(schedule::Column::PersonId.eq(person_id));
     let assignment_query = person_medication::Entity::find()
-        .filter(person_medication::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(person_medication::Column::PersonId.eq(person_id))
         .filter(person_medication::Column::RetiredAt.is_null());
     let schedule_count = schedule_query.clone().count(tenant.transaction()).await?;
@@ -290,8 +291,7 @@ pub async fn index(
 
 pub async fn options(tenant: &TenantTransaction, person_id: &str) -> Result<Value, OperationError> {
     access::recheck(tenant).await?;
-    let query =
-        person::Entity::find().filter(person::Column::HouseholdId.eq(tenant.scope().household_id));
+    let query = person::Entity::find().in_tenant(tenant.scope().household_id);
     let query = if let Ok(id) = person_id.parse::<i64>() {
         query.filter(person::Column::Id.eq(id))
     } else {
@@ -308,7 +308,7 @@ pub async fn options(tenant: &TenantTransaction, person_id: &str) -> Result<Valu
         .await?;
     let ids: Vec<i64> = medications.iter().map(|row| row.id).collect();
     let dosages = dosage::Entity::find()
-        .filter(dosage::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(dosage::Column::MedicationId.is_in(ids))
         .order_by_asc(dosage::Column::Id)
         .all(tenant.transaction())
@@ -325,14 +325,14 @@ pub async fn source_option(
 ) -> Result<Option<i64>, OperationError> {
     if is_schedule {
         Ok(schedule::Entity::find_by_id(id)
-            .filter(schedule::Column::HouseholdId.eq(tenant.scope().household_id))
+            .in_tenant(tenant.scope().household_id)
             .one(tenant.transaction())
             .await?
             .ok_or(OperationError::NotFound)?
             .source_dosage_option_id)
     } else {
         Ok(person_medication::Entity::find_by_id(id)
-            .filter(person_medication::Column::HouseholdId.eq(tenant.scope().household_id))
+            .in_tenant(tenant.scope().household_id)
             .one(tenant.transaction())
             .await?
             .ok_or(OperationError::NotFound)?

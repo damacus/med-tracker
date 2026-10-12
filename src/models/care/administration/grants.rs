@@ -1,4 +1,5 @@
 use super::*;
+use loco_rs::model::TenantQueryExt;
 
 pub(super) fn state(row: &grant::Model) -> Value {
     json!({"household_membership_id":row.household_membership_id,"person_id":row.person_id,"access_level":row.access_level,"relationship_type":row.relationship_type,"expires_at":row.expires_at.map(|time|time.and_utc().to_rfc3339()),"revoked_at":row.revoked_at.map(|time|time.and_utc().to_rfc3339()),"carer_relationship_id":row.carer_relationship_id})
@@ -8,7 +9,7 @@ async fn values(
     rows: &[grant::Model],
 ) -> Result<Vec<Value>, OperationError> {
     let people: HashMap<i64, person::Model> = person::Entity::find()
-        .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(person::Column::Id.is_in(rows.iter().map(|row| row.person_id).collect::<Vec<_>>()))
         .all(tenant.transaction())
         .await?
@@ -20,7 +21,7 @@ async fn values(
 pub async fn list(tenant: &TenantTransaction) -> Result<Value, OperationError> {
     authorize(tenant).await?;
     let rows = grant::Entity::find()
-        .filter(grant::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .order_by_asc(grant::Column::Id)
         .all(tenant.transaction())
         .await?;
@@ -79,12 +80,12 @@ pub async fn create(
     };
     let attempted = json!({"household_membership_id":member_id,"person_id":person_id,"access_level":level,"relationship_type":relationship,"expires_at":expiry.map(|time|time.and_utc().to_rfc3339())});
     let member = membership::Entity::find_by_id(member_id)
-        .filter(membership::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .lock_exclusive()
         .one(tenant.transaction())
         .await?;
     let person = person::Entity::find_by_id(person_id)
-        .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .one(tenant.transaction())
         .await?;
     if member.is_none() || person.is_none() {
@@ -95,7 +96,7 @@ pub async fn create(
         ));
     }
     if grant::Entity::find()
-        .filter(grant::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(grant::Column::HouseholdMembershipId.eq(member_id))
         .filter(grant::Column::PersonId.eq(person_id))
         .filter(grant::Column::RevokedAt.is_null())
@@ -142,7 +143,7 @@ pub async fn revoke(
 ) -> Result<(), OperationError> {
     authorize(tenant).await?;
     let row = grant::Entity::find_by_id(id)
-        .filter(grant::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .lock_exclusive()
         .one(tenant.transaction())
         .await?

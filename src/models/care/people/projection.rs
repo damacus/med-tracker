@@ -1,4 +1,5 @@
 use super::*;
+use loco_rs::model::TenantQueryExt;
 
 #[derive(Default, serde::Deserialize)]
 pub struct Pagination {
@@ -9,7 +10,7 @@ pub struct Pagination {
 
 fn scope(tenant: &TenantTransaction) -> sea_orm::Select<person::Entity> {
     person::Entity::find()
-        .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(
             person::Column::Id.in_subquery(
                 active_grants(tenant)
@@ -105,7 +106,7 @@ pub(crate) async fn values(
     }
     let ids: Vec<i64> = records.iter().map(|row| row.id).collect();
     let links = location_membership::Entity::find()
-        .filter(location_membership::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(location_membership::Column::PersonId.is_in(ids.clone()))
         .order_by_asc(location_membership::Column::Id)
         .all(tenant.transaction())
@@ -115,7 +116,7 @@ pub(crate) async fn values(
         HashMap::new()
     } else {
         location::Entity::find()
-            .filter(location::Column::HouseholdId.eq(tenant.scope().household_id))
+            .in_tenant(tenant.scope().household_id)
             .filter(location::Column::Id.is_in(location_ids))
             .all(tenant.transaction())
             .await?
@@ -125,7 +126,7 @@ pub(crate) async fn values(
     };
     let preferences: HashMap<i64, notification_preference::Model> =
         notification_preference::Entity::find()
-            .filter(notification_preference::Column::HouseholdId.eq(tenant.scope().household_id))
+            .in_tenant(tenant.scope().household_id)
             .filter(notification_preference::Column::PersonId.is_in(ids))
             .all(tenant.transaction())
             .await?

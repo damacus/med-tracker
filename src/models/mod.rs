@@ -3,6 +3,7 @@ pub(crate) mod authorization;
 pub mod care;
 pub mod entities;
 pub mod errors;
+mod household_tenancy;
 pub mod identity;
 pub mod nhs_dmd;
 pub mod notification_preferences;

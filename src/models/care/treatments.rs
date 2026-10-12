@@ -1,3 +1,4 @@
+use loco_rs::model::TenantQueryExt;
 mod input;
 pub mod lifecycle;
 pub(crate) mod projection;
@@ -25,8 +26,7 @@ async fn find_person(
     context: &TenantTransaction,
     id: &str,
 ) -> Result<Option<person::Model>, OperationError> {
-    let query =
-        person::Entity::find().filter(person::Column::HouseholdId.eq(context.scope().household_id));
+    let query = person::Entity::find().in_tenant(context.scope().household_id);
     let query = if let Ok(id) = id.parse::<i64>() {
         query.filter(person::Column::Id.eq(id))
     } else {
@@ -74,8 +74,7 @@ async fn find_dosage(
     context: &TenantTransaction,
     id: &str,
 ) -> Result<Option<dosage::Model>, OperationError> {
-    let query =
-        dosage::Entity::find().filter(dosage::Column::HouseholdId.eq(context.scope().household_id));
+    let query = dosage::Entity::find().in_tenant(context.scope().household_id);
     let query = if let Ok(id) = id.parse::<i64>() {
         query.filter(dosage::Column::Id.eq(id))
     } else {

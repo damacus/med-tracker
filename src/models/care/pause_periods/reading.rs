@@ -1,4 +1,5 @@
 use super::*;
+use loco_rs::model::TenantQueryExt;
 use sha2::{Digest, Sha256};
 #[derive(Default, Deserialize)]
 pub struct Pagination {
@@ -117,12 +118,12 @@ pub async fn list(tenant: &TenantTransaction, page: Pagination) -> Result<Value,
         }
     };
     let schedules = schedule::Entity::find()
-        .filter(schedule::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(schedule::Column::PersonId.in_subquery(access::granted_people(tenant.membership())))
         .all(tenant.transaction())
         .await?;
     let assignments = person_medication::Entity::find()
-        .filter(person_medication::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(
             person_medication::Column::PersonId
                 .in_subquery(access::granted_people(tenant.membership())),
@@ -145,7 +146,7 @@ pub async fn list(tenant: &TenantTransaction, page: Pagination) -> Result<Value,
         .filter_map(|(kind, id)| (*kind == "person_medication").then_some(*id))
         .collect();
     let mut query = pause_period::Entity::find()
-        .filter(pause_period::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(
             Condition::any()
                 .add(pause_period::Column::ScheduleId.is_in(schedules))

@@ -1,4 +1,5 @@
 use super::*;
+use loco_rs::model::TenantQueryExt;
 
 async fn lock_household(tenant: &TenantTransaction) -> Result<(), OperationError> {
     household::Entity::find_by_id(tenant.scope().household_id)
@@ -9,8 +10,7 @@ async fn lock_household(tenant: &TenantTransaction) -> Result<(), OperationError
     access::recheck(tenant).await
 }
 async fn person(tenant: &TenantTransaction, id: &str) -> Result<person::Model, OperationError> {
-    let query =
-        person::Entity::find().filter(person::Column::HouseholdId.eq(tenant.scope().household_id));
+    let query = person::Entity::find().in_tenant(tenant.scope().household_id);
     let query = if let Ok(id) = id.parse::<i64>() {
         query.filter(person::Column::Id.eq(id))
     } else {
@@ -46,8 +46,7 @@ async fn option(
     id: Option<&str>,
 ) -> Result<Option<dosage::Model>, OperationError> {
     let Some(id) = id else { return Ok(None) };
-    let query =
-        dosage::Entity::find().filter(dosage::Column::HouseholdId.eq(tenant.scope().household_id));
+    let query = dosage::Entity::find().in_tenant(tenant.scope().household_id);
     let query = if let Ok(id) = id.parse::<i64>() {
         query.filter(dosage::Column::Id.eq(id))
     } else {
@@ -89,7 +88,7 @@ pub async fn create(
     let person = person(tenant, attrs.person_id.as_deref().ok_or_else(invalid)?).await?;
     let medication = medicine(tenant, attrs.medication_id.as_deref().ok_or_else(invalid)?).await?;
     if person_medication::Entity::find()
-        .filter(person_medication::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(person_medication::Column::PersonId.eq(person.id))
         .filter(person_medication::Column::MedicationId.eq(medication.id))
         .filter(person_medication::Column::RetiredAt.is_null())
@@ -112,7 +111,7 @@ pub async fn create(
     .await?
     .ok_or_else(invalid)?;
     let position = person_medication::Entity::find()
-        .filter(person_medication::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(person_medication::Column::PersonId.eq(person.id))
         .order_by_desc(person_medication::Column::Position)
         .one(tenant.transaction())
@@ -184,7 +183,7 @@ pub async fn update(
     .await?;
     if medication.id != row.medication_id
         && person_medication::Entity::find()
-            .filter(person_medication::Column::HouseholdId.eq(tenant.scope().household_id))
+            .in_tenant(tenant.scope().household_id)
             .filter(person_medication::Column::PersonId.eq(row.person_id))
             .filter(person_medication::Column::MedicationId.eq(medication.id))
             .filter(person_medication::Column::RetiredAt.is_null())
@@ -198,7 +197,7 @@ pub async fn update(
         option(tenant, attrs.source_dosage_option_id.as_deref()).await?
     } else if let Some(id) = row.source_dosage_option_id {
         dosage::Entity::find_by_id(id)
-            .filter(dosage::Column::HouseholdId.eq(tenant.scope().household_id))
+            .in_tenant(tenant.scope().household_id)
             .one(tenant.transaction())
             .await?
     } else {

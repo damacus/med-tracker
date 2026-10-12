@@ -1,5 +1,6 @@
 use super::*;
 use chrono::NaiveDate;
+use loco_rs::model::TenantQueryExt;
 
 pub(super) async fn execute(
     context: &StockContext<'_>,
@@ -29,7 +30,7 @@ pub(super) async fn execute_selected(
         return Err(conflict());
     }
     let has_options = dosage::Entity::find()
-        .filter(dosage::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(dosage::Column::MedicationId.eq(found.id))
         .filter(dosage::Column::CurrentSupply.is_not_null())
         .one(db)

@@ -4,6 +4,7 @@ use crate::models::{
     identity::api_session::ApiSessionPrincipal,
     identity::browser::BrowserPrincipal,
 };
+use loco_rs::model::TenantQueryExt;
 use sea_orm::{
     ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, QuerySelect, Statement,
     TransactionTrait,
@@ -113,7 +114,7 @@ async fn accept_validated(
             return Err(unavailable());
         }
         let invitation = household_invitation::Entity::find_by_id(invitation.id)
-            .filter(household_invitation::Column::HouseholdId.eq(invitation.household_id))
+            .in_tenant(invitation.household_id)
             .lock_exclusive()
             .one(&transaction)
             .await?
@@ -127,7 +128,7 @@ async fn accept_validated(
         }
         if invitation.accepted_at.is_some() {
             membership::Entity::find()
-                .filter(membership::Column::HouseholdId.eq(invitation.household_id))
+                .in_tenant(invitation.household_id)
                 .filter(membership::Column::AccountId.eq(actor.account_id))
                 .filter(membership::Column::Status.eq("active"))
                 .filter(membership::Column::RevokedAt.is_null())
@@ -136,14 +137,14 @@ async fn accept_validated(
                 .ok_or_else(unavailable)?
         } else {
             let inviter = membership::Entity::find_by_id(invitation.invited_by_membership_id)
-                .filter(membership::Column::HouseholdId.eq(invitation.household_id))
+                .in_tenant(invitation.household_id)
                 .lock_exclusive()
                 .one(&transaction)
                 .await?
                 .ok_or_else(unavailable)?;
             super::authority::authorize(&transaction, &inviter, &invitation).await?;
             if membership::Entity::find()
-                .filter(membership::Column::HouseholdId.eq(invitation.household_id))
+                .in_tenant(invitation.household_id)
                 .filter(membership::Column::AccountId.eq(actor.account_id))
                 .one(&transaction)
                 .await?
@@ -240,7 +241,7 @@ async fn retry(
             .await?;
         if let Some(current) = current {
             let accepted = household_invitation::Entity::find()
-                .filter(household_invitation::Column::HouseholdId.eq(member.household_id))
+                .in_tenant(member.household_id)
                 .filter(household_invitation::Column::TokenDigest.eq(digest))
                 .filter(household_invitation::Column::Email.eq(&actor.email))
                 .filter(household_invitation::Column::AcceptedAt.is_not_null())

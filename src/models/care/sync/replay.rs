@@ -1,4 +1,5 @@
 use super::*;
+use loco_rs::model::TenantQueryExt;
 
 fn matches_id(id: Option<&str>, saved: &Value) -> bool {
     id.is_some_and(|id| {
@@ -86,7 +87,7 @@ async fn deleted(
     portable: &str,
 ) -> Result<Value, OperationError> {
     let rows = api_tombstone::Entity::find()
-        .filter(api_tombstone::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(api_tombstone::Column::RecordType.eq(kind))
         .filter(api_tombstone::Column::RecordPortableId.eq(portable))
         .all(tenant.transaction())
@@ -100,8 +101,7 @@ async fn person_identifier(
     tenant: &TenantTransaction,
     id: &str,
 ) -> Result<person::Model, OperationError> {
-    let query =
-        person::Entity::find().filter(person::Column::HouseholdId.eq(tenant.scope().household_id));
+    let query = person::Entity::find().in_tenant(tenant.scope().household_id);
     let query = if let Ok(id) = id.parse::<i64>() {
         query.filter(person::Column::Id.eq(id))
     } else {
@@ -119,14 +119,14 @@ async fn source(
 ) -> Result<(i64, String, bool), OperationError> {
     if kind == "schedule" {
         let row = schedule::Entity::find_by_id(id)
-            .filter(schedule::Column::HouseholdId.eq(tenant.scope().household_id))
+            .in_tenant(tenant.scope().household_id)
             .one(tenant.transaction())
             .await?
             .ok_or(OperationError::Forbidden)?;
         Ok((row.person_id, row.portable_id, row.retired_at.is_some()))
     } else {
         let row = person_medication::Entity::find_by_id(id)
-            .filter(person_medication::Column::HouseholdId.eq(tenant.scope().household_id))
+            .in_tenant(tenant.scope().household_id)
             .one(tenant.transaction())
             .await?
             .ok_or(OperationError::Forbidden)?;
@@ -232,7 +232,7 @@ async fn authorize(
         }
         "medication_take" => {
             let row = medication_take::Entity::find_by_id(id)
-                .filter(medication_take::Column::HouseholdId.eq(tenant.scope().household_id))
+                .in_tenant(tenant.scope().household_id)
                 .one(tenant.transaction())
                 .await?
                 .ok_or(OperationError::Forbidden)?;
@@ -304,7 +304,7 @@ async fn authorize(
         }
         "medication_pause_period" => {
             let row = pause_period::Entity::find_by_id(id)
-                .filter(pause_period::Column::HouseholdId.eq(tenant.scope().household_id))
+                .in_tenant(tenant.scope().household_id)
                 .one(tenant.transaction())
                 .await?
                 .ok_or(OperationError::Forbidden)?;
@@ -338,7 +338,7 @@ async fn authorize(
         }
         "medication_dose_occurrence" => {
             let row = dose_occurrence::Entity::find_by_id(id)
-                .filter(dose_occurrence::Column::HouseholdId.eq(tenant.scope().household_id))
+                .in_tenant(tenant.scope().household_id)
                 .one(tenant.transaction())
                 .await?
                 .ok_or(OperationError::Forbidden)?;
