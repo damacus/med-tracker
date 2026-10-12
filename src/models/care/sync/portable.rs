@@ -1,6 +1,7 @@
 use super::*;
 use crate::models::entities::{location, location_membership, membership, notification_preference};
 use chrono::NaiveDateTime;
+use loco_rs::model::TenantQueryExt;
 use sea_orm::Condition;
 use sha2::{Digest, Sha256};
 fn database_error(_: sea_orm::DbErr) -> OperationError {
@@ -101,7 +102,7 @@ pub(super) async fn visible_people(
     tenant: &TenantTransaction,
 ) -> Result<Vec<person::Model>, OperationError> {
     let query = person::Entity::find()
-        .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .order_by_asc(person::Column::Id);
     let query = if access::can_manage_household(tenant) {
         query
@@ -139,7 +140,7 @@ async fn scoped_payload(
     let mut people = visible_people(tenant).await?;
     if exporting && !access::can_manage_household(tenant) {
         let manageable = crate::models::entities::grant::Entity::find()
-            .filter(crate::models::entities::grant::Column::HouseholdId.eq(household_id))
+            .in_tenant(household_id)
             .filter(
                 crate::models::entities::grant::Column::HouseholdMembershipId
                     .eq(tenant.membership().id),
@@ -161,14 +162,14 @@ async fn scoped_payload(
     }
     let person_ids: Vec<i64> = people.iter().map(|person| person.id).collect();
     let schedules = schedule::Entity::find()
-        .filter(schedule::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(schedule::Column::PersonId.is_in(person_ids.clone()))
         .order_by_asc(schedule::Column::Id)
         .all(db)
         .await
         .map_err(database_error)?;
     let assignments = person_medication::Entity::find()
-        .filter(person_medication::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(person_medication::Column::PersonId.is_in(person_ids.clone()))
         .order_by_asc(person_medication::Column::Id)
         .all(db)
@@ -186,7 +187,7 @@ async fn scoped_payload(
                 .is_in(assignment_ids.iter().copied().collect::<Vec<_>>()),
         );
     let takes = medication_take::Entity::find()
-        .filter(medication_take::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(sources)
         .order_by_asc(medication_take::Column::Id)
         .all(db)
@@ -194,7 +195,7 @@ async fn scoped_payload(
         .map_err(database_error)?;
     let health = if include_health_events {
         health_event::Entity::find()
-            .filter(health_event::Column::HouseholdId.eq(household_id))
+            .in_tenant(household_id)
             .filter(health_event::Column::PersonId.is_in(person_ids.clone()))
             .order_by_asc(health_event::Column::Id)
             .all(db)
@@ -205,7 +206,7 @@ async fn scoped_payload(
     };
     let medication_ids = if exporting && !access::can_manage_household(tenant) {
         let health_links = health_event_medication::Entity::find()
-            .filter(health_event_medication::Column::HouseholdId.eq(household_id))
+            .in_tenant(household_id)
             .filter(
                 health_event_medication::Column::HealthEventId
                     .is_in(health.iter().map(|row| row.id).collect::<Vec<_>>()),
@@ -223,14 +224,14 @@ async fn scoped_payload(
         super::reading::visible_medication_ids(db, tenant).await?
     };
     let medications = medication::Entity::find()
-        .filter(medication::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(medication::Column::Id.is_in(medication_ids.iter().copied().collect::<Vec<_>>()))
         .order_by_asc(medication::Column::Id)
         .all(db)
         .await
         .map_err(database_error)?;
     let dosages = dosage::Entity::find()
-        .filter(dosage::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(
             dosage::Column::MedicationId.is_in(medication_ids.iter().copied().collect::<Vec<_>>()),
         )
@@ -239,7 +240,7 @@ async fn scoped_payload(
         .await
         .map_err(database_error)?;
     let memberships = location_membership::Entity::find()
-        .filter(location_membership::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(location_membership::Column::PersonId.is_in(person_ids.clone()))
         .all(db)
         .await
@@ -251,8 +252,7 @@ async fn scoped_payload(
         .chain(takes.iter().filter_map(|row| row.taken_from_location_id))
         .collect();
     location_ids.retain(|id| *id > 0);
-    let locations_query =
-        location::Entity::find().filter(location::Column::HouseholdId.eq(household_id));
+    let locations_query = location::Entity::find().in_tenant(household_id);
     let locations_query = if exporting && access::can_manage_household(tenant) {
         locations_query
     } else {
@@ -265,7 +265,7 @@ async fn scoped_payload(
         .await
         .map_err(database_error)?;
     let preferences = notification_preference::Entity::find()
-        .filter(notification_preference::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(notification_preference::Column::PersonId.is_in(person_ids.clone()))
         .order_by_asc(notification_preference::Column::Id)
         .all(db)
@@ -274,7 +274,7 @@ async fn scoped_payload(
     let v2 = format == "medtracker.portable.v2";
     let periods = if v2 {
         pause_period::Entity::find()
-            .filter(pause_period::Column::HouseholdId.eq(household_id))
+            .in_tenant(household_id)
             .filter(
                 Condition::any()
                     .add(
@@ -295,7 +295,7 @@ async fn scoped_payload(
     };
     let occurrences = if v2 {
         dose_occurrence::Entity::find()
-            .filter(dose_occurrence::Column::HouseholdId.eq(household_id))
+            .in_tenant(household_id)
             .filter(
                 Condition::any()
                     .add(
@@ -320,7 +320,7 @@ async fn scoped_payload(
         .flatten()
         .collect();
     let actor_memberships = membership::Entity::find()
-        .filter(membership::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(membership::Column::Id.is_in(actor_membership_ids.into_iter().collect::<Vec<_>>()))
         .all(db)
         .await
@@ -330,7 +330,7 @@ async fn scoped_payload(
         .filter_map(|row| row.person_id)
         .collect();
     let actor_people = person::Entity::find()
-        .filter(person::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(person::Column::Id.is_in(actor_person_ids.into_iter().collect::<Vec<_>>()))
         .all(db)
         .await

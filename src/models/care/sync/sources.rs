@@ -1,4 +1,5 @@
 use super::*;
+use loco_rs::model::TenantQueryExt;
 
 pub(super) async fn apply(
     tenant: &TenantTransaction,
@@ -69,7 +70,7 @@ pub(super) async fn apply(
     let (person_id, portable_id, clinical) = if schedule {
         treatments::lifecycle::authorize_update(tenant, id).await?;
         let row = schedule::Entity::find_by_id(record_id)
-            .filter(schedule::Column::HouseholdId.eq(tenant.scope().household_id))
+            .in_tenant(tenant.scope().household_id)
             .lock_exclusive()
             .one(tenant.transaction())
             .await?
@@ -86,7 +87,7 @@ pub(super) async fn apply(
     } else {
         assignments::authorize_update(tenant, id).await?;
         let row = person_medication::Entity::find_by_id(record_id)
-            .filter(person_medication::Column::HouseholdId.eq(tenant.scope().household_id))
+            .in_tenant(tenant.scope().household_id)
             .lock_exclusive()
             .one(tenant.transaction())
             .await?
@@ -112,7 +113,7 @@ pub(super) async fn apply(
     )
     .await?;
     let person = person::Entity::find_by_id(person_id)
-        .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::NotFound)?;

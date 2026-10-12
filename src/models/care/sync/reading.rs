@@ -1,4 +1,5 @@
 use super::*;
+use loco_rs::model::TenantQueryExt;
 use sea_orm::DatabaseTransaction;
 fn database_error(_: sea_orm::DbErr) -> OperationError {
     OperationError::Unavailable
@@ -39,7 +40,7 @@ pub async fn changes(tenant: &TenantTransaction, cursor: &str) -> Result<Value, 
         .await?
     };
     let events = api_change_event::Entity::find()
-        .filter(api_change_event::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(api_change_event::Column::OccurredAt.gte(since))
         .order_by_asc(api_change_event::Column::OccurredAt)
         .order_by_asc(api_change_event::Column::Id)
@@ -47,7 +48,7 @@ pub async fn changes(tenant: &TenantTransaction, cursor: &str) -> Result<Value, 
         .await
         .map_err(database_error)?;
     let tombstones = api_tombstone::Entity::find()
-        .filter(api_tombstone::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(api_tombstone::Column::DeletedAt.gte(since))
         .order_by_asc(api_tombstone::Column::DeletedAt)
         .order_by_asc(api_tombstone::Column::Id)
@@ -64,7 +65,7 @@ pub async fn changes(tenant: &TenantTransaction, cursor: &str) -> Result<Value, 
         .collect();
     let visible_person_ids: HashSet<i64> = people.iter().map(|person| person.id).collect();
     let visible_reassigned_events: HashSet<String> = health_event::Entity::find()
-        .filter(health_event::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(health_event::Column::PortableId.is_in(reassigned_ids))
         .all(db)
         .await
@@ -79,7 +80,7 @@ pub async fn changes(tenant: &TenantTransaction, cursor: &str) -> Result<Value, 
         .map(|event| event.record_id)
         .collect();
     let outcomes: HashMap<i64, dose_occurrence::Model> = dose_occurrence::Entity::find()
-        .filter(dose_occurrence::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(dose_occurrence::Column::Id.is_in(outcome_ids))
         .all(db)
         .await
@@ -100,7 +101,7 @@ pub async fn changes(tenant: &TenantTransaction, cursor: &str) -> Result<Value, 
         .filter_map(|row| row.medication_take_id)
         .collect();
     let outcome_schedules: HashMap<i64, String> = schedule::Entity::find()
-        .filter(schedule::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(schedule::Column::Id.is_in(outcome_schedule_ids))
         .all(db)
         .await
@@ -109,7 +110,7 @@ pub async fn changes(tenant: &TenantTransaction, cursor: &str) -> Result<Value, 
         .map(|row| (row.id, row.portable_id))
         .collect();
     let outcome_assignments: HashMap<i64, String> = person_medication::Entity::find()
-        .filter(person_medication::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(person_medication::Column::Id.is_in(outcome_assignment_ids))
         .all(db)
         .await
@@ -118,7 +119,7 @@ pub async fn changes(tenant: &TenantTransaction, cursor: &str) -> Result<Value, 
         .map(|row| (row.id, row.portable_id))
         .collect();
     let outcome_takes: HashMap<i64, String> = medication_take::Entity::find()
-        .filter(medication_take::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(medication_take::Column::Id.is_in(outcome_take_ids))
         .all(db)
         .await
@@ -132,7 +133,7 @@ pub async fn changes(tenant: &TenantTransaction, cursor: &str) -> Result<Value, 
         .map(|event| event.record_id)
         .collect();
     let dosage_parents: HashMap<i64, i64> = dosage::Entity::find()
-        .filter(dosage::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(dosage::Column::Id.is_in(dosage_ids))
         .all(db)
         .await
@@ -153,7 +154,7 @@ pub async fn changes(tenant: &TenantTransaction, cursor: &str) -> Result<Value, 
         .chain(dosage_parents.values().copied())
         .collect();
     let live_parents: HashSet<i64> = medication::Entity::find()
-        .filter(medication::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(medication::Column::Id.is_in(parent_ids.clone()))
         .all(db)
         .await
@@ -162,7 +163,7 @@ pub async fn changes(tenant: &TenantTransaction, cursor: &str) -> Result<Value, 
         .map(|row| row.id)
         .collect();
     let deleted_parents: HashMap<i64, Value> = api_tombstone::Entity::find()
-        .filter(api_tombstone::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(api_tombstone::Column::RecordType.eq("Medication"))
         .order_by_asc(api_tombstone::Column::DeletedAt)
         .order_by_asc(api_tombstone::Column::Id)
@@ -354,7 +355,7 @@ async fn visible_source_ids(
 ) -> Result<(HashSet<i64>, HashSet<i64>), OperationError> {
     let person_ids: Vec<i64> = people.iter().map(|person| person.id).collect();
     let schedule_ids: HashSet<i64> = schedule::Entity::find()
-        .filter(schedule::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(schedule::Column::PersonId.is_in(person_ids.clone()))
         .all(db)
         .await
@@ -363,7 +364,7 @@ async fn visible_source_ids(
         .map(|row| row.id)
         .collect();
     let assignment_ids: HashSet<i64> = person_medication::Entity::find()
-        .filter(person_medication::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(person_medication::Column::PersonId.is_in(person_ids))
         .all(db)
         .await
@@ -381,7 +382,7 @@ async fn visible_pause_period_ids(
     assignment_ids: &HashSet<i64>,
 ) -> Result<HashSet<i64>, OperationError> {
     let periods = pause_period::Entity::find()
-        .filter(pause_period::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(
             sea_orm::Condition::any()
                 .add(

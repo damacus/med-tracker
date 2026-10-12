@@ -1,4 +1,5 @@
 use super::*;
+use loco_rs::model::TenantQueryExt;
 
 pub async fn update(
     tenant: &TenantTransaction,
@@ -9,7 +10,7 @@ pub async fn update(
 ) -> Result<person::Model, OperationError> {
     let found = authorize_update(tenant, id).await?;
     let record = person::Entity::find_by_id(found.id)
-        .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .lock_exclusive()
         .one(tenant.transaction())
         .await?

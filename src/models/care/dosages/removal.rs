@@ -1,5 +1,6 @@
 use super::*;
 use crate::models::entities::{api_tombstone, person_medication, schedule};
+use loco_rs::model::TenantQueryExt;
 
 pub async fn destroy(
     tenant: &TenantTransaction,
@@ -13,12 +14,12 @@ pub async fn destroy(
     let row = record(tenant, id, true).await?;
     let household_id = tenant.scope().household_id;
     let references = person_medication::Entity::find()
-        .filter(person_medication::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(person_medication::Column::SourceDosageOptionId.eq(row.id))
         .count(tenant.transaction())
         .await?;
     let schedules = schedule::Entity::find()
-        .filter(schedule::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(schedule::Column::SourceDosageOptionId.eq(row.id))
         .count(tenant.transaction())
         .await?;

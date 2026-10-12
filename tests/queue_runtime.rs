@@ -13,6 +13,34 @@ struct Fixture {
     config: PostgresQueueConfig,
 }
 
+#[tokio::test]
+async fn test_queue_starts_when_database_handshake_takes_over_half_a_second() {
+    let fixture = Fixture::new().await;
+    let mut config = Config::new(&Environment::Test).unwrap();
+    let Some(QueueConfig::Postgres(queue_config)) = config.queue.as_mut() else {
+        panic!("PostgreSQL queue required")
+    };
+    let mut uri = url::Url::parse(&fixture.config.uri).unwrap();
+    let upstream = format!("127.0.0.1:{}", uri.port().unwrap());
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    uri.set_port(Some(listener.local_addr().unwrap().port()))
+        .unwrap();
+    queue_config.uri = uri.to_string();
+    let relay = tokio::spawn(async move {
+        let (mut incoming, _) = listener.accept().await.unwrap();
+        tokio::time::sleep(std::time::Duration::from_millis(750)).await;
+        let mut outgoing = tokio::net::TcpStream::connect(upstream).await.unwrap();
+        let _ = tokio::io::copy_bidirectional(&mut incoming, &mut outgoing).await;
+    });
+    let result = pg::create_provider(queue_config).await;
+    relay.abort();
+    let _ = relay.await;
+    let queue = result.expect("test queue must tolerate a bounded slow database handshake");
+    queue.shutdown().unwrap();
+    drop(queue);
+    fixture.close().await;
+}
+
 impl Fixture {
     async fn new() -> Self {
         assert_eq!(std::env::var("MEDTRACKER_OWNED_DATABASE").unwrap(), "1");

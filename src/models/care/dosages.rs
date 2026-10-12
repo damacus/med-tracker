@@ -1,3 +1,4 @@
+use loco_rs::model::TenantQueryExt;
 mod inventory;
 mod persistence;
 mod reading;
@@ -54,8 +55,7 @@ async fn parent(
     id: &str,
     lock: bool,
 ) -> Result<medication::Model, OperationError> {
-    let query = medication::Entity::find()
-        .filter(medication::Column::HouseholdId.eq(tenant.scope().household_id));
+    let query = medication::Entity::find().in_tenant(tenant.scope().household_id);
     let query = if let Ok(id) = id.parse::<i64>() {
         query.filter(medication::Column::Id.eq(id))
     } else {
@@ -73,8 +73,7 @@ async fn record(
     id: &str,
     lock: bool,
 ) -> Result<dosage::Model, OperationError> {
-    let query =
-        dosage::Entity::find().filter(dosage::Column::HouseholdId.eq(tenant.scope().household_id));
+    let query = dosage::Entity::find().in_tenant(tenant.scope().household_id);
     let query = if let Ok(id) = id.parse::<i64>() {
         query.filter(dosage::Column::Id.eq(id))
     } else {

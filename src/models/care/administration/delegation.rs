@@ -1,5 +1,6 @@
 use super::*;
 use crate::models::access::PersonAccess;
+use loco_rs::model::TenantQueryExt;
 use sea_orm::sea_query::{Expr, ExprTrait};
 
 fn snapshot(row: &carer_relationship::Model) -> Value {
@@ -8,14 +9,14 @@ fn snapshot(row: &carer_relationship::Model) -> Value {
 pub async fn list(tenant: &TenantTransaction) -> Result<Value, OperationError> {
     authorize(tenant).await?;
     let people: HashMap<i64, person::Model> = person::Entity::find()
-        .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .all(tenant.transaction())
         .await?
         .into_iter()
         .map(|row| (row.id, row))
         .collect();
     let rows = carer_relationship::Entity::find()
-        .filter(carer_relationship::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .order_by_asc(carer_relationship::Column::Id)
         .all(tenant.transaction())
         .await?;
@@ -37,7 +38,7 @@ pub async fn list(tenant: &TenantTransaction) -> Result<Value, OperationError> {
 pub async fn options(tenant: &TenantTransaction) -> Result<Value, OperationError> {
     access::recheck(tenant).await?;
     let grants = grant::Entity::find()
-        .filter(grant::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(grant::Column::HouseholdMembershipId.eq(tenant.membership().id))
         .filter(grant::Column::RevokedAt.is_null())
         .filter(
@@ -51,7 +52,7 @@ pub async fn options(tenant: &TenantTransaction) -> Result<Value, OperationError
         .all(tenant.transaction())
         .await?;
     let rows = person::Entity::find()
-        .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(
             person::Column::Id.is_in(grants.iter().map(|row| row.person_id).collect::<Vec<_>>()),
         )
@@ -83,12 +84,12 @@ pub async fn assign(
         .ok_or(OperationError::NotFound)?;
     access::recheck(tenant).await?;
     let carer = person::Entity::find_by_id(carer_id)
-        .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .one(tenant.transaction())
         .await?
         .ok_or_else(|| invalid("carer", "must belong to the relationship household"))?;
     let patient = person::Entity::find_by_id(patient_id)
-        .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .one(tenant.transaction())
         .await?
         .ok_or_else(|| invalid("patient", "must belong to the relationship household"))?;
@@ -106,7 +107,7 @@ pub async fn assign(
         _ => return Err(invalid("relationship_type", "is invalid")),
     };
     let existing = carer_relationship::Entity::find()
-        .filter(carer_relationship::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(carer_relationship::Column::CarerId.eq(carer_id))
         .filter(carer_relationship::Column::PatientId.eq(patient_id))
         .lock_exclusive()
@@ -153,7 +154,7 @@ pub async fn assign(
     }
     if let Some(account_id) = carer.account_id {
         let member = membership::Entity::find()
-            .filter(membership::Column::HouseholdId.eq(tenant.scope().household_id))
+            .in_tenant(tenant.scope().household_id)
             .filter(membership::Column::AccountId.eq(account_id))
             .lock_exclusive()
             .one(tenant.transaction())
@@ -202,7 +203,7 @@ async fn patient_grant(
     provenance: Option<&CredentialProvenance>,
 ) -> Result<(), OperationError> {
     let active = grant::Entity::find()
-        .filter(grant::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(grant::Column::HouseholdMembershipId.eq(member_id))
         .filter(grant::Column::PersonId.eq(relationship.patient_id))
         .filter(grant::Column::RevokedAt.is_null())
@@ -252,7 +253,7 @@ async fn upsert(
     provenance: Option<&CredentialProvenance>,
 ) -> Result<(), OperationError> {
     let query = grant::Entity::find()
-        .filter(grant::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(grant::Column::HouseholdMembershipId.eq(member_id))
         .filter(grant::Column::PersonId.eq(person_id));
     let active = query
@@ -323,14 +324,14 @@ pub async fn deactivate(
 ) -> Result<carer_relationship::Model, OperationError> {
     authorize(tenant).await?;
     let row = carer_relationship::Entity::find_by_id(id)
-        .filter(carer_relationship::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .lock_exclusive()
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::NotFound)?;
     if !(row.carer_id == row.patient_id && row.relationship_type.as_deref() == Some("self")) {
         let grants = grant::Entity::find()
-            .filter(grant::Column::HouseholdId.eq(tenant.scope().household_id))
+            .in_tenant(tenant.scope().household_id)
             .filter(grant::Column::CarerRelationshipId.eq(id))
             .filter(grant::Column::RevokedAt.is_null())
             .lock_exclusive()
@@ -366,7 +367,7 @@ pub async fn reactivate(
 ) -> Result<carer_relationship::Model, OperationError> {
     authorize(tenant).await?;
     let row = carer_relationship::Entity::find_by_id(id)
-        .filter(carer_relationship::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::NotFound)?;

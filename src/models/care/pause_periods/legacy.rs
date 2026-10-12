@@ -1,4 +1,5 @@
 use super::*;
+use loco_rs::model::TenantQueryExt;
 
 async fn source_path(
     tenant: &TenantTransaction,
@@ -8,12 +9,12 @@ async fn source_path(
     let portable = if let Ok(id) = id.parse::<i64>() {
         match kind {
             Kind::Schedule => schedule::Entity::find_by_id(id)
-                .filter(schedule::Column::HouseholdId.eq(tenant.scope().household_id))
+                .in_tenant(tenant.scope().household_id)
                 .one(tenant.transaction())
                 .await?
                 .map(|row| row.portable_id),
             Kind::Assignment => person_medication::Entity::find_by_id(id)
-                .filter(person_medication::Column::HouseholdId.eq(tenant.scope().household_id))
+                .in_tenant(tenant.scope().household_id)
                 .one(tenant.transaction())
                 .await?
                 .map(|row| row.portable_id),

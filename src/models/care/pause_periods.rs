@@ -1,3 +1,4 @@
+use loco_rs::model::TenantQueryExt;
 mod legacy;
 mod persistence;
 mod reading;
@@ -121,7 +122,7 @@ async fn find_source(
     let row = match kind {
         Kind::Schedule => {
             let mut query = schedule::Entity::find()
-                .filter(schedule::Column::HouseholdId.eq(tenant.scope().household_id))
+                .in_tenant(tenant.scope().household_id)
                 .filter(schedule::Column::PortableId.eq(id));
             if !retired {
                 query = query.filter(schedule::Column::RetiredAt.is_null());
@@ -134,7 +135,7 @@ async fn find_source(
         }
         Kind::Assignment => {
             let mut query = person_medication::Entity::find()
-                .filter(person_medication::Column::HouseholdId.eq(tenant.scope().household_id))
+                .in_tenant(tenant.scope().household_id)
                 .filter(person_medication::Column::PortableId.eq(id));
             if !retired {
                 query = query.filter(person_medication::Column::RetiredAt.is_null());
@@ -158,14 +159,14 @@ async fn source_for_period(
 ) -> Result<Source, OperationError> {
     let source = if let Some(id) = period.schedule_id {
         schedule::Entity::find_by_id(id)
-            .filter(schedule::Column::HouseholdId.eq(tenant.scope().household_id))
+            .in_tenant(tenant.scope().household_id)
             .lock_exclusive()
             .one(tenant.transaction())
             .await?
             .map(Source::Schedule)
     } else if let Some(id) = period.person_medication_id {
         person_medication::Entity::find_by_id(id)
-            .filter(person_medication::Column::HouseholdId.eq(tenant.scope().household_id))
+            .in_tenant(tenant.scope().household_id)
             .lock_exclusive()
             .one(tenant.transaction())
             .await?

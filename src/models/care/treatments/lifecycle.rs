@@ -1,5 +1,6 @@
 use super::*;
 use chrono::Datelike;
+use loco_rs::model::TenantQueryExt;
 use sea_orm::{IntoActiveModel, PaginatorTrait, QueryOrder};
 use serde::Deserialize;
 
@@ -17,7 +18,7 @@ pub async fn list(tenant: &TenantTransaction, page: Pagination) -> Result<Value,
         .person_id
         .ok_or(OperationError::Forbidden)?;
     let actor = person::Entity::find_by_id(person_id)
-        .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::Forbidden)?;

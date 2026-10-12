@@ -1,4 +1,5 @@
 use super::*;
+use loco_rs::model::TenantQueryExt;
 use sea_orm::sea_query::{Expr, ExprTrait};
 
 pub(super) async fn replay_matches(
@@ -89,7 +90,7 @@ pub(super) async fn existing_take(
     let parsed = Uuid::parse_str(client_uuid)
         .map_err(|_| error(ErrorKind::Validation, "invalid client_uuid"))?;
     let candidates = medication_take::Entity::find()
-        .filter(medication_take::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(Expr::cust(migration::CANONICAL_CLIENT_UUID_SQL).eq(parsed.simple().to_string()))
         .all(db)
         .await

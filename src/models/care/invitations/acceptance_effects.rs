@@ -2,6 +2,7 @@ use super::*;
 use crate::models::entities::{
     api_change_event, carer_relationship, grant, membership, person, security_audit_event, version,
 };
+use loco_rs::model::TenantQueryExt;
 use sea_orm::{DatabaseTransaction, IntoActiveModel, PaginatorTrait};
 use std::collections::{HashMap, HashSet};
 use uuid::Uuid;
@@ -82,7 +83,7 @@ pub(super) async fn apply_to_person(
     .await?;
     let additional = household_invitation_grant::Entity::find()
         .filter(household_invitation_grant::Column::HouseholdInvitationId.eq(invitation.id))
-        .filter(household_invitation_grant::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .all(db)
         .await?;
     let mut latest_grants = HashMap::new();
@@ -102,7 +103,7 @@ pub(super) async fn apply_to_person(
             .map(|row| row.person_id)
             .collect::<HashSet<_>>();
         let patients = person::Entity::find()
-            .filter(person::Column::HouseholdId.eq(household_id))
+            .in_tenant(household_id)
             .filter(person::Column::Id.is_in(patient_ids.iter().copied()))
             .all(db)
             .await?;
@@ -136,7 +137,7 @@ pub(super) async fn apply_to_person(
                 .await?;
         }
         let relationships = carer_relationship::Entity::find()
-            .filter(carer_relationship::Column::HouseholdId.eq(household_id))
+            .in_tenant(household_id)
             .filter(carer_relationship::Column::CarerId.eq(new_person.id))
             .filter(carer_relationship::Column::PatientId.is_in(patient_ids.iter().copied()))
             .all(db)
@@ -182,7 +183,7 @@ pub(super) async fn apply_to_person(
         grant::Entity::insert_many(grants).exec(db).await?;
     }
     let grant_count = grant::Entity::find()
-        .filter(grant::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(grant::Column::HouseholdMembershipId.eq(new_membership.id))
         .filter(grant::Column::RevokedAt.is_null())
         .count(db)
@@ -228,7 +229,7 @@ async fn record_acceptance_effects(
 ) -> Result<(), OperationError> {
     let household_id = member.household_id;
     let grants = grant::Entity::find()
-        .filter(grant::Column::HouseholdId.eq(household_id))
+        .in_tenant(household_id)
         .filter(grant::Column::HouseholdMembershipId.eq(member.id))
         .filter(grant::Column::RevokedAt.is_null())
         .all(db)

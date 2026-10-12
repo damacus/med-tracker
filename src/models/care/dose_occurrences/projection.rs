@@ -1,4 +1,5 @@
 use super::*;
+use loco_rs::model::TenantQueryExt;
 
 #[derive(Clone)]
 pub(super) struct Occurrence {
@@ -49,10 +50,10 @@ pub(super) async fn projected(
 ) -> Result<Vec<Occurrence>, ApiError> {
     let (scan_start, scan_end) = scan_bounds(source, start, end);
     let mut query = dose_occurrence::Entity::find()
-        .filter(dose_occurrence::Column::HouseholdId.eq(match source {
+        .in_tenant(match source {
             Source::Schedule(row) => row.household_id,
             Source::Assignment(row) => row.household_id,
-        }))
+        })
         .filter(dose_occurrence::Column::WindowStartsOn.lte(scan_end))
         .filter(
             Condition::any()

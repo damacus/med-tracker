@@ -1,5 +1,6 @@
 use super::*;
 use crate::models::entities::version;
+use loco_rs::model::TenantQueryExt;
 use sea_orm::PaginatorTrait;
 
 fn invalid() -> OperationError {
@@ -128,7 +129,7 @@ pub(super) async fn apply(
                 && id.parse::<i64>().is_err()
             {
                 let option = dosage::Entity::find()
-                    .filter(dosage::Column::HouseholdId.eq(tenant.scope().household_id))
+                    .in_tenant(tenant.scope().household_id)
                     .filter(dosage::Column::PortableId.eq(id))
                     .one(tenant.transaction())
                     .await?

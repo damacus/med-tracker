@@ -1,4 +1,5 @@
 use super::*;
+use loco_rs::model::TenantQueryExt;
 
 pub(super) struct StockVersionChange<'a> {
     pub(super) item_type: &'a str,
@@ -90,7 +91,7 @@ pub(super) async fn record_domain_audit(
     .await
     .map_err(database_error)?;
     let person = crate::models::entities::person::Entity::find_by_id(proposed.source.person_id)
-        .filter(person::Column::HouseholdId.eq(context.scope().household_id))
+        .in_tenant(context.scope().household_id)
         .one(db)
         .await
         .map_err(database_error)?

@@ -1,4 +1,5 @@
 use super::*;
+use loco_rs::model::TenantQueryExt;
 use sea_orm::PaginatorTrait;
 
 fn invalid(message: &str) -> OperationError {
@@ -20,8 +21,7 @@ pub(super) async fn apply(
         {
             return Err(OperationError::NotFound);
         }
-        let query = pause_period::Entity::find()
-            .filter(pause_period::Column::HouseholdId.eq(tenant.scope().household_id));
+        let query = pause_period::Entity::find().in_tenant(tenant.scope().household_id);
         let before = query.clone().count(tenant.transaction()).await?;
         let (body, etag) =
             pause_periods::create(tenant, &envelope(operation), Some(provenance)).await?;
@@ -30,7 +30,7 @@ pub(super) async fn apply(
     } else {
         let id = operation.id.as_deref().ok_or(OperationError::NotFound)?;
         let row = pause_period::Entity::find()
-            .filter(pause_period::Column::HouseholdId.eq(tenant.scope().household_id))
+            .in_tenant(tenant.scope().household_id)
             .filter(pause_period::Column::PortableId.eq(id))
             .lock_exclusive()
             .one(tenant.transaction())
@@ -38,7 +38,7 @@ pub(super) async fn apply(
             .ok_or(OperationError::NotFound)?;
         pause_periods::authorize_resume(tenant, id).await?;
         let schedules = schedule::Entity::find()
-            .filter(schedule::Column::HouseholdId.eq(tenant.scope().household_id))
+            .in_tenant(tenant.scope().household_id)
             .filter(schedule::Column::Id.is_in(row.schedule_id))
             .all(tenant.transaction())
             .await?
@@ -46,7 +46,7 @@ pub(super) async fn apply(
             .map(|row| (row.id, row))
             .collect();
         let assignments = person_medication::Entity::find()
-            .filter(person_medication::Column::HouseholdId.eq(tenant.scope().household_id))
+            .in_tenant(tenant.scope().household_id)
             .filter(person_medication::Column::Id.is_in(row.person_medication_id))
             .all(tenant.transaction())
             .await?
@@ -75,7 +75,7 @@ pub(super) async fn apply(
         .as_str()
         .ok_or(OperationError::Unavailable)?;
     let row = pause_period::Entity::find()
-        .filter(pause_period::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(pause_period::Column::PortableId.eq(portable_id))
         .one(tenant.transaction())
         .await?
@@ -171,8 +171,7 @@ async fn reorder(
         return Err(invalid("Direction must be up or down"));
     }
     let id = operation.id.as_deref().ok_or(OperationError::NotFound)?;
-    let query = person_medication::Entity::find()
-        .filter(person_medication::Column::HouseholdId.eq(tenant.scope().household_id));
+    let query = person_medication::Entity::find().in_tenant(tenant.scope().household_id);
     let query = if let Ok(id) = id.parse::<i64>() {
         query.filter(person_medication::Column::Id.eq(id))
     } else {
@@ -185,7 +184,7 @@ async fn reorder(
         .ok_or(OperationError::NotFound)?;
     access::require_person_access(tenant, source.person_id, PersonAccess::Manage).await?;
     let query = person_medication::Entity::find()
-        .filter(person_medication::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .filter(person_medication::Column::PersonId.eq(source.person_id))
         .filter(person_medication::Column::RetiredAt.is_null());
     let query = if direction == Some("up") {
@@ -203,7 +202,7 @@ async fn reorder(
         return Ok(());
     };
     let person = person::Entity::find_by_id(source.person_id)
-        .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
+        .in_tenant(tenant.scope().household_id)
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::NotFound)?;

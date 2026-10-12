@@ -3,6 +3,7 @@ use crate::models::{
     access, authorization,
     entities::{grant, membership, person},
 };
+use loco_rs::model::TenantQueryExt;
 use sea_orm::sea_query::{Expr, ExprTrait};
 use sea_orm::{DatabaseTransaction, QuerySelect};
 use std::collections::HashSet;
@@ -26,7 +27,7 @@ pub(super) async fn authorize(
         .await
         .map_err(|_| super::acceptance::unavailable())?;
     let additional = household_invitation_grant::Entity::find()
-        .filter(household_invitation_grant::Column::HouseholdId.eq(invitation.household_id))
+        .in_tenant(invitation.household_id)
         .filter(household_invitation_grant::Column::HouseholdInvitationId.eq(invitation.id))
         .lock_exclusive()
         .all(db)
@@ -47,7 +48,7 @@ pub(super) async fn authorize(
     let mut manageable = access::granted_people(inviter);
     manageable.and_where(Expr::col(grant::Column::AccessLevel).eq("manage"));
     let people = person::Entity::find()
-        .filter(person::Column::HouseholdId.eq(invitation.household_id))
+        .in_tenant(invitation.household_id)
         .filter(person::Column::Id.is_in(ids.iter().copied()))
         .filter(person::Column::Id.in_subquery(manageable))
         .filter(person::Column::PersonType.is_in([1, 2]))

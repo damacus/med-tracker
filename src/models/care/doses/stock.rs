@@ -1,4 +1,5 @@
 use super::*;
+use loco_rs::model::TenantQueryExt;
 
 pub(crate) fn same_stock_signature(left: &medication::Model, right: &medication::Model) -> bool {
     left.name == right.name
@@ -14,13 +15,13 @@ pub(super) async fn decrement_stock(
 ) -> Result<(), ApiError> {
     lock_row(db, "medications", proposed.selected.id).await?;
     let selected = medication::Entity::find_by_id(proposed.selected.id)
-        .filter(medication::Column::HouseholdId.eq(context.scope().household_id))
+        .in_tenant(context.scope().household_id)
         .one(db)
         .await
         .map_err(database_error)?
         .ok_or(OperationError::NotFound)?;
     let tracked = dosage::Entity::find()
-        .filter(dosage::Column::HouseholdId.eq(context.scope().household_id))
+        .in_tenant(context.scope().household_id)
         .filter(dosage::Column::MedicationId.eq(selected.id))
         .filter(dosage::Column::CurrentSupply.is_not_null())
         .all(db)
@@ -73,7 +74,7 @@ pub(super) async fn decrement_stock(
     let source_option = if let Some(id) = proposed.source.source_dosage_option_id {
         Some(
             dosage::Entity::find_by_id(id)
-                .filter(dosage::Column::HouseholdId.eq(context.scope().household_id))
+                .in_tenant(context.scope().household_id)
                 .one(db)
                 .await
                 .map_err(database_error)?
@@ -97,7 +98,7 @@ pub(super) async fn decrement_stock(
     })?;
     lock_row(db, "dosages", selected_option.id).await?;
     let selected_option = dosage::Entity::find_by_id(selected_option.id)
-        .filter(dosage::Column::HouseholdId.eq(context.scope().household_id))
+        .in_tenant(context.scope().household_id)
         .one(db)
         .await
         .map_err(database_error)?
@@ -145,7 +146,7 @@ pub(super) async fn decrement_stock(
     )
     .await?;
     let total = dosage::Entity::find()
-        .filter(dosage::Column::HouseholdId.eq(context.scope().household_id))
+        .in_tenant(context.scope().household_id)
         .filter(dosage::Column::MedicationId.eq(proposed.selected.id))
         .filter(dosage::Column::CurrentSupply.is_not_null())
         .all(db)

@@ -13,6 +13,7 @@ use crate::models::{
     errors::OperationError,
 };
 use chrono::Utc;
+use loco_rs::model::TenantActiveModelExt;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QuerySelect, Set};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -69,13 +70,14 @@ pub async fn create(
     let (name, description) = validate(&attributes)?;
     let now = Utc::now().naive_utc();
     let record = location::ActiveModel {
-        household_id: Set(tenant.scope().household_id),
         name: Set(name),
         description: Set(description),
         created_at: Set(now),
         updated_at: Set(now),
         ..Default::default()
     }
+    .set_tenant(tenant.scope().household_id)
+    .map_err(|_| OperationError::Unavailable)?
     .insert(tenant.transaction())
     .await
     .map_err(|error| {

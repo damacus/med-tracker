@@ -1,4 +1,5 @@
 use super::*;
+use loco_rs::model::TenantQueryExt;
 
 pub(super) fn identifier<'a>(
     value: &'a Value,
@@ -370,7 +371,7 @@ pub(super) async fn apply_attributes(
         )
     {
         let matches = dosage::Entity::find()
-            .filter(dosage::Column::HouseholdId.eq(context.scope().household_id))
+            .in_tenant(context.scope().household_id)
             .filter(dosage::Column::MedicationId.eq(medication_id))
             .filter(dosage::Column::Amount.eq(amount))
             .filter(dosage::Column::Unit.eq(unit))

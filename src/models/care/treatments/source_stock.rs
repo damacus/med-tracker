@@ -1,6 +1,7 @@
 use super::projection::SourceRef;
 use super::*;
 use crate::models::entities::person_medication;
+use loco_rs::model::TenantQueryExt;
 use sea_orm::{Condition, ConnectionTrait, DbBackend, Statement};
 use std::collections::{HashMap, HashSet};
 pub(super) async fn source_stock(
@@ -31,7 +32,7 @@ pub(super) async fn source_stock(
                 person_medication::Column::PersonId,
                 person_medication::Column::MedicationId,
             ])
-            .filter(person_medication::Column::HouseholdId.eq(household_id))
+            .in_tenant(household_id)
             .filter(person_medication::Column::PersonId.is_in(person_ids.clone()))
             .into_tuple()
             .all(db)
@@ -40,7 +41,7 @@ pub(super) async fn source_stock(
         let schedules: Vec<(i64, i64)> = schedule::Entity::find()
             .select_only()
             .columns([schedule::Column::PersonId, schedule::Column::MedicationId])
-            .filter(schedule::Column::HouseholdId.eq(household_id))
+            .in_tenant(household_id)
             .filter(schedule::Column::PersonId.is_in(person_ids))
             .into_tuple()
             .all(db)
