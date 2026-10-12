@@ -3,10 +3,11 @@ use crate::models::entities::{api_tombstone, location_membership, medication};
 use loco_rs::model::TenantQueryExt;
 use sea_orm::QueryOrder;
 
-async fn record_membership_destroy(
+pub(super) async fn record_membership_destroy(
     tenant: &TenantTransaction,
     record: &location_membership::Model,
     provenance: Option<&CredentialProvenance>,
+    policy_class: &str,
 ) -> Result<(), OperationError> {
     let before = json!({"id":record.id,"household_id":record.household_id,"location_id":record.location_id,"person_id":record.person_id,"created_at":record.created_at,"updated_at":record.updated_at});
     let changes: serde_json::Map<String, Value> = before
@@ -16,7 +17,7 @@ async fn record_membership_destroy(
         .map(|(key, value)| (key.clone(), json!([value, null])))
         .collect();
     let mut context = crate::models::audit_context::household(tenant, provenance);
-    context["policy_class"] = json!("LocationPolicy");
+    context["policy_class"] = json!(policy_class);
     context["policy_query"] = json!("destroy?");
     version::ActiveModel {
         item_type: Set("LocationMembership".into()),
@@ -153,7 +154,7 @@ pub async fn retire(
         .await
         .map_err(|_| OperationError::Unavailable)?;
     for membership in memberships {
-        record_membership_destroy(tenant, &membership, provenance).await?;
+        record_membership_destroy(tenant, &membership, provenance, "LocationPolicy").await?;
         location_membership::Entity::delete_by_id(membership.id)
             .exec(tenant.transaction())
             .await

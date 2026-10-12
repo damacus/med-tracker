@@ -319,6 +319,14 @@ pub fn routes() -> Routes {
                 .delete(locations::destroy),
         )
         .add(
+            "/{household_id}/locations/{location_id}/location_memberships",
+            post(locations::create_membership),
+        )
+        .add(
+            "/{household_id}/locations/{location_id}/location_memberships/{id}",
+            delete(locations::destroy_membership),
+        )
+        .add(
             "/{household_id}/medications",
             get(medication_reads::index).post(medication_crud::create),
         )

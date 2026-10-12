@@ -1,7 +1,9 @@
 use super::*;
 mod lifecycle;
+mod memberships;
 use crate::models::care::locations::{self, KeyedResponse, SavedResponse};
 pub(super) use lifecycle::{destroy, index, show, update};
+pub(super) use memberships::{create_membership, destroy_membership};
 
 pub(super) async fn keyed_replay(
     tenant: &TenantTransaction,
