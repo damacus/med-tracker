@@ -43,6 +43,7 @@ use serde_json::{Map, Value, json};
 use sha2::{Digest, Sha256};
 use std::{collections::BTreeMap, str::FromStr, sync::Arc};
 use uuid::Uuid;
+pub(crate) use writing::browser_list;
 pub use writing::{RangeQuery, authorize, change, list};
 
 pub(crate) struct ReportOccurrence {

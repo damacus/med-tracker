@@ -511,6 +511,13 @@ tasks:
       vars: [CARE_DATABASE_URL]
     cmds:
       - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -f tests/fixtures/browser-offday-schedule.sql'
+  taper-base-unit:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1
+        -c "UPDATE public.schedules SET dose_unit='mg' WHERE id=83001 AND household_id=72001"
   change-taper-step:
     requires:
       vars: [CARE_DATABASE_URL]
