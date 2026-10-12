@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/playwright:v1.63.0-noble AS dependencies
+FROM mcr.microsoft.com/playwright:v1.64.0-noble AS dependencies
 WORKDIR /web
 COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts
