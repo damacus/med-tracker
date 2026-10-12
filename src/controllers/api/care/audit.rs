@@ -45,6 +45,19 @@ impl RequestAudit {
             query: "show?",
         }
     }
+    pub fn portable_import(action: &'static str) -> Self {
+        Self {
+            method: "POST",
+            controller: "api/v1/portable_imports",
+            action,
+            policy: "HouseholdPolicy",
+            query: if action == "create" {
+                "create?"
+            } else {
+                "dry_run?"
+            },
+        }
+    }
     pub fn mobile_snapshot() -> Self {
         Self {
             method: "GET",

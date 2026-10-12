@@ -18,6 +18,7 @@ pub mod orders;
 pub mod pause_periods;
 pub mod people;
 pub mod portable_crypto;
+pub mod portable_imports;
 pub mod profile_export;
 pub mod push_subscriptions;
 pub mod report_pdf;
