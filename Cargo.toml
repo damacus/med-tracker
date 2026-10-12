@@ -12,17 +12,17 @@ default-run = "med-tracker"
 
 [dependencies]
 loco-rs = { version = "=1.2.0", default-features = false, features = [
-    "cli",
-    "with-db",
-    "worker",
+	"cli",
+	"with-db",
+	"worker",
 ] }
 async-trait = "0.1"
 aws-sdk-s3 = { version = "=1.152.0", default-features = false, features = [
-    "default-https-client",
-    "http-1x",
-    "rt-tokio",
-    "rustls",
-    "behavior-version-latest",
+	"default-https-client",
+	"http-1x",
+	"rt-tokio",
+	"rustls",
+	"behavior-version-latest",
 ] }
 csv = "=1.4.0"
 md-5 = "=0.11.0"
@@ -34,8 +34,8 @@ aes-gcm = "=0.11.1"
 base64 = "=0.23.1"
 bcrypt = "=0.19.3"
 better-auth = { git = "https://github.com/better-auth-rs/better-auth-rs", rev = "9f91cd7fdb8a5f73a9c69d5c56d363468a7dc281", default-features = false, features = [
-    "axum",
-    "rustls",
+	"axum",
+	"rustls",
 ] }
 better-auth-core = { git = "https://github.com/better-auth-rs/better-auth-rs", rev = "9f91cd7fdb8a5f73a9c69d5c56d363468a7dc281" }
 openidconnect = "=4.0.1"
@@ -43,9 +43,9 @@ cedar-policy = { version = "=4.13.0", default-features = false }
 headers = "=0.4.2"
 hex = "=0.4.3"
 image = { version = "=0.25.10", default-features = false, features = [
-    "png",
-    "jpeg",
-    "webp",
+	"png",
+	"jpeg",
+	"webp",
 ] }
 hmac = "=0.13.0"
 totp-rs = { version = "=6.0.0", features = ["otpauth"] }
@@ -57,11 +57,11 @@ subtle = "=2.6.1"
 pbkdf2 = "=0.13.0"
 webauthn-rs-core = "=0.5.5"
 webauthn-rs = { version = "=0.5.5", features = [
-    "danger-allow-state-serialisation",
-    "conditional-ui",
+	"danger-allow-state-serialisation",
+	"conditional-ui",
 ] }
 web-push = { version = "=0.11.0", default-features = false, features = [
-    "hyper-client",
+	"hyper-client",
 ] }
 serde_cbor_2 = "0.13"
 getrandom = "=0.4.3"
@@ -71,40 +71,41 @@ chrono-tz = "0.10"
 axum = { version = "0.8", features = ["multipart"] }
 axum_session = "=0.21.0"
 axum_session_sqlx = { version = "=0.11.0", default-features = false, features = [
-    "postgres",
-    "tls-rustls",
+	"postgres",
+	"tls-rustls",
 ] }
 axum_csrf = { version = "=0.11.0", features = ["layer"] }
 tower-http = { version = "=0.7.1", default-features = false, features = [
-    "csrf",
+	"csrf",
 ] }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
+reqwest = { version = "=0.13.5", default-features = false, features = ["json"] }
+scraper = "=0.25.0"
 sha2 = "0.11"
 uuid = { version = "1", features = ["v4"] }
 sea-orm = { version = "=2.0.4", default-features = false, features = [
-    "macros",
-    "runtime-tokio-rustls",
-    "sqlx-postgres",
-    "with-chrono",
-    "with-json",
-    "with-rust_decimal",
+	"macros",
+	"runtime-tokio-rustls",
+	"sqlx-postgres",
+	"with-chrono",
+	"with-json",
+	"with-rust_decimal",
 ] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 tracing = "=0.1.44"
 slug = "=0.1.6"
 sghtmltopdf = { version = "=0.5.1", default-features = false, features = [
-    "cli",
+	"cli",
 ] }
 serde_yaml_ng = "=0.10.0"
 migration = { path = "migration" }
 
 [dev-dependencies]
 loco-rs = { version = "=1.2.0", default-features = false, features = [
-    "testing",
+	"testing",
 ] }
 regex = "=1.13.1"
-reqwest = { version = "=0.13.5", default-features = false, features = ["json"] }
 
 [features]
 cutover-rehearsal = []

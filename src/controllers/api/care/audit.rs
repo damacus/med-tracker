@@ -45,6 +45,15 @@ impl RequestAudit {
             query: "show?",
         }
     }
+    pub fn ai_medication_suggestions() -> Self {
+        Self {
+            method: "POST",
+            controller: "api/v1/ai_medication_suggestions",
+            action: "create",
+            policy: "MedicationPolicy",
+            query: "create?",
+        }
+    }
     pub fn portable_import(action: &'static str) -> Self {
         Self {
             method: "POST",
