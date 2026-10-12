@@ -9,6 +9,73 @@ pub(super) struct RequestAudit {
 }
 
 impl RequestAudit {
+    pub fn me() -> Self {
+        Self {
+            method: "GET",
+            controller: "api/v1/me",
+            action: "show",
+            policy: "MePolicy",
+            query: "show?",
+        }
+    }
+    pub fn ui_capabilities() -> Self {
+        Self {
+            method: "GET",
+            controller: "api/v1/ui_capabilities",
+            action: "show",
+            policy: "HouseholdPolicy",
+            query: "show?",
+        }
+    }
+    pub fn data_export() -> Self {
+        Self {
+            method: "GET",
+            controller: "api/v1/data_exports",
+            action: "show",
+            policy: "HouseholdPolicy",
+            query: "show?",
+        }
+    }
+    pub fn portable_export() -> Self {
+        Self {
+            method: "GET",
+            controller: "api/v1/portable_exports",
+            action: "show",
+            policy: "HouseholdPolicy",
+            query: "show?",
+        }
+    }
+    pub fn ai_medication_suggestions() -> Self {
+        Self {
+            method: "POST",
+            controller: "api/v1/ai_medication_suggestions",
+            action: "create",
+            policy: "MedicationPolicy",
+            query: "create?",
+        }
+    }
+    pub fn portable_import(action: &'static str) -> Self {
+        Self {
+            method: "POST",
+            controller: "api/v1/portable_imports",
+            action,
+            policy: "HouseholdPolicy",
+            query: if action == "create" {
+                "create?"
+            } else {
+                "dry_run?"
+            },
+        }
+    }
+    pub fn mobile_snapshot() -> Self {
+        Self {
+            method: "GET",
+            controller: "api/v1/mobile_snapshots",
+            action: "show",
+            policy: "HouseholdPolicy",
+            query: "show?",
+        }
+    }
     pub fn medication_lookup() -> Self {
         Self {
             method: "GET",
@@ -62,6 +129,19 @@ impl RequestAudit {
         }
     }
 
+    pub fn review_prompt(method: &'static str, action: &'static str) -> Self {
+        Self {
+            method,
+            controller: "api/v1/medication_review_prompts",
+            action,
+            policy: "MedicationReviewPromptPolicy",
+            query: match action {
+                "update" => "update?",
+                "show" => "show?",
+                _ => "index?",
+            },
+        }
+    }
     pub fn report(is_reviews: bool) -> Self {
         Self {
             method: "GET",
@@ -143,6 +223,7 @@ impl RequestAudit {
                 "show" => "show?",
                 "pause" => "pause?",
                 "resume" => "resume?",
+                "reorder" => "update?",
                 _ => "index?",
             },
         }
@@ -153,6 +234,19 @@ impl RequestAudit {
             controller: "api/v1/push_subscriptions",
             action,
             policy: "PushSubscriptionPolicy",
+            query: if action == "create" {
+                "create?"
+            } else {
+                "destroy?"
+            },
+        }
+    }
+    pub fn native_device_token(method: &'static str, action: &'static str) -> Self {
+        Self {
+            method,
+            controller: "api/v1/native_device_tokens",
+            action,
+            policy: "NativeDeviceTokenPolicy",
             query: if action == "create" {
                 "create?"
             } else {
@@ -212,6 +306,8 @@ impl RequestAudit {
         let (controller, policy) = match resource {
             "settings" => ("api/v1/admin/settings", "HouseholdPolicy"),
             "memberships" => ("api/v1/admin/memberships", "HouseholdMembershipPolicy"),
+            "audit_logs" => ("api/v1/admin/audit_logs", "AuditLogPolicy"),
+            "app_tokens" => ("api/v1/admin/app_tokens", "HouseholdPolicy"),
             _ => (
                 "api/v1/admin/person_access_grants",
                 "PersonAccessGrantPolicy",
@@ -247,6 +343,19 @@ impl RequestAudit {
     }
     pub fn location_create() -> Self {
         Self::location("POST", "create")
+    }
+    pub fn location_membership(method: &'static str, action: &'static str) -> Self {
+        Self {
+            method,
+            controller: "api/v1/location_memberships",
+            action,
+            policy: "LocationMembershipPolicy",
+            query: if action == "create" {
+                "create?"
+            } else {
+                "destroy?"
+            },
+        }
     }
     pub fn location(method: &'static str, action: &'static str) -> Self {
         Self {

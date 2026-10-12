@@ -4,7 +4,7 @@ use crate::models::care::locations::SavedResponse;
 use crate::models::profile::{self, Changes, Snapshot};
 use axum::http::{HeaderValue, header};
 
-fn no_store(mut response: Response) -> Response {
+pub(super) fn no_store(mut response: Response) -> Response {
     response
         .headers_mut()
         .insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));

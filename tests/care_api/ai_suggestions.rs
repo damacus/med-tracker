@@ -1,0 +1,253 @@
+use super::*;
+
+fn suggestions_url(app: &Application) -> String {
+    format!(
+        "{}/api/v1/households/72001/ai_medication_suggestions",
+        app.origin
+    )
+}
+
+async fn upgrade_plan(app: &Application) {
+    app.fixture
+        .admin
+        .execute_unprepared(
+            "UPDATE households SET subscription_plan = 'family_plus' WHERE id = 72001",
+        )
+        .await
+        .unwrap();
+}
+
+async fn suggestion_audit(app: &Application) -> Option<Value> {
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT event, object, household_id FROM versions WHERE item_type = 'AiMedicationSuggestion'",
+        ))
+        .await
+        .unwrap()?;
+    let object: Value =
+        serde_json::from_str(&row.try_get::<String>("", "object").unwrap()).unwrap();
+    Some(json!({
+        "event": row.try_get::<String>("", "event").unwrap(),
+        "household_id": row.try_get::<i64>("", "household_id").unwrap(),
+        "object": object,
+    }))
+}
+
+#[tokio::test]
+async fn ai_medication_suggestions_require_authentication_and_access() {
+    let app = Application::new_with_ai_help(true).await;
+    upgrade_plan(&app).await;
+    let unauthenticated = app
+        .client
+        .post(suggestions_url(&app))
+        .json(&json!({"medication": {"name": "Synthetic medicine"}}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(unauthenticated.status().as_u16(), 401);
+
+    app.fixture
+        .admin
+        .execute_unprepared(
+            "UPDATE household_memberships SET role='member' WHERE id=74001;
+             UPDATE person_access_grants SET revoked_at=now() WHERE household_membership_id=74001",
+        )
+        .await
+        .unwrap();
+    let token = app.token().await;
+    let denied = app
+        .client
+        .post(suggestions_url(&app))
+        .bearer_auth(&token)
+        .json(&json!({"medication": {"name": "Synthetic medicine"}}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(denied.status().as_u16(), 403);
+    assert_eq!(
+        denied.json::<Value>().await.unwrap()["error"]["code"],
+        "forbidden"
+    );
+}
+
+#[tokio::test]
+async fn ai_medication_suggestions_requires_enabled_paid_feature() {
+    let app = Application::new_with_ai_help(true).await;
+    let token = app.token().await;
+    let unpaid = app
+        .client
+        .post(suggestions_url(&app))
+        .bearer_auth(&token)
+        .json(&json!({"medication": {"name": "Synthetic medicine"}}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(unpaid.status().as_u16(), 404);
+    assert_eq!(
+        unpaid.json::<Value>().await.unwrap()["error"]["code"],
+        "not_found"
+    );
+
+    let disabled = Application::new_with_ai_help(false).await;
+    upgrade_plan(&disabled).await;
+    let disabled_token = disabled.token().await;
+    let disabled_response = disabled
+        .client
+        .post(format!(
+            "{}/api/v1/households/72001/ai_medication_suggestions",
+            disabled.origin
+        ))
+        .bearer_auth(&disabled_token)
+        .json(&json!({"medication": {"name": "Synthetic medicine"}}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(disabled_response.status().as_u16(), 404);
+    disabled.close().await;
+}
+
+#[tokio::test]
+async fn ai_medication_suggestions_validates_the_identity_shape() {
+    let app = Application::new_with_ai_help(true).await;
+    upgrade_plan(&app).await;
+    let token = app.token().await;
+
+    for body in [
+        json!({"unlisted": true}),
+        json!({"medication": {"name": "Synthetic medicine", "unlisted": "reject"}}),
+        json!({"medication": {"name": 42}}),
+        json!([1, 2, 3]),
+    ] {
+        let response = app
+            .client
+            .post(suggestions_url(&app))
+            .bearer_auth(&token)
+            .json(&body)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status().as_u16(), 422, "{body}");
+        let payload = response.json::<Value>().await.unwrap();
+        assert_eq!(payload["error"]["code"], "validation_failed");
+        assert_eq!(
+            payload["error"]["errors"]["medication"],
+            json!(["is invalid"])
+        );
+    }
+}
+
+#[tokio::test]
+async fn ai_medication_suggestions_returns_a_draft_and_records_the_suggestion() {
+    let app = Application::new_with_ai_help(true).await;
+    upgrade_plan(&app).await;
+    let token = app.token().await;
+    let response = app
+        .client
+        .post(suggestions_url(&app))
+        .bearer_auth(&token)
+        .json(&json!({"medication": {"name": "Synthetic medicine"}}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status().as_u16(), 200);
+    let payload = response.json::<Value>().await.unwrap();
+    assert!(payload["data"]["medication"].is_object());
+    assert!(payload["data"]["doses"].is_array());
+    assert!(payload["data"]["sources"].is_array());
+    assert!(payload["data"]["errors"].is_array());
+
+    let audit = suggestion_audit(&app).await.expect("suggestion audit");
+    assert_eq!(audit["event"], "ai_medication/suggestion");
+    assert_eq!(audit["household_id"], 72001);
+    assert!(
+        audit["object"]["identity_hash"]
+            .as_str()
+            .is_some_and(|hash| hash.len() == 64)
+    );
+    assert!(audit["object"]["source_count"].is_number());
+    assert!(audit["object"]["dose_count"].is_number());
+    assert!(audit["object"]["error_count"].is_number());
+    assert!(audit["object"]["result_status"].is_string());
+}
+
+const CALPOL_SEED_URL: &str =
+    "https://www.calpol.co.uk/our-products/calpol-sixplus-oral-suspension-paracetamol";
+const CALPOL_EVIDENCE: &str = "Each 5 ml contains 250 mg paracetamol. Give every 4 to 6 hours as needed. Do not give more than 4 doses in 24 hours.";
+
+fn ai_mock_server() -> u16 {
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    std::thread::spawn(move || {
+        for stream in listener.incoming() {
+            let Ok(mut stream) = stream else { continue };
+            let mut buffer = [0_u8; 8192];
+            let Ok(read) = std::io::Read::read(&mut stream, &mut buffer) else {
+                continue;
+            };
+            let request = String::from_utf8_lossy(&buffer[..read]);
+            let (content_type, body) = if request.starts_with("GET /fetch") {
+                (
+                    "text/html",
+                    format!(
+                        "<html><head><title>CALPOL SixPlus Oral Suspension</title></head><body>{CALPOL_EVIDENCE}</body></html>"
+                    ),
+                )
+            } else {
+                let draft = json!({
+                    "medication": {"name": "Calpol SixPlus", "description": "Each 5 ml contains 250 mg paracetamol."},
+                    "doses": [{
+                        "amount": "5", "unit": "ml",
+                        "default_max_daily_doses": "4",
+                        "default_min_hours_between_doses": "4",
+                        "default_dose_cycle": "daily",
+                        "evidence": {"url": CALPOL_SEED_URL, "text": CALPOL_EVIDENCE}
+                    }],
+                    "sources": [{"url": CALPOL_SEED_URL}],
+                    "errors": []
+                });
+                (
+                    "application/json",
+                    json!({"choices":[{"message":{"content":draft.to_string()}}]}).to_string(),
+                )
+            };
+            let response = format!(
+                "HTTP/1.1 200 OK\r\ncontent-type: {content_type}\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}",
+                body.len()
+            );
+            let _ = std::io::Write::write_all(&mut stream, response.as_bytes());
+        }
+    });
+    port
+}
+
+#[tokio::test]
+async fn ai_medication_suggestions_validates_doses_against_fetched_evidence() {
+    unsafe { std::env::set_var("OPENAI_API_KEY", "synthetic-ai-key") };
+    let port = ai_mock_server();
+    let app = Application::new_with_ai_generation(port).await;
+    upgrade_plan(&app).await;
+    let token = app.token().await;
+    let response = app
+        .client
+        .post(suggestions_url(&app))
+        .bearer_auth(&token)
+        .json(&json!({"medication": {"name": "calpol sixplus"}}))
+        .send()
+        .await
+        .unwrap();
+    let status = response.status().as_u16();
+    let payload: Value = response.json().await.unwrap();
+    let audit = suggestion_audit(&app).await;
+    app.close().await;
+    assert_eq!(status, 200, "body: {payload}");
+    let doses = payload["data"]["doses"].as_array().unwrap();
+    assert_eq!(doses.len(), 1, "body: {payload}");
+    assert_eq!(doses[0]["amount"], "5");
+    assert_eq!(doses[0]["unit"], "ml");
+    assert_eq!(doses[0]["evidence"]["url"], CALPOL_SEED_URL);
+    assert_eq!(payload["data"]["sources"][0]["url"], CALPOL_SEED_URL);
+    assert_eq!(audit.unwrap()["object"]["dose_count"], 1);
+}

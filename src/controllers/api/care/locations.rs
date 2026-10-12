@@ -1,7 +1,9 @@
 use super::*;
 mod lifecycle;
+mod memberships;
 use crate::models::care::locations::{self, KeyedResponse, SavedResponse};
 pub(super) use lifecycle::{destroy, index, show, update};
+pub(super) use memberships::{create_membership, destroy_membership};
 
 pub(super) async fn keyed_replay(
     tenant: &TenantTransaction,
@@ -19,22 +21,26 @@ pub(super) async fn keyed_replay(
             code: "idempotency_key_reused".into(),
             details: json!({"message":"Idempotency key has already been used for a different request"}),
         })),
-        KeyedResponse::Replay(saved) => {
-            let saved_status =
-                u16::try_from(saved.response_status).map_err(|_| response::unavailable())?;
-            let status = StatusCode::from_u16(saved_status).map_err(|_| response::unavailable())?;
-            let etag = saved
-                .response_headers
-                .get("ETag")
-                .and_then(Value::as_str)
-                .map(str::to_owned);
-            let mut body = saved.response_body;
-            if let Some(error) = body.get_mut("error").and_then(Value::as_object_mut) {
-                error.insert("request_id".into(), json!(tenant.scope().request_id));
-            }
-            Ok(Some((status, body, etag, true)))
-        }
+        KeyedResponse::Replay(saved) => Ok(Some(replay_response(tenant, saved)?)),
     }
+}
+
+pub(super) fn replay_response(
+    tenant: &TenantTransaction,
+    saved: Box<crate::models::entities::api_idempotency_key::Model>,
+) -> std::result::Result<(StatusCode, Value, Option<String>, bool), response::Failure> {
+    let saved_status = u16::try_from(saved.response_status).map_err(|_| response::unavailable())?;
+    let status = StatusCode::from_u16(saved_status).map_err(|_| response::unavailable())?;
+    let etag = saved
+        .response_headers
+        .get("ETag")
+        .and_then(Value::as_str)
+        .map(str::to_owned);
+    let mut body = saved.response_body;
+    if let Some(error) = body.get_mut("error").and_then(Value::as_object_mut) {
+        error.insert("request_id".into(), json!(tenant.scope().request_id));
+    }
+    Ok((status, body, etag, true))
 }
 
 pub(super) async fn create(

@@ -1,7 +1,9 @@
 mod administration;
+mod ai_suggestions;
 mod assignments;
 mod audit;
 mod avatar;
+mod data_exports;
 mod dosages;
 mod dose_history;
 mod dose_occurrences;
@@ -9,22 +11,27 @@ mod health_events;
 mod input;
 mod invitations;
 mod locations;
+mod me;
 mod medication_crud;
 mod medication_lookup;
 mod medication_reads;
+mod native_device_tokens;
 mod notification_preferences;
 mod orders;
 mod pause_periods;
 mod people;
+mod portable_imports;
 mod profile;
 mod projection;
 mod push_subscriptions;
 mod removals;
 mod reports;
 mod response;
+mod review_prompts;
 mod schedule_lifecycle;
 mod sync;
 mod treatments;
+mod ui_capabilities;
 
 use crate::models::{
     access::TenantTransaction,
@@ -85,6 +92,16 @@ pub fn routes() -> Routes {
     Routes::new()
         .prefix("/api/v1/households")
         .add(
+            "/{household_id}/me",
+            get(me::show).layer(axum::middleware::map_response(|response| async {
+                profile::no_store(response)
+            })),
+        )
+        .add(
+            "/{household_id}/ui_capabilities",
+            get(ui_capabilities::show),
+        )
+        .add(
             "/{household_id}/medication_lookup",
             get(medication_lookup::show),
         )
@@ -106,6 +123,16 @@ pub fn routes() -> Routes {
                 .put(health_events::update),
         )
         .add(
+            "/{household_id}/medication_review_prompts",
+            get(review_prompts::index),
+        )
+        .add(
+            "/{household_id}/medication_review_prompts/{id}",
+            get(review_prompts::show)
+                .patch(review_prompts::update)
+                .put(review_prompts::update),
+        )
+        .add(
             "/{household_id}/profile",
             get(profile::show)
                 .patch(profile::update)
@@ -116,6 +143,32 @@ pub fn routes() -> Routes {
             get(notification_preferences::show)
                 .patch(notification_preferences::update)
                 .put(notification_preferences::update),
+        )
+        .add(
+            "/{household_id}/data_exports/{mode}",
+            get(data_exports::show),
+        )
+        .add(
+            "/{household_id}/portable_export",
+            get(data_exports::portable_export),
+        )
+        .add(
+            "/{household_id}/ai_medication_suggestions",
+            post(ai_suggestions::create),
+        )
+        .add(
+            "/{household_id}/portable_imports",
+            post(portable_imports::apply)
+                .layer(axum::extract::DefaultBodyLimit::max(24 * 1024 * 1024)),
+        )
+        .add(
+            "/{household_id}/portable_imports/dry_run",
+            post(portable_imports::dry_run)
+                .layer(axum::extract::DefaultBodyLimit::max(24 * 1024 * 1024)),
+        )
+        .add(
+            "/{household_id}/mobile_snapshot",
+            get(data_exports::mobile_snapshot),
         )
         .add("/{household_id}/sync/snapshot", get(sync::snapshot))
         .add("/{household_id}/sync/changes", get(sync::changes))
@@ -185,6 +238,10 @@ pub fn routes() -> Routes {
             patch(pause_periods::legacy::resume_assignment),
         )
         .add(
+            "/{household_id}/person_medications/{id}/reorder",
+            patch(pause_periods::legacy::reorder_assignment),
+        )
+        .add(
             "/{household_id}/medication_pause_periods",
             get(pause_periods::index).post(pause_periods::create),
         )
@@ -207,6 +264,14 @@ pub fn routes() -> Routes {
             post(push_subscriptions::create).delete(push_subscriptions::destroy),
         )
         .add(
+            "/{household_id}/native_device_tokens",
+            post(native_device_tokens::create),
+        )
+        .add(
+            "/{household_id}/native_device_tokens/{id}",
+            delete(native_device_tokens::destroy),
+        )
+        .add(
             "/{household_id}/schedules",
             get(schedule_lifecycle::index).post(treatments::create),
         )
@@ -223,6 +288,18 @@ pub fn routes() -> Routes {
         .add(
             "/{household_id}/dosage_options/{id}",
             get(dosages::show).patch(dosages::patch).put(dosages::put),
+        )
+        .add(
+            "/{household_id}/admin/app_tokens",
+            get(administration::app_tokens_index).post(administration::app_tokens_create),
+        )
+        .add(
+            "/{household_id}/admin/app_tokens/{id}",
+            delete(administration::app_tokens_destroy),
+        )
+        .add(
+            "/{household_id}/admin/audit_logs",
+            get(administration::audit_logs_index),
         )
         .add(
             "/{household_id}/admin/invitations",
@@ -278,6 +355,14 @@ pub fn routes() -> Routes {
                 .patch(locations::update)
                 .put(locations::update)
                 .delete(locations::destroy),
+        )
+        .add(
+            "/{household_id}/locations/{location_id}/location_memberships",
+            post(locations::create_membership),
+        )
+        .add(
+            "/{household_id}/locations/{location_id}/location_memberships/{id}",
+            delete(locations::destroy_membership),
         )
         .add(
             "/{household_id}/medications",

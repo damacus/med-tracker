@@ -19,6 +19,43 @@ pub(super) fn digest(
         body.as_object()?.clone()
     };
     let household = tenant.scope().household_id;
+    let locations_prefix = format!("/api/v1/households/{household}/locations/");
+    if let Some(rest) = path.strip_prefix(&locations_prefix) {
+        let mut parts = rest.split('/');
+        let location_id = parts.next().unwrap_or_default();
+        if parts.next() != Some("location_memberships") {
+            return None;
+        }
+        let member_id = parts.next();
+        if location_id.parse::<i64>().is_err()
+            || member_id.is_some_and(|id| id.parse::<i64>().is_err())
+            || parts.next().is_some()
+        {
+            return None;
+        }
+        if member_id.is_none() {
+            if params.keys().any(|key| key != "location_membership") {
+                return None;
+            }
+            let attributes = params.get("location_membership")?.as_object()?;
+            if attributes.keys().any(|key| key != "person_id") {
+                return None;
+            }
+        }
+        params.insert("household_id".into(), json!(household.to_string()));
+        params.insert("location_id".into(), json!(location_id));
+        if let Some(id) = member_id {
+            params.insert("id".into(), json!(id));
+        }
+        let request = RequestDigest {
+            method,
+            path,
+            params: Value::Object(params),
+        };
+        return serde_json::to_vec(&request)
+            .ok()
+            .map(|bytes| hex::encode(Sha256::digest(bytes)));
+    }
     let collections = [
         (
             "location",

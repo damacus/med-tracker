@@ -101,12 +101,21 @@ pub(crate) async fn values(
     records: &[person::Model],
     zone: Tz,
 ) -> Result<Vec<Value>, OperationError> {
+    values_in(tenant, tenant.scope().household_id, records, zone).await
+}
+
+pub(crate) async fn values_in(
+    tenant: &TenantTransaction,
+    household_id: i64,
+    records: &[person::Model],
+    zone: Tz,
+) -> Result<Vec<Value>, OperationError> {
     if records.is_empty() {
         return Ok(vec![]);
     }
     let ids: Vec<i64> = records.iter().map(|row| row.id).collect();
     let links = location_membership::Entity::find()
-        .in_tenant(tenant.scope().household_id)
+        .in_tenant(household_id)
         .filter(location_membership::Column::PersonId.is_in(ids.clone()))
         .order_by_asc(location_membership::Column::Id)
         .all(tenant.transaction())
@@ -116,7 +125,7 @@ pub(crate) async fn values(
         HashMap::new()
     } else {
         location::Entity::find()
-            .in_tenant(tenant.scope().household_id)
+            .in_tenant(household_id)
             .filter(location::Column::Id.is_in(location_ids))
             .all(tenant.transaction())
             .await?
@@ -126,7 +135,7 @@ pub(crate) async fn values(
     };
     let preferences: HashMap<i64, notification_preference::Model> =
         notification_preference::Entity::find()
-            .in_tenant(tenant.scope().household_id)
+            .in_tenant(household_id)
             .filter(notification_preference::Column::PersonId.is_in(ids))
             .all(tenant.transaction())
             .await?

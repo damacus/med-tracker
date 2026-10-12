@@ -13,7 +13,9 @@ use crate::models::{
     errors::OperationError,
 };
 use chrono::Utc;
-pub use legacy::{pause_assignment, pause_schedule, resume_assignment, resume_schedule};
+pub use legacy::{
+    pause_assignment, pause_schedule, reorder_assignment, resume_assignment, resume_schedule,
+};
 pub use reading::{Pagination, list};
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, Condition, DatabaseTransaction, EntityTrait, PaginatorTrait,
