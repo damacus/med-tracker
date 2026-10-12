@@ -89,7 +89,7 @@ async fn claim(
         .try_get::<Option<NaiveDateTime>>("", "expires_at")?
         .map(|time| DateTime::<Utc>::from_naive_utc_and_offset(time, Utc));
     let subscription_id: Option<i64> = row.try_get("", "subscription_id")?;
-    let Some((intended_at, expires_at, subscription_id)) =
+    let Some((_intended_at, expires_at, subscription_id)) =
         intended_at.zip(expires_at).and_then(|(intended, expires)| {
             subscription_id.map(|subscription| (intended, expires, subscription))
         })
@@ -114,7 +114,7 @@ async fn claim(
             return Ok(None);
         }
     }
-    let intent = plans(&tenant, intended_at)
+    let intent = plans(&tenant, now)
         .await?
         .into_iter()
         .find(|intent| intent.key == key);

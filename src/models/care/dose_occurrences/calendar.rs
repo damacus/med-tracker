@@ -66,7 +66,7 @@ fn scheduled_time(date: NaiveDate, value: &str) -> Option<NaiveDateTime> {
     scheduled_time_in_zone(date, value, zone())
 }
 
-pub(super) fn scheduled_time_in_zone(
+pub(crate) fn scheduled_time_in_zone(
     date: NaiveDate,
     value: &str,
     time_zone: chrono_tz::Tz,

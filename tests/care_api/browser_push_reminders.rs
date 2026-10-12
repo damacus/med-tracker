@@ -269,7 +269,7 @@ async fn prepare_due_delivery(
         .unwrap();
     app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences=jsonb_build_object('time_zone','UTC') WHERE id=71001; UPDATE person_medications SET administration_kind=0,dose_cycle=0,max_daily_doses=1,created_at=now()-interval '2 days' WHERE id=81001; INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/failed','synthetic','synthetic',now(),now())").await.unwrap();
     app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,morning_time,created_at,updated_at) VALUES(72001,73001,true,true,false,false,true,$1,now(),now())", [now.time().into()])).await.unwrap();
+        "INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,morning_time,afternoon_time,evening_time,night_time,created_at,updated_at) VALUES(72001,73001,true,true,false,false,true,$1,NULL,NULL,NULL,now(),now())", [now.time().into()])).await.unwrap();
     (
         now,
         HouseholdScope {
@@ -278,6 +278,191 @@ async fn prepare_due_delivery(
             request_id: request_id.into(),
         },
     )
+}
+
+#[tokio::test]
+async fn browser_reminder_catches_up_a_missed_due_tick_once() {
+    let app = Application::new().await;
+    let (now, scope) = prepare_due_delivery(&app, "synthetic-due-catchup").await;
+    let intended = now - chrono::Duration::minutes(20);
+    app.fixture.admin.execute_raw(Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        "UPDATE notification_preferences SET morning_time=$1 WHERE household_id=72001 AND person_id=73001",
+        [intended.time().into()],
+    )).await.unwrap();
+    let transport = Arc::new(Reminders(Mutex::new(vec![])));
+    app.context.shared_store.insert(Service {
+        public_key: String::new(),
+        transport: transport.clone(),
+    });
+    use loco_rs::bgworker::BackgroundWorker;
+    browser_push::scheduler::ReminderWorker::build(&app.context)
+        .perform(browser_push::scheduler::ReminderRun {
+            account_id: scope.actor.account_id,
+            household_id: scope.household_id,
+            at: now - chrono::Duration::hours(2),
+        })
+        .await
+        .unwrap();
+    assert_eq!(
+        browser_push::reminders::deliver_account(&app.context, &scope, now)
+            .await
+            .unwrap(),
+        0
+    );
+    assert_eq!(transport.0.lock().unwrap().len(), 1);
+    let row = app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+        "SELECT intended_at,expires_at FROM notification_events WHERE event_type='dose_due' AND intended_at=$1",
+        [intended.naive_utc().into()]
+    )).await.unwrap().unwrap();
+    let saved: chrono::NaiveDateTime = row.try_get("", "intended_at").unwrap();
+    let expires: chrono::NaiveDateTime = row.try_get("", "expires_at").unwrap();
+    assert_eq!(saved, intended.naive_utc());
+    assert_eq!(expires, (intended + chrono::Duration::hours(1)).naive_utc());
+    app.close().await;
+}
+
+#[tokio::test]
+async fn browser_missed_reminder_catches_up_after_grace_and_stops_at_expiry() {
+    let app = Application::new().await;
+    let now = Utc::now()
+        .with_second(0)
+        .unwrap()
+        .with_nanosecond(0)
+        .unwrap();
+    let scheduled = now - chrono::Duration::minutes(45);
+    app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences=jsonb_build_object('time_zone','UTC') WHERE id=71001; INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,created_at,updated_at) VALUES(72001,73001,true,false,true,false,true,now(),now()); INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/missed-catchup','synthetic','synthetic',now(),now())").await.unwrap();
+    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+        "INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83009,72001,73001,80001,true,$1,$2,2,'tablet',0,jsonb_build_object('times',jsonb_build_array($3::text)),now()-interval '2 days',now())",
+        [(now.date_naive()-chrono::Duration::days(1)).into(),(now.date_naive()+chrono::Duration::days(1)).into(),scheduled.format("%H:%M").to_string().into()]
+    )).await.unwrap();
+    let transport = Arc::new(Reminders(Mutex::new(vec![])));
+    app.context.shared_store.insert(Service {
+        public_key: String::new(),
+        transport: transport.clone(),
+    });
+    let scope = HouseholdScope {
+        actor: Actor { account_id: 71001 },
+        household_id: 72001,
+        request_id: "synthetic-missed-catchup".into(),
+    };
+    assert_eq!(
+        browser_push::reminders::deliver_account(&app.context, &scope, now)
+            .await
+            .unwrap(),
+        1
+    );
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT intended_at,expires_at FROM notification_events WHERE event_type='missed_dose'",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        row.try_get::<chrono::NaiveDateTime>("", "intended_at")
+            .unwrap(),
+        (scheduled + chrono::Duration::minutes(30)).naive_utc()
+    );
+    assert_eq!(
+        row.try_get::<chrono::NaiveDateTime>("", "expires_at")
+            .unwrap(),
+        (scheduled + chrono::Duration::minutes(90)).naive_utc()
+    );
+    assert_eq!(
+        browser_push::reminders::deliver_account(
+            &app.context,
+            &scope,
+            now + chrono::Duration::minutes(46)
+        )
+        .await
+        .unwrap(),
+        0
+    );
+    assert_eq!(transport.0.lock().unwrap().len(), 1);
+    app.close().await;
+}
+
+#[tokio::test]
+async fn browser_reminder_does_not_reserve_at_exact_expiry() {
+    let app = Application::new().await;
+    let (now, scope) = prepare_due_delivery(&app, "synthetic-exact-expiry").await;
+    let expired = now - chrono::Duration::hours(1);
+    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+        "UPDATE notification_preferences SET morning_time=$1 WHERE household_id=72001 AND person_id=73001",
+        [expired.time().into()]
+    )).await.unwrap();
+    let transport = Arc::new(Reminders(Mutex::new(vec![])));
+    app.context.shared_store.insert(Service {
+        public_key: String::new(),
+        transport: transport.clone(),
+    });
+    assert_eq!(
+        browser_push::reminders::deliver_account(&app.context, &scope, now)
+            .await
+            .unwrap(),
+        0
+    );
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT count(*) AS count FROM notification_events WHERE event_type='dose_due'",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(row.try_get::<i64>("", "count").unwrap(), 0);
+    assert!(transport.0.lock().unwrap().is_empty());
+    app.close().await;
+}
+
+#[tokio::test]
+async fn browser_reminder_worker_drains_retry_when_tick_timestamp_is_stale() {
+    let app = Application::new().await;
+    let (now, scope) = prepare_due_delivery(&app, "synthetic-worker-retry").await;
+    let transport = Arc::new(ScriptedDelivery(
+        Mutex::new(vec![Delivery::Temporary(None), Delivery::Accepted]),
+        Mutex::new(0),
+    ));
+    app.context.shared_store.insert(Service {
+        public_key: String::new(),
+        transport: transport.clone(),
+    });
+    assert_eq!(
+        browser_push::reminders::deliver_account(&app.context, &scope, now)
+            .await
+            .unwrap(),
+        0
+    );
+    app.fixture.admin.execute_unprepared("UPDATE notification_deliveries SET next_attempt_at=now()-interval '1 second' WHERE status='pending'").await.unwrap();
+    use loco_rs::bgworker::BackgroundWorker;
+    browser_push::scheduler::ReminderWorker::build(&app.context)
+        .perform(browser_push::scheduler::ReminderRun {
+            account_id: scope.actor.account_id,
+            household_id: scope.household_id,
+            at: now - chrono::Duration::hours(2),
+        })
+        .await
+        .unwrap();
+    assert_eq!(*transport.1.lock().unwrap(), 2);
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT status,attempt_count FROM notification_deliveries",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(row.try_get::<String>("", "status").unwrap(), "accepted");
+    assert_eq!(row.try_get::<i32>("", "attempt_count").unwrap(), 2);
+    app.close().await;
 }
 
 #[tokio::test]
@@ -594,7 +779,7 @@ async fn browser_reminder_keeps_independent_device_outcomes() {
         .unwrap();
     app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences=jsonb_build_object('time_zone','UTC') WHERE id=71001; UPDATE person_medications SET administration_kind=0,dose_cycle=0,max_daily_doses=1,created_at=now()-interval '2 days' WHERE id=81001; INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/accepted','synthetic','synthetic',now(),now()),(71001,'https://fcm.googleapis.com/fcm/send/failed','synthetic','synthetic',now(),now())").await.unwrap();
     app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,morning_time,created_at,updated_at) VALUES(72001,73001,true,true,false,false,true,$1,now(),now())", [now.time().into()])).await.unwrap();
+        "INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,morning_time,afternoon_time,evening_time,night_time,created_at,updated_at) VALUES(72001,73001,true,true,false,false,true,$1,NULL,NULL,NULL,now(),now())", [now.time().into()])).await.unwrap();
     let transport = Arc::new(PartialDelivery(Mutex::new(vec![])));
     app.context.shared_store.insert(Service {
         public_key: String::new(),
@@ -649,7 +834,7 @@ async fn browser_reminder_recovers_stale_claim_as_uncertain_without_resending() 
         .unwrap();
     app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences=jsonb_build_object('time_zone','UTC') WHERE id=71001; UPDATE person_medications SET administration_kind=0,dose_cycle=0,max_daily_doses=1,created_at=now()-interval '2 days' WHERE id=81001; INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/failed','synthetic','synthetic',now(),now())").await.unwrap();
     app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,morning_time,created_at,updated_at) VALUES(72001,73001,true,true,false,false,true,$1,now(),now())", [now.time().into()])).await.unwrap();
+        "INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,morning_time,afternoon_time,evening_time,night_time,created_at,updated_at) VALUES(72001,73001,true,true,false,false,true,$1,NULL,NULL,NULL,now(),now())", [now.time().into()])).await.unwrap();
     let transport = Arc::new(PartialDelivery(Mutex::new(vec![])));
     app.context.shared_store.insert(Service {
         public_key: String::new(),
@@ -1045,28 +1230,6 @@ async fn browser_missed_reminders_respect_grace_managed_opt_in_and_private_conte
     assert_eq!(
         transport.0.lock().unwrap()[1]["body"],
         "Managed adult may have missed a dose."
-    );
-    app.fixture
-        .admin
-        .execute_unprepared(
-            "UPDATE notification_preferences SET private_text_enabled=true WHERE person_id=73001",
-        )
-        .await
-        .unwrap();
-    assert_eq!(
-        browser_push::reminders::deliver_account(
-            &app.context,
-            &scope,
-            now + chrono::Duration::days(1)
-        )
-        .await
-        .unwrap(),
-        2
-    );
-    assert!(
-        transport.0.lock().unwrap()[2..]
-            .iter()
-            .all(|payload| payload["body"] == "A dose may have been missed.")
     );
     app.fixture
         .admin

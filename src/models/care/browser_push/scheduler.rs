@@ -40,7 +40,7 @@ impl BackgroundWorker<ReminderRun> for ReminderWorker {
             household_id: run.household_id,
             request_id: format!("browser-reminders:{}", run.at.timestamp()),
         };
-        match reminders::deliver_account(&self.ctx, &scope, run.at).await {
+        match reminders::deliver_account(&self.ctx, &scope, Utc::now()).await {
             Ok(_)
             | Err(
                 OperationError::Forbidden
@@ -70,7 +70,7 @@ pub async fn recipients(
         transaction.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
             "SELECT set_config('med_tracker.current_household_id',$1,true),set_config('med_tracker.current_account_id','',true),set_config('med_tracker.current_membership_id','',true),set_config('med_tracker.current_invitation_token_digest','',true)", [household.id.to_string().into()])).await?;
         let rows = transaction.query_all_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-            "SELECT m.account_id FROM household_memberships m JOIN notification_preferences p ON p.person_id=m.person_id AND p.household_id=m.household_id JOIN accounts a ON a.id=m.account_id WHERE m.household_id=$1 AND m.status='active' AND m.revoked_at IS NULL AND p.enabled AND a.status=2", [household.id.into()])).await?;
+            "SELECT DISTINCT m.account_id FROM household_memberships m JOIN accounts a ON a.id=m.account_id LEFT JOIN notification_preferences p ON p.person_id=m.person_id AND p.household_id=m.household_id WHERE m.household_id=$1 AND m.status='active' AND m.revoked_at IS NULL AND a.status=2 AND (p.enabled OR EXISTS (SELECT 1 FROM notification_deliveries d WHERE d.household_id=m.household_id AND d.account_id=m.account_id AND d.status IN ('pending','sending')))", [household.id.into()])).await?;
         for row in rows {
             runs.push(ReminderRun {
                 account_id: row.try_get("", "account_id")?,
