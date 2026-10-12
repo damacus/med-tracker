@@ -117,24 +117,34 @@ pub(super) async fn payload(
     tenant: &TenantTransaction,
     zone: chrono_tz::Tz,
 ) -> Result<AppliedBatch, OperationError> {
-    scoped_payload(tenant, zone, false).await
+    scoped_payload(tenant, zone, false, false, "medtracker.portable.v2", true).await
 }
 
 pub(crate) async fn export_payload(
     tenant: &TenantTransaction,
     zone: chrono_tz::Tz,
 ) -> Result<AppliedBatch, OperationError> {
-    scoped_payload(tenant, zone, true).await
+    scoped_payload(tenant, zone, true, true, "medtracker.portable.v2", true).await
+}
+
+pub(crate) async fn api_export_payload(
+    tenant: &TenantTransaction,
+    zone: chrono_tz::Tz,
+    format: &str,
+    include_health_events: bool,
+) -> Result<AppliedBatch, OperationError> {
+    scoped_payload(tenant, zone, true, false, format, include_health_events).await
 }
 
 async fn scoped_payload(
     tenant: &TenantTransaction,
     zone: chrono_tz::Tz,
     exporting: bool,
+    household_wide: bool,
+    format: &str,
+    include_health_events: bool,
 ) -> Result<AppliedBatch, OperationError> {
     let db = tenant.transaction();
-    let format = "medtracker.portable.v2";
-    let include_health_events = true;
     let household_id = tenant.scope().household_id;
     let mut people = visible_people(tenant).await?;
     if exporting && !access::can_manage_household(tenant) {
@@ -203,22 +213,24 @@ async fn scoped_payload(
     } else {
         Vec::new()
     };
-    let medication_ids = if exporting && !access::can_manage_household(tenant) {
-        let health_links = health_event_medication::Entity::find()
-            .filter(health_event_medication::Column::HouseholdId.eq(household_id))
-            .filter(
-                health_event_medication::Column::HealthEventId
-                    .is_in(health.iter().map(|row| row.id).collect::<Vec<_>>()),
-            )
-            .all(db)
-            .await?;
-        schedules
+    let medication_ids = if exporting && !(household_wide && access::can_manage_household(tenant)) {
+        let mut referenced: HashSet<i64> = schedules
             .iter()
             .map(|row| row.medication_id)
             .chain(assignments.iter().map(|row| row.medication_id))
-            .chain(takes.iter().filter_map(|row| row.taken_from_medication_id))
-            .chain(health_links.iter().filter_map(|row| row.medication_id))
-            .collect()
+            .collect();
+        if include_health_events {
+            let health_links = health_event_medication::Entity::find()
+                .filter(health_event_medication::Column::HouseholdId.eq(household_id))
+                .filter(
+                    health_event_medication::Column::HealthEventId
+                        .is_in(health.iter().map(|row| row.id).collect::<Vec<_>>()),
+                )
+                .all(db)
+                .await?;
+            referenced.extend(health_links.iter().filter_map(|row| row.medication_id));
+        }
+        referenced
     } else {
         super::reading::visible_medication_ids(db, tenant).await?
     };
@@ -253,7 +265,7 @@ async fn scoped_payload(
     location_ids.retain(|id| *id > 0);
     let locations_query =
         location::Entity::find().filter(location::Column::HouseholdId.eq(household_id));
-    let locations_query = if exporting && access::can_manage_household(tenant) {
+    let locations_query = if exporting && household_wide && access::can_manage_household(tenant) {
         locations_query
     } else {
         locations_query
