@@ -250,12 +250,16 @@ test('medication editing leads with identity then pairs dose and stock before no
   await expect(stock.getByLabel('Reorder Threshold', { exact: true })).toBeVisible();
   await expect(notes.getByLabel('Description', { exact: true })).toBeVisible();
   await expect(notes.getByLabel('Warnings', { exact: true })).toBeVisible();
-  const tops = await Promise.all([identity, dose, stock, notes].map(group => group.evaluate(element => element.getBoundingClientRect().top)));
-  expect(tops).toEqual([...tops].sort((a, b) => a - b));
-  for (const [group, first, second] of [[dose, 'Dose', 'Unit'], [stock, 'Remaining Supply', 'Reorder Threshold']]) {
-    const [a, b] = await Promise.all([group.getByLabel(first, { exact: true }).boundingBox(), group.getByLabel(second, { exact: true }).boundingBox()]);
-    expect(Math.abs(a.y - b.y)).toBeLessThan(12);
-  }
+  const geometry = await page.locator('#medication-form').evaluate(form => {
+    const fieldsets = [...form.querySelectorAll('fieldset')];
+    const tops = ['Medication', 'Dose', 'Stock', 'Notes and warnings'].map(name =>
+      fieldsets.find(fieldset => fieldset.querySelector('legend').textContent.trim() === name).getBoundingClientRect().top);
+    const pairs = [['dose_amount', 'dose_unit'], ['current_supply', 'reorder_threshold']].map(ids =>
+      ids.map(id => form.querySelector('#' + id).getBoundingClientRect().top));
+    return { tops, pairs };
+  });
+  expect(geometry.tops).toEqual([...geometry.tops].sort((a, b) => a - b));
+  for (const [first, second] of geometry.pairs) expect(Math.abs(first - second)).toBeLessThan(12);
   await expectNarrowReflow(page, ['Name', 'Dose', 'Remaining Supply', 'Reorder Threshold'], info, 'care-hierarchy-medication');
 });
 

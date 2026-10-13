@@ -120,7 +120,11 @@ async function withCareFixture(captureMail, registrationInviteOnly, reportAssets
       if (!captureMail && registrationInviteOnly === undefined) await measure('snapshot', () => fixtureTask('snapshot', [`SNAPSHOT_PATH=${snapshotPath}`]));
       await measure('application-start', start);
       await use({ origin, mailpitUrl, runtimeTimings, provider,
-        reset: () => measure('reset', () => fixtureTask('reset', [`SNAPSHOT_PATH=${snapshotPath}`])),
+        reset: async () => {
+          await measure('application-stop', () => stopOwnedProcess(server));
+          await measure('reset', () => fixtureTask('reset', [`SNAPSHOT_PATH=${snapshotPath}`]));
+          await measure('application-start', start);
+        },
         profileNotificationFixture: () => fixtureTask('profile-notification-fixture'), profileNotificationProbe: async () => JSON.parse(await fixtureTask('profile-notification-probe')),
         probe: async () => JSON.parse(await fixtureTask('probe')), seedBarcodeMetadata: () => fixtureTask('seed-barcode-metadata'), barcodeMetadataProbe: async () => JSON.parse(await fixtureTask('barcode-metadata-probe')), wizardModal: () => fixtureTask('wizard-modal'), wizardSlideover: () => fixtureTask('wizard-slideover'), contextAwareLauncher: () => fixtureTask('launcher-context-aware'), scannerPlatformAdmin: () => fixtureTask('scanner-platform-admin'), revokeScannerPlatformAdmin: () => fixtureTask('scanner-revoke-platform-admin'), seedLegacyCareHours: () => fixtureTask('legacy-care-hours'), legacyCareHoursProbe: async () => JSON.parse(await fixtureTask('legacy-care-hours-probe')), seedLegacySecondTaperHour: () => fixtureTask('legacy-second-taper-hour'), revoke: () => fixtureTask('revoke'), reactivate: () => fixtureTask('reactivate'),
         seedOtp: () => fixtureTask('seed-otp'), otpProbe: async () => JSON.parse((await fixtureTask('otp-probe')) || 'null'), closeOtpAccount: () => fixtureTask('close-otp-account'),
