@@ -1,6 +1,6 @@
 import { test, expect } from './care-fixtures.mjs';
 
-test('medicine reviews show evidence, require Edit, save a practitioner outcome and preserve history', async ({ page, careFixture }, info) => {
+test('medicine reviews show evidence, require Edit, save a practitioner outcome and preserve history', async ({ page, browser, careFixture }, info) => {
   test.setTimeout(180000);
   await careFixture.seedReviewReport();
   await page.goto('/login');
@@ -29,7 +29,19 @@ test('medicine reviews show evidence, require Edit, save a practitioner outcome 
   await expect(page.getByText('Dr Test')).toBeVisible();
   await page.getByRole('link', { name: 'Previous reviews' }).first().click();
   await expect(page.getByText('Previous reviews')).toBeVisible();
+  const historyTime = page.locator('main article p').first();
+  await expect(historyTime).toHaveText(/^\d{2} [A-Za-z]{3} \d{4}, \d{2}:\d{2}:\d{2} [A-Z]{2,5}$/);
   await page.screenshot({ path: info.outputPath(`loco-reviews-${info.project.name}.png`), fullPage: true });
+  const historyUrl = page.url();
+  const translatedContext = await browser.newContext({ locale: 'es', storageState: await page.context().storageState(), viewport: page.viewportSize(), isMobile: info.project.name === 'mobile', hasTouch: info.project.name === 'mobile' });
+  try {
+    const translated = await translatedContext.newPage();
+    const response = await translated.goto(historyUrl);
+    expect((await response.request().allHeaders())['accept-language']).toContain('es');
+    await expect(translated.locator('main article p').first()).toHaveText(/^\d{4}-\d{2}-\d{2}, \d{2}:\d{2}:\d{2} [A-Z]{2,5}$/);
+  } finally {
+    await translatedContext.close();
+  }
 });
 
 test('a second tab cannot take an active review lease', async ({ page, careFixture }, info) => {

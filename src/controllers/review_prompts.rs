@@ -201,14 +201,34 @@ async fn history(
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
 ) -> Response {
-    let (_, tenant) = match begin(&ctx, &session, &slug, &request_id(request)).await {
+    let (principal, tenant) = match begin(&ctx, &session, &slug, &request_id(request)).await {
         Ok(value) => value,
         Err(error) => return authentication_error(error),
     };
-    let (data, _) = match review_prompts::show(&tenant, &id).await {
+    let (mut data, _) = match review_prompts::show(&tenant, &id).await {
         Ok(value) => value,
         Err(error) => return operation_error(error),
     };
+    let date_format = if report_pdf::locale(language(&headers)) == "en" {
+        "%d %b %Y, %H:%M:%S %Z"
+    } else {
+        "%Y-%m-%d, %H:%M:%S %Z"
+    };
+    if let Some(history) = data["history"].as_array_mut() {
+        for item in history {
+            if let Some(created_at) = item["created_at"].as_str() {
+                let display = chrono::DateTime::parse_from_rfc3339(created_at)
+                    .map(|instant| {
+                        instant
+                            .with_timezone(&principal.time_zone())
+                            .format(date_format)
+                            .to_string()
+                    })
+                    .unwrap_or_else(|_| created_at.to_owned());
+                item["created_at_display"] = json!(display);
+            }
+        }
+    }
     let response = render(
         &view,
         &token,
