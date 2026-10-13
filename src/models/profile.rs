@@ -159,7 +159,11 @@ async fn snapshot(
         .as_str()
         .filter(|value| !value.is_empty())
         .map(str::to_owned)
-        .unwrap_or_else(|| std::env::var("TZ").unwrap_or_else(|_| "UTC".into()));
+        .unwrap_or_else(|| {
+            crate::models::settings::text(tenant.settings(), &["time_zone"])
+                .unwrap_or("UTC")
+                .to_owned()
+        });
     Ok(Snapshot {
         person_id: current.id,
         account_id: account.id,

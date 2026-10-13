@@ -97,7 +97,10 @@ pub async fn list(
     query: RangeQuery,
     secret: &Arc<[u8]>,
 ) -> Result<Value, OperationError> {
-    list_with_projection(tenant, kind, id, query, secret, row_value).await
+    list_with_projection(tenant, kind, id, query, secret, |secret, source, row| {
+        row_value(secret, source, row, tenant.settings())
+    })
+    .await
 }
 
 pub(crate) async fn browser_list(
@@ -108,7 +111,7 @@ pub(crate) async fn browser_list(
     secret: &Arc<[u8]>,
 ) -> Result<Value, OperationError> {
     list_with_projection(tenant, kind, id, query, secret, |secret, source, row| {
-        let mut value = row_value(secret, source, row);
+        let mut value = row_value(secret, source, row, tenant.settings());
         let (amount, unit) = match source {
             Source::Schedule(schedule) => {
                 let preview = doses::browser_schedule_preview(schedule.clone(), row.window_start);
@@ -145,7 +148,7 @@ async fn list_with_projection(
         .zip(query.end_date.as_deref().and_then(date))
         .filter(|(start, end)| end >= start && (*end - *start).num_days() <= 30)
         .ok_or_else(|| invalid("date_range", "must contain at most 31 inclusive days"))?;
-    let rows = projected(tenant.transaction(), &source, start, end).await?;
+    let rows = projected(tenant.transaction(), &source, start, end, tenant.settings()).await?;
     let data: Vec<Value> = rows
         .iter()
         .map(|row| project(secret, &source, row))
@@ -169,9 +172,15 @@ pub async fn change(
         .get("key")
         .and_then(Value::as_str)
         .ok_or_else(invalid_occurrence)?;
-    let mut row = find_row(tenant.transaction(), secret, &source, key)
-        .await?
-        .ok_or_else(invalid_occurrence)?;
+    let mut row = find_row(
+        tenant.transaction(),
+        secret,
+        &source,
+        key,
+        tenant.settings(),
+    )
+    .await?
+    .ok_or_else(invalid_occurrence)?;
     let context = AuthContext { tenant, provenance };
     match action {
         "not_taken" => {
@@ -181,7 +190,7 @@ pub async fn change(
                 && record.reason == reason
                 && record.note == note
             {
-                let body = json!({"data":row_value(secret,&source,&row)});
+                let body = json!({"data":row_value(secret,&source,&row,tenant.settings())});
                 return Ok((body, record_etag(record)));
             }
             if row
@@ -192,7 +201,7 @@ pub async fn change(
             {
                 return Err(conflict("already_resolved"));
             }
-            if !actionable(&source, &row) {
+            if !actionable(&source, &row, tenant.settings()) {
                 return Err(invalid_occurrence());
             }
             row.record = Some(
@@ -285,10 +294,10 @@ pub async fn change(
                 .as_ref()
                 .is_none_or(|record| record.outcome != "taken")
             {
-                if !actionable(&source, &row) {
+                if !actionable(&source, &row, tenant.settings()) {
                     return Err(invalid_occurrence());
                 }
-                let day = local_date(taken_at);
+                let day = local_date(taken_at, tenant.settings());
                 if day < row.window_start
                     || day > row.window_end
                     || (source.kind() == Kind::Assignment && taken_at < source.created_at())
@@ -315,9 +324,13 @@ pub async fn change(
                 expected_effective_amount: None,
                 expected_effective_unit: None,
             });
-            let outcome =
-                doses::execute_in_timezone(tenant, command, calendar::current_zone(), provenance)
-                    .await?;
+            let outcome = doses::execute_in_timezone(
+                tenant,
+                command,
+                calendar::current_zone(tenant.settings()),
+                provenance,
+            )
+            .await?;
             let take = match outcome {
                 doses::Outcome::Created(row) | doses::Outcome::Replayed(row) => row,
             };
@@ -346,5 +359,8 @@ pub async fn change(
         .as_ref()
         .map(record_etag)
         .ok_or(OperationError::Unavailable)?;
-    Ok((json!({"data":row_value(secret,&source,&row)}), etag))
+    Ok((
+        json!({"data":row_value(secret,&source,&row,tenant.settings())}),
+        etag,
+    ))
 }

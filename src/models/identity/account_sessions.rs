@@ -41,10 +41,11 @@ pub async fn sessions(
     db: &DatabaseConnection,
     account_id: i64,
     method: CredentialMethod,
+    settings: Option<&Value>,
 ) -> Result<Value, OperationError> {
     let transaction = begin(db, Some(account_id)).await?;
     let data = match method {
-        CredentialMethod::OauthGrant => mobile_sessions(&transaction, account_id).await?,
+        CredentialMethod::OauthGrant => mobile_sessions(&transaction, account_id, settings).await?,
         CredentialMethod::ApiSession | CredentialMethod::ApiAppToken => {
             api_sessions(&transaction, account_id).await?
         }
@@ -80,8 +81,9 @@ async fn api_sessions(
 async fn mobile_sessions(
     transaction: &DatabaseTransaction,
     account_id: i64,
+    settings: Option<&Value>,
 ) -> Result<Vec<Value>, OperationError> {
-    let lifetime = AuthenticationLifetime::from_environment().map_err(unavailable)?;
+    let lifetime = AuthenticationLifetime::from_settings(settings).map_err(unavailable)?;
     let now = Utc::now().naive_utc();
     let rows = oauth_grant::Entity::find()
         .filter(oauth_grant::Column::AccountId.eq(account_id))

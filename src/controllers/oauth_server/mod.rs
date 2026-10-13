@@ -24,10 +24,11 @@ async fn discovery(State(ctx): State<AppContext>) -> Response {
 }
 
 async fn capabilities(State(ctx): State<AppContext>) -> Response {
-    let lifetime = match identity::AuthenticationLifetime::from_environment() {
-        Ok(lifetime) => lifetime,
-        Err(error) => return failure(error),
-    };
+    let lifetime =
+        match identity::AuthenticationLifetime::from_settings(ctx.config.settings.as_ref()) {
+            Ok(lifetime) => lifetime,
+            Err(error) => return failure(error),
+        };
     match oauth::mobile_clients(&ctx.db).await {
         Ok(clients) => {
             let base = ctx.config.server.full_url();
@@ -78,7 +79,7 @@ async fn capabilities(State(ctx): State<AppContext>) -> Response {
 }
 
 async fn token(State(ctx): State<AppContext>, request: Request) -> Response {
-    match identity::exchange(&ctx.db, request).await {
+    match identity::exchange(&ctx.db, request, ctx.config.settings.as_ref()).await {
         Ok(body) => no_cache(axum::Json(body).into_response()),
         Err(error) => failure(error),
     }

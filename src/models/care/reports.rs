@@ -326,6 +326,7 @@ fn inventory_alerts(
     schedules: &[schedule::Model],
     medicines: &HashMap<i64, medication::Model>,
     today: NaiveDate,
+    settings: Option<&serde_json::Value>,
 ) -> Vec<Value> {
     let mut alerts: Vec<(i64, Value)> = schedules.iter().filter_map(|source| {
         if !source.active || source.retired_at.is_some() || source.start_date.is_some_and(|date| date > today) || source.end_date.is_some_and(|date| date < today) { return None; }
@@ -338,7 +339,9 @@ fn inventory_alerts(
         let mut consumed = Decimal::ZERO;
         for offset in 0..days {
             let day = first + Duration::days(offset);
-            let expected = i64::from(dose_occurrences::expected_schedule_doses_for_report(source, day));
+            let expected = i64::from(dose_occurrences::expected_schedule_doses_for_report(
+                source, day, settings,
+            ));
             if expected == 0 { continue; }
             let config = dose_occurrences::schedule_config_on(source, day).unwrap_or(&source.schedule_config);
             let amount = doses::config_decimal(config, &["amount", "dose_amount"]).or(source.dose_amount);
@@ -359,6 +362,7 @@ fn inventory_alerts(
     alerts.into_iter().take(2).map(|(_, value)| value).collect()
 }
 
+#[allow(clippy::too_many_arguments)]
 fn insight_summary(
     daily: &[Value],
     cycles: &[Value],
@@ -367,6 +371,7 @@ fn insight_summary(
     schedules: &[schedule::Model],
     medicines: &HashMap<i64, medication::Model>,
     period: InsightPeriod,
+    settings: Option<&serde_json::Value>,
 ) -> Value {
     let InsightPeriod { start, end, today } = period;
     let count = |row: &Value, key: &str| row[key].as_u64().unwrap_or(0);
@@ -468,7 +473,7 @@ fn insight_summary(
     for source in schedules {
         let mut day = start;
         while day <= end {
-            if dose_occurrences::expected_schedule_doses_for_report(source, day) > 0
+            if dose_occurrences::expected_schedule_doses_for_report(source, day, settings) > 0
                 && let Some(times) = source
                     .schedule_config
                     .get("times")
@@ -825,7 +830,7 @@ pub async fn ordinary_history(
         let span = (dates.last()? .to_owned() - dates.first()? .to_owned()).num_days();
         Some(json!({"display_title":title,"episode_count":dates.len(),"first_started_on":dates.first()?.to_string(),"most_recent_started_on":dates.last()?.to_string(),"average_interval_days":span / (dates.len() as i64 - 1)}))
     }).collect();
-    let inventory_alerts = inventory_alerts(&schedules, &medicines, today);
+    let inventory_alerts = inventory_alerts(&schedules, &medicines, today, tenant.settings());
     let insights = insight_summary(
         &daily_outcomes,
         &cycle_summaries,
@@ -834,6 +839,7 @@ pub async fn ordinary_history(
         &schedules,
         &medicines,
         InsightPeriod { start, end, today },
+        tenant.settings(),
     );
     let total_expected: usize = daily_outcomes
         .iter()

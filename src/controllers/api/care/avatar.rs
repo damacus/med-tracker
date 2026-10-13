@@ -110,7 +110,12 @@ pub(super) async fn show(
         Err(_) => return storage_error(&request_id),
     };
     let tenant = match principal
-        .begin_household(&ctx.db, household_id, request_id.clone())
+        .begin_household(
+            &ctx.db,
+            household_id,
+            request_id.clone(),
+            ctx.config.settings.as_ref(),
+        )
         .await
     {
         Ok(value) => value,
@@ -224,7 +229,12 @@ pub(super) async fn upload(
         return storage_error(&request_id);
     }
     let tenant = match principal
-        .begin_household(&ctx.db, household_id, request_id.clone())
+        .begin_household(
+            &ctx.db,
+            household_id,
+            request_id.clone(),
+            ctx.config.settings.as_ref(),
+        )
         .await
     {
         Ok(value) => value,

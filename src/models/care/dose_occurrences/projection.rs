@@ -22,9 +22,10 @@ fn fully_paused(
     start: NaiveDate,
     end: NaiveDate,
     pauses: &[pause_period::Model],
+    settings: Option<&serde_json::Value>,
 ) -> bool {
-    let mut cursor = local_midnight(start);
-    let finish = local_midnight(end + Duration::days(1));
+    let mut cursor = local_midnight(start, settings);
+    let finish = local_midnight(end + Duration::days(1), settings);
     if source.kind() == Kind::Assignment {
         cursor = cursor.max(source.created_at());
     }
@@ -47,6 +48,7 @@ pub(super) async fn projected(
     source: &Source,
     start: NaiveDate,
     end: NaiveDate,
+    settings: Option<&serde_json::Value>,
 ) -> Result<Vec<Occurrence>, ApiError> {
     let (scan_start, scan_end) = scan_bounds(source, start, end);
     let mut query = dose_occurrence::Entity::find()
@@ -98,8 +100,11 @@ pub(super) async fn projected(
     .column(dose_occurrence::Column::MedicationTakeId)
     .into_query();
     let mut takes = medication_take::Entity::find()
-        .filter(medication_take::Column::TakenAt.gte(local_midnight(scan_start)))
-        .filter(medication_take::Column::TakenAt.lt(local_midnight(scan_end + Duration::days(1))))
+        .filter(medication_take::Column::TakenAt.gte(local_midnight(scan_start, settings)))
+        .filter(
+            medication_take::Column::TakenAt
+                .lt(local_midnight(scan_end + Duration::days(1), settings)),
+        )
         .filter(medication_take::Column::Id.not_in_subquery(linked))
         .order_by_asc(medication_take::Column::TakenAt)
         .order_by_asc(medication_take::Column::Id);
@@ -111,7 +116,7 @@ pub(super) async fn projected(
     };
     let takes = takes.all(db).await.map_err(database_error)?;
     Ok(projected_loaded(
-        source, scan_start, scan_end, &persisted, &pauses, &takes,
+        source, scan_start, scan_end, &persisted, &pauses, &takes, settings,
     ))
 }
 
@@ -136,6 +141,7 @@ pub(super) fn projected_loaded(
     persisted: &[dose_occurrence::Model],
     pauses: &[pause_period::Model],
     takes: &[medication_take::Model],
+    settings: Option<&serde_json::Value>,
 ) -> Vec<Occurrence> {
     let mut rows: BTreeMap<(NaiveDate, i32), Occurrence> = BTreeMap::new();
     let mut day = scan_start;
@@ -147,9 +153,9 @@ pub(super) fn projected_loaded(
                     && (source.active() || !pauses.is_empty())
                     && let Some(config) = schedule_config_on(schedule, day)
                 {
-                    let times = config_times(config, day);
+                    let times = config_times(config, day, settings);
                     if times.is_empty() {
-                        if !fully_paused(source, day, day, pauses) {
+                        if !fully_paused(source, day, day, pauses, settings) {
                             let count = effective_count(config, source.max_daily_doses());
                             for position in 1..=count {
                                 rows.insert(
@@ -194,7 +200,7 @@ pub(super) fn projected_loaded(
                 {
                     let (_, finish) = cycle_bounds(day, source.dose_cycle());
                     if finish >= source.created_at().date()
-                        && !fully_paused(source, day, finish, pauses)
+                        && !fully_paused(source, day, finish, pauses, settings)
                     {
                         for position in 1..=source.max_daily_doses().max(1) {
                             rows.insert(
@@ -240,7 +246,7 @@ pub(super) fn projected_loaded(
         let Some(taken_at) = take.taken_at else {
             continue;
         };
-        let day = local_date(taken_at);
+        let day = local_date(taken_at, settings);
         let window = if source.kind() == Kind::Assignment {
             cycle_bounds(day, source.dose_cycle()).0
         } else {

@@ -14,7 +14,12 @@ pub(crate) fn record_etag(record: &dose_occurrence::Model) -> String {
     ]))
 }
 
-pub(super) fn row_value(secret: &Arc<[u8]>, source: &Source, row: &Occurrence) -> Value {
+pub(super) fn row_value(
+    secret: &Arc<[u8]>,
+    source: &Source,
+    row: &Occurrence,
+    settings: Option<&serde_json::Value>,
+) -> Value {
     let (outcome, reason, note, resolved_at, medication_take_id, etag) = match &row.record {
         Some(record) if row.legacy_take_id.is_some() => (
             "taken",
@@ -39,7 +44,7 @@ pub(super) fn row_value(secret: &Arc<[u8]>, source: &Source, row: &Occurrence) -
     };
     let due_time = row
         .scheduled_at
-        .unwrap_or_else(|| local_midnight(row.window_start));
+        .unwrap_or_else(|| local_midnight(row.window_start, settings));
     let now = Utc::now().naive_utc();
     let due = due_time <= now && (source.kind() == Kind::Schedule || source.created_at() <= now);
     json!({

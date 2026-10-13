@@ -14,7 +14,7 @@ async fn profile_export_uses_manage_grants_and_creates_a_readable_zip_without_id
         request_id: "synthetic-export".into(),
     };
     app.fixture.admin.execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001; UPDATE person_access_grants SET access_level='view' WHERE id=78001").await.unwrap();
-    let tenant = access::begin(&app.context.db, &scope).await.unwrap();
+    let tenant = access::begin(&app.context.db, &scope, None).await.unwrap();
     let download = profile_export::build(&tenant, "health_data_json")
         .await
         .unwrap();
@@ -32,7 +32,7 @@ async fn profile_export_uses_manage_grants_and_creates_a_readable_zip_without_id
         .execute_unprepared("UPDATE person_access_grants SET access_level='manage' WHERE id=78001")
         .await
         .unwrap();
-    let tenant = access::begin(&app.context.db, &scope).await.unwrap();
+    let tenant = access::begin(&app.context.db, &scope, None).await.unwrap();
     let download = profile_export::build(&tenant, "backup_zip").await.unwrap();
     tenant.commit().await.unwrap();
     let mut zip = zip::ZipArchive::new(Cursor::new(download.bytes)).unwrap();
@@ -57,7 +57,7 @@ async fn profile_export_uses_manage_grants_and_creates_a_readable_zip_without_id
         )
         .await
         .unwrap();
-    let tenant = access::begin(&app.context.db, &scope).await.unwrap();
+    let tenant = access::begin(&app.context.db, &scope, None).await.unwrap();
     let expired = profile_export::build(&tenant, "health_data_json")
         .await
         .unwrap();
@@ -69,7 +69,7 @@ async fn profile_export_uses_manage_grants_and_creates_a_readable_zip_without_id
         .execute_unprepared("UPDATE household_memberships SET role='owner' WHERE id=74001")
         .await
         .unwrap();
-    let tenant = access::begin(&app.context.db, &scope).await.unwrap();
+    let tenant = access::begin(&app.context.db, &scope, None).await.unwrap();
     let household = profile_export::build(&tenant, "health_data_json")
         .await
         .unwrap();
@@ -78,7 +78,7 @@ async fn profile_export_uses_manage_grants_and_creates_a_readable_zip_without_id
     assert_eq!(household["scope"], "household");
     assert!(household["records"]["people"].as_array().unwrap().len() > 1);
     app.fixture.admin.execute_unprepared("CREATE FUNCTION reject_profile_export_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.event_type='portable_data.exported' THEN RAISE EXCEPTION 'synthetic export audit failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_profile_export_audit BEFORE INSERT ON security_audit_events FOR EACH ROW EXECUTE FUNCTION reject_profile_export_audit()").await.unwrap();
-    let tenant = access::begin(&app.context.db, &scope).await.unwrap();
+    let tenant = access::begin(&app.context.db, &scope, None).await.unwrap();
     assert!(
         profile_export::build(&tenant, "health_data_json")
             .await

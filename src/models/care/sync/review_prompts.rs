@@ -10,8 +10,10 @@ pub(crate) struct AuthContext<'a> {
 fn database_error(_: sea_orm::DbErr) -> OperationError {
     OperationError::Unavailable
 }
-fn today_in_app_zone() -> NaiveDate {
-    Utc::now().with_timezone(&doses::app_zone()).date_naive()
+fn today_in_app_zone(settings: Option<&serde_json::Value>) -> NaiveDate {
+    Utc::now()
+        .with_timezone(&doses::app_zone(settings))
+        .date_naive()
 }
 pub(crate) async fn person_access(
     _: &DatabaseTransaction,
@@ -93,7 +95,7 @@ pub(crate) async fn actor_adult(
         return Ok(false);
     };
     let adult_by_age = actor.date_of_birth.is_some_and(|born| {
-        let today = today_in_app_zone();
+        let today = today_in_app_zone(context.tenant.settings());
         let mut age = today.year() - born.year();
         if (today.month(), today.day()) < (born.month(), born.day()) {
             age -= 1

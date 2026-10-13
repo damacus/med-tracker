@@ -44,9 +44,12 @@ pub enum SignupError {
     Unavailable,
 }
 
-pub async fn registration_open(db: &DatabaseConnection) -> Result<bool, SignupError> {
+pub async fn registration_open(
+    db: &DatabaseConnection,
+    settings: Option<&serde_json::Value>,
+) -> Result<bool, SignupError> {
     let transaction = browser::transaction(db).await.map_err(unavailable)?;
-    let open = policy::open(&transaction).await?;
+    let open = policy::open(&transaction, settings).await?;
     transaction.commit().await.map_err(unavailable)?;
     Ok(open)
 }
@@ -78,6 +81,7 @@ pub async fn create(
     input: &SignupInput,
     origin: &str,
     request_id: Option<&str>,
+    settings: Option<&serde_json::Value>,
 ) -> Result<(), SignupError> {
     let birth = validate(input)?;
     let password = input.password.clone();
@@ -87,7 +91,7 @@ pub async fn create(
         .map_err(unavailable)?;
     let transaction = browser::transaction(db).await.map_err(unavailable)?;
     let invitation = if input.invitation_token.is_empty() {
-        if !policy::open(&transaction).await? {
+        if !policy::open(&transaction, settings).await? {
             return Err(SignupError::RegistrationClosed);
         }
         None
@@ -102,7 +106,7 @@ pub async fn create(
         Some(invitation) => invitation.email.clone(),
         None => invitations::validated_email(&input.email).map_err(operation_error)?,
     };
-    let preferences = initial_preferences()?;
+    let preferences = initial_preferences(settings)?;
     let account = transaction.query_one_raw(sql(
         "INSERT INTO accounts(email,password_hash,status,preferences,created_at,updated_at) VALUES($1,$2,1,$3,now(),now()) ON CONFLICT(email) WHERE status = ANY(ARRAY[1,2]) DO NOTHING RETURNING id",
         [email.clone().into(),hash.clone().into(),preferences.into()])).await.map_err(unavailable)?
@@ -117,7 +121,7 @@ pub async fn create(
         .map_err(unavailable)?;
     let household_id = match &invitation {
         Some(invitation) => invitation.household_id,
-        None => bootstrap::household(&transaction, account_id, &input.name).await?,
+        None => bootstrap::household(&transaction, account_id, &input.name, settings).await?,
     };
     let person = transaction.query_one_raw(sql(
         "INSERT INTO people(account_id,household_id,name,email,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES($1,$2,$3,$4,$5,0,true,now(),now()) RETURNING id",
@@ -163,13 +167,16 @@ pub async fn create(
     )
     .await
     .map_err(unavailable)?;
-    queue_verification(&transaction, account_id, email, &key, origin).await?;
+    queue_verification(&transaction, account_id, email, &key, origin, settings).await?;
     transaction.commit().await.map_err(unavailable)?;
     Ok(())
 }
 
-fn initial_preferences() -> Result<serde_json::Value, SignupError> {
-    let zone = super::time_zone::preferred(&serde_json::json!({})).map_err(unavailable)?;
+fn initial_preferences(
+    settings: Option<&serde_json::Value>,
+) -> Result<serde_json::Value, SignupError> {
+    let zone =
+        super::time_zone::preferred(&serde_json::json!({}), settings).map_err(unavailable)?;
     Ok(serde_json::json!({"time_zone": zone.to_string()}))
 }
 
@@ -179,12 +186,13 @@ async fn queue_verification(
     email: String,
     key: &str,
     origin: &str,
+    settings: Option<&serde_json::Value>,
 ) -> Result<(), SignupError> {
     let mut link = url::Url::parse(origin).map_err(unavailable)?;
     link.set_path("/verify-account");
     link.set_query(None);
     link.query_pairs_mut()
-        .append_pair("key", &tokens::link_token(account_id, key)?);
+        .append_pair("key", &tokens::link_token(account_id, key, settings)?);
     let email = Email {
         to: email,
         subject: "Verify your account".into(),
@@ -198,9 +206,13 @@ async fn queue_verification(
     Ok(())
 }
 
-pub async fn valid_key(db: &DatabaseConnection, token: &str) -> Result<bool, SignupError> {
+pub async fn valid_key(
+    db: &DatabaseConnection,
+    token: &str,
+    settings: Option<&serde_json::Value>,
+) -> Result<bool, SignupError> {
     let transaction = browser::transaction(db).await.map_err(unavailable)?;
-    match matching_account(&transaction, token).await {
+    match matching_account(&transaction, token, settings).await {
         Ok(_) => Ok(true),
         Err(SignupError::InvalidKey) => Ok(false),
         Err(error) => Err(error),
@@ -212,9 +224,10 @@ pub async fn verify(
     session: &Session<SessionPgPool>,
     token: &str,
     request_id: Option<&str>,
+    settings: Option<&serde_json::Value>,
 ) -> Result<SignInOutcome, SignupError> {
     let transaction = browser::transaction(db).await.map_err(unavailable)?;
-    let account_id = matching_account(&transaction, token).await?;
+    let account_id = matching_account(&transaction, token, settings).await?;
     transaction
         .execute_raw(sql(
             "UPDATE accounts SET status=2,updated_at=now() WHERE id=$1 AND status=1",
@@ -240,6 +253,7 @@ pub async fn verify(
 async fn matching_account(
     transaction: &DatabaseTransaction,
     token: &str,
+    settings: Option<&serde_json::Value>,
 ) -> Result<i64, SignupError> {
     let account_id = tokens::account_id(token).ok_or(SignupError::InvalidKey)?;
     let account = transaction
@@ -263,7 +277,7 @@ async fn matching_account(
         return Err(SignupError::InvalidKey);
     }
     let key: String = rows[0].try_get("", "key").map_err(unavailable)?;
-    if tokens::matches(token, &key)? {
+    if tokens::matches(token, &key, settings)? {
         Ok(account_id)
     } else {
         Err(SignupError::InvalidKey)

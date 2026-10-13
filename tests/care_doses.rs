@@ -100,7 +100,7 @@ fn command() -> Command {
 }
 
 async fn take(fixture: &Fixture, command: Command) -> Result<Outcome, OperationError> {
-    let tenant = access::begin(&fixture.runtime, &scope()).await?;
+    let tenant = access::begin(&fixture.runtime, &scope(), None).await?;
     match doses::execute(&tenant, command).await {
         Ok(outcome) => {
             tenant.commit().await?;
@@ -172,7 +172,9 @@ async fn dose_take_insufficient_stock_has_no_partial_writes() {
 #[tokio::test]
 async fn dose_take_rechecks_current_grant_in_open_transaction() {
     let fixture = Fixture::new().await;
-    let tenant = access::begin(&fixture.runtime, &scope()).await.unwrap();
+    let tenant = access::begin(&fixture.runtime, &scope(), None)
+        .await
+        .unwrap();
     fixture
         .admin
         .execute_unprepared("UPDATE person_access_grants SET revoked_at = now() WHERE id = 78001")
@@ -523,13 +525,17 @@ async fn dose_take_request_timezone_selects_near_midnight_schedule_date() {
     input.source_type = "schedule".into();
     input.source_id = "83001".into();
     input.taken_at = "2026-09-28T23:30:00Z".into();
-    let tenant = access::begin(&fixture.runtime, &scope()).await.unwrap();
+    let tenant = access::begin(&fixture.runtime, &scope(), None)
+        .await
+        .unwrap();
     let utc =
         doses::execute_in_timezone(&tenant, Command::Take(input.clone()), chrono_tz::UTC, None)
             .await;
     assert!(matches!(utc, Err(OperationError::Validation { .. })));
     tenant.rollback().await.unwrap();
-    let tenant = access::begin(&fixture.runtime, &scope()).await.unwrap();
+    let tenant = access::begin(&fixture.runtime, &scope(), None)
+        .await
+        .unwrap();
     let london = doses::execute_in_timezone(
         &tenant,
         Command::Take(input),
@@ -550,7 +556,9 @@ async fn dose_take_request_timezone_selects_near_midnight_schedule_date() {
 async fn dose_take_grant_expired_after_begin_has_no_effect() {
     let fixture = Fixture::new().await;
     fixture.admin.execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001; UPDATE person_access_grants SET expires_at=timezone('UTC',clock_timestamp())+interval '100 milliseconds' WHERE id=78001").await.unwrap();
-    let tenant = access::begin(&fixture.runtime, &scope()).await.unwrap();
+    let tenant = access::begin(&fixture.runtime, &scope(), None)
+        .await
+        .unwrap();
     fixture.admin.execute_unprepared("UPDATE person_access_grants SET expires_at=timezone('UTC',clock_timestamp())-interval '1 second' WHERE id=78001").await.unwrap();
     let result = doses::execute(&tenant, command()).await;
     assert_eq!(result.unwrap_err(), OperationError::NotFound);
@@ -564,7 +572,7 @@ async fn take_in_timezone(
     command: Command,
     zone: chrono_tz::Tz,
 ) -> Result<Outcome, OperationError> {
-    let tenant = access::begin(&fixture.runtime, &scope()).await?;
+    let tenant = access::begin(&fixture.runtime, &scope(), None).await?;
     match doses::execute_in_timezone(&tenant, command, zone, None).await {
         Ok(outcome) => {
             tenant.commit().await?;
@@ -824,7 +832,9 @@ async fn dose_take_review_skipped_midnight_keeps_local_daily_cycles_separate() {
         let Command::Take(mut input) = command();
         input.client_uuid = None;
         input.taken_at = time.into();
-        let tenant = access::begin(&fixture.runtime, &scope()).await.unwrap();
+        let tenant = access::begin(&fixture.runtime, &scope(), None)
+            .await
+            .unwrap();
         let result = doses::execute_in_timezone(
             &tenant,
             Command::Take(input),

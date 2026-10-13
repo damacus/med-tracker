@@ -75,20 +75,27 @@ impl Lifetime {
         self.maximum_age.map_or(0, |duration| duration.num_days())
     }
 
-    pub fn from_environment() -> Result<Self, super::ExchangeError> {
-        fn days(name: &str, default: i64, maximum: i64) -> Result<i64, super::ExchangeError> {
-            match std::env::var(name) {
-                Ok(value) => match value.parse::<i64>() {
-                    Ok(configured) if (1..=maximum).contains(&configured) => Ok(configured),
-                    _ => Err(super::ExchangeError::Unavailable),
+    pub fn from_settings(
+        settings: Option<&serde_json::Value>,
+    ) -> Result<Self, super::ExchangeError> {
+        fn days(
+            settings: Option<&serde_json::Value>,
+            key: &str,
+            default: i64,
+            maximum: i64,
+        ) -> Result<i64, super::ExchangeError> {
+            match crate::models::settings::integer(settings, &["session", key]) {
+                Some(configured) if (1..=maximum).contains(&configured) => Ok(configured),
+                Some(_) => Err(super::ExchangeError::Unavailable),
+                None => match crate::models::settings::node(settings, &["session", key]) {
+                    Some(_) => Err(super::ExchangeError::Unavailable),
+                    None => Ok(default),
                 },
-                Err(std::env::VarError::NotPresent) => Ok(default),
-                Err(_) => Err(super::ExchangeError::Unavailable),
             }
         }
         Self::new(
-            days("SESSION_INACTIVITY_TIMEOUT_DAYS", 7, 7)?,
-            days("SESSION_MAX_AGE_DAYS", 30, 30)?,
+            days(settings, "inactivity_timeout_days", 7, 7)?,
+            days(settings, "max_age_days", 30, 30)?,
         )
     }
 }

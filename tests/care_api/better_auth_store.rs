@@ -361,8 +361,7 @@ async fn production_identity_cookies_stay_secure_behind_an_http_proxy() {
     }
     let fixture = Fixture::new().await;
     let mut config = Config::new(&Environment::Test).unwrap();
-    config.settings.get_or_insert_with(|| serde_json::json!({}))["browser_session"] =
-        serde_json::json!({"secure": true});
+    config.settings.as_mut().unwrap()["browser_session"]["secure"] = serde_json::json!(true);
     config.database.uri = fixture.runtime_uri.clone();
     assert!(config.server.full_url().starts_with("http://"));
     let context = AppContext::builder(

@@ -34,6 +34,6 @@ pub async fn list(
         .all(tenant.transaction())
         .await
         .map_err(database_error)?;
-    let data = projection::serialize_many(tenant.transaction(), records).await?;
+    let data = projection::serialize_many(tenant.transaction(), records, tenant.settings()).await?;
     Ok(json!({"data":data,"meta":{"page":page,"per_page":per_page,"total_count":count}}))
 }

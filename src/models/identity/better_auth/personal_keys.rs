@@ -291,7 +291,7 @@ pub(crate) async fn authenticate(
     let preferences: Value = row
         .try_get("", "preferences")
         .map_err(|_| AuthenticationError::Unavailable)?;
-    let time_zone = super::super::time_zone::preferred(&preferences)?;
+    let time_zone = super::super::time_zone::preferred(&preferences, service.store.settings())?;
     transaction
         .commit()
         .await

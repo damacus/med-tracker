@@ -144,12 +144,12 @@ async fn assert_hashes(fixture: &Fixture, response: &Value) {
 #[tokio::test]
 async fn stored_code_redeems_to_legacy_hash_representation() {
     let fixture = Fixture::new().await;
-    let response = identity::exchange(&fixture.runtime, request(code_body()))
+    let response = identity::exchange(&fixture.runtime, request(code_body()), None)
         .await
         .unwrap();
     assert_hashes(&fixture, &response).await;
     assert!(
-        identity::exchange(&fixture.runtime, request(code_body()))
+        identity::exchange(&fixture.runtime, request(code_body()), None)
             .await
             .is_err()
     );
@@ -160,14 +160,14 @@ async fn stored_code_redeems_to_legacy_hash_representation() {
 async fn stored_refresh_hash_rotates_and_rejects_replay() {
     let fixture = Fixture::new().await;
     fixture.refresh_fixture().await;
-    let response = identity::exchange(&fixture.runtime, request(refresh_body("hello")))
+    let response = identity::exchange(&fixture.runtime, request(refresh_body("hello")), None)
         .await
         .unwrap();
     assert_hashes(&fixture, &response).await;
     assert_ne!(response["refresh_token"], "hello");
     let rotated = fixture.row().await;
     assert!(
-        identity::exchange(&fixture.runtime, request(refresh_body("hello")))
+        identity::exchange(&fixture.runtime, request(refresh_body("hello")), None)
             .await
             .is_err()
     );
@@ -205,14 +205,14 @@ async fn rejected_code_requests_preserve_rightful_redemption() {
         format!("{}&client_id=native", code_body()),
     ] {
         assert!(
-            identity::exchange(&fixture.runtime, request(body))
+            identity::exchange(&fixture.runtime, request(body), None)
                 .await
                 .is_err()
         );
         assert_eq!(fixture.row().await, original);
     }
     assert!(
-        identity::exchange(&fixture.runtime, request(code_body()))
+        identity::exchange(&fixture.runtime, request(code_body()), None)
             .await
             .is_ok()
     );
@@ -227,14 +227,15 @@ async fn native_refresh_binds_supplied_client_id() {
     assert!(
         identity::exchange(
             &fixture.runtime,
-            request(refresh_body("hello").replace("client_id=native", "client_id=other"))
+            request(refresh_body("hello").replace("client_id=native", "client_id=other")),
+            None
         )
         .await
         .is_err()
     );
     assert_eq!(fixture.row().await, original);
     assert!(
-        identity::exchange(&fixture.runtime, request(refresh_body("hello")))
+        identity::exchange(&fixture.runtime, request(refresh_body("hello")), None)
             .await
             .is_ok()
     );
@@ -251,11 +252,16 @@ async fn confidential_secret_post_refresh_enforces_registered_method_and_bcrypt(
         "authorization",
         "Basic bmF0aXZlOnBhc3N3b3Jk".parse().unwrap(),
     );
-    assert!(identity::exchange(&fixture.runtime, basic).await.is_err());
+    assert!(
+        identity::exchange(&fixture.runtime, basic, None)
+            .await
+            .is_err()
+    );
     assert!(
         identity::exchange(
             &fixture.runtime,
-            request(format!("{}&client_secret=wrong", refresh_body("hello")))
+            request(format!("{}&client_secret=wrong", refresh_body("hello"))),
+            None
         )
         .await
         .is_err()
@@ -263,6 +269,7 @@ async fn confidential_secret_post_refresh_enforces_registered_method_and_bcrypt(
     let response = identity::exchange(
         &fixture.runtime,
         request(format!("{}&client_secret=password", refresh_body("hello"))),
+        None,
     )
     .await
     .unwrap();
@@ -277,7 +284,8 @@ async fn confidential_refresh_without_secret_is_rejected_without_rotation() {
         fixture.refresh_fixture().await;
         fixture.admin.execute_unprepared(&format!("UPDATE public.oauth_applications SET token_endpoint_auth_method = '{method}', client_secret_hash = crypt('password', gen_salt('bf', 4)) WHERE id = 75001")).await.unwrap();
         let before = fixture.row().await;
-        let result = identity::exchange(&fixture.runtime, request(refresh_body("hello"))).await;
+        let result =
+            identity::exchange(&fixture.runtime, request(refresh_body("hello")), None).await;
         let after = fixture.row().await;
         fixture.close().await;
         assert!(
@@ -297,7 +305,7 @@ async fn failed_issuance_rolls_back_consumed_code() {
     fixture.admin.execute_unprepared("ALTER TABLE public.oauth_grants ADD CONSTRAINT synthetic_reject_issuance CHECK (token_hash IS NULL)").await.unwrap();
     let original = fixture.row().await;
     assert_eq!(
-        identity::exchange(&fixture.runtime, request(code_body())).await,
+        identity::exchange(&fixture.runtime, request(code_body()), None).await,
         Err(ExchangeError::Unavailable)
     );
     assert_eq!(fixture.row().await, original);
@@ -309,7 +317,7 @@ async fn failed_issuance_rolls_back_consumed_code() {
         .await
         .unwrap();
     assert!(
-        identity::exchange(&fixture.runtime, request(code_body()))
+        identity::exchange(&fixture.runtime, request(code_body()), None)
             .await
             .is_ok()
     );
@@ -330,9 +338,10 @@ async fn race(
     let first_db = fixture.runtime.clone();
     let first_body = body.clone();
     let first =
-        tokio::spawn(async move { identity::exchange(&first_db, request(first_body)).await });
+        tokio::spawn(async move { identity::exchange(&first_db, request(first_body), None).await });
     let second_db = fixture.runtime.clone();
-    let second = tokio::spawn(async move { identity::exchange(&second_db, request(body)).await });
+    let second =
+        tokio::spawn(async move { identity::exchange(&second_db, request(body), None).await });
     let observed = tokio::time::timeout(std::time::Duration::from_secs(3), async {
         loop {
             let waiting: i64 = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres, "SELECT count(*) AS count FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock'")).await.unwrap().unwrap().try_get("", "count").unwrap();
@@ -363,7 +372,7 @@ async fn integration_code_requires_stored_pkce_challenge() {
     fixture.admin.execute_unprepared("UPDATE public.oauth_grants SET code_challenge = NULL, code_challenge_method = NULL WHERE id = 76001").await.unwrap();
     let original = fixture.row().await;
     assert!(
-        identity::exchange(&fixture.runtime, request(code_body()))
+        identity::exchange(&fixture.runtime, request(code_body()), None)
             .await
             .is_err()
     );
@@ -380,7 +389,8 @@ async fn configured_hash_authentication_rejects_plaintext_only_secret() {
     assert!(
         identity::exchange(
             &fixture.runtime,
-            request(format!("{}&client_secret=password", refresh_body("hello")))
+            request(format!("{}&client_secret=password", refresh_body("hello"))),
+            None
         )
         .await
         .is_err()
@@ -413,7 +423,7 @@ async fn expired_revoked_or_stale_authority_rejects_without_consuming_code() {
         fixture.admin.execute_unprepared(invalidate).await.unwrap();
         let original = fixture.row().await;
         assert!(
-            identity::exchange(&fixture.runtime, request(code_body()))
+            identity::exchange(&fixture.runtime, request(code_body()), None)
                 .await
                 .is_err()
         );
@@ -421,7 +431,7 @@ async fn expired_revoked_or_stale_authority_rejects_without_consuming_code() {
         fixture.admin.execute_unprepared(restore).await.unwrap();
     }
     assert!(
-        identity::exchange(&fixture.runtime, request(code_body()))
+        identity::exchange(&fixture.runtime, request(code_body()), None)
             .await
             .is_ok()
     );
@@ -441,7 +451,7 @@ async fn mobile_account_code_does_not_require_an_operational_household() {
         .execute_unprepared("UPDATE public.households SET lifecycle_state = 'held'")
         .await
         .unwrap();
-    let response = identity::exchange(&fixture.runtime, request(mobile_code_body()))
+    let response = identity::exchange(&fixture.runtime, request(mobile_code_body()), None)
         .await
         .unwrap();
     assert!(response["access_token"].is_string());
@@ -468,7 +478,7 @@ async fn default_native_sessions_enforce_seven_idle_and_thirty_absolute_days() {
         fixture.admin.execute_unprepared(ageing).await.unwrap();
         let before = fixture.row().await;
         assert!(
-            identity::exchange(&fixture.runtime, request(refresh_body("hello")))
+            identity::exchange(&fixture.runtime, request(refresh_body("hello")), None)
                 .await
                 .is_err()
         );
@@ -476,7 +486,7 @@ async fn default_native_sessions_enforce_seven_idle_and_thirty_absolute_days() {
     }
     fixture.admin.execute_unprepared("UPDATE public.oauth_grants SET authenticated_at=now()-interval '29 days',last_used_at=now()-interval '6 days' WHERE id=76001").await.unwrap();
     assert!(
-        identity::exchange(&fixture.runtime, request(refresh_body("hello")))
+        identity::exchange(&fixture.runtime, request(refresh_body("hello")), None)
             .await
             .is_ok()
     );
@@ -493,7 +503,7 @@ async fn mobile_refresh_preserves_authentication_and_activity_deadlines() {
         .unwrap();
     fixture.refresh_fixture().await;
     let original = fixture.row().await;
-    let response = identity::exchange(&fixture.runtime, request(refresh_body("hello")))
+    let response = identity::exchange(&fixture.runtime, request(refresh_body("hello")), None)
         .await
         .unwrap();
     assert_ne!(response["refresh_token"], "hello");
@@ -501,7 +511,7 @@ async fn mobile_refresh_preserves_authentication_and_activity_deadlines() {
     assert_eq!(row["authenticated_at"], original["authenticated_at"]);
     assert_eq!(row["last_used_at"], original["last_used_at"]);
     assert!(
-        identity::exchange(&fixture.runtime, request(refresh_body("hello")))
+        identity::exchange(&fixture.runtime, request(refresh_body("hello")), None)
             .await
             .is_err()
     );
@@ -533,7 +543,7 @@ async fn mobile_inactivity_and_plain_pkce_rejections_preserve_rightful_retry() {
         fixture.admin.execute_unprepared(invalidate).await.unwrap();
         let original = fixture.row().await;
         assert!(
-            identity::exchange(&fixture.runtime, request(mobile_code_body()))
+            identity::exchange(&fixture.runtime, request(mobile_code_body()), None)
                 .await
                 .is_err()
         );
@@ -541,7 +551,7 @@ async fn mobile_inactivity_and_plain_pkce_rejections_preserve_rightful_retry() {
         fixture.admin.execute_unprepared(restore).await.unwrap();
     }
     assert!(
-        identity::exchange(&fixture.runtime, request(mobile_code_body()))
+        identity::exchange(&fixture.runtime, request(mobile_code_body()), None)
             .await
             .is_ok()
     );
@@ -628,7 +638,7 @@ async fn durable_duplicate_and_malformed_inputs_preserve_the_code() {
     ] {
         let body = format!("{}&{name}=one&{name}=two", code_body());
         assert_eq!(
-            identity::exchange(&fixture.runtime, request(body)).await,
+            identity::exchange(&fixture.runtime, request(body), None).await,
             Err(ExchangeError::InvalidRequest)
         );
         assert_eq!(fixture.row().await, original);
@@ -639,6 +649,7 @@ async fn durable_duplicate_and_malformed_inputs_preserve_the_code() {
         let error = identity::exchange(
             &fixture.runtime,
             request(serde_urlencoded::to_string(fields).unwrap()),
+            None,
         )
         .await
         .unwrap_err();
@@ -651,7 +662,7 @@ async fn durable_duplicate_and_malformed_inputs_preserve_the_code() {
             .headers_mut()
             .insert("authorization", value.parse().unwrap());
         assert_eq!(
-            identity::exchange(&fixture.runtime, malformed).await,
+            identity::exchange(&fixture.runtime, malformed, None).await,
             Err(ExchangeError::InvalidClient)
         );
         assert_eq!(fixture.row().await, original);
@@ -666,18 +677,18 @@ async fn durable_duplicate_and_malformed_inputs_preserve_the_code() {
         "Basic bmF0aXZlOnBhc3N3b3Jk".parse().unwrap(),
     );
     assert_eq!(
-        identity::exchange(&fixture.runtime, repeated).await,
+        identity::exchange(&fixture.runtime, repeated, None).await,
         Err(ExchangeError::InvalidRequest)
     );
     let mut json = request(code_body());
     json.headers_mut()
         .insert("content-type", "application/json".parse().unwrap());
     assert_eq!(
-        identity::exchange(&fixture.runtime, json).await,
+        identity::exchange(&fixture.runtime, json, None).await,
         Err(ExchangeError::InvalidRequest)
     );
     assert!(
-        identity::exchange(&fixture.runtime, request(code_body()))
+        identity::exchange(&fixture.runtime, request(code_body()), None)
             .await
             .is_ok()
     );
@@ -694,7 +705,8 @@ async fn durable_basic_decoding_preserves_encoded_colon_and_registered_method() 
     assert!(
         identity::exchange(
             &fixture.runtime,
-            request(format!("{body}&client_secret=password"))
+            request(format!("{body}&client_secret=password")),
+            None
         )
         .await
         .is_err()
@@ -711,7 +723,7 @@ async fn durable_basic_decoding_preserves_encoded_colon_and_registered_method() 
                 "password",
             ));
         assert_eq!(
-            identity::exchange(&fixture.runtime, mixed).await,
+            identity::exchange(&fixture.runtime, mixed, None).await,
             Err(ExchangeError::InvalidRequest)
         );
         assert_eq!(fixture.row().await, original);
@@ -723,7 +735,11 @@ async fn durable_basic_decoding_preserves_encoded_colon_and_registered_method() 
             "native%3Adesktop",
             "password",
         ));
-    assert!(identity::exchange(&fixture.runtime, correct).await.is_ok());
+    assert!(
+        identity::exchange(&fixture.runtime, correct, None)
+            .await
+            .is_ok()
+    );
     fixture.close().await;
 }
 
@@ -736,13 +752,14 @@ async fn another_registered_public_client_cannot_refresh_the_grant() {
     let error = identity::exchange(
         &fixture.runtime,
         request(refresh_body("hello").replace("client_id=native", "client_id=other")),
+        None,
     )
     .await
     .unwrap_err();
     assert_ne!(error, ExchangeError::Unavailable);
     assert_eq!(fixture.row().await, original);
     assert!(
-        identity::exchange(&fixture.runtime, request(refresh_body("hello")))
+        identity::exchange(&fixture.runtime, request(refresh_body("hello")), None)
             .await
             .is_ok()
     );
@@ -765,7 +782,7 @@ async fn invalid_stored_mobile_pkce_is_a_protocol_rejection() {
         .await
         .unwrap();
     let original = fixture.row().await;
-    let error = identity::exchange(&fixture.runtime, request(mobile_code_body()))
+    let error = identity::exchange(&fixture.runtime, request(mobile_code_body()), None)
         .await
         .unwrap_err();
     match error {
@@ -783,6 +800,7 @@ async fn narrowed_refresh_preserves_original_refresh_authority() {
     let narrowed = identity::exchange(
         &fixture.runtime,
         request(format!("{}&scope=patient%2F*.rs", refresh_body("hello"))),
+        None,
     )
     .await
     .unwrap();
@@ -799,6 +817,7 @@ async fn narrowed_refresh_preserves_original_refresh_authority() {
     let refreshed = identity::exchange(
         &fixture.runtime,
         request(refresh_body(narrowed["refresh_token"].as_str().unwrap())),
+        None,
     )
     .await
     .unwrap();

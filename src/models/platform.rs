@@ -672,14 +672,21 @@ pub struct Settings {
     pub medicine_lookup_source_priority: Vec<String>,
 }
 
-fn env_invite_only() -> Result<Option<bool>, OperationError> {
-    match std::env::var("INVITE_ONLY") {
-        Ok(value) => Ok(Some(!matches!(
+fn configured_invite_only(
+    settings: Option<&serde_json::Value>,
+) -> Result<Option<bool>, OperationError> {
+    let Some(value) = crate::models::settings::node(settings, &["registration", "invite_only"])
+    else {
+        return Ok(None);
+    };
+    match value {
+        serde_json::Value::Bool(flag) => Ok(Some(*flag)),
+        serde_json::Value::String(value) if !value.is_empty() => Ok(Some(!matches!(
             value.as_str(),
-            "" | "0" | "f" | "F" | "false" | "FALSE" | "off" | "OFF"
+            "0" | "f" | "F" | "false" | "FALSE" | "off" | "OFF"
         ))),
-        Err(std::env::VarError::NotPresent) => Ok(None),
-        Err(std::env::VarError::NotUnicode(_)) => Err(OperationError::Unavailable),
+        serde_json::Value::String(_) => Ok(None),
+        _ => Err(OperationError::Unavailable),
     }
 }
 
@@ -738,6 +745,7 @@ fn default_settings(invite_only: bool) -> Settings {
 pub async fn settings(
     transaction: &DatabaseTransaction,
     actor_account_id: i64,
+    settings_config: Option<&serde_json::Value>,
 ) -> Result<Settings, OperationError> {
     authorize(transaction, actor_account_id, "read_platform_settings").await?;
     let row = transaction
@@ -759,7 +767,7 @@ pub async fn settings(
             .try_get::<bool>("", "has_owner")
             .map_err(|_| OperationError::Unavailable)?;
         let mut defaults = default_settings(has_owner);
-        if let Some(locked) = env_invite_only()? {
+        if let Some(locked) = configured_invite_only(settings_config)? {
             defaults.invite_only = locked;
             defaults.invite_only_locked = true;
         }
@@ -768,7 +776,7 @@ pub async fn settings(
     let stored_invite_only = row
         .try_get::<bool>("", "invite_only")
         .map_err(|_| OperationError::Unavailable)?;
-    let (invite_only, invite_only_locked) = match env_invite_only()? {
+    let (invite_only, invite_only_locked) = match configured_invite_only(settings_config)? {
         Some(value) => (value, true),
         None => (stored_invite_only, false),
     };
@@ -790,11 +798,12 @@ fn valid_settings(
     base_url: &str,
     token_url: &str,
     sources: &[String],
+    settings_config: Option<&serde_json::Value>,
 ) -> Result<(), OperationError> {
     let invalid = || OperationError::Validation {
         details: json!({"error":"The settings values are not allowed."}),
     };
-    if let Some(locked) = env_invite_only()?
+    if let Some(locked) = configured_invite_only(settings_config)?
         && invite_only != locked
     {
         return Err(invalid());
@@ -827,6 +836,7 @@ pub async fn check_settings(
     medicine_lookup_base_url: &str,
     medicine_lookup_token_url: &str,
     medicine_lookup_source_priority: &[String],
+    settings_config: Option<&serde_json::Value>,
 ) -> Result<(), OperationError> {
     authorize(transaction, actor_account_id, "write_platform_settings").await?;
     valid_settings(
@@ -834,9 +844,11 @@ pub async fn check_settings(
         medicine_lookup_base_url,
         medicine_lookup_token_url,
         medicine_lookup_source_priority,
+        settings_config,
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn change_settings(
     transaction: &DatabaseTransaction,
     actor_account_id: i64,
@@ -845,6 +857,7 @@ pub async fn change_settings(
     medicine_lookup_token_url: &str,
     medicine_lookup_source_priority: &[String],
     meta: &RequestMeta,
+    settings_config: Option<&serde_json::Value>,
 ) -> Result<(), OperationError> {
     settings_lock(transaction).await?;
     let actor = authorize(transaction, actor_account_id, "write_platform_settings").await?;
@@ -853,6 +866,7 @@ pub async fn change_settings(
         medicine_lookup_base_url,
         medicine_lookup_token_url,
         medicine_lookup_source_priority,
+        settings_config,
     )?;
     let priority = serde_json::to_string(medicine_lookup_source_priority)
         .map_err(|_| OperationError::Unavailable)?;

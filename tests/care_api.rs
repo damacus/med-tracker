@@ -143,8 +143,8 @@ impl Application {
             panic!("PostgreSQL queue required")
         };
         queue.uri = self.fixture.runtime_uri.clone();
-        config.settings.get_or_insert_with(|| json!({}))["avatar_storage"] =
-            json!({"bucket":bucket});
+        config.settings.get_or_insert_with(|| json!({}))["avatar_storage"]["bucket"] =
+            json!(bucket);
         let boot = med_tracker::app::App::boot(StartMode::ServerOnly, &Environment::Test, config)
             .await
             .unwrap();
@@ -269,7 +269,7 @@ impl Application {
                 .unwrap(),
             ))
             .unwrap();
-        med_tracker::models::identity::exchange(&self.fixture.runtime, request)
+        med_tracker::models::identity::exchange(&self.fixture.runtime, request, None)
             .await
             .unwrap()
     }
@@ -600,7 +600,7 @@ async fn valid_token_without_clinical_scope_returns_library_challenge() {
             .unwrap(),
         ))
         .unwrap();
-    let narrowed = med_tracker::models::identity::exchange(&app.fixture.runtime, request)
+    let narrowed = med_tracker::models::identity::exchange(&app.fixture.runtime, request, None)
         .await
         .unwrap();
     let token = narrowed["access_token"].as_str().unwrap();

@@ -15,8 +15,9 @@ pub async fn accept(
     principal: &ApiSessionPrincipal,
     token: &str,
     request_id: &str,
+    settings: Option<&serde_json::Value>,
 ) -> Result<Value, OperationError> {
-    accept_validated(db, Principal::Api(principal), token, request_id).await
+    accept_validated(db, Principal::Api(principal), token, request_id, settings).await
 }
 
 pub async fn accept_browser(
@@ -24,8 +25,16 @@ pub async fn accept_browser(
     principal: &BrowserPrincipal,
     token: &str,
     request_id: &str,
+    settings: Option<&serde_json::Value>,
 ) -> Result<Value, OperationError> {
-    accept_validated(db, Principal::Browser(principal), token, request_id).await
+    accept_validated(
+        db,
+        Principal::Browser(principal),
+        token,
+        request_id,
+        settings,
+    )
+    .await
 }
 
 pub(crate) struct AcceptanceActor {
@@ -44,12 +53,13 @@ impl Principal<'_> {
     async fn revalidate(
         &self,
         transaction: &DatabaseTransaction,
+        settings: Option<&serde_json::Value>,
     ) -> Result<AcceptanceActor, OperationError> {
         use crate::models::care::doses::{CredentialMethod, CredentialProvenance};
         match self {
             Self::Api(principal) => {
                 let actor = principal
-                    .revalidate(transaction)
+                    .revalidate(transaction, settings)
                     .await
                     .map_err(authentication)?;
                 Ok(AcceptanceActor {
@@ -83,6 +93,7 @@ async fn accept_validated(
     principal: Principal<'_>,
     token: &str,
     request_id: &str,
+    settings: Option<&serde_json::Value>,
 ) -> Result<Value, OperationError> {
     if token.trim().is_empty() {
         return Err(unavailable());
@@ -91,7 +102,7 @@ async fn accept_validated(
     transaction
         .execute_unprepared("SET LOCAL ROLE med_tracker_app")
         .await?;
-    let actor = principal.revalidate(&transaction).await?;
+    let actor = principal.revalidate(&transaction, settings).await?;
     let digest = tokens::digest(token);
     transaction.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,"SELECT set_config('med_tracker.current_household_id','',true),set_config('med_tracker.current_membership_id','',true),set_config('med_tracker.current_invitation_token_digest',$1,true)",[digest.clone().into()])).await?;
     let invitation = household_invitation::Entity::find()
@@ -106,7 +117,7 @@ async fn accept_validated(
         if !operational(&transaction, invitation.household_id).await? {
             return Err(unavailable());
         }
-        let current = principal.revalidate(&transaction).await?;
+        let current = principal.revalidate(&transaction, settings).await?;
         if current.account_id != actor.account_id
             || current.provenance.as_ref().map(|value| &value.reference)
                 != actor.provenance.as_ref().map(|value| &value.reference)
@@ -168,7 +179,7 @@ async fn accept_validated(
             .await?
         }
     } else {
-        retry(&transaction, &principal, &actor, &digest)
+        retry(&transaction, &principal, &actor, &digest, settings)
             .await?
             .ok_or_else(unavailable)?
     };
@@ -211,6 +222,7 @@ async fn retry(
     principal: &Principal<'_>,
     actor: &AcceptanceActor,
     digest: &str,
+    settings: Option<&serde_json::Value>,
 ) -> Result<Option<membership::Model>, OperationError> {
     let members = membership::Entity::find()
         .filter(membership::Column::AccountId.eq(actor.account_id))
@@ -225,7 +237,7 @@ async fn retry(
         if !operational(transaction, member.household_id).await? {
             continue;
         }
-        let current = principal.revalidate(transaction).await?;
+        let current = principal.revalidate(transaction, settings).await?;
         if current.account_id != actor.account_id
             || current.provenance.as_ref().map(|value| &value.reference)
                 != actor.provenance.as_ref().map(|value| &value.reference)

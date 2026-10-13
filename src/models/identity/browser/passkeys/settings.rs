@@ -11,8 +11,9 @@ pub struct PasskeySummary {
 pub async fn list(
     db: &DatabaseConnection,
     session: &Session<SessionPgPool>,
+    settings: Option<&serde_json::Value>,
 ) -> Result<Vec<PasskeySummary>, AuthenticationError> {
-    let principal = authenticate(db, session).await?;
+    let principal = authenticate(db, session, settings).await?;
     let (transaction, _) = principal.authorization_transaction(db).await?;
     let keys = webauthn_key::Entity::find()
         .filter(webauthn_key::Column::AccountId.eq(principal.account_id()))
@@ -37,8 +38,9 @@ pub async fn remove(
     credential_id: &str,
     password: String,
     request_id: Option<&str>,
+    settings: Option<&serde_json::Value>,
 ) -> Result<(), AuthenticationError> {
-    let principal = authenticate(db, session).await?;
+    let principal = authenticate(db, session, settings).await?;
     let (transaction, _) = principal.authorization_transaction(db).await?;
     confirm_password(&transaction, principal.account_id(), password).await?;
     let result = transaction

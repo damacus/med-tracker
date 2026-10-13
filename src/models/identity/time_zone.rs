@@ -9,13 +9,14 @@ static RAILS_NAMES: LazyLock<BTreeMap<&'static str, &'static str>> = LazyLock::n
 
 pub(crate) fn preferred(
     preferences: &serde_json::Value,
+    settings: Option<&serde_json::Value>,
 ) -> Result<chrono_tz::Tz, AuthenticationError> {
-    let fallback = std::env::var("TZ").unwrap_or_else(|_| "UTC".into());
+    let fallback = crate::models::settings::text(settings, &["time_zone"]).unwrap_or("UTC");
     let name = preferences
         .get("time_zone")
         .and_then(serde_json::Value::as_str)
         .filter(|value| !value.is_empty())
-        .unwrap_or(&fallback);
+        .unwrap_or(fallback);
     RAILS_NAMES
         .get(name)
         .copied()
