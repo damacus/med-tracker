@@ -104,6 +104,8 @@ mod signup_timezone;
 mod stock_orders;
 #[path = "care_api/sync.rs"]
 mod sync;
+#[path = "support/template.rs"]
+mod template;
 #[path = "care_api/treatment_timestamps.rs"]
 mod treatment_timestamps;
 #[path = "care_api/treatments.rs"]
