@@ -8,6 +8,23 @@ use med_tracker::models::care::review_prompts::refresh::{
     RefreshRun, RefreshTask, RefreshWorker, import_snapshot,
 };
 
+#[test]
+fn review_lease_delete_contract_allows_idempotent_omitted_token() {
+    let spec: Value =
+        serde_yaml_ng::from_str(include_str!("../../docs/api/openapi.v1.yaml")).unwrap();
+    let parameters =
+        spec["paths"]["/households/{household_id}/medication_review_prompts/{id}/lease"]["delete"]
+            ["parameters"]
+            .as_array()
+            .unwrap();
+    let token = parameters
+        .iter()
+        .find(|parameter| parameter["name"] == "X-Review-Lease")
+        .unwrap();
+    assert_eq!(token["required"], false);
+    assert_eq!(token["schema"]["format"], "uuid");
+}
+
 async fn review_refresh_run(app: &Application) -> i64 {
     app.fixture
         .admin
@@ -145,6 +162,13 @@ async fn review_edit_requires_a_persisted_exclusive_lease_and_releases_after_sav
         .send()
         .await
         .unwrap();
+    let repeated_cancel = app
+        .client
+        .delete(prompts(&app, "/91101/lease"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
     let remaining = app
         .fixture
         .admin
@@ -162,7 +186,57 @@ async fn review_edit_requires_a_persisted_exclusive_lease_and_releases_after_sav
     assert_eq!(saved.status().as_u16(), 200);
     assert_eq!(reacquired_status, 201);
     assert_eq!(cancel.status().as_u16(), 200);
+    assert_eq!(repeated_cancel.status().as_u16(), 200);
     assert!(remaining.is_none());
+}
+
+#[tokio::test]
+async fn review_save_with_unchanged_fields_releases_lease_without_history() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    seed_prompt(&app, 91252, "not_relevant").await;
+    let shown = app
+        .client
+        .get(prompts(&app, "/91252"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let etag = shown
+        .headers()
+        .get("etag")
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_owned();
+    let lease = edit_token(&app, &token, 91252).await;
+    let saved = app
+        .client
+        .patch(prompts(&app, "/91252"))
+        .bearer_auth(&token)
+        .header("if-match", &etag)
+        .header("x-review-lease", &lease)
+        .json(&json!({"medication_review_prompt":{"status":"not_relevant"}}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(saved.status().as_u16(), 200);
+    assert_eq!(saved.headers().get("etag").unwrap().to_str().unwrap(), etag);
+    let count = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT count(*)::bigint AS total FROM medication_review_histories WHERE prompt_id=91252"
+    )).await.unwrap().unwrap().try_get::<i64>("", "total").unwrap();
+    assert_eq!(count, 0);
+    let remaining = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT token FROM medication_review_edit_leases WHERE prompt_id=91252",
+        ))
+        .await
+        .unwrap();
+    assert!(remaining.is_none());
+    app.close().await;
 }
 
 #[tokio::test]
@@ -213,6 +287,18 @@ async fn changed_evidence_reopens_review_and_preserves_the_previous_snapshot() {
     app.fixture.admin.execute_unprepared(
         "UPDATE medication_review_evidence_records SET source_version='2',evidence_text='Changed synthetic evidence.' WHERE id=9110200",
     ).await.unwrap();
+    let detail_after_change: Value = app
+        .client
+        .get(prompts(&app, "/91102"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(detail_after_change["data"]["status"], "needs_review");
+    assert_ne!(detail_after_change["data"]["etag"], original_etag);
     let refreshed = app
         .client
         .get(prompts(&app, ""))
@@ -900,6 +986,107 @@ async fn review_refresh_retry_and_concurrent_delivery_keep_the_first_completed_r
         "SELECT count(*)::bigint AS count FROM medication_review_evidence_records WHERE source_record_id='synthetic-worker-label'",
     )).await.unwrap().unwrap().try_get::<i64>("", "count").unwrap();
     assert_eq!(count, 1);
+    app.close().await;
+}
+
+#[tokio::test]
+async fn review_refresh_retry_reopens_changed_prompt_after_evidence_commit() {
+    let app = Application::new().await;
+    seed_prompt(&app, 91251, "reviewed").await;
+    app.fixture.admin.execute_unprepared(
+        "UPDATE medication_review_prompts SET practitioner_name='Previous clinician',practitioner_role='Clinician',reviewed_on='2026-09-01',review_note='Prior decision' WHERE id=91251"
+    ).await.unwrap();
+    app.fixture.admin.execute_unprepared(
+        "UPDATE medication_review_evidence_records SET source_name='openFDA / DailyMed SPL',source_record_id='synthetic-worker-label',source_version='1',source_effective_on='2026-09-01',evidence_text='Old warning' WHERE id=9125100"
+    ).await.unwrap();
+    app.fixture.admin.execute_unprepared(
+        "CREATE FUNCTION review_refresh_reconcile_block() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic blocked reconcile'; END $$"
+    ).await.unwrap();
+    app.fixture.admin.execute_unprepared(
+        "CREATE TRIGGER review_refresh_reconcile_block BEFORE UPDATE ON medication_review_prompts FOR EACH ROW EXECUTE FUNCTION review_refresh_reconcile_block()"
+    ).await.unwrap();
+    let run_id = review_refresh_run(&app).await;
+    let snapshot = review_refresh_snapshot("2", "Changed synthetic warning");
+    let date = NaiveDate::from_ymd_opt(2026, 10, 13).unwrap();
+    assert!(
+        import_snapshot(&app.context, run_id, &snapshot, date)
+            .await
+            .is_err()
+    );
+    let evidence = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT source_version FROM medication_review_evidence_records WHERE id=9125100",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        evidence
+            .try_get::<Option<String>>("", "source_version")
+            .unwrap()
+            .as_deref(),
+        Some("2")
+    );
+    let pending = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT status FROM medication_review_prompts WHERE id=91251",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(pending.try_get::<String>("", "status").unwrap(), "reviewed");
+    app.fixture
+        .admin
+        .execute_unprepared(
+            "DROP TRIGGER review_refresh_reconcile_block ON medication_review_prompts",
+        )
+        .await
+        .unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared("DROP FUNCTION review_refresh_reconcile_block()")
+        .await
+        .unwrap();
+    import_snapshot(&app.context, run_id, &snapshot, date)
+        .await
+        .unwrap();
+    let result = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        format!("SELECT r.status,r.updated_count,r.unchanged_count,p.status AS prompt_status,p.practitioner_name,p.evidence_text FROM medication_review_evidence_refresh_runs r CROSS JOIN medication_review_prompts p WHERE r.id={run_id} AND p.id=91251")
+    )).await.unwrap().unwrap();
+    assert_eq!(result.try_get::<i32>("", "status").unwrap(), 2);
+    assert_eq!(result.try_get::<i32>("", "updated_count").unwrap(), 0);
+    assert_eq!(result.try_get::<i32>("", "unchanged_count").unwrap(), 1);
+    assert_eq!(
+        result.try_get::<String>("", "prompt_status").unwrap(),
+        "needs_review"
+    );
+    assert_eq!(
+        result
+            .try_get::<Option<String>>("", "practitioner_name")
+            .unwrap(),
+        None
+    );
+    assert_eq!(
+        result.try_get::<String>("", "evidence_text").unwrap(),
+        "Changed synthetic warning"
+    );
+    let histories = app.fixture.admin.query_all_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT event_type,snapshot FROM medication_review_histories WHERE prompt_id=91251 ORDER BY id"
+    )).await.unwrap();
+    assert_eq!(histories.len(), 1);
+    assert_eq!(
+        histories[0].try_get::<String>("", "event_type").unwrap(),
+        "evidence"
+    );
+    let prior: Value = histories[0].try_get("", "snapshot").unwrap();
+    assert_eq!(prior["practitioner_name"], "Previous clinician");
+    assert_eq!(prior["review_note"], "Prior decision");
     app.close().await;
 }
 

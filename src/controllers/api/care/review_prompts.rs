@@ -357,7 +357,7 @@ async fn mutation(
     edit::require(tenant, &record, lease)
         .await
         .map_err(response::operation)?;
-    let Some(active) = changes.apply(&record, tenant.membership().id) else {
+    let Some((active, dirty)) = changes.apply(&record, tenant.membership().id) else {
         return keyed(
             tenant,
             principal,
@@ -377,9 +377,14 @@ async fn mutation(
         .await
         .map_err(|_| response::unavailable())?;
     let outcome = async {
-        edit::archive(tenant, &record, "review").await?;
-        let updated = active.update(tenant.transaction()).await?;
-        prompts::record_rest_update(tenant, &record, &updated).await?;
+        let updated = if dirty {
+            edit::archive(tenant, &record, "review").await?;
+            let updated = active.update(tenant.transaction()).await?;
+            prompts::record_rest_update(tenant, &record, &updated).await?;
+            updated
+        } else {
+            record.clone()
+        };
         edit::consume(tenant, &record, lease).await?;
         Ok::<_, OperationError>(updated)
     }

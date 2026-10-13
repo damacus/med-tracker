@@ -1165,7 +1165,13 @@ paths:
           schema:
             type: string
             pattern: "^[1-9][0-9]*$"
-        - $ref: "#/components/parameters/review_lease"
+        - name: X-Review-Lease
+          in: header
+          required: false
+          description: Opaque token from the active edit lease. Omit only when no lease remains; release is idempotent.
+          schema:
+            type: string
+            format: uuid
       responses:
         "200":
           description: The edit was cancelled.

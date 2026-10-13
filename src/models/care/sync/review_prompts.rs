@@ -214,7 +214,7 @@ impl Changes {
         self,
         record: &review_prompt::Model,
         membership_id: i64,
-    ) -> Option<review_prompt::ActiveModel> {
+    ) -> Option<(review_prompt::ActiveModel, bool)> {
         let status = self.status.clone().unwrap_or_else(|| record.status.clone());
         let name = self
             .practitioner_name
@@ -266,7 +266,7 @@ impl Changes {
         if dirty {
             changed.updated_at = Set(Utc::now().naive_utc());
         }
-        Some(changed)
+        Some((changed, dirty))
     }
 }
 
@@ -336,9 +336,19 @@ async fn apply_sync_operation(
     edit::require(context.tenant, &record, &lease).await?;
     let changes =
         Changes::parse(&json!({"medication_review_prompt": attributes})).map_err(sync_error)?;
-    let active = changes
+    let (active, dirty) = changes
         .apply(&record, context.tenant.membership().id)
         .ok_or_else(|| sync_error(StatusCode::UNPROCESSABLE_ENTITY))?;
+    if !dirty {
+        edit::consume(context.tenant, &record, &lease).await?;
+        return Ok(SyncResult {
+            record_type: "MedicationReviewPrompt",
+            record_id: Some(record.id),
+            record_portable_id: None,
+            etag: Some(tag(&record)),
+            replayed: None,
+        });
+    }
     edit::archive(context.tenant, &record, "review").await?;
     let updated = active.update(db).await.map_err(database_error)?;
     let now = Utc::now().naive_utc();

@@ -208,11 +208,19 @@ pub async fn show(tenant: &TenantTransaction, id: &str) -> Result<(Value, String
     if !sync::review_prompts::actor_adult(tenant.transaction(), &context).await? {
         return Err(OperationError::Forbidden);
     }
+    sync::lock(tenant).await?;
+    if !sync::review_prompts::actor_adult(tenant.transaction(), &context).await? {
+        return Err(OperationError::Forbidden);
+    }
     let Some(record) =
         sync::review_prompts::visible_prompt(tenant.transaction(), &context, id).await?
     else {
         return Err(OperationError::NotFound);
     };
+    refresh(tenant, record.person_id, today_in_app_zone()).await?;
+    let record = sync::review_prompts::visible_prompt(tenant.transaction(), &context, id)
+        .await?
+        .ok_or(OperationError::NotFound)?;
     let history = edit::history(tenant, &record).await?;
     Ok((
         json!({"data": value(&record),"history":history}),

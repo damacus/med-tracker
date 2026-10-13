@@ -55,6 +55,28 @@ test('a second tab cannot take an active review lease', async ({ page, careFixtu
   await other.close();
 });
 
+test('saving an unchanged review releases Edit without adding prior history', async ({ page, careFixture }) => {
+  test.setTimeout(180000);
+  await careFixture.seedReviewReport();
+  await page.goto('/login');
+  await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
+  await page.getByLabel('Password', { exact: true }).fill('password');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  const path = '/households/persistence-fixture/medicine-reviews';
+  await page.goto(path);
+  await page.locator('article summary').first().click();
+  await page.getByRole('button', { name: 'Edit review' }).first().click();
+  await page.getByRole('button', { name: 'Save review record' }).click();
+  await expect(page.getByText('Medicine review record updated.')).toBeVisible();
+  await page.locator('article summary').first().click();
+  await page.getByRole('link', { name: 'Previous reviews' }).first().click();
+  await expect(page.getByText('No previous review has been recorded.')).toBeVisible();
+  await page.goto(path);
+  await page.locator('article summary').first().click();
+  await page.getByRole('button', { name: 'Edit review' }).first().click();
+  await expect(page.getByRole('heading', { name: 'Record practitioner review' })).toBeVisible();
+});
+
 test('review filters, pagination and PDF keep the visible synthetic set coherent', async ({ page, careFixture }, info) => {
   test.setTimeout(180000);
   await careFixture.seedReviewReport();

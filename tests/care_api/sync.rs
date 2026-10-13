@@ -817,6 +817,33 @@ async fn sync_catalogue_review_update_requires_current_manage_and_version() {
         None
     );
     assert_eq!(row.try_get::<i64>("", "events").unwrap(), 1);
+    let next_lease = app
+        .client
+        .post(format!(
+            "{}/api/v1/households/72001/medication_review_prompts/89997/lease",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(next_lease.status().as_u16(), 201);
+    let next_lease: Value = next_lease.json().await.unwrap();
+    let same = json!({"resource_type":"medication_review_prompt","action":"update","id":"89997","if_match":updated["data"]["results"][0]["etag"],"attributes":{"status":"not_relevant","review_note":"Synthetic reviewed offline","reviewed_on":null,"lease_token":next_lease["data"]["token"]}});
+    let (same_status, same_reply) = sync_operation(&app, &token, same).await;
+    assert_eq!(same_status, 201, "{same_reply}");
+    assert_eq!(
+        same_reply["data"]["results"][0]["etag"],
+        updated["data"]["results"][0]["etag"]
+    );
+    let history_and_audit = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT (SELECT count(*)::bigint FROM medication_review_histories WHERE prompt_id=89997) AS histories,(SELECT count(*)::bigint FROM security_audit_events WHERE event_type='medication_review_prompt.updated') AS events"
+    )).await.unwrap().unwrap();
+    assert_eq!(
+        history_and_audit.try_get::<i64>("", "histories").unwrap(),
+        1
+    );
+    assert_eq!(history_and_audit.try_get::<i64>("", "events").unwrap(), 1);
     app.close().await;
 }
 

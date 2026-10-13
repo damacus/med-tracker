@@ -345,21 +345,36 @@ async fn save(
             "practitioner_role":draft.get("practitioner_role"),
             "review_note":draft.get("review_note"),
         }});
+        for (field, current) in [
+            ("practitioner_name", record.practitioner_name.as_deref()),
+            ("practitioner_role", record.practitioner_role.as_deref()),
+            ("review_note", record.review_note.as_deref()),
+        ] {
+            if current.is_none() && draft.get(field).is_some_and(String::is_empty) {
+                attributes["medication_review_prompt"]
+                    .as_object_mut()
+                    .expect("review attributes are an object")
+                    .remove(field);
+            }
+        }
         let empty_date = draft.get("reviewed_on").is_some_and(String::is_empty);
         if !empty_date {
             attributes["medication_review_prompt"]["reviewed_on"] = json!(draft.get("reviewed_on"));
         }
         let changes = sync::review_prompts::Changes::parse(&attributes).map_err(|_| OperationError::Validation { details:json!({"error":"Review fields are invalid"}) })?;
-        let mut active = changes.apply(&record, tenant.membership().id).ok_or(OperationError::Validation { details:json!({"error":"Practitioner name, role and date are required for this outcome"}) })?;
+        let (mut active, mut dirty) = changes.apply(&record, tenant.membership().id).ok_or(OperationError::Validation { details:json!({"error":"Practitioner name, role and date are required for this outcome"}) })?;
         if empty_date {
             if matches!(draft.get("status").map(String::as_str), Some("reviewed_with_practitioner" | "expected_prescribed_combination")) {
                 return Err(OperationError::Validation { details:json!({"error":"Practitioner name, role and date are required for this outcome"}) });
             }
+            dirty |= record.reviewed_on.is_some();
             active.reviewed_on = sea_orm::Set(None);
         }
-        edit::archive(&tenant, &record, "review").await?;
-        let updated = active.update(tenant.transaction()).await?;
-        sync::review_prompts::record_rest_update(&tenant, &record, &updated).await?;
+        if dirty {
+            edit::archive(&tenant, &record, "review").await?;
+            let updated = active.update(tenant.transaction()).await?;
+            sync::review_prompts::record_rest_update(&tenant, &record, &updated).await?;
+        }
         edit::consume(&tenant, &record, lease).await?;
         Ok::<_,OperationError>(())
     }.await;
