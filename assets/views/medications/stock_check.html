@@ -28,7 +28,7 @@
         <label class="flex min-h-20 items-center gap-3 py-3" data-stock-check-name="{{ row.medication_name }} {% if row.strength %}{{ row.strength }}{% endif %}">
           <input class="checkbox checkbox-primary shrink-0" type="checkbox" value="{{ row.key }}" data-stock-check-select {% if row.selected %}checked{% endif %} {% if not row.adjustable %}disabled{% endif %}>
           <span class="min-w-0 flex-1"><strong class="block">{{ row.medication_name }}</strong>{% if row.strength %}<span class="block text-sm">{{ row.strength }}</span>{% endif %}<span class="block text-xs text-base-content/60">{{ row.location_name }}</span></span>
-          <span class="text-sm font-semibold">{% if row.quantity != null %}{{ row.quantity }} {{ row.unit }}{% else %}—{% endif %}</span>
+          <span class="text-sm font-semibold">{% if row.quantity != null %}{{ row.quantity }} {{ row.display_unit }}{% else %}—{% endif %}</span>
         </label>
         {% endfor %}
       </div>
@@ -42,9 +42,9 @@
           <p data-stock-check-empty {% if selected_count > 0 %}hidden{% endif %}>{{ stock.empty_description }}</p>
           {% for row in rows %}
           {% if row.adjustable %}
-          <div class="{% if not row.selected %}hidden {% endif %}border-b border-base-300 py-3" data-stock-check-entry="{{ row.key }}" data-stock-check-current="{% if row.quantity != null %}{{ row.quantity }}{% endif %}" data-stock-check-unit="{{ row.unit }}">
+          <div class="{% if not row.selected %}hidden {% endif %}border-b border-base-300 py-3" data-stock-check-entry="{{ row.key }}" data-stock-check-current="{% if row.quantity != null %}{{ row.quantity }}{% endif %}" data-stock-check-unit="{{ row.unit }}" data-stock-check-unit-one="{{ row.unit_one }}" data-stock-check-unit-other="{{ row.unit_other }}">
             <p class="font-semibold">{{ row.medication_name }}{% if row.strength %} · {{ row.strength }}{% endif %}</p>
-            <p class="text-sm text-base-content/60">{{ row.location_name }} · {{ stock.current }}: {% if row.quantity != null %}{{ row.quantity }} {{ row.unit }}{% else %}—{% endif %}</p>
+            <p class="text-sm text-base-content/60">{{ row.location_name }} · {{ stock.current }}: {% if row.quantity != null %}{{ row.quantity }} {{ row.display_unit }}{% else %}—{% endif %}</p>
             <input type="hidden" name="snapshot_{{ row.key }}" value="{{ row.snapshot }}" {% if not row.selected %}disabled{% endif %}>
             <label class="mt-2 grid gap-2" for="stock-check-quantity-{{ row.key }}">{{ stock.new_supply_for | replace(from="%{medication}", to=row.label) }}
               <input id="stock-check-quantity-{{ row.key }}" class="input w-full" type="number" min="0" max="99999999.99" step="0.01" name="quantity_{{ row.key }}" value="{% if row.selected %}{{ row.new_quantity }}{% else %}{{ row.quantity | default(value='0') }}{% endif %}" {% if not row.selected %}disabled{% endif %} required>

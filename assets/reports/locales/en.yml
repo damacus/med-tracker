@@ -975,6 +975,8 @@ en:
         review_stock: "Review stock"
         mark_received: "Mark as received"
         quantity_precision_error: "is outside stock precision."
+        quantity_decimal_error: "The quantity must be a decimal number."
+        arrival_date_error: "The expected arrival must be an ISO date."
     dose_dialog:
       ongoing_medication: 'Ongoing medication'
       scheduled_treatment: 'Scheduled treatment'
@@ -1100,6 +1102,13 @@ en:
       location_label: Inventory location
       all_locations: All locations
       selected: "%{count} selected"
+      unit_names:
+        tablet:
+          one: tablet
+          other: tablets
+        capsule:
+          one: capsule
+          other: capsules
       clear_selection: Clear selection
       in_stock: In stock
       low_stock: Low stock

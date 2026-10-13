@@ -9,5 +9,7 @@ SELECT json_build_object(
   'option_reason_before', (SELECT object_changes::jsonb #>> '{current_supply,0}' FROM public.versions WHERE item_type='MedicationDosageOption' AND item_id=82021 AND event LIKE '%reason: house_stock_check%' ORDER BY id DESC LIMIT 1),
   'option_reason_after', (SELECT object_changes::jsonb #>> '{current_supply,1}' FROM public.versions WHERE item_type='MedicationDosageOption' AND item_id=82021 AND event LIKE '%reason: house_stock_check%' ORDER BY id DESC LIMIT 1),
   'option_parent_reason_before', (SELECT object_changes::jsonb #>> '{current_supply,0}' FROM public.versions WHERE item_type='Medication' AND item_id=80021 AND event LIKE '%reason: house_stock_check%' ORDER BY id DESC LIMIT 1),
-  'option_parent_reason_after', (SELECT object_changes::jsonb #>> '{current_supply,1}' FROM public.versions WHERE item_type='Medication' AND item_id=80021 AND event LIKE '%reason: house_stock_check%' ORDER BY id DESC LIMIT 1)
+  'option_parent_reason_after', (SELECT object_changes::jsonb #>> '{current_supply,1}' FROM public.versions WHERE item_type='Medication' AND item_id=80021 AND event LIKE '%reason: house_stock_check%' ORDER BY id DESC LIMIT 1),
+  'option_reason_event', (SELECT event FROM public.versions WHERE item_type='MedicationDosageOption' AND item_id=82021 AND event LIKE '%reason: house_stock_check%' ORDER BY id DESC LIMIT 1),
+  'option_parent_reason_event', (SELECT event FROM public.versions WHERE item_type='Medication' AND item_id=80021 AND event LIKE '%reason: house_stock_check%' ORDER BY id DESC LIMIT 1)
 );

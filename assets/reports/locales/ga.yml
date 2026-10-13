@@ -1031,6 +1031,8 @@ ga:
         review_stock: "Athbhreithnigh stoc"
         mark_received: "Marcáil mar faighte"
         quantity_precision_error: "Tá an méid lasmuigh de bheachtas an stoic."
+        quantity_decimal_error: "Ní mór don chainníocht a bheith ina huimhir dheachúlach."
+        arrival_date_error: "Ní mór don dáta teachta a bheith ina dháta ISO."
     dose_dialog:
       ongoing_medication: 'Cógas leanúnach'
       scheduled_treatment: 'Cóireáil sceidealta'
@@ -1360,6 +1362,13 @@ ga:
       location_label: Suíomh fardail
       all_locations: Gach suíomh
       selected: "%{count} roghnaithe"
+      unit_names:
+        tablet:
+          one: táibléad
+          other: táibléid
+        capsule:
+          one: capsúl
+          other: capsúil
       clear_selection: Glan an roghnú
       in_stock: I stoc
       low_stock: Stoc íseal

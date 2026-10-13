@@ -1027,6 +1027,8 @@ cy:
         review_stock: "Adolygu stoc"
         mark_received: "Marcio fel derbyniwyd"
         quantity_precision_error: "Mae'r nifer y tu allan i gywirdeb stoc."
+        quantity_decimal_error: "Rhaid i'r nifer fod yn rhif degol."
+        arrival_date_error: "Rhaid i'r dyddiad cyrraedd fod yn ddyddiad ISO."
     dose_dialog:
       ongoing_medication: 'Meddyginiaeth barhaus'
       scheduled_treatment: 'Triniaeth wedi’i threfnu'
@@ -1356,6 +1358,13 @@ cy:
       location_label: Lleoliad y stocrestr
       all_locations: Pob lleoliad
       selected: "%{count} wedi'u dewis"
+      unit_names:
+        tablet:
+          one: dabled
+          other: tabledi
+        capsule:
+          one: capsiwl
+          other: capsiwlau
       clear_selection: Clirio'r dewis
       in_stock: Mewn stoc
       low_stock: Stoc isel

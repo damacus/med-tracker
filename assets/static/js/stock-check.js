@@ -10,6 +10,7 @@
   const net = form.querySelector('[data-stock-check-net]');
   const number = new Intl.NumberFormat(document.documentElement.lang || 'en', { maximumFractionDigits: 2 });
   const signed = value => `${value > 0 ? '+' : ''}${number.format(value)}`;
+  const unitFor = (value, one, other) => Math.abs(value) === 1 ? one : other;
   function refresh() {
     let count = 0;
     let invalid = false;
@@ -32,15 +33,18 @@
         difference.textContent = '—';
       } else {
         const delta = next - Number(original);
-        difference.textContent = `${signed(delta)} ${entry.dataset.stockCheckUnit}`;
-        changes.set(entry.dataset.stockCheckUnit, (changes.get(entry.dataset.stockCheckUnit) || 0) + delta);
+        difference.textContent = `${signed(delta)} ${unitFor(delta, entry.dataset.stockCheckUnitOne, entry.dataset.stockCheckUnitOther)}`;
+        const unit = entry.dataset.stockCheckUnit;
+        const change = changes.get(unit) || { delta: 0, one: entry.dataset.stockCheckUnitOne, other: entry.dataset.stockCheckUnitOther };
+        change.delta += delta;
+        changes.set(unit, change);
       }
     }
     empty.hidden = count > 0;
     submit.disabled = count === 0 || invalid;
     submit.textContent = count === 1 ? submit.dataset.one : submit.dataset.other.replace('%{count}', count);
     selected.textContent = selected.dataset.template.replace('%{count}', count);
-    net.textContent = changes.size ? [...changes].map(([unit, delta]) => `${signed(delta)} ${unit}`).join(' · ') : '—';
+    net.textContent = changes.size ? [...changes.values()].map(change => `${signed(change.delta)} ${unitFor(change.delta, change.one, change.other)}`).join(' · ') : '—';
   }
   selections.forEach(selection => selection.addEventListener('change', refresh));
   for (const entry of entries.values()) {

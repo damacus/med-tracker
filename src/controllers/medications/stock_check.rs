@@ -9,7 +9,7 @@ pub(super) struct StockCheckQuery {
     location_id: Option<i64>,
 }
 
-fn empty_location<'de, D>(deserializer: D) -> Result<Option<i64>, D::Error>
+pub(super) fn empty_location<'de, D>(deserializer: D) -> Result<Option<i64>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
@@ -83,6 +83,17 @@ async fn render_page(
         for row in rows {
             let Some(key) = row["key"].as_str().map(str::to_owned) else {
                 continue;
+            };
+            let unit = row["unit"].as_str().unwrap_or_default().to_owned();
+            let names = &labels["medications"]["stock_check"]["unit_names"][&unit];
+            let one = names["one"].as_str().unwrap_or(&unit).to_owned();
+            let other = names["other"].as_str().unwrap_or(&unit).to_owned();
+            row["unit_one"] = json!(one);
+            row["unit_other"] = json!(other);
+            row["display_unit"] = if row["quantity"].as_str() == Some("1") {
+                row["unit_one"].clone()
+            } else {
+                row["unit_other"].clone()
             };
             row["selected"] = json!(false);
             if let Some(quantity) = draft.get(&format!("quantity_{key}")) {

@@ -148,9 +148,9 @@ pub(crate) async fn update_stock_checked(
     body: Value,
     etag: Option<&str>,
     provenance: Option<&CredentialProvenance>,
-    event: &str,
+    reason: &str,
 ) -> Result<(Value, String), OperationError> {
-    update_with_event(tenant, id, body, etag, provenance, Some(event)).await
+    update_with_event(tenant, id, body, etag, provenance, Some(reason)).await
 }
 
 async fn update_with_event(
@@ -159,7 +159,7 @@ async fn update_with_event(
     body: Value,
     etag: Option<&str>,
     provenance: Option<&CredentialProvenance>,
-    event: Option<&str>,
+    stock_check_reason: Option<&str>,
 ) -> Result<(Value, String), OperationError> {
     authorize(tenant).await?;
     let found = record(tenant, id, false).await?;
@@ -230,13 +230,37 @@ async fn update_with_event(
         } else {
             None
         };
-        persistence::persist(tenant, &row, Some(before), provenance, event).await?;
+        let option_event = stock_check_reason.map(|reason| {
+            format!(
+                "stock check (qty: {}, reason: {reason})",
+                row.current_supply
+                    .map(|quantity| quantity.normalize().to_string())
+                    .unwrap_or_default()
+            )
+        });
+        persistence::persist(
+            tenant,
+            &row,
+            Some(before),
+            provenance,
+            option_event.as_deref(),
+        )
+        .await?;
         if let Some((before, parent)) = parent {
+            let parent_event = stock_check_reason.map(|reason| {
+                format!(
+                    "stock check (qty: {}, reason: {reason})",
+                    parent
+                        .current_supply
+                        .map(|quantity| quantity.normalize().to_string())
+                        .unwrap_or_default()
+                )
+            });
             administration::persistence::record_version_as(
                 tenant,
                 "Medication",
                 parent.id,
-                event.unwrap_or("api_update"),
+                parent_event.as_deref().unwrap_or("api_update"),
                 Some(before),
                 super::super::medications::medication_snapshot(&parent),
                 provenance,

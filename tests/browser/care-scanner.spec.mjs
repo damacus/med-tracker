@@ -186,7 +186,12 @@ test('inventory filters show located medication cards and distinguish zero from 
   await expect(page).toHaveURL(/category=Routine/);
   await expect(zero).toBeVisible();
   await inventory.getByRole('combobox', { name: 'Category', exact: true }).selectOption('As needed');
+  await expect(page).toHaveURL(/category=As(?:%20|\+)needed/);
   await expect(inventory.getByText('No medications match these filters.')).toBeVisible();
+  await inventory.getByRole('combobox', { name: 'Location', exact: true }).selectOption('');
+  await expect(page).toHaveURL(/location_id=&category=As(?:%20|\+)needed/);
+  await expect(untracked).toBeVisible();
+  expect((await page.request.get('/households/persistence-fixture/medications?location_id=invalid')).status()).toBe(400);
 });
 
 test.describe('Welsh inventory language', () => {
@@ -200,6 +205,9 @@ test.describe('Welsh inventory language', () => {
     await expect(page.getByRole('link', { name: 'Gwiriad stoc' })).toBeVisible();
     await page.getByRole('link', { name: 'Gwiriad stoc' }).click();
     await expect(page.getByRole('heading', { name: 'Gweinyddu stocrestr' })).toBeVisible();
+    await page.getByRole('checkbox', { name: /Synthetic tablets/ }).check();
+    await page.locator('[data-stock-check-entry="medication_80001"] input[type="number"]').fill('3');
+    await expect(page.locator('[data-stock-check-net]')).toHaveText('+3 tabledi');
   });
 });
 
@@ -269,6 +277,8 @@ test('Stock Check applies selected absolute counts together and keeps unselected
   expect(Number(stock.option_reason_after)).toBe(6);
   expect(Number(stock.option_parent_reason_before)).toBe(5);
   expect(Number(stock.option_parent_reason_after)).toBe(9);
+  expect(stock.option_reason_event).toContain('qty: 6, reason: house_stock_check');
+  expect(stock.option_parent_reason_event).toContain('qty: 9, reason: house_stock_check');
 });
 
 test('Stock Check keeps a rejected batch editable without changing any stock', async ({ page, careFixture }) => {
@@ -381,13 +391,15 @@ test('Stock Check batch controls show selected counts, differences and a unit-sa
   await page.getByRole('checkbox', { name: /Synthetic option tablets 1 tablet/ }).check();
   await page.getByRole('checkbox', { name: /Synthetic spare capsules/ }).check();
   await expect(page.getByText('3 selected')).toBeVisible();
+  await expect(page.locator('[data-stock-check-entry="option_82021"]')).toContainText('2 tablets');
   const checkedColour = await page.getByRole('checkbox', { name: /Synthetic tablets/ }).evaluate(element => getComputedStyle(element).backgroundColor);
   const uncheckedColour = await page.getByRole('checkbox', { name: /Synthetic untracked option tablets/ }).evaluate(element => getComputedStyle(element).backgroundColor);
   expect(checkedColour).not.toBe(uncheckedColour);
   await page.getByLabel('New remaining supply for Synthetic tablets').fill('3');
   await page.getByLabel('New remaining supply for Synthetic option tablets 1 tablet').fill('6');
   await page.getByLabel('New remaining supply for Synthetic spare capsules').fill('4');
-  await expect(page.locator('[data-stock-check-net]')).toContainText('+7 tablet');
+  await expect(page.locator('[data-stock-check-entry="medication_80001"] [data-stock-check-difference]')).toHaveText('+3 tablets');
+  await expect(page.locator('[data-stock-check-net]')).toContainText('+7 tablets');
   await expect(page.locator('[data-stock-check-net]')).not.toContainText('capsule');
   await page.getByLabel('New remaining supply for Synthetic tablets').fill('');
   await expect(page.getByRole('button', { name: /Apply/ })).toBeDisabled();

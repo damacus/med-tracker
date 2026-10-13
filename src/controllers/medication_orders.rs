@@ -219,15 +219,28 @@ fn render(
         }
         _ => json!({}),
     };
-    if let Some(messages) = errors
-        .get_mut("quantity")
-        .and_then(|value| value.as_array_mut())
-    {
-        for message in messages {
-            if message == "is outside stock precision" {
-                *message =
-                    data["labels"]["medications"]["order"]["browser"]["quantity_precision_error"]
-                        .clone();
+    for (field, source, label) in [
+        (
+            "quantity",
+            "is outside stock precision",
+            "quantity_precision_error",
+        ),
+        (
+            "quantity",
+            "must be a decimal string",
+            "quantity_decimal_error",
+        ),
+        (
+            "expected_arrival_on",
+            "must be an ISO date",
+            "arrival_date_error",
+        ),
+    ] {
+        if let Some(messages) = errors.get_mut(field).and_then(|value| value.as_array_mut()) {
+            for message in messages {
+                if message == source {
+                    *message = data["labels"]["medications"]["order"]["browser"][label].clone();
+                }
             }
         }
     }

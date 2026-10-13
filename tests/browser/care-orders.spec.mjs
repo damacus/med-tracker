@@ -83,6 +83,15 @@ test('order page uses the selected Welsh language for controls and status', asyn
   expect((await invalid).status()).toBe(422);
   await expect(page.getByLabel('Nifer i\'w archebu')).toHaveValue('-1');
   await expect(page.getByLabel('Nifer i\'w archebu')).toHaveAccessibleDescription('Mae\'r nifer y tu allan i gywirdeb stoc.');
+  const fields = await page.locator('form[action$="/order"]').evaluate(form => Object.fromEntries(new FormData(form)));
+  const malformedQuantity = await page.request.post(`${detail}/order`, { form: { ...fields, quantity: 'not-a-number' }, headers: { Origin: careFixture.origin, 'Accept-Language': 'cy-GB' } });
+  expect(malformedQuantity.status()).toBe(422);
+  const quantityError = await page.evaluate(markup => new DOMParser().parseFromString(markup, 'text/html').querySelector('#quantity-error')?.textContent, await malformedQuantity.text());
+  expect(quantityError).toBe('Rhaid i\'r nifer fod yn rhif degol.');
+  const malformedArrival = await page.request.post(`${detail}/order`, { form: { ...fields, quantity: '5', expected_arrival_on: 'not-a-date' }, headers: { Origin: careFixture.origin, 'Accept-Language': 'cy-GB' } });
+  expect(malformedArrival.status()).toBe(422);
+  const arrivalError = await page.evaluate(markup => new DOMParser().parseFromString(markup, 'text/html').querySelector('#arrival-error')?.textContent, await malformedArrival.text());
+  expect(arrivalError).toBe('Rhaid i\'r dyddiad cyrraedd fod yn ddyddiad ISO.');
 });
 
 test('stock adjustment page uses the selected Welsh language', async ({ page }) => {

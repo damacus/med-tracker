@@ -44,6 +44,7 @@ struct ShowRequest {
 
 #[derive(Default, serde::Deserialize)]
 struct InventoryQuery {
+    #[serde(default, deserialize_with = "stock_check::empty_location")]
     location_id: Option<i64>,
     category: Option<String>,
 }

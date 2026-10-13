@@ -1034,6 +1034,8 @@ pt:
         review_stock: "Rever stock"
         mark_received: "Marcar como recebido"
         quantity_precision_error: "A quantidade excede a precisão do stock."
+        quantity_decimal_error: "A quantidade tem de ser um número decimal."
+        arrival_date_error: "A data de chegada tem de ser uma data ISO."
     dose_dialog:
       ongoing_medication: 'Medicação contínua'
       scheduled_treatment: 'Tratamento programado'
@@ -1363,6 +1365,13 @@ pt:
       location_label: Localização do inventário
       all_locations: Todas as localizações
       selected: "%{count} selecionados"
+      unit_names:
+        tablet:
+          one: comprimido
+          other: comprimidos
+        capsule:
+          one: cápsula
+          other: cápsulas
       clear_selection: Limpar seleção
       in_stock: Em stock
       low_stock: Stock baixo

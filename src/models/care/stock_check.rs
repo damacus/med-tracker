@@ -124,7 +124,7 @@ pub async fn apply(
                 json!({"dosage_option":{"current_supply":quantity}}),
                 Some(&etag),
                 provenance,
-                &format!("stock check (qty: {quantity}, reason: {reason})"),
+                reason,
             )
             .await?;
         } else {
