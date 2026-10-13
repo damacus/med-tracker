@@ -33,12 +33,13 @@ async function runCargo(args, databaseUrl, inheritedEnvironment, signal) {
   }
 }
 
-export async function runSlice({ all = false, target, filter = '' }, inheritedEnvironment = process.env) {
+export async function runSlice({ all = false, target, filter = '', includeIgnored = false, noCapture = false }, inheritedEnvironment = process.env) {
   if (!all && !/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(target ?? '')) throw new Error('TARGET must name a root Rust test binary');
   if (filter && !/^[A-Za-z0-9_:]+$/.test(filter)) throw new Error('FILTER must name a Rust test');
   const args = ['test', '--locked'];
   if (!all) args.push('--test', target);
   if (filter) args.push(filter);
+  if (includeIgnored || noCapture) args.push('--', ...(includeIgnored ? ['--include-ignored'] : []), ...(noCapture ? ['--nocapture'] : []));
   const controller = new AbortController();
   const interrupted = signal => controller.abort(new Error(`Slice execution interrupted by ${signal}`));
   const onTerm = () => interrupted('SIGTERM');
@@ -47,7 +48,7 @@ export async function runSlice({ all = false, target, filter = '' }, inheritedEn
   process.on('SIGINT', onInt);
   try {
     await withOwnedDatabase(async (url, provision, ownership) => {
-      if (all || ['persistence', 'tenant_access', 'care_doses', 'care_medications', 'care_api', 'identity_compatibility', 'identity_resource', 'oauth_server', 'queue_runtime'].includes(target)) await provision();
+      if (all || ['persistence', 'tenant_access', 'care_doses', 'care_medications', 'care_api', 'identity_compatibility', 'identity_resource', 'oauth_server', 'queue_runtime', 'requests'].includes(target)) await provision();
       const needsScannerStorage = all || (target === 'care_api' && (!filter || filter.includes('nhs_dmd')));
       const scannerEnvironment = needsScannerStorage ? await ownership.storage() : {};
       await runCargo(args, url, { ...inheritedEnvironment, ...ownership.storageEnvironment, ...scannerEnvironment }, controller.signal);

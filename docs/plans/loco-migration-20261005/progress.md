@@ -1,10 +1,69 @@
 # Migration progress
 
-Updated 11 October 2026. Complete every slice in [the plan](plan.md).
+Updated 13 October 2026. Complete every slice in [the plan](plan.md).
 Foundation is accepted. The verified baseline PR #2451 is merged; all remaining
 migration areas stay in scope. No live deployment has occurred.
 
 ## Current delivery
+
+### s05-i01 — API contract completion, 13 October 2026
+
+The owner approved completing all 119 documented API v1 operations using
+`rust-testing`, upstream Loco guidance and area-based `gh stack` PRs, each at most
+2,000 added plus deleted lines against its immediate base. The detailed agreement
+is in [the API slice](slices/05-api-integrations.md).
+
+- Baseline: refreshed `main` at `714eaac7a2e981451265edbab1b295096ff12bab`,
+  including the recent test-registration, isolated AI-configuration and shared
+  fixture-helper fixes. The stack was rebased with `gh stack rebase`.
+- Active branch: `codex/s05-i01-contract-harness`, stack rooted on `main`.
+- Coordinator: current Codex chat; sole source writer: `/root/api_writer`;
+  verification/resource owner: `/root/verifier`.
+- Current work: exhaustive operation mapping and Loco-native request acceptance,
+  preserving isolated PostgreSQL 18 fixtures and restricted runtime roles.
+- Independent reviewer: Devin CLI `swe-2-max`, session `cool-actress`;
+  packet and output retained under `/private/tmp/s05-i01-review/`. Its first
+  attempt stopped at CLI read permissions without a verdict. Devin accepted the
+  corrected source with framework source supplied directly. The same-session
+  follow-up also accepted the fixture registration correction after rebasing.
+- Focused checks: inventory/harness 12 passed, JavaScript dispatcher 16 passed,
+  formatting, documentation and whitespace passed. The complete API group ran
+  thirteen tests: twelve passed and its completeness gate failed as intended.
+  All 119 operations still require
+  complete behavioural evidence. Loco registers 118 documented operations; the
+  missing route is `POST /api/v1/households/{household_id}/push_subscription/test`.
+  Logs are under `/private/tmp/s05-i01-evidence/`. Coverage is pending.
+- Root CI on signed source `5f12b5b86a8ad650e59246f52f08783f98184b3d`
+  (job `62949`) failed with two transport errors: a five-second app-token GET
+  timeout and a mobile recovery HTTP parse error. The other 483 care API and
+  661 browser cases passed. Both failed cases passed individually without code
+  changes; their causes remain unproven. Original logs and browser trace remain.
+- Final root CI passed on signed source
+  `11ea37b402fa1583dc35ec768b4e384e5d1bad47`: `task --concurrency 1 ci`, job
+  `14255`, exit zero. All 662 browser cases passed; care API reported 486 passed,
+  zero failed, one ignored and fourteen filtered. Documentation and whitespace
+  checks also passed. Full log: `full-task-ci-11ea37b4.log` in the evidence folder.
+  This records a successful serial run, not a proven cause or fix for the earlier
+  transport failures. The final commit adds only this verification record.
+- Publication, hosted checks and acceptance: pending. No merge or deployment.
+- Review corrections: duplicate schema/header substitutions and handlers from
+  another route now fail explicit regression tests. Both tests failed before the
+  guards were corrected. Final focused log: `green-review-metadata-guards.log`;
+  final expected incomplete gate: `review-fixes-expected-incomplete.log`, both
+  under `/private/tmp/s05-i01-evidence/`. Same-session re-review accepted both.
+- Inventory now includes explicit schema/header/handler references and gaps for
+  every operation. Middleware proof uses two requests and persisted source data,
+  avoiding reliance on a timed request burst. The initial signed snapshot is
+  `c7edacd480b103bfe551884b3d5fc68e61ccf568`; the corrections above were verified
+  after that snapshot and remain on the same branch. Rebased source is
+  `efb13f2473e9b6c2efa0d53fea914edd4ebcc397` before the fixture registration fix.
+  The missing root helper first failed compilation; its two-line registration
+  then passed all twelve focused cases, formatting and documentation checks.
+  The publication gate recounts the final diff against the immediate base.
+- Next action: publish the bounded first PR, then establish report-only coverage.
+  Shared HTTP and account changes await the owner's decision on two OpenAPI
+  omissions: capability rate-limit responses and account OAuth insufficient-scope
+  responses. Existing enforcement must remain intact.
 
 Session close-out on 11 October 2026:
 

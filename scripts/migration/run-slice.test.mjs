@@ -155,6 +155,48 @@ test('owned application tests use a synthetic identity key instead of the inheri
   });
 });
 
+test('API v1 contract task selects the native request binary and focused filter', async () => {
+  await withProcessFixture(0, (result, state) => {
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(state.calls.find(call => call.command === 'cargo').args,
+      ['test', '--locked', '--test', 'requests', 'api_v1::baseline::anonymous_access', '--', '--nocapture']);
+    assert.equal(state.owned_endpoint_used, true);
+    assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
+  }, 'slice:contracts', ['GROUP=api-v1-inventory', 'FILTER=api_v1::baseline::anonymous_access']);
+});
+
+test('API v1 completion task selects the deliberately failing acceptance gate', async () => {
+  await withProcessFixture(0, (result, state) => {
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(state.calls.find(call => call.command === 'cargo').args,
+      ['test', '--locked', '--test', 'requests', 'api_v1', '--', '--include-ignored']);
+  }, 'slice:contracts', ['GROUP=api-v1']);
+});
+
+test('API v1 inventory task selects all request and fixture cases', async () => {
+  await withProcessFixture(0, (result, state) => {
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(state.calls.find(call => call.command === 'cargo').args,
+      ['test', '--locked', '--test', 'requests', 'api_v1', '--', '--nocapture']);
+  }, 'slice:contracts', ['GROUP=api-v1-inventory']);
+});
+
+test('API v1 completion cannot narrow coverage with a filter', async () => {
+  await withProcessFixture(0, (result, state) => {
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /cannot select one test/);
+    assert.equal(state.calls.length, 0);
+  }, 'slice:contracts', ['GROUP=api-v1', 'FILTER=api_v1::baseline::anonymous_access']);
+});
+
+test('contract task rejects unknown groups before provisioning', async () => {
+  await withProcessFixture(0, (result, state) => {
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Unknown contract group/);
+    assert.equal(state.calls.length, 0);
+  }, 'slice:contracts', ['GROUP=unknown']);
+});
+
 test('care API and complete runs use owned storage and clean it after test failures', async () => {
   for (const [taskName, assignments] of [['slice:test', ['TARGET=care_api']], ['slice:test-all', []]]) {
     await withProcessFixture(42, (result, state) => {

@@ -58,6 +58,9 @@ tasks:
           GROUP: '{{.GROUP | default "shell"}}'
   slice:test-runner:
     cmds: [node --test scripts/migration/run-slice.test.mjs]
+  slice:contracts:
+    desc: Run an API contract inventory or completion group
+    cmds: ['node scripts/migration/run-contracts.mjs --group {{.GROUP | default "" | shellQuote}} --filter {{.FILTER | default "" | shellQuote}}']
   slice:test:
     requires:
       vars: [TARGET]
