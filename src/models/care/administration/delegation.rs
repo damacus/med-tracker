@@ -174,7 +174,7 @@ pub async fn assign(
                 status: Set("active".into()),
                 permissions_version: Set(1),
                 revoked_at: Set(None),
-                joined_at: Set(Some(now)),
+                joined_at: Set(now),
                 created_at: Set(now),
                 updated_at: Set(now),
                 ..Default::default()

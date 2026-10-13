@@ -251,6 +251,7 @@ mod tests {
             reorder_status: None,
             order_supplier: None,
             order_quantity: None,
+            expiry_date: None,
             expected_arrival_on: None,
             ordered_at: None,
             reordered_at: None,
