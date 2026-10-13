@@ -44,4 +44,5 @@ ALTER TABLE public.medication_review_histories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.medication_review_histories FORCE ROW LEVEL SECURITY;
 CREATE POLICY household_tenant_isolation ON public.medication_review_histories USING (household_id = med_tracker.current_household_id()) WITH CHECK (household_id = med_tracker.current_household_id());
 GRANT SELECT, INSERT ON public.medication_review_histories TO med_tracker_app;
+REVOKE UPDATE, DELETE ON public.medication_review_histories FROM med_tracker_app;
 GRANT USAGE, SELECT ON SEQUENCE public.medication_review_histories_id_seq TO med_tracker_app;

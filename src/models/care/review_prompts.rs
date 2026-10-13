@@ -1,7 +1,7 @@
 use loco_rs::model::TenantQueryExt;
 pub(crate) mod edit;
 pub(crate) mod evidence;
-pub(crate) mod refresh;
+pub mod refresh;
 
 use crate::models::{
     access::{self, TenantTransaction},
@@ -421,7 +421,21 @@ async fn reconcile(
     });
     let sql = format!(
         "WITH changed AS (
-            SELECT p.id,p.household_id,to_jsonb(p) AS snapshot
+            SELECT p.id,p.household_id,
+                (to_jsonb(p) - 'household_id' - 'created_at' - 'evidence_source_fingerprint') ||
+                jsonb_build_object(
+                    'id',p.id::text,
+                    'person_id',p.person_id::text,
+                    'primary_medication_id',p.primary_medication_id::text,
+                    'interacting_medication_id',p.interacting_medication_id::text,
+                    'evidence_record_id',p.evidence_record_id::text,
+                    'reviewed_by_membership_id',p.reviewed_by_membership_id::text,
+                    'updated_at',to_char(p.updated_at,'YYYY-MM-DD') || 'T' || to_char(p.updated_at,'HH24:MI:SS.US') || '+00:00',
+                    'etag',chr(34) || encode(public.digest(
+                        'MedicationReviewPrompt:' || p.id::text || ':' ||
+                        floor(extract(epoch from p.updated_at))::bigint::text || '.' ||
+                        to_char(p.updated_at,'US'),'sha256'),'hex') || chr(34)
+                ) AS snapshot
             FROM medication_review_prompts p
             JOIN medication_review_evidence_records e ON e.id=p.evidence_record_id
             WHERE p.household_id=$1 {person_filter} AND p.evidence_source_fingerprint IS NOT NULL AND

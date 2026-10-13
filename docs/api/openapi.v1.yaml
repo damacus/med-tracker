@@ -6295,7 +6295,9 @@ components:
             practitioner_role:
               type: string
             reviewed_on:
-              $ref: "#/components/schemas/Date"
+              type: string
+              format: date
+              nullable: true
             review_note:
               type: string
     MedicationReviewPromptResponse:

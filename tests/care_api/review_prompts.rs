@@ -1,4 +1,34 @@
 use super::*;
+use chrono::NaiveDate;
+use loco_rs::{
+    bgworker::BackgroundWorker,
+    task::{Task, Vars},
+};
+use med_tracker::models::care::review_prompts::refresh::{
+    RefreshRun, RefreshTask, RefreshWorker, import_snapshot,
+};
+
+async fn review_refresh_run(app: &Application) -> i64 {
+    app.fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "INSERT INTO medication_review_evidence_refresh_runs(status,created_at,updated_at) VALUES (0,now(),now()) RETURNING id",
+        ))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("", "id")
+        .unwrap()
+}
+
+fn review_refresh_snapshot(version: &str, text: &str) -> Value {
+    json!({"openfda_last_updated":"2026-10-01","labels":[
+        {"set_id":"synthetic-worker-label","version":version,"effective_time":"20261001",
+         "selection_term":"ibuprofen","drug_interactions":[text],
+         "openfda":{"brand_name":["Synthetic tablets"],"substance_name":["ibuprofen"]}}
+    ]})
+}
 
 async fn seed_prompt(app: &Application, id: i64, status: &str) {
     app.fixture
@@ -217,6 +247,73 @@ async fn changed_evidence_reopens_review_and_preserves_the_previous_snapshot() {
         after["history"][0]["snapshot"]["evidence_text"],
         "Synthetic evidence."
     );
+    let snapshot = after["history"][0]["snapshot"].as_object().unwrap();
+    assert_eq!(snapshot["id"], "91102");
+    assert_eq!(snapshot["person_id"], "73001");
+    assert_eq!(snapshot["etag"], original_etag);
+    assert!(!snapshot.contains_key("evidence_source_fingerprint"));
+    assert!(!snapshot.contains_key("household_id"));
+}
+
+#[tokio::test]
+async fn review_date_can_be_cleared_for_a_non_practitioner_outcome() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    for (id, date) in [(91106, Value::Null), (91107, json!(""))] {
+        seed_prompt(&app, id, "reviewed_with_practitioner").await;
+        app.fixture.admin.execute_unprepared(&format!(
+            "UPDATE medication_review_prompts SET practitioner_name='Dr Test',practitioner_role='GP',reviewed_on='2026-10-01',reviewed_by_membership_id=74001 WHERE id={id}"
+        )).await.unwrap();
+        let shown = app
+            .client
+            .get(prompts(&app, &format!("/{id}")))
+            .bearer_auth(&token)
+            .send()
+            .await
+            .unwrap();
+        let etag = shown
+            .headers()
+            .get("etag")
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_owned();
+        let lease = edit_token(&app, &token, id).await;
+        let incomplete = app.client.patch(prompts(&app, &format!("/{id}")))
+            .bearer_auth(&token).header("if-match", &etag).header("x-review-lease", &lease)
+            .json(&json!({"medication_review_prompt":{"status":"reviewed_with_practitioner","reviewed_on":date}}))
+            .send().await.unwrap();
+        assert_eq!(incomplete.status().as_u16(), 422);
+        let response = app
+            .client
+            .patch(prompts(&app, &format!("/{id}")))
+            .bearer_auth(&token)
+            .header("if-match", &etag)
+            .header("x-review-lease", &lease)
+            .json(&json!({"medication_review_prompt":{"status":"not_relevant","reviewed_on":date}}))
+            .send()
+            .await
+            .unwrap();
+        let status = response.status().as_u16();
+        let body: Value = response.json().await.unwrap();
+        assert_eq!(status, 200, "{body}");
+        assert!(body["data"]["reviewed_on"].is_null());
+        let detail: Value = app
+            .client
+            .get(prompts(&app, &format!("/{id}")))
+            .bearer_auth(&token)
+            .send()
+            .await
+            .unwrap()
+            .json()
+            .await
+            .unwrap();
+        assert_eq!(
+            detail["history"][0]["snapshot"]["reviewed_on"],
+            "2026-10-01"
+        );
+    }
+    app.close().await;
 }
 
 #[tokio::test]
@@ -729,4 +826,286 @@ async fn review_prompts_require_adult_actor_and_manage_access() {
     assert_eq!(shown_status, 200);
     assert_eq!(denied_status, 403);
     assert_eq!(minor_status, 403);
+}
+
+#[tokio::test]
+async fn review_refresh_resets_non_curated_matching_fields() {
+    let app = Application::new().await;
+    app.fixture.admin.execute_unprepared(
+        "INSERT INTO medication_review_evidence_records(id,source_name,source_record_id,source_url,source_version,source_effective_on,product_name,label_section,evidence_text,retrieved_on,risk_level,match_confidence,match_status,candidate_terms,pharmacologic_classes,interacting_terms,created_at,updated_at) VALUES (9876501,'openFDA / DailyMed SPL','synthetic-worker-label','https://example.test/old','1','2026-09-01','Old synthetic product','Drug Interactions','Old warning','2026-09-01','high','high','unreviewed',ARRAY['old']::varchar[],ARRAY['old']::varchar[],ARRAY['old']::varchar[],now(),now())"
+    ).await.unwrap();
+    let run_id = review_refresh_run(&app).await;
+    import_snapshot(
+        &app.context,
+        run_id,
+        &review_refresh_snapshot("2", "Changed synthetic warning"),
+        NaiveDate::from_ymd_opt(2026, 10, 13).unwrap(),
+    )
+    .await
+    .unwrap();
+    let row = app.fixture.admin.query_one_raw(Statement::from_string(
+        DbBackend::Postgres,
+        "SELECT risk_level,match_confidence,match_status,interacting_terms,candidate_terms FROM medication_review_evidence_records WHERE id=9876501",
+    )).await.unwrap().unwrap();
+    assert_eq!(row.try_get::<String>("", "risk_level").unwrap(), "unknown");
+    assert_eq!(
+        row.try_get::<String>("", "match_confidence").unwrap(),
+        "unknown"
+    );
+    assert_eq!(
+        row.try_get::<String>("", "match_status").unwrap(),
+        "unreviewed"
+    );
+    assert!(
+        row.try_get::<Vec<String>>("", "interacting_terms")
+            .unwrap()
+            .is_empty()
+    );
+    assert_ne!(
+        row.try_get::<Vec<String>>("", "candidate_terms").unwrap(),
+        vec!["old"]
+    );
+    app.close().await;
+}
+
+#[tokio::test]
+async fn review_refresh_retry_and_concurrent_delivery_keep_the_first_completed_run() {
+    let app = Application::new().await;
+    let run_id = review_refresh_run(&app).await;
+    let date = NaiveDate::from_ymd_opt(2026, 10, 13).unwrap();
+    assert!(
+        import_snapshot(&app.context, run_id, &json!({"labels":[]}), date)
+            .await
+            .is_err()
+    );
+    let snapshot = review_refresh_snapshot("1", "Synthetic warning");
+    let (first, second) = tokio::join!(
+        import_snapshot(&app.context, run_id, &snapshot, date),
+        import_snapshot(&app.context, run_id, &snapshot, date)
+    );
+    assert!(first.is_ok() || second.is_ok());
+    import_snapshot(&app.context, run_id, &snapshot, date)
+        .await
+        .unwrap();
+    let row = app.fixture.admin.query_one_raw(Statement::from_string(
+        DbBackend::Postgres,
+        format!("SELECT created_count,updated_count,unchanged_count,status FROM medication_review_evidence_refresh_runs WHERE id={run_id}"),
+    )).await.unwrap().unwrap();
+    assert_eq!(row.try_get::<i32>("", "created_count").unwrap(), 1);
+    assert_eq!(row.try_get::<i32>("", "updated_count").unwrap(), 0);
+    assert_eq!(row.try_get::<i32>("", "unchanged_count").unwrap(), 0);
+    assert_eq!(row.try_get::<i32>("", "status").unwrap(), 2);
+    let count = app.fixture.admin.query_one_raw(Statement::from_string(
+        DbBackend::Postgres,
+        "SELECT count(*)::bigint AS count FROM medication_review_evidence_records WHERE source_record_id='synthetic-worker-label'",
+    )).await.unwrap().unwrap().try_get::<i64>("", "count").unwrap();
+    assert_eq!(count, 1);
+    app.close().await;
+}
+
+#[tokio::test]
+async fn review_refresh_queued_job_survives_worker_restart_and_duplicate_delivery() {
+    let requests = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let label = json!({"meta":{"last_updated":"2026-10-01"},"results":[
+        {"set_id":"synthetic-worker-label","version":"1","effective_time":"20261001",
+         "drug_interactions":["Synthetic warning"],"openfda":{"product_type":["HUMAN OTC DRUG"],
+         "substance_name":["ibuprofen"],"brand_name":["Synthetic tablets"]}}
+    ]});
+    let provider = axum::Router::new().route(
+        "/drug/label.json",
+        axum::routing::get(move || {
+            let label = label.clone();
+            let requests = requests.clone();
+            async move {
+                if requests.fetch_add(1, std::sync::atomic::Ordering::SeqCst) == 0 {
+                    (
+                        axum::http::StatusCode::SERVICE_UNAVAILABLE,
+                        axum::Json(json!({})),
+                    )
+                } else {
+                    (axum::http::StatusCode::OK, axum::Json(label))
+                }
+            }
+        }),
+    );
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let endpoint = format!("http://{}/drug/label.json", listener.local_addr().unwrap());
+    let provider_server =
+        tokio::spawn(async move { axum::serve(listener, provider).await.unwrap() });
+    let app = Application::new_configured(Some("synthetic-dose-occurrence-signing-key"), move |settings| {
+        settings["review_refresh_fixture"] = json!({"endpoint":endpoint,"manifest":{"selection":["ibuprofen"],"targeted_selection":[]}});
+    }).await;
+    assert!(
+        app.context
+            .config
+            .settings
+            .as_ref()
+            .unwrap()
+            .get("review_refresh_fixture")
+            .is_some()
+    );
+    let first_queue = app.context.queue_provider.as_ref().unwrap().clone();
+    med_tracker::app::App::connect_workers(&app.context, &first_queue)
+        .await
+        .unwrap();
+    let running = first_queue.clone();
+    let first_worker = tokio::spawn(async move { running.run(vec![]).await });
+    first_queue.shutdown().unwrap();
+    tokio::time::timeout(std::time::Duration::from_secs(5), first_worker)
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap();
+    RefreshTask
+        .run(&app.context, &Vars::default())
+        .await
+        .unwrap();
+    let run_id: i64 = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT id FROM medication_review_evidence_refresh_runs ORDER BY id DESC LIMIT 1",
+        ))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("", "id")
+        .unwrap();
+    let mut config = Config::new(&Environment::Test).unwrap();
+    let Some(QueueConfig::Postgres(queue_config)) = config.queue.as_mut() else {
+        panic!("PostgreSQL queue required")
+    };
+    queue_config.uri = app.fixture.runtime_uri.clone();
+    let queue = std::sync::Arc::new(
+        loco_rs::bgworker::pg::create_provider(queue_config)
+            .await
+            .unwrap(),
+    );
+    med_tracker::app::App::connect_workers(&app.context, &queue)
+        .await
+        .unwrap();
+    let running = queue.clone();
+    let worker = tokio::spawn(async move { running.run(vec![]).await });
+    tokio::time::timeout(std::time::Duration::from_secs(20), async {
+        loop {
+            let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+                format!("SELECT status FROM medication_review_evidence_refresh_runs WHERE id={run_id}")
+            )).await.unwrap().unwrap();
+            if row.try_get::<i32>("", "status").unwrap() == 3 { break; }
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        }
+    }).await.unwrap();
+    queue.shutdown().unwrap();
+    tokio::time::timeout(std::time::Duration::from_secs(5), worker)
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap();
+    app.fixture.admin.execute_unprepared(&format!(
+        "UPDATE medication_review_evidence_refresh_runs SET status=1,error_message=NULL,completed_at=NULL,updated_at=now() WHERE id={run_id}"
+    )).await.unwrap();
+    let retry_job = RefreshWorker::perform_later(&app.context, RefreshRun { run_id })
+        .await
+        .unwrap();
+    let mut config = Config::new(&Environment::Test).unwrap();
+    let Some(QueueConfig::Postgres(queue_config)) = config.queue.as_mut() else {
+        panic!("PostgreSQL queue required")
+    };
+    queue_config.uri = app.fixture.runtime_uri.clone();
+    let queue = std::sync::Arc::new(
+        loco_rs::bgworker::pg::create_provider(queue_config)
+            .await
+            .unwrap(),
+    );
+    med_tracker::app::App::connect_workers(&app.context, &queue)
+        .await
+        .unwrap();
+    let running = queue.clone();
+    let worker = tokio::spawn(async move { running.run(vec![]).await });
+    tokio::time::timeout(std::time::Duration::from_secs(20), async {
+        loop {
+            let row = app
+                .fixture
+                .admin
+                .query_one_raw(Statement::from_sql_and_values(
+                    DbBackend::Postgres,
+                    "SELECT status FROM pg_loco_queue WHERE id=$1",
+                    [retry_job.clone().into()],
+                ))
+                .await
+                .unwrap()
+                .unwrap();
+            if row.try_get::<String>("", "status").unwrap() == "completed" {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        }
+    })
+    .await
+    .unwrap();
+    queue.shutdown().unwrap();
+    tokio::time::timeout(std::time::Duration::from_secs(5), worker)
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap();
+    let duplicate_job = RefreshWorker::perform_later(&app.context, RefreshRun { run_id })
+        .await
+        .unwrap();
+    let mut config = Config::new(&Environment::Test).unwrap();
+    let Some(QueueConfig::Postgres(queue_config)) = config.queue.as_mut() else {
+        panic!("PostgreSQL queue required")
+    };
+    queue_config.uri = app.fixture.runtime_uri.clone();
+    let queue = std::sync::Arc::new(
+        loco_rs::bgworker::pg::create_provider(queue_config)
+            .await
+            .unwrap(),
+    );
+    med_tracker::app::App::connect_workers(&app.context, &queue)
+        .await
+        .unwrap();
+    let running = queue.clone();
+    let worker = tokio::spawn(async move { running.run(vec![]).await });
+    tokio::time::timeout(std::time::Duration::from_secs(20), async {
+        loop {
+            let row = app
+                .fixture
+                .admin
+                .query_one_raw(Statement::from_sql_and_values(
+                    DbBackend::Postgres,
+                    "SELECT status FROM pg_loco_queue WHERE id=$1",
+                    [duplicate_job.clone().into()],
+                ))
+                .await
+                .unwrap()
+                .unwrap();
+            if row.try_get::<String>("", "status").unwrap() == "completed" {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        }
+    })
+    .await
+    .unwrap();
+    queue.shutdown().unwrap();
+    tokio::time::timeout(std::time::Duration::from_secs(5), worker)
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap();
+    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        format!("SELECT status,created_count,updated_count,unchanged_count FROM medication_review_evidence_refresh_runs WHERE id={run_id}")
+    )).await.unwrap().unwrap();
+    assert_eq!(row.try_get::<i32>("", "status").unwrap(), 2);
+    assert_eq!(row.try_get::<i32>("", "created_count").unwrap(), 1);
+    assert_eq!(row.try_get::<i32>("", "updated_count").unwrap(), 0);
+    assert_eq!(row.try_get::<i32>("", "unchanged_count").unwrap(), 0);
+    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT count(*)::bigint AS count FROM medication_review_evidence_records WHERE source_record_id='synthetic-worker-label'"
+    )).await.unwrap().unwrap();
+    assert_eq!(row.try_get::<i64>("", "count").unwrap(), 1);
+    app.close().await;
+    provider_server.abort();
 }

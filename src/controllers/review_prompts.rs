@@ -152,11 +152,25 @@ async fn index(
             }
         }
     }
+    let mut groups: Vec<Value> = Vec::new();
+    if let Some(rows) = data["data"].as_array() {
+        for row in rows {
+            if let Some(group) = groups
+                .iter_mut()
+                .find(|group| group["person_id"] == row["person_id"])
+            {
+                group["reviews"].as_array_mut().unwrap().push(row.clone());
+            } else {
+                groups.push(json!({"person_id":row["person_id"],"person_name":row["person_name"],"reviews":[row]}));
+            }
+        }
+    }
     let page = data["meta"]["page"].as_u64().unwrap_or(1);
     let total = data["meta"]["total_count"].as_u64().unwrap_or(0);
     let size = data["meta"]["per_page"].as_u64().unwrap_or(20);
     let payload = json!({
         "reviews":data,
+        "groups":groups,
         "page":page,
         "has_next":page.saturating_mul(size)<total,
         "previous_page":page.saturating_sub(1),
@@ -229,6 +243,36 @@ async fn edit_page(
     };
     let lease = match edit::acquire(&tenant, &id).await {
         Ok(value) => value,
+        Err(error)
+            if draft.get("etag").is_some() && matches!(error, OperationError::Conflict { .. }) =>
+        {
+            let (review, _) = match review_prompts::show(&tenant, &id).await {
+                Ok(value) => value,
+                Err(error) => return operation_error(error),
+            };
+            let response = render(
+                &view,
+                &token,
+                "reviews/edit.html",
+                &slug,
+                language(&headers),
+                json!({"review":review["data"],"lease":{"token":"","expires_at":""},"draft":draft,"error":crate::controllers::medications::forms::message(&error),"changed":false,"reacquire":true}),
+                crate::controllers::medications::forms::status(&error),
+            );
+            if !browser::authenticate(&ctx.db, &session)
+                .await
+                .is_ok_and(|current| current.account_id() == principal.account_id())
+            {
+                let _ = tenant.rollback().await;
+                return authentication_error(
+                    crate::models::identity::resource::AuthenticationError::Unauthenticated,
+                );
+            }
+            if tenant.commit().await.is_err() {
+                return unavailable();
+            }
+            return response;
+        }
         Err(error) => return operation_error(error),
     };
     let (review, etag) = match review_prompts::show(&tenant, &id).await {
@@ -388,7 +432,7 @@ async fn save(
                 "reviews/edit.html",
                 &slug,
                 language(&headers),
-                json!({"review":review["data"],"lease":{"token":draft.get("lease_token"),"etag":draft.get("etag"),"expires_at":expires_at},"draft":draft,"error":crate::controllers::medications::forms::message(&error),"changed":matches!(error, OperationError::Conflict { ref code, .. } if code=="review_changed"),"reacquire":matches!(error, OperationError::Conflict { .. })}),
+                json!({"review":review["data"],"lease":{"token":draft.get("lease_token"),"etag":draft.get("etag"),"expires_at":expires_at},"draft":draft,"error":crate::controllers::medications::forms::message(&error),"changed":matches!(error, OperationError::Conflict { ref code, .. } if code=="review_changed"),"reacquire":matches!(error, OperationError::Conflict { ref code, .. } if code=="review_lease_required" || code=="review_lease_expired")}),
                 crate::controllers::medications::forms::status(&error),
             );
             if read.commit().await.is_err() {

@@ -610,6 +610,11 @@ tasks:
       vars: [CARE_DATABASE_URL]
     cmds:
       - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -f tests/fixtures/browser-review-near-expiry-lease.sql'
+  review-change-live-evidence:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -f tests/fixtures/browser-review-change-live-evidence.sql'
   report-refresh-trap:
     requires:
       vars: [CARE_DATABASE_URL]

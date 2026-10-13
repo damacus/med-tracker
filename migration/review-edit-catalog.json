@@ -1,7 +1,7 @@
 {
   "relation:public.medication_review_histories": {
     "acl": [
-      "med_tracker_app=arwd/med_tracker_owner",
+      "med_tracker_app=ar/med_tracker_owner",
       "med_tracker_owner=arwdDxtm/med_tracker_owner"
     ],
     "rls": true,

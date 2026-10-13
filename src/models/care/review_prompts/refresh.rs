@@ -10,8 +10,8 @@ use loco_rs::{
     task::{Task, TaskInfo, Vars},
 };
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, ConnectionTrait, DbBackend, EntityTrait, IntoActiveModel,
-    QueryFilter, QuerySelect, Set, Statement, TransactionTrait,
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseTransaction, DbBackend, EntityTrait,
+    IntoActiveModel, QueryFilter, QuerySelect, Set, Statement, TransactionTrait,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -74,7 +74,7 @@ impl Task for RefreshTask {
             .await
             .is_err()
         {
-            fail(ctx, run_id, "The refresh could not be queued")
+            fail(&ctx.db, run_id, "The refresh could not be queued")
                 .await
                 .map_err(|_| loco_rs::Error::string("Refresh run failure could not be recorded"))?;
             return Err(loco_rs::Error::string(
@@ -86,25 +86,12 @@ impl Task for RefreshTask {
 }
 
 async fn run(ctx: &AppContext, run_id: i64) -> Result<(), OperationError> {
-    let row = ctx
-        .db
-        .query_one_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "SELECT status FROM medication_review_evidence_refresh_runs WHERE id=$1",
-            [run_id.into()],
-        ))
-        .await?
-        .ok_or(OperationError::NotFound)?;
-    let status: i32 = row.try_get("", "status")?;
-    if status == 2 {
+    let Some(lease) = claim_run(ctx, run_id).await? else {
         return Ok(());
-    }
-    ctx.db.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "UPDATE medication_review_evidence_refresh_runs SET status=1,started_at=COALESCE(started_at,timezone('UTC',clock_timestamp())),updated_at=timezone('UTC',clock_timestamp()) WHERE id=$1", [run_id.into()]
-    )).await?;
+    };
     let result = async {
-        let snapshot = fetch_snapshot().await?;
-        import_snapshot(ctx, run_id, &snapshot, Utc::now().date_naive()).await
+        let snapshot = fetch_snapshot(ctx).await?;
+        import_claimed_snapshot(ctx, &lease, run_id, &snapshot, Utc::now().date_naive()).await
     }
     .await;
     if let Err(error) = &result {
@@ -113,24 +100,86 @@ async fn run(ctx: &AppContext, run_id: i64) -> Result<(), OperationError> {
         } else {
             "The evidence refresh could not complete"
         };
-        fail(ctx, run_id, message).await?;
+        fail(&lease, run_id, message).await?;
     }
+    lease.commit().await?;
     result
 }
 
-async fn fail(ctx: &AppContext, run_id: i64, message: &str) -> Result<(), OperationError> {
-    ctx.db.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+async fn claim_run(
+    ctx: &AppContext,
+    run_id: i64,
+) -> Result<Option<DatabaseTransaction>, OperationError> {
+    let lease = ctx.db.begin().await?;
+    let locked = lease.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+        "SELECT pg_try_advisory_xact_lock(hashtextextended('medication-review-refresh', $1::bigint)) AS locked", [run_id.into()]
+    )).await?.ok_or(OperationError::Unavailable)?.try_get::<bool>("", "locked")?;
+    if !locked {
+        lease.rollback().await?;
+        return Err(OperationError::Unavailable);
+    }
+    let claimed = ctx.db.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+        "UPDATE medication_review_evidence_refresh_runs SET status=1,started_at=COALESCE(started_at,timezone('UTC',clock_timestamp())),completed_at=NULL,error_message=NULL,updated_at=timezone('UTC',clock_timestamp()) WHERE id=$1 AND status IN (0,1,3) RETURNING id", [run_id.into()]
+    )).await?;
+    if claimed.is_some() {
+        return Ok(Some(lease));
+    }
+    let existing = ctx
+        .db
+        .query_one_raw(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            "SELECT status FROM medication_review_evidence_refresh_runs WHERE id=$1",
+            [run_id.into()],
+        ))
+        .await?
+        .ok_or(OperationError::NotFound)?;
+    let status: i32 = existing.try_get("", "status")?;
+    lease.rollback().await?;
+    if status == 2 {
+        Ok(None)
+    } else {
+        Err(OperationError::Unavailable)
+    }
+}
+
+async fn fail(
+    connection: &impl ConnectionTrait,
+    run_id: i64,
+    message: &str,
+) -> Result<(), OperationError> {
+    connection.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
         "UPDATE medication_review_evidence_refresh_runs SET status=3,error_message=$2,completed_at=timezone('UTC',clock_timestamp()),updated_at=timezone('UTC',clock_timestamp()) WHERE id=$1 AND status<>2",
         [run_id.into(), message.into()],
     )).await?;
     Ok(())
 }
 
-async fn fetch_snapshot() -> Result<Value, OperationError> {
-    let manifest: Manifest = serde_yaml_ng::from_str(include_str!(
-        "../../../../rails/config/medication_review_labels.yml"
-    ))
-    .map_err(|_| OperationError::Unavailable)?;
+async fn fetch_snapshot(ctx: &AppContext) -> Result<Value, OperationError> {
+    let fixture = matches!(ctx.environment, loco_rs::environment::Environment::Test)
+        .then(|| {
+            ctx.config
+                .settings
+                .as_ref()
+                .and_then(|settings| settings.get("review_refresh_fixture"))
+        })
+        .flatten();
+    let manifest: Manifest = match fixture.and_then(|value| value.get("manifest")) {
+        Some(value) => {
+            serde_json::from_value(value.clone()).map_err(|_| OperationError::Unavailable)?
+        }
+        None => serde_yaml_ng::from_str(include_str!(
+            "../../../../rails/config/medication_review_labels.yml"
+        ))
+        .map_err(|_| OperationError::Unavailable)?,
+    };
+    let endpoint = match fixture {
+        Some(value) => value
+            .get("endpoint")
+            .and_then(Value::as_str)
+            .ok_or(OperationError::Unavailable)?,
+        None => "https://api.fda.gov/drug/label.json",
+    }
+    .to_owned();
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(25))
         .redirect(reqwest::redirect::Policy::none())
@@ -155,8 +204,9 @@ async fn fetch_snapshot() -> Result<Value, OperationError> {
             let client = client.clone();
             let term = term.clone();
             let targets = targets.clone();
+            let endpoint = endpoint.clone();
             tasks.spawn(async move {
-                fetch_label(&client, &term, &targets)
+                fetch_label_from(&client, &endpoint, &term, &targets)
                     .await
                     .map(|result| (position, result))
             });
@@ -174,14 +224,6 @@ async fn fetch_snapshot() -> Result<Value, OperationError> {
     }
     let updated = last_updated.ok_or(OperationError::Unavailable)?;
     Ok(json!({"openfda_last_updated":updated,"labels":labels}))
-}
-
-async fn fetch_label(
-    client: &reqwest::Client,
-    term: &str,
-    targets: &[String],
-) -> Result<(Value, String), OperationError> {
-    fetch_label_from(client, "https://api.fda.gov/drug/label.json", term, targets).await
 }
 
 async fn fetch_label_from(
@@ -417,8 +459,26 @@ pub(super) fn source_label(
     )
 }
 
-pub(crate) async fn import_snapshot(
+pub async fn import_snapshot(
     ctx: &AppContext,
+    run_id: i64,
+    snapshot: &Value,
+    retrieved_on: NaiveDate,
+) -> Result<(), OperationError> {
+    let Some(lease) = claim_run(ctx, run_id).await? else {
+        return Ok(());
+    };
+    let result = import_claimed_snapshot(ctx, &lease, run_id, snapshot, retrieved_on).await;
+    if result.is_err() {
+        fail(&lease, run_id, "The evidence refresh could not complete").await?;
+    }
+    lease.commit().await?;
+    result
+}
+
+async fn import_claimed_snapshot(
+    ctx: &AppContext,
+    lease: &DatabaseTransaction,
     run_id: i64,
     snapshot: &Value,
     retrieved_on: NaiveDate,
@@ -494,7 +554,11 @@ pub(crate) async fn import_snapshot(
                 || previous.active_ingredient != ingredient
                 || (previous.match_status != "reviewed_pair"
                     && (previous.candidate_terms != candidate_terms
-                        || previous.pharmacologic_classes != classes));
+                        || previous.pharmacologic_classes != classes
+                        || !previous.interacting_terms.is_empty()
+                        || previous.risk_level != "unknown"
+                        || previous.match_confidence != "unknown"
+                        || previous.match_status != "unreviewed"));
             let mut row = previous.clone().into_active_model();
             row.source_version = Set(Some(source_version.clone()));
             row.source_effective_on = Set(Some(effective));
@@ -506,6 +570,10 @@ pub(crate) async fn import_snapshot(
             if previous.match_status != "reviewed_pair" {
                 row.candidate_terms = Set(candidate_terms);
                 row.pharmacologic_classes = Set(classes);
+                row.interacting_terms = Set(Vec::new());
+                row.risk_level = Set("unknown".to_owned());
+                row.match_confidence = Set("unknown".to_owned());
+                row.match_status = Set("unreviewed".to_owned());
             }
             row.updated_at = Set(Utc::now().naive_utc());
             row.update(&transaction).await?;
@@ -564,7 +632,7 @@ pub(crate) async fn import_snapshot(
         review_prompts::reconcile_household(&tenant, household.id).await?;
         tenant.commit().await?;
     }
-    ctx.db.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+    lease.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
         "UPDATE medication_review_evidence_refresh_runs SET status=2,source_last_updated=$2,label_count=$3,created_count=$4,updated_count=$5,unchanged_count=$6,missing_count=$7,change_summary=$8::jsonb,completed_at=timezone('UTC',clock_timestamp()),error_message=NULL,updated_at=timezone('UTC',clock_timestamp()) WHERE id=$1",
         [run_id.into(), source_last_updated.into(), (labels.len() as i32).into(), created.into(), updated.into(), unchanged.into(), (missing as i32).into(), json!({"changes":changes}).to_string().into()],
     )).await?;

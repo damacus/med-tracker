@@ -181,6 +181,25 @@ async fn migrations_provision_the_standard_durable_browser_session_store() {
 }
 
 #[tokio::test]
+async fn medication_review_history_is_append_only_for_the_application_role() {
+    let db = restored_database().await;
+    migration::Migrator::up(&db, None).await.unwrap();
+    let row = db
+        .query_one_raw(migration::sea_orm::Statement::from_string(
+            migration::sea_orm::DbBackend::Postgres,
+            "SELECT has_table_privilege('med_tracker_app','public.medication_review_histories','SELECT') AS readable,has_table_privilege('med_tracker_app','public.medication_review_histories','INSERT') AS appendable,has_table_privilege('med_tracker_app','public.medication_review_histories','UPDATE') AS mutable,has_table_privilege('med_tracker_app','public.medication_review_histories','DELETE') AS deletable",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(row.try_get::<bool>("", "readable").unwrap());
+    assert!(row.try_get::<bool>("", "appendable").unwrap());
+    assert!(!row.try_get::<bool>("", "mutable").unwrap());
+    assert!(!row.try_get::<bool>("", "deletable").unwrap());
+    db.close().await.unwrap();
+}
+
+#[tokio::test]
 async fn registration_policy_exposes_only_active_owner_existence() {
     let db = restored_database().await;
     migration::Migrator::up(&db, None).await.unwrap();
