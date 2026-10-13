@@ -1,0 +1,53 @@
+import { test, expect } from './care-fixtures.mjs';
+
+test('medicine reviews show evidence, require Edit, save a practitioner outcome and preserve history', async ({ page, careFixture }, info) => {
+  test.setTimeout(180000);
+  await careFixture.seedReviewReport();
+  await page.goto('/login');
+  await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
+  await page.getByLabel('Password', { exact: true }).fill('password');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  const path = '/households/persistence-fixture/medicine-reviews';
+  const response = await page.goto(path);
+  expect(response.status()).toBe(200);
+  await expect(page.getByRole('heading', { name: 'Medicine reviews', level: 1 })).toBeVisible();
+  await expect(page.getByText('48 lower-confidence review items hidden to reduce noise')).toHaveCount(0);
+  await page.getByRole('button', { name: 'View evidence' }).first().click();
+  await expect(page.getByText('Representative clinical review evidence.', { exact: false }).first()).toBeVisible();
+  await page.getByRole('button', { name: 'Edit review' }).first().click();
+  await expect(page.getByRole('heading', { name: 'Record practitioner review' })).toBeVisible();
+  await page.getByLabel('Outcome').selectOption('reviewed_with_practitioner');
+  await page.getByLabel('Practitioner role').selectOption('GP');
+  await page.getByLabel('Practitioner name').fill('Dr Test');
+  await page.getByLabel('Date reviewed').fill('2026-10-01');
+  await page.getByLabel('Review note').fill('Synthetic discussion');
+  await page.getByRole('button', { name: 'Save review record' }).click();
+  await expect(page.getByText('Medicine review record updated.')).toBeVisible();
+  await page.goto(`${path}?review_status=reviewed`);
+  await page.getByRole('button', { name: 'View evidence' }).first().click();
+  await expect(page.getByText('Dr Test')).toBeVisible();
+  await page.getByRole('link', { name: 'Previous reviews' }).first().click();
+  await expect(page.getByText('Previous reviews')).toBeVisible();
+  await page.screenshot({ path: info.outputPath(`loco-reviews-${info.project.name}.png`), fullPage: true });
+});
+
+test('a second tab cannot take an active review lease', async ({ page, careFixture }, info) => {
+  test.setTimeout(180000);
+  await careFixture.seedReviewReport();
+  await page.goto('/login');
+  await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
+  await page.getByLabel('Password', { exact: true }).fill('password');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  const path = '/households/persistence-fixture/medicine-reviews';
+  await page.goto(path);
+  await page.getByRole('button', { name: 'Edit review' }).first().click();
+  await page.getByLabel('Review note').fill('Draft preserved across competing edit');
+  const other = await page.context().newPage();
+  await other.goto(path);
+  await other.getByRole('button', { name: 'Edit review' }).first().click();
+  await expect(other.getByRole('heading', { name: 'Record practitioner review' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Save review record' }).click();
+  await expect(page.getByText('Medicine review record updated.')).toBeVisible();
+  await page.screenshot({ path: info.outputPath(`loco-reviews-competing-${info.project.name}.png`), fullPage: true });
+  await other.close();
+});

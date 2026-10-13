@@ -1,4 +1,5 @@
 pub mod reports;
+pub mod review_prompts;
 use loco_rs::prelude::*;
 
 pub mod administration;

@@ -1,4 +1,5 @@
 use super::*;
+use crate::models::care::review_prompts::edit;
 use axum::http::StatusCode;
 use chrono::{Datelike, NaiveDate};
 use loco_rs::model::TenantQueryExt;
@@ -311,6 +312,10 @@ async fn apply_sync_operation(
     if !person_access(db, context, record.person_id, true).await? {
         return Err(sync_error(StatusCode::FORBIDDEN));
     }
+    crate::models::care::review_prompts::reconcile_person(context.tenant, record.person_id).await?;
+    let record = visible_prompt(db, context, id)
+        .await?
+        .ok_or_else(|| sync_error(StatusCode::NOT_FOUND))?;
     let expected = operation
         .if_match
         .as_deref()
@@ -319,11 +324,18 @@ async fn apply_sync_operation(
     if expected != tag(&record) {
         return Err(sync_error(StatusCode::CONFLICT));
     }
-    let changes = Changes::parse(&json!({"medication_review_prompt": operation.attributes}))
-        .map_err(sync_error)?;
+    let mut attributes = operation.attributes.clone();
+    let lease = attributes
+        .remove("lease_token")
+        .and_then(|value| value.as_str().map(str::to_owned))
+        .unwrap_or_default();
+    edit::require(context.tenant, &record, &lease).await?;
+    let changes =
+        Changes::parse(&json!({"medication_review_prompt": attributes})).map_err(sync_error)?;
     let active = changes
         .apply(&record, context.tenant.membership().id)
         .ok_or_else(|| sync_error(StatusCode::UNPROCESSABLE_ENTITY))?;
+    edit::archive(context.tenant, &record, "review").await?;
     let updated = active.update(db).await.map_err(database_error)?;
     let now = Utc::now().naive_utc();
     security_audit_event::ActiveModel {
@@ -344,6 +356,7 @@ async fn apply_sync_operation(
     .insert(db)
     .await
     .map_err(database_error)?;
+    edit::consume(context.tenant, &record, &lease).await?;
     Ok(SyncResult {
         record_type: "MedicationReviewPrompt",
         record_id: Some(updated.id),

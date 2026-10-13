@@ -1,7 +1,7 @@
 use super::*;
 use crate::models::care::{
     locations::SavedResponse,
-    review_prompts,
+    review_prompts::{self, edit},
     sync::{lock, review_prompts as prompts},
 };
 use axum::extract::rejection::QueryRejection;
@@ -12,6 +12,81 @@ fn no_store(mut response: Response) -> Response {
         .headers_mut()
         .insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
     response
+}
+
+pub(super) async fn acquire(
+    State(ctx): State<AppContext>,
+    Path((household_id, id)): Path<(i64, String)>,
+    headers: HeaderMap,
+    request: Option<Extension<LocoRequestId>>,
+) -> Response {
+    lease_action(ctx, household_id, id, headers, request, "acquire").await
+}
+
+pub(super) async fn renew(
+    State(ctx): State<AppContext>,
+    Path((household_id, id)): Path<(i64, String)>,
+    headers: HeaderMap,
+    request: Option<Extension<LocoRequestId>>,
+) -> Response {
+    lease_action(ctx, household_id, id, headers, request, "renew").await
+}
+
+pub(super) async fn release(
+    State(ctx): State<AppContext>,
+    Path((household_id, id)): Path<(i64, String)>,
+    headers: HeaderMap,
+    request: Option<Extension<LocoRequestId>>,
+) -> Response {
+    lease_action(ctx, household_id, id, headers, request, "release").await
+}
+
+async fn lease_action(
+    ctx: AppContext,
+    household_id: i64,
+    id: String,
+    headers: HeaderMap,
+    request: Option<Extension<LocoRequestId>>,
+    action: &'static str,
+) -> Response {
+    let request_id = administration::request_id(request);
+    let (principal, tenant) = match begin(&ctx, &headers, household_id, &request_id).await {
+        Ok(value) => value,
+        Err(error) => return no_store(response::error(error, &request_id)),
+    };
+    let token = headers
+        .get("x-review-lease")
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or("");
+    let reply = match action {
+        "acquire" => edit::acquire(&tenant, &id)
+            .await
+            .map(|body| (StatusCode::CREATED, body, None)),
+        "renew" => edit::renew(&tenant, &id, token)
+            .await
+            .map(|body| (StatusCode::OK, body, None)),
+        _ => edit::release(&tenant, &id, token)
+            .await
+            .map(|()| (StatusCode::OK, json!({"data":{"released":true}}), None)),
+    }
+    .map_err(response::operation);
+    no_store(
+        finish(
+            tenant,
+            principal.provenance(),
+            audit::RequestAudit::review_prompt(
+                if action == "release" {
+                    "DELETE"
+                } else {
+                    "POST"
+                },
+                action,
+            ),
+            reply,
+            &request_id,
+        )
+        .await,
+    )
 }
 
 pub(super) async fn index(
@@ -160,6 +235,9 @@ async fn mutation(
     {
         return Err(response::operation(OperationError::Forbidden));
     }
+    review_prompts::reconcile_person(tenant, record.person_id)
+        .await
+        .map_err(response::operation)?;
     let Some(record) = prompts::visible_prompt(tenant.transaction(), &context, id)
         .await
         .map_err(response::operation)?
@@ -266,6 +344,13 @@ async fn mutation(
             false,
         ));
     }
+    let lease = headers
+        .get("x-review-lease")
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or("");
+    edit::require(tenant, &record, lease)
+        .await
+        .map_err(response::operation)?;
     let Some(active) = changes.apply(&record, tenant.membership().id) else {
         return keyed(
             tenant,
@@ -285,29 +370,28 @@ async fn mutation(
         .begin()
         .await
         .map_err(|_| response::unavailable())?;
-    let updated = match active.update(tenant.transaction()).await {
-        Ok(updated) => match prompts::record_rest_update(tenant, &record, &updated).await {
-            Ok(()) => {
-                savepoint
-                    .commit()
-                    .await
-                    .map_err(|_| response::unavailable())?;
-                updated
-            }
-            Err(error) => {
-                savepoint
-                    .rollback()
-                    .await
-                    .map_err(|_| response::unavailable())?;
-                return Err(response::operation(error));
-            }
-        },
-        Err(_) => {
+    let outcome = async {
+        edit::archive(tenant, &record, "review").await?;
+        let updated = active.update(tenant.transaction()).await?;
+        prompts::record_rest_update(tenant, &record, &updated).await?;
+        edit::consume(tenant, &record, lease).await?;
+        Ok::<_, OperationError>(updated)
+    }
+    .await;
+    let updated = match outcome {
+        Ok(updated) => {
+            savepoint
+                .commit()
+                .await
+                .map_err(|_| response::unavailable())?;
+            updated
+        }
+        Err(error) => {
             savepoint
                 .rollback()
                 .await
                 .map_err(|_| response::unavailable())?;
-            return Err(response::unavailable());
+            return Err(response::operation(error));
         }
     };
     let etag = prompts::tag(&updated);
