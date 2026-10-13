@@ -204,8 +204,20 @@ Coverage publication and hosted review correction:
   exit zero; `coverage-output-final-*` review packet, output and export). It
   confirmed existing instrumentation evidence remains applicable because Cargo
   commands and selections are unchanged. Formatting, documentation, workflow
-  policy and whitespace checks passed. Cumulative CI, republication and
-  propagation to the dependent branch remain required.
+  policy and whitespace checks passed.
+- Signing failed twice through 1Password; the owner explicitly authorised an
+  unsigned fallback. Commit `62422c280d7daf2d6539d1944b6881256f0a6ee6` uses only
+  a per-command signing override. Global signing settings remain unchanged.
+- Cumulative `task --concurrency 1 ci` passed, job 80817 exit zero: 73 unit,
+  12 request, 486 selected care API and all 662 browser cases (18.2 minutes).
+  The run began against the frozen staged patch on `b64532f9`; its SHA-256
+  `9ccdad38333596068f4df89b8c3d7805a86947d277898c8b533de61b9e3ad72e` matches the
+  correction subsequently committed as `62422c28`, and all three file hashes
+  remained unchanged after CI. Full log:
+  `/private/tmp/s05-i01-evidence/coverage-fingerprint-full-ci-b645-staged.log`.
+  The 31 generated screenshots were preserved as a patch and restored. Task
+  cleanup completed; no separate post-run Docker inventory was credited.
+  Republication, exact-head hosted checks and propagation remain required.
 
 Session close-out on 11 October 2026:
 
