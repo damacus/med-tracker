@@ -169,6 +169,9 @@ fn parse_ampp_names(
             Ok(Event::Start(event)) => {
                 let tag = String::from_utf8_lossy(event.name().as_ref()).into_owned();
                 if tag == "AMPP" {
+                    if in_ampp {
+                        return Err("Nested AMPP record in release XML".to_owned());
+                    }
                     in_ampp = true;
                     ampp_depth = 1;
                     current_tag = None;
@@ -262,6 +265,9 @@ fn parse_gtins(
             Ok(Event::Start(event)) => {
                 let tag = String::from_utf8_lossy(event.name().as_ref()).into_owned();
                 if tag == "AMPP" {
+                    if in_ampp {
+                        return Err("Nested AMPP record in GTIN XML".to_owned());
+                    }
                     in_ampp = true;
                     ampp_depth = 1;
                     in_gtindata = false;
@@ -269,6 +275,9 @@ fn parse_gtins(
                     nested_depth = 0;
                     amppid.clear();
                 } else if tag == "GTINDATA" && in_ampp {
+                    if in_gtindata {
+                        return Err("Nested GTINDATA record in GTIN XML".to_owned());
+                    }
                     in_gtindata = true;
                     ampp_depth += 1;
                     gtindata_depth = 1;
@@ -912,6 +921,7 @@ async fn persist_relationships(
             entry
                 .amp_code
                 .as_ref()
+                .filter(|amp_code| !amp_code.trim().is_empty())
                 .map(|amp_code| nhs_dmd_ampp_relationship::ActiveModel {
                     ampp_code: Set(ampp_code.clone()),
                     amp_code: Set(amp_code.clone()),
@@ -1177,6 +1187,43 @@ pub(crate) async fn fail_run(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn self_nested_release_records_fail_without_publishing_partial_names_or_gtins() {
+        let dir = tempfile::tempdir().unwrap();
+        let ampp = dir.path().join("ampp.xml");
+        std::fs::write(
+            &ampp,
+            "<AMPPS><AMPP><APPID>777</APPID><NM>Outer</NM><AMPP><APPID>999</APPID><NM>Inner</NM></AMPP></AMPP></AMPPS>",
+        )
+        .unwrap();
+        let (sender, _receiver) = mpsc::unbounded_channel();
+        assert!(parse_ampp_names(&ampp, &mut Counts::default(), &sender).is_err());
+
+        let gtin = dir.path().join("gtin.xml");
+        std::fs::write(
+            &gtin,
+            "<AMPPS><AMPP><AMPPID>777</AMPPID><GTINDATA><GTIN>5016298210989</GTIN><GTINDATA><GTIN>5016298210990</GTIN></GTINDATA></GTINDATA></AMPP></AMPPS>",
+        )
+        .unwrap();
+        let names = HashMap::from([(
+            "777".into(),
+            AmppName {
+                name: "Outer".into(),
+                amp_code: None,
+            },
+        )]);
+        assert!(
+            parse_gtins(
+                &gtin,
+                &names,
+                NaiveDate::from_ymd_opt(2026, 10, 13).unwrap(),
+                &mut Counts::default(),
+                &sender,
+            )
+            .is_err()
+        );
+    }
 
     #[test]
     fn self_closing_elements_are_counted_and_invalid_gtins_are_skipped() {

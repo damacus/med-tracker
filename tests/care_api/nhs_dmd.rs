@@ -99,6 +99,41 @@ async fn nhs_dmd_synthetic_supplementary_release_publishes_trade_relationships()
     for field in ["groups", "families", "memberships", "releases"] {
         assert_eq!(row.try_get::<i64>("", field).unwrap(), 1, "{field}");
     }
+    let linkage = app.fixture.admin.query_one_raw(Statement::from_string(
+        DbBackend::Postgres,
+        "SELECT f.code AS family_code, g.code AS group_code, m.amp_code, r.released_on FROM nhs_dmd_amp_trade_families m JOIN nhs_dmd_trade_families f ON f.id=m.trade_family_id JOIN nhs_dmd_trade_family_groups g ON g.id=f.trade_family_group_id CROSS JOIN nhs_dmd_supplementary_releases r WHERE m.amp_code='A1'",
+    )).await.unwrap().unwrap();
+    assert_eq!(linkage.try_get::<String>("", "family_code").unwrap(), "F1");
+    assert_eq!(linkage.try_get::<String>("", "group_code").unwrap(), "G1");
+    assert_eq!(linkage.try_get::<String>("", "amp_code").unwrap(), "A1");
+    assert_eq!(
+        linkage
+            .try_get::<chrono::NaiveDate>("", "released_on")
+            .unwrap(),
+        chrono::NaiveDate::from_ymd_opt(2026, 10, 31).unwrap()
+    );
+    app.close().await;
+}
+
+#[tokio::test]
+async fn nhs_dmd_blank_amp_code_omits_relationship_but_preserves_barcode_value() {
+    let app = Application::new().await;
+    let id = med_tracker::models::nhs_dmd::upload(
+        &app.context,
+        "blank-amp.zip",
+        release_with_amp("   ", "5016298210989"),
+    )
+    .await
+    .unwrap();
+    med_tracker::models::nhs_dmd::run(&app.context, id)
+        .await
+        .unwrap();
+    let row = app.fixture.admin.query_one_raw(Statement::from_string(
+        DbBackend::Postgres,
+        "SELECT b.amp_code, (SELECT count(*) FROM nhs_dmd_ampp_relationships) AS relationships FROM nhs_dmd_barcodes b WHERE b.gtin='5016298210989'",
+    )).await.unwrap().unwrap();
+    assert_eq!(row.try_get::<String>("", "amp_code").unwrap(), "   ");
+    assert_eq!(row.try_get::<i64>("", "relationships").unwrap(), 0);
     app.close().await;
 }
 
