@@ -170,6 +170,11 @@ tasks:
       - task: release:test-rehearsal
       - 'cargo test --locked --lib {{.FILTER | default ""}} -- --test-threads=2'
       - cargo test --locked --doc
+  test:coverage:
+    desc: Report line coverage for database-free Rust unit tests (requires cargo-llvm-cov)
+    cmds:
+      - mkdir -p target/llvm-cov
+      - cargo llvm-cov --locked --lib --lcov --output-path target/llvm-cov/lcov.info
   test:integration:
     desc: Run compiled API, security and database integration tests
     deps: [ci:prepare]
