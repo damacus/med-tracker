@@ -1,5 +1,145 @@
 # Complete browser workflows and themes Implementation Plan
 
+## Next delivery: medication reviews and global search — 13 October 2026
+
+This section updates B2d and the shared navigation work tracked in issue #2503.
+It is the execution brief for these two journeys, not a second acceptance ledger.
+Discovery reference: `35fd33355e6c9461c836a3a8dbbd025c99a77875` on main.
+The open-PR check found only #2567 and #2568 dependency updates and #2381 release;
+no open feature PR overlaps these journeys. Recheck before dispatch. Existing
+worktrees are not proof of an active owner; confirm ownership before reusing any.
+
+### R: Complete medication reviews
+
+Outcome: an authorised adult can open Medicine reviews, filter warnings, inspect
+the supporting evidence, record a practitioner review and download the existing
+report; refreshed evidence remains current without erasing previous reviews.
+
+Rails reference: `rails/app/controllers/medication_review_prompts_controller.rb`,
+`rails/app/components/medication_reviews/`, `MedicationReviewPromptQuery`,
+`MedicationReviewPromptSync`, `MedicationReviews::UpdatePrompt`,
+`MedicationReviewEvidenceRefreshJob`, `OpenFda::MedicationReviewEvidenceRefresh`
+and their policies, fixtures and tests. Preserve statuses, priority filters,
+hidden low-signal controls/counts, provenance, practitioner fields, validation,
+permissions and presentation. These warnings are evidence for review, not a new
+clinical decision engine.
+
+Loco already has API list/detail/update, prompt generation, evidence matching,
+ETags, sync and PDFs. Reuse `src/controllers/api/care/review_prompts.rs`,
+`src/models/care/review_prompts/` and `src/models/care/sync/review_prompts.rs`.
+The browser list/edit route and templates are absent. `src/app.rs` registers
+no evidence-refresh worker/task; current generation reads existing evidence.
+Existing prompts are skipped by the generation loop, so refreshed evidence
+does not currently revise the saved snapshot of an existing prompt.
+
+Owner decisions, confirmed 13 October:
+
+- Acquire an exclusive record lease when editing starts. Reads remain available.
+- Expire the lease after five minutes without activity. Warn before expiry and
+  provide Keep editing. Save and Cancel release it immediately.
+- Preserve an expired draft, but reacquire the lease and check the record version
+  before saving. Enforce the same exclusion for browser, API and sync mutations;
+  an in-memory lock or a disabled button is insufficient.
+- Materially changed evidence reopens the warning and retains previous review
+  history. Do not reopen for a retrieval timestamp alone. Keep the previous
+  practitioner, date, note and evidence snapshot available in history.
+- Permission withdrawal invalidates edit authority. Background refresh must not
+  overwrite an active draft; changed evidence must be reconciled against the
+  version being reviewed before a save can succeed.
+
+Deliver as one coherent journey with one source writer. Sequence failing
+permission/concurrency tests, shared operations and persisted lease/history,
+browser review flow, then durable evidence refresh and end-to-end acceptance.
+Reuse the existing queue, private audit and tenant boundaries. Inspect maintained
+provider clients before adding a dependency. Preserve the Rails refresh schedule
+and failure reporting; verify unavailable, malformed, unchanged and changed
+provider responses using fixtures, not live patient data or paid requests.
+
+Acceptance includes two simultaneous editors, duplicate save/retry, lease expiry,
+reacquisition after another save, Cancel, session expiry, revoked access, API/sync
+bypass attempts, audit failure rollback, concurrent refresh, unchanged evidence,
+changed evidence with retained history, job restart/retry without duplicate
+prompts and a PDF reflecting the accepted current state. Cover admin, clinician,
+self, carer, parent and denied roles according to the existing policy.
+
+### S: Restore global search and working destinations
+
+Outcome: an authorised user can open the shared search control or Ctrl/Cmd+K,
+find permitted people, medicines, assignments, schedules, locations and commands,
+then reach the correct household page. Preserve the full HTML results fallback.
+
+Rails reference: `SearchesController`, `GlobalSearchQuery`,
+`GlobalSearchCommandsQuery`, `rails/app/services/global_search/`,
+`rails/app/components/global_search/` and `global_search_controller.js`.
+Preserve ranking, the twelve-result default, record-search minimum length,
+HTML/JSON contracts, labels, keyboard behaviour and permission-filtered commands.
+The controller returns no results for a blank submitted query; do not accidentally
+replace this with the query object's different blank-command behaviour.
+
+Loco has catalogue search and platform user search, but no equivalent global
+search route or result journey in the inspected root application. Do not rewrite
+the catalogue/scanner. Correct its navigation handoff: the dashboard/mobile rail
+links to `/households/:slug/medication-finder`, while the implemented page is
+`/households/:slug/medications/finder`. Preserve the Rails public path with an
+authorised route/alias and verify the destination. Review links depend on R only
+for the final combined navigation check; search implementation is independent.
+
+Acceptance includes all result categories, ranking/ties, blank/one-character/
+Unicode queries, literal wildcard input, escaping, bounded results, forbidden
+records and counts, revoked access, household switching, stale async responses,
+errors/retry, keyboard selection/Escape/focus restoration, touch, desktop/mobile,
+translations, no-JavaScript HTML results and real destination navigation.
+Queries must use existing authorised tenant/person scopes and avoid N+1 reads.
+
+### Ownership, resources and handback
+
+The coordinator owns integration and delivery through review corrections,
+publication and hosted checks. Proposed writers use Sol at its runtime default
+effort: both journeys need unfamiliar-code and permission judgement. A verifier
+uses Sol for diagnosis and independent acceptance; bounded fixture-only work may
+use Luna when objectively checkable. Reassess for the lease/history design if
+consequential ambiguity remains. Usage checked at planning: 45% of the reported
+weekly window remains; the other window is unavailable, not zero.
+
+| Owner | Exclusive source ownership | Read-only context |
+| --- | --- | --- |
+| R writer, unassigned | Review browser/API/model/sync modules, review-specific templates/scripts/tests, new lease/history migration files, evidence-refresh implementation | Rails review reference, existing auth, queue, report and tenant interfaces |
+| S writer, unassigned | New global-search controller/model/templates/script/tests; shared search control and Finder route handoff | Rails search reference, existing care operations and R public route contract |
+| Coordinator | Shared `src/app.rs`, module registration, migration registration, Cargo files, shared locale files, shared fixture helpers, Taskfiles/CI and this brief | Both diffs and test results |
+| Verifier, unassigned | Acceptance evidence and reports; request source/test changes from the owning writer | Both frozen candidates and Rails reference |
+
+Use separate worktrees and branches from fresh main, separate databases and ports,
+and task-owned processes. Do not reuse notification or other live test resources.
+One expensive build/browser/full-CI lane runs at a time; focused independent
+checks may run concurrently only with isolated fixtures. Check runner capacity
+before reserving it. The planning snapshot proves no runtime/browser parity yet.
+
+Writers own RED-GREEN tests with their source. The verifier independently checks
+the complete journeys, compares rendered Rails/Loco desktop/mobile states and
+returns omissions to those same writers. Retain screenshots and verdicts for
+normal, empty, invalid, denied and competing-edit states. Preserve existing
+themes and assets. Source checks alone cannot accept visual parity.
+
+Use the charter's independent Devin capability/security review; capability was
+not established in this planning session, so verify availability before dispatch
+and do not silently substitute it. Review the actual called permission helpers,
+schema and all browser/API/sync write paths. Source review and focused tests may
+overlap. Resolve findings, freeze source, then run `task ci` per deliverable plus
+`task docs:build` and `git diff --check` for plan changes. Publish separate scoped
+PRs; recheck the shared navigation on their combined head. Merge, auto-merge and
+deployment of these new slices need their own authorisation.
+
+Planning status: no writers dispatched, no test resources reserved. At dispatch,
+record each accountable owner, worktree, branch, exact session ID, live job handle,
+candidate SHA, evidence, review verdict and next action here. Keep ownership until
+the receiving owner acknowledges handback; resume an existing blocked session.
+Stop dependent work for contradictory permissions, an undefined material-evidence
+change rule, unsafe migration/rollback, unavailable required review, or a shared
+file conflict. Raise the concrete decision and continue independent work.
+Next action after execution is authorised: check live owners/reviewer access,
+reserve the two checkouts and verification lane, then dispatch the two writers
+with this brief. Overnight is a work window, not a promised completion time.
+
 > For agentic workers: retain the persistent team and Devin review from `../team-charter.md`.
 
 **Goal:** Replace the legacy browser application with complete, accessible Tera/daisyUI journeys.
