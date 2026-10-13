@@ -13,7 +13,9 @@ The owner approved completing all 119 documented API v1 operations using
 2,000 added plus deleted lines against its immediate base. The detailed agreement
 is in [the API slice](slices/05-api-integrations.md).
 
-- Baseline: refreshed `origin/main` at `eaacd96cf1fb7537d3befe5590916060a8e39f94`.
+- Baseline: refreshed `main` at `714eaac7a2e981451265edbab1b295096ff12bab`,
+  including the recent test-registration, isolated AI-configuration and shared
+  fixture-helper fixes. The stack was rebased with `gh stack rebase`.
 - Active branch: `codex/s05-i01-contract-harness`, stack rooted on `main`.
 - Coordinator: current Codex chat; sole source writer: `/root/api_writer`;
   verification/resource owner: `/root/verifier`.
@@ -21,28 +23,39 @@ is in [the API slice](slices/05-api-integrations.md).
   preserving isolated PostgreSQL 18 fixtures and restricted runtime roles.
 - Independent reviewer: Devin CLI `swe-2-max`, session `cool-actress`;
   packet and output retained under `/private/tmp/s05-i01-review/`. Its first
-  attempt stopped at CLI read permissions without a verdict. The corrected
-  frozen candidate is under review with framework source supplied directly.
+  attempt stopped at CLI read permissions without a verdict. Devin accepted the
+  corrected source with framework source supplied directly. The same-session
+  follow-up also accepted the fixture registration correction after rebasing.
 - Focused checks: inventory/harness 12 passed, JavaScript dispatcher 16 passed,
-  formatting, documentation and whitespace passed. The complete API group ran those twelve tests
-  and failed its completeness gate as intended: all 119 operations still require
+  formatting, documentation and whitespace passed. The complete API group ran
+  thirteen tests: twelve passed and its completeness gate failed as intended.
+  All 119 operations still require
   complete behavioural evidence. Loco registers 118 documented operations; the
   missing route is `POST /api/v1/households/{household_id}/push_subscription/test`.
-  Logs are under `/private/tmp/s05-i01-evidence/`. Root CI and coverage are pending.
+  Logs are under `/private/tmp/s05-i01-evidence/`. Coverage is pending.
+- Root CI on signed source `5f12b5b86a8ad650e59246f52f08783f98184b3d`
+  (job `62949`) failed with two transport errors: a five-second app-token GET
+  timeout and a mobile recovery HTTP parse error. The other 483 care API and
+  661 browser cases passed. Both failed cases passed individually without code
+  changes; their causes remain unproven. The refreshed candidate will run full
+  CI with Task stages serialised. Original logs and browser trace are retained.
 - Publication, hosted checks and acceptance: pending. No merge or deployment.
 - Review corrections: duplicate schema/header substitutions and handlers from
   another route now fail explicit regression tests. Both tests failed before the
   guards were corrected. Final focused log: `green-review-metadata-guards.log`;
   final expected incomplete gate: `review-fixes-expected-incomplete.log`, both
-  under `/private/tmp/s05-i01-evidence/`. Same-session re-review is pending.
+  under `/private/tmp/s05-i01-evidence/`. Same-session re-review accepted both.
 - Inventory now includes explicit schema/header/handler references and gaps for
   every operation. Middleware proof uses two requests and persisted source data,
   avoiding reliance on a timed request burst. The initial signed snapshot is
   `c7edacd480b103bfe551884b3d5fc68e61ccf568`; the corrections above were verified
-  after that snapshot and remain on the same branch.
+  after that snapshot and remain on the same branch. Rebased source is
+  `efb13f2473e9b6c2efa0d53fea914edd4ebcc397` before the fixture registration fix.
+  The missing root helper first failed compilation; its two-line registration
+  then passed all twelve focused cases, formatting and documentation checks.
   The publication gate recounts the final diff against the immediate base.
-- Next action: resolve Devin findings, run root CI and publish the bounded first
-  PR before proceeding upstack.
+- Next action: pass root CI on the refreshed candidate, then publish the bounded
+  first PR before proceeding upstack.
 
 Session close-out on 11 October 2026:
 
