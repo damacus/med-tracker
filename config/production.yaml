@@ -10,6 +10,7 @@ settings:
     enabled: <%= get_env(name="MEDTRACKER_AI_MEDICATION_HELP_ENABLED", default="false") %>
     model: <%= get_env(name="MEDTRACKER_AI_MEDICATION_HELP_MODEL", default="") %>
     provider: <%= get_env(name="MEDTRACKER_AI_MEDICATION_HELP_PROVIDER", default="") %>
+    api_key: <%= get_env(name="MEDTRACKER_AI_MEDICATION_HELP_API_KEY", default="") %>
     api_base_url: <%= get_env(name="MEDTRACKER_AI_MEDICATION_HELP_API_BASE_URL", default="") %>
     source_proxy_origin: <%= get_env(name="MEDTRACKER_AI_MEDICATION_SOURCE_PROXY_ORIGIN", default="") %>
 server:

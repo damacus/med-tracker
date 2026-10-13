@@ -185,6 +185,7 @@ impl Application {
                 settings["ai_medication_help"] = json!({
                     "enabled": true,
                     "provider": "openai",
+                    "api_key": "synthetic-ai-key",
                     "model": "gpt-4o",
                     "api_base_url": format!("http://127.0.0.1:{port}/v1/"),
                     "source_proxy_origin": format!("http://127.0.0.1:{port}")
