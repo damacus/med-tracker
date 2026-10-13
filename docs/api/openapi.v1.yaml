@@ -7,7 +7,8 @@ info:
     API requests are limited per client IP to 300 requests in each five-minute window. GET
     household data exports are also limited to 10 per minute; POST sync batches to 30 per
     minute; GET medication lookup to 60 per minute; POST AI medication suggestions to 10 per
-    minute; and GET household admin audit logs to 100 per minute. Limits use epoch-aligned
+    minute; and GET household admin audit logs to 100 per minute. HEAD requests served by a
+    GET route share that route's rate limits. Limits use epoch-aligned
     fixed windows. The first exceeded limit rejects the request with 429 and Retry-After,
     RateLimit-Limit, RateLimit-Remaining and RateLimit-Reset response headers. Counters are
     local to each server process. Counter storage is bounded; a new client is rejected with
@@ -149,6 +150,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CapabilitiesResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /auth/households:
     get:
       operationId: listHouseholds
@@ -481,6 +484,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "503":
           $ref: "#/components/responses/InvitationDeliveryUnavailable"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /invitations/accept:
     post:
       operationId: acceptHouseholdInvitation
@@ -515,6 +520,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /households/{household_id}/profile/avatar:
     get:
       operationId: downloadCurrentAvatar
@@ -554,6 +561,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "503":
           $ref: "#/components/responses/AvatarUnavailable"
+        "429":
+          $ref: "#/components/responses/RateLimited"
     put:
       operationId: uploadCurrentAvatar
       tags: [Household, People]
@@ -595,6 +604,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "503":
           $ref: "#/components/responses/AvatarUnavailable"
+        "429":
+          $ref: "#/components/responses/RateLimited"
     delete:
       operationId: deleteCurrentAvatar
       tags: [Household, People]
@@ -620,6 +631,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "503":
           $ref: "#/components/responses/AvatarUnavailable"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /households/{household_id}/profile:
     get:
       operationId: getHouseholdProfile
@@ -645,6 +658,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "422":
           $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/RateLimited"
     patch:
       operationId: updateHouseholdProfile
       tags: [Household, People]
@@ -682,6 +697,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "422":
           $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/RateLimited"
     put:
       operationId: updateHouseholdProfileWithPut
       tags: [Household, People]
@@ -719,6 +736,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "422":
           $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /households/{household_id}/reports/health_history:
     get:
       operationId: getHealthHistoryReport

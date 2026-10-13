@@ -219,6 +219,117 @@ Coverage publication and hosted review correction:
   cleanup completed; no separate post-run Docker inventory was credited.
   Republication, exact-head hosted checks and propagation remain required.
 
+Shared HTTP rate-limit work:
+
+- The coverage correction and its final record are published at `2e84496b` on
+  PR #2607, 582 additions plus 34 deletions against its harness base. The exact
+  hosted review thread was answered in comment 4262482794 and verified resolved.
+  Both earlier published heads passed hosted checks; new-head checks are active.
+- `codex/s05-i01-http-rate-limits` is rebased onto `2e84496b`. The writer's
+  preserved request tests are restored. Focused RED job 46801 compiled and ran
+  all three TestServer cases; each expected 429 after exhausting an export bucket
+  but received 401. Log: `/private/tmp/s05-i01-evidence/http-rate-limit-red.log`.
+  The failure proves missing runtime limiting, not a fixture or compilation fault.
+- The API writer owns the bounded model, middleware, view, configuration and
+  nine approved 429 contract corrections with their tests. The coordinator owns
+  records/publication; the verifier owns builds and fixtures. Existing care and
+  review ownership remains unchanged. No operation is credited complete yet.
+- Initial GREEN attempt 98002 stopped at a configuration-error adapter type
+  mismatch; no tests executed. After that compile correction, policy RED job
+  41810 ran eight tests: six passed and two failed on an undocumented descendant
+  path receiving a special limit and a trailing empty trusted-proxy entry being
+  accepted. Missing-peer RED job 97959 executed one TestServer case and failed
+  because the error response was plain text instead of JSON. The writer owns
+  these corrections. Logs are `http-rate-limit-policy-red-escalated.log` and
+  `http-rate-limit-missing-peer-red.log` under the existing evidence directory.
+- Policy GREEN job 33947 passed: eight limiter unit cases and one existing push
+  retry case matched the selector. This proves the focused model corrections;
+  request GREEN job 85558 then passed all four TestServer cases. The verifier
+  released the writer for the Loco rendering adapter and approved OpenAPI and
+  inventory edits before broader verification. Independent review and final CI
+  remain required. Focused logs are `http-rate-limit-policy-green.log` and
+  `http-rate-limit-request-green.log` in the evidence directory.
+- Broader inventory job 7207 exposed a configuration regression: 13 passed,
+  three baseline boot cases failed and one completeness test remained ignored.
+  Empty unquoted proxy settings render as YAML null, rejected by the strict
+  string parser. The writer owns quoting all three environment templates;
+  the passing focused tests had overridden the setting with an explicit string.
+  Inventory evidence will also name the exact unchanged medication-take, stock,
+  audit and sync projections instead of the overly broad `no-write` label.
+- Independent Devin SWE-2 Max review uses session `ambiguous-jupiter`. Initial
+  job 87550 stopped at unavailable noninteractive Serena permissions without a
+  verdict. Read-only review resumed as job 71657 with the source and verification
+  reference supplied directly; it has no build or source-edit ownership.
+- Quoted configuration and precise evidence labels passed inventory job 5736:
+  16 passed, one completeness gate ignored. Focused request job 95758 passed all
+  four rate cases again. Route reconciliation remains 118 of 119, with the
+  documented push-subscription test route still missing. Logs are
+  `http-rate-limit-inventory-green-v2.log` and
+  `http-rate-limit-request-green-v2.log`; these results do not close acceptance.
+- All 59 hosted checks passed on published coverage head
+  `2e84496b3222c1d60595d4d783b85d1dc6b0c82c`. Coverage PR #2607 remains open and
+  unmerged. The check snapshot is `coverage-head-hosted-checks-latest.json` in
+  the evidence directory. Rate-limit unit job 81742 passed all nine matching
+  cases (eight limiter cases); formatting job 93354 passed.
+- Strict Clippy job 50528 passed across all targets with `-D warnings`. The full
+  contract group job 3852 passed 16 cases and failed only its intended 119-operation
+  completeness gate. These are recorded separately from full root CI, still pending.
+- Devin session `ambiguous-jupiter` completed its supplied-source review as job
+  24562 after read-tool permission prompts stopped the earlier attempts. It
+  accepted the bounded implementation conditionally on an explicit HEAD-policy
+  decision: Axum's implicit HEAD read routes may bypass the GET-specific buckets.
+  The writer added a test-only authenticated HEAD export regression; verifier
+  job 81844 is checking reachability before any policy or contract correction.
+  The proposal is `/private/tmp/s05-i01-evidence/proposed-head-rate-policy.md`.
+  Non-blocking review observations remain in the retained review output; no
+  unrelated framework or authentication rewrite is included.
+- HEAD regression job 81844 confirmed reachability and the bypass: authenticated
+  HEAD returned 200, nine GETs from the same client returned 401, and the final
+  authenticated HEAD returned 200 instead of 429. The owner has been asked to
+  approve sharing GET buckets for implicit HEAD reads plus an explicit OpenAPI
+  sentence. The exact unapplied diff is `proposed-head-rate-policy.patch` in the
+  evidence directory. Production changes, full CI and publication are held for
+  this contract decision; elapsed time is not approval.
+- Pure shared GET/HEAD-bucket regression job 61734 also failed as intended:
+  one case executed, 81 filtered, with no rejection where the shared read bucket
+  should be exhausted. Both new HEAD regressions remain test-only changes;
+  the policy and OpenAPI proposal has not been applied. No build is left running.
+- The owner authorized the HEAD correction on 13 October if HEAD poses a
+  denial-of-service risk. The condition is met: the authenticated request test
+  proves HEAD executes the export handler while avoiding its stricter quota.
+  Apply the three shared GET/HEAD read buckets and clarify the contract wording.
+  The earlier pending-decision entries above are superseded. Verification remains
+  held while the migration coordinator runs final dm+d/care CI and prepares its
+  authorized merges; its completion message will release the shared build lane.
+- Approved HEAD correction is now applied locally: all three read rules share
+  GET/HEAD buckets, the OpenAPI introduction is clarified, and its test pin is
+  `701b093a1fd87203769e19a393e7524bd6e9a0dc6f4c7394c20750d643e9ffa4`.
+  Inventory remains 119 operations with partial export evidence and unchanged
+  native pins. Static whitespace and JSONL checks pass; focused GREEN, same-session
+  Devin review and full CI remain pending the shared-lane release. The complete
+  local patch is `http-rate-limit-head-candidate.patch` in the evidence directory.
+- On 14 October the migration coordinator released the build lane after dm+d
+  PR #2615 merged. Refreshed main is `99154e36686db793952cfc0120de4d7469079320`.
+  GitHub confirms prerequisite PRs #2600 and #2607 are also merged. The stack
+  rebase skipped those merged layers and based this rate-limit layer on main.
+  All WIP was preserved in named stash `s05-i01 approved HEAD candidate before
+  merged-main refresh`; the recovery copy remains. Three configuration conflicts
+  were resolved by keeping main's centralized settings and adding the quoted
+  rate-limit setting. No module collision was found. Refreshed GREEN verification
+  is starting; the prior shared-lane hold is superseded.
+- Refreshed unit job 48584 passed ten matching cases (nine limiter cases,
+  including shared HEAD/GET buckets, plus the existing push retry case).
+  Initial request job 52501 stopped at compilation because upstream changed
+  the identity exchange helper signature; no request evidence was credited.
+  After matching existing fixture calls, request job 90471 passed 17 cases with
+  one intentionally ignored acceptance gate, including authenticated HEAD export
+  throttling. Route inventory stays 118/119. Formatting passes. Devin correction
+  review resumed in `ambiguous-jupiter` as job 8036; full CI remains pending.
+- Devin correction review job 8036 approved the refreshed candidate for full CI;
+  F1 is resolved by the approved policy, model regression and authenticated request
+  regression. Remaining observations are non-blocking and retained in
+  `rate-limit-head-correction-output.log`; they do not establish full API acceptance.
+
 Session close-out on 11 October 2026:
 
 - [Profile PR #2504](https://github.com/damacus/med-tracker/pull/2504) is merged

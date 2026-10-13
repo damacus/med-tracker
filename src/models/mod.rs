@@ -11,5 +11,6 @@ pub mod nhs_dmd;
 pub mod notification_preferences;
 pub mod platform;
 pub mod profile;
+pub mod rate_limit;
 pub(crate) mod seed;
 pub(crate) mod settings;
