@@ -1,10 +1,41 @@
 # Migration progress
 
-Updated 11 October 2026. Complete every slice in [the plan](plan.md).
+Updated 13 October 2026. Complete every slice in [the plan](plan.md).
 Foundation is accepted. The verified baseline PR #2451 is merged; all remaining
 migration areas stay in scope. No live deployment has occurred.
 
 ## Current delivery
+
+### s05-i01 — API contract completion, 13 October 2026
+
+The owner approved completing all 119 documented API v1 operations using
+`rust-testing`, upstream Loco guidance and area-based `gh stack` PRs, each at most
+2,000 added plus deleted lines against its immediate base. The detailed agreement
+is in [the API slice](slices/05-api-integrations.md).
+
+- Baseline: refreshed `origin/main` at `eaacd96cf1fb7537d3befe5590916060a8e39f94`.
+- Active branch: `codex/s05-i01-contract-harness`, stack rooted on `main`.
+- Coordinator: current Codex chat; sole source writer: `/root/api_writer`;
+  verification/resource owner: `/root/verifier`.
+- Current work: exhaustive operation mapping and Loco-native request acceptance,
+  preserving isolated PostgreSQL 18 fixtures and restricted runtime roles.
+- Independent reviewer: Devin CLI `swe-2-max`, session `cool-actress`;
+  packet and output retained under `/private/tmp/s05-i01-review/`. Its first
+  attempt stopped at CLI read permissions without a verdict. The corrected
+  frozen candidate is under review with framework source supplied directly.
+- Focused checks: inventory/harness 10 passed, JavaScript dispatcher 16 passed,
+  formatting and whitespace passed. The complete API group ran those eight tests
+  and failed its completeness gate as intended: all 119 operations still require
+  complete behavioural evidence. Loco registers 118 documented operations; the
+  missing route is `POST /api/v1/households/{household_id}/push_subscription/test`.
+  Logs are under `/private/tmp/s05-i01-evidence/`. Root CI and coverage are pending.
+- Publication, hosted checks and acceptance: pending. No merge or deployment.
+- Inventory now includes explicit schema/header/handler references and gaps for
+  every operation. Middleware proof uses two requests and persisted source data,
+  avoiding reliance on a timed request burst. Candidate diff: 967 lines before
+  this progress update; the publication gate recounts the final committed diff.
+- Next action: resolve Devin findings, run root CI and publish the bounded first
+  PR before proceeding upstack.
 
 Session close-out on 11 October 2026:
 
