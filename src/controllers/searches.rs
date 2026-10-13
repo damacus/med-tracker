@@ -12,6 +12,7 @@ use axum::{
 };
 use axum_session::Session;
 use axum_session_sqlx::SessionPgPool;
+use chrono::Utc;
 use loco_rs::controller::middleware::request_id::LocoRequestId;
 use loco_rs::prelude::*;
 use serde::Deserialize;
@@ -39,7 +40,7 @@ async fn show(
     ViewEngine(view): ViewEngine<TeraView>,
     Query(input): Query<SearchQuery>,
 ) -> Response {
-    let (_, tenant) = match begin(&ctx, &session, &slug, &request_id(request)).await {
+    let (principal, tenant) = match begin(&ctx, &session, &slug, &request_id(request)).await {
         Ok(value) => value,
         Err(error) => return authentication_error(error),
     };
@@ -57,7 +58,17 @@ async fn show(
     let results = if query.is_empty() {
         Vec::new()
     } else {
-        match global_search::query(&tenant, &slug, &query, &labels).await {
+        match global_search::query(
+            &tenant,
+            &slug,
+            &query,
+            &labels,
+            Utc::now()
+                .with_timezone(&principal.time_zone())
+                .date_naive(),
+        )
+        .await
+        {
             Ok(value) => value,
             Err(error) => return operation_error(error),
         }
@@ -86,7 +97,7 @@ async fn json_results(
     headers: HeaderMap,
     Query(input): Query<SearchQuery>,
 ) -> Response {
-    let (_, tenant) = match begin(&ctx, &session, &slug, &request_id(request)).await {
+    let (principal, tenant) = match begin(&ctx, &session, &slug, &request_id(request)).await {
         Ok(value) => value,
         Err(error) => return authentication_error(error),
     };
@@ -104,7 +115,17 @@ async fn json_results(
     let results = if query.trim().is_empty() {
         Vec::new()
     } else {
-        match global_search::query(&tenant, &slug, &query, &labels).await {
+        match global_search::query(
+            &tenant,
+            &slug,
+            &query,
+            &labels,
+            Utc::now()
+                .with_timezone(&principal.time_zone())
+                .date_naive(),
+        )
+        .await
+        {
             Ok(value) => value,
             Err(error) => return operation_error(error),
         }

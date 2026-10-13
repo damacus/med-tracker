@@ -1,9 +1,10 @@
 use crate::models::{
     access::{self, PersonAccess, TenantTransaction},
-    care::{locations, medications, people},
+    care::{locations, medications, people, reports},
     entities::{medication, person_medication, schedule},
     errors::OperationError,
 };
+use chrono::NaiveDate;
 use loco_rs::model::TenantQueryExt;
 use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter, QueryOrder, QuerySelect};
 use serde::Serialize;
@@ -62,10 +63,11 @@ pub async fn query(
     slug: &str,
     query: &str,
     labels: &Value,
+    today: NaiveDate,
 ) -> Result<Vec<SearchResult>, OperationError> {
     access::recheck(tenant).await?;
     let query = query.trim();
-    let mut results = commands(tenant, slug, labels).await?;
+    let mut results = commands(tenant, slug, labels, today).await?;
     if query.is_empty() {
         results.truncate(LIMIT);
         return Ok(results);
@@ -100,12 +102,14 @@ async fn commands(
     tenant: &TenantTransaction,
     slug: &str,
     labels: &Value,
+    today: NaiveDate,
 ) -> Result<Vec<SearchResult>, OperationError> {
     let can_create = medications::crud::can_create(tenant).await?;
     let can_manage_person = access::has_person_access(tenant, PersonAccess::Manage).await?;
     let can_create_person = people::can_create(tenant).await?;
     let can_view_person = access::has_person_access(tenant, PersonAccess::View).await?;
     let manager = access::can_manage_household(tenant);
+    let can_report = manager || reports::actor_adult(tenant, today).await?;
     let mut results = Vec::new();
     let definitions = [
         (
@@ -116,11 +120,7 @@ async fn commands(
         ("inventory", "medications", true),
         ("people", "people", true),
         ("locations", "locations", true),
-        (
-            "reports",
-            "reports",
-            manager || tenant.membership().person_id.is_some(),
-        ),
+        ("reports", "reports", can_report),
         ("add_medication", "medications/workflow", can_create),
         ("add_person", "people/new", can_create_person),
         (

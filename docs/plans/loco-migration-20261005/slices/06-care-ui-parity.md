@@ -54,6 +54,21 @@ mixed `Accept-Language: cy` for browser fetches with `en-GB` document navigation
 the Playwright trace exposed both headers. The test now uses a `cy-GB` browser
 locale context, matching established locale tests. Focused desktop/mobile
 search verification and screenshots remain the checkpoint gate.
+The source review was launched on immutable `379e881` only after the owner
+explicitly approved its full source-and-test packet on 13 October; Devin review
+job `46564` writes `/private/tmp/medtracker-care-search-review.txt`. A report
+command permission regression for non-adult memberships failed first in job
+`9900`, showing the command for a synthetic minor. The correction reuses
+`reports::actor_adult` with the actor's local date. Focused desktop/mobile
+browser job `12013` passed 18/18, including the corrected Welsh browser locale,
+permission withdrawal, route aliases, keyboard/focus/race cases and destination
+navigation. Actual Loco captures are
+`docs/screenshots/loco-care-search-{desktop,mobile}.png` (1440×1000 and
+390×844). Compared with retained Rails `search-recovery-desktop.png` and
+`ui-polish-global-search-mobile-390x844.png`, the dropdown is anchored under
+the desktop sidebar trigger and mobile header and stays within the viewport.
+Independent review and full integrated `task ci` remain open; this focused
+result does not accept the full care UI slice.
 
 ## Shared delivery contract
 

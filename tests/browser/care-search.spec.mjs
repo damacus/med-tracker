@@ -91,6 +91,9 @@ test('search commands hide management actions after permission withdrawal', asyn
   const records = (await (await page.request.get(`${household}/search.json?q=Synthetic`)).json()).results;
   expect(records.filter(result => ['person', 'medication', 'schedule', 'person_medication'].includes(result.type))).toEqual([]);
   expect(records).toEqual(expect.arrayContaining([expect.objectContaining({ type: 'location', path: `${household}/locations/79001` })]));
+  await careFixture.searchMinor();
+  const reports = (await (await page.request.get(`${household}/search.json?q=Reports`)).json()).results;
+  expect(reports.map(result => result.title)).not.toContain('Reports');
 });
 
 test('schedule command reaches a person-specific schedule form', async ({ page }) => {
