@@ -32,7 +32,7 @@ is in [the API slice](slices/05-api-integrations.md).
   All 119 operations still require
   complete behavioural evidence. Loco registers 118 documented operations; the
   missing route is `POST /api/v1/households/{household_id}/push_subscription/test`.
-  Logs are under `/private/tmp/s05-i01-evidence/`. Coverage is pending.
+  Logs are under `/private/tmp/s05-i01-evidence/`. Coverage is recorded below.
 - Root CI on signed source `5f12b5b86a8ad650e59246f52f08783f98184b3d`
   (job `62949`) failed with two transport errors: a five-second app-token GET
   timeout and a mobile recovery HTTP parse error. The other 483 care API and
@@ -45,7 +45,18 @@ is in [the API slice](slices/05-api-integrations.md).
   checks also passed. Full log: `full-task-ci-11ea37b4.log` in the evidence folder.
   This records a successful serial run, not a proven cause or fix for the earlier
   transport failures. The final commit adds only this verification record.
-- Publication, hosted checks and acceptance: pending. No merge or deployment.
+- Published [PR #2600](https://github.com/damacus/med-tracker/pull/2600) against
+  `main` at signed head `b56d4b486b85ced3bbe8e22ffd9bec265c722bb3`: 1,099 additions
+  and nine deletions. Full API acceptance remains pending.
+  No merge or deployment.
+  The owner's GitHub update subsequently merged `main` into this PR at
+  `2808f38ce508f2606b6d2d0787301961bffd85d7`, preserving our source and adding
+  merged PR #2599's unit coverage and property tests. The local stack now
+  preserves that merge. Earlier local CI is evidence for its recorded source;
+  [Hosted CI run 38412852801](https://github.com/damacus/med-tracker/actions/runs/38412852801)
+  passed on this exact updated revision. The hosted checksum finding was answered
+  and resolved after independent same-session Devin adjudication accepted the
+  full-document provenance guard; no source change was needed.
 - Review corrections: duplicate schema/header substitutions and handlers from
   another route now fail explicit regression tests. Both tests failed before the
   guards were corrected. Final focused log: `green-review-metadata-guards.log`;
@@ -60,10 +71,153 @@ is in [the API slice](slices/05-api-integrations.md).
   The missing root helper first failed compilation; its two-line registration
   then passed all twelve focused cases, formatting and documentation checks.
   The publication gate recounts the final diff against the immediate base.
-- Next action: publish the bounded first PR, then establish report-only coverage.
-  Shared HTTP and account changes await the owner's decision on two OpenAPI
-  omissions: capability rate-limit responses and account OAuth insufficient-scope
-  responses. Existing enforcement must remain intact.
+- Next action: extend report-only coverage on
+  `codex/s05-i01-coverage-baseline`, based on PR #2600, coordinating with #2583.
+  PR #2599 closed #2583's unit-coverage scope. This branch extends its existing
+  Task/job to integration coverage and reproducible evidence; it adds no duplicate
+  coverage pipeline. Overlapping local work was preserved before reconciliation.
+  The owner approved correcting two OpenAPI omissions: capability rate-limit
+  responses and account OAuth insufficient-scope responses. Apply each correction
+  in its owning area, preserving enforcement and leaving native pins unchanged.
+
+Main subsequently advanced to `60e7de5d` (PR #2604), adding pure unit tests.
+The harness branch preserves that ancestry and corrects the new blanket
+TestServer prohibition to match the approved full-router acceptance harness.
+Devin session `cool-actress` accepted this guidance and withdrew an inaccurate
+in-process transport suggestion after checking installed axum-test 17.3.0. Both
+agent guides are synchronized at signed harness head `d8201065`; publication
+and updated-head hosted checks remain pending. No upstream tests were removed.
+
+Coverage extension on `codex/s05-i01-coverage-baseline`:
+
+- Base: PR #2600 branch at `d8201065910fbe79f276b514970399919a67eb51`, including
+  PR #2599's unit-coverage setup. Extend its `test:coverage` command and existing
+  CI job to run unit, request-harness and care API tests using owned fixtures.
+- Preserve the report-only policy. Test/tool failures still fail the selected
+  CI job; no line-percentage threshold is introduced.
+- Coordinator retains documentation and stack ownership; the existing writer
+  owns implementation/tests, and the verifier owns provisioning and live jobs.
+- Red evidence covers the missing Task boundary, CI aggregate failures,
+  contaminated metadata environment and shared instrumentation paths. Corrected
+  runner checks pass 24 cases; CI policy checks pass 137. Installed prerequisites
+  are cargo-llvm-cov 0.9.1 and matching Rust 1.99 LLVM tools.
+- Each run now owns its target, build intermediates and report directory. The
+  report records source revision, dirty state and a source fingerprint, rejecting
+  mutations during measurement. Failed runs cannot publish a complete manifest.
+- Independent Devin SWE-2 Max session `living-pick` identified an ambient coverage
+  directory override and verification gaps. Corrections passed focused checks
+  and the same reviewer accepted the final source: tool overrides are stripped, version matching
+  is exact, malformed or padded output paths fail before provisioning, failed-output checks
+  cover the real run directory, and the redundant test Task alias is removed. Its
+  packet and output are under `/private/tmp/s05-i01-review/coverage-*`.
+- The host's actionlint 1.7.12 hit a Darwin deadlock. The unchanged workflow check
+  passed with the maintainer's merged fix, commit
+  `011a6d15e749bb3f2d771eed9c7aa0e7e3e10ee7`, built only under `/private/tmp` and
+  selected through a scoped PATH. ShellCheck remained enabled; global tooling
+  and repository checks were not weakened. Logs retain the timeout and passing run.
+- First instrumented candidate `89d04ce6` passed 45 unit tests, then job 34708
+  failed because cargo-llvm-cov 0.9.1 rejects combining `--no-report` with
+  `--no-clean`. No request/database coverage or complete report was credited;
+  owned run resources were cleaned. A regression reproduced the CLI rejection.
+  Removing the redundant `--no-clean` flags preserves accumulation through
+  `--no-report`; 24 runner and 137 policy checks pass after the correction.
+  Devin accepted this correction in the same `living-pick` session. Repeat
+  measurement and cumulative CI passed as recorded below.
+- Existing hosted unit coverage at `2808f38` measured 1,931 of 57,239 application
+  lines (3.37%), including zero API-controller lines. This `--lib` baseline is
+  preserved under `/private/tmp/s05-i01-evidence/hosted-unit-coverage-2808f38/`.
+  It does not measure the full suite.
+- Combined coverage passed on signed `ca314adb`, before the latest main update:
+  job 75191 exited zero with 45 unit, 12 request and 500 care API tests passing.
+  The request completeness gate and fixture hook remained intentionally ignored.
+  LCOV and a complete manifest are preserved in
+  `/private/tmp/s05-i01-evidence/coverage-baseline-ca314adb/`; the manifest records
+  the unrelated preserved Serena change and an unchanged source fingerprint.
+  Application line coverage is 36,202/57,242 (63.24%); the API-controller
+  directory is 6,717/7,287 (92.18%), the OAuth-controller directory 10/344 (2.91%),
+  and models 27,775/38,185 (72.74%). These directory metrics do not establish
+  public API acceptance or meet every skill target. The log proves all three
+  selections ran; LCOV does not label each selection independently.
+- Docker pool exhaustion delayed measurement. After the owner approved removing
+  one named empty fixture network, reinspection found it already absent and
+  capacity restored. This task removed no unknown networks or storage.
+- After preserving PR #2604, coverage passed on signed source
+  `88bf94777710ff3444017109bc7e1474ea59b18a`: job 28692, exit zero,
+  73 unit, 12 request and 500 care API tests. Complete manifest, LCOV and assessment:
+  `/private/tmp/s05-i01-evidence/coverage-baseline-88bf9477/`. Raw application
+  coverage is 36,654/57,626 (63.61%); API controllers remain 92.18% and OAuth
+  controllers 2.91%. Removing only the three new inline test modules yields
+  36,270/57,242 (63.36%) application coverage and 27,843/38,185 (72.92%) models.
+  Older inline test bodies may remain counted. These figures do not establish
+  operation acceptance or satisfy every coverage target.
+- Initial cumulative CI job 8997 passed Rust/integration checks, then failed
+  before browser tests because the stale asdf `npx` shim could not find asdf.
+  Selecting the existing mise Node installation through scoped PATH made the
+  unchanged browser prerequisite pass. No source or global configuration changed.
+- Full `task --concurrency 1 ci` retry on the same signed source passed:
+  job 68704, exit zero; 73 unit, 12 request, 486 selected care API and all 662
+  desktop/mobile browser cases. Care reported one ignored and fourteen filtered;
+  requests intentionally ignored the incomplete whole-API gate. Other integration
+  shards and repository gates passed. Log:
+  `/private/tmp/s05-i01-evidence/full-task-ci-88bf9477-path-recovery.log`.
+  Separate workflow gate job 13924 passed all 137 policy checks with the scoped
+  upstream actionlint fix; log `ci-check-88bf9477-final.log` in the same folder.
+  Owned fixtures were cleaned and generated screenshots restored after retaining
+  their patch. The unrelated Serena configuration remains preserved and excluded.
+- Ownership coordination allocated rate-limit wiring, isolated modules/config
+  and nine missing 429 entries to this API work. It also transferred the narrow
+  missing-household error adapter correction; care/review edits remain owned by
+  their existing coordinator. Three unpublished review-lease operations will
+  require reconciliation when integrated; the current contract still has 119.
+- Publication and exact-published-head hosted checks remain pending. Next is
+  shared HTTP behaviour, beginning with failing full-router rate-limit tests.
+
+Coverage publication and hosted review correction:
+
+- PR #2607 was published on the harness branch at signed `b64532f9`, 423 additions
+  and 34 deletions. PR #2600 was updated to signed `d8201065`, 1,115 additions
+  and 21 deletions against `main` at `60e7de5d`. Both remote heads were verified;
+  neither is merged or deployed. The generated title's initial validation failure
+  was superseded by successful corrected-title run 38440132257.
+- Hosted review comment 4261986300 identified valid custom coverage output under
+  an unignored checkout directory being counted as a source mutation. A real-Git,
+  fake-provider runner regression reproduced it: 25 passed, one failed. The
+  correction excludes only untracked files in this run's UUID report directory.
+  Tracked and unrelated untracked changes remain detectable, including siblings
+  in the report parent. The initial 27 runner tests passed; logs are
+  `coverage-output-fingerprint-red.log` and
+  `coverage-output-fingerprint-isolated-green.log` in the evidence folder.
+- Same-session review found asymmetric decoding of unusual Git filename bytes.
+  A real-Git index regression reached the intended fingerprint mismatch before
+  correction. The final filter preserves retained status bytes and all 28 runner
+  tests pass. Evidence: `coverage-fingerprint-nonutf8-red-corrected.log` and
+  `coverage-fingerprint-nonutf8-green-final.log`. An earlier macOS fixture error
+  and failed provisional correction are retained but not credited as success.
+- Hosted coverage on published `b64532f9` passed, with the clean merge revision
+  `4a0dce7ec149b6a65c77e21d3cb04f569c880b41` in its complete three-selection
+  manifest. Artifact 11835597271 is retained under
+  `/private/tmp/s05-i01-evidence/hosted-combined-coverage-b64532f9/`. Generated
+  client determinism and Swift/Kotlin compilation also passed on that PR run.
+- The correction remains on its owning coverage branch. The next rate-limit
+  branch's test-only work and progress record are preserved in a named stash.
+  Same-session `living-pick` re-review accepted both corrections (job 73680,
+  exit zero; `coverage-output-final-*` review packet, output and export). It
+  confirmed existing instrumentation evidence remains applicable because Cargo
+  commands and selections are unchanged. Formatting, documentation, workflow
+  policy and whitespace checks passed.
+- Signing failed twice through 1Password; the owner explicitly authorised an
+  unsigned fallback. Commit `62422c280d7daf2d6539d1944b6881256f0a6ee6` uses only
+  a per-command signing override. Global signing settings remain unchanged.
+- Cumulative `task --concurrency 1 ci` passed, job 80817 exit zero: 73 unit,
+  12 request, 486 selected care API and all 662 browser cases (18.2 minutes).
+  The run began against the frozen staged patch on `b64532f9`; its SHA-256
+  `9ccdad38333596068f4df89b8c3d7805a86947d277898c8b533de61b9e3ad72e` matches the
+  correction subsequently committed as `62422c28`, and all three file hashes
+  remained unchanged after CI. Full log:
+  `/private/tmp/s05-i01-evidence/coverage-fingerprint-full-ci-b645-staged.log`.
+  The 31 generated screenshots were preserved as a patch and restored. Task
+  cleanup completed; no separate post-run Docker inventory was credited.
+  Republication, exact-head hosted checks and propagation remain required.
 
 Session close-out on 11 October 2026:
 
