@@ -194,6 +194,57 @@ fn escaped(value: &str) -> String {
     value.replace('~', "~0").replace('/', "~1")
 }
 
+fn registered_handler(
+    source: &str,
+    prefix: &str,
+    target: &str,
+    method: &str,
+    symbol: &str,
+) -> bool {
+    source.match_indices(".add(").any(|(position, _)| {
+        let start = position + ".add(".len();
+        let mut depth = 1;
+        let mut quoted = false;
+        let mut escape = false;
+        let mut end = start;
+        for (offset, character) in source[start..].char_indices() {
+            end = start + offset;
+            if escape {
+                escape = false;
+            } else if quoted && character == '\\' {
+                escape = true;
+            } else if character == '"' {
+                quoted = !quoted;
+            } else if !quoted && character == '(' {
+                depth += 1;
+            } else if !quoted && character == ')' {
+                depth -= 1;
+                if depth == 0 {
+                    break;
+                }
+            }
+        }
+        if depth != 0 {
+            return false;
+        }
+        let call = &source[start..end];
+        let Some(first) = call.find('"') else {
+            return false;
+        };
+        let Some(second) = call[first + 1..].find('"') else {
+            return false;
+        };
+        let route = &call[first + 1..first + 1 + second];
+        let route_prefix = if route == "/invitations/accept" {
+            "/api/v1"
+        } else {
+            prefix
+        };
+        normalized(&format!("{route_prefix}{route}")) == target
+            && call.contains(&format!("{method}({symbol})"))
+    })
+}
+
 fn pointer(document: &Value, value: &Value) {
     let reference = value["pointer"].as_str().unwrap();
     assert!(reference.starts_with("#/"));
@@ -219,13 +270,19 @@ fn validate_metadata(document: &Value, entry: &Value) {
         .and_then(|body| body["content"].as_object())
         .map(|content| {
             content
-                .values()
-                .filter(|media| media.get("schema").is_some())
-                .count()
+                .iter()
+                .filter(|(_, media)| media.get("schema").is_some())
+                .map(|(name, _)| name.as_str())
+                .collect::<BTreeSet<_>>()
         })
-        .unwrap_or(0);
+        .unwrap_or_default();
     let request_schemas = entry["request_schema"].as_array().unwrap();
-    assert_eq!(request_schemas.len(), expected_request);
+    let recorded_request = request_schemas
+        .iter()
+        .map(|schema| schema["media_type"].as_str().unwrap())
+        .collect::<BTreeSet<_>>();
+    assert_eq!(recorded_request, expected_request);
+    assert_eq!(recorded_request.len(), request_schemas.len());
     for schema in request_schemas {
         let media = schema["media_type"].as_str().unwrap();
         assert!(request.unwrap()["content"][media].get("schema").is_some());
@@ -248,15 +305,21 @@ fn validate_metadata(document: &Value, entry: &Value) {
             .unwrap_or_else(|| format!("{operation_pointer}/responses/{}", escaped(status)));
         let schemas = response_schemas[status].as_array().unwrap();
         let content = response["content"].as_object();
-        assert_eq!(
-            schemas.len(),
-            content
-                .map(|content| content
-                    .values()
-                    .filter(|media| media.get("schema").is_some())
-                    .count())
-                .unwrap_or(0)
-        );
+        let expected_media = content
+            .map(|content| {
+                content
+                    .iter()
+                    .filter(|(_, media)| media.get("schema").is_some())
+                    .map(|(name, _)| name.as_str())
+                    .collect::<BTreeSet<_>>()
+            })
+            .unwrap_or_default();
+        let recorded_media = schemas
+            .iter()
+            .map(|schema| schema["media_type"].as_str().unwrap())
+            .collect::<BTreeSet<_>>();
+        assert_eq!(recorded_media, expected_media);
+        assert_eq!(recorded_media.len(), schemas.len());
         for schema in schemas {
             let media = schema["media_type"].as_str().unwrap();
             assert!(response["content"][media].get("schema").is_some());
@@ -267,12 +330,16 @@ fn validate_metadata(document: &Value, entry: &Value) {
             pointer(document, schema);
         }
         let headers = response_headers[status].as_array().unwrap();
-        assert_eq!(
-            headers.len(),
-            response["headers"]
-                .as_object()
-                .map_or(0, serde_json::Map::len)
-        );
+        let expected_headers = response["headers"]
+            .as_object()
+            .map(|headers| headers.keys().map(String::as_str).collect::<BTreeSet<_>>())
+            .unwrap_or_default();
+        let recorded_headers = headers
+            .iter()
+            .map(|header| header["name"].as_str().unwrap())
+            .collect::<BTreeSet<_>>();
+        assert_eq!(recorded_headers, expected_headers);
+        assert_eq!(recorded_headers.len(), headers.len());
         for header in headers {
             let name = header["name"].as_str().unwrap();
             assert!(response["headers"].get(name).is_some());
@@ -291,19 +358,30 @@ fn validate_metadata(document: &Value, entry: &Value) {
     } else {
         let handler = handler.unwrap();
         let (module, symbol) = handler.split_once("::").unwrap();
-        let source = match module {
-            "src/controllers/api/care.rs" => include_str!("../../src/controllers/api/care.rs"),
-            "src/controllers/api/account_sessions.rs" => {
-                include_str!("../../src/controllers/api/account_sessions.rs")
-            }
-            "src/controllers/oauth_server/mod.rs" => {
-                include_str!("../../src/controllers/oauth_server/mod.rs")
-            }
+        let (source, prefix) = match module {
+            "src/controllers/api/care.rs" => (
+                include_str!("../../src/controllers/api/care.rs"),
+                "/api/v1/households",
+            ),
+            "src/controllers/api/account_sessions.rs" => (
+                include_str!("../../src/controllers/api/account_sessions.rs"),
+                "/api/v1/auth",
+            ),
+            "src/controllers/oauth_server/mod.rs" => (
+                include_str!("../../src/controllers/oauth_server/mod.rs"),
+                "",
+            ),
             _ => panic!("Unknown handler module: {module}"),
         };
         assert!(
-            source.contains(&format!("{method}({symbol})")),
-            "Handler symbol not registered: {handler}"
+            registered_handler(
+                source,
+                prefix,
+                &normalized(&format!("/api/v1{path}")),
+                &method,
+                symbol
+            ),
+            "Handler symbol not registered for {method} {path}: {handler}"
         );
     }
 }
@@ -380,6 +458,36 @@ pub mod baseline {
             inventory()[&("GET".to_owned(), "/households/{household_id}/me".to_owned())].clone();
         entry["response_schemas"]["200"][0]["pointer"] =
             json!("#/components/responses/Unauthorized/content/application~1json/schema");
+        assert!(std::panic::catch_unwind(|| validate_metadata(&document, &entry)).is_err());
+    }
+
+    #[test]
+    fn duplicate_response_media_and_headers_are_rejected() {
+        let document: Value =
+            serde_yaml_ng::from_str(include_str!("../../docs/api/openapi.v1.yaml")).unwrap();
+        let mut avatar = inventory()[&(
+            "GET".to_owned(),
+            "/households/{household_id}/profile/avatar".to_owned(),
+        )]
+            .clone();
+        avatar["response_schemas"]["200"][1] = avatar["response_schemas"]["200"][0].clone();
+        assert!(std::panic::catch_unwind(|| validate_metadata(&document, &avatar)).is_err());
+        let mut profile =
+            inventory()[&("GET".to_owned(), "/households/{household_id}/me".to_owned())].clone();
+        profile["response_headers"]["429"][1] = profile["response_headers"]["429"][0].clone();
+        assert!(std::panic::catch_unwind(|| validate_metadata(&document, &profile)).is_err());
+    }
+
+    #[test]
+    fn handler_registered_on_another_path_is_rejected() {
+        let document: Value =
+            serde_yaml_ng::from_str(include_str!("../../docs/api/openapi.v1.yaml")).unwrap();
+        let mut entry = inventory()[&(
+            "GET".to_owned(),
+            "/households/{household_id}/medications".to_owned(),
+        )]
+            .clone();
+        entry["handler_source"] = json!("src/controllers/api/care.rs::removals::history");
         assert!(std::panic::catch_unwind(|| validate_metadata(&document, &entry)).is_err());
     }
 

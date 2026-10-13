@@ -23,17 +23,24 @@ is in [the API slice](slices/05-api-integrations.md).
   packet and output retained under `/private/tmp/s05-i01-review/`. Its first
   attempt stopped at CLI read permissions without a verdict. The corrected
   frozen candidate is under review with framework source supplied directly.
-- Focused checks: inventory/harness 10 passed, JavaScript dispatcher 16 passed,
-  formatting and whitespace passed. The complete API group ran those eight tests
+- Focused checks: inventory/harness 12 passed, JavaScript dispatcher 16 passed,
+  formatting, documentation and whitespace passed. The complete API group ran those twelve tests
   and failed its completeness gate as intended: all 119 operations still require
   complete behavioural evidence. Loco registers 118 documented operations; the
   missing route is `POST /api/v1/households/{household_id}/push_subscription/test`.
   Logs are under `/private/tmp/s05-i01-evidence/`. Root CI and coverage are pending.
 - Publication, hosted checks and acceptance: pending. No merge or deployment.
+- Review corrections: duplicate schema/header substitutions and handlers from
+  another route now fail explicit regression tests. Both tests failed before the
+  guards were corrected. Final focused log: `green-review-metadata-guards.log`;
+  final expected incomplete gate: `review-fixes-expected-incomplete.log`, both
+  under `/private/tmp/s05-i01-evidence/`. Same-session re-review is pending.
 - Inventory now includes explicit schema/header/handler references and gaps for
   every operation. Middleware proof uses two requests and persisted source data,
-  avoiding reliance on a timed request burst. Candidate diff: 967 lines before
-  this progress update; the publication gate recounts the final committed diff.
+  avoiding reliance on a timed request burst. The initial signed snapshot is
+  `c7edacd480b103bfe551884b3d5fc68e61ccf568`; the corrections above were verified
+  after that snapshot and remain on the same branch.
+  The publication gate recounts the final diff against the immediate base.
 - Next action: resolve Devin findings, run root CI and publish the bounded first
   PR before proceeding upstack.
 
