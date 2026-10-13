@@ -45,6 +45,63 @@ fn release_with_amp(amp: &str, gtin: &str) -> Vec<u8> {
     writer.finish().unwrap().into_inner()
 }
 
+fn release_with_supplementary() -> Vec<u8> {
+    let mut writer = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+    for (name, xml) in [
+        (
+            "f_ampp2_3000000.xml",
+            "<AMPPS><AMPP><APPID>777</APPID><NM>Scanner imported tablets</NM><APID>A1</APID></AMPP></AMPPS>",
+        ),
+        (
+            "f_gtin2_0000000.xml",
+            "<AMPPS><AMPP><AMPPID>777</AMPPID><GTINDATA><GTIN>5016298210989</GTIN></GTINDATA></AMPP></AMPPS>",
+        ),
+        (
+            "f_trade_family_group2_0311026.xml",
+            "<GROUPS><TRADE_FAMILY_GROUP><TFGID>G1</TFGID><NM>Group</NM></TRADE_FAMILY_GROUP></GROUPS>",
+        ),
+        (
+            "f_trade_family2_0311026.xml",
+            "<FAMILIES><TRADE_FAMILY><TFID>F1</TFID><NM>Family</NM><TFGID>G1</TFGID></TRADE_FAMILY></FAMILIES>",
+        ),
+        (
+            "f_amp_trade_family2_0311026.xml",
+            "<MEMBERSHIPS><AMP_TRADE_FAMILY><APID>A1</APID><TFID>F1</TFID></AMP_TRADE_FAMILY></MEMBERSHIPS>",
+        ),
+    ] {
+        writer
+            .start_file(name, zip::write::SimpleFileOptions::default())
+            .unwrap();
+        writer.write_all(xml.as_bytes()).unwrap();
+    }
+    writer.finish().unwrap().into_inner()
+}
+
+#[tokio::test]
+async fn nhs_dmd_synthetic_supplementary_release_publishes_trade_relationships() {
+    let app = Application::new().await;
+    let id = med_tracker::models::nhs_dmd::upload(
+        &app.context,
+        "supplementary.zip",
+        release_with_supplementary(),
+    )
+    .await
+    .unwrap();
+    med_tracker::models::nhs_dmd::run(&app.context, id)
+        .await
+        .unwrap();
+    let row = app.fixture.admin.query_one_raw(Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        "SELECT i.status, (SELECT count(*) FROM nhs_dmd_trade_family_groups) AS groups, (SELECT count(*) FROM nhs_dmd_trade_families) AS families, (SELECT count(*) FROM nhs_dmd_amp_trade_families WHERE amp_code = 'A1') AS memberships, (SELECT count(*) FROM nhs_dmd_supplementary_releases) AS releases FROM nhs_dmd_imports i WHERE i.id = $1",
+        [id.into()],
+    )).await.unwrap().unwrap();
+    assert_eq!(row.try_get::<i32>("", "status").unwrap(), 4);
+    for field in ["groups", "families", "memberships", "releases"] {
+        assert_eq!(row.try_get::<i64>("", field).unwrap(), 1, "{field}");
+    }
+    app.close().await;
+}
+
 #[tokio::test]
 #[ignore]
 async fn nhs_dmd_official_release_comparison_snapshot() {

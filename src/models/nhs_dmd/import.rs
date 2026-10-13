@@ -6,6 +6,7 @@ use crate::models::entities::{
 use chrono::{NaiveDate, Utc};
 use quick_xml::Reader;
 use quick_xml::events::Event;
+use regex::Regex;
 use sea_orm::prelude::Date;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseConnection, DatabaseTransaction,
@@ -15,11 +16,13 @@ use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 use tokio::sync::mpsc;
 
 const PROGRESS_BATCH: i32 = 250;
 const INSERT_BATCH: usize = 1000;
+static TRAILING_PARENS: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\s*\([^)]*\)\z").expect("valid trailing parentheses expression"));
 
 #[derive(Default, Clone)]
 pub(crate) struct Counts {
@@ -118,6 +121,28 @@ fn count_elements(
     }
 }
 
+fn text_fragment(event: Event<'_>) -> Result<String, String> {
+    match event {
+        Event::Text(event) => {
+            let raw = event.xml10_content().map_err(|error| error.to_string())?;
+            quick_xml::escape::unescape(&raw)
+                .map(|text| text.into_owned())
+                .map_err(|error| error.to_string())
+        }
+        Event::CData(event) => event
+            .xml10_content()
+            .map(|text| text.into_owned())
+            .map_err(|error| error.to_string()),
+        Event::GeneralRef(event) => {
+            let name = event.decode().map_err(|error| error.to_string())?;
+            quick_xml::escape::unescape(&format!("&{name};"))
+                .map(|text| text.into_owned())
+                .map_err(|error| error.to_string())
+        }
+        _ => unreachable!(),
+    }
+}
+
 fn parse_ampp_names(
     path: &Path,
     counts: &mut Counts,
@@ -156,12 +181,9 @@ fn parse_ampp_names(
                     ampp_depth += 1;
                 }
             }
-            Ok(Event::Text(event)) => {
+            Ok(event @ (Event::Text(_) | Event::CData(_) | Event::GeneralRef(_))) => {
                 if let Some(tag) = &current_tag {
-                    let raw = event.xml10_content().map_err(|error| error.to_string())?;
-                    let text = quick_xml::escape::unescape(&raw)
-                        .map_err(|error| error.to_string())?
-                        .into_owned();
+                    let text = text_fragment(event)?;
                     match tag.as_str() {
                         "APPID" => appid.push_str(&text),
                         "NM" => name.push_str(&text),
@@ -176,7 +198,7 @@ fn parse_ampp_names(
                     in_ampp = false;
                     ampp_depth = 0;
                     counts.processed += 1;
-                    if !appid.is_empty() && !name.is_empty() {
+                    if !appid.trim().is_empty() && !name.trim().is_empty() {
                         names.insert(
                             appid.clone(),
                             AmppName {
@@ -262,12 +284,9 @@ fn parse_gtins(
                     }
                 }
             }
-            Ok(Event::Text(event)) => {
+            Ok(event @ (Event::Text(_) | Event::CData(_) | Event::GeneralRef(_))) => {
                 if let Some(tag) = &current_tag {
-                    let raw = event.xml10_content().map_err(|error| error.to_string())?;
-                    let text = quick_xml::escape::unescape(&raw)
-                        .map_err(|error| error.to_string())?
-                        .into_owned();
+                    let text = text_fragment(event)?;
                     match tag.as_str() {
                         "AMPPID" if !in_gtindata => amppid.push_str(&text),
                         "GTIN" if in_gtindata => gtin.push_str(&text),
@@ -286,7 +305,7 @@ fn parse_gtins(
                     ampp_depth -= 1;
                     gtindata_depth = 0;
                     counts.processed += 1;
-                    records.push(classify_gtin(&amppid, &gtin, &enddt, names, today));
+                    records.push(classify_gtin(&amppid, &gtin, &enddt, names, today)?);
                     emit_progress(progress, counts, false);
                 } else if in_ampp {
                     ampp_depth -= 1;
@@ -317,38 +336,37 @@ fn classify_gtin(
     enddt: &str,
     names: &HashMap<String, AmppName>,
     today: NaiveDate,
-) -> GtinParsed {
+) -> Result<GtinParsed, String> {
     if gtin.trim().is_empty() {
-        return GtinParsed::SkipInvalid;
+        return Ok(GtinParsed::SkipInvalid);
     }
-    if !enddt.is_empty()
-        && NaiveDate::parse_from_str(enddt, "%Y-%m-%d").is_ok_and(|date| date <= today)
-    {
-        return GtinParsed::SkipExpired;
+    let enddt = enddt.trim();
+    if !enddt.is_empty() {
+        let date = NaiveDate::parse_from_str(enddt, "%Y-%m-%d")
+            .map_err(|error| format!("Invalid GTIN ENDDT: {error}"))?;
+        if date <= today {
+            return Ok(GtinParsed::SkipExpired);
+        }
     }
     if amppid.is_empty() {
-        return GtinParsed::SkipMissingName;
+        return Ok(GtinParsed::SkipMissingName);
     }
     let Some(ampp) = names.get(amppid) else {
-        return GtinParsed::SkipMissingName;
+        return Ok(GtinParsed::SkipMissingName);
     };
     let display = ampp.name.clone();
     let stripped = strip_trailing_parens(&display);
-    GtinParsed::Record {
+    Ok(GtinParsed::Record {
         gtin: normalize_gtin(gtin),
         code: amppid.to_owned(),
         amp_code: ampp.amp_code.clone(),
         vmp_name: (stripped != display).then_some(stripped),
         display,
-    }
+    })
 }
 
 fn strip_trailing_parens(display: &str) -> String {
-    let trimmed = display.trim_end();
-    let Some(start) = trimmed.strip_suffix(')').and_then(|_| trimmed.rfind('(')) else {
-        return display.trim().to_owned();
-    };
-    trimmed[..start].trim().to_owned()
+    TRAILING_PARENS.replace(display, "").trim().to_owned()
 }
 
 fn emit_progress(progress: &mpsc::UnboundedSender<Counts>, counts: &Counts, force: bool) {
@@ -439,6 +457,16 @@ fn parse_supplementary(files: &SupplementaryFiles) -> Result<Option<TradeFamilyD
     }))
 }
 
+fn parse_optional_supplementary(files: &SupplementaryFiles) -> Option<TradeFamilyData> {
+    match parse_supplementary(files) {
+        Ok(data) => data,
+        Err(error) => {
+            tracing::warn!(error = %error, "NHS dm+d supplementary metadata could not be read");
+            None
+        }
+    }
+}
+
 fn parse_code_names(
     path: &Path,
     element: &str,
@@ -446,7 +474,7 @@ fn parse_code_names(
 ) -> Result<Vec<(String, String)>, String> {
     let file = File::open(path).map_err(|error| error.to_string())?;
     let mut reader = Reader::from_reader(BufReader::new(file));
-    reader.config_mut().trim_text(true);
+    reader.config_mut().trim_text(false);
     let mut buffer = Vec::new();
     let mut rows = Vec::new();
     let mut in_element = false;
@@ -465,12 +493,9 @@ fn parse_code_names(
                     current_tag = Some(tag);
                 }
             }
-            Ok(Event::Text(event)) => {
+            Ok(event @ (Event::Text(_) | Event::CData(_) | Event::GeneralRef(_))) => {
                 if let Some(tag) = &current_tag {
-                    let raw = event.xml10_content().map_err(|error| error.to_string())?;
-                    let text = quick_xml::escape::unescape(&raw)
-                        .map_err(|error| error.to_string())?
-                        .into_owned();
+                    let text = text_fragment(event)?;
                     if tag.as_str() == code_tag {
                         code.push_str(&text);
                     } else if tag == "NM" {
@@ -482,7 +507,7 @@ fn parse_code_names(
                 let tag = String::from_utf8_lossy(event.name().as_ref()).into_owned();
                 if tag == element {
                     in_element = false;
-                    if !code.is_empty() && !name.is_empty() {
+                    if !code.trim().is_empty() && !name.trim().is_empty() {
                         rows.push((code.clone(), name.clone()));
                     }
                 } else if current_tag.as_deref() == Some(tag.as_str()) {
@@ -501,7 +526,7 @@ fn parse_code_names(
 fn parse_families(path: &Path) -> Result<Vec<(String, String, Option<String>)>, String> {
     let file = File::open(path).map_err(|error| error.to_string())?;
     let mut reader = Reader::from_reader(BufReader::new(file));
-    reader.config_mut().trim_text(true);
+    reader.config_mut().trim_text(false);
     let mut buffer = Vec::new();
     let mut rows = Vec::new();
     let mut in_element = false;
@@ -522,12 +547,9 @@ fn parse_families(path: &Path) -> Result<Vec<(String, String, Option<String>)>, 
                     current_tag = Some(tag);
                 }
             }
-            Ok(Event::Text(event)) => {
+            Ok(event @ (Event::Text(_) | Event::CData(_) | Event::GeneralRef(_))) => {
                 if let Some(tag) = &current_tag {
-                    let raw = event.xml10_content().map_err(|error| error.to_string())?;
-                    let text = quick_xml::escape::unescape(&raw)
-                        .map_err(|error| error.to_string())?
-                        .into_owned();
+                    let text = text_fragment(event)?;
                     match tag.as_str() {
                         "TFID" => code.push_str(&text),
                         "NM" => name.push_str(&text),
@@ -540,11 +562,11 @@ fn parse_families(path: &Path) -> Result<Vec<(String, String, Option<String>)>, 
                 let tag = String::from_utf8_lossy(event.name().as_ref()).into_owned();
                 if tag == "TRADE_FAMILY" {
                     in_element = false;
-                    if !code.is_empty() && !name.is_empty() {
+                    if !code.trim().is_empty() && !name.trim().is_empty() {
                         rows.push((
                             code.clone(),
                             name.clone(),
-                            (!group.is_empty()).then(|| group.clone()),
+                            (!group.trim().is_empty()).then(|| group.clone()),
                         ));
                     }
                 } else if current_tag.as_deref() == Some(tag.as_str()) {
@@ -563,7 +585,7 @@ fn parse_families(path: &Path) -> Result<Vec<(String, String, Option<String>)>, 
 fn parse_memberships(path: &Path) -> Result<Vec<(String, String)>, String> {
     let file = File::open(path).map_err(|error| error.to_string())?;
     let mut reader = Reader::from_reader(BufReader::new(file));
-    reader.config_mut().trim_text(true);
+    reader.config_mut().trim_text(false);
     let mut buffer = Vec::new();
     let mut rows = Vec::new();
     let mut in_element = false;
@@ -587,12 +609,9 @@ fn parse_memberships(path: &Path) -> Result<Vec<(String, String)>, String> {
                     current_tag = Some(tag);
                 }
             }
-            Ok(Event::Text(event)) => {
+            Ok(event @ (Event::Text(_) | Event::CData(_) | Event::GeneralRef(_))) => {
                 if let Some(tag) = &current_tag {
-                    let raw = event.xml10_content().map_err(|error| error.to_string())?;
-                    let text = quick_xml::escape::unescape(&raw)
-                        .map_err(|error| error.to_string())?
-                        .into_owned();
+                    let text = text_fragment(event)?;
                     match tag.as_str() {
                         "APID" => amp.push_str(&text),
                         "TFID" => family.push_str(&text),
@@ -607,8 +626,8 @@ fn parse_memberships(path: &Path) -> Result<Vec<(String, String)>, String> {
                 if tag == "AMP_TRADE_FAMILY" {
                     in_element = false;
                     if membership_active(&startdt, &enddt, today)
-                        && !amp.is_empty()
-                        && !family.is_empty()
+                        && !amp.trim().is_empty()
+                        && !family.trim().is_empty()
                     {
                         rows.push((amp.clone(), family.clone()));
                     }
@@ -626,7 +645,7 @@ fn parse_memberships(path: &Path) -> Result<Vec<(String, String)>, String> {
 }
 
 fn membership_active(startdt: &str, enddt: &str, today: NaiveDate) -> bool {
-    let parse = |value: &str| NaiveDate::parse_from_str(value, "%Y-%m-%d").ok();
+    let parse = |value: &str| NaiveDate::parse_from_str(value.trim(), "%Y-%m-%d").ok();
     if !startdt.is_empty() && parse(startdt).is_none() {
         return false;
     }
@@ -813,9 +832,9 @@ async fn import_extracted(db: &DatabaseConnection, run_id: i64, dir: &Path) -> R
     let names = Arc::new(names);
     apply_progress(db, run_id, &counts, 3).await?;
     let supplementary = if let Some(files) = supplementary_files(dir) {
-        tokio::task::spawn_blocking(move || parse_supplementary(&files))
+        tokio::task::spawn_blocking(move || parse_optional_supplementary(&files))
             .await
-            .map_err(|error| error.to_string())??
+            .map_err(|error| error.to_string())?
     } else {
         None
     };
@@ -1145,6 +1164,192 @@ pub(crate) async fn fail_run(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn malformed_supplementary_data_is_ignored_without_discarding_the_release() {
+        let dir = tempfile::tempdir().unwrap();
+        let groups = dir.path().join("f_trade_family_group2_0131026.xml");
+        let families = dir.path().join("f_trade_family2_0131026.xml");
+        let memberships = dir.path().join("f_amp_trade_family2_0131026.xml");
+        std::fs::write(
+            &groups,
+            "<TRADE_FAMILY_GROUPS><TRADE_FAMILY_GROUP></TRADE_FAMILY_GROUPS>",
+        )
+        .unwrap();
+        std::fs::write(&families, "<TRADE_FAMILIES><TRADE_FAMILY><TFID>1</TFID><NM>Family</NM></TRADE_FAMILY></TRADE_FAMILIES>").unwrap();
+        std::fs::write(&memberships, "<AMP_TRADE_FAMILIES/>").unwrap();
+        let files = SupplementaryFiles {
+            groups,
+            families,
+            memberships,
+        };
+        assert!(parse_optional_supplementary(&files).is_none());
+    }
+
+    #[test]
+    fn supplementary_trade_families_are_staged_and_duplicate_codes_rejected() {
+        let dir = tempfile::tempdir().unwrap();
+        let groups = dir.path().join("f_trade_family_group2_0311026.xml");
+        let families = dir.path().join("f_trade_family2_0311026.xml");
+        let memberships = dir.path().join("f_amp_trade_family2_0311026.xml");
+        std::fs::write(&groups, "<GROUPS><TRADE_FAMILY_GROUP><TFGID>G1</TFGID><NM>Trade &amp; <![CDATA[Co]]></NM></TRADE_FAMILY_GROUP></GROUPS>").unwrap();
+        std::fs::write(&families, "<FAMILIES><TRADE_FAMILY><TFID>F1</TFID><NM>Family</NM><TFGID>G1</TFGID></TRADE_FAMILY></FAMILIES>").unwrap();
+        std::fs::write(&memberships, "<MEMBERSHIPS><AMP_TRADE_FAMILY><APID>A1</APID><TFID>F1</TFID></AMP_TRADE_FAMILY></MEMBERSHIPS>").unwrap();
+        let files = SupplementaryFiles {
+            groups,
+            families,
+            memberships,
+        };
+        let data = parse_optional_supplementary(&files).unwrap();
+        assert_eq!(data.groups, vec![("G1".into(), "Trade & Co".into())]);
+        assert_eq!(
+            data.families,
+            vec![("F1".into(), "Family".into(), Some("G1".into()))]
+        );
+        assert_eq!(data.memberships, vec![("A1".into(), "F1".into())]);
+        std::fs::write(&files.groups, "<GROUPS><TRADE_FAMILY_GROUP><TFGID>G1</TFGID><NM>Group</NM></TRADE_FAMILY_GROUP><TRADE_FAMILY_GROUP><TFGID>G1</TFGID><NM>Duplicate</NM></TRADE_FAMILY_GROUP></GROUPS>").unwrap();
+        assert!(parse_optional_supplementary(&files).is_none());
+    }
+
+    #[test]
+    fn whitespace_only_ampp_identity_and_name_are_not_catalogue_entries() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("ampp.xml");
+        std::fs::write(&path, "<AMPPS><AMPP><APPID>   </APPID><NM>Missing code</NM></AMPP><AMPP><APPID>777</APPID><NM>   </NM></AMPP></AMPPS>").unwrap();
+        let (sender, _receiver) = mpsc::unbounded_channel();
+        let mut counts = Counts::default();
+        assert!(
+            parse_ampp_names(&path, &mut counts, &sender)
+                .unwrap()
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn malformed_gtin_end_date_fails_instead_of_publishing_unknown_expiry() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("gtin.xml");
+        std::fs::write(&path, "<AMPPS><AMPP><AMPPID>777</AMPPID><GTINDATA><GTIN>5016298210989</GTIN><ENDDT>not-a-date</ENDDT></GTINDATA></AMPP></AMPPS>").unwrap();
+        let names = HashMap::from([(
+            "777".into(),
+            AmppName {
+                name: "Tablets".into(),
+                amp_code: None,
+            },
+        )]);
+        let (sender, _receiver) = mpsc::unbounded_channel();
+        assert!(
+            parse_gtins(
+                &path,
+                &names,
+                NaiveDate::from_ymd_opt(2026, 10, 13).unwrap(),
+                &mut Counts::default(),
+                &sender
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn padded_gtin_end_date_is_compared_to_today() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("gtin.xml");
+        std::fs::write(&path, "<AMPPS><AMPP><AMPPID>777</AMPPID><GTINDATA><GTIN>5016298210989</GTIN><ENDDT> 2020-01-01 </ENDDT></GTINDATA></AMPP></AMPPS>").unwrap();
+        let names = HashMap::from([(
+            "777".into(),
+            AmppName {
+                name: "Tablets".into(),
+                amp_code: None,
+            },
+        )]);
+        let (sender, _receiver) = mpsc::unbounded_channel();
+        let records = parse_gtins(
+            &path,
+            &names,
+            NaiveDate::from_ymd_opt(2026, 10, 13).unwrap(),
+            &mut Counts::default(),
+            &sender,
+        )
+        .unwrap();
+        assert!(matches!(records[0], GtinParsed::SkipExpired));
+    }
+
+    #[test]
+    fn xml_entity_references_remain_in_ampp_names_and_gtins() {
+        let dir = tempfile::tempdir().unwrap();
+        let ampp = dir.path().join("ampp.xml");
+        std::fs::write(&ampp, "<AMPPS><AMPP><APPID>777</APPID><NM>Thornton &amp; Ross <![CDATA[& Co]]></NM></AMPP></AMPPS>").unwrap();
+        let (sender, _receiver) = mpsc::unbounded_channel();
+        let mut counts = Counts::default();
+        let names = parse_ampp_names(&ampp, &mut counts, &sender).unwrap();
+        assert_eq!(names["777"].name, "Thornton & Ross & Co");
+
+        let gtin = dir.path().join("gtin.xml");
+        std::fs::write(&gtin, "<AMPPS><AMPP><AMPPID>777</AMPPID><GTINDATA><GTIN>5016&#50;98210989</GTIN></GTINDATA></AMPP></AMPPS>").unwrap();
+        let records = parse_gtins(
+            &gtin,
+            &names,
+            NaiveDate::from_ymd_opt(2026, 10, 13).unwrap(),
+            &mut counts,
+            &sender,
+        )
+        .unwrap();
+        assert!(
+            matches!(&records[0], GtinParsed::Record { gtin, display, .. } if gtin == "5016298210989" && display == "Thornton & Ross & Co")
+        );
+    }
+
+    #[test]
+    fn nested_terminal_parentheses_do_not_create_a_shortened_vmp_name() {
+        for display in [
+            "Day & Night capsules 1 x (2 x (6 caps + 2 caps))",
+            "Capsules (manufacturer (pack))",
+        ] {
+            let names = HashMap::from([(
+                "777".into(),
+                AmppName {
+                    name: display.into(),
+                    amp_code: None,
+                },
+            )]);
+            assert!(
+                matches!(
+                    classify_gtin(
+                        "777",
+                        "5016298210989",
+                        "",
+                        &names,
+                        NaiveDate::from_ymd_opt(2026, 10, 13).unwrap()
+                    )
+                    .unwrap(),
+                    GtinParsed::Record { vmp_name: None, .. }
+                ),
+                "{display}"
+            );
+        }
+        let names = HashMap::from([(
+            "777".into(),
+            AmppName {
+                name: "Capsules (manufacturer)  ".into(),
+                amp_code: None,
+            },
+        )]);
+        assert!(matches!(
+            classify_gtin("777", "5016298210989", "", &names, NaiveDate::from_ymd_opt(2026, 10, 13).unwrap()).unwrap(),
+            GtinParsed::Record { vmp_name: Some(name), .. } if name == "Capsules (manufacturer)"
+        ));
+
+        let names = HashMap::from([(
+            "777".into(),
+            AmppName {
+                name: "Tablets (box)".into(),
+                amp_code: None,
+            },
+        )]);
+        assert!(
+            matches!(classify_gtin("777", "5016298210989", "", &names, NaiveDate::from_ymd_opt(2026, 10, 13).unwrap()).unwrap(), GtinParsed::Record { vmp_name: Some(name), .. } if name == "Tablets")
+        );
+    }
 
     #[test]
     fn reports_counting_activity_before_the_xml_scan_finishes() {

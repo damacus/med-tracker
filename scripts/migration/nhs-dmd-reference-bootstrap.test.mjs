@@ -52,3 +52,22 @@ test('a failed Loco snapshot prevents Rails from mutating the reference database
   }), /Loco failed/);
   assert.deepEqual(calls, ['provision', 'task', 'cargo']);
 });
+
+test('reference import rejects databases outside its owned loopback target before provisioning', async () => {
+  for (const url of [
+    'postgres://medtracker:password@database.example:5432/medtracker_loco',
+    'postgres://medtracker:password@127.0.0.1:5432/medtracker_other',
+    'postgres://medtracker:password@127.0.0.1/medtracker_loco',
+  ]) {
+    let called = false;
+    await assert.rejects(runReferenceImport({
+      url,
+      provision: async () => { called = true; },
+      runCommand: async () => { called = true; },
+      locoArguments: [],
+      railsArguments: [],
+      environment: {},
+    }), /owned loopback database/);
+    assert.equal(called, false);
+  }
+});
