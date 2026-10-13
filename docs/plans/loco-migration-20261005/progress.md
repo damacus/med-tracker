@@ -172,6 +172,41 @@ Coverage extension on `codex/s05-i01-coverage-baseline`:
 - Publication and exact-published-head hosted checks remain pending. Next is
   shared HTTP behaviour, beginning with failing full-router rate-limit tests.
 
+Coverage publication and hosted review correction:
+
+- PR #2607 was published on the harness branch at signed `b64532f9`, 423 additions
+  and 34 deletions. PR #2600 was updated to signed `d8201065`, 1,115 additions
+  and 21 deletions against `main` at `60e7de5d`. Both remote heads were verified;
+  neither is merged or deployed. The generated title's initial validation failure
+  was superseded by successful corrected-title run 38440132257.
+- Hosted review comment 4261986300 identified valid custom coverage output under
+  an unignored checkout directory being counted as a source mutation. A real-Git,
+  fake-provider runner regression reproduced it: 25 passed, one failed. The
+  correction excludes only untracked files in this run's UUID report directory.
+  Tracked and unrelated untracked changes remain detectable, including siblings
+  in the report parent. The initial 27 runner tests passed; logs are
+  `coverage-output-fingerprint-red.log` and
+  `coverage-output-fingerprint-isolated-green.log` in the evidence folder.
+- Same-session review found asymmetric decoding of unusual Git filename bytes.
+  A real-Git index regression reached the intended fingerprint mismatch before
+  correction. The final filter preserves retained status bytes and all 28 runner
+  tests pass. Evidence: `coverage-fingerprint-nonutf8-red-corrected.log` and
+  `coverage-fingerprint-nonutf8-green-final.log`. An earlier macOS fixture error
+  and failed provisional correction are retained but not credited as success.
+- Hosted coverage on published `b64532f9` passed, with the clean merge revision
+  `4a0dce7ec149b6a65c77e21d3cb04f569c880b41` in its complete three-selection
+  manifest. Artifact 11835597271 is retained under
+  `/private/tmp/s05-i01-evidence/hosted-combined-coverage-b64532f9/`. Generated
+  client determinism and Swift/Kotlin compilation also passed on that PR run.
+- The correction remains on its owning coverage branch. The next rate-limit
+  branch's test-only work and progress record are preserved in a named stash.
+  Same-session `living-pick` re-review accepted both corrections (job 73680,
+  exit zero; `coverage-output-final-*` review packet, output and export). It
+  confirmed existing instrumentation evidence remains applicable because Cargo
+  commands and selections are unchanged. Formatting, documentation, workflow
+  policy and whitespace checks passed. Cumulative CI, republication and
+  propagation to the dependent branch remain required.
+
 Session close-out on 11 October 2026:
 
 - [Profile PR #2504](https://github.com/damacus/med-tracker/pull/2504) is merged

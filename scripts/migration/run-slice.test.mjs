@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { sourceIdentity } from './run-slice.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const ambientUrl = 'postgres://unowned.invalid:1/unowned';
@@ -55,6 +56,7 @@ if (command === 'docker') {
     const reportPath = args[args.indexOf('--output-path') + 1];
     fs.mkdirSync(path.dirname(reportPath), { recursive: true });
     fs.writeFileSync(reportPath, 'TN:\\nSF:src/lib.rs\\nDA:1,1\\nend_of_record\\n');
+    if (process.env.SLICE_FIXTURE_EXTRA_REPORT_PATH) fs.writeFileSync(process.env.SLICE_FIXTURE_EXTRA_REPORT_PATH, 'unrelated source change\\n');
   }
   process.exit(command === 'cargo' && (!process.env.SLICE_FIXTURE_FAIL_MATCH || args.join(' ').includes(process.env.SLICE_FIXTURE_FAIL_MATCH)) ? Number(process.env.SLICE_FIXTURE_EXIT) : 0);
 }
@@ -269,6 +271,97 @@ test('coverage report collects root units, API inventory and care API through on
     assert.match(manifest.source_state.sha256, /^[a-f0-9]{64}$/);
     assert.equal(typeof manifest.source_state.dirty, 'boolean');
   }, 'test:coverage', directory => [`OUTPUT_DIR=${join(directory, 'coverage')}`], 0, { SLICE_FIXTURE_FAIL_MATCH: 'never' });
+});
+
+test('coverage report under an unignored checkout directory does not change its own source identity', async () => {
+  const outputDir = `docs/coverage-source-identity-${randomUUID()}`;
+  try {
+    await withProcessFixture(0, async (result, state) => {
+      assert.equal(result.status, 0, result.stderr);
+      const reportCall = state.calls.find(call => call.command === 'cargo' && call.args.includes('report'));
+      const reportPath = reportCall.args[reportCall.args.indexOf('--output-path') + 1];
+      assert.ok(reportPath.startsWith(join(root, outputDir, '')));
+      assert.match(await readFile(reportPath, 'utf8'), /SF:src\/lib.rs/);
+      const manifest = JSON.parse(await readFile(join(reportPath, '..', 'manifest.json'), 'utf8'));
+      assert.equal(manifest.status, 'complete');
+    }, 'test:coverage', [`OUTPUT_DIR=${outputDir}`], 0, { SLICE_FIXTURE_FAIL_MATCH: 'never' });
+  } finally {
+    await rm(join(root, outputDir), { recursive: true, force: true });
+  }
+});
+
+test('coverage still rejects an unrelated source change in the output parent', async () => {
+  const outputDir = `docs/coverage-source-identity-${randomUUID()}`;
+  const unrelatedPath = join(root, outputDir, 'unrelated.txt');
+  try {
+    await withProcessFixture(0, async (result, state) => {
+      assert.notEqual(result.status, 0);
+      assert.match(result.stderr, /Source changed while measuring Rust coverage/);
+      const reportCall = state.calls.find(call => call.command === 'cargo' && call.args.includes('report'));
+      const reportPath = reportCall.args[reportCall.args.indexOf('--output-path') + 1];
+      assert.deepEqual(await readdir(join(reportPath, '..')).catch(() => []), []);
+      assert.equal(await readFile(unrelatedPath, 'utf8'), 'unrelated source change\n');
+    }, 'test:coverage', [`OUTPUT_DIR=${outputDir}`], 0, {
+      SLICE_FIXTURE_FAIL_MATCH: 'never',
+      SLICE_FIXTURE_EXTRA_REPORT_PATH: unrelatedPath,
+    });
+  } finally {
+    await rm(join(root, outputDir), { recursive: true, force: true });
+  }
+});
+
+test('source identity excludes only owned report files while retaining tracked and untracked edits', async () => {
+  const checkout = await mkdtemp(join(tmpdir(), 'medtracker-source-identity-'));
+  const git = args => {
+    const result = spawnSync('git', args, { cwd: checkout, encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+  };
+  try {
+    git(['init', '-q']);
+    await writeFile(join(checkout, 'tracked.txt'), 'original\n');
+    git(['add', 'tracked.txt']);
+    git(['-c', 'user.name=MedTracker Test', '-c', 'user.email=test@example.invalid', '-c', 'commit.gpgsign=false', 'commit', '-qm', 'baseline']);
+    const baseline = await sourceIdentity(process.env, undefined, checkout);
+    const ownedDirectory = join(checkout, 'docs', 'coverage', randomUUID());
+    await mkdir(ownedDirectory, { recursive: true });
+    await writeFile(join(ownedDirectory, 'lcov.info'), 'owned report\n');
+    const withReport = await sourceIdentity(process.env, ownedDirectory, checkout);
+    assert.equal(withReport.sha256, baseline.sha256);
+    assert.equal(withReport.dirty, baseline.dirty);
+    await writeFile(join(checkout, 'tracked.txt'), 'changed\n');
+    assert.notEqual((await sourceIdentity(process.env, ownedDirectory, checkout)).sha256, baseline.sha256);
+    await writeFile(join(checkout, 'tracked.txt'), 'original\n');
+    await writeFile(join(checkout, 'docs', 'coverage', 'unrelated.txt'), 'unrelated\n');
+    assert.notEqual((await sourceIdentity(process.env, ownedDirectory, checkout)).sha256, baseline.sha256);
+  } finally {
+    await rm(checkout, { recursive: true, force: true });
+  }
+});
+
+test('source identity retains raw Git status bytes for a tracked non-UTF-8 filename', async () => {
+  const checkout = await mkdtemp(join(tmpdir(), 'medtracker-source-identity-'));
+  const git = args => {
+    const result = spawnSync('git', args, { cwd: checkout, encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+  };
+  try {
+    git(['init', '-q']);
+    const blob = spawnSync('git', ['hash-object', '-w', '--stdin'], { cwd: checkout, input: 'original\n', encoding: 'utf8' });
+    assert.equal(blob.status, 0, blob.stderr);
+    const indexEntry = Buffer.concat([Buffer.from(`100644 ${blob.stdout.trim()} 0\ttracked-`), Buffer.from([0xff, 0])]);
+    const update = spawnSync('git', ['update-index', '-z', '--index-info'], { cwd: checkout, input: indexEntry });
+    assert.equal(update.status, 0, update.stderr?.toString());
+    git(['-c', 'user.name=MedTracker Test', '-c', 'user.email=test@example.invalid', '-c', 'commit.gpgsign=false', 'commit', '-qm', 'baseline']);
+    const before = await sourceIdentity(process.env, undefined, checkout);
+    const ownedDirectory = join(checkout, 'docs', 'coverage', randomUUID());
+    await mkdir(ownedDirectory, { recursive: true });
+    await writeFile(join(ownedDirectory, 'lcov.info'), 'owned report\n');
+    const after = await sourceIdentity(process.env, ownedDirectory, checkout);
+    assert.equal(after.sha256, before.sha256);
+    assert.equal(after.dirty, true);
+  } finally {
+    await rm(checkout, { recursive: true, force: true });
+  }
 });
 
 test('failed coverage selection stops before report and cleans its owned resources', async () => {

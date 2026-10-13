@@ -1,7 +1,7 @@
 import { execFileSync, spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { withoutCoverageOverrides } from './coverage-environment.mjs';
 import { withOwnedDatabase } from './foundation-database.mjs';
@@ -9,14 +9,33 @@ import { stopOwnedProcess } from './process-cleanup.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 
-async function sourceIdentity(environment) {
-  const git = args => execFileSync('git', args, { cwd: root, env: environment, maxBuffer: 64 * 1024 * 1024 });
+function withoutOwnedUntrackedStatus(rawStatus, ownedPrefix) {
+  if (!ownedPrefix) return rawStatus;
+  const marker = Buffer.from(`?? ${ownedPrefix}`);
+  const retained = [];
+  let offset = 0;
+  while (offset < rawStatus.length) {
+    const terminator = rawStatus.indexOf(0, offset);
+    const end = terminator === -1 ? rawStatus.length : terminator;
+    const record = rawStatus.subarray(offset, end);
+    if (!record.subarray(0, marker.length).equals(marker)) retained.push(rawStatus.subarray(offset, terminator === -1 ? end : end + 1));
+    offset = end + 1;
+  }
+  return Buffer.concat(retained);
+}
+
+export async function sourceIdentity(environment, ownedReportDirectory, checkoutRoot = root) {
+  const git = args => execFileSync('git', args, { cwd: checkoutRoot, env: environment, maxBuffer: 64 * 1024 * 1024 });
   const revision = git(['rev-parse', 'HEAD']).toString().trim();
-  const status = git(['status', '--porcelain', '--untracked-files=all', '-z']);
+  const ownedPath = ownedReportDirectory && relative(checkoutRoot, ownedReportDirectory);
+  const ownedPrefix = ownedPath && ownedPath !== '..' && !ownedPath.startsWith(`..${sep}`) && !isAbsolute(ownedPath) ? `${ownedPath}${sep}` : undefined;
+  const isOwnedUntracked = path => ownedPrefix && path.startsWith(ownedPrefix);
+  const rawStatus = git(['status', '--porcelain', '--untracked-files=all', '-z']);
+  const status = withoutOwnedUntrackedStatus(rawStatus, ownedPrefix);
   const trackedDiff = git(['diff', '--binary', 'HEAD', '--']);
-  const untracked = git(['ls-files', '--others', '--exclude-standard', '-z']).toString().split('\0').filter(Boolean).sort();
+  const untracked = git(['ls-files', '--others', '--exclude-standard', '-z']).toString().split('\0').filter(path => path && !isOwnedUntracked(path)).sort();
   const hash = createHash('sha256').update(revision).update(status).update(trackedDiff);
-  for (const path of untracked) hash.update(path).update(await readFile(join(root, path)));
+  for (const path of untracked) hash.update(path).update(await readFile(join(checkoutRoot, path)));
   return { revision, dirty: status.length > 0, sha256: hash.digest('hex') };
 }
 
@@ -86,7 +105,7 @@ export async function runCoverage({ outputDir = 'target/coverage/reports' } = {}
       await run(['report', '--lcov', '--output-path', reportPath]);
     }, undefined, inheritedEnvironment, { storage: true });
     if (!(await readFile(reportPath)).length) throw new Error('Rust coverage report is empty');
-    const sourceAtEnd = await sourceIdentity(metadataEnvironment);
+    const sourceAtEnd = await sourceIdentity(metadataEnvironment, reportDirectory);
     if (sourceAtEnd.sha256 !== sourceAtStart.sha256) throw new Error('Source changed while measuring Rust coverage');
     const manifest = {
       status: 'complete',
