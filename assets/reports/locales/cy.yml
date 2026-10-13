@@ -2142,6 +2142,8 @@ cy:
     hide_hidden: Cuddio eitemau wedi'u hidlo
     empty_title: Dim adolygiadau meddyginiaeth i'w dangos
     empty_description: Nid oes unrhyw bâr tystiolaeth a adolygwyd yn cyfateb i'r meddyginiaethau gweithredol yng nghofnodion yr aelwyd a ddewiswyd.
+    filter_empty_title: Nid oes adolygiadau meddyginiaeth yn cyfateb i'r hidlwyr hyn.
+    filter_empty_description: Mae adolygiadau eraill ar gael. Cliriwch yr hidlwyr i'w gweld.
     review_reason: Mae tystiolaeth gyhoeddus y label yn awgrymu y gallai fod yn werth adolygu'r cyfuniad hwn gyda fferyllydd, nyrs, meddyg teulu neu ragnodydd.
     view_evidence: Gweld y dystiolaeth
     summaries:
@@ -2154,6 +2156,7 @@ cy:
       priority: Blaenoriaeth
       include_filtered: Cynnwys eitemau wedi'u hidlo
       apply: Defnyddio hidlwyr
+      clear: Clirio hidlwyr
       review_statuses:
         needs_review: Angen adolygiad
         reviewed: Wedi'u hadolygu

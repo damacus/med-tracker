@@ -9,7 +9,7 @@
     <a class="btn btn-outline" href="/households/{{ slug }}/medicine-reviews/report">{{ labels.medication_reviews.export_pdf }}</a>
   </header>
   {% if updated %}<p role="status" class="alert alert-success mb-6">{{ labels.medication_reviews.updated }}</p>{% endif %}
-  <nav aria-label="{{ labels.medication_reviews.browser.review_status }}" class="flex gap-2 overflow-x-auto border-b border-base-300 pb-3 mb-5">
+  <nav aria-label="{{ labels.medication_reviews.browser.review_status }}" class="flex flex-wrap gap-2 border-b border-base-300 pb-3 mb-5">
     <a class="btn {% if reviews.meta.active_status == 'needs_review' %}btn-primary{% else %}btn-ghost{% endif %}"{% if reviews.meta.active_status == 'needs_review' %} aria-current="page"{% endif %} href="?review_status=needs_review&priority={{ reviews.meta.active_priority }}&show_hidden={% if reviews.meta.show_hidden %}1{% else %}0{% endif %}">{{ labels.medication_reviews.filters.review_statuses.needs_review }} <span class="badge">{{ reviews.meta.review_counts.needs_review }}</span></a>
     <a class="btn {% if reviews.meta.active_status == 'reviewed' %}btn-primary{% else %}btn-ghost{% endif %}"{% if reviews.meta.active_status == 'reviewed' %} aria-current="page"{% endif %} href="?review_status=reviewed&priority={{ reviews.meta.active_priority }}&show_hidden={% if reviews.meta.show_hidden %}1{% else %}0{% endif %}">{{ labels.medication_reviews.filters.review_statuses.reviewed }} <span class="badge">{{ reviews.meta.review_counts.reviewed }}</span></a>
     <a class="btn {% if reviews.meta.active_status == 'all' %}btn-primary{% else %}btn-ghost{% endif %}"{% if reviews.meta.active_status == 'all' %} aria-current="page"{% endif %} href="?review_status=all&priority={{ reviews.meta.active_priority }}&show_hidden={% if reviews.meta.show_hidden %}1{% else %}0{% endif %}">{{ labels.medication_reviews.filters.review_statuses.all }} <span class="badge">{{ reviews.meta.review_counts.all }}</span></a>
@@ -19,8 +19,8 @@
       <input type="hidden" name="review_status" value="{{ reviews.meta.active_status }}">
       {% if reviews.meta.show_hidden %}<input type="hidden" name="show_hidden" value="1">{% endif %}
       <fieldset><legend class="mb-2 text-sm font-bold">{{ labels.medication_reviews.filters.priority }}</legend>
-        <div class="join max-w-full overflow-x-auto pb-1">
-          {% for priority in ['all','discuss_soon','ask_when_convenient','low_confidence'] %}<button class="btn btn-outline join-item{% if reviews.meta.active_priority == priority %} btn-active{% endif %}" type="submit" name="priority" value="{{ priority }}" aria-pressed="{% if reviews.meta.active_priority == priority %}true{% else %}false{% endif %}"><span class="sm:hidden">{{ labels.medication_reviews.filters.short_priorities[priority] }}</span><span class="hidden sm:inline">{{ labels.medication_reviews.filters.priorities[priority] }}</span></button>{% endfor %}
+        <div class="flex flex-wrap gap-2 pb-1">
+          {% for priority in ['all','discuss_soon','ask_when_convenient','low_confidence'] %}<button class="btn btn-outline{% if reviews.meta.active_priority == priority %} btn-active{% endif %}" type="submit" name="priority" value="{{ priority }}" aria-pressed="{% if reviews.meta.active_priority == priority %}true{% else %}false{% endif %}"><span class="sm:hidden">{{ labels.medication_reviews.filters.short_priorities[priority] }}</span><span class="hidden sm:inline">{{ labels.medication_reviews.filters.priorities[priority] }}</span></button>{% endfor %}
         </div>
       </fieldset>
     </form>
@@ -59,7 +59,7 @@
   {% endfor %}
     </div>
   </section>
-  {% else %}<div class="card bg-base-100 border border-base-300"><div class="card-body"><h2 class="card-title">{{ labels.medication_reviews.empty_title }}</h2><p>{{ labels.medication_reviews.empty_description }}</p></div></div>{% endfor %}
+  {% else %}<div class="card bg-base-100 border border-base-300"><div class="card-body">{% if reviews.meta.review_counts.all > 0 %}<h2 class="card-title">{{ labels.medication_reviews.filter_empty_title }}</h2><p>{{ labels.medication_reviews.filter_empty_description }}</p><a class="btn btn-outline mt-4 self-start" href="?review_status=all&priority=all&show_hidden={% if reviews.meta.show_hidden %}1{% else %}0{% endif %}">{{ labels.medication_reviews.filters.clear }}</a>{% else %}<h2 class="card-title">{{ labels.medication_reviews.empty_title }}</h2><p>{{ labels.medication_reviews.empty_description }}</p>{% endif %}</div></div>{% endfor %}
   <nav class="flex justify-between mt-8" aria-label="{{ labels.medication_reviews.browser.pages }}">
     {% if page > 1 %}<a class="btn btn-outline" href="?page={{ previous_page }}&review_status={{ reviews.meta.active_status }}&priority={{ reviews.meta.active_priority }}&show_hidden={% if reviews.meta.show_hidden %}1{% else %}0{% endif %}">{{ labels.medication_reviews.browser.previous }}</a>{% else %}<span></span>{% endif %}
     {% if has_next %}<a class="btn btn-outline" href="?page={{ next_page }}&review_status={{ reviews.meta.active_status }}&priority={{ reviews.meta.active_priority }}&show_hidden={% if reviews.meta.show_hidden %}1{% else %}0{% endif %}">{{ labels.medication_reviews.browser.next }}</a>{% endif %}

@@ -183,6 +183,7 @@ async function withCareFixture(captureMail, registrationInviteOnly, reportAssets
         seedReportHistory: () => fixtureTask('report-history-seed'),
         reportAuditProbe: async () => JSON.parse(await fixtureTask('report-audit-probe')),
         seedReviewReport: () => fixtureTask('review-report-seed'),
+        markReviewReportReviewed: () => fixtureTask('review-report-reviewed'),
         expireReviewLease: () => fixtureTask('review-expire-lease'),
         nearReviewLeaseExpiry: () => fixtureTask('review-near-expiry-lease'),
         changeLiveReviewEvidence: () => fixtureTask('review-change-live-evidence'),

@@ -104,6 +104,14 @@ test('review filters, pagination and PDF keep the visible synthetic set coherent
   await expect(page.getByText('0 lower-confidence review items')).toBeVisible();
   await page.getByRole('button', { name: /^(Discuss soon|Soon)$/ }).click();
   await expect(page.locator('article[data-review-prompt-id]')).toHaveCount(0);
+  await page.screenshot({ path: info.outputPath(`loco-reviews-empty-filter-${info.project.name}.png`), fullPage: true });
+  await expect(page.getByText('No medicine reviews match these filters.')).toBeVisible();
+  const clearFilters = page.getByRole('link', { name: 'Clear filters' });
+  await expect(clearFilters).toBeVisible();
+  await clearFilters.click();
+  await expect(page.getByRole('link', { name: 'All 48' })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('button', { name: 'All', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('article[data-review-prompt-id]')).toHaveCount(20);
   const convenient = page.getByRole('button', { name: /^(Ask when convenient|Convenient)$/ });
   await expect(convenient).toBeVisible();
   await convenient.click();
@@ -116,6 +124,27 @@ test('review filters, pagination and PDF keep the visible synthetic set coherent
   expect(report.status()).toBe(200);
   expect(report.headers()['content-type']).toContain('application/pdf');
   expect((await report.body()).subarray(0, 5).toString()).toBe('%PDF-');
+});
+
+test('clearing an empty filter reveals reviewed records and keeps included items enabled', async ({ page, careFixture }) => {
+  test.setTimeout(180000);
+  await careFixture.seedReviewReport();
+  await careFixture.markReviewReportReviewed();
+  await page.goto('/login');
+  await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
+  await page.getByLabel('Password', { exact: true }).fill('password');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  const path = '/households/persistence-fixture/medicine-reviews';
+  await page.goto(`${path}?review_status=needs_review&priority=all&show_hidden=1`);
+  await expect(page.getByRole('link', { name: 'Needs review 0' })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('link', { name: 'All 48' })).toBeVisible();
+  await expect(page.locator('article[data-review-prompt-id]')).toHaveCount(0);
+  await page.getByRole('link', { name: 'Clear filters' }).click();
+  await expect(page.locator('article[data-review-prompt-id]')).toHaveCount(20);
+  await expect(page).toHaveURL(/review_status=all/);
+  await expect(page).toHaveURL(/show_hidden=1/);
+  await expect(page.getByRole('link', { name: 'All 48' })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('switch', { name: 'Include filtered items' })).toBeChecked();
 });
 
 test('review cards are grouped under the person they concern', async ({ page, careFixture }) => {
@@ -162,7 +191,7 @@ test('each review card has a prominent keyboard-operable evidence action', async
   await expect(card.getByTestId(`prompt-evidence-${await card.getAttribute('data-review-prompt-id')}`)).toBeVisible();
 });
 
-test('priority and include-filtered controls apply directly', async ({ page, careFixture }) => {
+test('priority and include-filtered controls apply directly', async ({ page, careFixture }, info) => {
   test.setTimeout(180000);
   await careFixture.seedReviewReport();
   await page.goto('/login');
@@ -170,6 +199,22 @@ test('priority and include-filtered controls apply directly', async ({ page, car
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.goto('/households/persistence-fixture/medicine-reviews');
+  if (test.info().project.name === 'mobile') {
+    await page.screenshot({ path: info.outputPath('loco-reviews-controls-mobile.png'), fullPage: false });
+    const viewportWidth = page.viewportSize().width;
+    const status = page.getByRole('navigation', { name: 'Review status' });
+    const priority = page.getByRole('group', { name: 'Priority' });
+    const controls = [...await status.getByRole('link').all(), ...await priority.getByRole('button').all()];
+    for (const control of controls) {
+      const bounds = await control.boundingBox();
+      expect(bounds.x, 'filter control must start inside the viewport').toBeGreaterThanOrEqual(0);
+      expect(bounds.x + bounds.width, 'filter control must be fully discoverable without horizontal scrolling').toBeLessThanOrEqual(viewportWidth + 1);
+    }
+    for (const group of [status, priority]) {
+      const overflow = await group.evaluate(element => element.scrollWidth - element.clientWidth);
+      expect(overflow, 'filter group must fit or wrap without a hidden horizontal rail').toBeLessThanOrEqual(1);
+    }
+  }
   const convenient = page.getByRole('button', { name: /^(Ask when convenient|Convenient)$/ });
   await expect(convenient).toBeVisible();
   await convenient.click();

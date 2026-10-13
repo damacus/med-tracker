@@ -2455,6 +2455,8 @@ en:
     hide_hidden: Hide filtered items
     empty_title: No medicine reviews to show
     empty_description: No reviewed evidence pairs match the active medicines in the selected household records.
+    filter_empty_title: No medicine reviews match these filters.
+    filter_empty_description: Other reviews are available. Clear the filters to see them.
     review_reason: Public medicine-label evidence suggests this combination may be worth reviewing with a pharmacist, nurse, GP, or prescriber.
     view_evidence: View evidence
     summaries:
@@ -2467,6 +2469,7 @@ en:
       priority: Priority
       include_filtered: Include filtered items
       apply: Apply filters
+      clear: Clear filters
       review_statuses:
         needs_review: Needs review
         reviewed: Reviewed
