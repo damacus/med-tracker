@@ -1,11 +1,19 @@
 import { execFile } from 'node:child_process';
-import { appendFile } from 'node:fs/promises';
+import { appendFile, readFile } from 'node:fs/promises';
 import { cpus, loadavg, totalmem, platform } from 'node:os';
 import { basename, join } from 'node:path';
 import { promisify } from 'node:util';
 import { setTimeout as delay } from 'node:timers/promises';
 
 const execute = promisify(execFile);
+
+export function competingProcesses(rows, testNames = []) {
+  const names = new Set(['rustc', 'cargo', 'rust-lld', 'ld', 'care_api', 'rust_household_browser', 'pytest', 'med_tracker', 'chrome-headless-shell', ...testNames]);
+  return rows.filter(row => {
+    if (row.name === 'chrome-headless-shell' && Number.isFinite(row.cpuPercent) && row.cpuPercent < 1) return false;
+    return names.has(row.name.replace(/-[a-f0-9]{16}$/, '')) || /^(?:npm exec )?playwright test(?: |$)/.test(row.name);
+  }).map(row => ({ pid: row.pid, name: row.name }));
+}
 
 export function isQuiet(sample) {
   return sample.idlePercent >= 80 && sample.load[0] <= sample.cpuCount
@@ -26,6 +34,7 @@ async function command(name, args) {
 
 export async function sampleHost() {
   if (platform() !== 'darwin') throw new Error('This benchmark monitor requires macOS');
+  const testNames = JSON.parse(await readFile(new URL('../../target/ci/tests.json', import.meta.url), 'utf8')).map(test => test.name);
   const before = cpus();
   await delay(1000);
   const after = cpus();
@@ -46,7 +55,7 @@ export async function sampleHost() {
     idlePercent: 100 * delta.reduce((sum, cpu) => sum + cpu.idle, 0) / total,
     memoryPressure: Number(pressure), swapUsage: swap,
     swapouts: vmCounters.Swapouts, vmCounters,
-    competingProcesses: processRows.filter(row => /^(rustc|cargo|rust-lld|ld|care_api|rust_household_browser|pytest)$/.test(row.name)).map(row => ({ pid: row.pid, name: row.name })),
+    competingProcesses: competingProcesses(processRows, testNames),
     topProcesses: processRows.sort((a, b) => b.cpuPercent - a.cpuPercent).slice(0, 15),
   };
 }

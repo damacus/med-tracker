@@ -3,9 +3,28 @@ import { test } from 'node:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { BenchmarkMonitor, isQuiet, quietWindow } from './nhs-dmd-benchmark-monitor.mjs';
+import { BenchmarkMonitor, competingProcesses, isQuiet, quietWindow } from './nhs-dmd-benchmark-monitor.mjs';
 
 const sample = { idlePercent: 90, load: [3, 3, 3], cpuCount: 12, memoryPressure: 1, swapouts: 100, competingProcesses: [] };
+
+test('all prepared test binaries and their Cargo hashed names block the quiet gate', () => {
+  const rows = ['care_doses', 'identity_resource-0123456789abcdef', 'rustc', 'Google Chrome', 'med_tracker-0123456789abcdef'].map((name, pid) => ({ pid, name }));
+  const competing = competingProcesses(rows, ['care_doses', 'identity_resource']);
+  assert.deepEqual(competing.map(row => row.name), [rows[0].name, rows[1].name, rows[2].name, rows[4].name]);
+  assert.equal(isQuiet({ ...sample, competingProcesses: competing }), false);
+});
+
+test('headless browser tests block the quiet gate without blocking an ordinary browser', () => {
+  const rows = ['chrome-headless-shell', 'npm exec playwright test --config playwright.config.mjs', 'Google Chrome'].map((name, pid) => ({ pid, name }));
+  assert.deepEqual(competingProcesses(rows), rows.slice(0, 2));
+  const idleBrowser = { pid: 698, name: 'chrome-headless-shell', cpuPercent: 0 };
+  const activeBrowser = { ...idleBrowser, pid: 699, cpuPercent: 5 };
+  const idleTestRunner = { pid: 700, name: rows[1].name, cpuPercent: 0 };
+  assert.deepEqual(competingProcesses([idleBrowser, activeBrowser, idleTestRunner]), [
+    { pid: activeBrowser.pid, name: activeBrowser.name },
+    { pid: idleTestRunner.pid, name: idleTestRunner.name },
+  ]);
+});
 
 test('quiet gate rejects competing work, high load, CPU use and memory pressure', () => {
   assert.equal(isQuiet(sample), true);
