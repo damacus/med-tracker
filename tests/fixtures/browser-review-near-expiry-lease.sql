@@ -1,0 +1,3 @@
+UPDATE public.medication_review_edit_leases
+SET expires_at = clock_timestamp() + interval '45 seconds'
+WHERE household_id = 72001 AND prompt_id = 91001;

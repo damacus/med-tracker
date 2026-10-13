@@ -372,13 +372,23 @@ async fn save(
                 Ok(value) => value,
                 Err(error) => return operation_error(error),
             };
+            let expires_at = match edit::expiry(
+                &read,
+                &id,
+                draft.get("lease_token").map(String::as_str).unwrap_or(""),
+            )
+            .await
+            {
+                Ok(value) => value.unwrap_or_default(),
+                Err(error) => return operation_error(error),
+            };
             let response = render(
                 &view,
                 &token,
                 "reviews/edit.html",
                 &slug,
                 language(&headers),
-                json!({"review":review["data"],"lease":{"token":draft.get("lease_token"),"etag":draft.get("etag"),"expires_at":""},"draft":draft,"error":crate::controllers::medications::forms::message(&error),"changed":matches!(error, OperationError::Conflict { ref code, .. } if code=="review_changed"),"reacquire":matches!(error, OperationError::Conflict { .. })}),
+                json!({"review":review["data"],"lease":{"token":draft.get("lease_token"),"etag":draft.get("etag"),"expires_at":expires_at},"draft":draft,"error":crate::controllers::medications::forms::message(&error),"changed":matches!(error, OperationError::Conflict { ref code, .. } if code=="review_changed"),"reacquire":matches!(error, OperationError::Conflict { .. })}),
                 crate::controllers::medications::forms::status(&error),
             );
             if read.commit().await.is_err() {

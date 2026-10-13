@@ -113,6 +113,23 @@ test('review editing warns before expiry, renews on demand and releases on Cance
   await expect(page.getByRole('heading', { name: 'Record practitioner review' })).toBeVisible();
 });
 
+test('a validation error keeps the warning tied to the persisted lease expiry', async ({ page, careFixture }) => {
+  test.setTimeout(180000);
+  await careFixture.seedReviewReport();
+  await page.goto('/login');
+  await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
+  await page.getByLabel('Password', { exact: true }).fill('password');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.goto('/households/persistence-fixture/medicine-reviews');
+  await page.locator('article summary').first().click();
+  await page.getByRole('button', { name: 'Edit review' }).first().click();
+  await careFixture.nearReviewLeaseExpiry();
+  await page.getByLabel('Outcome').selectOption('reviewed_with_practitioner');
+  await page.getByRole('button', { name: 'Save review record' }).click();
+  await expect(page.getByRole('alert').first()).toBeVisible();
+  await expect(page.locator('[data-lease-warning]')).toBeVisible({ timeout: 3500 });
+});
+
 test('an expired draft survives another save and requires reacquisition and version acceptance', async ({ page, careFixture }) => {
   test.setTimeout(180000);
   await careFixture.seedReviewReport();

@@ -6,7 +6,8 @@
   const warning = editor.querySelector('[data-lease-warning]');
   const lease = form.elements.namedItem('lease_token');
   const authenticity = form.elements.namedItem('authenticity_token');
-  let expires = Date.parse(editor.dataset.expiresAt) || Date.now() + 300000;
+  let expires = Date.parse(editor.dataset.expiresAt);
+  if (!Number.isFinite(expires)) expires = Date.now();
   let lastRenewal = Date.now();
   let pending = false;
   const warn = () => {

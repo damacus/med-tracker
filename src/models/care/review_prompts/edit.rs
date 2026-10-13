@@ -101,6 +101,25 @@ pub async fn require(
     Ok(())
 }
 
+pub async fn expiry(
+    tenant: &TenantTransaction,
+    id: &str,
+    token: &str,
+) -> Result<Option<String>, OperationError> {
+    let record = authorised(tenant, id).await?;
+    let row = tenant.transaction().query_one_raw(Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        "SELECT expires_at FROM medication_review_edit_leases WHERE prompt_id=$1 AND household_id=$2 AND membership_id=$3 AND token::text=$4",
+        [record.id.into(), tenant.scope().household_id.into(), tenant.membership().id.into(), token.into()],
+    )).await?;
+    row.map(|row| -> Result<String, sea_orm::DbErr> {
+        let expires_at: chrono::NaiveDateTime = row.try_get("", "expires_at")?;
+        Ok(expires_at.and_utc().to_rfc3339())
+    })
+    .transpose()
+    .map_err(Into::into)
+}
+
 pub async fn release(
     tenant: &TenantTransaction,
     id: &str,
