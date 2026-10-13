@@ -22,6 +22,126 @@ fn release() -> Vec<u8> {
     writer.finish().unwrap().into_inner()
 }
 
+fn release_with_amp(amp: &str, gtin: &str) -> Vec<u8> {
+    let mut writer = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+    writer
+        .start_file(
+            "f_ampp2_3000000.xml",
+            zip::write::SimpleFileOptions::default(),
+        )
+        .unwrap();
+    writer
+        .write_all(format!("<AMPPS><AMPP><APPID>777</APPID><NM>Scanner imported tablets</NM><APID>{amp}</APID></AMPP></AMPPS>").as_bytes())
+        .unwrap();
+    writer
+        .start_file(
+            "f_gtin2_0000000.xml",
+            zip::write::SimpleFileOptions::default(),
+        )
+        .unwrap();
+    writer
+        .write_all(format!("<AMPPS><AMPP><AMPPID>777</AMPPID><GTINDATA><GTIN>{gtin}</GTIN></GTINDATA></AMPP></AMPPS>").as_bytes())
+        .unwrap();
+    writer.finish().unwrap().into_inner()
+}
+
+#[tokio::test]
+#[ignore]
+async fn nhs_dmd_official_release_comparison_snapshot() {
+    let archive = std::env::var("NHS_DMD_RELEASE_PATH").unwrap();
+    let output = std::env::var("NHS_DMD_COMPARISON_OUTPUT").unwrap();
+    let app = Application::new().await;
+    let id = med_tracker::models::nhs_dmd::upload(
+        &app.context,
+        "nhsbsa_dmd_9.3.0_20260928000001.zip",
+        std::fs::read(archive).unwrap(),
+    )
+    .await
+    .unwrap();
+    med_tracker::models::nhs_dmd::run(&app.context, id)
+        .await
+        .unwrap();
+    let row = app.fixture.admin.query_one_raw(Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        "SELECT jsonb_build_object('status', i.status, 'created', i.created_count, 'updated', i.updated_count, 'unchanged', i.unchanged_count, 'skipped_expired', i.skipped_expired_count, 'skipped_missing_name', i.skipped_missing_name_count, 'skipped_invalid', i.skipped_invalid_count, 'barcodes', (SELECT COALESCE(jsonb_agg(jsonb_build_array(gtin, code, amp_code, display, vmp_name, system, concept_class) ORDER BY gtin), '[]'::jsonb) FROM nhs_dmd_barcodes), 'relationships', (SELECT COALESCE(jsonb_agg(jsonb_build_array(ampp_code, amp_code) ORDER BY ampp_code), '[]'::jsonb) FROM nhs_dmd_ampp_relationships), 'trade_families', (SELECT count(*) FROM nhs_dmd_trade_families), 'trade_family_groups', (SELECT count(*) FROM nhs_dmd_trade_family_groups), 'trade_memberships', (SELECT count(*) FROM nhs_dmd_amp_trade_families)) AS snapshot FROM nhs_dmd_imports i WHERE i.id = $1",
+        [id.into()],
+    )).await.unwrap().unwrap();
+    let snapshot = row.try_get::<serde_json::Value>("", "snapshot").unwrap();
+    std::fs::write(output, serde_json::to_vec(&snapshot).unwrap()).unwrap();
+    app.close().await;
+    assert_eq!(snapshot["status"], 4);
+}
+
+#[tokio::test]
+async fn nhs_dmd_failed_replacement_preserves_previous_relationships_and_barcodes() {
+    let app = Application::new().await;
+    let first = med_tracker::models::nhs_dmd::upload(
+        &app.context,
+        "first.zip",
+        release_with_amp("111", "5016298210989"),
+    )
+    .await
+    .unwrap();
+    med_tracker::models::nhs_dmd::run(&app.context, first)
+        .await
+        .unwrap();
+    app.fixture.admin.execute_unprepared("ALTER TABLE nhs_dmd_barcodes ADD CONSTRAINT reject_replacement_gtin CHECK (gtin <> '5016298210990') NOT VALID").await.unwrap();
+    let second = med_tracker::models::nhs_dmd::upload(
+        &app.context,
+        "second.zip",
+        release_with_amp("222", "5016298210990"),
+    )
+    .await
+    .unwrap();
+    med_tracker::models::nhs_dmd::run(&app.context, second)
+        .await
+        .unwrap();
+    let old_relationship = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT amp_code FROM nhs_dmd_ampp_relationships WHERE ampp_code = '777'",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    let old_barcode = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT amp_code FROM nhs_dmd_barcodes WHERE gtin = '5016298210989'",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    let failed_run = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            "SELECT status FROM nhs_dmd_imports WHERE id = $1",
+            [second.into()],
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    app.close().await;
+    assert_eq!(failed_run.try_get::<i32>("", "status").unwrap(), 5);
+    assert_eq!(
+        old_relationship.try_get::<String>("", "amp_code").unwrap(),
+        "111"
+    );
+    assert_eq!(
+        old_barcode
+            .try_get::<Option<String>>("", "amp_code")
+            .unwrap()
+            .as_deref(),
+        Some("111")
+    );
+}
+
 fn nested_release(valid: bool) -> Vec<u8> {
     let mut nested = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
     nested

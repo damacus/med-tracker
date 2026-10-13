@@ -1,0 +1,12 @@
+version: '3'
+
+tasks:
+  check:
+    dir: ../..
+    cmds:
+      - node --check scripts/migration/nhs-dmd-release-compare.mjs
+      - ruby -c scripts/migration/nhs-dmd-reference-snapshot.rb
+  compare:
+    dir: ../..
+    cmds:
+      - node scripts/migration/nhs-dmd-release-compare.mjs
