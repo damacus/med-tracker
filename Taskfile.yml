@@ -67,10 +67,6 @@ tasks:
     env:
       RUST_TEST_THREADS: "4"
     cmds: [node scripts/migration/run-slice.mjs --all]
-  slice:catalog:
-    env:
-      PERSISTENCE_CATALOG_OUTPUT_DIR: '{{.OUTPUT_DIR | default ""}}'
-    cmds: [node scripts/migration/run-slice.mjs --capture-catalog]
   inventory:write:
     desc: Record reconciled migration inputs
     cmds: [node scripts/migration/inventory.mjs --write]
@@ -119,7 +115,6 @@ tasks:
       vars: [FOUNDATION_PROJECT]
     cmds:
       - 'docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} exec -T postgres psql -X -v ON_ERROR_STOP=1 -U medtracker -d medtracker_loco -c "CREATE DATABASE medtracker_reference"'
-      - 'cat "{{.ROOT_DIR}}/tests/fixtures/persistence-roles.sql" "{{.ROOT_DIR}}/migration/baseline.sql" | docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} exec -T postgres psql -X -v ON_ERROR_STOP=1 --single-transaction -U medtracker -d medtracker_reference'
   foundation:db-down:
     requires:
       vars: [FOUNDATION_PROJECT]
@@ -204,12 +199,16 @@ tasks:
     desc: List Loco routes
     cmds: ['cargo run --locked -- routes --environment {{.LOCO_ENV | default "development"}}']
   db:migrate:
-    desc: Adopt and migrate the configured PostgreSQL database
+    desc: Create the complete application schema through Loco migrations
     requires:
       vars: [MIGRATION_DATABASE_URL]
     env:
       MEDTRACKER_MIGRATION_DATABASE_URL: '{{.MIGRATION_DATABASE_URL}}'
-    cmds: ['env DATABASE_URL="$MEDTRACKER_MIGRATION_DATABASE_URL" cargo run --locked -- db migrate --environment {{.LOCO_ENV | default "development"}}']
+    cmds: ['{{if .MIGRATION_EXECUTABLE}}env DATABASE_URL="$MEDTRACKER_MIGRATION_DATABASE_URL" {{.MIGRATION_EXECUTABLE | shellQuote}} db migrate --environment {{.LOCO_ENV | default "development"}}{{else}}env DATABASE_URL="$MEDTRACKER_MIGRATION_DATABASE_URL" cargo run --locked -- db migrate --environment {{.LOCO_ENV | default "development"}}{{end}}']
+  db:prepare:
+    desc: Migrate an empty development or test database and load synthetic fixtures
+    cmds:
+      - task: db:seed
   db:seed:
     desc: Seed an empty development or test database with synthetic fixtures
     requires:

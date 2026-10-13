@@ -7,7 +7,6 @@ export async function browserDatabasePool(url, provision, ownership, run = (name
   template.pathname = '/medtracker_reference';
   if (!ownership.templatePrepared) {
     await provision();
-    await run('browser-care:migrate', [`MIGRATION_DATABASE_URL=${template.href}`, 'LOCO_ENV=test']);
     await run('browser-care:seed', [`CARE_DATABASE_URL=${template.href}`]);
     await run('browser-care:freeze-template', [`CARE_DATABASE_URL=${url}`]);
   }

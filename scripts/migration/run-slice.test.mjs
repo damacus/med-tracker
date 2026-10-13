@@ -68,7 +68,7 @@ test('slice_runner_ignores_ambient_database', async () => {
     assert.equal(state.foreign_resources_touched, 0);
     assert.equal(state.child_compose_environment_removed, true);
     assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
-    assert.deepEqual(state.calls.filter(call => call.command === 'docker').map(call => call.operation), ['up', 'port', 'exec', 'exec', 'down']);
+    assert.deepEqual(state.calls.filter(call => call.command === 'docker').map(call => call.operation), ['up', 'port', 'exec', 'down']);
   });
 });
 
@@ -118,7 +118,7 @@ test('failed slice execution cleans its owned database and preserves unrelated r
   await withProcessFixture(42, (result, state) => {
     assert.notEqual(result.status, 0);
     assert.deepEqual(state.resources.unrelated, ['existing-volume']);
-    assert.deepEqual(state.calls.filter(call => call.command === 'docker').map(call => call.operation), ['up', 'port', 'exec', 'exec', 'down'], 'Failure cleanup did not run for the owned fixture');
+    assert.deepEqual(state.calls.filter(call => call.command === 'docker').map(call => call.operation), ['up', 'port', 'exec', 'down'], 'Failure cleanup did not run for the owned fixture');
     assert.deepEqual(Object.keys(state.resources), ['unrelated']);
     assert.equal(state.foreign_resources_touched, 0);
   });
@@ -133,28 +133,18 @@ test('failed administrative provisioning never starts Cargo and cleans only its 
   }, 'slice:test', ['TARGET=persistence'], 42);
 });
 
-test('administrative restore uses psql without startup files, stops on error and restores atomically', async () => {
+test('provisioning creates only an empty database without importing application SQL', async () => {
   await withProcessFixture(0, (result, state) => {
     assert.equal(result.status, 0, result.stderr);
     const calls = state.calls.filter(call => call.operation === 'exec');
-    assert.equal(calls.length, 2);
+    assert.equal(calls.length, 1);
     for (const call of calls) {
       assert.ok(call.args.includes('psql'));
       assert.ok(call.args.includes('-X'));
       assert.ok(call.args.includes('ON_ERROR_STOP=1'));
     }
-    assert.ok(calls[1].args.includes('--single-transaction'));
-    assert.equal(calls[1].args[calls[1].args.indexOf('-d') + 1], 'medtracker_reference');
+    assert.equal(calls[0].args[calls[0].args.indexOf('-c') + 1], 'CREATE DATABASE medtracker_reference');
   });
-});
-
-test('catalog capture uses its explicit ignored test and does not inherit ambient filters', async () => {
-  await withProcessFixture(0, (result, state) => {
-    assert.equal(result.status, 0, result.stderr);
-    assert.deepEqual(state.calls.find(call => call.command === 'cargo').args,
-      ['test', '--locked', '--test', 'persistence', 'capture_persistence_catalog', '--', '--ignored']);
-    assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
-  }, 'slice:catalog', []);
 });
 
 
@@ -172,7 +162,7 @@ test('care API and complete runs use owned storage and clean it after test failu
       assert.equal(state.owned_endpoint_used, true);
       assert.equal(state.owned_storage_endpoint_used, true);
       const calls = state.calls.filter(call => call.command === 'docker');
-      assert.deepEqual(calls.map(call => call.operation), ['up', 'port', 'up', 'port', 'exec', 'exec', 'down']);
+      assert.deepEqual(calls.map(call => call.operation), ['up', 'port', 'up', 'port', 'exec', 'down']);
       assert.ok(calls.every(call => call.project === calls[0].project));
       assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
     }, taskName, assignments);

@@ -40,9 +40,12 @@ Product workflows remain migration work; use Rails for the existing application.
 Use `task deps` once to resolve dependencies, `task build` to compile and `task ci`
 to verify Loco. Set `DATABASE_URL` to a dedicated PostgreSQL 18 database and run
 `task dev`. Startup does not migrate, truncate or recreate the product schema.
-`task db:migrate`, `task db:seed` and `task release-image` remain guarded until
-their corresponding tranches pass. Do not point foundation verification at a
-live database. See [the migration plan](docs/plans/loco-migration-20261005/plan.md).
+`task db:migrate MIGRATION_DATABASE_URL=...` creates the complete schema in an
+empty database. `task db:prepare SEED_DATABASE_URL=...` also loads synthetic
+development fixtures. These commands use privileged setup credentials; the
+application uses its restricted runtime role. Existing database adoption is not
+supported. `task release-image` remains guarded. Do not point foundation
+verification at a live database. See [database setup](docs/testing.md#loco-database-setup).
 
 ## Try the Rails self-hosted beta
 
