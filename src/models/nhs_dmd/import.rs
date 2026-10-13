@@ -17,12 +17,49 @@ use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock};
+use std::time::Instant;
 use tokio::sync::mpsc;
 
 const PROGRESS_BATCH: i32 = 250;
 const INSERT_BATCH: usize = 1000;
 static TRAILING_PARENS: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\s*\([^)]*\)\z").expect("valid trailing parentheses expression"));
+
+struct ImportPhaseTimer {
+    run_id: i64,
+    phase: &'static str,
+    started: Instant,
+    succeeded: bool,
+}
+
+impl ImportPhaseTimer {
+    fn new(run_id: i64, phase: &'static str) -> Self {
+        Self {
+            run_id,
+            phase,
+            started: Instant::now(),
+            succeeded: false,
+        }
+    }
+
+    fn complete(mut self) {
+        self.succeeded = true;
+    }
+}
+
+impl Drop for ImportPhaseTimer {
+    fn drop(&mut self) {
+        let duration_ms = self.started.elapsed().as_secs_f64() * 1000.0;
+        let outcome = if self.succeeded { "success" } else { "failure" };
+        tracing::info!(
+            run_id = self.run_id,
+            phase = self.phase,
+            duration_ms,
+            outcome,
+            "nhs_dmd_import_timing"
+        );
+    }
+}
 
 #[derive(Default, Clone)]
 pub(crate) struct Counts {
@@ -710,19 +747,29 @@ pub(crate) async fn run_import(
     run_id: i64,
     zip_path: PathBuf,
 ) -> Result<(), String> {
-    set_status(&db, run_id, 1, "Extracting release archive").await?;
-    let zip_for_task = zip_path.clone();
-    let extracted = blocking_with_activity(&db, run_id, move |activity| {
-        let dir = tempfile::tempdir().map_err(|error| error.to_string())?;
-        extract::extract_with_progress(&zip_for_task, dir.path(), None, || {
-            activity
-                .send(())
-                .map_err(|_| "Import activity could not be reported".to_owned())
+    let total = ImportPhaseTimer::new(run_id, "total");
+    let result = async {
+        let extraction = ImportPhaseTimer::new(run_id, "extract");
+        set_status(&db, run_id, 1, "Extracting release archive").await?;
+        let zip_for_task = zip_path.clone();
+        let extracted = blocking_with_activity(&db, run_id, move |activity| {
+            let dir = tempfile::tempdir().map_err(|error| error.to_string())?;
+            extract::extract_with_progress(&zip_for_task, dir.path(), None, || {
+                activity
+                    .send(())
+                    .map_err(|_| "Import activity could not be reported".to_owned())
+            })
+            .map(|_| dir)
         })
-        .map(|_| dir)
-    })
-    .await?;
-    import_extracted(&db, run_id, extracted.path()).await
+        .await?;
+        extraction.complete();
+        import_extracted(&db, run_id, extracted.path()).await
+    }
+    .await;
+    if result.is_ok() {
+        total.complete();
+    }
+    result
 }
 
 async fn set_status(
@@ -806,6 +853,7 @@ async fn drain_progress(
 }
 
 async fn import_extracted(db: &DatabaseConnection, run_id: i64, dir: &Path) -> Result<(), String> {
+    let counting = ImportPhaseTimer::new(run_id, "count");
     set_status(db, run_id, 2, "Counting release records").await?;
     let ampp_file = glob_one(dir, "f_ampp2_3*.xml")?;
     let gtin_dir = dir.to_path_buf();
@@ -836,6 +884,8 @@ async fn import_extracted(db: &DatabaseConnection, run_id: i64, dir: &Path) -> R
         ..Default::default()
     };
     apply_progress(db, run_id, &counts, 2).await?;
+    counting.complete();
+    let parsing_ampp = ImportPhaseTimer::new(run_id, "parse_ampp");
     let (progress_tx, progress_rx) = mpsc::unbounded_channel::<Counts>();
     let ampp_parse = ampp_file.clone();
     let names_task = tokio::task::spawn_blocking(move || {
@@ -854,6 +904,8 @@ async fn import_extracted(db: &DatabaseConnection, run_id: i64, dir: &Path) -> R
     let (names, counts) = names_result.map_err(|error| error.to_string())??;
     let names = Arc::new(names);
     apply_progress(db, run_id, &counts, 3).await?;
+    parsing_ampp.complete();
+    let parsing_supplementary = ImportPhaseTimer::new(run_id, "parse_supplementary");
     let supplementary = if let Some(files) = supplementary_files(dir) {
         tokio::task::spawn_blocking(move || parse_optional_supplementary(&files))
             .await
@@ -861,6 +913,8 @@ async fn import_extracted(db: &DatabaseConnection, run_id: i64, dir: &Path) -> R
     } else {
         None
     };
+    parsing_supplementary.complete();
+    let parsing_gtin = ImportPhaseTimer::new(run_id, "parse_gtin");
     let (gtin_tx, gtin_rx) = mpsc::unbounded_channel::<Counts>();
     let gtin_parse = gtin_file.clone();
     let names_for_parse = Arc::clone(&names);
@@ -875,6 +929,8 @@ async fn import_extracted(db: &DatabaseConnection, run_id: i64, dir: &Path) -> R
     let (gtin_result, drain_result) = tokio::join!(gtin_task, drain);
     drain_result?;
     let (records, mut counts) = gtin_result.map_err(|error| error.to_string())??;
+    parsing_gtin.complete();
+    let persisting = ImportPhaseTimer::new(run_id, "persist");
     let transaction = db.begin().await.map_err(|error| error.to_string())?;
     touch_run(&transaction, run_id).await?;
     persist_relationships(&transaction, &names).await?;
@@ -883,10 +939,14 @@ async fn import_extracted(db: &DatabaseConnection, run_id: i64, dir: &Path) -> R
     }
     persist_gtins(&transaction, &records, &mut counts).await?;
     finalize(&transaction, run_id, &counts).await?;
+    persisting.complete();
+    let committing = ImportPhaseTimer::new(run_id, "commit");
     transaction
         .commit()
         .await
-        .map_err(|error| error.to_string())
+        .map_err(|error| error.to_string())?;
+    committing.complete();
+    Ok(())
 }
 
 fn find_gtin_file(

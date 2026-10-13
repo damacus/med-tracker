@@ -124,3 +124,17 @@ test('reference comparison pins UTC for both runtimes despite an inherited timez
     locoEnvironment: { TZ: 'Europe/London' },
   });
 });
+
+test('benchmark uses the prepared executable without compiling between sequential imports', async () => {
+  const calls = [];
+  await runReferenceImport({
+    url: 'postgres://medtracker:password@127.0.0.1:5432/medtracker_loco',
+    provision: async () => calls.push('provision'),
+    runCommand: async (command) => calls.push(command),
+    locoCommand: '/checkout/target/ci/care_api',
+    locoArguments: ['nhs_dmd_official_release_comparison_snapshot', '--ignored'],
+    railsArguments: ['run', '--rm'],
+    environment: {},
+  });
+  assert.deepEqual(calls, ['provision', 'task', '/checkout/target/ci/care_api', 'docker']);
+});

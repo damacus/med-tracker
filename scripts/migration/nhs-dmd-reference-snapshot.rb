@@ -1,3 +1,4 @@
+snapshot_started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 connection = ActiveRecord::Base.connection
 initial_count = connection.select_value(<<~SQL)
   SELECT (SELECT count(*) FROM nhs_dmd_barcodes)
@@ -9,7 +10,9 @@ initial_count = connection.select_value(<<~SQL)
 SQL
 raise 'Rails reference catalogue must start empty' unless initial_count.to_i.zero?
 
+import_started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 result = NhsDmd::ReleaseArchiveImport.new.import(ENV.fetch('NHS_DMD_RELEASE_PATH'))
+import_finished = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 rows = connection.select_value(<<~SQL)
   SELECT jsonb_build_object(
     'status', 4,
@@ -31,3 +34,14 @@ rows = connection.select_value(<<~SQL)
   )::text
 SQL
 File.write(ENV.fetch('NHS_DMD_COMPARISON_OUTPUT'), rows)
+snapshot_finished = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+if ENV['NHS_DMD_TIMING_OUTPUT']
+  timings = {
+    runtime: 'rails', outcome: 'success', initial_catalogue_count: initial_count.to_i,
+    setup_ms: (import_started - snapshot_started) * 1000,
+    import_ms: (import_finished - import_started) * 1000,
+    export_ms: (snapshot_finished - import_finished) * 1000,
+    total_ms: (snapshot_finished - snapshot_started) * 1000
+  }
+  File.write(ENV.fetch('NHS_DMD_TIMING_OUTPUT'), JSON.generate(timings))
+end

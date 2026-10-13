@@ -11,6 +11,13 @@ tasks:
     dir: ../..
     cmds:
       - node --test scripts/migration/nhs-dmd-reference-bootstrap.test.mjs
+      - node --test scripts/migration/nhs-dmd-benchmark-monitor.test.mjs
+  benchmark:
+    dir: ../..
+    env:
+      NHS_DMD_BENCHMARK: '1'
+    cmds:
+      - node scripts/migration/nhs-dmd-release-compare.mjs
   compare:
     dir: ../..
     cmds:

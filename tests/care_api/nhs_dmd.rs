@@ -1,6 +1,76 @@
 use super::*;
 use sea_orm::TransactionTrait;
 use std::io::Write;
+use std::sync::{Arc, Mutex};
+use std::time::Instant;
+use tracing::field::{Field, Visit};
+use tracing::span::{Attributes, Id, Record};
+use tracing::{Event, Metadata, Subscriber};
+
+#[derive(Clone, Default)]
+struct ImportTimingEvents(Arc<Mutex<Vec<serde_json::Value>>>);
+
+#[derive(Default)]
+struct ImportTimingFields(serde_json::Map<String, serde_json::Value>);
+
+impl Visit for ImportTimingFields {
+    fn record_i64(&mut self, field: &Field, value: i64) {
+        self.0.insert(field.name().into(), value.into());
+    }
+
+    fn record_u64(&mut self, field: &Field, value: u64) {
+        self.0.insert(field.name().into(), value.into());
+    }
+
+    fn record_f64(&mut self, field: &Field, value: f64) {
+        self.0.insert(field.name().into(), serde_json::json!(value));
+    }
+
+    fn record_str(&mut self, field: &Field, value: &str) {
+        self.0.insert(field.name().into(), value.into());
+    }
+
+    fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
+        self.0
+            .insert(field.name().into(), format!("{value:?}").into());
+    }
+}
+
+impl Subscriber for ImportTimingEvents {
+    fn enabled(&self, metadata: &Metadata<'_>) -> bool {
+        metadata.fields().field("duration_ms").is_some()
+    }
+
+    fn new_span(&self, _: &Attributes<'_>) -> Id {
+        Id::from_u64(1)
+    }
+
+    fn record(&self, _: &Id, _: &Record<'_>) {}
+
+    fn record_follows_from(&self, _: &Id, _: &Id) {}
+
+    fn event(&self, event: &Event<'_>) {
+        let mut fields = ImportTimingFields::default();
+        event.record(&mut fields);
+        self.0.lock().unwrap().push(fields.0.into());
+    }
+
+    fn enter(&self, _: &Id) {}
+
+    fn exit(&self, _: &Id) {}
+}
+
+impl ImportTimingEvents {
+    fn for_run(&self, run_id: i64) -> Vec<serde_json::Value> {
+        self.0
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|event| event["run_id"] == run_id)
+            .cloned()
+            .collect()
+    }
+}
 
 fn release() -> Vec<u8> {
     let mut writer = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
@@ -78,6 +148,60 @@ fn release_with_supplementary() -> Vec<u8> {
 }
 
 #[tokio::test]
+async fn nhs_dmd_import_emits_numeric_phase_and_total_timings_for_success_and_failure() {
+    let timings = ImportTimingEvents::default();
+    let _subscriber = tracing::subscriber::set_default(timings.clone());
+    let app = Application::new().await;
+    let success = med_tracker::models::nhs_dmd::upload(&app.context, "success.zip", release())
+        .await
+        .unwrap();
+    med_tracker::models::nhs_dmd::run(&app.context, success)
+        .await
+        .unwrap();
+    let failure = med_tracker::models::nhs_dmd::upload(
+        &app.context,
+        "failure.zip",
+        b"not a zip release".to_vec(),
+    )
+    .await
+    .unwrap();
+    med_tracker::models::nhs_dmd::run(&app.context, failure)
+        .await
+        .unwrap();
+    app.close().await;
+
+    let successful = timings.for_run(success);
+    for phase in [
+        "extract",
+        "count",
+        "parse_ampp",
+        "parse_supplementary",
+        "parse_gtin",
+        "persist",
+        "commit",
+        "total",
+    ] {
+        let event = successful
+            .iter()
+            .find(|event| event["phase"] == phase)
+            .unwrap_or_else(|| panic!("missing {phase} timing: {successful:?}"));
+        assert_eq!(event["outcome"], "success");
+        assert!(event["duration_ms"].is_number(), "{event:?}");
+        assert!(event["duration_ms"].as_f64().unwrap() >= 0.0);
+    }
+    let failed = timings.for_run(failure);
+    for phase in ["extract", "total"] {
+        let event = failed
+            .iter()
+            .find(|event| event["phase"] == phase)
+            .unwrap_or_else(|| panic!("missing {phase} failure timing: {failed:?}"));
+        assert_eq!(event["outcome"], "failure");
+        assert!(event["duration_ms"].is_number());
+    }
+    assert_eq!(failed.len(), 2, "{failed:?}");
+}
+
+#[tokio::test]
 async fn nhs_dmd_synthetic_supplementary_release_publishes_trade_relationships() {
     let app = Application::new().await;
     let id = med_tracker::models::nhs_dmd::upload(
@@ -142,7 +266,13 @@ async fn nhs_dmd_blank_amp_code_omits_relationship_but_preserves_barcode_value()
 async fn nhs_dmd_official_release_comparison_snapshot() {
     let archive = std::env::var("NHS_DMD_RELEASE_PATH").unwrap();
     let output = std::env::var("NHS_DMD_COMPARISON_OUTPUT").unwrap();
+    let timings = ImportTimingEvents::default();
+    let _subscriber = tracing::subscriber::set_default(timings.clone());
+    let total_started = Instant::now();
+    let setup_started = Instant::now();
     let app = Application::new().await;
+    let setup_ms = setup_started.elapsed().as_secs_f64() * 1000.0;
+    let empty_check_started = Instant::now();
     let initial = app.fixture.admin.query_one_raw(Statement::from_string(
         DbBackend::Postgres,
         "SELECT (SELECT count(*) FROM nhs_dmd_barcodes) AS barcodes, (SELECT count(*) FROM nhs_dmd_ampp_relationships) AS relationships, (SELECT count(*) FROM nhs_dmd_trade_families) AS families, (SELECT count(*) FROM nhs_dmd_trade_family_groups) AS groups, (SELECT count(*) FROM nhs_dmd_amp_trade_families) AS memberships, (SELECT count(*) FROM nhs_dmd_supplementary_releases) AS releases",
@@ -161,6 +291,11 @@ async fn nhs_dmd_official_release_comparison_snapshot() {
             "Loco reference catalogue must start empty: {field}"
         );
     }
+    let empty_check_ms = empty_check_started.elapsed().as_secs_f64() * 1000.0;
+    let archive_read_started = Instant::now();
+    let archive_bytes = std::fs::read(&archive).unwrap();
+    let archive_read_ms = archive_read_started.elapsed().as_secs_f64() * 1000.0;
+    let upload_started = Instant::now();
     let id = med_tracker::models::nhs_dmd::upload(
         &app.context,
         std::path::Path::new(&archive)
@@ -168,13 +303,17 @@ async fn nhs_dmd_official_release_comparison_snapshot() {
             .unwrap()
             .to_str()
             .unwrap(),
-        std::fs::read(&archive).unwrap(),
+        archive_bytes,
     )
     .await
     .unwrap();
+    let upload_ms = upload_started.elapsed().as_secs_f64() * 1000.0;
+    let worker_run_started = Instant::now();
     med_tracker::models::nhs_dmd::run(&app.context, id)
         .await
         .unwrap();
+    let worker_run_ms = worker_run_started.elapsed().as_secs_f64() * 1000.0;
+    let export_started = Instant::now();
     let row = app.fixture.admin.query_one_raw(Statement::from_sql_and_values(
         DbBackend::Postgres,
         "SELECT jsonb_build_object('status', i.status, 'created', i.created_count, 'updated', i.updated_count, 'unchanged', i.unchanged_count, 'skipped_expired', i.skipped_expired_count, 'skipped_missing_name', i.skipped_missing_name_count, 'skipped_invalid', i.skipped_invalid_count, 'barcodes', (SELECT COALESCE(jsonb_agg(jsonb_build_array(gtin, code, amp_code, display, vmp_name, system, concept_class) ORDER BY gtin), '[]'::jsonb) FROM nhs_dmd_barcodes), 'relationships', (SELECT COALESCE(jsonb_agg(jsonb_build_array(ampp_code, amp_code) ORDER BY ampp_code), '[]'::jsonb) FROM nhs_dmd_ampp_relationships), 'trade_families', (SELECT count(*) FROM nhs_dmd_trade_families), 'trade_family_groups', (SELECT count(*) FROM nhs_dmd_trade_family_groups), 'trade_memberships', (SELECT count(*) FROM nhs_dmd_amp_trade_families), 'trade_family_group_rows', (SELECT COALESCE(jsonb_agg(jsonb_build_array(code, name) ORDER BY code), '[]'::jsonb) FROM nhs_dmd_trade_family_groups), 'trade_family_rows', (SELECT COALESCE(jsonb_agg(jsonb_build_array(f.code, f.name, g.code) ORDER BY f.code), '[]'::jsonb) FROM nhs_dmd_trade_families f LEFT JOIN nhs_dmd_trade_family_groups g ON g.id=f.trade_family_group_id), 'trade_membership_rows', (SELECT COALESCE(jsonb_agg(jsonb_build_array(m.amp_code, f.code) ORDER BY m.amp_code), '[]'::jsonb) FROM nhs_dmd_amp_trade_families m JOIN nhs_dmd_trade_families f ON f.id=m.trade_family_id), 'supplementary_release_rows', (SELECT COALESCE(jsonb_agg(jsonb_build_array(released_on) ORDER BY released_on), '[]'::jsonb) FROM nhs_dmd_supplementary_releases)) AS snapshot FROM nhs_dmd_imports i WHERE i.id = $1",
@@ -182,7 +321,33 @@ async fn nhs_dmd_official_release_comparison_snapshot() {
     )).await.unwrap().unwrap();
     let snapshot = row.try_get::<serde_json::Value>("", "snapshot").unwrap();
     std::fs::write(output, serde_json::to_vec(&snapshot).unwrap()).unwrap();
+    let export_ms = export_started.elapsed().as_secs_f64() * 1000.0;
+    let teardown_started = Instant::now();
     app.close().await;
+    let teardown_ms = teardown_started.elapsed().as_secs_f64() * 1000.0;
+    if let Ok(timing_output) = std::env::var("NHS_DMD_TIMING_OUTPUT") {
+        let import_phases = timings.for_run(id);
+        let core_import_ms = import_phases
+            .iter()
+            .find(|event| event["phase"] == "total")
+            .and_then(|event| event["duration_ms"].as_f64())
+            .expect("core import total timing must be present");
+        let report = serde_json::json!({
+            "run_id": id,
+            "outcome": if snapshot["status"] == 4 { "success" } else { "failure" },
+            "setup_ms": setup_ms,
+            "empty_check_ms": empty_check_ms,
+            "archive_read_ms": archive_read_ms,
+            "upload_ms": upload_ms,
+            "worker_run_ms": worker_run_ms,
+            "core_import_ms": core_import_ms,
+            "export_ms": export_ms,
+            "teardown_ms": teardown_ms,
+            "total_ms": total_started.elapsed().as_secs_f64() * 1000.0,
+            "import_phases": import_phases,
+        });
+        std::fs::write(timing_output, serde_json::to_vec(&report).unwrap()).unwrap();
+    }
     assert_eq!(snapshot["status"], 4);
 }
 
