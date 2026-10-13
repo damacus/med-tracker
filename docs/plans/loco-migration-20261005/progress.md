@@ -45,7 +45,18 @@ is in [the API slice](slices/05-api-integrations.md).
   checks also passed. Full log: `full-task-ci-11ea37b4.log` in the evidence folder.
   This records a successful serial run, not a proven cause or fix for the earlier
   transport failures. The final commit adds only this verification record.
-- Publication, hosted checks and acceptance: pending. No merge or deployment.
+- Published [PR #2600](https://github.com/damacus/med-tracker/pull/2600) against
+  `main` at signed head `b56d4b486b85ced3bbe8e22ffd9bec265c722bb3`: 1,099 additions
+  and nine deletions. Full API acceptance remains pending.
+  No merge or deployment.
+  The owner's GitHub update subsequently merged `main` into this PR at
+  `2808f38ce508f2606b6d2d0787301961bffd85d7`, preserving our source and adding
+  merged PR #2599's unit coverage and property tests. The local stack now
+  preserves that merge. Earlier local CI is evidence for its recorded source;
+  [Hosted CI run 38412852801](https://github.com/damacus/med-tracker/actions/runs/38412852801)
+  passed on this exact updated revision. The hosted checksum finding was answered
+  and resolved after independent same-session Devin adjudication accepted the
+  full-document provenance guard; no source change was needed.
 - Review corrections: duplicate schema/header substitutions and handlers from
   another route now fail explicit regression tests. Both tests failed before the
   guards were corrected. Final focused log: `green-review-metadata-guards.log`;
@@ -60,10 +71,47 @@ is in [the API slice](slices/05-api-integrations.md).
   The missing root helper first failed compilation; its two-line registration
   then passed all twelve focused cases, formatting and documentation checks.
   The publication gate recounts the final diff against the immediate base.
-- Next action: publish the bounded first PR, then establish report-only coverage.
-  Shared HTTP and account changes await the owner's decision on two OpenAPI
-  omissions: capability rate-limit responses and account OAuth insufficient-scope
-  responses. Existing enforcement must remain intact.
+- Next action: extend report-only coverage on
+  `codex/s05-i01-coverage-baseline`, based on PR #2600, coordinating with #2583.
+  PR #2599 closed #2583's unit-coverage scope. This branch extends its existing
+  Task/job to integration coverage and reproducible evidence; it adds no duplicate
+  coverage pipeline. Overlapping local work was preserved before reconciliation.
+  The owner approved correcting two OpenAPI omissions: capability rate-limit
+  responses and account OAuth insufficient-scope responses. Apply each correction
+  in its owning area, preserving enforcement and leaving native pins unchanged.
+
+Coverage extension on `codex/s05-i01-coverage-baseline`:
+
+- Base: PR #2600 at `2808f38ce508f2606b6d2d0787301961bffd85d7`, including
+  PR #2599's unit-coverage setup. Extend its `test:coverage` command and existing
+  CI job to run unit, request-harness and care API tests using owned fixtures.
+- Preserve the report-only policy. Test/tool failures still fail the selected
+  CI job; no line-percentage threshold is introduced.
+- Coordinator retains documentation and stack ownership; the existing writer
+  owns implementation/tests, and the verifier owns provisioning and live jobs.
+- Red evidence covers the missing Task boundary, CI aggregate failures,
+  contaminated metadata environment and shared instrumentation paths. Corrected
+  runner checks pass 24 cases; CI policy checks pass 137. Installed prerequisites
+  are cargo-llvm-cov 0.9.1 and matching Rust 1.99 LLVM tools.
+- Each run now owns its target, build intermediates and report directory. The
+  report records source revision, dirty state and a source fingerprint, rejecting
+  mutations during measurement. Failed runs cannot publish a complete manifest.
+- Independent Devin SWE-2 Max session `living-pick` identified an ambient coverage
+  directory override and verification gaps. Corrections passed focused checks
+  and the same reviewer accepted the final source: tool overrides are stripped, version matching
+  is exact, malformed or padded output paths fail before provisioning, failed-output checks
+  cover the real run directory, and the redundant test Task alias is removed. Its
+  packet and output are under `/private/tmp/s05-i01-review/coverage-*`.
+- The host's actionlint 1.7.12 hit a Darwin deadlock. The unchanged workflow check
+  passed with the maintainer's merged fix, commit
+  `011a6d15e749bb3f2d771eed9c7aa0e7e3e10ee7`, built only under `/private/tmp` and
+  selected through a scoped PATH. ShellCheck remained enabled; global tooling
+  and repository checks were not weakened. Logs retain the timeout and passing run.
+- Existing hosted unit coverage at `2808f38` measured 1,931 of 57,239 application
+  lines (3.37%), including zero API-controller lines. This `--lib` baseline is
+  preserved under `/private/tmp/s05-i01-evidence/hosted-unit-coverage-2808f38/`.
+  It does not measure the full suite. Integration measurement, cumulative CI,
+  publication and affected-code coverage assessment remain pending.
 
 Session close-out on 11 October 2026:
 

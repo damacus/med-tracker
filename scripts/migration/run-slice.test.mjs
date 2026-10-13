@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { createHash, randomUUID } from 'node:crypto';
+import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const ambientUrl = 'postgres://unowned.invalid:1/unowned';
 
-async function withProcessFixture(exitCode, callback, taskName = 'slice:test', assignments = ['TARGET=persistence'], provisionExit = 0) {
+async function withProcessFixture(exitCode, callback, taskName = 'slice:test', assignments = ['TARGET=persistence'], provisionExit = 0, extraEnvironment = {}) {
   const directory = await mkdtemp(join(tmpdir(), 'medtracker-slice-runner-'));
   const statePath = join(directory, 'state.json');
   await writeFile(statePath, JSON.stringify({ resources: { unrelated: ['existing-volume'] }, calls: [], foreign_resources_touched: 0 }));
@@ -40,21 +40,32 @@ if (command === 'docker') {
   state.child_compose_environment_removed = ['COMPOSE_FILE', 'COMPOSE_PROJECT_NAME', 'COMPOSE_PROFILES'].every(name => process.env[name] === undefined);
   state.child_docker_environment_removed = ['DOCKER_HOST', 'DOCKER_CONTEXT', 'DOCKER_CONFIG', 'DOCKER_TLS_VERIFY', 'DOCKER_CERT_PATH'].every(name => process.env[name] === undefined);
   if (process.env.DATABASE_URL === ${JSON.stringify(ambientUrl)}) state.foreign_resources_touched += 1;
-  state.calls.push({ command, args });
+  state.calls.push({ command, args, coverage_target_dir: process.env.CARGO_TARGET_DIR, coverage_build_dir: process.env.CARGO_BUILD_BUILD_DIR, coverage_profile_override: process.env.LLVM_PROFILE_FILE, llvm_cov_target_override: process.env.CARGO_LLVM_COV_TARGET_DIR, llvm_cov_build_override: process.env.CARGO_LLVM_COV_BUILD_DIR, llvm_cov_setup_override: process.env.CARGO_LLVM_COV_SETUP, llvm_cov_deprecated_flags_override: process.env.CARGO_LLVM_COV_FLAGS, llvm_profdata_deprecated_flags_override: process.env.CARGO_LLVM_PROFDATA_FLAGS, llvm_cov_tool_override: process.env.LLVM_COV, llvm_profdata_tool_override: process.env.LLVM_PROFDATA, llvm_cov_flags_override: process.env.LLVM_COV_FLAGS, llvm_profdata_flags_override: process.env.LLVM_PROFDATA_FLAGS, llvm_profile_name_override: process.env.LLVM_PROFILE_FILE_NAME });
   fs.writeFileSync(statePath, JSON.stringify(state));
-  process.exit(command === 'cargo' ? Number(process.env.SLICE_FIXTURE_EXIT) : 0);
+  if (command === 'cargo' && args.includes('--version')) {
+    if (process.env.SLICE_FIXTURE_MISSING_COVERAGE === '1') process.exit(101);
+    process.stdout.write('cargo-llvm-cov ' + (process.env.SLICE_FIXTURE_COV_VERSION || '0.9.1') + '\\n');
+  }
+  if (command === 'rustup' && args.includes('--installed')) process.stdout.write(process.env.SLICE_FIXTURE_MISSING_LLVM_TOOLS === '1' ? 'rustfmt-aarch64-apple-darwin\\n' : 'llvm-tools-aarch64-apple-darwin\\n');
+  if (command === 'cargo' && args.includes('report') && args.includes('--output-path')) {
+    const reportPath = args[args.indexOf('--output-path') + 1];
+    fs.mkdirSync(path.dirname(reportPath), { recursive: true });
+    fs.writeFileSync(reportPath, 'TN:\\nSF:src/lib.rs\\nDA:1,1\\nend_of_record\\n');
+  }
+  process.exit(command === 'cargo' && (!process.env.SLICE_FIXTURE_FAIL_MATCH || args.join(' ').includes(process.env.SLICE_FIXTURE_FAIL_MATCH)) ? Number(process.env.SLICE_FIXTURE_EXIT) : 0);
 }
 `;
-  for (const command of ['docker', 'cargo', 'curl']) await writeFile(join(directory, command), executable, { mode: 0o755 });
+  for (const command of ['docker', 'cargo', 'curl', 'rustup']) await writeFile(join(directory, command), executable, { mode: 0o755 });
   try {
-    const result = spawnSync('task', ['--taskfile', join(root, 'Taskfile.yml'), taskName, ...assignments], {
+    const taskAssignments = typeof assignments === 'function' ? assignments(directory) : assignments;
+    const result = spawnSync('task', ['--taskfile', join(root, 'Taskfile.yml'), taskName, ...taskAssignments], {
       cwd: root,
-      env: { ...process.env, PATH: `${directory}:${process.env.PATH}`, DATABASE_URL: ambientUrl, MEDTRACKER_SESSION_KEY: 'ambient-identity-fixture-key-must-not-be-used', COMPOSE_FILE: '/unowned/compose.yaml', COMPOSE_PROJECT_NAME: 'unrelated', DOCKER_HOST: 'tcp://unowned.invalid:2376', DOCKER_CONTEXT: 'unrelated', DOCKER_CONFIG: '/unowned/docker-config', DOCKER_TLS_VERIFY: '1', DOCKER_CERT_PATH: '/unowned/certs', SLICE_FILTER: 'unrelated_filter', SLICE_FIXTURE_STATE: statePath, SLICE_FIXTURE_EXIT: String(exitCode), SLICE_FIXTURE_PROVISION_EXIT: String(provisionExit) },
+      env: { ...process.env, PATH: `${directory}:${process.env.PATH}`, DATABASE_URL: ambientUrl, MEDTRACKER_SESSION_KEY: 'ambient-identity-fixture-key-must-not-be-used', COMPOSE_FILE: '/unowned/compose.yaml', COMPOSE_PROJECT_NAME: 'unrelated', DOCKER_HOST: 'tcp://unowned.invalid:2376', DOCKER_CONTEXT: 'unrelated', DOCKER_CONFIG: '/unowned/docker-config', DOCKER_TLS_VERIFY: '1', DOCKER_CERT_PATH: '/unowned/certs', SLICE_FILTER: 'unrelated_filter', SLICE_FIXTURE_STATE: statePath, SLICE_FIXTURE_EXIT: String(exitCode), SLICE_FIXTURE_PROVISION_EXIT: String(provisionExit), CARGO_TARGET_DIR: '/unowned/target', CARGO_BUILD_BUILD_DIR: '/unowned/intermediates', LLVM_PROFILE_FILE: '/unowned/profile.profraw', CARGO_LLVM_COV_TARGET_DIR: '/unowned/llvm-cov-target', CARGO_LLVM_COV_BUILD_DIR: '/unowned/llvm-cov-build', CARGO_LLVM_COV_SETUP: 'skip', CARGO_LLVM_COV_FLAGS: '--unowned', CARGO_LLVM_PROFDATA_FLAGS: '--unowned', LLVM_COV: '/unowned/llvm-cov', LLVM_PROFDATA: '/unowned/llvm-profdata', LLVM_COV_FLAGS: '--unowned', LLVM_PROFDATA_FLAGS: '--unowned', LLVM_PROFILE_FILE_NAME: 'unowned.profraw', ...extraEnvironment },
       encoding: 'utf8',
       timeout: 15000,
     });
     assert.equal(result.error, undefined, result.error?.message);
-    await callback(result, JSON.parse(await readFile(statePath, 'utf8')));
+    await callback(result, JSON.parse(await readFile(statePath, 'utf8')), directory);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
@@ -209,4 +220,124 @@ test('care API and complete runs use owned storage and clean it after test failu
       assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
     }, taskName, assignments);
   }
+});
+
+test('coverage report collects root units, API inventory and care API through one owned fixture', async () => {
+  await withProcessFixture(0, async (result, state, directory) => {
+    assert.equal(result.status, 0, result.stderr);
+    const coverageCalls = state.calls.filter(call => call.command === 'cargo' && call.args[0] === 'llvm-cov' && !call.args.includes('--version'));
+    assert.deepEqual(coverageCalls.map(call => call.args.slice(1, 3)), [
+      ['clean', '--workspace'],
+      ['test', '--no-report'],
+      ['test', '--no-report'],
+      ['test', '--no-report'],
+      ['report', '--lcov'],
+    ]);
+    assert.ok(coverageCalls[1].args.includes('--lib'));
+    assert.ok(coverageCalls[2].args.includes('api_v1'));
+    assert.ok(coverageCalls[2].args.includes('requests'));
+    assert.ok(coverageCalls[3].args.includes('care_api'));
+    assert.ok(coverageCalls[3].args.includes('--test-threads=2'));
+    assert.ok(coverageCalls.every(call => call.coverage_target_dir?.startsWith(join(root, 'target/coverage/'))));
+    assert.ok(coverageCalls.every(call => call.coverage_build_dir?.startsWith(join(root, 'target/coverage/'))));
+    assert.ok(coverageCalls.every(call => call.coverage_profile_override === undefined));
+    for (const call of state.calls.filter(call => call.command === 'cargo' && call.args[0] === 'llvm-cov')) {
+      for (const name of ['llvm_cov_target_override', 'llvm_cov_build_override', 'llvm_cov_setup_override', 'llvm_cov_deprecated_flags_override', 'llvm_profdata_deprecated_flags_override', 'llvm_cov_tool_override', 'llvm_profdata_tool_override', 'llvm_cov_flags_override', 'llvm_profdata_flags_override', 'llvm_profile_name_override']) {
+        assert.equal(call[name], undefined, `${name} escaped into cargo-llvm-cov`);
+      }
+    }
+    assert.equal(state.owned_endpoint_used, true);
+    assert.equal(state.owned_storage_used, true);
+    assert.equal(state.child_identity_key_synthetic, true);
+    assert.equal(state.child_verification_key_synthetic, true);
+    assert.equal(state.child_docker_environment_removed, true);
+    assert.deepEqual(state.calls.filter(call => call.command === 'docker').map(call => call.operation), ['up', 'port', 'up', 'port', 'exec', 'down']);
+    assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
+    const report = join(directory, 'coverage');
+    const reportPath = coverageCalls[4].args[coverageCalls[4].args.indexOf('--output-path') + 1];
+    assert.ok(reportPath.startsWith(join(report, '')));
+    assert.notEqual(reportPath, join(report, 'lcov.info'));
+    const completedDirectory = join(reportPath, '..');
+    assert.match(await readFile(reportPath, 'utf8'), /SF:src\/lib.rs/);
+    const manifest = JSON.parse(await readFile(join(completedDirectory, 'manifest.json'), 'utf8'));
+    assert.deepEqual(manifest.selectors, ['lib', 'requests:api_v1', 'care_api']);
+    assert.equal(manifest.status, 'complete');
+    assert.match(manifest.source_state.sha256, /^[a-f0-9]{64}$/);
+    assert.equal(typeof manifest.source_state.dirty, 'boolean');
+  }, 'test:coverage', directory => [`OUTPUT_DIR=${join(directory, 'coverage')}`], 0, { SLICE_FIXTURE_FAIL_MATCH: 'never' });
+});
+
+test('failed coverage selection stops before report and cleans its owned resources', async () => {
+  await withProcessFixture(42, async (result, state, directory) => {
+    assert.notEqual(result.status, 0);
+    const coverageCalls = state.calls.filter(call => call.command === 'cargo' && call.args[0] === 'llvm-cov' && !call.args.includes('--version'));
+    assert.equal(coverageCalls.some(call => call.args.includes('report')), false);
+    assert.deepEqual(state.calls.filter(call => call.command === 'docker').map(call => call.operation), ['up', 'port', 'up', 'port', 'exec', 'down']);
+    assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
+    assert.deepEqual(await readdir(join(directory, 'coverage')), []);
+  }, 'test:coverage', directory => [`OUTPUT_DIR=${join(directory, 'coverage')}`], 0, { SLICE_FIXTURE_FAIL_MATCH: '--test care_api' });
+});
+
+test('separate coverage invocations never reuse instrumented Cargo directories', async () => {
+  const targets = [];
+  for (let index = 0; index < 2; index += 1) {
+    await withProcessFixture(0, (result, state) => {
+      assert.equal(result.status, 0, result.stderr);
+      const coverageCalls = state.calls.filter(call => call.command === 'cargo' && call.args[0] === 'llvm-cov' && call.args.includes('test'));
+      assert.equal(new Set(coverageCalls.map(call => call.coverage_target_dir)).size, 1);
+      assert.equal(new Set(coverageCalls.map(call => call.coverage_build_dir)).size, 1);
+      targets.push(coverageCalls[0].coverage_target_dir);
+    }, 'test:coverage', [], 0, { SLICE_FIXTURE_FAIL_MATCH: 'never' });
+  }
+  assert.notEqual(targets[0], targets[1]);
+});
+
+test('coverage prerequisite failure exits before owned fixture provisioning', async () => {
+  await withProcessFixture(0, (result, state) => {
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /cargo-llvm-cov 0\.9\.1/);
+    assert.equal(state.calls.some(call => call.command === 'docker'), false);
+  }, 'test:coverage', [], 0, { SLICE_FIXTURE_MISSING_COVERAGE: '1' });
+});
+
+test('coverage prerequisite rejects a near-prefix tool version before provisioning', async () => {
+  await withProcessFixture(0, (result, state) => {
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /cargo-llvm-cov 0\.9\.1/);
+    assert.equal(state.calls.some(call => call.command === 'docker'), false);
+  }, 'test:coverage', [], 0, { SLICE_FIXTURE_COV_VERSION: '0.9.10' });
+});
+
+test('coverage rejects a flag-shaped output directory before provisioning', async () => {
+  const invalidName = `--coverage-invalid-${randomUUID()}`;
+  try {
+    await withProcessFixture(0, (result, state) => {
+      assert.notEqual(result.status, 0);
+      assert.match(result.stderr, /output directory/i);
+      assert.equal(state.calls.some(call => call.command === 'docker'), false);
+    }, 'test:coverage', [`OUTPUT_DIR=${invalidName}`], 0, { SLICE_FIXTURE_FAIL_MATCH: 'never' });
+  } finally {
+    await rm(join(root, invalidName), { recursive: true, force: true });
+  }
+});
+
+test('coverage rejects surrounding output-directory whitespace before provisioning', async () => {
+  const invalidName = ` coverage-invalid-${randomUUID()} `;
+  try {
+    await withProcessFixture(0, (result, state) => {
+      assert.notEqual(result.status, 0);
+      assert.match(result.stderr, /output directory/i);
+      assert.equal(state.calls.some(call => call.command === 'docker'), false);
+    }, 'test:coverage', [`OUTPUT_DIR=${invalidName}`], 0, { SLICE_FIXTURE_FAIL_MATCH: 'never' });
+  } finally {
+    await rm(join(root, invalidName), { recursive: true, force: true });
+  }
+});
+
+test('coverage prerequisite rejects missing LLVM tools before provisioning', async () => {
+  await withProcessFixture(0, (result, state) => {
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /llvm-tools-preview/);
+    assert.equal(state.calls.some(call => call.command === 'docker'), false);
+  }, 'test:coverage', [], 0, { SLICE_FIXTURE_MISSING_LLVM_TOOLS: '1' });
 });
