@@ -107,7 +107,11 @@ fn count_elements(
     let mut last_position = 0;
     loop {
         match reader.read_event_into(&mut buffer) {
-            Ok(Event::Start(event)) if event.name().as_ref() == element.as_bytes() => count += 1,
+            Ok(Event::Start(event) | Event::Empty(event))
+                if event.name().as_ref() == element.as_bytes() =>
+            {
+                count += 1;
+            }
             Ok(Event::Eof) => return Ok(count),
             Ok(_) => {}
             Err(error) => return Err(format!("XML parse failed: {error}")),
@@ -191,6 +195,10 @@ fn parse_ampp_names(
                         _ => {}
                     }
                 }
+            }
+            Ok(Event::Empty(event)) if event.name().as_ref() == b"AMPP" => {
+                counts.processed += 1;
+                emit_progress(progress, counts, false);
             }
             Ok(Event::End(event)) => {
                 let tag = String::from_utf8_lossy(event.name().as_ref()).into_owned();
@@ -294,6 +302,11 @@ fn parse_gtins(
                         _ => {}
                     }
                 }
+            }
+            Ok(Event::Empty(event)) if event.name().as_ref() == b"GTINDATA" && in_ampp => {
+                counts.processed += 1;
+                records.push(GtinParsed::SkipInvalid);
+                emit_progress(progress, counts, false);
             }
             Ok(Event::End(event)) => {
                 let tag = String::from_utf8_lossy(event.name().as_ref()).into_owned();
@@ -1164,6 +1177,42 @@ pub(crate) async fn fail_run(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn self_closing_elements_are_counted_and_invalid_gtins_are_skipped() {
+        let dir = tempfile::tempdir().unwrap();
+        let ampp = dir.path().join("ampp.xml");
+        std::fs::write(
+            &ampp,
+            "<AMPPS><AMPP><APPID>777</APPID><NM>Tablets</NM></AMPP><AMPP/></AMPPS>",
+        )
+        .unwrap();
+        assert_eq!(count_elements(&ampp, "AMPP", || Ok(())).unwrap(), 2);
+        let (sender, _receiver) = mpsc::unbounded_channel();
+        let mut counts = Counts::default();
+        let names = parse_ampp_names(&ampp, &mut counts, &sender).unwrap();
+        assert_eq!(counts.processed, 2);
+        assert_eq!(names.len(), 1);
+
+        let gtin = dir.path().join("gtin.xml");
+        std::fs::write(
+            &gtin,
+            "<AMPPS><AMPP><AMPPID>777</AMPPID><GTINDATA/></AMPP></AMPPS>",
+        )
+        .unwrap();
+        assert_eq!(count_elements(&gtin, "GTINDATA", || Ok(())).unwrap(), 1);
+        let mut counts = Counts::default();
+        let records = parse_gtins(
+            &gtin,
+            &names,
+            NaiveDate::from_ymd_opt(2026, 10, 13).unwrap(),
+            &mut counts,
+            &sender,
+        )
+        .unwrap();
+        assert_eq!(counts.processed, 1);
+        assert!(matches!(records.as_slice(), [GtinParsed::SkipInvalid]));
+    }
 
     #[test]
     fn malformed_supplementary_data_is_ignored_without_discarding_the_release() {
