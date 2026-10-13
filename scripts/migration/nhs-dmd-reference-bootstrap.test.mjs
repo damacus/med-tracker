@@ -71,3 +71,21 @@ test('reference import rejects databases outside its owned loopback target befor
     assert.equal(called, false);
   }
 });
+
+test('reference comparison pins UTC for both runtimes despite an inherited timezone', async () => {
+  await runReferenceImport({
+    url: 'postgres://medtracker:medtracker_password@127.0.0.1:5432/medtracker_loco',
+    provision: async () => {},
+    runCommand: async (command, args, environment) => {
+      if (command === 'cargo') assert.equal(environment.TZ, 'UTC');
+      if (command === 'docker') {
+        assert.equal(environment.TZ, 'UTC');
+        assert.deepEqual(args.slice(0, 3), ['run', '--env', 'TZ=UTC']);
+      }
+    },
+    locoArguments: ['test'],
+    railsArguments: ['run', '--rm'],
+    environment: { TZ: 'Europe/London' },
+    locoEnvironment: { TZ: 'Europe/London' },
+  });
+});
