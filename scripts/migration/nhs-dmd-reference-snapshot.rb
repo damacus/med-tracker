@@ -1,5 +1,13 @@
-result = NhsDmd::ReleaseArchiveImport.new.import(ENV.fetch('NHS_DMD_RELEASE_PATH'))
 connection = ActiveRecord::Base.connection
+initial_count = connection.select_value(<<~SQL)
+  SELECT (SELECT count(*) FROM nhs_dmd_barcodes)
+       + (SELECT count(*) FROM nhs_dmd_ampp_relationships)
+       + (SELECT count(*) FROM nhs_dmd_trade_families)
+       + (SELECT count(*) FROM nhs_dmd_amp_trade_families)
+SQL
+raise 'Rails reference catalogue must start empty' unless initial_count.to_i.zero?
+
+result = NhsDmd::ReleaseArchiveImport.new.import(ENV.fetch('NHS_DMD_RELEASE_PATH'))
 rows = connection.select_value(<<~SQL)
   SELECT jsonb_build_object(
     'status', 4,

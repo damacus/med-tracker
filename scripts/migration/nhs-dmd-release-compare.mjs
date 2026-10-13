@@ -51,7 +51,19 @@ const locoPath = join(output, 'loco.json');
 try {
   await withOwnedDatabase(async (url, provision, ownership) => {
     const image = process.env.RAILS_ROLLBACK_IMAGE ?? 'med-tracker-web-test';
-    await runReferenceImport({ url, provision, runCommand: run, environment: process.env, railsArguments: [
+    const storageEnvironment = await ownership.storage();
+    const locoEnvironment = {
+      ...process.env,
+      ...storageEnvironment,
+      DATABASE_URL: url,
+      MEDTRACKER_OWNED_DATABASE: '1',
+      MEDTRACKER_SESSION_KEY: Buffer.alloc(64, 7).toString('base64'),
+      RAILS_SECRET_KEY_BASE: 'synthetic-slice-rails-verification-secret',
+      NHS_DMD_COMPARISON_OUTPUT: locoPath,
+    };
+    await runReferenceImport({ url, provision, runCommand: run, environment: process.env, locoEnvironment,
+      locoArguments: ['test', '--locked', '--test', 'care_api', 'nhs_dmd_official_release_comparison_snapshot', '--', '--ignored', '--nocapture'],
+      railsArguments: [
       'run', '--rm', '--pull', 'never', '--network', `${ownership.project}_default`,
       '--env', 'RAILS_ENV=test', '--env', 'MEDTRACKER_OWNED_DATABASE=1',
       '--env', 'DATABASE_URL=postgresql://medtracker:medtracker_password@postgres:5432/medtracker_reference',
@@ -61,16 +73,6 @@ try {
       '--mount', `type=bind,source=${output},target=/compare`,
       image, 'bundle', 'exec', 'rails', 'runner', '/tmp/nhs-dmd-reference-snapshot.rb',
     ] });
-    const storageEnvironment = await ownership.storage();
-    await run('cargo', ['test', '--locked', '--test', 'care_api', 'nhs_dmd_official_release_comparison_snapshot', '--', '--ignored', '--nocapture'], {
-      ...process.env,
-      ...storageEnvironment,
-      DATABASE_URL: url,
-      MEDTRACKER_OWNED_DATABASE: '1',
-      MEDTRACKER_SESSION_KEY: Buffer.alloc(64, 7).toString('base64'),
-      RAILS_SECRET_KEY_BASE: 'synthetic-slice-rails-verification-secret',
-      NHS_DMD_COMPARISON_OUTPUT: locoPath,
-    });
   }, undefined, process.env, { storage: true });
   const rails = JSON.parse(await readFile(railsPath, 'utf8'));
   const loco = JSON.parse(await readFile(locoPath, 'utf8'));

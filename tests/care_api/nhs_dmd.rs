@@ -51,6 +51,17 @@ async fn nhs_dmd_official_release_comparison_snapshot() {
     let archive = std::env::var("NHS_DMD_RELEASE_PATH").unwrap();
     let output = std::env::var("NHS_DMD_COMPARISON_OUTPUT").unwrap();
     let app = Application::new().await;
+    let initial = app.fixture.admin.query_one_raw(Statement::from_string(
+        DbBackend::Postgres,
+        "SELECT (SELECT count(*) FROM nhs_dmd_barcodes) AS barcodes, (SELECT count(*) FROM nhs_dmd_ampp_relationships) AS relationships, (SELECT count(*) FROM nhs_dmd_trade_families) AS families, (SELECT count(*) FROM nhs_dmd_amp_trade_families) AS memberships",
+    )).await.unwrap().unwrap();
+    for field in ["barcodes", "relationships", "families", "memberships"] {
+        assert_eq!(
+            initial.try_get::<i64>("", field).unwrap(),
+            0,
+            "Loco reference catalogue must start empty: {field}"
+        );
+    }
     let id = med_tracker::models::nhs_dmd::upload(
         &app.context,
         "nhsbsa_dmd_9.3.0_20260928000001.zip",
