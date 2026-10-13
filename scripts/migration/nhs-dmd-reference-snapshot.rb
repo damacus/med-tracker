@@ -3,7 +3,9 @@ initial_count = connection.select_value(<<~SQL)
   SELECT (SELECT count(*) FROM nhs_dmd_barcodes)
        + (SELECT count(*) FROM nhs_dmd_ampp_relationships)
        + (SELECT count(*) FROM nhs_dmd_trade_families)
+       + (SELECT count(*) FROM nhs_dmd_trade_family_groups)
        + (SELECT count(*) FROM nhs_dmd_amp_trade_families)
+       + (SELECT count(*) FROM nhs_dmd_supplementary_releases)
 SQL
 raise 'Rails reference catalogue must start empty' unless initial_count.to_i.zero?
 
@@ -21,7 +23,11 @@ rows = connection.select_value(<<~SQL)
     'relationships', (SELECT COALESCE(jsonb_agg(jsonb_build_array(ampp_code, amp_code) ORDER BY ampp_code), '[]'::jsonb) FROM nhs_dmd_ampp_relationships),
     'trade_families', (SELECT count(*) FROM nhs_dmd_trade_families),
     'trade_family_groups', (SELECT count(*) FROM nhs_dmd_trade_family_groups),
-    'trade_memberships', (SELECT count(*) FROM nhs_dmd_amp_trade_families)
+    'trade_memberships', (SELECT count(*) FROM nhs_dmd_amp_trade_families),
+    'trade_family_group_rows', (SELECT COALESCE(jsonb_agg(jsonb_build_array(code, name) ORDER BY code), '[]'::jsonb) FROM nhs_dmd_trade_family_groups),
+    'trade_family_rows', (SELECT COALESCE(jsonb_agg(jsonb_build_array(f.code, f.name, g.code) ORDER BY f.code), '[]'::jsonb) FROM nhs_dmd_trade_families f LEFT JOIN nhs_dmd_trade_family_groups g ON g.id = f.trade_family_group_id),
+    'trade_membership_rows', (SELECT COALESCE(jsonb_agg(jsonb_build_array(m.amp_code, f.code) ORDER BY m.amp_code), '[]'::jsonb) FROM nhs_dmd_amp_trade_families m JOIN nhs_dmd_trade_families f ON f.id = m.trade_family_id),
+    'supplementary_release_rows', (SELECT COALESCE(jsonb_agg(jsonb_build_array(released_on) ORDER BY released_on), '[]'::jsonb) FROM nhs_dmd_supplementary_releases)
   )::text
 SQL
 File.write(ENV.fetch('NHS_DMD_COMPARISON_OUTPUT'), rows)

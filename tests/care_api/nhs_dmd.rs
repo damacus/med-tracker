@@ -145,9 +145,16 @@ async fn nhs_dmd_official_release_comparison_snapshot() {
     let app = Application::new().await;
     let initial = app.fixture.admin.query_one_raw(Statement::from_string(
         DbBackend::Postgres,
-        "SELECT (SELECT count(*) FROM nhs_dmd_barcodes) AS barcodes, (SELECT count(*) FROM nhs_dmd_ampp_relationships) AS relationships, (SELECT count(*) FROM nhs_dmd_trade_families) AS families, (SELECT count(*) FROM nhs_dmd_amp_trade_families) AS memberships",
+        "SELECT (SELECT count(*) FROM nhs_dmd_barcodes) AS barcodes, (SELECT count(*) FROM nhs_dmd_ampp_relationships) AS relationships, (SELECT count(*) FROM nhs_dmd_trade_families) AS families, (SELECT count(*) FROM nhs_dmd_trade_family_groups) AS groups, (SELECT count(*) FROM nhs_dmd_amp_trade_families) AS memberships, (SELECT count(*) FROM nhs_dmd_supplementary_releases) AS releases",
     )).await.unwrap().unwrap();
-    for field in ["barcodes", "relationships", "families", "memberships"] {
+    for field in [
+        "barcodes",
+        "relationships",
+        "families",
+        "groups",
+        "memberships",
+        "releases",
+    ] {
         assert_eq!(
             initial.try_get::<i64>("", field).unwrap(),
             0,
@@ -156,8 +163,12 @@ async fn nhs_dmd_official_release_comparison_snapshot() {
     }
     let id = med_tracker::models::nhs_dmd::upload(
         &app.context,
-        "nhsbsa_dmd_9.3.0_20260928000001.zip",
-        std::fs::read(archive).unwrap(),
+        std::path::Path::new(&archive)
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap(),
+        std::fs::read(&archive).unwrap(),
     )
     .await
     .unwrap();
@@ -166,7 +177,7 @@ async fn nhs_dmd_official_release_comparison_snapshot() {
         .unwrap();
     let row = app.fixture.admin.query_one_raw(Statement::from_sql_and_values(
         DbBackend::Postgres,
-        "SELECT jsonb_build_object('status', i.status, 'created', i.created_count, 'updated', i.updated_count, 'unchanged', i.unchanged_count, 'skipped_expired', i.skipped_expired_count, 'skipped_missing_name', i.skipped_missing_name_count, 'skipped_invalid', i.skipped_invalid_count, 'barcodes', (SELECT COALESCE(jsonb_agg(jsonb_build_array(gtin, code, amp_code, display, vmp_name, system, concept_class) ORDER BY gtin), '[]'::jsonb) FROM nhs_dmd_barcodes), 'relationships', (SELECT COALESCE(jsonb_agg(jsonb_build_array(ampp_code, amp_code) ORDER BY ampp_code), '[]'::jsonb) FROM nhs_dmd_ampp_relationships), 'trade_families', (SELECT count(*) FROM nhs_dmd_trade_families), 'trade_family_groups', (SELECT count(*) FROM nhs_dmd_trade_family_groups), 'trade_memberships', (SELECT count(*) FROM nhs_dmd_amp_trade_families)) AS snapshot FROM nhs_dmd_imports i WHERE i.id = $1",
+        "SELECT jsonb_build_object('status', i.status, 'created', i.created_count, 'updated', i.updated_count, 'unchanged', i.unchanged_count, 'skipped_expired', i.skipped_expired_count, 'skipped_missing_name', i.skipped_missing_name_count, 'skipped_invalid', i.skipped_invalid_count, 'barcodes', (SELECT COALESCE(jsonb_agg(jsonb_build_array(gtin, code, amp_code, display, vmp_name, system, concept_class) ORDER BY gtin), '[]'::jsonb) FROM nhs_dmd_barcodes), 'relationships', (SELECT COALESCE(jsonb_agg(jsonb_build_array(ampp_code, amp_code) ORDER BY ampp_code), '[]'::jsonb) FROM nhs_dmd_ampp_relationships), 'trade_families', (SELECT count(*) FROM nhs_dmd_trade_families), 'trade_family_groups', (SELECT count(*) FROM nhs_dmd_trade_family_groups), 'trade_memberships', (SELECT count(*) FROM nhs_dmd_amp_trade_families), 'trade_family_group_rows', (SELECT COALESCE(jsonb_agg(jsonb_build_array(code, name) ORDER BY code), '[]'::jsonb) FROM nhs_dmd_trade_family_groups), 'trade_family_rows', (SELECT COALESCE(jsonb_agg(jsonb_build_array(f.code, f.name, g.code) ORDER BY f.code), '[]'::jsonb) FROM nhs_dmd_trade_families f LEFT JOIN nhs_dmd_trade_family_groups g ON g.id=f.trade_family_group_id), 'trade_membership_rows', (SELECT COALESCE(jsonb_agg(jsonb_build_array(m.amp_code, f.code) ORDER BY m.amp_code), '[]'::jsonb) FROM nhs_dmd_amp_trade_families m JOIN nhs_dmd_trade_families f ON f.id=m.trade_family_id), 'supplementary_release_rows', (SELECT COALESCE(jsonb_agg(jsonb_build_array(released_on) ORDER BY released_on), '[]'::jsonb) FROM nhs_dmd_supplementary_releases)) AS snapshot FROM nhs_dmd_imports i WHERE i.id = $1",
         [id.into()],
     )).await.unwrap().unwrap();
     let snapshot = row.try_get::<serde_json::Value>("", "snapshot").unwrap();

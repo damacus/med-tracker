@@ -1,6 +1,41 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { runReferenceImport } from './nhs-dmd-reference-bootstrap.mjs';
+import { compareSnapshots, comparisonInput, runReferenceImport } from './nhs-dmd-reference-bootstrap.mjs';
+
+test('synthetic comparison selects only its pinned fixture and checksum', () => {
+  const root = '/checkout';
+  const selection = comparisonInput('synthetic', undefined, root);
+  assert.equal(selection.release, `${root}/tests/browser/fixtures/nhs-dmd-synthetic-supplementary.zip`);
+  assert.equal(selection.expectedChecksum, '5d83eef3d1377d3489bd0e43e3f79abfc779b7ee20ae97fad1c598efeb1a1646');
+  assert.throws(() => comparisonInput('synthetic', '/other.zip', root), /NHS_DMD_RELEASE_PATH/);
+  assert.throws(() => comparisonInput('official', undefined, root), /NHS_DMD_RELEASE_PATH/);
+  assert.equal(comparisonInput('official', '/official.zip', root).release, '/official.zip');
+});
+
+test('comparison detects supplementary relationship and release metadata changes despite equal counts', () => {
+  const reference = {
+    status: 4, created: 1, updated: 0, unchanged: 0, skipped_expired: 0,
+    skipped_missing_name: 0, skipped_invalid: 0, trade_families: 1,
+    trade_family_groups: 1, trade_memberships: 1,
+    barcodes: [['5016298210989', '777', 'A1', 'Scanner imported tablets', null, 'nhs_dmd', 'ampp']],
+    relationships: [['777', 'A1']],
+    trade_family_group_rows: [['G1', 'Group']],
+    trade_family_rows: [['F1', 'Family', 'G1']],
+    trade_membership_rows: [['A1', 'F1']],
+    supplementary_release_rows: [['2026-10-31']],
+  };
+  const candidate = structuredClone(reference);
+  candidate.trade_family_group_rows = [['G1', 'Changed group']];
+  candidate.trade_family_rows = [['F1', 'Family', null]];
+  candidate.trade_membership_rows = [['A1', 'F2']];
+  candidate.supplementary_release_rows = [['2026-11-01']];
+  const result = compareSnapshots(reference, candidate);
+  assert.deepEqual(result.countDifferences, {});
+  for (const key of ['trade_family_group_rows', 'trade_family_rows', 'trade_membership_rows']) {
+    assert.equal(result.rowDifferences[key].mismatches, 1, key);
+  }
+  assert.equal(result.rowDifferences.supplementary_release_rows.mismatches, 2);
+});
 
 test('Loco snapshots an empty migrated catalogue before Rails imports the release', async () => {
   const calls = [];
