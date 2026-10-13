@@ -806,6 +806,7 @@ async fn drain_progress(
 }
 
 async fn import_extracted(db: &DatabaseConnection, run_id: i64, dir: &Path) -> Result<(), String> {
+    set_status(db, run_id, 2, "Counting release records").await?;
     let ampp_file = glob_one(dir, "f_ampp2_3*.xml")?;
     let gtin_dir = dir.to_path_buf();
     let gtin_file = blocking_with_activity(db, run_id, move |activity| {

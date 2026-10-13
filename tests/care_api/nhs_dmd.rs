@@ -466,7 +466,7 @@ async fn nhs_dmd_queue_imports_verified_archive_and_cleans_it_after_completion()
         ))
         .await
         .unwrap();
-    let progress = app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,"SELECT total_records,processed_records,imported_count,created_count FROM nhs_dmd_imports WHERE id=$1",[id.into()])).await.unwrap().unwrap();
+    let progress = app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,"SELECT total_records,processed_records,imported_count,created_count,log FROM nhs_dmd_imports WHERE id=$1",[id.into()])).await.unwrap().unwrap();
     let missing = store.get(&key).await.is_err();
     app.close().await;
     assert_eq!(completed.unwrap(), 4);
@@ -475,6 +475,12 @@ async fn nhs_dmd_queue_imports_verified_archive_and_cleans_it_after_completion()
     assert_eq!(progress.try_get::<i32>("", "processed_records").unwrap(), 2);
     assert_eq!(progress.try_get::<i32>("", "imported_count").unwrap(), 1);
     assert_eq!(progress.try_get::<i32>("", "created_count").unwrap(), 1);
+    assert!(
+        progress
+            .try_get::<String>("", "log")
+            .unwrap()
+            .contains("Extracting release archive\nCounting release records\n")
+    );
     assert!(missing);
 }
 
