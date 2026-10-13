@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { withOwnedDatabase } from './foundation-database.mjs';
 import { stopOwnedProcess } from './process-cleanup.mjs';
+import { runReferenceImport } from './nhs-dmd-reference-bootstrap.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const referenceScript = fileURLToPath(new URL('./nhs-dmd-reference-snapshot.rb', import.meta.url));
@@ -49,9 +50,8 @@ const railsPath = join(output, 'rails.json');
 const locoPath = join(output, 'loco.json');
 try {
   await withOwnedDatabase(async (url, provision, ownership) => {
-    await provision();
     const image = process.env.RAILS_ROLLBACK_IMAGE ?? 'med-tracker-web-test';
-    await run('docker', [
+    await runReferenceImport({ url, provision, runCommand: run, environment: process.env, railsArguments: [
       'run', '--rm', '--pull', 'never', '--network', `${ownership.project}_default`,
       '--env', 'RAILS_ENV=test', '--env', 'MEDTRACKER_OWNED_DATABASE=1',
       '--env', 'DATABASE_URL=postgresql://medtracker:medtracker_password@postgres:5432/medtracker_reference',
@@ -60,7 +60,7 @@ try {
       '--mount', `type=bind,source=${referenceScript},target=/tmp/nhs-dmd-reference-snapshot.rb,readonly`,
       '--mount', `type=bind,source=${output},target=/compare`,
       image, 'bundle', 'exec', 'rails', 'runner', '/tmp/nhs-dmd-reference-snapshot.rb',
-    ], process.env);
+    ] });
     const storageEnvironment = await ownership.storage();
     await run('cargo', ['test', '--locked', '--test', 'care_api', 'nhs_dmd_official_release_comparison_snapshot', '--', '--ignored', '--nocapture'], {
       ...process.env,

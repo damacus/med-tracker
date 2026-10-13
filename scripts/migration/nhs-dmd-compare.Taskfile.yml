@@ -6,6 +6,10 @@ tasks:
     cmds:
       - node --check scripts/migration/nhs-dmd-release-compare.mjs
       - ruby -c scripts/migration/nhs-dmd-reference-snapshot.rb
+  test:
+    dir: ../..
+    cmds:
+      - node --test scripts/migration/nhs-dmd-reference-bootstrap.test.mjs
   compare:
     dir: ../..
     cmds:
