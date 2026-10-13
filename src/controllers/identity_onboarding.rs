@@ -125,7 +125,7 @@ async fn create_form(
             Err(_) => return StatusCode::NOT_FOUND.into_response(),
         }
     } else {
-        match signup::registration_open(&ctx.db).await {
+        match signup::registration_open(&ctx.db, ctx.config.settings.as_ref()).await {
             Ok(true) => {}
             Ok(false) => return rendering::redirect("/login"),
             Err(_) => return rendering::unavailable(),
@@ -171,7 +171,7 @@ async fn create(
             Err(_) => return StatusCode::NOT_FOUND.into_response(),
         }
     } else {
-        match signup::registration_open(&ctx.db).await {
+        match signup::registration_open(&ctx.db, ctx.config.settings.as_ref()).await {
             Ok(true) => {}
             Ok(false) => return rendering::redirect("/login"),
             Err(_) => return rendering::unavailable(),

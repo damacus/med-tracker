@@ -19,8 +19,9 @@ pub async fn provision_account_in(
     transaction: &DatabaseTransaction,
     profile: &AccountProfile,
     request_id: &str,
+    settings: Option<&serde_json::Value>,
 ) -> Result<ProvisionedAccount, SignupError> {
-    provision_with_password_in(transaction, profile, None, Some(request_id)).await
+    provision_with_password_in(transaction, profile, None, Some(request_id), settings).await
 }
 
 pub(super) async fn provision_with_password_in(
@@ -28,6 +29,7 @@ pub(super) async fn provision_with_password_in(
     profile: &AccountProfile,
     password_hash: Option<&str>,
     request_id: Option<&str>,
+    settings: Option<&serde_json::Value>,
 ) -> Result<ProvisionedAccount, SignupError> {
     let errors = profile_errors(&profile.name, Some(profile.date_of_birth), false);
     if !errors.is_empty() {
@@ -44,7 +46,7 @@ pub(super) async fn provision_with_password_in(
                 .map_err(operation_error)?,
         )
     } else {
-        if !policy::open(transaction).await? {
+        if !policy::open(transaction, settings).await? {
             return Err(SignupError::RegistrationClosed);
         }
         None
@@ -53,7 +55,7 @@ pub(super) async fn provision_with_password_in(
         Some(invitation) => invitation.email.clone(),
         None => invitations::validated_email(&profile.email).map_err(operation_error)?,
     };
-    let preferences = initial_preferences()?;
+    let preferences = initial_preferences(settings)?;
     let account = transaction.query_one_raw(sql(
         "INSERT INTO accounts(email,password_hash,status,preferences,created_at,updated_at) VALUES($1,$2,1,$3,now(),now()) ON CONFLICT(email) WHERE status = ANY(ARRAY[1,2]) DO NOTHING RETURNING id",
         [email.clone().into(),password_hash.map(str::to_owned).into(),preferences.into()])).await.map_err(unavailable)?
@@ -68,7 +70,7 @@ pub(super) async fn provision_with_password_in(
         .map_err(unavailable)?;
     let household_id = match &invitation {
         Some(invitation) => invitation.household_id,
-        None => bootstrap::household(transaction, account_id, &profile.name).await?,
+        None => bootstrap::household(transaction, account_id, &profile.name, settings).await?,
     };
     let person = transaction.query_one_raw(sql(
         "INSERT INTO people(account_id,household_id,name,email,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES($1,$2,$3,$4,$5,0,true,now(),now()) RETURNING id",

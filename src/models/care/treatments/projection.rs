@@ -279,7 +279,7 @@ pub(crate) async fn serialize_schedules(
     records: Vec<schedule::Model>,
 ) -> Result<Vec<Value>, ApiError> {
     let reference_date = Utc::now()
-        .with_timezone(&crate::models::care::doses::app_zone())
+        .with_timezone(&crate::models::care::doses::app_zone(context.settings()))
         .date_naive();
     let sources: Vec<SourceRef> = records
         .iter()

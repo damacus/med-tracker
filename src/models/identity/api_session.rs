@@ -50,13 +50,14 @@ pub(super) struct StoredAuthority {
 pub async fn authenticate(
     db: &DatabaseConnection,
     headers: &HeaderMap,
+    settings: Option<&serde_json::Value>,
 ) -> Result<ApiSessionPrincipal, AuthenticationError> {
-    match authenticate_stored(db, headers).await? {
+    match authenticate_stored(db, headers, settings).await? {
         Some((principal, _)) if matches!(principal.kind, Kind::Session) => {
             Ok(ApiSessionPrincipal(principal))
         }
         Some(_) => Err(AuthenticationError::Forbidden),
-        None => match resource::authenticate_oauth(db, headers).await {
+        None => match resource::authenticate_oauth(db, headers, settings).await {
             Ok(_)
             | Err(AuthenticationError::InsufficientScope { .. })
             | Err(AuthenticationError::Forbidden) => Err(AuthenticationError::Forbidden),
@@ -68,6 +69,7 @@ pub async fn authenticate(
 pub(super) async fn authenticate_stored(
     db: &DatabaseConnection,
     headers: &HeaderMap,
+    settings: Option<&serde_json::Value>,
 ) -> Result<Option<(StoredPrincipal, StoredAuthority)>, AuthenticationError> {
     if headers.get_all(header::AUTHORIZATION).iter().count() != 1 {
         return Err(AuthenticationError::Unauthenticated);
@@ -94,7 +96,7 @@ pub(super) async fn authenticate_stored(
         } else {
             return Ok(None);
         };
-        let actor = principal.revalidate(&transaction).await?;
+        let actor = principal.revalidate(&transaction, settings).await?;
         let update = match principal.kind {
             Kind::Session => "UPDATE api_sessions SET last_used_at=timezone('UTC',clock_timestamp()), updated_at=timezone('UTC',clock_timestamp()) WHERE id=$1",
             Kind::App => "UPDATE api_app_tokens SET last_used_at=timezone('UTC',clock_timestamp()), updated_at=timezone('UTC',clock_timestamp()) WHERE id=$1",
@@ -118,8 +120,9 @@ impl ApiSessionPrincipal {
     pub async fn revalidate(
         &self,
         transaction: &DatabaseTransaction,
+        settings: Option<&serde_json::Value>,
     ) -> Result<UserSessionActor, AuthenticationError> {
-        let actor = self.0.revalidate(transaction).await?;
+        let actor = self.0.revalidate(transaction, settings).await?;
         Ok(UserSessionActor {
             account_id: actor.account_id,
             user_id: actor.user_id,
@@ -144,6 +147,7 @@ impl StoredPrincipal {
     pub(super) async fn revalidate(
         &self,
         transaction: &DatabaseTransaction,
+        settings: Option<&serde_json::Value>,
     ) -> Result<StoredAuthority, AuthenticationError> {
         let (membership_id, version) = match self.kind {
             Kind::Session => {
@@ -178,7 +182,7 @@ impl StoredPrincipal {
                     .await
                     .map_err(unavailable)?
                     .ok_or(AuthenticationError::Unauthenticated)?;
-                app_lifetime(transaction, row.created_at).await?;
+                app_lifetime(transaction, row.created_at, settings).await?;
                 (row.household_membership_id, row.permissions_version)
             }
         };
@@ -186,19 +190,23 @@ impl StoredPrincipal {
     }
 }
 
-pub(crate) fn app_token_max_age_months() -> Option<u32> {
-    match std::env::var("API_APP_TOKEN_MAX_AGE_MONTHS") {
-        Ok(value) => value.parse::<u32>().ok().filter(|months| *months > 0),
-        Err(std::env::VarError::NotPresent) => Some(12),
-        Err(std::env::VarError::NotUnicode(_)) => None,
+pub(crate) fn app_token_max_age_months(settings: Option<&serde_json::Value>) -> Option<u32> {
+    match crate::models::settings::integer(settings, &["api", "app_token_max_age_months"]) {
+        Some(months) => u32::try_from(months).ok().filter(|months| *months > 0),
+        None => match crate::models::settings::node(settings, &["api", "app_token_max_age_months"])
+        {
+            Some(_) => None,
+            None => Some(12),
+        },
     }
 }
 
 async fn app_lifetime(
     transaction: &DatabaseTransaction,
     created_at: chrono::NaiveDateTime,
+    settings: Option<&serde_json::Value>,
 ) -> Result<(), AuthenticationError> {
-    let months = app_token_max_age_months().ok_or(AuthenticationError::Unauthenticated)?;
+    let months = app_token_max_age_months(settings).ok_or(AuthenticationError::Unauthenticated)?;
     let maximum = created_at
         .checked_add_months(chrono::Months::new(months))
         .ok_or(AuthenticationError::Unauthenticated)?;

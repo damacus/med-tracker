@@ -404,7 +404,9 @@ async fn health_events_browser_role_matrix_preserves_view_record_manage_boundari
             ("started_on".into(), "2026-10-01".into()),
             ("ongoing".into(), "1".into()),
         ]);
-        let tenant = access::begin(&app.fixture.runtime, &scope).await.unwrap();
+        let tenant = access::begin(&app.fixture.runtime, &scope, None)
+            .await
+            .unwrap();
         let created = browser::save(&tenant, person_id, None, &draft, &provenance).await;
         assert_eq!(created.is_ok(), can_create, "{label}: create");
         if !can_create {
@@ -413,7 +415,9 @@ async fn health_events_browser_role_matrix_preserves_view_record_manage_boundari
             continue;
         }
         tenant.commit().await.unwrap();
-        let tenant = access::begin(&app.fixture.runtime, &scope).await.unwrap();
+        let tenant = access::begin(&app.fixture.runtime, &scope, None)
+            .await
+            .unwrap();
         let events = browser::collection(&tenant, person_id).await.unwrap();
         assert_eq!(events.len(), 1, "{label}: view");
         let id = events[0]["id"].as_i64().unwrap().to_string();
@@ -427,7 +431,9 @@ async fn health_events_browser_role_matrix_preserves_view_record_manage_boundari
             "{label}: edit"
         );
         tenant.rollback().await.unwrap();
-        let tenant = access::begin(&app.fixture.runtime, &scope).await.unwrap();
+        let tenant = access::begin(&app.fixture.runtime, &scope, None)
+            .await
+            .unwrap();
         assert_eq!(
             browser::delete(
                 &tenant,
@@ -447,7 +453,9 @@ async fn health_events_browser_role_matrix_preserves_view_record_manage_boundari
             .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78001")
             .await
             .unwrap();
-        let tenant = access::begin(&app.fixture.runtime, &scope).await.unwrap();
+        let tenant = access::begin(&app.fixture.runtime, &scope, None)
+            .await
+            .unwrap();
         assert!(
             browser::collection(&tenant, person_id).await.is_err(),
             "{label}: revoked view"
@@ -491,7 +499,9 @@ async fn health_events_browser_preserves_unselectable_links_and_audits_link_chan
         method: CredentialMethod::BrowserSession,
         reference: "synthetic-session".into(),
     };
-    let tenant = access::begin(&app.fixture.runtime, &scope).await.unwrap();
+    let tenant = access::begin(&app.fixture.runtime, &scope, None)
+        .await
+        .unwrap();
     assert!(
         browser::medication_options(&tenant, 73001)
             .await
@@ -512,7 +522,9 @@ async fn health_events_browser_preserves_unselectable_links_and_audits_link_chan
         .await
         .unwrap();
     tenant.commit().await.unwrap();
-    let tenant = access::begin(&app.fixture.runtime, &scope).await.unwrap();
+    let tenant = access::begin(&app.fixture.runtime, &scope, None)
+        .await
+        .unwrap();
     let (_, links, _) = browser::event(&tenant, 73001, &id.to_string())
         .await
         .unwrap();
@@ -520,7 +532,9 @@ async fn health_events_browser_preserves_unselectable_links_and_audits_link_chan
     assert_eq!(links[0].medication_name, "Synthetic tablets");
     tenant.rollback().await.unwrap();
     app.fixture.admin.execute_unprepared("INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(81001,72001,73001,80001,2,'tablet',0,now(),now())").await.unwrap();
-    let tenant = access::begin(&app.fixture.runtime, &scope).await.unwrap();
+    let tenant = access::begin(&app.fixture.runtime, &scope, None)
+        .await
+        .unwrap();
     let (_, _, etag) = browser::event(&tenant, 73001, &id.to_string())
         .await
         .unwrap();
@@ -638,7 +652,9 @@ async fn health_events_browser_unchanged_medication_set_keeps_revision_and_snaps
         method: CredentialMethod::BrowserSession,
         reference: "synthetic-session".into(),
     };
-    let tenant = access::begin(&app.fixture.runtime, &scope).await.unwrap();
+    let tenant = access::begin(&app.fixture.runtime, &scope, None)
+        .await
+        .unwrap();
     let (_, links, etag) = browser::event(&tenant, 73001, &id.to_string())
         .await
         .unwrap();

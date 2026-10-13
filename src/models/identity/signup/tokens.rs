@@ -10,8 +10,12 @@ pub(super) fn random_key() -> Result<String, SignupError> {
     Ok(URL_SAFE_NO_PAD.encode(bytes))
 }
 
-pub(super) fn link_token(account_id: i64, stored_key: &str) -> Result<String, SignupError> {
-    let secret = current_secret()?;
+pub(super) fn link_token(
+    account_id: i64,
+    stored_key: &str,
+    settings: Option<&serde_json::Value>,
+) -> Result<String, SignupError> {
+    let secret = current_secret(settings)?;
     link_token_with_secret(account_id, stored_key, &secret)
 }
 
@@ -33,19 +37,20 @@ pub(super) fn account_id(token: &str) -> Option<i64> {
     id.parse::<i64>().ok().filter(|id| *id > 0)
 }
 
-pub(super) fn matches(token: &str, stored_key: &str) -> Result<bool, SignupError> {
+pub(super) fn matches(
+    token: &str,
+    stored_key: &str,
+    settings: Option<&serde_json::Value>,
+) -> Result<bool, SignupError> {
     let Some((_, signature)) = token.split_once('_') else {
         return Ok(false);
     };
     let Ok(signature) = URL_SAFE_NO_PAD.decode(signature) else {
         return Ok(false);
     };
-    let current = current_secret()?;
-    let old = match std::env::var("RAILS_OLD_SECRET_KEY_BASE") {
-        Ok(secret) if !secret.is_empty() => Some(secret),
-        Err(std::env::VarError::NotPresent) => None,
-        _ => return Err(SignupError::Unavailable),
-    };
+    let current = current_secret(settings)?;
+    let old = crate::models::settings::text(settings, &["rails_compat", "old_secret_key_base"])
+        .map(str::to_owned);
     for secret in std::iter::once(current).chain(old) {
         let mut mac = Hmac::<Sha256>::new_from_slice(secret.as_bytes()).map_err(unavailable)?;
         mac.update(stored_key.as_bytes());
@@ -56,10 +61,9 @@ pub(super) fn matches(token: &str, stored_key: &str) -> Result<bool, SignupError
     Ok(false)
 }
 
-fn current_secret() -> Result<String, SignupError> {
-    std::env::var("RAILS_SECRET_KEY_BASE")
-        .ok()
-        .filter(|secret| !secret.is_empty())
+fn current_secret(settings: Option<&serde_json::Value>) -> Result<String, SignupError> {
+    crate::models::settings::text(settings, &["rails_compat", "secret_key_base"])
+        .map(str::to_owned)
         .ok_or(SignupError::Unavailable)
 }
 

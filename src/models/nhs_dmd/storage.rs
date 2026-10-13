@@ -15,18 +15,19 @@ pub struct ArchiveStore {
 }
 
 impl ArchiveStore {
-    pub fn configured() -> Result<Self, OperationError> {
-        let required = |name| {
-            std::env::var(name)
-                .ok()
-                .filter(|value| !value.is_empty())
+    pub fn configured(settings: Option<&serde_json::Value>) -> Result<Self, OperationError> {
+        let required = |key: &str| {
+            crate::models::settings::text(settings, &["dmd_storage", key])
+                .map(str::to_owned)
                 .ok_or(OperationError::Unavailable)
         };
-        let endpoint = required("S3_ENDPOINT")?;
-        let bucket = required("S3_BUCKET")?;
-        let key = required("AWS_ACCESS_KEY_ID")?;
-        let secret = required("AWS_SECRET_ACCESS_KEY")?;
-        let region = std::env::var("AWS_REGION").unwrap_or_else(|_| "us-east-1".into());
+        let endpoint = required("endpoint")?;
+        let bucket = required("bucket")?;
+        let key = required("access_key_id")?;
+        let secret = required("secret_access_key")?;
+        let region = crate::models::settings::text(settings, &["dmd_storage", "region"])
+            .unwrap_or("us-east-1")
+            .to_owned();
         let config = aws_sdk_s3::Config::builder()
             .behavior_version(BehaviorVersion::latest())
             .endpoint_url(endpoint)

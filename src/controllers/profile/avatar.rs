@@ -189,7 +189,7 @@ async fn show_image(
         Err(_) => return private(unavailable()),
     };
     let tenant = match principal
-        .begin_household_slug(&ctx.db, &slug, request_id)
+        .begin_household_slug(&ctx.db, &slug, request_id, ctx.config.settings.as_ref())
         .await
     {
         Ok(value) => value,
@@ -308,7 +308,12 @@ async fn upload(
             .await;
     }
     let tenant = match principal
-        .begin_household_slug(&ctx.db, &slug, page.request_id.clone())
+        .begin_household_slug(
+            &ctx.db,
+            &slug,
+            page.request_id.clone(),
+            ctx.config.settings.as_ref(),
+        )
         .await
     {
         Ok(value) => value,

@@ -18,6 +18,7 @@ async fn account_creation_initialises_timezone_for_password_and_passkey_signup()
         },
         "https://medtracker.example.test",
         Some("password-signup-timezone"),
+        crate::template::test_settings().as_ref(),
     )
     .await
     .unwrap();
@@ -31,6 +32,7 @@ async fn account_creation_initialises_timezone_for_password_and_passkey_signup()
             invitation_token: None,
         },
         "passkey-signup-timezone",
+        crate::template::test_settings().as_ref(),
     )
     .await
     .unwrap();

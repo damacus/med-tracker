@@ -16,7 +16,7 @@ async fn remove(
     fixture: &Fixture,
     input: RemoveStock,
 ) -> Result<serde_json::Value, OperationError> {
-    let tenant = access::begin(&fixture.runtime, &scope()).await?;
+    let tenant = access::begin(&fixture.runtime, &scope(), None).await?;
     match stock_removals::create(&tenant, input, None).await {
         Ok(result) => {
             tenant.commit().await?;
@@ -85,7 +85,9 @@ async fn stock_removal_history_is_bounded_and_newest_first() {
     let mut second = input();
     second.submission_id = uuid::Uuid::new_v4().to_string();
     let newest = remove(&fixture, second).await.unwrap();
-    let tenant = access::begin(&fixture.runtime, &scope()).await.unwrap();
+    let tenant = access::begin(&fixture.runtime, &scope(), None)
+        .await
+        .unwrap();
     let history = stock_removals::history(&tenant, "90001", 1, 1).await;
     tenant.rollback().await.unwrap();
     fixture.close().await;
@@ -140,7 +142,9 @@ async fn stock_removal_audit_failure_rolls_back_stock_and_change() {
 async fn stock_removal_current_role_controls_replay_and_history() {
     let fixture = Fixture::new().await;
     assert!(remove(&fixture, input()).await.is_ok());
-    let tenant = access::begin(&fixture.runtime, &scope()).await.unwrap();
+    let tenant = access::begin(&fixture.runtime, &scope(), None)
+        .await
+        .unwrap();
     fixture.admin.execute_unprepared("UPDATE household_memberships SET role='member',permissions_version=permissions_version+1 WHERE id=74001").await.unwrap();
     let replay = stock_removals::create(&tenant, input(), None).await;
     let history = stock_removals::history(&tenant, "90001", 1, 20).await;

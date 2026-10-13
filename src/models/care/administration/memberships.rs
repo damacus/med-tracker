@@ -42,7 +42,7 @@ async fn values(
         .into_iter()
         .map(|row| (row.person_id, row.id))
         .collect();
-    rows.iter().map(|row|Ok(json!({"id":row.id,"account_id":row.account_id,"email":accounts.get(&row.account_id).ok_or(OperationError::Unavailable)?.email,"person_id":row.person_id,"person_name":row.person_id.and_then(|id|people.get(&id).map(|row|&row.name)),"user_id":row.person_id.and_then(|id|users.get(&id).copied()),"role":row.role,"status":row.status,"permissions_version":row.permissions_version,"joined_at":row.joined_at.map(|time|time.and_utc().to_rfc3339())}))).collect()
+    rows.iter().map(|row|Ok(json!({"id":row.id,"account_id":row.account_id,"email":accounts.get(&row.account_id).ok_or(OperationError::Unavailable)?.email,"person_id":row.person_id,"person_name":row.person_id.and_then(|id|people.get(&id).map(|row|&row.name)),"user_id":row.person_id.and_then(|id|users.get(&id).copied()),"role":row.role,"status":row.status,"permissions_version":row.permissions_version,"joined_at":row.joined_at.and_utc().to_rfc3339()}))).collect()
 }
 pub async fn change(
     tenant: &TenantTransaction,

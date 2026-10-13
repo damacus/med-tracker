@@ -543,11 +543,13 @@ async fn nhs_dmd_missing_stored_object_marks_import_failed() {
         .unwrap()
         .unwrap();
     let key: String = row.try_get("", "archive_key").unwrap();
-    med_tracker::models::nhs_dmd::storage::ArchiveStore::configured()
-        .unwrap()
-        .delete(&key)
-        .await
-        .unwrap();
+    med_tracker::models::nhs_dmd::storage::ArchiveStore::configured(
+        crate::template::test_settings().as_ref(),
+    )
+    .unwrap()
+    .delete(&key)
+    .await
+    .unwrap();
     let _ = med_tracker::models::nhs_dmd::run(&app.context, id).await;
     let row = app
         .fixture
@@ -586,7 +588,10 @@ async fn nhs_dmd_queue_imports_verified_archive_and_cleans_it_after_completion()
         .unwrap()
         .unwrap();
     let key: String = row.try_get("", "archive_key").unwrap();
-    let store = med_tracker::models::nhs_dmd::storage::ArchiveStore::configured().unwrap();
+    let store = med_tracker::models::nhs_dmd::storage::ArchiveStore::configured(
+        crate::template::test_settings().as_ref(),
+    )
+    .unwrap();
     assert_eq!(store.get(&key).await.unwrap(), release());
     let queue = app.context.queue_provider.as_ref().unwrap().clone();
     med_tracker::app::App::connect_workers(&app.context, &queue)
@@ -986,11 +991,13 @@ async fn nhs_dmd_rejects_tampered_archive_before_catalogue_writes() {
         .unwrap()
         .unwrap();
     let key: String = row.try_get("", "archive_key").unwrap();
-    med_tracker::models::nhs_dmd::storage::ArchiveStore::configured()
-        .unwrap()
-        .put(&key, b"tampered".to_vec())
-        .await
-        .unwrap();
+    med_tracker::models::nhs_dmd::storage::ArchiveStore::configured(
+        crate::template::test_settings().as_ref(),
+    )
+    .unwrap()
+    .put(&key, b"tampered".to_vec())
+    .await
+    .unwrap();
     med_tracker::models::nhs_dmd::run(&app.context, id)
         .await
         .unwrap();

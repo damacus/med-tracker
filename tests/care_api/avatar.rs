@@ -17,7 +17,9 @@ async fn gravatar_uses_depicted_person_consent_and_rechecks_access() {
         household_id: 72001,
         request_id: uuid::Uuid::new_v4().to_string(),
     };
-    let tenant = access::begin(&app.fixture.runtime, &scope).await.unwrap();
+    let tenant = access::begin(&app.fixture.runtime, &scope, None)
+        .await
+        .unwrap();
     assert!(
         gravatar::for_person(&tenant, 73002, false)
             .await
@@ -26,7 +28,9 @@ async fn gravatar_uses_depicted_person_consent_and_rechecks_access() {
     );
     tenant.commit().await.unwrap();
     app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences='{\"gravatar_enabled\":\"1\"}' WHERE id=71002; UPDATE accounts SET preferences='{\"gravatar_enabled\":false}' WHERE id=71001").await.unwrap();
-    let tenant = access::begin(&app.fixture.runtime, &scope).await.unwrap();
+    let tenant = access::begin(&app.fixture.runtime, &scope, None)
+        .await
+        .unwrap();
     assert_eq!(
         gravatar::for_person(&tenant, 73002, false)
             .await
@@ -46,7 +50,9 @@ async fn gravatar_uses_depicted_person_consent_and_rechecks_access() {
         .execute_unprepared("UPDATE people SET email=NULL WHERE id=73002")
         .await
         .unwrap();
-    let tenant = access::begin(&app.fixture.runtime, &scope).await.unwrap();
+    let tenant = access::begin(&app.fixture.runtime, &scope, None)
+        .await
+        .unwrap();
     let fallback = gravatar::for_person(&tenant, 73002, false)
         .await
         .unwrap()
@@ -54,7 +60,9 @@ async fn gravatar_uses_depicted_person_consent_and_rechecks_access() {
     assert!(fallback.contains(&hex::encode(sha2::Sha256::digest(b"other@example.test"))));
     tenant.commit().await.unwrap();
     app.fixture.admin.execute_unprepared("INSERT INTO users(person_id,email_address,created_at,updated_at) VALUES(73002,'legacy@example.test',now(),now())").await.unwrap();
-    let tenant = access::begin(&app.fixture.runtime, &scope).await.unwrap();
+    let tenant = access::begin(&app.fixture.runtime, &scope, None)
+        .await
+        .unwrap();
     let legacy = gravatar::for_person(&tenant, 73002, false)
         .await
         .unwrap()
@@ -68,7 +76,9 @@ async fn gravatar_uses_depicted_person_consent_and_rechecks_access() {
         )
         .await
         .unwrap();
-    let tenant = access::begin(&app.fixture.runtime, &scope).await.unwrap();
+    let tenant = access::begin(&app.fixture.runtime, &scope, None)
+        .await
+        .unwrap();
     assert!(
         gravatar::for_person(&tenant, 73002, false)
             .await
@@ -77,7 +87,9 @@ async fn gravatar_uses_depicted_person_consent_and_rechecks_access() {
     );
     tenant.commit().await.unwrap();
     app.fixture.admin.execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78002; UPDATE household_memberships SET role='member' WHERE id=74001").await.unwrap();
-    let tenant = access::begin(&app.fixture.runtime, &scope).await.unwrap();
+    let tenant = access::begin(&app.fixture.runtime, &scope, None)
+        .await
+        .unwrap();
     for uploaded in [false, true] {
         assert!(
             gravatar::for_person(&tenant, 73002, uploaded)
@@ -909,6 +921,7 @@ async fn avatar_failed_reply_cleanup_waits_for_pending_attachment_commit() {
             household_id: 72001,
             request_id: uuid::Uuid::new_v4().to_string(),
         },
+        None,
     )
     .await
     .unwrap();

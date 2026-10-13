@@ -154,6 +154,7 @@ fn segment_match(pattern: &[u8], name: &[u8]) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use proptest::prelude::*;
     use std::io::Write;
 
     #[test]
@@ -248,5 +249,44 @@ mod tests {
             "Extraction wrote {written} bytes beyond its limit"
         );
         assert!(result.is_err());
+    }
+
+    proptest::proptest! {
+        #[test]
+        fn wildcard_match_never_panics(
+            pattern in "[a-z0-9*/._-]{0,32}",
+            name in "[a-z0-9*/._-]{0,32}",
+        ) {
+            let _ = wildcard_match(&pattern, &name);
+        }
+
+        #[test]
+        fn wildcard_match_without_star_is_exact_equality(
+            pattern in "[a-z0-9._/-]{0,32}",
+            name in "[a-z0-9._/-]{0,32}",
+        ) {
+            prop_assert_eq!(wildcard_match(&pattern, &name), pattern == name);
+        }
+
+        #[test]
+        fn wildcard_star_segment_matches_any_single_segment(
+            prefix in "[a-z0-9_-]{1,8}",
+            segment in "[a-z0-9_-]{0,16}",
+        ) {
+            let pattern = format!("{prefix}/*");
+            let name = format!("{prefix}/{segment}");
+            prop_assert!(wildcard_match(&pattern, &name));
+        }
+
+        #[test]
+        fn unsafe_name_flags_parent_and_absolute_paths(
+            segment in "[a-z0-9_-]{1,8}",
+        ) {
+            let parent = format!("{segment}/../x");
+            let absolute = format!("/{segment}");
+            prop_assert!(unsafe_name(&parent));
+            prop_assert!(unsafe_name(&absolute));
+            prop_assert!(!unsafe_name(&segment));
+        }
     }
 }

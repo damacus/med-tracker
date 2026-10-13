@@ -21,7 +21,7 @@ pub(super) async fn adjust(
         let current = visible_medication(tenant, &input.medication_id)
             .await?
             .ok_or(OperationError::NotFound)?;
-        let current = snapshot(db, current).await?;
+        let current = snapshot(db, current, tenant.settings()).await?;
         let has_options = dosage::Entity::find()
             .in_tenant(tenant.scope().household_id)
             .filter(dosage::Column::MedicationId.eq(found.id))

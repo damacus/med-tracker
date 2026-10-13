@@ -20,6 +20,7 @@ use crate::models::{
     access::{self, Actor, HouseholdScope, TenantTransaction},
     care::doses::{CredentialMethod, CredentialProvenance},
     entities::{account, household, person, user},
+    settings,
 };
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -149,6 +150,7 @@ impl BrowserPrincipal {
         db: &DatabaseConnection,
         slug: &str,
         request_id: String,
+        settings: Option<&serde_json::Value>,
     ) -> Result<TenantTransaction, AuthenticationError> {
         let lookup = transaction(db).await?;
         validate(&lookup, &self.identity, false).await?;
@@ -168,6 +170,7 @@ impl BrowserPrincipal {
                 household_id: selected.id,
                 request_id,
             },
+            settings,
         )
         .await
         .map_err(super::resource::operation_error)?;
@@ -228,13 +231,14 @@ async fn validate(
 pub async fn authenticate(
     db: &DatabaseConnection,
     session: &Session<SessionPgPool>,
+    settings: Option<&serde_json::Value>,
 ) -> Result<BrowserPrincipal, AuthenticationError> {
     let identity = session
         .get::<Identity>("identity")
         .ok_or(AuthenticationError::Unauthenticated)?;
     let transaction = transaction(db).await?;
     let account = validate(&transaction, &identity, true).await?;
-    let time_zone = super::time_zone::preferred(&account.preferences)?;
+    let time_zone = super::time_zone::preferred(&account.preferences, settings)?;
     transaction.commit().await.map_err(unavailable)?;
     Ok(BrowserPrincipal {
         provenance: CredentialProvenance {
@@ -518,31 +522,24 @@ pub async fn layers(
         .settings
         .as_ref()
         .map(|settings| &settings["browser_session"]);
-    let encoded = match std::env::var("MEDTRACKER_SESSION_KEY") {
-        Ok(value) => value,
-        Err(std::env::VarError::NotPresent) => {
-            match settings.and_then(|settings| settings["key"].as_str()) {
-                Some(key) => key.to_owned(),
-                None if matches!(ctx.environment, loco_rs::environment::Environment::Test) => {
-                    return Ok(None);
-                }
-                None => return Err(AuthenticationError::Unavailable),
-            }
+    let encoded = match settings.and_then(|settings| settings["key"].as_str()) {
+        Some(key) => key.to_owned(),
+        None if matches!(ctx.environment, loco_rs::environment::Environment::Test) => {
+            return Ok(None);
         }
-        Err(_) => return Err(AuthenticationError::Unavailable),
+        None => return Err(AuthenticationError::Unavailable),
     };
     let bytes = STANDARD.decode(&encoded).map_err(unavailable)?;
     if bytes.len() != 64 {
         return Err(AuthenticationError::Unavailable);
     }
     let key = axum_session::Key::from(&bytes);
-    let secure = match std::env::var("MEDTRACKER_COOKIE_SECURE").as_deref() {
-        Ok("false") => false,
-        Ok("true") => true,
-        Err(std::env::VarError::NotPresent) => settings
-            .and_then(|settings| settings["secure"].as_bool())
-            .unwrap_or(true),
-        _ => return Err(AuthenticationError::Unavailable),
+    let secure = match settings.and_then(|settings| settings.get("secure")) {
+        Some(value) => match settings::truthy(value) {
+            Some(value) => value,
+            None => return Err(AuthenticationError::Unavailable),
+        },
+        None => true,
     };
     if matches!(
         ctx.environment,
@@ -551,7 +548,7 @@ pub async fn layers(
     {
         return Err(AuthenticationError::Unavailable);
     }
-    let policy = Lifetime::from_environment().map_err(unavailable)?;
+    let policy = Lifetime::from_settings(ctx.config.settings.as_ref()).map_err(unavailable)?;
     db.query_one_raw(Statement::from_string(
         DbBackend::Postgres,
         "SELECT id, expires, session FROM public.browser_sessions LIMIT 0",

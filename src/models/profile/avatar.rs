@@ -156,26 +156,18 @@ async fn delete_unretained(
 
 impl Storage {
     pub fn configured(ctx: &AppContext) -> Result<Self, OperationError> {
-        let endpoint =
-            std::env::var("ACTIVE_STORAGE_S3_ENDPOINT").map_err(|_| OperationError::Unavailable)?;
-        let bucket = ctx
-            .config
-            .settings
-            .as_ref()
-            .and_then(|settings| settings.get("avatar_storage"))
-            .and_then(|avatar| avatar.get("bucket"))
-            .and_then(Value::as_str)
-            .map(str::to_owned)
-            .or_else(|| std::env::var("ACTIVE_STORAGE_S3_BUCKET").ok())
-            .ok_or(OperationError::Unavailable)?;
-        let region =
-            std::env::var("ACTIVE_STORAGE_S3_REGION").map_err(|_| OperationError::Unavailable)?;
-        let access_key = std::env::var("ACTIVE_STORAGE_S3_ACCESS_KEY_ID")
-            .map_err(|_| OperationError::Unavailable)?;
-        let secret_key = std::env::var("ACTIVE_STORAGE_S3_SECRET_ACCESS_KEY")
-            .map_err(|_| OperationError::Unavailable)?;
-        let path_style = std::env::var("ACTIVE_STORAGE_S3_FORCE_PATH_STYLE")
-            .map_or(true, |value| value == "true");
+        let settings = ctx.config.settings.as_ref();
+        let text = |key: &str| {
+            crate::models::settings::text(settings, &["avatar_storage", key]).map(str::to_owned)
+        };
+        let endpoint = text("endpoint").ok_or(OperationError::Unavailable)?;
+        let bucket = text("bucket").ok_or(OperationError::Unavailable)?;
+        let region = text("region").ok_or(OperationError::Unavailable)?;
+        let access_key = text("access_key_id").ok_or(OperationError::Unavailable)?;
+        let secret_key = text("secret_access_key").ok_or(OperationError::Unavailable)?;
+        let path_style =
+            crate::models::settings::flag(settings, &["avatar_storage", "force_path_style"])
+                .unwrap_or(true);
         if bucket.is_empty() || region.is_empty() || access_key.is_empty() || secret_key.is_empty()
         {
             return Err(OperationError::Unavailable);

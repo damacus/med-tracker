@@ -55,6 +55,23 @@ conventions. Consult it when working on the root Loco app; deliberate
 departures from it are catalogued in
 [#2575](https://github.com/damacus/med-tracker/issues/2575).
 
+New API request acceptance uses Loco `TestServer` over the fully booted
+`App::boot` router, reusing template-cloned PostgreSQL and restricted-role
+fixtures. The ConnectInfo-capable transport exercises the better-auth router,
+route layers and HTTP boundary where the client socket address matters. Do not
+enable global truncation or replace runtime credentials with administrator
+connections. Existing socket tests remain valid; retain their transport-specific
+coverage. The Loco testing feature also supplies `EmailSender::stub()` and
+`deliveries()` for mail-outbox tests.
+
+Runtime configuration is read through `ctx.config.settings`, never through
+`std::env` inside `src/`. Declare each variable in the `settings:` block of
+`config/*.yaml` via `get_env`; `access::begin` threads it into
+`TenantTransaction` and controllers pass `ctx.config.settings.as_ref()` down.
+An empty `get_env` default renders as YAML `null`, and
+`models::settings::node()` resolves `null` as absent, so an unset variable
+never overrides a stored `app_settings` value.
+
 ## Rails rollback stack
 
 - Ruby 4.0.6

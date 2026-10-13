@@ -99,12 +99,16 @@ async fn person_carer_nonmanager_cannot_restore_or_assign_ineligible_existing_ac
             .execute_unprepared(mutation)
             .await
             .unwrap();
-        let tenant = access::begin(&app.fixture.runtime, &scope).await.unwrap();
+        let tenant = access::begin(&app.fixture.runtime, &scope, None)
+            .await
+            .unwrap();
         let result = person_carers::assign(&tenant, 73002, &draft, &target, &provenance).await;
         tenant.rollback().await.unwrap();
         assert!(result.is_err(), "{mutation}");
     }
-    let tenant = access::begin(&app.fixture.runtime, &scope).await.unwrap();
+    let tenant = access::begin(&app.fixture.runtime, &scope, None)
+        .await
+        .unwrap();
     assert!(
         person_carers::change(&tenant, 73002, 86001, true, "", &provenance)
             .await
@@ -147,7 +151,9 @@ async fn person_carer_nonmanager_ignores_forged_role_and_rejects_unmanaged_or_ad
         ("carer_id".into(), "73001".into()),
     ]);
     for person_id in [73001, 73003, 999999] {
-        let tenant = access::begin(&app.fixture.runtime, &scope).await.unwrap();
+        let tenant = access::begin(&app.fixture.runtime, &scope, None)
+            .await
+            .unwrap();
         assert!(
             person_carers::assign(&tenant, person_id, &draft, &target, &provenance)
                 .await
@@ -155,7 +161,9 @@ async fn person_carer_nonmanager_ignores_forged_role_and_rejects_unmanaged_or_ad
         );
         tenant.rollback().await.unwrap();
     }
-    let tenant = access::begin(&app.fixture.runtime, &scope).await.unwrap();
+    let tenant = access::begin(&app.fixture.runtime, &scope, None)
+        .await
+        .unwrap();
     assert!(matches!(
         person_carers::assign(&tenant, 73002, &draft, &target, &provenance)
             .await
@@ -208,15 +216,21 @@ async fn person_carer_removal_withdraws_real_health_access_without_removing_manu
         ("carer_id".into(), "73004".into()),
         ("relationship_type".into(), "parent".into()),
     ]);
-    let tenant = access::begin(&app.fixture.runtime, &manager).await.unwrap();
+    let tenant = access::begin(&app.fixture.runtime, &manager, None)
+        .await
+        .unwrap();
     person_carers::assign(&tenant, 73002, &draft, &target, &provenance)
         .await
         .unwrap();
     tenant.commit().await.unwrap();
-    let tenant = access::begin(&app.fixture.runtime, &carer).await.unwrap();
+    let tenant = access::begin(&app.fixture.runtime, &carer, None)
+        .await
+        .unwrap();
     assert!(browser::collection(&tenant, 73002).await.is_ok());
     tenant.commit().await.unwrap();
-    let tenant = access::begin(&app.fixture.runtime, &manager).await.unwrap();
+    let tenant = access::begin(&app.fixture.runtime, &manager, None)
+        .await
+        .unwrap();
     let page = person_carers::page(&tenant, 73002).await.unwrap();
     let relation = &page["records"][0];
     person_carers::change(
@@ -230,7 +244,9 @@ async fn person_carer_removal_withdraws_real_health_access_without_removing_manu
     .await
     .unwrap();
     tenant.commit().await.unwrap();
-    let tenant = access::begin(&app.fixture.runtime, &carer).await.unwrap();
+    let tenant = access::begin(&app.fixture.runtime, &carer, None)
+        .await
+        .unwrap();
     assert!(browser::collection(&tenant, 73002).await.is_err());
     assert!(
         browser::save(
@@ -248,7 +264,9 @@ async fn person_carer_removal_withdraws_real_health_access_without_removing_manu
         .is_err()
     );
     tenant.rollback().await.unwrap();
-    let tenant = access::begin(&app.fixture.runtime, &manager).await.unwrap();
+    let tenant = access::begin(&app.fixture.runtime, &manager, None)
+        .await
+        .unwrap();
     assert!(browser::collection(&tenant, 73002).await.is_ok());
     tenant.commit().await.unwrap();
     app.close().await;
@@ -282,7 +300,9 @@ async fn person_carer_pending_invitation_cannot_attach_a_dependent_its_original_
     let target = url::Url::parse("http://127.0.0.1/invitations/accept").unwrap();
     let draft =
         std::collections::HashMap::from([("email".into(), "pending-parent@example.test".into())]);
-    let tenant = access::begin(&app.fixture.runtime, &scope).await.unwrap();
+    let tenant = access::begin(&app.fixture.runtime, &scope, None)
+        .await
+        .unwrap();
     let result = person_carers::assign(&tenant, 73002, &draft, &target, &provenance).await;
     tenant.rollback().await.unwrap();
     assert!(

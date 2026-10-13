@@ -47,20 +47,25 @@ pub(super) async fn find_row(
     secret: &Arc<[u8]>,
     source: &Source,
     key_value: &str,
+    settings: Option<&serde_json::Value>,
 ) -> Result<Option<Occurrence>, ApiError> {
     let Some((date, position)) = decode_key(secret, source, key_value) else {
         return Ok(None);
     };
-    Ok(projected(db, source, date, date)
+    Ok(projected(db, source, date, date, settings)
         .await?
         .into_iter()
         .find(|row| row.window_start == date && row.position == position))
 }
 
-pub(super) fn actionable(source: &Source, row: &Occurrence) -> bool {
+pub(super) fn actionable(
+    source: &Source,
+    row: &Occurrence,
+    settings: Option<&serde_json::Value>,
+) -> bool {
     let due_time = row
         .scheduled_at
-        .unwrap_or_else(|| local_midnight(row.window_start));
+        .unwrap_or_else(|| local_midnight(row.window_start, settings));
     row.expected
         && row.legacy_take_id.is_none()
         && due_time <= Utc::now().naive_utc()

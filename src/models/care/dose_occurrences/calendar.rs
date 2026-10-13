@@ -26,21 +26,18 @@ pub(crate) async fn with_dashboard_timezone<F: std::future::Future>(
     DASHBOARD_TIMEZONE.scope(timezone, future).await
 }
 
-fn zone() -> chrono_tz::Tz {
+fn zone(settings: Option<&serde_json::Value>) -> chrono_tz::Tz {
     if let Ok(timezone) = DASHBOARD_TIMEZONE.try_with(|timezone| *timezone) {
         return timezone;
     }
-    std::env::var("TZ")
-        .ok()
-        .and_then(|value| value.parse().ok())
-        .unwrap_or(chrono_tz::UTC)
+    crate::models::care::doses::app_zone(settings)
 }
 
-pub(super) fn local_date(value: NaiveDateTime) -> NaiveDate {
-    value.and_utc().with_timezone(&zone()).date_naive()
+pub(super) fn local_date(value: NaiveDateTime, settings: Option<&serde_json::Value>) -> NaiveDate {
+    value.and_utc().with_timezone(&zone(settings)).date_naive()
 }
-pub(super) fn current_zone() -> chrono_tz::Tz {
-    zone()
+pub(super) fn current_zone(settings: Option<&serde_json::Value>) -> chrono_tz::Tz {
+    zone(settings)
 }
 
 pub(super) fn cycle_bounds(value: NaiveDate, cycle: i32) -> (NaiveDate, NaiveDate) {
@@ -62,8 +59,12 @@ pub(super) fn cycle_bounds(value: NaiveDate, cycle: i32) -> (NaiveDate, NaiveDat
     }
 }
 
-fn scheduled_time(date: NaiveDate, value: &str) -> Option<NaiveDateTime> {
-    scheduled_time_in_zone(date, value, zone())
+fn scheduled_time(
+    date: NaiveDate,
+    value: &str,
+    settings: Option<&serde_json::Value>,
+) -> Option<NaiveDateTime> {
+    scheduled_time_in_zone(date, value, zone(settings))
 }
 
 pub(crate) fn scheduled_time_in_zone(
@@ -97,20 +98,31 @@ pub(crate) fn scheduled_time_in_zone(
         .map(|value| value.with_timezone(&Utc).naive_utc())
 }
 
-pub(super) fn local_midnight(date: NaiveDate) -> NaiveDateTime {
-    zone()
+pub(super) fn local_midnight(
+    date: NaiveDate,
+    settings: Option<&serde_json::Value>,
+) -> NaiveDateTime {
+    zone(settings)
         .from_local_datetime(&date.and_hms_opt(0, 0, 0).unwrap())
         .earliest()
         .map(|value| value.with_timezone(&Utc).naive_utc())
         .unwrap_or_else(|| date.and_hms_opt(0, 0, 0).unwrap())
 }
 
-pub(super) fn config_times(config: &Value, date: NaiveDate) -> Vec<NaiveDateTime> {
+pub(super) fn config_times(
+    config: &Value,
+    date: NaiveDate,
+    settings: Option<&serde_json::Value>,
+) -> Vec<NaiveDateTime> {
     config
         .get("times")
         .and_then(Value::as_array)
         .into_iter()
         .flatten()
-        .filter_map(|value| value.as_str().and_then(|value| scheduled_time(date, value)))
+        .filter_map(|value| {
+            value
+                .as_str()
+                .and_then(|value| scheduled_time(date, value, settings))
+        })
         .collect()
 }

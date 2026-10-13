@@ -73,7 +73,7 @@ async fn plans(
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::NotFound)?;
-    let zone = crate::models::identity::time_zone::preferred(&owner.preferences)
+    let zone = crate::models::identity::time_zone::preferred(&owner.preferences, tenant.settings())
         .map_err(|_| OperationError::Unavailable)?;
     let local = now.with_timezone(&zone);
     let earliest_due = now - chrono::Duration::hours(1);
@@ -244,7 +244,7 @@ async fn reserve(
     now: DateTime<Utc>,
     intent: &Intent,
 ) -> Result<Option<i64>, OperationError> {
-    let tenant = access::begin(&ctx.db, scope).await?;
+    let tenant = access::begin(&ctx.db, scope, ctx.config.settings.as_ref()).await?;
     push_subscriptions::lock_account(&tenant).await?;
     if !plans(&tenant, now.max(Utc::now()))
         .await?
@@ -290,7 +290,7 @@ pub async fn deliver_account(
     let Some(_service) = ctx.shared_store.get::<Service>() else {
         return Ok(0);
     };
-    let tenant = access::begin(&ctx.db, scope).await?;
+    let tenant = access::begin(&ctx.db, scope, ctx.config.settings.as_ref()).await?;
     let intents = plans(&tenant, now).await?;
     tenant.commit().await?;
     let mut delivered = 0;

@@ -168,7 +168,12 @@ impl<'a> Page<'a> {
         error: &OperationError,
     ) -> Response {
         let tenant = match principal
-            .begin_household_slug(&self.ctx.db, self.slug, self.request_id.clone())
+            .begin_household_slug(
+                &self.ctx.db,
+                self.slug,
+                self.request_id.clone(),
+                self.ctx.config.settings.as_ref(),
+            )
             .await
         {
             Ok(value) => value,

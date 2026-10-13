@@ -113,8 +113,10 @@ impl Filters {
     }
 }
 
-fn today_in_app_zone() -> NaiveDate {
-    Utc::now().with_timezone(&doses::app_zone()).date_naive()
+fn today_in_app_zone(settings: Option<&serde_json::Value>) -> NaiveDate {
+    Utc::now()
+        .with_timezone(&doses::app_zone(settings))
+        .date_naive()
 }
 
 pub async fn index(
@@ -141,7 +143,7 @@ pub async fn index(
         .all(tenant.transaction())
         .await?;
     let ids: Vec<i64> = people.iter().map(|row| row.id).collect();
-    refresh_many(tenant, &ids, today_in_app_zone()).await?;
+    refresh_many(tenant, &ids, today_in_app_zone(tenant.settings())).await?;
     let mut query = review_prompt::Entity::find()
         .filter(review_prompt::Column::HouseholdId.eq(tenant.scope().household_id))
         .filter(

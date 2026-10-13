@@ -420,7 +420,9 @@ impl Page<'_> {
             crate::models::care::people::age(
                 birthday,
                 chrono::Utc::now()
-                    .with_timezone(&crate::models::care::doses::app_zone())
+                    .with_timezone(&crate::models::care::doses::app_zone(
+                        ctx.config.settings.as_ref(),
+                    ))
                     .date_naive(),
             )
         }));

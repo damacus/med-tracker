@@ -30,6 +30,80 @@ This slice is about programmatic interfaces: APIs used by software, not the app 
 
 A1–A3 below retain the detailed API implementation and acceptance checks.
 
+## s05-i01 execution agreement — 13 October 2026
+
+Complete all 119 current OpenAPI v1 operations, including portable imports and AI
+suggestions. Browser/native journeys, live-provider acceptance, FHIR/SMART, MCP
+and production cutover remain separate. Preserve the authoritative wire contracts
+and approved migration differences; historical legacy-Rust acceptance is not Loco
+evidence.
+
+Use `rust-testing` and the upstream Loco guide vendored in `rust/AGENTS.md`.
+Demonstrate failing behavioural tests before production corrections. Keep pure
+logic tests fast, async tests deterministic, and integration tests on real restricted
+database roles. Use Loco testing facilities over the fully booted router for new
+request acceptance, retaining owned PostgreSQL 18/template fixtures and the
+documented departures in #2592. Do not enable global truncation or replace RLS
+credentials with administrator connections. Retain socket tests where transport
+behaviour specifically requires them. Coordinate coverage reporting with #2583;
+coverage numbers do not replace operation-level assertions.
+
+The coordinator owns integration, shared-file allocation, evidence and publication.
+One Sol API writer owns each active area's implementation and regression tests.
+One verifier owns builds, disposable resources and live job handles. Devin SWE-2
+Max reviews each PR and resumes its review for corrections. Transfer overlapping
+paths from existing owners before editing.
+
+Delivery uses `gh stack`, rooted on refreshed `main`, with branches named
+`codex/s05-i01-*`. Each PR targets its predecessor. The hard limit is 2,000 added
+plus deleted lines against that immediate base, including tests, documentation
+and generated changes; aim below 1,500 before review. Split at complete operation
+or behaviour boundaries, keeping fixes with tests and every cumulative branch
+passing. Correct lower-layer defects there and propagate them upwards.
+
+| Order | Area | Operations |
+| --- | --- | ---: |
+| 1 | Operation inventory and Loco test integration | — |
+| 2 | Shared errors, request IDs, conditional headers, replay and rate limits | — |
+| 3 | Capability discovery and account sessions | 5 |
+| 4 | People, profile, avatar and UI capabilities | 13 |
+| 5 | Household administration | 14 |
+| 6 | Invitations | 5 |
+| 7 | Locations and memberships | 8 |
+| 8 | Medication inventory and dosage options | 15 |
+| 9 | Schedules and person-medication assignments | 15 |
+| 10 | Dose occurrences and medication takes | 10 |
+| 11 | Pause periods and health events | 8 |
+| 12 | Notifications and device subscriptions | 8 |
+| 13 | Review prompts and JSON/PDF reports | 8 |
+| 14 | Exports, imports and mobile snapshot | 5 |
+| 15 | Synchronisation | 3 |
+| 16 | Medication lookup and AI suggestions | 2 |
+
+For each operation retain method/path, schemas, security, statuses, headers,
+handler, executed assertions, candidate revision and gaps. Compare the document
+with registered Loco routes, then exercise behaviour. Route presence, a test file
+or historical evidence alone earns no completed coverage. Reconcile extra routes
+without deleting them automatically.
+
+`task slice:contracts GROUP=api-v1` must dispatch root Loco tests through existing
+owned-resource helpers, reject unknown groups and fail final incomplete coverage.
+Focused area selectors support red/green development. Verify middleware, RLS,
+isolation and cleanup in the harness change. Preserve documented success/error
+envelopes, permissions for each credential class, replay, concurrency, audit/sync
+effects and durable queue outcomes. Use deterministic external service doubles.
+
+Every PR needs focused evidence, resolved Devin findings, applicable repository
+gates and exact-head hosted checks. Final acceptance also needs cumulative
+contracts and `task ci`, coverage evidence, generated Swift/Kotlin checks and
+pinned Android/iOS API checks in isolated native checkouts. Do not silently update
+native pins. Record PR/base/head, line count, owners, review IDs, jobs and results
+in `../progress.md`; update the existing reports from the same evidence.
+
+Stop dependent work for unresolved contract decisions, ownership collisions,
+failed required checks, unavailable review or oversized PRs. Acceptance,
+publication, merge and deployment are separate; no merge or deployment is granted.
+
 ## Review focus
 
 Malformed requests preserve status/envelope (A1). Stale tokens and wrong households fail all transports
@@ -38,16 +112,20 @@ Malformed requests preserve status/envelope (A1). Stale tokens and wrong househo
 
 ### A1: Complete API v1 surface and native contracts
 
-**Files:** Modify care API controllers; create `src/controllers/api/{profile,devices,admin,platform}.rs`,
-`src/views/api.rs`, `tests/api_v1.rs`, `scripts/migration/loco-contracts.mjs`; modify `Taskfile.yml`.
-**Interfaces:** `slice:contracts GROUP=<group>` starts owned Loco/fixtures and runs the retained black-box
-cases. `api::error_response(OperationError, request_id: &str) -> Response` preserves documented details,
-request IDs, envelopes, pagination, ETags and preconditions without leaking SQL/internal failures.
+**Files:** Extend the existing `src/controllers/api/` controllers, shared domain models and
+explicit response views as evidence requires. New request acceptance lives in `tests/requests/`;
+`scripts/migration/run-contracts.mjs` dispatches through the existing owned-resource test runner.
+The operation inventory and registered-route snapshot live beside the request tests.
+**Interfaces:** `slice:contracts GROUP=api-v1` runs cumulative acceptance; focused area groups
+support development. Reuse existing error rendering and narrow contract adapters to preserve
+documented details, request IDs, envelopes, pagination, ETags and preconditions without leaking
+SQL or internal failures.
 
 - [ ] Add route-inventory assertions against every authoritative OpenAPI operation; test absent/extra
   fields, malformed JSON, stale preconditions and permissions. Assert `unimplemented_operations == []`,
   `unauthorised_status == expected_status`, `response_schema_valid == true`.
-- [ ] Run `rtk task slice:test TARGET=api_v1`; expected missing route/envelope failures.
+- [ ] Run `rtk task slice:contracts GROUP=api-v1-inventory` for the initial harness;
+  run focused area selectors to demonstrate each missing behaviour before correction.
 - [ ] Implement remaining read/write/profile/device/admin/platform routes with standard `Routes`;
   preserve app-token/session revocation and support-access expiry. Build the Loco-targeted contract Task.
 - [ ] Run `rtk task slice:contracts GROUP=api-v1`, root CI and repository-native pinned-client generation

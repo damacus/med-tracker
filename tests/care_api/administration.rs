@@ -12,12 +12,16 @@ async fn household_relationship_repeat_preserves_timestamp_records_and_permissio
         household_id: 72001,
         request_id: "synthetic-relationship-repeat".into(),
     };
-    let tenant = access::begin(&app.fixture.runtime, &scope).await.unwrap();
+    let tenant = access::begin(&app.fixture.runtime, &scope, None)
+        .await
+        .unwrap();
     let first = delegation::assign(&tenant, 73001, 73001, "self", None)
         .await
         .unwrap();
     tenant.commit().await.unwrap();
-    let tenant = access::begin(&app.fixture.runtime, &scope).await.unwrap();
+    let tenant = access::begin(&app.fixture.runtime, &scope, None)
+        .await
+        .unwrap();
     let repeated = delegation::assign(&tenant, 73001, 73001, "self", None)
         .await
         .unwrap();
@@ -915,7 +919,9 @@ async fn household_relationship_removal_preserves_unrelated_grant_without_veto()
         household_id: 72001,
         request_id: "synthetic-carer-removal-manual-grant".into(),
     };
-    let tenant = access::begin(&app.fixture.runtime, &scope).await.unwrap();
+    let tenant = access::begin(&app.fixture.runtime, &scope, None)
+        .await
+        .unwrap();
     let result = delegation::deactivate(&tenant, 86001, None).await;
     let success = result.is_ok();
     if success {

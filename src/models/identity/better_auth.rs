@@ -62,7 +62,7 @@ pub async fn build(
     mut config: AuthConfig,
     store: Arc<ClinicalStore>,
 ) -> AuthResult<IdentityService> {
-    let provider = oidc::Provider::configured(&config.base_url)?;
+    let provider = oidc::Provider::configured(&config.base_url, store.settings())?;
     let mut origin = Url::parse(&config.base_url)
         .map_err(|_| AuthError::internal("Invalid configured identity origin"))?;
     origin.set_path("/");

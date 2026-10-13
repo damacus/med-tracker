@@ -156,30 +156,12 @@ fn classify_response(status: u16, retry_after: Option<&str>, now: DateTime<Utc>)
 
 impl Service {
     pub fn from_context(ctx: &loco_rs::app::AppContext) -> Result<Option<Self>, &'static str> {
-        #[derive(serde::Deserialize)]
-        #[serde(deny_unknown_fields)]
-        struct Configuration {
-            private_key: String,
-            subject: String,
-        }
-        if let Some(value) = ctx
-            .config
-            .settings
-            .as_ref()
-            .and_then(|settings| settings.get("browser_push"))
-        {
-            let configuration: Configuration = serde_json::from_value(value.clone())
-                .map_err(|_| "Web Push configuration is invalid")?;
-            return Self::configured(configuration.private_key, configuration.subject).map(Some);
-        }
-        Self::from_environment()
-    }
-
-    pub fn from_environment() -> Result<Option<Self>, &'static str> {
-        match (
-            std::env::var("MEDTRACKER_WEB_PUSH_PRIVATE_KEY").ok(),
-            std::env::var("MEDTRACKER_WEB_PUSH_SUBJECT").ok(),
-        ) {
+        let settings = ctx.config.settings.as_ref();
+        let private_key = crate::models::settings::text(settings, &["browser_push", "private_key"])
+            .map(str::to_owned);
+        let subject = crate::models::settings::text(settings, &["browser_push", "subject"])
+            .map(str::to_owned);
+        match (private_key, subject) {
             (None, None) => Ok(None),
             (Some(key), Some(subject)) => Self::configured(key, subject).map(Some),
             _ => Err("Web Push requires both a private key and contact subject"),

@@ -30,6 +30,7 @@ async fn signup_create_saves_canonical_account_and_queued_verification_together(
         &input("signup-owner@example.test"),
         "https://app.example.test",
         Some("signup-canonical"),
+        crate::template::test_settings().as_ref(),
     )
     .await
     .unwrap();
@@ -61,6 +62,7 @@ async fn signup_create_queue_failure_rolls_back_account_household_and_verificati
             &input("rolled-back-owner@example.test"),
             "https://app.example.test",
             Some("signup-rollback"),
+            crate::template::test_settings().as_ref(),
         )
         .await
         .is_err()
