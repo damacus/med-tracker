@@ -156,7 +156,8 @@ test('signing out closes notifications already displayed by this browser', async
   });
   await openNotifications(page);
   closed = 0;
-  await page.locator('form[action="/logout"]').first().evaluate(form => form.requestSubmit());
+  await page.locator('[data-app-account]').click();
+  await page.getByRole('dialog', { name: 'My Account', exact: true }).getByRole('button', { name: 'Sign Out', exact: true }).click();
   await page.waitForURL('/login');
   expect(closed).toBe(1);
 });
