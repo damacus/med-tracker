@@ -9,7 +9,7 @@ export async function runBrowser(args, own = withOwnedDatabase, run = execute) {
   const listing = JSON.parse(await run('npx', [...arguments_, '--list', '--reporter=json'], { capture: true }));
   const suites = JSON.stringify(listing.suites);
   const avatar = suites.includes('profile-avatar.spec.mjs');
-  const scanner = suites.includes('care-scanner.spec.mjs');
+  const scanner = suites.includes('care-scanner.spec.mjs') || suites.includes('nhs-dmd-import.spec.mjs');
   await own(async (url, provision, ownership) => {
     await browserDatabasePool(url, provision, ownership, (name, variables) => run('task', [name, ...variables], { capture: true }));
     const scannerEnvironment = scanner ? await ownership.storage() : {};

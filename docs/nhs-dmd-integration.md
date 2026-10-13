@@ -134,6 +134,43 @@ task rails:dev:import-dmd-release RELEASE_DIR=storage/nhs_dmd/releases/current
 Automated tests stub remote services. A green test suite does not prove that
 deployment credentials or NHS access are valid.
 
+## Measure local release imports
+
+Loco emits `nhs_dmd_import_timing` tracing events with numeric `run_id` and
+`duration_ms`, plus `phase` and `outcome`. Phases cover extraction, counting,
+AMPP, supplementary and GTIN parsing, persistence and commit. `total` measures
+the core import from archive extraction through commit and temporary-directory
+cleanup. It excludes queue delay, upload, archive retrieval and worker cleanup.
+Early returns emit a failure outcome for the active phase and core total.
+
+The macOS comparison harness can measure both runtimes sequentially against the
+same checksum-pinned release, using separate empty catalogues. Prepare the
+current binaries first with `task ci:prepare`, recording its elapsed time
+separately. Then set `NHS_DMD_RELEASE_PATH` and an immutable
+`RAILS_ROLLBACK_IMAGE` digest and run:
+
+```fish
+task --taskfile scripts/migration/nhs-dmd-compare.Taskfile.yml benchmark
+```
+
+Before each import the harness requires a sampled quiet minute: at least 80%
+CPU idle, one-minute load no greater than the logical CPU count, normal memory
+pressure, no new swap-outs and no detected competing compiler or test process.
+It waits at most 15 minutes for each gate. It does not stop other workloads.
+Review the recorded samples during each import before accepting the conditions.
+
+The printed evidence directory contains catalogue snapshots and row comparison,
+runtime timing JSON, command durations, host resource samples, binary hashes and
+source identity. Loco timings separate setup, upload, core import, outer worker,
+export and teardown; Rails separates script setup, core import and export.
+Command wall time additionally includes process startup. Foundation task timings
+are partial setup detail; they exclude storage initialisation and final cleanup.
+
+This harness uses native, unoptimised Loco test binaries and Rails in the pinned
+Docker image, in fixed Loco-then-Rails order. Empty databases do not imply cold
+filesystem caches. Report those conditions with the measured results; a single
+run does not establish production performance.
+
 ## Product guidance and interactions
 
 Some source records include patient-information or product-characteristic

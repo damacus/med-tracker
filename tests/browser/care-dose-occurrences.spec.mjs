@@ -125,10 +125,10 @@ test('review: an open confirmation accepts a later elapsed time and rejects futu
   const takenAt = dialog.getByLabel('Taken at', { exact: true });
   const initial = Date.parse(`${await takenAt.inputValue()}Z`);
   await expect.poll(() => Date.now()).toBeGreaterThan(initial + 2000);
-  const elapsed = new Date(Date.now() - 100).toISOString().slice(0, 19);
+  const elapsed = new Date(Date.now() - 100).toISOString().slice(0, 19).replace(/:00$/, '');
   await takenAt.fill(elapsed);
   expect(await takenAt.evaluate(element => element.checkValidity())).toBe(true);
-  await takenAt.fill(new Date(Date.now() + 86400000).toISOString().slice(0, 19));
+  await takenAt.fill(new Date(Date.now() + 86400000).toISOString().slice(0, 19).replace(/:00$/, ''));
   const invalid = page.waitForResponse(response => response.request().method() === 'POST');
   await submitOutcome(row, 'take');
   expect((await invalid).status()).toBe(422);
