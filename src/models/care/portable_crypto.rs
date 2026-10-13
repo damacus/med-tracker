@@ -152,3 +152,146 @@ pub fn decrypt(envelope: &Value, passphrase: &str) -> Result<Value, PortableCryp
     }
     serde_json::from_str(&plaintext).map_err(|_| PortableCryptoError::InvalidEnvelope)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use proptest::prelude::*;
+
+    #[test]
+    fn round_trip_restores_the_original_payload() {
+        let payload = json!({
+            "member": "Alex Example",
+            "doses": [{"at": "08:00", "amount": 2}, {"at": "20:00", "amount": 1}],
+            "notes": "naïve ünïcode ✓",
+            "nested": {"list": [1, 2.5, true, null]},
+        });
+        let envelope = encrypt(&payload, "correct horse battery staple").unwrap();
+        assert_eq!(
+            decrypt(&envelope, "correct horse battery staple").unwrap(),
+            payload
+        );
+    }
+
+    #[test]
+    fn wrong_passphrase_fails_decryption() {
+        let envelope = encrypt(&json!({"dose": 1}), "right").unwrap();
+        assert_eq!(
+            decrypt(&envelope, "wrong"),
+            Err(PortableCryptoError::InvalidEnvelope)
+        );
+    }
+
+    #[test]
+    fn empty_passphrase_is_rejected() {
+        assert_eq!(
+            encrypt(&json!({"dose": 1}), ""),
+            Err(PortableCryptoError::InvalidEnvelope)
+        );
+        let envelope = encrypt(&json!({"dose": 1}), "right").unwrap();
+        assert_eq!(
+            decrypt(&envelope, ""),
+            Err(PortableCryptoError::InvalidEnvelope)
+        );
+    }
+
+    #[test]
+    fn tampered_ciphertext_is_rejected() {
+        let envelope = encrypt(&json!({"dose": 1}), "pw").unwrap();
+        let ciphertext = envelope["ciphertext"].as_str().unwrap();
+        let mut tampered = envelope.clone();
+        tampered["ciphertext"] = Value::String(format!("A{ciphertext}"));
+        assert_eq!(
+            decrypt(&tampered, "pw"),
+            Err(PortableCryptoError::InvalidEnvelope)
+        );
+    }
+
+    #[test]
+    fn tampered_checksum_is_rejected() {
+        let mut envelope = encrypt(&json!({"dose": 1}), "pw").unwrap();
+        envelope["checksum"] = Value::String("0".repeat(64));
+        assert_eq!(
+            decrypt(&envelope, "pw"),
+            Err(PortableCryptoError::InvalidEnvelope)
+        );
+    }
+
+    #[test]
+    fn rejects_envelopes_with_wrong_markers() {
+        for (key, value) in [
+            ("format", "medtracker.portable.encrypted.v0"),
+            ("cipher", "aes-128-gcm"),
+            ("kdf", "argon2"),
+        ] {
+            let mut envelope = encrypt(&json!({"dose": 1}), "pw").unwrap();
+            envelope[key] = json!(value);
+            assert_eq!(
+                decrypt(&envelope, "pw"),
+                Err(PortableCryptoError::InvalidEnvelope),
+                "{key}={value}"
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_malformed_envelopes() {
+        let valid = encrypt(&json!({"dose": 1}), "pw").unwrap();
+        for key in ["salt", "checksum", "ciphertext", "encrypted_at"] {
+            let mut envelope = valid.clone();
+            envelope.as_object_mut().unwrap().remove(key);
+            assert_eq!(
+                decrypt(&envelope, "pw"),
+                Err(PortableCryptoError::InvalidEnvelope),
+                "missing {key}"
+            );
+        }
+        let mut extra = valid.clone();
+        extra["extra"] = json!(true);
+        assert_eq!(
+            decrypt(&extra, "pw"),
+            Err(PortableCryptoError::InvalidEnvelope)
+        );
+        let mut bad_salt = valid.clone();
+        bad_salt["salt"] = json!("not-hex");
+        assert_eq!(
+            decrypt(&bad_salt, "pw"),
+            Err(PortableCryptoError::InvalidEnvelope)
+        );
+        let mut bad_date = valid.clone();
+        bad_date["encrypted_at"] = json!("yesterday");
+        assert_eq!(
+            decrypt(&bad_date, "pw"),
+            Err(PortableCryptoError::InvalidEnvelope)
+        );
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(16))]
+
+        #[test]
+        fn round_trip_never_loses_string_payloads(payload in ".{0,512}") {
+            let envelope = encrypt(&Value::String(payload.clone()), "pw").unwrap();
+            prop_assert_eq!(
+                decrypt(&envelope, "pw").unwrap(),
+                Value::String(payload)
+            );
+        }
+
+        #[test]
+        fn decrypt_never_panics_on_arbitrary_envelopes(
+            ciphertext in "[a-zA-Z0-9+/=.-]{0,256}",
+        ) {
+            let envelope = json!({
+                "format": "medtracker.portable.encrypted.v1",
+                "encrypted_at": "2026-01-01T00:00:00Z",
+                "cipher": "aes-256-gcm",
+                "kdf": "pbkdf2_sha256",
+                "salt": "a".repeat(64),
+                "checksum": "b".repeat(64),
+                "ciphertext": ciphertext,
+            });
+            let _ = decrypt(&envelope, "pw");
+        }
+    }
+}

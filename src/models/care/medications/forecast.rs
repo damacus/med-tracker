@@ -196,3 +196,200 @@ fn days(remaining: Decimal, daily_rate: Decimal) -> Option<i64> {
     }
     (remaining / daily_rate).ceil().to_string().parse().ok()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn day(year: i32, month: u32, day: u32) -> NaiveDate {
+        NaiveDate::from_ymd_opt(year, month, day).unwrap()
+    }
+
+    fn schedule_model(config: Value) -> schedule::Model {
+        schedule::Model {
+            id: 1,
+            household_id: 1,
+            portable_id: "s1".to_string(),
+            person_id: 1,
+            medication_id: 1,
+            active: true,
+            retired_at: None,
+            start_date: Some(day(2026, 1, 1)),
+            end_date: Some(day(2026, 12, 31)),
+            max_daily_doses: None,
+            min_hours_between_doses: None,
+            source_dosage_option_id: None,
+            dose_cycle: None,
+            dose_amount: None,
+            dose_unit: None,
+            schedule_type: 1,
+            schedule_config: config,
+            frequency: None,
+            notes: None,
+            created_at: day(2026, 1, 1).and_hms_opt(0, 0, 0).unwrap(),
+            updated_at: day(2026, 1, 1).and_hms_opt(0, 0, 0).unwrap(),
+        }
+    }
+
+    fn medication_model(supply: Option<Decimal>, threshold: Decimal) -> medication::Model {
+        medication::Model {
+            id: 1,
+            household_id: 1,
+            created_at: day(2026, 1, 1).and_hms_opt(0, 0, 0).unwrap(),
+            created_by_membership_id: None,
+            portable_id: "m1".to_string(),
+            name: None,
+            friendly_name: None,
+            category: None,
+            description: None,
+            barcode: None,
+            dmd_code: None,
+            dmd_system: None,
+            dmd_concept_class: None,
+            dose_amount: None,
+            dose_unit: None,
+            current_supply: supply,
+            supply_at_last_restock: None,
+            reorder_threshold: threshold,
+            reorder_status: None,
+            order_supplier: None,
+            order_quantity: None,
+            expected_arrival_on: None,
+            ordered_at: None,
+            reordered_at: None,
+            warnings: None,
+            default_schedule_type: 1,
+            default_schedule_config: json!({}),
+            location_id: 1,
+            updated_at: day(2026, 1, 1).and_hms_opt(0, 0, 0).unwrap(),
+        }
+    }
+
+    #[test]
+    fn days_rounds_up_and_floors_at_zero() {
+        assert_eq!(days(Decimal::from(10), Decimal::from(3)), Some(4));
+        assert_eq!(days(Decimal::from(10), Decimal::from(2)), Some(5));
+        assert_eq!(days(Decimal::from(0), Decimal::from(3)), Some(0));
+        assert_eq!(days(Decimal::from(-5), Decimal::from(3)), Some(0));
+    }
+
+    #[test]
+    fn stock_quantity_counts_discrete_units_only() {
+        let two = Decimal::from(2);
+        for unit in [
+            "tablet", "capsule", "gummy", "sachet", "spray", "drop", "pad", "ml",
+        ] {
+            assert_eq!(stock_quantity(Some(two), Some(unit)), Some(two), "{unit}");
+        }
+        assert_eq!(stock_quantity(Some(two), Some("puff")), Some(Decimal::ONE));
+        assert_eq!(stock_quantity(Some(two), None), Some(Decimal::ONE));
+        assert_eq!(stock_quantity(None, Some("tablet")), None);
+    }
+
+    #[test]
+    fn forecast_is_empty_without_supply_or_consumption() {
+        let no_supply = medication_model(None, Decimal::from(10));
+        assert_eq!(
+            forecast(&no_supply, Decimal::from(2)).days_until_out_of_stock,
+            None
+        );
+        let stocked = medication_model(Some(Decimal::from(30)), Decimal::from(10));
+        assert_eq!(forecast(&stocked, Decimal::ZERO).days_until_low_stock, None);
+    }
+
+    #[test]
+    fn forecast_projects_low_and_out_of_stock_days() {
+        let stocked = medication_model(Some(Decimal::from(30)), Decimal::from(10));
+        let projected = forecast(&stocked, Decimal::from(2));
+        assert_eq!(projected.days_until_low_stock, Some(10));
+        assert_eq!(projected.days_until_out_of_stock, Some(15));
+        let below_threshold = medication_model(Some(Decimal::from(5)), Decimal::from(10));
+        let projected = forecast(&below_threshold, Decimal::from(2));
+        assert_eq!(projected.days_until_low_stock, Some(0));
+        assert_eq!(projected.days_until_out_of_stock, Some(3));
+    }
+
+    #[test]
+    fn schedule_rate_uses_cycle_length_and_config_amount() {
+        let mut schedule = schedule_model(json!({"amount": "2", "unit": "tablet"}));
+        schedule.max_daily_doses = Some(3);
+        schedule.dose_cycle = Some(1);
+        assert_eq!(
+            schedule_rate(&schedule, day(2026, 6, 1)),
+            Some(Decimal::from(3) / Decimal::from(7) * Decimal::from(2))
+        );
+        schedule.dose_cycle = Some(2);
+        assert_eq!(
+            schedule_rate(&schedule, day(2026, 6, 1)),
+            Some(Decimal::from(3) / Decimal::from_str("30.436875").unwrap() * Decimal::from(2))
+        );
+        schedule.dose_cycle = None;
+        assert_eq!(
+            schedule_rate(&schedule, day(2026, 6, 1)),
+            Some(Decimal::from(6))
+        );
+    }
+
+    #[test]
+    fn schedule_rate_falls_back_to_schedule_columns_and_skips_missing_data() {
+        let mut schedule = schedule_model(json!({}));
+        schedule.dose_amount = Some(Decimal::from(1));
+        schedule.dose_unit = Some("tablet".to_string());
+        assert_eq!(schedule_rate(&schedule, day(2026, 6, 1)), None);
+        schedule.max_daily_doses = Some(2);
+        assert_eq!(
+            schedule_rate(&schedule, day(2026, 6, 1)),
+            Some(Decimal::from(2))
+        );
+        schedule.dose_amount = None;
+        assert_eq!(schedule_rate(&schedule, day(2026, 6, 1)), None);
+    }
+
+    #[test]
+    fn effective_config_prefers_the_covering_taper_step() {
+        let step = json!({"start_date": "2026-06-01", "end_date": "2026-06-07", "amount": "1"});
+        let mut schedule = schedule_model(json!({"amount": "4", "taper_steps": [step.clone()]}));
+        assert_eq!(
+            effective_config(&schedule, day(2026, 6, 3)),
+            &schedule.schedule_config
+        );
+        schedule.schedule_type = 5;
+        assert_eq!(effective_config(&schedule, day(2026, 6, 3)), &step);
+        assert_eq!(
+            effective_config(&schedule, day(2026, 6, 10)),
+            &schedule.schedule_config
+        );
+    }
+
+    #[test]
+    fn config_decimal_and_string_pick_first_named_value() {
+        let config = json!({"amount": "2.5", "unit": "tablet", "empty": ""});
+        assert_eq!(
+            config_decimal(&config, &["dose_amount", "amount"]),
+            Decimal::from_str("2.5").ok()
+        );
+        assert_eq!(config_decimal(&config, &["missing"]), None);
+        assert_eq!(
+            config_string(&config, &["dose_unit", "unit"]),
+            Some("tablet")
+        );
+        assert_eq!(config_string(&config, &["empty", "missing"]), None);
+        assert_eq!(config_string(&json!({"unit": 5}), &["unit"]), None);
+    }
+
+    #[test]
+    fn date_in_zone_rejects_unknown_zones() {
+        let now = "2026-06-01T14:00:00Z".parse::<DateTime<Utc>>().unwrap();
+        assert_eq!(date_in_zone(now, None), Ok(day(2026, 6, 1)));
+        assert_eq!(
+            date_in_zone(now, Some("Pacific/Auckland")),
+            Ok(day(2026, 6, 2))
+        );
+        assert_eq!(
+            date_in_zone(now, Some("Europe/London")),
+            Ok(day(2026, 6, 1))
+        );
+        assert!(date_in_zone(now, Some("Not/AZone")).is_err());
+    }
+}
