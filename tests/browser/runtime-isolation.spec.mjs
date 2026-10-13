@@ -9,11 +9,17 @@ test('ordinary checks can mutate an owned worker fixture', async ({ page, careFi
   await careFixture.revoke();
   await careFixture.failOrderAudit();
   expect((await careFixture.otpProbe()).num_failures).toBe(0);
+  let status;
+  for (let attempt = 0; attempt < 101 && status !== 429; attempt += 1) {
+    status = (await page.request.get('/api/auth/get-session')).status();
+  }
+  expect(status).toBe(429);
 });
 
-test('the next check reuses the app with fresh clinical and authentication data', async ({ page, careFixture }) => {
+test('the next check reuses the database with fresh application and authentication state', async ({ page, careFixture }) => {
   expect((await page.goto('/login')).status()).toBe(200);
   expect(careFixture.origin).toBe(previousOrigin);
+  expect((await page.request.get('/api/auth/get-session')).status()).toBe(200);
   expect(await careFixture.otpProbe()).toBeNull();
   expect(await careFixture.probe()).toMatchObject({ takes: 0, registry_sessions: 0, runtime_superuser: false, runtime_bypassrls: false });
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');

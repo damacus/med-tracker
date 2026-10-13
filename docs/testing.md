@@ -37,10 +37,15 @@ CI transfers compiled executables and generated assets from the same run.
 `LOCO_CI_ARTIFACT=1` is reserved for jobs that have downloaded that artifact;
 ordinary local runs must leave it unset. Tests themselves are never cached.
 Integration fixtures clone a migrated and seeded template for each fixture
-family into private databases. The browser-stage runner owns one PostgreSQL
+family into private databases. Short-lived OAuth fixture credentials are created
+for each clone so they cannot expire while waiting in a shared template.
+The browser-stage runner owns one PostgreSQL
 service and prepares one template for all its workers. Each runtime gets a
-private database and role; storage runtimes get private buckets. Migration
-tests retain their original unmigrated baseline.
+private database and role; storage runtimes get private buckets. Between tests,
+workers restart the compiled application and restore their data snapshot to
+clear both in-memory authentication limits and database state. Migration
+tests start from empty databases and compare their complete catalogues with
+the retained reference. The reference SQL dump is not part of setup.
 
 Cargo normally reuses its existing local build directory. This machine's global
 Cargo configuration stores intermediates by worktree hash, so a new worktree
@@ -59,6 +64,35 @@ The CI workflow's manual dispatch runs only the complete Loco chain. Enable
 `cold_cache` to skip compiler, npm and Chromium cache restores. Successful
 browser reports produce `test-results/browser-timings-proposed.json` through
 `task ci:report`; review complete-run weights before updating the tracked file.
+
+## Loco database setup
+
+Start with an empty PostgreSQL 18 database. The setup connection must be able
+to create the required non-login roles and standard `citext`, `pg_trgm` and
+`pgcrypto` extensions, assign ownership and assume `med_tracker_owner`.
+Keep these credentials separate from the restricted application login.
+
+| Command | Result |
+| --- | --- |
+| `task db:migrate MIGRATION_DATABASE_URL=...` | Complete schema, including functions, triggers, RLS and grants |
+| `task db:prepare SEED_DATABASE_URL=...` | Migrations followed by development fixtures |
+| `task db:seed SEED_DATABASE_URL=... LOCO_ENV=test` | Migrations followed by test fixtures |
+
+Loco owns schema installation through versioned SeaORM migrations. Ordinary
+tables, indexes and foreign keys use builders; PostgreSQL-specific definitions
+are bundled with their migration. No Rails command or separate schema SQL
+import is required. The seed hook invokes the migrator once before loading data.
+
+Repeated migration is a no-op. Synthetic seeding refuses production environments
+and populated application databases. Reset and down commands remain disabled;
+create another empty database for a fresh start. This chain does not adopt or
+upgrade databases created by the previous Rails-baseline setup.
+
+`MIGRATION_EXECUTABLE` and `SEED_EXECUTABLE` select an already-built application
+binary. CI restores that binary from the current run and prepares each test
+template once before cloning private worker databases. The PostgreSQL service
+and empty databases are infrastructure prerequisites; migrations install all
+application objects.
 
 ## Prepare the test environment
 
