@@ -37,8 +37,14 @@ is in [the API slice](slices/05-api-integrations.md).
   (job `62949`) failed with two transport errors: a five-second app-token GET
   timeout and a mobile recovery HTTP parse error. The other 483 care API and
   661 browser cases passed. Both failed cases passed individually without code
-  changes; their causes remain unproven. The refreshed candidate will run full
-  CI with Task stages serialised. Original logs and browser trace are retained.
+  changes; their causes remain unproven. Original logs and browser trace remain.
+- Final root CI passed on signed source
+  `11ea37b402fa1583dc35ec768b4e384e5d1bad47`: `task --concurrency 1 ci`, job
+  `14255`, exit zero. All 662 browser cases passed; care API reported 486 passed,
+  zero failed, one ignored and fourteen filtered. Documentation and whitespace
+  checks also passed. Full log: `full-task-ci-11ea37b4.log` in the evidence folder.
+  This records a successful serial run, not a proven cause or fix for the earlier
+  transport failures. The final commit adds only this verification record.
 - Publication, hosted checks and acceptance: pending. No merge or deployment.
 - Review corrections: duplicate schema/header substitutions and handlers from
   another route now fail explicit regression tests. Both tests failed before the
@@ -54,8 +60,10 @@ is in [the API slice](slices/05-api-integrations.md).
   The missing root helper first failed compilation; its two-line registration
   then passed all twelve focused cases, formatting and documentation checks.
   The publication gate recounts the final diff against the immediate base.
-- Next action: pass root CI on the refreshed candidate, then publish the bounded
-  first PR before proceeding upstack.
+- Next action: publish the bounded first PR, then establish report-only coverage.
+  Shared HTTP and account changes await the owner's decision on two OpenAPI
+  omissions: capability rate-limit responses and account OAuth insufficient-scope
+  responses. Existing enforcement must remain intact.
 
 Session close-out on 11 October 2026:
 
