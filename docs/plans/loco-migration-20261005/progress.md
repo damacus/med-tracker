@@ -107,6 +107,15 @@ Coverage extension on `codex/s05-i01-coverage-baseline`:
   `011a6d15e749bb3f2d771eed9c7aa0e7e3e10ee7`, built only under `/private/tmp` and
   selected through a scoped PATH. ShellCheck remained enabled; global tooling
   and repository checks were not weakened. Logs retain the timeout and passing run.
+- First instrumented candidate `89d04ce6` passed 45 unit tests, then job 34708
+  failed because cargo-llvm-cov 0.9.1 rejects combining `--no-report` with
+  `--no-clean`. No request/database coverage or complete report was credited;
+  owned run resources were cleaned. A regression reproduced the CLI rejection.
+  Removing the redundant `--no-clean` flags preserves accumulation through
+  `--no-report`; 24 runner and 137 policy checks pass after the correction.
+  Devin accepted this correction in the same `living-pick` session. Repeat
+  signed measurement and cumulative CI remain pending; verify the resulting
+  LCOV includes execution from all three selections.
 - Existing hosted unit coverage at `2808f38` measured 1,931 of 57,239 application
   lines (3.37%), including zero API-controller lines. This `--lib` baseline is
   preserved under `/private/tmp/s05-i01-evidence/hosted-unit-coverage-2808f38/`.

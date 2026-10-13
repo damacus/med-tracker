@@ -81,8 +81,8 @@ export async function runCoverage({ outputDir = 'target/coverage/reports' } = {}
       const run = args => runCargo(['llvm-cov', ...args], url, environment, controller.signal, coverageEnvironment);
       await run(['clean', '--workspace']);
       await run(['test', '--no-report', '--locked', '--lib']);
-      await run(['test', '--no-report', '--no-clean', '--locked', '--test', 'requests', 'api_v1']);
-      await run(['test', '--no-report', '--no-clean', '--locked', '--test', 'care_api', '--', '--test-threads=2']);
+      await run(['test', '--no-report', '--locked', '--test', 'requests', 'api_v1']);
+      await run(['test', '--no-report', '--locked', '--test', 'care_api', '--', '--test-threads=2']);
       await run(['report', '--lcov', '--output-path', reportPath]);
     }, undefined, inheritedEnvironment, { storage: true });
     if (!(await readFile(reportPath)).length) throw new Error('Rust coverage report is empty');

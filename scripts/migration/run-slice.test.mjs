@@ -46,6 +46,10 @@ if (command === 'docker') {
     if (process.env.SLICE_FIXTURE_MISSING_COVERAGE === '1') process.exit(101);
     process.stdout.write('cargo-llvm-cov ' + (process.env.SLICE_FIXTURE_COV_VERSION || '0.9.1') + '\\n');
   }
+  if (command === 'cargo' && args.includes('--no-report') && args.includes('--no-clean')) {
+    process.stderr.write('error: --no-report may not be used together with --no-clean\\n');
+    process.exit(2);
+  }
   if (command === 'rustup' && args.includes('--installed')) process.stdout.write(process.env.SLICE_FIXTURE_MISSING_LLVM_TOOLS === '1' ? 'rustfmt-aarch64-apple-darwin\\n' : 'llvm-tools-aarch64-apple-darwin\\n');
   if (command === 'cargo' && args.includes('report') && args.includes('--output-path')) {
     const reportPath = args[args.indexOf('--output-path') + 1];
