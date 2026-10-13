@@ -32,7 +32,7 @@ is in [the API slice](slices/05-api-integrations.md).
   All 119 operations still require
   complete behavioural evidence. Loco registers 118 documented operations; the
   missing route is `POST /api/v1/households/{household_id}/push_subscription/test`.
-  Logs are under `/private/tmp/s05-i01-evidence/`. Coverage is pending.
+  Logs are under `/private/tmp/s05-i01-evidence/`. Coverage is recorded below.
 - Root CI on signed source `5f12b5b86a8ad650e59246f52f08783f98184b3d`
   (job `62949`) failed with two transport errors: a five-second app-token GET
   timeout and a mobile recovery HTTP parse error. The other 483 care API and
@@ -122,7 +122,7 @@ Coverage extension on `codex/s05-i01-coverage-baseline`:
   Removing the redundant `--no-clean` flags preserves accumulation through
   `--no-report`; 24 runner and 137 policy checks pass after the correction.
   Devin accepted this correction in the same `living-pick` session. Repeat
-  measurement passed as recorded below; cumulative CI remains pending.
+  measurement and cumulative CI passed as recorded below.
 - Existing hosted unit coverage at `2808f38` measured 1,931 of 57,239 application
   lines (3.37%), including zero API-controller lines. This `--lib` baseline is
   preserved under `/private/tmp/s05-i01-evidence/hosted-unit-coverage-2808f38/`.
@@ -141,8 +141,36 @@ Coverage extension on `codex/s05-i01-coverage-baseline`:
 - Docker pool exhaustion delayed measurement. After the owner approved removing
   one named empty fixture network, reinspection found it already absent and
   capacity restored. This task removed no unknown networks or storage.
-- The stack now preserves PR #2604 unit additions. Repeat coverage and cumulative
-  CI on the reconciled signed candidate remain required before publication.
+- After preserving PR #2604, coverage passed on signed source
+  `88bf94777710ff3444017109bc7e1474ea59b18a`: job 28692, exit zero,
+  73 unit, 12 request and 500 care API tests. Complete manifest, LCOV and assessment:
+  `/private/tmp/s05-i01-evidence/coverage-baseline-88bf9477/`. Raw application
+  coverage is 36,654/57,626 (63.61%); API controllers remain 92.18% and OAuth
+  controllers 2.91%. Removing only the three new inline test modules yields
+  36,270/57,242 (63.36%) application coverage and 27,843/38,185 (72.92%) models.
+  Older inline test bodies may remain counted. These figures do not establish
+  operation acceptance or satisfy every coverage target.
+- Initial cumulative CI job 8997 passed Rust/integration checks, then failed
+  before browser tests because the stale asdf `npx` shim could not find asdf.
+  Selecting the existing mise Node installation through scoped PATH made the
+  unchanged browser prerequisite pass. No source or global configuration changed.
+- Full `task --concurrency 1 ci` retry on the same signed source passed:
+  job 68704, exit zero; 73 unit, 12 request, 486 selected care API and all 662
+  desktop/mobile browser cases. Care reported one ignored and fourteen filtered;
+  requests intentionally ignored the incomplete whole-API gate. Other integration
+  shards and repository gates passed. Log:
+  `/private/tmp/s05-i01-evidence/full-task-ci-88bf9477-path-recovery.log`.
+  Separate workflow gate job 13924 passed all 137 policy checks with the scoped
+  upstream actionlint fix; log `ci-check-88bf9477-final.log` in the same folder.
+  Owned fixtures were cleaned and generated screenshots restored after retaining
+  their patch. The unrelated Serena configuration remains preserved and excluded.
+- Ownership coordination allocated rate-limit wiring, isolated modules/config
+  and nine missing 429 entries to this API work. It also transferred the narrow
+  missing-household error adapter correction; care/review edits remain owned by
+  their existing coordinator. Three unpublished review-lease operations will
+  require reconciliation when integrated; the current contract still has 119.
+- Publication and exact-published-head hosted checks remain pending. Next is
+  shared HTTP behaviour, beginning with failing full-router rate-limit tests.
 
 Session close-out on 11 October 2026:
 
