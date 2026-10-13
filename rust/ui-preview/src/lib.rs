@@ -70,6 +70,8 @@ pub fn SearchPalette(items: Vec<SearchItem>) -> impl IntoView {
     let query = RwSignal::new(String::new());
     let selected = RwSignal::new(0_usize);
     let input_ref = NodeRef::<html::Input>::new();
+    #[cfg(feature = "hydrate")]
+    let autofocus_timeout = StoredValue::new(None::<leptos_dom::helpers::TimeoutHandle>);
     let results = Memo::new({
         let items = items.clone();
         move |_| search_items(&items, &query.get())
@@ -109,6 +111,7 @@ pub fn SearchPalette(items: Vec<SearchItem>) -> impl IntoView {
                 query.set(String::new());
                 selected.set(0);
             } else if visible.get_untracked() {
+                cancel_search_autofocus(autofocus_timeout);
                 let input_target = event.target().is_some_and(|target| {
                     input_ref.get().is_some_and(|input| target == input.into())
                 });
@@ -144,18 +147,24 @@ pub fn SearchPalette(items: Vec<SearchItem>) -> impl IntoView {
             }
         });
         on_cleanup(move || listener.remove());
+        on_cleanup(move || cancel_search_autofocus(autofocus_timeout));
         Effect::watch(
             move || visible.get(),
             move |open, previous, _| {
+                cancel_search_autofocus(autofocus_timeout);
                 if *open {
-                    leptos_dom::helpers::set_timeout(
+                    let timeout = leptos_dom::helpers::set_timeout_with_handle(
                         move || {
-                            if let Some(input) = input_ref.get() {
+                            if visible.get_untracked()
+                                && let Some(input) = input_ref.get()
+                            {
                                 let _ = input.focus();
                             }
                         },
                         std::time::Duration::from_millis(25),
-                    );
+                    )
+                    .ok();
+                    autofocus_timeout.set_value(timeout);
                 } else if previous == Some(&true) {
                     restore_focus();
                 }
@@ -177,13 +186,25 @@ pub fn SearchPalette(items: Vec<SearchItem>) -> impl IntoView {
                 <span data-testid="dashboard-search-trigger">"Search"</span><kbd>"Ctrl K"</kbd>
             </Button>
             <Modal id="dashboard-search-dialog" title="Search this dashboard" visible=visible footer=ModalFooterChildren { children: Box::new(|| view! { <span class="text-sm text-gray-500">"Visible medicines and stock only · Esc to close"</span> }.into_any()) }>
-                <div on:input=move |_| selected.set(0)><TextInput label="Search this dashboard" name="dashboard-search" value=query input_ref=input_ref placeholder="Medicine or stock name"/></div>
+                <div on:input=move |_| selected.set(0) on:focusin=move |_| {
+                    #[cfg(feature = "hydrate")]
+                    cancel_search_autofocus(autofocus_timeout);
+                }><TextInput label="Search this dashboard" name="dashboard-search" value=query input_ref=input_ref placeholder="Medicine or stock name"/></div>
                 <div id="dashboard-search-results" role="listbox" aria-label="Search results" class="dashboard-search-results">
                     {move || { let matches = results.get(); if matches.is_empty() { view! { <p class="dashboard-empty">"No matching items in this dashboard."</p> }.into_any() } else { matches.into_iter().enumerate().map(|(index, item)| { let target_id = item.target_id.clone(); let option_id = format!("dashboard-search-option-{}", target_id); view! { <div id=option_id class="dashboard-search-result" role="option" aria-selected=move || if selected.get() == index { "true" } else { "false" } on:click=move |_| { #[cfg(feature = "hydrate")] { forget_focus(); visible.set(false); activate_result(&target_id); } #[cfg(not(feature = "hydrate"))] { let _ = &target_id; visible.set(false); } }><strong>{item.label}" "</strong><small>{item.detail}</small></div> } }).collect_view().into_any() } }}
                 </div>
             </Modal>
         </div>
     }
+}
+
+#[cfg(feature = "hydrate")]
+fn cancel_search_autofocus(timeout: StoredValue<Option<leptos_dom::helpers::TimeoutHandle>>) {
+    timeout.update_value(|pending| {
+        if let Some(handle) = pending.take() {
+            handle.clear();
+        }
+    });
 }
 
 #[cfg(feature = "hydrate")]

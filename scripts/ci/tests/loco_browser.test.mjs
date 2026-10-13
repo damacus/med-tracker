@@ -29,5 +29,6 @@ test('browser stage owns one service across workers and cleans it after failure'
   await assert.rejects(runBrowser([], owner, run), /browser failed/);
   assert.equal(starts, 1);
   assert.equal(stops, 1);
-  assert.equal(calls.filter(call => call.args[0] === 'browser-care:migrate').length, 1);
+  assert.equal(calls.filter(call => call.args[0] === 'browser-care:seed').length, 1);
+  assert.equal(calls.filter(call => call.args[0] === 'browser-care:migrate').length, 0);
 });

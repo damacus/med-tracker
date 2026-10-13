@@ -425,8 +425,8 @@ jobs:
       - run: TEST_IMAGE_UID=$(id -u) task api:browser-dashboard-rust
 
   rust_household_browser:
-    needs: changes
-    if: ${{ needs.changes.outputs.rust_port == 'true' }}
+    needs: [changes, loco_browser]
+    if: ${{ !cancelled() && needs.changes.outputs.rust_port == 'true' && (needs.loco_browser.result == 'success' || (needs.changes.outputs.loco != 'true' && needs.loco_browser.result == 'skipped')) }}
     runs-on: ubuntu-latest
     name: Rust Household (${{ matrix.journey }})
     timeout-minutes: 90

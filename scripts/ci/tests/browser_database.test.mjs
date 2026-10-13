@@ -16,7 +16,7 @@ test('browser runtimes clone one prepared template and always drop private datab
   }), /test failed/);
   assert.equal(provisions, 1);
   assert.equal(new Set(databases).size, 2);
-  assert.equal(calls.filter(call => call.name === 'browser-care:migrate').length, 1);
+  assert.equal(calls.filter(call => call.name === 'browser-care:migrate').length, 0);
   assert.equal(calls.filter(call => call.name === 'browser-care:seed').length, 1);
   assert.equal(calls.filter(call => call.name === 'browser-care:clone').length, 2);
   assert.equal(calls.filter(call => call.name === 'browser-care:drop').length, 2);

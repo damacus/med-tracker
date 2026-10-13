@@ -33,13 +33,12 @@ async function runCargo(args, databaseUrl, inheritedEnvironment, signal) {
   }
 }
 
-export async function runSlice({ all = false, target, filter = '', captureCatalog = false }, inheritedEnvironment = process.env) {
+export async function runSlice({ all = false, target, filter = '' }, inheritedEnvironment = process.env) {
   if (!all && !/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(target ?? '')) throw new Error('TARGET must name a root Rust test binary');
   if (filter && !/^[A-Za-z0-9_:]+$/.test(filter)) throw new Error('FILTER must name a Rust test');
   const args = ['test', '--locked'];
   if (!all) args.push('--test', target);
   if (filter) args.push(filter);
-  if (captureCatalog) args.push('--', '--ignored');
   const controller = new AbortController();
   const interrupted = signal => controller.abort(new Error(`Slice execution interrupted by ${signal}`));
   const onTerm = () => interrupted('SIGTERM');
@@ -62,14 +61,12 @@ export async function runSlice({ all = false, target, filter = '', captureCatalo
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     const arguments_ = process.argv.slice(2);
-    if (arguments_.some((argument, index) => !['--all', '--capture-catalog', '--target', '--filter'].includes(argument) && !['--target', '--filter'].includes(arguments_[index - 1]))) throw new Error('Unsupported slice runner argument');
+    if (arguments_.some((argument, index) => !['--all', '--target', '--filter'].includes(argument) && !['--target', '--filter'].includes(arguments_[index - 1]))) throw new Error('Unsupported slice runner argument');
     const all = process.argv.includes('--all');
-    const captureCatalog = process.argv.includes('--capture-catalog');
     const target = arguments_[arguments_.indexOf('--target') + 1];
     const filter = arguments_[arguments_.indexOf('--filter') + 1];
     if ((arguments_.includes('--target') && target === undefined) || (arguments_.includes('--filter') && filter === undefined)) throw new Error('Missing slice runner argument value');
-    if (all && captureCatalog) throw new Error('Catalog capture requires its dedicated test');
-    await runSlice({ all, captureCatalog, target: captureCatalog ? 'persistence' : target, filter: captureCatalog ? 'capture_persistence_catalog' : all ? '' : filter });
+    await runSlice({ all, target, filter: all ? '' : filter });
   } catch (error) {
     process.stderr.write(`${error.message}\n`);
     process.exitCode = 1;

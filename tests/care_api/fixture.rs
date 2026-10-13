@@ -48,6 +48,45 @@ pub struct Fixture {
     pub runtime_uri: String,
 }
 
+#[tokio::test]
+async fn cloning_an_aged_template_renews_short_lived_credentials() {
+    Fixture::new().await.close().await;
+    let uri = std::env::var("DATABASE_URL").unwrap();
+    let parsed = url::Url::parse(&uri).unwrap();
+    let port = parsed.port().unwrap().to_string();
+    let name = format!("aged_template_{}", uuid::Uuid::new_v4().simple());
+    let control = Database::connect(&uri).await.unwrap();
+    control
+        .execute_unprepared(&format!(
+            "CREATE DATABASE {name} TEMPLATE care_api_template"
+        ))
+        .await
+        .unwrap();
+    let mut source_uri = parsed;
+    source_uri.set_path(&name);
+    let source = Database::connect(source_uri.to_string()).await.unwrap();
+    source
+        .execute_unprepared("UPDATE oauth_grants SET expires_in=timezone('UTC',clock_timestamp())-interval '1 hour'")
+        .await
+        .unwrap();
+    source.close().await.unwrap();
+    let cloned = Fixture::from_template(&uri, &port, &name).await;
+    let row = cloned.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT expires_in > timezone('UTC',clock_timestamp()) + interval '4 minutes' AS fresh FROM oauth_grants WHERE id=76001"
+    )).await.unwrap().unwrap();
+    let fresh: bool = row.try_get("", "fresh").unwrap();
+    cloned.close().await;
+    control
+        .execute_unprepared(&format!("DROP DATABASE {name}"))
+        .await
+        .unwrap();
+    control.close().await.unwrap();
+    assert!(
+        fresh,
+        "Each clone must receive a fresh short-lived OAuth code"
+    );
+}
+
 impl Fixture {
     pub async fn new() -> Self {
         assert_eq!(std::env::var("MEDTRACKER_OWNED_DATABASE").unwrap(), "1");
@@ -74,14 +113,16 @@ impl Fixture {
                 .unwrap();
         })
         .await;
+        Self::from_template(&uri, port, "care_api_template").await
+    }
+
+    async fn from_template(uri: &str, port: &str, template_name: &str) -> Self {
         let suffix = uuid::Uuid::new_v4().simple();
         let name = format!("care_api_{suffix}");
         let role = format!("care_runtime_{suffix}");
-        let control = Database::connect(&uri).await.unwrap();
+        let control = Database::connect(uri).await.unwrap();
         control
-            .execute_unprepared(&format!(
-                "CREATE DATABASE {name} TEMPLATE care_api_template"
-            ))
+            .execute_unprepared(&format!("CREATE DATABASE {name} TEMPLATE {template_name}"))
             .await
             .unwrap();
         control.execute_unprepared(&format!("CREATE ROLE {role} LOGIN PASSWORD 'password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS IN ROLE med_tracker_app")).await.unwrap();

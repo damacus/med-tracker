@@ -28,7 +28,6 @@ impl Fixture {
             for sql in [
                 include_str!("fixtures/persistence-records.sql"),
                 include_str!("fixtures/identity/oauth.sql"),
-                include_str!("fixtures/identity/mobile.sql"),
             ] {
                 admin.execute_unprepared(sql).await.unwrap();
             }
@@ -51,6 +50,10 @@ impl Fixture {
         ))
         .await
         .unwrap();
+        admin
+            .execute_unprepared(include_str!("fixtures/identity/mobile.sql"))
+            .await
+            .unwrap();
         let runtime = Database::connect(format!(
             "postgres://{role}:password@127.0.0.1:{port}/{name}"
         ))
