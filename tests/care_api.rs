@@ -16,6 +16,8 @@ mod audit_logs;
 mod avatar;
 #[path = "care_api/avatar_storage.rs"]
 mod avatar_storage;
+#[path = "care_api/better_auth_invitations.rs"]
+mod better_auth_invitations;
 #[path = "care_api/better_auth_store.rs"]
 mod better_auth_store;
 #[path = "care_api/browser_push.rs"]
@@ -94,6 +96,8 @@ mod saved_status;
 mod schedule_lifecycle;
 #[path = "care_api/schedule_scope.rs"]
 mod schedule_scope;
+#[path = "care_api/signup.rs"]
+mod signup;
 #[path = "care_api/signup_timezone.rs"]
 mod signup_timezone;
 #[path = "care_api/stock_orders.rs"]
