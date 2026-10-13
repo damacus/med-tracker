@@ -743,12 +743,13 @@ mod tests {
             "provider": "openai",
             "api_key": "synthetic-settings-key",
             "model": "gpt-4o",
+            "api_base_url": "https://llm.example.test/v1/",
         }))
         .unwrap();
         assert_eq!(config.provider.name(), "openai");
         assert_eq!(config.key, "synthetic-settings-key");
         assert_eq!(config.model, "gpt-4o");
-        assert_eq!(config.base.as_str(), "https://api.openai.com/v1/");
+        assert_eq!(config.base.as_str(), "https://llm.example.test/v1/");
     }
 
     #[test]
