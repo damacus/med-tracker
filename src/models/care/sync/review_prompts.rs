@@ -1,4 +1,5 @@
 use super::*;
+use crate::models::care::review_prompts::edit;
 use axum::http::StatusCode;
 use chrono::{Datelike, NaiveDate};
 use loco_rs::model::TenantQueryExt;
@@ -131,7 +132,7 @@ pub(crate) struct Changes {
     status: Option<String>,
     practitioner_name: Option<String>,
     practitioner_role: Option<String>,
-    reviewed_on: Option<NaiveDate>,
+    reviewed_on: Option<Option<NaiveDate>>,
     review_note: Option<String>,
 }
 
@@ -179,8 +180,11 @@ impl Changes {
         }) {
             return Err(StatusCode::UNPROCESSABLE_ENTITY);
         }
-        let reviewed_on = text("reviewed_on")?
-            .map(|date| {
+        let reviewed_on = match inner.get("reviewed_on") {
+            None => None,
+            Some(Value::Null) => Some(None),
+            Some(Value::String(date)) if date.is_empty() => Some(None),
+            Some(Value::String(date)) => Some(Some({
                 let bytes = date.as_bytes();
                 if bytes.len() != 10
                     || bytes[4] != b'-'
@@ -192,10 +196,11 @@ impl Changes {
                 {
                     return Err(StatusCode::UNPROCESSABLE_ENTITY);
                 }
-                NaiveDate::parse_from_str(&date, "%Y-%m-%d")
-                    .map_err(|_| StatusCode::UNPROCESSABLE_ENTITY)
-            })
-            .transpose()?;
+                NaiveDate::parse_from_str(date, "%Y-%m-%d")
+                    .map_err(|_| StatusCode::UNPROCESSABLE_ENTITY)?
+            })),
+            _ => return Err(StatusCode::UNPROCESSABLE_ENTITY),
+        };
         Ok(Self {
             status,
             practitioner_name: text("practitioner_name")?,
@@ -209,7 +214,7 @@ impl Changes {
         self,
         record: &review_prompt::Model,
         membership_id: i64,
-    ) -> Option<review_prompt::ActiveModel> {
+    ) -> Option<(review_prompt::ActiveModel, bool)> {
         let status = self.status.clone().unwrap_or_else(|| record.status.clone());
         let name = self
             .practitioner_name
@@ -219,7 +224,7 @@ impl Changes {
             .practitioner_role
             .as_deref()
             .or(record.practitioner_role.as_deref());
-        let reviewed_on = self.reviewed_on.or(record.reviewed_on);
+        let reviewed_on = self.reviewed_on.unwrap_or(record.reviewed_on);
         if matches!(
             status.as_str(),
             "reviewed_with_practitioner" | "expected_prescribed_combination"
@@ -244,8 +249,8 @@ impl Changes {
             changed.practitioner_role = Set(Some(role));
         }
         if let Some(date) = self.reviewed_on {
-            dirty |= Some(date) != record.reviewed_on;
-            changed.reviewed_on = Set(Some(date));
+            dirty |= date != record.reviewed_on;
+            changed.reviewed_on = Set(date);
         }
         if let Some(note) = self.review_note {
             dirty |= Some(&note) != record.review_note.as_ref();
@@ -261,7 +266,7 @@ impl Changes {
         if dirty {
             changed.updated_at = Set(Utc::now().naive_utc());
         }
-        Some(changed)
+        Some((changed, dirty))
     }
 }
 
@@ -311,6 +316,10 @@ async fn apply_sync_operation(
     if !person_access(db, context, record.person_id, true).await? {
         return Err(sync_error(StatusCode::FORBIDDEN));
     }
+    crate::models::care::review_prompts::reconcile_person(context.tenant, record.person_id).await?;
+    let record = visible_prompt(db, context, id)
+        .await?
+        .ok_or_else(|| sync_error(StatusCode::NOT_FOUND))?;
     let expected = operation
         .if_match
         .as_deref()
@@ -319,11 +328,28 @@ async fn apply_sync_operation(
     if expected != tag(&record) {
         return Err(sync_error(StatusCode::CONFLICT));
     }
-    let changes = Changes::parse(&json!({"medication_review_prompt": operation.attributes}))
-        .map_err(sync_error)?;
-    let active = changes
+    let mut attributes = operation.attributes.clone();
+    let lease = attributes
+        .remove("lease_token")
+        .and_then(|value| value.as_str().map(str::to_owned))
+        .unwrap_or_default();
+    edit::require(context.tenant, &record, &lease).await?;
+    let changes =
+        Changes::parse(&json!({"medication_review_prompt": attributes})).map_err(sync_error)?;
+    let (active, dirty) = changes
         .apply(&record, context.tenant.membership().id)
         .ok_or_else(|| sync_error(StatusCode::UNPROCESSABLE_ENTITY))?;
+    if !dirty {
+        edit::consume(context.tenant, &record, &lease).await?;
+        return Ok(SyncResult {
+            record_type: "MedicationReviewPrompt",
+            record_id: Some(record.id),
+            record_portable_id: None,
+            etag: Some(tag(&record)),
+            replayed: None,
+        });
+    }
+    edit::archive(context.tenant, &record, "review").await?;
     let updated = active.update(db).await.map_err(database_error)?;
     let now = Utc::now().naive_utc();
     security_audit_event::ActiveModel {
@@ -344,6 +370,7 @@ async fn apply_sync_operation(
     .insert(db)
     .await
     .map_err(database_error)?;
+    edit::consume(context.tenant, &record, &lease).await?;
     Ok(SyncResult {
         record_type: "MedicationReviewPrompt",
         record_id: Some(updated.id),

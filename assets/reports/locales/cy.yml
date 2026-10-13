@@ -2348,6 +2348,22 @@ cy:
       reviewed_on: Dyddiad yr adolygiad
       review_note: Nodyn adolygu
       save: Cadw cofnod yr adolygiad
+    browser:
+      review_status: Statws adolygu
+      filtered_items: eitemau adolygu llai hyderus
+      edit: Golygu'r adolygiad
+      history: Adolygiadau blaenorol
+      no_history: Nid oes adolygiad blaenorol wedi'i gofnodi.
+      pages: Tudalennau adolygu
+      previous: Tudalen flaenorol
+      next: Tudalen nesaf
+      changed: Newidiodd yr adolygiad wrth i chi olygu. Gwiriwch y dystiolaeth gyfredol cyn cadw.
+      expiring: Mae'r amser golygu bron ar ben. Bydd eich drafft yn aros yma.
+      keep_editing: Parhau i olygu
+      expired: Daeth yr amser golygu i ben. Mae eich drafft yma o hyd. Ailafaelwch yn y golygu cyn cadw.
+      accept_version: Defnyddio'r dystiolaeth gyfredol a chadw fy nrafft
+      cancel: Canslo
+      reacquire: Ailafael yn y golygu
   forms:
     locations:
       new_title: Lleoliad Newydd

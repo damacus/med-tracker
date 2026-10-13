@@ -2323,6 +2323,22 @@ es:
       reviewed_on: Fecha de revisión
       review_note: Nota de revisión
       save: Guardar registro de revisión
+    browser:
+      review_status: Estado de la revisión
+      filtered_items: elementos de revisión de menor confianza
+      edit: Editar revisión
+      history: Revisiones anteriores
+      no_history: No se ha registrado ninguna revisión anterior.
+      pages: Páginas de revisión
+      previous: Página anterior
+      next: Página siguiente
+      changed: La revisión cambió mientras la editabas. Comprueba la evidencia actual antes de guardar.
+      expiring: El tiempo de edición está a punto de terminar. Tu borrador permanecerá aquí.
+      keep_editing: Seguir editando
+      expired: El tiempo de edición terminó. Tu borrador sigue aquí. Recupera la edición antes de guardar.
+      accept_version: Usar la evidencia actual y conservar mi borrador
+      cancel: Cancelar
+      reacquire: Recuperar la edición
   forms:
     locations:
       new_title: Nueva ubicación

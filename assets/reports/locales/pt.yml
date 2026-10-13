@@ -2656,6 +2656,22 @@ pt:
       reviewed_on: Data da revisão
       review_note: Nota da revisão
       save: Guardar registo da revisão
+    browser:
+      review_status: Estado da revisão
+      filtered_items: itens de revisão de menor confiança
+      edit: Editar revisão
+      history: Revisões anteriores
+      no_history: Não foi registada nenhuma revisão anterior.
+      pages: Páginas de revisão
+      previous: Página anterior
+      next: Página seguinte
+      changed: A revisão mudou durante a edição. Verifique a evidência atual antes de guardar.
+      expiring: O tempo de edição está quase a terminar. O rascunho ficará aqui.
+      keep_editing: Continuar a editar
+      expired: O tempo de edição terminou. O rascunho ainda está aqui. Recupere a edição antes de guardar.
+      accept_version: Usar a evidência atual e manter o rascunho
+      cancel: Cancelar
+      reacquire: Recuperar a edição
   notification_settings:
     categories:
       title: Categorias de Notificação

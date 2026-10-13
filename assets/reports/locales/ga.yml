@@ -2322,6 +2322,22 @@ ga:
       reviewed_on: Dáta an athbhreithnithe
       review_note: Nóta athbhreithnithe
       save: Sábháil taifead an athbhreithnithe
+    browser:
+      review_status: Stádas athbhreithnithe
+      filtered_items: míreanna athbhreithnithe ar mhuinín níos ísle
+      edit: Cuir an t-athbhreithniú in eagar
+      history: Athbhreithnithe roimhe seo
+      no_history: Níor taifeadadh aon athbhreithniú roimhe seo.
+      pages: Leathanaigh athbhreithnithe
+      previous: Leathanach roimhe seo
+      next: An chéad leathanach eile
+      changed: D'athraigh an t-athbhreithniú agus tú á chur in eagar. Seiceáil an fhianaise reatha sula sábhálann tú.
+      expiring: Tá an t-am eagarthóireachta ag druidim chun deiridh. Fanfaidh do dhréacht anseo.
+      keep_editing: Lean den eagarthóireacht
+      expired: Tá an t-am eagarthóireachta caite. Tá do dhréacht anseo fós. Faigh an glas arís sula sábhálann tú.
+      accept_version: Úsáid an fhianaise reatha agus coinnigh mo dhréacht
+      cancel: Cealaigh
+      reacquire: Faigh an glas eagarthóireachta arís
   reports:
     browser:
       title: Tuarascálacha

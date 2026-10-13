@@ -1,3 +1,4 @@
+use crate::template;
 use aws_sdk_s3::{
     Client,
     config::{BehaviorVersion, Credentials, Region, timeout::TimeoutConfig},
@@ -25,7 +26,7 @@ pub async fn create_owned_bucket(name: &str) -> Client {
 }
 
 pub fn owned_client() -> Client {
-    assert_eq!(std::env::var("MEDTRACKER_OWNED_DATABASE").unwrap(), "1");
+    template::require_owned_database();
     let endpoint = std::env::var("ACTIVE_STORAGE_S3_ENDPOINT").unwrap();
     let parsed = reqwest::Url::parse(&endpoint).unwrap();
     assert_eq!(parsed.scheme(), "http");
@@ -72,7 +73,7 @@ pub fn owned_client() -> Client {
 }
 
 async fn prepare() {
-    assert_eq!(std::env::var("MEDTRACKER_OWNED_DATABASE").unwrap(), "1");
+    template::require_owned_database();
     let endpoint = std::env::var("ACTIVE_STORAGE_S3_ENDPOINT").unwrap();
     let parsed = reqwest::Url::parse(&endpoint).unwrap();
     assert_eq!(parsed.scheme(), "http");

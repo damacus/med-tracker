@@ -416,11 +416,10 @@ async fn browser_reminder_refreshes_clock_between_device_sends() {
         .execute_raw(Statement::from_sql_and_values(
             DbBackend::Postgres,
             "UPDATE notification_events SET expires_at=$1 WHERE event_key LIKE 'browser:%'",
-            [(now + chrono::Duration::seconds(1)).naive_utc().into()],
+            [(now - chrono::Duration::seconds(1)).naive_utc().into()],
         ))
         .await
         .unwrap();
-    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
     transport.release.notify_one();
     assert_eq!(sender.await.unwrap().unwrap(), 1);
     assert_eq!(transport.calls.lock().unwrap().len(), 1);

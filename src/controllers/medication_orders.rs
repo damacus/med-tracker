@@ -219,7 +219,10 @@ fn render(
         }
         _ => json!({}),
     };
-    if let Some(messages) = errors.get_mut("quantity").and_then(|value| value.as_array_mut()) {
+    if let Some(messages) = errors
+        .get_mut("quantity")
+        .and_then(|value| value.as_array_mut())
+    {
         for message in messages {
             if message == "is outside stock precision" {
                 *message =

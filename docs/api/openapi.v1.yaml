@@ -990,7 +990,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MedicationReviewPromptResponse"
+                $ref: "#/components/schemas/MedicationReviewPromptDetailResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -1022,6 +1022,13 @@ paths:
           required: true
           schema:
             type: string
+        - name: X-Review-Lease
+          in: header
+          required: true
+          description: Token obtained by starting an explicit edit. A successful save releases it.
+          schema:
+            type: string
+            format: uuid
       requestBody:
         required: true
         content:
@@ -1073,6 +1080,13 @@ paths:
           required: true
           schema:
             type: string
+        - name: X-Review-Lease
+          in: header
+          required: true
+          description: Token obtained by starting an explicit edit. A successful save releases it.
+          schema:
+            type: string
+            format: uuid
       requestBody:
         required: true
         content:
@@ -1107,6 +1121,105 @@ paths:
           $ref: "#/components/responses/PreconditionRequired"
         "429":
           $ref: "#/components/responses/RateLimited"
+  /households/{household_id}/medication_review_prompts/{id}/lease:
+    post:
+      operationId: acquireMedicationReviewPromptLease
+      tags: [Household, Medication reviews]
+      summary: Start an exclusive five-minute review edit.
+      description: An active lease excludes every other edit, including a second tab for the same membership. Activity requires renewal before expiry.
+      parameters:
+        - $ref: "#/components/parameters/household_id"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^[1-9][0-9]*$"
+      responses:
+        "201":
+          description: Lease acquired with the current review version.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/no_store"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MedicationReviewLeaseResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    delete:
+      operationId: releaseMedicationReviewPromptLease
+      tags: [Household, Medication reviews]
+      summary: Cancel an edit and release its lease.
+      parameters:
+        - $ref: "#/components/parameters/household_id"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^[1-9][0-9]*$"
+        - name: X-Review-Lease
+          in: header
+          required: false
+          description: Opaque token from the active edit lease. Omit only when no lease remains; release is idempotent.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The edit was cancelled.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/no_store"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MedicationReviewLeaseReleaseResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /households/{household_id}/medication_review_prompts/{id}/lease/renew:
+    post:
+      operationId: renewMedicationReviewPromptLease
+      tags: [Household, Medication reviews]
+      summary: Keep editing for five minutes from the latest activity.
+      parameters:
+        - $ref: "#/components/parameters/household_id"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^[1-9][0-9]*$"
+        - $ref: "#/components/parameters/review_lease"
+      responses:
+        "200":
+          description: Lease expiry renewed.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/no_store"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MedicationReviewLeaseRenewResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /households/{household_id}/ui_capabilities:
     get:
       operationId: getHouseholdUiCapabilities
@@ -4326,6 +4439,14 @@ components:
       required: true
       schema:
         $ref: "#/components/schemas/NumericId"
+    review_lease:
+      name: X-Review-Lease
+      in: header
+      required: true
+      description: Opaque token from the active medication review edit lease.
+      schema:
+        type: string
+        format: uuid
     id:
       name: id
       in: path
@@ -6180,7 +6301,9 @@ components:
             practitioner_role:
               type: string
             reviewed_on:
-              $ref: "#/components/schemas/Date"
+              type: string
+              format: date
+              nullable: true
             review_note:
               type: string
     MedicationReviewPromptResponse:
@@ -6190,6 +6313,70 @@ components:
       properties:
         data:
           $ref: "#/components/schemas/MedicationReviewPrompt"
+    MedicationReviewPromptDetailResponse:
+      type: object
+      additionalProperties: false
+      required: [data, history]
+      properties:
+        data:
+          $ref: "#/components/schemas/MedicationReviewPrompt"
+        history:
+          type: array
+          items:
+            $ref: "#/components/schemas/MedicationReviewHistoryEntry"
+    MedicationReviewHistoryEntry:
+      type: object
+      additionalProperties: false
+      required: [event_type, snapshot, created_at]
+      properties:
+        event_type:
+          type: string
+          enum: [review, evidence]
+        snapshot:
+          $ref: "#/components/schemas/MedicationReviewPrompt"
+        created_at:
+          $ref: "#/components/schemas/Timestamp"
+    MedicationReviewLeaseResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required: [token, etag, expires_at]
+          properties:
+            token:
+              type: string
+              format: uuid
+            etag:
+              type: string
+            expires_at:
+              $ref: "#/components/schemas/Timestamp"
+    MedicationReviewLeaseRenewResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required: [expires_at]
+          properties:
+            expires_at:
+              $ref: "#/components/schemas/Timestamp"
+    MedicationReviewLeaseReleaseResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required: [released]
+          properties:
+            released:
+              type: boolean
     MedicationReviewPromptCollectionResponse:
       type: object
       additionalProperties: false
@@ -6200,7 +6387,45 @@ components:
           items:
             $ref: "#/components/schemas/MedicationReviewPrompt"
         meta:
-          $ref: "#/components/schemas/PaginationMeta"
+          type: object
+          additionalProperties: false
+          required: [page, per_page, total_count, hidden_count, review_counts, active_status, active_priority, show_hidden]
+          properties:
+            page:
+              type: integer
+              minimum: 1
+            per_page:
+              type: integer
+              minimum: 1
+              maximum: 100
+            total_count:
+              type: integer
+              minimum: 0
+            hidden_count:
+              type: integer
+              minimum: 0
+            review_counts:
+              type: object
+              additionalProperties: false
+              required: [needs_review, reviewed, all]
+              properties:
+                needs_review:
+                  type: integer
+                  minimum: 0
+                reviewed:
+                  type: integer
+                  minimum: 0
+                all:
+                  type: integer
+                  minimum: 0
+            active_status:
+              type: string
+              enum: [needs_review, reviewed, all]
+            active_priority:
+              type: string
+              enum: [all, discuss_soon, ask_when_convenient, low_confidence]
+            show_hidden:
+              type: boolean
     CapabilityMedicationReviews:
       type: object
       additionalProperties: false
@@ -9509,6 +9734,7 @@ components:
             or delete are accepted for pause periods. Repeating close for a completed
             period cannot close a later pause.
             Dose occurrence creates require source_type schedule, source_id, occurrence_key and outcome not_taken; optional reason and note record the decision. Updates require id, if_match and outcome open to reopen a decision. Dose occurrence deletion is unsupported.
+            Medication review prompt updates require id, if_match and lease_token. Obtain the token through the review lease endpoint when connected, then submit the mutation before expiry; a successful update consumes it.
           properties:
             occurrence_key:
               type: string
@@ -9516,6 +9742,10 @@ components:
             occurrence_etag:
               type: string
               description: Current outcome version, required when a queued take replaces a not-taken decision.
+            lease_token:
+              type: string
+              format: uuid
+              description: Required in medication_review_prompt update attributes for the active edit lease.
     SyncBatchResponse:
       type: object
       additionalProperties: false

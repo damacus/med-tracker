@@ -2661,6 +2661,22 @@ en:
       reviewed_on: Date reviewed
       review_note: Review note
       save: Save review record
+    browser:
+      review_status: Review status
+      filtered_items: lower-confidence review items
+      edit: Edit review
+      history: Previous reviews
+      no_history: No previous review has been recorded.
+      pages: Review pages
+      previous: Previous page
+      next: Next page
+      changed: The review changed while you were editing. Check the current evidence before saving.
+      expiring: Editing time is nearly over. Your draft will stay here if it expires.
+      keep_editing: Keep editing
+      expired: Editing time expired. Your draft is still here. Reacquire editing before saving.
+      accept_version: Use current evidence and keep my draft
+      cancel: Cancel
+      reacquire: Reacquire editing
   notification_settings:
     categories:
       title: Notification Categories

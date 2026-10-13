@@ -745,18 +745,62 @@ async fn sync_catalogue_review_update_requires_current_manage_and_version() {
     let app = Application::new().await;
     let token = app.token().await;
     app.fixture.admin.execute_unprepared("INSERT INTO medication_review_evidence_records(id,created_at,updated_at,evidence_text,label_section,product_name,retrieved_on,source_name,source_record_id,source_url) VALUES(89997,now(),now(),'Synthetic interaction evidence','synthetic','Synthetic tablets',current_date,'Synthetic source','synthetic-sync-review','https://example.test/synthetic'); INSERT INTO medication_review_prompts(id,created_at,updated_at,evidence_record_id,evidence_source_checked_on,evidence_source_effective_on,evidence_source_name,evidence_source_url,evidence_source_version,evidence_text,household_id,interacting_medication_id,interacting_medication_name,match_confidence,match_reason,match_type,matched_term,person_id,primary_medication_id,primary_medication_name,risk_level,source_instruction) VALUES(89997,now(),'2026-10-01T00:00:00',89997,current_date,current_date,'Synthetic source','https://example.test/synthetic','synthetic','Synthetic evidence',72001,80001,'Synthetic tablets','high','Synthetic match','synthetic','Synthetic tablets',73001,80001,'Synthetic tablets','unknown','Synthetic instruction')").await.unwrap();
+    app.fixture.admin.execute_unprepared("UPDATE medication_review_prompts SET status='reviewed_with_practitioner',practitioner_name='Dr Prior',practitioner_role='GP',reviewed_on='2026-10-01',reviewed_by_membership_id=74001 WHERE id=89997").await.unwrap();
     let canonical = "MedicationReviewPrompt:89997:1790812800.000000";
     let etag = format!("\"{}\"", hex::encode(Sha256::digest(canonical.as_bytes())));
-    let operation = json!({"resource_type":"medication_review_prompt","action":"update","id":"89997","if_match":etag,"attributes":{"status":"not_relevant","review_note":"Synthetic reviewed offline"}});
-    let (status, updated) = sync_operation(&app, &token, operation.clone()).await;
+    let missing_lease = json!({"resource_type":"medication_review_prompt","action":"update","id":"89997","if_match":etag.clone(),"attributes":{"status":"not_relevant","review_note":"Unleased offline review"}});
+    let (missing_status, missing_reply) = sync_operation(&app, &token, missing_lease).await;
+    assert_eq!(missing_status, 409, "{missing_reply}");
+    let lease = app
+        .client
+        .post(format!(
+            "{}/api/v1/households/72001/medication_review_prompts/89997/lease",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(lease.status().as_u16(), 201);
+    let lease: Value = lease.json().await.unwrap();
+    let operation = json!({"resource_type":"medication_review_prompt","action":"update","id":"89997","if_match":etag,"attributes":{"status":"not_relevant","review_note":"Synthetic reviewed offline","reviewed_on":"","lease_token":lease["data"]["token"]}});
+    let endpoint = format!("{}/api/v1/households/72001/sync/batches", app.origin);
+    let batch = json!({"batch":{"operations":[operation.clone()]}});
+    let response = app
+        .client
+        .post(&endpoint)
+        .bearer_auth(&token)
+        .header("idempotency-key", "synthetic-review-sync-replay")
+        .json(&batch)
+        .send()
+        .await
+        .unwrap();
+    let status = response.status().as_u16();
+    let updated: Value = response.json().await.unwrap();
     assert_eq!(status, 201, "{updated}");
     assert_eq!(
         updated["data"]["results"][0]["record_type"],
         "MedicationReviewPrompt"
     );
+    let replay = app
+        .client
+        .post(&endpoint)
+        .bearer_auth(&token)
+        .header("idempotency-key", "synthetic-review-sync-replay")
+        .json(&batch)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(replay.status().as_u16(), 201);
+    assert_eq!(
+        replay.headers().get("idempotency-replayed").unwrap(),
+        "true"
+    );
+    let replay: Value = replay.json().await.unwrap();
+    assert_eq!(replay, updated);
     let (status, stale) = sync_operation(&app, &token, operation).await;
     assert_eq!(status, 409, "{stale}");
-    let row=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT status,review_note,reviewed_by_membership_id,(SELECT count(*) FROM security_audit_events WHERE event_type='medication_review_prompt.updated') AS events FROM medication_review_prompts WHERE id=89997")).await.unwrap().unwrap();
+    let row=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT status,review_note,reviewed_on,reviewed_by_membership_id,(SELECT count(*) FROM security_audit_events WHERE event_type='medication_review_prompt.updated') AS events FROM medication_review_prompts WHERE id=89997")).await.unwrap().unwrap();
     assert_eq!(row.try_get::<String>("", "status").unwrap(), "not_relevant");
     assert_eq!(
         row.try_get::<String>("", "review_note").unwrap(),
@@ -765,9 +809,41 @@ async fn sync_catalogue_review_update_requires_current_manage_and_version() {
     assert_eq!(
         row.try_get::<Option<i64>>("", "reviewed_by_membership_id")
             .unwrap(),
+        Some(74001)
+    );
+    assert_eq!(
+        row.try_get::<Option<chrono::NaiveDate>>("", "reviewed_on")
+            .unwrap(),
         None
     );
     assert_eq!(row.try_get::<i64>("", "events").unwrap(), 1);
+    let next_lease = app
+        .client
+        .post(format!(
+            "{}/api/v1/households/72001/medication_review_prompts/89997/lease",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(next_lease.status().as_u16(), 201);
+    let next_lease: Value = next_lease.json().await.unwrap();
+    let same = json!({"resource_type":"medication_review_prompt","action":"update","id":"89997","if_match":updated["data"]["results"][0]["etag"],"attributes":{"status":"not_relevant","review_note":"Synthetic reviewed offline","reviewed_on":null,"lease_token":next_lease["data"]["token"]}});
+    let (same_status, same_reply) = sync_operation(&app, &token, same).await;
+    assert_eq!(same_status, 201, "{same_reply}");
+    assert_eq!(
+        same_reply["data"]["results"][0]["etag"],
+        updated["data"]["results"][0]["etag"]
+    );
+    let history_and_audit = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT (SELECT count(*)::bigint FROM medication_review_histories WHERE prompt_id=89997) AS histories,(SELECT count(*)::bigint FROM security_audit_events WHERE event_type='medication_review_prompt.updated') AS events"
+    )).await.unwrap().unwrap();
+    assert_eq!(
+        history_and_audit.try_get::<i64>("", "histories").unwrap(),
+        1
+    );
+    assert_eq!(history_and_audit.try_get::<i64>("", "events").unwrap(), 1);
     app.close().await;
 }
 

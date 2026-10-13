@@ -14,8 +14,7 @@ struct Fixture {
 
 impl Fixture {
     async fn new() -> Self {
-        assert_eq!(std::env::var("MEDTRACKER_OWNED_DATABASE").unwrap(), "1");
-        let uri = std::env::var("DATABASE_URL").unwrap();
+        let uri = template::owned_database_url();
         let endpoint = uri
             .strip_prefix("postgres://medtracker:medtracker_password@127.0.0.1:")
             .unwrap();
@@ -552,11 +551,7 @@ async fn dose_take_grant_expired_after_begin_has_no_effect() {
     let fixture = Fixture::new().await;
     fixture.admin.execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001; UPDATE person_access_grants SET expires_at=timezone('UTC',clock_timestamp())+interval '100 milliseconds' WHERE id=78001").await.unwrap();
     let tenant = access::begin(&fixture.runtime, &scope()).await.unwrap();
-    fixture
-        .admin
-        .execute_unprepared("SELECT pg_sleep(0.2)")
-        .await
-        .unwrap();
+    fixture.admin.execute_unprepared("UPDATE person_access_grants SET expires_at=timezone('UTC',clock_timestamp())-interval '1 second' WHERE id=78001").await.unwrap();
     let result = doses::execute(&tenant, command()).await;
     assert_eq!(result.unwrap_err(), OperationError::NotFound);
     tenant.rollback().await.unwrap();

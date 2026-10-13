@@ -60,6 +60,7 @@ impl Hooks for App {
             .add_route(browser(crate::controllers::profile::avatar::routes()))
             .add_route(browser(crate::controllers::treatments::routes()))
             .add_route(browser(crate::controllers::reports::routes()))
+            .add_route(browser(crate::controllers::review_prompts::routes()))
             .add_route(browser(crate::controllers::dose_occurrences::routes()))
             .add_route(browser(crate::controllers::administration::routes()))
             .add_route(browser(crate::controllers::invitations::routes()))
@@ -116,6 +117,9 @@ impl Hooks for App {
             .register(crate::models::nhs_dmd::ImportWorker::build(ctx))
             .await?;
         queue
+            .register(crate::models::care::review_prompts::refresh::RefreshWorker::build(ctx))
+            .await?;
+        queue
             .register(crate::models::care::browser_push::scheduler::ReminderWorker::build(ctx))
             .await?;
         queue
@@ -135,6 +139,7 @@ impl Hooks for App {
 
     fn register_tasks(tasks: &mut Tasks) {
         tasks.register(crate::models::nhs_dmd::ReconcileTask);
+        tasks.register(crate::models::care::review_prompts::refresh::RefreshTask);
         tasks.register(crate::models::care::browser_push::scheduler::ReminderTask);
     }
 
