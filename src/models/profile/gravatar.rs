@@ -3,9 +3,10 @@ use crate::models::{
     entities::{account, person, user},
     errors::OperationError,
 };
-use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
+use std::collections::{HashMap, HashSet};
 
 pub(crate) fn enabled(preferences: &Value) -> bool {
     preferences["gravatar_enabled"]
@@ -58,6 +59,56 @@ pub async fn for_person(
         .filter(|email| !email.trim().is_empty())
         .unwrap_or(&account.email);
     Ok(image_url(email))
+}
+
+pub async fn for_visible_people(
+    tenant: &TenantTransaction,
+    people: &[person::Model],
+    uploaded: &HashSet<i64>,
+) -> Result<HashMap<i64, String>, OperationError> {
+    let eligible: Vec<_> = people
+        .iter()
+        .filter(|person| !uploaded.contains(&person.id) && person.account_id.is_some())
+        .collect();
+    if eligible.is_empty() {
+        return Ok(HashMap::new());
+    }
+    let accounts: HashMap<_, _> = account::Entity::find()
+        .filter(account::Column::Id.is_in(eligible.iter().filter_map(|person| person.account_id)))
+        .all(tenant.transaction())
+        .await?
+        .into_iter()
+        .filter(|account| enabled(&account.preferences))
+        .map(|account| (account.id, account))
+        .collect();
+    let users: HashMap<_, _> = user::Entity::find()
+        .filter(user::Column::PersonId.is_in(eligible.iter().map(|person| person.id)))
+        .order_by_asc(user::Column::Id)
+        .all(tenant.transaction())
+        .await?
+        .into_iter()
+        .fold(HashMap::new(), |mut users, user| {
+            users.entry(user.person_id).or_insert(user);
+            users
+        });
+    Ok(eligible
+        .into_iter()
+        .filter_map(|person| {
+            let account = accounts.get(&person.account_id?)?;
+            let email = person
+                .email
+                .as_deref()
+                .filter(|email| !email.trim().is_empty())
+                .or_else(|| {
+                    users
+                        .get(&person.id)
+                        .map(|user| user.email_address.as_str())
+                })
+                .filter(|email| !email.trim().is_empty())
+                .unwrap_or(&account.email);
+            image_url(email).map(|url| (person.id, url))
+        })
+        .collect())
 }
 
 fn image_url(email: &str) -> Option<String> {

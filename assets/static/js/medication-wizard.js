@@ -70,7 +70,7 @@
       if (!input.reportValidity()) return false;
     }
     if (stage === 1 && !reviewed) {
-      root.querySelector('[data-plan-summary]').textContent = 'Review the medication plan before continuing.';
+      root.querySelector('[data-plan-summary]').textContent = root.dataset.reviewRequired;
       root.querySelector('[data-review-plan]').focus();
       return false;
     }
@@ -104,9 +104,9 @@
       group.dataset.extraOption = String(index);
       group.className = 'grid gap-2 rounded-box border border-base-300 p-4';
       const legend = document.createElement('legend');
-      legend.textContent = 'Dose option ' + (index + 2);
+      legend.textContent = root.dataset.extraOptionLabel.replace('%{number}', index + 2);
       group.append(legend);
-      for (const [key, label, type] of [['amount', 'Amount', 'number'], ['unit', 'Unit', 'text'], ['frequency', 'Frequency', 'text'], ['current_supply', 'Starting supply', 'number'], ['reorder_threshold', 'Reorder threshold', 'number']]) {
+      for (const [key, label, type] of [['amount', root.dataset.extraAmount, 'number'], ['unit', root.dataset.extraUnit, 'text'], ['frequency', root.dataset.extraFrequency, 'text'], ['current_supply', root.dataset.extraCurrentSupply, 'number'], ['reorder_threshold', root.dataset.extraReorderThreshold, 'number']]) {
         const id = 'extra-option-' + index + '-' + key;
         const caption = document.createElement('label');
         caption.htmlFor = id;
@@ -124,7 +124,7 @@
       const remove = document.createElement('button');
       remove.type = 'button';
       remove.className = 'btn btn-ghost w-fit';
-      remove.textContent = 'Remove dose option ' + (index + 2);
+      remove.textContent = root.dataset.removeDoseOption.replace('%{number}', index + 2);
       remove.addEventListener('click', () => {
         persistOptions();
         extras.splice(index, 1);
@@ -140,7 +140,7 @@
   root.querySelector('[data-add-option]').addEventListener('click', () => {
     persistOptions();
     if (extras.length >= 10) return;
-    extras.push({ amount: '', unit: value('dose_unit') || 'tablet', frequency: value('frequency') || 'As directed', default_max_daily_doses: Number(value('max_daily_doses')) || 1, default_min_hours_between_doses: Number(value('min_hours_between_doses')) || 0, default_dose_cycle: value('dose_cycle') || 'daily', current_supply: '', reorder_threshold: '0' });
+    extras.push({ amount: '', unit: value('dose_unit') || 'tablet', frequency: value('frequency') || root.dataset.asDirected, default_max_daily_doses: Number(value('max_daily_doses')) || 1, default_min_hours_between_doses: Number(value('min_hours_between_doses')) || 0, default_dose_cycle: value('dose_cycle') || 'daily', current_supply: '', reorder_threshold: '0' });
     renderOptions();
     root.querySelector('[data-extra-option]:last-child input')?.focus();
   });
@@ -151,9 +151,12 @@
   stages[1].addEventListener('change', () => { reviewed = false; schedule(); });
   root.querySelector('[data-review-plan]').addEventListener('click', () => {
     const timing = schedule();
-    const person = field('person_id').selectedOptions[0]?.textContent || 'No person plan';
-    const weekday = value('schedule_type') === 'weekly' ? plan('weekly-day') : '';
-    root.querySelector('[data-plan-summary]').textContent = [value('dose_amount') + ' ' + value('dose_unit'), timing.frequency, weekday ? weekday[0].toUpperCase() + weekday.slice(1) : '', timing.times.join(', '), person, value('start_date') + (value('end_date') ? ' to ' + value('end_date') : '')].filter(Boolean).join(' · ');
+    const person = field('person_id').selectedOptions[0]?.textContent;
+    const weekly = value('schedule_type') === 'weekly';
+    const weekday = weekly ? root.querySelector('[data-plan-input="weekly-day"]').selectedOptions[0]?.textContent : '';
+    const frequency = weekly ? root.dataset.frequencyWeekly : field('schedule_type').selectedOptions[0]?.textContent;
+    const dates = value('end_date') ? root.dataset.dateRange.replace('%{start}', value('start_date')).replace('%{end}', value('end_date')) : value('start_date');
+    root.querySelector('[data-plan-summary]').textContent = [value('dose_amount') + ' ' + value('dose_unit'), frequency, weekday, timing.times.join(', '), person, dates].filter(Boolean).join(' · ');
     reviewed = true;
   });
   root.querySelector('[data-add-date]').addEventListener('click', () => {

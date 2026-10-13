@@ -7,7 +7,7 @@ use crate::models::{
 use axum::{
     Extension,
     extract::Form as AxumForm,
-    http::{StatusCode, header},
+    http::{HeaderMap, StatusCode, header},
     response::IntoResponse,
 };
 use axum_csrf::CsrfToken;
@@ -30,6 +30,7 @@ async fn show(
     session: Session<SessionPgPool>,
     request: Option<Extension<LocoRequestId>>,
     token: CsrfToken,
+    headers: HeaderMap,
     ViewEngine(view): ViewEngine<TeraView>,
 ) -> Response {
     let (_, tenant) =
@@ -42,7 +43,15 @@ async fn show(
         Err(error) => return browser::operation_error(error),
     };
     let draft = defaults(&snapshot.medication);
-    let response = render(&view, &token, &slug, &snapshot.medication, &draft, None);
+    let response = render(
+        &view,
+        &token,
+        &slug,
+        &snapshot.medication,
+        &draft,
+        None,
+        &headers,
+    );
     if tenant.commit().await.is_err() {
         return browser::unavailable();
     }
@@ -55,6 +64,7 @@ async fn order(
     session: Session<SessionPgPool>,
     request: Option<Extension<LocoRequestId>>,
     token: CsrfToken,
+    headers: HeaderMap,
     ViewEngine(view): ViewEngine<TeraView>,
     AxumForm(draft): AxumForm<HashMap<String, String>>,
 ) -> Response {
@@ -101,6 +111,7 @@ async fn order(
                 &snapshot.medication,
                 &draft,
                 Some(&error),
+                &headers,
             )
         }
         Err(error) => browser::operation_error(error),
@@ -167,12 +178,24 @@ fn render(
     record: &medication::Model,
     draft: &HashMap<String, String>,
     error: Option<&OperationError>,
+    headers: &HeaderMap,
 ) -> Response {
     let Ok(authenticity) = token.authenticity_token() else {
         return browser::unavailable();
     };
     let mut data = rendering::appearance_context();
-    data["title"] = json!("Order medication");
+    let locale = crate::models::care::report_pdf::locale(
+        headers
+            .get(header::ACCEPT_LANGUAGE)
+            .and_then(|value| value.to_str().ok())
+            .unwrap_or("en"),
+    );
+    let Ok(labels) = crate::models::care::report_pdf::translations(locale) else {
+        return browser::unavailable();
+    };
+    data["lang"] = json!(locale);
+    data["labels"] = labels;
+    data["title"] = data["labels"]["medications"]["order"]["browser"]["title"].clone();
     data["slug"] = json!(slug);
     data["medication_id"] = json!(record.id);
     data["name"] = json!(
@@ -184,17 +207,28 @@ fn render(
     );
     data["draft"] = json!(draft);
     data["authenticity_token"] = json!(authenticity);
-    data["order_status"] = json!(match record.reorder_status {
-        Some(1) => "Ordered",
-        Some(2) => "Received",
-        _ => "Not ordered",
-    });
-    data["errors"] = match error {
+    let status_key = match record.reorder_status {
+        Some(1) => "ordered",
+        Some(2) => "received",
+        _ => "not_ordered",
+    };
+    data["order_status"] = data["labels"]["medications"]["stock"][status_key].clone();
+    let mut errors = match error {
         Some(OperationError::Validation { details }) => {
             details.get("errors").cloned().unwrap_or(json!({}))
         }
         _ => json!({}),
     };
+    if let Some(messages) = errors.get_mut("quantity").and_then(|value| value.as_array_mut()) {
+        for message in messages {
+            if message == "is outside stock precision" {
+                *message =
+                    data["labels"]["medications"]["order"]["browser"]["quantity_precision_error"]
+                        .clone();
+            }
+        }
+    }
+    data["errors"] = errors;
     let status = error.map(forms::status).unwrap_or(StatusCode::OK);
     match format::render().view(view, "medications/order.html", data) {
         Ok(response) => (

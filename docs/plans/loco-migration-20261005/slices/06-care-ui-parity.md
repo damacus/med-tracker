@@ -33,6 +33,52 @@ findings are not fresh runtime acceptance; desktop/mobile comparison, review and
 the required checks remain necessary. Source/test ownership and live job records
 stay in the parent browser brief.
 
+### Current integration verification
+
+C3 source checkpoint `9340f6ca` passed focused inventory, Stock Check and
+search checks, but the complete C1–C4 candidate is still in progress. The
+independent C3 review identified reason-linked option/parent audit versions,
+filtered error recovery, accessible inventory actions and blank-count feedback.
+The option and parent audit projection now has one reason-linked version each;
+the existing dosage API event remains unchanged. Source inspection shows all
+affected dosage and stock writers acquire the household lock before mutation,
+so the suggested stale-write gap did not reproduce. The same review raised an
+unverified empty-location query concern, subsequently proven in the browser.
+
+Grouped browser job `41412` ran 24 desktop/mobile cases: 18 passed and six
+failed as three genuine failures on both viewports. Choosing All locations
+submitted `location_id=` and rendered a query-deserialization error; the Welsh
+order quantity validation remained English; the Welsh person treatment date
+range retained English month and joining text. These now have targeted source
+corrections using the observed failure evidence. The filtered Stock Check
+error-draft assertions are still awaiting execution past the former query
+failure. Focused follow-up job `66204` then reached the filtered invalid POST on
+both viewports. It proved that the form action omitted the location query, the
+selected row was hidden in returned HTML and its retained quantity input was
+disabled. The quantity value itself remained `-1`. The controller and template
+now preserve the location and render selected drafts as editable before
+JavaScript runs. Focused job `87938` passed desktop/mobile 2/2 after the test
+posted to the form's actual filtered action, including malformed/blank query,
+retained count, selected entry and enabled draft. The full grouped job log is
+`/Users/damacus/Library/Application Support/rtk/tee/1791897673_task_fro_ac15a7.log`.
+The focused RED log is
+`/Users/damacus/Library/Application Support/rtk/tee/1791898357_task_fro_088cb6.log`.
+No broader C1–C4 acceptance or full `task ci` has been claimed.
+The updated brief passes `rtk task docs:build` and `git diff --check`.
+Grouped candidate job `87648` then passed 20/24 desktop/mobile cases. The
+four failures were Welsh order GET returning 503 on both viewports and the
+Welsh person card's negative English-word assertion on both. Its rendered
+date was correctly `12 Hydref 2026 i 20 Hydref 2026`; the assertion used a
+plain `to` substring after Playwright normalized spaces and also matched
+`Synthetic`. It now matches an English date range specifically. The order
+trace had an empty application-diagnostics attachment, so the diagnosis is
+from the changed controller and template: indexing missing `errors.quantity`
+mutated the empty JSON object to include `null`; the template's `is defined`
+branch then tried to join that value and returned unavailable. The lookup is
+now non-mutating. Only these four affected cases need a focused rerun before
+claiming grouped acceptance. The grouped log is
+`/Users/damacus/Library/Application Support/rtk/tee/1791899712_task_fro_ac15a7.log`.
+
 ### Search/navigation implementation record
 
 The implementation writer owns `/private/tmp/medtracker-care-ui-completion` on
@@ -113,6 +159,60 @@ in the browser test. Actual captures are `docs/screenshots/loco-care-inventory-
 reachable on both viewports, with selected counts, per-row differences,
 zero/remove controls, unit-safe net change and mobile apply access. Source
 review and full integrated checks remain open; C3 is not yet published.
+The signed C3/search correction checkpoint is `9340f6ca` with a clean tree at
+freeze. Fresh source-only Devin C3 review runs as `lopsided-steed` job `4540`
+from `/private/tmp/medtracker-care-c3-review.txt`; the same search reviewer
+`jumbled-calliandra` ran correction review job `13302` from
+`/private/tmp/medtracker-care-search-correction.txt` and found no defects in
+the keyboard and header correction. C3 review job `4540` completed with
+findings against frozen `9340f6ca`. Its proposed stale-write race does not
+apply to the current care writers: Stock Check, option writes, medication
+stock mutations and dose logging all lock the household before stock changes.
+The option count does have a reason-less parent Medication version; focused
+regressions now check that audit link, filtered error recovery, blank counts,
+card action names and filtered-empty text before corrections. These new
+assertions entered grouped desktop/mobile run `51067`. That run confirmed the
+reason-less option/parent audit versions, blank-count submit state and repeated
+inventory card action names. Filtered error recovery, filtered-empty and the
+all-locations request were blocked by an incorrect test label and earlier
+assertions; their selectors have been corrected for the next product run. The
+option update now carries the stock-check reason through its one option and
+one parent version while preserving generic API events. Blank counts disable
+Apply and edit/refill names include the medicine. These changes have not passed
+a browser GREEN run yet. The same grouped run confirmed Welsh Appearance
+dialog text, Spanish detail-page language, Welsh person-page language and Welsh
+wizard language were missing. Dashboard avatar projection passed its early
+assertions, then stopped at a test locator that has been corrected. Locale
+wiring and translated visible/accessibility text are in progress across the
+five catalogues; the locale-tree checker passes.
+Full integrated checks and final review remain open.
+
+Grouped desktop/mobile job `37537` compiled and ran 22 scenarios: 10 passed,
+12 failed. Its exact log is `/Users/damacus/Library/Application
+Support/rtk/tee/1791896207_task_fro_de5e60.log`. Mixed Stock Check
+writes/reason linkage, avatar behaviour, Spanish detail, Welsh person cards and
+batch controls reached passing assertions. A filtered inventory correctly
+reached an empty result but showed the household-wide empty message; the
+filter-specific text is now distinct. The Stock Check location select was
+visible with the accessible name `Inventory location`; the test's label lookup
+was the blocker and now uses the observed combobox. Filtered error retention
+and the `All locations` round trip remain unverified until that assertion runs.
+
+The Welsh wizard returned 503 because four new translation keys had landed
+under a carer dialog instead of the wizard catalogue. They are now placed under
+`forms.medications.wizard.browser` in all five files. The public person launcher
+had two links containing the person's name; its test now selects the exact
+create-medicine action. The order locale test sent `Accept-Language: en-GB`
+despite a per-page override; it now uses the established Welsh browser context,
+with separate order and stock role fixtures. The search locale run exposed a
+real navigation race: installing the
+profile shell replaced the header and removed the search trigger. The existing
+trigger is now moved into the new top bar, with Appearance and Account security
+retained in the account panel. These corrections await the next grouped run.
+The expensive test lane was released to the review owner after `37537`.
+The wizard catalogue hierarchy and all 147 literal label paths referenced by
+the changed person and medication templates resolve in each of the five locale
+files; this static check does not establish rendered locale acceptance.
 
 ## Shared delivery contract
 
@@ -156,6 +256,14 @@ that image. The dashboard still sets `avatar_attached=false` and uses initials
 for selected-person and lane identity; integrate the existing protected person
 avatar there. Reconcile informative card states and actions with actual Rails
 and Loco pages before treating these checkboxes as complete.
+
+Current reconciliation: `care-person-cards.spec.mjs` already covers scheduled
+and ongoing cards, weekly limits versus plans, zero-hour omission, paused
+history, empty person, view-only carer, protected avatar and source stock.
+The dashboard avatar surface failed its desktop/mobile browser RED in job
+`37562`; its bulk consent-aware projection and protected-image rendering are
+under implementation. Person-card surrounding text and source summaries still
+need selected-language coverage, actual reference comparison and review.
 
 ## C2: Medication details and stock interactions
 
@@ -281,6 +389,15 @@ positive quantity and restock date; `Medication#restock!` adds delivered stock,
 sets the last-restock baseline and clears reorder state. C2 includes the missing
 domain/browser operation and its authorization, audit, stale-write and duplicate
 submission checks. An order form labelled "Refill" does not satisfy this journey.
+
+Current reconciliation: the discovery above is historical. Additive refill,
+explicit tracked-option choice, stock adjustment, order state and record-dose
+dialog are present. `care-medication-detail.spec.mjs` covers focus/error
+recovery, stale and denied writes, exact stock effect, audit rollback, dose
+preview and theme reflow; the scheduled-dose delivery passed its own full CI
+before this slice. Remaining C2 work is surrounding detail-page localisation,
+conditional presentation comparison and integrated acceptance, not replacing
+those operations.
 
 ## C3: Inventory search, cards and scanner
 
@@ -620,6 +737,14 @@ correction. They impose no dependency or acceptance gate on profile delivery.
 - [ ] Verify back/next preserves input, invalid steps do not create partial records,
   close/return preserves intended context, duplicate submission is safe and the
   created medication is immediately usable. Test all supported wrappers.
+
+Current reconciliation: the deferral above applied to profile delivery, not
+the owner-approved complete care UI slice. `care-scanner.spec.mjs` already
+covers current and context-aware launchers, curated/custom and manual sources,
+schedule/taper plans, duplicate handling, atomic option creation and the
+full-page/modal/slide-over wrappers. Remaining C4 work is selected-language
+visible/accessibility text and actual wrapper comparison, plus any failing
+conditional-state regression found in that comparison.
 
 ## Priority and acceptance
 

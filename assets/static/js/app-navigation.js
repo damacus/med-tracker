@@ -94,6 +94,9 @@
     const template = document.getElementById('app-navigation-template');
     if (!header || !template || !data?.labels || installed) return;
     const labels = data.labels;
+    const searchTrigger = header.querySelector('[data-global-search-trigger]');
+    const appearanceTrigger = header.querySelector('[data-dialog-open="appearance-dialog"]');
+    const securityLink = header.querySelector('a[href="/account/security"]');
     const link = item => {
       const anchor = element('a', item.label, 'app-navigation-link');
       anchor.href = item.href;
@@ -144,6 +147,7 @@
       return panel;
     };
     header.replaceChildren(template.content.cloneNode(true));
+    if (searchTrigger) header.querySelector('.app-header').insertBefore(searchTrigger, header.querySelector('[data-app-account]'));
     const drawerTrigger = header.querySelector('[data-app-drawer]');
     const drawer = dialog('app-drawer', data.navigation_label, drawerTrigger);
     drawerTrigger.setAttribute('aria-label', labels.mobile_menu.open_menu);
@@ -168,6 +172,15 @@
       avatar.append(image);
     }
     const account = dialog('app-account', labels.profile_menu.my_account, accountTrigger);
+    if (appearanceTrigger) {
+      appearanceTrigger.className = 'app-navigation-link';
+      appearanceTrigger.addEventListener('click', () => account.close());
+      account.append(appearanceTrigger);
+    }
+    if (securityLink) {
+      securityLink.className = 'app-navigation-link';
+      account.append(securityLink);
+    }
     for (const id of ['dashboard', 'profile', 'administration']) {
       const item = data.choices.find(item => item.id === id);
       if (item) account.append(link({ ...item, label: labels.profile_menu[id] }));

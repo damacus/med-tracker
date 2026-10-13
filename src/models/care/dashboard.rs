@@ -5,6 +5,7 @@ use crate::models::{
         active_storage_attachment, medication, medication_take, person, person_medication, schedule,
     },
     errors::OperationError,
+    profile,
 };
 use chrono::{Timelike, Utc};
 use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter, QueryOrder};
@@ -48,6 +49,7 @@ pub async fn read(
         .into_iter()
         .map(|row| row.record_id)
         .collect();
+    let gravatars = profile::gravatar::for_visible_people(tenant, &people, &attachments).await?;
     let schedules = schedule::Entity::find()
         .filter(schedule::Column::HouseholdId.eq(household))
         .filter(schedule::Column::PersonId.is_in(ids.clone()))
@@ -225,6 +227,11 @@ pub async fn read(
             rows.push(json!({"person_id":person_id,"person_name":person.name,"avatar":attachments.contains(&person_id),"initials":person.name.split_whitespace().filter_map(|word| word.chars().next()).take(2).flat_map(char::to_uppercase).collect::<String>(),"medication":name,"icon":match medicine.dose_unit.as_deref().unwrap_or("").to_ascii_lowercase().as_str() { "tablet"|"capsule"|"gummy"|"pill"=>"pill", "ml"|"drop"|"spray"=>"droplet", "iu"=>"syringe", _=>"medication" },"dose":format!("{} {}",amount, dose_unit(unit,&amount)),"source_id":source_id,"source_type":kind,"medication_id":medicine.id,"stock_ids":card["eligible_stock_medication_ids"],"as_needed":as_needed,"can_record_outcome":!as_needed && card["can_record"] == true && outcome == "open" && scheduled.is_none_or(|time|time.with_timezone(&Utc) <= now),"outcome":outcome,"status":status,"status_label":match status { "available" => &labels["dashboard"]["stats"]["now"], "paused" => &labels["person_medications"]["card"]["paused"], "not_taken" => &labels["dashboard"]["outcomes"]["not_taken"], _ => &labels["dashboard"]["statuses"][status] },"period":period,"time":scheduled.map(|time| time.format("%H:%M").to_string()).unwrap_or_else(|| labels["dashboard"]["routine"]["anytime"].as_str().unwrap_or("").to_owned()),"order":scheduled.map(|time| time.timestamp()).unwrap_or(i64::MAX),"action_label":labels["person_medications"]["card"][if person.account_id == Some(tenant.scope().actor.account_id) { "take" } else { "give" }],"can_record":card["can_record"] == true && matches!(status,"available"|"upcoming"),"record_url":format!("/households/{slug}/dashboard?record_medication_id={}&record_source_type={kind}&record_source_id={source_id}&record_person_id={person_id}",medicine.id),"person_url":format!("/households/{slug}/people/{person_id}"),"history_url":format!("/households/{slug}/people/{person_id}/treatments/{}/{source_id}/doses",if kind == "schedule" { "schedules" } else { "assignments" })}));
         }
     }
+    for row in &mut rows {
+        if let Some(person_id) = row["person_id"].as_i64() {
+            row["gravatar_url"] = json!(gravatars.get(&person_id));
+        }
+    }
     rows.sort_by_key(|row| {
         (
             row["order"].as_i64().unwrap_or(i64::MAX),
@@ -256,15 +263,21 @@ pub async fn read(
         .filter(|row| row["outcome"] == "taken")
         .cloned()
         .collect();
-    let lanes: Vec<_> = people.iter().filter(|person| ids.contains(&person.id)).map(|person| json!({"id":person.id,"name":person.name,"avatar":attachments.contains(&person.id),"initials":person.name.split_whitespace().filter_map(|word| word.chars().next()).take(2).flat_map(char::to_uppercase).collect::<String>(),"rows":rows.iter().filter(|row| row["person_id"] == person.id).collect::<Vec<_>>(),"has_as_needed":rows.iter().any(|row|row["person_id"] == person.id && row["as_needed"] == true && row["outcome"] == "open"),"remaining":routine.iter().filter(|row|row["person_id"] == person.id).count(),"routine_summary":if routine.iter().any(|row|row["person_id"] == person.id) {labels["dashboard"]["routine"]["left_today"]["other"].as_str().unwrap_or("").replace("%{count}",&routine.iter().filter(|row|row["person_id"] == person.id).count().to_string())} else {labels["dashboard"]["routine"]["done_today"].as_str().unwrap_or("").to_owned()}})).collect();
+    let mut lanes: Vec<_> = people.iter().filter(|person| ids.contains(&person.id)).map(|person| json!({"id":person.id,"name":person.name,"avatar":attachments.contains(&person.id),"initials":person.name.split_whitespace().filter_map(|word| word.chars().next()).take(2).flat_map(char::to_uppercase).collect::<String>(),"rows":rows.iter().filter(|row| row["person_id"] == person.id).collect::<Vec<_>>(),"has_as_needed":rows.iter().any(|row|row["person_id"] == person.id && row["as_needed"] == true && row["outcome"] == "open"),"remaining":routine.iter().filter(|row|row["person_id"] == person.id).count(),"routine_summary":if routine.iter().any(|row|row["person_id"] == person.id) {labels["dashboard"]["routine"]["left_today"]["other"].as_str().unwrap_or("").replace("%{count}",&routine.iter().filter(|row|row["person_id"] == person.id).count().to_string())} else {labels["dashboard"]["routine"]["done_today"].as_str().unwrap_or("").to_owned()}})).collect();
+    for lane in &mut lanes {
+        if let Some(person_id) = lane["id"].as_i64() {
+            lane["gravatar_url"] = json!(gravatars.get(&person_id));
+        }
+    }
     let inventory: Vec<_> = medicines.iter().map(|medicine| json!({"id":medicine.id,"name":medicine.friendly_name.as_deref().filter(|name| !name.is_empty()).or(medicine.name.as_deref()).unwrap_or(""),"supply":medicine.current_supply.map(|value| format!("{} {}",value.normalize(), if medicine.dose_unit.as_deref() == Some("ml") { "ml" } else if value == sea_orm::prelude::Decimal::ONE { "unit" } else { "units" })),"percentage":medicine.current_supply.zip(medicine.supply_at_last_restock).filter(|(_,baseline)|*baseline > sea_orm::prelude::Decimal::ZERO).map(|(supply,baseline)|((supply/baseline)*sea_orm::prelude::Decimal::from(100)).clamp(sea_orm::prelude::Decimal::ZERO,sea_orm::prelude::Decimal::from(100)).to_string()).unwrap_or_else(||"100".to_owned()),"low":medicine.current_supply.is_some_and(|value| value <= medicine.reorder_threshold)})).collect();
     let stock = inventory
         .iter()
         .find(|medicine| medicine["low"] == true)
         .or_else(|| inventory.first());
-    Ok(
-        json!({"periods":(["morning","afternoon","evening","anytime"].into_iter().filter(|period| rows.iter().any(|row| row["period"] == *period)).collect::<Vec<_>>()),"people":people.iter().map(|person| json!({"id":person.id,"name":person.name,"initials":initials(&person.name)})).collect::<Vec<_>>(),"selected":selected,"selected_name":selected.and_then(|id| person_by_id.get(&id)).map(|person| json!(person.name)).unwrap_or_else(|| labels["dashboard"]["person_selector"]["all_family"].clone()),"selected_initials":selected.and_then(|id|person_by_id.get(&id)).map(|person|json!(initials(&person.name))).unwrap_or_else(||labels["dashboard"]["person_selector"]["all_family_initials"].clone()),"rows":rows,"lanes":lanes,"next":actionable.first(),"following":actionable.iter().skip(1).take(4).collect::<Vec<_>>(),"completed":completed,"inventory":inventory,"stock":stock,"tasks_left":routine.len(),"due_now":routine.iter().filter(|row| row["status"] == "available").count(),"next_due":if routine.iter().any(|row| row["status"] == "available") { labels["dashboard"]["stats"]["now"].clone() } else { routine.iter().filter(|row| row["status"] == "upcoming").filter_map(|row| row["time"].as_str()).min().map(|value| json!(value)).unwrap_or_else(|| labels["dashboard"]["stats"]["no_upcoming_doses"].clone()) },"date":today.format("%A, %b %-d").to_string()}),
-    )
+    let mut projection = json!({"periods":(["morning","afternoon","evening","anytime"].into_iter().filter(|period| rows.iter().any(|row| row["period"] == *period)).collect::<Vec<_>>()),"people":people.iter().map(|person| json!({"id":person.id,"name":person.name,"initials":initials(&person.name),"avatar":attachments.contains(&person.id),"gravatar_url":gravatars.get(&person.id)})).collect::<Vec<_>>(),"selected":selected,"selected_name":selected.and_then(|id| person_by_id.get(&id)).map(|person| json!(person.name)).unwrap_or_else(|| labels["dashboard"]["person_selector"]["all_family"].clone()),"selected_initials":selected.and_then(|id|person_by_id.get(&id)).map(|person|json!(initials(&person.name))).unwrap_or_else(||labels["dashboard"]["person_selector"]["all_family_initials"].clone()),"rows":rows,"lanes":lanes,"next":actionable.first(),"following":actionable.iter().skip(1).take(4).collect::<Vec<_>>(),"completed":completed,"inventory":inventory,"stock":stock,"tasks_left":routine.len(),"due_now":routine.iter().filter(|row| row["status"] == "available").count(),"next_due":if routine.iter().any(|row| row["status"] == "available") { labels["dashboard"]["stats"]["now"].clone() } else { routine.iter().filter(|row| row["status"] == "upcoming").filter_map(|row| row["time"].as_str()).min().map(|value| json!(value)).unwrap_or_else(|| labels["dashboard"]["stats"]["no_upcoming_doses"].clone()) },"date":today.format("%A, %b %-d").to_string()});
+    projection["selected_avatar"] = json!(selected.is_some_and(|id| attachments.contains(&id)));
+    projection["selected_gravatar_url"] = json!(selected.and_then(|id| gravatars.get(&id)));
+    Ok(projection)
 }
 
 fn initials(name: &str) -> String {

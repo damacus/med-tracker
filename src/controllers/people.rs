@@ -14,7 +14,7 @@ use crate::models::{
 use axum::{
     Extension,
     extract::{Form as AxumForm, Query},
-    http::{StatusCode, header},
+    http::{HeaderMap, StatusCode, header},
     response::IntoResponse,
 };
 use axum_csrf::CsrfToken;
@@ -91,9 +91,10 @@ async fn show(
     request: Option<Extension<LocoRequestId>>,
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
+    headers: HeaderMap,
 ) -> Response {
     page::Page::new(&ctx, &session, &token, &view, &slug, request)
-        .show(&id)
+        .show(&id, &headers)
         .await
 }
 

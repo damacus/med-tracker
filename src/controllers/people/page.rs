@@ -59,21 +59,34 @@ impl<'a> Page<'a> {
         self.finish(tenant, "people/index.html", result, None).await
     }
 
-    pub(super) async fn show(self, id: &str) -> Response {
+    pub(super) async fn show(self, id: &str, headers: &HeaderMap) -> Response {
         let (principal, tenant) =
             match begin(self.ctx, self.session, self.slug, &self.request_id).await {
                 Ok(value) => value,
                 Err(error) => return authentication_error(error),
             };
         let result = async {
+            let locale = crate::models::care::report_pdf::locale(
+                headers
+                    .get(header::ACCEPT_LANGUAGE)
+                    .and_then(|value| value.to_str().ok())
+                    .unwrap_or("en"),
+            );
             let (projection, _) = people::read(&tenant, id, principal.time_zone()).await?;
             let person_id = projection["data"]["id"]
                 .as_i64()
                 .ok_or(OperationError::Unavailable)?;
             let can_manage = people::can_manage(&tenant, person_id).await?;
             let can_manage_household = administration::can_manage(&tenant).await?;
-            let medications =
-                browser_treatments::person_cards(&tenant, person_id, principal.time_zone()).await?;
+            let labels = crate::models::care::report_pdf::translations(locale)
+                .map_err(|_| OperationError::Unavailable)?;
+            let medications = browser_treatments::person_cards(
+                &tenant,
+                person_id,
+                principal.time_zone(),
+                &labels,
+            )
+            .await?;
             let mut data = rendering::detail(
                 self.slug,
                 projection["data"].clone(),
@@ -81,6 +94,11 @@ impl<'a> Page<'a> {
                 can_manage,
                 can_manage_household,
             );
+            data["labels"] = labels.clone();
+            data["lang"] = json!(locale);
+            data["care_warning_labels"] = labels["care_warning"].clone();
+            data["health_events_label"] = labels["people"]["show"]["health_events"].clone();
+            data["manage_carers_label"] = labels["people"]["show"]["manage_parents"].clone();
             data["can_manage_carers"] =
                 json!(crate::models::care::person_carers::can_assign(&tenant, person_id).await?);
             data["avatar_attached"] = json!(
@@ -104,8 +122,6 @@ impl<'a> Page<'a> {
                 .session
                 .get::<String>(&notice_key)
                 .filter(|kind| matches!(kind.as_str(), "created" | "invited"));
-            let labels = crate::models::care::report_pdf::translations("en")
-                .map_err(|_| OperationError::Unavailable)?;
             data["care_notice"] = notice.as_ref().map_or(Value::Null, |kind| {
                 labels["people"]["carer_relationships"][kind].clone()
             });

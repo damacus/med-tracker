@@ -1,6 +1,6 @@
 use crate::models::{
     access::{self, TenantTransaction},
-    care::{administration, dosages, doses::CredentialProvenance, locations, medications},
+    care::{dosages, doses::CredentialProvenance, locations, medications},
     entities::{dosage, medication},
     errors::OperationError,
 };
@@ -111,30 +111,20 @@ pub async fn apply(
         checked.push((
             row.medication_id,
             row.option_id,
-            row.quantity.clone(),
-            item.quantity,
+            quantity.normalize().to_string(),
         ));
     }
-    checked.sort_by_key(|(medication_id, option_id, _, _)| (*medication_id, *option_id));
-    for (medication_id, option_id, original_quantity, quantity) in checked {
+    checked.sort_by_key(|(medication_id, option_id, _)| (*medication_id, *option_id));
+    for (medication_id, option_id, quantity) in checked {
         if let Some(option_id) = option_id {
             let (_, etag) = dosages::read(tenant, &option_id.to_string()).await?;
-            dosages::update(
+            dosages::update_stock_checked(
                 tenant,
                 &option_id.to_string(),
                 json!({"dosage_option":{"current_supply":quantity}}),
                 Some(&etag),
                 provenance,
-            )
-            .await?;
-            administration::persistence::record_version_as(
-                tenant,
-                "MedicationDosageOption",
-                option_id,
                 &format!("stock check (qty: {quantity}, reason: {reason})"),
-                Some(json!({"current_supply": original_quantity})),
-                json!({"current_supply": quantity, "reason": reason}),
-                provenance,
             )
             .await?;
         } else {

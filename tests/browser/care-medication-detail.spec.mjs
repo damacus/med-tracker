@@ -76,10 +76,14 @@ test('invalid dose time marks only its field and restores focus after rerender',
 
 test.describe('Spanish dose dialog', () => {
 test.use({ locale: 'es-ES' });
-test('record dialog uses the maintained requested language without relabelling the English page', async ({ page }) => {
+test('record dialog and surrounding detail use the maintained requested language', async ({ page }) => {
   await openMedication(page);
-  await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
-  await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'es');
+  await expect(page.getByText('Perfil del Medicamento', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Estado del Inventario' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Registrar dosis', exact: true })).toBeVisible();
+  await page.screenshot({ path: `docs/screenshots/loco-care-medication-spanish-${test.info().project.name}.png` });
+  await page.getByRole('button', { name: 'Registrar dosis', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Registrar dosis', exact: true });
   await expect(dialog).toHaveAttribute('lang', 'es');
   await expect(dialog.getByText('Compruebe la persona, el medicamento, la dosis y la hora antes de registrar.', { exact: true })).toBeVisible();

@@ -12,6 +12,7 @@
   const signed = value => `${value > 0 ? '+' : ''}${number.format(value)}`;
   function refresh() {
     let count = 0;
+    let invalid = false;
     const changes = new Map();
     for (const selection of selections) {
       const entry = entries.get(selection.value);
@@ -21,9 +22,13 @@
       if (!selection.checked) continue;
       count += 1;
       const original = entry.dataset.stockCheckCurrent;
-      const next = Number(entry.querySelector('input[type="number"]').value);
+      const quantity = entry.querySelector('input[type="number"]');
+      const next = Number(quantity.value);
       const difference = entry.querySelector('[data-stock-check-difference]');
-      if (original === '' || !Number.isFinite(next)) {
+      if (quantity.value.trim() === '' || !quantity.validity.valid || !Number.isFinite(next)) {
+        invalid = true;
+        difference.textContent = '—';
+      } else if (original === '') {
         difference.textContent = '—';
       } else {
         const delta = next - Number(original);
@@ -32,7 +37,7 @@
       }
     }
     empty.hidden = count > 0;
-    submit.disabled = count === 0;
+    submit.disabled = count === 0 || invalid;
     submit.textContent = count === 1 ? submit.dataset.one : submit.dataset.other.replace('%{count}', count);
     selected.textContent = selected.dataset.template.replace('%{count}', count);
     net.textContent = changes.size ? [...changes].map(([unit, delta]) => `${signed(delta)} ${unit}`).join(' · ') : '—';

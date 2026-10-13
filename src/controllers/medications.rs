@@ -279,7 +279,7 @@ async fn edit_stock(
     State(ctx): State<AppContext>,
     Path((slug, id)): Path<(String, String)>,
     session: Session<SessionPgPool>,
-    request: Option<Extension<LocoRequestId>>,
+    (request, headers): (Option<Extension<LocoRequestId>>, HeaderMap),
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
 ) -> Response {
@@ -307,7 +307,20 @@ async fn edit_stock(
         ),
         ("reason".into(), String::new()),
     ]);
-    let response = rendering::stock(&view, &token, &slug, snapshot, &draft, None, StatusCode::OK);
+    let language = headers
+        .get(header::ACCEPT_LANGUAGE)
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or("en");
+    let response = rendering::stock(
+        &view,
+        &token,
+        &slug,
+        snapshot,
+        &draft,
+        None,
+        StatusCode::OK,
+        language,
+    );
     if tenant.commit().await.is_err() {
         return unavailable();
     }
@@ -586,6 +599,10 @@ async fn adjust_stock(
                     &draft,
                     Some(forms::message(&error)),
                     forms::status(&error),
+                    headers
+                        .get(header::ACCEPT_LANGUAGE)
+                        .and_then(|value| value.to_str().ok())
+                        .unwrap_or("en"),
                 );
                 if tenant.commit().await.is_err() {
                     return unavailable();

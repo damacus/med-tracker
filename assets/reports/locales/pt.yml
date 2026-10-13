@@ -1017,6 +1017,23 @@ pt:
       option_readonly: "O stock e os limites de reposição das opções são geridos no editor da opção."
       invalid_quantity: "Introduza uma quantidade não negativa com até duas casas decimais."
       household_inventory: "Inventário do agregado"
+      browser:
+        remaining: "Restam %{quantity} %{unit}"
+        review_latest: "Rever o stock mais recente"
+        changed: "O stock mudou enquanto este formulário estava aberto. Reveja o stock mais recente antes de guardar."
+    order:
+      browser:
+        back: "Voltar ao medicamento"
+        title: "Encomendar medicamento"
+        supplier: "Fornecedor"
+        quantity: "Quantidade da encomenda"
+        arrival: "Chegada prevista"
+        mark_ordered: "Marcar como encomendado"
+        receive_title: "Receber uma encomenda"
+        receipt_hint: "Receber uma encomenda não altera o stock. Utilize Ajustar stock para registar a quantidade entregue."
+        review_stock: "Rever stock"
+        mark_received: "Marcar como recebido"
+        quantity_precision_error: "A quantidade excede a precisão do stock."
     dose_dialog:
       ongoing_medication: 'Medicação contínua'
       scheduled_treatment: 'Tratamento programado'
@@ -1197,10 +1214,11 @@ pt:
       untracked_stock: O stock não é acompanhado.
       low_stock: Stock baixo
       edit: Editar
-      edit_medication: Editar medicamento
+      edit_medication: Editar %{medication}
       refill: Repor
-      refill_medication: Repor medicamento
-      empty_filtered: Não há medicamentos disponíveis neste agregado.
+      refill_medication: Repor %{medication}
+      empty_filtered: "Nenhum medicamento corresponde a estes filtros."
+      empty_unfiltered: "Não há medicamentos disponíveis neste agregado."
       scan_description: Leia a embalagem ou introduza o código de barras para escolher o medicamento e a localização antes de adicionar stock.
       find_barcode: Procurar código de barras
       manual_entry: Introduzir medicamento manualmente
@@ -1223,6 +1241,61 @@ pt:
       submit: Adicionar stock digitalizado
     show:
       profile: Perfil do Medicamento
+      browser:
+        ordered: Encomendado
+        from_supplier: de %{supplier}
+        expected: Previsto
+        last_received: Última encomenda recebida
+        refill_inventory: Repor stock
+        order_medication: Encomendar medicamento
+        no_source: Não há uma fonte de medicação disponível.
+        js_required: É necessário JavaScript para registar doses aqui.
+        dose_options: Opções de dose
+        default_adults: Predefinido para adultos
+        default_children: Predefinido para crianças
+        remaining: "Restam %{amount} %{unit}"
+        manage_dose_options: Gerir Opções de Dose
+        no_dose_options: Não há opções de dose registadas.
+        dose_history: Histórico de doses
+        no_doses: Ainda não há doses registadas.
+        standard_dosage: Dose padrão
+        no_standard_dosage: Não há dose padrão registada.
+        manage_medication: Gerir medicamento
+        adjust_stock: Ajustar stock
+        stock_adjustment_page: Página de ajuste de stock
+        edit_medication: Editar Medicamento
+        delete_medication: Eliminar Medicamento
+        add_delivered: Adicione o stock entregue ao fornecimento atual.
+        latest_stock: Stock mais recente
+        use_latest: Usar o stock mais recente
+        dose_option: Opção de dose
+        choose_dose_option: Escolha uma opção de dose
+        quantity_to_add: Quantidade a adicionar
+        restock_date: Data de reposição
+        cancel: Cancelar
+        add_stock: Adicionar stock
+        current_supply: Fornecimento atual
+        new_stock_quantity: Nova quantidade em stock
+        reason: Motivo
+        delete: Eliminar
+        reorder_at: Voltar a encomendar aos %{quantity} %{unit}
+        stock_untracked: Sem monitorização
+        stock_out: Sem stock
+        stock_low: Stock baixo
+        stock_in: Em stock
+        max_doses:
+          daily:
+            one: Máximo de 1 dose por dia
+            other: Máximo de %{count} doses por dia
+          weekly:
+            one: Máximo de 1 dose por semana
+            other: Máximo de %{count} doses por semana
+          monthly:
+            one: Máximo de 1 dose por mês
+            other: Máximo de %{count} doses por mês
+        minimum_hours:
+          one: Pelo menos 1 hora entre doses
+          other: Pelo menos %{hours} horas entre doses
       edit_details: Editar Detalhes
       inventory: Inventário
       add_schedule: Agendar
@@ -1346,6 +1419,42 @@ pt:
     show:
       edit_person: Editar Pessoa
       add_medication: Adicionar Medicamento
+      current_medications: Medicamentos atuais
+      browser:
+        stock_untracked: "Stock não controlado"
+        stock_remaining: "%{amount} em stock"
+        from: "Desde"
+        until: "Até"
+        timing:
+          every_other_day: "De dois em dois dias"
+          multiple_daily: "Várias vezes ao dia"
+          weekly: "Semanal"
+          monthly: "Mensal"
+          specific_dates: "Em datas específicas"
+          prn: "Conforme necessário"
+          tapering: "Plano de redução"
+          daily: "Diário"
+          empty: ""
+        avatar_for: "Avatar de %{person}"
+        age: Idade
+        paused: Em pausa
+        active: Ativo
+        outside_dates: Fora das datas agendadas
+        pause: Pausa
+        pause_history: Histórico de pausas
+        to: a
+        dose_records: Registos de doses
+        edit_treatment: Editar tratamento
+        empty_current: Não há medicamentos atuais registados para %{person}.
+        manage_treatments: Gerir tratamentos
+        view_treatments: Ver tratamentos
+        add_schedule: Adicionar horário
+        assign_medication: Atribuir medicamento
+        carer_relationships: Relações de cuidadores
+        profile_details: Detalhes do perfil
+        not_recorded: Não registado
+        yes: "Sim"
+        no: "Não"
       manage_parents: Gerir pais
       health_events: Eventos de saúde
       back: Voltar
@@ -2282,6 +2391,7 @@ pt:
       mfa_required: Conclua a autenticação de dois fatores antes de criar um token de API.
     appearance:
       title: Aspeto
+      close: Fechar
       description: Escolha como o MedTracker aparece em ecrãs autenticados e públicos.
       mode_label: Modo
       modes:
@@ -2415,6 +2525,8 @@ pt:
       footer_notice: Este email foi enviado porque tem uma conta connosco.
     navigation:
       skip_to_content: Saltar para o conteúdo
+      home_link: Início do MedTracker
+      care_tagline: Cuidados, em conjunto.
       brand: MedTracker
       login: Iniciar sessão
     desktop_nav:
@@ -2663,6 +2775,32 @@ pt:
       current_supply_placeholder: e.g., 30
       reorder_threshold_placeholder: e.g., 5
       wizard:
+        browser:
+          as_directed: "Conforme indicado"
+          matching_medicines: "Medicamentos correspondentes"
+          choose_medicine_location: "Escolha o medicamento e a localização"
+          refill_at: "Repor %{name} em %{location}"
+          created_title: "Medicamento criado"
+          created_heading: "%{name} criado!"
+          created_description: "O medicamento foi guardado. Pode gerir as opções de dose ou voltar ao medicamento."
+          saved_options: "Opções de dose guardadas"
+          done: "Concluir"
+          cancel: Cancelar
+          person: Pessoa
+          no_person_plan: Sem plano para uma pessoa
+          frequency: Frequência
+          weekly_day: Dia semanal
+          specific_date: Data específica
+          frequency_weekly: Uma vez por semana
+          dose_option: Opção de dose %{number}
+          remove_dose_option: Remover opção de dose %{number}
+          date_range: "%{start} a %{end}"
+          first_dose_time: Hora da primeira dose
+          second_dose_time: Hora da segunda dose
+          weekly_time: Hora semanal
+          maximum_daily_doses: Máximo de doses diárias
+          add_dose_option: Adicionar opção de dose
+          pack_warning: Reveja as instruções da embalagem antes de guardar este medicamento.
         progress_label: Progresso da configuração do medicamento
         continue: Continuar
         steps:

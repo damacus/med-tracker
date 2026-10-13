@@ -172,7 +172,8 @@ test('inventory filters show located medication cards and distinguish zero from 
   await expect(zero.getByText('Synthetic cabinet')).toBeVisible();
   await expect(zero.getByText('0 tablets')).toBeVisible();
   await expect(zero.getByText('Out of stock')).toBeVisible();
-  await expect(zero.getByRole('link', { name: 'Edit medication' })).toBeVisible();
+  await expect(zero.getByRole('link', { name: 'Edit Synthetic tablets' })).toBeVisible();
+  await expect(zero.getByRole('link', { name: 'Refill Synthetic tablets' })).toBeVisible();
   const untracked = inventory.getByRole('article', { name: 'Synthetic spare capsules' });
   await expect(untracked.getByText('Stock is not tracked.')).toBeVisible();
   await expect(untracked.getByText('Travel bag')).toBeVisible();
@@ -185,7 +186,7 @@ test('inventory filters show located medication cards and distinguish zero from 
   await expect(page).toHaveURL(/category=Routine/);
   await expect(zero).toBeVisible();
   await inventory.getByRole('combobox', { name: 'Category', exact: true }).selectOption('As needed');
-  await expect(inventory.getByText('No medications are available in this household.')).toBeVisible();
+  await expect(inventory.getByText('No medications match these filters.')).toBeVisible();
 });
 
 test.describe('Welsh inventory language', () => {
@@ -199,6 +200,30 @@ test.describe('Welsh inventory language', () => {
     await expect(page.getByRole('link', { name: 'Gwiriad stoc' })).toBeVisible();
     await page.getByRole('link', { name: 'Gwiriad stoc' }).click();
     await expect(page.getByRole('heading', { name: 'Gweinyddu stocrestr' })).toBeVisible();
+  });
+});
+
+test.describe('Welsh medication wizard language', () => {
+  test.use({ locale: 'cy-GB' });
+  test('steps, schedule choices and generated plan use the selected language', async ({ page }) => {
+    await signIn(page);
+    await page.goto('/households/persistence-fixture/medications/new');
+    await expect(page.locator('html')).toHaveAttribute('lang', 'cy');
+    await expect(page.getByRole('heading', { name: 'Ychwanegu Meddyginiaeth Newydd' })).toBeVisible();
+    await expect(page.getByRole('list', { name: 'Gosod meddyginiaeth' })).toContainText('Manylion');
+    await page.getByLabel('Enw', { exact: true }).fill('Meddyginiaeth brawf');
+    await page.getByRole('button', { name: 'Parhau' }).click();
+    await expect(page.getByRole('heading', { name: 'Dos a chynllun' })).toBeVisible();
+    await page.getByLabel('Amlder', { exact: true }).selectOption('weekly');
+    await expect(page.getByLabel('Diwrnod wythnosol', { exact: true }).getByRole('option', { name: 'Dydd Llun' })).toBeAttached();
+    await page.getByRole('button', { name: 'Adolygu cynllun meddyginiaeth' }).click();
+    await expect(page.locator('[data-plan-summary]')).toContainText('Unwaith yr wythnos');
+    await page.getByRole('button', { name: 'Parhau' }).click();
+    await page.getByRole('button', { name: 'Parhau' }).click();
+    await page.getByRole('button', { name: 'Cadw Meddyginiaeth' }).click();
+    await expect(page.locator('html')).toHaveAttribute('lang', 'cy');
+    await expect(page.getByRole('heading', { name: 'Crëwyd Meddyginiaeth brawf!' })).toBeVisible();
+    await page.screenshot({ path: `docs/screenshots/loco-care-wizard-welsh-${test.info().project.name}.png` });
   });
 });
 
@@ -238,7 +263,12 @@ test('Stock Check applies selected absolute counts together and keeps unselected
   expect(Number(stock.option_parent_supply)).toBe(9);
   expect(Number(stock.untracked_parent_supply)).toBe(5);
   expect(Number(stock.scalar_reason_audits)).toBeGreaterThan(0);
-  expect(Number(stock.option_reason_audits)).toBeGreaterThan(0);
+  expect(Number(stock.option_reason_audits)).toBe(1);
+  expect(Number(stock.option_parent_reason_audits)).toBe(1);
+  expect(Number(stock.option_reason_before)).toBe(2);
+  expect(Number(stock.option_reason_after)).toBe(6);
+  expect(Number(stock.option_parent_reason_before)).toBe(5);
+  expect(Number(stock.option_parent_reason_after)).toBe(9);
 });
 
 test('Stock Check keeps a rejected batch editable without changing any stock', async ({ page, careFixture }) => {
@@ -255,6 +285,41 @@ test('Stock Check keeps a rejected batch editable without changing any stock', a
   await expect(page.getByLabel('New remaining supply for Synthetic spare capsules')).toHaveValue('-1');
   const stock = await careFixture.stockCheckProbe();
   expect(Number(stock.scalar_supply)).toBe(0);
+});
+
+test('Stock Check preserves the location and server-rendered selected counts after an invalid batch', async ({ page, careFixture }) => {
+  await careFixture.inventoryPresentation();
+  await signIn(page);
+  expect((await page.request.get('/households/persistence-fixture/medications/stock-check?location_id=invalid')).status()).toBe(400);
+  await page.getByRole('link', { name: /Stock check/i }).click();
+  await page.getByRole('combobox', { name: 'Inventory location', exact: true }).selectOption('79001');
+  await page.getByRole('button', { name: 'View', exact: true }).click();
+  await expect(page).toHaveURL(/location_id=79001/);
+  await expect(page.getByRole('checkbox', { name: /Synthetic spare capsules/ })).toHaveCount(0);
+  await page.getByRole('combobox', { name: 'Inventory location', exact: true }).selectOption('');
+  await page.getByRole('button', { name: 'View', exact: true }).click();
+  await expect(page).toHaveURL('/households/persistence-fixture/medications/stock-check?location_id=');
+  await expect(page.getByRole('checkbox', { name: /Synthetic spare capsules/ })).toBeVisible();
+  await page.getByRole('combobox', { name: 'Inventory location', exact: true }).selectOption('79001');
+  await page.getByRole('button', { name: 'View', exact: true }).click();
+  await expect(page).toHaveURL(/location_id=79001/);
+  await page.getByRole('checkbox', { name: /Synthetic tablets/ }).check();
+  await page.getByLabel('New remaining supply for Synthetic tablets').fill('-1');
+  const form = page.locator('[data-stock-check-form]');
+  const action = await form.getAttribute('action');
+  expect(action).toBe('/households/persistence-fixture/medications/stock-check?location_id=79001');
+  const submitted = await form.evaluate(element => Object.fromEntries(new FormData(element)));
+  const response = await page.request.post(action, { form: submitted });
+  expect(response.status()).toBe(422);
+  const html = await response.text();
+  expect.soft(html).toContain('action="/households/persistence-fixture/medications/stock-check?location_id=79001"');
+  expect.soft(html).toMatch(/data-stock-check-selected[^>]*>1 selected<\/p>/);
+  const entry = html.match(/<div[^>]*data-stock-check-entry="medication_80001"[^>]*>/)?.[0];
+  expect.soft(entry).toBeDefined();
+  if (entry) expect.soft(entry).not.toMatch(/class="[^"]*\bhidden\b/);
+  const count = html.match(/<input[^>]*name="quantity_medication_80001"[^>]*>/)?.[0];
+  expect.soft(count).toContain('value="-1"');
+  expect.soft(count).not.toContain('disabled');
 });
 
 test('Stock Check rolls back an earlier count when a later audit fails', async ({ page, careFixture }) => {
@@ -324,6 +389,10 @@ test('Stock Check batch controls show selected counts, differences and a unit-sa
   await page.getByLabel('New remaining supply for Synthetic spare capsules').fill('4');
   await expect(page.locator('[data-stock-check-net]')).toContainText('+7 tablet');
   await expect(page.locator('[data-stock-check-net]')).not.toContainText('capsule');
+  await page.getByLabel('New remaining supply for Synthetic tablets').fill('');
+  await expect(page.getByRole('button', { name: /Apply/ })).toBeDisabled();
+  await expect(page.locator('[data-stock-check-entry="medication_80001"] [data-stock-check-difference]')).toHaveText('—');
+  await page.getByLabel('New remaining supply for Synthetic tablets').fill('3');
   await page.screenshot({ path: `docs/screenshots/loco-care-stock-check-${test.info().project.name}.png` });
   await page.getByRole('button', { name: 'Set to zero for Synthetic option tablets 1 tablet' }).click();
   await expect(page.getByLabel('New remaining supply for Synthetic option tablets 1 tablet')).toHaveValue('0');

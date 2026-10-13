@@ -19,6 +19,7 @@ pub(super) async fn open(
         request_id,
         mut draft,
         error,
+        language,
     } = request;
     let field_errors = if matches!(error, Some(OperationError::Validation { details }) if details["errors"].is_object())
     {
@@ -157,7 +158,14 @@ pub(super) async fn open(
         return unavailable();
     };
     let mut data = rendering::appearance_context();
-    data["title"] = json!("Add a New Medication");
+    let locale = crate::models::care::report_pdf::locale(language);
+    let labels = match crate::models::care::report_pdf::translations(locale) {
+        Ok(value) => value,
+        Err(_) => return unavailable(),
+    };
+    data["title"] = labels["medications"]["form"]["new_title"].clone();
+    data["lang"] = json!(locale);
+    data["labels"] = labels;
     data["slug"] = json!(slug);
     data["selected_location"] = json!(forms::field(&draft, "location_id").parse::<i64>().ok());
     data["selected_person"] = json!(forms::field(&draft, "person_id").parse::<i64>().ok());
@@ -220,6 +228,7 @@ pub(super) struct WizardRequest<'a> {
     pub request_id: String,
     pub draft: HashMap<String, String>,
     pub error: Option<&'a OperationError>,
+    pub language: &'a str,
 }
 
 pub(super) async fn create(
@@ -229,6 +238,7 @@ pub(super) async fn create(
     request: Option<Extension<LocoRequestId>>,
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
+    headers: HeaderMap,
     AxumForm(draft): AxumForm<HashMap<String, String>>,
 ) -> Response {
     if token
@@ -259,7 +269,20 @@ pub(super) async fn create(
                 return unavailable();
             }
             let mut data = rendering::appearance_context();
-            data["title"] = json!("Medication created");
+            let locale = crate::models::care::report_pdf::locale(
+                headers
+                    .get(header::ACCEPT_LANGUAGE)
+                    .and_then(|value| value.to_str().ok())
+                    .unwrap_or("en"),
+            );
+            let labels = match crate::models::care::report_pdf::translations(locale) {
+                Ok(value) => value,
+                Err(_) => return unavailable(),
+            };
+            data["title"] =
+                labels["forms"]["medications"]["wizard"]["browser"]["created_title"].clone();
+            data["lang"] = json!(locale);
+            data["labels"] = labels;
             data["slug"] = json!(slug);
             data["id"] = json!(id);
             data["name"] = json!(name);
@@ -293,6 +316,10 @@ pub(super) async fn create(
                     request_id,
                     draft,
                     error: Some(&error),
+                    language: headers
+                        .get(header::ACCEPT_LANGUAGE)
+                        .and_then(|value| value.to_str().ok())
+                        .unwrap_or("en"),
                 },
             )
             .await

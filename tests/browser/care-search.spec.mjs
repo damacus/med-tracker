@@ -131,20 +131,44 @@ test.use({ locale: 'cy-GB' });
 test('the household search trigger uses the selected language on a medicine page', async ({ page }) => {
   await signIn(page);
   await page.goto(`${household}/medications`);
+  await page.getByRole('button', { name: 'Fy Nghyfrif' }).click();
+  const account = page.getByRole('dialog', { name: 'Fy Nghyfrif' });
+  await expect(account.getByRole('link', { name: 'Diogelwch Cyfrif' })).toBeVisible();
+  await account.getByRole('button', { name: 'Ymddangosiad' }).click();
+  const appearance = page.getByRole('dialog', { name: 'Ymddangosiad' });
+  await expect(appearance).toBeVisible();
+  await expect(appearance.getByRole('group', { name: 'Modd' }).getByRole('button', { name: 'Tywyll' })).toBeVisible();
+  await expect(appearance.getByRole('group', { name: 'Palet Lliwiau' }).getByRole('button', { name: 'Saets Tawel' })).toBeVisible();
+  await appearance.getByRole('button', { name: 'Cau' }).click();
+  await expect(page.locator('.skip-link')).toHaveText("Neidio i'r cynnwys");
   const trigger = page.getByRole('button', { name: 'Agor chwilio byd-eang' });
   await expect(trigger).toBeVisible();
   await expect(page.locator('header').getByRole('button', { name: 'Agor chwilio byd-eang' })).toBeVisible();
   const placement = await page.evaluate(() => {
     const trigger = document.querySelector('[data-global-search-trigger]').getBoundingClientRect();
     const main = document.querySelector('main').getBoundingClientRect();
-    return { triggerRight: trigger.right, mainRight: main.right, triggerBottom: trigger.bottom, mainTop: main.top };
+    return { triggerLeft: trigger.left, triggerRight: trigger.right, mainLeft: main.left, mainRight: main.right, triggerBottom: trigger.bottom, mainTop: main.top };
   });
-  expect(Math.abs(placement.triggerRight - placement.mainRight)).toBeLessThan(4);
+  expect(placement.triggerLeft).toBeGreaterThanOrEqual(placement.mainLeft);
+  expect(placement.triggerRight).toBeLessThanOrEqual(placement.mainRight);
   expect(placement.mainTop - placement.triggerBottom).toBeLessThan(55);
+  await trigger.click();
+  const palette = page.locator('#global_search_panel');
+  await expect(palette).toBeVisible();
+  const paletteTop = await palette.evaluate(element => element.getBoundingClientRect().top);
+  expect(paletteTop).toBeGreaterThanOrEqual(placement.triggerBottom);
+  await palette.getByRole('button', { name: 'Cau chwilio' }).click();
   await page.screenshot({ path: `docs/screenshots/loco-care-search-base-${test.info().project.name}.png` });
   await page.goto(`${household}/medications/workflow?intent=schedule`);
   await expect(page.locator('html')).toHaveAttribute('lang', 'cy');
   await expect(page.getByRole('link', { name: 'Amserlennu ar gyfer Synthetic adult' })).toBeVisible();
+  await page.goto(`${household}/dashboard`);
+  if (test.info().project.name === 'mobile') {
+    const rail = page.getByTestId('dashboard-mobile-rail');
+    await expect(rail.getByRole('link', { name: 'Cartref' })).toBeVisible();
+    await expect(rail.getByRole('link', { name: 'Stoc' })).toBeVisible();
+    await expect(rail.getByRole('link', { name: 'Darganfyddwr Meddyginiaethau' })).toBeVisible();
+  }
 });
 });
 

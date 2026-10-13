@@ -147,7 +147,14 @@ async fn show(
             .flat_map(char::to_uppercase)
             .collect::<String>()
     );
-    data["avatar_attached"] = json!(false);
+    let own_avatar = own_person.as_ref().and_then(|person| {
+        snapshot["people"]
+            .as_array()?
+            .iter()
+            .find(|option| option["id"] == person.id)
+    });
+    data["avatar_attached"] = json!(own_avatar.is_some_and(|option| option["avatar"] == true));
+    data["gravatar_url"] = json!(own_avatar.and_then(|option| option["gravatar_url"].as_str()));
     data["authenticity_token"] = json!(authenticity_token);
     data["role_label"] =
         labels["admin"]["labels"]["membership_roles"][&tenant.membership().role].clone();

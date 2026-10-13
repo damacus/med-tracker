@@ -21,7 +21,7 @@ pub(crate) async fn add_stock(
     active.current_supply = Set(Some(supply));
     active.updated_at = Set(Utc::now().naive_utc());
     let row = active.update(tenant.transaction()).await?;
-    persistence::persist(tenant, &row, Some(before), provenance).await?;
+    persistence::persist(tenant, &row, Some(before), provenance, None).await?;
     let rows = dosage::Entity::find()
         .in_tenant(tenant.scope().household_id)
         .filter(dosage::Column::MedicationId.eq(medication_id))
@@ -95,7 +95,7 @@ pub(crate) async fn create_with_parent(
             active.updated_at = Set(now);
             active.update(&savepoint).await?
         };
-        persistence::persist(tenant, &row, None, provenance).await?;
+        persistence::persist(tenant, &row, None, provenance, None).await?;
         if tracked {
             administration::persistence::record_version_as(
                 tenant,
@@ -138,6 +138,28 @@ pub async fn update(
     body: Value,
     etag: Option<&str>,
     provenance: Option<&CredentialProvenance>,
+) -> Result<(Value, String), OperationError> {
+    update_with_event(tenant, id, body, etag, provenance, None).await
+}
+
+pub(crate) async fn update_stock_checked(
+    tenant: &TenantTransaction,
+    id: &str,
+    body: Value,
+    etag: Option<&str>,
+    provenance: Option<&CredentialProvenance>,
+    event: &str,
+) -> Result<(Value, String), OperationError> {
+    update_with_event(tenant, id, body, etag, provenance, Some(event)).await
+}
+
+async fn update_with_event(
+    tenant: &TenantTransaction,
+    id: &str,
+    body: Value,
+    etag: Option<&str>,
+    provenance: Option<&CredentialProvenance>,
+    event: Option<&str>,
 ) -> Result<(Value, String), OperationError> {
     authorize(tenant).await?;
     let found = record(tenant, id, false).await?;
@@ -208,13 +230,13 @@ pub async fn update(
         } else {
             None
         };
-        persistence::persist(tenant, &row, Some(before), provenance).await?;
+        persistence::persist(tenant, &row, Some(before), provenance, event).await?;
         if let Some((before, parent)) = parent {
             administration::persistence::record_version_as(
                 tenant,
                 "Medication",
                 parent.id,
-                "api_update",
+                event.unwrap_or("api_update"),
                 Some(before),
                 super::super::medications::medication_snapshot(&parent),
                 provenance,

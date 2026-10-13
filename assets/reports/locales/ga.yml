@@ -1014,6 +1014,23 @@ ga:
       option_readonly: "Bainistítear stoc roghanna agus tairseacha athordaithe trí eagarthóir na rogha."
       invalid_quantity: "Cuir isteach cainníocht neamh-dhiúltach le dhá ionad de dheachúlacha ar a mhéad."
       household_inventory: "Fardal an teaghlaigh"
+      browser:
+        remaining: "%{quantity} %{unit} fágtha"
+        review_latest: "Athbhreithnigh an stoc is déanaí"
+        changed: "D'athraigh an stoc agus an fhoirm seo ar oscailt. Athbhreithnigh an stoc is déanaí sula sábhálann tú."
+    order:
+      browser:
+        back: "Ar ais go dtí an cógas"
+        title: "Cógas a ordú"
+        supplier: "Soláthraí"
+        quantity: "Cainníocht an ordaithe"
+        arrival: "Teacht ionchais"
+        mark_ordered: "Marcáil mar ordaithe"
+        receive_title: "Ordú a fháil"
+        receipt_hint: "Ní athraíonn glacadh ordaithe an stoc. Úsáid Coigeartaigh stoc chun an chainníocht seachadta a thaifeadadh."
+        review_stock: "Athbhreithnigh stoc"
+        mark_received: "Marcáil mar faighte"
+        quantity_precision_error: "Tá an méid lasmuigh de bheachtas an stoic."
     dose_dialog:
       ongoing_medication: 'Cógas leanúnach'
       scheduled_treatment: 'Cóireáil sceidealta'
@@ -1184,10 +1201,11 @@ ga:
       untracked_stock: Ní dhéantar an stoc a rianú.
       low_stock: Stoc íseal
       edit: Cuir in eagar
-      edit_medication: Cuir leigheas in eagar
+      edit_medication: Cuir %{medication} in eagar
       refill: Athlíon
-      refill_medication: Athlíon leigheas
-      empty_filtered: Níl aon leigheasanna ar fáil sa teaghlach seo.
+      refill_medication: Athlíon %{medication}
+      empty_filtered: "Ní mheaitseálann aon chógas na scagairí seo."
+      empty_unfiltered: "Níl aon leigheasanna ar fáil sa teaghlach seo."
       scan_description: Scan pacáiste nó cuir a bharrachód isteach chun an leigheas agus an suíomh a roghnú sula gcuirtear stoc leis.
       find_barcode: Aimsigh barrachód
       manual_entry: Cuir leigheas isteach de láimh
@@ -1211,6 +1229,61 @@ ga:
       submit: Cuir stoc scanáilte leis
     show:
       profile: Próifíl Leigheas
+      browser:
+        ordered: Ordaithe
+        from_supplier: ó %{supplier}
+        expected: Ag súil leis
+        last_received: Fuarthas an t-ordú deireanach
+        refill_inventory: Athlíon an stoc
+        order_medication: Ordaigh cógas
+        no_source: Níl foinse cógais ar fáil.
+        js_required: Tá JavaScript ag teastáil chun dáileoga a thaifeadadh anseo.
+        dose_options: Roghanna dáileoige
+        default_adults: Réamhshocrú d'aosaigh
+        default_children: Réamhshocrú do pháistí
+        remaining: "%{amount} %{unit} fágtha"
+        manage_dose_options: Bainistigh Roghanna Dáileoige
+        no_dose_options: Níl aon roghanna dáileoige taifeadta.
+        dose_history: Stair dáileog
+        no_doses: Níl dáileoga taifeadta fós.
+        standard_dosage: Dáileog chaighdeánach
+        no_standard_dosage: Níl dáileog chaighdeánach taifeadta.
+        manage_medication: Bainistigh cógas
+        adjust_stock: Coigeartaigh stoc
+        stock_adjustment_page: Leathanach coigeartaithe stoic
+        edit_medication: Cuir Cógas in Eagar
+        delete_medication: Scrios Cógas
+        add_delivered: Cuir an stoc seachadta leis an soláthar reatha.
+        latest_stock: An stoc is déanaí
+        use_latest: Úsáid an stoc is déanaí
+        dose_option: Rogha dáileoige
+        choose_dose_option: Roghnaigh rogha dáileoige
+        quantity_to_add: Méid le cur leis
+        restock_date: Dáta athlíonta
+        cancel: Cealaigh
+        add_stock: Cuir stoc leis
+        current_supply: Soláthar reatha
+        new_stock_quantity: Méid nua stoic
+        reason: Cúis
+        delete: Scrios
+        reorder_at: Athordaigh ag %{quantity} %{unit}
+        stock_untracked: Gan rianú
+        stock_out: As stoc
+        stock_low: Stoc íseal
+        stock_in: I stoc
+        max_doses:
+          daily:
+            one: Uasmhéid 1 dáileog sa lá
+            other: Uasmhéid %{count} dáileog sa lá
+          weekly:
+            one: Uasmhéid 1 dáileog sa tseachtain
+            other: Uasmhéid %{count} dáileog sa tseachtain
+          monthly:
+            one: Uasmhéid 1 dáileog sa mhí
+            other: Uasmhéid %{count} dáileog sa mhí
+        minimum_hours:
+          one: Uair an chloig ar a laghad idir dáileoga
+          other: "%{hours} uair an chloig ar a laghad idir dáileoga"
       edit_details: Cuir Sonraí in Eagar
       inventory: Inventár
       add_schedule: Sceideal
@@ -1344,6 +1417,42 @@ ga:
     show:
       edit_person: Cuir Duine in Eagar
       add_medication: Cuir Leigheas Leis
+      current_medications: Cógais reatha
+      browser:
+        stock_untracked: "Ní rianaítear an stoc"
+        stock_remaining: "%{amount} i stoc"
+        from: "Ó"
+        until: "Go dtí"
+        timing:
+          every_other_day: "Gach dara lá"
+          multiple_daily: "Roinnt uaireanta sa lá"
+          weekly: "Seachtainiúil"
+          monthly: "Míosúil"
+          specific_dates: "Ar dhátaí ar leith"
+          prn: "De réir mar is gá"
+          tapering: "Plean laghdaithe"
+          daily: "Laethúil"
+          empty: ""
+        avatar_for: "Abhatár %{person}"
+        age: Aois
+        paused: Ar sos
+        active: Gníomhach
+        outside_dates: Lasmuigh de na dátaí sceidealaithe
+        pause: Sos
+        pause_history: Stair sosanna
+        to: go
+        dose_records: Taifid dáileoige
+        edit_treatment: Cuir cóireáil in eagar
+        empty_current: Níl aon chógais reatha taifeadta do %{person}.
+        manage_treatments: Bainistigh cóireálacha
+        view_treatments: Féach ar chóireálacha
+        add_schedule: Cuir sceideal leis
+        assign_medication: Sann cógas
+        carer_relationships: Caidrimh cúramóirí
+        profile_details: Sonraí próifíle
+        not_recorded: Gan taifead
+        yes: "Tá"
+        no: "Níl"
       manage_parents: Bainistigh tuismitheoirí
       health_events: Imeachtaí sláinte
       back: Ar Ais
@@ -1947,6 +2056,7 @@ ga:
       mfa_required: Críochnú fíordheimhniú dhá fhachtóir sula gcruthaítear comhartha API.
     appearance:
       title: Cuma
+      close: Dún
       description: Roghnaigh conas a fheictear MedTracker ar scáileáin shínithe isteach
         agus phoiblí.
       mode_label: Mód
@@ -2081,6 +2191,8 @@ ga:
       footer_notice: Seoladh an ríomhphost seo toisc go bhfuil cuntas agat linn.
     navigation:
       skip_to_content: Léim go dtí an t-ábhar
+      home_link: Baile MedTracker
+      care_tagline: Cúram, le chéile.
       brand: MedTracker
       login: Logáil isteach
     desktop_nav:
@@ -2565,6 +2677,32 @@ ga:
       current_supply_placeholder: e.g., 30
       reorder_threshold_placeholder: e.g., 5
       wizard:
+        browser:
+          as_directed: "De réir treoracha"
+          matching_medicines: "Cógais mheaitseála"
+          choose_medicine_location: "Roghnaigh an cógas agus an suíomh"
+          refill_at: "Athlíon %{name} ag %{location}"
+          created_title: "Cógas cruthaithe"
+          created_heading: "Cruthaíodh %{name}!"
+          created_description: "Sábháladh do chógas. Is féidir leat a roghanna dáileoige a bhainistiú nó filleadh ar an gcógas."
+          saved_options: "Roghanna dáileoige sábháilte"
+          done: "Críochnaigh"
+          cancel: Cealaigh
+          person: Duine
+          no_person_plan: Gan phlean duine
+          frequency: Minicíocht
+          weekly_day: Lá seachtainiúil
+          specific_date: Dáta sonrach
+          frequency_weekly: Uair sa tseachtain
+          dose_option: Rogha dáileoige %{number}
+          remove_dose_option: Bain rogha dáileoige %{number}
+          date_range: "%{start} go %{end}"
+          first_dose_time: Am na chéad dáileoige
+          second_dose_time: Am an dara dáileoige
+          weekly_time: Am seachtainiúil
+          maximum_daily_doses: Uasmhéid dáileog sa lá
+          add_dose_option: Cuir rogha dáileoige leis
+          pack_warning: Seiceáil treoracha an phacáiste sula sábhálann tú an cógas seo.
         progress_label: Dul chun cinn socraithe leighis
         continue: Lean ar aghaidh
         steps:

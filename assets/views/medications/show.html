@@ -1,77 +1,77 @@
 {% extends "layouts/base.html" %}
 {% block content %}
 <section class="max-w-6xl mx-auto">
-  <a class="link" href="/households/{{ slug }}/medications">Medications</a>
+  <a class="link" href="/households/{{ slug }}/medications">{{ labels.medications.index.title }}</a>
   <div class="border-b border-base-300 pb-6 mt-4">
-    <p class="text-sm font-semibold text-base-content/70">Medication profile</p>
+    <p class="text-sm font-semibold text-base-content/70">{{ labels.medications.show.profile }}</p>
     <h1 class="text-3xl font-semibold mt-1">{{ name }}</h1>
     <p class="text-base-content/70 mt-2">{{ location_name }}</p>
   </div>
   {% if error %}<p id="dose-error" role="alert" class="alert mt-6">{{ error }}</p>{% endif %}
   <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(17rem,1fr)] gap-6 mt-6">
   {% if description %}<section class="card bg-base-100 border border-base-300 min-w-0 lg:col-start-1 lg:row-start-1"><div class="card-body">
-    <h2 class="card-title">Overview</h2>
+    <h2 class="card-title">{{ labels.medications.show.overview }}</h2>
     <p>{{ description }}</p>
   </div></section>{% endif %}
   {% if warnings %}<section class="card bg-error/10 border border-error/30 min-w-0 lg:col-start-1 {% if description %}lg:row-start-2{% else %}lg:row-start-1{% endif %}" aria-labelledby="safety-warnings-heading"><div class="card-body">
-    <h2 class="card-title text-error" id="safety-warnings-heading">Safety warnings</h2>
+    <h2 class="card-title text-error" id="safety-warnings-heading">{{ labels.medications.show.safety_warnings }}</h2>
     <p>{{ warnings }}</p>
   </div></section>{% endif %}
   <section class="card bg-base-100 border border-base-300 min-w-0 lg:col-start-2 lg:row-start-1 lg:row-span-2"><div class="card-body gap-4">
-    <h2 class="card-title">Inventory status</h2>
+    <h2 class="card-title">{{ labels.medications.show.inventory_status }}</h2>
     <p data-testid="current-supply" class="text-3xl font-semibold">{{ quantity }} {{ unit }}</p>
     <p class="badge {% if out_of_stock %}badge-error text-black{% elif low_stock %}badge-warning text-black{% else %}badge-outline{% endif %}">{{ stock_status }}</p>
     <p class="text-sm">{{ reorder_label }}</p>
-    {% if days_until_low_stock %}<p class="text-sm">Forecast: reorder level in {{ days_until_low_stock }} days</p>{% endif %}
-    {% if days_until_out_of_stock %}<p class="text-sm">Forecast: supply exhausted in {{ days_until_out_of_stock }} days</p>{% endif %}
-    {% if reorder_status == "ordered" %}<p class="text-sm font-semibold">Ordered{% if order_quantity %} · {{ order_quantity }} {{ unit }}{% endif %}{% if order_supplier %} from {{ order_supplier }}{% endif %}{% if expected_arrival_on %} · Expected <time datetime="{{ expected_arrival_on_iso }}">{{ expected_arrival_on }}</time>{% endif %}</p>{% elif reorder_status == "received" %}<p class="text-sm">Last order received</p>{% endif %}
-    <div class="flex flex-wrap items-center gap-2"><button type="button" class="btn btn-neutral w-fit" data-dialog-open="refill-inventory-dialog">Refill inventory</button><a class="btn btn-ghost w-fit" href="/households/{{ slug }}/medications/{{ medication_id }}/order">Order medication</a></div>
+    {% if days_until_low_stock %}<p class="text-sm">{{ low_forecast_label }}</p>{% endif %}
+    {% if days_until_out_of_stock %}<p class="text-sm">{{ empty_forecast_label }}</p>{% endif %}
+    {% if reorder_status == "ordered" %}<p class="text-sm font-semibold">{{ labels.medications.show.browser.ordered }}{% if order_quantity %} · {{ order_quantity }} {{ unit }}{% endif %}{% if order_supplier %} {{ labels.medications.show.browser.from_supplier | replace(from="%{supplier}", to=order_supplier) }}{% endif %}{% if expected_arrival_on %} · {{ labels.medications.show.browser.expected }} <time datetime="{{ expected_arrival_on_iso }}">{{ expected_arrival_on }}</time>{% endif %}</p>{% elif reorder_status == "received" %}<p class="text-sm">{{ labels.medications.show.browser.last_received }}</p>{% endif %}
+    <div class="flex flex-wrap items-center gap-2"><button type="button" class="btn btn-neutral w-fit" data-dialog-open="refill-inventory-dialog">{{ labels.medications.show.browser.refill_inventory }}</button><a class="btn btn-ghost w-fit" href="/households/{{ slug }}/medications/{{ medication_id }}/order">{{ labels.medications.show.browser.order_medication }}</a></div>
   </div></section>
   <section class="card bg-base-100 border border-base-300 min-w-0 lg:col-start-1 {% if description and warnings %}lg:row-start-3{% elif description or warnings %}lg:row-start-2{% else %}lg:row-start-1{% endif %}"><div class="card-body">
-    <h2 class="card-title">Record dose</h2>
-    <p>Check the person, medication, dose and time before recording.</p>
-    {% if can_record_any %}<button type="button" class="btn btn-neutral w-fit" data-dialog-open="record-dose-dialog">Record a dose</button>{% else %}<p>No available medication source.</p>{% endif %}
-    <noscript><p class="text-sm text-base-content/70">Recording doses here requires JavaScript.</p></noscript>
+    <h2 class="card-title">{{ dose_i18n.record }}</h2>
+    <p>{{ dose_i18n.confirm }}</p>
+    {% if can_record_any %}<button type="button" class="btn btn-neutral w-fit" data-dialog-open="record-dose-dialog">{{ dose_i18n.record }}</button>{% else %}<p>{{ labels.medications.show.browser.no_source }}</p>{% endif %}
+    <noscript><p class="text-sm text-base-content/70">{{ labels.medications.show.browser.js_required }}</p></noscript>
   </div></section>
   {% if dose_options | length > 0 %}<section class="card bg-base-100 border border-base-300 min-w-0 lg:col-start-1 {% if description and warnings %}lg:row-start-4{% elif description or warnings %}lg:row-start-3{% else %}lg:row-start-2{% endif %}" aria-labelledby="dose-options-heading"><div class="card-body">
-    <h2 class="card-title" id="dose-options-heading">Dose options</h2>
+    <h2 class="card-title" id="dose-options-heading">{{ labels.medications.show.browser.dose_options }}</h2>
     <div class="grid gap-3 sm:grid-cols-2">{% for option in dose_options %}
       <article class="rounded-box border border-base-300 p-4 min-w-0">
         <h3 class="font-semibold">{% if option.description %}{{ option.description }}{% else %}{{ option.dose_label }}{% endif %}</h3>
         <p>{{ option.dose_label }}{% if option.frequency %} · {{ option.frequency }}{% endif %}</p>
-        <div class="flex flex-wrap gap-2 mt-2">{% if option.default_for_adults %}<span class="badge badge-outline">Default for adults</span>{% endif %}{% if option.default_for_children %}<span class="badge badge-outline">Default for children</span>{% endif %}</div>
+        <div class="flex flex-wrap gap-2 mt-2">{% if option.default_for_adults %}<span class="badge badge-outline">{{ labels.medications.show.browser.default_adults }}</span>{% endif %}{% if option.default_for_children %}<span class="badge badge-outline">{{ labels.medications.show.browser.default_children }}</span>{% endif %}</div>
         {% if option.maximum %}<p class="text-sm mt-2">{{ option.maximum }}</p>{% endif %}
         {% if option.spacing %}<p class="text-sm">{{ option.spacing }}</p>{% endif %}
-        {% if option.supply %}<p class="text-sm text-base-content/70">{{ option.supply }} {{ option.supply_unit }} remaining</p>{% endif %}
+        {% if option.supply %}<p class="text-sm text-base-content/70">{{ labels.medications.show.browser.remaining | replace(from="%{amount}", to=option.supply) | replace(from="%{unit}", to=option.supply_unit) }}</p>{% endif %}
       </article>
     {% endfor %}</div>
-    {% if can_adjust %}<a class="btn btn-ghost w-fit" href="/households/{{ slug }}/medications/{{ medication_id }}/dosage_options">Manage Dose Options</a>{% endif %}
-  </div></section>{% else %}<section class="border-b border-base-300 px-2 py-3 min-w-0 lg:col-start-1 {% if description and warnings %}lg:row-start-4{% elif description or warnings %}lg:row-start-3{% else %}lg:row-start-2{% endif %}" aria-label="Dose options">
-    <details><summary class="cursor-pointer font-semibold text-base-content/70">Dose options</summary><p class="mt-2">No dose options recorded.</p></details>
-    {% if can_adjust %}<a class="link inline-block mt-2" href="/households/{{ slug }}/medications/{{ medication_id }}/dosage_options">Manage Dose Options</a>{% endif %}
+    {% if can_adjust %}<a class="btn btn-ghost w-fit" href="/households/{{ slug }}/medications/{{ medication_id }}/dosage_options">{{ labels.medications.show.browser.manage_dose_options }}</a>{% endif %}
+  </div></section>{% else %}<section class="border-b border-base-300 px-2 py-3 min-w-0 lg:col-start-1 {% if description and warnings %}lg:row-start-4{% elif description or warnings %}lg:row-start-3{% else %}lg:row-start-2{% endif %}" aria-label="{{ labels.medications.show.browser.dose_options }}">
+    <details><summary class="cursor-pointer font-semibold text-base-content/70">{{ labels.medications.show.browser.dose_options }}</summary><p class="mt-2">{{ labels.medications.show.browser.no_dose_options }}</p></details>
+    {% if can_adjust %}<a class="link inline-block mt-2" href="/households/{{ slug }}/medications/{{ medication_id }}/dosage_options">{{ labels.medications.show.browser.manage_dose_options }}</a>{% endif %}
   </section>{% endif %}
   {% if dose_history | length > 0 %}<section class="card bg-base-100 border border-base-300 min-w-0 lg:col-start-1 {% if description and warnings %}lg:row-start-5{% elif description or warnings %}lg:row-start-4{% else %}lg:row-start-3{% endif %}" role="region" aria-labelledby="dose-history-heading"><div class="card-body">
-    <h2 class="card-title" id="dose-history-heading">Dose history</h2>
+    <h2 class="card-title" id="dose-history-heading">{{ labels.medications.show.browser.dose_history }}</h2>
     <ol class="space-y-2">{% for take in dose_history %}
       <li class="flex flex-wrap gap-x-2"><strong>{{ take.person_name }}</strong>{% if take.dose_label %}<span>{{ take.dose_label }}</span>{% endif %}{% if take.taken_at %}<time datetime="{{ take.taken_at_iso }}">{{ take.taken_at }}</time>{% endif %}</li>
     {% endfor %}</ol>
-  </div></section>{% else %}<section class="border-b border-base-300 px-2 py-3 min-w-0 lg:col-start-1 {% if description and warnings %}lg:row-start-5{% elif description or warnings %}lg:row-start-4{% else %}lg:row-start-3{% endif %}" role="region" aria-label="Dose history">
-    <details><summary class="cursor-pointer font-semibold text-base-content/70">Dose history</summary><p class="mt-2">No doses recorded yet.</p></details>
+  </div></section>{% else %}<section class="border-b border-base-300 px-2 py-3 min-w-0 lg:col-start-1 {% if description and warnings %}lg:row-start-5{% elif description or warnings %}lg:row-start-4{% else %}lg:row-start-3{% endif %}" role="region" aria-label="{{ labels.medications.show.browser.dose_history }}">
+    <details><summary class="cursor-pointer font-semibold text-base-content/70">{{ labels.medications.show.browser.dose_history }}</summary><p class="mt-2">{{ labels.medications.show.browser.no_doses }}</p></details>
   </section>{% endif %}
   {% if dose_label %}<section class="card bg-base-100 border border-base-300 min-w-0 lg:col-start-2 lg:row-start-3"><div class="card-body">
-    <h2 class="card-title">Standard dosage</h2>
+    <h2 class="card-title">{{ labels.medications.show.browser.standard_dosage }}</h2>
     <p>{{ dose_label }}</p>
-  </div></section>{% else %}<section class="border-b border-base-300 px-2 py-3 min-w-0 lg:col-start-2 lg:row-start-3" aria-label="Standard dosage">
-    <details><summary class="cursor-pointer font-semibold text-base-content/70">Standard dosage</summary><p class="mt-2">No standard dosage recorded.</p></details>
+  </div></section>{% else %}<section class="border-b border-base-300 px-2 py-3 min-w-0 lg:col-start-2 lg:row-start-3" aria-label="{{ labels.medications.show.browser.standard_dosage }}">
+    <details><summary class="cursor-pointer font-semibold text-base-content/70">{{ labels.medications.show.browser.standard_dosage }}</summary><p class="mt-2">{{ labels.medications.show.browser.no_standard_dosage }}</p></details>
   </section>{% endif %}
   {% if can_adjust %}
   <section class="card bg-base-100 border border-base-300 min-w-0 lg:col-start-2 lg:row-start-4" aria-labelledby="medication-management-heading"><div class="card-body">
-    <h2 id="medication-management-heading" class="card-title">Manage medication</h2>
+    <h2 id="medication-management-heading" class="card-title">{{ labels.medications.show.browser.manage_medication }}</h2>
     <div class="flex flex-wrap items-center gap-2">
-      <button type="button" class="btn btn-ghost w-fit" data-dialog-open="adjust-stock-dialog">Adjust stock</button>
-      <a class="btn btn-ghost w-fit" href="/households/{{ slug }}/medications/{{ medication_id }}/stock/adjust">Stock adjustment page</a>
-      <a class="btn btn-ghost w-fit" href="/households/{{ slug }}/medications/{{ medication_id }}/edit">Edit Medication</a>
-      <button type="button" class="btn btn-ghost w-fit" data-dialog-open="delete-medication-dialog">Delete Medication</button>
+      <button type="button" class="btn btn-ghost w-fit" data-dialog-open="adjust-stock-dialog">{{ labels.medications.show.browser.adjust_stock }}</button>
+      <a class="btn btn-ghost w-fit" href="/households/{{ slug }}/medications/{{ medication_id }}/stock/adjust">{{ labels.medications.show.browser.stock_adjustment_page }}</a>
+      <a class="btn btn-ghost w-fit" href="/households/{{ slug }}/medications/{{ medication_id }}/edit">{{ labels.medications.show.browser.edit_medication }}</a>
+      <button type="button" class="btn btn-ghost w-fit" data-dialog-open="delete-medication-dialog">{{ labels.medications.show.browser.delete_medication }}</button>
     </div>
   </div></section>
   {% endif %}
@@ -79,33 +79,33 @@
 {% include "medications/record-dose-dialog.html" %}
 <dialog id="refill-inventory-dialog" class="modal" aria-labelledby="refill-inventory-title" {% if refill_open %}data-dialog-auto-open{% endif %}>
   <div class="modal-box max-w-xl">
-    <h2 id="refill-inventory-title" class="text-xl font-semibold">Refill inventory</h2>
-    <p class="mt-2">Add delivered stock to the current supply.</p>
+    <h2 id="refill-inventory-title" class="text-xl font-semibold">{{ labels.medications.show.browser.refill_inventory }}</h2>
+    <p class="mt-2">{{ labels.medications.show.browser.add_delivered }}</p>
     {% if refill_error %}<p id="refill-dialog-error" role="alert" class="alert mt-4" tabindex="-1" data-dialog-error-focus>{{ refill_error }}</p>{% endif %}
-    {% if refill_conflict %}<div class="rounded-box border border-base-300 p-3 mt-3"><p>Latest stock: <strong>{{ quantity }} {{ unit }}</strong></p><button type="button" class="btn btn-ghost min-h-11 mt-2" data-refill-use-latest="{{ etag }}">Use latest stock</button></div>{% endif %}
+    {% if refill_conflict %}<div class="rounded-box border border-base-300 p-3 mt-3"><p>{{ labels.medications.show.browser.latest_stock }}: <strong>{{ quantity }} {{ unit }}</strong></p><button type="button" class="btn btn-ghost min-h-11 mt-2" data-refill-use-latest="{{ etag }}">{{ labels.medications.show.browser.use_latest }}</button></div>{% endif %}
     <form method="post" action="/households/{{ slug }}/medications/{{ medication_id }}/refill" class="grid gap-4 mt-4">
       <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
       <input type="hidden" name="etag" value="{% if refill_open %}{{ refill_etag }}{% else %}{{ etag }}{% endif %}">
-      {% if refill_options %}<div class="grid gap-2"><label for="refill-option">Dose option</label><select id="refill-option" name="dosage_option_id" class="select w-full" required><option value="">Choose a dose option</option>{% for option in refill_options %}<option value="{{ option.id }}">{{ option.label }}</option>{% endfor %}</select></div>{% endif %}
-      <label class="grid gap-2" for="refill-quantity">Quantity to add<input id="refill-quantity" name="quantity" type="number" min="0.01" step="0.01" class="input w-full" {% if refill_open %}value="{{ refill_quantity }}"{% endif %} {% if refill_quantity_error %}aria-invalid="true" aria-describedby="refill-dialog-error"{% endif %} autofocus required></label>
-      <label class="grid gap-2" for="refill-date">Restock date<input id="refill-date" name="restock_date" type="date" class="input w-full" value="{% if refill_open %}{{ refill_date }}{% else %}{{ restock_date }}{% endif %}" {% if refill_date_error %}aria-invalid="true" aria-describedby="refill-dialog-error"{% endif %} required></label>
-      <div class="modal-action"><button type="button" class="btn btn-ghost min-h-11" data-dialog-close>Cancel</button><button type="submit" class="btn btn-neutral min-h-11">Add stock</button></div>
+      {% if refill_options %}<div class="grid gap-2"><label for="refill-option">{{ labels.medications.show.browser.dose_option }}</label><select id="refill-option" name="dosage_option_id" class="select w-full" required><option value="">{{ labels.medications.show.browser.choose_dose_option }}</option>{% for option in refill_options %}<option value="{{ option.id }}">{{ option.label }}</option>{% endfor %}</select></div>{% endif %}
+      <label class="grid gap-2" for="refill-quantity">{{ labels.medications.show.browser.quantity_to_add }}<input id="refill-quantity" name="quantity" type="number" min="0.01" step="0.01" class="input w-full" {% if refill_open %}value="{{ refill_quantity }}"{% endif %} {% if refill_quantity_error %}aria-invalid="true" aria-describedby="refill-dialog-error"{% endif %} autofocus required></label>
+      <label class="grid gap-2" for="refill-date">{{ labels.medications.show.browser.restock_date }}<input id="refill-date" name="restock_date" type="date" class="input w-full" value="{% if refill_open %}{{ refill_date }}{% else %}{{ restock_date }}{% endif %}" {% if refill_date_error %}aria-invalid="true" aria-describedby="refill-dialog-error"{% endif %} required></label>
+      <div class="modal-action"><button type="button" class="btn btn-ghost min-h-11" data-dialog-close>{{ labels.medications.show.browser.cancel }}</button><button type="submit" class="btn btn-neutral min-h-11">{{ labels.medications.show.browser.add_stock }}</button></div>
     </form>
   </div>
 </dialog>
 {% if can_adjust %}
 <dialog id="adjust-stock-dialog" class="modal" aria-labelledby="adjust-stock-title" {% if adjust_open %}data-dialog-auto-open{% endif %}>
   <div class="modal-box max-w-xl">
-    <h2 id="adjust-stock-title" class="text-xl font-semibold">Adjust stock</h2>
-    <p class="mt-2">Current supply: {{ quantity }} {{ unit }}</p>
+    <h2 id="adjust-stock-title" class="text-xl font-semibold">{{ labels.medications.show.browser.adjust_stock }}</h2>
+    <p class="mt-2">{{ labels.medications.show.browser.current_supply }}: {{ quantity }} {{ unit }}</p>
     {% if adjust_error %}<p role="alert" class="alert mt-4" tabindex="-1" data-dialog-error-focus>{{ adjust_error }}</p>{% endif %}
-    {% if adjust_conflict %}<button type="button" class="btn btn-ghost min-h-11 mt-2" data-refill-use-latest="{{ etag }}">Use latest stock</button>{% endif %}
+    {% if adjust_conflict %}<button type="button" class="btn btn-ghost min-h-11 mt-2" data-refill-use-latest="{{ etag }}">{{ labels.medications.show.browser.use_latest }}</button>{% endif %}
     <form method="post" action="/households/{{ slug }}/medications/{{ medication_id }}/stock/adjust" class="grid gap-4 mt-4">
       <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
       <input type="hidden" name="etag" value="{% if adjust_open %}{{ adjust_etag }}{% else %}{{ etag }}{% endif %}">
-      <label class="grid gap-2" for="adjust-new-quantity">New stock quantity<input id="adjust-new-quantity" name="new_quantity" type="number" min="0" step="0.01" class="input w-full" value="{% if adjust_open %}{{ adjust_new_quantity }}{% elif quantity != 'Untracked' %}{{ quantity }}{% endif %}" autofocus required></label>
-      <div class="grid gap-2"><label for="adjust-reason">Reason</label><textarea id="adjust-reason" name="reason" class="textarea w-full">{% if adjust_open %}{{ adjust_reason }}{% endif %}</textarea></div>
-      <div class="modal-action"><button type="button" class="btn btn-ghost min-h-11" data-dialog-close>Cancel</button><button type="submit" class="btn btn-neutral min-h-11">Adjust stock</button></div>
+      <label class="grid gap-2" for="adjust-new-quantity">{{ labels.medications.show.browser.new_stock_quantity }}<input id="adjust-new-quantity" name="new_quantity" type="number" min="0" step="0.01" class="input w-full" value="{% if adjust_open %}{{ adjust_new_quantity }}{% elif stock_tracked %}{{ quantity }}{% endif %}" autofocus required></label>
+      <div class="grid gap-2"><label for="adjust-reason">{{ labels.medications.show.browser.reason }}</label><textarea id="adjust-reason" name="reason" class="textarea w-full">{% if adjust_open %}{{ adjust_reason }}{% endif %}</textarea></div>
+      <div class="modal-action"><button type="button" class="btn btn-ghost min-h-11" data-dialog-close>{{ labels.medications.show.browser.cancel }}</button><button type="submit" class="btn btn-neutral min-h-11">{{ labels.medications.show.browser.adjust_stock }}</button></div>
     </form>
   </div>
 </dialog>
@@ -113,14 +113,14 @@
 {% if can_adjust %}
 <dialog id="delete-medication-dialog" class="modal" aria-labelledby="delete-medication-title" {% if delete_open %}data-dialog-auto-open{% endif %}>
   <div class="modal-box">
-    <h2 id="delete-medication-title" class="text-xl font-semibold">Delete Medication</h2>
+    <h2 id="delete-medication-title" class="text-xl font-semibold">{{ labels.medications.show.browser.delete_medication }}</h2>
     {% if delete_error %}<p id="delete-medication-error" role="alert" class="alert mt-4" tabindex="-1" data-dialog-error-focus>{{ delete_error }}</p>{% endif %}
-    <p class="mt-4">Are you sure you want to delete {{ name }}? This action cannot be undone.</p>
+    <p class="mt-4">{{ labels.medications.index.delete_dialog.confirm | replace(from="%{name}", to=name) }}</p>
     <form method="post" action="/households/{{ slug }}/medications/{{ medication_id }}/destroy" class="modal-action">
       <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
       <input type="hidden" name="etag" value="{{ etag }}">
-      <button type="button" class="btn btn-ghost min-h-11" data-dialog-close>Cancel</button>
-      <button type="submit" class="btn btn-neutral min-h-11">Delete</button>
+      <button type="button" class="btn btn-ghost min-h-11" data-dialog-close>{{ labels.medications.show.browser.cancel }}</button>
+      <button type="submit" class="btn btn-neutral min-h-11">{{ labels.medications.show.browser.delete }}</button>
     </form>
   </div>
 </dialog>

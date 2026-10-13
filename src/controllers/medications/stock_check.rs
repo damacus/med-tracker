@@ -5,7 +5,20 @@ use serde_json::json;
 
 #[derive(Default, Deserialize)]
 pub(super) struct StockCheckQuery {
+    #[serde(default, deserialize_with = "empty_location")]
     location_id: Option<i64>,
+}
+
+fn empty_location<'de, D>(deserializer: D) -> Result<Option<i64>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let value = String::deserialize(deserializer)?;
+    if value.is_empty() {
+        Ok(None)
+    } else {
+        value.parse().map(Some).map_err(serde::de::Error::custom)
+    }
 }
 
 pub(super) async fn show(
@@ -78,12 +91,17 @@ async fn render_page(
             }
         }
     }
+    let selected_count = rows.as_array().map_or(0, |rows| {
+        rows.iter().filter(|row| row["selected"] == true).count()
+    });
     let mut data = rendering::appearance_context();
     data["title"] = labels["medications"]["stock_check"]["title"].clone();
     data["lang"] = json!(locale);
     data["labels"] = labels;
     data["slug"] = json!(slug);
     data["rows"] = rows;
+    data["selected_count"] = json!(selected_count);
+    data["selected_count_label"] = json!(selected_count.to_string());
     data["locations"] = json!(snapshot.locations);
     data["current_location_id"] = json!(location_id);
     data["authenticity_token"] = json!(authenticity_token);
@@ -126,6 +144,7 @@ pub(super) async fn apply(
     headers: HeaderMap,
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
+    Query(query): Query<StockCheckQuery>,
     AxumForm(draft): AxumForm<HashMap<String, String>>,
 ) -> Response {
     if token
@@ -193,7 +212,7 @@ pub(super) async fn apply(
                 &headers,
                 token,
                 &view,
-                None,
+                query.location_id,
                 &draft,
                 Some(&error),
             )

@@ -234,6 +234,7 @@ pub(super) async fn new(
     request: Option<Extension<LocoRequestId>>,
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
+    headers: HeaderMap,
     Query(draft): Query<HashMap<String, String>>,
 ) -> Response {
     super::wizard::open(
@@ -246,6 +247,10 @@ pub(super) async fn new(
             request_id: super::request_id(request),
             draft,
             error: None,
+            language: headers
+                .get(header::ACCEPT_LANGUAGE)
+                .and_then(|value| value.to_str().ok())
+                .unwrap_or("en"),
         },
     )
     .await
