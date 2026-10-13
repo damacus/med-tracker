@@ -1,8 +1,8 @@
 # Complete browser workflows and themes Implementation Plan
 
-## Next delivery: medication reviews and global search — 13 October 2026
+## Next delivery: medication reviews and NHS dm+d import — 13 October 2026
 
-This section updates B2d and the shared navigation work tracked in issue #2503.
+This section updates B2d and the dm+d import/reconciliation work in slices 05 and 07. The owner replaced global search with dm+d on 13 October; search remains tracked in #2503.
 It is the execution brief for these two journeys, not a second acceptance ledger.
 Discovery reference: `35fd33355e6c9461c836a3a8dbbd025c99a77875` on main.
 The open-PR check found only #2567 and #2568 dependency updates and #2381 release;
@@ -62,34 +62,55 @@ changed evidence with retained history, job restart/retry without duplicate
 prompts and a PDF reflecting the accepted current state. Cover admin, clinician,
 self, carer, parent and denied roles according to the existing policy.
 
-### S: Restore global search and working destinations
+### D: Complete and prove the NHS dm+d import journey
 
-Outcome: an authorised user can open the shared search control or Ctrl/Cmd+K,
-find permitted people, medicines, assignments, schedules, locations and commands,
-then reach the correct household page. Preserve the full HTML results fallback.
+Outcome: a platform administrator uploads an official release, sees trustworthy
+progress and results, and can immediately find and use the imported medicines
+and barcodes. Failed or interrupted imports preserve the last usable catalogue,
+recover safely and clean temporary/private archives at the correct point.
 
-Rails reference: `SearchesController`, `GlobalSearchQuery`,
-`GlobalSearchCommandsQuery`, `rails/app/services/global_search/`,
-`rails/app/components/global_search/` and `global_search_controller.js`.
-Preserve ranking, the twelve-result default, record-search minimum length,
-HTML/JSON contracts, labels, keyboard behaviour and permission-filtered commands.
-The controller returns no results for a blank submitted query; do not accidentally
-replace this with the query object's different blank-command behaviour.
+This is completion and parity verification of an existing implementation, not a
+new importer. Root `src/models/nhs_dmd.rs` already provides upload verification,
+durable enqueue, an import worker, single-import locking, restart handling,
+stale-run reconciliation and terminal archive cleanup. Production config schedules
+reconciliation every five minutes. `tests/care_api/nhs_dmd.rs` covers verified and
+tampered archives, queue/storage failure, restart, interrupted/stalled runs,
+concurrent uploads, cleanup retry and scheduler configuration. Browser admin
+permission/session/CSRF checks exist in `tests/browser/care-scanner.spec.mjs`.
 
-Loco has catalogue search and platform user search, but no equivalent global
-search route or result journey in the inspected root application. Do not rewrite
-the catalogue/scanner. Correct its navigation handoff: the dashboard/mobile rail
-links to `/households/:slug/medication-finder`, while the implemented page is
-`/households/:slug/medications/finder`. Preserve the Rails public path with an
-authorised route/alias and verify the destination. Review links depend on R only
-for the final combined navigation check; search implementation is independent.
+The outstanding real-release comparison is tracked in #2424. Its original evidence
+names the legacy Rust parser; revalidate every finding against root Loco before
+fixing it. Compare one identical, provenance-recorded official NHS release in
+isolated Rails and Loco databases: barcodes, AMPP relationships, trade-family
+tables, counts, expired/invalid/missing-name handling and representative lookup
+results. Record the release version and checksum. Do not substitute a synthetic
+ZIP for this gate. Locate an existing authorised release first; if access needs
+credentials or licence acceptance, report that prerequisite rather than claiming
+completion or uploading private data elsewhere.
 
-Acceptance includes all result categories, ranking/ties, blank/one-character/
-Unicode queries, literal wildcard input, escaping, bounded results, forbidden
-records and counts, revoked access, household switching, stale async responses,
-errors/retry, keyboard selection/Escape/focus restoration, touch, desktop/mobile,
-translations, no-JavaScript HTML results and real destination navigation.
-Queries must use existing authorised tenant/person scopes and avoid N+1 reads.
+Read the Rails admin controller, import job/reconciliation job and NHS dm+d
+services as the reference. Reuse existing Loco storage, parsers, catalogue schema,
+queue and scanner/lookup consumers. Test the complete upload-to-lookup journey,
+desktop/mobile status/error states and permission withdrawal. Check repeat import
+and the next release do not duplicate rows or expose a partly replaced catalogue.
+
+Investigate parser field capture at nested XML depths and liveness during archive
+extraction/counting. Prove any root-runtime defect with a failing regression before
+changing it; do not weaken stale-run detection to pass a large archive. Test
+reconciliation against a genuinely running slow import, worker restart, storage
+failure and retry. Retain current safety limits unless the real release provides
+evidence and a reviewed change is needed. Document intentional Rails bug corrections.
+
+Acceptance requires the real-release database comparison, synthetic negative and
+concurrency regressions, actual admin browser flow, immediate catalogue usability,
+independent review and project gates. Distinguish missing evidence from missing
+code in the final report. This slice maps to existing report items s05-i03 and
+s07-i06; no denominator change. A missing authorised archive blocks this acceptance
+gate but does not block independent regression and browser work.
+
+Global search is deferred from this overnight pair, not removed from migration
+scope. Retain the known Finder navigation mismatch and complete search journey
+under #2503. Neither is assigned to the dm+d writer.
 
 ### Ownership, resources and handback
 
@@ -104,7 +125,7 @@ weekly window remains; the other window is unavailable, not zero.
 | Owner | Exclusive source ownership | Read-only context |
 | --- | --- | --- |
 | R writer, unassigned | Review browser/API/model/sync modules, review-specific templates/scripts/tests, new lease/history migration files, evidence-refresh implementation | Rails review reference, existing auth, queue, report and tenant interfaces |
-| S writer, unassigned | New global-search controller/model/templates/script/tests; shared search control and Finder route handoff | Rails search reference, existing care operations and R public route contract |
+| D writer, unassigned | `src/models/nhs_dmd.rs`, `src/models/nhs_dmd/`, NHS admin controller/template, `tests/care_api/nhs_dmd.rs`, import-specific browser tests and isolated release comparison tooling | Rails import/reference services; scanner/lookup consumers; existing queue and storage interfaces |
 | Coordinator | Shared `src/app.rs`, module registration, migration registration, Cargo files, shared locale files, shared fixture helpers, Taskfiles/CI and this brief | Both diffs and test results |
 | Verifier, unassigned | Acceptance evidence and reports; request source/test changes from the owning writer | Both frozen candidates and Rails reference |
 
@@ -126,19 +147,20 @@ and do not silently substitute it. Review the actual called permission helpers,
 schema and all browser/API/sync write paths. Source review and focused tests may
 overlap. Resolve findings, freeze source, then run `task ci` per deliverable plus
 `task docs:build` and `git diff --check` for plan changes. Publish separate scoped
-PRs; recheck the shared navigation on their combined head. Merge, auto-merge and
+PRs; verify catalogue-dependent review behaviour on their combined head. Merge, auto-merge and
 deployment of these new slices need their own authorisation.
 
 Planning status: no writers dispatched, no test resources reserved. At dispatch,
 record each accountable owner, worktree, branch, exact session ID, live job handle,
 candidate SHA, evidence, review verdict and next action here. Keep ownership until
 the receiving owner acknowledges handback; resume an existing blocked session.
-Stop dependent work for contradictory permissions, an undefined material-evidence
+Stop dependent work for unavailable official archive for real-release acceptance, contradictory permissions, an undefined material-evidence
 change rule, unsafe migration/rollback, unavailable required review, or a shared
 file conflict. Raise the concrete decision and continue independent work.
 Next action after execution is authorised: check live owners/reviewer access,
 reserve the two checkouts and verification lane, then dispatch the two writers
-with this brief. Overnight is a work window, not a promised completion time.
+with this brief. R and D do not depend on each other for implementation; shared
+registration/configuration and final integration stay with the coordinator. Overnight is a work window, not a promised completion time.
 
 > For agentic workers: retain the persistent team and Devin review from `../team-charter.md`.
 
