@@ -1,3 +1,6 @@
+#[allow(dead_code)]
+#[path = "../support/template.rs"]
+mod template;
 use med_tracker::models::{
     access::{self, Actor, HouseholdScope},
     care::doses::{self, Command, Outcome, Take},
@@ -6,7 +9,7 @@ use med_tracker::models::{
 use sea_orm::{ConnectionTrait, Database, DbBackend, Statement};
 
 fn owned_url() -> String {
-    assert_eq!(std::env::var("MEDTRACKER_OWNED_DATABASE").unwrap(), "1");
+    template::require_owned_database();
     let uri = std::env::var("CUTOVER_DATABASE_URL").unwrap();
     let url = url::Url::parse(&uri).unwrap();
     assert_eq!(url.scheme(), "postgres");

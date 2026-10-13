@@ -1,5 +1,4 @@
-#[path = "../support/template.rs"]
-mod template;
+use crate::template;
 use sea_orm::{ConnectionTrait, Database, DatabaseConnection, DbBackend, Statement};
 
 #[tokio::test]
@@ -33,7 +32,7 @@ async fn closing_fixture_removes_its_database_and_role() {
     let name = uri.path().trim_start_matches('/');
     let role = uri.username();
     fixture.close().await;
-    let control = Database::connect(std::env::var("DATABASE_URL").unwrap())
+    let control = Database::connect(template::owned_database_url())
         .await
         .unwrap();
     let row = control.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
@@ -51,7 +50,7 @@ pub struct Fixture {
 #[tokio::test]
 async fn cloning_an_aged_template_renews_short_lived_credentials() {
     Fixture::new().await.close().await;
-    let uri = std::env::var("DATABASE_URL").unwrap();
+    let uri = template::owned_database_url();
     let parsed = url::Url::parse(&uri).unwrap();
     let port = parsed.port().unwrap().to_string();
     let name = format!("aged_template_{}", uuid::Uuid::new_v4().simple());
@@ -89,8 +88,7 @@ async fn cloning_an_aged_template_renews_short_lived_credentials() {
 
 impl Fixture {
     pub async fn new() -> Self {
-        assert_eq!(std::env::var("MEDTRACKER_OWNED_DATABASE").unwrap(), "1");
-        let uri = std::env::var("DATABASE_URL").unwrap();
+        let uri = template::owned_database_url();
         let endpoint = uri
             .strip_prefix("postgres://medtracker:medtracker_password@127.0.0.1:")
             .unwrap();
@@ -159,7 +157,7 @@ impl Fixture {
         );
         self.runtime.close().await.unwrap();
         self.admin.close().await.unwrap();
-        let control = Database::connect(std::env::var("DATABASE_URL").unwrap())
+        let control = Database::connect(template::owned_database_url())
             .await
             .unwrap();
         control

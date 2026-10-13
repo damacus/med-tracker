@@ -7,7 +7,7 @@ where
     Fut: Future<Output = ()>,
 {
     static READY: tokio::sync::OnceCell<()> = tokio::sync::OnceCell::const_new();
-    assert_eq!(std::env::var("MEDTRACKER_OWNED_DATABASE").unwrap(), "1");
+    require_owned_database();
     assert!(
         name.len() <= 63
             && name
@@ -51,4 +51,13 @@ where
             control.close().await.unwrap();
         })
         .await;
+}
+
+pub fn require_owned_database() {
+    assert_eq!(std::env::var("MEDTRACKER_OWNED_DATABASE").unwrap(), "1");
+}
+
+pub fn owned_database_url() -> String {
+    require_owned_database();
+    std::env::var("DATABASE_URL").expect("the suite must provide its owned database")
 }
