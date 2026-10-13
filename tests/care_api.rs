@@ -38,6 +38,8 @@ mod dosages;
 mod dose_history;
 #[path = "care_api/dose_outcomes.rs"]
 mod dose_outcomes;
+#[path = "care_api/expiry_jobs.rs"]
+mod expiry_jobs;
 #[path = "care_api/fixture.rs"]
 mod fixture;
 #[path = "care_api/health_events.rs"]
