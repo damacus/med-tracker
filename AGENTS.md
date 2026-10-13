@@ -48,6 +48,12 @@ reference and rollback application during migration. Root `task dev`, `build`,
 Loco. Schema adoption, fixtures and production images remain explicit gates until
 their migration tranches pass. Never deploy the foundation as the finished app.
 The existing `rust/` Axum/Leptos sources remain migration inputs, not root routing.
+`rust/AGENTS.md` is a vendored copy of upstream
+[loco-rs/loco `AGENTS.md`](https://github.com/loco-rs/loco/blob/master/AGENTS.md):
+the framework's own statement of intended layout, `AppContext` usage, and
+conventions. Consult it when working on the root Loco app; deliberate
+departures from it are catalogued in
+[#2575](https://github.com/damacus/med-tracker/issues/2575).
 
 ## Rails rollback stack
 
@@ -139,25 +145,25 @@ apply to the Rails rollback application. Rails root entry commands use `rails:`;
 
 > **Note**: For most `task rails:dev:*` commands, an equivalent `task rails:test:*` command exists (e.g., `task rails:test:up`, `task rails:test:port`).
 
-| What | Command |
-|---|---|
-| Run tests | `task rails:test` |
-| Test Docker preflight | `task rails:test:preflight` |
-| Lint | `task rails:rubocop` |
-| Start dev server | `task rails:dev:up` |
-| Build dev images | `task rails:dev:build` |
-| View dev logs | `task rails:dev:logs` |
-| Stop dev server | `task rails:dev:stop` |
-| Get dev port | `task rails:dev:port` |
-| Open in browser | `task rails:dev:open-ui` |
-| Seed database | `task rails:dev:seed` |
-| Migrate | `task rails:dev:db-migrate` |
-| Rebuild (destructive) | `task rails:dev:rebuild` |
-| Run Brakeman | `task rails:brakeman` |
-| Run RuboCop autocorrect | `task rails:rubocop AUTOCORRECT=true` |
-| Stop everything | `task rails:stop-all` |
-| Run local Playwright browser tests | `task rails:playwright` |
-| List all tasks | `task -l` |
+| What                               | Command                               |
+|------------------------------------|---------------------------------------|
+| Run tests                          | `task rails:test`                     |
+| Test Docker preflight              | `task rails:test:preflight`           |
+| Lint                               | `task rails:rubocop`                  |
+| Start dev server                   | `task rails:dev:up`                   |
+| Build dev images                   | `task rails:dev:build`                |
+| View dev logs                      | `task rails:dev:logs`                 |
+| Stop dev server                    | `task rails:dev:stop`                 |
+| Get dev port                       | `task rails:dev:port`                 |
+| Open in browser                    | `task rails:dev:open-ui`              |
+| Seed database                      | `task rails:dev:seed`                 |
+| Migrate                            | `task rails:dev:db-migrate`           |
+| Rebuild (destructive)              | `task rails:dev:rebuild`              |
+| Run Brakeman                       | `task rails:brakeman`                 |
+| Run RuboCop autocorrect            | `task rails:rubocop AUTOCORRECT=true` |
+| Stop everything                    | `task rails:stop-all`                 |
+| Run local Playwright browser tests | `task rails:playwright`               |
+| List all tasks                     | `task -l`                             |
 
 ## Docker Development
 
