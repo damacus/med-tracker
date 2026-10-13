@@ -1,3 +1,4 @@
+pub mod _entities;
 pub mod access;
 pub(crate) mod audit_context;
 pub(crate) mod authorization;

@@ -64,7 +64,10 @@ webauthn-rs = { version = "=0.5.5", features = [
 web-push = { version = "=0.11.0", default-features = false, features = [
     "hyper-client",
 ] }
-reqwest = { version = "=0.13.5", default-features = false, features = ["json", "rustls"] }
+reqwest = { version = "=0.13.5", default-features = false, features = [
+    "json",
+    "rustls",
+] }
 serde_cbor_2 = "0.13"
 getrandom = "=0.4.3"
 ulid = "=3.0.0"
@@ -101,6 +104,9 @@ sghtmltopdf = { version = "=0.5.1", default-features = false, features = [
 ] }
 serde_yaml_ng = "=0.10.0"
 migration = { path = "migration" }
+
+[package.metadata.db.entity]
+ignore-tables = "account_active_session_keys,account_login_change_keys,account_password_reset_keys,account_remember_keys,account_verification_keys"
 
 [dev-dependencies]
 loco-rs = { version = "=1.2.0", default-features = false, features = [

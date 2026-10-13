@@ -78,7 +78,7 @@ mod tests {
                 role: "administrator".into(),
                 status: "active".into(),
                 revoked_at: None,
-                joined_at: Some(now),
+                joined_at: now,
                 created_at: now,
                 updated_at: now,
             },

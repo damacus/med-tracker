@@ -16,6 +16,7 @@ pub async fn create(
         portable_id: uuid::Uuid::new_v4().to_string(),
         name: String::new(),
         email: None,
+        professional_title: None,
         person_type: 0,
         date_of_birth: None,
         has_capacity: true,
