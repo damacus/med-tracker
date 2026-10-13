@@ -16,6 +16,8 @@ mod audit_logs;
 mod avatar;
 #[path = "care_api/avatar_storage.rs"]
 mod avatar_storage;
+#[path = "care_api/better_auth_invitations.rs"]
+mod better_auth_invitations;
 #[path = "care_api/better_auth_store.rs"]
 mod better_auth_store;
 #[path = "care_api/browser_push.rs"]
