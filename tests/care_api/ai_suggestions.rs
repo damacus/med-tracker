@@ -47,7 +47,7 @@ async fn ai_medication_suggestions_require_authentication_and_access() {
         .send()
         .await
         .unwrap();
-    assert_eq!(unauthenticated.status().as_u16(), 401);
+    Application::assert_status(unauthenticated, 401).await;
 
     app.fixture
         .admin
@@ -66,11 +66,8 @@ async fn ai_medication_suggestions_require_authentication_and_access() {
         .send()
         .await
         .unwrap();
-    assert_eq!(denied.status().as_u16(), 403);
-    assert_eq!(
-        denied.json::<Value>().await.unwrap()["error"]["code"],
-        "forbidden"
-    );
+    let payload = Application::assert_status(denied, 403).await;
+    assert_eq!(payload["error"]["code"], "forbidden");
 }
 
 #[tokio::test]
@@ -85,11 +82,8 @@ async fn ai_medication_suggestions_requires_enabled_paid_feature() {
         .send()
         .await
         .unwrap();
-    assert_eq!(unpaid.status().as_u16(), 404);
-    assert_eq!(
-        unpaid.json::<Value>().await.unwrap()["error"]["code"],
-        "not_found"
-    );
+    let payload = Application::assert_status(unpaid, 404).await;
+    assert_eq!(payload["error"]["code"], "not_found");
 
     let disabled = Application::new_with_ai_help(false).await;
     upgrade_plan(&disabled).await;
@@ -105,7 +99,7 @@ async fn ai_medication_suggestions_requires_enabled_paid_feature() {
         .send()
         .await
         .unwrap();
-    assert_eq!(disabled_response.status().as_u16(), 404);
+    Application::assert_status(disabled_response, 404).await;
     disabled.close().await;
 }
 
@@ -129,8 +123,7 @@ async fn ai_medication_suggestions_validates_the_identity_shape() {
             .send()
             .await
             .unwrap();
-        assert_eq!(response.status().as_u16(), 422, "{body}");
-        let payload = response.json::<Value>().await.unwrap();
+        let payload = Application::assert_status(response, 422).await;
         assert_eq!(payload["error"]["code"], "validation_failed");
         assert_eq!(
             payload["error"]["errors"]["medication"],
@@ -152,8 +145,7 @@ async fn ai_medication_suggestions_returns_a_draft_and_records_the_suggestion() 
         .send()
         .await
         .unwrap();
-    assert_eq!(response.status().as_u16(), 200);
-    let payload = response.json::<Value>().await.unwrap();
+    let payload = Application::assert_status(response, 200).await;
     assert!(payload["data"]["medication"].is_object());
     assert!(payload["data"]["doses"].is_array());
     assert!(payload["data"]["sources"].is_array());
@@ -237,11 +229,9 @@ async fn ai_medication_suggestions_validates_doses_against_fetched_evidence() {
         .send()
         .await
         .unwrap();
-    let status = response.status().as_u16();
-    let payload: Value = response.json().await.unwrap();
+    let payload = Application::assert_status(response, 200).await;
     let audit = suggestion_audit(&app).await;
     app.close().await;
-    assert_eq!(status, 200, "body: {payload}");
     let doses = payload["data"]["doses"].as_array().unwrap();
     assert_eq!(doses.len(), 1, "body: {payload}");
     assert_eq!(doses[0]["amount"], "5");

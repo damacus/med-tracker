@@ -274,6 +274,13 @@ impl Application {
             .unwrap()
     }
 
+    async fn assert_status(response: reqwest::Response, expected: u16) -> Value {
+        let status = response.status().as_u16();
+        let body = response.text().await.unwrap();
+        assert_eq!(status, expected, "{body}");
+        serde_json::from_str(&body).unwrap_or(Value::String(body))
+    }
+
     async fn close(self) {
         self.server.abort();
         let _ = self.server.await;
@@ -694,4 +701,28 @@ async fn stock_removal_api_checks_manager_permission_before_invalid_payload() {
     assert_eq!(status, 403);
     assert_eq!(history_status, 403);
     assert_eq!(effect, (0, "10.00".into(), 0, 0));
+}
+
+#[tokio::test]
+async fn assert_status_returns_the_parsed_json_body() {
+    let body: reqwest::Body = "{\"error\":{\"code\":\"synthetic\"}}".into();
+    let response: reqwest::Response = axum::http::Response::builder()
+        .status(200)
+        .body(body)
+        .unwrap()
+        .into();
+    let payload = Application::assert_status(response, 200).await;
+    assert_eq!(payload["error"]["code"], "synthetic");
+}
+
+#[tokio::test]
+#[should_panic(expected = "synthetic explanation")]
+async fn assert_status_reports_the_response_body_on_failure() {
+    let body: reqwest::Body = "{\"error\":\"synthetic explanation\"}".into();
+    let response: reqwest::Response = axum::http::Response::builder()
+        .status(422)
+        .body(body)
+        .unwrap()
+        .into();
+    Application::assert_status(response, 200).await;
 }
