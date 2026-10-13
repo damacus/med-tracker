@@ -3,6 +3,58 @@
 Owner-requested follow-ups, 7 October 2026. Parent: [browser delivery](06-browser.md).
 Profile has its own [item-by-item subplan](06-profile-parity.md).
 
+## Current completion scope — 13 October 2026
+
+The owner approved completing s06-i02 in full. Historical discovery notes below
+describe their original checkpoints, not the current absence of features.
+At `090956d87233aa7f0396530050e1bb0365022227`, person cards, health-event/carer
+journeys, additive refill, dose confirmation and scanner/wizard variants exist.
+Retain their existing tests and reconcile each checklist with evidence rather
+than rebuilding delivered operations.
+
+Confirmed source gaps include global search, the dashboard's `/add-medication`
+destination, the public `/medication-finder` destination, inventory location and
+category filtering, inventory card actions and the reachable Stock Check journey.
+Rails Stock Check selects several medicines and applies adjustments atomically;
+port the complete permission-checked operation with stale-write protection and
+auditing, not just its entry link. Reuse existing Loco stock operations and reject
+inaccessible or invalid submitted records without partial changes.
+
+Surrounding care templates still contain English literals. Finish visible and
+accessible translations across the maintained five locales. Preserve the
+distinction between zero stock and untracked stock. Verify full-page, modal and
+slide-over wizard context and error recovery, and reconcile dose issue #2496
+against merged confirmation work before assigning remaining fixes.
+
+The owner requests expansion of existing tests in the same area where scenarios
+do not affect one another. New isolated tests remain appropriate for independent
+failure conditions or a genuinely new area such as global search. These source
+findings are not fresh runtime acceptance; desktop/mobile comparison, review and
+the required checks remain necessary. Source/test ownership and live job records
+stay in the parent browser brief.
+
+### Search/navigation implementation record
+
+The implementation writer owns `/private/tmp/medtracker-care-ui-completion` on
+`codex/care-ui-completion`, based on `090956d87233aa7f0396530050e1bb0365022227`.
+The coordinator granted scoped search changes to the search model/controller,
+their registrations, household layouts and navigation, workflow and treatment
+context handlers, five locale catalogues and isolated browser fixtures. The
+first browser RED, job `4006`, observed `/search.json` return 404. Subsequent
+RED checks covered keyboard opening, schedule destination, Rails public route
+aliases, medication preselection and the new Welsh schedule link before fixes.
+
+The combined search response retains Rails' 12-result limit, so a schedule
+for the thirteenth matching person can be present in a narrower query yet
+absent from the broad result set. A household member without management access
+can still see its location, as `LocationPolicy` permits active members. The
+browser assertion for that role checks hidden people and medication records
+without incorrectly hiding the location. The selected-language test initially
+mixed `Accept-Language: cy` for browser fetches with `en-GB` document navigation;
+the Playwright trace exposed both headers. The test now uses a `cy-GB` browser
+locale context, matching established locale tests. Focused desktop/mobile
+search verification and screenshots remain the checkpoint gate.
+
 ## Shared delivery contract
 
 Reuse the established Rails information architecture and interactions in the

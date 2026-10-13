@@ -246,6 +246,7 @@ ga:
     page_title: Cuardaigh
     page_subtitle: Aimsigh taifid agus aicearraí MedTracker.
     page_submit: Cuardaigh
+    schedule_for: Sceideal do %{person}
     results:
       one: 1 toradh
       other: "%{count} toradh"

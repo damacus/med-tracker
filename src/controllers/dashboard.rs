@@ -126,6 +126,11 @@ async fn show(
         Ok(value) => value,
         Err(error) => return operation_error(error),
     };
+    let can_add_medication = match crate::models::care::medications::crud::can_create(&tenant).await
+    {
+        Ok(value) => value,
+        Err(error) => return operation_error(error),
+    };
     let Ok(authenticity_token) = token.authenticity_token() else {
         return unavailable();
     };
@@ -147,6 +152,7 @@ async fn show(
     data["role_label"] =
         labels["admin"]["labels"]["membership_roles"][&tenant.membership().role].clone();
     data["sidebar_links"] = json!(navigation_links(&slug, &labels, can_manage));
+    data["can_add_medication"] = json!(can_add_medication);
     let status = if let Some(Extension(failure)) = &failure {
         super::medications::forms::status(&failure.error)
     } else {
@@ -361,7 +367,7 @@ fn navigation_links(
         ("inventory", "medications"),
         ("locations", "locations"),
         ("people", "people"),
-        ("finder", "medication-finder"),
+        ("finder", "medications/finder"),
         ("medicine_reviews", "medicine-reviews"),
         ("reports", "reports"),
         ("profile", "profile"),

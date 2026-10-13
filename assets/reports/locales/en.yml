@@ -144,6 +144,7 @@ en:
     page_title: Search
     page_subtitle: Find MedTracker records and shortcuts.
     page_submit: Search
+    schedule_for: Schedule for %{person}
     results:
       one: 1 result
       other: "%{count} results"

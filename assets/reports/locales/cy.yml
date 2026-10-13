@@ -246,6 +246,7 @@ cy:
     page_title: Chwilio
     page_subtitle: Dod o hyd i gofnodion a llwybrau byr MedTracker.
     page_submit: Chwilio
+    schedule_for: Amserlennu ar gyfer %{person}
     results:
       one: 1 canlyniad
       other: "%{count} canlyniad"

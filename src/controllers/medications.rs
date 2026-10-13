@@ -47,7 +47,9 @@ pub fn routes() -> Routes {
         .add("/{slug}/medications", get(index).post(management::create))
         .add("/{slug}/medications/new", get(management::new))
         .add("/{slug}/medications/finder", get(scanner::finder))
+        .add("/{slug}/medication-finder", get(scanner::finder))
         .add("/{slug}/medications/workflow", get(workflow::open))
+        .add("/{slug}/add-medication", get(workflow::open))
         .add("/{slug}/medications/lookup", get(scanner::lookup))
         .add("/{slug}/medications/wizard", post(wizard::create))
         .add(

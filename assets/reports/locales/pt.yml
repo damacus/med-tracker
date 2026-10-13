@@ -246,6 +246,7 @@ pt:
     page_title: Pesquisar
     page_subtitle: Encontre registos e atalhos do MedTracker.
     page_submit: Pesquisar
+    schedule_for: Agendar para %{person}
     results:
       one: 1 resultado
       other: "%{count} resultados"

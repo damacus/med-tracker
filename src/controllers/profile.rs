@@ -216,7 +216,7 @@ pub(super) fn shortcut_choices(slug: &str, labels: &Value, can_manage: bool) -> 
         ("inventory", "medications"),
         ("locations", "locations"),
         ("people", "people"),
-        ("finder", "medication-finder"),
+        ("finder", "medications/finder"),
         ("medicine_reviews", "medicine-reviews"),
         ("reports", "reports"),
         ("profile", "profile"),

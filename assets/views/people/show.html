@@ -20,7 +20,7 @@
       <h2 class="text-2xl font-semibold" id="current-medications-heading">Current medications</h2>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
       {% for medication in medications %}
-        <article class="card bg-base-100 border border-base-300 min-w-0" aria-label="{{ medication.medication_name }} {{ medication.source_label }}">
+        <article id="{% if medication.source_kind == 'schedules' %}schedule{% else %}person_medication{% endif %}_{{ medication.id }}" class="card bg-base-100 border border-base-300 min-w-0" aria-label="{{ medication.medication_name }} {{ medication.source_label }}">
           <div class="card-body gap-3">
             <div class="flex flex-wrap items-start justify-between gap-2">
               <h3 class="card-title min-w-0"><a class="link break-words" href="/households/{{ slug }}/medications/{{ medication.medication_id }}">{{ medication.medication_name }}</a></h3>

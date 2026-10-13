@@ -10,6 +10,7 @@ pub mod dosages;
 pub mod dose_history;
 pub mod dose_occurrences;
 pub mod doses;
+pub mod global_search;
 pub mod health_events;
 pub mod invitations;
 pub mod locations;

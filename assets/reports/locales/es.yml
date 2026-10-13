@@ -246,6 +246,7 @@ es:
     page_title: Buscar
     page_subtitle: Encuentra registros y accesos directos de MedTracker.
     page_submit: Buscar
+    schedule_for: Programar para %{person}
     results:
       one: 1 resultado
       other: "%{count} resultados"

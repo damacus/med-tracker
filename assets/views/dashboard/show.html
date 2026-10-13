@@ -3,7 +3,7 @@
 <div id="dashboard" class="dashboard-page mx-auto" data-testid="dashboard-variant-{{ variant | replace(from='_', to='-') }}">
   <header class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
     <div><p class="uppercase tracking-widest text-sm text-base-content/60 mb-1">{{ dashboard.date }}</p><h1 class="text-4xl font-black tracking-tight">{{ greeting }}</h1></div>
-    <div class="hidden md:flex gap-3 font-bold">{% if can_create_person %}<a class="btn rounded-full border border-base-300" href="/households/{{ slug }}/people/new">{{ labels.dashboard.quick_actions.add_person }}</a>{% endif %}<a class="btn btn-primary rounded-full" href="/households/{{ slug }}/add-medication"><svg aria-hidden="true" width="20" height="20"><use href="/static/dashboard-icons.svg#plus_circle"/></svg>{{ labels.dashboard.quick_actions.add_medication }}</a></div>
+    <div class="hidden md:flex gap-3 font-bold">{% if can_create_person %}<a class="btn rounded-full border border-base-300" href="/households/{{ slug }}/people/new">{{ labels.dashboard.quick_actions.add_person }}</a>{% endif %}{% if can_add_medication %}<a class="btn btn-primary rounded-full" href="/households/{{ slug }}/medications/workflow"><svg aria-hidden="true" width="20" height="20"><use href="/static/dashboard-icons.svg#plus_circle"/></svg>{{ labels.dashboard.quick_actions.add_medication }}</a>{% endif %}</div>
   </header>
   {% if variant != 'family_lanes' %}<nav aria-label="{{ labels.dashboard.person_selector.label }}" class="mb-6">
     <form method="get" data-dashboard-selector>
