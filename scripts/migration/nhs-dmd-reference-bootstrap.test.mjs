@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { compareSnapshots, comparisonInput, runReferenceImport } from './nhs-dmd-reference-bootstrap.mjs';
+import { assertCleanBenchmarkSource, compareSnapshots, comparisonInput, runReferenceImport } from './nhs-dmd-reference-bootstrap.mjs';
 
 test('synthetic comparison selects only its pinned fixture and checksum', () => {
   const root = '/checkout';
@@ -137,4 +137,7 @@ test('benchmark uses the prepared executable without compiling between sequentia
     environment: {},
   });
   assert.deepEqual(calls, ['provision', 'task', '/checkout/target/ci/care_api', 'docker']);
+  assert.throws(() => assertCleanBenchmarkSource('?? src/new_import.rs\n'), /clean worktree/);
+  assert.throws(() => assertCleanBenchmarkSource(' M src/models/nhs_dmd/import.rs\n'), /clean worktree/);
+  assert.doesNotThrow(() => assertCleanBenchmarkSource(''));
 });

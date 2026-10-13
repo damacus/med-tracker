@@ -1,5 +1,9 @@
 import { join } from 'node:path';
 
+export function assertCleanBenchmarkSource(status) {
+  if (status.trim()) throw new Error('Benchmark requires a clean worktree, including untracked source files; commit the candidate and rebuild first');
+}
+
 export async function runReferenceImport({ url, provision, runCommand, locoCommand = 'cargo', locoArguments, locoEnvironment, railsArguments, environment }) {
   const referenceUrl = new URL(url);
   if (referenceUrl.hostname !== '127.0.0.1' || referenceUrl.pathname !== '/medtracker_loco' || !referenceUrl.port) throw new Error('Reference import requires an owned loopback database');

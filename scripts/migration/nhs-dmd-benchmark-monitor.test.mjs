@@ -24,6 +24,20 @@ test('headless browser tests block the quiet gate without blocking an ordinary b
     { pid: activeBrowser.pid, name: activeBrowser.name },
     { pid: idleTestRunner.pid, name: idleTestRunner.name },
   ]);
+  const nodeRunner = { pid: 701, name: 'node', cpuPercent: 0 };
+  const nodeService = { ...nodeRunner, pid: 702 };
+  const argumentsOutput = '701 /opt/homebrew/bin/node /checkout/node_modules/@playwright/test/cli.js test --grep sample\n702 /opt/homebrew/bin/node /checkout/server.mjs --token synthetic-private-value';
+  const detected = competingProcesses([nodeRunner, nodeService], [], argumentsOutput);
+  assert.deepEqual(detected, [{ pid: 701, name: 'node' }]);
+  assert.equal(isQuiet({ ...sample, competingProcesses: detected }), false);
+  assert.equal(JSON.stringify(detected).includes('arguments'), false);
+  for (const args of [
+    '/opt/homebrew/bin/node /checkout/node_modules/.bin/playwright test --project mobile',
+    'npm exec playwright test --config playwright.config.mjs',
+    '/opt/homebrew/bin/node /checkout/node_modules/playwright/cli.js test',
+  ]) {
+    assert.deepEqual(competingProcesses([nodeRunner], [], `701 ${args}`), [{ pid: 701, name: 'node' }]);
+  }
 });
 
 test('quiet gate rejects competing work, high load, CPU use and memory pressure', () => {

@@ -7,11 +7,14 @@ import { setTimeout as delay } from 'node:timers/promises';
 
 const execute = promisify(execFile);
 
-export function competingProcesses(rows, testNames = []) {
+export function competingProcesses(rows, testNames = [], processArguments = '') {
   const names = new Set(['rustc', 'cargo', 'rust-lld', 'ld', 'care_api', 'rust_household_browser', 'pytest', 'med_tracker', 'chrome-headless-shell', ...testNames]);
+  const playwrightPids = new Set(processArguments.split('\n').map(line => /^\s*(\d+)\s+(.+)$/.exec(line)).filter(Boolean)
+    .filter(([, , args]) => /(?:^|\s)(?:\S*\/)?(?:playwright|(?:@playwright\/test|playwright(?:-core)?)\/cli\.js)\s+test(?:\s|$)/.test(args))
+    .map(([, pid]) => Number(pid)));
   return rows.filter(row => {
     if (row.name === 'chrome-headless-shell' && Number.isFinite(row.cpuPercent) && row.cpuPercent < 1) return false;
-    return names.has(row.name.replace(/-[a-f0-9]{16}$/, '')) || /^(?:npm exec )?playwright test(?: |$)/.test(row.name);
+    return names.has(row.name.replace(/-[a-f0-9]{16}$/, '')) || playwrightPids.has(row.pid) || /^(?:npm exec )?playwright test(?: |$)/.test(row.name);
   }).map(row => ({ pid: row.pid, name: row.name }));
 }
 
@@ -40,11 +43,12 @@ export async function sampleHost() {
   const after = cpus();
   const delta = after.map((cpu, index) => Object.fromEntries(Object.entries(cpu.times).map(([key, value]) => [key, value - before[index].times[key]])));
   const total = delta.flatMap(cpu => Object.values(cpu)).reduce((a, b) => a + b, 0);
-  const [pressure, swap, vm, processes] = await Promise.all([
+  const [pressure, swap, vm, processes, processArguments] = await Promise.all([
     command('sysctl', ['-n', 'kern.memorystatus_vm_pressure_level']),
     command('sysctl', ['-n', 'vm.swapusage']),
     command('vm_stat', []),
     command('ps', ['-axo', 'pid=,pcpu=,rss=,comm=']),
+    command('ps', ['-axo', 'pid=,args=']),
   ]);
   const processRows = processes.split('\n').map(line => /^\s*(\d+)\s+([\d.]+)\s+(\d+)\s+(.+)$/.exec(line)).filter(Boolean)
     .map(([, pid, cpu, rss, name]) => ({ pid: Number(pid), cpuPercent: Number(cpu), rssBytes: Number(rss) * 1024, name: basename(name) }));
@@ -55,7 +59,7 @@ export async function sampleHost() {
     idlePercent: 100 * delta.reduce((sum, cpu) => sum + cpu.idle, 0) / total,
     memoryPressure: Number(pressure), swapUsage: swap,
     swapouts: vmCounters.Swapouts, vmCounters,
-    competingProcesses: competingProcesses(processRows, testNames),
+    competingProcesses: competingProcesses(processRows, testNames, processArguments),
     topProcesses: processRows.sort((a, b) => b.cpuPercent - a.cpuPercent).slice(0, 15),
   };
 }

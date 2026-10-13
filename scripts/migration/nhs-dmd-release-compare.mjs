@@ -6,13 +6,14 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { withOwnedDatabase } from './foundation-database.mjs';
 import { stopOwnedProcess } from './process-cleanup.mjs';
-import { compareSnapshots, comparisonInput, runReferenceImport } from './nhs-dmd-reference-bootstrap.mjs';
+import { assertCleanBenchmarkSource, compareSnapshots, comparisonInput, runReferenceImport } from './nhs-dmd-reference-bootstrap.mjs';
 import { BenchmarkMonitor } from './nhs-dmd-benchmark-monitor.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const referenceScript = fileURLToPath(new URL('./nhs-dmd-reference-snapshot.rb', import.meta.url));
 const mode = process.env.NHS_DMD_COMPARISON_MODE ?? 'official';
 const benchmark = process.env.NHS_DMD_BENCHMARK === '1';
+if (benchmark) assertCleanBenchmarkSource(execFileSync('git', ['status', '--porcelain', '--untracked-files=all'], { cwd: root, encoding: 'utf8' }));
 const { release, expectedChecksum } = comparisonInput(mode, process.env.NHS_DMD_RELEASE_PATH, root);
 
 async function runProcess(command, args, environment, timeout = 1800000) {
