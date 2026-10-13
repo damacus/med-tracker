@@ -408,8 +408,30 @@ async fn nhs_dmd_interrupted_release_fails_without_restart_rerun() {
         .await
         .unwrap();
     let (queue, worker) = restarted_worker(&app).await;
-    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    let finished = tokio::time::timeout(std::time::Duration::from_secs(20), async {
+        loop {
+            let status: i32 = app
+                .fixture
+                .admin
+                .query_one_raw(Statement::from_sql_and_values(
+                    DbBackend::Postgres,
+                    "SELECT status FROM nhs_dmd_imports WHERE id=$1",
+                    [id.into()],
+                ))
+                .await
+                .unwrap()
+                .unwrap()
+                .try_get("", "status")
+                .unwrap();
+            if status == 5 {
+                break status;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        }
+    })
+    .await;
     stop_worker(queue, worker).await;
+    assert_eq!(finished.unwrap(), 5);
     let row = app
         .fixture
         .admin
