@@ -1574,6 +1574,7 @@ async fn sync_core_review_dosage_cascade_tombstones_preserve_current_scope() {
             let principal = med_tracker::models::identity::resource::authenticate(
                 &app.fixture.runtime,
                 &headers,
+                None,
             )
             .await
             .unwrap();
@@ -1582,6 +1583,7 @@ async fn sync_core_review_dosage_cascade_tombstones_preserve_current_scope() {
                     &app.fixture.runtime,
                     72001,
                     "synthetic-offline-option-delete".into(),
+                    None,
                 )
                 .await
                 .unwrap();

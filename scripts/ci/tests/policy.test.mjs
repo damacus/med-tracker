@@ -41,7 +41,7 @@ test('Rust port and contract infrastructure select their executable checks', () 
   }
 });
 
-for (const [suite, job] of [['lighthouse', 'lighthouse'], ['rails', 'test_non_system'], ['rails', 'coverage'], ['rust_port', 'rust_port'], ['rust_port', 'rust_dashboard_browser'], ['rust_port', 'rust_household_browser']]) {
+for (const [suite, job] of [['lighthouse', 'lighthouse'], ['rails', 'test_non_system'], ['rails', 'coverage'], ['loco', 'loco_coverage'], ['rust_port', 'rust_port'], ['rust_port', 'rust_dashboard_browser'], ['rust_port', 'rust_household_browser']]) {
   test(`${suite} succeeds when every selected job succeeds`, () => {
     assert.deepEqual(evaluate(needsFor(suite)), []);
   });
@@ -55,6 +55,16 @@ for (const [suite, job] of [['lighthouse', 'lighthouse'], ['rails', 'test_non_sy
     });
   }
 }
+
+test('Rust coverage is selected and its failure reaches CI Success', () => {
+  const workflow = readFileSync(new URL('../../../.github/workflows/ci.yml', import.meta.url), 'utf8');
+  assert.ok(policy.jobs.loco.includes('loco_coverage'));
+  assert.equal((workflow.match(/\n  loco_coverage:\n/g) ?? []).length, 1);
+  assert.equal((workflow.match(/\n      - loco_coverage\n/g) ?? []).length, 1);
+  const needs = needsFor('loco');
+  needs.loco_coverage = { result: 'failure' };
+  assert.ok(evaluate(needs).some(error => error.includes('loco_coverage')));
+});
 
 test('Rust CI builds the UI and runs both dashboard browser suites', () => {
   const workflow = readFileSync(new URL('../../../.github/workflows/ci.yml', import.meta.url), 'utf8');

@@ -35,7 +35,7 @@ async fn loco_scoping_and_rls_independently_reject_other_households() {
             .unwrap()
             .is_none()
     );
-    let tenant = access::begin(&fixture.runtime, &scope(71001, 72001))
+    let tenant = access::begin(&fixture.runtime, &scope(71001, 72001), None)
         .await
         .unwrap();
     let db = tenant.transaction();
@@ -187,7 +187,7 @@ async fn visible_granted_people<C: ConnectionTrait>(db: &C) -> Vec<i64> {
 #[tokio::test]
 async fn fixture_uses_canonical_administrator_role() {
     let fixture = Fixture::new().await;
-    let transaction = access::begin(&fixture.runtime, &scope(71001, 72001))
+    let transaction = access::begin(&fixture.runtime, &scope(71001, 72001), None)
         .await
         .unwrap();
     let role = transaction.membership().role.clone();
@@ -206,7 +206,7 @@ async fn actor_identity_is_independent_of_household_linked_subject() {
          INSERT INTO public.person_access_grants(id, household_id, household_membership_id, person_id, access_level, relationship_type, created_at, updated_at)
          VALUES (78003, 72002, 74003, 73004, 'view', 'carer', now(), now());"
     ).await.unwrap();
-    let transaction = access::begin(&fixture.runtime, &scope(71001, 72002))
+    let transaction = access::begin(&fixture.runtime, &scope(71001, 72002), None)
         .await
         .unwrap();
     assert_eq!(transaction.user_id(), 77001);
@@ -228,12 +228,12 @@ async fn actor_identity_is_independent_of_household_linked_subject() {
 async fn begin_rejects_unknown_and_locked_accounts() {
     let fixture = Fixture::new().await;
     assert!(matches!(
-        access::begin(&fixture.runtime, &scope(71999, 72001)).await,
+        access::begin(&fixture.runtime, &scope(71999, 72001), None).await,
         Err(OperationError::Unauthenticated)
     ));
     fixture.admin.execute_unprepared("INSERT INTO public.account_lockouts(account_id, deadline, key) VALUES (71001, timezone('UTC', clock_timestamp()) + interval '1 hour', 'synthetic-lockout')").await.unwrap();
     assert!(matches!(
-        access::begin(&fixture.runtime, &scope(71001, 72001)).await,
+        access::begin(&fixture.runtime, &scope(71001, 72001), None).await,
         Err(OperationError::Unauthenticated)
     ));
     assert!(visible_granted_people(&fixture.runtime).await.is_empty());
@@ -249,7 +249,7 @@ async fn begin_rejects_inactive_households() {
     ] {
         fixture.admin.execute_unprepared(change).await.unwrap();
         assert!(matches!(
-            access::begin(&fixture.runtime, &scope(71001, 72001)).await,
+            access::begin(&fixture.runtime, &scope(71001, 72001), None).await,
             Err(OperationError::Forbidden)
         ));
         assert!(visible_granted_people(&fixture.runtime).await.is_empty());
@@ -260,7 +260,7 @@ async fn begin_rejects_inactive_households() {
 #[tokio::test]
 async fn pool_reuse_does_not_leak_household() {
     let fixture = Fixture::new().await;
-    let first = access::begin(&fixture.runtime, &scope(71001, 72001))
+    let first = access::begin(&fixture.runtime, &scope(71001, 72001), None)
         .await
         .unwrap();
     assert_eq!(
@@ -269,7 +269,7 @@ async fn pool_reuse_does_not_leak_household() {
     );
     first.commit().await.unwrap();
     assert!(visible_granted_people(&fixture.runtime).await.is_empty());
-    let second = access::begin(&fixture.runtime, &scope(71002, 72002))
+    let second = access::begin(&fixture.runtime, &scope(71002, 72002), None)
         .await
         .unwrap();
     assert_eq!(
@@ -285,7 +285,7 @@ async fn pool_reuse_does_not_leak_household() {
 async fn actor_does_not_authorize_another_household() {
     let fixture = Fixture::new().await;
     assert!(matches!(
-        access::begin(&fixture.runtime, &scope(71001, 72002)).await,
+        access::begin(&fixture.runtime, &scope(71001, 72002), None).await,
         Err(OperationError::Forbidden)
     ));
     assert!(visible_granted_people(&fixture.runtime).await.is_empty());
@@ -295,7 +295,7 @@ async fn actor_does_not_authorize_another_household() {
 #[tokio::test]
 async fn person_access_rechecks_live_grants() {
     let fixture = Fixture::new().await;
-    let transaction = access::begin(&fixture.runtime, &scope(71001, 72001))
+    let transaction = access::begin(&fixture.runtime, &scope(71001, 72001), None)
         .await
         .unwrap();
     access::require_person_access(&transaction, 73001, PersonAccess::Manage)
@@ -338,7 +338,7 @@ async fn runtime_role_cannot_alter_schema_or_migration_history() {
 async fn cedar_person_access_uses_current_grant_level_and_database_expiry() {
     use med_tracker::models::care::people;
     let fixture = Fixture::new().await;
-    let transaction = access::begin(&fixture.runtime, &scope(71001, 72001))
+    let transaction = access::begin(&fixture.runtime, &scope(71001, 72001), None)
         .await
         .unwrap();
     for (level, expected) in [
@@ -404,7 +404,7 @@ async fn cedar_person_access_uses_current_grant_level_and_database_expiry() {
 #[tokio::test]
 async fn shared_recheck_rejects_current_account_lockout() {
     let fixture = Fixture::new().await;
-    let transaction = access::begin(&fixture.runtime, &scope(71001, 72001))
+    let transaction = access::begin(&fixture.runtime, &scope(71001, 72001), None)
         .await
         .unwrap();
     fixture.admin.execute_unprepared("INSERT INTO public.account_lockouts(account_id, deadline, key) VALUES (71001, now() + interval '1 hour', 'synthetic-lockout')").await.unwrap();
@@ -417,7 +417,7 @@ async fn shared_recheck_rejects_current_account_lockout() {
 #[tokio::test]
 async fn shared_recheck_rejects_membership_role_change() {
     let fixture = Fixture::new().await;
-    let transaction = access::begin(&fixture.runtime, &scope(71001, 72001))
+    let transaction = access::begin(&fixture.runtime, &scope(71001, 72001), None)
         .await
         .unwrap();
     fixture

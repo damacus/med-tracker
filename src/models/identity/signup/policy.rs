@@ -1,15 +1,20 @@
 use super::*;
 
-pub(super) async fn open(transaction: &DatabaseTransaction) -> Result<bool, SignupError> {
-    match std::env::var("INVITE_ONLY") {
-        Ok(value) => {
-            return Ok(matches!(
+pub(super) async fn open(
+    transaction: &DatabaseTransaction,
+    settings: Option<&serde_json::Value>,
+) -> Result<bool, SignupError> {
+    if let Some(value) = crate::models::settings::node(settings, &["registration", "invite_only"])
+        && !matches!(value, serde_json::Value::String(value) if value.is_empty())
+    {
+        return Ok(match value {
+            serde_json::Value::Bool(flag) => !flag,
+            serde_json::Value::String(value) => matches!(
                 value.as_str(),
-                "" | "0" | "f" | "F" | "false" | "FALSE" | "off" | "OFF"
-            ));
-        }
-        Err(std::env::VarError::NotUnicode(_)) => return Err(SignupError::Unavailable),
-        Err(std::env::VarError::NotPresent) => {}
+                "0" | "f" | "F" | "false" | "FALSE" | "off" | "OFF"
+            ),
+            _ => return Err(SignupError::Unavailable),
+        });
     }
     transaction
         .execute_raw(Statement::from_string(

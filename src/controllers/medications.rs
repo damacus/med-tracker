@@ -202,9 +202,14 @@ pub(super) async fn begin(
     slug: &str,
     request_id: &str,
 ) -> std::result::Result<(BrowserPrincipal, TenantTransaction), AuthenticationError> {
-    let principal = browser::authenticate(&ctx.db, session).await?;
+    let principal = browser::authenticate(&ctx.db, session, ctx.config.settings.as_ref()).await?;
     let tenant = principal
-        .begin_household_slug(&ctx.db, slug, request_id.to_owned())
+        .begin_household_slug(
+            &ctx.db,
+            slug,
+            request_id.to_owned(),
+            ctx.config.settings.as_ref(),
+        )
         .await?;
     Ok((principal, tenant))
 }
@@ -372,7 +377,7 @@ async fn take(
                 return unavailable();
             }
             let tenant = match principal
-                .begin_household_slug(&ctx.db, &slug, request_id)
+                .begin_household_slug(&ctx.db, &slug, request_id, ctx.config.settings.as_ref())
                 .await
             {
                 Ok(value) => value,
@@ -484,7 +489,7 @@ async fn refill(
                 return unavailable();
             }
             let tenant = match principal
-                .begin_household_slug(&ctx.db, &slug, request_id)
+                .begin_household_slug(&ctx.db, &slug, request_id, ctx.config.settings.as_ref())
                 .await
             {
                 Ok(value) => value,
@@ -581,7 +586,7 @@ async fn adjust_stock(
                 return unavailable();
             }
             let tenant = match principal
-                .begin_household_slug(&ctx.db, &slug, request_id)
+                .begin_household_slug(&ctx.db, &slug, request_id, ctx.config.settings.as_ref())
                 .await
             {
                 Ok(value) => value,

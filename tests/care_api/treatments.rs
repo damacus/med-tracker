@@ -25,7 +25,7 @@ async fn treatment_retirement_audit_rejection_rolls_back_soft_update() {
         household_id: 72001,
         request_id: "synthetic-retirement-rollback".into(),
     };
-    let tenant = begin(&app.fixture.runtime, &scope).await.unwrap();
+    let tenant = begin(&app.fixture.runtime, &scope, None).await.unwrap();
     let failed = treatments::retire(&tenant, &id.to_string(), None).await;
     tenant.rollback().await.unwrap();
     let row=app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,"SELECT active,retired_at IS NULL AS current,(SELECT is_called FROM synthetic_retirement_reached) AS reached,(SELECT count(*) FROM versions WHERE item_type='Schedule' AND event='update') AS versions,(SELECT count(*) FROM api_change_events WHERE record_type='Schedule' AND action='update') AS changes FROM schedules WHERE id=$1",[id.into()])).await.unwrap().unwrap();

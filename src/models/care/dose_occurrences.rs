@@ -60,7 +60,11 @@ pub(crate) struct ReportOccurrence {
     pub note: Option<String>,
 }
 
-pub(crate) fn expected_schedule_doses_for_report(source: &schedule::Model, day: NaiveDate) -> i32 {
+pub(crate) fn expected_schedule_doses_for_report(
+    source: &schedule::Model,
+    day: NaiveDate,
+    settings: Option<&serde_json::Value>,
+) -> i32 {
     if !source.active
         || source.retired_at.is_some()
         || schedule_as_needed(source)
@@ -71,7 +75,7 @@ pub(crate) fn expected_schedule_doses_for_report(source: &schedule::Model, day: 
     let Some(config) = schedule_config_on(source, day) else {
         return 0;
     };
-    let times = config_times(config, day);
+    let times = config_times(config, day, settings);
     if times.is_empty() {
         effective_count(config, source.max_daily_doses.unwrap_or(1))
     } else {
@@ -91,8 +95,9 @@ fn report_pause_scope(
     assignment_ids: &[i64],
     scan_start: NaiveDate,
     scan_end: NaiveDate,
+    settings: Option<&serde_json::Value>,
 ) -> Select<pause_period::Entity> {
-    let end = local_midnight(scan_end + Duration::days(1));
+    let end = local_midnight(scan_end + Duration::days(1), settings);
     pause_period::Entity::find()
         .in_tenant(household_id)
         .filter(
@@ -112,7 +117,7 @@ fn report_pause_scope(
         .filter(
             Condition::any()
                 .add(pause_period::Column::EndedAt.is_null())
-                .add(pause_period::Column::EndedAt.gt(local_midnight(scan_start))),
+                .add(pause_period::Column::EndedAt.gt(local_midnight(scan_start, settings))),
         )
 }
 
@@ -168,7 +173,10 @@ async fn projected_for_range(
     let assignments = person_medication::Entity::find()
         .in_tenant(household_id)
         .filter(person_medication::Column::PersonId.is_in(person_ids.to_vec()))
-        .filter(person_medication::Column::CreatedAt.lte(local_midnight(end + Duration::days(1))))
+        .filter(
+            person_medication::Column::CreatedAt
+                .lte(local_midnight(end + Duration::days(1), tenant.settings())),
+        )
         .all(db)
         .await?;
     let sources: Vec<Source> = schedules
@@ -178,7 +186,7 @@ async fn projected_for_range(
                 && source.max_daily_doses.is_none()
                 && !schedule_as_needed(&source)
                 && let Some(config) = schedule_config_on(&source, start)
-                && config_times(config, start).is_empty()
+                && config_times(config, start, tenant.settings()).is_empty()
                 && let Some(hours) =
                     doses::config_decimal(config, &["min_hours_between_doses", "min_hours"]).or(
                         source
@@ -243,6 +251,7 @@ async fn projected_for_range(
         &assignment_ids,
         scan_start,
         scan_end,
+        tenant.settings(),
     )
     .all(db)
     .await?;
@@ -253,8 +262,11 @@ async fn projected_for_range(
                 .add(medication_take::Column::ScheduleId.is_in(schedule_ids))
                 .add(medication_take::Column::PersonMedicationId.is_in(assignment_ids)),
         )
-        .filter(medication_take::Column::TakenAt.gte(local_midnight(scan_start)))
-        .filter(medication_take::Column::TakenAt.lt(local_midnight(scan_end + Duration::days(1))))
+        .filter(medication_take::Column::TakenAt.gte(local_midnight(scan_start, tenant.settings())))
+        .filter(medication_take::Column::TakenAt.lt(local_midnight(
+            scan_end + Duration::days(1),
+            tenant.settings(),
+        )))
         .order_by_asc(medication_take::Column::TakenAt)
         .order_by_asc(medication_take::Column::Id)
         .all(db)
@@ -318,6 +330,7 @@ async fn projected_for_range(
             &source_persisted,
             &source_pauses,
             &source_takes,
+            tenant.settings(),
         ) {
             if occurrence.window_start > end || occurrence.window_end < start {
                 continue;
@@ -402,8 +415,8 @@ fn representation_etag(value: &Value) -> String {
         hex::encode(Sha256::digest(value.to_string().as_bytes()))
     )
 }
-fn local_date(value: NaiveDateTime) -> NaiveDate {
-    calendar::local_date(value)
+fn local_date(value: NaiveDateTime, settings: Option<&serde_json::Value>) -> NaiveDate {
+    calendar::local_date(value, settings)
 }
 async fn record_version(
     context: &AuthContext<'_>,
@@ -451,7 +464,7 @@ mod report_scope_tests {
     fn report_projection_queries_bound_pause_sources_and_linked_take_ids() {
         let first = NaiveDate::from_ymd_opt(2026, 7, 1).unwrap();
         let last = NaiveDate::from_ymd_opt(2026, 7, 7).unwrap();
-        let pauses = report_pause_scope(72001, &[83999], &[81001], first, last)
+        let pauses = report_pause_scope(72001, &[83999], &[81001], first, last, None)
             .build(DbBackend::Postgres)
             .to_string();
         let pause_where = pauses.split_once(" WHERE ").unwrap().1;

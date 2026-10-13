@@ -1,3 +1,4 @@
+pub mod _entities;
 pub mod access;
 pub(crate) mod audit_context;
 pub(crate) mod authorization;
@@ -11,3 +12,4 @@ pub mod notification_preferences;
 pub mod platform;
 pub mod profile;
 pub(crate) mod seed;
+pub(crate) mod settings;

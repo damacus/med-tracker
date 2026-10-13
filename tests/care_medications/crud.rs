@@ -5,7 +5,9 @@ use serde_json::json;
 #[tokio::test]
 async fn medication_crud_conformance_empty_barcodes_do_not_conflict() {
     let fixture = Fixture::new().await;
-    let tenant = access::begin(&fixture.runtime, &scope()).await.unwrap();
+    let tenant = access::begin(&fixture.runtime, &scope(), None)
+        .await
+        .unwrap();
     let first = crud::create(&tenant, json!({"name":"Synthetic blank barcode one","location_id":89001,"dose_amount":"2","current_supply":"10","reorder_threshold":"2","barcode":""}), None).await.unwrap();
     let second = crud::create(&tenant, json!({"name":"Synthetic blank barcode two","location_id":89001,"dose_amount":"2","current_supply":"10","reorder_threshold":"2","barcode":""}), None).await.unwrap();
     let snapshot = medications::read_stock_snapshot(&tenant, &second.id.to_string())
@@ -22,7 +24,9 @@ async fn medication_crud_conformance_empty_barcodes_do_not_conflict() {
 #[tokio::test]
 async fn medication_crud_conformance_oversized_dose_is_rejected_before_mutation() {
     let fixture = Fixture::new().await;
-    let tenant = access::begin(&fixture.runtime, &scope()).await.unwrap();
+    let tenant = access::begin(&fixture.runtime, &scope(), None)
+        .await
+        .unwrap();
     let before = medications::read_stock_snapshot(&tenant, "90001")
         .await
         .unwrap();
@@ -48,7 +52,9 @@ async fn medication_crud_conformance_oversized_dose_is_rejected_before_mutation(
 #[tokio::test]
 async fn medication_crud_conformance_nullable_dose_preserves_retained_api_semantics() {
     let fixture = Fixture::new().await;
-    let tenant = access::begin(&fixture.runtime, &scope()).await.unwrap();
+    let tenant = access::begin(&fixture.runtime, &scope(), None)
+        .await
+        .unwrap();
     let before = medications::read_stock_snapshot(&tenant, "90001")
         .await
         .unwrap();
@@ -59,7 +65,9 @@ async fn medication_crud_conformance_nullable_dose_preserves_retained_api_semant
     assert_eq!(updated.dose_amount, None);
     assert_eq!(updated.current_supply, before.medication.current_supply);
     tenant.commit().await.unwrap();
-    let tenant = access::begin(&fixture.runtime, &scope()).await.unwrap();
+    let tenant = access::begin(&fixture.runtime, &scope(), None)
+        .await
+        .unwrap();
     let nullable = medications::read_stock_snapshot(&tenant, "90001")
         .await
         .unwrap();
@@ -79,7 +87,9 @@ async fn medication_crud_conformance_nullable_dose_preserves_retained_api_semant
 #[tokio::test]
 async fn medication_crud_create_is_immediately_usable_and_audited() {
     let fixture = Fixture::new().await;
-    let tenant = access::begin(&fixture.runtime, &scope()).await.unwrap();
+    let tenant = access::begin(&fixture.runtime, &scope(), None)
+        .await
+        .unwrap();
     let result = crud::create(&tenant, json!({"name":"Synthetic new tablets","location_id":89001,"dose_amount":"2","dose_unit":"tablet","current_supply":"10","reorder_threshold":"2","barcode":"5901234123457"}), None).await;
     let created = result.unwrap();
     let snapshot = medications::read_stock_snapshot(&tenant, &created.id.to_string())
@@ -102,7 +112,9 @@ async fn medication_crud_create_is_immediately_usable_and_audited() {
 #[tokio::test]
 async fn medication_crud_update_preserves_omitted_attributes_and_checks_etag() {
     let fixture = Fixture::new().await;
-    let tenant = access::begin(&fixture.runtime, &scope()).await.unwrap();
+    let tenant = access::begin(&fixture.runtime, &scope(), None)
+        .await
+        .unwrap();
     let old = medications::read_stock_snapshot(&tenant, "90001")
         .await
         .unwrap();
@@ -164,7 +176,9 @@ async fn medication_crud_rejects_invalid_attributes_and_duplicate_barcode() {
     ] {
         attributes["location_id"] = json!(89001);
         attributes["reorder_threshold"] = json!("2");
-        let tenant = access::begin(&fixture.runtime, &scope()).await.unwrap();
+        let tenant = access::begin(&fixture.runtime, &scope(), None)
+            .await
+            .unwrap();
         let result = crud::create(&tenant, attributes, None).await;
         tenant.rollback().await.unwrap();
         assert!(matches!(result, Err(OperationError::Validation { .. })));
@@ -177,7 +191,9 @@ async fn medication_crud_rejects_invalid_attributes_and_duplicate_barcode() {
 #[tokio::test]
 async fn medication_crud_retire_unused_medication_records_audit_and_tombstone() {
     let fixture = Fixture::new().await;
-    let tenant = access::begin(&fixture.runtime, &scope()).await.unwrap();
+    let tenant = access::begin(&fixture.runtime, &scope(), None)
+        .await
+        .unwrap();
     let snapshot = medications::read_stock_snapshot(&tenant, "90001")
         .await
         .unwrap();
@@ -196,7 +212,9 @@ async fn medication_crud_retire_unused_medication_records_audit_and_tombstone() 
 async fn medication_crud_retire_preserves_administration_history() {
     let fixture = Fixture::new().await;
     fixture.admin.execute_unprepared("INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(97001,72001,73001,90001,2,'tablet',0,now(),now()); INSERT INTO medication_takes(id,household_id,person_medication_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(97002,72001,97001,2,'tablet',now(),now(),now())").await.unwrap();
-    let tenant = access::begin(&fixture.runtime, &scope()).await.unwrap();
+    let tenant = access::begin(&fixture.runtime, &scope(), None)
+        .await
+        .unwrap();
     let result = crud::retire(&tenant, "90001", None, None).await;
     tenant.rollback().await.unwrap();
     assert!(matches!(result, Err(OperationError::Validation { .. })));
@@ -215,7 +233,9 @@ async fn medication_crud_member_cannot_update_or_destroy_visible_medication() {
         .execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001")
         .await
         .unwrap();
-    let tenant = access::begin(&fixture.runtime, &scope()).await.unwrap();
+    let tenant = access::begin(&fixture.runtime, &scope(), None)
+        .await
+        .unwrap();
     let updated = crud::update(
         &tenant,
         "90001",
@@ -236,7 +256,9 @@ async fn medication_crud_member_cannot_update_or_destroy_visible_medication() {
 async fn medication_crud_create_audit_failure_rolls_back_row_and_change() {
     let fixture = Fixture::new().await;
     fixture.admin.execute_unprepared("CREATE SEQUENCE synthetic_crud_attempt; GRANT USAGE ON SEQUENCE synthetic_crud_attempt TO med_tracker_app; CREATE FUNCTION synthetic_crud_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.item_type='Medication' AND NEW.event='api_create' THEN PERFORM nextval('synthetic_crud_attempt'); RAISE EXCEPTION 'synthetic create audit rejection'; END IF; RETURN NEW; END $$; CREATE TRIGGER synthetic_crud_failure BEFORE INSERT ON versions FOR EACH ROW EXECUTE FUNCTION synthetic_crud_failure()").await.unwrap();
-    let tenant = access::begin(&fixture.runtime, &scope()).await.unwrap();
+    let tenant = access::begin(&fixture.runtime, &scope(), None)
+        .await
+        .unwrap();
     let result = crud::create(
         &tenant,
         json!({"name":"Synthetic rollback medicine","location_id":89001,"reorder_threshold":"2"}),

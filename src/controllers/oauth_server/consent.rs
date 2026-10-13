@@ -48,11 +48,12 @@ async fn consent(
     }
     session.set("oauth_pending", input.clone());
     session.set_store(true);
-    let principal = match browser::authenticate(&ctx.db, &session).await {
-        Ok(principal) => principal,
-        Err(AuthenticationError::Unauthenticated) => return redirect("/login"),
-        Err(_) => return StatusCode::FORBIDDEN.into_response(),
-    };
+    let principal =
+        match browser::authenticate(&ctx.db, &session, ctx.config.settings.as_ref()).await {
+            Ok(principal) => principal,
+            Err(AuthenticationError::Unauthenticated) => return redirect("/login"),
+            Err(_) => return StatusCode::FORBIDDEN.into_response(),
+        };
     let mut data = match authorization::context(
         &ctx.db,
         &principal,
@@ -123,10 +124,11 @@ async fn approve(
     if protocol_fields != expected {
         return StatusCode::BAD_REQUEST.into_response();
     }
-    let principal = match browser::authenticate(&ctx.db, &session).await {
-        Ok(principal) => principal,
-        Err(_) => return StatusCode::UNAUTHORIZED.into_response(),
-    };
+    let principal =
+        match browser::authenticate(&ctx.db, &session, ctx.config.settings.as_ref()).await {
+            Ok(principal) => principal,
+            Err(_) => return StatusCode::UNAUTHORIZED.into_response(),
+        };
     let actions = fields
         .iter()
         .filter(|(name, _)| name == "consent_action")

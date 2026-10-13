@@ -29,8 +29,14 @@ use store::Store;
 pub async fn exchange(
     db: &DatabaseConnection,
     request: Request<Body>,
+    settings: Option<&serde_json::Value>,
 ) -> Result<serde_json::Value, ExchangeError> {
-    exchange_with_lifetime(db, request, AuthenticationLifetime::from_environment()?).await
+    exchange_with_lifetime(
+        db,
+        request,
+        AuthenticationLifetime::from_settings(settings)?,
+    )
+    .await
 }
 
 #[derive(Debug, PartialEq)]

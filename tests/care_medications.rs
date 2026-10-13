@@ -104,7 +104,9 @@ async fn restock_validation_exposes_the_invalid_field() {
         ("0", "2026-10-08", "quantity"),
         ("5", "not-a-date", "restock_date"),
     ] {
-        let tenant = access::begin(&fixture.runtime, &scope()).await.unwrap();
+        let tenant = access::begin(&fixture.runtime, &scope(), None)
+            .await
+            .unwrap();
         let snapshot = medications::read_stock_snapshot(&tenant, "90001")
             .await
             .unwrap();
@@ -131,7 +133,7 @@ async fn restock_validation_exposes_the_invalid_field() {
 }
 
 async fn adjust(fixture: &Fixture, command: Command) -> Result<medication::Model, OperationError> {
-    let tenant = access::begin(&fixture.runtime, &scope()).await?;
+    let tenant = access::begin(&fixture.runtime, &scope(), None).await?;
     match medications::execute(&tenant, command).await {
         Ok(outcome) => {
             tenant.commit().await?;
@@ -242,7 +244,9 @@ async fn stock_adjustment_cross_household_id_is_hidden() {
 #[tokio::test]
 async fn stock_adjustment_rechecks_role_after_transaction_begin() {
     let fixture = Fixture::new().await;
-    let tenant = access::begin(&fixture.runtime, &scope()).await.unwrap();
+    let tenant = access::begin(&fixture.runtime, &scope(), None)
+        .await
+        .unwrap();
     fixture
         .admin
         .execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001")
@@ -316,7 +320,7 @@ async fn guarded_adjust(
     quantity: &str,
     etag: &str,
 ) -> Result<medication::Model, OperationError> {
-    let tenant = access::begin(&fixture.runtime, &scope()).await?;
+    let tenant = access::begin(&fixture.runtime, &scope(), None).await?;
     let result = medications::execute_with_options(
         &tenant,
         command(quantity),
@@ -339,7 +343,9 @@ async fn guarded_adjust(
 }
 
 async fn current_etag(fixture: &Fixture) -> String {
-    let tenant = access::begin(&fixture.runtime, &scope()).await.unwrap();
+    let tenant = access::begin(&fixture.runtime, &scope(), None)
+        .await
+        .unwrap();
     let snapshot = medications::read_stock_snapshot(&tenant, "90001")
         .await
         .unwrap();
@@ -407,7 +413,9 @@ async fn stock_adjustment_scalar_guard_excludes_options_but_api_preserves_parent
 #[tokio::test]
 async fn stock_adjustment_portable_id_and_trusted_provenance_preserve_audit() {
     let fixture = Fixture::new().await;
-    let tenant = access::begin(&fixture.runtime, &scope()).await.unwrap();
+    let tenant = access::begin(&fixture.runtime, &scope(), None)
+        .await
+        .unwrap();
     let snapshot = medications::read_stock_snapshot(&tenant, "90001")
         .await
         .unwrap();

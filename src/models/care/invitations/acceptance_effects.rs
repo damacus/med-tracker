@@ -58,7 +58,7 @@ pub(super) async fn apply_to_person(
         role: Set(invitation.membership_role.clone()),
         status: Set("active".to_owned()),
         revoked_at: Set(None),
-        joined_at: Set(Some(now)),
+        joined_at: Set(now),
         created_at: Set(now),
         updated_at: Set(now),
         ..Default::default()

@@ -543,7 +543,7 @@ async fn legacy_browser_principal(
             "additional_factor_verified": true, "better_auth": false
         }),
     );
-    match med_tracker::models::identity::browser::authenticate(&db, &session).await {
+    match med_tracker::models::identity::browser::authenticate(&db, &session, None).await {
         Ok(_) => axum::http::StatusCode::OK,
         Err(_) => axum::http::StatusCode::UNAUTHORIZED,
     }

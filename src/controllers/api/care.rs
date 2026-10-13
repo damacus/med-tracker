@@ -78,7 +78,9 @@ impl AgeValidationClock {
 fn age_reference_date(ctx: &AppContext) -> chrono::NaiveDate {
     ctx.shared_store
         .get::<AgeValidationClock>()
-        .unwrap_or_else(|| AgeValidationClock::fixed(Utc::now(), doses::app_zone()))
+        .unwrap_or_else(|| {
+            AgeValidationClock::fixed(Utc::now(), doses::app_zone(ctx.config.settings.as_ref()))
+        })
         .today()
 }
 
@@ -414,7 +416,12 @@ async fn begin(
         .await
         .map_err(response::authentication)?;
     let tenant = principal
-        .begin_household(&ctx.db, household_id, request_id.into())
+        .begin_household(
+            &ctx.db,
+            household_id,
+            request_id.into(),
+            ctx.config.settings.as_ref(),
+        )
         .await
         .map_err(response::authentication)?;
     Ok((principal, tenant))
@@ -430,7 +437,12 @@ async fn begin_profile_write(
         .await
         .map_err(response::authentication)?;
     let tenant = principal
-        .begin_household_for_profile_write(&ctx.db, household_id, request_id.into())
+        .begin_household_for_profile_write(
+            &ctx.db,
+            household_id,
+            request_id.into(),
+            ctx.config.settings.as_ref(),
+        )
         .await
         .map_err(response::authentication)?;
     Ok((principal, tenant))

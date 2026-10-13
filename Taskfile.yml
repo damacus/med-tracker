@@ -58,6 +58,17 @@ tasks:
           GROUP: '{{.GROUP | default "shell"}}'
   slice:test-runner:
     cmds: [node --test scripts/migration/run-slice.test.mjs]
+  coverage:check:
+    desc: Check pinned Rust coverage prerequisites without installing them
+    cmds: [node scripts/migration/coverage-check.mjs]
+  coverage:install:
+    desc: Explicitly install Rust coverage prerequisites for the active toolchain
+    cmds:
+      - rustup component add llvm-tools-preview
+      - cargo install cargo-llvm-cov --locked --version 0.9.1
+  slice:contracts:
+    desc: Run an API contract inventory or completion group
+    cmds: ['node scripts/migration/run-contracts.mjs --group {{.GROUP | default "" | shellQuote}} --filter {{.FILTER | default "" | shellQuote}}']
   slice:test:
     requires:
       vars: [TARGET]
@@ -170,6 +181,11 @@ tasks:
       - task: release:test-rehearsal
       - 'cargo test --locked --lib {{.FILTER | default ""}} -- --test-threads=2'
       - cargo test --locked --doc
+  test:coverage:
+    desc: Report Rust unit and API integration coverage against owned fixtures
+    cmds:
+      - task: coverage:check
+      - 'node scripts/migration/run-slice.mjs --coverage --output-dir {{.OUTPUT_DIR | default "target/coverage/reports" | shellQuote}}'
   test:integration:
     desc: Run compiled API, security and database integration tests
     deps: [ci:prepare]

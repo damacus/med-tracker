@@ -30,10 +30,11 @@ async fn households(
     request: Option<axum::Extension<LocoRequestId>>,
 ) -> Response {
     let request_id = request_id(request);
-    let principal = match resource::authenticate(&ctx.db, &headers).await {
-        Ok(principal) => principal,
-        Err(error) => return authentication(error, &request_id),
-    };
+    let principal =
+        match resource::authenticate(&ctx.db, &headers, ctx.config.settings.as_ref()).await {
+            Ok(principal) => principal,
+            Err(error) => return authentication(error, &request_id),
+        };
     match account_sessions::households(&ctx.db, principal.account_id()).await {
         Ok(body) => reply(StatusCode::OK, Some(body), &request_id),
         Err(error) => operation(error, &request_id),
@@ -46,14 +47,16 @@ async fn sessions(
     request: Option<axum::Extension<LocoRequestId>>,
 ) -> Response {
     let request_id = request_id(request);
-    let principal = match resource::authenticate(&ctx.db, &headers).await {
-        Ok(principal) => principal,
-        Err(error) => return authentication(error, &request_id),
-    };
+    let principal =
+        match resource::authenticate(&ctx.db, &headers, ctx.config.settings.as_ref()).await {
+            Ok(principal) => principal,
+            Err(error) => return authentication(error, &request_id),
+        };
     match account_sessions::sessions(
         &ctx.db,
         principal.account_id(),
         principal.provenance().method,
+        ctx.config.settings.as_ref(),
     )
     .await
     {
@@ -69,10 +72,11 @@ async fn revoke(
     request: Option<axum::Extension<LocoRequestId>>,
 ) -> Response {
     let request_id = request_id(request);
-    let principal = match resource::authenticate(&ctx.db, &headers).await {
-        Ok(principal) => principal,
-        Err(error) => return authentication(error, &request_id),
-    };
+    let principal =
+        match resource::authenticate(&ctx.db, &headers, ctx.config.settings.as_ref()).await {
+            Ok(principal) => principal,
+            Err(error) => return authentication(error, &request_id),
+        };
     match account_sessions::revoke(
         &ctx.db,
         principal.account_id(),

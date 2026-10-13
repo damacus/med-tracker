@@ -276,7 +276,7 @@ async fn invitations_queue_failure_rolls_back_invitation_grants_and_audit() {
     let token = app.token().await;
     let mut headers = axum::http::HeaderMap::new();
     headers.insert("authorization", format!("Bearer {token}").parse().unwrap());
-    let principal = resource::authenticate(&app.fixture.runtime, &headers)
+    let principal = resource::authenticate(&app.fixture.runtime, &headers, None)
         .await
         .unwrap();
     app.fixture.admin.execute_unprepared("CREATE SEQUENCE invitation_queue_reached; GRANT USAGE,SELECT ON SEQUENCE invitation_queue_reached TO med_tracker_app; CREATE FUNCTION reject_invitation_queue() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM nextval('invitation_queue_reached'); RAISE EXCEPTION 'Synthetic invitation enqueue rejection'; END $$; CREATE TRIGGER reject_invitation_queue BEFORE INSERT ON pg_loco_queue FOR EACH ROW EXECUTE FUNCTION reject_invitation_queue()").await.unwrap();
@@ -285,6 +285,7 @@ async fn invitations_queue_failure_rolls_back_invitation_grants_and_audit() {
             &app.fixture.runtime,
             72001,
             "synthetic-invitation-rollback".into(),
+            None,
         )
         .await
         .unwrap();
@@ -315,7 +316,7 @@ async fn invitations_committed_job_is_delivered_by_standard_worker() {
     let token = app.token().await;
     let mut headers = axum::http::HeaderMap::new();
     headers.insert("authorization", format!("Bearer {token}").parse().unwrap());
-    let principal = resource::authenticate(&app.fixture.runtime, &headers)
+    let principal = resource::authenticate(&app.fixture.runtime, &headers, None)
         .await
         .unwrap();
     let tenant = principal
@@ -323,6 +324,7 @@ async fn invitations_committed_job_is_delivered_by_standard_worker() {
             &app.fixture.runtime,
             72001,
             "synthetic-invitation-delivery".into(),
+            None,
         )
         .await
         .unwrap();

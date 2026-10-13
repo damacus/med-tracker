@@ -26,11 +26,21 @@ use scope::Transaction;
 #[derive(Clone)]
 pub struct ClinicalStore {
     db: DatabaseConnection,
+    settings: Option<std::sync::Arc<serde_json::Value>>,
 }
 
 impl ClinicalStore {
     pub fn new(db: DatabaseConnection) -> Self {
-        Self { db }
+        Self { db, settings: None }
+    }
+
+    pub fn with_settings(mut self, settings: Option<serde_json::Value>) -> Self {
+        self.settings = settings.map(std::sync::Arc::new);
+        self
+    }
+
+    pub fn settings(&self) -> Option<&serde_json::Value> {
+        self.settings.as_deref()
     }
 
     pub(super) async fn transaction(&self) -> Result<Transaction, AuthError> {

@@ -40,7 +40,7 @@ async fn browser_push_test_delivery_is_scoped_audited_and_cleans_only_expired_ow
             public_key: String::new(),
             transport: transport.clone(),
         };
-        let tenant = access::begin(&app.context.db, &scope).await.unwrap();
+        let tenant = access::begin(&app.context.db, &scope, None).await.unwrap();
         assert!(
             browser_push::send_test(
                 &tenant,
@@ -94,7 +94,7 @@ async fn browser_push_audit_failure_prevents_delivery() {
         household_id: 72001,
         request_id: "synthetic-browser-push-audit".into(),
     };
-    let tenant = access::begin(&app.context.db, &scope).await.unwrap();
+    let tenant = access::begin(&app.context.db, &scope, None).await.unwrap();
     assert!(
         browser_push::send_test(
             &tenant,

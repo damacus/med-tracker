@@ -68,7 +68,7 @@ pub async fn create(
         .filter(|value| !value.trim().is_empty())
         .ok_or_else(|| invalid("name", "can't be blank"))?
         .to_owned();
-    let months = api_session::app_token_max_age_months()
+    let months = api_session::app_token_max_age_months(tenant.settings())
         .ok_or_else(|| invalid("expires_at", "configured maximum age is invalid"))?;
     let now = Utc::now().naive_utc();
     let maximum = now

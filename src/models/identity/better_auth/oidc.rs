@@ -187,8 +187,13 @@ impl Provider {
         }).await
     }
 
-    pub(super) fn configured(base_url: &str) -> AuthResult<Option<Self>> {
-        let Ok(issuer) = std::env::var("MEDTRACKER_ZITADEL_ISSUER") else {
+    pub(super) fn configured(
+        base_url: &str,
+        settings: Option<&serde_json::Value>,
+    ) -> AuthResult<Option<Self>> {
+        let Some(issuer) =
+            crate::models::settings::text(settings, &["zitadel", "issuer"]).map(str::to_owned)
+        else {
             return Ok(None);
         };
         let parsed =
@@ -207,10 +212,12 @@ impl Provider {
         {
             return Err(AuthError::internal("Invalid ZITADEL issuer"));
         }
-        let client_id = std::env::var("MEDTRACKER_ZITADEL_CLIENT_ID")
-            .map_err(|_| AuthError::internal("ZITADEL client unavailable"))?;
-        let client_secret = std::env::var("MEDTRACKER_ZITADEL_CLIENT_SECRET")
-            .map_err(|_| AuthError::internal("ZITADEL client unavailable"))?;
+        let client_id = crate::models::settings::text(settings, &["zitadel", "client_id"])
+            .ok_or_else(|| AuthError::internal("ZITADEL client unavailable"))?
+            .to_owned();
+        let client_secret = crate::models::settings::text(settings, &["zitadel", "client_secret"])
+            .ok_or_else(|| AuthError::internal("ZITADEL client unavailable"))?
+            .to_owned();
         let mut callback = url::Url::parse(base_url)
             .map_err(|_| AuthError::internal("Identity URL unavailable"))?;
         callback.set_path("/auth/zitadel/callback");

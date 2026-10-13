@@ -10,6 +10,7 @@ pub async fn resend_verification(
     db: &DatabaseConnection,
     email: &str,
     origin: &str,
+    settings: Option<&serde_json::Value>,
 ) -> Result<VerificationResend, SignupError> {
     let transaction = browser::transaction(db).await.map_err(unavailable)?;
     let account = transaction
@@ -38,7 +39,7 @@ pub async fn resend_verification(
     }
     let key: String = keys[0].try_get("", "key").map_err(unavailable)?;
     transaction.execute_raw(sql("UPDATE account_verification_keys SET email_last_sent=timezone('UTC',clock_timestamp()),updated_at=timezone('UTC',clock_timestamp()) WHERE account_id=$1", [account_id.into()])).await.map_err(unavailable)?;
-    queue_verification(&transaction, account_id, email, &key, origin).await?;
+    queue_verification(&transaction, account_id, email, &key, origin, settings).await?;
     transaction.commit().await.map_err(unavailable)?;
     Ok(VerificationResend::Sent)
 }

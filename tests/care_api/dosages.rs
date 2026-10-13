@@ -94,7 +94,7 @@ async fn removal_context(
     let mut headers = axum::http::HeaderMap::new();
     headers.insert("authorization", format!("Bearer {token}").parse().unwrap());
     let principal =
-        med_tracker::models::identity::resource::authenticate(&app.fixture.runtime, &headers)
+        med_tracker::models::identity::resource::authenticate(&app.fixture.runtime, &headers, None)
             .await
             .unwrap();
     let tenant = principal
@@ -102,6 +102,7 @@ async fn removal_context(
             &app.fixture.runtime,
             72001,
             "synthetic-remove-dosage".into(),
+            None,
         )
         .await
         .unwrap();

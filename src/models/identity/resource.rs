@@ -66,8 +66,9 @@ impl ValidatedPrincipal {
         db: &DatabaseConnection,
         household_id: i64,
         request_id: String,
+        settings: Option<&serde_json::Value>,
     ) -> Result<TenantTransaction, AuthenticationError> {
-        self.begin_household_transaction(db, household_id, request_id, false)
+        self.begin_household_transaction(db, household_id, request_id, false, settings)
             .await
     }
 
@@ -76,8 +77,9 @@ impl ValidatedPrincipal {
         db: &DatabaseConnection,
         household_id: i64,
         request_id: String,
+        settings: Option<&serde_json::Value>,
     ) -> Result<TenantTransaction, AuthenticationError> {
-        self.begin_household_transaction(db, household_id, request_id, true)
+        self.begin_household_transaction(db, household_id, request_id, true, settings)
             .await
     }
 
@@ -87,6 +89,7 @@ impl ValidatedPrincipal {
         household_id: i64,
         request_id: String,
         profile_write: bool,
+        settings: Option<&serde_json::Value>,
     ) -> Result<TenantTransaction, AuthenticationError> {
         let scope = HouseholdScope {
             actor: Actor {
@@ -95,7 +98,9 @@ impl ValidatedPrincipal {
             household_id,
             request_id,
         };
-        let tenant = access::begin(db, &scope).await.map_err(operation_error)?;
+        let tenant = access::begin(db, &scope, settings)
+            .await
+            .map_err(operation_error)?;
         if profile_write {
             let locked = async {
                 account::Entity::find_by_id(self.account_id)
@@ -123,7 +128,7 @@ impl ValidatedPrincipal {
             Credential::OAuth {
                 authorization,
                 grant_id,
-            } => validate(tenant.transaction(), authorization, false)
+            } => validate(tenant.transaction(), authorization, false, settings)
                 .await
                 .and_then(|row| {
                     if row.id == *grant_id && row.account_id == self.account_id {
@@ -133,7 +138,7 @@ impl ValidatedPrincipal {
                     }
                 }),
             Credential::Stored(principal) => principal
-                .revalidate(tenant.transaction())
+                .revalidate(tenant.transaction(), settings)
                 .await
                 .and_then(|actor| {
                     if actor.account_id != self.account_id {
@@ -156,16 +161,19 @@ impl ValidatedPrincipal {
 pub async fn authenticate(
     db: &DatabaseConnection,
     headers: &HeaderMap,
+    settings: Option<&serde_json::Value>,
 ) -> Result<ValidatedPrincipal, AuthenticationError> {
-    if let Some((principal, actor)) = api_session::authenticate_stored(db, headers).await? {
+    if let Some((principal, actor)) =
+        api_session::authenticate_stored(db, headers, settings).await?
+    {
         return Ok(ValidatedPrincipal {
             account_id: actor.account_id,
             provenance: principal.provenance(),
-            time_zone: super::time_zone::preferred(&actor.preferences)?,
+            time_zone: super::time_zone::preferred(&actor.preferences, settings)?,
             credential: Credential::Stored(principal),
         });
     }
-    authenticate_oauth(db, headers).await
+    authenticate_oauth(db, headers, settings).await
 }
 
 pub async fn authenticate_care(
@@ -201,12 +209,13 @@ pub async fn authenticate_care(
             credential: Credential::PersonalKey(principal),
         });
     }
-    authenticate(&ctx.db, headers).await
+    authenticate(&ctx.db, headers, ctx.config.settings.as_ref()).await
 }
 
 pub(super) async fn authenticate_oauth(
     db: &DatabaseConnection,
     headers: &HeaderMap,
+    settings: Option<&serde_json::Value>,
 ) -> Result<ValidatedPrincipal, AuthenticationError> {
     let mut values = headers.get_all(header::AUTHORIZATION).iter();
     let authorization = values
@@ -223,9 +232,9 @@ pub(super) async fn authenticate_oauth(
     let result = async {
         transaction.execute_unprepared("SET LOCAL ROLE med_tracker_app; SET LOCAL search_path = pg_catalog, public, pg_temp; SET LOCAL lock_timeout = '5s'; SET LOCAL statement_timeout = '30s'").await.map_err(|_| AuthenticationError::Unavailable)?;
         transaction.execute_unprepared("SELECT set_config('med_tracker.current_account_id', '', true), set_config('med_tracker.current_household_id', '', true), set_config('med_tracker.current_membership_id', '', true), set_config('med_tracker.current_invitation_token_digest', '', true)").await.map_err(|_| AuthenticationError::Unavailable)?;
-        let row = validate(&transaction, authorization, true).await?;
+        let row = validate(&transaction, authorization, true, settings).await?;
         let account = account::Entity::find_by_id(row.account_id).one(&transaction).await.map_err(|_| AuthenticationError::Unavailable)?.ok_or(AuthenticationError::Unauthenticated)?;
-        let time_zone = super::time_zone::preferred(&account.preferences)?;
+        let time_zone = super::time_zone::preferred(&account.preferences, settings)?;
         let updated = transaction.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
             "UPDATE oauth_grants SET last_used_at=timezone('UTC',clock_timestamp()),updated_at=timezone('UTC',clock_timestamp()) WHERE id=$1 AND account_id=$2 AND client_kind='mobile' AND token_hash=$3 AND revoked_at IS NULL AND expires_in>timezone('UTC',clock_timestamp())",
             [row.id.into(),row.account_id.into(),row.token_hash.clone().into()]
@@ -282,6 +291,7 @@ struct ResourceIssuer<'a> {
     selected: Option<oauth_grant::Model>,
     scopes: Vec<Scope>,
     lock_grant: bool,
+    settings: Option<&'a serde_json::Value>,
 }
 
 impl oxide_auth_async::code_grant::resource::Endpoint for ResourceIssuer<'_> {
@@ -335,7 +345,7 @@ impl oxide_auth_async::primitives::Issuer for ResourceIssuer<'_> {
             client_id: application.client_id.clone(),
             redirect: None,
             selected: None,
-            lifetime: Lifetime::from_environment().map_err(|_| ())?,
+            lifetime: Lifetime::from_settings(self.settings).map_err(|_| ())?,
         };
         if !store.authority(&row).await? {
             return Ok(None);
@@ -370,6 +380,7 @@ async fn validate(
     transaction: &DatabaseTransaction,
     authorization: &str,
     lock_grant: bool,
+    settings: Option<&serde_json::Value>,
 ) -> Result<oauth_grant::Model, AuthenticationError> {
     let mut endpoint = ResourceIssuer {
         transaction,
@@ -380,6 +391,7 @@ async fn validate(
                 .map_err(|_| AuthenticationError::Unavailable)?,
         ],
         lock_grant,
+        settings,
     };
     oxide_auth_async::code_grant::resource::protect(&mut endpoint, &ResourceRequest(authorization))
         .await

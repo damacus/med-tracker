@@ -186,6 +186,47 @@ jobs:
           save-if: false
       - run: task fmt lint
 
+  loco_coverage:
+    needs: changes
+    if: ${{ needs.changes.outputs.loco == 'true' }}
+    name: Rust unit and API coverage (report only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CARGO_INCREMENTAL: '0'
+      CARGO_PROFILE_DEV_DEBUG: '0'
+      CARGO_PROFILE_TEST_DEBUG: '0'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87
+        with:
+          toolchain: stable
+          components: llvm-tools
+      - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
+        with:
+          version: 3.52.0
+          repo-token: ${{ github.token }}
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+        if: ${{ !inputs.cold_cache }}
+        with:
+          shared-key: loco-coverage-v1
+      - name: Install owned-runner prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes fish uuid-runtime ripgrep
+      - run: task coverage:install
+      - name: Measure Rust unit and API coverage
+        run: task test:coverage
+      - uses: actions/upload-artifact@v7
+        with:
+          name: loco-rust-coverage
+          path: target/coverage/reports/
+          retention-days: 14
+          if-no-files-found: error
+
   loco_integration:
     needs: loco_foundation
     name: API, security and database integration tests (${{ matrix.shard }}/4)
@@ -961,6 +1002,7 @@ jobs:
       - loco_lint
       - loco_integration
       - loco_browser
+      - loco_coverage
       - scan_ruby
       - scan_js
       - lint

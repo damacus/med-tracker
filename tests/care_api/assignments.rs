@@ -13,10 +13,10 @@ async fn assignment_unassign_preserves_history_and_records_soft_update() {
         household_id: 72001,
         request_id: "synthetic-unassign".into(),
     };
-    let tenant = begin(&app.fixture.runtime, &scope).await.unwrap();
+    let tenant = begin(&app.fixture.runtime, &scope, None).await.unwrap();
     assignments::unassign(&tenant, "81001", None).await.unwrap();
     tenant.commit().await.unwrap();
-    let tenant = begin(&app.fixture.runtime, &scope).await.unwrap();
+    let tenant = begin(&app.fixture.runtime, &scope, None).await.unwrap();
     let repeated = assignments::unassign(&tenant, "81001", None).await;
     tenant.rollback().await.unwrap();
     let row=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT active,retired_at IS NOT NULL AS retired,(SELECT count(*) FROM medication_takes WHERE person_medication_id=81001) AS takes,(SELECT count(*) FROM medication_pause_periods WHERE person_medication_id=81001) AS pauses,(SELECT count(*) FROM versions WHERE item_type='PersonMedication' AND event='update') AS versions,(SELECT count(*) FROM api_change_events WHERE record_type='PersonMedication' AND action='update') AS changes,(SELECT count(*) FROM api_tombstones WHERE record_type='PersonMedication') AS tombstones FROM person_medications WHERE id=81001")).await.unwrap().unwrap();

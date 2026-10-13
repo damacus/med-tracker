@@ -72,7 +72,7 @@ async fn browser_reminder_profile_update_uses_same_lock_order() {
         public_key: String::new(),
         transport: Arc::new(Reminders(Mutex::new(vec![]))),
     });
-    let tenant = access::begin(&app.context.db, &scope).await.unwrap();
+    let tenant = access::begin(&app.context.db, &scope, None).await.unwrap();
     tenant
         .transaction()
         .execute_unprepared("SELECT id FROM accounts WHERE id=71001 FOR NO KEY UPDATE")

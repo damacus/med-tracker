@@ -55,7 +55,7 @@ async fn resend_form(
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
 ) -> Response {
-    match browser::authenticate(&ctx.db, &session).await {
+    match browser::authenticate(&ctx.db, &session, ctx.config.settings.as_ref()).await {
         Ok(_) => return redirect("/"),
         Err(crate::models::identity::resource::AuthenticationError::Unavailable) => {
             return unavailable();
@@ -86,7 +86,7 @@ async fn resend(
     if token.verify(&form.authenticity_token).is_err() {
         return StatusCode::FORBIDDEN.into_response();
     }
-    match browser::authenticate(&ctx.db, &session).await {
+    match browser::authenticate(&ctx.db, &session, ctx.config.settings.as_ref()).await {
         Ok(_) => return redirect("/"),
         Err(crate::models::identity::resource::AuthenticationError::Unavailable) => {
             return unavailable();
@@ -97,6 +97,7 @@ async fn resend(
         &ctx.db,
         &form.email,
         &ctx.config.server.full_url(),
+        ctx.config.settings.as_ref(),
     )
     .await
     {
@@ -121,7 +122,7 @@ async fn create_form(
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
 ) -> Response {
-    match signup::registration_open(&ctx.db).await {
+    match signup::registration_open(&ctx.db, ctx.config.settings.as_ref()).await {
         Ok(true) => {}
         Ok(false) => return redirect("/login"),
         Err(_) => return unavailable(),
@@ -154,11 +155,14 @@ async fn create(
     if token.verify(&form.authenticity_token).is_err() {
         return StatusCode::FORBIDDEN.into_response();
     }
-    if browser::authenticate(&ctx.db, &session).await.is_ok() {
+    if browser::authenticate(&ctx.db, &session, ctx.config.settings.as_ref())
+        .await
+        .is_ok()
+    {
         return redirect("/");
     }
     if form.input.invitation_token.is_empty() {
-        match signup::registration_open(&ctx.db).await {
+        match signup::registration_open(&ctx.db, ctx.config.settings.as_ref()).await {
             Ok(true) => {}
             Ok(false) => return redirect("/login"),
             Err(_) => return unavailable(),
@@ -170,6 +174,7 @@ async fn create(
         &form.input,
         &ctx.config.server.full_url(),
         Some(&request_id),
+        ctx.config.settings.as_ref(),
     )
     .await
     {
@@ -236,7 +241,7 @@ async fn verification(
     ViewEngine(view): ViewEngine<TeraView>,
 ) -> Response {
     if let Some(key) = query.key {
-        match signup::valid_key(&ctx.db, &key).await {
+        match signup::valid_key(&ctx.db, &key, ctx.config.settings.as_ref()).await {
             Ok(true) => {
                 session.set("verify_account_key", key);
                 session.set_store(true);
@@ -252,7 +257,7 @@ async fn verification(
     let Some(key) = session.get::<String>("verify_account_key") else {
         return redirect("/login");
     };
-    match signup::valid_key(&ctx.db, &key).await {
+    match signup::valid_key(&ctx.db, &key, ctx.config.settings.as_ref()).await {
         Ok(true) => {}
         Ok(false) => {
             session.remove("verify_account_key");
@@ -288,7 +293,15 @@ async fn verify(
         return redirect("/login");
     };
     let request_id = super::medications::request_id(request);
-    match signup::verify(&ctx.db, &session, &key, Some(&request_id)).await {
+    match signup::verify(
+        &ctx.db,
+        &session,
+        &key,
+        Some(&request_id),
+        ctx.config.settings.as_ref(),
+    )
+    .await
+    {
         Ok(outcome) => {
             session.remove("verify_account_key");
             match outcome {

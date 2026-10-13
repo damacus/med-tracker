@@ -38,6 +38,7 @@ pub struct TenantTransaction {
     scope: HouseholdScope,
     membership: membership::Model,
     user_id: i64,
+    settings: Option<serde_json::Value>,
 }
 
 impl TenantTransaction {
@@ -57,6 +58,10 @@ impl TenantTransaction {
         self.user_id
     }
 
+    pub fn settings(&self) -> Option<&serde_json::Value> {
+        self.settings.as_ref()
+    }
+
     pub async fn commit(self) -> Result<(), OperationError> {
         self.transaction.commit().await.map_err(Into::into)
     }
@@ -69,6 +74,7 @@ impl TenantTransaction {
 pub async fn begin(
     db: &DatabaseConnection,
     scope: &HouseholdScope,
+    settings: Option<&serde_json::Value>,
 ) -> Result<TenantTransaction, OperationError> {
     if scope.actor.account_id <= 0 {
         return Err(OperationError::Unauthenticated);
@@ -109,6 +115,7 @@ pub async fn begin(
             scope: scope.clone(),
             membership,
             user_id,
+            settings: settings.cloned(),
         }),
         Err(error) => {
             transaction.rollback().await?;

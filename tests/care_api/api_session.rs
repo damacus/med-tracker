@@ -26,7 +26,7 @@ async fn api_session_retained_principal_preserves_target_context_and_canonical_a
         .execute_unprepared("UPDATE household_memberships SET person_id=73003 WHERE id=74001")
         .await
         .unwrap();
-    let principal = api_session::authenticate(&fixture.runtime, &headers).await;
+    let principal = api_session::authenticate(&fixture.runtime, &headers, None).await;
     assert!(
         principal.is_ok(),
         "A valid persisted user API session must authenticate"
@@ -34,7 +34,7 @@ async fn api_session_retained_principal_preserves_target_context_and_canonical_a
     let principal = principal.unwrap();
     let transaction = fixture.runtime.begin().await.unwrap();
     transaction.execute_unprepared("SELECT set_config('med_tracker.current_household_id','72002',true),set_config('med_tracker.current_membership_id','74002',true),set_config('med_tracker.current_invitation_token_digest','synthetic-invitation-context',true)").await.unwrap();
-    let actor = principal.revalidate(&transaction).await.unwrap();
+    let actor = principal.revalidate(&transaction, None).await.unwrap();
     assert_eq!(
         (actor.account_id, actor.person_id, actor.session_id),
         (71001, 73001, 88001)
@@ -58,7 +58,7 @@ async fn api_session_retained_principal_preserves_target_context_and_canonical_a
 async fn api_session_revalidation_rejects_changed_live_authority() {
     let fixture = Fixture::new().await;
     let headers = seed(&fixture).await;
-    let principal = api_session::authenticate(&fixture.runtime, &headers)
+    let principal = api_session::authenticate(&fixture.runtime, &headers, None)
         .await
         .unwrap();
     for (change, restore) in [
@@ -111,7 +111,7 @@ async fn api_session_revalidation_rejects_changed_live_authority() {
         let transaction = fixture.runtime.begin().await.unwrap();
         assert!(
             matches!(
-                principal.revalidate(&transaction).await,
+                principal.revalidate(&transaction, None).await,
                 Err(AuthenticationError::Unauthenticated)
             ),
             "Changed authority was accepted: {change}"
@@ -136,7 +136,7 @@ async fn api_session_missing_or_malformed_credentials_fail_closed() {
             headers.insert(header::AUTHORIZATION, HeaderValue::from_str(value).unwrap());
         }
         assert!(matches!(
-            api_session::authenticate(&fixture.runtime, &headers).await,
+            api_session::authenticate(&fixture.runtime, &headers, None).await,
             Err(AuthenticationError::Unauthenticated)
         ));
     }
@@ -155,7 +155,7 @@ async fn api_session_app_token_classification_respects_configured_maximum_age() 
         HeaderValue::from_static("Bearer synthetic-application-token"),
     );
     assert!(matches!(
-        api_session::authenticate(&fixture.runtime, &headers).await,
+        api_session::authenticate(&fixture.runtime, &headers, None).await,
         Err(AuthenticationError::Forbidden)
     ));
     fixture
@@ -167,7 +167,7 @@ async fn api_session_app_token_classification_respects_configured_maximum_age() 
         .unwrap();
     assert!(
         matches!(
-            api_session::authenticate(&fixture.runtime, &headers).await,
+            api_session::authenticate(&fixture.runtime, &headers, None).await,
             Err(AuthenticationError::Unauthenticated)
         ),
         "A stored future expiry cannot extend the configured application-token maximum age"

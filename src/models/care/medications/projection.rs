@@ -8,6 +8,7 @@ use std::collections::HashMap;
 pub(crate) async fn serialize_many(
     db: &DatabaseTransaction,
     records: Vec<medication::Model>,
+    settings: Option<&serde_json::Value>,
 ) -> Result<Vec<Value>, ApiError> {
     let location_ids: Vec<i64> = records.iter().map(|record| record.location_id).collect();
     let locations: HashMap<i64, String> = if location_ids.is_empty() {
@@ -22,7 +23,7 @@ pub(crate) async fn serialize_many(
             .map(|location| (location.id, location.portable_id))
             .collect()
     };
-    let forecasts = medication_forecast::for_medications(db, &records)
+    let forecasts = medication_forecast::for_medications(db, &records, settings)
         .await
         .map_err(database_error)?;
     Ok(records.into_iter().map(|record| {

@@ -11,8 +11,9 @@ pub async fn start(
     db: &DatabaseConnection,
     session: &Session<SessionPgPool>,
     origin: &str,
+    settings: Option<&serde_json::Value>,
 ) -> Result<serde_json::Value, AuthenticationError> {
-    let principal = authenticate(db, session).await?;
+    let principal = authenticate(db, session, settings).await?;
     let (transaction, _) = principal.authorization_transaction(db).await?;
     let account = account::Entity::find_by_id(principal.account_id())
         .lock_exclusive()
@@ -76,6 +77,7 @@ pub async fn finish(
     origin: &str,
     input: RegistrationInput,
     request_id: Option<&str>,
+    settings: Option<&serde_json::Value>,
 ) -> Result<(), AuthenticationError> {
     let nickname = input.nickname.trim();
     if nickname.is_empty() || nickname.chars().count() > 255 {
@@ -85,7 +87,7 @@ pub async fn finish(
         .get::<Issued<RegistrationState>>("passkey_registration")
         .ok_or(AuthenticationError::Unauthenticated)?;
     session.remove("passkey_registration");
-    let principal = authenticate(db, session).await?;
+    let principal = authenticate(db, session, settings).await?;
     if issued.account_id != Some(principal.account_id()) {
         return Err(AuthenticationError::Unauthenticated);
     }

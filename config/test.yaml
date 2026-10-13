@@ -4,6 +4,37 @@ logger:
   level: info
   format: compact
 settings:
+  time_zone: <%= get_env(name="TZ", default="UTC") %>
+  registration:
+    invite_only: <%= get_env(name="INVITE_ONLY", default="") %>
+  session:
+    inactivity_timeout_days: <%= get_env(name="SESSION_INACTIVITY_TIMEOUT_DAYS", default="7") %>
+    max_age_days: <%= get_env(name="SESSION_MAX_AGE_DAYS", default="30") %>
+  api:
+    app_token_max_age_months: <%= get_env(name="API_APP_TOKEN_MAX_AGE_MONTHS", default="12") %>
+  rails_compat:
+    secret_key_base: <%= get_env(name="RAILS_SECRET_KEY_BASE", default="") %>
+    old_secret_key_base: <%= get_env(name="RAILS_OLD_SECRET_KEY_BASE", default="") %>
+  zitadel:
+    issuer: <%= get_env(name="MEDTRACKER_ZITADEL_ISSUER", default="") %>
+    client_id: <%= get_env(name="MEDTRACKER_ZITADEL_CLIENT_ID", default="") %>
+    client_secret: <%= get_env(name="MEDTRACKER_ZITADEL_CLIENT_SECRET", default="") %>
+  browser_push:
+    private_key: <%= get_env(name="MEDTRACKER_WEB_PUSH_PRIVATE_KEY", default="") %>
+    subject: <%= get_env(name="MEDTRACKER_WEB_PUSH_SUBJECT", default="") %>
+  avatar_storage:
+    endpoint: <%= get_env(name="ACTIVE_STORAGE_S3_ENDPOINT", default="") %>
+    bucket: <%= get_env(name="ACTIVE_STORAGE_S3_BUCKET", default="") %>
+    region: <%= get_env(name="ACTIVE_STORAGE_S3_REGION", default="") %>
+    access_key_id: <%= get_env(name="ACTIVE_STORAGE_S3_ACCESS_KEY_ID", default="") %>
+    secret_access_key: <%= get_env(name="ACTIVE_STORAGE_S3_SECRET_ACCESS_KEY", default="") %>
+    force_path_style: <%= get_env(name="ACTIVE_STORAGE_S3_FORCE_PATH_STYLE", default="true") %>
+  dmd_storage:
+    endpoint: <%= get_env(name="S3_ENDPOINT", default="") %>
+    bucket: <%= get_env(name="S3_BUCKET", default="") %>
+    region: <%= get_env(name="AWS_REGION", default="us-east-1") %>
+    access_key_id: <%= get_env(name="AWS_ACCESS_KEY_ID", default="") %>
+    secret_access_key: <%= get_env(name="AWS_SECRET_ACCESS_KEY", default="") %>
   dose_occurrences:
     signing_key: <%= get_env(name="AUTH_SESSION_SECRET", default="synthetic-test-dose-occurrence-signing-key") %>
   ai_medication_help:
@@ -13,6 +44,13 @@ settings:
     api_key: <%= get_env(name="MEDTRACKER_AI_MEDICATION_HELP_API_KEY", default="") %>
     api_base_url: <%= get_env(name="MEDTRACKER_AI_MEDICATION_HELP_API_BASE_URL", default="") %>
     source_proxy_origin: <%= get_env(name="MEDTRACKER_AI_MEDICATION_SOURCE_PROXY_ORIGIN", default="") %>
+    openai_api_key: <%= get_env(name="OPENAI_API_KEY", default="") %>
+    anthropic_api_key: <%= get_env(name="ANTHROPIC_API_KEY", default="") %>
+    gemini_api_key: <%= get_env(name="GEMINI_API_KEY", default="") %>
+    openrouter_api_key: <%= get_env(name="OPENROUTER_API_KEY", default="") %>
+  browser_session:
+    key: <%= get_env(name="MEDTRACKER_SESSION_KEY", default="") %>
+    secure: <%= get_env(name="MEDTRACKER_COOKIE_SECURE", default="true") %>
 server:
   port: <%= get_env(name="PORT", default="5150") %>
   binding: <%= get_env(name="BINDING", default="127.0.0.1") %>
