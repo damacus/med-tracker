@@ -55,6 +55,13 @@ conventions. Consult it when working on the root Loco app; deliberate
 departures from it are catalogued in
 [#2575](https://github.com/damacus/med-tracker/issues/2575).
 
+Request tests do not use `loco_rs::testing`/`TestServer`/`boot_test`. The
+custom `Application` harness in `tests/care_api.rs` exercises the real HTTP
+boundary (better-auth router, `route_layers`, `http_boundary`) against
+template-cloned PostgreSQL, which the in-process test server cannot drive. The
+loco `testing` feature stays in dev-dependencies solely for
+`EmailSender::stub()`/`deliveries()` used by the mail-outbox tests.
+
 ## Rails rollback stack
 
 - Ruby 4.0.6
