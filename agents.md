@@ -62,6 +62,14 @@ template-cloned PostgreSQL, which the in-process test server cannot drive. The
 loco `testing` feature stays in dev-dependencies solely for
 `EmailSender::stub()`/`deliveries()` used by the mail-outbox tests.
 
+Runtime configuration is read through `ctx.config.settings`, never through
+`std::env` inside `src/`. Declare each variable in the `settings:` block of
+`config/*.yaml` via `get_env`; `access::begin` threads it into
+`TenantTransaction` and controllers pass `ctx.config.settings.as_ref()` down.
+An empty `get_env` default renders as YAML `null`, and
+`models::settings::node()` resolves `null` as absent, so an unset variable
+never overrides a stored `app_settings` value.
+
 ## Rails rollback stack
 
 - Ruby 4.0.6
