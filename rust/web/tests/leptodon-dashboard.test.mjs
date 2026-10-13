@@ -30,6 +30,25 @@ async function login(page) {
   }
 }
 
+async function installWasmClock(page) {
+  await page.clock.install({ time: new Date('2026-03-29T00:30:00Z') });
+  await page.addInitScript(() => {
+    const schedule = window.setTimeout.bind(window);
+    const cancel = window.clearTimeout.bind(window);
+    const timers = new Map();
+    let nextId = 1;
+    window.setTimeout = (...args) => {
+      const id = nextId++;
+      timers.set(id, schedule(...args));
+      return id;
+    };
+    window.clearTimeout = id => {
+      cancel(timers.get(id) ?? id);
+      timers.delete(id);
+    };
+  });
+}
+
 test('authenticated Leptodon dashboard hydrates search on desktop and mobile', async () => {
   assert.ok(accountEmail, 'Set LEPTODON_DASHBOARD_EMAIL to a provisioned fixture user');
   const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH });
@@ -177,6 +196,36 @@ test('Enter on Close search closes the dialog with and without matching results'
     await browser.close();
   }
 });
+
+for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+  test(`pending search autofocus preserves Close focus at ${viewport.width}px`, async () => {
+    assert.ok(accountEmail, 'Set LEPTODON_DASHBOARD_EMAIL to a provisioned fixture user');
+    const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH });
+    try {
+      const page = await browser.newPage({ viewport });
+      await installWasmClock(page);
+      await login(page);
+      await page.clock.pauseAt(new Date('2026-03-29T00:31:00Z'));
+      const trigger = page.getByRole('button', { name: 'Search this dashboard' });
+      const dialog = page.getByRole('dialog', { name: 'Search this dashboard' });
+      for (const query of ['As Needed Test Tablet', 'no matching medicine 8675309']) {
+        await trigger.click({ force: true });
+        await dialog.waitFor({ state: 'visible' });
+        await page.clock.runFor(1);
+        await page.getByRole('combobox', { name: 'Search this dashboard' }).fill(query);
+        const close = dialog.getByRole('button', { name: 'Close search' });
+        await close.focus();
+        await page.clock.runFor(100);
+        assert.equal(await close.evaluate(element => element === document.activeElement), true);
+        await page.keyboard.press('Enter');
+        await dialog.waitFor({ state: 'hidden', timeout: 3000 });
+        assert.equal(await trigger.evaluate(element => element === document.activeElement), true);
+      }
+    } finally {
+      await browser.close();
+    }
+  });
+}
 
 test('dashboard document loads its same-origin PWA manifest under CSP', async () => {
   assert.ok(accountEmail, 'Set LEPTODON_DASHBOARD_EMAIL to a provisioned fixture user');
