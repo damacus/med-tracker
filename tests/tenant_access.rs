@@ -99,8 +99,7 @@ struct Fixture {
 
 impl Fixture {
     async fn new() -> Self {
-        assert_eq!(std::env::var("MEDTRACKER_OWNED_DATABASE").unwrap(), "1");
-        let uri = std::env::var("DATABASE_URL").unwrap();
+        let uri = template::owned_database_url();
         let endpoint = uri
             .strip_prefix("postgres://medtracker:medtracker_password@127.0.0.1:")
             .unwrap();

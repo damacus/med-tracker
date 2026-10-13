@@ -1,3 +1,6 @@
+#[allow(dead_code)]
+#[path = "support/template.rs"]
+mod template;
 use loco_rs::{config::Database, prelude::ConnectionTrait};
 use migration::MigratorTrait;
 
@@ -69,8 +72,7 @@ async fn capture_review_edit_catalog_when_requested() {
 }
 
 async fn restored_database() -> loco_rs::prelude::DatabaseConnection {
-    assert_eq!(std::env::var("MEDTRACKER_OWNED_DATABASE").unwrap(), "1");
-    let uri = std::env::var("DATABASE_URL").unwrap();
+    let uri = template::owned_database_url();
     let admin = migration::sea_orm::Database::connect(&uri).await.unwrap();
     let name = format!("persistence_{}", uuid::Uuid::new_v4().simple());
     admin
@@ -105,8 +107,7 @@ async fn ledger_rows(db: &loco_rs::prelude::DatabaseConnection) -> Vec<(String, 
 
 #[tokio::test]
 async fn fresh_database_is_created_by_loco_migrations() {
-    assert_eq!(std::env::var("MEDTRACKER_OWNED_DATABASE").unwrap(), "1");
-    let uri = std::env::var("DATABASE_URL").unwrap();
+    let uri = template::owned_database_url();
     let admin = migration::sea_orm::Database::connect(&uri).await.unwrap();
     let name = format!("fresh_{}", uuid::Uuid::new_v4().simple());
     admin
@@ -264,7 +265,7 @@ async fn development_seed_creates_a_usable_account_and_household() {
         .unwrap()
         .try_get::<String>("", "name")
         .unwrap();
-    let owned_url = std::env::var("DATABASE_URL").unwrap();
+    let owned_url = template::owned_database_url();
     let (base, _) = owned_url.rsplit_once('/').unwrap();
     let result = tokio::time::timeout(
         std::time::Duration::from_secs(120),
@@ -413,7 +414,7 @@ async fn fresh_audit_triggers_preserve_concurrent_chain_and_runtime_permissions(
         .unwrap()
         .try_get("", "name")
         .unwrap();
-    let uri = std::env::var("DATABASE_URL").unwrap();
+    let uri = template::owned_database_url();
     let (base, _) = uri.rsplit_once('/').unwrap();
     let mut writers = tokio::task::JoinSet::new();
     for _ in 0..6 {
@@ -498,9 +499,7 @@ fn development_has_a_stable_session_key() {
 
 #[tokio::test]
 async fn owned_postgres_fixture() {
-    assert_eq!(std::env::var("MEDTRACKER_OWNED_DATABASE").unwrap(), "1");
-    let uri =
-        std::env::var("DATABASE_URL").expect("The slice runner must provide its owned database");
+    let uri = template::owned_database_url();
     let endpoint = uri
         .strip_prefix("postgres://medtracker:medtracker_password@127.0.0.1:")
         .expect("The database must use the owned loopback endpoint");

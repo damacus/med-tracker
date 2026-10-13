@@ -1,9 +1,11 @@
+#[allow(dead_code)]
+#[path = "support/template.rs"]
+mod template;
 use migration::{MigratorTrait, sea_orm::ConnectionTrait};
 
 #[tokio::test]
 async fn fresh_migration_rejects_inherited_privileges_without_changing_the_database() {
-    assert_eq!(std::env::var("MEDTRACKER_OWNED_DATABASE").unwrap(), "1");
-    let uri = std::env::var("DATABASE_URL").unwrap();
+    let uri = template::owned_database_url();
     let admin = migration::sea_orm::Database::connect(&uri).await.unwrap();
     let suffix = uuid::Uuid::new_v4().simple().to_string();
     let setup_name = format!("role_setup_{suffix}");
