@@ -12,9 +12,9 @@ before enabling a service. Store every API key in the deployment secret store.
 
 Live UK terminology search requires both values:
 
-| Variable | Purpose |
-| --- | --- |
-| `NHS_DMD_CLIENT_ID` | NHS England Terminology Server client ID. |
+| Variable                | Purpose                                       |
+|-------------------------|-----------------------------------------------|
+| `NHS_DMD_CLIENT_ID`     | NHS England Terminology Server client ID.     |
 | `NHS_DMD_CLIENT_SECRET` | NHS England Terminology Server client secret. |
 
 When either value is absent, live NHS terminology search is unavailable. Local
@@ -28,8 +28,8 @@ import setup.
 
 Medication detail pages can load public NHS medicine guidance.
 
-| Variable | Purpose |
-| --- | --- |
+| Variable                      | Purpose                                           |
+|-------------------------------|---------------------------------------------------|
 | `NHS_WEBSITE_CONTENT_API_KEY` | Subscription key for the NHS Website Content API. |
 
 Without the key, MedTracker records a `not_configured` lookup outcome and shows
@@ -43,11 +43,11 @@ this use matches the deployment's privacy and external-service policy.
 Open Food Facts does not require an API key. MedTracker identifies its client
 through these optional values:
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `OPEN_FOOD_FACTS_APP_NAME` | `MedTracker` | Application name in the HTTP user agent. |
-| `OPEN_FOOD_FACTS_APP_VERSION` | `1.0` | Deployed application version in the HTTP user agent. |
-| `OPEN_FOOD_FACTS_CONTACT_EMAIL` | `support@medtracker.app` | Operator contact in the HTTP user agent. |
+| Variable                        | Default                  | Purpose                                              |
+|---------------------------------|--------------------------|------------------------------------------------------|
+| `OPEN_FOOD_FACTS_APP_NAME`      | `MedTracker`             | Application name in the HTTP user agent.             |
+| `OPEN_FOOD_FACTS_APP_VERSION`   | `1.0`                    | Deployed application version in the HTTP user agent. |
+| `OPEN_FOOD_FACTS_CONTACT_EMAIL` | `support@medtracker.app` | Operator contact in the HTTP user agent.             |
 
 Self-hosters should replace the contact email with a monitored address. Barcode
 and supplement searches can send the entered query to Open Food Facts even when
@@ -58,18 +58,20 @@ NHS dm+d credentials are absent.
 AI medication help is disabled when no supported provider key is present.
 MedTracker's initializer supports these provider settings:
 
-| Variable | Provider |
-| --- | --- |
-| `OPENAI_API_KEY` | OpenAI |
-| `ANTHROPIC_API_KEY` | Anthropic |
-| `GEMINI_API_KEY` | Google Gemini |
-| `OPENROUTER_API_KEY` | OpenRouter |
+| Variable             | Provider      |
+|----------------------|---------------|
+| `OPENAI_API_KEY`     | OpenAI        |
+| `ANTHROPIC_API_KEY`  | Anthropic     |
+| `GEMINI_API_KEY`     | Google Gemini |
+| `OPENROUTER_API_KEY` | OpenRouter    |
 
 Set one provider key and choose a compatible model:
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `MEDTRACKER_AI_MEDICATION_HELP_MODEL` | locked RubyLLM default | Model identifier passed to `RubyLLM.chat`. |
+| Variable                                 | Default                                    | Purpose                                                                                                                                                          |
+|------------------------------------------|--------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `MEDTRACKER_AI_MEDICATION_HELP_MODEL`    | locked RubyLLM default                     | Model identifier passed to `RubyLLM.chat`.                                                                                                                       |
+| `MEDTRACKER_AI_MEDICATION_HELP_PROVIDER` | inferred from which `*_API_KEY` is present | Provider selector: `openai`, `anthropic`, `gemini`, or `openrouter`.                                                                                             |
+| `MEDTRACKER_AI_MEDICATION_HELP_API_KEY`  | unset                                      | Provider credential supplied through application settings instead of a provider env var; requires `MEDTRACKER_AI_MEDICATION_HELP_PROVIDER` to name the provider. |
 
 Set the model explicitly in production so a RubyLLM default change cannot move
 the workload to another model. The chosen model must belong to the configured
