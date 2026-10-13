@@ -5,12 +5,13 @@ pub(super) async fn household(
     transaction: &DatabaseTransaction,
     account_id: i64,
     name: &str,
+    settings: Option<&serde_json::Value>,
 ) -> Result<i64, SignupError> {
     let name = format!("{} Household", name.trim());
     let mut suffix = [0u8; 4];
     getrandom::fill(&mut suffix).map_err(unavailable)?;
     let slug = format!("{}-{}", slug::slugify(&name), hex::encode(suffix));
-    let timezone = super::super::time_zone::preferred(&json!({}))
+    let timezone = super::super::time_zone::preferred(&json!({}), settings)
         .map_err(unavailable)?
         .to_string();
     let row = transaction.query_one_raw(sql(

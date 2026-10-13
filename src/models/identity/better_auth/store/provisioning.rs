@@ -38,9 +38,10 @@ impl ClinicalStore {
         };
         let request_id = super::super::request::request_id()
             .ok_or_else(|| AuthError::internal("Identity request context missing"))?;
-        let provisioned = signup::provision_account_in(transaction, &profile, &request_id)
-            .await
-            .map_err(provisioning_error)?;
+        let provisioned =
+            signup::provision_account_in(transaction, &profile, &request_id, self.settings())
+                .await
+                .map_err(provisioning_error)?;
         use sea_orm::ConnectionTrait;
         transaction
             .execute_raw(super::statement(

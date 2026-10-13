@@ -23,7 +23,7 @@ pub async fn list(tenant: &TenantTransaction, page: Pagination) -> Result<Value,
         .await?
         .ok_or(OperationError::Forbidden)?;
     let today = Utc::now()
-        .with_timezone(&crate::models::care::doses::app_zone())
+        .with_timezone(&crate::models::care::doses::app_zone(tenant.settings()))
         .date_naive();
     let age = actor.date_of_birth.map(|birth| {
         today.year()

@@ -52,7 +52,7 @@ pub async fn upload(
             details: json!({"error":"Choose a ZIP release archive no larger than 500 MB."}),
         });
     }
-    let store = storage::ArchiveStore::configured()?;
+    let store = storage::ArchiveStore::configured(ctx.config.settings.as_ref())?;
     let key = format!("nhs-dmd/{}.zip", uuid::Uuid::new_v4());
     let size = bytes.len() as i64;
     let checksum = storage::checksum(&bytes);
@@ -160,7 +160,7 @@ pub async fn run(ctx: &AppContext, id: i64) -> Result<(), OperationError> {
         }
         return Ok(());
     };
-    let store = match storage::ArchiveStore::configured() {
+    let store = match storage::ArchiveStore::configured(ctx.config.settings.as_ref()) {
         Ok(store) => store,
         Err(error) => {
             import::fail_run(

@@ -921,6 +921,7 @@ async fn profile_write_does_not_deadlock_a_household_writer_recording_actor_audi
             household_id: 72001,
             request_id: "synthetic-opposite-household-writer".into(),
         },
+        None,
     )
     .await
     .unwrap();
@@ -1047,7 +1048,9 @@ async fn membership_change_during_read_reports_forbidden_not_missing_profile() {
         household_id: 72001,
         request_id: "synthetic-midread-membership".into(),
     };
-    let tenant = access::begin(&app.fixture.runtime, &scope).await.unwrap();
+    let tenant = access::begin(&app.fixture.runtime, &scope, None)
+        .await
+        .unwrap();
     app.fixture
         .admin
         .execute_unprepared(
@@ -1063,7 +1066,9 @@ async fn membership_change_during_read_reports_forbidden_not_missing_profile() {
         .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78001")
         .await
         .unwrap();
-    let unscoped_tenant = access::begin(&app.fixture.runtime, &scope).await.unwrap();
+    let unscoped_tenant = access::begin(&app.fixture.runtime, &scope, None)
+        .await
+        .unwrap();
     let unscoped = profile::read(&unscoped_tenant, 71001).await;
     unscoped_tenant.rollback().await.unwrap();
     app.close().await;

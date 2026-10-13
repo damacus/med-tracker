@@ -27,7 +27,7 @@ async fn authorize(
     ctx: &AppContext,
     session: &Session<SessionPgPool>,
 ) -> std::result::Result<(), Box<Response>> {
-    let principal = browser::authenticate(&ctx.db, session)
+    let principal = browser::authenticate(&ctx.db, session, ctx.config.settings.as_ref())
         .await
         .map_err(|error| Box::new(authentication_error(error)))?;
     let admin = platform_admin::Entity::find()

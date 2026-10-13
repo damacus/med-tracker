@@ -17,7 +17,7 @@ async fn dashboard_respects_shared_dose_limits_and_person_access() {
         .execute_unprepared("UPDATE person_medications SET max_daily_doses=0 WHERE id=81001")
         .await
         .unwrap();
-    let tenant = access::begin(&app.context.db, &scope).await.unwrap();
+    let tenant = access::begin(&app.context.db, &scope, None).await.unwrap();
     let labels = json!({"dashboard":{"statuses":{"max_reached":"Daily max reached"}}});
     let data = dashboard::read(
         &tenant,
@@ -50,7 +50,7 @@ async fn dashboard_respects_shared_dose_limits_and_person_access() {
     );
     tenant.commit().await.unwrap();
     app.fixture.admin.execute_unprepared("UPDATE person_medications SET max_daily_doses=NULL,min_hours_between_doses=4 WHERE id=81001; INSERT INTO medication_takes(id,household_id,person_medication_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(84997,72001,81001,1,'tablet',now(),now(),now())").await.unwrap();
-    let tenant = access::begin(&app.context.db, &scope).await.unwrap();
+    let tenant = access::begin(&app.context.db, &scope, None).await.unwrap();
     let data = dashboard::read(
         &tenant,
         chrono_tz::UTC,
@@ -85,6 +85,7 @@ async fn snapshot_in_zone(app: &Application, zone: chrono_tz::Tz) -> serde_json:
             household_id: 72001,
             request_id: "dashboard-regression".into(),
         },
+        None,
     )
     .await
     .unwrap();
@@ -154,6 +155,7 @@ async fn dashboard_taper_dose_matches_preview_and_preserves_recorded_doses() {
             household_id: 72001,
             request_id: "dashboard-taper-preview".into(),
         },
+        None,
     )
     .await
     .unwrap();
@@ -308,6 +310,7 @@ async fn dashboard_weekday_strings_agree_with_preview_and_recording() {
             household_id: 72001,
             request_id: "dashboard-weekday-preview".into(),
         },
+        None,
     )
     .await
     .unwrap();

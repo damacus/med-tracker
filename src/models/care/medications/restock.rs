@@ -25,7 +25,7 @@ pub(super) async fn execute_selected(
     let current = visible_medication(tenant, &input.medication_id)
         .await?
         .ok_or(OperationError::NotFound)?;
-    let current = snapshot(db, current).await?;
+    let current = snapshot(db, current, tenant.settings()).await?;
     if input.original_etag != current.etag {
         return Err(conflict());
     }

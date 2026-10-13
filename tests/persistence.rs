@@ -248,6 +248,7 @@ async fn development_seed_creates_a_usable_account_and_household() {
             household_id: 72001,
             request_id: "seed-proof".into(),
         },
+        None,
     )
     .await
     .unwrap();

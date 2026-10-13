@@ -65,6 +65,7 @@ impl ClinicalStore {
                 household_id,
                 request_id: request.request_id,
             },
+            self.settings(),
         )
         .await
         .map_err(operation_error)?;

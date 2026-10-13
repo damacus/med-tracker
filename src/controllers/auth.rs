@@ -51,24 +51,29 @@ async fn login(
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
 ) -> Response {
-    login_form(&ctx.db, &token, &view, None, StatusCode::OK).await
+    login_form(&ctx, &token, &view, None, StatusCode::OK).await
 }
 
 async fn login_form(
-    db: &sea_orm::DatabaseConnection,
+    ctx: &AppContext,
     token: &CsrfToken,
     view: &TeraView,
     error: Option<&str>,
     status: StatusCode,
 ) -> Response {
-    let registration_open = match crate::models::identity::signup::registration_open(db).await {
+    let registration_open = match crate::models::identity::signup::registration_open(
+        &ctx.db,
+        ctx.config.settings.as_ref(),
+    )
+    .await
+    {
         Ok(value) => value,
         Err(_) => return StatusCode::SERVICE_UNAVAILABLE.into_response(),
     };
     let Ok(authenticity_token) = token.authenticity_token() else {
         return StatusCode::SERVICE_UNAVAILABLE.into_response();
     };
-    let data = serde_json::json!({ "title":"Sign in", "allow_palette":false, "appearances":[{"id":"light","label":"Light"},{"id":"dark","label":"Dark"},{"id":"system","label":"System"}], "palettes":[], "authenticity_token":authenticity_token, "error":error, "registration_open":registration_open, "zitadel":std::env::var_os("MEDTRACKER_ZITADEL_ISSUER").is_some() });
+    let data = serde_json::json!({ "title":"Sign in", "allow_palette":false, "appearances":[{"id":"light","label":"Light"},{"id":"dark","label":"Dark"},{"id":"system","label":"System"}], "palettes":[], "authenticity_token":authenticity_token, "error":error, "registration_open":registration_open, "zitadel":crate::models::settings::text(ctx.config.settings.as_ref(), &["zitadel","issuer"]).is_some() });
     match format::render().view(view, "auth/login.html", data) {
         Ok(response) => (
             status,
@@ -119,7 +124,7 @@ async fn sign_in(
         && response.status == 429
     {
         let mut limited = login_form(
-            &ctx.db,
+            &ctx,
             &token,
             &view,
             Some("Too many sign-in attempts. Try again later."),
@@ -202,7 +207,7 @@ async fn sign_in(
         Ok(browser::SignInOutcome::PasskeyRequired) => redirect("/webauthn-auth"),
         Err(AuthenticationError::Unauthenticated) => {
             login_form(
-                &ctx.db,
+                &ctx,
                 &token,
                 &view,
                 Some("Invalid email or password"),
@@ -212,7 +217,7 @@ async fn sign_in(
         }
         Err(AuthenticationError::Forbidden | AuthenticationError::InsufficientScope { .. }) => {
             login_form(
-                &ctx.db,
+                &ctx,
                 &token,
                 &view,
                 Some("An additional sign-in factor is required."),

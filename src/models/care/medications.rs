@@ -105,14 +105,15 @@ pub async fn read_stock_snapshot(
     let medication = visible_medication(tenant, id)
         .await?
         .ok_or(OperationError::NotFound)?;
-    snapshot(tenant.transaction(), medication).await
+    snapshot(tenant.transaction(), medication, tenant.settings()).await
 }
 
 async fn snapshot(
     db: &DatabaseTransaction,
     medication: medication::Model,
+    settings: Option<&serde_json::Value>,
 ) -> Result<StockSnapshot, OperationError> {
-    let row = projection::serialize_many(db, vec![medication.clone()])
+    let row = projection::serialize_many(db, vec![medication.clone()], settings)
         .await?
         .remove(0);
     let mut representation = json!({"data": row});

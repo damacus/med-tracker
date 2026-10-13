@@ -578,7 +578,7 @@ async fn scoped_payload(
     );
     add_etags(
         &mut etags,
-        medications::serialize_many(db, medications.clone()).await?,
+        medications::serialize_many(db, medications.clone(), tenant.settings()).await?,
     );
     for row in &dosages {
         let parent = medication_ids_by_id

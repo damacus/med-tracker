@@ -65,7 +65,9 @@ impl Fixture {
         let request = Request::builder().method("POST").uri("/oauth/token")
             .header("content-type", "application/x-www-form-urlencoded")
             .body(Body::from("grant_type=authorization_code&client_id=native&code=synthetic-legacy-code&redirect_uri=io.damacus.medtracker%3A%2Foauth2redirect&code_verifier=dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk")).unwrap();
-        let token = identity::exchange(&self.runtime, request).await.unwrap();
+        let token = identity::exchange(&self.runtime, request, None)
+            .await
+            .unwrap();
         let mut headers = HeaderMap::new();
         headers.insert(
             "authorization",
@@ -93,7 +95,7 @@ async fn retained_rails_friendly_time_zone_is_resolved() {
         .await
         .unwrap();
     let headers = fixture.headers().await;
-    let result = resource::authenticate(&fixture.runtime, &headers).await;
+    let result = resource::authenticate(&fixture.runtime, &headers, None).await;
     assert!(
         result.is_ok(),
         "A timezone offered by the retained Rails form must remain usable"
@@ -109,7 +111,7 @@ async fn access_scope_is_bound_to_the_issued_token_and_refresh_scope_is_preserve
     let code_request = Request::builder().method("POST").uri("/oauth/token")
         .header("content-type", "application/x-www-form-urlencoded")
         .body(Body::from("grant_type=authorization_code&client_id=native&code=synthetic-legacy-code&redirect_uri=io.damacus.medtracker%3A%2Foauth2redirect&code_verifier=dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk")).unwrap();
-    let original = identity::exchange(&fixture.runtime, code_request)
+    let original = identity::exchange(&fixture.runtime, code_request, None)
         .await
         .unwrap();
     let refresh_request = Request::builder()
@@ -121,7 +123,7 @@ async fn access_scope_is_bound_to_the_issued_token_and_refresh_scope_is_preserve
             original["refresh_token"].as_str().unwrap()
         )))
         .unwrap();
-    let narrowed = identity::exchange(&fixture.runtime, refresh_request)
+    let narrowed = identity::exchange(&fixture.runtime, refresh_request, None)
         .await
         .unwrap();
     let mut headers = HeaderMap::new();
@@ -132,7 +134,7 @@ async fn access_scope_is_bound_to_the_issued_token_and_refresh_scope_is_preserve
             .unwrap(),
     );
     assert!(matches!(
-        resource::authenticate(&fixture.runtime, &headers).await,
+        resource::authenticate(&fixture.runtime, &headers, None).await,
         Err(AuthenticationError::InsufficientScope { .. })
     ));
     fixture.admin.execute_unprepared("UPDATE oauth_grants SET token_hash = translate(encode(digest('rollback-issued-token', 'sha256'), 'base64'), '+/', '-_') WHERE id = 76001").await.unwrap();
@@ -141,7 +143,7 @@ async fn access_scope_is_bound_to_the_issued_token_and_refresh_scope_is_preserve
         "Bearer rollback-issued-token".parse().unwrap(),
     );
     assert!(
-        resource::authenticate(&fixture.runtime, &headers)
+        resource::authenticate(&fixture.runtime, &headers, None)
             .await
             .is_ok(),
         "A Rails-issued replacement must not inherit stale narrowed scope metadata"
@@ -154,21 +156,21 @@ async fn real_mobile_access_token_opens_only_current_household() {
     let fixture = Fixture::new().await;
     fixture.admin.execute_unprepared("UPDATE accounts SET preferences = '{\"time_zone\":\"Pacific/Auckland\"}' WHERE id = 71001").await.unwrap();
     let headers = fixture.headers().await;
-    let principal = resource::authenticate(&fixture.runtime, &headers)
+    let principal = resource::authenticate(&fixture.runtime, &headers, None)
         .await
         .unwrap();
     assert_eq!(principal.account_id(), 71001);
     assert_eq!(principal.time_zone(), chrono_tz::Pacific::Auckland);
     assert_eq!(principal.provenance().reference, "76001");
     let tenant = principal
-        .begin_household(&fixture.runtime, 72001, "resource-proof".into())
+        .begin_household(&fixture.runtime, 72001, "resource-proof".into(), None)
         .await
         .unwrap();
     assert_eq!(tenant.membership().id, 74001);
     tenant.rollback().await.unwrap();
     assert!(matches!(
         principal
-            .begin_household(&fixture.runtime, 72002, "wrong-household".into())
+            .begin_household(&fixture.runtime, 72002, "wrong-household".into(), None)
             .await,
         Err(AuthenticationError::Forbidden)
     ));
@@ -179,18 +181,18 @@ async fn real_mobile_access_token_opens_only_current_household() {
 async fn revocation_between_authentication_and_operation_is_rechecked() {
     let fixture = Fixture::new().await;
     let headers = fixture.headers().await;
-    let principal = resource::authenticate(&fixture.runtime, &headers)
+    let principal = resource::authenticate(&fixture.runtime, &headers, None)
         .await
         .unwrap();
     fixture.admin.execute_unprepared("UPDATE oauth_grants SET revoked_at = timezone('UTC', clock_timestamp()) WHERE id = 76001").await.unwrap();
     assert!(matches!(
         principal
-            .begin_household(&fixture.runtime, 72001, "revoked".into())
+            .begin_household(&fixture.runtime, 72001, "revoked".into(), None)
             .await,
         Err(AuthenticationError::Unauthenticated)
     ));
     assert!(matches!(
-        resource::authenticate(&fixture.runtime, &headers).await,
+        resource::authenticate(&fixture.runtime, &headers, None).await,
         Err(AuthenticationError::Unauthenticated)
     ));
     fixture.close().await;
@@ -200,14 +202,14 @@ async fn revocation_between_authentication_and_operation_is_rechecked() {
 async fn a_household_operation_does_not_block_another_mobile_authentication() {
     let fixture = Fixture::new().await;
     let headers = fixture.headers().await;
-    let principal = resource::authenticate(&fixture.runtime, &headers)
+    let principal = resource::authenticate(&fixture.runtime, &headers, None)
         .await
         .unwrap();
     let tenant = principal
-        .begin_household(&fixture.runtime, 72001, "held-household".into())
+        .begin_household(&fixture.runtime, 72001, "held-household".into(), None)
         .await
         .unwrap();
-    let second = resource::authenticate(&fixture.runtime, &headers).await;
+    let second = resource::authenticate(&fixture.runtime, &headers, None).await;
     tenant.rollback().await.unwrap();
     assert!(second.is_ok());
     fixture.close().await;
@@ -217,13 +219,13 @@ async fn a_household_operation_does_not_block_another_mobile_authentication() {
 async fn token_rotation_between_authentication_and_operation_is_rechecked() {
     let fixture = Fixture::new().await;
     let headers = fixture.headers().await;
-    let principal = resource::authenticate(&fixture.runtime, &headers)
+    let principal = resource::authenticate(&fixture.runtime, &headers, None)
         .await
         .unwrap();
     fixture.admin.execute_unprepared("UPDATE oauth_grants SET token_hash = translate(encode(digest('rotated-token', 'sha256'), 'base64'), '+/', '-_') WHERE id = 76001").await.unwrap();
     assert!(matches!(
         principal
-            .begin_household(&fixture.runtime, 72001, "rotated".into())
+            .begin_household(&fixture.runtime, 72001, "rotated".into(), None)
             .await,
         Err(AuthenticationError::Unauthenticated)
     ));
@@ -238,18 +240,18 @@ async fn resource_rejects_ambiguous_expired_and_insufficient_scope_credentials()
     duplicate.append("authorization", "Bearer wrong".parse().unwrap());
     for invalid in [HeaderMap::new(), duplicate] {
         assert!(matches!(
-            resource::authenticate(&fixture.runtime, &invalid).await,
+            resource::authenticate(&fixture.runtime, &invalid, None).await,
             Err(AuthenticationError::Unauthenticated)
         ));
     }
     fixture.admin.execute_unprepared("UPDATE oauth_grants SET expires_in = timezone('UTC', clock_timestamp()) - interval '1 second' WHERE id = 76001").await.unwrap();
     assert!(matches!(
-        resource::authenticate(&fixture.runtime, &headers).await,
+        resource::authenticate(&fixture.runtime, &headers, None).await,
         Err(AuthenticationError::Unauthenticated)
     ));
     fixture.admin.execute_unprepared("UPDATE oauth_grants SET expires_in = timezone('UTC', clock_timestamp()) + interval '15 minutes', scopes = 'offline_access' WHERE id = 76001").await.unwrap();
     assert!(matches!(
-        resource::authenticate(&fixture.runtime, &headers).await,
+        resource::authenticate(&fixture.runtime, &headers, None).await,
         Err(AuthenticationError::Unauthenticated) | Err(AuthenticationError::Forbidden)
     ));
     fixture.close().await;

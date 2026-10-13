@@ -68,12 +68,12 @@ impl Provider {
         }
     }
 
-    fn key_name(&self) -> &'static str {
+    fn key_setting(&self) -> &'static str {
         match self {
-            Self::OpenAi => "OPENAI_API_KEY",
-            Self::Anthropic => "ANTHROPIC_API_KEY",
-            Self::Gemini => "GEMINI_API_KEY",
-            Self::OpenRouter => "OPENROUTER_API_KEY",
+            Self::OpenAi => "openai_api_key",
+            Self::Anthropic => "anthropic_api_key",
+            Self::Gemini => "gemini_api_key",
+            Self::OpenRouter => "openrouter_api_key",
         }
     }
 
@@ -125,16 +125,12 @@ fn feature_enabled(settings: Option<&Value>) -> bool {
         Some(Value::String(value)) => {
             ["1", "true", "yes", "on"].contains(&value.to_ascii_lowercase().as_str())
         }
-        _ => std::env::var("MEDTRACKER_AI_MEDICATION_HELP_ENABLED")
-            .map(|value| ["1", "true", "yes", "on"].contains(&value.to_ascii_lowercase().as_str()))
-            .unwrap_or(false),
+        _ => false,
     }
 }
 
 fn configured_provider(settings: Option<&Value>) -> Result<ProviderConfig, &'static str> {
-    let selector = setting(settings, "provider")
-        .map(str::to_owned)
-        .or_else(|| std::env::var("MEDTRACKER_AI_MEDICATION_HELP_PROVIDER").ok());
+    let selector = setting(settings, "provider").map(str::to_owned);
     let settings_key = setting(settings, "api_key").map(str::to_owned);
     let mut provided: Vec<Provider> = [
         Provider::OpenAi,
@@ -143,9 +139,7 @@ fn configured_provider(settings: Option<&Value>) -> Result<ProviderConfig, &'sta
         Provider::OpenRouter,
     ]
     .into_iter()
-    .filter(|provider| {
-        std::env::var(provider.key_name()).is_ok_and(|value| !value.trim().is_empty())
-    })
+    .filter(|provider| setting(settings, provider.key_setting()).is_some())
     .collect();
     if let (Some(selector), Some(_)) = (&selector, &settings_key)
         && let Some(provider) = [
@@ -165,8 +159,6 @@ fn configured_provider(settings: Option<&Value>) -> Result<ProviderConfig, &'sta
     }
     let model = setting(settings, "model")
         .map(str::to_owned)
-        .or_else(|| std::env::var("MEDTRACKER_AI_MEDICATION_HELP_MODEL").ok())
-        .filter(|value| !value.trim().is_empty())
         .ok_or("ruby_llm_unconfigured")?;
     let provider = match selector {
         Some(selector) => provided
@@ -187,12 +179,10 @@ fn configured_provider(settings: Option<&Value>) -> Result<ProviderConfig, &'sta
         return Err("provider_configuration_error");
     }
     let key = settings_key
-        .or_else(|| std::env::var(provider.key_name()).ok())
-        .filter(|value| !value.trim().is_empty())
+        .or_else(|| setting(settings, provider.key_setting()).map(str::to_owned))
         .ok_or("provider_configuration_error")?;
     let base = setting(settings, "api_base_url")
         .map(str::to_owned)
-        .or_else(|| std::env::var("MEDTRACKER_AI_MEDICATION_HELP_API_BASE_URL").ok())
         .unwrap_or_else(|| provider.default_base().to_owned());
     let mut base = configured_url(&base, true).ok_or("provider_configuration_error")?;
     if base.scheme() == "http" && base.host_str() != Some("127.0.0.1") {
@@ -631,13 +621,7 @@ pub(crate) async fn generate(settings: Option<&Value>, identity: &Value) -> Valu
         Ok(client) => client,
         Err(_) => return empty_draft("trusted_source_unavailable"),
     };
-    let proxy_origin = setting(settings, "source_proxy_origin")
-        .map(str::to_owned)
-        .or_else(|| {
-            std::env::var("MEDTRACKER_AI_MEDICATION_SOURCE_PROXY_ORIGIN")
-                .ok()
-                .filter(|value| !value.trim().is_empty())
-        });
+    let proxy_origin = setting(settings, "source_proxy_origin").map(str::to_owned);
     let mut fetched = Vec::new();
     for url in urls {
         if !allowed_source(&url, &source_config) {

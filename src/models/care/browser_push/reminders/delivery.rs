@@ -47,7 +47,7 @@ async fn claim(
     id: i64,
     now: DateTime<Utc>,
 ) -> Result<Option<Claim>, OperationError> {
-    let tenant = access::begin(&ctx.db, scope).await?;
+    let tenant = access::begin(&ctx.db, scope, ctx.config.settings.as_ref()).await?;
     push_subscriptions::lock_account(&tenant).await?;
     let row = tenant.transaction().query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
         "SELECT d.notification_event_id,d.subscription_id,d.status,d.attempt_count,d.next_attempt_at,d.claimed_at,e.event_key,e.event_type,e.intended_at,e.expires_at FROM notification_deliveries d JOIN notification_events e ON e.id=d.notification_event_id AND e.household_id=d.household_id WHERE d.id=$1 AND d.household_id=$2 AND d.account_id=$3 FOR UPDATE OF d SKIP LOCKED",
@@ -159,7 +159,7 @@ async fn complete(
     result: AttemptOutcome,
     now: DateTime<Utc>,
 ) -> Result<bool, OperationError> {
-    let tenant = access::begin(&ctx.db, scope).await?;
+    let tenant = access::begin(&ctx.db, scope, ctx.config.settings.as_ref()).await?;
     push_subscriptions::lock_account(&tenant).await?;
     let (status, outcome, next_attempt_at) = match result {
         AttemptOutcome::Deadline => ("invalid", "deadline_before_send", now),
@@ -231,7 +231,7 @@ pub async fn drain_pending(
     if ctx.shared_store.get::<Service>().is_none() {
         return Ok(0);
     }
-    let tenant = match access::begin(&ctx.db, scope).await {
+    let tenant = match access::begin(&ctx.db, scope, ctx.config.settings.as_ref()).await {
         Ok(tenant) => tenant,
         Err(
             OperationError::Forbidden | OperationError::NotFound | OperationError::Unauthenticated,

@@ -61,3 +61,10 @@ pub fn owned_database_url() -> String {
     require_owned_database();
     std::env::var("DATABASE_URL").expect("the suite must provide its owned database")
 }
+
+#[allow(dead_code)]
+pub fn test_settings() -> Option<serde_json::Value> {
+    loco_rs::config::Config::new(&loco_rs::environment::Environment::Test)
+        .ok()
+        .and_then(|config| config.settings)
+}

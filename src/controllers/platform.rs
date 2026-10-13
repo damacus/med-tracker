@@ -340,7 +340,7 @@ async fn settings(
     let Ok(transaction) = platform::begin(&ctx.db).await else {
         return unavailable();
     };
-    let result = platform::settings(&transaction, account_id).await;
+    let result = platform::settings(&transaction, account_id, ctx.config.settings.as_ref()).await;
     let settings = match result {
         Ok(settings) => settings,
         Err(error) => {

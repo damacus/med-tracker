@@ -91,6 +91,7 @@ pub async fn verify(
     db: &DatabaseConnection,
     session: &Session<SessionPgPool>,
     code: &str,
+    settings: Option<&serde_json::Value>,
 ) -> Result<(), AuthenticationError> {
     let (transaction, pending, _) = pending(db, session).await?;
     let key = otp_key::Entity::find_by_id(pending.account_id)
@@ -102,16 +103,11 @@ pub async fn verify(
     if key.num_failures >= 5 {
         return Err(AuthenticationError::Forbidden);
     }
-    let current_secret = std::env::var("RAILS_SECRET_KEY_BASE").map_err(unavailable)?;
-    if current_secret.is_empty() {
-        return Err(AuthenticationError::Unavailable);
-    }
-    let old_secret = match std::env::var("RAILS_OLD_SECRET_KEY_BASE") {
-        Ok(secret) if secret.is_empty() => return Err(AuthenticationError::Unavailable),
-        Ok(secret) => Some(secret),
-        Err(std::env::VarError::NotPresent) => None,
-        Err(error) => return Err(unavailable(error)),
-    };
+    let current_secret =
+        crate::models::settings::text(settings, &["rails_compat", "secret_key_base"])
+            .ok_or(AuthenticationError::Unavailable)?;
+    let old_secret =
+        crate::models::settings::text(settings, &["rails_compat", "old_secret_key_base"]);
     let row = transaction
         .query_one_raw(sql("SELECT timezone('UTC',clock_timestamp()) AS now", []))
         .await
@@ -126,7 +122,7 @@ pub async fn verify(
         totp::verify_rodauth_otp(
             &key.key,
             Some(current_secret.as_bytes()),
-            old_secret.as_deref().map(str::as_bytes),
+            old_secret.map(str::as_bytes),
             code,
             now.and_utc().timestamp(),
             key.last_use.and_utc().timestamp(),

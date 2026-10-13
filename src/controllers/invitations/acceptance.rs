@@ -26,7 +26,9 @@ pub(super) async fn preview(
         Err(OperationError::Validation { .. } | OperationError::NotFound) => return invalid_link(),
         Err(error) => return operation_error(error),
     };
-    let signed_in = match browser::authenticate(&ctx.db, &session).await {
+    let signed_in = match browser::authenticate(&ctx.db, &session, ctx.config.settings.as_ref())
+        .await
+    {
         Ok(_) => true,
         Err(AuthenticationError::Unauthenticated) => {
             crate::controllers::auth::store_invitation_continuation(&session, &invitation.token);
@@ -59,20 +61,26 @@ pub(super) async fn accept(
     if token.verify(&form.authenticity_token).is_err() {
         return StatusCode::FORBIDDEN.into_response();
     }
-    let principal = match browser::authenticate(&ctx.db, &session).await {
-        Ok(value) => value,
-        Err(error) => return authentication_error(error),
-    };
-    let accepted =
-        match invitations::accept_browser(&ctx.db, &principal, &form.token, &request_id(request))
-            .await
-        {
+    let principal =
+        match browser::authenticate(&ctx.db, &session, ctx.config.settings.as_ref()).await {
             Ok(value) => value,
-            Err(OperationError::Validation { .. } | OperationError::NotFound) => {
-                return invalid_link();
-            }
-            Err(error) => return operation_error(error),
+            Err(error) => return authentication_error(error),
         };
+    let accepted = match invitations::accept_browser(
+        &ctx.db,
+        &principal,
+        &form.token,
+        &request_id(request),
+        ctx.config.settings.as_ref(),
+    )
+    .await
+    {
+        Ok(value) => value,
+        Err(OperationError::Validation { .. } | OperationError::NotFound) => {
+            return invalid_link();
+        }
+        Err(error) => return operation_error(error),
+    };
     let homes = match principal.households(&ctx.db).await {
         Ok(value) => value,
         Err(error) => return authentication_error(error),

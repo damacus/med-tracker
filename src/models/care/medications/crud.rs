@@ -217,7 +217,10 @@ async fn locked_manager(
         .await?
         .ok_or(OperationError::NotFound)?;
     if let Some(etag) = etag.filter(|v| !v.is_empty())
-        && snapshot(tenant.transaction(), found.clone()).await?.etag != etag
+        && snapshot(tenant.transaction(), found.clone(), tenant.settings())
+            .await?
+            .etag
+            != etag
     {
         return Err(conflict());
     }

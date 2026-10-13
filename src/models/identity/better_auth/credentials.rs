@@ -181,6 +181,7 @@ async fn validate(
                 medicine_lookup_base_url,
                 medicine_lookup_token_url,
                 medicine_lookup_source_priority,
+                store.settings(),
             )
             .await
             .map_err(platform_error)?;
@@ -442,6 +443,7 @@ pub(super) async fn complete(
             medicine_lookup_token_url,
             medicine_lookup_source_priority,
             &meta,
+            store.settings(),
         )
         .await
         .map_err(platform_error)?;

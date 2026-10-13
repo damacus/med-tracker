@@ -289,7 +289,7 @@ pub async fn execute_with_provenance(
     command: Command,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<Outcome, OperationError> {
-    execute_in_timezone(tenant, command, app_zone(), provenance).await
+    execute_in_timezone(tenant, command, app_zone(tenant.settings()), provenance).await
 }
 
 async fn allowed_person(

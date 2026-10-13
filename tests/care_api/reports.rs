@@ -112,7 +112,7 @@ async fn medication_review_summary_counts_only_people_with_visible_prompts() {
         household_id: 72001,
         request_id: "synthetic-review-count".into(),
     };
-    let tenant = begin(&app.fixture.runtime, &scope).await.unwrap();
+    let tenant = begin(&app.fixture.runtime, &scope, None).await.unwrap();
     let people = reports::accessible_people(&tenant, PersonAccess::View)
         .await
         .unwrap();
@@ -274,7 +274,7 @@ async fn ordinary_report_compares_persisted_scheduled_at_as_utc_instants() {
         household_id: 72001,
         request_id: "synthetic-utc-missed".into(),
     };
-    let tenant = begin(&app.fixture.runtime, &scope).await.unwrap();
+    let tenant = begin(&app.fixture.runtime, &scope, None).await.unwrap();
     let people = reports::accessible_people(&tenant, PersonAccess::View)
         .await
         .unwrap();
@@ -369,7 +369,7 @@ async fn ordinary_report_projects_and_attributes_takes_in_the_configured_zone() 
         household_id: 72001,
         request_id: "synthetic-zone-projection".into(),
     };
-    let tenant = begin(&app.fixture.runtime, &scope).await.unwrap();
+    let tenant = begin(&app.fixture.runtime, &scope, None).await.unwrap();
     let people = reports::accessible_people(&tenant, PersonAccess::View)
         .await
         .unwrap();
@@ -423,7 +423,7 @@ async fn ordinary_report_forecasts_each_taper_step_at_its_own_dose() {
         household_id: 72001,
         request_id: "synthetic-taper-forecast".into(),
     };
-    let tenant = begin(&app.fixture.runtime, &scope).await.unwrap();
+    let tenant = begin(&app.fixture.runtime, &scope, None).await.unwrap();
     let people = reports::accessible_people(&tenant, PersonAccess::View)
         .await
         .unwrap();
@@ -466,7 +466,7 @@ async fn ordinary_report_compliance_includes_cycle_expected_and_taken() {
         household_id: 72001,
         request_id: "synthetic-cycle-summary".into(),
     };
-    let tenant = begin(&app.fixture.runtime, &scope).await.unwrap();
+    let tenant = begin(&app.fixture.runtime, &scope, None).await.unwrap();
     let people = reports::accessible_people(&tenant, PersonAccess::View)
         .await
         .unwrap();
@@ -503,7 +503,7 @@ async fn report_projection_does_not_suppress_a_take_linked_to_another_source() {
         household_id: 72001,
         request_id: "synthetic-cross-source-report".into(),
     };
-    let tenant = begin(&app.fixture.runtime, &scope).await.unwrap();
+    let tenant = begin(&app.fixture.runtime, &scope, None).await.unwrap();
     let people = reports::accessible_people(&tenant, PersonAccess::View)
         .await
         .unwrap();
@@ -599,7 +599,7 @@ async fn ordinary_report_counts_daily_doses_from_each_taper_steps_times() {
         household_id: 72001,
         request_id: "synthetic-taper-times".into(),
     };
-    let tenant = begin(&app.fixture.runtime, &scope).await.unwrap();
+    let tenant = begin(&app.fixture.runtime, &scope, None).await.unwrap();
     let people = reports::accessible_people(&tenant, PersonAccess::View)
         .await
         .unwrap();

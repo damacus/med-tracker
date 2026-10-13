@@ -63,9 +63,8 @@ pub(super) fn source_from_schedule(value: schedule::Model) -> Source {
     }
 }
 
-pub(crate) fn app_zone() -> chrono_tz::Tz {
-    std::env::var("TZ")
-        .ok()
+pub(crate) fn app_zone(settings: Option<&Value>) -> chrono_tz::Tz {
+    crate::models::settings::text(settings, &["time_zone"])
         .and_then(|value| value.parse().ok())
         .unwrap_or(chrono_tz::UTC)
 }

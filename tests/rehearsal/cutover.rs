@@ -28,7 +28,7 @@ async fn take(
         household_id,
         request_id: "cutover-dose".into(),
     };
-    let tenant = access::begin(runtime, &scope).await?;
+    let tenant = access::begin(runtime, &scope, None).await?;
     let result = doses::execute(
         &tenant,
         Command::Take(Take {

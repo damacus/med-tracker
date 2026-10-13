@@ -62,7 +62,13 @@ pub(super) async fn verify_operation(
     let (_, session) = ctx.require_authoritative_session(request).await?;
     let transaction = store.transaction().await?;
     store.lock_security_session(&transaction, &session).await?;
-    let response = check_code(&transaction, clinical_id(&session.user_id)?, code).await?;
+    let response = check_code(
+        &transaction,
+        clinical_id(&session.user_id)?,
+        code,
+        store.settings(),
+    )
+    .await?;
     transaction.commit().await.map_err(database_error)?;
     Ok(response)
 }
@@ -91,7 +97,8 @@ pub(super) async fn verify(
         .map_err(database_error)?
         .ok_or(AuthError::Unauthenticated)?;
     transaction.query_one_raw(statement("SELECT id FROM public.identity_sessions WHERE token=$1 AND account_id=$2 AND active AND purpose='enrolment' AND expires_at>clock_timestamp() AND additional_fields->>'legacy_factor_pending'='true'", [token_digest(&session.token).into(), account_id.into()])).await.map_err(database_error)?.ok_or(AuthError::Unauthenticated)?;
-    if let Some(mut rejected) = check_code(&transaction, account_id, code).await? {
+    if let Some(mut rejected) = check_code(&transaction, account_id, code, store.settings()).await?
+    {
         if rejected.status == 429 {
             ctx.database.delete_session(&session.token).await?;
             super::request::persist_totp_failure(429)?;
@@ -130,6 +137,7 @@ async fn check_code(
     transaction: &sea_orm::DatabaseTransaction,
     account_id: i64,
     code: &str,
+    settings: Option<&serde_json::Value>,
 ) -> AuthResult<Option<AuthResponse>> {
     let factor = LegacyFactor::find_by_statement(statement("SELECT k.key,k.last_use,k.num_failures,o.legacy_totp_locked_until FROM public.account_otp_keys k JOIN public.identity_onboarding o ON o.account_id=k.id WHERE k.id=$1 AND o.legacy_totp_disabled_at IS NULL FOR UPDATE OF k", [account_id.into()])).one(transaction).await.map_err(database_error)?.ok_or(AuthError::InvalidCredentials)?;
     let now = chrono::Utc::now();
@@ -150,14 +158,14 @@ async fn check_code(
             .map_err(database_error)?;
         transaction.execute_raw(statement("UPDATE public.identity_onboarding SET legacy_totp_locked_until=NULL WHERE account_id=$1", [account_id.into()])).await.map_err(database_error)?;
     }
-    let current = std::env::var("RAILS_SECRET_KEY_BASE")
-        .map_err(|_| AuthError::internal("Retained authenticator configuration unavailable"))?;
-    let old = std::env::var("RAILS_OLD_SECRET_KEY_BASE").ok();
+    let current = crate::models::settings::text(settings, &["rails_compat", "secret_key_base"])
+        .ok_or_else(|| AuthError::internal("Retained authenticator configuration unavailable"))?;
+    let old = crate::models::settings::text(settings, &["rails_compat", "old_secret_key_base"]);
     let verified = if code.len() <= 128 {
         crate::models::identity::totp::verify_rodauth_otp(
             &factor.key,
             Some(current.as_bytes()),
-            old.as_deref().map(str::as_bytes),
+            old.map(str::as_bytes),
             code,
             now.timestamp(),
             factor.last_use.and_utc().timestamp(),

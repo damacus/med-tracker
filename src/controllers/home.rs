@@ -22,7 +22,7 @@ pub async fn index(
     if let Ok(session) = session {
         auth_notice = session.get::<String>("auth_notice");
         session.remove("auth_notice");
-        match browser::authenticate(&ctx.db, &session).await {
+        match browser::authenticate(&ctx.db, &session, ctx.config.settings.as_ref()).await {
             Ok(principal) => match principal.households(&ctx.db).await {
                 Ok(value) => {
                     households = value;

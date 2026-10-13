@@ -17,14 +17,18 @@ pub struct Forecast {
 pub async fn for_medications(
     db: &DatabaseTransaction,
     medications: &[medication::Model],
+    settings: Option<&serde_json::Value>,
 ) -> Result<HashMap<i64, Forecast>, DbErr> {
     if medications.is_empty() {
         return Ok(HashMap::new());
     }
     let ids: Vec<i64> = medications.iter().map(|medication| medication.id).collect();
     let mut daily_rates = HashMap::<i64, Decimal>::new();
-    let today =
-        date_in_zone(Utc::now(), std::env::var("TZ").ok().as_deref()).map_err(DbErr::Custom)?;
+    let today = date_in_zone(
+        Utc::now(),
+        crate::models::settings::text(settings, &["time_zone"]),
+    )
+    .map_err(DbErr::Custom)?;
     let mut last_schedule_id = 0;
     loop {
         let rows = schedule::Entity::find()

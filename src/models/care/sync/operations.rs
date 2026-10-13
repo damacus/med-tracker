@@ -198,7 +198,7 @@ pub async fn apply(
                     tenant,
                     Value::Object(operation.attributes.clone()),
                     chrono::Utc::now()
-                        .with_timezone(&doses::app_zone())
+                        .with_timezone(&doses::app_zone(tenant.settings()))
                         .date_naive(),
                     attribution,
                 )
@@ -213,7 +213,7 @@ pub async fn apply(
                     id(operation)?,
                     Value::Object(operation.attributes.clone()),
                     chrono::Utc::now()
-                        .with_timezone(&doses::app_zone())
+                        .with_timezone(&doses::app_zone(tenant.settings()))
                         .date_naive(),
                     attribution,
                 )
