@@ -13,12 +13,15 @@ document.querySelector('[data-passkey-login]')?.addEventListener('click', async 
   const button = event.currentTarget;
   const source = document.querySelector('form[action="/login"]');
   button.disabled = true;
+  let transitionStarted = false;
   try {
     const optionsResponse = await fetch('/api/auth/passkey/generate-authenticate-options', { credentials: 'same-origin', cache: 'no-store' });
     if (!optionsResponse.ok) throw Error('Unavailable');
     const options = await optionsResponse.json();
     const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(options.publicKey);
     const credential = await navigator.credentials.get({ publicKey });
+    await window.medTrackerBeginPushTransition();
+    transitionStarted = true;
     const response = await fetch('/api/auth/passkey/verify-authentication', {
       method: 'POST', credentials: 'same-origin', cache: 'no-store',
       headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(credential.toJSON()),
@@ -26,6 +29,7 @@ document.querySelector('[data-passkey-login]')?.addEventListener('click', async 
     if (!response.ok) throw Error('Unavailable');
     window.location.assign('/auth/passkey/complete');
   } catch {
+    if (transitionStarted) await window.medTrackerEndPushTransition().catch(() => {});
     showPasskeyError(source);
     button.disabled = false;
   }

@@ -28,6 +28,88 @@ The public and private keys must belong to the same VAPID key pair. The private
 key is a secret. A missing public key prevents the browser from creating a
 working subscription.
 
+### Loco browser reminder worker
+
+The root Loco application reads `MEDTRACKER_WEB_PUSH_PRIVATE_KEY` and
+`MEDTRACKER_WEB_PUSH_SUBJECT`. Keep the VAPID signing key consistent across web
+and worker replicas. Apply the root PostgreSQL migrations before starting the
+worker; `notification_events` and `notification_deliveries` hold reminder intent
+and each device's durable outcome. The root `config/production.yaml` schedules
+`browser-reminders` once per minute, using the existing PostgreSQL queue. Run
+`task worker LOCO_ENV=production` in the approved worker environment. Do not
+start a second scheduler for the same deployment by accident.
+
+The scheduler rediscovers due and missed reminders from the preceding hour and
+low-stock crossings from the preceding 24 hours. It also queues accounts with
+pending or sending deliveries, so retry drain does not require rediscovery of
+the original intent. The worker uses its current clock and checks access,
+subscription ownership, preferences and dose or stock relevance before each
+device attempt. Due and missed deliveries expire one hour after their intended
+notification time; the missed time includes the 30-minute grace period.
+Low-stock deliveries expire 24 hours after threshold crossing.
+
+Every poll also performs terminal cleanup within the existing restricted
+household database role, including inactive households and former recipients.
+It visits households in batches of 100 and changes at most 100 outstanding
+deliveries per household per poll; it does not scan terminal delivery history.
+Revoked memberships, closed accounts and inactive households invalidate pending
+deliveries. Sending claims at least 120 seconds old become `uncertain`, even
+when the former recipient can no longer authenticate. Cleanup and its audit
+commit together. It cannot send, create retries or revive terminal rows.
+Completion still requires recipient access: if access disappears while a send
+is in flight, the known provider result cannot be recorded through that path
+and the claim becomes `uncertain` on cleanup. Restoring access does not resend it.
+
+Browser payloads identify their owning account. Before displaying a reminder or
+opening its destination, the service worker fetches the authenticated profile
+push status and requires that account to match. This check has a three-second
+timeout and fails closed while signed out or offline. An account transition
+waits for any in-flight display, closes notifications already shown by this
+browser, and pauses new display while sign-in or sign-out completes. The page
+checks the active worker protocol and upgrades an old worker before starting
+the transition. The upgrade has a ten-second deadline and activates across
+open tabs, including when another worker is already waiting. Activation closes
+retained notifications after the old worker's in-flight events finish and
+claims the open tabs. The page then waits up to five seconds for the compatible
+worker's acknowledgement. If the worker cannot
+confirm cleanup, the authentication form stays on the page with retry guidance.
+The transition belongs to the initiating tab, survives a service-worker
+restart, and expires after 30 minutes if that tab never completes navigation.
+This coordinates browser display only; authenticated session checks and
+subscription ownership remain server-side. A transition lasting longer than
+30 minutes can resume browser delivery, still subject to the current-account
+check.
+
+Each device has its own row. `accepted` means the push service accepted the
+request; it does not prove the browser displayed it. `pending` with outcome
+`confirmed_rejection` is retryable after 1, 5, 15 and 30 minutes, subject to
+`Retry-After` and the deadline; no device is sent more than five times.
+`uncertain` means transport acceptance could not be determined and is never
+retried automatically. `expired` removes only the affected subscription;
+`permanent` is terminal. `invalid` records that a deadline, eligibility check
+or retry limit prevented another attempt. A sending claim stranded for at least
+120 seconds becomes `uncertain` on the next drain. Do not reset terminal
+rows or manually replay an uncertain send: the provider may already have
+accepted it.
+
+For safe inspection, use an approved read-only database session and aggregate
+only status, bounded outcome and age. For example:
+
+```sql
+SELECT status, outcome, count(*)
+FROM notification_deliveries
+GROUP BY status, outcome
+ORDER BY status, outcome;
+```
+
+Check the minute scheduler and worker are running, queue health, the count of
+old `sending` rows, and whether pending rows are past `next_attempt_at`.
+Restart the existing worker under the normal process supervisor to recover a
+stalled queue; the next drain classifies old claims without replaying them.
+Investigate persistent `pending` or `sending` counts before changing the
+schedule. Never print subscription endpoints, keys, credentials, payloads,
+event metadata, person names or medication text in logs or support output.
+
 The same values can be stored in encrypted credentials:
 
 ```yaml
@@ -99,6 +181,11 @@ Provider failures do not expose provider response bodies in application logs.
 Operational events use bounded channel, provider, stage, and outcome values.
 
 ## Verification
+
+Physical browser receipt, operating-system tray behaviour, iPhone Home Screen
+delivery and release-image trust/static-link checks remain tracked in
+[issue #2559](https://github.com/damacus/med-tracker/issues/2559). Local browser
+automation and provider acceptance do not close those gates.
 
 Use test accounts and devices that contain no real health data.
 

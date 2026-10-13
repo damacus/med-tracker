@@ -30,3 +30,28 @@ test('the next check reuses the app with fresh clinical and authentication data'
   await page.getByRole('button', { name: 'Mark as ordered', exact: true }).click();
   expect(await careFixture.orderProbe()).toMatchObject({ status: 1, ordered_audits: 1, supply: '8.00' });
 });
+
+test('reset removes process-local authentication throttles before the next browser journey', async ({ page, careFixture }) => {
+  await page.goto('/login');
+  const authenticity_token = await page.locator('input[name="authenticity_token"]').inputValue();
+  let status;
+  for (let attempt = 0; attempt < 101; attempt += 1) {
+    const response = await page.request.post('/login', {
+      headers: { Origin: careFixture.origin },
+      form: { authenticity_token, email: 'unknown-isolation@example.test', password: 'incorrect synthetic password' },
+      maxRedirects: 0
+    });
+    status = response.status();
+    expect([400, 401, 429]).toContain(status);
+    if (attempt % 5 === 4) await careFixture.expireAuthenticationLimits();
+  }
+  expect(status).toBe(429);
+  await careFixture.reset();
+  await page.goto('/login');
+  await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
+  await page.getByLabel('Password', { exact: true }).fill('password');
+  const response = page.waitForResponse(value => value.url().endsWith('/login') && value.request().method() === 'POST');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  expect((await response).status()).toBe(303);
+  await expect(page).toHaveURL('/');
+});

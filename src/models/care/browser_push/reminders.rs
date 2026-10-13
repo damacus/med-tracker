@@ -1,16 +1,21 @@
-use super::{Delivery, Service, audit};
+use super::{Service, audit};
+mod cleanup;
+mod delivery;
 use crate::models::{
     access::{self, HouseholdScope, TenantTransaction},
     care::{dose_occurrences, push_subscriptions},
-    entities::{account, household, medication, push_subscription},
+    entities::{account, household, medication},
     errors::OperationError,
     notification_preferences,
 };
-use chrono::{DateTime, Timelike, Utc};
+use chrono::{DateTime, NaiveDateTime, NaiveTime, Utc};
+pub(crate) use cleanup::terminal_cleanup;
+pub use delivery::{drain_candidates, drain_pending};
 use loco_rs::app::AppContext;
 use loco_rs::model::TenantQueryExt;
 use sea_orm::{ColumnTrait, ConnectionTrait, DbBackend, EntityTrait, QueryFilter, Statement};
 use serde_json::{Value, json};
+use std::collections::BTreeSet;
 
 #[derive(PartialEq)]
 struct Intent {
@@ -19,6 +24,32 @@ struct Intent {
     key: String,
     legacy_key: String,
     payload: Value,
+    intended_at: DateTime<Utc>,
+    expires_at: DateTime<Utc>,
+}
+
+fn due_period_instants(
+    zone: chrono_tz::Tz,
+    start: DateTime<Utc>,
+    end: DateTime<Utc>,
+    times: [Option<NaiveTime>; 4],
+) -> BTreeSet<DateTime<Utc>> {
+    let mut instants = BTreeSet::new();
+    let mut date = start.with_timezone(&zone).date_naive();
+    while date <= end.with_timezone(&zone).date_naive() {
+        for time in times.into_iter().flatten() {
+            let value = time.format("%H:%M").to_string();
+            if let Some(intended) = dose_occurrences::scheduled_time_in_zone(date, &value, zone) {
+                let intended = intended.and_utc();
+                if start < intended && intended <= end {
+                    instants.insert(intended);
+                }
+            }
+        }
+        let Some(next) = date.succ_opt() else { break };
+        date = next;
+    }
+    instants
 }
 
 async fn plans(
@@ -45,7 +76,8 @@ async fn plans(
     let zone = crate::models::identity::time_zone::preferred(&owner.preferences)
         .map_err(|_| OperationError::Unavailable)?;
     let local = now.with_timezone(&zone);
-    let grace = now - chrono::Duration::minutes(30);
+    let earliest_due = now - chrono::Duration::hours(1);
+    let earliest_scheduled = earliest_due - chrono::Duration::minutes(30);
     let managed = notification_preferences::managed::read(tenant).await?;
     let mut subjects = vec![person.id];
     subjects.extend(
@@ -59,7 +91,7 @@ async fn plans(
         dose_occurrences::projected_for_report(
             tenant,
             &subjects,
-            grace.with_timezone(&zone).date_naive(),
+            earliest_scheduled.with_timezone(&zone).date_naive(),
             local.date_naive(),
         ),
     )
@@ -70,24 +102,43 @@ async fn plans(
         preference.evening_time,
         preference.night_time,
     ];
-    let period_due = times
-        .into_iter()
-        .flatten()
-        .any(|time| time.hour() == local.hour() && time.minute() == local.minute());
-    let due = occurrences
-        .iter()
-        .filter(|occurrence| {
-            occurrence.person_id == person.id
-                && occurrence.expected
-                && occurrence.outcome == "open"
-                && ((period_due && occurrence.window_end >= local.date_naive())
-                    || occurrence.scheduled_at.is_some_and(|time| {
-                        time.and_utc().timestamp() / 60 == now.timestamp() / 60
-                    }))
-        })
-        .collect::<Vec<_>>();
+    let period_times = due_period_instants(zone, earliest_due, now, times);
+    let mut due_times = period_times.clone();
+    for occurrence in &occurrences {
+        if occurrence.person_id == person.id
+            && occurrence.expected
+            && occurrence.outcome == "open"
+            && let Some(intended) = occurrence.scheduled_at.map(|value| value.and_utc())
+            && earliest_due < intended
+            && intended <= now
+        {
+            due_times.insert(intended);
+        }
+    }
     let mut intents = Vec::new();
-    if preference.dose_due_enabled && !due.is_empty() {
+    for intended_at in due_times {
+        if !preference.dose_due_enabled {
+            break;
+        }
+        let intended_local = intended_at.with_timezone(&zone);
+        let period_due = period_times.contains(&intended_at);
+        let due = occurrences
+            .iter()
+            .filter(|occurrence| {
+                occurrence.person_id == person.id
+                    && occurrence.expected
+                    && occurrence.outcome == "open"
+                    && ((period_due
+                        && occurrence.window_end >= intended_local.date_naive()
+                        && occurrence.window_start <= intended_local.date_naive())
+                        || occurrence
+                            .scheduled_at
+                            .is_some_and(|time| time.and_utc() == intended_at))
+            })
+            .collect::<Vec<_>>();
+        if due.is_empty() {
+            continue;
+        }
         let body = if preference.private_text_enabled {
             "A dose is due.".into()
         } else {
@@ -112,23 +163,20 @@ async fn plans(
             names.dedup();
             format!(
                 "{} medications: {}",
-                local.format("%H:%M"),
+                intended_local.format("%H:%M"),
                 names.join(", ")
             )
         };
-        let stamp = now
-            .with_second(0)
-            .and_then(|time| time.with_nanosecond(0))
-            .ok_or(OperationError::Unavailable)?
-            .format("%Y-%m-%dT%H:%M:%SZ")
-            .to_string();
+        let stamp = intended_at.format("%Y-%m-%dT%H:%M:%SZ").to_string();
         let legacy_key = format!("dose-due:{}:{stamp}", person.id);
         intents.push(Intent {
         kind: "dose_due",
         person_id: person.id,
         key: format!("browser:{}:{legacy_key}", owner.id),
         legacy_key,
-        payload: json!({"title":"Medication reminder","body":body,"path":format!("/households/{}/dashboard", household.slug)}),
+        payload: json!({"title":"Medication reminder","body":body,"path":format!("/households/{}/dashboard", household.slug),"account_id":owner.id.to_string()}),
+        intended_at,
+        expires_at: intended_at + chrono::Duration::hours(1),
     });
     }
     if preference.missed_dose_enabled {
@@ -136,10 +184,10 @@ async fn plans(
             .iter()
             .filter(|occurrence| occurrence.expected && occurrence.outcome == "open")
         {
-            let Some(scheduled) = occurrence
-                .scheduled_at
-                .filter(|time| time.and_utc().timestamp() / 60 == grace.timestamp() / 60)
-            else {
+            let Some(scheduled) = occurrence.scheduled_at.filter(|time| {
+                let intended = time.and_utc() + chrono::Duration::minutes(30);
+                intended > earliest_due && intended <= now
+            }) else {
                 continue;
             };
             let scheduled = scheduled.and_utc().with_timezone(&zone);
@@ -168,17 +216,23 @@ async fn plans(
                 person_id: occurrence.person_id,
                 key: format!("browser:{}:{legacy_key}", owner.id),
                 legacy_key,
-                payload: json!({"title":"Medication reminder","body":body,"path":format!("/households/{}/dashboard", household.slug)}),
+                payload: json!({"title":"Medication reminder","body":body,"path":format!("/households/{}/dashboard", household.slug),"account_id":owner.id.to_string()}),
+                intended_at: scheduled.with_timezone(&Utc) + chrono::Duration::minutes(30),
+                expires_at: scheduled.with_timezone(&Utc) + chrono::Duration::minutes(90),
             });
         }
     }
     if preference.low_stock_enabled {
         let rows = tenant.transaction().query_all_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-            "SELECT e.event_key FROM notification_events e JOIN medications m ON m.household_id=e.household_id AND m.id=(e.metadata->>'medication_id')::bigint WHERE e.household_id=$1 AND e.person_id=$2 AND e.event_type='browser_low_stock_pending' AND (e.metadata->>'account_id')::bigint=$3 AND e.created_at>timezone('UTC',clock_timestamp())-interval '24 hours' AND m.current_supply<=m.reorder_threshold AND (EXISTS(SELECT 1 FROM person_medications pm WHERE pm.household_id=e.household_id AND pm.person_id=e.person_id AND pm.medication_id=m.id AND pm.active) OR EXISTS(SELECT 1 FROM schedules s WHERE s.household_id=e.household_id AND s.person_id=e.person_id AND s.medication_id=m.id AND s.active))",
-            [tenant.scope().household_id.into(),person.id.into(),owner.id.into()])).await?;
+            "SELECT e.event_key,e.created_at FROM notification_events e JOIN medications m ON m.household_id=e.household_id AND m.id=(e.metadata->>'medication_id')::bigint WHERE e.household_id=$1 AND e.person_id=$2 AND e.event_type='browser_low_stock_pending' AND (e.metadata->>'account_id')::bigint=$3 AND e.created_at>$4 AND e.created_at<=$5 AND m.current_supply<=m.reorder_threshold AND (EXISTS(SELECT 1 FROM person_medications pm WHERE pm.household_id=e.household_id AND pm.person_id=e.person_id AND pm.medication_id=m.id AND pm.active) OR EXISTS(SELECT 1 FROM schedules s WHERE s.household_id=e.household_id AND s.person_id=e.person_id AND s.medication_id=m.id AND s.active))",
+            [tenant.scope().household_id.into(),person.id.into(),owner.id.into(),(now-chrono::Duration::hours(24)).naive_utc().into(),now.naive_utc().into()])).await?;
         for row in rows {
             let legacy_key: String = row.try_get("", "event_key")?;
-            intents.push(Intent { kind: "low_stock", person_id: person.id, key: format!("browser:{}:{legacy_key}",owner.id), legacy_key, payload: json!({"title":"Stock reminder","body":"A medication may be running low.","path":format!("/households/{}/dashboard", household.slug)}) });
+            let intended_at = DateTime::<Utc>::from_naive_utc_and_offset(
+                row.try_get::<NaiveDateTime>("", "created_at")?,
+                Utc,
+            );
+            intents.push(Intent { kind: "low_stock", person_id: person.id, key: format!("browser:{}:{legacy_key}",owner.id), legacy_key, payload: json!({"title":"Stock reminder","body":"A medication may be running low.","path":format!("/households/{}/dashboard", household.slug),"account_id":owner.id.to_string()}), intended_at, expires_at: intended_at + chrono::Duration::hours(24) });
         }
     }
     Ok(intents)
@@ -192,98 +246,33 @@ async fn reserve(
 ) -> Result<Option<i64>, OperationError> {
     let tenant = access::begin(&ctx.db, scope).await?;
     push_subscriptions::lock_account(&tenant).await?;
-    if !plans(&tenant, now).await?.contains(intent) {
+    if !plans(&tenant, now.max(Utc::now()))
+        .await?
+        .iter()
+        .any(|current| current.key == intent.key)
+    {
         return Ok(None);
     }
     let row = tenant.transaction().query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "INSERT INTO notification_events(household_id,person_id,event_type,event_key,metadata,created_at,updated_at) SELECT $1,$2,$3,$4,$5,timezone('UTC',clock_timestamp()),timezone('UTC',clock_timestamp()) WHERE NOT EXISTS(SELECT 1 FROM notification_events WHERE household_id=$1 AND event_type=$3 AND event_key=$6) ON CONFLICT DO NOTHING RETURNING id",
-        [scope.household_id.into(),intent.person_id.into(),intent.kind.into(),intent.key.clone().into(),json!({"account_id":scope.actor.account_id,"delivery_status":"pending"}).into(),intent.legacy_key.clone().into()]
+        "INSERT INTO notification_events(household_id,person_id,event_type,event_key,metadata,intended_at,expires_at,created_at,updated_at) SELECT $1,$2,$3,$4,$5,$7,$8,timezone('UTC',clock_timestamp()),timezone('UTC',clock_timestamp()) WHERE NOT EXISTS(SELECT 1 FROM notification_events WHERE household_id=$1 AND event_type=$3 AND event_key=$6) ON CONFLICT DO NOTHING RETURNING id",
+        [scope.household_id.into(),intent.person_id.into(),intent.kind.into(),intent.key.clone().into(),json!({"account_id":scope.actor.account_id,"delivery_status":"pending"}).into(),intent.legacy_key.clone().into(),intent.intended_at.naive_utc().into(),intent.expires_at.naive_utc().into()]
     )).await?;
-    let created = row.is_some();
-    let row = match row {
-        Some(row) => Some(row),
-        None => tenant.transaction().query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-            "SELECT id FROM notification_events WHERE household_id=$1 AND person_id=$2 AND event_type=$3 AND event_key=$4 AND metadata->>'account_id'=$5 AND metadata->>'delivery_status'='pending' AND NOT EXISTS(SELECT 1 FROM notification_events WHERE household_id=$1 AND event_type=$3 AND event_key=$6)",
-            [scope.household_id.into(),intent.person_id.into(),intent.kind.into(),intent.key.clone().into(),scope.actor.account_id.to_string().into(),intent.legacy_key.clone().into()]
-        )).await?,
-    };
     let Some(row) = row else {
         return Ok(None);
     };
-    let id = row.try_get("", "id")?;
-    if created {
-        audit(
-            &tenant,
-            "reminder.requested",
-            json!({"notification_event_id":id,"kind":intent.kind}),
-        )
-        .await?;
-    }
-    tenant.commit().await?;
-    Ok(Some(id))
-}
-
-async fn deliver(
-    ctx: &AppContext,
-    scope: &HouseholdScope,
-    service: &Service,
-    now: DateTime<Utc>,
-    intent: &Intent,
-    event_id: i64,
-) -> Result<bool, OperationError> {
-    let tenant = access::begin(&ctx.db, scope).await?;
-    push_subscriptions::lock_account(&tenant).await?;
-    let pending = tenant.transaction().query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "SELECT id FROM notification_events WHERE id=$1 AND household_id=$2 AND metadata->>'account_id'=$3 AND metadata->>'delivery_status'='pending'",
-        [event_id.into(),scope.household_id.into(),scope.actor.account_id.to_string().into()]
-    )).await?;
-    if pending.is_none() {
-        return Ok(false);
-    }
-    let eligible = plans(&tenant, now).await?.contains(intent);
-    let subscriptions = if eligible {
-        push_subscription::Entity::find()
-            .filter(push_subscription::Column::AccountId.eq(scope.actor.account_id))
-            .all(tenant.transaction())
-            .await?
-    } else {
-        vec![]
-    };
-    let payload = serde_json::to_vec(&intent.payload).map_err(|_| OperationError::Unavailable)?;
-    let (mut accepted, mut expired, mut failed) = (0, 0, 0);
-    for subscription in subscriptions {
-        match service.transport.send(&subscription, &payload).await {
-            Delivery::Accepted => accepted += 1,
-            Delivery::Failed => failed += 1,
-            Delivery::Expired => {
-                expired += 1;
-                push_subscription::Entity::delete_by_id(subscription.id)
-                    .exec(tenant.transaction())
-                    .await?;
-            }
-        }
-    }
-    let status = if !eligible {
-        "ineligible"
-    } else if accepted > 0 {
-        "accepted"
-    } else if failed > 0 {
-        "failed"
-    } else {
-        "no_active_subscriptions"
-    };
+    let id: i64 = row.try_get("", "id")?;
     tenant.transaction().execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "UPDATE notification_events SET metadata=metadata||$2::jsonb,sent_at=CASE WHEN $3 THEN timezone('UTC',clock_timestamp()) ELSE NULL END,skipped_reason=CASE WHEN $3 THEN NULL ELSE $4 END,updated_at=timezone('UTC',clock_timestamp()) WHERE id=$1 AND household_id=$5",
-        [event_id.into(),json!({"delivery_status":status,"accepted":accepted,"expired":expired,"failed":failed}).into(),(accepted>0).into(),status.into(),scope.household_id.into()]
-    )).await?;
+            "INSERT INTO notification_deliveries(notification_event_id,subscription_id,household_id,account_id,next_attempt_at) SELECT $1,id,$2,$3,$4 FROM push_subscriptions WHERE account_id=$3",
+            [id.into(),scope.household_id.into(),scope.actor.account_id.into(),intent.intended_at.naive_utc().into()]
+        )).await?;
     audit(
         &tenant,
-        "reminder.completed",
-        json!({"notification_event_id":event_id,"status":status}),
+        "reminder.requested",
+        json!({"notification_event_id":id,"kind":intent.kind}),
     )
     .await?;
     tenant.commit().await?;
-    Ok(accepted > 0)
+    Ok(Some(id))
 }
 
 pub async fn deliver_account(
@@ -291,7 +280,14 @@ pub async fn deliver_account(
     scope: &HouseholdScope,
     now: DateTime<Utc>,
 ) -> Result<usize, OperationError> {
-    let Some(service) = ctx.shared_store.get::<Service>() else {
+    terminal_cleanup(
+        ctx,
+        scope.household_id,
+        Some(scope.actor.account_id),
+        Utc::now(),
+    )
+    .await?;
+    let Some(_service) = ctx.shared_store.get::<Service>() else {
         return Ok(0);
     };
     let tenant = access::begin(&ctx.db, scope).await?;
@@ -299,9 +295,26 @@ pub async fn deliver_account(
     tenant.commit().await?;
     let mut delivered = 0;
     for intent in intents {
-        if let Some(id) = reserve(ctx, scope, now, &intent).await? {
-            delivered += usize::from(deliver(ctx, scope, &service, now, &intent, id).await?);
-        }
+        reserve(ctx, scope, now, &intent).await?;
     }
+    delivered += drain_pending(ctx, scope, Utc::now()).await?;
     Ok(delivered)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::{NaiveDate, NaiveTime};
+
+    #[test]
+    fn saved_period_uses_occurrence_dst_gap_instant() {
+        let zone = chrono_tz::America::New_York;
+        let date = NaiveDate::from_ymd_opt(2026, 3, 8).unwrap();
+        let start = date.and_hms_opt(6, 0, 0).unwrap().and_utc();
+        let end = date.and_hms_opt(8, 0, 0).unwrap().and_utc();
+        let time = NaiveTime::from_hms_opt(2, 30, 0).unwrap();
+        let instants = due_period_instants(zone, start, end, [Some(time), None, None, None]);
+        assert_eq!(instants.len(), 1);
+        assert!(instants.contains(&date.and_hms_opt(7, 30, 0).unwrap().and_utc()));
+    }
 }

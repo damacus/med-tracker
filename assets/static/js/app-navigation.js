@@ -1,5 +1,87 @@
 (() => {
   let installed = false;
+  const authPaths = new Set(['/login', '/logout', '/recovery-login', '/auth/totp', '/auth/zitadel']);
+  const transitionKey = 'medtracker.push.transition';
+  function workerMessage(worker, type, id, timeoutMs = 5000) {
+    return new Promise((resolve, reject) => {
+      const channel = new MessageChannel();
+      const timeout = setTimeout(() => { channel.port1.close(); reject(Error('Notification transition timed out')); }, timeoutMs);
+      channel.port1.onmessage = event => {
+        clearTimeout(timeout);
+        channel.port1.close();
+        if (event.data?.ok) resolve(event.data);
+        else reject(Error('Notification transition failed'));
+      };
+      worker.postMessage({ type, id }, [channel.port2]);
+    });
+  }
+  async function closeNotifications(registration) {
+    (await registration?.getNotifications?.())?.forEach(notification => notification.close());
+  }
+  async function compatibleRegistration() {
+    const registration = await navigator.serviceWorker?.getRegistration('/');
+    if (!registration?.active) return registration;
+    try {
+      const status = await workerMessage(registration.active, 'auth-transition-status', undefined, 250);
+      if (status.protocol === 1 && registration.active.state === 'activated') return registration;
+    } catch {}
+    let timer;
+    const deadline = Date.now() + 10000;
+    try {
+      await Promise.race([
+        registration.update(),
+        new Promise((_, reject) => { timer = setTimeout(() => reject(Error('Notification worker upgrade timed out')), 10000); }),
+      ]);
+      while (registration.installing || registration.waiting || registration.active?.state !== 'activated') {
+        if (Date.now() >= deadline) throw Error('Notification worker upgrade timed out');
+        registration.waiting?.postMessage({ type: 'activate' });
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+      if (Date.now() >= deadline) throw Error('Notification worker upgrade timed out');
+      const status = await workerMessage(registration.active, 'auth-transition-status', undefined, deadline - Date.now());
+      if (status.protocol !== 1) throw Error('Notification worker is incompatible');
+      return registration;
+    } finally { clearTimeout(timer); }
+  }
+  async function finishAuthTransition() {
+    const id = sessionStorage.getItem(transitionKey);
+    if (!id) return;
+    const registration = await compatibleRegistration();
+    if (!registration?.active) { sessionStorage.removeItem(transitionKey); return; }
+    const status = await workerMessage(registration.active, 'auth-transition-status');
+    if (status.id !== id) { sessionStorage.removeItem(transitionKey); return; }
+    await closeNotifications(registration);
+    await workerMessage(registration.active, 'auth-transition-end', id);
+    sessionStorage.removeItem(transitionKey);
+  }
+  const ready = compatibleRegistration().then(finishAuthTransition).catch(() => {});
+  async function beginAuthTransition() {
+    await ready;
+    const registration = await compatibleRegistration();
+    if (registration?.active) {
+      const id = sessionStorage.getItem(transitionKey) || crypto.randomUUID();
+      sessionStorage.setItem(transitionKey, id);
+      await workerMessage(registration.active, 'auth-transition-begin', id);
+    }
+    await closeNotifications(registration);
+  }
+  window.medTrackerBeginPushTransition = beginAuthTransition;
+  window.medTrackerEndPushTransition = finishAuthTransition;
+  document.addEventListener('submit', event => {
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement) || !authPaths.has(new URL(form.action).pathname)) return;
+    event.preventDefault();
+    void (async () => {
+      try {
+        await beginAuthTransition();
+      } catch {
+        window.alert('Could not update or clear browser notifications. Check your connection and retry signing in or out.');
+        return;
+      }
+      if (!form.isConnected) document.body.append(form);
+      HTMLFormElement.prototype.submit.call(form);
+    })();
+  }, true);
   const element = (tag, text, className) => {
     const node = document.createElement(tag);
     if (text) node.textContent = text;

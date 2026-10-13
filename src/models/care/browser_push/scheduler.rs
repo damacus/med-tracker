@@ -11,7 +11,8 @@ use loco_rs::{
     task::{Task, TaskInfo, Vars},
 };
 use sea_orm::{
-    ColumnTrait, ConnectionTrait, DbBackend, EntityTrait, QueryFilter, Statement, TransactionTrait,
+    ColumnTrait, ConnectionTrait, DatabaseTransaction, DbBackend, EntityTrait, QueryFilter,
+    QueryOrder, QuerySelect, Statement, TransactionTrait,
 };
 use serde::{Deserialize, Serialize};
 
@@ -24,6 +25,19 @@ pub struct ReminderRun {
 
 pub struct ReminderWorker {
     ctx: AppContext,
+}
+
+pub(crate) async fn household_transaction(
+    ctx: &AppContext,
+    household_id: i64,
+) -> Result<DatabaseTransaction, OperationError> {
+    let transaction = ctx.db.begin().await?;
+    transaction
+        .execute_unprepared("SET LOCAL ROLE med_tracker_app")
+        .await?;
+    transaction.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+        "SELECT set_config('med_tracker.current_household_id',$1,true),set_config('med_tracker.current_account_id','',true),set_config('med_tracker.current_membership_id','',true),set_config('med_tracker.current_invitation_token_digest','',true)", [household_id.to_string().into()])).await?;
+    Ok(transaction)
 }
 
 #[async_trait::async_trait]
@@ -40,7 +54,7 @@ impl BackgroundWorker<ReminderRun> for ReminderWorker {
             household_id: run.household_id,
             request_id: format!("browser-reminders:{}", run.at.timestamp()),
         };
-        match reminders::deliver_account(&self.ctx, &scope, run.at).await {
+        match reminders::deliver_account(&self.ctx, &scope, Utc::now()).await {
             Ok(_)
             | Err(
                 OperationError::Forbidden
@@ -56,29 +70,36 @@ pub async fn recipients(
     ctx: &AppContext,
     at: DateTime<Utc>,
 ) -> Result<Vec<ReminderRun>, OperationError> {
-    let households = household::Entity::find()
-        .filter(household::Column::Status.eq("active"))
-        .filter(household::Column::LifecycleState.eq("active"))
-        .all(&ctx.db)
-        .await?;
     let mut runs = Vec::new();
-    for household in households {
-        let transaction = ctx.db.begin().await?;
-        transaction
-            .execute_unprepared("SET LOCAL ROLE med_tracker_app")
+    let mut after = 0;
+    loop {
+        let households = household::Entity::find()
+            .filter(household::Column::Id.gt(after))
+            .order_by_asc(household::Column::Id)
+            .limit(100)
+            .all(&ctx.db)
             .await?;
-        transaction.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-            "SELECT set_config('med_tracker.current_household_id',$1,true),set_config('med_tracker.current_account_id','',true),set_config('med_tracker.current_membership_id','',true),set_config('med_tracker.current_invitation_token_digest','',true)", [household.id.to_string().into()])).await?;
-        let rows = transaction.query_all_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-            "SELECT m.account_id FROM household_memberships m JOIN notification_preferences p ON p.person_id=m.person_id AND p.household_id=m.household_id JOIN accounts a ON a.id=m.account_id WHERE m.household_id=$1 AND m.status='active' AND m.revoked_at IS NULL AND p.enabled AND a.status=2", [household.id.into()])).await?;
-        for row in rows {
-            runs.push(ReminderRun {
-                account_id: row.try_get("", "account_id")?,
-                household_id: household.id,
-                at,
-            });
+        if households.is_empty() {
+            break;
         }
-        transaction.commit().await?;
+        for household in households {
+            after = household.id;
+            reminders::terminal_cleanup(ctx, household.id, None, at).await?;
+            if household.status != "active" || household.lifecycle_state != "active" {
+                continue;
+            }
+            let transaction = household_transaction(ctx, household.id).await?;
+            let rows = transaction.query_all_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+            "SELECT DISTINCT m.account_id FROM household_memberships m JOIN accounts a ON a.id=m.account_id LEFT JOIN notification_preferences p ON p.person_id=m.person_id AND p.household_id=m.household_id WHERE m.household_id=$1 AND m.status='active' AND m.revoked_at IS NULL AND a.status=2 AND (p.enabled OR EXISTS (SELECT 1 FROM notification_deliveries d WHERE d.household_id=m.household_id AND d.account_id=m.account_id AND d.status IN ('pending','sending')))", [household.id.into()])).await?;
+            for row in rows {
+                runs.push(ReminderRun {
+                    account_id: row.try_get("", "account_id")?,
+                    household_id: household.id,
+                    at,
+                });
+            }
+            transaction.commit().await?;
+        }
     }
     Ok(runs)
 }
@@ -95,12 +116,12 @@ impl Task for ReminderTask {
     }
 
     async fn run(&self, ctx: &AppContext, _vars: &Vars) -> loco_rs::Result<()> {
-        if ctx.shared_store.get::<Service>().is_none() {
-            return Ok(());
-        }
         let runs = recipients(ctx, Utc::now())
             .await
             .map_err(|_| loco_rs::Error::string("Browser reminder scheduling failed"))?;
+        if ctx.shared_store.get::<Service>().is_none() {
+            return Ok(());
+        }
         for run in runs {
             ReminderWorker::perform_later(ctx, run).await?;
         }

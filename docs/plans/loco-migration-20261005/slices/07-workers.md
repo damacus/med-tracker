@@ -113,3 +113,59 @@ separate `task dev`/`task worker` processes. Failed/retrying work has observable
 
 **Done:** Every job and recurring schedule has delivery, retry, idempotency, permission, restart and
 shutdown evidence. Compilation and queue table existence alone do not satisfy this slice.
+
+## Browser notification reliability delivery — 12 October 2026
+
+Spec: the owner-approved notification plan in this session supplements the browser-first requirements above. These Tasks implement the notification subset; other W2 jobs remain separate.
+
+### Global Constraints
+
+- Due and missed alerts expire one hour after intended notification time; missed notification time is the scheduled dose time plus the existing 30-minute grace period. Low-stock expires 24 hours after threshold crossing.
+- Uncertain sends are not automatically retried. Each device has independent durable outcomes. Recheck current permissions, preferences, subscription ownership and dose/stock relevance before each attempt.
+- Reuse Loco PostgreSQL queue and maintained Web Push. No native APNs/FCM delivery or production deployment. Do not invent cryptography or a second queue.
+- Five total attempts per device, delays 1, 5, 15, 30 minutes after successive confirmed temporary failures; Retry-After is a lower bound, never exceed expiry. Ten-second transport timeout; a stranded sending claim becomes uncertain after 120 seconds.
+- Preserve public APIs and existing comments. Use TDD and project Tasks; no Rails code changes expected. Keep tenant isolation, audit rollback, privacy and current account checks.
+- One implementation writer at a time, fresh isolated-context Sol agents per task, independent task review and a final Astra concurrency/security review subject to usage policy. No nested subagents.
+- Refresh PR overlap before integration: #2541 owns proposed subscription lock-order changes; #2505 owns dashboard and shared schedule projection changes; #2540 owns current-profile API; #2528 CI tooling; #2467 dependencies. Do not duplicate their implementation.
+- Use only synthetic isolated fixtures. No live credentials, production writes or unsolicited notifications to other people. Physical-device evidence and release-image acceptance must be reported honestly if unavailable.
+- Each task implements, runs focused tests, self-reviews and commits explicit files after checking author/committer/signing identity. Coordinator owns full final CI, publication and hosted verification. Unsigned per-command fallback is allowed if 1Password signing is unavailable; never disable signing globally.
+
+### Task 1: Durable per-device delivery, classified failures and bounded recovery
+
+Read Global Constraints above as binding. Inspect current notification_events, push_subscriptions, tenant migration and queue patterns before choosing the smallest compatible implementation.
+Add a tenant-protected delivery table with event/subscription uniqueness, account/household ownership, status, attempt count, next-attempt, claim time and bounded safe diagnostic outcome. Preserve historical event rows; previously accepted/failed/unknown events must not be replayed by migration. Snapshot eligible subscriptions when creating deliveries, never add devices during retries. Subscription deletion/reassignment must invalidate pending deliveries and must not erase accepted outcomes needed to avoid replays.
+Commit a sending claim and required audit before each external send; release DB locks for network I/O. Guard outcome updates by exact claim/attempt and status. Accepted rows remain terminal; recover sending older than 120 seconds as uncertain and suppress automatic resend. Recovery must not overwrite another terminal result.
+Classify Accepted, Expired, Permanent rejection, Confirmed temporary rejection, and Uncertain. Timeouts/ambiguous outcomes are uncertain, not retryable. Remove only individual expired subscriptions. Retry only proven nonacceptance. Five attempts maximum with 1/5/15/30 minute delays after prior confirmed failures and Retry-After lower bound. Deadline always wins. Parse HTTP-date and delta-seconds Retry-After where supported by the maintained transport; inspect pinned library/Context7 before adapting. Do not create bespoke Web Push.
+Store intended_at and expires_at for each logical notification; current clock governs every attempted send. Rebuild payload from current preferences, revalidate access/dose/stock/ownership on each attempt; provider TTL must not exceed remaining lifetime. Preserve current five-minute TTL as an upper bound rather than extend provider queue exposure.
+Use current shared lock helper without copying #2541 patch; report concrete conflicts. Minimal app/queue registration edits only.
+RED/GREEN: two devices partial success, concurrent claims, crash before/after external acceptance, uncertain timeout, 120-second recovery, stale result update, max attempts/backoff/Retry-After/deadline, revoked ownership/access, audit rollback. Existing public test-send behavior remains truthful and compatible.
+Report exact interfaces/schema and tested commands for Task 2 to consume. Do not implement scheduler catch-up in this task, but expose a clear operation to drain eligible device retries independently from new-intent discovery.
+
+### Task 2: Scheduler catch-up with current-state eligibility
+
+Read Global Constraints and Task 1 report interfaces. Change exact-minute discovery into bounded lookback: dose_due and missed notification instants within the prior hour, low-stock events within 24 hours, deduplicated by logical event identity. Compute intended notification time from saved account timezone and existing occurrence semantics; keep the missed 30-minute grace. Use present time for expiry/relevance, never the stale queue timestamp.
+The minute scheduler and worker must discover newly eligible intents AND drain persisted retries independently; a retry must not depend on an exact-minute intent being rediscovered. Stop obsolete reminders after taken/not-taken outcomes, pauses, permission withdrawal, opt-out or replenishment. Preserve recipient/grant rules and private text.
+Use existing occurrence projection and dashboard-owned scheduling helpers; do not duplicate #2505 work. Preserve stable event identities through repeated ticks/restart and handle DST gaps/folds according to existing occurrence semantics.
+RED/GREEN tests: missed scheduler ticks catch up within windows, exact expiry boundary (now >= expires_at suppresses), no late sends, stale queued timestamps, restart and concurrent ticks, saved timezones/DST, taken dose/stock refill/opt-out between scheduling and delivery.
+Report final integration interfaces and remaining verification work.
+
+### Task 3: Browser and operational acceptance
+
+Read Global Constraints and previous reports. Extend focused browser/worker tests for subscribe/test/unsubscribe, notification payload/click paths, expired endpoint removal, account switching and retained private text, using synthetic fixtures. Inspect and fix in-scope defects through RED/GREEN; preserve actual notification display versus provider acceptance distinction.
+Document scheduler/worker setup, per-device accepted/retryable/uncertain/expired outcomes, bounded recovery and safe operational inspection without health/credential logging. Update this worker record with actual evidence, remaining real-device and release-image gates.
+Use existing automated browser checks and safe owned local synthetic runtime if available. Do not configure live push credentials or send real notifications without the authorised test device/setup. If real-device evidence is unavailable, record the exact gap; do not simulate it into acceptance.
+Coordinator runs final task ci and docs build after all task reviews and final source corrections. No broad CI re-runs per trivial edit. No production deployment or merge.
+
+### Browser notification reliability evidence and remaining gates
+
+- Local synthetic integration proves missed-tick catch-up, stable event identity, expiry, current-state suppression, independent device outcomes, bounded retry, stale-claim recovery and preserved private-text preference. The focused `browser_push` care suite passed 28/28 on 12 October 2026.
+- Local worker checks passed 15/15 and prove the service worker verifies the signed-in account before displaying a payload or opening its destination. Account transitions drain in-flight status checks and displays, close retained notifications and suppress display across worker restarts. A different tab cannot release the transition. The service worker suppresses a payload when the account check fails, including while signed out or offline.
+- The browser profile flow passed 6/6 on desktop, including recovery-code sign-in cleanup, and the earlier baseline passed 5/5 on mobile Chromium. A separate desktop passkey sign-in journey passed 1/1. These used an owned local database and synthetic VAPID key. The profile flow exercises subscription registration, test-send response, expired status, re-enable and unsubscribe. Provider acceptance remains distinct from actual device display. The operational procedure is in `docs/operations/notification-delivery.md`.
+- Coordinator gates remain: final `task ci` and `task docs:build` after review and source freeze, dependency/static-link and HTTPS trust-root proof in release images, physical browser and iPhone Home Screen receipt/click/opt-out tests on an authorised device, and deployment approval. None of the physical-device, release-image or production gates is claimed by this local synthetic evidence.
+
+### Final notification review corrections
+
+- The shared subscription lock order now takes account before household and then rechecks access. This is the exact agreed hunk from commit `e25856277cb2a2b8f79cf405b79e07abada5937a` in PR #2541, integrated without its unrelated native API changes. The controlled profile date-of-birth update/reminder interleaving failed before the correction and passed after it.
+- Terminal cleanup reuses the scheduler's restricted household transaction with actor and membership context cleared. Polling includes inactive households in bounded batches; each cleanup changes at most 100 outstanding rows and audits atomically. Revoked pending rows become invalid, and sending claims at least 120 seconds old become uncertain. Send and completion access checks stay strict. A result whose recipient loses access during transport is recovered as uncertain, never resent. The focused Rust browser-push suite passed 32/32 after these corrections, including lifecycle revocation, tenant mismatch, restored-access non-resurrection and audit-failure rollback.
+- Existing workers must upgrade to the compatible active protocol before an authentication transition can be acknowledged. Installation skips waiting, activation closes retained notifications and claims open tabs, and authentication still fails closed if upgrade or cleanup cannot be confirmed. The page bounds upgrade at ten seconds and transition acknowledgement at five seconds. The real-browser regression passed with the exact pre-branch worker, another waiting revision, retained controlled tabs, a retained notification and a held in-flight push. Final focused desktop profile checks passed 7/7, worker checks 16/16 and the passkey journey 1/1. The full-Chromium fixture uses `requestSubmit()` with submit/POST/navigation assertions; ordinary click sign-in remains separately covered. Physical acceptance remains separate.
+- Remaining browser-device and release-image acceptance is tracked in [issue #2559](https://github.com/damacus/med-tracker/issues/2559). Native delivery issues #1636 and #1637 remain outside this browser-only correction.

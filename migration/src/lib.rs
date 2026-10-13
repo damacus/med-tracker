@@ -10,6 +10,7 @@ pub mod m20261006_000005_access_token_scopes;
 pub mod m20261006_000006_registration_policy;
 pub mod m20261006_000007_better_auth_identity;
 pub mod m20261008_000008_support_access;
+pub mod m20261012_000009_notification_deliveries;
 pub use m20261006_000003_canonical_take_identity::CANONICAL_CLIENT_UUID_SQL;
 
 pub struct Migrator;
@@ -24,6 +25,7 @@ const ACCESS_SCOPE_VERSION: &str = "m20261006_000005_access_token_scopes";
 const REGISTRATION_POLICY_VERSION: &str = "m20261006_000006_registration_policy";
 const IDENTITY_VERSION: &str = "m20261006_000007_better_auth_identity";
 const SUPPORT_ACCESS_VERSION: &str = "m20261008_000008_support_access";
+const NOTIFICATION_DELIVERIES_VERSION: &str = "m20261012_000009_notification_deliveries";
 
 impl MigrationName for AdoptMedtracker {
     fn name(&self) -> &str {
@@ -53,6 +55,7 @@ impl MigratorTrait for StandardMigrator {
             Box::new(m20261006_000006_registration_policy::Migration),
             Box::new(m20261006_000007_better_auth_identity::Migration),
             Box::new(m20261008_000008_support_access::Migration),
+            Box::new(m20261012_000009_notification_deliveries::Migration),
         ]
     }
 }
@@ -104,6 +107,7 @@ async fn verify_catalog<C: ConnectionTrait>(db: &C, require_ledger: bool) -> Res
             REGISTRATION_POLICY_VERSION,
             IDENTITY_VERSION,
             SUPPORT_ACCESS_VERSION,
+            NOTIFICATION_DELIVERIES_VERSION,
         ];
         if rows.is_empty() || rows.len() > versions.len() {
             return Err(migration_error(
@@ -148,6 +152,11 @@ async fn verify_catalog<C: ConnectionTrait>(db: &C, require_ledger: bool) -> Res
         if rows.len() >= 8 {
             expected.extend(recorded_catalog(include_str!(
                 "../support-access-catalog.json"
+            ))?);
+        }
+        if rows.len() >= 9 {
+            expected.extend(recorded_catalog(include_str!(
+                "../notification-deliveries-catalog.json"
             ))?);
         }
     } else if require_ledger {

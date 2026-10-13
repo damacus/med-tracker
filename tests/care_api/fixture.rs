@@ -72,10 +72,6 @@ impl Fixture {
                 )
                 .await
                 .unwrap();
-            admin
-                .execute_unprepared(include_str!("../fixtures/identity/mobile.sql"))
-                .await
-                .unwrap();
         })
         .await;
         let suffix = uuid::Uuid::new_v4().simple();
@@ -95,6 +91,10 @@ impl Fixture {
         ))
         .await
         .unwrap();
+        admin
+            .execute_unprepared(include_str!("../fixtures/identity/mobile.sql"))
+            .await
+            .unwrap();
         let runtime_uri = format!("postgres://{role}:password@127.0.0.1:{port}/{name}");
         let runtime = Database::connect(&runtime_uri).await.unwrap();
         Self {
@@ -146,4 +146,20 @@ impl Fixture {
             row.try_get("", "changes").unwrap(),
         )
     }
+}
+
+#[tokio::test]
+async fn cloned_fixture_issues_a_fresh_authorization_code() {
+    let first = Fixture::new().await;
+    let cloned_at = chrono::Utc::now().naive_utc();
+    let second = Fixture::new().await;
+    let row = second.admin.query_one_raw(Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        "SELECT created_at >= $1 AS fresh, expires_in > $1 + interval '4 minutes' AS usable FROM oauth_grants WHERE id=76001",
+        [cloned_at.into()],
+    )).await.unwrap().unwrap();
+    assert!(row.try_get::<bool>("", "fresh").unwrap());
+    assert!(row.try_get::<bool>("", "usable").unwrap());
+    first.close().await;
+    second.close().await;
 }

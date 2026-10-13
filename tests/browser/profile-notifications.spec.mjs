@@ -1,14 +1,103 @@
 import { test, expect } from './care-fixtures.mjs';
 import { createECDH, randomBytes } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { workerUpgradeServer } from './worker-upgrade-server.mjs';
 
 test.use({ actionTimeout: 10000 });
+
+test('baseline worker upgrades with controlled tabs before authentication cleanup', async ({ browser, careFixture }) => {
+  test.setTimeout(180000);
+  const oldSource = readFileSync(new URL('./baseline-profile-push-worker.js', import.meta.url), 'utf8');
+  const newSource = await (await fetch(`${careFixture.origin}/profile-service-worker.js`)).text();
+  const server = await workerUpgradeServer(careFixture.origin, oldSource);
+  const directory = await mkdtemp(join(tmpdir(), 'notification-upgrade-'));
+  const context = await browser.browserType().launchPersistentContext(directory, { channel: 'chromium', headless: true, baseURL: server.origin });
+  let oldWorker;
+  try {
+    const page = await context.newPage();
+    await openNotifications(page);
+    await context.grantPermissions(['notifications'], { origin: new URL(page.url()).origin });
+    await page.evaluate(async () => {
+      await navigator.serviceWorker.register('/profile-service-worker.js', { scope: '/' });
+      await navigator.serviceWorker.ready;
+    });
+    await page.reload();
+    await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
+    oldWorker = context.serviceWorkers()[0];
+    const retained = await context.newPage();
+    await retained.goto(page.url());
+    await expect.poll(() => retained.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
+    expect(await page.evaluate(() => Notification.permission)).toBe('granted');
+    await page.evaluate(async () => (await navigator.serviceWorker.ready).showNotification('Private medication name', { body: 'Retained private text' }));
+    await expect.poll(() => page.evaluate(async () => (await (await navigator.serviceWorker.ready).getNotifications()).length)).toBe(1);
+    server.setWorker(`${oldSource}\n`);
+    await page.evaluate(async () => (await navigator.serviceWorker.ready).update());
+    await expect.poll(() => page.evaluate(async () => (await navigator.serviceWorker.ready).waiting?.state)).toBe('installed');
+    await oldWorker.evaluate(() => {
+      const show = self.registration.showNotification.bind(self.registration);
+      self.registration.showNotification = async (...args) => {
+        self.upgradeDisplayStarted = true;
+        await new Promise(resolve => { self.releaseUpgradeDisplay = resolve; });
+        return show(...args);
+      };
+    });
+    const session = await context.newCDPSession(page);
+    let registrationId;
+    session.on('ServiceWorker.workerRegistrationUpdated', ({ registrations }) => {
+      registrationId = registrations.find(registration => registration.scopeURL === `${server.origin}/`)?.registrationId || registrationId;
+    });
+    await session.send('ServiceWorker.enable');
+    await expect.poll(() => registrationId).toBeTruthy();
+    let pushError;
+    const pushed = session.send('ServiceWorker.deliverPushMessage', { origin: server.origin, registrationId, data: JSON.stringify({ title: 'In-flight private medication', body: 'Private dose', path: '/households/persistence-fixture/dashboard' }) }).catch(error => { pushError = error.message; });
+    await expect.poll(async () => pushError || await oldWorker.evaluate(() => self.upgradeDisplayStarted)).toBe(true);
+    server.setWorker(newSource);
+    const previousRequests = server.workerRequests;
+    const dialogs = [];
+    page.on('dialog', async dialog => { dialogs.push(dialog.message()); await dialog.dismiss().catch(() => {}); });
+    await page.locator('form[action="/logout"]').first().evaluate(form => form.requestSubmit());
+    await expect.poll(() => server.workerRequests, { timeout: 15000 }).toBeGreaterThan(previousRequests);
+    expect(new URL(page.url()).pathname).toBe('/households/persistence-fixture/profile');
+    await oldWorker.evaluate(() => self.releaseUpgradeDisplay());
+    await pushed;
+    expect(pushError).toBeUndefined();
+    await page.waitForURL('/login', { timeout: 20000 });
+    expect(dialogs).toEqual([]);
+    await expect.poll(() => retained.evaluate(async () => {
+      const registration = await navigator.serviceWorker.ready;
+      return navigator.serviceWorker.controller === registration.active && registration.active.state === 'activated';
+    })).toBe(true);
+    expect(await page.evaluate(async () => (await (await navigator.serviceWorker.ready).getNotifications()).length)).toBe(0);
+    await page.bringToFront();
+    let loginSubmits = 0;
+    await page.exposeFunction('recordUpgradeLoginSubmit', () => { loginSubmits += 1; });
+    await page.evaluate(() => document.addEventListener('submit', () => { void window.recordUpgradeLoginSubmit(); }, true));
+    await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
+    await page.getByLabel('Password', { exact: true }).fill('password');
+    const signedIn = page.waitForResponse(response => response.request().method() === 'POST' && response.url().endsWith('/login') && response.status() === 303);
+    await page.locator('form[action="/login"]').evaluate(form => form.requestSubmit());
+    await expect.poll(() => loginSubmits).toBe(1);
+    await signedIn;
+    await page.waitForURL('/', { timeout: 20000 });
+    expect(dialogs).toEqual([]);
+    await retained.close();
+  } finally {
+    await oldWorker?.evaluate(() => self.releaseUpgradeDisplay?.()).catch(() => {});
+    await context.close();
+    await server.close();
+    await rm(directory, { recursive: true, force: true });
+  }
+});
 
 async function openNotifications(page) {
   await page.goto('/login');
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/', { timeout: 20000 });
   await page.goto('/households/persistence-fixture/profile#notifications');
 }
 
@@ -53,7 +142,56 @@ test('browser notification availability is truthful when delivery is not configu
   const response = await page.request.get('/households/persistence-fixture/profile/push');
   expect(response.status()).toBe(200);
   expect(response.headers()['cache-control']).toBe('no-store');
-  expect(await response.json()).toEqual({ configured: false, public_key: null });
+  expect(await response.json()).toEqual({ configured: false, public_key: null, account_id: '71001' });
+});
+
+test('signing out closes notifications already displayed by this browser', async ({ page }) => {
+  test.setTimeout(180000);
+  let closed = 0;
+  await page.exposeFunction('recordClosedNotification', () => { closed += 1; });
+  await page.addInitScript(() => {
+    navigator.serviceWorker.getRegistration = async () => ({
+      getNotifications: async () => [{ close: () => window.recordClosedNotification() }],
+    });
+  });
+  await openNotifications(page);
+  closed = 0;
+  await page.locator('form[action="/logout"]').first().evaluate(form => form.requestSubmit());
+  await page.waitForURL('/login');
+  expect(closed).toBe(1);
+});
+
+test('signing in closes notifications retained from a previous account', async ({ page }) => {
+  test.setTimeout(180000);
+  let closed = 0;
+  await page.exposeFunction('recordClosedNotification', () => { closed += 1; });
+  await page.addInitScript(() => {
+    navigator.serviceWorker.getRegistration = async () => ({
+      getNotifications: async () => [{ close: () => window.recordClosedNotification() }],
+    });
+  });
+  await page.goto('/login');
+  await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
+  await page.getByLabel('Password', { exact: true }).fill('password');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.waitForURL('/');
+  expect(closed).toBe(1);
+});
+
+test('recovery sign-in closes notifications retained from a previous account', async ({ page }) => {
+  test.setTimeout(180000);
+  let closed = 0;
+  await page.exposeFunction('recordClosedNotification', () => { closed += 1; });
+  await page.addInitScript(() => {
+    navigator.serviceWorker.getRegistration = async () => ({
+      getNotifications: async () => [{ close: () => window.recordClosedNotification() }],
+    });
+  });
+  await page.goto('/recovery-login');
+  await page.getByLabel('Recovery code', { exact: true }).fill('synthetic-invalid-code');
+  await page.getByRole('button', { name: 'Sign in with recovery code', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('Invalid or used recovery code');
+  expect(closed).toBe(1);
 });
 
 test('managed adult opt-ins exclude self, view-only and revoked grants while dependants remain automatic', async ({ page, careFixture }) => {
@@ -147,6 +285,10 @@ test.describe('configured browser push', () => {
     await section.getByRole('button', { name: 'Enable', exact: true }).click();
     await expect(section.getByRole('status')).toHaveText('Browser notifications are enabled.');
     await expect(section.getByRole('button', { name: 'Send Test Notification', exact: true })).toBeVisible();
+    await page.route('**/profile/push/test', route => route.fulfill({ json: { status: 'accepted' } }));
+    await section.getByRole('button', { name: 'Send Test Notification', exact: true }).click();
+    await expect(section.getByRole('status')).toHaveText('The push service accepted the test notification. Delivery to this device is not guaranteed.');
+    await page.unroute('**/profile/push/test');
     await page.route('**/profile/push/test', route => route.fulfill({ json: { status: 'expired' } }));
     await section.getByRole('button', { name: 'Send Test Notification', exact: true }).click();
     await expect(section.getByRole('status')).toHaveText('This subscription has expired. Enable notifications again.');
@@ -172,6 +314,7 @@ test.describe('configured browser push', () => {
     const endpoint = '/households/persistence-fixture/profile/push';
     const configuration = await (await page.request.get(endpoint)).json();
     expect(configuration.configured).toBe(true);
+    expect(configuration.account_id).toBe('71001');
     expect(Buffer.from(configuration.public_key, 'base64url')).toHaveLength(65);
     const authenticity_token = await page.locator('#profile-notification-form [name="authenticity_token"]').inputValue();
     const key = createECDH('prime256v1');
