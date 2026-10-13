@@ -225,7 +225,6 @@ fn ai_mock_server() -> u16 {
 
 #[tokio::test]
 async fn ai_medication_suggestions_validates_doses_against_fetched_evidence() {
-    unsafe { std::env::set_var("OPENAI_API_KEY", "synthetic-ai-key") };
     let port = ai_mock_server();
     let app = Application::new_with_ai_generation(port).await;
     upgrade_plan(&app).await;

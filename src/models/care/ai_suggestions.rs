@@ -50,7 +50,7 @@ struct FetchedSource {
     text: String,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 enum Provider {
     OpenAi,
     Anthropic,
@@ -132,7 +132,11 @@ fn feature_enabled(settings: Option<&Value>) -> bool {
 }
 
 fn configured_provider(settings: Option<&Value>) -> Result<ProviderConfig, &'static str> {
-    let provided: Vec<Provider> = [
+    let selector = setting(settings, "provider")
+        .map(str::to_owned)
+        .or_else(|| std::env::var("MEDTRACKER_AI_MEDICATION_HELP_PROVIDER").ok());
+    let settings_key = setting(settings, "api_key").map(str::to_owned);
+    let mut provided: Vec<Provider> = [
         Provider::OpenAi,
         Provider::Anthropic,
         Provider::Gemini,
@@ -143,6 +147,19 @@ fn configured_provider(settings: Option<&Value>) -> Result<ProviderConfig, &'sta
         std::env::var(provider.key_name()).is_ok_and(|value| !value.trim().is_empty())
     })
     .collect();
+    if let (Some(selector), Some(_)) = (&selector, &settings_key)
+        && let Some(provider) = [
+            Provider::OpenAi,
+            Provider::Anthropic,
+            Provider::Gemini,
+            Provider::OpenRouter,
+        ]
+        .into_iter()
+        .find(|provider| provider.name() == *selector)
+        && !provided.contains(&provider)
+    {
+        provided.push(provider);
+    }
     if provided.is_empty() {
         return Err("ruby_llm_unconfigured");
     }
@@ -151,10 +168,7 @@ fn configured_provider(settings: Option<&Value>) -> Result<ProviderConfig, &'sta
         .or_else(|| std::env::var("MEDTRACKER_AI_MEDICATION_HELP_MODEL").ok())
         .filter(|value| !value.trim().is_empty())
         .ok_or("ruby_llm_unconfigured")?;
-    let provider = match setting(settings, "provider")
-        .map(str::to_owned)
-        .or_else(|| std::env::var("MEDTRACKER_AI_MEDICATION_HELP_PROVIDER").ok())
-    {
+    let provider = match selector {
         Some(selector) => provided
             .into_iter()
             .find(|provider| provider.name() == selector)
@@ -172,7 +186,10 @@ fn configured_provider(settings: Option<&Value>) -> Result<ProviderConfig, &'sta
     if !provider.model_matches(&model) {
         return Err("provider_configuration_error");
     }
-    let key = std::env::var(provider.key_name()).map_err(|_| "provider_configuration_error")?;
+    let key = settings_key
+        .or_else(|| std::env::var(provider.key_name()).ok())
+        .filter(|value| !value.trim().is_empty())
+        .ok_or("provider_configuration_error")?;
     let base = setting(settings, "api_base_url")
         .map(str::to_owned)
         .or_else(|| std::env::var("MEDTRACKER_AI_MEDICATION_HELP_API_BASE_URL").ok())
@@ -710,4 +727,38 @@ pub(crate) async fn authorize(
         return Err(OperationError::NotFound);
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn configured(settings: Value) -> Result<ProviderConfig, &'static str> {
+        configured_provider(Some(&json!({"ai_medication_help": settings})))
+    }
+
+    #[test]
+    fn configured_provider_accepts_api_key_from_settings_with_explicit_provider() {
+        let config = configured(json!({
+            "provider": "openai",
+            "api_key": "synthetic-settings-key",
+            "model": "gpt-4o",
+            "api_base_url": "https://llm.example.test/v1/",
+        }))
+        .unwrap();
+        assert_eq!(config.provider.name(), "openai");
+        assert_eq!(config.key, "synthetic-settings-key");
+        assert_eq!(config.model, "gpt-4o");
+        assert_eq!(config.base.as_str(), "https://llm.example.test/v1/");
+    }
+
+    #[test]
+    fn configured_provider_settings_key_still_enforces_model_match() {
+        let result = configured(json!({
+            "provider": "openai",
+            "api_key": "synthetic-settings-key",
+            "model": "claude-sonnet-4",
+        }));
+        assert!(matches!(result, Err("provider_configuration_error")));
+    }
 }
