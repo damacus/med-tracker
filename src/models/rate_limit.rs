@@ -292,7 +292,10 @@ fn client_ip(peer: IpAddr, headers: &HeaderMap, trusted: &HashSet<IpAddr>) -> Ip
 
 #[cfg(test)]
 mod tests {
-    use super::{RateLimitState, RateLimiter, Rule, client_ip, direct_loopback, operation_rule};
+    use super::{
+        RateLimitConfigError, RateLimitState, RateLimiter, Rule, client_ip, direct_loopback,
+        operation_rule,
+    };
     use axum::http::{HeaderMap, HeaderValue, Method};
     use loco_rs::environment::Environment;
     use serde_json::json;
@@ -568,6 +571,12 @@ mod tests {
         for (method, path) in [
             (Method::GET, "/api/v1/households/42/data_exports/7/extra"),
             (Method::GET, "/api/v1/households/42/admin/audit_logs/7"),
+            (Method::HEAD, "/api/v1/households/42/data_exports/"),
+            (Method::HEAD, "/api/v1/households/42/sync/batches"),
+            (
+                Method::HEAD,
+                "/api/v1/households/42/ai_medication_suggestions",
+            ),
             (Method::POST, "/api/v1/households/42/data_exports/7"),
             (Method::POST, "/api/v1/households/42/admin/audit_logs"),
             (Method::GET, "/api/v1/households/42/sync/batches"),
@@ -608,12 +617,35 @@ mod tests {
             )
             .is_ok()
         );
-        assert!(
-            RateLimitState::from_settings(
-                Some(&json!({"api_rate_limit":{"fixed_now_unix_seconds":1000}})),
-                &Environment::Production
-            )
-            .is_err()
-        );
+        for value in [json!(null), json!(["127.0.0.1"]), json!(123), json!(false)] {
+            assert_eq!(
+                RateLimitState::from_settings(
+                    Some(&json!({"api_rate_limit":{"trusted_proxy_ips":value}})),
+                    &Environment::Test
+                )
+                .err(),
+                Some(RateLimitConfigError::InvalidTrustedProxyList)
+            );
+        }
+        for environment in [Environment::Development, Environment::Production] {
+            assert_eq!(
+                RateLimitState::from_settings(
+                    Some(&json!({"api_rate_limit":{"fixed_now_unix_seconds":1000}})),
+                    &environment
+                )
+                .err(),
+                Some(RateLimitConfigError::FixedClockOutsideTest)
+            );
+        }
+        for value in [json!(null), json!("1000"), json!(-1), json!([])] {
+            assert_eq!(
+                RateLimitState::from_settings(
+                    Some(&json!({"api_rate_limit":{"fixed_now_unix_seconds":value}})),
+                    &Environment::Test
+                )
+                .err(),
+                Some(RateLimitConfigError::InvalidFixedClock)
+            );
+        }
     }
 }

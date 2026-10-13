@@ -329,6 +329,30 @@ Shared HTTP rate-limit work:
   F1 is resolved by the approved policy, model regression and authenticated request
   regression. Remaining observations are non-blocking and retained in
   `rate-limit-head-correction-output.log`; they do not establish full API acceptance.
+- Frozen source `95259214276c2cad7deebcf2bea551757a5b1296` ran full CI as job
+  61497 and exited 201 after normal cleanup. All 99 units and 664 browser cases
+  passed; OAuth integration had 16 passes and one failure: the existing socket
+  fixture's capabilities request returned 503 instead of 200 because its raw
+  router server omitted ConnectInfo. Standard Loco production serving supplies
+  it. The writer owns the narrow fixture adapter, with no middleware weakening.
+  Docs build passed. The 33 generated screenshot diffs are preserved in
+  `ci-95259214-generated-screenshots.patch` and restored; unrelated Serena changes
+  remain preserved. Focused regression, correction review and final full CI are
+  required before publication.
+- Socket-fixture correction now matches Loco production ConnectInfo serving;
+  the missing-peer rejection and expected successful capabilities response are
+  preserved. Focused OAuth job 46234 passed, then full OAuth job 98800 passed
+  all 17 cases. Unit job 90234 passed ten matching cases (nine limiter cases),
+  inventory job 80205 passed 17 with one intentional ignore, and formatting job
+  67443 passed. Initial unit job 89634 stopped at a missing test-only enum import;
+  no Rust test execution was credited for that compile failure. The new tables
+  cover strict configuration types and HEAD negative paths without production
+  changes. Same-session Devin correction review is running as job 53420 before
+  the final commit and required full CI rerun.
+- Devin correction review job 53420 approved the production-equivalent socket
+  fixture and typed negative cases. No blocking findings remain for this bounded
+  rate-limit candidate; full root CI on its committed freeze is the remaining
+  publication gate.
 
 Session close-out on 11 October 2026:
 

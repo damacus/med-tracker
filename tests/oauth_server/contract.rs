@@ -128,7 +128,14 @@ impl Application {
             .with_state(fixture.runtime.clone())
             .layer(axum_session::SessionLayer::new(store));
         let router = boot.router.unwrap().merge(legacy_fixture);
-        let server = tokio::spawn(async move { axum::serve(listener, router).await.unwrap() });
+        let server = tokio::spawn(async move {
+            axum::serve(
+                listener,
+                router.into_make_service_with_connect_info::<std::net::SocketAddr>(),
+            )
+            .await
+            .unwrap()
+        });
         let client = reqwest::Client::builder()
             .redirect(reqwest::redirect::Policy::none())
             .timeout(std::time::Duration::from_secs(5))
