@@ -144,6 +144,15 @@ test('the household search trigger uses the selected language on a medicine page
   const trigger = page.getByRole('button', { name: 'Agor chwilio byd-eang' });
   await expect(trigger).toBeVisible();
   await expect(page.locator('header').getByRole('button', { name: 'Agor chwilio byd-eang' })).toBeVisible();
+  if (test.info().project.name === 'mobile') {
+    const header = await page.locator('header .app-header').evaluate(element => {
+      const brand = element.querySelector('.app-brand').getBoundingClientRect();
+      const account = element.querySelector('[data-app-account]').getBoundingClientRect();
+      return { height: element.getBoundingClientRect().height, brandTop: brand.top, accountTop: account.top };
+    });
+    expect(header.height).toBeLessThan(90);
+    expect(Math.abs(header.brandTop - header.accountTop)).toBeLessThan(16);
+  }
   const placement = await page.evaluate(() => {
     const trigger = document.querySelector('[data-global-search-trigger]').getBoundingClientRect();
     const main = document.querySelector('main').getBoundingClientRect();
@@ -202,6 +211,20 @@ test('keyboard search restores focus and opens its selected result', async ({ pa
   await expect(prior).toBeFocused();
   await page.keyboard.press('Control+k');
   await input.fill('Synthetic tablets');
+  const lastResult = panel.locator('[data-global-search-result]').last();
+  await expect(lastResult).toBeVisible();
+  await lastResult.focus();
+  await page.keyboard.press('Tab');
+  await expect.soft(panel).toBeHidden();
+  await expect.soft(lastResult).not.toBeFocused();
+  await page.keyboard.press('Control+k');
+  await input.fill('No such synthetic medicine');
+  await expect(panel.locator('[data-global-search-results]').getByText('No results', { exact: true })).toBeVisible();
+  await panel.getByRole('button', { name: 'Close search' }).focus();
+  await page.keyboard.press('Tab');
+  await expect.soft(panel).toBeHidden();
+  await page.keyboard.press('Control+k');
+  await input.fill('Synthetic tablets');
   await expect(panel.getByRole('link', { name: /Synthetic tablets/ }).first()).toBeVisible();
   await input.press('ArrowDown');
   await expect(panel.locator('[data-global-search-active="true"]')).toContainText('Synthetic tablets');
@@ -236,6 +259,13 @@ test('palette groups results and offers a retry after an unavailable search', as
   expect(geometry.paletteLeft).toBeGreaterThanOrEqual(0);
   expect(geometry.paletteRight).toBeLessThanOrEqual(geometry.width);
   await page.screenshot({ path: `docs/screenshots/loco-care-search-${test.info().project.name}.png` });
+  await page.route('**/search.json?*', route => route.abort());
+  await input.fill('Unavailable again');
+  const retry = panel.getByRole('button', { name: 'Retry search' });
+  await expect(retry).toBeVisible();
+  await retry.focus();
+  await page.keyboard.press('Tab');
+  await expect(panel).toBeHidden();
 });
 
 test('a late search response cannot replace a newer result or reopen a closed palette', async ({ page }) => {

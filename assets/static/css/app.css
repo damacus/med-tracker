@@ -42,5 +42,5 @@ dialog.modal:not([open]) { display: none; }
 .tabs { flex-wrap: wrap; }
 .tab { color: var(--foreground); }
 .btn { max-width: 100%; }
-@media (max-width: 480px) { .shell-main { padding-block: 1.5rem; } .shell-header-inner { gap: 0.5rem; flex-wrap: wrap; } }
+@media (max-width: 480px) { .shell-main { padding-block: 1.5rem; } .shell-header-inner { gap: 0.5rem; flex-wrap: wrap; } .shell-header-inner.app-header { flex-wrap: nowrap; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; } }

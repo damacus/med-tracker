@@ -110,14 +110,14 @@
     requestAnimationFrame(() => input.focus({ preventScroll: true }));
   }
 
-  function close(event) {
+  function close(event, restoreFocus = true) {
     event?.preventDefault();
     if (panel.hidden) return;
     abort();
     panel.hidden = true;
     panel.setAttribute('aria-hidden', 'true');
     triggers.forEach(button => button.setAttribute('aria-expanded', 'false'));
-    opener?.focus?.({ preventScroll: true });
+    if (restoreFocus) opener?.focus?.({ preventScroll: true });
   }
 
   function addResult(result, group) {
@@ -226,5 +226,8 @@
   });
   document.addEventListener('pointerdown', event => {
     if (!panel.hidden && !panel.contains(event.target) && !triggers.some(button => button.contains(event.target))) close();
+  });
+  document.addEventListener('focusin', event => {
+    if (!panel.hidden && !panel.contains(event.target)) close(undefined, false);
   });
 })();

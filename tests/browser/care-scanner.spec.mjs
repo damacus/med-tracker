@@ -384,13 +384,62 @@ test('Stock Check rejects a withdrawn manager and a missing CSRF token', async (
 });
 
 test('Stock Check batch controls show selected counts, differences and a unit-safe summary', async ({ page, careFixture }) => {
+  if (test.info().project.name === 'mobile') await page.setViewportSize({ width: 375, height: 844 });
   await careFixture.inventoryPresentation();
   await signIn(page);
   await page.getByRole('link', { name: /Stock check/i }).click();
   await page.getByRole('checkbox', { name: /Synthetic tablets/ }).check();
+  if (test.info().project.name === 'mobile') {
+    const account = page.locator('header .app-header [data-app-account]');
+    await expect(account).toBeVisible();
+    const header = await account.evaluate(element => {
+      const row = element.closest('.app-header');
+      const brand = row.querySelector('.app-brand').getBoundingClientRect();
+      const avatar = element.getBoundingClientRect();
+      const controls = ['[data-app-drawer]', '.app-brand', '[data-global-search-trigger]', '[data-app-account]'].map(selector => {
+        const bounds = row.querySelector(selector).getBoundingClientRect();
+        return { left: bounds.left, right: bounds.right };
+      });
+      return { height: row.getBoundingClientRect().height, brandTop: brand.top, avatarTop: avatar.top, controls, clientWidth: document.documentElement.clientWidth };
+    });
+    expect.soft(header.height).toBeLessThan(90);
+    expect.soft(Math.abs(header.brandTop - header.avatarTop)).toBeLessThan(16);
+    expect.soft(header.controls.every(control => control.left >= 0 && control.right <= header.clientWidth), JSON.stringify(header)).toBe(true);
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: 'docs/screenshots/loco-care-stock-check-header-mobile.png' });
+    await page.locator('[data-stock-check-select]:not(:disabled)').last().focus();
+    await page.keyboard.press('Tab');
+    const firstCount = page.locator('[data-stock-check-batch] input[type="number"]:not(:disabled)').first();
+    await expect(firstCount).toBeFocused();
+    const focusVisibility = async control => {
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      return control.evaluate(element => {
+        const target = element.getBoundingClientRect();
+        const summary = document.querySelector('[data-stock-check-summary]').getBoundingClientRect();
+        return { top: target.top, bottom: target.bottom, summaryTop: summary.top, scrollY, maxScroll: document.documentElement.scrollHeight - innerHeight };
+      });
+    };
+    const countVisibility = await focusVisibility(firstCount);
+    expect.soft(countVisibility.top).toBeGreaterThanOrEqual(0);
+    expect.soft(countVisibility.bottom <= countVisibility.summaryTop - 8, JSON.stringify(countVisibility)).toBe(true);
+    for (const name of ['Set to zero for Synthetic tablets', 'Remove Synthetic tablets from the amendment batch']) {
+      await page.keyboard.press('Tab');
+      const action = page.getByRole('button', { name });
+      await expect(action).toBeFocused();
+      const visibility = await focusVisibility(action);
+      expect.soft(visibility.bottom <= visibility.summaryTop - 8, JSON.stringify(visibility)).toBe(true);
+    }
+  }
   await page.getByRole('checkbox', { name: /Synthetic option tablets 1 tablet/ }).check();
   await page.getByRole('checkbox', { name: /Synthetic spare capsules/ }).check();
   await expect(page.getByText('3 selected')).toBeVisible();
+  const batchStatus = page.locator('[data-stock-check-status]');
+  const hasBatchStatus = await batchStatus.count() === 1;
+  expect.soft(hasBatchStatus).toBe(true);
+  if (hasBatchStatus) {
+    await expect.soft(batchStatus).toHaveAttribute('role', 'status');
+    await expect.soft(batchStatus).toContainText('3 selected');
+  }
   await expect(page.locator('[data-stock-check-entry="option_82021"]')).toContainText('2 tablets');
   const checkedColour = await page.getByRole('checkbox', { name: /Synthetic tablets/ }).evaluate(element => getComputedStyle(element).backgroundColor);
   const uncheckedColour = await page.getByRole('checkbox', { name: /Synthetic untracked option tablets/ }).evaluate(element => getComputedStyle(element).backgroundColor);
@@ -400,6 +449,7 @@ test('Stock Check batch controls show selected counts, differences and a unit-sa
   await page.getByLabel('New remaining supply for Synthetic spare capsules').fill('4');
   await expect(page.locator('[data-stock-check-entry="medication_80001"] [data-stock-check-difference]')).toHaveText('+3 tablets');
   await expect(page.locator('[data-stock-check-net]')).toContainText('+7 tablets');
+  if (hasBatchStatus) await expect.soft(batchStatus).toContainText('+7 tablets');
   await expect(page.locator('[data-stock-check-net]')).not.toContainText('capsule');
   await page.getByLabel('New remaining supply for Synthetic tablets').fill('');
   await expect(page.getByRole('button', { name: /Apply/ })).toBeDisabled();
