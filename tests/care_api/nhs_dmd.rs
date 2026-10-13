@@ -408,30 +408,29 @@ async fn nhs_dmd_interrupted_release_fails_without_restart_rerun() {
         .await
         .unwrap();
     let (queue, worker) = restarted_worker(&app).await;
-    let finished = tokio::time::timeout(std::time::Duration::from_secs(20), async {
+    let drained = tokio::time::timeout(std::time::Duration::from_secs(20), async {
         loop {
-            let status: i32 = app
+            let pending: i64 = app
                 .fixture
                 .admin
-                .query_one_raw(Statement::from_sql_and_values(
+                .query_one_raw(Statement::from_string(
                     DbBackend::Postgres,
-                    "SELECT status FROM nhs_dmd_imports WHERE id=$1",
-                    [id.into()],
+                    "SELECT count(*) AS pending FROM pg_loco_queue WHERE name='ImportWorker' AND status IN ('queued','processing')",
                 ))
                 .await
                 .unwrap()
                 .unwrap()
-                .try_get("", "status")
+                .try_get("", "pending")
                 .unwrap();
-            if status == 5 {
-                break status;
+            if pending == 0 {
+                break;
             }
             tokio::time::sleep(std::time::Duration::from_millis(50)).await;
         }
     })
     .await;
     stop_worker(queue, worker).await;
-    assert_eq!(finished.unwrap(), 5);
+    drained.unwrap();
     let row = app
         .fixture
         .admin

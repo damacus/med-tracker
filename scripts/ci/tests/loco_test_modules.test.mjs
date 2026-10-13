@@ -66,3 +66,47 @@ test('files outside any declared [[test]] target are still orphans', () => {
   assert.equal(result.status, 1);
   assert.match(result.stderr, /helper\.rs/);
 });
+
+test('a [[test]] path after an array-valued key is still a crate root', () => {
+  const result = check(
+    { 'tests/rehearsal/cutover.rs': '' },
+    { cargo: '[[test]]\nname = "cutover"\nrequired-features = ["cutover-rehearsal"]\npath = "tests/rehearsal/cutover.rs"\n' },
+  );
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('a file module inside an inline module is reachable', () => {
+  const result = check({
+    'tests/api.rs': 'mod nested {\n    mod helper;\n}\n',
+    'tests/api/nested/helper.rs': '',
+  });
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('a declaration inside a block comment is not reachable', () => {
+  const result = check({
+    'tests/api.rs': '/*\nmod hidden;\n*/\n',
+    'tests/api/hidden.rs': '',
+    'tests/api/commented.rs': '// mod commented;\n',
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /hidden\.rs/);
+  assert.match(result.stderr, /commented\.rs/);
+});
+
+test('a never-active #[cfg] declaration is not reachable', () => {
+  const result = check({
+    'tests/api.rs': '#[cfg(any())]\nmod ghost;\n',
+    'tests/api/ghost.rs': '',
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /ghost\.rs/);
+});
+
+test('a feature-gated declaration still counts as reachable', () => {
+  const result = check({
+    'tests/api.rs': '#[cfg(feature = "gate")]\nmod gated;\n',
+    'tests/api/gated.rs': '',
+  });
+  assert.equal(result.status, 0, result.stderr);
+});
