@@ -27,6 +27,7 @@ pub mod push_subscriptions;
 pub mod report_pdf;
 pub mod reports;
 pub mod review_prompts;
+pub mod stock_check;
 pub mod sync;
 pub mod treatments;
 pub mod ui_capabilities;

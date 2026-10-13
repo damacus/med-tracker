@@ -1098,7 +1098,9 @@ en:
       empty_title: No medicines selected
       empty_description: Choose medicines from the list to build an amendment batch.
       set_to_zero: Set to zero
+      set_to_zero_for: Set to zero for %{medication}
       remove_from_batch: Remove %{medication} from the amendment batch
+      remove_short: Remove
       reason: Reason for amendments
       reasons:
         house_stock_check: House stock check
@@ -1116,6 +1118,10 @@ en:
       decrease: Decrease
       no_change: No change
       dosage_not_set: Dosage not set
+      errors:
+        invalid: Check the selected counts and try again. Each count must be a nonnegative number.
+        stale: Stock changed while you were counting. Review the current counts and try again.
+        unavailable: The stock check could not be saved. Your counts are still here; try again.
       success:
         one: Updated the remaining supply for %{count} medicine.
         other: Updated the remaining supply for %{count} medicines.
@@ -1188,6 +1194,22 @@ en:
       all: All
       view: View
       inventory_level: Inventory Level
+      location: Location
+      all_locations: All locations
+      category: Category
+      all_categories: All categories
+      apply_filters: Apply filters
+      untracked_stock: Stock is not tracked.
+      low_stock: Low stock
+      edit: Edit
+      edit_medication: Edit medication
+      refill: Refill
+      refill_medication: Refill medication
+      empty_filtered: No medications are available in this household.
+      scan_description: Scan a pack or enter its barcode to choose the medicine and location before adding stock.
+      find_barcode: Find barcode
+      manual_entry: Enter medication manually
+      close_scanner: Close scanner
       units:
         one: unit
         other: units

@@ -1,43 +1,51 @@
 {% extends "layouts/base.html" %}
 {% block content %}
-<section class="max-w-3xl mx-auto">
-  <a class="link" href="/">Households</a>
-  <a class="link ml-4" href="/households/{{ slug }}/locations">Locations</a>
-  <a class="link ml-4" href="/households/{{ slug }}/people">People</a>
-  <a class="link ml-4" href="/households/{{ slug }}/profile">My Profile</a>
-  {% if can_manage %}<a class="link ml-4" href="/households/{{ slug }}/admin">Administration</a>{% endif %}
-  <h1 class="text-3xl font-semibold mt-4">Medications</h1>
-  <a class="btn btn-outline mt-4" href="/households/{{ slug }}/medications/finder">Medication Finder</a>
-  {% if can_create %}<a class="btn btn-neutral mt-4" href="/households/{{ slug }}/medications/new">Add Medication</a>{% endif %}
-  {% if can_assign %}<a class="btn btn-outline mt-4" href="/households/{{ slug }}/medications/workflow">Add for person</a>{% endif %}
-  {% if can_adjust %}<button type="button" class="btn btn-outline mt-4" data-dialog-open="inventory-scan-dialog">Scan stock</button>{% endif %}
-  <ul class="flex flex-col gap-4 mt-6">
+{% set inventory_labels = labels.medications.index %}
+<section class="mx-auto max-w-6xl px-4 py-10">
+  <header class="flex flex-col gap-5 border-b border-base-300 pb-8 md:flex-row md:items-end md:justify-between">
+    <div><p class="text-xs font-bold uppercase tracking-widest text-base-content/60">{{ inventory_labels.your_inventory }}</p><h1 class="mt-2 text-4xl font-bold">{{ inventory_labels.title }}</h1></div>
+    <div class="flex flex-wrap gap-2">
+      {% if can_manage %}<a class="btn btn-outline" href="/households/{{ slug }}/medications/stock-check">{{ labels.medications.stock_check.link }}</a>{% endif %}
+      {% if can_adjust %}<button type="button" class="btn btn-outline" data-dialog-open="inventory-scan-dialog">{{ inventory_labels.scan_stock }}</button>{% endif %}
+      {% if can_assign %}<a class="btn btn-outline" href="/households/{{ slug }}/add-medication?return_to=/households/{{ slug }}/medications">{{ inventory_labels.add_for_person }}</a>{% endif %}
+      {% if can_create %}<a class="btn btn-primary" href="/households/{{ slug }}/medications/new">{{ inventory_labels.add_medication }}</a>{% endif %}
+    </div>
+  </header>
+  <form method="get" action="/households/{{ slug }}/medications" data-inventory-filters class="mt-8 grid max-w-3xl gap-4 sm:grid-cols-2">
+    {% if locations %}<label class="grid gap-2 text-sm font-semibold" for="inventory-location">{{ inventory_labels.location }}<select class="select w-full" id="inventory-location" name="location_id"><option value="">{{ inventory_labels.all_locations }}</option>{% for location in locations %}<option value="{{ location.id }}" {% if current_location_id == location.id %}selected{% endif %}>{{ location.name }}</option>{% endfor %}</select></label>{% endif %}
+    {% if categories %}<label class="grid gap-2 text-sm font-semibold" for="inventory-category">{{ inventory_labels.category }}<select class="select w-full" id="inventory-category" name="category"><option value="">{{ inventory_labels.all_categories }}</option>{% for value in categories %}<option value="{{ value }}" {% if current_category == value %}selected{% endif %}>{{ value }}</option>{% endfor %}</select></label>{% endif %}
+    <button class="btn btn-outline w-fit sm:col-span-2" type="submit">{{ inventory_labels.apply_filters }}</button>
+  </form>
+  <div class="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3" id="medications">
   {% for medication in medications %}
-    <li class="card bg-base-100 border border-base-300"><div class="card-body">
-      <h2 class="card-title"><a class="link" href="/households/{{ slug }}/medications/{{ medication.id }}">{{ medication.name }}</a></h2>
-      <p>{% if medication.quantity %}Stock: {{ medication.quantity }} {{ medication.unit }}{% else %}Stock is not tracked.{% endif %}</p>
-    </div></li>
-  {% else %}<li>No medications are available in this household.</li>{% endfor %}
-  </ul>
+    <article class="card h-full border border-base-300 bg-base-100 shadow-sm" aria-label="{{ medication.name }}"><div class="card-body gap-4">
+      <div><h2 class="card-title"><a class="link" href="/households/{{ slug }}/medications/{{ medication.id }}">{{ medication.name }}</a></h2><span class="badge badge-outline mt-2">{{ medication.location_name }}</span>{% if medication.category %}<span class="badge badge-ghost ml-2">{{ medication.category }}</span>{% endif %}</div>
+      {% if medication.description %}<p class="text-sm text-base-content/70">{{ medication.description }}</p>{% endif %}
+      <div class="border-t border-base-300 pt-4"><p class="text-xs font-semibold uppercase tracking-wide">{{ inventory_labels.inventory_level }}</p><p class="mt-1 font-semibold">{% if medication.quantity != null %}{{ medication.quantity_label }}{% else %}{{ inventory_labels.untracked_stock }}{% endif %}</p>{% if medication.out_of_stock %}<span class="badge badge-error mt-2">{{ labels.medications.stock_check.out_of_stock }}</span>{% elif medication.low_stock %}<span class="badge badge-warning mt-2">{{ inventory_labels.low_stock }}</span>{% endif %}</div>
+      <div class="flex flex-wrap gap-2"><a class="btn btn-outline btn-sm" href="/households/{{ slug }}/medications/{{ medication.id }}">{{ inventory_labels.view }}</a>{% if can_manage %}<a class="btn btn-outline btn-sm" aria-label="{{ inventory_labels.edit_medication }}" href="/households/{{ slug }}/medications/{{ medication.id }}/edit">{{ inventory_labels.edit }}</a>{% endif %}{% if can_adjust %}<a class="btn btn-outline btn-sm" aria-label="{{ inventory_labels.refill_medication }}" href="/households/{{ slug }}/medications/{{ medication.id }}?refill=true">{{ inventory_labels.refill }}</a>{% endif %}</div>
+    </div></article>
+  {% else %}<p>{{ inventory_labels.empty_filtered }}</p>{% endfor %}
+  </div>
 </section>
+<script src="/static/js/inventory-filters.js" defer></script>
 {% if can_adjust %}
 <dialog id="inventory-scan-dialog" class="modal" aria-labelledby="inventory-scan-title">
   <div class="modal-box w-[calc(100vw-1rem)] max-w-2xl max-h-[90dvh] overflow-y-auto">
-    <h2 id="inventory-scan-title" class="text-2xl font-semibold">Scan stock</h2>
-    <p class="mt-2">Scan a pack or enter its barcode to choose the medicine and location before adding stock.</p>
+    <h2 id="inventory-scan-title" class="text-2xl font-semibold">{{ inventory_labels.scan_stock }}</h2>
+    <p class="mt-2">{{ inventory_labels.scan_description }}</p>
     <div data-medication-finder data-household="{{ slug }}" class="mt-4 space-y-3">
       <div id="barcode-camera" class="w-full overflow-hidden"></div>
-      <div class="flex flex-wrap gap-2"><button type="button" class="btn btn-outline" data-camera-start>Start Scanner</button><button type="button" class="btn btn-outline" data-camera-stop hidden>Stop Scanner</button></div>
+      <div class="flex flex-wrap gap-2"><button type="button" class="btn btn-outline" data-camera-start>{{ labels.barcode_scanner.start }}</button><button type="button" class="btn btn-outline" data-camera-stop hidden>{{ labels.barcode_scanner.stop }}</button></div>
       <p data-camera-status aria-live="polite"></p>
       <form data-barcode-form class="flex flex-col gap-3">
-        <label for="inventory-scan-barcode">Barcode</label><input id="inventory-scan-barcode" name="q" class="input w-full" inputmode="numeric" autocomplete="off" required maxlength="256">
-        <button class="btn btn-neutral w-fit" type="submit">Find barcode</button>
+        <label for="inventory-scan-barcode">{{ labels.medications.finder.barcode }}</label><input id="inventory-scan-barcode" name="q" class="input w-full" inputmode="numeric" autocomplete="off" required maxlength="256">
+        <button class="btn btn-neutral w-fit" type="submit">{{ inventory_labels.find_barcode }}</button>
       </form>
       <p role="status" data-lookup-status></p>
       <div data-lookup-results class="flex flex-col gap-3"></div>
-      {% if can_create %}<a class="link" data-manual-entry href="/households/{{ slug }}/medications/new">Enter medication manually</a>{% endif %}
+      {% if can_create %}<a class="link" data-manual-entry href="/households/{{ slug }}/medications/new">{{ inventory_labels.manual_entry }}</a>{% endif %}
     </div>
-    <div class="modal-action"><button type="button" class="btn btn-ghost" data-dialog-close>Close scanner</button></div>
+    <div class="modal-action"><button type="button" class="btn btn-ghost" data-dialog-close>{{ inventory_labels.close_scanner }}</button></div>
   </div>
 </dialog>
 <script src="/static/js/medication-finder.js" defer></script>

@@ -615,6 +615,26 @@ tasks:
       vars: [CARE_DATABASE_URL]
     cmds:
       - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction -f tests/fixtures/browser-search-minor.sql'
+  inventory-presentation:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction -f tests/fixtures/browser-inventory-presentation.sql'
+  stock-check-probe:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -A -t -v ON_ERROR_STOP=1 -f tests/fixtures/browser-stock-check-probe.sql'
+  fail-stock-check-audit:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -c "ALTER TABLE public.versions ADD CONSTRAINT browser_stock_check_audit_failure CHECK(event NOT LIKE ''stock check (%'') NOT VALID"'
+  stock-check-stale:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -f tests/fixtures/browser-stock-check-stale.sql'
   report-refresh-trap:
     requires:
       vars: [CARE_DATABASE_URL]

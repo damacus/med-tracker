@@ -163,6 +163,179 @@ test('inventory Scan stock opens a closeable scanner and resolves an existing me
   await expect(page.getByRole('dialog', { name: 'Refill inventory' })).toBeVisible();
 });
 
+test('inventory filters show located medication cards and distinguish zero from untracked stock', async ({ page, careFixture }) => {
+  await careFixture.inventoryPresentation();
+  await signIn(page);
+  const inventory = page.getByRole('main');
+  await expect(inventory.getByRole('heading', { name: 'Medications', exact: true })).toBeVisible();
+  const zero = inventory.getByRole('article', { name: 'Synthetic tablets' });
+  await expect(zero.getByText('Synthetic cabinet')).toBeVisible();
+  await expect(zero.getByText('0 tablets')).toBeVisible();
+  await expect(zero.getByText('Out of stock')).toBeVisible();
+  await expect(zero.getByRole('link', { name: 'Edit medication' })).toBeVisible();
+  const untracked = inventory.getByRole('article', { name: 'Synthetic spare capsules' });
+  await expect(untracked.getByText('Stock is not tracked.')).toBeVisible();
+  await expect(untracked.getByText('Travel bag')).toBeVisible();
+  await page.screenshot({ path: `docs/screenshots/loco-care-inventory-${test.info().project.name}.png` });
+  await inventory.getByRole('combobox', { name: 'Location', exact: true }).selectOption('79001');
+  await expect(page).toHaveURL(/location_id=79001/);
+  await expect(zero).toBeVisible();
+  await expect(untracked).toHaveCount(0);
+  await inventory.getByRole('combobox', { name: 'Category', exact: true }).selectOption('Routine');
+  await expect(page).toHaveURL(/category=Routine/);
+  await expect(zero).toBeVisible();
+  await inventory.getByRole('combobox', { name: 'Category', exact: true }).selectOption('As needed');
+  await expect(inventory.getByText('No medications are available in this household.')).toBeVisible();
+});
+
+test.describe('Welsh inventory language', () => {
+  test.use({ locale: 'cy-GB' });
+  test('inventory filters and stock controls use the selected language', async ({ page, careFixture }) => {
+    await careFixture.inventoryPresentation();
+    await signIn(page);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'cy');
+    await expect(page.getByRole('heading', { name: 'Meddyginiaethau' })).toBeVisible();
+    await expect(page.getByRole('combobox', { name: 'Lleoliad', exact: true })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Gwiriad stoc' })).toBeVisible();
+    await page.getByRole('link', { name: 'Gwiriad stoc' }).click();
+    await expect(page.getByRole('heading', { name: 'Gweinyddu stocrestr' })).toBeVisible();
+  });
+});
+
+test('household manager can open Stock Check while a member cannot', async ({ page, careFixture }) => {
+  await signIn(page);
+  const inventory = page.getByRole('main');
+  await inventory.getByRole('link', { name: /Stock check/i }).click();
+  await expect(page).toHaveURL('/households/persistence-fixture/medications/stock-check');
+  await expect(page.getByRole('heading', { name: 'Inventory administration' })).toBeVisible();
+  await careFixture.searchRestricted();
+  const denied = await page.request.get('/households/persistence-fixture/medications/stock-check');
+  expect(denied.status()).toBe(403);
+});
+
+test('Stock Check applies selected absolute counts together and keeps unselected stock', async ({ page, careFixture }) => {
+  await careFixture.inventoryPresentation();
+  await signIn(page);
+  await page.getByRole('link', { name: /Stock check/i }).click();
+  await page.getByRole('checkbox', { name: /Synthetic tablets/ }).check();
+  await page.getByRole('checkbox', { name: /Synthetic spare capsules/ }).check();
+  await page.getByRole('checkbox', { name: /Synthetic option tablets 1 tablet/ }).check();
+  await page.getByRole('checkbox', { name: /Synthetic untracked option tablets/ }).check();
+  await page.getByLabel('New remaining supply for Synthetic tablets').fill('3');
+  await page.getByLabel('New remaining supply for Synthetic spare capsules').fill('4');
+  await page.getByLabel('New remaining supply for Synthetic option tablets').first().fill('6');
+  await page.getByLabel('New remaining supply for Synthetic untracked option tablets').fill('5');
+  await page.getByLabel('Reason').selectOption('house_stock_check');
+  await page.getByRole('button', { name: /Apply/ }).click();
+  await expect(page).toHaveURL('/households/persistence-fixture/medications');
+  await expect(page.getByRole('article', { name: 'Synthetic tablets' })).toContainText('3 tablets');
+  await expect(page.getByRole('article', { name: 'Synthetic spare capsules' })).toContainText('4 capsules');
+  await expect(page.getByRole('article', { name: 'Synthetic option tablets' })).toContainText('9 tablets');
+  await expect(page.getByRole('article', { name: 'Synthetic untracked option tablets' })).toContainText('5 tablets');
+  const stock = await careFixture.stockCheckProbe();
+  expect(Number(stock.scalar_supply)).toBe(3);
+  expect(Number(stock.option_supply)).toBe(6);
+  expect(Number(stock.option_parent_supply)).toBe(9);
+  expect(Number(stock.untracked_parent_supply)).toBe(5);
+  expect(Number(stock.scalar_reason_audits)).toBeGreaterThan(0);
+  expect(Number(stock.option_reason_audits)).toBeGreaterThan(0);
+});
+
+test('Stock Check keeps a rejected batch editable without changing any stock', async ({ page, careFixture }) => {
+  await careFixture.inventoryPresentation();
+  await signIn(page);
+  await page.getByRole('link', { name: /Stock check/i }).click();
+  await page.getByRole('checkbox', { name: /Synthetic tablets/ }).check();
+  await page.getByRole('checkbox', { name: /Synthetic spare capsules/ }).check();
+  await page.getByLabel('New remaining supply for Synthetic tablets').fill('3');
+  await page.getByLabel('New remaining supply for Synthetic spare capsules').fill('-1');
+  await page.locator('[data-stock-check-form]').evaluate(form => form.submit());
+  await expect(page.getByRole('alert')).toContainText(/count|quantity|supply/i);
+  await expect(page.getByLabel('New remaining supply for Synthetic tablets')).toHaveValue('3');
+  await expect(page.getByLabel('New remaining supply for Synthetic spare capsules')).toHaveValue('-1');
+  const stock = await careFixture.stockCheckProbe();
+  expect(Number(stock.scalar_supply)).toBe(0);
+});
+
+test('Stock Check rolls back an earlier count when a later audit fails', async ({ page, careFixture }) => {
+  await careFixture.inventoryPresentation();
+  await careFixture.failStockCheckAudit();
+  await signIn(page);
+  await page.getByRole('link', { name: /Stock check/i }).click();
+  await page.getByRole('checkbox', { name: /Synthetic tablets/ }).check();
+  await page.getByRole('checkbox', { name: /Synthetic option tablets 1 tablet/ }).check();
+  await page.getByLabel('New remaining supply for Synthetic tablets').fill('3');
+  await page.getByLabel('New remaining supply for Synthetic option tablets').first().fill('6');
+  await page.getByRole('button', { name: /Apply/ }).click();
+  await expect(page.getByRole('alert')).toBeVisible();
+  const stock = await careFixture.stockCheckProbe();
+  expect(Number(stock.scalar_supply)).toBe(0);
+  expect(Number(stock.option_supply)).toBe(2);
+  expect(Number(stock.option_parent_supply)).toBe(5);
+});
+
+test('Stock Check rejects a stale reviewed count and retains the batch for retry', async ({ page, careFixture }) => {
+  await careFixture.inventoryPresentation();
+  await signIn(page);
+  await page.getByRole('link', { name: /Stock check/i }).click();
+  await page.getByRole('checkbox', { name: /Synthetic tablets/ }).check();
+  await page.getByRole('checkbox', { name: /Synthetic spare capsules/ }).check();
+  await page.getByLabel('New remaining supply for Synthetic tablets').fill('3');
+  await page.getByLabel('New remaining supply for Synthetic spare capsules').fill('4');
+  await careFixture.stockCheckStale();
+  await page.getByRole('button', { name: /Apply/ }).click();
+  await expect(page.getByRole('alert')).toContainText(/changed|refresh|review/i);
+  await expect(page.getByLabel('New remaining supply for Synthetic tablets')).toHaveValue('3');
+  await expect(page.getByLabel('New remaining supply for Synthetic spare capsules')).toHaveValue('4');
+  const stock = await careFixture.stockCheckProbe();
+  expect(Number(stock.scalar_supply)).toBe(0);
+});
+
+test('Stock Check rejects a withdrawn manager and a missing CSRF token', async ({ page, careFixture }) => {
+  await careFixture.inventoryPresentation();
+  await signIn(page);
+  await page.getByRole('link', { name: /Stock check/i }).click();
+  await page.getByRole('checkbox', { name: /Synthetic tablets/ }).check();
+  const form = page.locator('[data-stock-check-form]');
+  const values = await form.evaluate(element => Object.fromEntries(new FormData(element)));
+  const url = '/households/persistence-fixture/medications/stock-check';
+  const missingToken = await page.request.post(url, { form: { ...values, authenticity_token: '' } });
+  expect(missingToken.status()).toBe(403);
+  await careFixture.searchRestricted();
+  const withdrawn = await page.request.post(url, { form: values });
+  expect(withdrawn.status()).toBe(403);
+  const stock = await careFixture.stockCheckProbe();
+  expect(Number(stock.scalar_supply)).toBe(0);
+});
+
+test('Stock Check batch controls show selected counts, differences and a unit-safe summary', async ({ page, careFixture }) => {
+  await careFixture.inventoryPresentation();
+  await signIn(page);
+  await page.getByRole('link', { name: /Stock check/i }).click();
+  await page.getByRole('checkbox', { name: /Synthetic tablets/ }).check();
+  await page.getByRole('checkbox', { name: /Synthetic option tablets 1 tablet/ }).check();
+  await page.getByRole('checkbox', { name: /Synthetic spare capsules/ }).check();
+  await expect(page.getByText('3 selected')).toBeVisible();
+  const checkedColour = await page.getByRole('checkbox', { name: /Synthetic tablets/ }).evaluate(element => getComputedStyle(element).backgroundColor);
+  const uncheckedColour = await page.getByRole('checkbox', { name: /Synthetic untracked option tablets/ }).evaluate(element => getComputedStyle(element).backgroundColor);
+  expect(checkedColour).not.toBe(uncheckedColour);
+  await page.getByLabel('New remaining supply for Synthetic tablets').fill('3');
+  await page.getByLabel('New remaining supply for Synthetic option tablets 1 tablet').fill('6');
+  await page.getByLabel('New remaining supply for Synthetic spare capsules').fill('4');
+  await expect(page.locator('[data-stock-check-net]')).toContainText('+7 tablet');
+  await expect(page.locator('[data-stock-check-net]')).not.toContainText('capsule');
+  await page.screenshot({ path: `docs/screenshots/loco-care-stock-check-${test.info().project.name}.png` });
+  await page.getByRole('button', { name: 'Set to zero for Synthetic option tablets 1 tablet' }).click();
+  await expect(page.getByLabel('New remaining supply for Synthetic option tablets 1 tablet')).toHaveValue('0');
+  await expect(page.locator('[data-stock-check-net]')).toContainText('+1 tablet');
+  await page.getByRole('button', { name: 'Remove Synthetic spare capsules from the amendment batch' }).click();
+  await expect(page.getByText('2 selected')).toBeVisible();
+  await page.getByRole('button', { name: 'Clear selection' }).click();
+  await expect(page.getByText('0 selected')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Apply/ })).toBeDisabled();
+  if (test.info().project.name === 'mobile') await expect(page.locator('[data-stock-check-summary]')).toHaveCSS('position', 'fixed');
+});
+
 test('catalogue selection retains NHS and custom source metadata in the wizard', async ({ page }) => {
   await signIn(page);
   await page.route('**/medications/lookup?**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({

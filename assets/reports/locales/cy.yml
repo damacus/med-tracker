@@ -1181,6 +1181,22 @@ cy:
       all: Pob un
       view: Gweld
       inventory_level: Llefel Rhestr
+      location: Lleoliad
+      all_locations: Pob lleoliad
+      category: Categori
+      all_categories: Pob categori
+      apply_filters: Cymhwyso hidlwyr
+      untracked_stock: Nid yw'r stoc yn cael ei olrhain.
+      low_stock: Stoc isel
+      edit: Golygu
+      edit_medication: Golygu meddyginiaeth
+      refill: Ailgyflenwi
+      refill_medication: Ailgyflenwi meddyginiaeth
+      empty_filtered: Nid oes meddyginiaethau ar gael yn y cartref hwn.
+      scan_description: Sganiwch becyn neu nodwch ei god bar i ddewis y feddyginiaeth a'r lleoliad cyn ychwanegu stoc.
+      find_barcode: Dod o hyd i god bar
+      manual_entry: Nodi meddyginiaeth â llaw
+      close_scanner: Cau'r sganiwr
       units:
         one: uned
         other: unedau
@@ -1282,7 +1298,9 @@ cy:
       empty_title: Dim meddyginiaethau wedi'u dewis
       empty_description: Dewiswch feddyginiaethau o'r rhestr i lunio swp addasiadau.
       set_to_zero: Gosod i sero
+      set_to_zero_for: Gosod i sero ar gyfer %{medication}
       remove_from_batch: Tynnu %{medication} o'r swp addasiadau
+      remove_short: Tynnu
       reason: Rheswm dros yr addasiadau
       reasons:
         house_stock_check: Gwiriad stoc y cartref
@@ -1300,6 +1318,10 @@ cy:
       decrease: Gostyngiad
       no_change: Dim newid
       dosage_not_set: Dos heb ei osod
+      errors:
+        invalid: Gwiriwch y cyfrifiadau a ddewiswyd a rhowch gynnig arall arni. Rhaid i bob cyfrif fod yn rif nad yw'n negatif.
+        stale: Newidiodd y stoc tra oeddech yn cyfrif. Gwiriwch y cyfrifiadau presennol a rhowch gynnig arall arni.
+        unavailable: Ni ellid cadw'r gwiriad stoc. Mae eich cyfrifiadau yma o hyd; rhowch gynnig arall arni.
       success:
         one: Diweddarwyd y cyflenwad sy'n weddill ar gyfer %{count} meddyginiaeth.
         other: Diweddarwyd y cyflenwad sy'n weddill ar gyfer %{count} meddyginiaethau.

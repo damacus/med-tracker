@@ -1187,6 +1187,22 @@ es:
       all: Todos
       view: Ver
       inventory_level: Nivel de Inventario
+      location: Ubicación
+      all_locations: Todas las ubicaciones
+      category: Categoría
+      all_categories: Todas las categorías
+      apply_filters: Aplicar filtros
+      untracked_stock: No se controla el stock.
+      low_stock: Stock bajo
+      edit: Editar
+      edit_medication: Editar medicamento
+      refill: Reponer
+      refill_medication: Reponer medicamento
+      empty_filtered: No hay medicamentos disponibles en este hogar.
+      scan_description: Escanea un envase o introduce su código de barras para elegir el medicamento y la ubicación antes de añadir stock.
+      find_barcode: Buscar código de barras
+      manual_entry: Introducir medicamento manualmente
+      close_scanner: Cerrar escáner
       units:
         one: unidad
         other: unidades
@@ -1288,7 +1304,9 @@ es:
       empty_title: Ningún medicamento seleccionado
       empty_description: Elija medicamentos de la lista para preparar un lote de ajustes.
       set_to_zero: Establecer en cero
+      set_to_zero_for: Establecer en cero para %{medication}
       remove_from_batch: Quitar %{medication} del lote de ajustes
+      remove_short: Quitar
       reason: Motivo de los ajustes
       reasons:
         house_stock_check: Comprobación de existencias del hogar
@@ -1306,6 +1324,10 @@ es:
       decrease: Disminución
       no_change: Sin cambios
       dosage_not_set: Dosis no definida
+      errors:
+        invalid: Revise las cantidades seleccionadas e inténtelo de nuevo. Cada cantidad debe ser un número no negativo.
+        stale: Las existencias cambiaron mientras contaba. Revise las cantidades actuales e inténtelo de nuevo.
+        unavailable: No se pudo guardar la comprobación. Sus cantidades siguen aquí; inténtelo de nuevo.
       success:
         one: Se actualizó el suministro restante de %{count} medicamento.
         other: Se actualizó el suministro restante de %{count} medicamentos.

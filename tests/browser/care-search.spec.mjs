@@ -131,7 +131,17 @@ test.use({ locale: 'cy-GB' });
 test('the household search trigger uses the selected language on a medicine page', async ({ page }) => {
   await signIn(page);
   await page.goto(`${household}/medications`);
-  await expect(page.getByRole('button', { name: 'Agor chwilio byd-eang' })).toBeVisible();
+  const trigger = page.getByRole('button', { name: 'Agor chwilio byd-eang' });
+  await expect(trigger).toBeVisible();
+  await expect(page.locator('header').getByRole('button', { name: 'Agor chwilio byd-eang' })).toBeVisible();
+  const placement = await page.evaluate(() => {
+    const trigger = document.querySelector('[data-global-search-trigger]').getBoundingClientRect();
+    const main = document.querySelector('main').getBoundingClientRect();
+    return { triggerRight: trigger.right, mainRight: main.right, triggerBottom: trigger.bottom, mainTop: main.top };
+  });
+  expect(Math.abs(placement.triggerRight - placement.mainRight)).toBeLessThan(4);
+  expect(placement.mainTop - placement.triggerBottom).toBeLessThan(55);
+  await page.screenshot({ path: `docs/screenshots/loco-care-search-base-${test.info().project.name}.png` });
   await page.goto(`${household}/medications/workflow?intent=schedule`);
   await expect(page.locator('html')).toHaveAttribute('lang', 'cy');
   await expect(page.getByRole('link', { name: 'Amserlennu ar gyfer Synthetic adult' })).toBeVisible();
@@ -154,6 +164,19 @@ test('keyboard search restores focus and opens its selected result', async ({ pa
   await expect(prior).toBeFocused();
   await page.keyboard.press('Meta+k');
   await expect(input).toBeFocused();
+  await page.keyboard.press('Meta+k');
+  await input.press('Escape');
+  await expect(prior).toBeFocused();
+  await page.keyboard.press('Control+k');
+  await input.fill('Synthetic tablets');
+  await expect(panel.getByRole('link', { name: /Synthetic tablets/ }).first()).toBeVisible();
+  await input.press('Tab');
+  await page.keyboard.press('Tab');
+  await expect(panel.locator('[data-global-search-result]').first()).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(panel).toBeHidden();
+  await expect(prior).toBeFocused();
+  await page.keyboard.press('Control+k');
   await input.fill('Synthetic tablets');
   await expect(panel.getByRole('link', { name: /Synthetic tablets/ }).first()).toBeVisible();
   await input.press('ArrowDown');

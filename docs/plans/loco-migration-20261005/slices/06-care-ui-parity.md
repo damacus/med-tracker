@@ -70,6 +70,50 @@ the desktop sidebar trigger and mobile header and stays within the viewport.
 Independent review and full integrated `task ci` remain open; this focused
 result does not accept the full care UI slice.
 
+The same Devin reviewer `jumbled-calliandra` resumed on corrected checkpoint
+`9b33f631` in job `95704` after the first review stopped without a verdict.
+The reviewer confirmed no additional source defect and accepted the Reports
+permission correction. The two keyboard focus regressions then failed in
+browser job `3870`; preserving the original opener and handling Escape from a
+focused result passed desktop job `27313` 1/1 and desktop/mobile search job
+`26335` 18/18. The base-layout search trigger moved into the existing header;
+the same job checked its placement on medicine pages and captured
+`docs/screenshots/loco-care-search-base-{desktop,mobile}.png`. Rails person and
+assignment scopes were checked against the Loco source: both retain the
+granted-person boundary and `retired_at IS NULL` current record rule.
+
+### Inventory and Stock Check implementation record
+
+The owner explicitly chose tracked-option counts with strength and location,
+followed by transactional medicine-total recalculation. Medicine-level rows
+apply when there are no tracked options. This is an approved difference from
+Rails' parent-total Stock Check. Zero stock remains distinct from untracked
+stock. The existing option update and medication stock operations are being
+reused under one household transaction; rejected rows must roll back the batch.
+
+Inventory presentation RED job `21487` failed on missing card location. Stock
+Check access RED job `95918` failed on its missing link. The new Stock Check
+page initially rendered unavailable; removing a nullable template filter made
+manager/member GET job `9769` pass 1/1. Submission RED job `55694` then reached
+the manager page and failed on missing selected count inputs. Grouped RED job
+`85165` exposed the all-untracked option, error-recovery and audit paths; batch
+control RED job `1076` lacked selected counts. Welsh locale RED job `73752`
+showed an English page. Mixed scalar/option writes, parent totals, reasons and
+audit rollback passed job `13810` 2/2. Desktop Stock Check and inventory checks
+passed after a selector correction (`28395` 8/9, `63231` 1/1); batch controls
+passed `88273` 1/1. Mobile grouped job `20113` passed 5/9 but found narrow
+controls intercepted by the layout. After shortening visible row controls while
+keeping their full accessible names, fixing the mobile summary above the rail,
+making checked boxes visible and correcting the zero-stock badge, focused job
+`84097` passed 18/18 desktop/mobile. The checked colour differs from unchecked
+in the browser test. Actual captures are `docs/screenshots/loco-care-inventory-
+{desktop,mobile}.png` and `docs/screenshots/loco-care-stock-check-
+{desktop,mobile}.png`. Compared with retained Rails
+`stock-check-desktop.png` and `stock-check-mobile-batch.png`, the batch is
+reachable on both viewports, with selected counts, per-row differences,
+zero/remove controls, unit-safe net change and mobile apply access. Source
+review and full integrated checks remain open; C3 is not yet published.
+
 ## Shared delivery contract
 
 Reuse the established Rails information architecture and interactions in the
@@ -105,14 +149,13 @@ The candidate largely lists medication names and separates treatment management.
 - [ ] Verify populated/empty/paused/due/view-only states and action effects on
   desktop/mobile; show before/after reference captures and reviewed implementation.
 
-Current C1 dependency findings: root Loco has no health-events browser page or
-direct CRUD API in this branch; sync-domain support alone is not a user journey.
-Household-manager carer administration exists, but does not cover Rails'
-person-specific parent/carer management for every authorized dependent carer.
-Complete these missing operations/journeys within the approved delivery rather
-than adding dead links or broadening permission. Protected local avatar reads
-exist only in the separate profile draft; use a local initials fallback until
-that route is integrated. These items remain open after the first card-layout PR.
+Historical C1 dependency findings above predate merged health-event and
+person-specific carer browser operations. Current `people/page.rs` resolves the
+protected person avatar and Gravatar fallback, and `people/show.html` renders
+that image. The dashboard still sets `avatar_attached=false` and uses initials
+for selected-person and lane identity; integrate the existing protected person
+avatar there. Reconcile informative card states and actions with actual Rails
+and Loco pages before treating these checkboxes as complete.
 
 ## C2: Medication details and stock interactions
 

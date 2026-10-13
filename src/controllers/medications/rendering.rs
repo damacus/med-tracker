@@ -1,5 +1,5 @@
 use crate::models::care::{
-    browser_query::{Detail, MedicationCard},
+    browser_query::{Detail, Inventory},
     medications::StockSnapshot,
 };
 use crate::models::errors::OperationError;
@@ -49,13 +49,33 @@ pub fn index(
     view: &TeraView,
     token: &CsrfToken,
     slug: &str,
-    medications: &[MedicationCard],
+    inventory: Inventory,
+    location_id: Option<i64>,
+    category: Option<&str>,
+    locale: &str,
+    labels: Value,
     permissions: IndexPermissions,
 ) -> Response {
     let mut data = appearance_context();
-    data["title"] = json!("Medications");
     data["slug"] = json!(slug);
-    data["medications"] = json!(medications);
+    data["lang"] = json!(locale);
+    data["labels"] = labels;
+    data["title"] = data["labels"]["medications"]["index"]["title"].clone();
+    data["medications"] = json!(inventory.medications.iter().map(|medication| json!({
+        "id":medication.id,
+        "name":medication.name,
+        "description":medication.description,
+        "location_name":medication.location_name,
+        "category":medication.category,
+        "quantity":medication.quantity,
+        "quantity_label":medication.quantity.as_deref().map(|value|format!("{} {}",value,unit_label(&medication.unit,value))),
+        "low_stock":medication.low_stock,
+        "out_of_stock":medication.out_of_stock,
+    })).collect::<Vec<_>>());
+    data["locations"] = json!(inventory.locations);
+    data["categories"] = json!(inventory.categories);
+    data["current_location_id"] = json!(location_id);
+    data["current_category"] = json!(category);
     data["can_create"] = json!(permissions.create);
     data["can_adjust"] = json!(permissions.adjust);
     data["can_assign"] = json!(permissions.assign);

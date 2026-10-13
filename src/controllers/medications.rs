@@ -2,6 +2,7 @@ pub(super) mod forms;
 mod management;
 pub(super) mod rendering;
 mod scanner;
+mod stock_check;
 mod wizard;
 mod workflow;
 
@@ -41,6 +42,12 @@ struct ShowRequest {
     record_person_id: Option<i64>,
 }
 
+#[derive(Default, serde::Deserialize)]
+struct InventoryQuery {
+    location_id: Option<i64>,
+    category: Option<String>,
+}
+
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("/households")
@@ -51,6 +58,10 @@ pub fn routes() -> Routes {
         .add("/{slug}/medications/workflow", get(workflow::open))
         .add("/{slug}/add-medication", get(workflow::open))
         .add("/{slug}/medications/lookup", get(scanner::lookup))
+        .add(
+            "/{slug}/medications/stock-check",
+            get(stock_check::show).post(stock_check::apply),
+        )
         .add("/{slug}/medications/wizard", post(wizard::create))
         .add(
             "/{slug}/medications/{id}",
@@ -124,17 +135,22 @@ async fn index(
     Path(slug): Path<String>,
     session: Session<SessionPgPool>,
     request: Option<Extension<LocoRequestId>>,
+    headers: HeaderMap,
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
+    Query(filters): Query<InventoryQuery>,
 ) -> Response {
     let (_, tenant) = match begin(&ctx, &session, &slug, &request_id(request)).await {
         Ok(value) => value,
         Err(error) => return authentication_error(error),
     };
-    let medications = match browser_query::index(&tenant).await {
-        Ok(value) => value,
-        Err(error) => return operation_error(error),
-    };
+    let inventory =
+        match browser_query::inventory(&tenant, filters.location_id, filters.category.as_deref())
+            .await
+        {
+            Ok(value) => value,
+            Err(error) => return operation_error(error),
+        };
     let can_create = match medications::crud::can_create(&tenant).await {
         Ok(value) => value,
         Err(error) => return operation_error(error),
@@ -147,11 +163,25 @@ async fn index(
         Ok(value) => value,
         Err(error) => return operation_error(error),
     };
+    let locale = crate::models::care::report_pdf::locale(
+        headers
+            .get(header::ACCEPT_LANGUAGE)
+            .and_then(|value| value.to_str().ok())
+            .unwrap_or("en"),
+    );
+    let labels = match crate::models::care::report_pdf::translations(locale) {
+        Ok(value) => value,
+        Err(_) => return unavailable(),
+    };
     let response = rendering::index(
         &view,
         &token,
         &slug,
-        &medications,
+        inventory,
+        filters.location_id,
+        filters.category.as_deref(),
+        locale,
+        labels,
         rendering::IndexPermissions {
             create: can_create,
             adjust: forms::can_adjust(&tenant),

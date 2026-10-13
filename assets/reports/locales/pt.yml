@@ -1189,6 +1189,22 @@ pt:
       all: Todos
       view: Ver
       inventory_level: Nível de Inventário
+      location: Localização
+      all_locations: Todas as localizações
+      category: Categoria
+      all_categories: Todas as categorias
+      apply_filters: Aplicar filtros
+      untracked_stock: O stock não é acompanhado.
+      low_stock: Stock baixo
+      edit: Editar
+      edit_medication: Editar medicamento
+      refill: Repor
+      refill_medication: Repor medicamento
+      empty_filtered: Não há medicamentos disponíveis neste agregado.
+      scan_description: Leia a embalagem ou introduza o código de barras para escolher o medicamento e a localização antes de adicionar stock.
+      find_barcode: Procurar código de barras
+      manual_entry: Introduzir medicamento manualmente
+      close_scanner: Fechar leitor
       units:
         one: unidade
         other: unidades
@@ -1289,7 +1305,9 @@ pt:
       empty_title: Nenhum medicamento selecionado
       empty_description: Escolha medicamentos da lista para criar um lote de alterações.
       set_to_zero: Definir como zero
+      set_to_zero_for: Definir como zero para %{medication}
       remove_from_batch: Remover %{medication} do lote de alterações
+      remove_short: Remover
       reason: Motivo das alterações
       reasons:
         house_stock_check: Verificação do stock doméstico
@@ -1307,6 +1325,10 @@ pt:
       decrease: Diminuição
       no_change: Sem alteração
       dosage_not_set: Dosagem não definida
+      errors:
+        invalid: Verifique as quantidades selecionadas e tente novamente. Cada quantidade tem de ser um número não negativo.
+        stale: O stock mudou enquanto contava. Reveja as quantidades atuais e tente novamente.
+        unavailable: Não foi possível guardar a verificação do stock. As suas quantidades continuam aqui; tente novamente.
       success:
         one: O fornecimento restante de %{count} medicamento foi atualizado.
         other: O fornecimento restante de %{count} medicamentos foi atualizado.

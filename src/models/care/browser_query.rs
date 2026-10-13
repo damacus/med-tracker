@@ -105,6 +105,112 @@ pub struct MedicationCard {
     pub unit: String,
 }
 
+#[derive(Serialize)]
+pub struct InventoryCard {
+    pub id: i64,
+    pub name: String,
+    pub description: Option<String>,
+    pub location_name: String,
+    pub category: Option<String>,
+    pub quantity: Option<String>,
+    pub unit: String,
+    pub low_stock: bool,
+    pub out_of_stock: bool,
+}
+
+pub struct Inventory {
+    pub medications: Vec<InventoryCard>,
+    pub locations: Vec<LocationChoice>,
+    pub categories: Vec<String>,
+}
+
+pub async fn inventory(
+    tenant: &TenantTransaction,
+    location_id: Option<i64>,
+    category: Option<&str>,
+) -> Result<Inventory, OperationError> {
+    access::recheck(tenant).await?;
+    let locations = location::Entity::find()
+        .in_tenant(tenant.scope().household_id)
+        .order_by_asc(location::Column::Name)
+        .all(tenant.transaction())
+        .await?;
+    let location_names: HashMap<_, _> = locations
+        .iter()
+        .map(|row| (row.id, row.name.as_str()))
+        .collect();
+    let all_visible = access::medication_scope(tenant)
+        .all(tenant.transaction())
+        .await?;
+    let mut categories = all_visible
+        .iter()
+        .filter_map(|row| {
+            row.category
+                .as_deref()
+                .filter(|value| !value.is_empty())
+                .map(str::to_owned)
+        })
+        .collect::<Vec<_>>();
+    categories.sort();
+    categories.dedup();
+    let mut query = access::medication_scope(tenant);
+    if let Some(id) = location_id {
+        query = query.filter(medication::Column::LocationId.eq(id));
+    }
+    if let Some(category) = category.filter(|value| !value.is_empty()) {
+        query = query.filter(medication::Column::Category.eq(category));
+    }
+    let medications = query
+        .order_by_asc(medication::Column::Name)
+        .order_by_asc(medication::Column::Id)
+        .all(tenant.transaction())
+        .await?
+        .into_iter()
+        .map(|row| {
+            let out_of_stock = row
+                .current_supply
+                .is_some_and(|quantity| quantity <= 0.into());
+            let low_stock = row
+                .current_supply
+                .is_some_and(|quantity| quantity <= row.reorder_threshold);
+            InventoryCard {
+                id: row.id,
+                name: row
+                    .friendly_name
+                    .as_deref()
+                    .filter(|value| !value.is_empty())
+                    .or(row.name.as_deref())
+                    .unwrap_or("Medication")
+                    .to_owned(),
+                description: row.description,
+                location_name: location_names
+                    .get(&row.location_id)
+                    .copied()
+                    .unwrap_or("Location")
+                    .to_owned(),
+                category: row.category,
+                quantity: row
+                    .current_supply
+                    .map(|value| value.normalize().to_string()),
+                unit: row.dose_unit.unwrap_or_default(),
+                low_stock,
+                out_of_stock,
+            }
+        })
+        .collect();
+    Ok(Inventory {
+        medications,
+        locations: locations
+            .into_iter()
+            .map(|row| LocationChoice {
+                id: row.id,
+                name: row.name,
+            })
+            .collect(),
+        categories,
+    })
+}
+
 pub async fn index(tenant: &TenantTransaction) -> Result<Vec<MedicationCard>, OperationError> {
     medication_cards(tenant, None).await
 }

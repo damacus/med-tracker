@@ -1176,6 +1176,22 @@ ga:
       all: Gach
       view: Amharc
       inventory_level: Leibhéal Inventár
+      location: Suíomh
+      all_locations: Gach suíomh
+      category: Catagóir
+      all_categories: Gach catagóir
+      apply_filters: Cuir scagairí i bhfeidhm
+      untracked_stock: Ní dhéantar an stoc a rianú.
+      low_stock: Stoc íseal
+      edit: Cuir in eagar
+      edit_medication: Cuir leigheas in eagar
+      refill: Athlíon
+      refill_medication: Athlíon leigheas
+      empty_filtered: Níl aon leigheasanna ar fáil sa teaghlach seo.
+      scan_description: Scan pacáiste nó cuir a bharrachód isteach chun an leigheas agus an suíomh a roghnú sula gcuirtear stoc leis.
+      find_barcode: Aimsigh barrachód
+      manual_entry: Cuir leigheas isteach de láimh
+      close_scanner: Dún an scanóir
       units:
         one: aonad
         other: aonaid
@@ -1286,7 +1302,9 @@ ga:
       empty_title: Níl aon leigheas roghnaithe
       empty_description: Roghnaigh leigheasanna ón liosta chun baisc leasuithe a chruthú.
       set_to_zero: Socraigh go nialas
+      set_to_zero_for: Socraigh go nialas do %{medication}
       remove_from_batch: Bain %{medication} den bhaisc leasuithe
+      remove_short: Bain
       reason: Cúis leis na leasuithe
       reasons:
         house_stock_check: Seiceáil stoic an teaghlaigh
@@ -1304,6 +1322,10 @@ ga:
       decrease: Laghdú
       no_change: Gan athrú
       dosage_not_set: Dáileog gan socrú
+      errors:
+        invalid: Seiceáil na comhairimh roghnaithe agus bain triail eile as. Caithfidh gach comhaireamh a bheith ina uimhir nach bhfuil diúltach.
+        stale: D'athraigh an stoc agus tú ag comhaireamh. Athbhreithnigh na comhairimh reatha agus bain triail eile as.
+        unavailable: Níorbh fhéidir an seiceáil stoic a shábháil. Tá do chuid comhaireamh fós anseo; bain triail eile as.
       success:
         one: Nuashonraíodh an soláthar atá fágtha do %{count} leigheas.
         other: Nuashonraíodh an soláthar atá fágtha do %{count} leigheasanna.

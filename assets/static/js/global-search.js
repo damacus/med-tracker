@@ -94,6 +94,10 @@
 
   function open(event) {
     event?.preventDefault();
+    if (!panel.hidden) {
+      input.focus({ preventScroll: true });
+      return;
+    }
     const clickedTrigger = event?.currentTarget instanceof Element ? event.currentTarget : undefined;
     opener = clickedTrigger || document.activeElement;
     const trigger = clickedTrigger || triggers.find(button => button.getClientRects().length);
@@ -202,13 +206,15 @@
     timer = setTimeout(() => search(input.value.trim()), 150);
   });
   input.addEventListener('keydown', event => {
-    if (event.key === 'Escape') close(event);
-    else if (event.key === 'ArrowDown') { event.preventDefault(); setActive(active + 1); }
+    if (event.key === 'ArrowDown') { event.preventDefault(); setActive(active + 1); }
     else if (event.key === 'ArrowUp') { event.preventDefault(); setActive(active - 1); }
     else if (event.key === 'Enter' && rows().length) {
       event.preventDefault();
       location.assign((rows()[active] || rows()[0]).href);
     }
+  });
+  panel.addEventListener('keydown', event => {
+    if (event.key === 'Escape') close(event);
   });
   form.addEventListener('submit', event => {
     if (!rows().length) return;
