@@ -150,16 +150,14 @@ overlap. Resolve findings, freeze source, then run `task ci` per deliverable plu
 PRs; verify catalogue-dependent review behaviour on their combined head. Merge, auto-merge and
 deployment of these new slices need their own authorisation.
 
-Planning status: no writers dispatched, no test resources reserved. At dispatch,
+Dispatch authorised 13 October 2026. Coordinator /root retains integration and publication. Exact writer task IDs: /root/medication_reviews (acknowledged) and /root/nhs_dmd (acknowledged), both gpt-6-sol at advertised default medium effort. R checkout: /private/tmp/medtracker-medication-reviews, branch codex/medication-review-parity. D checkout: /private/tmp/medtracker-nhs-dmd, branch codex/nhs-dmd-parity. Both start at 35fd33355. Existing agents were checked: notification agents are completed; neither new scope had an active writer. Devin CLI authentication was verified. D initially owns the single heavy verification lane; R can discover and write tests meanwhile. Completion/failure notifications use the agents mailbox; exact live job handles will be recorded as jobs start. No full CI job is running for this pair. Handoffs: /private/tmp/medtracker-medication-reviews-handoff.md and /private/tmp/medtracker-nhs-dmd-handoff.md. Writers retain review-fix ownership. Coordinator released narrow R ownership for review-only route/module/worker/task registrations, migration registration/catalog verification, scheduler entries, locale keys and navigation. D shared-file changes still require coordination. D located authorised release nhsbsa_dmd_9.3.0_20260928000001.zip, SHA-256 321db83dc17467430183e79ffdd98f1b0a1794c0d20f828d127682bc3f0edca6; the real comparison is not yet run. At dispatch,
 record each accountable owner, worktree, branch, exact session ID, live job handle,
 candidate SHA, evidence, review verdict and next action here. Keep ownership until
 the receiving owner acknowledges handback; resume an existing blocked session.
 Stop dependent work for unavailable official archive for real-release acceptance, contradictory permissions, an undefined material-evidence
 change rule, unsafe migration/rollback, unavailable required review, or a shared
 file conflict. Raise the concrete decision and continue independent work.
-Next action after execution is authorised: check live owners/reviewer access,
-reserve the two checkouts and verification lane, then dispatch the two writers
-with this brief. R and D do not depend on each other for implementation; shared
+Next action: writers implement the approved journeys with failing tests first; coordinator services shared-file requests, transfers the verification lane and obtains independent review of frozen candidates. R and D do not depend on each other for implementation; shared
 registration/configuration and final integration stay with the coordinator. Overnight is a work window, not a promised completion time.
 
 > For agentic workers: retain the persistent team and Devin review from `../team-charter.md`.
