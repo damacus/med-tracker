@@ -2594,6 +2594,8 @@ pt:
     hide_hidden: Ocultar itens filtrados
     empty_title: Não há revisões de medicamentos para mostrar
     empty_description: Nenhum par de evidências revisto corresponde aos medicamentos ativos nos registos do agregado selecionado.
+    filter_empty_title: Nenhuma revisão de medicamentos corresponde a estes filtros.
+    filter_empty_description: Há outras revisões disponíveis. Limpe os filtros para as ver.
     review_reason: A evidência pública do rótulo sugere que esta combinação pode merecer revisão com um farmacêutico, enfermeiro, médico de família ou prescritor.
     view_evidence: Ver evidência
     summaries:
@@ -2606,6 +2608,7 @@ pt:
       priority: Prioridade
       include_filtered: Incluir itens filtrados
       apply: Aplicar filtros
+      clear: Limpar filtros
       review_statuses:
         needs_review: Precisam de revisão
         reviewed: Revistos

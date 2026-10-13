@@ -2261,6 +2261,8 @@ es:
     hide_hidden: Ocultar elementos filtrados
     empty_title: No hay revisiones de medicamentos que mostrar
     empty_description: Ningún par de evidencias revisado coincide con los medicamentos activos de los registros del hogar seleccionado.
+    filter_empty_title: Ninguna revisión de medicamentos coincide con estos filtros.
+    filter_empty_description: Hay otras revisiones disponibles. Borra los filtros para verlas.
     review_reason: La evidencia pública de las etiquetas sugiere que puede ser útil revisar esta combinación con un farmacéutico, enfermero, médico de cabecera o prescriptor.
     view_evidence: Ver evidencia
     summaries:
@@ -2273,6 +2275,7 @@ es:
       priority: Prioridad
       include_filtered: Incluir elementos filtrados
       apply: Aplicar filtros
+      clear: Borrar filtros
       review_statuses:
         needs_review: Pendientes de revisión
         reviewed: Revisados

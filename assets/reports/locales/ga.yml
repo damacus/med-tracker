@@ -2260,6 +2260,8 @@ ga:
     hide_hidden: Folaigh míreanna scagtha
     empty_title: Níl aon athbhreithniú cógas le taispeáint
     empty_description: Ní mheaitseálann aon phéire fianaise athbhreithnithe na cógais ghníomhacha sna taifid teaghlaigh roghnaithe.
+    filter_empty_title: Ní mheaitseálann aon athbhreithniú cógas na scagairí seo.
+    filter_empty_description: Tá athbhreithnithe eile ar fáil. Glan na scagairí chun iad a fheiceáil.
     review_reason: Tugann fianaise phoiblí lipéid le fios gur fiú an teaglaim seo a athbhreithniú le cógaiseoir, altra, dochtúir teaghlaigh nó oideasóir.
     view_evidence: Féach ar an bhfianaise
     summaries:
@@ -2272,6 +2274,7 @@ ga:
       priority: Tosaíocht
       include_filtered: Cuir míreanna scagtha san áireamh
       apply: Cuir scagairí i bhfeidhm
+      clear: Glan na scagairí
       review_statuses:
         needs_review: Athbhreithniú de dhíth
         reviewed: Athbhreithnithe
