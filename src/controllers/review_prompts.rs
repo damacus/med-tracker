@@ -295,15 +295,24 @@ async fn save(
         if draft.get("etag").map(String::as_str) != Some(sync::review_prompts::tag(&record).as_str()) {
             return Err(OperationError::Conflict { code:"review_changed".into(), details:json!({"error":"The review changed while you were editing. Check the current evidence before saving."}) });
         }
-        let attributes = json!({"medication_review_prompt":{
+        let mut attributes = json!({"medication_review_prompt":{
             "status":draft.get("status"),
             "practitioner_name":draft.get("practitioner_name"),
             "practitioner_role":draft.get("practitioner_role"),
-            "reviewed_on":draft.get("reviewed_on"),
             "review_note":draft.get("review_note"),
         }});
+        let empty_date = draft.get("reviewed_on").is_some_and(String::is_empty);
+        if !empty_date {
+            attributes["medication_review_prompt"]["reviewed_on"] = json!(draft.get("reviewed_on"));
+        }
         let changes = sync::review_prompts::Changes::parse(&attributes).map_err(|_| OperationError::Validation { details:json!({"error":"Review fields are invalid"}) })?;
-        let active = changes.apply(&record, tenant.membership().id).ok_or(OperationError::Validation { details:json!({"error":"Practitioner name, role and date are required for this outcome"}) })?;
+        let mut active = changes.apply(&record, tenant.membership().id).ok_or(OperationError::Validation { details:json!({"error":"Practitioner name, role and date are required for this outcome"}) })?;
+        if empty_date {
+            if matches!(draft.get("status").map(String::as_str), Some("reviewed_with_practitioner" | "expected_prescribed_combination")) {
+                return Err(OperationError::Validation { details:json!({"error":"Practitioner name, role and date are required for this outcome"}) });
+            }
+            active.reviewed_on = sea_orm::Set(None);
+        }
         edit::archive(&tenant, &record, "review").await?;
         let updated = active.update(tenant.transaction()).await?;
         sync::review_prompts::record_rest_update(&tenant, &record, &updated).await?;
@@ -369,7 +378,7 @@ async fn save(
                 "reviews/edit.html",
                 &slug,
                 language(&headers),
-                json!({"review":review["data"],"lease":{"token":draft.get("lease_token"),"etag":draft.get("etag")},"draft":draft,"error":crate::controllers::medications::forms::message(&error),"changed":matches!(error, OperationError::Conflict { ref code, .. } if code=="review_changed"),"reacquire":matches!(error, OperationError::Conflict { .. })}),
+                json!({"review":review["data"],"lease":{"token":draft.get("lease_token"),"etag":draft.get("etag"),"expires_at":""},"draft":draft,"error":crate::controllers::medications::forms::message(&error),"changed":matches!(error, OperationError::Conflict { ref code, .. } if code=="review_changed"),"reacquire":matches!(error, OperationError::Conflict { .. })}),
                 crate::controllers::medications::forms::status(&error),
             );
             if read.commit().await.is_err() {

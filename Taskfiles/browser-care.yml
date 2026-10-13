@@ -600,6 +600,11 @@ tasks:
       vars: [CARE_DATABASE_URL]
     cmds:
       - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -f tests/fixtures/browser-review-report-seed.sql'
+  review-expire-lease:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -f tests/fixtures/browser-review-expire-lease.sql'
   report-refresh-trap:
     requires:
       vars: [CARE_DATABASE_URL]
