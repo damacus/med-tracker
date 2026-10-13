@@ -16,6 +16,58 @@ async fn catalog(db: &loco_rs::prelude::DatabaseConnection) -> serde_json::Value
     serde_json::from_str(&row.try_get::<String>("", "catalog").unwrap()).unwrap()
 }
 
+fn expected_catalog_without_review() -> serde_json::Map<String, serde_json::Value> {
+    let mut expected = serde_json::Map::new();
+    for source in [
+        include_str!("../migration/catalog.json"),
+        include_str!("../migration/ledger-catalog.json"),
+        include_str!("../migration/queue-catalog.json"),
+        include_str!("../migration/take-identity-catalog.json"),
+        include_str!("../migration/browser-session-catalog.json"),
+        include_str!("../migration/access-token-scopes-catalog.json"),
+        include_str!("../migration/registration-policy-catalog.json"),
+        include_str!("../migration/identity-catalog.json"),
+        include_str!("../migration/support-access-catalog.json"),
+        include_str!("../migration/notification-deliveries-catalog.json"),
+    ] {
+        expected.extend(
+            serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(source).unwrap(),
+        );
+    }
+    expected
+}
+
+#[tokio::test]
+async fn capture_review_edit_catalog_when_requested() {
+    let Some(output) = std::env::var_os("REVIEW_CATALOG_CAPTURE") else {
+        return;
+    };
+    let output = std::path::PathBuf::from(output);
+    assert!(output.is_absolute() && output.is_dir());
+    let db = restored_database().await;
+    migration::Migrator::up(&db, None).await.unwrap();
+    let actual = catalog(&db).await;
+    let baseline = expected_catalog_without_review();
+    let delta = actual
+        .as_object()
+        .unwrap()
+        .iter()
+        .filter(|(key, value)| baseline.get(*key) != Some(*value))
+        .map(|(key, value)| (key.clone(), value.clone()))
+        .collect::<serde_json::Map<_, _>>();
+    assert!(delta.contains_key("relation:public.medication_review_edit_leases"));
+    assert!(delta.contains_key("relation:public.medication_review_histories"));
+    assert!(
+        delta.contains_key("column:public.medication_review_prompts.evidence_source_fingerprint")
+    );
+    std::fs::write(
+        output.join("medtracker-review-edit-catalog.json"),
+        serde_json::to_string_pretty(&delta).unwrap(),
+    )
+    .unwrap();
+    db.close().await.unwrap();
+}
+
 async fn restored_database() -> loco_rs::prelude::DatabaseConnection {
     assert_eq!(std::env::var("MEDTRACKER_OWNED_DATABASE").unwrap(), "1");
     let uri = std::env::var("DATABASE_URL").unwrap();
@@ -71,23 +123,13 @@ async fn fresh_database_is_created_by_loco_migrations() {
     let before = catalog(&db).await;
     assert!(before.get("relation:public.accounts").is_some());
     assert!(before.get("relation:public.audit_ledger_entries").is_some());
-    let mut expected = serde_json::Map::new();
-    for source in [
-        include_str!("../migration/catalog.json"),
-        include_str!("../migration/ledger-catalog.json"),
-        include_str!("../migration/queue-catalog.json"),
-        include_str!("../migration/take-identity-catalog.json"),
-        include_str!("../migration/browser-session-catalog.json"),
-        include_str!("../migration/access-token-scopes-catalog.json"),
-        include_str!("../migration/registration-policy-catalog.json"),
-        include_str!("../migration/identity-catalog.json"),
-        include_str!("../migration/support-access-catalog.json"),
-        include_str!("../migration/notification-deliveries-catalog.json"),
-    ] {
-        expected.extend(
-            serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(source).unwrap(),
-        );
-    }
+    let mut expected = expected_catalog_without_review();
+    expected.extend(
+        serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(include_str!(
+            "../migration/review-edit-catalog.json"
+        ))
+        .unwrap(),
+    );
     let actual = before.as_object().unwrap();
     let differences: Vec<_> = expected
         .keys()
@@ -107,6 +149,8 @@ async fn fresh_database_is_created_by_loco_migrations() {
         differences.join("\n")
     );
     let ledger = ledger_rows(&db).await;
+    assert_eq!(ledger.len(), 10);
+    assert_eq!(ledger[9].0, "m20261013_000010_review_edit");
     migration::Migrator::up(&db, None).await.unwrap();
     assert_eq!(catalog(&db).await, before);
     assert_eq!(ledger_rows(&db).await, ledger);

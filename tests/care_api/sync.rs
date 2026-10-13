@@ -747,7 +747,22 @@ async fn sync_catalogue_review_update_requires_current_manage_and_version() {
     app.fixture.admin.execute_unprepared("INSERT INTO medication_review_evidence_records(id,created_at,updated_at,evidence_text,label_section,product_name,retrieved_on,source_name,source_record_id,source_url) VALUES(89997,now(),now(),'Synthetic interaction evidence','synthetic','Synthetic tablets',current_date,'Synthetic source','synthetic-sync-review','https://example.test/synthetic'); INSERT INTO medication_review_prompts(id,created_at,updated_at,evidence_record_id,evidence_source_checked_on,evidence_source_effective_on,evidence_source_name,evidence_source_url,evidence_source_version,evidence_text,household_id,interacting_medication_id,interacting_medication_name,match_confidence,match_reason,match_type,matched_term,person_id,primary_medication_id,primary_medication_name,risk_level,source_instruction) VALUES(89997,now(),'2026-10-01T00:00:00',89997,current_date,current_date,'Synthetic source','https://example.test/synthetic','synthetic','Synthetic evidence',72001,80001,'Synthetic tablets','high','Synthetic match','synthetic','Synthetic tablets',73001,80001,'Synthetic tablets','unknown','Synthetic instruction')").await.unwrap();
     let canonical = "MedicationReviewPrompt:89997:1790812800.000000";
     let etag = format!("\"{}\"", hex::encode(Sha256::digest(canonical.as_bytes())));
-    let operation = json!({"resource_type":"medication_review_prompt","action":"update","id":"89997","if_match":etag,"attributes":{"status":"not_relevant","review_note":"Synthetic reviewed offline"}});
+    let missing_lease = json!({"resource_type":"medication_review_prompt","action":"update","id":"89997","if_match":etag.clone(),"attributes":{"status":"not_relevant","review_note":"Unleased offline review"}});
+    let (missing_status, missing_reply) = sync_operation(&app, &token, missing_lease).await;
+    assert_eq!(missing_status, 409, "{missing_reply}");
+    let lease = app
+        .client
+        .post(format!(
+            "{}/api/v1/households/72001/medication_review_prompts/89997/lease",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(lease.status().as_u16(), 201);
+    let lease: Value = lease.json().await.unwrap();
+    let operation = json!({"resource_type":"medication_review_prompt","action":"update","id":"89997","if_match":etag,"attributes":{"status":"not_relevant","review_note":"Synthetic reviewed offline","lease_token":lease["data"]["token"]}});
     let (status, updated) = sync_operation(&app, &token, operation.clone()).await;
     assert_eq!(status, 201, "{updated}");
     assert_eq!(
