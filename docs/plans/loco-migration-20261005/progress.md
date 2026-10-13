@@ -80,9 +80,17 @@ is in [the API slice](slices/05-api-integrations.md).
   responses and account OAuth insufficient-scope responses. Apply each correction
   in its owning area, preserving enforcement and leaving native pins unchanged.
 
+Main subsequently advanced to `60e7de5d` (PR #2604), adding pure unit tests.
+The harness branch preserves that ancestry and corrects the new blanket
+TestServer prohibition to match the approved full-router acceptance harness.
+Devin session `cool-actress` accepted this guidance and withdrew an inaccurate
+in-process transport suggestion after checking installed axum-test 17.3.0. Both
+agent guides are synchronized at signed harness head `d8201065`; publication
+and updated-head hosted checks remain pending. No upstream tests were removed.
+
 Coverage extension on `codex/s05-i01-coverage-baseline`:
 
-- Base: PR #2600 at `2808f38ce508f2606b6d2d0787301961bffd85d7`, including
+- Base: PR #2600 branch at `d8201065910fbe79f276b514970399919a67eb51`, including
   PR #2599's unit-coverage setup. Extend its `test:coverage` command and existing
   CI job to run unit, request-harness and care API tests using owned fixtures.
 - Preserve the report-only policy. Test/tool failures still fail the selected
@@ -114,13 +122,27 @@ Coverage extension on `codex/s05-i01-coverage-baseline`:
   Removing the redundant `--no-clean` flags preserves accumulation through
   `--no-report`; 24 runner and 137 policy checks pass after the correction.
   Devin accepted this correction in the same `living-pick` session. Repeat
-  signed measurement and cumulative CI remain pending; verify the resulting
-  LCOV includes execution from all three selections.
+  measurement passed as recorded below; cumulative CI remains pending.
 - Existing hosted unit coverage at `2808f38` measured 1,931 of 57,239 application
   lines (3.37%), including zero API-controller lines. This `--lib` baseline is
   preserved under `/private/tmp/s05-i01-evidence/hosted-unit-coverage-2808f38/`.
-  It does not measure the full suite. Integration measurement, cumulative CI,
-  publication and affected-code coverage assessment remain pending.
+  It does not measure the full suite.
+- Combined coverage passed on signed `ca314adb`, before the latest main update:
+  job 75191 exited zero with 45 unit, 12 request and 500 care API tests passing.
+  The request completeness gate and fixture hook remained intentionally ignored.
+  LCOV and a complete manifest are preserved in
+  `/private/tmp/s05-i01-evidence/coverage-baseline-ca314adb/`; the manifest records
+  the unrelated preserved Serena change and an unchanged source fingerprint.
+  Application line coverage is 36,202/57,242 (63.24%); the API-controller
+  directory is 6,717/7,287 (92.18%), the OAuth-controller directory 10/344 (2.91%),
+  and models 27,775/38,185 (72.74%). These directory metrics do not establish
+  public API acceptance or meet every skill target. The log proves all three
+  selections ran; LCOV does not label each selection independently.
+- Docker pool exhaustion delayed measurement. After the owner approved removing
+  one named empty fixture network, reinspection found it already absent and
+  capacity restored. This task removed no unknown networks or storage.
+- The stack now preserves PR #2604 unit additions. Repeat coverage and cumulative
+  CI on the reconciled signed candidate remain required before publication.
 
 Session close-out on 11 October 2026:
 
