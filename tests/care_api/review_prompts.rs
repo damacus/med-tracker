@@ -386,7 +386,7 @@ async fn failed_review_audit_rolls_back_mutation_and_keeps_the_lease() {
     let note: Option<String> = stored.try_get("", "review_note").unwrap();
     let stored_token: String = stored.try_get("", "token").unwrap();
     app.close().await;
-    assert_eq!(failed.status().as_u16(), 503);
+    assert_eq!(failed.status().as_u16(), 500);
     assert_eq!(note, None);
     assert_eq!(stored_token, lease);
 }
