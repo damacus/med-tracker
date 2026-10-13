@@ -372,7 +372,7 @@ pub async fn refresh_many(
                     }
                     .insert(db)
                     .await?;
-                    db.execute(Statement::from_sql_and_values(
+                    db.execute_raw(Statement::from_sql_and_values(
                         DbBackend::Postgres,
                         "UPDATE medication_review_prompts p SET evidence_source_fingerprint=md5(jsonb_build_array(e.source_name,e.source_url,e.source_version,e.source_effective_on,e.evidence_text,e.risk_level,e.match_confidence)::text) FROM medication_review_evidence_records e WHERE p.id=$1 AND e.id=p.evidence_record_id",
                         [created.id.into()],
@@ -435,7 +435,7 @@ async fn reconcile(
         ), audited AS (
             INSERT INTO security_audit_events (household_id,event_type,request_id,audit_context,metadata,created_at,updated_at)
             SELECT household_id,'medication_review_prompt.evidence_refreshed','medication-review-refresh',
-                '{}'::jsonb,jsonb_build_object('prompt_id',id),
+                '{{}}'::jsonb,jsonb_build_object('prompt_id',id),
                 timezone('UTC',clock_timestamp()),timezone('UTC',clock_timestamp()) FROM changed
             RETURNING id
         ) UPDATE medication_review_prompts p SET
@@ -452,7 +452,7 @@ async fn reconcile(
         FROM medication_review_evidence_records e,archived a
         WHERE p.id=a.prompt_id AND e.id=p.evidence_record_id"
     );
-    db.execute(Statement::from_sql_and_values(
+    db.execute_raw(Statement::from_sql_and_values(
         DbBackend::Postgres,
         sql,
         [household_id.into()],
@@ -461,7 +461,7 @@ async fn reconcile(
     let checked = format!(
         "UPDATE medication_review_prompts p SET evidence_source_checked_on=e.retrieved_on FROM medication_review_evidence_records e WHERE p.household_id=$1 {person_filter} AND e.id=p.evidence_record_id AND p.evidence_source_checked_on IS DISTINCT FROM e.retrieved_on"
     );
-    db.execute(Statement::from_sql_and_values(
+    db.execute_raw(Statement::from_sql_and_values(
         DbBackend::Postgres,
         checked,
         [household_id.into()],

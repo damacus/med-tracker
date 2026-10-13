@@ -99,7 +99,7 @@ async fn run(ctx: &AppContext, run_id: i64) -> Result<(), OperationError> {
     if status == 2 {
         return Ok(());
     }
-    ctx.db.execute(Statement::from_sql_and_values(DbBackend::Postgres,
+    ctx.db.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
         "UPDATE medication_review_evidence_refresh_runs SET status=1,started_at=COALESCE(started_at,timezone('UTC',clock_timestamp())),updated_at=timezone('UTC',clock_timestamp()) WHERE id=$1", [run_id.into()]
     )).await?;
     let result = async {
@@ -119,7 +119,7 @@ async fn run(ctx: &AppContext, run_id: i64) -> Result<(), OperationError> {
 }
 
 async fn fail(ctx: &AppContext, run_id: i64, message: &str) -> Result<(), OperationError> {
-    ctx.db.execute(Statement::from_sql_and_values(DbBackend::Postgres,
+    ctx.db.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
         "UPDATE medication_review_evidence_refresh_runs SET status=3,error_message=$2,completed_at=timezone('UTC',clock_timestamp()),updated_at=timezone('UTC',clock_timestamp()) WHERE id=$1 AND status<>2",
         [run_id.into(), message.into()],
     )).await?;
@@ -564,7 +564,7 @@ pub(crate) async fn import_snapshot(
         review_prompts::reconcile_household(&tenant, household.id).await?;
         tenant.commit().await?;
     }
-    ctx.db.execute(Statement::from_sql_and_values(DbBackend::Postgres,
+    ctx.db.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
         "UPDATE medication_review_evidence_refresh_runs SET status=2,source_last_updated=$2,label_count=$3,created_count=$4,updated_count=$5,unchanged_count=$6,missing_count=$7,change_summary=$8::jsonb,completed_at=timezone('UTC',clock_timestamp()),error_message=NULL,updated_at=timezone('UTC',clock_timestamp()) WHERE id=$1",
         [run_id.into(), source_last_updated.into(), (labels.len() as i32).into(), created.into(), updated.into(), unchanged.into(), (missing as i32).into(), json!({"changes":changes}).to_string().into()],
     )).await?;

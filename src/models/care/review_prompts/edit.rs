@@ -5,7 +5,7 @@ use crate::models::{
     errors::OperationError,
 };
 use chrono::Utc;
-use sea_orm::{ConnectionTrait, DbBackend, Statement, TryGetable};
+use sea_orm::{ConnectionTrait, DbBackend, Statement};
 use serde_json::{Value, json};
 
 fn conflict(code: &str, message: &str) -> OperationError {
@@ -108,7 +108,7 @@ pub async fn release(
 ) -> Result<(), OperationError> {
     sync::lock(tenant).await?;
     let record = authorised(tenant, id).await?;
-    tenant.transaction().execute(Statement::from_sql_and_values(
+    tenant.transaction().execute_raw(Statement::from_sql_and_values(
         DbBackend::Postgres,
         "DELETE FROM medication_review_edit_leases WHERE prompt_id=$1 AND household_id=$2 AND membership_id=$3 AND token::text=$4",
         [record.id.into(), tenant.scope().household_id.into(), tenant.membership().id.into(), token.into()],
@@ -122,7 +122,7 @@ pub async fn consume(
     token: &str,
 ) -> Result<(), OperationError> {
     require(tenant, record, token).await?;
-    let result = tenant.transaction().execute(Statement::from_sql_and_values(
+    let result = tenant.transaction().execute_raw(Statement::from_sql_and_values(
         DbBackend::Postgres,
         "DELETE FROM medication_review_edit_leases WHERE prompt_id=$1 AND household_id=$2 AND membership_id=$3 AND token::text=$4",
         [record.id.into(), tenant.scope().household_id.into(), tenant.membership().id.into(), token.into()],
@@ -142,7 +142,7 @@ pub async fn archive(
     event_type: &str,
 ) -> Result<(), OperationError> {
     let snapshot = super::value(record);
-    tenant.transaction().execute(Statement::from_sql_and_values(
+    tenant.transaction().execute_raw(Statement::from_sql_and_values(
         DbBackend::Postgres,
         "INSERT INTO medication_review_histories (household_id,prompt_id,event_type,snapshot,created_at) VALUES ($1,$2,$3,$4::jsonb,$5)",
         [tenant.scope().household_id.into(), record.id.into(), event_type.into(), snapshot.to_string().into(), Utc::now().naive_utc().into()],

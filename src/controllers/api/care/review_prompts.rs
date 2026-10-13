@@ -235,9 +235,6 @@ async fn mutation(
     {
         return Err(response::operation(OperationError::Forbidden));
     }
-    review_prompts::reconcile_person(tenant, record.person_id)
-        .await
-        .map_err(response::operation)?;
     let Some(record) = prompts::visible_prompt(tenant.transaction(), &context, id)
         .await
         .map_err(response::operation)?
@@ -260,6 +257,15 @@ async fn mutation(
     {
         return Err(response::operation(OperationError::Forbidden));
     }
+    let Some(record) = prompts::visible_prompt(tenant.transaction(), &context, id)
+        .await
+        .map_err(response::operation)?
+    else {
+        return Err(response::operation(OperationError::NotFound));
+    };
+    review_prompts::reconcile_person(tenant, record.person_id)
+        .await
+        .map_err(response::operation)?;
     let Some(record) = prompts::visible_prompt(tenant.transaction(), &context, id)
         .await
         .map_err(response::operation)?
