@@ -696,6 +696,22 @@ no application code changes. No database/browser jobs or screenshots started.
 Publication and independent review remain held for the corrected candidate.
 The corrected registration passed all 138 policy cases in `44749`, formatting
 in `50670` and diff checks. Full CI must rerun on the committed correction.
+Corrected candidate `164129cf0b6d0316701427c2236de455cd393f83` is locally accepted,
+with 1,535 changed lines against published me/UI `012e8cfe`. Independent Devin
+review `73581` exited zero with ACCEPT and no findings; its export verifies
+session `bright-glove`, model `SWE-2 Max` and nine steps. The inline packet has
+SHA-256 `26ead56a9d4868aa05f5ba90681af4b8db587339e9871e36d9d7bb4832b2b524`.
+Full CI `91429` exited zero on that exact candidate: policy 138, runner 47,
+Rust units 115, requests 81/one ignored, care 508/two ignored/16 helpers filtered,
+all other applicable integrations, and all 744 browser cases in 19.4 minutes.
+No live verification process remains. Thirty-nine generated PNGs were preserved
+in `people-ci-164129cf-screenshots.patch`, SHA-256
+`4329b2f85c1ca0b9a9d60f4db4d4060c56422d6ac9d65f8b6ce450ca7212d0d3`.
+Root verified every current image hash, the exact path list and binary patch
+against the working diff, then reverse-applied only that patch. HEAD stayed
+`164129cf` and the checkout returned clean. This final progress update changes
+documentation only. Publication and exact-head hosted acceptance remain required;
+no merge, deployment or additional complete-operation credit is claimed.
 
 Entries below retain historical revisions, failed attempts and publication states.
 
