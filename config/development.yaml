@@ -76,6 +76,9 @@ scheduler:
     browser_reminders:
       run: browser-reminders
       schedule: "0 * * * * *"
+    support_access_expiry:
+      run: support-access-expire
+      schedule: "0 * * * * *"
 queue:
   kind: Postgres
   uri: <%= get_env(name="DATABASE_URL", default="postgres://medtracker:medtracker_password@localhost:5432/medtracker_loco") %>

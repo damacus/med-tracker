@@ -79,6 +79,9 @@ scheduler:
     medication_review_evidence_refresh:
       run: medication-review-evidence-refresh
       schedule: "0 0 3 * * Sun"
+    support_access_expiry:
+      run: support-access-expire
+      schedule: "0 * * * * *"
 queue:
   kind: Postgres
   uri: <%= get_env(name="DATABASE_URL", default="postgres://medtracker:medtracker_password@localhost:5432/medtracker_loco") %>
