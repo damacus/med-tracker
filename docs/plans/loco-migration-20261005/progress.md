@@ -404,6 +404,29 @@ Shared HTTP rate-limit work:
   No new timing diagnostic or production importer correction was applied.
   Evidence and coverage states remain unchanged. Independent correction review,
   current coverage measurement and full CI remain required before publication.
+- Frozen unsigned candidate `bbd971dd13fda0b3450d0a5e656f2c8ccb26ac5e` passed
+  formatting, strict all-target lint job 46272, docs build and diff checking.
+  Same-session Devin `ambiguous-jupiter` correction job 99421 accepted it with
+  no blocking findings. Report-only coverage job 6021 exited zero: 102 units,
+  18 requests (one ignored) and 521 care API cases (two ignored) passed. Manifest
+  `rate-coverage-main672/3332732b-b1f3-47c6-85e4-d1898b33e063/manifest.json`
+  records that revision and source-state SHA
+  `511e72ee1181e0f15c371dcbdec0189a87cdef24f37bc41de2b0b0f968f107b0`;
+  dirty state is the preserved unrelated Serena file. Raw LCOV is retained there.
+  Excluding new inline test bodies/helpers, limiter model coverage was 161/171
+  (94.15%), controller 46/46 and view 16/16. Model gaps were error-display text,
+  malformed settings rejection and stopping a forwarded chain at the first
+  untrusted hop. API controllers aggregate 92.33%; raw source aggregate 63.20%
+  and models 73.17% include inline test bodies. OAuth controller coverage is
+  2.88% because this selection omits its separate test binary. These are baseline
+  limits, not operation acceptance or proof that all business paths pass.
+- Two test-only additions now exercise actual quota sharing across valid and
+  malformed spoofed forwarding prefixes, and five invalid configurations with
+  their operator-visible startup errors. Production code is unchanged. Focused
+  unit job 85432 passed 12 matching cases (11 limiter cases plus push retry).
+  Formatting passes after correcting the new test layout; no behavioral result
+  was inferred from the formatting failures. Same-session correction review,
+  coverage remeasurement and full CI remain before publication.
 
 Session close-out on 11 October 2026:
 

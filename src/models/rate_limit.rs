@@ -537,6 +537,41 @@ mod tests {
     }
 
     #[test]
+    fn left_of_nearest_untrusted_hop_cannot_change_the_export_bucket() {
+        let peer: IpAddr = "127.0.0.1".parse().unwrap();
+        let path = "/api/v1/households/42/data_exports/health_data_json";
+        for spoofed_left in ["198.51.100.201", "not-an-ip"] {
+            let state = RateLimitState::from_settings(
+                Some(&json!({"api_rate_limit":{
+                    "trusted_proxy_ips":"127.0.0.1,192.0.2.10",
+                    "fixed_now_unix_seconds":1000
+                }})),
+                &Environment::Test,
+            )
+            .unwrap();
+            let mut spoofed = HeaderMap::new();
+            spoofed.insert(
+                "x-forwarded-for",
+                HeaderValue::from_str(&format!("{spoofed_left}, 203.0.113.8, 192.0.2.10")).unwrap(),
+            );
+            let mut canonical = HeaderMap::new();
+            canonical.insert(
+                "x-forwarded-for",
+                HeaderValue::from_static("203.0.113.8, 192.0.2.10"),
+            );
+            for _ in 0..10 {
+                assert!(state.check(peer, &spoofed, &Method::GET, path).is_none());
+            }
+            let rejected = state.check(peer, &canonical, &Method::GET, path).unwrap();
+            assert_eq!(
+                (rejected.limit, rejected.retry_after, rejected.reset_at),
+                (10, 20, 1_020),
+                "left prefix {spoofed_left} changed the client bucket"
+            );
+        }
+    }
+
+    #[test]
     fn capacity_is_bounded_and_expired_entries_are_reclaimed() {
         let limiter = RateLimiter::with_capacity(2);
         let first: IpAddr = "198.51.100.31".parse().unwrap();
@@ -646,6 +681,42 @@ mod tests {
                 .err(),
                 Some(RateLimitConfigError::InvalidFixedClock)
             );
+        }
+    }
+
+    #[test]
+    fn invalid_rate_limit_settings_explain_the_startup_failure() {
+        for (settings, environment, expected) in [
+            (
+                json!({"api_rate_limit":[]}),
+                Environment::Test,
+                "API rate-limit settings must be an object",
+            ),
+            (
+                json!({"api_rate_limit":{"trusted_proxy_ips":"127.0.0.1,"}}),
+                Environment::Test,
+                "Trusted proxy IPs must be a comma-separated string with no empty members",
+            ),
+            (
+                json!({"api_rate_limit":{"trusted_proxy_ips":"not-an-ip"}}),
+                Environment::Test,
+                "Invalid trusted proxy IP",
+            ),
+            (
+                json!({"api_rate_limit":{"fixed_now_unix_seconds":-1}}),
+                Environment::Test,
+                "Fixed rate-limit clock must be a nonnegative integer",
+            ),
+            (
+                json!({"api_rate_limit":{"fixed_now_unix_seconds":1000}}),
+                Environment::Production,
+                "Fixed rate-limit clock is only available in test",
+            ),
+        ] {
+            let error = RateLimitState::from_settings(Some(&settings), &environment)
+                .err()
+                .expect("invalid startup settings must fail");
+            assert_eq!(error.to_string(), expected, "settings: {settings}");
         }
     }
 }
