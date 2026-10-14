@@ -1115,6 +1115,9 @@ pub mod account {
         fixture.admin.execute_unprepared(
             "INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71001,'Second household','second-household','UTC',now(),now()); INSERT INTO people(id,household_id,account_id,name,person_type,has_capacity,created_at,updated_at) VALUES(73004,72002,71001,'Second household person',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,account_id,person_id,role,joined_at,created_at,updated_at) VALUES(74002,72002,71001,73004,'member',now(),now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,status,lifecycle_state,created_at,updated_at) VALUES(72003,71001,'Held household','held-household','UTC','active','held',now(),now()); INSERT INTO household_memberships(id,household_id,account_id,role,joined_at,created_at,updated_at) VALUES(74003,72003,71001,'member',now(),now(),now())"
         ).await.unwrap();
+        fixture.admin.execute_unprepared(
+            "INSERT INTO accounts(id,email,password_hash,created_at,updated_at) VALUES(71002,'foreign-collection-account@example.test',crypt('password',gen_salt('bf',4)),now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72004,71002,'Foreign active household','foreign-active-household','UTC',now(),now()); INSERT INTO people(id,household_id,account_id,name,person_type,has_capacity,created_at,updated_at) VALUES(73005,72004,71002,'Foreign member',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,account_id,person_id,role,joined_at,created_at,updated_at) VALUES(74004,72004,71002,73005,'owner',now(),now(),now()); INSERT INTO api_sessions(id,account_id,household_membership_id,access_token_digest,refresh_token_digest,permissions_version,access_expires_at,refresh_expires_at,last_used_at,device_name,created_at,updated_at) VALUES(88004,71002,74004,'foreign-collection-digest','foreign-collection-refresh',1,now()+interval '15 minutes',now()+interval '1 day',now(),'Foreign device',now(),now())"
+        ).await.unwrap();
         let mobile = mobile_token(&fixture).await;
         let aged_maximum = "synthetic-mobile-over-maximum";
         let aged_inactivity = "synthetic-mobile-over-inactivity";
@@ -1254,11 +1257,25 @@ pub mod account {
             assert_eq!(households["data"][0]["id"], 72001);
             assert_eq!(households["data"][1]["id"], 72002);
             assert_eq!(households["data"][1]["membership_id"], 74002);
+            assert!(
+                households["data"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .all(|row| row["id"] != 72004)
+            );
             let sessions: Value = sessions.json();
             assert_response_schema("/api/v1/auth/sessions", 200, &sessions);
             assert_eq!(sessions["data"].as_array().unwrap().len(), 2);
             assert_eq!(sessions["data"][0]["id"], 88001);
             assert_eq!(sessions["data"][1]["id"], 88002);
+            assert!(
+                sessions["data"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .all(|row| row["id"] != 88004)
+            );
             for secret in [
                 "synthetic-current-session",
                 "synthetic-current-refresh",
@@ -1272,6 +1289,13 @@ pub mod account {
         let mobile_households: Value = mobile_households.json();
         assert_response_schema("/api/v1/auth/households", 200, &mobile_households);
         assert_eq!(mobile_households["data"].as_array().unwrap().len(), 2);
+        assert!(
+            mobile_households["data"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(|row| row["id"] != 72004)
+        );
         let mobile_sessions: Value = mobile_sessions.json();
         assert_response_schema("/api/v1/auth/sessions", 200, &mobile_sessions);
         assert_eq!(mobile_sessions["data"].as_array().unwrap().len(), 1);
