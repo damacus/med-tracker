@@ -21,6 +21,7 @@ did not merge it. Its 1,499-line candidate and historical failures remain below.
 | [#2636](https://github.com/damacus/med-tracker/pull/2636): account session contracts | `codex/s05-i01-contract-execution` | `451c357c4f71539bf62056c5ac0459d235528a63` | 1,711 | Reviewed; local and exact-head hosted gates pass |
 | [#2637](https://github.com/damacus/med-tracker/pull/2637): request IDs on rate-limit responses | `codex/s05-i01-account-sessions` | `adfe373fa79bd575d53db6b25f17e76f7600352a` | 399 | Reviewed; local CI and exact-head hosted checks pass |
 | [#2639](https://github.com/damacus/med-tracker/pull/2639): capability discovery | `codex/s05-i01-rate-request-ids` | `022854c80a921d2601970b5bad03ec8e950d6fd9` | 1,101 | Reviewed; local CI and exact-head hosted checks pass |
+| [#2640](https://github.com/damacus/med-tracker/pull/2640): household errors and UI privacy | `codex/s05-i01-capabilities` | `012e8cfe9b2e2555fedd3001213a877795aac4a4` | 990 | Reviewed; local CI and all 45 exact-head hosted checks completed successfully or skipped |
 
 Stack `2634` is published; no layer is merged or deployed. Full local
 CI `61813` passed 111 units, 20 request cases, 508 care cases and all 744 browser
@@ -420,6 +421,53 @@ hosted acceptance remain required; no merge or deployment occurred. Whole-API
 acceptance still rejects 117 incomplete operations. The separate People draft
 will next demonstrate its own RED, including the missing replay metadata;
 neither draft nor source inspection earns additional complete operation credit.
+
+PR #2640 is now published and hosted-accepted: run `38632805964` completed with
+31 successful and 14 skipped checks; Devin Review passed with no review threads.
+Coverage artifact `11926499279` has verified SHA-256
+`0d47cac978fcf7d0556942c44aafd4836f5e56d50bb29ce272fe34f8abffb6d0`.
+Its merge revision has the same tree as the published head. Added runtime
+coverage is 5/7, and critical `operation_error` coverage is 5/7, below targets.
+Raw general source coverage is 63.63%; API source coverage is 92.37%.
+These measurements do not replace operation acceptance. No merge or deployment
+occurred; Codex artifact attachment failed because its tool could not load.
+
+The coordinator owns the next isolated `codex/s05-i01-people-write` branch,
+based on published `012e8cfe`. The API writer transferred its frozen tests,
+four scoped OpenAPI operations and matching inventory metadata to the coordinator;
+the verifier owns builds and disposable fixtures. This boundary covers People
+list, create, PATCH and PUT. The person-detail operation remains held for its
+304 contract decision. No People runtime code or native pins changed.
+
+The initial draft jobs `1075` and `62069` failed compilation and executed zero
+tests; neither is behavioural RED. Actual RED `14358` executed ten cases, with
+three failures demonstrating missing idempotency-key and 409 metadata on all
+three writes. Metadata-only corrections passed ten cases in GREEN `98150`.
+Concurrency and audit-failure additions initially exposed overclaimed test
+expectations: People does not promise no-store on every response, and an
+overlapping create can invalidate the permission snapshot of its competitor.
+Those expectations were corrected without changing runtime security. The POST
+case requires exactly one creation, allows the competitor's existing 403 or
+replay response, then requires successful same-key replay through a fresh
+request. PATCH and PUT each require two successful replies and one replay.
+Job `28202` then demonstrated the actual four 500 ErrorEnvelope replies and
+atomic rollback before failing their missing OpenAPI responses. Adding the
+shared response metadata produced GREEN `14361`, fourteen passing cases.
+Inventory `16932` passed 78 cases with only final completion ignored.
+
+Two further real-boundary tests passed in job `3023`: restricted-role household
+read failure returns 500 without domain/audit writes; account closure during
+the real mobile OAuth touch returns 401 before household access. The latter
+uses a clone-local, account-scoped trigger with fixed search path, verifies its
+execution and persisted account status, and retains restricted runtime access.
+All sixteen People cases passed, followed by strict lint `69105`. Earlier
+generated-client verification `82539`, Swift `11452` and Kotlin `67388` passed;
+their inputs are unchanged by the two additional test-only cases. Logs are
+retained under `/private/tmp/s05-i01-evidence/people-*`.
+Malformed household-ID extraction remains an unresolved contract gap. This
+candidate still needs immutable partial evidence, independent SWE-2 Max review,
+full CI, publication and exact-head hosted acceptance. No new complete-operation
+credit is claimed; whole-API acceptance still rejects 117 incomplete operations.
 
 Entries below retain historical revisions, failed attempts and publication states.
 
