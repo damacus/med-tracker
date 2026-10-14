@@ -3006,6 +3006,13 @@ ga:
         password_confirmation: Dearbhaigh an Pasfhocal
         submit: Cruthaigh Cuntas
   medication_workflow:
+    chooser:
+      back: Ar ais chuig cógais
+      title: Roghnaigh duine
+      subtitle: Roghnaigh an duine ar mian leat a chógas a bhainistiú.
+      assign: Sann cógas do %{person}
+      create: Cruthaigh cógas do %{person}
+      empty: Níl aon duine ar fáil le haghaidh bainistiú cógas.
     person_selection:
       title: Cuir Leigheas Leis
       subtitle: Cé dó atá an leigheas seo?

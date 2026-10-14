@@ -90,7 +90,7 @@ pub(super) async fn open(
         Err(_) => return unavailable(),
     };
     let mut data = rendering::appearance_context();
-    data["title"] = json!("Choose a person");
+    data["title"] = labels["medication_workflow"]["chooser"]["title"].clone();
     data["slug"] = json!(slug);
     data["can_create"] = json!(can_create);
     data["people"] = json!(

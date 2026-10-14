@@ -3016,6 +3016,13 @@ cy:
         title: Pobl
         description: Rheoli pobl a'u hamserlenni, olrhain amserlenni meddyginiaeth
   medication_workflow:
+    chooser:
+      back: Yn ôl i feddyginiaethau
+      title: Dewiswch berson
+      subtitle: Dewiswch y person yr ydych am reoli ei feddyginiaeth.
+      assign: Neilltuo meddyginiaeth i %{person}
+      create: Creu meddyginiaeth i %{person}
+      empty: Nid oes pobl ar gael i reoli meddyginiaeth.
     back: "← Yn ôl"
     person_selection:
       title: Ychwanegu Meddyginiaeth

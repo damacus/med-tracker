@@ -2991,6 +2991,13 @@ en:
       add_medication: Add Medication
       add_person: Add Person
   medication_workflow:
+    chooser:
+      back: Back to medications
+      title: Choose a person
+      subtitle: Choose whose medication you want to manage.
+      assign: Assign medication to %{person}
+      create: Create medication for %{person}
+      empty: No people are available for medication management.
     person_selection:
       title: Add Medication
       subtitle: Who is this medication for?

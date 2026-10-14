@@ -2688,6 +2688,13 @@ es:
         password_confirmation: Confirmar contraseña
         submit: Crear cuenta
   medication_workflow:
+    chooser:
+      back: Volver a medicamentos
+      title: Elige una persona
+      subtitle: Elige de quién quieres gestionar la medicación.
+      assign: Asignar medicamento a %{person}
+      create: Crear medicamento para %{person}
+      empty: No hay personas disponibles para gestionar la medicación.
     person_selection:
       title: Añadir medicamento
       subtitle: "¿Para quién es este medicamento?"

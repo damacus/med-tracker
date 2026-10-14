@@ -1,4 +1,5 @@
 import { test, expect } from './care-fixtures.mjs';
+import { openCareSection } from './care-navigation.mjs';
 import { fileURLToPath } from 'node:url';
 
 const releasePath = fileURLToPath(new URL('./fixtures/nhs-dmd-small-release.zip', import.meta.url));
@@ -36,7 +37,7 @@ test('administrator sees failed and completed imports and can use the imported b
 
   await page.goto('/');
   await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
-  await page.getByRole('link', { name: 'Medication Finder', exact: true }).click();
+  await openCareSection(page, 'Medication Finder');
   await page.getByLabel('Barcode', { exact: true }).fill('5016298210989');
   await page.getByRole('button', { name: 'Find barcode', exact: true }).click();
   await expect(page.getByText('Scanner imported tablets', { exact: true })).toBeVisible();

@@ -3,7 +3,48 @@
 Owner-requested follow-ups, 7 October 2026. Parent: [browser delivery](06-browser.md).
 Profile has its own [item-by-item subplan](06-profile-parity.md).
 
-## Current completion scope — 13 October 2026
+## Current completion scope — 14 October 2026
+
+### Review fixes and final verification — 14 October 2026
+
+The current candidate fixes all three review findings on PR #2617: changed
+evidence recalculates match advice and preserves history, displayed medicine
+names remain searchable, and the person chooser is translated in all five
+catalogues. Unsupported or reversed matches retire the old warning; unchanged
+reviews and retrieval-only refreshes keep their outcome and version. The
+independent correctness review found the direction edge case; its regression
+failed before the fix and passed afterwards.
+
+The first full gate passed every Rust/API check and 737 browser cases, with
+seven browser failures. The dose-option page now supplies its household slug
+so Search remains available. The remaining fixes preserve the complete URLs
+and visible navigation, disambiguate parent stock from option stock, and
+install Finder request interception before sign-in so caching does not change
+mid-journey. Focused dose-option/wizard cases and the final Finder/launcher
+desktop/mobile cases pass. The second full gate passed all 744 desktop/mobile
+browser cases on an unchanged care candidate. Its API stage passed 506 cases
+and exposed one pre-existing reminder-test clock race: the drain timestamp
+could precede the actual persisted retry time. A deterministic clock-skew
+regression reproduced that failure; the test now drains at the stored retry
+time. The focused test and all 29 reminder cases pass. The final complete API
+integration stage passed, including 507 care API cases (two existing ignored
+cases). Formatting, strict Clippy, documentation and whitespace checks pass.
+The browser-stage evidence remains valid because subsequent executable changes
+only correct that API test's clock. Hosted checks on the publication head remain
+pending.
+
+The original white-header theme remains unchanged. Its controls now fit at
+320px; #2619 tracks that correction. Both targeted UI reviewers accepted the
+corrected source, actual browser captures and passing keyboard/geometry tests.
+They did not perform a new independent sign-in or manual screen-reader check;
+the previously rejected authentication was not retried. The private Devin
+search-security allegation was checked independently against the current shared
+access policy: valid person grants explicitly permit their linked medicines,
+and search filters returned details through that policy. Existing tests reject
+hidden-person results and revoked grants. No permission change is justified.
+No merge is claimed. Existing slice owners remain responsible for fixes;
+independent review and objective regressions are reused rather than restarting
+discovery.
 
 ### Publication candidate — 14 October 2026
 

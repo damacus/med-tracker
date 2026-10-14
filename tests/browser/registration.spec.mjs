@@ -51,7 +51,8 @@ async function createAndVerify(page, fixture, info) {
   await page.getByRole('link', { name: 'Synthetic registration Household', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Medications', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Add Medication', exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Administration', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'My Account', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'My Account', exact: true }).getByRole('link', { name: 'Administration', exact: true })).toBeVisible();
 }
 
 async function denyRegistration(page, fixture) {

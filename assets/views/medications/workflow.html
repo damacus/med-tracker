@@ -1,12 +1,12 @@
 {% extends "layouts/base.html" %}
 {% block content %}
 <section class="max-w-2xl mx-auto">
-  <a class="link" href="/households/{{ slug }}/medications">Back to medications</a>
-  <h1 class="text-3xl font-semibold mt-4">Choose a person</h1>
-  <p class="mt-2">Choose whose medication you want to manage.</p>
+  <a class="link" href="/households/{{ slug }}/medications">{{ labels.medication_workflow.chooser.back }}</a>
+  <h1 class="text-3xl font-semibold mt-4">{{ labels.medication_workflow.chooser.title }}</h1>
+  <p class="mt-2">{{ labels.medication_workflow.chooser.subtitle }}</p>
   <ul class="grid gap-3 mt-6">
-    {% for person in people %}<li class="card card-body border border-base-300 bg-base-100"><h2 class="card-title">{{ person.name }}</h2><div class="flex flex-wrap gap-2">{% if schedule_intent %}<a class="btn btn-neutral" href="/households/{{ slug }}/people/{{ person.id }}/treatments/schedules/new?source=workflow{% if medication_id %}&medication_id={{ medication_id }}{% endif %}">{{ labels.global_search.schedule_for | replace(from="%{person}", to=person.name) }}</a>{% else %}<a class="btn btn-neutral" href="/households/{{ slug }}/people/{{ person.id }}/treatments/assignments/new?source=workflow{% if medication_id %}&medication_id={{ medication_id }}{% endif %}">Assign medication to {{ person.name }}</a>{% if can_create %}<a class="btn btn-outline" href="/households/{{ slug }}/medications/new?person_id={{ person.id }}">Create medication for {{ person.name }}</a>{% endif %}{% endif %}</div></li>
-    {% else %}<li>No people are available for medication management.</li>{% endfor %}
+    {% for person in people %}<li class="card card-body border border-base-300 bg-base-100"><h2 class="card-title">{{ person.name }}</h2><div class="flex flex-wrap gap-2">{% if schedule_intent %}<a class="btn btn-neutral" href="/households/{{ slug }}/people/{{ person.id }}/treatments/schedules/new?source=workflow{% if medication_id %}&medication_id={{ medication_id }}{% endif %}">{{ labels.global_search.schedule_for | replace(from="%{person}", to=person.name) }}</a>{% else %}<a class="btn btn-neutral" href="/households/{{ slug }}/people/{{ person.id }}/treatments/assignments/new?source=workflow{% if medication_id %}&medication_id={{ medication_id }}{% endif %}">{{ labels.medication_workflow.chooser.assign | replace(from="%{person}", to=person.name) }}</a>{% if can_create %}<a class="btn btn-outline" href="/households/{{ slug }}/medications/new?person_id={{ person.id }}">{{ labels.medication_workflow.chooser.create | replace(from="%{person}", to=person.name) }}</a>{% endif %}{% endif %}</div></li>
+    {% else %}<li>{{ labels.medication_workflow.chooser.empty }}</li>{% endfor %}
   </ul>
 </section>
 {% endblock content %}

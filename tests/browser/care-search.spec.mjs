@@ -49,6 +49,16 @@ test('household search has a usable page and scoped JSON results', async ({ page
   expect((await page.goto(inventory.path)).status()).toBe(200);
   const blank = await page.request.get(`${household}/search.json?q=%20%20`);
   expect(await blank.json()).toEqual({ results: [] });
+  await page.goto(`${household}/medications/80001/edit`);
+  await page.getByLabel('Display name', { exact: true }).fill('Morning helper');
+  await page.getByRole('button', { name: 'Save Medication', exact: true }).click();
+  for (const query of ['Morning helper', 'mOrNiNg', 'Synthetic tablets']) {
+    const found = await page.request.get(`${household}/search.json?q=${encodeURIComponent(query)}`);
+    expect(found.status()).toBe(200);
+    expect((await found.json()).results).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: 'medication', title: 'Morning helper', path: `${household}/medications/80001` })
+    ]));
+  }
 });
 
 test('search excludes hidden household people and finds a source linked to the thirteenth permitted person', async ({ page, careFixture }) => {

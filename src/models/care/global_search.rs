@@ -174,6 +174,7 @@ async fn records(
         .filter(
             Condition::any()
                 .add(medication::Column::Name.ilike(&term))
+                .add(medication::Column::FriendlyName.ilike(&term))
                 .add(medication::Column::Category.ilike(&term))
                 .add(medication::Column::Barcode.ilike(&term))
                 .add(medication::Column::DmdCode.ilike(&term)),

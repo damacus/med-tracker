@@ -1,4 +1,5 @@
 import { test, expect } from './care-fixtures.mjs';
+import { openCareSection } from './care-navigation.mjs';
 
 test.use({ actionTimeout: 10000 });
 
@@ -46,7 +47,7 @@ async function signIn(page) {
 
 test('scanner manual miss continues into the complete staged medication wizard', async ({ page }) => {
   await signIn(page);
-  await page.getByRole('link', { name: 'Medication Finder', exact: true }).click();
+  await openCareSection(page, 'Medication Finder');
   await page.getByLabel('Barcode', { exact: true }).fill('9999999999999');
   await page.getByRole('button', { name: 'Find barcode', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('No matching product');
@@ -65,7 +66,7 @@ test('scanner manual miss continues into the complete staged medication wizard',
   await page.getByLabel('Warnings', { exact: true }).fill('Synthetic warning');
   await page.getByRole('button', { name: 'Save Medication', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Scanner manual tablets created!', exact: true })).toBeVisible();
-  await page.getByRole('link', { name: 'Manage dose options', exact: true }).click();
+  await page.getByRole('link', { name: 'Manage Dose Options', exact: true }).click();
   await expect(page.getByText(/Current supply: 28(\.0+)?$/)).toBeVisible();
   await page.getByRole('link', { name: 'Back to Medication', exact: true }).click();
   await page.reload();
@@ -80,7 +81,7 @@ test('scanner offers manual input after camera permission is denied', async ({ p
     } };
   });
   await signIn(page);
-  await page.getByRole('link', { name: 'Medication Finder', exact: true }).click();
+  await openCareSection(page, 'Medication Finder');
   await page.getByRole('button', { name: 'Start Scanner', exact: true }).click();
   await expect(page.getByText('Camera permission was denied. Enter the barcode manually.', { exact: true })).toBeVisible();
   await expect(page.getByLabel('Barcode', { exact: true })).toBeEditable();
@@ -94,7 +95,7 @@ test('keyboard camera failure returns focus to barcode input', async ({ page }) 
     } };
   });
   await signIn(page);
-  await page.getByRole('link', { name: 'Medication Finder', exact: true }).click();
+  await openCareSection(page, 'Medication Finder');
   await page.getByRole('button', { name: 'Start Scanner', exact: true }).focus();
   await page.keyboard.press('Enter');
   await expect(page.getByLabel('Barcode', { exact: true })).toBeFocused();
@@ -114,7 +115,7 @@ test('keyboard Stop Scanner restores focus and ignores a late camera response', 
     } };
   });
   await signIn(page);
-  await page.getByRole('link', { name: 'Medication Finder', exact: true }).click();
+  await openCareSection(page, 'Medication Finder');
   const start = page.getByRole('button', { name: 'Start Scanner', exact: true });
   const stop = page.getByRole('button', { name: 'Stop Scanner', exact: true });
   await start.focus();
@@ -482,7 +483,7 @@ test('catalogue selection retains NHS and custom source metadata in the wizard',
   await page.route('**/medications/lookup?**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
     matches: [], permissions: { can_create: true }, results: [{ display: 'Synthetic custom tablets', barcode: '5016298210989', code: 'CUSTOM-1', concept_class: 'AMPP', system: 'Local catalogue', source_label: 'Imported custom' }]
   }) }));
-  await page.getByRole('link', { name: 'Medication Finder', exact: true }).click();
+  await openCareSection(page, 'Medication Finder');
   await page.getByLabel('Barcode', { exact: true }).fill('5016298210989');
   await page.getByRole('button', { name: 'Find barcode', exact: true }).click();
   await expect(page.getByRole('link', { name: 'Add this medication', exact: true })).toHaveClass(/btn-primary/);
@@ -505,6 +506,7 @@ test('wizard schedule controls generate weekly and as-needed plans without stale
   await page.getByRole('link', { name: 'Add Medication', exact: true }).click();
   await page.getByLabel('Name', { exact: true }).fill('Structured plan tablets');
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Dose and plan', exact: true })).toBeVisible();
   await page.getByLabel('Dose', { exact: true }).fill('1');
   await expect(page.getByText('Review the medication plan before continuing.', { exact: true })).toBeVisible();
   await page.getByLabel('Frequency', { exact: true }).selectOption('weekly');
@@ -618,7 +620,6 @@ test('tapering wizard plan keeps its instructions and an active dated step', asy
 });
 
 test('finder searches medicine names with filters and shows related stock and review guidance', async ({ page }) => {
-  await signIn(page);
   let lookupUrl;
   await page.route('**/medications/lookup?**', route => {
     lookupUrl = new URL(route.request().url());
@@ -627,7 +628,8 @@ test('finder searches medicine names with filters and shows related stock and re
       results: [{ display: 'Synthetic 200mg tablets', source_label: 'NHS dm+d', description: 'Pack description', warnings: 'Check the label', barcode: '5000168511017', code: 'CODE-1', system: 'https://dmd.nhs.uk', concept_class: 'AMPP', related_medications: [{ id: 80001, name: 'Related tablets', location: 'Kitchen', path: '/households/persistence-fixture/medications/80001', current_supply: '12' }], review_prompts: [{ description: 'Review with a pharmacist', risk_level_label: 'Moderate', source_name: 'Synthetic reference' }] }]
     }) });
   });
-  await page.getByRole('link', { name: 'Medication Finder', exact: true }).click();
+  await signIn(page);
+  await openCareSection(page, 'Medication Finder');
   await page.getByLabel('Medicine name', { exact: true }).fill('Synthetic');
   await page.getByLabel('Form', { exact: true }).selectOption('tablet');
   await page.getByLabel('Strength', { exact: true }).fill('200mg');
@@ -644,7 +646,7 @@ test('finder searches medicine names with filters and shows related stock and re
 
 test('curated catalogue suggestions prefill editable wizard dose and supply', async ({ page }) => {
   await signIn(page);
-  await page.getByRole('link', { name: 'Medication Finder', exact: true }).click();
+  await openCareSection(page, 'Medication Finder');
   await page.getByLabel('Barcode', { exact: true }).fill('5057753926137');
   await page.getByRole('button', { name: 'Find barcode', exact: true }).click();
   await expect(page.getByText(/Sugar-free children's multivitamin/)).toBeVisible();
@@ -678,7 +680,7 @@ test('duplicate wizard submission retains the draft and offers explicit stock ch
 
 test('wizard saves every submitted curated dose option and its aggregate stock', async ({ page }) => {
   await signIn(page);
-  await page.getByRole('link', { name: 'Medication Finder', exact: true }).click();
+  await openCareSection(page, 'Medication Finder');
   await page.getByLabel('Barcode', { exact: true }).fill('5021265232062');
   await page.getByRole('button', { name: 'Find barcode', exact: true }).click();
   await page.getByRole('link', { name: 'Add this medication', exact: true }).click();
@@ -687,7 +689,7 @@ test('wizard saves every submitted curated dose option and its aggregate stock',
   await expect(page.locator('#dose_unit')).toHaveValue('tablet');
   await page.getByRole('button', { name: 'Review medication plan', exact: true }).click();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await expect(page.getByLabel('Starting Supply', { exact: true })).toHaveValue('56');
+  await expect(page.locator('#current_supply')).toHaveValue('56');
   const second = page.getByRole('group', { name: 'Dose option 2' });
   await expect(second.getByLabel('Amount')).toHaveValue('1');
   await expect(second.getByLabel('Unit')).toHaveValue('capsule');
@@ -696,7 +698,7 @@ test('wizard saves every submitted curated dose option and its aggregate stock',
   await page.getByRole('button', { name: 'Save Medication', exact: true }).click();
   await expect(page.getByText('1 tablet · Twice daily')).toBeVisible();
   await expect(page.getByText('1 capsule · As directed')).toBeVisible();
-  await page.getByRole('link', { name: 'Manage dose options', exact: true }).click();
+  await page.getByRole('link', { name: 'Manage Dose Options', exact: true }).click();
   await expect(page.getByRole('heading', { name: /^1(?:\.0+)? tablet$/ })).toBeVisible();
   await expect(page.getByRole('heading', { name: /^1(?:\.0+)? capsule$/ })).toBeVisible();
   await expect(page.getByText(/Current supply: 56(\.0+)?$/)).toBeVisible();
@@ -732,17 +734,41 @@ test('context-aware Add for person launcher selects an authorised person and ope
   await page.goto('/households/persistence-fixture/medications');
   await careFixture.contextAwareLauncher();
   await page.reload();
-  await page.getByRole('link', { name: 'Add for person', exact: true }).click();
+  await page.getByRole('link', { name: 'Add medication for someone', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Choose a person', exact: true })).toBeVisible();
   const assignment = page.getByRole('link', { name: /^Assign medication to / }).first();
   const path = await assignment.getAttribute('href');
   await assignment.click();
-  expect(new URL(page.url()).pathname).toBe(path);
+  expect(`${new URL(page.url()).pathname}${new URL(page.url()).search}`).toBe(path);
   const selectedPerson = path.match(/\/people\/(\d+)\//)[1];
   await page.goto(`/households/persistence-fixture/medications/workflow?person_id=${selectedPerson}&intent=assign_medication`);
-  expect(new URL(page.url()).pathname).toBe(path);
+  expect(`${new URL(page.url()).pathname}${new URL(page.url()).search}`).toBe(path);
   await page.goto('/households/persistence-fixture/medications/workflow?person_id=999999&intent=assign_medication');
   await expect(page.getByRole('heading', { name: 'Choose a person', exact: true })).toBeVisible();
+});
+
+test.describe('Welsh medication chooser', () => {
+  test.use({ locale: 'cy-GB' });
+
+  test('translates person selection, actions and the empty state without changing destinations', async ({ page, careFixture }, info) => {
+    await signIn(page);
+    const chooser = '/households/persistence-fixture/medications/workflow';
+    await page.goto(`${chooser}?intent=assign_medication&medication_id=80001`);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'cy');
+    await expect(page).toHaveTitle('Dewiswch berson | MedTracker');
+    await expect(page.getByRole('heading', { name: 'Dewiswch berson', exact: true })).toBeVisible();
+    await expect(page.getByText('Dewiswch y person yr ydych am reoli ei feddyginiaeth.', { exact: true })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Yn ôl i feddyginiaethau', exact: true })).toHaveAttribute('href', '/households/persistence-fixture/medications');
+    await expect(page.getByRole('link', { name: 'Neilltuo meddyginiaeth i Synthetic adult', exact: true })).toHaveAttribute('href', '/households/persistence-fixture/people/73001/treatments/assignments/new?source=workflow&medication_id=80001');
+    await expect(page.getByRole('link', { name: 'Creu meddyginiaeth i Synthetic adult', exact: true })).toHaveAttribute('href', '/households/persistence-fixture/medications/new?person_id=73001');
+    await page.screenshot({ path: info.outputPath(`care-medication-chooser-welsh-${info.project.name}.png`), fullPage: true, animations: 'disabled' });
+    await page.goto(`${chooser}?intent=schedule`);
+    await expect(page.getByRole('link', { name: 'Amserlennu ar gyfer Synthetic adult', exact: true })).toBeVisible();
+    await careFixture.searchRestricted();
+    await page.goto(chooser);
+    await expect(page.getByText('Nid oes pobl ar gael i reoli meddyginiaeth.', { exact: true })).toBeVisible();
+    await page.screenshot({ path: info.outputPath(`care-medication-chooser-empty-welsh-${info.project.name}.png`), fullPage: true, animations: 'disabled' });
+  });
 });
 
 test('invalid second dose option rolls back medication, stock and first option', async ({ page, careFixture }) => {

@@ -147,13 +147,13 @@ test('record dialog traps keyboard focus and reflows at 200 percent text', async
   const time = dialog.getByLabel('Taken at', { exact: true });
   await time.focus();
   await page.keyboard.press('Shift+Tab');
-  expect(await page.getByRole('button', { name: 'Record dose', exact: true }).evaluate(element => element !== document.activeElement)).toBe(true);
+  expect(await page.locator('[data-dialog-open="record-dose-dialog"]').evaluate(element => element !== document.activeElement)).toBe(true);
   expect(await dialog.evaluate(element => element.matches(':modal'))).toBe(true);
   await page.keyboard.press('Tab');
   expect(await dialog.evaluate(element => element.contains(document.activeElement))).toBe(true);
   await dialog.getByRole('button', { name: 'Record dose', exact: true }).focus();
   await page.keyboard.press('Tab');
-  expect(await page.getByRole('button', { name: 'Record dose', exact: true }).evaluate(element => element !== document.activeElement)).toBe(true);
+  expect(await page.locator('[data-dialog-open="record-dose-dialog"]').evaluate(element => element !== document.activeElement)).toBe(true);
   await page.keyboard.press('Shift+Tab');
   expect(await dialog.evaluate(element => element.contains(document.activeElement))).toBe(true);
   await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; });
@@ -183,7 +183,7 @@ test('empty supporting medication details stay secondary without displacing dose
   await expect(page.getByRole('heading', { name: 'Overview', exact: true })).toHaveCount(0);
   await expect(page.getByText('No description recorded.', { exact: true })).toHaveCount(0);
   const record = await page.getByRole('heading', { name: 'Record dose', exact: true }).boundingBox();
-  const supply = await page.getByRole('heading', { name: 'Inventory status', exact: true }).boundingBox();
+  const supply = await page.getByRole('heading', { name: 'Inventory Status', exact: true }).boundingBox();
   if (info.project.name === 'mobile') {
     const action = await page.getByRole('button', { name: 'Record dose', exact: true }).boundingBox();
     expect(action.y + action.height).toBeLessThanOrEqual(page.viewportSize().height);
@@ -220,7 +220,7 @@ test('medication details surface safety warnings and low-stock decisions', async
   await page.getByLabel('Reorder Threshold', { exact: true }).fill('3');
   await page.getByRole('button', { name: 'Save Medication', exact: true }).click();
   await page.screenshot({ path: info.outputPath(`care-medication-detail-before-${info.project.name}.png`), fullPage: true });
-  await expect(page.getByRole('heading', { name: 'Safety warnings', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Safety Warnings', exact: true })).toBeVisible();
   await expect(page.getByText('Synthetic allergy warning', { exact: true })).toBeVisible();
   await expect(page.getByText('Take with breakfast', { exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Overview', exact: true })).toBeVisible();
@@ -231,7 +231,7 @@ test('medication details surface safety warnings and low-stock decisions', async
     expect(sample.ratio, `${sample.selector} contrast ${sample.ratio}`).toBeGreaterThanOrEqual(4.5);
   }
   if (info.project.name === 'mobile') {
-    const supply = await page.getByRole('heading', { name: 'Inventory status', exact: true }).boundingBox();
+    const supply = await page.getByRole('heading', { name: 'Inventory Status', exact: true }).boundingBox();
     const record = await page.getByRole('heading', { name: 'Record dose', exact: true }).boundingBox();
     expect(supply.y).toBeLessThan(record.y);
   }
@@ -370,43 +370,43 @@ test.describe('review: localized error rerenders', () => {
 
   test('refill and deletion failures retain the requested dose dialog language', async ({ page }) => {
     await openMedication(page);
-    await page.getByRole('button', { name: 'Refill inventory', exact: true }).click();
-    const dialog = page.getByRole('dialog', { name: 'Refill inventory', exact: true });
-    await dialog.getByLabel('Quantity to add', { exact: true }).evaluate(input => { input.min = ''; });
-    await dialog.getByLabel('Quantity to add', { exact: true }).fill('0');
+    await page.getByRole('button', { name: 'Reponer existencias', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'Reponer existencias', exact: true });
+    await dialog.getByLabel('Cantidad que añadir', { exact: true }).evaluate(input => { input.min = ''; });
+    await dialog.getByLabel('Cantidad que añadir', { exact: true }).fill('0');
     const refill = page.waitForResponse(value => value.request().method() === 'POST' && value.url().endsWith('/refill'));
-    await dialog.getByRole('button', { name: 'Add stock', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Añadir existencias', exact: true }).click();
     expect((await refill).status()).toBe(422);
-    await expect(page.getByRole('dialog', { name: 'Refill inventory', exact: true }).getByRole('alert')).toBeFocused();
+    await expect(page.getByRole('dialog', { name: 'Reponer existencias', exact: true }).getByRole('alert')).toBeFocused();
     await expect(page.locator('#record-dose-dialog')).toHaveAttribute('lang', 'es');
-    await page.getByRole('dialog', { name: 'Refill inventory', exact: true }).getByRole('button', { name: 'Cancel', exact: true }).click();
-    await expect(page.getByRole('dialog', { name: 'Refill inventory', exact: true })).toBeHidden();
+    await page.getByRole('dialog', { name: 'Reponer existencias', exact: true }).getByRole('button', { name: 'Cancelar', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: 'Reponer existencias', exact: true })).toBeHidden();
     const concurrent = await page.context().newPage();
     await concurrent.goto('/households/persistence-fixture/medications/80001/stock/adjust');
-    await concurrent.getByLabel('New stock quantity', { exact: true }).fill('11');
+    await concurrent.getByLabel('Nueva cantidad de existencias', { exact: true }).fill('11');
     const adjusted = concurrent.waitForResponse(value => value.request().method() === 'POST' && value.url().endsWith('/stock/adjust'));
-    await concurrent.getByRole('button', { name: 'Adjust stock', exact: true }).click();
+    await concurrent.getByRole('button', { name: 'Ajustar existencias', exact: true }).click();
     expect((await adjusted).status()).toBe(303);
     await expect(concurrent.getByTestId('current-supply')).toHaveText('11 tablets');
     await concurrent.close();
-    await page.getByRole('button', { name: 'Delete Medication', exact: true }).click();
+    await page.getByRole('button', { name: 'Eliminar medicamento', exact: true }).click();
     const deletion = page.waitForResponse(value => value.request().method() === 'POST' && value.url().endsWith('/destroy'));
-    await page.getByRole('dialog', { name: 'Delete Medication', exact: true }).getByRole('button', { name: 'Delete', exact: true }).click();
+    await page.getByRole('dialog', { name: 'Eliminar medicamento', exact: true }).getByRole('button', { name: 'Eliminar', exact: true }).click();
     expect((await deletion).status()).toBe(409);
     await expect(page.locator('#record-dose-dialog')).toHaveAttribute('lang', 'es');
   });
 
   test('adjustment failure retains the requested dose dialog language', async ({ page }, info) => {
     await openMedication(page);
-    await page.getByRole('button', { name: 'Adjust stock', exact: true }).click();
-    const dialog = page.getByRole('dialog', { name: 'Adjust stock', exact: true });
-    await dialog.getByLabel('New stock quantity', { exact: true }).evaluate(input => { input.min = ''; });
-    await dialog.getByLabel('New stock quantity', { exact: true }).fill('-1');
+    await page.getByRole('button', { name: 'Ajustar existencias', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'Ajustar existencias', exact: true });
+    await dialog.getByLabel('Nueva cantidad de existencias', { exact: true }).evaluate(input => { input.min = ''; });
+    await dialog.getByLabel('Nueva cantidad de existencias', { exact: true }).fill('-1');
     const response = page.waitForResponse(value => value.request().method() === 'POST' && value.url().endsWith('/stock/adjust'));
-    await dialog.getByRole('button', { name: 'Adjust stock', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Ajustar existencias', exact: true }).click();
     expect((await response).status()).toBe(422);
     await expect(page.locator('#record-dose-dialog')).toHaveAttribute('lang', 'es');
-    await expect(page.getByRole('dialog', { name: 'Adjust stock', exact: true }).getByRole('alert')).toBeFocused();
+    await expect(page.getByRole('dialog', { name: 'Ajustar existencias', exact: true }).getByRole('alert')).toBeFocused();
     await page.screenshot({ path: info.outputPath(`care-review-adjust-spanish-${info.project.name}.png`), animations: 'disabled' });
   });
 });

@@ -2759,6 +2759,13 @@ pt:
       add: Adicionar dose
       update: Atualizar dose
   medication_workflow:
+    chooser:
+      back: Voltar aos medicamentos
+      title: Escolha uma pessoa
+      subtitle: Escolha de quem é o medicamento que pretende gerir.
+      assign: Atribuir medicamento a %{person}
+      create: Criar medicamento para %{person}
+      empty: Não há pessoas disponíveis para gerir medicamentos.
     person_selection:
       title: Adicionar Medicamento
       subtitle: Para quem é este medicamento?

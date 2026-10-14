@@ -40,6 +40,15 @@ async function expectIntrinsicActions(page, saveName) {
 async function expectNarrowReflow(page, labels, info, name) {
   const viewport = page.viewportSize();
   await page.setViewportSize({ width: 320, height: 812 });
+  const header = await page.locator('.app-header').evaluate(element => ({
+    width: document.documentElement.clientWidth,
+    controls: ['[data-app-drawer]', '.app-brand', '[data-global-search-trigger]', '[data-app-account]'].map(selector => {
+      const bounds = element.querySelector(selector).getBoundingClientRect();
+      return { left: bounds.left, right: bounds.right, top: bounds.top, bottom: bounds.bottom };
+    })
+  }));
+  expect(header.controls.every(control => control.left >= 0 && control.right <= header.width), JSON.stringify(header)).toBe(true);
+  expect(header.controls.every((control, index) => header.controls.slice(index + 1).every(other => control.right <= other.left || other.right <= control.left || control.bottom <= other.top || other.bottom <= control.top)), JSON.stringify(header)).toBe(true);
   await page.screenshot({ path: info.outputPath(`${name}-320-${info.project.name}.png`), fullPage: true, animations: 'disabled' });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   for (const label of labels) {
