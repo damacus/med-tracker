@@ -395,6 +395,7 @@ async fn authenticated_take_replay_and_stock_adjustment_use_real_loco_routes() {
 #[tokio::test]
 async fn authenticated_foreign_household_and_revoked_person_grant_have_no_effects() {
     let app = Application::new().await;
+    app.fixture.seed_foreign_household(99999).await;
     let token = app.token().await;
     let foreign = app
         .client

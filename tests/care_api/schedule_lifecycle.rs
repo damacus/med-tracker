@@ -12,6 +12,7 @@ async fn create_schedule(app: &Application, token: &str) -> i64 {
 #[tokio::test]
 async fn schedule_lifecycle_visible_read_pagination_and_conditional_response() {
     let app = Application::new().await;
+    app.fixture.seed_foreign_household(72002).await;
     let token = app.token().await;
     let id = create_schedule(&app, &token).await;
     app.fixture
@@ -358,6 +359,7 @@ async fn schedule_get_matches_documented_contract() {
 #[tokio::test]
 async fn schedule_list_matches_documented_contract() {
     let app = Application::new().await;
+    app.fixture.seed_foreign_household(72002).await;
     let token = app.token().await;
     let id = create_schedule(&app, &token).await;
     let collection = format!("{}/api/v1/households/72001/schedules", app.origin);

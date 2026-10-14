@@ -176,6 +176,7 @@ async fn person_medication_reorder_validates_direction_and_body() {
 #[tokio::test]
 async fn person_medication_reorder_requires_manage_access() {
     let app = Application::new().await;
+    app.fixture.seed_foreign_household(72002).await;
     let token = app.token().await;
     seed_second_assignment(&app).await;
     app.fixture

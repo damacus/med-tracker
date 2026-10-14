@@ -331,6 +331,7 @@ async fn location_membership_applies_person_access_rules() {
 #[tokio::test]
 async fn location_membership_validates_identifiers_and_request_shape() {
     let app = Application::new().await;
+    app.fixture.seed_foreign_household(99999).await;
     let token = app.token().await;
     let payload = json!({"location_membership":{"person_id":"73001"}});
     let bad_location = app

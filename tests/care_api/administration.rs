@@ -811,6 +811,7 @@ async fn household_membership_list_matches_documented_contract() {
 async fn person_access_grant_list_matches_documented_contract() {
     use super::contract::{assert_value, contract, resolve};
     let app = Application::new().await;
+    app.fixture.seed_foreign_household(72002).await;
     let token = app.token().await;
     let endpoint = format!(
         "{}/api/v1/households/72001/admin/person_access_grants",

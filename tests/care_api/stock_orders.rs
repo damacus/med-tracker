@@ -56,6 +56,7 @@ async fn stock_order_visible_member_can_order_and_receive_without_adding_stock()
 #[tokio::test]
 async fn stock_order_foreign_household_and_revoked_view_grant_cannot_mutate() {
     let app = Application::new().await;
+    app.fixture.seed_foreign_household(72002).await;
     let token = app.token().await;
     app.fixture.admin.execute_unprepared("UPDATE medications SET reorder_status=0 WHERE id=80001; UPDATE household_memberships SET role='member' WHERE id=74001; UPDATE person_access_grants SET access_level='view',revoked_at=now() WHERE id=78001").await.unwrap();
     let denied = app

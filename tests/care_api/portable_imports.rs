@@ -57,6 +57,7 @@ async fn version_count(app: &Application) -> i64 {
 #[tokio::test]
 async fn portable_imports_validate_the_request_shape_and_credentials() {
     let app = Application::new().await;
+    app.fixture.seed_foreign_household(99999).await;
     let token = app.token().await;
     let mut statuses = Vec::new();
     let mut messages = Vec::new();

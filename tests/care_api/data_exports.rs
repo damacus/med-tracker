@@ -282,6 +282,7 @@ async fn data_export_encrypted_migration_bundle_requires_a_passphrase() {
 #[tokio::test]
 async fn data_export_rejects_unknown_modes_and_anonymous_requests() {
     let app = Application::new().await;
+    app.fixture.seed_foreign_household(99999).await;
     let token = app.token().await;
     let invalid = app
         .client
