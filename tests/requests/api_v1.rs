@@ -6,6 +6,8 @@ mod contract;
 mod fixture;
 #[path = "me_ui.rs"]
 mod me_ui;
+#[path = "people.rs"]
+mod people;
 
 use fixture::Fixture;
 use loco_rs::{
@@ -82,7 +84,7 @@ fn operations() -> BTreeMap<(String, String), Value> {
     let source = include_str!("../../docs/api/openapi.v1.yaml");
     assert_eq!(
         hex::encode(Sha256::digest(source.as_bytes())),
-        "73dc25f112cc700327ac72756dfabd361ef0cd3e704fa6199592819dcaeeeb7d",
+        "f0b5b4c4a4eabeaa36b1591cf21b54f757cb3c068de5cd369299aa3c91ac3d8b",
         "The full API schema or headers changed; refresh the operation inventory and its evidence"
     );
     let document: Value = serde_yaml_ng::from_str(source).unwrap();

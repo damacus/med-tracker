@@ -297,6 +297,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
     post:
       operationId: createPerson
       tags:
@@ -320,6 +322,7 @@ paths:
         with invalid attributes returns 422.
       parameters:
         - $ref: "#/components/parameters/household_id"
+        - $ref: "#/components/parameters/idempotency_key"
       requestBody:
         required: true
         content:
@@ -344,10 +347,14 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "422":
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /households/{household_id}/people/{id}:
     get:
       operationId: getPerson
@@ -395,6 +402,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/household_id"
         - $ref: "#/components/parameters/id"
+        - $ref: "#/components/parameters/idempotency_key"
       requestBody:
         required: true
         content:
@@ -419,10 +427,14 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "422":
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
     put:
       operationId: updatePersonWithPut
       tags:
@@ -437,6 +449,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/household_id"
         - $ref: "#/components/parameters/id"
+        - $ref: "#/components/parameters/idempotency_key"
       requestBody:
         required: true
         content:
@@ -461,10 +474,14 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "422":
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /households/{household_id}/admin/invitations/{id}/resend:
     post:
       operationId: resendHouseholdInvitation
@@ -4664,6 +4681,12 @@ components:
             $ref: "#/components/schemas/ErrorEnvelope"
     Conflict:
       description: The resource or idempotency state conflicts with the requested mutation.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    InternalServerError:
+      description: An internal failure prevented the request from completing.
       content:
         application/json:
           schema:
