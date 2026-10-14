@@ -432,6 +432,38 @@ and 115 unverified; it does not pass whole-API acceptance. Evidence logs are
 pending. Request-ID head `adfe373f` has now passed every applicable hosted check,
 including coverage job `116020860508` and roll-up `116027225928`; native/client
 checks were skipped for this prerequisite. Coverage artifact inspection remains.
+Capability candidate `ccf0c3522bad57b3835ad3c09894421a0afebe67` is accepted locally.
+Independent Devin session `endurable-continent` exported model `SWE-2 Max` and
+returned ACCEPT after nine steps; process `40156` exited zero. Its required
+separate tracking action is fulfilled by [#2638](https://github.com/damacus/med-tracker/issues/2638),
+which records the pre-existing undocumented 503 without changing this layer.
+Optional observations required no source correction. Full CI `93895` exited
+zero on that exact clean candidate: 115 units, 55 requests (one intentional
+completion ignore), 508 care tests (two ignores, 16 filtered), all other applicable
+integration suites and 744 browser cases passed. Browser duration was 19.6 minutes.
+The 38 generated screenshots were preserved in a 7,476,761-byte binary patch,
+SHA-256 `fad141b48c8e5f969adba0a3b8b1567451cb64726bd304f77f27a98d88cff8ba`;
+the exact path-list SHA is `795446e6f6eef7c668598f616197b5b5191f1129b547089cca3aa066bb278cc1`.
+Reverse-apply verification restored only those files; source hashes and clean
+HEAD matched the candidate. Review and full CI logs remain under the existing
+`/private/tmp/s05-i01-review` and evidence directory. Publication and exact-head
+hosted acceptance follow the final documentation gate.
+
+Request-ID hosted coverage artifact `11919385306` matches GitHub digest
+`c195e7921d563d890d084193241042a9d6a1b33bde4edca2a4821e9997771f21`.
+Its clean merge `c62557e6` has parents `451c` and published `adfe`, with identical
+tree to `adfe`. Added runtime lines are covered 16/16; raw application coverage
+is 63.05% and API controller coverage 91.29%. The report-only general baseline
+remains below target. This does not pass final API acceptance.
+
+The next isolated `codex/s05-i01-me-ui` branch contains seven tests only, based
+on `ccf0`; no RED or production correction has run. It distinguishes actual
+foreign households from absent ones, preserves integration-token 401 and mobile
+insufficient-scope 403, and checks private caching, revocation, audits and rates.
+The malformed household-path 400 is an executed existing behaviour omitted from
+me/UI contracts; its proposal, capability 503 and getPerson 304 await owner
+decisions. Independent work continues while those contract edits remain held.
+
 Entries below retain historical revisions, failed attempts and publication states.
 
 Historical prerequisite failure, 14 October:

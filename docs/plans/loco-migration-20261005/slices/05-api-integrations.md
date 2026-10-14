@@ -139,6 +139,12 @@ acceptance test correctly rejected 117 incomplete operations. Current local
 evidence is five complete, two partial and 115 unverified. Capability review,
 cumulative CI and publication remain separate gates in `../progress.md`.
 
+Capability candidate `ccf0c352` subsequently passed independent SWE-2 Max review
+`endurable-continent` and full CI `93895`, including 115 units, 55 requests,
+508 care and 744 browser tests. The pre-existing undocumented 503 is tracked
+separately in #2638. Publication and hosted acceptance remain distinct; final
+API acceptance still rejects 117 incomplete operations.
+
 ## Review focus
 
 Malformed requests preserve status/envelope (A1). Stale tokens and wrong households fail all transports
