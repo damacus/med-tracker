@@ -853,7 +853,26 @@ withdrawal and API/app/mobile credential revocation, without reviving credential
 Focused `73836` passed all 13, strict lint `78557` passed and inventory `46911`
 passed 112 with one ignored and one filtered. These assertions confirm existing
 behaviour; runtime, OpenAPI and native inputs stayed unchanged. SDK checks remain
-valid for the unchanged API inputs. A stronger immutable test revision follows.
+valid for the unchanged API inputs. The stronger immutable test source is
+`fed7aa3f503229fffa29b2baab45a856def6f6e2`, 1,049 changed lines against the
+immediate profile base. Fresh care administration job `69348` passed all 14 on
+that clean revision. Exactly six contain settings-route assertions; unrelated
+administration cases earn no settings evidence. Independent evidence guard RED
+`45064` compiled and executed one case, failing because the existing validator
+rejected the proposed GET evidence before any inventory row was promoted. The
+writer completed the narrow validator, three-row inventory and fake-runner
+integration. Guard GREEN `13346` passed exactly one case, and inventory `77554`
+passed 113 with one ignored and one filtered. The ledger now records five
+complete, 16 partial and 101 unverified operations; 117 remain incomplete.
+Runner fixtures `27536` passed all 48, and strict all-target lint `21355` passed.
+Settings retain explicit malformed-ID/authentication-order, exact-route
+lockout/expiry, in-flight membership withdrawal and mixed PUT attribute gaps.
+Exact dispatcher `47127` passed 113 request inventory cases and 524 care cases
+with two ignored, then passed 113 requests and failed only the final acceptance
+case for 117 incomplete operations. All 13 new settings cases and the evidence
+guard executed in both request phases, and all six relevant care identities
+passed. This is a deliberately closed completion gate, not whole-API acceptance.
+Review, full CI and publication remain pending on the frozen evidence candidate.
 
 Entries below retain historical revisions, failed attempts and publication states.
 
