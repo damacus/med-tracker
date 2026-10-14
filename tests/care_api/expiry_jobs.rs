@@ -1,5 +1,6 @@
 use super::*;
 use med_tracker::models::platform::expiry;
+use sea_orm::TransactionTrait;
 use std::sync::{Arc, Mutex};
 use tracing::field::{Field, Visit};
 use tracing::instrument::WithSubscriber;
@@ -397,7 +398,7 @@ fn fs_operator(dir: &tempfile::TempDir) -> opendal::Operator {
 
 fn install_stores(
     app: &Application,
-    stores: std::collections::BTreeMap<String, Vec<opendal::Operator>>,
+    stores: std::collections::BTreeMap<String, Vec<med_tracker::models::storage::ArtifactBackend>>,
 ) {
     app.context
         .shared_store
@@ -421,12 +422,20 @@ async fn export_expiry_expires_due_ready_export_and_removes_artifact() {
     let app = Application::new().await;
     let dir = tempfile::tempdir().unwrap();
     let operator = fs_operator(&dir);
-    operator.write("due-blob-key", vec![9_u8; 4]).await.unwrap();
+    operator
+        .write("du/e-/due-blob-key", vec![9_u8; 4])
+        .await
+        .unwrap();
     install_stores(
         &app,
-        [("persistent".to_owned(), vec![operator])]
-            .into_iter()
-            .collect(),
+        [(
+            "persistent".to_owned(),
+            vec![med_tracker::models::storage::ArtifactBackend::Disk(
+                operator,
+            )],
+        )]
+        .into_iter()
+        .collect(),
     );
     let export = insert_export(&app, "ready", "now() - interval '1 minute'", "NULL").await;
     let blob = attach_artifact(&app, export, "due-blob-key", "persistent").await;
@@ -437,13 +446,46 @@ async fn export_expiry_expires_due_ready_export_and_removes_artifact() {
     let attachments = attachment_rows(&app, export).await;
     let blob_exists = blob_exists(&app, blob).await;
     let audits = export_audits(&app, export).await;
-    let bytes = dir.path().join("due-blob-key").exists();
+    let bytes = dir.path().join("du/e-/due-blob-key").exists();
     app.close().await;
     assert_eq!(processed, 1);
     assert_eq!(status, "expired");
     assert_eq!(attachments, 0);
     assert!(!blob_exists);
     assert_eq!(audits, 1);
+    assert!(!bytes);
+}
+
+#[tokio::test]
+async fn export_expiry_removes_artifact_from_rails_disk_layout() {
+    let app = Application::new().await;
+    let dir = tempfile::tempdir().unwrap();
+    let operator = fs_operator(&dir);
+    operator
+        .write("du/e-/due-blob-key", vec![9_u8; 4])
+        .await
+        .unwrap();
+    install_stores(
+        &app,
+        [(
+            "persistent".to_owned(),
+            vec![med_tracker::models::storage::ArtifactBackend::Disk(
+                operator,
+            )],
+        )]
+        .into_iter()
+        .collect(),
+    );
+    let export = insert_export(&app, "ready", "now() - interval '1 minute'", "NULL").await;
+    attach_artifact(&app, export, "due-blob-key", "persistent").await;
+    let processed = med_tracker::models::care::hosted_exports::expire_due_exports(&app.context)
+        .await
+        .unwrap();
+    let status = export_status(&app, export).await;
+    let bytes = dir.path().join("du/e-/due-blob-key").exists();
+    app.close().await;
+    assert_eq!(processed, 1);
+    assert_eq!(status, "expired");
     assert!(!bytes);
 }
 
@@ -464,6 +506,50 @@ async fn export_expiry_blocks_during_active_retention_hold() {
     assert_eq!(status, "ready");
     assert_eq!(attachments, 1);
     assert_eq!(audits, 0);
+}
+
+#[tokio::test]
+async fn export_expiry_preserves_blob_bytes_shared_with_another_attachment() {
+    let app = Application::new().await;
+    let dir = tempfile::tempdir().unwrap();
+    let operator = fs_operator(&dir);
+    operator
+        .write("sh/ar/shared-blob-key", vec![9_u8; 4])
+        .await
+        .unwrap();
+    install_stores(
+        &app,
+        [(
+            "persistent".to_owned(),
+            vec![med_tracker::models::storage::ArtifactBackend::Disk(
+                operator,
+            )],
+        )]
+        .into_iter()
+        .collect(),
+    );
+    let export = insert_export(&app, "ready", "now() - interval '1 minute'", "NULL").await;
+    let blob = attach_artifact(&app, export, "shared-blob-key", "persistent").await;
+    app.fixture
+        .admin
+        .execute_unprepared(&format!(
+            "INSERT INTO active_storage_attachments(blob_id,created_at,household_id,name,record_id,record_type) VALUES({blob},now(),72001,'document',72001,'Household')"
+        ))
+        .await
+        .unwrap();
+    let processed = med_tracker::models::care::hosted_exports::expire_due_exports(&app.context)
+        .await
+        .unwrap();
+    let status = export_status(&app, export).await;
+    let attachments = attachment_rows(&app, export).await;
+    let blob_exists = blob_exists(&app, blob).await;
+    let bytes = dir.path().join("sh/ar/shared-blob-key").exists();
+    app.close().await;
+    assert_eq!(processed, 1);
+    assert_eq!(status, "expired");
+    assert_eq!(attachments, 0);
+    assert!(blob_exists);
+    assert!(bytes);
 }
 
 #[tokio::test]
@@ -497,9 +583,14 @@ async fn export_expiry_expires_stale_generating_only_with_artifact() {
     let dir = tempfile::tempdir().unwrap();
     install_stores(
         &app,
-        [("persistent".to_owned(), vec![fs_operator(&dir)])]
-            .into_iter()
-            .collect(),
+        [(
+            "persistent".to_owned(),
+            vec![med_tracker::models::storage::ArtifactBackend::Disk(
+                fs_operator(&dir),
+            )],
+        )]
+        .into_iter()
+        .collect(),
     );
     let stale = insert_export(&app, "generating", "NULL", "now() - interval '61 minutes'").await;
     attach_artifact(&app, stale, "stale-blob-key", "persistent").await;
@@ -517,6 +608,62 @@ async fn export_expiry_expires_stale_generating_only_with_artifact() {
     app.close().await;
     assert_eq!(processed, 1);
     assert_eq!(statuses, ["expired", "generating", "generating"]);
+}
+
+#[tokio::test]
+async fn export_expiry_respects_a_hold_committed_while_waiting_on_the_household_lock() {
+    let app = Application::new().await;
+    let export = insert_export(&app, "ready", "now() - interval '1 minute'", "NULL").await;
+    let lock = app
+        .fixture
+        .admin
+        .begin()
+        .await
+        .expect("household lock transaction");
+    lock.execute_unprepared("SELECT id FROM households WHERE id=72001 FOR UPDATE")
+        .await
+        .unwrap();
+    lock.execute_unprepared(
+        "INSERT INTO household_retention_holds(approved_by_account_id,household_id,placed_at,reason,review_on,status,created_at,updated_at) VALUES(71001,72001,now(),'Synthetic lock-wait hold',current_date + 30,'active',now(),now())",
+    )
+    .await
+    .unwrap();
+    let context = app.context.clone();
+    let handle = tokio::spawn(async move {
+        med_tracker::models::care::hosted_exports::expire_due_exports(&context).await
+    });
+    for _ in 0..40 {
+        if handle.is_finished() {
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(25)).await;
+    }
+    lock.commit().await.unwrap();
+    let processed = handle.await.unwrap().unwrap();
+    let status = export_status(&app, export).await;
+    app.close().await;
+    assert_eq!(processed, 0);
+    assert_eq!(status, "ready");
+}
+
+#[tokio::test]
+async fn export_expiry_reaches_households_past_the_first_page() {
+    let app = Application::new().await;
+    app.fixture
+        .admin
+        .execute_unprepared(
+            "INSERT INTO households(id,name,slug,timezone,created_at,updated_at) SELECT g,'Synthetic expiry household '||g,'synthetic-expiry-'||g,'UTC',now(),now() FROM generate_series(1,1200) g ON CONFLICT(id) DO NOTHING",
+        )
+        .await
+        .unwrap();
+    let export = insert_export(&app, "ready", "now() - interval '1 minute'", "NULL").await;
+    let processed = med_tracker::models::care::hosted_exports::expire_due_exports(&app.context)
+        .await
+        .unwrap();
+    let status = export_status(&app, export).await;
+    app.close().await;
+    assert_eq!(processed, 1);
+    assert_eq!(status, "expired");
 }
 
 #[tokio::test]
@@ -565,7 +712,7 @@ async fn export_expiry_deletes_bytes_from_every_mirror_backend() {
     let primary = tempfile::tempdir().unwrap();
     let mirror = tempfile::tempdir().unwrap();
     fs_operator(&primary)
-        .write("mirror-blob-key", vec![7_u8; 4])
+        .write("mi/rr/mirror-blob-key", vec![7_u8; 4])
         .await
         .unwrap();
     fs_operator(&mirror)
@@ -576,7 +723,10 @@ async fn export_expiry_deletes_bytes_from_every_mirror_backend() {
         &app,
         [(
             "persistent_with_s3_mirror".to_owned(),
-            vec![fs_operator(&primary), fs_operator(&mirror)],
+            vec![
+                med_tracker::models::storage::ArtifactBackend::Disk(fs_operator(&primary)),
+                med_tracker::models::storage::ArtifactBackend::S3(fs_operator(&mirror)),
+            ],
         )]
         .into_iter()
         .collect(),
@@ -586,7 +736,7 @@ async fn export_expiry_deletes_bytes_from_every_mirror_backend() {
     let processed = med_tracker::models::care::hosted_exports::expire_due_exports(&app.context)
         .await
         .unwrap();
-    let primary_gone = !primary.path().join("mirror-blob-key").exists();
+    let primary_gone = !primary.path().join("mi/rr/mirror-blob-key").exists();
     let mirror_gone = !mirror.path().join("mirror-blob-key").exists();
     app.close().await;
     assert_eq!(processed, 1);

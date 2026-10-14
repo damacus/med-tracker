@@ -11,19 +11,41 @@ pub struct Operators {
     pub dmd: Option<opendal::Operator>,
 }
 
+#[derive(Clone)]
+pub enum ArtifactBackend {
+    Disk(opendal::Operator),
+    S3(opendal::Operator),
+}
+
+impl ArtifactBackend {
+    pub async fn delete(&self, key: &str) -> Result<(), opendal::Error> {
+        match self {
+            Self::Disk(operator) => operator.delete(&disk_path(key)).await,
+            Self::S3(operator) => operator.delete(key).await,
+        }
+    }
+}
+
+fn disk_path(key: &str) -> String {
+    let first = key.get(0..2).unwrap_or_default();
+    let second = key.get(2..4).unwrap_or_default();
+    format!("{first}/{second}/{key}")
+}
+
 #[derive(Clone, Default)]
-pub struct ArtifactStores(pub BTreeMap<String, Vec<opendal::Operator>>);
+pub struct ArtifactStores(pub BTreeMap<String, Vec<ArtifactBackend>>);
 
 pub fn artifact_stores(settings: Option<&Value>) -> ArtifactStores {
-    let persistent =
-        crate::models::settings::text(settings, &["active_storage", "root"]).map(fs_operator);
-    let s3 = s3_service_operator(settings);
+    let persistent = crate::models::settings::text(settings, &["active_storage", "root"])
+        .map(fs_operator)
+        .map(ArtifactBackend::Disk);
+    let s3 = s3_service_operator(settings).map(ArtifactBackend::S3);
     let mut stores = BTreeMap::new();
-    if let Some(operator) = &persistent {
-        stores.insert("persistent".to_owned(), vec![operator.clone()]);
+    if let Some(backend) = &persistent {
+        stores.insert("persistent".to_owned(), vec![backend.clone()]);
     }
-    if let Some(operator) = &s3 {
-        stores.insert("s3".to_owned(), vec![operator.clone()]);
+    if let Some(backend) = &s3 {
+        stores.insert("s3".to_owned(), vec![backend.clone()]);
     }
     if let (Some(primary), Some(mirror)) = (&persistent, &s3) {
         stores.insert(
