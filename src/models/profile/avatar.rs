@@ -9,7 +9,7 @@ use sea_orm::{ConnectionTrait, DbBackend, Statement, TransactionTrait};
 use serde::{Deserialize, Serialize};
 use std::{io::Cursor, time::Duration};
 
-const MAX_UPLOAD: usize = 5 * 1024 * 1024;
+pub(crate) const MAX_UPLOAD: usize = 5 * 1024 * 1024;
 const OPERATION_TIMEOUT: Duration = Duration::from_secs(10);
 
 #[cfg(test)]

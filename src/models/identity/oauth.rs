@@ -47,13 +47,36 @@ pub async fn revoke(db: &DatabaseConnection, request: Request<Body>) -> Result<(
         .map_err(|_| ExchangeError::Unavailable)
 }
 
+pub struct PublicMobileClient {
+    pub client_id: String,
+    pub name: String,
+    pub redirect_uris: Vec<String>,
+    pub scopes: Vec<String>,
+}
+
 pub async fn mobile_clients(
     db: &DatabaseConnection,
-) -> Result<Vec<serde_json::Value>, ExchangeError> {
+) -> Result<Vec<PublicMobileClient>, ExchangeError> {
     let clients = oauth_application::Entity::find()
         .filter(oauth_application::Column::ClientKind.eq("mobile"))
         .all(db)
         .await
         .map_err(|_| ExchangeError::Unavailable)?;
-    Ok(clients.into_iter().map(|client| serde_json::json!({"client_id":client.client_id,"redirect_uris":client.redirect_uri.split_whitespace().collect::<Vec<_>>(),"scopes":client.scopes.split_whitespace().collect::<Vec<_>>()})).collect())
+    Ok(clients
+        .into_iter()
+        .map(|client| PublicMobileClient {
+            client_id: client.client_id,
+            name: client.name,
+            redirect_uris: client
+                .redirect_uri
+                .split_whitespace()
+                .map(str::to_owned)
+                .collect(),
+            scopes: client
+                .scopes
+                .split_whitespace()
+                .map(str::to_owned)
+                .collect(),
+        })
+        .collect())
 }

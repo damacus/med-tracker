@@ -1,3 +1,5 @@
+#[path = "capabilities.rs"]
+mod capabilities;
 #[path = "../care_api/contract.rs"]
 mod contract;
 #[path = "../care_api/fixture.rs"]
@@ -17,6 +19,10 @@ use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 
 async fn boot_fixture() -> (Fixture, BootResult) {
+    boot_fixture_with(|_| {}).await
+}
+
+async fn boot_fixture_with(configure: impl FnOnce(&mut Config)) -> (Fixture, BootResult) {
     let fixture = Fixture::new().await;
     let mut config = Config::new(&Environment::Test).unwrap();
     config.database.uri = fixture.runtime_uri.clone();
@@ -24,6 +30,7 @@ async fn boot_fixture() -> (Fixture, BootResult) {
         panic!("PostgreSQL queue required")
     };
     queue.uri = fixture.runtime_uri.clone();
+    configure(&mut config);
     let boot = med_tracker::app::App::boot(StartMode::ServerOnly, &Environment::Test, config)
         .await
         .unwrap();
@@ -38,25 +45,17 @@ async fn boot_rate_fixture_with(
     trusted_proxy_ips: &[&str],
     request_id_enabled: Option<bool>,
 ) -> (Fixture, BootResult) {
-    let fixture = Fixture::new().await;
-    let mut config = Config::new(&Environment::Test).unwrap();
-    config.database.uri = fixture.runtime_uri.clone();
-    let Some(QueueConfig::Postgres(queue)) = config.queue.as_mut() else {
-        panic!("PostgreSQL queue required")
-    };
-    queue.uri = fixture.runtime_uri.clone();
-    config.settings.get_or_insert_with(|| json!({}))["api_rate_limit"] = json!({
-        "fixed_now_unix_seconds": 1000,
-        "trusted_proxy_ips": trusted_proxy_ips.join(","),
-    });
-    if let Some(enable) = request_id_enabled {
-        config.server.middlewares.request_id =
-            Some(loco_rs::controller::middleware::request_id::RequestId { enable });
-    }
-    let boot = med_tracker::app::App::boot(StartMode::ServerOnly, &Environment::Test, config)
-        .await
-        .unwrap();
-    (fixture, boot)
+    boot_fixture_with(|config| {
+        config.settings.get_or_insert_with(|| json!({}))["api_rate_limit"] = json!({
+            "fixed_now_unix_seconds": 1000,
+            "trusted_proxy_ips": trusted_proxy_ips.join(","),
+        });
+        if let Some(enable) = request_id_enabled {
+            config.server.middlewares.request_id =
+                Some(loco_rs::controller::middleware::request_id::RequestId { enable });
+        }
+    })
+    .await
 }
 
 async fn close(fixture: Fixture, boot: BootResult) {

@@ -190,6 +190,7 @@ did not merge it. Its 1,499-line candidate and historical failures remain below.
 | [#2632](https://github.com/damacus/med-tracker/pull/2632): storage transport and reminder clock | main `1800` | `923d5b63098a61ed4a9df0dfd4f27ae348d0b26a` | 496 | Reviewed; local application and exact-head hosted gates pass |
 | [#2633](https://github.com/damacus/med-tracker/pull/2633): executed acceptance proof | `codex/s05-i01-dmd-storage` | `630a7f016d364becfb682b855a7da0c57c0b7f7c` | 498 | Reviewed; local and exact-head hosted gates pass |
 | [#2636](https://github.com/damacus/med-tracker/pull/2636): account session contracts | `codex/s05-i01-contract-execution` | `451c357c4f71539bf62056c5ac0459d235528a63` | 1,711 | Reviewed; local and exact-head hosted gates pass |
+| [#2637](https://github.com/damacus/med-tracker/pull/2637): request IDs on rate-limit responses | `codex/s05-i01-account-sessions` | `adfe373fa79bd575d53db6b25f17e76f7600352a` | 399 | Reviewed; local CI passes; exact-head hosted checks running |
 
 Stack `2634` is published; no layer is merged or deployed. Full local
 CI `61813` passed 111 units, 20 request cases, 508 care cases and all 744 browser
@@ -389,6 +390,35 @@ outputs. The checkout was clean afterwards. This final record changes only
 documentation; reviewed/tested application code, contracts and native pins
 remain identical. Publication, exact-head hosted acceptance, merge and deployment
 remain distinct, and no capability operation credit is added by this prerequisite.
+Request-ID PR #2637 is now published in stack `2634` at
+`adfe373fa79bd575d53db6b25f17e76f7600352a`, targeting account head `451c`.
+Its final documentation-only record passed docs build `11841`; runtime/tests
+remain identical to fully tested `0b767399`. The branch was pulled/rebased and
+pushed, and is synchronised with origin. Exact-head hosted run `38612969250`
+is active with no reported failure; published-head Devin Review passed and its
+actual inline review thread list is empty. Coverage job `116020860508` remains
+active. Codex artifact attachment remains unavailable; no attachment is claimed.
+
+The capability source has been preserved and integrated separately onto that
+published head. Automatic approval review rejected an initial reset-containing
+integration command before execution. The accepted alternative stashed every
+change, including progress notes, in owned stash
+`d88b1df9e33250c9c83eb7bbcefbd890a0f2b572`; all notes were retained while resolving
+the shared helper conflict. Eleven unaffected source hashes matched the backup.
+The shared boot helper keeps configurable settings and the inherited request-ID
+enable test; no duplicate runner was added. Integrated request source SHA-256 is
+`91d76d2567046029eac010164772e105ef79c93279b8493e18ede3d4ad8c7812`.
+Capability request SHA-256 is
+`e1795daf7fac11b29852ad6b9ceba605ab7ceaba9878bfda02e60a3528dbcb90`:
+its rate case now checks persisted effects and credential counts before/after
+both 300 successful requests and the rejection. Focused `31351` passed all six
+cases; full request inventory `62969` passed 55 with one intentional completion
+ignore. Both Tasks exited zero and cleaned owned fixtures normally. Logs:
+`capabilities-integrated-six-green-adfe.log` and
+`capabilities-integrated-inventory-green-adfe.log` in the existing evidence directory.
+The controlled 503 case preserves an existing failure envelope not declared in
+OpenAPI; no schema or native pin was changed. Exact immutable capability evidence,
+independent review and cumulative CI still precede its publication.
 Entries below retain historical revisions, failed attempts and publication states.
 
 Historical prerequisite failure, 14 October:
