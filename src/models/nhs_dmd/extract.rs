@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{self, Read};
+use std::io::{Read, Write};
 use std::path::{Component, Path, PathBuf};
 
 pub(crate) const MAX_ENTRIES: usize = 200;
@@ -8,10 +8,20 @@ pub(crate) const MAX_TOTAL_BYTES: u64 = 500 * 1024 * 1024;
 const SYMLINK_MODE: u32 = 0o120000;
 const MODE_MASK: u32 = 0o170000;
 
+#[cfg(test)]
 pub(crate) fn extract(
     zip_path: &Path,
     destination: &Path,
     pattern: Option<&str>,
+) -> Result<Vec<PathBuf>, String> {
+    extract_with_progress(zip_path, destination, pattern, || Ok(()))
+}
+
+pub(crate) fn extract_with_progress(
+    zip_path: &Path,
+    destination: &Path,
+    pattern: Option<&str>,
+    mut progress: impl FnMut() -> Result<(), String>,
 ) -> Result<Vec<PathBuf>, String> {
     let file = File::open(zip_path).map_err(|error| format!("ZIP extraction failed: {error}"))?;
     let mut archive =
@@ -68,9 +78,21 @@ pub(crate) fn extract(
         let mut output =
             File::create(&target).map_err(|error| format!("ZIP extraction failed: {error}"))?;
         let limit = MAX_ENTRY_BYTES.min(MAX_TOTAL_BYTES - emitted);
-        let written = io::copy(&mut entry.by_ref().take(limit), &mut output)
-            .map_err(|error| format!("ZIP extraction failed: {error}"))?;
-        emitted += written;
+        let mut bounded = entry.by_ref().take(limit);
+        let mut block = vec![0_u8; 1024 * 1024];
+        loop {
+            let read = bounded
+                .read(&mut block)
+                .map_err(|error| format!("ZIP extraction failed: {error}"))?;
+            if read == 0 {
+                break;
+            }
+            output
+                .write_all(&block[..read])
+                .map_err(|error| format!("ZIP extraction failed: {error}"))?;
+            emitted += read as u64;
+            progress()?;
+        }
         let mut overflow = [0_u8; 1];
         if entry
             .read(&mut overflow)
@@ -134,6 +156,37 @@ mod tests {
     use super::*;
     use proptest::prelude::*;
     use std::io::Write;
+
+    #[test]
+    fn reports_extraction_activity_while_a_large_entry_is_written() {
+        let directory = tempfile::tempdir().unwrap();
+        let archive_path = directory.path().join("release.zip");
+        let mut writer = zip::ZipWriter::new(File::create(&archive_path).unwrap());
+        writer
+            .start_file(
+                "release.xml",
+                zip::write::SimpleFileOptions::default()
+                    .compression_method(zip::CompressionMethod::Deflated),
+            )
+            .unwrap();
+        let block = vec![0_u8; 1024 * 1024];
+        for _ in 0..4 {
+            writer.write_all(&block).unwrap();
+        }
+        writer.finish().unwrap();
+        let mut activity = 0;
+        extract_with_progress(
+            &archive_path,
+            &directory.path().join("output"),
+            None,
+            || {
+                activity += 1;
+                Ok(())
+            },
+        )
+        .unwrap();
+        assert!(activity >= 4);
+    }
 
     #[test]
     fn rejects_excess_archive_entries_even_when_pattern_excludes_them() {

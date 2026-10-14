@@ -5,6 +5,40 @@ Profile has its own [item-by-item subplan](06-profile-parity.md).
 
 ## Current completion scope — 13 October 2026
 
+### Publication candidate — 14 October 2026
+
+The care and medication-review work is combined in one publication candidate,
+including main through dm+d merge `99154e366`. The pending mobile Stock Check
+probes below are included for review. Final integrated UI acceptance and full
+candidate verification remain outstanding; publication does not establish that
+those gates passed.
+
+### Integrated UI recheck hold — 13 October 2026
+
+The integrated care and medication-review candidate is committed at
+`4ed4cc147d69dc08a84e7a445d86cfa93600fdf5`. An exact-head
+`rtk task ci:prepare` passed (session `72605`); this is not the full CI gate.
+The synthetic listener at `http://localhost:6150` passed `/up`, but automatic
+approval review rejected the independent browser's synthetic-account sign-in.
+Direct user approval is pending. No targeted judge recheck or further browser
+sign-in was attempted after that decision. The owned listener (session `81675`,
+PID `91817`) and Docker project
+`mtloco-care-judge-9a76a2f4c935440a90875fd44acb5d63` have been stopped
+and removed; port 6150 is closed. Its baseline dump remains at
+`/private/tmp/mtloco-care-judge-9a76a2f4c935440a90875fd44acb5d63.dump`.
+
+The same-session correction review is
+`/private/tmp/medtracker-care-judge-correction-review-output.txt`. Its Retry
+finding assumed no click coverage, but the existing search test clicks Retry
+after a failed request and observes visible result groups; this passed in the
+8/8 focused desktop/mobile run. The possible picker focus gap and narrow-header
+clipping remain unverified. A test-only extension to the existing mobile Stock
+Check case now checks the last picker checkbox against the fixed summary and
+checks that four header controls fit without overlap at 320px, then restores
+375px for the existing focus path. This test has not run. No production source
+changed after the integrated commit. Approval, RED/GREEN evidence for any
+confirmed gap, the two targeted judge rechecks and full CI remain outstanding.
+
 The owner approved completing s06-i02 in full. Historical discovery notes below
 describe their original checkpoints, not the current absence of features.
 At `090956d87233aa7f0396530050e1bb0365022227`, person cards, health-event/carer

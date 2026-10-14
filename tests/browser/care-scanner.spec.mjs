@@ -392,25 +392,27 @@ test('Stock Check batch controls show selected counts, differences and a unit-sa
   if (test.info().project.name === 'mobile') {
     const account = page.locator('header .app-header [data-app-account]');
     await expect(account).toBeVisible();
-    const header = await account.evaluate(element => {
+    const measureHeader = () => account.evaluate(element => {
       const row = element.closest('.app-header');
       const brand = row.querySelector('.app-brand').getBoundingClientRect();
       const avatar = element.getBoundingClientRect();
       const controls = ['[data-app-drawer]', '.app-brand', '[data-global-search-trigger]', '[data-app-account]'].map(selector => {
         const bounds = row.querySelector(selector).getBoundingClientRect();
-        return { left: bounds.left, right: bounds.right };
+        return { left: bounds.left, right: bounds.right, top: bounds.top, bottom: bounds.bottom };
       });
       return { height: row.getBoundingClientRect().height, brandTop: brand.top, avatarTop: avatar.top, controls, clientWidth: document.documentElement.clientWidth };
     });
+    const header = await measureHeader();
     expect.soft(header.height).toBeLessThan(90);
     expect.soft(Math.abs(header.brandTop - header.avatarTop)).toBeLessThan(16);
     expect.soft(header.controls.every(control => control.left >= 0 && control.right <= header.clientWidth), JSON.stringify(header)).toBe(true);
     await page.evaluate(() => scrollTo(0, 0));
     await page.screenshot({ path: 'docs/screenshots/loco-care-stock-check-header-mobile.png' });
-    await page.locator('[data-stock-check-select]:not(:disabled)').last().focus();
-    await page.keyboard.press('Tab');
-    const firstCount = page.locator('[data-stock-check-batch] input[type="number"]:not(:disabled)').first();
-    await expect(firstCount).toBeFocused();
+    await page.setViewportSize({ width: 320, height: 844 });
+    const narrowHeader = await measureHeader();
+    expect.soft(narrowHeader.controls.every(control => control.left >= 0 && control.right <= narrowHeader.clientWidth), JSON.stringify(narrowHeader)).toBe(true);
+    expect.soft(narrowHeader.controls.every((control, index) => narrowHeader.controls.slice(index + 1).every(other => control.right <= other.left || other.right <= control.left || control.bottom <= other.top || other.bottom <= control.top)), JSON.stringify(narrowHeader)).toBe(true);
+    await page.setViewportSize({ width: 375, height: 844 });
     const focusVisibility = async control => {
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       return control.evaluate(element => {
@@ -419,6 +421,14 @@ test('Stock Check batch controls show selected counts, differences and a unit-sa
         return { top: target.top, bottom: target.bottom, summaryTop: summary.top, scrollY, maxScroll: document.documentElement.scrollHeight - innerHeight };
       });
     };
+    const lastPicker = page.locator('[data-stock-check-select]:not(:disabled)').last();
+    await lastPicker.focus();
+    const pickerVisibility = await focusVisibility(lastPicker);
+    expect.soft(pickerVisibility.top).toBeGreaterThanOrEqual(0);
+    expect.soft(pickerVisibility.bottom <= pickerVisibility.summaryTop - 8, JSON.stringify(pickerVisibility)).toBe(true);
+    await page.keyboard.press('Tab');
+    const firstCount = page.locator('[data-stock-check-batch] input[type="number"]:not(:disabled)').first();
+    await expect(firstCount).toBeFocused();
     const countVisibility = await focusVisibility(firstCount);
     expect.soft(countVisibility.top).toBeGreaterThanOrEqual(0);
     expect.soft(countVisibility.bottom <= countVisibility.summaryTop - 8, JSON.stringify(countVisibility)).toBe(true);
