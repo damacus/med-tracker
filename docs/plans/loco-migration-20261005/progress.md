@@ -33,7 +33,7 @@ ignored. Final foreign-account collection case `75396` and full inventory rerun
 `72412` both pass; owned resources cleaned up normally. Tested source candidate
 is `2ae0b911576912bccf22f10c5db65856bd8cdc60`, with request SHA `abeb3c38`.
 Exact executed evidence now credits these four account operations locally;
-publication remains held for cumulative gates. Earlier review
+publication awaits the next stack layer. Earlier review
 `78959` accepted saved source `9219c243`; final review `66814` checked the later
 production and evidence changes and required only a negative-test lookup fix.
 That fix passes; same-session correction review `59730` accepted the final source
@@ -56,7 +56,17 @@ fixed. Final `86436` passed all 47 runner cases, with fixture SHA `599a20d6`.
 reconstructed summary of tool output, not a captured raw transcript. Same
 independent review `25548` accepted this test-only delta; runtime and evidence
 hashes remain unchanged. No real database or browser job ran in these unit tests.
-The corrected candidate now requires a fresh cumulative CI run before publication.
+Fresh cumulative CI `51506` passed on exact code candidate
+`d0781fb84e2fd3f73454d8899157986517b4089f`: 112 units, 45 request cases (one
+intentional completion ignore), 508 care cases (two ignored, 14 filtered) and
+all 744 browser cases in 19.3 minutes. Full Task exit was zero with normal
+owned-resource cleanup. Log: `/private/tmp/s05-i01-evidence/account-full-ci-d078.log`.
+The 39 generated screenshots are preserved in `account-full-ci-d078-screenshots.patch`
+beside that log, SHA-256 `db5c08c171f9b9be2ba35c0d38e2424a2a9d5cfd9184cf1b2eadc92d55a6907b`;
+only those verified paths were restored. Unrelated Serena drift remains excluded.
+This final evidence update changes documentation only; tested code, schemas,
+runner fixtures and request assertions remain unchanged. Hosted acceptance,
+publication, merge and deployment remain separate.
 
 | Final account evidence | Job | Result | Retained log under `/private/tmp/s05-i01-evidence/` |
 | --- | --- | --- | --- |
@@ -74,8 +84,7 @@ four complete, two partial and 116 unverified. The missing route is the existing
 notification test operation. All 13 unique credited account test names executed
 and passed before the final completion rejection, with normal owned cleanup.
 Final request and inventory hashes are `17190df2` and `656073df`; candidate
-revision pins remain `2ae0b911`. Next: complete cumulative
-gates, then publish that
+revision pins remain `2ae0b911`. Next: publish that
 bounded layer. Native pins are unchanged; broader slice 05 is not complete.
 Entries below retain historical revisions, failed attempts and publication states.
 
