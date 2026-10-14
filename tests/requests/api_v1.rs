@@ -8,6 +8,7 @@ mod fixture;
 mod me_ui;
 #[path = "people.rs"]
 mod people;
+mod people_evidence;
 
 use fixture::Fixture;
 use loco_rs::{
@@ -160,6 +161,15 @@ fn inventory() -> BTreeMap<(String, String), Value> {
 }
 
 fn validate_evidence(entry: &Value) -> Result<(), String> {
+    if let Some(expected) = people_evidence::expected(entry["operation_id"].as_str().unwrap_or(""))
+    {
+        for field in ["coverage", "candidate_revision", "gaps", "evidence"] {
+            if entry[field] != expected[field] {
+                return Err(format!("Unsupported People evidence field: {field}"));
+            }
+        }
+        return Ok(());
+    }
     let expected = if entry["operation_id"] == "getCurrentProfile" {
         json!({
             "coverage": "partial",
@@ -476,6 +486,9 @@ fn validate_metadata(document: &Value, entry: &Value) {
         }
     }
     let candidate_revision = match entry["operation_id"].as_str() {
+        Some("listPeople" | "createPerson" | "updatePerson" | "updatePersonWithPut") => {
+            Some((people_evidence::REVISION, json!([people_evidence::GAP])))
+        }
         Some("listHouseholds" | "listSessions" | "deleteSession" | "logoutSession") => {
             Some(("0893879794d009bbb94cc72a0dd5df11aa7f6dfa", json!([])))
         }

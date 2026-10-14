@@ -249,6 +249,22 @@ test('API v1 contract task selects the native request binary and focused filter'
 });
 
 const creditedRequestTests = [
+  'api_v1::people::people_methods_reject_invalid_and_wrong_namespace_credentials_before_writes',
+  'api_v1::people::revoked_credentials_and_withdrawn_membership_block_every_people_method',
+  'api_v1::people::all_four_people_methods_share_fixed_general_limit_without_write_effects',
+  'api_v1::people::people_audit_insert_failure_rolls_back_every_route_without_private_data',
+  'api_v1::people::people_collection_scopes_credentials_and_validates_queries',
+  'api_v1::people::people_listing_hides_data_when_restricted_household_read_fails',
+  'api_v1::people::people_listing_rechecks_account_closed_during_mobile_authentication',
+  'api_v1::people::people_write_routes_document_existing_idempotency_conflict',
+  'api_v1::people::people_write_methods_recheck_current_manage_permission',
+  'api_v1::people::app_and_mobile_credentials_can_each_write_all_people_methods',
+  'api_v1::people::create_person_preserves_atomic_links_and_rejects_denied_writes',
+  'api_v1::people::concurrent_create_person_key_replays_one_write',
+  'api_v1::people::patch_person_merges_fields_and_rejects_changed_key_replay',
+  'api_v1::people::concurrent_patch_person_key_replays_one_write',
+  'api_v1::people::put_person_merges_fields_and_rejects_changed_key_replay',
+  'api_v1::people::concurrent_put_person_key_replays_one_write',
   'api_v1::account::account_collections_keep_household_scope_and_session_secrets_out',
   'api_v1::account::account_management_authentication_envelopes_match_each_route',
   'api_v1::account::account_revoke_and_logout_preserve_namespace_idempotence_and_audit_effects',

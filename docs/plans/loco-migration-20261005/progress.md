@@ -674,6 +674,19 @@ Malformed household-ID extraction remains an unresolved contract gap. This
 candidate still needs immutable partial evidence, independent SWE-2 Max review,
 full CI, publication and exact-head hosted acceptance. No new complete-operation
 credit is claimed; whole-API acceptance still rejects 117 incomplete operations.
+Immutable People evidence is now pinned to tested source
+`7ba79ac8cbfdffa365c0e15646ea13075a1e6918`. Guard RED `35467` compiled and
+executed one test, failing on unverified versus partial coverage; GREEN `23940`
+passed after the four exact proof arrays, source revision and gaps were recorded.
+Tampering with any of those fields is rejected. Evidence describes actual denial
+audits, domain versions and pagination schemas without claiming untested effects.
+Inventory `44715` passed 81 cases with completion intentionally ignored; runner
+fixtures `46909` passed 47 cases. Full dispatcher `14472` executed requests
+81/1 ignored, care 524/2 ignored, then requests 81 passed/one failed solely at
+the final acceptance guard for 117 incomplete operations. Every credited People
+test executed. The ledger is five complete, seven partial and 110 unverified;
+this is partial verification, not whole-API acceptance. Independent review and
+cumulative CI will run on the next frozen commit before publication.
 
 Entries below retain historical revisions, failed attempts and publication states.
 
