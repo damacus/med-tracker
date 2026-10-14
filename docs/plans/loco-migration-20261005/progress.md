@@ -1,12 +1,18 @@
 # Migration progress
 
-Updated 13 October 2026. Complete every slice in [the plan](plan.md).
+Updated 14 October 2026. Complete every slice in [the plan](plan.md).
 Foundation is accepted. The verified baseline PR #2451 is merged; all remaining
 migration areas stay in scope. No live deployment has occurred.
 
 ## Current delivery
 
 ### s05-i01 — API contract completion, 13 October 2026
+
+Current candidate: `codex/s05-i01-http-rate-limits`, based on merged care revision
+`672dbc0d1520ee586ce625f0dbfec7fb3eba0544`. Full CI and independent review pass;
+publication is next. The current inventory has 122 operations after the merged
+review leases: two partial and 120 unverified. Historical snapshots below retain
+their original operation counts and publication states.
 
 The owner approved completing all 119 documented API v1 operations using
 `rust-testing`, upstream Loco guidance and area-based `gh stack` PRs, each at most
@@ -427,6 +433,28 @@ Shared HTTP rate-limit work:
   Formatting passes after correcting the new test layout; no behavioral result
   was inferred from the formatting failures. Same-session correction review,
   coverage remeasurement and full CI remain before publication.
+
+- Final runtime candidate `e124b30da85cab62445fd94eac42bb94eb3f7f3e` passed
+  `task --concurrency 1 ci`, job 37169, exit zero: 104 units, 507 care API cases
+  (two ignored, fourteen filtered), 17 OAuth cases, 18 request cases (one ignored)
+  and all 744 desktop/mobile browser cases. Other integration binaries passed.
+  Strict all-target lint job 88178, formatting, docs and whitespace also pass.
+  The full log is `rate-limit-full-ci-e124.log` in the evidence directory.
+  The Task exited normally. Its 40 regenerated screenshots were preserved in
+  `ci-e124-generated-screenshots.patch` and restored; unrelated Serena work remains.
+- Coverage job 72508 exited zero on the same runtime candidate: 104 units,
+  18 requests (one ignored) and 521 care API cases (two ignored) passed. Manifest
+  `rate-coverage-e124/a192519b-ef8b-416c-8d55-14e88ce6d7cd/manifest.json` records
+  source-state SHA `4368f2d688c442f4c2b8251446b2d1db1d5627532a4cdfd91c93a0b35d744158`.
+  Runtime line coverage is 171/171 for the limiter model, 46/46 for its controller
+  and 16/16 for its view, excluding inline tests and test helpers. Broader source
+  coverage remains a report-only baseline; this is not complete API acceptance.
+- Same-session Devin `ambiguous-jupiter`, SWE-2 Max correction job 37262, accepted
+  the final test additions without blocking findings after job 99421 accepted
+  the merged-care reconciliation. The coordinator owns publication and evidence;
+  `/root/api_writer` owns code/tests and `/root/verifier` owns verification and
+  resources. The reviewed runtime diff is 1,354 lines against its immediate base.
+  The following documentation update records results without changing runtime.
 
 Session close-out on 11 October 2026:
 
