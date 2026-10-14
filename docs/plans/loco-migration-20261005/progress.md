@@ -384,6 +384,24 @@ completion rejection, not an ordinary-suite failure. Owned resources cleaned
 normally. Both partial-evidence and global-404 guards executed and passed.
 Local evidence now records five complete, three partial and 114 unverified
 operations. No new complete credit, merge or deployment is implied.
+Candidate `efa9d167dc039caa1910df020877addd7ca2e405` is committed, 952 changed
+lines against published capability `022854`. Inline independent SWE-2 Max review
+`49067` is running on that source. Full CI `72794` passed 115 units but failed
+strict lint: the shared fixture helper is unused when `oauth_server` imports
+the fixture module. The correction moves the exact helper into the care test
+binary, without changing SQL, assertions or runtime policy. Only owned downstream
+integration/browser runners were interrupted through their normal handlers;
+all owned processes exited. No full-CI success is claimed. Three generated PNGs
+were preserved in `me-ui-ci-efa9d167-generated-screenshots.patch`, SHA-256
+`f2e8889ee82a583ac7b90140f39dbc32716fd56f9c1b253a47a68d6fd0798501`.
+Root verified the three exact paths and reverse-applied only that patch.
+People test drafting in its separate branch remains paused until this required
+failure is corrected. Publication remains held for lint, full CI and review.
+The unchanged helper now lives in an inherent `impl Fixture` within
+`tests/care_api.rs`, so the OAuth binary no longer compiles an unused method.
+Formatting and diff checks pass; strict all-target lint `13425` passed in
+18.14 seconds. Full CI will rerun on the committed correction; the existing
+independent review will receive that exact placement delta in the same session.
 
 Entries below retain historical revisions, failed attempts and publication states.
 

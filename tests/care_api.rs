@@ -124,6 +124,39 @@ use loco_rs::{
 use sea_orm::{ConnectionTrait, DbBackend, Statement};
 use serde_json::{Value, json};
 
+impl Fixture {
+    pub async fn seed_foreign_household(&self, household_id: i64) {
+        self.admin
+            .execute_unprepared("INSERT INTO accounts(id,email,password_hash,status,created_at,updated_at) VALUES(71999,'other-care-household@example.test',crypt('password',gen_salt('bf',4)),2,now(),now())")
+            .await
+            .unwrap();
+        self.admin
+            .execute_raw(Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                "INSERT INTO households(id,created_by_account_id,name,slug,timezone,status,lifecycle_state,created_at,updated_at) VALUES($1,71999,'Other care household','other-care-' || $1::text,'UTC','active','active',now(),now())",
+                [household_id.into()],
+            ))
+            .await
+            .unwrap();
+        self.admin
+            .execute_raw(Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                "INSERT INTO people(id,household_id,account_id,name,person_type,has_capacity,created_at,updated_at) VALUES(73999,$1,71999,'Other care member',0,true,now(),now())",
+                [household_id.into()],
+            ))
+            .await
+            .unwrap();
+        self.admin
+            .execute_raw(Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                "INSERT INTO household_memberships(id,household_id,account_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74999,$1,71999,73999,'owner','active',now(),now(),now())",
+                [household_id.into()],
+            ))
+            .await
+            .unwrap();
+    }
+}
+
 struct Application {
     fixture: Fixture,
     context: AppContext,
