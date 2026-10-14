@@ -51,19 +51,26 @@ async fn seed_prompt(app: &Application, id: i64, status: &str) {
     app.fixture
         .admin
         .execute_unprepared(&format!(
-            "INSERT INTO medication_review_evidence_records(id,source_name,source_record_id,source_url,product_name,label_section,evidence_text,retrieved_on,risk_level,match_confidence,created_at,updated_at) VALUES ({id}00,'Synthetic reference','report-{id}','https://example.test/evidence/{id}','Synthetic tablets','Warnings','Synthetic evidence.','2026-01-01','moderate','high',now(),now())"
+            "INSERT INTO medication_review_evidence_records(id,source_name,source_record_id,source_url,product_name,label_section,evidence_text,retrieved_on,risk_level,match_confidence,match_status,candidate_terms,interacting_terms,created_at,updated_at) VALUES ({id}00,'Synthetic reference','report-{id}','https://example.test/evidence/{id}','Synthetic tablets','Warnings','Synthetic evidence.','2026-01-01','moderate','high','reviewed_pair',ARRAY['synthetic tablets']::varchar[],ARRAY['synthetic tablets']::varchar[],now(),now())"
         ))
         .await
         .unwrap();
     app.fixture
         .admin
         .execute_unprepared(&format!(
-            "INSERT INTO medication_review_prompts(id,household_id,person_id,primary_medication_id,interacting_medication_id,evidence_record_id,primary_medication_name,interacting_medication_name,evidence_source_name,evidence_source_url,evidence_source_version,evidence_source_checked_on,evidence_source_effective_on,evidence_text,match_confidence,match_reason,match_type,matched_term,risk_level,source_instruction,status,created_at,updated_at) VALUES ({id},72001,73001,80001,80001,{id}00,'Synthetic tablets','Synthetic tablets','Synthetic reference','https://example.test/evidence/{id}','1','2026-01-01','2026-01-01','Synthetic evidence.','high','Synthetic reason','ingredient','synthetic','moderate','unclassified','{status}',now(),now())"
+            "INSERT INTO medication_review_prompts(id,household_id,person_id,primary_medication_id,interacting_medication_id,evidence_record_id,primary_medication_name,interacting_medication_name,evidence_source_name,evidence_source_url,evidence_source_version,evidence_source_checked_on,evidence_source_effective_on,evidence_text,match_confidence,match_reason,match_type,matched_term,risk_level,source_instruction,status,created_at,updated_at) VALUES ({id},72001,73001,80001,80001,{id}00,'Synthetic tablets','Synthetic tablets','Synthetic reference','https://example.test/evidence/{id}','1','2026-01-01','2026-01-01','Synthetic evidence.','high','A reviewed rule identifies synthetic tablets as the interacting medicine.','curated','synthetic tablets','moderate','unclassified','{status}',now(),now())"
         ))
         .await
         .unwrap();
     app.fixture.admin.execute_unprepared(&format!(
         "UPDATE medication_review_prompts p SET evidence_source_fingerprint=md5(jsonb_build_array(e.source_name,e.source_url,e.source_version,e.source_effective_on,e.evidence_text,e.risk_level,e.match_confidence)::text) FROM medication_review_evidence_records e WHERE p.id={id} AND e.id=p.evidence_record_id"
+    )).await.unwrap();
+}
+
+async fn seed_matched_prompt(app: &Application, id: i64, status: &str) {
+    seed_prompt(app, id, status).await;
+    app.fixture.admin.execute_unprepared(&format!(
+        "UPDATE medications SET name='Aspirin tablets' WHERE id=80001; INSERT INTO medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at) VALUES (80003,72001,79001,'Warfarin tablets',10,1,'tablet',now(),now()); INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES (81003,72001,73001,80003,1,'tablet',1,now(),now()); UPDATE medication_review_evidence_records SET source_version='1',evidence_text='Avoid warfarin with aspirin.',match_status='unreviewed',candidate_terms=ARRAY['aspirin']::varchar[],interacting_terms=ARRAY[]::varchar[],risk_level='unknown',match_confidence='unknown' WHERE id={id}00; INSERT INTO medication_review_evidence_records(id,source_name,source_record_id,source_url,product_name,label_section,evidence_text,retrieved_on,risk_level,match_confidence,candidate_terms,pharmacologic_classes,created_at,updated_at) VALUES ({id}01,'Synthetic reference','identity-{id}','https://example.test/evidence/identity-{id}','Warfarin','Warnings','Warfarin medicine information.','2026-01-01','unknown','unknown',ARRAY['warfarin']::varchar[],ARRAY['anticoagulant']::varchar[],now(),now()); UPDATE medication_review_prompts SET primary_medication_id=80001,interacting_medication_id=80003,primary_medication_name='Aspirin tablets',interacting_medication_name='Warfarin tablets',evidence_source_version='1',evidence_text='Avoid warfarin with aspirin.',matched_term='warfarin',match_type='ingredient',source_instruction='avoid',match_reason='The label explicitly names the ingredient warfarin.',risk_level='high',match_confidence='high' WHERE id={id}; UPDATE medication_review_prompts p SET evidence_source_fingerprint=md5(jsonb_build_array(e.source_name,e.source_url,e.source_version,e.source_effective_on,e.evidence_text,e.risk_level,e.match_confidence)::text) FROM medication_review_evidence_records e WHERE p.id={id} AND e.id=p.evidence_record_id"
     )).await.unwrap();
 }
 
@@ -243,7 +250,7 @@ async fn review_save_with_unchanged_fields_releases_lease_without_history() {
 async fn changed_evidence_reopens_review_and_preserves_the_previous_snapshot() {
     let app = Application::new().await;
     let token = app.token().await;
-    seed_prompt(&app, 91102, "reviewed_with_practitioner").await;
+    seed_matched_prompt(&app, 91102, "reviewed_with_practitioner").await;
     app.fixture.admin.execute_unprepared(
         "UPDATE medication_review_prompts SET practitioner_name='Dr Test',practitioner_role='GP',reviewed_on='2026-10-01',review_note='Discussed',reviewed_by_membership_id=74001 WHERE id=91102",
     ).await.unwrap();
@@ -285,7 +292,7 @@ async fn changed_evidence_reopens_review_and_preserves_the_previous_snapshot() {
     );
     assert_eq!(after_timestamp["data"]["etag"], original_etag);
     app.fixture.admin.execute_unprepared(
-        "UPDATE medication_review_evidence_records SET source_version='2',evidence_text='Changed synthetic evidence.' WHERE id=9110200",
+        "UPDATE medication_review_evidence_records SET source_version='2',evidence_text='Monitor anticoagulants with aspirin.' WHERE id=9110200",
     ).await.unwrap();
     let detail_after_change: Value = app
         .client
@@ -321,8 +328,17 @@ async fn changed_evidence_reopens_review_and_preserves_the_previous_snapshot() {
     assert_eq!(after["data"]["status"], "needs_review");
     assert_eq!(
         after["data"]["evidence_text"],
-        "Changed synthetic evidence."
+        "Monitor anticoagulants with aspirin."
     );
+    assert_eq!(after["data"]["matched_term"], "anticoagulants");
+    assert_eq!(after["data"]["match_type"], "class");
+    assert_eq!(after["data"]["source_instruction"], "monitor_or_adjust");
+    assert_eq!(
+        after["data"]["match_reason"],
+        "The label explicitly names the class anticoagulants."
+    );
+    assert_eq!(after["data"]["risk_level"], "moderate");
+    assert_eq!(after["data"]["match_confidence"], "moderate");
     assert_ne!(after["data"]["etag"], original_etag);
     assert_eq!(
         after["history"][0]["snapshot"]["practitioner_name"],
@@ -331,7 +347,13 @@ async fn changed_evidence_reopens_review_and_preserves_the_previous_snapshot() {
     assert_eq!(after["history"][0]["snapshot"]["review_note"], "Discussed");
     assert_eq!(
         after["history"][0]["snapshot"]["evidence_text"],
-        "Synthetic evidence."
+        "Avoid warfarin with aspirin."
+    );
+    assert_eq!(after["history"][0]["snapshot"]["matched_term"], "warfarin");
+    assert_eq!(after["history"][0]["snapshot"]["match_type"], "ingredient");
+    assert_eq!(
+        after["history"][0]["snapshot"]["source_instruction"],
+        "avoid"
     );
     let snapshot = after["history"][0]["snapshot"].as_object().unwrap();
     assert_eq!(snapshot["id"], "91102");
@@ -339,6 +361,241 @@ async fn changed_evidence_reopens_review_and_preserves_the_previous_snapshot() {
     assert_eq!(snapshot["etag"], original_etag);
     assert!(!snapshot.contains_key("evidence_source_fingerprint"));
     assert!(!snapshot.contains_key("household_id"));
+}
+
+#[tokio::test]
+async fn changed_evidence_without_a_pair_match_retires_the_warning_and_keeps_history() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    seed_matched_prompt(&app, 91108, "reviewed_with_practitioner").await;
+    app.fixture.admin.execute_unprepared(
+        "UPDATE medication_review_prompts SET practitioner_name='Dr Test',practitioner_role='GP',reviewed_on='2026-10-01',review_note='Discussed',reviewed_by_membership_id=74001 WHERE id=91108",
+    ).await.unwrap();
+    app.fixture.admin.execute_unprepared(
+        "UPDATE medication_review_evidence_records SET source_version='2',evidence_text='This product has no named interacting medicines.' WHERE id=9110800",
+    ).await.unwrap();
+    let first: Value = app
+        .client
+        .get(prompts(&app, "/91108"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    let second: Value = app
+        .client
+        .get(prompts(&app, "/91108"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    let default_list: Value = app
+        .client
+        .get(prompts(&app, ""))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    app.close().await;
+    assert_eq!(first["data"]["status"], "hidden_low_signal");
+    assert_ne!(first["data"]["source_instruction"], "avoid");
+    assert_ne!(first["data"]["matched_term"], "warfarin");
+    assert_ne!(first["data"]["match_type"], "ingredient");
+    assert_ne!(
+        first["data"]["match_reason"],
+        "The label explicitly names the ingredient warfarin."
+    );
+    assert_eq!(
+        first["history"][0]["snapshot"]["source_instruction"],
+        "avoid"
+    );
+    assert_eq!(first["history"][0]["snapshot"]["review_note"], "Discussed");
+    assert_eq!(second["history"].as_array().unwrap().len(), 1);
+    assert!(default_list["data"].as_array().unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn changed_evidence_keeps_an_equivalent_legacy_review_untouched() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    seed_prompt(&app, 91109, "reviewed_with_practitioner").await;
+    app.fixture.admin.execute_unprepared(
+        "UPDATE medication_review_prompts SET practitioner_name='Dr Test',practitioner_role='GP',reviewed_on='2026-10-01',review_note='Discussed',reviewed_by_membership_id=74001 WHERE id=91109",
+    ).await.unwrap();
+    let first: Value = app
+        .client
+        .get(prompts(&app, "/91109"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    app.fixture.admin.execute_unprepared(
+        "UPDATE medication_review_evidence_records SET retrieved_on='2026-10-02' WHERE id=9110900",
+    ).await.unwrap();
+    let second: Value = app
+        .client
+        .get(prompts(&app, "/91109"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    app.close().await;
+    assert_eq!(first["data"]["status"], "reviewed_with_practitioner");
+    assert_eq!(second["data"]["status"], "reviewed_with_practitioner");
+    assert_eq!(second["data"]["etag"], first["data"]["etag"]);
+    assert_eq!(second["data"]["practitioner_name"], "Dr Test");
+    assert!(second["history"].as_array().unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn changed_evidence_match_inputs_alone_retire_and_restore_a_warning() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    seed_matched_prompt(&app, 91110, "reviewed_with_practitioner").await;
+    app.fixture.admin.execute_unprepared(
+        "UPDATE medication_review_prompts SET practitioner_name='Dr Test',practitioner_role='GP',reviewed_on='2026-10-01',review_note='Discussed',reviewed_by_membership_id=74001 WHERE id=91110; UPDATE medication_review_evidence_records SET candidate_terms=ARRAY['unrelated']::varchar[] WHERE id=9111000",
+    ).await.unwrap();
+    let retired: Value = app
+        .client
+        .get(prompts(&app, "/91110"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    app.fixture.admin.execute_unprepared(
+        "UPDATE medication_review_evidence_records SET candidate_terms=ARRAY['aspirin']::varchar[] WHERE id=9111000",
+    ).await.unwrap();
+    let restored: Value = app
+        .client
+        .get(prompts(&app, "/91110"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    app.close().await;
+    assert_eq!(retired["data"]["status"], "hidden_low_signal");
+    assert_eq!(
+        retired["history"][0]["snapshot"]["review_note"],
+        "Discussed"
+    );
+    assert_eq!(restored["data"]["status"], "needs_review");
+    assert_eq!(restored["data"]["matched_term"], "warfarin");
+    assert_eq!(restored["data"]["source_instruction"], "avoid");
+    assert_eq!(restored["history"].as_array().unwrap().len(), 2);
+}
+
+#[tokio::test]
+async fn changed_evidence_supporting_identity_alone_retires_a_warning() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    seed_matched_prompt(&app, 91111, "reviewed_with_practitioner").await;
+    app.fixture.admin.execute_unprepared(
+        "UPDATE medication_review_evidence_records SET evidence_text='Monitor glimmerase with aspirin.' WHERE id=9111100; UPDATE medication_review_evidence_records SET candidate_terms=ARRAY['warfarin','glimmerase']::varchar[] WHERE id=9111101; UPDATE medication_review_prompts SET evidence_text='Monitor glimmerase with aspirin.',matched_term='glimmerase',match_type='ingredient',source_instruction='monitor_or_adjust',match_reason='The label explicitly names the ingredient glimmerase.',risk_level='moderate',match_confidence='high',practitioner_name='Dr Test',practitioner_role='GP',reviewed_on='2026-10-01',review_note='Discussed',reviewed_by_membership_id=74001 WHERE id=91111; UPDATE medication_review_prompts p SET evidence_source_fingerprint=md5(jsonb_build_array(e.source_name,e.source_url,e.source_version,e.source_effective_on,e.evidence_text,e.risk_level,e.match_confidence)::text) FROM medication_review_evidence_records e WHERE p.id=91111 AND e.id=p.evidence_record_id",
+    ).await.unwrap();
+    let before: Value = app
+        .client
+        .get(prompts(&app, "/91111"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    app.fixture.admin.execute_unprepared(
+        "UPDATE medication_review_evidence_records SET candidate_terms=ARRAY['warfarin']::varchar[] WHERE id=9111101",
+    ).await.unwrap();
+    let after: Value = app
+        .client
+        .get(prompts(&app, "/91111"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    app.close().await;
+    assert_eq!(before["data"]["status"], "reviewed_with_practitioner");
+    assert_eq!(after["data"]["status"], "hidden_low_signal");
+    assert_eq!(
+        after["history"][0]["snapshot"]["matched_term"],
+        "glimmerase"
+    );
+    assert_eq!(after["history"][0]["snapshot"]["review_note"], "Discussed");
+}
+
+#[tokio::test]
+async fn changed_evidence_reversed_curated_pair_retires_the_old_direction() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    seed_matched_prompt(&app, 91112, "reviewed_with_practitioner").await;
+    app.fixture.admin.execute_unprepared(
+        "UPDATE medication_review_evidence_records SET match_status='reviewed_pair',candidate_terms=ARRAY['aspirin']::varchar[],interacting_terms=ARRAY['warfarin']::varchar[],risk_level='high',match_confidence='high' WHERE id=9111200; UPDATE medication_review_prompts SET match_type='curated',matched_term='warfarin',source_instruction='unclassified',match_reason='A reviewed rule identifies warfarin as the interacting medicine.',practitioner_name='Dr Test',practitioner_role='GP',reviewed_on='2026-10-01',review_note='Discussed',reviewed_by_membership_id=74001 WHERE id=91112; UPDATE medication_review_prompts p SET evidence_source_fingerprint=md5(jsonb_build_array(e.source_name,e.source_url,e.source_version,e.source_effective_on,e.evidence_text,e.risk_level,e.match_confidence)::text) FROM medication_review_evidence_records e WHERE p.id=91112 AND e.id=p.evidence_record_id",
+    ).await.unwrap();
+    let before: Value = app
+        .client
+        .get(prompts(&app, "/91112"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    app.fixture.admin.execute_unprepared(
+        "UPDATE medication_review_evidence_records SET candidate_terms=ARRAY['warfarin']::varchar[],interacting_terms=ARRAY['aspirin']::varchar[] WHERE id=9111200",
+    ).await.unwrap();
+    let list: Value = app
+        .client
+        .get(prompts(&app, ""))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    let old: Value = app
+        .client
+        .get(prompts(&app, "/91112"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    app.close().await;
+    assert_eq!(before["data"]["status"], "reviewed_with_practitioner");
+    assert_eq!(old["data"]["status"], "hidden_low_signal");
+    assert_eq!(old["history"][0]["snapshot"]["review_note"], "Discussed");
+    let visible = list["data"].as_array().unwrap();
+    assert_eq!(visible.len(), 1);
+    assert_eq!(visible[0]["primary_medication_id"], "80003");
+    assert_eq!(visible[0]["interacting_medication_id"], "80001");
+    assert_eq!(visible[0]["matched_term"], "aspirin");
+    assert_eq!(visible[0]["status"], "needs_review");
 }
 
 #[tokio::test]
