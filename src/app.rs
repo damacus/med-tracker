@@ -74,6 +74,9 @@ impl Hooks for App {
         {
             ctx.shared_store.insert(push);
         }
+        if let Some(storage) = crate::models::storage::configured(ctx.config.settings.as_ref()) {
+            return Ok(ctx.into_builder().storage(storage.into()).build());
+        }
         Ok(ctx)
     }
 

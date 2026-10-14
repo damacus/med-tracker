@@ -1,28 +1,21 @@
 use super::*;
 use crate::models::entities::{active_storage_blob, security_audit_event};
-use aws_sdk_s3::{
-    Client,
-    config::{BehaviorVersion, Credentials, Region, timeout::TimeoutConfig},
-    primitives::ByteStream,
-};
 use base64::{Engine, engine::general_purpose::STANDARD};
+use futures_util::StreamExt;
 use image::{ImageFormat, ImageReader, Limits, imageops::FilterType};
-use loco_rs::{Error, app::AppContext, bgworker::BackgroundWorker};
+use loco_rs::{Error, app::AppContext, bgworker::BackgroundWorker, storage::drivers::StoreDriver};
 use md5::{Digest, Md5};
 use sea_orm::{ConnectionTrait, DbBackend, Statement, TransactionTrait};
 use serde::{Deserialize, Serialize};
-use std::{io::Cursor, time::Duration};
-use tokio::io::AsyncReadExt;
+use std::{io::Cursor, path::Path, sync::Arc, time::Duration};
 
 const MAX_UPLOAD: usize = 5 * 1024 * 1024;
+const OPERATION_TIMEOUT: Duration = Duration::from_secs(10);
 
 #[cfg(test)]
 mod bounded_read_tests {
     use super::*;
-    use std::sync::{
-        Arc,
-        atomic::{AtomicUsize, Ordering},
-    };
+    use std::sync::atomic::{AtomicUsize, Ordering};
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
     #[tokio::test]
@@ -50,26 +43,30 @@ mod bounded_read_tests {
             }
             let _ = socket.write_all(b"0\r\n\r\n").await;
         });
-        let config = aws_sdk_s3::Config::builder()
-            .region(Region::new("us-east-1"))
-            .credentials_provider(Credentials::new(
-                "synthetic",
-                "synthetic",
-                None,
-                None,
-                "avatar-bound-test",
-            ))
-            .endpoint_url(format!("http://{address}"))
-            .force_path_style(true)
-            .behavior_version(BehaviorVersion::latest())
-            .build();
+        opendal::install_default();
+        let operator = opendal::Operator::new(
+            opendal::services::S3::default()
+                .bucket("synthetic")
+                .endpoint(&format!("http://{address}"))
+                .region("us-east-1")
+                .access_key_id("synthetic")
+                .secret_access_key("synthetic"),
+        )
+        .unwrap();
         let storage = Storage {
-            client: Client::from_conf(config),
+            inner: Arc::new(loco_rs::storage::Storage::single(
+                loco_rs::storage::drivers::null::new(),
+            )),
+            driver_override: Some(Box::new(
+                loco_rs::storage::drivers::opendal_adapter::OpendalAdapter::new(operator),
+            )),
             bucket: "synthetic".into(),
         };
         assert!(storage.get("oversized").await.is_err());
+        let consumed = observed.load(Ordering::SeqCst);
+        assert!(consumed > 0, "Avatar read never reached the stream");
         assert!(
-            observed.load(Ordering::SeqCst) < 512,
+            consumed < 512,
             "Oversized avatar response was consumed in full"
         );
         server.abort();
@@ -89,7 +86,8 @@ pub struct Attachment {
 }
 
 pub struct Storage {
-    client: Client,
+    inner: Arc<loco_rs::storage::Storage>,
+    driver_override: Option<Box<dyn StoreDriver>>,
     bucket: String,
 }
 
@@ -110,9 +108,9 @@ impl BackgroundWorker<RetiredAvatar> for AvatarRetirementWorker {
     }
 
     async fn perform(&self, retired: RetiredAvatar) -> loco_rs::Result<()> {
-        let mut storage = Storage::configured(&self.ctx)
+        let storage = Storage::configured(&self.ctx)
+            .and_then(|storage| storage.at_bucket(&self.ctx, &retired.bucket))
             .map_err(|_| Error::string("Avatar storage unavailable"))?;
-        storage.bucket = retired.bucket;
         delete_unretained(&self.ctx, &storage, &retired.key)
             .await
             .map_err(|_| Error::string("Avatar retirement failed"))
@@ -156,94 +154,90 @@ async fn delete_unretained(
 
 impl Storage {
     pub fn configured(ctx: &AppContext) -> Result<Self, OperationError> {
-        let settings = ctx.config.settings.as_ref();
-        let text = |key: &str| {
-            crate::models::settings::text(settings, &["avatar_storage", key]).map(str::to_owned)
-        };
-        let endpoint = text("endpoint").ok_or(OperationError::Unavailable)?;
-        let bucket = text("bucket").ok_or(OperationError::Unavailable)?;
-        let region = text("region").ok_or(OperationError::Unavailable)?;
-        let access_key = text("access_key_id").ok_or(OperationError::Unavailable)?;
-        let secret_key = text("secret_access_key").ok_or(OperationError::Unavailable)?;
-        let path_style =
-            crate::models::settings::flag(settings, &["avatar_storage", "force_path_style"])
-                .unwrap_or(true);
-        if bucket.is_empty() || region.is_empty() || access_key.is_empty() || secret_key.is_empty()
-        {
-            return Err(OperationError::Unavailable);
-        }
-        let config = aws_sdk_s3::Config::builder()
-            .region(Region::new(region))
-            .credentials_provider(Credentials::new(
-                access_key,
-                secret_key,
-                None,
-                None,
-                "medtracker-avatar-storage",
-            ))
-            .endpoint_url(endpoint)
-            .force_path_style(path_style)
-            .behavior_version(BehaviorVersion::latest())
-            .timeout_config(
-                TimeoutConfig::builder()
-                    .operation_timeout(Duration::from_secs(10))
-                    .build(),
-            )
-            .build();
+        let bucket = crate::models::settings::text(
+            ctx.config.settings.as_ref(),
+            &["avatar_storage", "bucket"],
+        )
+        .map(str::to_owned)
+        .ok_or(OperationError::Unavailable)?;
+        ctx.storage
+            .as_store(crate::models::storage::AVATAR_STORE)
+            .ok_or(OperationError::Unavailable)?;
         Ok(Self {
-            client: Client::from_conf(config),
+            inner: ctx.storage.clone(),
+            driver_override: None,
             bucket,
         })
     }
 
+    pub fn at_bucket(&self, ctx: &AppContext, bucket: &str) -> Result<Self, OperationError> {
+        if bucket == self.bucket {
+            return Ok(Self {
+                inner: self.inner.clone(),
+                driver_override: None,
+                bucket: self.bucket.clone(),
+            });
+        }
+        let driver =
+            crate::models::storage::avatar_driver(ctx.config.settings.as_ref(), Some(bucket))
+                .ok_or(OperationError::Unavailable)?;
+        Ok(Self {
+            inner: self.inner.clone(),
+            driver_override: Some(driver),
+            bucket: bucket.to_owned(),
+        })
+    }
+
+    fn driver(&self) -> Result<&dyn StoreDriver, OperationError> {
+        match &self.driver_override {
+            Some(driver) => Ok(&**driver),
+            None => self
+                .inner
+                .as_store_err(crate::models::storage::AVATAR_STORE)
+                .map_err(|_| OperationError::Unavailable),
+        }
+    }
+
     pub async fn put(&self, key: &str, image: &Image) -> Result<(), OperationError> {
-        self.client
-            .put_object()
-            .bucket(&self.bucket)
-            .key(key)
-            .content_type(image.content_type)
-            .body(ByteStream::from(image.bytes.clone()))
-            .send()
-            .await
-            .map(|_| ())
-            .map_err(|_| OperationError::Unavailable)
+        let content: bytes::Bytes = image.bytes.clone().into();
+        tokio::time::timeout(
+            OPERATION_TIMEOUT,
+            self.driver()?.upload(Path::new(key), &content),
+        )
+        .await
+        .map_err(|_| OperationError::Unavailable)?
+        .map(|_| ())
+        .map_err(|_| OperationError::Unavailable)
     }
 
     pub async fn get(&self, key: &str) -> Result<Vec<u8>, OperationError> {
-        let object = self
-            .client
-            .get_object()
-            .bucket(&self.bucket)
-            .key(key)
-            .send()
-            .await
-            .map_err(|_| OperationError::Unavailable)?;
-        if object
-            .content_length()
-            .is_some_and(|length| length > 8 * 1024 * 1024)
-        {
-            return Err(OperationError::Unavailable);
-        }
-        let mut reader = object.body.into_async_read().take(8 * 1024 * 1024 + 1);
+        const LIMIT: usize = 8 * 1024 * 1024;
+        let mut stream =
+            tokio::time::timeout(OPERATION_TIMEOUT, self.driver()?.get_stream(Path::new(key)))
+                .await
+                .map_err(|_| OperationError::Unavailable)?
+                .map_err(|_| OperationError::Unavailable)?;
         let mut bytes = Vec::new();
-        tokio::time::timeout(Duration::from_secs(10), reader.read_to_end(&mut bytes))
+        let collect = async {
+            while let Some(chunk) = stream.next().await {
+                let chunk = chunk.map_err(|_| OperationError::Unavailable)?;
+                if bytes.len().saturating_add(chunk.len()) > LIMIT {
+                    return Err(OperationError::Unavailable);
+                }
+                bytes.extend_from_slice(&chunk);
+            }
+            Ok(())
+        };
+        tokio::time::timeout(OPERATION_TIMEOUT, collect)
             .await
-            .map_err(|_| OperationError::Unavailable)?
-            .map_err(|_| OperationError::Unavailable)?;
-        if bytes.len() > 8 * 1024 * 1024 {
-            return Err(OperationError::Unavailable);
-        }
+            .map_err(|_| OperationError::Unavailable)??;
         Ok(bytes)
     }
 
     pub async fn delete(&self, key: &str) -> Result<(), OperationError> {
-        self.client
-            .delete_object()
-            .bucket(&self.bucket)
-            .key(key)
-            .send()
+        tokio::time::timeout(OPERATION_TIMEOUT, self.driver()?.delete(Path::new(key)))
             .await
-            .map(|_| ())
+            .map_err(|_| OperationError::Unavailable)?
             .map_err(|_| OperationError::Unavailable)
     }
 
