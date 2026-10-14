@@ -9,6 +9,7 @@ mod household_tenancy;
 pub mod identity;
 pub mod nhs_dmd;
 pub mod notification_preferences;
+pub mod observability;
 pub mod platform;
 pub mod profile;
 pub(crate) mod seed;

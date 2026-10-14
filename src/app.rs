@@ -149,6 +149,7 @@ impl Hooks for App {
         tasks.register(crate::models::care::review_prompts::refresh::RefreshTask);
         tasks.register(crate::models::care::browser_push::scheduler::ReminderTask);
         tasks.register(crate::models::platform::expiry::SupportExpiryTask);
+        tasks.register(crate::models::observability::ObservabilityCanaryTask);
     }
 
     async fn truncate(_ctx: &AppContext) -> Result<()> {

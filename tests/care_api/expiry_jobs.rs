@@ -1,5 +1,55 @@
 use super::*;
 use med_tracker::models::platform::expiry;
+use std::sync::{Arc, Mutex};
+use tracing::field::{Field, Visit};
+use tracing::instrument::WithSubscriber;
+use tracing::span::{Attributes, Id, Record};
+use tracing::{Event, Metadata, Subscriber};
+
+#[derive(Clone, Default)]
+struct CanaryEvents(Arc<Mutex<Vec<serde_json::Value>>>);
+
+#[derive(Default)]
+struct CanaryFields(serde_json::Map<String, serde_json::Value>);
+
+impl Visit for CanaryFields {
+    fn record_i64(&mut self, field: &Field, value: i64) {
+        self.0.insert(field.name().into(), value.into());
+    }
+
+    fn record_str(&mut self, field: &Field, value: &str) {
+        self.0.insert(field.name().into(), value.into());
+    }
+
+    fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
+        self.0
+            .insert(field.name().into(), format!("{value:?}").into());
+    }
+}
+
+impl Subscriber for CanaryEvents {
+    fn enabled(&self, metadata: &Metadata<'_>) -> bool {
+        metadata.fields().field("medtracker.canary.kind").is_some()
+    }
+
+    fn new_span(&self, _: &Attributes<'_>) -> Id {
+        Id::from_u64(1)
+    }
+
+    fn record(&self, _: &Id, _: &Record<'_>) {}
+
+    fn record_follows_from(&self, _: &Id, _: &Id) {}
+
+    fn event(&self, event: &Event<'_>) {
+        let mut fields = CanaryFields::default();
+        event.record(&mut fields);
+        self.0.lock().unwrap().push(fields.0.into());
+    }
+
+    fn enter(&self, _: &Id) {}
+
+    fn exit(&self, _: &Id) {}
+}
 
 async fn platform_admin(app: &Application) {
     app.fixture
@@ -184,4 +234,48 @@ async fn support_expiry_continues_past_a_failing_row() {
     assert_eq!(processed, 1);
     assert_eq!(states, [false, true]);
     assert_eq!(audits, [0, 1]);
+}
+
+#[test]
+fn observability_canary_task_is_registered() {
+    use loco_rs::app::Hooks;
+    let mut tasks = loco_rs::task::Tasks::default();
+    med_tracker::app::App::register_tasks(&mut tasks);
+    assert!(tasks.names().contains(&"observability-canary".to_owned()));
+}
+
+#[tokio::test]
+async fn observability_canary_emits_both_kinds_with_safe_fields() {
+    let app = Application::new().await;
+    let events = CanaryEvents::default();
+    med_tracker::models::observability::emit_canary(&app.context)
+        .with_subscriber(events.clone())
+        .await
+        .unwrap();
+    app.close().await;
+    let captured = events.0.lock().unwrap().clone();
+    assert_eq!(captured.len(), 2);
+    let kinds: Vec<&str> = captured
+        .iter()
+        .map(|event| event["medtracker.canary.kind"].as_str().unwrap())
+        .collect();
+    assert_eq!(kinds, ["application_event", "job"]);
+    for event in &captured {
+        assert_eq!(event["event.name"], "observability.canary");
+        assert_eq!(event["event.outcome"], "success");
+        assert_eq!(event["event.dataset"], "medtracker.application");
+        assert_eq!(event["medtracker.reason"], "canary_emitted");
+        assert_eq!(event["medtracker.schema.version"], 1);
+        assert!(event["event.id"].as_str().unwrap().len() == 36);
+        assert!(event["workflow.id"].as_str().unwrap().len() == 36);
+        assert!(event["attempt.id"].as_str().unwrap().len() == 36);
+    }
+    assert_eq!(
+        captured[0]["workflow.id"].as_str().unwrap(),
+        captured[1]["workflow.id"].as_str().unwrap()
+    );
+    assert_ne!(
+        captured[0]["event.id"].as_str().unwrap(),
+        captured[1]["event.id"].as_str().unwrap()
+    );
 }
