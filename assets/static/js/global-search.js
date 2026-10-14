@@ -77,19 +77,11 @@
     clearTimeout(timer);
   }
 
-  function position(trigger) {
-    const margin = 16;
-    if (innerWidth < 640 || !trigger) {
-      panel.style.left = `${margin}px`;
-      panel.style.top = '70px';
-      panel.style.width = `${innerWidth - margin * 2}px`;
-      return;
-    }
-    const rect = trigger.getBoundingClientRect();
-    const left = Math.max(margin, rect.left);
-    panel.style.left = `${left}px`;
-    panel.style.top = `${rect.bottom + 12}px`;
-    panel.style.width = `${Math.min(Math.max(rect.width, 320), innerWidth - left - margin)}px`;
+  function position() {
+    panel.style.left = '50%';
+    panel.style.top = '50%';
+    panel.style.width = 'min(40rem, calc(100vw - 2rem))';
+    panel.style.transform = 'translate(-50%, -50%)';
   }
 
   function open(event) {
@@ -100,8 +92,7 @@
     }
     const clickedTrigger = event?.currentTarget instanceof Element ? event.currentTarget : undefined;
     opener = clickedTrigger || document.activeElement;
-    const trigger = clickedTrigger || triggers.find(button => button.getClientRects().length);
-    position(trigger);
+    position();
     panel.hidden = false;
     panel.setAttribute('aria-hidden', 'false');
     triggers.forEach(button => button.setAttribute('aria-expanded', 'true'));

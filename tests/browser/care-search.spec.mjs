@@ -164,8 +164,12 @@ test('the household search trigger uses the selected language on a medicine page
   await trigger.click();
   const palette = page.locator('#global_search_panel');
   await expect(palette).toBeVisible();
-  const paletteTop = await palette.evaluate(element => element.getBoundingClientRect().top);
-  expect(paletteTop).toBeGreaterThanOrEqual(placement.triggerBottom);
+  const centre = await palette.evaluate(element => {
+    const bounds = element.getBoundingClientRect();
+    return { x: bounds.left + bounds.width / 2, y: bounds.top + bounds.height / 2, width: innerWidth, height: innerHeight };
+  });
+  expect(Math.abs(centre.x - centre.width / 2)).toBeLessThanOrEqual(1);
+  expect(Math.abs(centre.y - centre.height / 2)).toBeLessThanOrEqual(1);
   await palette.getByRole('button', { name: 'Cau chwilio' }).click();
   await page.screenshot({ path: `docs/screenshots/loco-care-search-base-${test.info().project.name}.png` });
   await page.goto(`${household}/medications/workflow?intent=schedule`);
@@ -249,13 +253,13 @@ test('palette groups results and offers a retry after an unavailable search', as
   await expect(panel.getByRole('heading', { name: 'People' })).toBeVisible();
   await expect(panel.getByRole('heading', { name: 'Medications', exact: true })).toBeVisible();
   const geometry = await panel.evaluate(element => {
-    const buttons = [...document.querySelectorAll('[data-global-search-trigger]')];
-    const trigger = buttons.find(button => button.getClientRects().length);
     const palette = element.getBoundingClientRect();
-    const opener = trigger.getBoundingClientRect();
-    return { paletteTop: palette.top, paletteLeft: palette.left, paletteRight: palette.right, openerTop: opener.top, width: innerWidth };
+    return { paletteTop: palette.top, paletteBottom: palette.bottom, paletteLeft: palette.left, paletteRight: palette.right, width: innerWidth, height: innerHeight };
   });
-  expect(geometry.paletteTop).toBeGreaterThan(geometry.openerTop);
+  expect(Math.abs((geometry.paletteLeft + geometry.paletteRight) / 2 - geometry.width / 2)).toBeLessThanOrEqual(1);
+  expect(Math.abs((geometry.paletteTop + geometry.paletteBottom) / 2 - geometry.height / 2)).toBeLessThanOrEqual(1);
+  expect(geometry.paletteTop).toBeGreaterThanOrEqual(0);
+  expect(geometry.paletteBottom).toBeLessThanOrEqual(geometry.height);
   expect(geometry.paletteLeft).toBeGreaterThanOrEqual(0);
   expect(geometry.paletteRight).toBeLessThanOrEqual(geometry.width);
   await page.screenshot({ path: `docs/screenshots/loco-care-search-${test.info().project.name}.png` });
