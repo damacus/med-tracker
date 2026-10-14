@@ -41,6 +41,23 @@ and exact evidence, retaining full CI and published-head gates. The final
 source includes seeded foreign households and API sessions whose exclusion is
 asserted through the booted router.
 
+Cumulative CI `11105` on `b846a681` stopped in the fake-Cargo runner tests:
+40 passed and six failed because their explicit transcripts still lacked the
+newly credited account names and multi-binary call sequence. No Rust, database
+or browser phase ran and no screenshots changed. Publication and dependent work
+are held for the writer's test-fixture correction, same-review follow-up and a
+fresh cumulative run. Log: `/private/tmp/s05-i01-evidence/account-full-ci-b846.log`.
+The correction changes only explicit fake transcripts and their assertions:
+requests, care API, then final requests. Missing-care evidence now has a negative
+case; summary-count mutation remains effective as the credited set grows.
+Intermediate `90084` passed 44/46 before two stale call-count assertions were
+fixed. Final `86436` passed all 47 runner cases, with fixture SHA `599a20d6`.
+`account-runner-fixture-green-b846.log` beside the CI log is explicitly a
+reconstructed summary of tool output, not a captured raw transcript. Same
+independent review `25548` accepted this test-only delta; runtime and evidence
+hashes remain unchanged. No real database or browser job ran in these unit tests.
+The corrected candidate now requires a fresh cumulative CI run before publication.
+
 | Final account evidence | Job | Result | Retained log under `/private/tmp/s05-i01-evidence/` |
 | --- | --- | --- | --- |
 | Mobile login target regression | `82913` / `75274` | Behavioural RED / GREEN | `account-mobile-target-lifetime-{red,green}-630a.log` |
