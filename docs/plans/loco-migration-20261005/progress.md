@@ -687,6 +687,15 @@ the final acceptance guard for 117 incomplete operations. Every credited People
 test executed. The ledger is five complete, seven partial and 110 unverified;
 this is partial verification, not whole-API acceptance. Independent review and
 cumulative CI will run on the next frozen commit before publication.
+Candidate `cdfa408bf1582b84d4def703ede2b7d251f48b90` has 1,525 changed lines.
+Full CI `44296` stopped at the early CI policy suite: 137 cases passed and
+the module-reachability case failed. Rust had compiled and executed the evidence
+guard, but the repository scanner requires an explicit `#[path]` declaration
+for this module, matching its siblings. The correction adds that declaration;
+no application code changes. No database/browser jobs or screenshots started.
+Publication and independent review remain held for the corrected candidate.
+The corrected registration passed all 138 policy cases in `44749`, formatting
+in `50670` and diff checks. Full CI must rerun on the committed correction.
 
 Entries below retain historical revisions, failed attempts and publication states.
 
