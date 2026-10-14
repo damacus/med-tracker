@@ -59,6 +59,14 @@ the `loco-rs` crate, re-fetch the vendored files from the matching upstream tag.
 Deliberate departures from upstream conventions are catalogued below and in
 [#2575](https://github.com/damacus/med-tracker/issues/2575).
 
+The vendored files describe stock upstream behaviour; two caveats apply here.
+`loco-rs` is pinned `default-features = false`, so recipes that assume default
+features (such as the cache recipe's `InMem` store via `cache_inmem`) only work
+after enabling the feature in `Cargo.toml`. And upstream's generate-then-wire
+rule — never hand-write `mod` lines, routes or registrations — is overridden
+for this app: registrations are hand-wired deliberately, per the departures
+list below.
+
 New API request acceptance uses Loco `TestServer` over the fully booted
 `App::boot` router, reusing template-cloned PostgreSQL and restricted-role
 fixtures. The ConnectInfo-capable transport exercises the better-auth router,
@@ -104,9 +112,10 @@ migration decision:
   code (e.g. `models::nhs_dmd::ImportWorker`), not `src/workers/`,
   `src/tasks/` or `src/mailers/` — behaviour stays adjacent to the model it
   acts on.
-- Mail delivery enqueues `Email` JSON into `pg_loco_queue` as a transactional
-  outbox instead of Loco mailer structs — Rails parity: the mail commit shares
-  the triggering write's transaction.
+- Mail delivery enqueues `Email` JSON into `pg_loco_queue` for Loco
+  `MailerWorker` delivery instead of Loco mailer structs — a durable outbox for
+  Rails parity. The enqueue runs in its own transaction today, so a triggering
+  write's rollback does not recall a queued mail.
 - Identity is bespoke: `better-auth` (git dep), `oxide-auth`, `openidconnect`,
   `webauthn-rs`, `totp-rs`, `cedar-policy`. Loco 1.2 ships no OAuth-server,
   OIDC, passkey or TOTP story.
