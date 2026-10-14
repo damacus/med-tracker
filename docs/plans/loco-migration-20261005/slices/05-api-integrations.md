@@ -145,6 +145,14 @@ Capability candidate `ccf0c352` subsequently passed independent SWE-2 Max review
 separately in #2638. Publication and hosted acceptance remain distinct; final
 API acceptance still rejects 117 incomplete operations.
 
+The next me/UI boundary change passed seven real full-boot request cases, nine
+care regressions and seven identity-resource tests. Missing-household NotFound
+now reaches the existing 404 renderer, and private UI responses use the existing
+no-store layer. Eight response-list omissions now match the contract's global
+404 promise; metadata inventory and generated Swift/Kotlin checks pass. Final
+evidence, review and full CI remain required. The unresolved malformed-path 400
+and additional failure-response declarations prevent whole-operation credit.
+
 ## Review focus
 
 Malformed requests preserve status/envelope (A1). Stale tokens and wrong households fail all transports

@@ -31,7 +31,11 @@ pub async fn index(
                 Err(_) => return StatusCode::SERVICE_UNAVAILABLE.into_response(),
             },
             Err(AuthenticationError::Unauthenticated) => {}
-            Err(AuthenticationError::Forbidden | AuthenticationError::InsufficientScope { .. }) => {
+            Err(
+                AuthenticationError::Forbidden
+                | AuthenticationError::NotFound
+                | AuthenticationError::InsufficientScope { .. },
+            ) => {
                 return StatusCode::FORBIDDEN.into_response();
             }
             Err(AuthenticationError::Unavailable) => {

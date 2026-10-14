@@ -215,7 +215,11 @@ async fn sign_in(
             )
             .await
         }
-        Err(AuthenticationError::Forbidden | AuthenticationError::InsufficientScope { .. }) => {
+        Err(
+            AuthenticationError::Forbidden
+            | AuthenticationError::NotFound
+            | AuthenticationError::InsufficientScope { .. },
+        ) => {
             login_form(
                 &ctx,
                 &token,

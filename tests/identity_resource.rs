@@ -170,9 +170,9 @@ async fn real_mobile_access_token_opens_only_current_household() {
     tenant.rollback().await.unwrap();
     assert!(matches!(
         principal
-            .begin_household(&fixture.runtime, 72002, "wrong-household".into(), None)
+            .begin_household(&fixture.runtime, 72002, "missing-household".into(), None)
             .await,
-        Err(AuthenticationError::Forbidden)
+        Err(AuthenticationError::NotFound)
     ));
     fixture.close().await;
 }
