@@ -190,7 +190,7 @@ did not merge it. Its 1,499-line candidate and historical failures remain below.
 | [#2632](https://github.com/damacus/med-tracker/pull/2632): storage transport and reminder clock | main `1800` | `923d5b63098a61ed4a9df0dfd4f27ae348d0b26a` | 496 | Reviewed; local application and exact-head hosted gates pass |
 | [#2633](https://github.com/damacus/med-tracker/pull/2633): executed acceptance proof | `codex/s05-i01-dmd-storage` | `630a7f016d364becfb682b855a7da0c57c0b7f7c` | 498 | Reviewed; local and exact-head hosted gates pass |
 | [#2636](https://github.com/damacus/med-tracker/pull/2636): account session contracts | `codex/s05-i01-contract-execution` | `451c357c4f71539bf62056c5ac0459d235528a63` | 1,711 | Reviewed; local and exact-head hosted gates pass |
-| [#2637](https://github.com/damacus/med-tracker/pull/2637): request IDs on rate-limit responses | `codex/s05-i01-account-sessions` | `adfe373fa79bd575d53db6b25f17e76f7600352a` | 399 | Reviewed; local CI passes; exact-head hosted checks running |
+| [#2637](https://github.com/damacus/med-tracker/pull/2637): request IDs on rate-limit responses | `codex/s05-i01-account-sessions` | `adfe373fa79bd575d53db6b25f17e76f7600352a` | 399 | Reviewed; local CI and exact-head hosted checks pass |
 
 Stack `2634` is published; no layer is merged or deployed. Full local
 CI `61813` passed 111 units, 20 request cases, 508 care cases and all 744 browser
@@ -419,6 +419,19 @@ ignore. Both Tasks exited zero and cleaned owned fixtures normally. Logs:
 The controlled 503 case preserves an existing failure envelope not declared in
 OpenAPI; no schema or native pin was changed. Exact immutable capability evidence,
 independent review and cumulative CI still precede its publication.
+Capability source is now committed as `96d81719e900296f3b72ab5f7c86ad3aee22a00f`.
+The independent inventory oracle pins `getCapabilities` to that immutable source
+and six explicit executed request proofs; revision/proof tampering is rejected.
+Runner fixtures `23204` passed 47/47. Dispatcher `30195` executed 55 request tests
+(one completion ignore) and 524 care tests (two ignores). Its final request run
+passed 55 tests and failed only `api_v1::acceptance`, correctly rejecting 117
+incomplete operations. This credits five local complete operations, two partial
+and 115 unverified; it does not pass whole-API acceptance. Evidence logs are
+`capabilities-runner-fixture-green-96d817.log` and
+`capabilities-evidence-dispatcher-96d817.log`. Capability review and full CI remain
+pending. Request-ID head `adfe373f` has now passed every applicable hosted check,
+including coverage job `116020860508` and roll-up `116027225928`; native/client
+checks were skipped for this prerequisite. Coverage artifact inspection remains.
 Entries below retain historical revisions, failed attempts and publication states.
 
 Historical prerequisite failure, 14 October:
