@@ -597,6 +597,7 @@ async fn settings_patch_and_put_validate_bodies_and_leave_domain_state_unchanged
 async fn keyed_write(method: Method) {
     let (fixture, boot) = boot_fixture().await;
     profile::seed_credentials(&fixture).await;
+    let mobile = profile::mobile_token(&fixture).await;
     let server = server(&boot);
     let before = state(&fixture).await;
     let method_name = method.as_str().to_lowercase();
@@ -623,9 +624,19 @@ async fn keyed_write(method: Method) {
     )
     .await;
     let after_replay = state(&fixture).await;
+    let mobile_replay = send(
+        &server,
+        method.clone(),
+        72001,
+        Some(&mobile),
+        Some(&body),
+        Some(&key),
+    )
+    .await;
+    let after_mobile_replay = state(&fixture).await;
     let conflict = send(
         &server,
-        method,
+        method.clone(),
         72001,
         Some("profile-app"),
         Some(&changed),
@@ -633,25 +644,121 @@ async fn keyed_write(method: Method) {
     )
     .await;
     let after_conflict = state(&fixture).await;
+    fixture
+        .admin
+        .execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001")
+        .await
+        .unwrap();
+    let mut denied = Vec::new();
+    for (name, token) in [
+        ("api", "profile-session"),
+        ("app", "profile-app"),
+        ("mobile", mobile.as_str()),
+    ] {
+        denied.push((
+            "demoted",
+            name,
+            403,
+            send(
+                &server,
+                method.clone(),
+                72001,
+                Some(token),
+                Some(&body),
+                Some(&key),
+            )
+            .await,
+        ));
+    }
+    let after_demotion = state(&fixture).await;
+    fixture
+        .admin
+        .execute_unprepared("UPDATE household_memberships SET revoked_at=now() WHERE id=74001")
+        .await
+        .unwrap();
+    for (name, token, expected) in [
+        ("api", "profile-session", 401),
+        ("app", "profile-app", 401),
+        ("mobile", mobile.as_str(), 403),
+    ] {
+        denied.push((
+            "withdrawn",
+            name,
+            expected,
+            send(
+                &server,
+                method.clone(),
+                72001,
+                Some(token),
+                Some(&body),
+                Some(&key),
+            )
+            .await,
+        ));
+    }
+    let after_withdrawal = state(&fixture).await;
+    fixture.admin.execute_unprepared("UPDATE api_sessions SET revoked_at=now() WHERE id=88031; UPDATE api_app_tokens SET revoked_at=now() WHERE id=88032; UPDATE oauth_grants SET revoked_at=now() WHERE id=76001").await.unwrap();
+    for (name, token) in [
+        ("api", "profile-session"),
+        ("app", "profile-app"),
+        ("mobile", mobile.as_str()),
+    ] {
+        denied.push((
+            "revoked",
+            name,
+            401,
+            send(
+                &server,
+                method.clone(),
+                72001,
+                Some(token),
+                Some(&body),
+                Some(&key),
+            )
+            .await,
+        ));
+    }
+    let after_revocation = state(&fixture).await;
     drop(server);
     close(fixture, boot).await;
     assert_eq!(
-        (first.status, replay.status, conflict.status),
-        (200, 200, 409)
+        (
+            first.status,
+            replay.status,
+            mobile_replay.status,
+            conflict.status
+        ),
+        (200, 200, 200, 409)
     );
     assert_eq!(replay.replayed.as_deref(), Some("true"));
+    assert_eq!(mobile_replay.replayed.as_deref(), Some("true"));
     assert_eq!(replay.body, first.body);
+    assert_eq!(mobile_replay.body, first.body);
     assert_eq!(
         after_first["versions"].as_i64().unwrap(),
         before["versions"].as_i64().unwrap() + 1
     );
     assert_eq!(after_replay, after_first);
+    assert_eq!(after_mobile_replay, after_first);
     assert_eq!(after_conflict, after_first);
-    for reply in [&first, &replay, &conflict] {
+    assert_eq!(after_demotion, after_first);
+    assert_eq!(after_withdrawal, after_first);
+    assert_eq!(after_revocation, after_first);
+    for reply in [&first, &replay, &mobile_replay, &conflict] {
         assert_wire(reply);
         assert_schema(&method_name, reply);
     }
     assert_eq!(conflict.body["error"]["code"], "idempotency_key_reused");
+    for (phase, name, expected, reply) in denied {
+        assert_eq!(reply.status, expected, "{phase} {name}: {}", reply.body);
+        assert_wire(&reply);
+        assert_schema(&method_name, &reply);
+        assert!(reply.body.get("data").is_none());
+        assert!(reply.replayed.is_none());
+        if expected == 401 {
+            assert_eq!(reply.challenge.as_deref(), Some("Bearer"));
+        }
+    }
 }
 
 #[tokio::test]
