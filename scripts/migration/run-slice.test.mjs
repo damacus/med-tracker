@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
+import { once } from 'node:events';
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -11,7 +13,7 @@ import { sourceIdentity } from './run-slice.mjs';
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const ambientUrl = 'postgres://unowned.invalid:1/unowned';
 
-async function withProcessFixture(exitCode, callback, taskName = 'slice:test', assignments = ['TARGET=persistence'], provisionExit = 0, extraEnvironment = {}) {
+async function withProcessFixture(exitCode, callback, taskName = 'slice:test', assignments = ['TARGET=persistence'], provisionExit = 0, extraEnvironment = {}, { closeOutputBeforeCargo = false, injectReadableError = false } = {}) {
   const directory = await mkdtemp(join(tmpdir(), 'medtracker-slice-runner-'));
   const statePath = join(directory, 'state.json');
   await writeFile(statePath, JSON.stringify({ resources: { unrelated: ['existing-volume'] }, calls: [], foreign_resources_touched: 0 }));
@@ -41,7 +43,7 @@ if (command === 'docker') {
   state.child_compose_environment_removed = ['COMPOSE_FILE', 'COMPOSE_PROJECT_NAME', 'COMPOSE_PROFILES'].every(name => process.env[name] === undefined);
   state.child_docker_environment_removed = ['DOCKER_HOST', 'DOCKER_CONTEXT', 'DOCKER_CONFIG', 'DOCKER_TLS_VERIFY', 'DOCKER_CERT_PATH'].every(name => process.env[name] === undefined);
   if (process.env.DATABASE_URL === ${JSON.stringify(ambientUrl)}) state.foreign_resources_touched += 1;
-  state.calls.push({ command, args, coverage_target_dir: process.env.CARGO_TARGET_DIR, coverage_build_dir: process.env.CARGO_BUILD_BUILD_DIR, coverage_profile_override: process.env.LLVM_PROFILE_FILE, llvm_cov_target_override: process.env.CARGO_LLVM_COV_TARGET_DIR, llvm_cov_build_override: process.env.CARGO_LLVM_COV_BUILD_DIR, llvm_cov_setup_override: process.env.CARGO_LLVM_COV_SETUP, llvm_cov_deprecated_flags_override: process.env.CARGO_LLVM_COV_FLAGS, llvm_profdata_deprecated_flags_override: process.env.CARGO_LLVM_PROFDATA_FLAGS, llvm_cov_tool_override: process.env.LLVM_COV, llvm_profdata_tool_override: process.env.LLVM_PROFDATA, llvm_cov_flags_override: process.env.LLVM_COV_FLAGS, llvm_profdata_flags_override: process.env.LLVM_PROFDATA_FLAGS, llvm_profile_name_override: process.env.LLVM_PROFILE_FILE_NAME });
+  state.calls.push({ command, args, rust_test_nocapture: process.env.RUST_TEST_NOCAPTURE, coverage_target_dir: process.env.CARGO_TARGET_DIR, coverage_build_dir: process.env.CARGO_BUILD_BUILD_DIR, coverage_profile_override: process.env.LLVM_PROFILE_FILE, llvm_cov_target_override: process.env.CARGO_LLVM_COV_TARGET_DIR, llvm_cov_build_override: process.env.CARGO_LLVM_COV_BUILD_DIR, llvm_cov_setup_override: process.env.CARGO_LLVM_COV_SETUP, llvm_cov_deprecated_flags_override: process.env.CARGO_LLVM_COV_FLAGS, llvm_profdata_deprecated_flags_override: process.env.CARGO_LLVM_PROFDATA_FLAGS, llvm_cov_tool_override: process.env.LLVM_COV, llvm_profdata_tool_override: process.env.LLVM_PROFDATA, llvm_cov_flags_override: process.env.LLVM_COV_FLAGS, llvm_profdata_flags_override: process.env.LLVM_PROFDATA_FLAGS, llvm_profile_name_override: process.env.LLVM_PROFILE_FILE_NAME });
   fs.writeFileSync(statePath, JSON.stringify(state));
   if (command === 'cargo' && args.includes('--version')) {
     if (process.env.SLICE_FIXTURE_MISSING_COVERAGE === '1') process.exit(101);
@@ -58,21 +60,84 @@ if (command === 'docker') {
     fs.writeFileSync(reportPath, 'TN:\\nSF:src/lib.rs\\nDA:1,1\\nend_of_record\\n');
     if (process.env.SLICE_FIXTURE_EXTRA_REPORT_PATH) fs.writeFileSync(process.env.SLICE_FIXTURE_EXTRA_REPORT_PATH, 'unrelated source change\\n');
   }
-  process.exit(command === 'cargo' && (!process.env.SLICE_FIXTURE_FAIL_MATCH || args.join(' ').includes(process.env.SLICE_FIXTURE_FAIL_MATCH)) ? Number(process.env.SLICE_FIXTURE_EXIT) : 0);
+  const complete = () => {
+    const transcript = args.includes('--include-ignored') && process.env.SLICE_FIXTURE_COMPLETION_TRANSCRIPT
+      ? process.env.SLICE_FIXTURE_COMPLETION_TRANSCRIPT : process.env.SLICE_FIXTURE_CARGO_TRANSCRIPT;
+    if (command === 'cargo' && transcript) process.stdout.write(transcript);
+    if (command === 'cargo' && process.env.SLICE_FIXTURE_CARGO_OVERFLOW_BYTES) {
+      process.stdout.write('x'.repeat(Number(process.env.SLICE_FIXTURE_CARGO_OVERFLOW_BYTES)));
+    }
+    process.exitCode = command === 'cargo' && (!process.env.SLICE_FIXTURE_FAIL_MATCH || args.join(' ').includes(process.env.SLICE_FIXTURE_FAIL_MATCH)) ? Number(process.env.SLICE_FIXTURE_EXIT) : 0;
+  };
+  if (command === 'cargo' && process.env.SLICE_FIXTURE_CARGO_GATE) {
+    const gate = require('node:net').connect(process.env.SLICE_FIXTURE_CARGO_GATE);
+    gate.once('data', () => { gate.end(); complete(); });
+  } else complete();
 }
 `;
   for (const command of ['docker', 'cargo', 'curl', 'rustup']) await writeFile(join(directory, command), executable, { mode: 0o755 });
+  let gateDirectory;
+  let gateServer;
+  let gateConnection;
   try {
     const taskAssignments = typeof assignments === 'function' ? assignments(directory) : assignments;
-    const result = spawnSync('task', ['--taskfile', join(root, 'Taskfile.yml'), taskName, ...taskAssignments], {
+    let gateReady;
+    let gatePath;
+    if (closeOutputBeforeCargo || injectReadableError) {
+      gateDirectory = await mkdtemp(join(tmpdir(), 'mt-gate-'));
+      gatePath = join(gateDirectory, 's');
+      gateReady = new Promise(resolve => {
+        gateServer = createServer(connection => { gateConnection = connection; resolve(connection); });
+      });
+      gateServer.listen(gatePath);
+      await once(gateServer, 'listening');
+    }
+    let preloadPath;
+    if (injectReadableError) {
+      preloadPath = join(directory, 'inject-readable-error.mjs');
+      await writeFile(preloadPath, `import childProcess from 'node:child_process';
+import { syncBuiltinESMExports } from 'node:module';
+const original = childProcess.spawn;
+childProcess.spawn = (...args) => {
+  const child = original(...args);
+  if (args[0] === 'cargo' && child.stdout) child.stdout.once('data', () => child.stdout.destroy(new Error('synthetic EIO')));
+  return child;
+};
+syncBuiltinESMExports();
+`);
+    }
+    const options = {
       cwd: root,
-      env: { ...process.env, PATH: `${directory}:${process.env.PATH}`, DATABASE_URL: ambientUrl, MEDTRACKER_SESSION_KEY: 'ambient-identity-fixture-key-must-not-be-used', COMPOSE_FILE: '/unowned/compose.yaml', COMPOSE_PROJECT_NAME: 'unrelated', DOCKER_HOST: 'tcp://unowned.invalid:2376', DOCKER_CONTEXT: 'unrelated', DOCKER_CONFIG: '/unowned/docker-config', DOCKER_TLS_VERIFY: '1', DOCKER_CERT_PATH: '/unowned/certs', SLICE_FILTER: 'unrelated_filter', SLICE_FIXTURE_STATE: statePath, SLICE_FIXTURE_EXIT: String(exitCode), SLICE_FIXTURE_PROVISION_EXIT: String(provisionExit), CARGO_TARGET_DIR: '/unowned/target', CARGO_BUILD_BUILD_DIR: '/unowned/intermediates', LLVM_PROFILE_FILE: '/unowned/profile.profraw', CARGO_LLVM_COV_TARGET_DIR: '/unowned/llvm-cov-target', CARGO_LLVM_COV_BUILD_DIR: '/unowned/llvm-cov-build', CARGO_LLVM_COV_SETUP: 'skip', CARGO_LLVM_COV_FLAGS: '--unowned', CARGO_LLVM_PROFDATA_FLAGS: '--unowned', LLVM_COV: '/unowned/llvm-cov', LLVM_PROFDATA: '/unowned/llvm-profdata', LLVM_COV_FLAGS: '--unowned', LLVM_PROFDATA_FLAGS: '--unowned', LLVM_PROFILE_FILE_NAME: 'unowned.profraw', ...extraEnvironment },
+      env: { ...process.env, PATH: `${directory}:${process.env.PATH}`, DATABASE_URL: ambientUrl, MEDTRACKER_SESSION_KEY: 'ambient-identity-fixture-key-must-not-be-used', COMPOSE_FILE: '/unowned/compose.yaml', COMPOSE_PROJECT_NAME: 'unrelated', DOCKER_HOST: 'tcp://unowned.invalid:2376', DOCKER_CONTEXT: 'unrelated', DOCKER_CONFIG: '/unowned/docker-config', DOCKER_TLS_VERIFY: '1', DOCKER_CERT_PATH: '/unowned/certs', SLICE_FILTER: 'unrelated_filter', SLICE_FIXTURE_STATE: statePath, SLICE_FIXTURE_EXIT: String(exitCode), SLICE_FIXTURE_PROVISION_EXIT: String(provisionExit), CARGO_TARGET_DIR: '/unowned/target', CARGO_BUILD_BUILD_DIR: '/unowned/intermediates', LLVM_PROFILE_FILE: '/unowned/profile.profraw', CARGO_LLVM_COV_TARGET_DIR: '/unowned/llvm-cov-target', CARGO_LLVM_COV_BUILD_DIR: '/unowned/llvm-cov-build', CARGO_LLVM_COV_SETUP: 'skip', CARGO_LLVM_COV_FLAGS: '--unowned', CARGO_LLVM_PROFDATA_FLAGS: '--unowned', LLVM_COV: '/unowned/llvm-cov', LLVM_PROFDATA: '/unowned/llvm-profdata', LLVM_COV_FLAGS: '--unowned', LLVM_PROFDATA_FLAGS: '--unowned', LLVM_PROFILE_FILE_NAME: 'unowned.profraw', ...extraEnvironment, ...(gatePath ? { SLICE_FIXTURE_CARGO_GATE: gatePath } : {}), ...(preloadPath ? { NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import=${preloadPath}`.trim() } : {}) },
       encoding: 'utf8',
       timeout: 15000,
-    });
+      maxBuffer: 4 * 1024 * 1024,
+    };
+    let result;
+    if (closeOutputBeforeCargo || injectReadableError) {
+      const child = spawn('task', ['--taskfile', join(root, 'Taskfile.yml'), taskName, ...taskAssignments], { ...options, stdio: ['ignore', 'pipe', 'pipe'] });
+      let stderr = '';
+      child.stderr.on('data', chunk => { stderr += chunk; });
+      if (injectReadableError) child.stdout.on('data', () => {});
+      const closed = new Promise((resolve, reject) => {
+        child.once('error', reject);
+        child.once('close', status => resolve({ status, stderr }));
+      });
+      await Promise.race([gateReady, closed.then(() => { throw new Error(`Task exited before fake Cargo connected: ${stderr}`); })]);
+      if (closeOutputBeforeCargo) {
+        const stdoutClosed = once(child.stdout, 'close');
+        child.stdout.destroy();
+        await stdoutClosed;
+      }
+      gateConnection.write('go');
+      result = await closed;
+    } else result = spawnSync('task', ['--taskfile', join(root, 'Taskfile.yml'), taskName, ...taskAssignments], options);
     assert.equal(result.error, undefined, result.error?.message);
     await callback(result, JSON.parse(await readFile(statePath, 'utf8')), directory);
   } finally {
+    gateConnection?.destroy();
+    if (gateServer) await new Promise(resolve => gateServer.close(resolve));
+    if (gateDirectory) await rm(gateDirectory, { recursive: true, force: true });
     await rm(directory, { recursive: true, force: true });
   }
 }
@@ -182,12 +247,269 @@ test('API v1 contract task selects the native request binary and focused filter'
   }, 'slice:contracts', ['GROUP=api-v1-inventory', 'FILTER=api_v1::baseline::anonymous_access']);
 });
 
-test('API v1 completion task selects the deliberately failing acceptance gate', async () => {
+const creditedRequestTests = [
+  'api_v1::baseline::anonymous_access',
+  'api_v1::rate_limit::fixed_export_window_rejects_eleventh_request_with_contract_headers',
+  'api_v1::rate_limit::untrusted_forwarded_sources_share_the_socket_peer_bucket',
+  'api_v1::rate_limit::configured_loopback_proxy_separates_forwarded_client_buckets',
+  'api_v1::rate_limit::head_export_uses_the_get_export_bucket',
+];
+
+function requestTranscript(passed, ignored = ['api_v1::acceptance']) {
+  return [
+    `running ${passed.length + ignored.length} tests`,
+    ...passed.map(name => `test ${name} ... ok`),
+    ...ignored.map(name => `test ${name} ... ignored`),
+    '',
+    `test result: ok. ${passed.length} passed; 0 failed; ${ignored.length} ignored; 0 measured; 0 filtered out; finished in 0.00s`,
+    '',
+  ].join('\n');
+}
+
+test('API v1 completion rejects Cargo success with zero executed credited tests', async () => {
+  await withProcessFixture(0, (result, state) => {
+    assert.notEqual(result.status, 0, result.stderr);
+    assert.match(result.stderr, /contract|credited|evidence|executed/i);
+    assert.ok(state.calls.some(call => call.command === 'cargo' && call.args.includes('requests')));
+    assert.equal(state.calls.some(call => call.command === 'cargo' && call.args.includes('--include-ignored')), false);
+    assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
+  }, 'slice:contracts', ['GROUP=api-v1'], 0, {
+    SLICE_FIXTURE_CARGO_TRANSCRIPT: 'running 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n',
+  });
+});
+
+test('API v1 completion rejects an ignored credited case despite Cargo success', async () => {
+  const ignored = [creditedRequestTests.at(-1), 'api_v1::acceptance'];
+  await withProcessFixture(0, (result, state) => {
+    assert.notEqual(result.status, 0, result.stderr);
+    assert.match(result.stderr, /head_export_uses_the_get_export_bucket|ignored|missing.*test|evidence/i);
+    assert.equal(state.calls.some(call => call.command === 'cargo' && call.args.includes('--include-ignored')), false);
+    assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
+  }, 'slice:contracts', ['GROUP=api-v1'], 0, {
+    SLICE_FIXTURE_CARGO_TRANSCRIPT: requestTranscript(creditedRequestTests.slice(0, -1), ignored),
+  });
+});
+
+test('API v1 completion rejects a passing prefix of an unexecuted credited case', async () => {
+  const passed = [...creditedRequestTests.slice(0, -1), `${creditedRequestTests.at(-1)}_other`];
+  await withProcessFixture(0, (result, state) => {
+    assert.notEqual(result.status, 0, result.stderr);
+    assert.match(result.stderr, /head_export_uses_the_get_export_bucket|missing.*test|evidence/i);
+    assert.equal(state.calls.some(call => call.command === 'cargo' && call.args.includes('--include-ignored')), false);
+    assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
+  }, 'slice:contracts', ['GROUP=api-v1'], 0, {
+    SLICE_FIXTURE_CARGO_TRANSCRIPT: requestTranscript(passed),
+  });
+});
+
+test('API v1 completion rejects all credited lines without a final libtest summary and cleans up', async () => {
+  const transcript = [
+    `running ${creditedRequestTests.length} tests`,
+    ...creditedRequestTests.map(name => `test ${name} ... ok`),
+    '',
+  ].join('\n');
+  await withProcessFixture(0, (result, state) => {
+    assert.notEqual(result.status, 0, result.stderr);
+    assert.match(result.stderr, /summary|incomplete|transcript/i);
+    assert.equal(state.calls.some(call => call.command === 'cargo' && call.args.includes('--include-ignored')), false);
+    assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
+  }, 'slice:contracts', ['GROUP=api-v1'], 0, { SLICE_FIXTURE_CARGO_TRANSCRIPT: transcript });
+});
+
+test('API v1 completion rejects an inconsistent libtest summary and cleans up', async () => {
+  const transcript = requestTranscript(creditedRequestTests)
+    .replace('5 passed; 0 failed; 1 ignored', '6 passed; 0 failed; 1 ignored');
+  await withProcessFixture(0, (result, state) => {
+    assert.notEqual(result.status, 0, result.stderr);
+    assert.match(result.stderr, /summary|count|transcript/i);
+    assert.equal(state.calls.some(call => call.command === 'cargo' && call.args.includes('--include-ignored')), false);
+    assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
+  }, 'slice:contracts', ['GROUP=api-v1'], 0, { SLICE_FIXTURE_CARGO_TRANSCRIPT: transcript });
+});
+
+test('API v1 completion bounds libtest stdout and cleans up an oversized transcript', async () => {
+  await withProcessFixture(0, (result, state) => {
+    assert.notEqual(result.status, 0, result.stderr);
+    assert.match(result.stderr, /limit|large|budget|size/i);
+    assert.equal(state.calls.some(call => call.command === 'cargo' && call.args.includes('--include-ignored')), false);
+    assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
+  }, 'slice:contracts', ['GROUP=api-v1'], 0, {
+    SLICE_FIXTURE_CARGO_TRANSCRIPT: 'running 1 tests\n',
+    SLICE_FIXTURE_CARGO_OVERFLOW_BYTES: String(1024 * 1024 + 1),
+  });
+});
+
+test('closed contract output stops Cargo and cleans the owned database', async () => {
+  await withProcessFixture(0, (result, state) => {
+    assert.notEqual(result.status, 0, result.stderr);
+    assert.match(result.stderr, /EPIPE|broken pipe/i);
+    assert.deepEqual(state.calls.filter(call => call.command === 'docker').map(call => call.operation), ['up', 'port', 'exec', 'down']);
+    assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
+    assert.equal(state.calls.filter(call => call.command === 'cargo').length, 1);
+    assert.equal(state.calls.some(call => call.command === 'cargo' && call.args.includes('--include-ignored')), false);
+  }, 'slice:contracts', ['GROUP=api-v1'], 0, {
+    SLICE_FIXTURE_CARGO_TRANSCRIPT: requestTranscript(creditedRequestTests),
+  }, { closeOutputBeforeCargo: true });
+});
+
+test('readable Cargo output error cleans the owned database', async () => {
+  await withProcessFixture(0, (result, state) => {
+    assert.notEqual(result.status, 0, result.stderr);
+    assert.match(result.stderr, /synthetic EIO/);
+    assert.deepEqual(state.calls.filter(call => call.command === 'docker').map(call => call.operation), ['up', 'port', 'exec', 'down']);
+    assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
+    assert.equal(state.calls.filter(call => call.command === 'cargo').length, 1);
+    assert.equal(state.calls.some(call => call.command === 'cargo' && call.args.includes('--include-ignored')), false);
+  }, 'slice:contracts', ['GROUP=api-v1'], 0, {
+    SLICE_FIXTURE_CARGO_TRANSCRIPT: requestTranscript(creditedRequestTests),
+  }, { injectReadableError: true });
+});
+
+test('API v1 completion observes exact credited cases and runs the existing acceptance gate', async () => {
+  await withProcessFixture(42, (result, state) => {
+    assert.notEqual(result.status, 0, result.stderr);
+    const requests = state.calls.filter(call => call.command === 'cargo' && call.args.includes('requests'));
+    assert.ok(requests.some(call => !call.args.includes('--include-ignored')));
+    assert.deepEqual(requests[0].args,
+      ['test', '--locked', '--test', 'requests', 'api_v1', '--', '--format=pretty', '--color=never']);
+    assert.deepEqual(requests.at(-1).args,
+      ['test', '--locked', '--test', 'requests', 'api_v1', '--', '--include-ignored', '--format=pretty', '--color=never']);
+    assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
+  }, 'slice:contracts', ['GROUP=api-v1'], 0, {
+    SLICE_FIXTURE_CARGO_TRANSCRIPT: requestTranscript(creditedRequestTests),
+    SLICE_FIXTURE_FAIL_MATCH: '--include-ignored',
+  });
+});
+
+test('API v1 completion requires its exact gate case to pass in the final selection', async () => {
+  for (const [label, completion] of [
+    ['absent', requestTranscript(creditedRequestTests, [])],
+    ['renamed', requestTranscript([...creditedRequestTests, 'api_v1::acceptance_renamed'], [])],
+    ['ignored', requestTranscript(creditedRequestTests)],
+    ['zero', 'running 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n'],
+  ]) {
+    await withProcessFixture(0, (result, state) => {
+      assert.notEqual(result.status, 0, label);
+      assert.match(result.stderr, /Missing executed API v1 acceptance gate/, label);
+      assert.equal(state.calls.filter(call => call.command === 'cargo').length, 2, label);
+      assert.ok(state.calls.at(-2).args.includes('--include-ignored'), label);
+      assert.deepEqual(state.resources, { unrelated: ['existing-volume'] }, label);
+    }, 'slice:contracts', ['GROUP=api-v1'], 0, {
+      SLICE_FIXTURE_CARGO_TRANSCRIPT: requestTranscript(creditedRequestTests),
+      SLICE_FIXTURE_COMPLETION_TRANSCRIPT: completion,
+    });
+  }
+});
+
+test('API v1 completion accepts the exact gate after its evidence selection', async () => {
   await withProcessFixture(0, (result, state) => {
     assert.equal(result.status, 0, result.stderr);
-    assert.deepEqual(state.calls.find(call => call.command === 'cargo').args,
-      ['test', '--locked', '--test', 'requests', 'api_v1', '--', '--include-ignored']);
-  }, 'slice:contracts', ['GROUP=api-v1']);
+    const requests = state.calls.filter(call => call.command === 'cargo');
+    assert.equal(requests.length, 2);
+    assert.ok(requests.at(-1).args.includes('--include-ignored'));
+    assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
+  }, 'slice:contracts', ['GROUP=api-v1'], 0, {
+    SLICE_FIXTURE_CARGO_TRANSCRIPT: requestTranscript(creditedRequestTests),
+    SLICE_FIXTURE_COMPLETION_TRANSCRIPT: requestTranscript([...creditedRequestTests, 'api_v1::acceptance'], []),
+  });
+});
+
+test('an unrelated ignored reason preserves credited passes and reaches the acceptance gate', async () => {
+  const transcript = requestTranscript(creditedRequestTests).replace(
+    'test api_v1::acceptance ... ignored',
+    'test api_v1::acceptance ... ignored, full API v1 acceptance remains incomplete during migration',
+  );
+  await withProcessFixture(42, (result, state) => {
+    assert.notEqual(result.status, 0, result.stderr);
+    assert.match(result.stderr, /Slice Cargo execution exited 42/);
+    const requests = state.calls.filter(call => call.command === 'cargo' && call.args.includes('requests'));
+    assert.equal(requests.length, 2);
+    assert.ok(requests.at(-1).args.includes('--include-ignored'));
+    assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
+  }, 'slice:contracts', ['GROUP=api-v1'], 0, {
+    SLICE_FIXTURE_CARGO_TRANSCRIPT: transcript,
+    SLICE_FIXTURE_FAIL_MATCH: '--include-ignored',
+  });
+});
+
+test('a credited test with an ignored reason never earns execution credit', async () => {
+  const credited = creditedRequestTests.at(-1);
+  const transcript = requestTranscript(creditedRequestTests.slice(0, -1), [credited, 'api_v1::acceptance']).replace(
+    `test ${credited} ... ignored`,
+    `test ${credited} ... ignored, case remains unavailable`,
+  );
+  await withProcessFixture(0, (result, state) => {
+    assert.notEqual(result.status, 0, result.stderr);
+    assert.match(result.stderr, new RegExp(`Missing executed contract evidence: requests::${credited}`));
+    assert.equal(state.calls.some(call => call.command === 'cargo' && call.args.includes('--include-ignored')), false);
+    assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
+  }, 'slice:contracts', ['GROUP=api-v1'], 0, { SLICE_FIXTURE_CARGO_TRANSCRIPT: transcript });
+});
+
+test('API v1 completion removes inherited RUST_TEST_NOCAPTURE only from its Cargo children', async () => {
+  const parentValue = process.env.RUST_TEST_NOCAPTURE;
+  await withProcessFixture(42, (result, state) => {
+    assert.notEqual(result.status, 0, result.stderr);
+    const cargo = state.calls.filter(call => call.command === 'cargo');
+    assert.ok(cargo.length >= 2);
+    assert.ok(cargo.every(call => call.rust_test_nocapture === undefined));
+    assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
+  }, 'slice:contracts', ['GROUP=api-v1'], 0, {
+    RUST_TEST_NOCAPTURE: '1',
+    SLICE_FIXTURE_CARGO_TRANSCRIPT: requestTranscript(creditedRequestTests),
+    SLICE_FIXTURE_FAIL_MATCH: '--include-ignored',
+  });
+  assert.equal(process.env.RUST_TEST_NOCAPTURE, parentValue);
+});
+
+test('ordinary slice tests retain the developer RUST_TEST_NOCAPTURE setting', async () => {
+  await withProcessFixture(0, (result, state) => {
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(state.calls.find(call => call.command === 'cargo').rust_test_nocapture, '1');
+  }, 'slice:test', ['TARGET=persistence'], 0, { RUST_TEST_NOCAPTURE: '1' });
+});
+
+test('libtest execution proof handles split names and summaries without crediting ignored cases', async () => {
+  const { LibtestProof } = await import('./run-slice.mjs');
+  assert.equal(typeof LibtestProof, 'function');
+  const proof = new LibtestProof();
+  for (const chunk of [
+    Buffer.from('running 2 tests\ntest api_v1::baseline::anony'),
+    Buffer.from('mous_access ... ok\ntest api_v1::acceptance ... ign'),
+    Buffer.from('ored\n\ntest result: ok. 1 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.'),
+    Buffer.from('00s\n'),
+  ]) proof.write(chunk);
+  const result = proof.finish();
+  assert.deepEqual([...result.passed], ['api_v1::baseline::anonymous_access']);
+  assert.deepEqual([...result.ignored], ['api_v1::acceptance']);
+});
+
+test('libtest execution proof recognises a passing should-panic case', async () => {
+  const { LibtestProof } = await import('./run-slice.mjs');
+  const proof = new LibtestProof();
+  proof.write(Buffer.from('running 1 test\ntest contract::tests::contract_helper_rejects_duplicate_items - should panic ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n'));
+  assert.deepEqual([...proof.finish().passed], ['contract::tests::contract_helper_rejects_duplicate_items']);
+});
+
+test('libtest execution proof rejects a summary inconsistent with split case lines', async () => {
+  const { LibtestProof } = await import('./run-slice.mjs');
+  assert.equal(typeof LibtestProof, 'function');
+  const proof = new LibtestProof();
+  proof.write(Buffer.from('running 1 tests\ntest api_v1::baseline::anonymous_access ... ok\n'));
+  proof.write(Buffer.from('test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n'));
+  assert.throws(() => proof.finish(), /summary|count|transcript/i);
+});
+
+test('libtest execution proof rejects truncated or appended summary text', async () => {
+  const { LibtestProof } = await import('./run-slice.mjs');
+  for (const summary of [
+    'test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out;',
+    'test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s extra',
+  ]) {
+    const proof = new LibtestProof();
+    proof.write(Buffer.from(`running 1 test\ntest api_v1::baseline::anonymous_access ... ok\n${summary}\n`));
+    assert.throws(() => proof.finish(), /summary|transcript|incomplete/i, summary);
+  }
 });
 
 test('API v1 inventory task selects all request and fixture cases', async () => {
