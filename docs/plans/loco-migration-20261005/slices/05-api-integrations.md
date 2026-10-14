@@ -52,6 +52,15 @@ credentials with administrator connections. Retain socket tests where transport
 behaviour specifically requires them. Coordinate coverage reporting with #2583;
 coverage numbers do not replace operation-level assertions.
 
+The shared rate limiter uses the socket peer unless `API_TRUSTED_PROXY_IPS`
+explicitly names a proxy. Configure each trusted proxy to overwrite incoming
+`X-Forwarded-For` with the observed client address, or append that observed address
+to the incoming chain. Passing client-supplied forwarding values through unchanged
+does not establish a trusted client identity. List only controlled proxy addresses,
+not ordinary clients. The application walks the chain from the socket peer and
+stops at the nearest untrusted address; earlier supplied values cannot change
+that client's bucket.
+
 The coordinator owns integration, shared-file allocation, evidence and publication.
 One Sol API writer owns each active area's implementation and regression tests.
 One verifier owns builds, disposable resources and live job handles. Devin SWE-2

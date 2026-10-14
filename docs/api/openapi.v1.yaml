@@ -12,10 +12,14 @@ info:
     fixed windows. The first exceeded limit rejects the request with 429 and Retry-After,
     RateLimit-Limit, RateLimit-Remaining and RateLimit-Reset response headers. Counters are
     local to each server process. Counter storage is bounded; a new client is rejected with
-    429 while the store is full of live counters. Expired counters are reclaimed. Health
+    429 while the store is full of live counters; its Retry-After and RateLimit-Reset reflect
+    the earliest live counter expiry. Expired counters are reclaimed. Health
     checks and direct loopback clients are exempt in production. The client IP is the socket
     peer unless a deployment explicitly configures trusted proxy IPs through
-    API_TRUSTED_PROXY_IPS. A configured loopback proxy is not exempt, and untrusted
+    API_TRUSTED_PROXY_IPS. Each trusted proxy must append the observed client address to
+    X-Forwarded-For or replace that header with the observed address. A proxy passing
+    client-supplied values through without an authoritative observation must not be trusted.
+    A configured loopback proxy is not exempt, and untrusted
     forwarding headers do not set the client IP.
     Ordinary household operations accept a valid API session, household app token,
     or mobile OAuth bearer with the medtracker scope. SMART integration grants

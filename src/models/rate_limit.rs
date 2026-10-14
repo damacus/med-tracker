@@ -102,10 +102,15 @@ impl RateLimiter {
             let reset_at = (now / period + 1) * period;
             if !counters.buckets.contains_key(&key) {
                 if counters.buckets.len() >= self.capacity {
+                    let available_at = counters
+                        .expiry
+                        .peek()
+                        .map(|Reverse((expires_at, _))| *expires_at)
+                        .unwrap_or(reset_at);
                     return Some(Rejection {
                         limit: rule.limit(),
-                        retry_after: reset_at - now,
-                        reset_at,
+                        retry_after: available_at - now,
+                        reset_at: available_at,
                     });
                 }
                 counters.buckets.insert(
@@ -540,7 +545,7 @@ mod tests {
     fn left_of_nearest_untrusted_hop_cannot_change_the_export_bucket() {
         let peer: IpAddr = "127.0.0.1".parse().unwrap();
         let path = "/api/v1/households/42/data_exports/health_data_json";
-        for spoofed_left in ["198.51.100.201", "not-an-ip"] {
+        for spoofed_left in ["198.51.100.201", "not-an-ip", "192.0.2.10"] {
             let state = RateLimitState::from_settings(
                 Some(&json!({"api_rate_limit":{
                     "trusted_proxy_ips":"127.0.0.1,192.0.2.10",
@@ -599,6 +604,47 @@ mod tests {
                 .is_none()
         );
         assert_eq!(limiter.bucket_count(), 1);
+    }
+
+    #[test]
+    fn saturated_store_reports_earliest_occupied_expiry() {
+        let limiter = RateLimiter::with_capacity(2);
+        let resident: IpAddr = "198.51.100.31".parse().unwrap();
+        let other: IpAddr = "198.51.100.32".parse().unwrap();
+        assert!(
+            limiter
+                .check(resident, &Method::GET, "/api/v1/capabilities", 1_000)
+                .is_none()
+        );
+        assert!(
+            limiter
+                .check(other, &Method::GET, "/api/v1/capabilities", 1_000)
+                .is_none()
+        );
+        let rejection = limiter
+            .check(
+                resident,
+                &Method::GET,
+                "/api/v1/households/42/data_exports/health_data_json",
+                1_000,
+            )
+            .unwrap();
+        assert_eq!(
+            (rejection.limit, rejection.retry_after, rejection.reset_at),
+            (10, 200, 1_200)
+        );
+        assert_eq!(limiter.bucket_count(), 2);
+        assert!(
+            limiter
+                .check(
+                    resident,
+                    &Method::GET,
+                    "/api/v1/households/42/data_exports/health_data_json",
+                    1_200,
+                )
+                .is_none()
+        );
+        assert_eq!(limiter.bucket_count(), 2);
     }
 
     #[test]

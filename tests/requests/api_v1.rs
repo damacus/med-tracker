@@ -68,7 +68,7 @@ fn operations() -> BTreeMap<(String, String), Value> {
     let source = include_str!("../../docs/api/openapi.v1.yaml");
     assert_eq!(
         hex::encode(Sha256::digest(source.as_bytes())),
-        "acfdc42aee410991c16183a65074bb1e2961397722731a88b4477b34fad831eb",
+        "fae2da8212338c04dea75628e35c5892e5e5bbde722d160b3072048c6ea31036",
         "The full API schema or headers changed; refresh the operation inventory and its evidence"
     );
     let document: Value = serde_yaml_ng::from_str(source).unwrap();
@@ -676,7 +676,8 @@ pub mod baseline {
 
 pub mod rate_limit {
     use super::*;
-    use axum::http::Method;
+    use axum::{Extension, extract::ConnectInfo, http::Method};
+    use std::net::SocketAddr;
 
     const EXPORT: &str = "/api/v1/households/72001/data_exports/health_data_json";
 
@@ -690,6 +691,42 @@ pub mod rate_limit {
         assert_eq!(response.header("cache-control"), "no-store");
         let body: Value = response.json();
         assert_eq!(body["error"]["code"], "service_unavailable");
+        drop(request);
+        close(fixture, boot).await;
+    }
+
+    #[tokio::test]
+    async fn missing_socket_peer_head_response_has_no_body() {
+        let (fixture, boot) = boot_rate_fixture(&[]).await;
+        let request = TestServer::builder()
+            .mock_transport()
+            .build(boot.router.clone().unwrap())
+            .unwrap();
+        let response = request.method(Method::HEAD, EXPORT).await;
+        assert_eq!(response.status_code(), 503);
+        assert_eq!(response.header("cache-control"), "no-store");
+        assert!(response.as_bytes().is_empty());
+        drop(request);
+        close(fixture, boot).await;
+    }
+
+    #[tokio::test]
+    async fn exhausted_export_head_response_has_no_body() {
+        let (fixture, boot) = boot_rate_fixture(&[]).await;
+        let peer = ConnectInfo(SocketAddr::from(([127, 0, 0, 1], 12345)));
+        let request = TestServer::builder()
+            .mock_transport()
+            .build(boot.router.clone().unwrap().layer(Extension(peer)))
+            .unwrap();
+        for attempt in 1..=10 {
+            let response = request.get(EXPORT).await;
+            assert_eq!(response.status_code(), 401, "request {attempt}");
+        }
+        let response = request.method(Method::HEAD, EXPORT).await;
+        assert_eq!(response.status_code(), 429);
+        assert_eq!(response.header("retry-after"), "20");
+        assert_eq!(response.header("cache-control"), "no-store");
+        assert!(response.as_bytes().is_empty());
         drop(request);
         close(fixture, boot).await;
     }

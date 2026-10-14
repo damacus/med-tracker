@@ -455,6 +455,21 @@ Shared HTTP rate-limit work:
   `/root/api_writer` owns code/tests and `/root/verifier` owns verification and
   resources. The reviewed runtime diff is 1,354 lines against its immediate base.
   The following documentation update records results without changing runtime.
+- Hosted PR #2623 review raised capacity retry timing, HEAD bodies and a proxy-trust
+  warning. Same-session adjudication job 55410 confirmed the capacity defect:
+  unit RED 53145 returned retry 20/reset 1020 instead of 200/1200. The correction
+  uses the earliest retained expiry only when capacity prevents a new counter.
+  Mock-transport full-router HEAD tests passed unchanged for 503 (85332) and 429
+  (36073); Axum 0.8.9 strips the body after middleware, so no duplicate handling
+  was added. The proxy warning was a deployment documentation gap: configured
+  proxies must overwrite forwarding values or append their observed client peer.
+  A trusted-looking spoofed prefix now also passes the existing protection test.
+  The description-only OpenAPI update has SHA
+  `fae2da8212338c04dea75628e35c5892e5e5bbde722d160b3072048c6ea31036`;
+  operation metadata and native pins are unchanged. Unit GREEN 9441 passed 13;
+  request GREEN 2433 passed seven. Formatting, strict lint 60133, inventory 74148
+  (20 passed, one ignored) and whitespace pass. Final correction review, coverage
+  remeasurement and full CI remain required before publishing the updated head.
 
 Session close-out on 11 October 2026:
 
