@@ -6,13 +6,308 @@ migration areas stay in scope. No live deployment has occurred.
 
 ## Current delivery
 
-### s05-i01 — API contract completion, 13 October 2026
+### s05-i01 — API contract completion, 14 October 2026
 
-Current candidate: `codex/s05-i01-http-rate-limits`, based on merged care revision
-`672dbc0d1520ee586ce625f0dbfec7fb3eba0544`. Full CI and independent review pass;
-publication is next. The current inventory has 122 operations after the merged
-review leases: two partial and 120 unverified. Historical snapshots below retain
-their original operation counts and publication states.
+Merged rate-limit candidate: [PR #2623](https://github.com/damacus/med-tracker/pull/2623),
+`codex/s05-i01-http-rate-limits`, head `c85ffa02437f8c0612c652e401e878d99583ea73`,
+base `main` at `672dbc0d1520ee586ce625f0dbfec7fb3eba0544`. The immediate-base diff is
+1,473 additions and 26 deletions (1,499 total). Full local CI and independent
+review pass. All applicable hosted checks pass after one recorded coverage
+retry; the original two NHS dm+d failures remain retained and unexplained.
+GitHub records an external merge as `1800d858ef99e71edcf5e00cf5a0530616673dc6`;
+this coordinator did not perform the merge. Its tree exactly matches the accepted
+hosted merge candidate `a68b371af`. No deployment has occurred.
+The reminder test-clock correction is committed locally as
+`caf79acaedbd23ba662068d4085e352d9efed11f`, based on refreshed main `1800d858e`.
+Independent session `just-toothbrush`, job `42221`, accepted its 26-line diff.
+Focused real verification passed before refresh (`96528`) and again on the
+committed head (`34022`), with normal cleanup. The execution-proof branch now
+follows it at `8733febeea9786d896ab7d30ecbdc196ec83560f`, with an unchanged
+reviewed JS diff and 574 changed lines against its immediate base. Cumulative
+CI `29550` failed a dm+d archive read on merged main; publication and dependent
+work are held pending the authorised prerequisite diagnosis and correction.
+The account-session regression has now executed and failed as expected; its
+narrow controller correction is authorised after that genuine RED.
+The current inventory has 122 operations after the merged review leases:
+two partial and 120 unverified. Historical snapshots below retain their original
+operation counts and publication states.
+
+Current prerequisite failure, 14 October:
+
+- Frozen execution-proof `8733febee` CI job `29550` passed tooling checks, 110
+  Rust units, documentation, strict checking and preceding integration binaries.
+  Care API then reported 507 passed, one failed, two ignored and fourteen
+  filtered. `nhs_dmd_queue_imports_verified_archive_and_cleans_it_after_completion`
+  failed at `tests/care_api/nhs_dmd.rs:603:38`: the extra `store.get(&key)` returned
+  `Unavailable` after upload and its own verification had succeeded. This
+  narrows the failing phase; it does not establish the provider error or cause.
+- This test also failed in the original hosted merge coverage run, before its
+  unchanged retry passed. The recurrence requires diagnosis rather than another
+  unchanged retry. OpenDAL errors and timeouts are currently folded into
+  `Unavailable`; the public Task surface has no owned storage-log command, so
+  provider diagnostics were not captured. No raw Compose fallback was used.
+- After the care failure, the verifier proved the owned Task/browser tree and
+  sent SIGTERM only to browser runner PID 70536 at roughly 7/744. The existing
+  handler/finally cleanup removed owned processes and fixtures without error.
+  Outer exit 201 reflects the underlying Task failure; cancellation did not
+  cause the already-recorded care failure. Full log:
+  `/private/tmp/s05-i01-evidence/contract-execution-full-ci-8733.log`.
+- Three generated screenshot diffs were preserved at
+  `/private/tmp/s05-i01-evidence/contract-execution-ci-8733-screenshots-before-cancel.patch`,
+  SHA-256 `a9504f966c1026ff21af5f0eaa7696cedd778fae0adad490155a538524765b7a`.
+  Root verified its exact paths and restored only those files after exit;
+  execution-proof source is clean again. No acceptance credit is added.
+- The owner explicitly transferred this work: “we're now the only one working
+  on this issue. Fix it.” The new managed prerequisite checkout is
+  `/Users/damacus/.codex/worktrees/s05-i01-dmd-storage/med-tracker`, branch
+  `codex/s05-i01-dmd-storage`, based on merged main `1800d858e`.
+  The API writer owns the storage adapter and its tests; shared operator changes
+  require diagnosis first. Root owns integration/Git/progress; the verifier owns
+  the idle heavy lane and will run a frozen diagnostic before any unchanged
+  broad retry. No production storage correction has been made.
+  The account correction remains frozen and independently
+  reviewed; its GREEN test and further acceptance expansion wait for this
+  prerequisite. The four account operations can fit one coherent subsequent PR
+  (projected 700–1,100 changed lines), rather than a separate partial fix PR.
+- Temporary test-only storage diagnostics are frozen at base `1800d858e`,
+  test SHA-256 `868c72c2a1407a13ce8ba052c052b193725f836b9e131cfbd4dab9560a78f072`.
+  They replace only the extra test read with the same reader/stream/collection
+  stages and timeouts, exposing safe underlying stage and error classification
+  before fixture cleanup. No retries or production behaviour change. This is
+  diagnosis, not adapter acceptance, and must be removed before final review.
+  One full `care_api` Task run with two test threads is authorised because the
+  smaller dm+d module previously passed while broader runs reproduced failure.
+  There is no automatic retry or operation credit from this diagnostic.
+- Diagnostic job `42467` stopped at compilation: the storage module is
+  crate-private and byte-stream chunks expose `std::io::Error`, not the directly
+  assumed OpenDAL error type. No care test executed, so it yields no provider
+  evidence. Log:
+  `/private/tmp/s05-i01-evidence/dmd-storage-full-care-diagnostic-1800.log`.
+  Cleanup completed. The duplicate read helper is being removed; temporary safe
+  instrumentation will instead expose the original adapter's error/timeout
+  mappings without changing retries, visibility, configuration or assertions.
+- Original-adapter diagnostic `64200` completed with 522 care cases passed,
+  two ignored and exit zero in 326.72 seconds. It retained source SHA-256
+  `848d58f37c80174258489b5573cd56beccaf3f99d13bae61d625dde8222a8276` and cleaned
+  up normally. No classified read error appeared, so neither cause nor correction
+  is established. Log:
+  `/private/tmp/s05-i01-evidence/dmd-storage-full-care-diagnostic-1800-v2.log`.
+  No automatic retry follows. The writer will remove temporary instrumentation
+  and establish a controlled regression against the actual S3 operator factory:
+  independently configured runtimes with a provider-response barrier, checking
+  whether closing one runtime interrupts the other's active read. The global
+  OpenDAL HTTP client is a source-backed hypothesis, not a confirmed explanation
+  of the historical failures. Production behaviour remains unchanged.
+- Controlled factory regression job `48333` compiled and executed one test,
+  which failed at the second read with `Unexpected`, `temporary=true`.
+  The first read succeeded; the second response body started on the same
+  accepted socket; then the first runtime was closed. All three fixture threads
+  joined before the final assertion. This is behavioural RED, not a setup or
+  timeout failure. Source test SHA-256:
+  `e221656ff168c9e0fe8b873f047302468ec6823fa37d6719a01cb6ae23127f96`.
+  Log: `/private/tmp/s05-i01-evidence/dmd-storage-runtime-lifetime-focused-1800.log`.
+  Temporary stderr instrumentation is removed exactly. The owner authorised
+  a narrow correction in the actual shared S3 factory using maintained OpenDAL
+  transport scoped to each operator, without retry masking or changes to API,
+  timeouts, content types, storage names or data. The required transport package
+  already exists in the lockfile; only a direct root dependency edge is added.
+  Historical CI failure causality remains an inference until further evidence;
+  the independently reproduced transport lifetime defect is established.
+- The exact previously-red regression passed in locked public Task `62784`:
+  one passed, 110 filtered, documentation phase passed and final exit zero.
+  Frozen corrected hashes are storage source
+  `fa9cda200debefea1fa93da4f37f4225af17aee340f084366fd24fd3e172a6c1`, manifest
+  `b2aa82f771e6c87a1812abf96dd38c6aed17f14c06e807f6fdaf13723ddacba5`, lockfile
+  `78def61ebd82aca3aeb9550b53fe9d5dc4f2864f500819dee19e7e247284d8ac`.
+  Log: `/private/tmp/s05-i01-evidence/dmd-storage-runtime-lifetime-focused-green-1800.log`.
+- The shared factory now uses a fresh maintained ReqwestTransport per operator,
+  configured with OpenDAL's existing operation-context API. No custom HTTP/S3
+  protocol, retries, scattered configuration, timeout or MIME changes were added.
+  The direct dependency is an existing locked package; no package versions changed.
+  Devin SWE-2 Max review `33298` is active; inline packet/output/session files
+  are retained under `/private/tmp/s05-i01-review/dmd-storage-*`.
+- To keep published heads verifiable, the already-reviewed 26-line reminder
+  clock correction is included in this same bounded prerequisite PR: root
+  fast-forwarded the storage branch to existing `caf79` while preserving the
+  storage changes. The combined PR still targets main `1800`; the execution-proof
+  tooling will follow it, then account acceptance. The unpublished separate clock
+  checkout is retained for recovery. Its unchanged independent review and focused
+  results remain valid; the storage review will also assess the combined scope.
+- Actual original dm+d application/storage case verification `32036` and avatar
+  lifecycle verification `89283` both passed sequentially: each one named case
+  executed, 523 filtered and final Task exit zero. Logs:
+  `/private/tmp/s05-i01-evidence/dmd-storage-real-archive-case-caf79.log` and
+  `/private/tmp/s05-i01-evidence/dmd-storage-real-avatar-case-caf79.log`.
+  Both owned runs cleaned up normally. These prove real AppContext storage,
+  object content types and lifecycle boundaries remain functional; they do not
+  establish the historical intermittent failure's exact cause. Source is frozen;
+  unrelated generated `.serena/project.yml` drift is preserved and excluded from
+  the candidate. No full cumulative success or publication is claimed yet.
+
+Account regression update, 14 October:
+
+- Attempts `90800` and `57428` failed test compilation and earn no behavioural
+  evidence. After test-only type corrections, job `14758` compiled and executed
+  `api_v1::account::malformed_delete_session_authenticates_before_identifier_validation`.
+  Nonnumeric, overflowing and invalid UTF-8 identifiers returned 400 for both
+  anonymous and authenticated requests, before authentication could decide the
+  documented 401/404 outcomes. Zero and negative identifiers already returned
+  401/404. The fixture cleaned up normally. Genuine RED log:
+  `/private/tmp/s05-i01-evidence/account-malformed-delete-red-8733-v3.log`.
+- The writer owns only the existing test and a narrow controller adapter that
+  authenticates before handling rejected path extraction or integer parsing.
+  Valid identifiers retain the existing model behaviour. Root retains OpenAPI,
+  inventory and progress ownership. No complete operation credit is added.
+- The verifier owns the sole heavy lane for fresh cumulative CI on clean
+  `8733febee`, job `29550`, log
+  `/private/tmp/s05-i01-evidence/contract-execution-full-ci-8733.log`.
+  The account GREEN run waits for that lane. Rust/application/config
+  sources are identical between the clock and execution-proof candidates.
+  Each published PR still requires checks for its exact head.
+- The narrow controller correction is frozen after `task fmt` and diff checking:
+  controller SHA-256 `aec3cdafd963e7b18e894837835b339f9524fd04e787406f71c75d46e5fd54d9`,
+  test SHA-256 `c2a61c45a0180f1a30dfb2e612b3741c2234eb8c94b6de957dc1a28dfc716748`.
+  Independent Devin SWE-2 Max session `important-platypus`, job `63546`, exited
+  zero and accepted with no required corrections. It retains real GREEN as a
+  verification requirement and recommends actual positive-ID revocation proof
+  in the already-planned account acceptance tranche. Packet, output and session
+  export are retained under `/private/tmp/s05-i01-review/account-malformed-*`.
+  Real GREEN remains pending; production changes do not earn credit from
+  formatting or source inspection.
+- The shared report renderer rejected unsupported local-check states `complete`
+  in `s07-i01` and `s07-i08`, and an unevidenced publication claim in `s07-i08`.
+  Root preserved the prior JSON snapshot and conservatively recorded those
+  unknown dimensions as pending/unpublished, retaining the exact repair reason
+  in limitations. No item gains or loses a completed point: both snapshots
+  contain 50 completed items among the same 77 IDs. HTML and derived Markdown
+  now render from the authoritative JSON, including this storage prerequisite.
+- Read-only next-area reconciliation identified two coherent follow-up PRs:
+  account credential/session acceptance for the four authenticated or logout
+  operations, then public capabilities acceptance. Existing `care_api`
+  `account_sessions::*` and `oauth_server` contract tests retain their real
+  transport assertions, but need observed exact-name dispatcher execution before
+  credit. New Loco request assertions must cover account-specific denied/error
+  envelopes, scope challenges, stale authority, SMART rejection, empty logout
+  responses and shared 429 behaviour. Capabilities still needs truthful flags
+  and complete nested schema/URI checks. The approved account 403 OpenAPI entries
+  will accompany that contract evidence; native pins remain unchanged.
+
+Retained execution-proof CI failure, 14 October:
+
+- Frozen `90593aaf` full CI job `91033` passed 105 units, tooling, documentation
+  tests and strict Rust checking, then care API reported 506 passed, one failed,
+  two ignored and fourteen filtered. Existing
+  `browser_reminder_obeys_retry_after_and_attempt_limit` expected `invalid` but
+  observed `pending` at line 1027. No API operation acceptance was added.
+- The test floors its controlled clock to a minute, but forced a retry with
+  PostgreSQL's live `now() - interval '1 second'`, then selected candidates at
+  controlled `now + one minute`. A boundary crossing can put the fixture's due
+  timestamp after that cursor. The observed run did not capture timestamps, so
+  this source inconsistency is not presented as a conclusively proven cause.
+- After proving the owned process tree and existing SIGTERM/finally cleanup,
+  the verifier stopped only the already-failed job's browser child at 134/744.
+  The Task exited and owned processes disappeared without teardown error.
+  Four screenshot changes were preserved in
+  `/private/tmp/s05-i01-evidence/contract-execution-ci-90593-screenshots-before-cancel.patch`
+  and restored. Source returned to clean `90593aaf`.
+- The coordinator explicitly transferred only the reminder test path to the
+  API writer in managed checkout
+  `/Users/damacus/.codex/worktrees/s05-i01-reminder-clock/med-tracker`, branch
+  `codex/s05-i01-reminder-clock`, based on current main `c284d03e0`. The completed
+  care coordinator had merged #2617 and released the API hold; no active writer
+  overlaps this test path. Its test-only correction binds and checks the due
+  timestamp against the controlled clock; production reminder code is unchanged.
+- Candidate diff: 25 additions, one deletion, hash
+  `a28ec6e9c4e5a8b3a7e242937d7cfc0d88546460637a51507aadb90d58d10e35`.
+  Independent SWE-2 Max review job `42221` accepted; focused real Task verification
+  job `96528` passed, log `/private/tmp/s05-i01-evidence/reminder-clock-focused-c284.log`.
+  The subsequent committed-head verification, propagation and current cumulative
+  job are recorded above. Publication remains pending the cumulative gate.
+
+Hosted verification update, 14 October:
+
+- Job-only coverage retry `115832966637` in run `38555091097` passed on the same
+  verified PR head and merge candidate: 110 unit tests, 20 request tests (one
+  ignored) and 522 care API tests (two ignored). Both original dm+d failures
+  passed. All applicable hosted checks, including the aggregate CI Success gate,
+  now pass. This result does not establish a cause for the first failure.
+- Hosted artifact `11890718641` has a complete manifest proving clean merge
+  source `a68b371afce223d1a842a9fd37a8901a627e48ec`, fingerprint
+  `14974951a73de0983562c49817c1fc7f4833e99f90ea36e8233ba8d486f22771`.
+  Local artifact and assessment:
+  `/private/tmp/s05-i01-evidence/hosted-coverage-c85-merge-a68/`.
+  Affected runtime lines remain 176/176 in the limiter model, 46/46 in its
+  controller and 16/16 in its view. Broader raw application lines are
+  41,677/66,420 (62.75%); API controllers 7,236/7,929 (91.26%). Inline tests
+  remain included in the broad totals; complete clinical logic and operation
+  acceptance are not established by these report-only figures.
+- Root owns this progress record, OpenAPI and the inventory. The API writer now
+  owns account-session tests and, after genuine RED, its controller correction
+  in `/Users/damacus/.codex/worktrees/s05-i01-account-sessions/med-tracker`.
+  The verifier retains the sole heavy resource lane. The earlier execution-proof
+  candidate `90593aaf` and account setup have since advanced as recorded above.
+
+Parent verification update, 14 October:
+
+- Coordinator owns Git, evidence, documentation, review and publication;
+  `/root/api_writer` owns implementation and tests; `/root/verifier` owns builds,
+  disposable resources and live test jobs.
+- Full `task ci`, job `77107`, exited zero on frozen `c85ffa024`: 105 unit tests,
+  20 request tests (one ignored), 17 OAuth tests, 507 selected care API tests
+  (two ignored, fourteen filtered), remaining integration binaries and all 744
+  browser cases passed. Log: `/private/tmp/s05-i01-evidence/rate-limit-full-ci-c85.log`.
+  Generated screenshot changes were preserved separately and restored after exit.
+- Independent Devin SWE-2 Max session `ambiguous-jupiter` accepted the correction
+  in job `32066`. Public review threads are resolved on the published head.
+- Coverage job `1360` exited zero: 105 unit, 20 request and 521 care API tests.
+  Runtime-only affected lines are 176/176 in the limiter model, 46/46 in its
+  controller and 16/16 in its view. Raw application coverage remains report-only:
+  39,440/62,339 (63.27%); API controllers 6,877/7,448 (92.33%). These figures do
+  not establish complete operation acceptance. Manifest and LCOV are under
+  `/private/tmp/s05-i01-evidence/rate-coverage-c85/68b022cc-d88d-4b7d-b280-dc9377a271be/`.
+- Hosted run `38555091097` passes all twelve browser shards, API/security/database
+  shards, formatting/lint, unit compilation, documentation and generated
+  Swift/Kotlin client checks and Android.
+  Report-only coverage job `115822215155` failed with `Unavailable` in
+  `nhs_dmd_queue_imports_verified_archive_and_cleans_it_after_completion` and
+  `nhs_dmd_retries_terminal_cleanup_without_restarting_import`; 520 care tests
+  passed, two failed and two were ignored. Local success does not override this
+  hosted failure. Source reconciliation established that CI tested merge
+  `a68b371afce223d1a842a9fd37a8901a627e48ec`, whose parents are newer main
+  `c284d03e0968fe5a9399f3c0fcdc997b4a7ed4b7` and PR head `c85ffa024`.
+  Main's merged PR #2620 replaces dm+d's AWS SDK boundary with OpenDAL and adds
+  the extra test seen in hosted output. Therefore the local coverage run did
+  not exercise the failing combined source. Unchanged c85 focused reproduction
+  passed 18 dm+d tests (one ignored), job `36369`, but establishes no cause.
+  The verifier's exact-merge reproduction is job `78353`, using managed checkout
+  `/Users/damacus/.codex/worktrees/s05-i01-merge-storage-repro/med-tracker`.
+  Exact-merge reproduction job `78353` subsequently passed 19 dm+d tests
+  (one ignored), including both failures, with clean source and owned cleanup.
+  The original failure remains unexplained. After re-verifying the same PR head
+  and merge SHA, one job-only hosted coverage retry was started: `115832966637`
+  in run `38555091097`. No storage correction has been made; a passing retry
+  would not establish the cause.
+- The execution-proof layer was initially isolated in managed checkout
+  `/Users/damacus/.codex/worktrees/s05-i01-contract-execution/med-tracker`, branch
+  `codex/s05-i01-contract-execution`, based on `c85ffa024`. Its fake-resource suite
+  passed 46 cases after genuine RED/GREEN for transcript validation, exact
+  completeness-gate execution, real should-panic output, writable stdout EPIPE
+  and readable Cargo stdout EIO cleanup. The latter uses a scoped test-only Node
+  preload at the external process boundary; production has no injected spawner.
+  Three JS files add 477 lines and delete 21. Independent session `fate-button`
+  accepted all corrections in final job `52653`, after job `28490` identified
+  one test-only Linux temporary-path portability correction. Both error tests
+  now use the existing portable temporary-directory helper; 46/46 checks pass
+  in `contract-execution-portable-socket-green.log`. Real dispatcher verifier
+  job `21634` completed with the intended rejection: first proof run 20 passed
+  and one ignored, including all five manifest-credited identities; second
+  include-ignored run 20 passed and the named `api_v1::acceptance` failed because
+  all 122 operations still lack complete evidence. Cargo exited 101, Task exited
+  one and its outer wrapper exited 201 solely for that expected gate failure.
+  Log: `/private/tmp/s05-i01-evidence/contract-execution-proof-real-gate.log`.
+  Owned fixture cleanup finished without errors. This proves real execution and
+  rejection of incomplete coverage; no complete operation is credited by this
+  tooling layer. Cumulative CI and publication remain pending.
 
 The owner approved completing all 119 documented API v1 operations using
 `rust-testing`, upstream Loco guidance and area-based `gh stack` PRs, each at most

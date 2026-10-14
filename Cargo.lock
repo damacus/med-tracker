@@ -4765,6 +4765,7 @@ dependencies = [
  "md-5",
  "migration",
  "opendal",
+ "opendal-http-transport-reqwest",
  "openidconnect",
  "oxide-auth",
  "oxide-auth-async",
