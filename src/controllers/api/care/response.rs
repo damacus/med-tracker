@@ -95,6 +95,7 @@ pub(super) fn authentication(error: AuthenticationError) -> Failure {
             authenticate: Some(authenticate),
         },
         AuthenticationError::Forbidden => operation(OperationError::Forbidden),
+        AuthenticationError::NotFound => operation(OperationError::NotFound),
         AuthenticationError::Unavailable => unavailable(),
     }
 }

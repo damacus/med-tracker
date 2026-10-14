@@ -4,6 +4,8 @@ mod capabilities;
 mod contract;
 #[path = "../care_api/fixture.rs"]
 mod fixture;
+#[path = "me_ui.rs"]
+mod me_ui;
 
 use fixture::Fixture;
 use loco_rs::{
@@ -80,7 +82,7 @@ fn operations() -> BTreeMap<(String, String), Value> {
     let source = include_str!("../../docs/api/openapi.v1.yaml");
     assert_eq!(
         hex::encode(Sha256::digest(source.as_bytes())),
-        "2e974738ac88e583452ac342690814e651226c93cf85571bf89908cd0a200758",
+        "73dc25f112cc700327ac72756dfabd361ef0cd3e704fa6199592819dcaeeeb7d",
         "The full API schema or headers changed; refresh the operation inventory and its evidence"
     );
     let document: Value = serde_yaml_ng::from_str(source).unwrap();
@@ -587,6 +589,38 @@ pub mod baseline {
         assert!(
             missing.is_empty(),
             "Documented API operations without shared RateLimited 429 response: {missing:?}"
+        );
+    }
+
+    #[test]
+    fn every_household_resource_operation_documents_not_found_response() {
+        let document: Value =
+            serde_yaml_ng::from_str(include_str!("../../docs/api/openapi.v1.yaml")).unwrap();
+        let documented = operations();
+        let missing = documented
+            .iter()
+            .filter(|((_, path), _)| path.starts_with("/households/{household_id}/"))
+            .filter(|((method, path), _)| {
+                let method = method.to_lowercase();
+                let response =
+                    &document["paths"][path.as_str()][method.as_str()]["responses"]["404"];
+                let shared = response["$ref"] == "#/components/responses/NotFound";
+                let inline =
+                    response.get("$ref").is_none() && response["description"].as_str().is_some();
+                let resolved = if shared {
+                    contract::resolve(&document, response)
+                } else {
+                    response
+                };
+                !(shared || inline)
+                    || resolved["content"]["application/json"]["schema"]["$ref"]
+                        != "#/components/schemas/ErrorEnvelope"
+            })
+            .map(|(_, operation)| operation["operation_id"].as_str().unwrap().to_owned())
+            .collect::<Vec<_>>();
+        assert!(
+            missing.is_empty(),
+            "Household resource operations without documented ErrorEnvelope 404 response: {missing:?}"
         );
     }
 

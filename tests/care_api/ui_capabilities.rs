@@ -79,7 +79,7 @@ async fn ui_capabilities_reflects_current_membership_and_active_grants() {
 }
 
 #[tokio::test]
-async fn ui_capabilities_rejects_unauthenticated_and_foreign_household_reads() {
+async fn ui_capabilities_rejects_unauthenticated_and_missing_household_reads() {
     let app = Application::new().await;
     let anonymous = app
         .client
@@ -92,7 +92,7 @@ async fn ui_capabilities_rejects_unauthenticated_and_foreign_household_reads() {
         .unwrap();
     let anonymous_status = anonymous.status().as_u16();
     let token = app.token().await;
-    let foreign = app
+    let missing = app
         .client
         .get(format!(
             "{}/api/v1/households/99999/ui_capabilities",
@@ -102,8 +102,8 @@ async fn ui_capabilities_rejects_unauthenticated_and_foreign_household_reads() {
         .send()
         .await
         .unwrap();
-    let foreign_status = foreign.status().as_u16();
+    let missing_status = missing.status().as_u16();
     app.close().await;
     assert_eq!(anonymous_status, 401);
-    assert_eq!(foreign_status, 403);
+    assert_eq!(missing_status, 404);
 }
