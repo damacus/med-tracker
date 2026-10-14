@@ -402,6 +402,24 @@ The unchanged helper now lives in an inherent `impl Fixture` within
 Formatting and diff checks pass; strict all-target lint `13425` passed in
 18.14 seconds. Full CI will rerun on the committed correction; the existing
 independent review will receive that exact placement delta in the same session.
+Corrected candidate `9eb99ed02cfee6d63f20ae218a6d649b36a6d8f1` is now accepted
+locally. Same Devin session `giddy-protocol` exported `SWE-2 Max`: initial review
+`49067` identified only the helper placement; correction review `24809` exited
+zero with ACCEPT after 11 cumulative steps. Full CI `53209` exited zero on the
+clean candidate: 115 units, 64 requests (one completion ignore), 508 care cases
+(two ignored, 16 helpers filtered), OAuth 17, identity 7, all other applicable
+integration suites and all 744 browser cases in 19.4 minutes. Owned processes
+exited normally. Forty generated PNGs were preserved in an 8,170,202-byte patch,
+`me-ui-full-ci-9eb99ed0-generated-screenshots.patch`, SHA-256
+`df6547e5244d56b4d4eabdabd7f5231cb0e7d8d535309499a683f69f2e84e8a4`.
+Root verified all 40 current file hashes and the exact path list, then reverse-
+applied only that patch; source and HEAD remained unchanged and clean.
+The candidate has 972 changed lines against published capability `022854`.
+This final evidence update is documentation only. Publication and exact-head
+hosted acceptance remain required; no merge or deployment occurred. Whole-API
+acceptance still rejects 117 incomplete operations. The separate People draft
+will next demonstrate its own RED, including the missing replay metadata;
+neither draft nor source inspection earns additional complete operation credit.
 
 Entries below retain historical revisions, failed attempts and publication states.
 
