@@ -117,6 +117,13 @@ Stop dependent work for unresolved contract decisions, ownership collisions,
 failed required checks, unavailable review or oversized PRs. Acceptance,
 publication, merge and deployment are separate; no merge or deployment is granted.
 
+Account evidence, 14 October: source candidate `2ae0b911` has four exact operation
+records, exercised by 13 credited request/database tests through dispatcher
+`58221`. Its final completion gate correctly rejects 118 remaining operations;
+the inventory is four complete, two partial and 116 unverified. Same independent
+SWE-2 Max review `important-platypus` accepted the final correction in `59730`.
+Cumulative CI and publication remain separate gates recorded in `../progress.md`.
+
 ## Review focus
 
 Malformed requests preserve status/envelope (A1). Stale tokens and wrong households fail all transports
