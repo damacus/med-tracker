@@ -763,10 +763,34 @@ Final profile `81908` passed all ten cases; inventory `97568` passed 98 with fin
 completion ignored; strict all-target lint `81559` passed. Generated-client verify
 `19154`, Swift `63166` and Kotlin `39832` passed, with native pins unchanged.
 Logs remain under `/private/tmp/s05-i01-evidence/profile-*` and `avatar-*`.
-Immutable evidence, independent SWE-2 Max review, full CI, publication and exact-head
+Source commit `4bd788c1592a29b505217a4e92e4e2a6116bf0d8` pins the tested behaviour
+before evidence promotion. On that committed source, fresh existing care-profile
+job `37711` passed all 16 selected tests and care-avatar job `20183` passed all 15.
+Both owned fixtures cleaned up. The source diff is 1,253 lines against published
+People `4229289b`; no native pins changed. The writer now owns only the independent
+six-operation evidence guard, inventory promotion and exact runner transcripts;
+the coordinator retains progress and Git ownership.
+Evidence guard RED `23814` compiled and executed its one selected test, rejecting
+the proposed profile proof before inventory promotion. This was an assertion
+failure, not a compiler or fixture failure. The guard pins the six operation rows
+to source `4bd788c`; model-only Gravatar coverage is excluded from route credit.
+Guard GREEN `20748` passed its one selected test. Full inventory `23533` passed
+99 tests with one ignored and one filtered; runner fixtures `55614` passed 48/48.
+The six new partial rows require 17 exact request and 30 route-relevant care test
+identities. Their gaps retain malformed household-ID handling, profile write
+foreign/absent targets, PUT malformed JSON and overlap, and JPEG/WebP acceptance.
+The ledger is now five complete, 13 partial and 104 unverified; 117 operations
+still fail final completion. Runtime and request cases remain identical to `4bd788c`.
+Strict lint `79296` rejected only the new guard's complex tuple annotation and
+unnecessary borrow. The test-only correction names the proof slice type and
+passes the existing document reference directly; formatting passes. No runtime,
+contract, proof assertions or inventory values changed for this correction.
+Corrected all-target lint `90937` passes; the final focused guard `25342` passes
+its one test. The full dispatcher is now verifying every credited test identity
+before independent review and cumulative CI. Publication remains held.
+Independent pinned evidence, SWE-2 Max review, full CI, publication and exact-head
 hosted acceptance remain required. All seven published layers remain unmerged and
-undeployed. The operation ledger still has five complete, seven partial and 110
-unverified; whole-API acceptance still rejects 117 incomplete operations.
+undeployed. Whole-API acceptance still rejects 117 incomplete operations.
 
 Entries below retain historical revisions, failed attempts and publication states.
 
