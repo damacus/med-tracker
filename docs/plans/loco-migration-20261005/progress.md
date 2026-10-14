@@ -342,6 +342,25 @@ app and request source remain `d8119f44` and `2b053c86`. Logs are
 Independent SWE-2 Max review is running inline from the existing trusted account
 checkout; the new temporary checkout is not added to the review tool's trust
 list. Production source remains frozen. Cumulative CI and publication are pending.
+Independent SWE-2 Max review `smart-hallway` (process `6657`) then exited zero
+with ACCEPT and no required corrections on that same frozen production/test
+source. Cumulative Task CI `72554` passed on clean-start code candidate
+`0b76739935810b2890ef4efe0356661ea1bd6ebc`: 113 Rust units, 47 request cases
+(one intentional completion ignore), 508 care cases (two ignored, fourteen
+filtered) and all 744 desktop/mobile browser cases. Other integration shards
+passed; browser execution took 19.3 minutes and owned fixtures cleaned normally.
+The original verified-archive dm+d failure case passed again. Full log:
+`/private/tmp/s05-i01-evidence/request-id-full-ci-0b767.log`.
+Only 41 generated PNGs changed during CI. They are preserved in
+`request-id-full-ci-0b767-screenshots.patch` beside the log: 8,213,657 bytes,
+SHA-256 `e8cde1cf8688a973dbb67502b72550c8e5e5a16ac5a4a39e35ca62cdca546c8d`.
+The exact path list SHA-256 is
+`62cd5b92b2b8fe6b2abe43f9d1dffd01d6869c480e66db0c2d17ea7f08d7eb97`;
+reverse-checking and applying that verified patch restored only those generated
+outputs. The checkout was clean afterwards. This final record changes only
+documentation; reviewed/tested application code, contracts and native pins
+remain identical. Publication, exact-head hosted acceptance, merge and deployment
+remain distinct, and no capability operation credit is added by this prerequisite.
 Entries below retain historical revisions, failed attempts and publication states.
 
 Historical prerequisite failure, 14 October:
