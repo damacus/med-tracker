@@ -639,6 +639,15 @@ inventory `9556` passed 112 with one ignored and one filtered, and strict lint
 `52079` passed. These extra assertions confirm existing runtime behaviour; no
 additional behavioural RED or production correction is claimed. The three
 operation evidence rows remain unverified until independent pinned promotion.
+Source `86e81214` recorded that verified point; fresh care administration `94785`
+then passed all 14 selected cases, of which six have settings-route assertions.
+Before evidence promotion, the writer extended both keyed-write cases to prove
+mobile replay and denial of the same saved key after role demotion, membership
+withdrawal and API/app/mobile credential revocation, without reviving credentials.
+Focused `73836` passed all 13, strict lint `78557` passed and inventory `46911`
+passed 112 with one ignored and one filtered. These assertions confirm existing
+behaviour; runtime, OpenAPI and native inputs stayed unchanged. SDK checks remain
+valid for the unchanged API inputs. A stronger immutable test revision follows.
 
 Entries below retain historical revisions, failed attempts and publication states.
 
