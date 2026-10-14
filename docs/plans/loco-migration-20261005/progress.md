@@ -229,6 +229,7 @@ did not merge it. Its 1,499-line candidate and historical failures remain below.
 | [#2639](https://github.com/damacus/med-tracker/pull/2639): capability discovery | `codex/s05-i01-rate-request-ids` | `022854c80a921d2601970b5bad03ec8e950d6fd9` | 1,101 | Reviewed; local CI and exact-head hosted checks pass |
 | [#2640](https://github.com/damacus/med-tracker/pull/2640): household errors and UI privacy | `codex/s05-i01-capabilities` | `012e8cfe9b2e2555fedd3001213a877795aac4a4` | 990 | Reviewed; local CI and all 45 exact-head hosted checks completed successfully or skipped |
 | [#2641](https://github.com/damacus/med-tracker/pull/2641): People collection and writes | `codex/s05-i01-me-ui` | `4229289bdf729defa3b21bf5589a296c14c6924d` | 1,551 | Reviewed; local CI and all 45 exact-head hosted checks pass or skip |
+| [#2643](https://github.com/damacus/med-tracker/pull/2643): profile privacy and avatar acceptance | `codex/s05-i01-people-write` | `9eb729ddb9f7aecb4229899ebdcdeab82b002013` | 1,768 | Independent review, full local CI and all 45 exact-head hosted checks pass or skip |
 
 Stack `2634` is published; no layer is merged or deployed. Full local
 CI `61813` passed 111 units, 20 request cases, 508 care cases and all 744 browser
@@ -805,12 +806,45 @@ The coordinator verified the exact paths, current hashes and binary patch before
 reversing only that patch; all 1,141 pre-CI screenshot hashes match again.
 
 The coordinator owns integration/publication, Sol owns implementation/tests, and
-the verifier owns disposable fixtures and the serial build lane. Publication and
-exact-head hosted acceptance remain required. All seven published layers remain
-unmerged and undeployed. Whole-API acceptance still rejects 117 incomplete operations.
+the verifier owns disposable fixtures and the serial build lane. Profile/avatar
+PR #2643 is published at `9eb729dd`, 1,757 additions plus 11 deletions. Its final
+commit changes only the verified progress document; docs job `66908` passed.
+Pull/rebase and push succeeded, and the clean branch tracks origin in stack `2634`.
+Hosted Devin review passed in 1m28s with no review threads; all 45 exact-head checks
+completed, 31 successful and 14 skipped. Coverage artifact `11935463623`, job
+`116154687913` in run `38652555229`, has a verified complete clean source manifest.
+Its SHA-256 is `231d4bee02540576b7baf564113ed11463edf03207f0d2fd1250e3c4fe9abb13`.
+Merge `f5698994` has parents `4229289b` and `9eb729dd`; its tree equals the published
+head. All four added runtime lines and the named critical error mapping's seven
+lines execute. Raw API coverage is 92.44%, general 63.75%; the called avatar
+controller is 84.87%, and two retained defensive adapters remain uncovered.
+These report-only figures do not establish all coverage targets or operation
+acceptance. Full details remain in `profile-avatar-hosted-coverage-9eb729dd.md`
+under `/private/tmp/s05-i01-evidence/`. All eight layers are unmerged and undeployed.
+Whole-API acceptance still rejects 117 incomplete operations.
+
 The next three-operation settings draft is isolated on
-`codex/s05-i01-household-settings`: 13 request cases, no production or contract
-changes, awaiting its first executed RED after the verification lane is released.
+`codex/s05-i01-household-settings`, based on published `9eb729dd`. Propagation of
+the final parent documentation preserved the exact two owned draft files through
+a temporary autostash, which applied successfully. Formatter `9480` passed.
+The first TestServer run `40624` compiled/executed 13 cases: 12 passed and one
+failed on missing GET 500 metadata. Before its schema lookup, the failing case
+proved GET/PATCH/PUT all return `500 internal_error`, JSON with coherent request
+IDs and no data, with unchanged domain state after controlled audit failure.
+It does not assert private cache headers for these responses. The API writer owns
+the narrow three-operation 500 declarations, their exact inventory metadata and
+full-schema hash; runtime, security, shared schemas and native pins stay unchanged.
+The coordinator owns evidence promotion, progress and Git integration.
+Initial settings GREEN `36695` passed all 13 cases; inventory `10527` passed 112,
+strict lint `49766` passed, generated-client determinism `80617`, Swift `83532`
+and Kotlin `19828` passed. Native pins stayed unchanged. Before source pinning,
+the writer strengthened the same 13 cases with individual audit actor/provenance,
+request IDs, exact version field changes, documented absence of Household sync
+events and broader body/type validation. Enhanced focused `12338` passed all 13,
+inventory `9556` passed 112 with one ignored and one filtered, and strict lint
+`52079` passed. These extra assertions confirm existing runtime behaviour; no
+additional behavioural RED or production correction is claimed. The three
+operation evidence rows remain unverified until independent pinned promotion.
 
 Entries below retain historical revisions, failed attempts and publication states.
 

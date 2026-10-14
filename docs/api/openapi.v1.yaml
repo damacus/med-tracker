@@ -4028,6 +4028,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
     patch:
       operationId: updateHouseholdAdminSettings
       tags:
@@ -4065,6 +4067,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
     put:
       operationId: replaceHouseholdAdminSettings
       tags:
@@ -4102,6 +4106,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /households/{household_id}/admin/memberships:
     get:
       operationId: listMemberships
