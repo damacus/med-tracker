@@ -110,6 +110,7 @@ migration = { path = "migration" }
 ignore-tables = "account_active_session_keys,account_login_change_keys,account_password_reset_keys,account_remember_keys,account_verification_keys"
 
 [dev-dependencies]
+iri-string = { version = "=0.7.14", default-features = false }
 loco-rs = { version = "=1.2.0", default-features = false, features = [
     "testing",
 ] }

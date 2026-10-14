@@ -146,6 +146,10 @@ pub fn assert_value(contract: &Value, schema: &Value, value: &Value, label: &str
                         && !text.ends_with('@'),
                     "{label} email format"
                 ),
+                Some("uri") => assert!(
+                    iri_string::types::UriStr::new(text).is_ok(),
+                    "{label} uri format"
+                ),
                 _ => {}
             }
             if let Some(pattern) = schema["pattern"].as_str() {
@@ -314,5 +318,41 @@ mod tests {
             &json!("persistence.example.test"),
             "value",
         );
+    }
+
+    #[test]
+    fn contract_helper_accepts_absolute_rfc3986_uris() {
+        let document = document();
+        let schema = json!({"type":"string","format":"uri"});
+        for value in [
+            "https://medtracker.example/.well-known/oauth-authorization-server",
+            "io.damacus.medtracker:/oauth2redirect",
+            "urn:medtracker:task%20one",
+        ] {
+            assert_value(&document, &schema, &json!(value), "value");
+        }
+    }
+
+    #[test]
+    fn contract_helper_rejects_non_uri_strings() {
+        let document = document();
+        let schema = json!({"type":"string","format":"uri"});
+        for value in [
+            "/relative/path",
+            "https://example.test/has space",
+            "https://example.test/%GG",
+            "https://example.test/é",
+        ] {
+            let panic = std::panic::catch_unwind(|| {
+                assert_value(&document, &schema, &json!(value), "value");
+            })
+            .unwrap_err();
+            let message = panic
+                .downcast_ref::<String>()
+                .map(String::as_str)
+                .or_else(|| panic.downcast_ref::<&str>().copied())
+                .unwrap();
+            assert!(message.contains("value uri format"), "{value}: {message}");
+        }
     }
 }

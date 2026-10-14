@@ -82,10 +82,11 @@ impl Lifetime {
             settings: Option<&serde_json::Value>,
             key: &str,
             default: i64,
+            minimum: i64,
             maximum: i64,
         ) -> Result<i64, super::ExchangeError> {
             match crate::models::settings::integer(settings, &["session", key]) {
-                Some(configured) if (1..=maximum).contains(&configured) => Ok(configured),
+                Some(configured) if (minimum..=maximum).contains(&configured) => Ok(configured),
                 Some(_) => Err(super::ExchangeError::Unavailable),
                 None => match crate::models::settings::node(settings, &["session", key]) {
                     Some(_) => Err(super::ExchangeError::Unavailable),
@@ -94,8 +95,8 @@ impl Lifetime {
             }
         }
         Self::new(
-            days(settings, "inactivity_timeout_days", 7, 7)?,
-            days(settings, "max_age_days", 30, 30)?,
+            days(settings, "inactivity_timeout_days", 7, 1, 7)?,
+            days(settings, "max_age_days", 30, 0, 30)?,
         )
     }
 }
@@ -380,5 +381,58 @@ impl oxide_auth_async::primitives::Issuer for Store<'_> {
     async fn recover_refresh(&mut self, token: &str) -> Result<Option<Grant>, ()> {
         self.recover(oauth_grant::Column::RefreshTokenHash, &digest(token), true)
             .await
+    }
+}
+
+#[cfg(test)]
+mod lifetime_settings_tests {
+    use super::Lifetime;
+    use crate::models::identity::ExchangeError;
+    use serde_json::{Value, json};
+
+    #[test]
+    fn defaults_custom_windows_and_disabled_maximum_age() {
+        for (settings, expected) in [
+            (None, (7, 30)),
+            (
+                Some(json!({"session":{"inactivity_timeout_days":3,"max_age_days":14}})),
+                (3, 14),
+            ),
+            (
+                Some(json!({"session":{"inactivity_timeout_days":3,"max_age_days":0}})),
+                (3, 0),
+            ),
+            (Some(json!({"session":{"max_age_days":null}})), (7, 30)),
+            (
+                Some(json!({"session":{"inactivity_timeout_days":"3","max_age_days":"0"}})),
+                (3, 0),
+            ),
+        ] {
+            let lifetime = Lifetime::from_settings(settings.as_ref()).unwrap();
+            assert_eq!(
+                (lifetime.inactivity_days(), lifetime.maximum_age_days()),
+                expected,
+                "{settings:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_invalid_windows_and_types() {
+        let invalid: [Value; 6] = [
+            json!({"session":{"inactivity_timeout_days":0}}),
+            json!({"session":{"inactivity_timeout_days":8}}),
+            json!({"session":{"max_age_days":-1}}),
+            json!({"session":{"max_age_days":31}}),
+            json!({"session":{"inactivity_timeout_days":"invalid"}}),
+            json!({"session":{"max_age_days":[]}}),
+        ];
+        for settings in invalid {
+            assert_eq!(
+                Lifetime::from_settings(Some(&settings)).err(),
+                Some(ExchangeError::Unavailable),
+                "{settings}"
+            );
+        }
     }
 }
