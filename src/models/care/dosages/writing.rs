@@ -21,7 +21,7 @@ pub(crate) async fn add_stock(
     active.current_supply = Set(Some(supply));
     active.updated_at = Set(Utc::now().naive_utc());
     let row = active.update(tenant.transaction()).await?;
-    persistence::persist(tenant, &row, Some(before), provenance).await?;
+    persistence::persist(tenant, &row, Some(before), provenance, None).await?;
     let rows = dosage::Entity::find()
         .in_tenant(tenant.scope().household_id)
         .filter(dosage::Column::MedicationId.eq(medication_id))
@@ -95,7 +95,7 @@ pub(crate) async fn create_with_parent(
             active.updated_at = Set(now);
             active.update(&savepoint).await?
         };
-        persistence::persist(tenant, &row, None, provenance).await?;
+        persistence::persist(tenant, &row, None, provenance, None).await?;
         if tracked {
             administration::persistence::record_version_as(
                 tenant,
@@ -138,6 +138,28 @@ pub async fn update(
     body: Value,
     etag: Option<&str>,
     provenance: Option<&CredentialProvenance>,
+) -> Result<(Value, String), OperationError> {
+    update_with_event(tenant, id, body, etag, provenance, None).await
+}
+
+pub(crate) async fn update_stock_checked(
+    tenant: &TenantTransaction,
+    id: &str,
+    body: Value,
+    etag: Option<&str>,
+    provenance: Option<&CredentialProvenance>,
+    reason: &str,
+) -> Result<(Value, String), OperationError> {
+    update_with_event(tenant, id, body, etag, provenance, Some(reason)).await
+}
+
+async fn update_with_event(
+    tenant: &TenantTransaction,
+    id: &str,
+    body: Value,
+    etag: Option<&str>,
+    provenance: Option<&CredentialProvenance>,
+    stock_check_reason: Option<&str>,
 ) -> Result<(Value, String), OperationError> {
     authorize(tenant).await?;
     let found = record(tenant, id, false).await?;
@@ -208,13 +230,37 @@ pub async fn update(
         } else {
             None
         };
-        persistence::persist(tenant, &row, Some(before), provenance).await?;
+        let option_event = stock_check_reason.map(|reason| {
+            format!(
+                "stock check (qty: {}, reason: {reason})",
+                row.current_supply
+                    .map(|quantity| quantity.normalize().to_string())
+                    .unwrap_or_default()
+            )
+        });
+        persistence::persist(
+            tenant,
+            &row,
+            Some(before),
+            provenance,
+            option_event.as_deref(),
+        )
+        .await?;
         if let Some((before, parent)) = parent {
+            let parent_event = stock_check_reason.map(|reason| {
+                format!(
+                    "stock check (qty: {}, reason: {reason})",
+                    parent
+                        .current_supply
+                        .map(|quantity| quantity.normalize().to_string())
+                        .unwrap_or_default()
+                )
+            });
             administration::persistence::record_version_as(
                 tenant,
                 "Medication",
                 parent.id,
-                "api_update",
+                parent_event.as_deref().unwrap_or("api_update"),
                 Some(before),
                 super::super::medications::medication_snapshot(&parent),
                 provenance,

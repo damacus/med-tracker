@@ -1,4 +1,5 @@
 import { test, expect } from './care-fixtures.mjs';
+import { openCareSection } from './care-navigation.mjs';
 
 test.use({ actionTimeout: 10000 });
 
@@ -12,8 +13,7 @@ async function signIn(page, email = 'persistence@example.test') {
 async function openAdministration(page) {
   await signIn(page);
   await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
-  await expect(page.getByRole('link', { name: 'Administration', exact: true })).toBeVisible({ timeout: 5000 });
-  await page.getByRole('link', { name: 'Administration', exact: true }).click();
+  await openCareSection(page, 'Administration');
 }
 
 test('household naming retains invalid drafts and immediately updates household navigation', async ({ page }, info) => {
@@ -78,7 +78,7 @@ test('carer relationships grant, revoke and restore access through the retained 
   try {
     await signIn(member, 'administration-member@example.test');
     await member.getByRole('link', { name: 'Synthetic household', exact: true }).click();
-    await member.getByRole('link', { name: 'People', exact: true }).click();
+    await openCareSection(member, 'People');
     await member.getByRole('link', { name: 'Synthetic minor', exact: true }).click();
     const patientUrl = member.url();
     await page.getByRole('button', { name: 'Deactivate', exact: true }).click();

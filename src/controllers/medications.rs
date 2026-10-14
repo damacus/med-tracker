@@ -2,6 +2,7 @@ pub(super) mod forms;
 mod management;
 pub(super) mod rendering;
 mod scanner;
+mod stock_check;
 mod wizard;
 mod workflow;
 
@@ -41,14 +42,27 @@ struct ShowRequest {
     record_person_id: Option<i64>,
 }
 
+#[derive(Default, serde::Deserialize)]
+struct InventoryQuery {
+    #[serde(default, deserialize_with = "stock_check::empty_location")]
+    location_id: Option<i64>,
+    category: Option<String>,
+}
+
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("/households")
         .add("/{slug}/medications", get(index).post(management::create))
         .add("/{slug}/medications/new", get(management::new))
         .add("/{slug}/medications/finder", get(scanner::finder))
+        .add("/{slug}/medication-finder", get(scanner::finder))
         .add("/{slug}/medications/workflow", get(workflow::open))
+        .add("/{slug}/add-medication", get(workflow::open))
         .add("/{slug}/medications/lookup", get(scanner::lookup))
+        .add(
+            "/{slug}/medications/stock-check",
+            get(stock_check::show).post(stock_check::apply),
+        )
         .add("/{slug}/medications/wizard", post(wizard::create))
         .add(
             "/{slug}/medications/{id}",
@@ -117,22 +131,28 @@ async fn dose_preview(
         .into_response()
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn index(
     State(ctx): State<AppContext>,
     Path(slug): Path<String>,
     session: Session<SessionPgPool>,
     request: Option<Extension<LocoRequestId>>,
+    headers: HeaderMap,
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
+    Query(filters): Query<InventoryQuery>,
 ) -> Response {
     let (_, tenant) = match begin(&ctx, &session, &slug, &request_id(request)).await {
         Ok(value) => value,
         Err(error) => return authentication_error(error),
     };
-    let medications = match browser_query::index(&tenant).await {
-        Ok(value) => value,
-        Err(error) => return operation_error(error),
-    };
+    let inventory =
+        match browser_query::inventory(&tenant, filters.location_id, filters.category.as_deref())
+            .await
+        {
+            Ok(value) => value,
+            Err(error) => return operation_error(error),
+        };
     let can_create = match medications::crud::can_create(&tenant).await {
         Ok(value) => value,
         Err(error) => return operation_error(error),
@@ -145,11 +165,27 @@ async fn index(
         Ok(value) => value,
         Err(error) => return operation_error(error),
     };
+    let locale = crate::models::care::report_pdf::locale(
+        headers
+            .get(header::ACCEPT_LANGUAGE)
+            .and_then(|value| value.to_str().ok())
+            .unwrap_or("en"),
+    );
+    let labels = match crate::models::care::report_pdf::translations(locale) {
+        Ok(value) => value,
+        Err(_) => return unavailable(),
+    };
     let response = rendering::index(
         &view,
         &token,
         &slug,
-        &medications,
+        rendering::IndexPage {
+            inventory,
+            location_id: filters.location_id,
+            category: filters.category.as_deref(),
+        },
+        locale,
+        labels,
         rendering::IndexPermissions {
             create: can_create,
             adjust: forms::can_adjust(&tenant),
@@ -252,7 +288,7 @@ async fn edit_stock(
     State(ctx): State<AppContext>,
     Path((slug, id)): Path<(String, String)>,
     session: Session<SessionPgPool>,
-    request: Option<Extension<LocoRequestId>>,
+    (request, headers): (Option<Extension<LocoRequestId>>, HeaderMap),
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
 ) -> Response {
@@ -280,7 +316,22 @@ async fn edit_stock(
         ),
         ("reason".into(), String::new()),
     ]);
-    let response = rendering::stock(&view, &token, &slug, snapshot, &draft, None, StatusCode::OK);
+    let language = headers
+        .get(header::ACCEPT_LANGUAGE)
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or("en");
+    let response = rendering::stock(
+        &view,
+        &token,
+        &slug,
+        rendering::StockPage {
+            snapshot,
+            draft: &draft,
+            error: None,
+            status: StatusCode::OK,
+        },
+        language,
+    );
     if tenant.commit().await.is_err() {
         return unavailable();
     }
@@ -555,10 +606,16 @@ async fn adjust_stock(
                     &view,
                     &token,
                     &slug,
-                    snapshot,
-                    &draft,
-                    Some(forms::message(&error)),
-                    forms::status(&error),
+                    rendering::StockPage {
+                        snapshot,
+                        draft: &draft,
+                        error: Some(forms::message(&error)),
+                        status: forms::status(&error),
+                    },
+                    headers
+                        .get(header::ACCEPT_LANGUAGE)
+                        .and_then(|value| value.to_str().ok())
+                        .unwrap_or("en"),
                 );
                 if tenant.commit().await.is_err() {
                     return unavailable();

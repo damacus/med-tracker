@@ -1,0 +1,14 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="mx-auto max-w-4xl space-y-8 px-4 py-10">
+  <header class="space-y-2"><h1 class="text-4xl font-semibold">{{ labels.global_search.page_title }}</h1><p>{{ labels.global_search.page_subtitle }}</p></header>
+  <form action="/households/{{ slug }}/search" method="get" class="flex flex-col gap-3 sm:flex-row">
+    <label class="sr-only" for="search_q">{{ labels.global_search.input_label }}</label>
+    <input class="input min-h-11 flex-1" id="search_q" name="q" type="search" value="{{ query }}" placeholder="{{ labels.global_search.placeholder }}">
+    <button class="btn btn-primary" type="submit">{{ labels.global_search.page_submit }}</button>
+  </form>
+  {% if results | length == 0 %}<p>{{ labels.global_search.no_results }}</p>{% else %}
+  <div class="space-y-2">{% for result in results %}<a class="block rounded-lg border border-base-300 bg-base-100 p-4 hover:border-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary" href="{{ result.path }}"><strong class="block">{{ result.title }}</strong><span class="block text-sm">{{ result.subtitle }}</span></a>{% endfor %}</div>
+  {% endif %}
+</section>
+{% endblock content %}

@@ -1,0 +1,720 @@
+{
+  "relation:public.medication_review_histories": {
+    "acl": [
+      "med_tracker_app=ar/med_tracker_owner",
+      "med_tracker_owner=arwdDxtm/med_tracker_owner"
+    ],
+    "rls": true,
+    "kind": "r",
+    "owner": "med_tracker_owner",
+    "options": null,
+    "force_rls": true,
+    "partition": false,
+    "tablespace": null,
+    "persistence": "p",
+    "access_method": "heap",
+    "partition_key": null,
+    "partition_bound": null,
+    "replica_identity": "d"
+  },
+  "column:public.medication_review_histories.id": {
+    "acl": null,
+    "type": "bigint",
+    "default": null,
+    "options": null,
+    "storage": "p",
+    "identity": "d",
+    "not_null": true,
+    "position": 1,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "index:public.medication_review_histories_pkey": {
+    "live": true,
+    "owner": "med_tracker_owner",
+    "ready": true,
+    "valid": true,
+    "options": null,
+    "clustered": false,
+    "definition": "CREATE UNIQUE INDEX medication_review_histories_pkey ON public.medication_review_histories USING btree (id)",
+    "tablespace": null,
+    "replica_identity": false
+  },
+  "relation:public.medication_review_edit_leases": {
+    "acl": [
+      "med_tracker_app=arwd/med_tracker_owner",
+      "med_tracker_owner=arwdDxtm/med_tracker_owner"
+    ],
+    "rls": true,
+    "kind": "r",
+    "owner": "med_tracker_owner",
+    "options": null,
+    "force_rls": true,
+    "partition": false,
+    "tablespace": null,
+    "persistence": "p",
+    "access_method": "heap",
+    "partition_key": null,
+    "partition_bound": null,
+    "replica_identity": "d"
+  },
+  "index:public.medication_review_edit_leases_pkey": {
+    "live": true,
+    "owner": "med_tracker_owner",
+    "ready": true,
+    "valid": true,
+    "options": null,
+    "clustered": false,
+    "definition": "CREATE UNIQUE INDEX medication_review_edit_leases_pkey ON public.medication_review_edit_leases USING btree (prompt_id)",
+    "tablespace": null,
+    "replica_identity": false
+  },
+  "column:public.medication_review_edit_leases.token": {
+    "acl": null,
+    "type": "uuid",
+    "default": null,
+    "options": null,
+    "storage": "p",
+    "identity": "",
+    "not_null": true,
+    "position": 4,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "column:public.medication_review_histories.snapshot": {
+    "acl": null,
+    "type": "jsonb",
+    "default": null,
+    "options": null,
+    "storage": "x",
+    "identity": "",
+    "not_null": true,
+    "position": 5,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "relation:public.medication_review_histories_id_seq": {
+    "acl": [
+      "med_tracker_app=rU/med_tracker_owner",
+      "med_tracker_owner=rwU/med_tracker_owner"
+    ],
+    "rls": false,
+    "kind": "S",
+    "owner": "med_tracker_owner",
+    "options": null,
+    "force_rls": false,
+    "partition": false,
+    "tablespace": null,
+    "persistence": "p",
+    "access_method": null,
+    "partition_key": null,
+    "partition_bound": null,
+    "replica_identity": "n"
+  },
+  "sequence:public.medication_review_histories_id_seq": {
+    "type": "bigint",
+    "cache": 1,
+    "cycle": false,
+    "start": 1,
+    "maximum": 9223372036854775807,
+    "minimum": 1,
+    "owned_by": "public.medication_review_histories.id",
+    "increment": 1
+  },
+  "column:public.medication_review_histories.prompt_id": {
+    "acl": null,
+    "type": "bigint",
+    "default": null,
+    "options": null,
+    "storage": "p",
+    "identity": "",
+    "not_null": true,
+    "position": 3,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "index:public.medication_review_histories_prompt_idx": {
+    "live": true,
+    "owner": "med_tracker_owner",
+    "ready": true,
+    "valid": true,
+    "options": null,
+    "clustered": false,
+    "definition": "CREATE INDEX medication_review_histories_prompt_idx ON public.medication_review_histories USING btree (household_id, prompt_id, id)",
+    "tablespace": null,
+    "replica_identity": false
+  },
+  "column:public.medication_review_histories.created_at": {
+    "acl": null,
+    "type": "timestamp(6) without time zone",
+    "default": "timezone('UTC'::text, clock_timestamp())",
+    "options": null,
+    "storage": "p",
+    "identity": "",
+    "not_null": true,
+    "position": 6,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "column:public.medication_review_histories.event_type": {
+    "acl": null,
+    "type": "character varying(32)",
+    "default": null,
+    "options": null,
+    "storage": "x",
+    "identity": "",
+    "not_null": true,
+    "position": 4,
+    "collation": "pg_catalog.default",
+    "generated": "",
+    "compression": ""
+  },
+  "column:public.medication_review_edit_leases.prompt_id": {
+    "acl": null,
+    "type": "bigint",
+    "default": null,
+    "options": null,
+    "storage": "p",
+    "identity": "",
+    "not_null": true,
+    "position": 1,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "index:public.medication_review_edit_leases_expiry_idx": {
+    "live": true,
+    "owner": "med_tracker_owner",
+    "ready": true,
+    "valid": true,
+    "options": null,
+    "clustered": false,
+    "definition": "CREATE INDEX medication_review_edit_leases_expiry_idx ON public.medication_review_edit_leases USING btree (expires_at)",
+    "tablespace": null,
+    "replica_identity": false
+  },
+  "column:public.medication_review_edit_leases.created_at": {
+    "acl": null,
+    "type": "timestamp(6) without time zone",
+    "default": "timezone('UTC'::text, clock_timestamp())",
+    "options": null,
+    "storage": "p",
+    "identity": "",
+    "not_null": true,
+    "position": 6,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "column:public.medication_review_edit_leases.expires_at": {
+    "acl": null,
+    "type": "timestamp(6) without time zone",
+    "default": null,
+    "options": null,
+    "storage": "p",
+    "identity": "",
+    "not_null": true,
+    "position": 5,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "column:public.medication_review_edit_leases.updated_at": {
+    "acl": null,
+    "type": "timestamp(6) without time zone",
+    "default": "timezone('UTC'::text, clock_timestamp())",
+    "options": null,
+    "storage": "p",
+    "identity": "",
+    "not_null": true,
+    "position": 7,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "column:public.medication_review_histories.household_id": {
+    "acl": null,
+    "type": "bigint",
+    "default": null,
+    "options": null,
+    "storage": "p",
+    "identity": "",
+    "not_null": true,
+    "position": 2,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "index:public.medication_review_edit_lease_token_unique": {
+    "live": true,
+    "owner": "med_tracker_owner",
+    "ready": true,
+    "valid": true,
+    "options": null,
+    "clustered": false,
+    "definition": "CREATE UNIQUE INDEX medication_review_edit_lease_token_unique ON public.medication_review_edit_leases USING btree (token)",
+    "tablespace": null,
+    "replica_identity": false
+  },
+  "column:public.medication_review_edit_leases.household_id": {
+    "acl": null,
+    "type": "bigint",
+    "default": null,
+    "options": null,
+    "storage": "p",
+    "identity": "",
+    "not_null": true,
+    "position": 2,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "column:public.medication_review_histories_id_seq.log_cnt": {
+    "acl": null,
+    "type": "bigint",
+    "default": null,
+    "options": null,
+    "storage": "p",
+    "identity": "",
+    "not_null": true,
+    "position": 2,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "column:public.medication_review_edit_leases.membership_id": {
+    "acl": null,
+    "type": "bigint",
+    "default": null,
+    "options": null,
+    "storage": "p",
+    "identity": "",
+    "not_null": true,
+    "position": 3,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "column:public.medication_review_histories_id_seq.is_called": {
+    "acl": null,
+    "type": "boolean",
+    "default": null,
+    "options": null,
+    "storage": "p",
+    "identity": "",
+    "not_null": true,
+    "position": 3,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "column:public.medication_review_histories_id_seq.last_value": {
+    "acl": null,
+    "type": "bigint",
+    "default": null,
+    "options": null,
+    "storage": "p",
+    "identity": "",
+    "not_null": true,
+    "position": 1,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "column:public.medication_review_prompts.evidence_source_fingerprint": {
+    "acl": null,
+    "type": "character varying(32)",
+    "default": null,
+    "options": null,
+    "storage": "x",
+    "identity": "",
+    "not_null": false,
+    "position": 29,
+    "collation": "pg_catalog.default",
+    "generated": "",
+    "compression": ""
+  },
+  "policy:public.medication_review_histories.household_tenant_isolation": {
+    "check": "(household_id = med_tracker.current_household_id())",
+    "roles": [
+      "PUBLIC"
+    ],
+    "using": "(household_id = med_tracker.current_household_id())",
+    "command": "*",
+    "permissive": true
+  },
+  "policy:public.medication_review_edit_leases.household_tenant_isolation": {
+    "check": "(household_id = med_tracker.current_household_id())",
+    "roles": [
+      "PUBLIC"
+    ],
+    "using": "(household_id = med_tracker.current_household_id())",
+    "command": "*",
+    "permissive": true
+  },
+  "constraint:public.medication_review_histories.medication_review_histories_pkey": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "PRIMARY KEY (id)",
+    "no_inherit": true,
+    "inherit_count": 0
+  },
+  "constraint:public.medication_review_edit_leases.medication_review_edit_leases_pkey": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "PRIMARY KEY (prompt_id)",
+    "no_inherit": true,
+    "inherit_count": 0
+  },
+  "constraint:public.medication_review_histories.medication_review_histories_event_check": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "CHECK (((event_type)::text = ANY ((ARRAY['review'::character varying, 'evidence'::character varying])::text[])))",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
+  "constraint:public.medication_review_histories.medication_review_histories_id_not_null": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "NOT NULL id",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
+  "constraint:public.medication_review_histories.medication_review_histories_prompt_id_fkey": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "FOREIGN KEY (prompt_id) REFERENCES medication_review_prompts(id) ON DELETE CASCADE",
+    "no_inherit": true,
+    "inherit_count": 0
+  },
+  "constraint:public.medication_review_edit_leases.medication_review_edit_lease_token_unique": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "UNIQUE (token)",
+    "no_inherit": true,
+    "inherit_count": 0
+  },
+  "constraint:public.medication_review_histories.medication_review_histories_household_id_fkey": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "FOREIGN KEY (household_id) REFERENCES households(id)",
+    "no_inherit": true,
+    "inherit_count": 0
+  },
+  "constraint:public.medication_review_histories.medication_review_histories_snapshot_not_null": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "NOT NULL snapshot",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
+  "constraint:public.medication_review_edit_leases.medication_review_edit_leases_prompt_id_fkey": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "FOREIGN KEY (prompt_id) REFERENCES medication_review_prompts(id) ON DELETE CASCADE",
+    "no_inherit": true,
+    "inherit_count": 0
+  },
+  "constraint:public.medication_review_edit_leases.medication_review_edit_leases_token_not_null": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "NOT NULL token",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
+  "constraint:public.medication_review_histories.medication_review_histories_prompt_id_not_null": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "NOT NULL prompt_id",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
+  "constraint:public.medication_review_histories.medication_review_histories_created_at_not_null": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "NOT NULL created_at",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
+  "constraint:public.medication_review_histories.medication_review_histories_event_type_not_null": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "NOT NULL event_type",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
+  "constraint:public.medication_review_edit_leases.medication_review_edit_leases_household_id_fkey": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "FOREIGN KEY (household_id) REFERENCES households(id)",
+    "no_inherit": true,
+    "inherit_count": 0
+  },
+  "constraint:public.medication_review_histories.medication_review_histories_household_id_not_null": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "NOT NULL household_id",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
+  "constraint:public.medication_review_edit_leases.medication_review_edit_leases_membership_id_fkey": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "FOREIGN KEY (membership_id) REFERENCES household_memberships(id)",
+    "no_inherit": true,
+    "inherit_count": 0
+  },
+  "constraint:public.medication_review_edit_leases.medication_review_edit_leases_prompt_id_not_null": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "NOT NULL prompt_id",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
+  "constraint:public.medication_review_edit_leases.medication_review_edit_leases_created_at_not_null": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "NOT NULL created_at",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
+  "constraint:public.medication_review_edit_leases.medication_review_edit_leases_expires_at_not_null": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "NOT NULL expires_at",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
+  "constraint:public.medication_review_edit_leases.medication_review_edit_leases_updated_at_not_null": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "NOT NULL updated_at",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
+  "constraint:public.medication_review_edit_leases.medication_review_edit_leases_household_id_not_null": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "NOT NULL household_id",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
+  "constraint:public.medication_review_edit_leases.medication_review_edit_leases_membership_id_not_null": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "NOT NULL membership_id",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
+  "internal_trigger:public.households:public.medication_review_histories.medication_review_histories_household_id_fkey:9": {
+    "type": 9,
+    "enabled": "O",
+    "deferred": false,
+    "function": "\"RI_FKey_noaction_del\"()",
+    "deferrable": false
+  },
+  "internal_trigger:public.households:public.medication_review_histories.medication_review_histories_household_id_fkey:17": {
+    "type": 17,
+    "enabled": "O",
+    "deferred": false,
+    "function": "\"RI_FKey_noaction_upd\"()",
+    "deferrable": false
+  },
+  "internal_trigger:public.households:public.medication_review_edit_leases.medication_review_edit_leases_household_id_fkey:9": {
+    "type": 9,
+    "enabled": "O",
+    "deferred": false,
+    "function": "\"RI_FKey_noaction_del\"()",
+    "deferrable": false
+  },
+  "internal_trigger:public.households:public.medication_review_edit_leases.medication_review_edit_leases_household_id_fkey:17": {
+    "type": 17,
+    "enabled": "O",
+    "deferred": false,
+    "function": "\"RI_FKey_noaction_upd\"()",
+    "deferrable": false
+  },
+  "internal_trigger:public.medication_review_prompts:public.medication_review_histories.medication_review_histories_prompt_id_fkey:9": {
+    "type": 9,
+    "enabled": "O",
+    "deferred": false,
+    "function": "\"RI_FKey_cascade_del\"()",
+    "deferrable": false
+  },
+  "internal_trigger:public.medication_review_prompts:public.medication_review_histories.medication_review_histories_prompt_id_fkey:17": {
+    "type": 17,
+    "enabled": "O",
+    "deferred": false,
+    "function": "\"RI_FKey_noaction_upd\"()",
+    "deferrable": false
+  },
+  "internal_trigger:public.medication_review_histories:public.medication_review_histories.medication_review_histories_prompt_id_fkey:5": {
+    "type": 5,
+    "enabled": "O",
+    "deferred": false,
+    "function": "\"RI_FKey_check_ins\"()",
+    "deferrable": false
+  },
+  "internal_trigger:public.medication_review_histories:public.medication_review_histories.medication_review_histories_prompt_id_fkey:17": {
+    "type": 17,
+    "enabled": "O",
+    "deferred": false,
+    "function": "\"RI_FKey_check_upd\"()",
+    "deferrable": false
+  },
+  "internal_trigger:public.household_memberships:public.medication_review_edit_leases.medication_review_edit_leases_membership_id_fkey:9": {
+    "type": 9,
+    "enabled": "O",
+    "deferred": false,
+    "function": "\"RI_FKey_noaction_del\"()",
+    "deferrable": false
+  },
+  "internal_trigger:public.medication_review_prompts:public.medication_review_edit_leases.medication_review_edit_leases_prompt_id_fkey:9": {
+    "type": 9,
+    "enabled": "O",
+    "deferred": false,
+    "function": "\"RI_FKey_cascade_del\"()",
+    "deferrable": false
+  },
+  "internal_trigger:public.household_memberships:public.medication_review_edit_leases.medication_review_edit_leases_membership_id_fkey:17": {
+    "type": 17,
+    "enabled": "O",
+    "deferred": false,
+    "function": "\"RI_FKey_noaction_upd\"()",
+    "deferrable": false
+  },
+  "internal_trigger:public.medication_review_histories:public.medication_review_histories.medication_review_histories_household_id_fkey:5": {
+    "type": 5,
+    "enabled": "O",
+    "deferred": false,
+    "function": "\"RI_FKey_check_ins\"()",
+    "deferrable": false
+  },
+  "internal_trigger:public.medication_review_prompts:public.medication_review_edit_leases.medication_review_edit_leases_prompt_id_fkey:17": {
+    "type": 17,
+    "enabled": "O",
+    "deferred": false,
+    "function": "\"RI_FKey_noaction_upd\"()",
+    "deferrable": false
+  },
+  "internal_trigger:public.medication_review_histories:public.medication_review_histories.medication_review_histories_household_id_fkey:17": {
+    "type": 17,
+    "enabled": "O",
+    "deferred": false,
+    "function": "\"RI_FKey_check_upd\"()",
+    "deferrable": false
+  },
+  "internal_trigger:public.medication_review_edit_leases:public.medication_review_edit_leases.medication_review_edit_leases_prompt_id_fkey:5": {
+    "type": 5,
+    "enabled": "O",
+    "deferred": false,
+    "function": "\"RI_FKey_check_ins\"()",
+    "deferrable": false
+  },
+  "internal_trigger:public.medication_review_edit_leases:public.medication_review_edit_leases.medication_review_edit_leases_prompt_id_fkey:17": {
+    "type": 17,
+    "enabled": "O",
+    "deferred": false,
+    "function": "\"RI_FKey_check_upd\"()",
+    "deferrable": false
+  },
+  "internal_trigger:public.medication_review_edit_leases:public.medication_review_edit_leases.medication_review_edit_leases_household_id_fkey:5": {
+    "type": 5,
+    "enabled": "O",
+    "deferred": false,
+    "function": "\"RI_FKey_check_ins\"()",
+    "deferrable": false
+  },
+  "internal_trigger:public.medication_review_edit_leases:public.medication_review_edit_leases.medication_review_edit_leases_household_id_fkey:17": {
+    "type": 17,
+    "enabled": "O",
+    "deferred": false,
+    "function": "\"RI_FKey_check_upd\"()",
+    "deferrable": false
+  },
+  "internal_trigger:public.medication_review_edit_leases:public.medication_review_edit_leases.medication_review_edit_leases_membership_id_fkey:5": {
+    "type": 5,
+    "enabled": "O",
+    "deferred": false,
+    "function": "\"RI_FKey_check_ins\"()",
+    "deferrable": false
+  },
+  "internal_trigger:public.medication_review_edit_leases:public.medication_review_edit_leases.medication_review_edit_leases_membership_id_fkey:17": {
+    "type": 17,
+    "enabled": "O",
+    "deferred": false,
+    "function": "\"RI_FKey_check_upd\"()",
+    "deferrable": false
+  }
+}

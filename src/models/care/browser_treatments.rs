@@ -16,6 +16,7 @@ pub async fn person_cards(
     tenant: &TenantTransaction,
     person_id: i64,
     zone: chrono_tz::Tz,
+    labels: &Value,
 ) -> Result<Vec<Value>, OperationError> {
     access::require_person_access(tenant, person_id, PersonAccess::View).await?;
     let schedules = access::schedule_scope(tenant)
@@ -60,11 +61,19 @@ pub async fn person_cards(
                 .or(record.name)
                 .unwrap_or_else(|| "Medication".into());
             let supply = record.current_supply.map_or_else(
-                || "Supply not tracked".to_owned(),
+                || {
+                    labels["people"]["show"]["browser"]["stock_untracked"]
+                        .as_str()
+                        .unwrap_or("Supply not tracked")
+                        .to_owned()
+                },
                 |amount| {
                     let amount = amount.normalize().to_string();
                     let unit = record.dose_unit.as_deref().unwrap_or("units");
-                    format!("{} in stock", amount_and_unit(&amount, unit))
+                    labels["people"]["show"]["browser"]["stock_remaining"]
+                        .as_str()
+                        .unwrap_or("%{amount} in stock")
+                        .replace("%{amount}", &amount_and_unit(&amount, unit))
                 },
             );
             (record.id, (name, supply))
@@ -123,10 +132,10 @@ pub async fn person_cards(
         };
         card["medication_name"] = json!(name);
         card["stock_label"] = json!(supply);
-        card["timing_summary"] = json!(timing_summary(card));
+        card["timing_summary"] = json!(timing_summary(card, labels));
         card["dose_label"] = json!(dose_label(card));
-        card["limit_summary"] = json!(limit_summary(card));
-        card["date_range"] = json!(date_range(card));
+        card["limit_summary"] = json!(limit_summary(card, labels));
+        card["date_range"] = json!(date_range(card, labels));
         let source = (
             card["source_kind"] == "schedules",
             card["id"].as_i64().unwrap_or_default(),
@@ -147,24 +156,41 @@ pub async fn person_cards(
     Ok(cards)
 }
 
-fn timing_summary(card: &Value) -> Option<String> {
-    let schedule = match card["schedule_type"].as_str() {
-        Some("every_other_day") => "Every other day",
-        Some("multiple_daily") => "Several times a day",
-        Some("weekly") => "Weekly",
-        Some("monthly") => "Monthly",
-        Some("specific_dates") => "On specific dates",
-        Some("prn") => "As needed",
-        Some("tapering") => "Taper plan",
-        Some(_) => "Daily",
-        None if card["administration_kind"] == "as_needed" => "As needed",
-        None => "",
+fn timing_summary(card: &Value, labels: &Value) -> Option<String> {
+    let key = match card["schedule_type"].as_str() {
+        Some("every_other_day") => "every_other_day",
+        Some("multiple_daily") => "multiple_daily",
+        Some("weekly") => "weekly",
+        Some("monthly") => "monthly",
+        Some("specific_dates") => "specific_dates",
+        Some("prn") => "prn",
+        Some("tapering") => "tapering",
+        Some(_) => "daily",
+        None if card["administration_kind"] == "as_needed" => "prn",
+        None => "empty",
     };
+    let schedule = labels["people"]["show"]["browser"]["timing"][key]
+        .as_str()
+        .unwrap_or("");
     let frequency = card["frequency"].as_str().filter(|value| !value.is_empty());
+    let english = match key {
+        "every_other_day" => "Every other day",
+        "multiple_daily" => "Several times a day",
+        "weekly" => "Weekly",
+        "monthly" => "Monthly",
+        "specific_dates" => "On specific dates",
+        "prn" => "As needed",
+        "tapering" => "Taper plan",
+        "daily" => "Daily",
+        _ => "",
+    };
     let summary = match (schedule, frequency) {
         ("", None) => return None,
         ("", Some(frequency)) => frequency.to_owned(),
-        (schedule, Some(frequency)) if !schedule.eq_ignore_ascii_case(frequency) => {
+        (schedule, Some(frequency))
+            if !schedule.eq_ignore_ascii_case(frequency)
+                && !english.eq_ignore_ascii_case(frequency) =>
+        {
             format!("{schedule} · {frequency}")
         }
         (schedule, _) => schedule.to_owned(),
@@ -192,21 +218,41 @@ fn amount_and_unit(amount: &str, unit: &str) -> String {
     format!("{amount} {unit}{suffix}")
 }
 
-fn date_range(card: &Value) -> Option<String> {
-    let start = card["start_date"].as_str().map(display_date);
-    let end = card["end_date"].as_str().map(display_date);
+fn date_range(card: &Value, labels: &Value) -> Option<String> {
+    let start = card["start_date"]
+        .as_str()
+        .map(|date| display_date(date, labels));
+    let end = card["end_date"]
+        .as_str()
+        .map(|date| display_date(date, labels));
+    let browser = &labels["people"]["show"]["browser"];
     match (start, end) {
-        (Some(start), Some(end)) => Some(format!("{start} to {end}")),
-        (Some(start), None) => Some(format!("From {start}")),
-        (None, Some(end)) => Some(format!("Until {end}")),
+        (Some(start), Some(end)) => Some(format!(
+            "{start} {} {end}",
+            browser["to"].as_str().unwrap_or("to")
+        )),
+        (Some(start), None) => Some(format!(
+            "{} {start}",
+            browser["from"].as_str().unwrap_or("From")
+        )),
+        (None, Some(end)) => Some(format!(
+            "{} {end}",
+            browser["until"].as_str().unwrap_or("Until")
+        )),
         (None, None) => None,
     }
 }
 
-fn display_date(value: &str) -> String {
+fn display_date(value: &str, labels: &Value) -> String {
     NaiveDate::parse_from_str(value, "%Y-%m-%d").map_or_else(
         |_| value.to_owned(),
-        |date| date.format("%d %b %Y").to_string(),
+        |date| {
+            use chrono::Datelike;
+            let month = labels["reports"]["medication_review"]["months"][date.month0() as usize]
+                .as_str()
+                .unwrap_or("");
+            format!("{} {month} {}", date.day(), date.year())
+        },
     )
 }
 
@@ -214,7 +260,7 @@ fn display_decimal(value: &str) -> &str {
     value.strip_suffix(".0").unwrap_or(value)
 }
 
-fn limit_summary(card: &Value) -> Option<String> {
+fn limit_summary(card: &Value, labels: &Value) -> Option<String> {
     let maximum = card["max_daily_doses"].as_i64();
     let spacing = card["min_hours_between_doses"]
         .as_str()
@@ -225,17 +271,25 @@ fn limit_summary(card: &Value) -> Option<String> {
     let mut parts = Vec::new();
     if let Some(maximum) = maximum.filter(|value| *value > 0) {
         let period = match card["dose_cycle"].as_str() {
-            Some("weekly") => "week",
-            Some("monthly") => "month",
-            _ => "day",
+            Some("weekly") => "weekly",
+            Some("monthly") => "monthly",
+            _ => "daily",
         };
-        let noun = if maximum == 1 { "dose" } else { "doses" };
-        parts.push(format!("Maximum {maximum} {noun} a {period}"));
+        let form = if maximum == 1 { "one" } else { "other" };
+        if let Some(template) =
+            labels["medications"]["show"]["browser"]["max_doses"][period][form].as_str()
+        {
+            parts.push(template.replace("%{count}", &maximum.to_string()));
+        }
     }
     if let Some(spacing) = spacing {
         let spacing = display_decimal(spacing);
-        let noun = if spacing == "1" { "hour" } else { "hours" };
-        parts.push(format!("At least {spacing} {noun} between doses"));
+        let form = if spacing == "1" { "one" } else { "other" };
+        if let Some(template) =
+            labels["medications"]["show"]["browser"]["minimum_hours"][form].as_str()
+        {
+            parts.push(template.replace("%{hours}", spacing));
+        }
     }
     Some(parts.join(" · "))
 }

@@ -1,4 +1,5 @@
 import { test, expect } from './care-fixtures.mjs';
+import { openCareSection } from './care-navigation.mjs';
 
 test.use({ actionTimeout: 10000 });
 
@@ -8,7 +9,7 @@ async function openPerson(page) {
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
-  await page.getByRole('link', { name: 'People', exact: true }).click();
+  await openCareSection(page, 'People');
   await page.getByRole('link', { name: 'Synthetic adult', exact: true }).click();
 }
 
@@ -25,6 +26,10 @@ test('person shows separate scheduled and ongoing medication cards with useful d
   await expect(schedule).not.toContainText(/\d{4}-\d{2}-\d{2}/);
   await expect(assignment).toContainText('2 tablets');
   await expect(page.getByRole('heading', { name: 'Current medications', exact: true })).toBeVisible();
+  const addMedication = page.getByRole('link', { name: 'Add Medication', exact: true });
+  await expect(addMedication).toHaveAttribute('href', /\/add-medication\?person_id=73001/);
+  await addMedication.click();
+  await expect(page.getByRole('link', { name: 'Create medication for Synthetic adult' })).toBeVisible();
 });
 
 test('person card states a weekly dose limit as weekly rather than daily', async ({ page }) => {
@@ -87,7 +92,7 @@ test('person keeps a paused source visible and shows its recorded pause history'
 test('person with no treatment has a useful empty state and readable overview', async ({ page, careFixture }) => {
   await careFixture.seedAdministration();
   await openPerson(page);
-  await page.getByRole('link', { name: 'People', exact: true }).click();
+  await openCareSection(page, 'People');
   await page.getByRole('link', { name: 'Synthetic administration member', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Current medications', exact: true })).toBeVisible();
   await expect(page.getByRole('article')).toHaveCount(0);
@@ -105,7 +110,7 @@ test('a view-only carer can read source cards without record or management actio
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
-  await page.getByRole('link', { name: 'People', exact: true }).click();
+  await openCareSection(page, 'People');
   await page.getByRole('link', { name: 'Synthetic adult', exact: true }).click();
   const schedule = page.getByRole('article', { name: 'Synthetic tablets scheduled treatment', exact: true });
   await expect(schedule).toContainText('Every other day');
@@ -138,4 +143,26 @@ test('person source card shows its current supply without opening medication det
   await openPerson(page);
   const ongoing = page.getByRole('article', { name: 'Synthetic tablets ongoing medication', exact: true });
   await expect(ongoing).toContainText('10 tablets in stock');
+});
+
+test.describe('Welsh person detail', () => {
+  test.use({ locale: 'cy-GB' });
+  test('person identity, source cards and actions use the selected language', async ({ page, careFixture }) => {
+    await careFixture.scheduledMedicine();
+    await page.goto('/login');
+    await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
+    await page.getByLabel('Password', { exact: true }).fill('password');
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+    await page.goto('/households/persistence-fixture/people/73001');
+    await expect(page.locator('html')).toHaveAttribute('lang', 'cy');
+    await expect(page.getByRole('heading', { name: 'Meddyginiaethau cyfredol' })).toBeVisible();
+    const schedule = page.getByRole('article', { name: 'Synthetic tablets triniaeth wedi’i threfnu' });
+    await expect(schedule).toBeVisible();
+    await expect(schedule).toContainText('Bob yn ail ddiwrnod');
+    await expect(schedule).toContainText(/\d{1,2} .* i \d{1,2}/);
+    await expect(schedule).not.toContainText(/\d{1,2} [A-Za-z]+ \d{4} to \d{1,2}/);
+    await expect(page.getByRole('heading', { name: 'Gweithredoedd Gofal' })).toBeVisible();
+    await expect(schedule.getByRole('link', { name: 'Cofnodi dos' })).toBeVisible();
+    await page.screenshot({ path: `docs/screenshots/loco-care-person-welsh-${test.info().project.name}.png` });
+  });
 });

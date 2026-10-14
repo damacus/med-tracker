@@ -24,17 +24,18 @@ pub(super) async fn persist(
     row: &dosage::Model,
     before: Option<Value>,
     provenance: Option<&CredentialProvenance>,
+    event: Option<&str>,
 ) -> Result<(), OperationError> {
     let action = if before.is_some() { "update" } else { "create" };
     administration::persistence::record_version_as(
         tenant,
         "MedicationDosageOption",
         row.id,
-        if before.is_some() {
+        event.unwrap_or(if before.is_some() {
             "api_update"
         } else {
             "api_create"
-        },
+        }),
         before,
         dosage_snapshot(row),
         provenance,

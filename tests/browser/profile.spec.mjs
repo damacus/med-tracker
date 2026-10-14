@@ -1,4 +1,5 @@
 import { test, expect } from './care-fixtures.mjs';
+import { openCareSection } from './care-navigation.mjs';
 
 test.use({ actionTimeout: 10000 });
 
@@ -8,7 +9,7 @@ async function openProfile(page) {
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
-  await page.getByRole('link', { name: 'My Profile', exact: true }).click();
+  await openCareSection(page, 'Profile');
 }
 
 test('security keeps full-width account and authentication cards with current summaries', async ({ page }, testInfo) => {

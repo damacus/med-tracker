@@ -144,6 +144,7 @@ en:
     page_title: Search
     page_subtitle: Find MedTracker records and shortcuts.
     page_submit: Search
+    schedule_for: Schedule for %{person}
     results:
       one: 1 result
       other: "%{count} results"
@@ -957,6 +958,25 @@ en:
       option_readonly: "Option stock and reorder thresholds are managed through the option editor."
       invalid_quantity: "Enter a nonnegative quantity with at most two decimal places."
       household_inventory: "Household inventory"
+      browser:
+        remaining: "%{quantity} %{unit} remaining"
+        review_latest: "Review latest stock"
+        changed: "Stock changed while this form was open. Review the latest stock before saving."
+    order:
+      browser:
+        back: "Back to Medication"
+        title: "Order medication"
+        supplier: "Supplier"
+        quantity: "Order quantity"
+        arrival: "Expected arrival"
+        mark_ordered: "Mark as ordered"
+        receive_title: "Receive an order"
+        receipt_hint: "Receiving an order does not change stock. Use Adjust stock to record the delivered quantity."
+        review_stock: "Review stock"
+        mark_received: "Mark as received"
+        quantity_precision_error: "is outside stock precision."
+        quantity_decimal_error: "The quantity must be a decimal number."
+        arrival_date_error: "The expected arrival must be an ISO date."
     dose_dialog:
       ongoing_medication: 'Ongoing medication'
       scheduled_treatment: 'Scheduled treatment'
@@ -1082,6 +1102,13 @@ en:
       location_label: Inventory location
       all_locations: All locations
       selected: "%{count} selected"
+      unit_names:
+        tablet:
+          one: tablet
+          other: tablets
+        capsule:
+          one: capsule
+          other: capsules
       clear_selection: Clear selection
       in_stock: In stock
       low_stock: Low stock
@@ -1097,7 +1124,9 @@ en:
       empty_title: No medicines selected
       empty_description: Choose medicines from the list to build an amendment batch.
       set_to_zero: Set to zero
+      set_to_zero_for: Set to zero for %{medication}
       remove_from_batch: Remove %{medication} from the amendment batch
+      remove_short: Remove
       reason: Reason for amendments
       reasons:
         house_stock_check: House stock check
@@ -1115,6 +1144,10 @@ en:
       decrease: Decrease
       no_change: No change
       dosage_not_set: Dosage not set
+      errors:
+        invalid: Check the selected counts and try again. Each count must be a nonnegative number.
+        stale: Stock changed while you were counting. Review the current counts and try again.
+        unavailable: The stock check could not be saved. Your counts are still here; try again.
       success:
         one: Updated the remaining supply for %{count} medicine.
         other: Updated the remaining supply for %{count} medicines.
@@ -1187,6 +1220,23 @@ en:
       all: All
       view: View
       inventory_level: Inventory Level
+      location: Location
+      all_locations: All locations
+      category: Category
+      all_categories: All categories
+      apply_filters: Apply filters
+      untracked_stock: Stock is not tracked.
+      low_stock: Low stock
+      edit: Edit
+      edit_medication: Edit %{medication}
+      refill: Refill
+      refill_medication: Refill %{medication}
+      empty_filtered: "No medications match these filters."
+      empty_unfiltered: "No medications are available in this household."
+      scan_description: Scan a pack or enter its barcode to choose the medicine and location before adding stock.
+      find_barcode: Find barcode
+      manual_entry: Enter medication manually
+      close_scanner: Close scanner
       units:
         one: unit
         other: units
@@ -1205,6 +1255,61 @@ en:
       submit: Add scanned stock
     show:
       profile: Medication Profile
+      browser:
+        ordered: Ordered
+        from_supplier: from %{supplier}
+        expected: Expected
+        last_received: Last order received
+        refill_inventory: Refill inventory
+        order_medication: Order medication
+        no_source: No available medication source.
+        js_required: Recording doses here requires JavaScript.
+        dose_options: Dose options
+        default_adults: Default for adults
+        default_children: Default for children
+        remaining: "%{amount} %{unit} remaining"
+        manage_dose_options: Manage Dose Options
+        no_dose_options: No dose options recorded.
+        dose_history: Dose history
+        no_doses: No doses recorded yet.
+        standard_dosage: Standard dosage
+        no_standard_dosage: No standard dosage recorded.
+        manage_medication: Manage medication
+        adjust_stock: Adjust stock
+        stock_adjustment_page: Stock adjustment page
+        edit_medication: Edit Medication
+        delete_medication: Delete Medication
+        add_delivered: Add delivered stock to the current supply.
+        latest_stock: Latest stock
+        use_latest: Use latest stock
+        dose_option: Dose option
+        choose_dose_option: Choose a dose option
+        quantity_to_add: Quantity to add
+        restock_date: Restock date
+        cancel: Cancel
+        add_stock: Add stock
+        current_supply: Current supply
+        new_stock_quantity: New stock quantity
+        reason: Reason
+        delete: Delete
+        reorder_at: Reorder at %{quantity} %{unit}
+        stock_untracked: Untracked
+        stock_out: Out of stock
+        stock_low: Low stock
+        stock_in: In stock
+        max_doses:
+          daily:
+            one: Maximum 1 dose a day
+            other: Maximum %{count} doses a day
+          weekly:
+            one: Maximum 1 dose a week
+            other: Maximum %{count} doses a week
+          monthly:
+            one: Maximum 1 dose a month
+            other: Maximum %{count} doses a month
+        minimum_hours:
+          one: At least 1 hour between doses
+          other: At least %{hours} hours between doses
       edit_details: Edit Details
       inventory: Inventory
       add_schedule: Schedule
@@ -1261,6 +1366,42 @@ en:
     show:
       edit_person: Edit Person
       add_medication: Add Medication
+      current_medications: Current medications
+      browser:
+        stock_untracked: "Supply not tracked"
+        stock_remaining: "%{amount} in stock"
+        from: "From"
+        until: "Until"
+        timing:
+          every_other_day: "Every other day"
+          multiple_daily: "Several times a day"
+          weekly: "Weekly"
+          monthly: "Monthly"
+          specific_dates: "On specific dates"
+          prn: "As needed"
+          tapering: "Taper plan"
+          daily: "Daily"
+          empty: ""
+        avatar_for: "%{person} avatar"
+        age: Age
+        paused: Paused
+        active: Active
+        outside_dates: Outside scheduled dates
+        pause: Pause
+        pause_history: Pause history
+        to: to
+        dose_records: Dose records
+        edit_treatment: Edit treatment
+        empty_current: No current medications are recorded for %{person}.
+        manage_treatments: Manage treatments
+        view_treatments: View treatments
+        add_schedule: Add schedule
+        assign_medication: Assign medication
+        carer_relationships: Carer relationships
+        profile_details: Profile details
+        not_recorded: Not recorded
+        yes: "Yes"
+        no: "No"
       manage_parents: Manage parents
       health_events: Health events
       back: Back
@@ -2254,6 +2395,7 @@ en:
             description: Centres one safe next action and keeps everything else quiet.
     appearance:
       title: Appearance
+      close: Close
       description: Choose how MedTracker looks across signed-in and signed-out screens.
       mode_label: Mode
       modes:
@@ -2397,6 +2539,8 @@ en:
       footer_notice: This email was sent because you have an account with us.
     navigation:
       skip_to_content: Skip to content
+      home_link: MedTracker home
+      care_tagline: Care, kept together.
       brand: MedTracker
       login: Login
     desktop_nav:
@@ -2455,6 +2599,8 @@ en:
     hide_hidden: Hide filtered items
     empty_title: No medicine reviews to show
     empty_description: No reviewed evidence pairs match the active medicines in the selected household records.
+    filter_empty_title: No medicine reviews match these filters.
+    filter_empty_description: Other reviews are available. Clear the filters to see them.
     review_reason: Public medicine-label evidence suggests this combination may be worth reviewing with a pharmacist, nurse, GP, or prescriber.
     view_evidence: View evidence
     summaries:
@@ -2467,6 +2613,7 @@ en:
       priority: Priority
       include_filtered: Include filtered items
       apply: Apply filters
+      clear: Clear filters
       review_statuses:
         needs_review: Needs review
         reviewed: Reviewed
@@ -2526,6 +2673,22 @@ en:
       reviewed_on: Date reviewed
       review_note: Review note
       save: Save review record
+    browser:
+      review_status: Review status
+      filtered_items: lower-confidence review items
+      edit: Edit review
+      history: Previous reviews
+      no_history: No previous review has been recorded.
+      pages: Review pages
+      previous: Previous page
+      next: Next page
+      changed: The review changed while you were editing. Check the current evidence before saving.
+      expiring: Editing time is nearly over. Your draft will stay here if it expires.
+      keep_editing: Keep editing
+      expired: Editing time expired. Your draft is still here. Reacquire editing before saving.
+      accept_version: Use current evidence and keep my draft
+      cancel: Cancel
+      reacquire: Reacquire editing
   notification_settings:
     categories:
       title: Notification Categories
@@ -2604,6 +2767,32 @@ en:
       current_supply_placeholder: e.g., 30
       reorder_threshold_placeholder: e.g., 5
       wizard:
+        browser:
+          as_directed: "As directed"
+          matching_medicines: "Matching medicines"
+          choose_medicine_location: "Choose the medicine and location"
+          refill_at: "Refill %{name} at %{location}"
+          created_title: "Medication created"
+          created_heading: "%{name} created!"
+          created_description: "Your medication has been saved. You can manage its dose options or return to the medication."
+          saved_options: "Saved dose options"
+          done: "Done"
+          cancel: Cancel
+          person: Person
+          no_person_plan: No person plan
+          frequency: Frequency
+          weekly_day: Weekly day
+          specific_date: Specific date
+          frequency_weekly: Once weekly
+          dose_option: Dose option %{number}
+          remove_dose_option: Remove dose option %{number}
+          date_range: "%{start} to %{end}"
+          first_dose_time: First dose time
+          second_dose_time: Second dose time
+          weekly_time: Weekly time
+          maximum_daily_doses: Maximum daily doses
+          add_dose_option: Add dose option
+          pack_warning: Review the pack instructions before saving this medication.
         progress_label: Medication setup progress
         continue: Continue
         steps:
@@ -2802,6 +2991,13 @@ en:
       add_medication: Add Medication
       add_person: Add Person
   medication_workflow:
+    chooser:
+      back: Back to medications
+      title: Choose a person
+      subtitle: Choose whose medication you want to manage.
+      assign: Assign medication to %{person}
+      create: Create medication for %{person}
+      empty: No people are available for medication management.
     person_selection:
       title: Add Medication
       subtitle: Who is this medication for?

@@ -45,7 +45,8 @@ pub(super) async fn index(
         data["person"] = person["data"].clone();
         data["title"] = json!(title);
         data["lang"] = json!(language);
-        data["labels"] = labels["health_events"].clone();
+        data["health_labels"] = labels["health_events"].clone();
+        data["labels"] = labels.clone();
         data["back_label"] = labels["people"]["show"]["back"].clone();
         data["events"] = json!(events);
         data["can_record"] =
@@ -151,7 +152,8 @@ impl FormPage<'_> {
             data["person"]=person["data"].clone();
             data["title"]=json!(title);
             data["lang"]=json!(language);
-            data["labels"]=labels.clone();
+            data["health_labels"]=labels.clone();
+            data["labels"]=all_labels.clone();
             data["draft"]=json!(draft);
             data["medications"]=json!(options);
             data["side_effect"]=json!(kind=="suspected_side_effect");

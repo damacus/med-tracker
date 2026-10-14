@@ -79,6 +79,7 @@ impl Page<'_> {
         } else {
             "Add Dose Option"
         });
+        data["slug"] = json!(self.slug);
         data["base"] = json!(base);
         data["medication_url"] = json!(format!(
             "/households/{}/medications/{}",

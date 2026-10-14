@@ -1,1 +1,1 @@
-<span class="dashboard-avatar" data-dashboard-avatar>{% if avatar_attached %}<img src="/households/{{ slug }}/profile/avatar" alt="{{ name }}">{% else %}<span aria-hidden="true">{{ initials }}</span>{% endif %}</span>
+<span class="dashboard-avatar" data-dashboard-avatar><span aria-hidden="true">{{ initials }}</span>{% if avatar_attached %}<img src="/households/{{ slug }}/profile/avatar" alt="" data-avatar-image>{% elif gravatar_url %}<img src="{{ gravatar_url }}" alt="" referrerpolicy="no-referrer" data-avatar-image>{% endif %}</span>

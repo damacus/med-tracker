@@ -1265,7 +1265,8 @@ async fn browser_reminder_keeps_independent_device_outcomes() {
         .with_second(0)
         .unwrap()
         .with_nanosecond(0)
-        .unwrap();
+        .unwrap()
+        - chrono::Duration::minutes(1);
     app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences=jsonb_build_object('time_zone','UTC') WHERE id=71001; UPDATE person_medications SET administration_kind=0,dose_cycle=0,max_daily_doses=1,created_at=now()-interval '2 days' WHERE id=81001; INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/accepted','synthetic','synthetic',now(),now()),(71001,'https://fcm.googleapis.com/fcm/send/failed','synthetic','synthetic',now(),now())").await.unwrap();
     app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
         "INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,morning_time,afternoon_time,evening_time,night_time,created_at,updated_at) VALUES(72001,73001,true,true,false,false,true,$1,NULL,NULL,NULL,now(),now())", [now.time().into()])).await.unwrap();
@@ -1290,6 +1291,13 @@ async fn browser_reminder_keeps_independent_device_outcomes() {
     assert_eq!(row.try_get::<i64>("", "accepted").unwrap(), 1);
     assert_eq!(row.try_get::<i64>("", "retryable").unwrap(), 1);
     assert_eq!(transport.0.lock().unwrap().len(), 2);
+    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT next_attempt_at FROM notification_deliveries WHERE status='pending' AND attempt_count=1")).await.unwrap().unwrap();
+    let retry_at = row
+        .try_get::<chrono::NaiveDateTime>("", "next_attempt_at")
+        .unwrap()
+        .and_utc();
+    assert!(retry_at > now + chrono::Duration::minutes(2));
     app.fixture
         .admin
         .execute_unprepared("DELETE FROM push_subscriptions WHERE account_id=71001")
@@ -1299,7 +1307,7 @@ async fn browser_reminder_keeps_independent_device_outcomes() {
         browser_push::reminders::drain_pending(
             &app.context,
             &scope,
-            now + chrono::Duration::minutes(2)
+            retry_at + chrono::Duration::seconds(1)
         )
         .await
         .unwrap(),

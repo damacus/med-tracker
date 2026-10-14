@@ -135,6 +135,14 @@ pub fn routes() -> Routes {
                 .put(review_prompts::update),
         )
         .add(
+            "/{household_id}/medication_review_prompts/{id}/lease",
+            post(review_prompts::acquire).delete(review_prompts::release),
+        )
+        .add(
+            "/{household_id}/medication_review_prompts/{id}/lease/renew",
+            post(review_prompts::renew),
+        )
+        .add(
             "/{household_id}/profile",
             get(profile::show)
                 .patch(profile::update)

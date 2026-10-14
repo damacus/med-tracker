@@ -63,6 +63,11 @@ struct Pagination {
     page: Option<i64>,
 }
 
+#[derive(Default, Deserialize)]
+struct NewTreatmentQuery {
+    medication_id: Option<i64>,
+}
+
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("/households")
@@ -103,9 +108,10 @@ async fn new(
     request: Option<Extension<LocoRequestId>>,
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
+    Query(query): Query<NewTreatmentQuery>,
 ) -> Response {
     page::Page::new(&ctx, &session, &token, &view, &slug, &person, request)
-        .form(&kind, None)
+        .form(&kind, None, query.medication_id)
         .await
 }
 async fn edit(
@@ -117,7 +123,7 @@ async fn edit(
     ViewEngine(view): ViewEngine<TeraView>,
 ) -> Response {
     page::Page::new(&ctx, &session, &token, &view, &slug, &person, request)
-        .form(&kind, Some(&id))
+        .form(&kind, Some(&id), None)
         .await
 }
 async fn create(

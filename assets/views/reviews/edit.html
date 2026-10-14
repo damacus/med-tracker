@@ -1,0 +1,43 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-3xl mx-auto px-4 py-10" data-review-editor data-renew-url="/households/{{ slug }}/medicine-reviews/{{ review.id }}/renew" data-expired-message="{{ labels.medication_reviews.browser.expired }}" data-expires-at="{{ lease.expires_at }}">
+  <a class="link" href="/households/{{ slug }}/medicine-reviews">{{ labels.medication_reviews.title }}</a>
+  <h1 class="text-3xl font-bold mt-5">{{ labels.medication_reviews.form.title }}</h1>
+  <p class="mt-2">{{ review.primary_medication_name }} + {{ review.interacting_medication_name }}</p>
+  <p class="text-sm text-base-content/70">{{ labels.medication_reviews.boundary }}</p>
+  {% if error %}<div class="alert alert-error mt-5" role="alert">{{ error }}</div>{% endif %}
+  {% if changed %}<div class="alert alert-warning mt-5" role="alert">{{ labels.medication_reviews.browser.changed }}</div>{% endif %}
+  <details class="card bg-base-100 border border-base-300 mt-6" open><summary class="card-title p-5 cursor-pointer">{{ labels.medication_reviews.view_evidence }}</summary><div class="card-body pt-0"><p class="whitespace-pre-wrap">{{ review.evidence_text }}</p><p>{{ review.match_reason }}</p><a class="link" href="{{ review.evidence_source_url }}" target="_blank" rel="noopener noreferrer">{{ review.evidence_source_name }}</a></div></details>
+  <p class="mt-5 text-sm" data-lease-status aria-live="polite"></p>
+  <div class="alert alert-warning mt-3" data-lease-warning hidden role="alert"><span>{{ labels.medication_reviews.browser.expiring }}</span><button type="button" class="btn btn-sm btn-outline" data-keep-editing>{{ labels.medication_reviews.browser.keep_editing }}</button></div>
+  <form method="post" action="/households/{{ slug }}/medicine-reviews/{{ review.id }}/save" class="card bg-base-100 border border-base-300 mt-6" data-review-form>
+    <div class="card-body space-y-4">
+      <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+      <input type="hidden" name="lease_token" value="{{ lease.token }}">
+      <input type="hidden" name="etag" value="{% if draft.etag %}{{ draft.etag }}{% else %}{{ lease.etag }}{% endif %}">
+      <label class="form-control"><span class="label-text">{{ labels.medication_reviews.form.status }}</span><select class="select select-bordered" name="status">
+        {% for status in ['needs_review','reviewed_with_practitioner','expected_prescribed_combination','not_relevant'] %}<option value="{{ status }}"{% if draft.status == status or (not draft.status and review.status == status) %} selected{% endif %}>{{ labels.medication_reviews.statuses[status] }}</option>{% endfor %}
+      </select></label>
+      <div class="grid gap-4 sm:grid-cols-2"><label class="form-control"><span class="label-text">{{ labels.medication_reviews.form.practitioner_role }}</span><select class="select select-bordered" name="practitioner_role"><option value="">{{ labels.medication_reviews.form.select_role }}</option>{% for role in ['Pharmacist','Nurse','GP','Prescriber','Other'] %}<option value="{{ role }}"{% if (draft.practitioner_role is defined and draft.practitioner_role == role) or (not (draft.practitioner_role is defined) and review.practitioner_role == role) %} selected{% endif %}>{{ role }}</option>{% endfor %}</select></label>
+      <label class="form-control"><span class="label-text">{{ labels.medication_reviews.form.reviewed_on }}</span><input class="input input-bordered" type="date" name="reviewed_on" value="{% if draft.reviewed_on is defined %}{{ draft.reviewed_on }}{% elif review.reviewed_on %}{{ review.reviewed_on }}{% endif %}"></label></div>
+      <label class="form-control"><span class="label-text">{{ labels.medication_reviews.form.practitioner_name }}</span><input class="input input-bordered" type="text" name="practitioner_name" value="{% if draft.practitioner_name is defined %}{{ draft.practitioner_name }}{% elif review.practitioner_name %}{{ review.practitioner_name }}{% endif %}"></label>
+      <label class="form-control"><span class="label-text">{{ labels.medication_reviews.form.review_note }}</span><textarea class="textarea textarea-bordered" rows="4" name="review_note">{% if draft.review_note is defined %}{{ draft.review_note }}{% elif review.review_note %}{{ review.review_note }}{% endif %}</textarea></label>
+      <div class="flex flex-wrap gap-3"><button class="btn btn-primary" type="submit"{% if changed or reacquire %} disabled{% endif %}>{{ labels.medication_reviews.form.save }}</button>
+        {% if changed %}<button class="btn btn-outline" type="button" data-accept-version data-current-etag="{{ review.etag }}">{{ labels.medication_reviews.browser.accept_version }}</button>{% endif %}
+        <button class="btn btn-outline" type="button" data-cancel>{{ labels.medication_reviews.browser.cancel }}</button></div>
+    </div>
+  </form>
+  <form method="post" action="/households/{{ slug }}/medicine-reviews/{{ review.id }}/cancel" data-cancel-form hidden><input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><input type="hidden" name="lease_token" value="{{ lease.token }}"></form>
+  {% if reacquire %}<form method="post" action="/households/{{ slug }}/medicine-reviews/{{ review.id }}/edit" class="mt-4" data-reacquire>
+    <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+    <input type="hidden" name="etag" value="{% if draft.etag %}{{ draft.etag }}{% else %}{{ lease.etag }}{% endif %}">
+    <input type="hidden" name="status" value="{{ draft.status }}">
+    <input type="hidden" name="practitioner_role" value="{{ draft.practitioner_role }}">
+    <input type="hidden" name="practitioner_name" value="{{ draft.practitioner_name }}">
+    <input type="hidden" name="reviewed_on" value="{{ draft.reviewed_on }}">
+    <input type="hidden" name="review_note" value="{{ draft.review_note }}">
+    <button class="btn btn-outline" type="submit">{{ labels.medication_reviews.browser.reacquire }}</button>
+  </form>{% endif %}
+</section>
+<script src="/static/js/review-editor.js" defer></script>
+{% endblock content %}

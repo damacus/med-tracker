@@ -246,6 +246,7 @@ es:
     page_title: Buscar
     page_subtitle: Encuentra registros y accesos directos de MedTracker.
     page_submit: Buscar
+    schedule_for: Programar para %{person}
     results:
       one: 1 resultado
       other: "%{count} resultados"
@@ -1015,6 +1016,25 @@ es:
       option_readonly: "Las existencias y los umbrales de las opciones se gestionan en el editor de la opción."
       invalid_quantity: "Introduzca una cantidad no negativa con un máximo de dos decimales."
       household_inventory: "Inventario del hogar"
+      browser:
+        remaining: "Quedan %{quantity} %{unit}"
+        review_latest: "Revisar las existencias más recientes"
+        changed: "Las existencias cambiaron mientras este formulario estaba abierto. Revise las existencias más recientes antes de guardar."
+    order:
+      browser:
+        back: "Volver al medicamento"
+        title: "Pedir medicamento"
+        supplier: "Proveedor"
+        quantity: "Cantidad del pedido"
+        arrival: "Llegada prevista"
+        mark_ordered: "Marcar como pedido"
+        receive_title: "Recibir un pedido"
+        receipt_hint: "Recibir un pedido no cambia las existencias. Use Ajustar existencias para registrar la cantidad entregada."
+        review_stock: "Revisar existencias"
+        mark_received: "Marcar como recibido"
+        quantity_precision_error: "La cantidad excede la precisión del inventario."
+        quantity_decimal_error: "La cantidad debe ser un número decimal."
+        arrival_date_error: "La fecha de llegada debe ser una fecha ISO."
     dose_dialog:
       ongoing_medication: 'Medicación continua'
       scheduled_treatment: 'Tratamiento programado'
@@ -1186,6 +1206,23 @@ es:
       all: Todos
       view: Ver
       inventory_level: Nivel de Inventario
+      location: Ubicación
+      all_locations: Todas las ubicaciones
+      category: Categoría
+      all_categories: Todas las categorías
+      apply_filters: Aplicar filtros
+      untracked_stock: No se controla el stock.
+      low_stock: Stock bajo
+      edit: Editar
+      edit_medication: Editar %{medication}
+      refill: Reponer
+      refill_medication: Reponer %{medication}
+      empty_filtered: "Ningún medicamento coincide con estos filtros."
+      empty_unfiltered: "No hay medicamentos disponibles en este hogar."
+      scan_description: Escanea un envase o introduce su código de barras para elegir el medicamento y la ubicación antes de añadir stock.
+      find_barcode: Buscar código de barras
+      manual_entry: Introducir medicamento manualmente
+      close_scanner: Cerrar escáner
       units:
         one: unidad
         other: unidades
@@ -1205,6 +1242,61 @@ es:
       submit: Añadir stock escaneado
     show:
       profile: Perfil del Medicamento
+      browser:
+        ordered: Pedido
+        from_supplier: de %{supplier}
+        expected: Previsto
+        last_received: Último pedido recibido
+        refill_inventory: Reponer existencias
+        order_medication: Pedir medicamento
+        no_source: No hay una fuente de medicación disponible.
+        js_required: Para registrar dosis aquí se necesita JavaScript.
+        dose_options: Opciones de dosis
+        default_adults: Predeterminado para adultos
+        default_children: Predeterminado para niños
+        remaining: "Quedan %{amount} %{unit}"
+        manage_dose_options: Gestionar opciones de dosis
+        no_dose_options: No hay opciones de dosis registradas.
+        dose_history: Historial de dosis
+        no_doses: Todavía no se han registrado dosis.
+        standard_dosage: Dosis estándar
+        no_standard_dosage: No se ha registrado una dosis estándar.
+        manage_medication: Gestionar medicamento
+        adjust_stock: Ajustar existencias
+        stock_adjustment_page: Página de ajuste de existencias
+        edit_medication: Editar medicamento
+        delete_medication: Eliminar medicamento
+        add_delivered: Añada las existencias entregadas al suministro actual.
+        latest_stock: Existencias más recientes
+        use_latest: Usar las existencias más recientes
+        dose_option: Opción de dosis
+        choose_dose_option: Elija una opción de dosis
+        quantity_to_add: Cantidad que añadir
+        restock_date: Fecha de reposición
+        cancel: Cancelar
+        add_stock: Añadir existencias
+        current_supply: Existencias actuales
+        new_stock_quantity: Nueva cantidad de existencias
+        reason: Motivo
+        delete: Eliminar
+        reorder_at: Volver a pedir al llegar a %{quantity} %{unit}
+        stock_untracked: Sin seguimiento
+        stock_out: Agotado
+        stock_low: Existencias bajas
+        stock_in: En existencias
+        max_doses:
+          daily:
+            one: Máximo de 1 dosis al día
+            other: Máximo de %{count} dosis al día
+          weekly:
+            one: Máximo de 1 dosis a la semana
+            other: Máximo de %{count} dosis a la semana
+          monthly:
+            one: Máximo de 1 dosis al mes
+            other: Máximo de %{count} dosis al mes
+        minimum_hours:
+          one: Al menos 1 hora entre dosis
+          other: Al menos %{hours} horas entre dosis
       edit_details: Editar Detalles
       inventory: Inventario
       add_schedule: Programar
@@ -1272,6 +1364,13 @@ es:
       location_label: Ubicación del inventario
       all_locations: Todas las ubicaciones
       selected: "%{count} seleccionados"
+      unit_names:
+        tablet:
+          one: comprimido
+          other: comprimidos
+        capsule:
+          one: cápsula
+          other: cápsulas
       clear_selection: Borrar selección
       in_stock: En stock
       low_stock: Stock bajo
@@ -1287,7 +1386,9 @@ es:
       empty_title: Ningún medicamento seleccionado
       empty_description: Elija medicamentos de la lista para preparar un lote de ajustes.
       set_to_zero: Establecer en cero
+      set_to_zero_for: Establecer en cero para %{medication}
       remove_from_batch: Quitar %{medication} del lote de ajustes
+      remove_short: Quitar
       reason: Motivo de los ajustes
       reasons:
         house_stock_check: Comprobación de existencias del hogar
@@ -1305,6 +1406,10 @@ es:
       decrease: Disminución
       no_change: Sin cambios
       dosage_not_set: Dosis no definida
+      errors:
+        invalid: Revise las cantidades seleccionadas e inténtelo de nuevo. Cada cantidad debe ser un número no negativo.
+        stale: Las existencias cambiaron mientras contaba. Revise las cantidades actuales e inténtelo de nuevo.
+        unavailable: No se pudo guardar la comprobación. Sus cantidades siguen aquí; inténtelo de nuevo.
       success:
         one: Se actualizó el suministro restante de %{count} medicamento.
         other: Se actualizó el suministro restante de %{count} medicamentos.
@@ -1365,6 +1470,42 @@ es:
     show:
       edit_person: Editar Persona
       add_medication: Agregar Medicamento
+      current_medications: Medicamentos actuales
+      browser:
+        stock_untracked: "Existencias sin seguimiento"
+        stock_remaining: "%{amount} en existencias"
+        from: "Desde"
+        until: "Hasta"
+        timing:
+          every_other_day: "Cada dos días"
+          multiple_daily: "Varias veces al día"
+          weekly: "Semanal"
+          monthly: "Mensual"
+          specific_dates: "En fechas concretas"
+          prn: "Según sea necesario"
+          tapering: "Plan de reducción"
+          daily: "Diario"
+          empty: ""
+        avatar_for: "Avatar de %{person}"
+        age: Edad
+        paused: En pausa
+        active: Activo
+        outside_dates: Fuera de las fechas programadas
+        pause: Pausa
+        pause_history: Historial de pausas
+        to: a
+        dose_records: Registros de dosis
+        edit_treatment: Editar tratamiento
+        empty_current: No hay medicamentos actuales registrados para %{person}.
+        manage_treatments: Gestionar tratamientos
+        view_treatments: Ver tratamientos
+        add_schedule: Añadir horario
+        assign_medication: Asignar medicamento
+        carer_relationships: Relaciones de cuidadores
+        profile_details: Datos del perfil
+        not_recorded: No registrado
+        yes: "Sí"
+        no: "No"
       manage_parents: Gestionar padres
       health_events: Eventos de salud
       back: Volver
@@ -1923,6 +2064,7 @@ es:
       mfa_required: Completa la autenticación de dos factores antes de crear un token de API.
     appearance:
       title: Apariencia
+      close: Cerrar
       description: Elige cómo se ve MedTracker en pantallas autenticadas y públicas.
       mode_label: Modo
       modes:
@@ -2059,6 +2201,8 @@ es:
         con nosotros.
     navigation:
       skip_to_content: Saltar al contenido
+      home_link: Inicio de MedTracker
+      care_tagline: Cuidado, juntos.
       brand: MedTracker
       login: Iniciar sesión
     desktop_nav:
@@ -2117,6 +2261,8 @@ es:
     hide_hidden: Ocultar elementos filtrados
     empty_title: No hay revisiones de medicamentos que mostrar
     empty_description: Ningún par de evidencias revisado coincide con los medicamentos activos de los registros del hogar seleccionado.
+    filter_empty_title: Ninguna revisión de medicamentos coincide con estos filtros.
+    filter_empty_description: Hay otras revisiones disponibles. Borra los filtros para verlas.
     review_reason: La evidencia pública de las etiquetas sugiere que puede ser útil revisar esta combinación con un farmacéutico, enfermero, médico de cabecera o prescriptor.
     view_evidence: Ver evidencia
     summaries:
@@ -2129,6 +2275,7 @@ es:
       priority: Prioridad
       include_filtered: Incluir elementos filtrados
       apply: Aplicar filtros
+      clear: Borrar filtros
       review_statuses:
         needs_review: Pendientes de revisión
         reviewed: Revisados
@@ -2188,6 +2335,22 @@ es:
       reviewed_on: Fecha de revisión
       review_note: Nota de revisión
       save: Guardar registro de revisión
+    browser:
+      review_status: Estado de la revisión
+      filtered_items: elementos de revisión de menor confianza
+      edit: Editar revisión
+      history: Revisiones anteriores
+      no_history: No se ha registrado ninguna revisión anterior.
+      pages: Páginas de revisión
+      previous: Página anterior
+      next: Página siguiente
+      changed: La revisión cambió mientras la editabas. Comprueba la evidencia actual antes de guardar.
+      expiring: El tiempo de edición está a punto de terminar. Tu borrador permanecerá aquí.
+      keep_editing: Seguir editando
+      expired: El tiempo de edición terminó. Tu borrador sigue aquí. Recupera la edición antes de guardar.
+      accept_version: Usar la evidencia actual y conservar mi borrador
+      cancel: Cancelar
+      reacquire: Recuperar la edición
   forms:
     locations:
       new_title: Nueva ubicación
@@ -2227,6 +2390,32 @@ es:
       current_supply_placeholder: e.g., 30
       reorder_threshold_placeholder: e.g., 5
       wizard:
+        browser:
+          as_directed: "Según las indicaciones"
+          matching_medicines: "Medicamentos coincidentes"
+          choose_medicine_location: "Elija el medicamento y la ubicación"
+          refill_at: "Reponer %{name} en %{location}"
+          created_title: "Medicamento creado"
+          created_heading: "¡Se creó %{name}!"
+          created_description: "Se ha guardado el medicamento. Puede gestionar sus opciones de dosis o volver al medicamento."
+          saved_options: "Opciones de dosis guardadas"
+          done: "Listo"
+          cancel: Cancelar
+          person: Persona
+          no_person_plan: Sin plan para una persona
+          frequency: Frecuencia
+          weekly_day: Día semanal
+          specific_date: Fecha específica
+          frequency_weekly: Una vez por semana
+          dose_option: Opción de dosis %{number}
+          remove_dose_option: Quitar opción de dosis %{number}
+          date_range: "%{start} a %{end}"
+          first_dose_time: Hora de la primera dosis
+          second_dose_time: Hora de la segunda dosis
+          weekly_time: Hora semanal
+          maximum_daily_doses: Máximo de dosis diarias
+          add_dose_option: Añadir opción de dosis
+          pack_warning: Revise las instrucciones del envase antes de guardar este medicamento.
         progress_label: Progreso de configuración del medicamento
         continue: Continuar
         steps:
@@ -2499,6 +2688,13 @@ es:
         password_confirmation: Confirmar contraseña
         submit: Crear cuenta
   medication_workflow:
+    chooser:
+      back: Volver a medicamentos
+      title: Elige una persona
+      subtitle: Elige de quién quieres gestionar la medicación.
+      assign: Asignar medicamento a %{person}
+      create: Crear medicamento para %{person}
+      empty: No hay personas disponibles para gestionar la medicación.
     person_selection:
       title: Añadir medicamento
       subtitle: "¿Para quién es este medicamento?"

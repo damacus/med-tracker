@@ -25,6 +25,7 @@ pub(super) async fn adjust(
         let has_options = dosage::Entity::find()
             .in_tenant(tenant.scope().household_id)
             .filter(dosage::Column::MedicationId.eq(found.id))
+            .filter(dosage::Column::CurrentSupply.is_not_null())
             .one(db)
             .await
             .map_err(database_error)?

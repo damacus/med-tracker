@@ -18,7 +18,7 @@ fn person_carer_pages_render_in_every_supported_locale() {
                 let data = json!({
                     "slug":"synthetic-household","person":{"id":73002,"name":"Synthetic minor"},
                     "lang":locale,"title":labels["people"]["carer_relationships"]["new_title"],
-                    "labels":labels["people"]["carer_relationships"],
+                    "labels":labels,"carer_labels":labels["people"]["carer_relationships"],
                     "back_label":labels["people"]["show"]["back"],
                     "care_warning_labels":labels["care_warning"],
                     "care_warning":{"person_id":73002,"person_name":"Synthetic minor","can_assign":true},

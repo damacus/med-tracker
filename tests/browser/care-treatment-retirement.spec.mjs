@@ -9,7 +9,7 @@ test('retirement and unassignment preserve existing clinical history through rea
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.goto('/households/persistence-fixture/medications/80001');
-  await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
+  await page.getByRole('button', { name: 'Record dose', exact: true }).click();
   const record = page.getByRole('form', { name: /Synthetic adult.*Synthetic tablets.*2 tablets.*Ongoing medication/ });
   const authenticity_token = await record.locator('input[name="authenticity_token"]').inputValue();
   await record.getByRole('button', { name: 'Record dose', exact: true }).click();

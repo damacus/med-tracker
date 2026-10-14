@@ -1,5 +1,7 @@
 use loco_rs::model::TenantQueryExt;
+pub(crate) mod edit;
 pub(crate) mod evidence;
+pub mod refresh;
 
 use crate::models::{
     access::{self, TenantTransaction},
@@ -9,8 +11,8 @@ use crate::models::{
 };
 use chrono::{NaiveDate, Utc};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, Condition, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
-    QuerySelect, Set,
+    ActiveModelTrait, ColumnTrait, Condition, ConnectionTrait, DatabaseTransaction, DbBackend,
+    EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, Set, Statement,
 };
 use serde_json::{Value, json};
 use std::collections::{HashMap, HashSet};
@@ -64,6 +66,7 @@ pub struct ListQuery {
     pub review_status: Option<String>,
     pub priority: Option<String>,
     pub show_hidden: Option<String>,
+    pub updated: Option<String>,
 }
 
 pub struct Filters {
@@ -150,9 +153,19 @@ pub async fn index(
             review_prompt::Column::PersonId
                 .in_subquery(access::granted_people(tenant.membership())),
         );
+    let hidden_count = query
+        .clone()
+        .filter(review_prompt::Column::Status.eq("hidden_low_signal"))
+        .count(tenant.transaction())
+        .await?;
     if !filters.show_hidden {
         query = query.filter(review_prompt::Column::Status.ne("hidden_low_signal"));
     }
+    let review_counts = json!({
+        "needs_review": query.clone().filter(review_prompt::Column::Status.eq("needs_review")).count(tenant.transaction()).await? + if filters.show_hidden { hidden_count } else { 0 },
+        "reviewed": query.clone().filter(review_prompt::Column::Status.is_not_in(["needs_review", "hidden_low_signal"])).count(tenant.transaction()).await?,
+        "all": query.clone().count(tenant.transaction()).await?,
+    });
     query = match filters.review_status.as_str() {
         "needs_review" if filters.show_hidden => {
             query.filter(review_prompt::Column::Status.is_in(["needs_review", "hidden_low_signal"]))
@@ -183,7 +196,10 @@ pub async fn index(
         .await?;
     Ok(
         json!({"data": rows.iter().map(value).collect::<Vec<_>>(), "meta": {
-            "page": filters.page, "per_page": filters.size, "total_count": total
+            "page": filters.page, "per_page": filters.size, "total_count": total,
+            "hidden_count": hidden_count, "review_counts": review_counts,
+            "active_status": filters.review_status, "active_priority": filters.priority,
+            "show_hidden": filters.show_hidden
         }}),
     )
 }
@@ -194,13 +210,27 @@ pub async fn show(tenant: &TenantTransaction, id: &str) -> Result<(Value, String
     if !sync::review_prompts::actor_adult(tenant.transaction(), &context).await? {
         return Err(OperationError::Forbidden);
     }
+    sync::lock(tenant).await?;
+    if !sync::review_prompts::actor_adult(tenant.transaction(), &context).await? {
+        return Err(OperationError::Forbidden);
+    }
     let Some(record) =
         sync::review_prompts::visible_prompt(tenant.transaction(), &context, id).await?
     else {
         return Err(OperationError::NotFound);
     };
+    refresh(
+        tenant,
+        record.person_id,
+        today_in_app_zone(tenant.settings()),
+    )
+    .await?;
+    let record = sync::review_prompts::visible_prompt(tenant.transaction(), &context, id)
+        .await?
+        .ok_or(OperationError::NotFound)?;
+    let history = edit::history(tenant, &record).await?;
     Ok((
-        json!({"data": value(&record)}),
+        json!({"data": value(&record),"history":history}),
         sync::review_prompts::tag(&record),
     ))
 }
@@ -223,6 +253,7 @@ pub async fn refresh_many(
     }
     let db = tenant.transaction();
     let household_id = tenant.scope().household_id;
+    reconcile_existing(tenant, person_ids).await?;
     let assignments = person_medication::Entity::find()
         .in_tenant(household_id)
         .filter(person_medication::Column::PersonId.is_in(person_ids.to_vec()))
@@ -317,7 +348,7 @@ pub async fn refresh_many(
                         continue;
                     }
                     let now = Utc::now().naive_utc();
-                    review_prompt::ActiveModel {
+                    let created = review_prompt::ActiveModel {
                         household_id: Set(household_id),
                         person_id: Set(person_id),
                         primary_medication_id: Set(primary.id),
@@ -356,9 +387,238 @@ pub async fn refresh_many(
                     }
                     .insert(db)
                     .await?;
+                    db.execute_raw(Statement::from_sql_and_values(
+                        DbBackend::Postgres,
+                        "UPDATE medication_review_prompts p SET evidence_source_fingerprint=md5(jsonb_build_array(e.source_name,e.source_url,e.source_version,e.source_effective_on,e.evidence_text,e.risk_level,e.match_confidence)::text) FROM medication_review_evidence_records e WHERE p.id=$1 AND e.id=p.evidence_record_id",
+                        [created.id.into()],
+                    )).await?;
                 }
             }
         }
     }
+    Ok(())
+}
+
+async fn reconcile_existing(
+    tenant: &TenantTransaction,
+    person_ids: &[i64],
+) -> Result<(), OperationError> {
+    reconcile(
+        tenant.transaction(),
+        tenant.scope().household_id,
+        Some(person_ids),
+    )
+    .await
+}
+
+pub(crate) async fn reconcile_person(
+    tenant: &TenantTransaction,
+    person_id: i64,
+) -> Result<(), OperationError> {
+    reconcile_existing(tenant, &[person_id]).await
+}
+
+pub(crate) async fn reconcile_household(
+    db: &DatabaseTransaction,
+    household_id: i64,
+) -> Result<(), OperationError> {
+    reconcile(db, household_id, None).await
+}
+
+async fn reconcile(
+    db: &DatabaseTransaction,
+    household_id: i64,
+    person_ids: Option<&[i64]>,
+) -> Result<(), OperationError> {
+    let person_filter = person_ids.map_or_else(String::new, |ids| {
+        let ids = ids.iter().map(i64::to_string).collect::<Vec<_>>().join(",");
+        format!("AND p.person_id IN ({ids})")
+    });
+    let changed = format!(
+        "SELECT p.id,p.evidence_source_fingerprint IS DISTINCT FROM
+             md5(jsonb_build_array(e.source_name,e.source_url,e.source_version,
+                 e.source_effective_on,e.evidence_text,e.risk_level,e.match_confidence)::text)
+             AS source_changed FROM medication_review_prompts p
+         JOIN medication_review_evidence_records e ON e.id=p.evidence_record_id
+         WHERE p.household_id=$1 {person_filter} AND p.evidence_source_fingerprint IS NOT NULL
+         FOR UPDATE OF p"
+    );
+    let rows = db
+        .query_all_raw(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            changed,
+            [household_id.into()],
+        ))
+        .await?;
+    let mut source_changes = HashMap::new();
+    for row in rows {
+        source_changes.insert(
+            row.try_get::<i64>("", "id")?,
+            row.try_get::<bool>("", "source_changed")?,
+        );
+    }
+    if !source_changes.is_empty() {
+        let prompts = review_prompt::Entity::find()
+            .in_tenant(household_id)
+            .filter(review_prompt::Column::Id.is_in(source_changes.keys().copied()))
+            .all(db)
+            .await?;
+        let medication_ids: HashSet<i64> = prompts
+            .iter()
+            .flat_map(|prompt| {
+                [
+                    prompt.primary_medication_id,
+                    prompt.interacting_medication_id,
+                ]
+            })
+            .collect();
+        let medications: HashMap<i64, medication::Model> = medication::Entity::find()
+            .in_tenant(household_id)
+            .filter(medication::Column::Id.is_in(medication_ids))
+            .all(db)
+            .await?
+            .into_iter()
+            .map(|row| (row.id, row))
+            .collect();
+        let evidence_rows = review_evidence::Entity::find()
+            .order_by_asc(review_evidence::Column::Id)
+            .all(db)
+            .await?;
+        let evidence: Vec<_> = evidence_rows
+            .iter()
+            .filter(|row| matches!(row.match_status.as_str(), "unreviewed" | "reviewed_pair"))
+            .cloned()
+            .collect();
+        let sql = format!(
+        "WITH changed AS (
+            SELECT p.id,p.household_id,
+                (to_jsonb(p) - 'household_id' - 'created_at' - 'evidence_source_fingerprint') ||
+                jsonb_build_object(
+                    'id',p.id::text,
+                    'person_id',p.person_id::text,
+                    'primary_medication_id',p.primary_medication_id::text,
+                    'interacting_medication_id',p.interacting_medication_id::text,
+                    'evidence_record_id',p.evidence_record_id::text,
+                    'reviewed_by_membership_id',p.reviewed_by_membership_id::text,
+                    'updated_at',to_char(p.updated_at,'YYYY-MM-DD') || 'T' || to_char(p.updated_at,'HH24:MI:SS.US') || '+00:00',
+                    'etag',chr(34) || encode(public.digest(
+                        'MedicationReviewPrompt:' || p.id::text || ':' ||
+                        floor(extract(epoch from p.updated_at))::bigint::text || '.' ||
+                        to_char(p.updated_at,'US'),'sha256'),'hex') || chr(34)
+                ) AS snapshot
+            FROM medication_review_prompts p
+            JOIN medication_review_evidence_records e ON e.id=p.evidence_record_id
+            WHERE p.household_id=$1 AND p.id=$2 {person_filter} AND p.evidence_source_fingerprint IS NOT NULL
+            FOR UPDATE OF p
+        ), archived AS (
+            INSERT INTO medication_review_histories (household_id,prompt_id,event_type,snapshot)
+            SELECT household_id,id,'evidence',snapshot FROM changed RETURNING prompt_id
+        ), audited AS (
+            INSERT INTO security_audit_events (household_id,event_type,request_id,audit_context,metadata,created_at,updated_at)
+            SELECT household_id,'medication_review_prompt.evidence_refreshed','medication-review-refresh',
+                '{{}}'::jsonb,jsonb_build_object('prompt_id',id),
+                timezone('UTC',clock_timestamp()),timezone('UTC',clock_timestamp()) FROM changed
+            RETURNING id
+        ) UPDATE medication_review_prompts p SET
+            evidence_source_name=e.source_name,evidence_source_url=e.source_url,
+            evidence_source_version=COALESCE(e.source_version,'unknown'),
+            evidence_source_effective_on=COALESCE(e.source_effective_on,e.retrieved_on),
+            evidence_text=$3,evidence_source_checked_on=e.retrieved_on,
+            evidence_source_fingerprint=md5(jsonb_build_array(e.source_name,e.source_url,
+                e.source_version,e.source_effective_on,e.evidence_text,e.risk_level,e.match_confidence)::text),
+            matched_term=$4,match_type=$5,source_instruction=$6,match_reason=$7,
+            risk_level=$8,match_confidence=$9,status=$10,
+            practitioner_name=NULL,practitioner_role=NULL,reviewed_on=NULL,
+            review_note=NULL,reviewed_by_membership_id=NULL,
+            updated_at=timezone('UTC',clock_timestamp())
+        FROM medication_review_evidence_records e,archived a
+        WHERE p.id=a.prompt_id AND e.id=p.evidence_record_id"
+        );
+        for prompt in prompts {
+            let matched = medications
+                .get(&prompt.primary_medication_id)
+                .zip(medications.get(&prompt.interacting_medication_id))
+                .and_then(|(first, second)| {
+                    evidence::matches(&display_name(first), &display_name(second), &evidence)
+                        .into_iter()
+                        .find(|candidate| {
+                            candidate.evidence.id == prompt.evidence_record_id
+                                && candidate.primary_is_first
+                        })
+                });
+            let supported = matched.is_some();
+            let (text, term, match_type, instruction, reason, risk, confidence, status) =
+                if let Some(matched) = matched {
+                    let status = if matched.risk == "low" || matched.confidence == "low" {
+                        "hidden_low_signal"
+                    } else {
+                        "needs_review"
+                    };
+                    (
+                        matched.excerpt,
+                        matched.matched_term,
+                        matched.match_type.to_owned(),
+                        matched.instruction.to_owned(),
+                        matched.reason,
+                        matched.risk,
+                        matched.confidence,
+                        status.to_owned(),
+                    )
+                } else {
+                    let text = evidence_rows
+                        .iter()
+                        .find(|row| row.id == prompt.evidence_record_id)
+                        .map(|row| row.evidence_text.clone())
+                        .unwrap_or_else(|| prompt.evidence_text.clone());
+                    (
+                        text,
+                        "No current match".to_owned(),
+                        "unsupported".to_owned(),
+                        "unclassified".to_owned(),
+                        "Updated evidence no longer identifies this medicine pair.".to_owned(),
+                        "unknown".to_owned(),
+                        "low".to_owned(),
+                        "hidden_low_signal".to_owned(),
+                    )
+                };
+            let equivalent = prompt.evidence_text == text
+                && prompt.matched_term == term
+                && prompt.match_type == match_type
+                && prompt.source_instruction == instruction
+                && prompt.match_reason == reason
+                && prompt.risk_level == risk
+                && prompt.match_confidence == confidence
+                && (supported || prompt.status == "hidden_low_signal");
+            if !source_changes[&prompt.id] && equivalent {
+                continue;
+            }
+            db.execute_raw(Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                sql.clone(),
+                [
+                    household_id.into(),
+                    prompt.id.into(),
+                    text.into(),
+                    term.into(),
+                    match_type.into(),
+                    instruction.into(),
+                    reason.into(),
+                    risk.into(),
+                    confidence.into(),
+                    status.into(),
+                ],
+            ))
+            .await?;
+        }
+    }
+    let checked = format!(
+        "UPDATE medication_review_prompts p SET evidence_source_checked_on=e.retrieved_on FROM medication_review_evidence_records e WHERE p.household_id=$1 {person_filter} AND e.id=p.evidence_record_id AND p.evidence_source_checked_on IS DISTINCT FROM e.retrieved_on"
+    );
+    db.execute_raw(Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        checked,
+        [household_id.into()],
+    ))
+    .await?;
     Ok(())
 }

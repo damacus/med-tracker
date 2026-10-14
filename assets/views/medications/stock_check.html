@@ -1,0 +1,69 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+{% set stock = labels.medications.stock_check %}
+<section class="mx-auto max-w-7xl px-4 py-8">
+  <header class="border-b border-base-300 pb-7">
+    <p class="text-xs font-bold uppercase tracking-widest text-primary">{{ stock.mode }}</p>
+    <h1 class="mt-2 text-4xl font-bold">{{ stock.title }}</h1>
+    <p class="mt-2 text-base-content/70">{{ stock.description }}</p>
+  </header>
+  {% if error %}<p role="alert" class="alert alert-error mt-5" tabindex="-1" data-stock-check-error>{{ error }}</p>{% endif %}
+  <form action="/households/{{ slug }}/medications/stock-check" method="get" class="mt-7">
+    <label class="grid max-w-xs gap-2" for="stock-check-location">{{ stock.location_label }}
+      <select id="stock-check-location" class="select w-full" name="location_id">
+        <option value="">{{ stock.all_locations }}</option>
+        {% for location in locations %}<option value="{{ location.id }}" {% if current_location_id == location.id %}selected{% endif %}>{{ location.name }}</option>{% endfor %}
+      </select>
+    </label>
+    <button class="btn btn-outline mt-3" type="submit">{{ labels.medications.index.view }}</button>
+  </form>
+  <div class="mt-8 grid items-start gap-6 lg:grid-cols-[minmax(18rem,0.85fr)_minmax(0,1.4fr)]">
+    <section class="card border border-base-300 bg-base-100"><div class="card-body">
+      <h2 class="card-title">{{ stock.choose_title }}</h2>
+      <p class="grow-0 text-sm text-base-content/70">{{ stock.choose_description }}</p>
+      <div class="flex items-center justify-between gap-3"><p data-stock-check-selected data-template="{{ stock.selected }}">{{ stock.selected | replace(from="%{count}", to=selected_count_label) }}</p><button type="button" class="btn btn-ghost btn-sm" data-stock-check-clear>{{ stock.clear_selection }}</button></div>
+      <p class="sr-only" role="status" aria-live="polite" aria-atomic="true" data-stock-check-status></p>
+      <label class="grid gap-2" for="stock-check-search">{{ stock.search_label }}<input id="stock-check-search" class="input w-full" type="search" placeholder="{{ stock.search_placeholder }}" data-stock-check-search></label>
+      <div class="mt-3 divide-y divide-base-300" data-stock-check-list>
+        {% for row in rows %}
+        <label class="flex min-h-20 items-center gap-3 py-3" data-stock-check-name="{{ row.medication_name }} {% if row.strength %}{{ row.strength }}{% endif %}">
+          <input class="checkbox checkbox-primary shrink-0" type="checkbox" value="{{ row.key }}" data-stock-check-select {% if row.selected %}checked{% endif %} {% if not row.adjustable %}disabled{% endif %}>
+          <span class="min-w-0 flex-1"><strong class="block">{{ row.medication_name }}</strong>{% if row.strength %}<span class="block text-sm">{{ row.strength }}</span>{% endif %}<span class="block text-xs text-base-content/60">{{ row.location_name }}</span></span>
+          <span class="text-sm font-semibold">{% if row.quantity != null %}{{ row.quantity }} {{ row.display_unit }}{% else %}—{% endif %}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </div></section>
+    <section class="card border border-base-300 bg-base-100"><div class="card-body">
+      <h2 class="card-title">{{ stock.batch_title }}</h2>
+      <p class="grow-0 text-sm text-base-content/70">{{ stock.batch_description }}</p>
+      <form method="post" action="/households/{{ slug }}/medications/stock-check{% if current_location_id %}?location_id={{ current_location_id }}{% endif %}" class="pb-28 lg:pb-0" data-stock-check-form>
+        <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+        <div data-stock-check-batch>
+          <p data-stock-check-empty {% if selected_count > 0 %}hidden{% endif %}>{{ stock.empty_description }}</p>
+          {% for row in rows %}
+          {% if row.adjustable %}
+          <div class="{% if not row.selected %}hidden {% endif %}border-b border-base-300 py-3" data-stock-check-entry="{{ row.key }}" data-stock-check-current="{% if row.quantity != null %}{{ row.quantity }}{% endif %}" data-stock-check-unit="{{ row.unit }}" data-stock-check-unit-one="{{ row.unit_one }}" data-stock-check-unit-other="{{ row.unit_other }}">
+            <p class="font-semibold">{{ row.medication_name }}{% if row.strength %} · {{ row.strength }}{% endif %}</p>
+            <p class="text-sm text-base-content/60">{{ row.location_name }} · {{ stock.current }}: {% if row.quantity != null %}{{ row.quantity }} {{ row.display_unit }}{% else %}—{% endif %}</p>
+            <input type="hidden" name="snapshot_{{ row.key }}" value="{{ row.snapshot }}" {% if not row.selected %}disabled{% endif %}>
+            <label class="mt-2 grid gap-2" for="stock-check-quantity-{{ row.key }}">{{ stock.new_supply_for | replace(from="%{medication}", to=row.label) }}
+              <input id="stock-check-quantity-{{ row.key }}" class="input w-full" type="number" min="0" max="99999999.99" step="0.01" name="quantity_{{ row.key }}" value="{% if row.selected %}{{ row.new_quantity }}{% else %}{{ row.quantity | default(value='0') }}{% endif %}" {% if not row.selected %}disabled{% endif %} required>
+            </label>
+            <p class="mt-2 text-sm">{{ stock.difference }}: <span data-stock-check-difference>—</span></p>
+            <div class="mt-2 flex flex-wrap gap-2"><button type="button" class="btn btn-ghost btn-sm" data-stock-check-zero aria-label="{{ stock.set_to_zero_for | replace(from="%{medication}", to=row.label) }}">{{ stock.set_to_zero }}</button><button type="button" class="btn btn-ghost btn-sm" data-stock-check-remove aria-label="{{ stock.remove_from_batch | replace(from="%{medication}", to=row.label) }}">{{ stock.remove_short }}</button></div>
+          </div>
+          {% endif %}
+          {% endfor %}
+        </div>
+        <label class="mt-4 grid gap-2" for="stock-check-reason">{{ stock.reason }}<select id="stock-check-reason" name="reason" class="select w-full"><option value="house_stock_check" {% if reason == 'house_stock_check' %}selected{% endif %}>{{ stock.reasons.house_stock_check }}</option><option value="manual_correction" {% if reason == 'manual_correction' %}selected{% endif %}>{{ stock.reasons.manual_correction }}</option><option value="damaged_or_disposed" {% if reason == 'damaged_or_disposed' %}selected{% endif %}>{{ stock.reasons.damaged_or_disposed }}</option><option value="other" {% if reason == 'other' %}selected{% endif %}>{{ stock.reasons.other }}</option></select></label>
+        <div class="fixed inset-x-4 bottom-20 z-30 mt-4 rounded-box border border-base-300 bg-base-100 p-3 shadow-lg lg:static" data-stock-check-summary>
+          <p class="text-sm font-semibold">{{ stock.net_change }}: <span data-stock-check-net>—</span></p>
+          <div class="mt-2 flex items-center justify-between gap-2"><button type="button" class="btn btn-ghost btn-sm" data-stock-check-clear>{{ stock.clear_batch }}</button><button class="btn btn-primary" type="submit" {% if selected_count == 0 %}disabled{% endif %} data-stock-check-submit data-one="{{ stock.apply.one }}" data-other="{{ stock.apply.other }}">{% if selected_count <= 1 %}{{ stock.apply.one }}{% else %}{{ stock.apply.other | replace(from="%{count}", to=selected_count_label) }}{% endif %}</button></div>
+        </div>
+      </form>
+    </div></section>
+  </div>
+</section>
+<script src="/static/js/stock-check.js" defer></script>
+{% endblock content %}

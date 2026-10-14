@@ -1,5 +1,5 @@
 use crate::models::care::{
-    browser_query::{Detail, MedicationCard},
+    browser_query::{Detail, Inventory},
     medications::StockSnapshot,
 };
 use crate::models::errors::OperationError;
@@ -49,13 +49,36 @@ pub fn index(
     view: &TeraView,
     token: &CsrfToken,
     slug: &str,
-    medications: &[MedicationCard],
+    page: IndexPage<'_>,
+    locale: &str,
+    labels: Value,
     permissions: IndexPermissions,
 ) -> Response {
+    let IndexPage {
+        inventory,
+        location_id,
+        category,
+    } = page;
     let mut data = appearance_context();
-    data["title"] = json!("Medications");
     data["slug"] = json!(slug);
-    data["medications"] = json!(medications);
+    data["lang"] = json!(locale);
+    data["labels"] = labels;
+    data["title"] = data["labels"]["medications"]["index"]["title"].clone();
+    data["medications"] = json!(inventory.medications.iter().map(|medication| json!({
+        "id":medication.id,
+        "name":medication.name,
+        "description":medication.description,
+        "location_name":medication.location_name,
+        "category":medication.category,
+        "quantity":medication.quantity,
+        "quantity_label":medication.quantity.as_deref().map(|value|format!("{} {}",value,unit_label(&medication.unit,value))),
+        "low_stock":medication.low_stock,
+        "out_of_stock":medication.out_of_stock,
+    })).collect::<Vec<_>>());
+    data["locations"] = json!(inventory.locations);
+    data["categories"] = json!(inventory.categories);
+    data["current_location_id"] = json!(location_id);
+    data["current_category"] = json!(category);
     data["can_create"] = json!(permissions.create);
     data["can_adjust"] = json!(permissions.adjust);
     data["can_assign"] = json!(permissions.assign);
@@ -68,6 +91,12 @@ pub struct IndexPermissions {
     pub adjust: bool,
     pub assign: bool,
     pub manage: bool,
+}
+
+pub struct IndexPage<'a> {
+    pub inventory: Inventory,
+    pub location_id: Option<i64>,
+    pub category: Option<&'a str>,
 }
 
 pub fn detail(
@@ -213,6 +242,7 @@ fn detail_with_state(
         Ok(data) => data,
         Err(_) => return super::unavailable(),
     };
+    let labels = data["labels"].clone();
     data["etag"] = json!(detail.stock.etag);
     if let Some((draft, error)) = refill_failure {
         data["refill_open"] = json!(true);
@@ -286,29 +316,53 @@ fn detail_with_state(
             format!("{} {}", amount, unit_label(unit, &amount))
         })
     }));
-    data["reorder_label"] = json!(format!(
-        "Reorder at {} {}",
-        medication.reorder_threshold.normalize(),
-        unit_label(
-            medication.dose_unit.as_deref().unwrap_or("units"),
-            &medication.reorder_threshold.normalize().to_string()
-        )
-    ));
-    data["stock_status"] = json!(if medication.current_supply.is_none() {
-        "Supply not tracked"
+    let threshold = medication.reorder_threshold.normalize().to_string();
+    let threshold_unit = unit_label(
+        medication.dose_unit.as_deref().unwrap_or("units"),
+        &threshold,
+    );
+    data["reorder_label"] = json!(
+        labels["medications"]["show"]["browser"]["reorder_at"]
+            .as_str()
+            .unwrap_or_default()
+            .replace("%{quantity}", &threshold)
+            .replace("%{unit}", &threshold_unit)
+    );
+    let status_key = if medication.current_supply.is_none() {
+        "stock_untracked"
     } else if detail.stock.representation["data"]["out_of_stock"] == true {
-        "Out of stock"
+        "stock_out"
     } else if detail.stock.representation["data"]["low_stock"] == true {
-        "Low stock"
+        "stock_low"
     } else {
-        "In stock"
-    });
+        "stock_in"
+    };
+    data["stock_status"] = labels["medications"]["show"]["browser"][status_key].clone();
+    data["stock_tracked"] = json!(medication.current_supply.is_some());
+    if medication.current_supply.is_none() {
+        data["quantity"] = labels["medications"]["show"]["browser"]["stock_untracked"].clone();
+        data["unit"] = json!("");
+    }
     data["low_stock"] = detail.stock.representation["data"]["low_stock"].clone();
     data["out_of_stock"] = detail.stock.representation["data"]["out_of_stock"].clone();
     data["days_until_low_stock"] =
         detail.stock.representation["data"]["days_until_low_stock"].clone();
     data["days_until_out_of_stock"] =
         detail.stock.representation["data"]["days_until_out_of_stock"].clone();
+    for (field, source, key) in [
+        ("low_forecast_label", "days_until_low_stock", "low_in_days"),
+        (
+            "empty_forecast_label",
+            "days_until_out_of_stock",
+            "empty_in_days",
+        ),
+    ] {
+        if let Some(days) = data[source].as_i64()
+            && let Some(template) = labels["medications"]["show"]["forecast"][key].as_str()
+        {
+            data[field] = json!(template.replace("%{days}", &days.to_string()));
+        }
+    }
     data["reorder_status"] = detail.stock.representation["data"]["reorder_status"].clone();
     data["order_supplier"] = json!(medication.order_supplier);
     data["order_quantity"] = json!(
@@ -335,17 +389,22 @@ fn detail_with_state(
     data["dose_options"] = json!(detail.dose_options.iter().map(|option| {
         let amount = option.amount.normalize().to_string();
         let supply = option.current_supply.map(|value| value.normalize().to_string());
-        let cycle = match option.default_dose_cycle { 1 => "week", 2 => "month", _ => "day" };
-        let maximum = (option.default_max_daily_doses > 0).then(|| format!(
-            "Maximum {} {} a {}",
-            option.default_max_daily_doses,
-            if option.default_max_daily_doses == 1 { "dose" } else { "doses" },
-            cycle,
-        ));
+        let cycle = match option.default_dose_cycle { 1 => "weekly", 2 => "monthly", _ => "daily" };
+        let maximum = (option.default_max_daily_doses > 0).then(|| {
+            labels["medications"]["show"]["browser"]["max_doses"][cycle]
+                [if option.default_max_daily_doses == 1 { "one" } else { "other" }]
+                .as_str()
+                .unwrap_or_default()
+                .replace("%{count}", &option.default_max_daily_doses.to_string())
+        });
         let spacing = (option.default_min_hours_between_doses > sea_orm::prelude::Decimal::ZERO)
             .then(|| {
                 let hours = option.default_min_hours_between_doses.normalize().to_string();
-                format!("At least {} {} between doses", hours, if hours == "1" { "hour" } else { "hours" })
+                labels["medications"]["show"]["browser"]["minimum_hours"]
+                    [if hours == "1" { "one" } else { "other" }]
+                    .as_str()
+                    .unwrap_or_default()
+                    .replace("%{hours}", &hours)
             });
         json!({
             "id": option.id,
@@ -406,6 +465,8 @@ pub(crate) fn dose_context(
         dose_draft,
         dose_error.map(super::forms::message),
     );
+    data["lang"] = json!(language);
+    data["labels"] = labels.clone();
     data["dose_lang"] = json!(language);
     data["dose_i18n"] = labels["medications"]["dose_dialog"].clone();
     data["dose_cancel"] = labels["dose_outcomes"]["cancel"].clone();
@@ -471,22 +532,41 @@ pub fn stock(
     view: &TeraView,
     token: &CsrfToken,
     slug: &str,
-    snapshot: StockSnapshot,
-    draft: &HashMap<String, String>,
-    error: Option<String>,
-    status: StatusCode,
+    page: StockPage<'_>,
+    language: &str,
 ) -> Response {
+    let StockPage {
+        snapshot,
+        draft,
+        error,
+        status,
+    } = page;
+    let locale = crate::models::care::report_pdf::locale(language);
+    let Ok(labels) = crate::models::care::report_pdf::translations(locale) else {
+        return super::unavailable();
+    };
     let changed = status == StatusCode::CONFLICT;
     let error = if changed {
-        Some(
-            "Stock changed while this form was open. Review the latest stock before saving.".into(),
-        )
+        labels["medications"]["stock"]["browser"]["changed"]
+            .as_str()
+            .map(str::to_owned)
     } else {
         error
     };
     let mut data = context(slug, &snapshot, draft, error);
+    data["lang"] = json!(locale);
+    data["labels"] = labels;
+    data["title"] = data["labels"]["medications"]["stock"]["adjust"].clone();
+    data["stock_tracked"] = json!(snapshot.medication.current_supply.is_some());
     data["stock_changed"] = json!(changed);
     render(view, token, "medications/stock.html", data, status)
+}
+
+pub struct StockPage<'a> {
+    pub snapshot: StockSnapshot,
+    pub draft: &'a HashMap<String, String>,
+    pub error: Option<String>,
+    pub status: StatusCode,
 }
 
 fn render(

@@ -49,6 +49,7 @@ impl Hooks for App {
             .add_route(browser(crate::controllers::identity_onboarding::routes()))
             .add_route(browser(crate::controllers::oauth_server::browser_routes()))
             .add_route(browser(crate::controllers::medications::routes()))
+            .add_route(browser(crate::controllers::searches::routes()))
             .add_route(browser(crate::controllers::dashboard::routes()))
             .add_route(browser(crate::controllers::nhs_dmd::routes()))
             .add_route(browser(crate::controllers::medication_orders::routes()))
@@ -59,6 +60,7 @@ impl Hooks for App {
             .add_route(browser(crate::controllers::profile::avatar::routes()))
             .add_route(browser(crate::controllers::treatments::routes()))
             .add_route(browser(crate::controllers::reports::routes()))
+            .add_route(browser(crate::controllers::review_prompts::routes()))
             .add_route(browser(crate::controllers::dose_occurrences::routes()))
             .add_route(browser(crate::controllers::administration::routes()))
             .add_route(browser(crate::controllers::invitations::routes()))
@@ -116,6 +118,9 @@ impl Hooks for App {
             .register(crate::models::nhs_dmd::ImportWorker::build(ctx))
             .await?;
         queue
+            .register(crate::models::care::review_prompts::refresh::RefreshWorker::build(ctx))
+            .await?;
+        queue
             .register(crate::models::care::browser_push::scheduler::ReminderWorker::build(ctx))
             .await?;
         queue
@@ -135,6 +140,7 @@ impl Hooks for App {
 
     fn register_tasks(tasks: &mut Tasks) {
         tasks.register(crate::models::nhs_dmd::ReconcileTask);
+        tasks.register(crate::models::care::review_prompts::refresh::RefreshTask);
         tasks.register(crate::models::care::browser_push::scheduler::ReminderTask);
     }
 

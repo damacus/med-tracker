@@ -63,7 +63,8 @@ impl Page<'_> {
             data["slug"] = json!(self.slug);
             data["lang"] = json!(language);
             data["title"] = labels["people"]["carer_relationships"]["new_title"].clone();
-            data["labels"] = labels["people"]["carer_relationships"].clone();
+            data["carer_labels"] = labels["people"]["carer_relationships"].clone();
+            data["labels"] = labels.clone();
             data["back_label"] = labels["people"]["show"]["back"].clone();
             data["care_warning_labels"] = labels["care_warning"].clone();
             data["care_warning"] = crate::models::care::care_warning::project(&tenant, Some(&[id]))
@@ -81,18 +82,20 @@ impl Page<'_> {
             }
             data["draft"] = json!(draft);
             data["error"] = error.map_or(Value::Null, |error| match error {
-                OperationError::Conflict { .. } => data["labels"]["browser"]["stale"].clone(),
-                OperationError::Unavailable => data["labels"]["browser"]["unavailable"].clone(),
-                OperationError::Forbidden => data["labels"]["browser"]["forbidden"].clone(),
+                OperationError::Conflict { .. } => data["carer_labels"]["browser"]["stale"].clone(),
+                OperationError::Unavailable => {
+                    data["carer_labels"]["browser"]["unavailable"].clone()
+                }
+                OperationError::Forbidden => data["carer_labels"]["browser"]["forbidden"].clone(),
                 OperationError::Validation { details }
                     if details["errors"]["invitation"].is_array() =>
                 {
-                    data["labels"]["browser"]["invitation_unavailable"].clone()
+                    data["carer_labels"]["browser"]["invitation_unavailable"].clone()
                 }
                 _ if data["manager"] == true => {
-                    data["labels"]["browser"]["invalid_assignment"].clone()
+                    data["carer_labels"]["browser"]["invalid_assignment"].clone()
                 }
-                _ => data["labels"]["invalid_role"].clone(),
+                _ => data["carer_labels"]["invalid_role"].clone(),
             });
             Ok::<_, OperationError>(data)
         }

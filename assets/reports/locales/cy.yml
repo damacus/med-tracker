@@ -246,6 +246,7 @@ cy:
     page_title: Chwilio
     page_subtitle: Dod o hyd i gofnodion a llwybrau byr MedTracker.
     page_submit: Chwilio
+    schedule_for: Amserlennu ar gyfer %{person}
     results:
       one: 1 canlyniad
       other: "%{count} canlyniad"
@@ -1009,6 +1010,25 @@ cy:
       option_readonly: "Rheolir stoc opsiynau a throthwyon ail-archebu drwy olygydd yr opsiwn."
       invalid_quantity: "Rhowch faint nad yw’n negatif gyda hyd at ddau le degol."
       household_inventory: "Stoc y cartref"
+      browser:
+        remaining: "%{quantity} %{unit} yn weddill"
+        review_latest: "Adolygu'r stoc diweddaraf"
+        changed: "Newidiodd y stoc tra oedd y ffurflen hon ar agor. Adolygwch y stoc diweddaraf cyn cadw."
+    order:
+      browser:
+        back: "Yn ôl i'r feddyginiaeth"
+        title: "Archebu meddyginiaeth"
+        supplier: "Cyflenwr"
+        quantity: "Nifer i'w archebu"
+        arrival: "Dyddiad cyrraedd disgwyliedig"
+        mark_ordered: "Marcio fel archebwyd"
+        receive_title: "Derbyn archeb"
+        receipt_hint: "Nid yw derbyn archeb yn newid stoc. Defnyddiwch Addasu stoc i gofnodi'r nifer a ddanfonwyd."
+        review_stock: "Adolygu stoc"
+        mark_received: "Marcio fel derbyniwyd"
+        quantity_precision_error: "Mae'r nifer y tu allan i gywirdeb stoc."
+        quantity_decimal_error: "Rhaid i'r nifer fod yn rhif degol."
+        arrival_date_error: "Rhaid i'r dyddiad cyrraedd fod yn ddyddiad ISO."
     dose_dialog:
       ongoing_medication: 'Meddyginiaeth barhaus'
       scheduled_treatment: 'Triniaeth wedi’i threfnu'
@@ -1180,6 +1200,23 @@ cy:
       all: Pob un
       view: Gweld
       inventory_level: Llefel Rhestr
+      location: Lleoliad
+      all_locations: Pob lleoliad
+      category: Categori
+      all_categories: Pob categori
+      apply_filters: Cymhwyso hidlwyr
+      untracked_stock: Nid yw'r stoc yn cael ei olrhain.
+      low_stock: Stoc isel
+      edit: Golygu
+      edit_medication: Golygu %{medication}
+      refill: Ailgyflenwi
+      refill_medication: Ailgyflenwi %{medication}
+      empty_filtered: "Nid oes meddyginiaethau sy'n cyfateb i'r hidlwyr hyn."
+      empty_unfiltered: "Nid oes meddyginiaethau ar gael yn y cartref hwn."
+      scan_description: Sganiwch becyn neu nodwch ei god bar i ddewis y feddyginiaeth a'r lleoliad cyn ychwanegu stoc.
+      find_barcode: Dod o hyd i god bar
+      manual_entry: Nodi meddyginiaeth â llaw
+      close_scanner: Cau'r sganiwr
       units:
         one: uned
         other: unedau
@@ -1199,6 +1236,61 @@ cy:
       submit: Ychwanegu stoc wedi'i sganio
     show:
       profile: Proffil Meddyginiaeth
+      browser:
+        ordered: Wedi archebu
+        from_supplier: gan %{supplier}
+        expected: Disgwylir
+        last_received: Derbyniwyd yr archeb ddiwethaf
+        refill_inventory: Ailgyflenwi stoc
+        order_medication: Archebu meddyginiaeth
+        no_source: Nid oes ffynhonnell feddyginiaeth ar gael.
+        js_required: Mae angen JavaScript i gofnodi dosau yma.
+        dose_options: Opsiynau dos
+        default_adults: Diofyn ar gyfer oedolion
+        default_children: Diofyn ar gyfer plant
+        remaining: "%{amount} %{unit} ar ôl"
+        manage_dose_options: Rheoli Opsiynau Dos
+        no_dose_options: Nid oes opsiynau dos wedi'u cofnodi.
+        dose_history: Hanes dosau
+        no_doses: Nid oes dosau wedi'u cofnodi eto.
+        standard_dosage: Dos safonol
+        no_standard_dosage: Nid oes dos safonol wedi'i gofnodi.
+        manage_medication: Rheoli meddyginiaeth
+        adjust_stock: Addasu stoc
+        stock_adjustment_page: Tudalen addasu stoc
+        edit_medication: Golygu Meddyginiaeth
+        delete_medication: Dileu Meddyginiaeth
+        add_delivered: Ychwanegwch y stoc a ddanfonwyd at y cyflenwad presennol.
+        latest_stock: Stoc ddiweddaraf
+        use_latest: Defnyddio'r stoc ddiweddaraf
+        dose_option: Opsiwn dos
+        choose_dose_option: Dewiswch opsiwn dos
+        quantity_to_add: Swm i'w ychwanegu
+        restock_date: Dyddiad ailgyflenwi
+        cancel: Canslo
+        add_stock: Ychwanegu stoc
+        current_supply: Cyflenwad presennol
+        new_stock_quantity: Swm stoc newydd
+        reason: Rheswm
+        delete: Dileu
+        reorder_at: Ail-archebu ar %{quantity} %{unit}
+        stock_untracked: Heb ei olrhain
+        stock_out: Allan o stoc
+        stock_low: Stoc isel
+        stock_in: Mewn stoc
+        max_doses:
+          daily:
+            one: Uchafswm o 1 dos y dydd
+            other: Uchafswm o %{count} dos y dydd
+          weekly:
+            one: Uchafswm o 1 dos yr wythnos
+            other: Uchafswm o %{count} dos yr wythnos
+          monthly:
+            one: Uchafswm o 1 dos y mis
+            other: Uchafswm o %{count} dos y mis
+        minimum_hours:
+          one: O leiaf 1 awr rhwng dosau
+          other: O leiaf %{hours} awr rhwng dosau
       edit_details: Golygu Manylion
       inventory: Rhestr Eiddo
       add_schedule: Amserlen
@@ -1266,6 +1358,13 @@ cy:
       location_label: Lleoliad y stocrestr
       all_locations: Pob lleoliad
       selected: "%{count} wedi'u dewis"
+      unit_names:
+        tablet:
+          one: dabled
+          other: tabledi
+        capsule:
+          one: capsiwl
+          other: capsiwlau
       clear_selection: Clirio'r dewis
       in_stock: Mewn stoc
       low_stock: Stoc isel
@@ -1281,7 +1380,9 @@ cy:
       empty_title: Dim meddyginiaethau wedi'u dewis
       empty_description: Dewiswch feddyginiaethau o'r rhestr i lunio swp addasiadau.
       set_to_zero: Gosod i sero
+      set_to_zero_for: Gosod i sero ar gyfer %{medication}
       remove_from_batch: Tynnu %{medication} o'r swp addasiadau
+      remove_short: Tynnu
       reason: Rheswm dros yr addasiadau
       reasons:
         house_stock_check: Gwiriad stoc y cartref
@@ -1299,6 +1400,10 @@ cy:
       decrease: Gostyngiad
       no_change: Dim newid
       dosage_not_set: Dos heb ei osod
+      errors:
+        invalid: Gwiriwch y cyfrifiadau a ddewiswyd a rhowch gynnig arall arni. Rhaid i bob cyfrif fod yn rif nad yw'n negatif.
+        stale: Newidiodd y stoc tra oeddech yn cyfrif. Gwiriwch y cyfrifiadau presennol a rhowch gynnig arall arni.
+        unavailable: Ni ellid cadw'r gwiriad stoc. Mae eich cyfrifiadau yma o hyd; rhowch gynnig arall arni.
       success:
         one: Diweddarwyd y cyflenwad sy'n weddill ar gyfer %{count} meddyginiaeth.
         other: Diweddarwyd y cyflenwad sy'n weddill ar gyfer %{count} meddyginiaethau.
@@ -1319,6 +1424,42 @@ cy:
     show:
       edit_person: Golygu Person
       add_medication: Ychwanegu Meddyginiaeth
+      current_medications: Meddyginiaethau cyfredol
+      browser:
+        stock_untracked: "Stoc heb ei olrhain"
+        stock_remaining: "%{amount} mewn stoc"
+        from: "O"
+        until: "Tan"
+        timing:
+          every_other_day: "Bob yn ail ddiwrnod"
+          multiple_daily: "Sawl gwaith y dydd"
+          weekly: "Wythnosol"
+          monthly: "Misol"
+          specific_dates: "Ar ddyddiadau penodol"
+          prn: "Yn ôl yr angen"
+          tapering: "Cynllun lleihau"
+          daily: "Dyddiol"
+          empty: ""
+        avatar_for: "Afatar %{person}"
+        age: Oedran
+        paused: Wedi'i oedi
+        active: Gweithredol
+        outside_dates: Y tu allan i'r dyddiadau a drefnwyd
+        pause: Saib
+        pause_history: Hanes seibiannau
+        to: i
+        dose_records: Cofnodion dosau
+        edit_treatment: Golygu triniaeth
+        empty_current: Nid oes meddyginiaethau cyfredol wedi'u cofnodi ar gyfer %{person}.
+        manage_treatments: Rheoli triniaethau
+        view_treatments: Gweld triniaethau
+        add_schedule: Ychwanegu amserlen
+        assign_medication: Neilltuo meddyginiaeth
+        carer_relationships: Perthnasoedd gofalwyr
+        profile_details: Manylion proffil
+        not_recorded: Heb ei gofnodi
+        yes: "Ydy"
+        no: "Nac ydy"
       manage_parents: Rheoli rhieni
       health_events: Digwyddiadau iechyd
       back: Yn ôl
@@ -1951,6 +2092,7 @@ cy:
       mfa_required: Cwblhewch ddilysiad dau ffactor cyn creu tocyn API.
     appearance:
       title: Ymddangosiad
+      close: Cau
       description: Dewiswch sut mae MedTracker yn edrych ar draws sgriniau wedi'u
         mewngofnodi ac allgofnodedig.
       mode_label: Modd
@@ -2084,6 +2226,8 @@ cy:
       footer_notice: Anfonwyd yr e-bost hwn oherwydd bod gennych gyfrif gyda ni.
     navigation:
       skip_to_content: Neidio i'r cynnwys
+      home_link: Cartref MedTracker
+      care_tagline: Gofal, gyda'n gilydd.
       brand: MedTracker
       login: Mewngofnodi
     desktop_nav:
@@ -2142,6 +2286,8 @@ cy:
     hide_hidden: Cuddio eitemau wedi'u hidlo
     empty_title: Dim adolygiadau meddyginiaeth i'w dangos
     empty_description: Nid oes unrhyw bâr tystiolaeth a adolygwyd yn cyfateb i'r meddyginiaethau gweithredol yng nghofnodion yr aelwyd a ddewiswyd.
+    filter_empty_title: Nid oes adolygiadau meddyginiaeth yn cyfateb i'r hidlwyr hyn.
+    filter_empty_description: Mae adolygiadau eraill ar gael. Cliriwch yr hidlwyr i'w gweld.
     review_reason: Mae tystiolaeth gyhoeddus y label yn awgrymu y gallai fod yn werth adolygu'r cyfuniad hwn gyda fferyllydd, nyrs, meddyg teulu neu ragnodydd.
     view_evidence: Gweld y dystiolaeth
     summaries:
@@ -2154,6 +2300,7 @@ cy:
       priority: Blaenoriaeth
       include_filtered: Cynnwys eitemau wedi'u hidlo
       apply: Defnyddio hidlwyr
+      clear: Clirio hidlwyr
       review_statuses:
         needs_review: Angen adolygiad
         reviewed: Wedi'u hadolygu
@@ -2213,6 +2360,22 @@ cy:
       reviewed_on: Dyddiad yr adolygiad
       review_note: Nodyn adolygu
       save: Cadw cofnod yr adolygiad
+    browser:
+      review_status: Statws adolygu
+      filtered_items: eitemau adolygu llai hyderus
+      edit: Golygu'r adolygiad
+      history: Adolygiadau blaenorol
+      no_history: Nid oes adolygiad blaenorol wedi'i gofnodi.
+      pages: Tudalennau adolygu
+      previous: Tudalen flaenorol
+      next: Tudalen nesaf
+      changed: Newidiodd yr adolygiad wrth i chi olygu. Gwiriwch y dystiolaeth gyfredol cyn cadw.
+      expiring: Mae'r amser golygu bron ar ben. Bydd eich drafft yn aros yma.
+      keep_editing: Parhau i olygu
+      expired: Daeth yr amser golygu i ben. Mae eich drafft yma o hyd. Ailafaelwch yn y golygu cyn cadw.
+      accept_version: Defnyddio'r dystiolaeth gyfredol a chadw fy nrafft
+      cancel: Canslo
+      reacquire: Ailafael yn y golygu
   forms:
     locations:
       new_title: Lleoliad Newydd
@@ -2251,6 +2414,32 @@ cy:
       current_supply_placeholder: e.g., 30
       reorder_threshold_placeholder: e.g., 5
       wizard:
+        browser:
+          as_directed: "Yn ôl y cyfarwyddyd"
+          matching_medicines: "Meddyginiaethau cyfatebol"
+          choose_medicine_location: "Dewiswch y feddyginiaeth a'r lleoliad"
+          refill_at: "Ailgyflenwi %{name} yn %{location}"
+          created_title: "Meddyginiaeth wedi'i chreu"
+          created_heading: "Crëwyd %{name}!"
+          created_description: "Cadwyd eich meddyginiaeth. Gallwch reoli ei hopsiynau dos neu ddychwelyd at y feddyginiaeth."
+          saved_options: "Opsiynau dos wedi'u cadw"
+          done: "Gorffen"
+          cancel: Canslo
+          person: Person
+          no_person_plan: Dim cynllun person
+          frequency: Amlder
+          weekly_day: Diwrnod wythnosol
+          specific_date: Dyddiad penodol
+          frequency_weekly: Unwaith yr wythnos
+          dose_option: Opsiwn dos %{number}
+          remove_dose_option: Dileu opsiwn dos %{number}
+          date_range: "%{start} i %{end}"
+          first_dose_time: Amser y dos cyntaf
+          second_dose_time: Amser yr ail ddos
+          weekly_time: Amser wythnosol
+          maximum_daily_doses: Uchafswm dosau dyddiol
+          add_dose_option: Ychwanegu opsiwn dos
+          pack_warning: Adolygwch gyfarwyddiadau'r pecyn cyn cadw'r feddyginiaeth hon.
         progress_label: Cynnydd gosod meddyginiaeth
         continue: Parhau
         steps:
@@ -2827,6 +3016,13 @@ cy:
         title: Pobl
         description: Rheoli pobl a'u hamserlenni, olrhain amserlenni meddyginiaeth
   medication_workflow:
+    chooser:
+      back: Yn ôl i feddyginiaethau
+      title: Dewiswch berson
+      subtitle: Dewiswch y person yr ydych am reoli ei feddyginiaeth.
+      assign: Neilltuo meddyginiaeth i %{person}
+      create: Creu meddyginiaeth i %{person}
+      empty: Nid oes pobl ar gael i reoli meddyginiaeth.
     back: "← Yn ôl"
     person_selection:
       title: Ychwanegu Meddyginiaeth

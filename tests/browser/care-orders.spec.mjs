@@ -60,3 +60,50 @@ test('order audit failure rolls back status and metadata without changing stock'
   expect((await page.request.post(`${detail}/order`, { form: fields, headers: { Origin: careFixture.origin }, maxRedirects: 0 })).status()).toBe(503);
   expect(await careFixture.orderProbe()).toMatchObject({ status: null, supply: '10.00', supplier: null, quantity: null, ordered_audits: 0, received_audits: 0 });
 });
+
+test.describe('Welsh order and stock language', () => {
+test.use({ locale: 'cy-GB' });
+
+test('order page uses the selected Welsh language for controls and status', async ({ page, careFixture }) => {
+  await careFixture.useOrderMember();
+  await page.goto('/login');
+  await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
+  await page.getByLabel('Password', { exact: true }).fill('password');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  expect((await page.goto(`${detail}/order`)).status()).toBe(200);
+  await expect(page.locator('html')).toHaveAttribute('lang', 'cy');
+  await expect(page.getByRole('heading', { name: 'Archebu meddyginiaeth' })).toBeVisible();
+  await expect(page.getByLabel('Cyflenwr')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Marcio fel archebwyd' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Derbyn archeb' })).toBeVisible();
+  await page.screenshot({ path: `docs/screenshots/loco-care-order-welsh-${test.info().project.name}.png` });
+  await page.getByLabel('Nifer i\'w archebu').fill('-1');
+  const invalid = page.waitForResponse(response => response.request().method() === 'POST' && response.url().endsWith('/order'));
+  await page.getByRole('button', { name: 'Marcio fel archebwyd' }).click();
+  expect((await invalid).status()).toBe(422);
+  await expect(page.getByLabel('Nifer i\'w archebu')).toHaveValue('-1');
+  await expect(page.getByLabel('Nifer i\'w archebu')).toHaveAccessibleDescription('Mae\'r nifer y tu allan i gywirdeb stoc.');
+  const fields = await page.locator('form[action$="/order"]').evaluate(form => Object.fromEntries(new FormData(form)));
+  const malformedQuantity = await page.request.post(`${detail}/order`, { form: { ...fields, quantity: 'not-a-number' }, headers: { Origin: careFixture.origin, 'Accept-Language': 'cy-GB' } });
+  expect(malformedQuantity.status()).toBe(422);
+  const quantityError = await page.evaluate(markup => new DOMParser().parseFromString(markup, 'text/html').querySelector('#quantity-error')?.textContent, await malformedQuantity.text());
+  expect(quantityError).toBe('Rhaid i\'r nifer fod yn rhif degol.');
+  const malformedArrival = await page.request.post(`${detail}/order`, { form: { ...fields, quantity: '5', expected_arrival_on: 'not-a-date' }, headers: { Origin: careFixture.origin, 'Accept-Language': 'cy-GB' } });
+  expect(malformedArrival.status()).toBe(422);
+  const arrivalError = await page.evaluate(markup => new DOMParser().parseFromString(markup, 'text/html').querySelector('#arrival-error')?.textContent, await malformedArrival.text());
+  expect(arrivalError).toBe('Rhaid i\'r dyddiad cyrraedd fod yn ddyddiad ISO.');
+});
+
+test('stock adjustment page uses the selected Welsh language', async ({ page }) => {
+  await page.goto('/login');
+  await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
+  await page.getByLabel('Password', { exact: true }).fill('password');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  expect((await page.goto(`${detail}/stock/adjust`)).status()).toBe(200);
+  await expect(page.locator('html')).toHaveAttribute('lang', 'cy');
+  await expect(page.getByRole('heading', { name: 'Addasu stoc' })).toBeVisible();
+  await expect(page.getByLabel('Maint stoc newydd')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Addasu stoc' })).toBeVisible();
+  await page.screenshot({ path: `docs/screenshots/loco-care-stock-adjust-welsh-${test.info().project.name}.png` });
+});
+});

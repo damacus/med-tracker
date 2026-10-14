@@ -33,17 +33,19 @@ async fn dosage_conformance_tracked_description_update_retains_parent_inventory_
         .await
         .unwrap();
     let status = response.status().as_u16();
-    let row=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT current_supply::text AS supply,reorder_threshold::text AS threshold,updated_at>'2020-01-01' AS refreshed,(SELECT count(*) FROM versions WHERE item_type='Medication' AND event='api_update') AS versions,(SELECT count(*) FROM api_change_events WHERE record_type='Medication' AND action='update') AS changes FROM medications WHERE id=80001")).await.unwrap().unwrap();
+    let row=app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,"SELECT current_supply::text AS supply,reorder_threshold::text AS threshold,updated_at>'2020-01-01' AS refreshed,(SELECT count(*) FROM versions WHERE item_type='Medication' AND event='api_update') AS versions,(SELECT count(*) FROM versions WHERE item_type='MedicationDosageOption' AND item_id=$1 AND event='api_update') AS option_updates,(SELECT count(*) FROM api_change_events WHERE record_type='Medication' AND action='update') AS changes FROM medications WHERE id=80001",[id.into()])).await.unwrap().unwrap();
     let supply: String = row.try_get("", "supply").unwrap();
     let threshold: String = row.try_get("", "threshold").unwrap();
     let refreshed: bool = row.try_get("", "refreshed").unwrap();
     let versions: i64 = row.try_get("", "versions").unwrap();
+    let option_updates: i64 = row.try_get("", "option_updates").unwrap();
     let changes: i64 = row.try_get("", "changes").unwrap();
     app.close().await;
     assert_eq!(status, 200);
     assert_eq!((supply.as_str(), threshold.as_str()), ("12.00", "3.00"));
     assert!(refreshed);
     assert_eq!((versions, changes), (2, 2));
+    assert_eq!(option_updates, 1);
 }
 
 #[tokio::test]

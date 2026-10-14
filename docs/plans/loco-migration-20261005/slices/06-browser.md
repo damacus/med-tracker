@@ -10,6 +10,38 @@ Small application scripts own interaction and offline outbox behaviour; CSS owns
 
 ## Plan-to-progress mapping
 
+### s06-i02 completion agreement — 13 October 2026
+
+The owner approved completing the whole care-pages item, not only global search.
+The coordinator retains delivery accountability. Sole source/test writer
+`/root/care_ui_completion` works in `/private/tmp/medtracker-care-ui-completion`,
+branch `codex/care-ui-completion`, starting at
+`090956d87233aa7f0396530050e1bb0365022227`. Sol at medium is selected for migration
+discovery and permission-sensitive browser work. One expensive verification lane
+is assigned to this writer; review is independent and read-only.
+
+Deliver successive usable slices: search and working navigation; remaining
+person/inventory/medication-detail parity; then wizard/dose gaps and connected
+journey acceptance. Reconcile C1–C4 against current source before changing them:
+initial absence findings in the older brief are not current evidence. Expand
+existing tests in the same area where scenarios remain independent; separate
+tests when combining them would create interference or obscure failures.
+
+Preserve Rails behaviour, current Loco themes, selected-person context, saved
+wizard variants, exactly-once stock effects, audit, permissions and draft-safe
+refresh. Preserve the approved editable actual scheduled dose with prescribed
+dose visible. Translate visible and accessible text in all five locales. Use
+RED/GREEN evidence, actual desktop/mobile comparison, independent Devin review
+and required task gates before publication. A partial PR cannot close s06-i02.
+
+Medication-review and dm+d owners retain their implementations; this writer
+consumes their interfaces without duplicating them. Devin owns s07-i08. Shared
+registration, layout and locale edits need a scoped transfer from the coordinator.
+Physical-camera acceptance remains separate; no new providers, merge or deployment
+are authorised here. Refreshed open PRs contain only dependency/release work.
+Record live jobs, freeze commits, reviewed findings and passing checks here as
+delivery proceeds. No verification has yet passed for this new candidate.
+
 These are subdivisions of existing slice 06 items, not new scored milestones.
 The report keeps its stable IDs. A partial PR cannot complete an entire row.
 
