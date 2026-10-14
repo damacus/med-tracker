@@ -38,6 +38,10 @@ pub async fn boundary(mut request: Request, next: Next) -> Response {
         .get::<MatchedPath>()
         .map_or("unmatched", MatchedPath::as_str)
         .to_owned();
+    let framework_request_id = request
+        .extensions()
+        .get::<loco_rs::controller::middleware::request_id::LocoRequestId>()
+        .map(|request_id| request_id.get().to_owned());
     let method = request.method().clone();
     let started = Instant::now();
     let response = if missing_auth_peer {
@@ -46,11 +50,13 @@ pub async fn boundary(mut request: Request, next: Next) -> Response {
     } else {
         next.run(request).await
     };
-    let request_id = response
-        .headers()
-        .get("x-request-id")
-        .and_then(|value| value.to_str().ok())
-        .unwrap_or("unavailable");
+    let request_id = framework_request_id.as_deref().unwrap_or_else(|| {
+        response
+            .headers()
+            .get("x-request-id")
+            .and_then(|value| value.to_str().ok())
+            .unwrap_or("unavailable")
+    });
     tracing::info!(method = %method, route, status = response.status().as_u16(),
         duration_ms = started.elapsed().as_secs_f64() * 1000.0, request_id,
         "HTTP request completed");
@@ -61,6 +67,59 @@ pub async fn boundary(mut request: Request, next: Next) -> Response {
 mod tests {
     use super::*;
     use axum::{Router, http::StatusCode, routing::get};
+    use std::sync::{Arc, Mutex};
+    use tracing::{
+        Event, Metadata, Subscriber,
+        field::{Field, Visit},
+        instrument::WithSubscriber,
+        span::{Attributes, Id, Record},
+    };
+
+    #[derive(Clone, Default)]
+    struct RequestIdEvents(Arc<Mutex<Vec<String>>>);
+
+    #[derive(Default)]
+    struct RequestIdField(Option<String>);
+
+    impl Visit for RequestIdField {
+        fn record_str(&mut self, field: &Field, value: &str) {
+            if field.name() == "request_id" {
+                self.0 = Some(value.to_owned());
+            }
+        }
+
+        fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
+            if field.name() == "request_id" {
+                self.0 = Some(format!("{value:?}").trim_matches('"').to_owned());
+            }
+        }
+    }
+
+    impl Subscriber for RequestIdEvents {
+        fn enabled(&self, metadata: &Metadata<'_>) -> bool {
+            metadata.fields().field("request_id").is_some()
+        }
+
+        fn new_span(&self, _: &Attributes<'_>) -> Id {
+            Id::from_u64(1)
+        }
+
+        fn record(&self, _: &Id, _: &Record<'_>) {}
+
+        fn record_follows_from(&self, _: &Id, _: &Id) {}
+
+        fn event(&self, event: &Event<'_>) {
+            let mut field = RequestIdField::default();
+            event.record(&mut field);
+            if let Some(request_id) = field.0 {
+                self.0.lock().unwrap().push(request_id);
+            }
+        }
+
+        fn enter(&self, _: &Id) {}
+
+        fn exit(&self, _: &Id) {}
+    }
 
     fn application() -> Router {
         Router::new()
@@ -106,5 +165,40 @@ mod tests {
             assert_eq!(response.status(), StatusCode::OK);
             assert_eq!(response.text().await.unwrap(), peer.ip().to_string());
         }
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn completion_log_matches_outer_framework_request_id() {
+        let events = RequestIdEvents::default();
+        let _subscriber = tracing::subscriber::set_default(events.clone());
+        let peer = ConnectInfo(SocketAddr::from(([127, 0, 0, 1], 12345)));
+        let router = Router::new()
+            .route("/api/auth/get-session", get(|| async { StatusCode::OK }))
+            .layer(axum::middleware::from_fn(boundary))
+            .layer(axum::middleware::from_fn(
+                loco_rs::controller::middleware::request_id::request_id_middleware,
+            ))
+            .layer(axum::Extension(peer));
+        let request = loco_rs::TestServer::builder()
+            .mock_transport()
+            .build(router)
+            .unwrap();
+        let (generated, supplied) = async {
+            let generated = request.get("/api/auth/get-session").await;
+            assert_eq!(generated.status_code(), 200);
+            let generated_id = generated.header("x-request-id").to_owned();
+            let supplied = request
+                .get("/api/auth/get-session")
+                .add_header("x-request-id", "client / 42")
+                .await;
+            assert_eq!(supplied.status_code(), 200);
+            (generated_id, supplied.header("x-request-id").to_owned())
+        }
+        .with_subscriber(events.clone())
+        .await;
+        drop(request);
+        assert!(!generated.is_empty());
+        assert_eq!(supplied, "client42");
+        assert_eq!(*events.0.lock().unwrap(), vec![generated, supplied]);
     }
 }

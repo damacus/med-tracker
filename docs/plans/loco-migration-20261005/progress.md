@@ -14,18 +14,19 @@ Rate-limit [PR #2623](https://github.com/damacus/med-tracker/pull/2623) was merg
 externally as main `1800d858ef99e71edcf5e00cf5a0530616673dc6`; this coordinator
 did not merge it. Its 1,499-line candidate and historical failures remain below.
 
-| Published prerequisite | Base | Exact head | Changed lines | State |
+| Published stack layer | Base | Exact head | Changed lines | State |
 | --- | --- | --- | ---: | --- |
 | [#2632](https://github.com/damacus/med-tracker/pull/2632): storage transport and reminder clock | main `1800` | `923d5b63098a61ed4a9df0dfd4f27ae348d0b26a` | 496 | Reviewed; local application and exact-head hosted gates pass |
 | [#2633](https://github.com/damacus/med-tracker/pull/2633): executed acceptance proof | `codex/s05-i01-dmd-storage` | `630a7f016d364becfb682b855a7da0c57c0b7f7c` | 498 | Reviewed; local and exact-head hosted gates pass |
+| [#2636](https://github.com/damacus/med-tracker/pull/2636): account session contracts | `codex/s05-i01-contract-execution` | `451c357c4f71539bf62056c5ac0459d235528a63` | 1,711 | Reviewed; local and exact-head hosted gates pass |
 
-Stack `2634` is published; neither prerequisite is merged or deployed. Full local
+Stack `2634` is published; no layer is merged or deployed. Full local
 CI `61813` passed 111 units, 20 request cases, 508 care cases and all 744 browser
 cases. Hosted coverage and clean source manifests are retained below. The storage
 defect has controlled RED/GREEN; its relationship to the original intermittent
 failure remains an inference, not a captured historical root cause.
 
-Local account branch `codex/s05-i01-account-sessions` follows `630a`. Malformed-ID
+Published account branch `codex/s05-i01-account-sessions` follows `630a`. Malformed-ID
 and mobile-login target corrections each have genuine behavioural RED/GREEN.
 Existing care contracts pass 12 cases; pure deadline boundaries pass one table;
 the full request inventory passes 44 cases with final acceptance intentionally
@@ -33,7 +34,7 @@ ignored. Final foreign-account collection case `75396` and full inventory rerun
 `72412` both pass; owned resources cleaned up normally. Tested source candidate
 is `2ae0b911576912bccf22f10c5db65856bd8cdc60`, with request SHA `abeb3c38`.
 Exact executed evidence now credits these four account operations locally;
-publication awaits the next stack layer. Earlier review
+PR #2636 now carries that evidence. Earlier review
 `78959` accepted saved source `9219c243`; final review `66814` checked the later
 production and evidence changes and required only a negative-test lookup fix.
 That fix passes; same-session correction review `59730` accepted the final source
@@ -84,8 +85,120 @@ four complete, two partial and 116 unverified. The missing route is the existing
 notification test operation. All 13 unique credited account test names executed
 and passed before the final completion rejection, with normal owned cleanup.
 Final request and inventory hashes are `17190df2` and `656073df`; candidate
-revision pins remain `2ae0b911`. Next: publish that
-bounded layer. Native pins are unchanged; broader slice 05 is not complete.
+revision pins remain `2ae0b911`. Hosted root run `38599154874` passed with CI Success
+job `115980431882`; no active or failed checks remain. Exact-head Android checks,
+generated-client determinism, Swift compilation/tests and Kotlin compilation/tests
+already pass. Published-head Devin review has no inline threads. The account
+branch matches origin; unrelated Serena changes were preserved byte-for-byte
+during upstream synchronisation. The app cannot currently load its artifact
+attachment tool, so no successful attachment of PR #2636 is claimed.
+
+Hosted coverage artifact `11913521606` is retained as
+`/private/tmp/s05-i01-evidence/loco-rust-coverage-2636-451c.zip`, SHA-256
+`eeefb064c7030365d7ddc88e91cdb9fc0ba95eea2417c5d02b2634b4c50a3f08`.
+Its clean manifest identifies source `8b6abd35023ac78875bdf757ba374b9529911185`,
+parents `630a` and `451c`; Git comparison proves an identical source tree to
+the published head. Rust 1.99.0/cargo-llvm-cov 0.9.1 ran lib, request API and care
+selectors. Account controller production coverage is 129/142 (90.85%); account
+model production coverage is 330/336 (98.21%). All added instrumented production
+lines are covered (controller 4/4, model 23/23), including the critical deadline
+calculation 12/12. Remaining uncovered lines are pre-existing adapter/error paths,
+not newly added business logic. API controllers total 6,881/7,451 (92.35%);
+application total is report-only 39,779/62,657 (63.49%). That broader gap remains
+explicit; percentages do not substitute for the 118 outstanding operations.
+
+The API writer now owns isolated `codex/s05-i01-capabilities`, based on published
+account head `451c357c`; root retains contracts, progress and integration.
+Genuine TestServer RED `31340` executed two cases: the aggregate discovery
+projection advertises implemented features as unavailable, and profile/avatar
+metadata is absent. Both fixtures cleaned up normally. Log:
+`/private/tmp/s05-i01-evidence/capabilities-flags-profile-red-451c.log`.
+GREEN `10395` then passed both cases through the booted router, with normal
+cleanup. A green-phase refactor removed an unnecessary rendering panic and kept
+the shared avatar limit crate-visible. Subsequent seeded client RED `52477`
+passed both earlier cases and failed only because registered mobile client
+`name` was absent despite being required by the authoritative schema. The name
+assertion runs before any unsupported URI-format helper. Logs:
+`capabilities-flags-profile-green-451c.log` and
+`capabilities-mobile-client-name-red-451c.log` beside the initial RED log.
+The writer now also owns only the `mobile_clients` projection in the identity
+model, its typed client response and the narrow shared URI-schema helper tests.
+Other OAuth/security handlers and generated entities remain unchanged. No
+OpenAPI or native pin change is authorised for this correction. The separate
+getPerson conditional-response omission proposal awaits the owner's decision
+before the later people area. Broader slice 05 is not complete.
+Mobile-client projection GREEN `18390` passed all three capability requests.
+The shared schema helper previously ignored URI formats: genuine helper RED
+`71150` accepted an invalid URI unexpectedly. The test-only maintained
+`iri-string` dependency now validates RFC URI syntax; helper GREEN `69892`
+passed 16 cases, and actual capability schema GREEN `29978` passed all three
+requests. The lock change adds only that package and its root dependency edge.
+Configured lifetime unit RED `18040` now proves that maximum age zero is
+incorrectly rejected, although OpenAPI explicitly defines it as disabling the
+absolute login deadline. Request RED `95817` compiled and executed but failed
+during real application boot with unavailable browser session configuration;
+it did not reach its HTTP assertion and receives no HTTP RED credit. The pure
+unit failure establishes the parser correction; the next GREEN must prove
+both successful boot and the capability projection. YAML null continues to mean an absent setting;
+numeric configuration strings retain existing parsing. Capability acceptance
+remains uncredited and unpublished pending its remaining checks and review.
+Lifetime GREEN `67033` passed both pure setting tables after the parser allowed
+zero only for maximum age. Request GREEN `28389` passed all four capability
+cases, including real successful application boot and HTTP 200 projections for
+custom 3/14 and disabled 3/0 day windows. Default 7/30 projection is explicitly
+asserted. Logs are `capabilities-lifetimes-unit-green-451c.log` and
+`capabilities-lifetimes-request-green-451c.log` in the same evidence directory.
+Direct capability 429 and controlled database lookup failure remain next.
+Focused six-case run `9320` passed five cases, including controlled database
+lookup failure with the existing 503 envelope. The rate-limit case consumed 300
+successful requests, then stopped because the next response lacked
+`x-request-id`; its later status/schema assertions did not execute. The fixture
+cleaned up normally. Loco 1.2 applies its default request-ID middleware before
+`after_routes`, while the application adds the rate limiter in `after_routes`,
+allowing early rejections to bypass request-ID generation. Capability source is
+frozen while the same API writer owns a bounded shared-HTTP prerequisite on
+`codex/s05-i01-rate-request-ids`, based on `451c`, in
+`/private/tmp/s05-i01-rate-request-ids/med-tracker`. Root retains contracts,
+integration and publication; no capability acceptance is credited yet.
+Prerequisite RED `40206` executed nine rate-limit request cases: six passed,
+two proved missing generated/supplied IDs on actual 429 responses after status,
+recursive schema, rate headers and persisted-effect assertions passed. A third
+failure exposed a test assumption: a downstream 401 handler emits its own ID
+even when Loco's request-ID middleware is disabled. That handler behaviour is
+preserved; only the early 429 is required to remain ID-free when the framework
+layer is disabled. The correction moves Loco's existing middleware once to the
+outer boundary; no custom ID generator or second middleware implementation is
+introduced. RED log: `request-id-prerequisite-red-451c.log` in the evidence directory.
+Prerequisite GREEN `58540` passed all nine rate-limit cases; downstream account
+regression `4298` passed all ten cases with existing audit/header semantics.
+Logs are `request-id-prerequisite-green-451c.log` and
+`request-id-account-regression-green-451c.log`. Read-only review then found that
+the inner HTTP completion logger reads the response ID before the outer Loco
+middleware adds it. A scoped subscriber test will prove that diagnostic gap
+before a narrow logging correction; the framework middleware and request tests
+remain frozen. Independent review and cumulative CI still precede publication.
+Completion-log RED `27536` compiled and executed one scoped-subscriber unit
+test: both inner completion events recorded unavailable while final response
+headers held a generated UUID and sanitised `client42`. The collector also
+encoded string quotes, so its string visitor is being corrected before the
+same behavioural RED is rerun. Production logging remains unchanged at this
+point; no passing diagnostic claim is inferred from the test scaffold.
+Corrected collector RED `66711` confirmed plain unavailable versus UUID/client42.
+The minimal logging correction then passed two existing HTTP unit cases, but
+candidate GREEN `73639` captured no events in the new third case. This is not
+accepted as a passing logging check; subsequent rate/account reruns did not run.
+The test is being aligned with the existing scoped, thread-local subscriber
+pattern before another module run, without global tracing state or blind sleeps.
+Final scoped HTTP module GREEN `7781` passed three cases. Final rate-limit
+regression `20845` passed nine and account regression `85598` passed ten, all
+with Task exit zero and normal fixture cleanup on frozen source. Final HTTP
+source SHA-256 is `fcd2f805e9ef5db19dea135186024f7ac849a165c8e958c043a4a4c813762583`;
+app and request source remain `d8119f44` and `2b053c86`. Logs are
+`request-id-completion-log-scoped-green-451c.log`,
+`request-id-final-rate-green-451c.log` and `request-id-final-account-green-451c.log`.
+Independent SWE-2 Max review is running inline from the existing trusted account
+checkout; the new temporary checkout is not added to the review tool's trust
+list. Production source remains frozen. Cumulative CI and publication are pending.
 Entries below retain historical revisions, failed attempts and publication states.
 
 Historical prerequisite failure, 14 October:
