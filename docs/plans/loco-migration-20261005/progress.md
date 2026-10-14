@@ -93,15 +93,36 @@ Local account branch `codex/s05-i01-account-sessions` follows `630a`. Malformed-
 and mobile-login target corrections each have genuine behavioural RED/GREEN.
 Existing care contracts pass 12 cases; pure deadline boundaries pass one table;
 the full request inventory passes 44 cases with final acceptance intentionally
-ignored. The final collection/schema case `62234` and its full inventory rerun
-`43885` both pass. Frozen request source is `e9c2c2ee`; no operation credit
-has been granted yet. Earlier independent review `78959` accepted saved source
-`9219c243`; the subsequent correction requires the same review's follow-up.
+ignored. Final foreign-account collection case `75396` and full inventory rerun
+`72412` both pass; owned resources cleaned up normally. Tested source candidate
+is `2ae0b911576912bccf22f10c5db65856bd8cdc60`, with request SHA `abeb3c38`.
+Exact executed evidence now credits these four account operations locally;
+publication remains held for cumulative gates. Earlier review
+`78959` accepted saved source `9219c243`; final review `66814` checked the later
+production and evidence changes and required only a negative-test lookup fix.
+That fix passes; same-session correction review `59730` accepted the final source
+and exact evidence, retaining full CI and published-head gates. The final
+source includes seeded foreign households and API sessions whose exclusion is
+asserted through the booted router.
+
+| Final account evidence | Job | Result | Retained log under `/private/tmp/s05-i01-evidence/` |
+| --- | --- | --- | --- |
+| Mobile login target regression | `82913` / `75274` | Behavioural RED / GREEN | `account-mobile-target-lifetime-{red,green}-630a.log` |
+| Pure checked deadline boundaries | `3355` | One table passed after equivalent helper refactor | `account-mobile-deadline-unit-630a.log` |
+| Existing account schema/transactions | `20402` | 12 passed; two people-route activity tests excluded from account credit | `account-existing-care-api-lifetime-630a.log` |
+| Final seeded foreign collection | `75396` | One passed | `account-foreign-collections-focused-7d2.log` |
+| Final request inventory | `72412` | 44 passed; one intentional completion ignore | `account-foreign-full-inventory-7d2.log` |
+| Strict evidence registration | `2733` | Expected RED: old validator rejects non-null candidate revision | `account-evidence-metadata-red-2ae0.log` |
+| Negative-test lookup correction | `16340` / `69593` | Test-only lookup failure; corrected baseline passes 10/10 | `account-evidence-metadata-green{-v2,}-2ae0.log` |
+| Credited execution dispatcher | `58221` | Requests 45 pass; care 522 pass; final gate correctly rejects 118 remaining operations | `account-evidence-dispatcher-2ae0.log` |
 
 The authoritative inventory remains 122 operations, 121 registered routes,
-two partial and 120 unverified. The missing route is the existing notification
-test operation. Next: commit the tested account source, register exact executed
-evidence, complete independent review and cumulative gates, then publish that
+four complete, two partial and 116 unverified. The missing route is the existing
+notification test operation. All 13 unique credited account test names executed
+and passed before the final completion rejection, with normal owned cleanup.
+Final request and inventory hashes are `17190df2` and `656073df`; candidate
+revision pins remain `2ae0b911`. Next: complete cumulative
+gates, then publish that
 bounded layer. Native pins are unchanged; broader slice 05 is not complete.
 Entries below retain historical revisions, failed attempts and publication states.
 

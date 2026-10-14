@@ -181,6 +181,58 @@ fn validate_evidence(entry: &Value) -> Result<(), String> {
                 }
             ]
         })
+    } else if entry["operation_id"] == "listHouseholds" {
+        json!({
+            "coverage": "complete",
+            "evidence": [
+                {"binary":"requests","test":"api_v1::account::account_management_authentication_envelopes_match_each_route","checks":["GET-401-unauthorized-ErrorEnvelope-Bearer-no-store-request-id","GET-403-insufficient_scope-ErrorEnvelope-exact-challenge-no-store-request-id"]},
+                {"binary":"requests","test":"api_v1::account::account_collections_keep_household_scope_and_session_secrets_out","checks":["GET-200-recursive-AuthHouseholdCollectionResponse-for-API-session-app-token-mobile","GET-account-and-operational-membership-scope-excludes-foreign-and-held-households","GET-200-JSON-no-store-request-id-for-stored-credentials"]},
+                {"binary":"requests","test":"api_v1::account::account_routes_reject_invalid_revoked_and_stale_credentials_without_writes","checks":["GET-401-invalid-expired-revoked-stale-locked-credentials","GET-401-malformed-Bearer","GET-no-revocation-on-denial"]},
+                {"binary":"requests","test":"api_v1::account::account_routes_share_the_fixed_general_limit","checks":["GET-429-recursive-RateLimitErrorEnvelope","GET-429-exact-RateLimit-and-Retry-After-headers-no-store"]},
+                {"binary":"requests","test":"api_v1::account::integration_grant_cannot_manage_account_sessions_but_can_log_out","checks":["GET-401-SMART-integration-grant-no-account-listing"]},
+            ]
+        })
+    } else if entry["operation_id"] == "listSessions" {
+        json!({
+            "coverage": "complete",
+            "evidence": [
+                {"binary":"requests","test":"api_v1::account::account_management_authentication_envelopes_match_each_route","checks":["GET-401-unauthorized-ErrorEnvelope-Bearer-no-store-request-id","GET-403-insufficient_scope-ErrorEnvelope-exact-challenge-no-store-request-id"]},
+                {"binary":"requests","test":"api_v1::account::account_collections_keep_household_scope_and_session_secrets_out","checks":["GET-200-recursive-AuthSessionCollectionResponse-for-API-session-app-token-mobile","GET-stored-session-scope-excludes-foreign-account","GET-no-access-or-refresh-token-leak-and-strict-schema","GET-mobile-current-grant-activity-touched-and-serialized-refresh-deadline","GET-200-JSON-no-store-request-id-for-stored-credentials"]},
+                {"binary":"requests","test":"api_v1::account::mobile_sessions_hide_foreign_and_expired_login_targets_from_listing_and_revocation","checks":["GET-mobile-namespace-excludes-foreign-max-aged-inactive-grants","GET-mobile-includes-login-active-grant-with-expired-access-token"]},
+                {"binary":"requests","test":"api_v1::account::account_routes_reject_invalid_revoked_and_stale_credentials_without_writes","checks":["GET-401-invalid-expired-revoked-stale-locked-credentials","GET-401-malformed-Bearer","GET-mobile-list-remains-available-with-revoked-household-membership"]},
+                {"binary":"requests","test":"api_v1::account::account_routes_share_the_fixed_general_limit","checks":["GET-429-recursive-RateLimitErrorEnvelope","GET-429-exact-RateLimit-and-Retry-After-headers-no-store"]},
+                {"binary":"requests","test":"api_v1::account::integration_grant_cannot_manage_account_sessions_but_can_log_out","checks":["GET-401-SMART-integration-grant-no-account-listing"]},
+            ]
+        })
+    } else if entry["operation_id"] == "deleteSession" {
+        json!({
+            "coverage": "complete",
+            "evidence": [
+                {"binary":"requests","test":"api_v1::account::malformed_delete_session_authenticates_before_identifier_validation","checks":["DELETE-401-before-malformed-ID","DELETE-404-nonnumeric-overflow-invalid-UTF8-zero-negative-ID-recursive-ErrorEnvelope"]},
+                {"binary":"requests","test":"api_v1::account::account_management_authentication_envelopes_match_each_route","checks":["DELETE-401-unauthorized-ErrorEnvelope-Bearer-no-store-request-id","DELETE-403-insufficient_scope-ErrorEnvelope-exact-challenge-no-store-request-id"]},
+                {"binary":"requests","test":"api_v1::account::account_routes_reject_invalid_revoked_and_stale_credentials_without_writes","checks":["DELETE-401-invalid-expired-revoked-stale-locked-credentials","DELETE-no-revocation-on-denial"]},
+                {"binary":"requests","test":"api_v1::account::account_routes_share_the_fixed_general_limit","checks":["DELETE-429-recursive-RateLimitErrorEnvelope","DELETE-429-exact-RateLimit-and-Retry-After-headers-no-store"]},
+                {"binary":"requests","test":"api_v1::account::account_revoke_and_logout_preserve_namespace_idempotence_and_audit_effects","checks":["DELETE-204-empty-body-no-store-request-id-own-expired-API-session","DELETE-404-recursive-ErrorEnvelope-foreign-missing-repeat-wrong-namespace","DELETE-repeat-404-and-version-audit-counts"]},
+                {"binary":"requests","test":"api_v1::account::mobile_sessions_hide_foreign_and_expired_login_targets_from_listing_and_revocation","checks":["DELETE-mobile-404-foreign-max-aged-inactive-grants-no-revocation-or-audit","DELETE-mobile-204-login-active-grant-even-with-expired-access-token"]},
+                {"binary":"requests","test":"api_v1::account::concurrent_account_revocation_and_logout_commit_one_effect_each","checks":["DELETE-two-stored-callers-one-204-one-404-one-audit","DELETE-two-mobile-callers-one-204-one-404-one-audit"]},
+                {"binary":"requests","test":"api_v1::account::integration_grant_cannot_manage_account_sessions_but_can_log_out","checks":["DELETE-401-SMART-integration-grant-no-account-revocation"]},
+                {"binary":"care_api","test":"account_sessions::audit_failure_rolls_back_revocation_and_logout_instead_of_returning_no_content","checks":["DELETE-revocation-and-audit-rollback-on-storage-failure"]},
+                {"binary":"care_api","test":"account_sessions::revocation_audit_identifies_the_target_credential_and_actor_without_secrets","checks":["DELETE-target-ID-actor-request-ID-audit-without-token-secret"]},
+                {"binary":"care_api","test":"account_sessions::same_application_mobile_revocations_identify_each_grant_in_audit","checks":["DELETE-distinct-mobile-target-grants-identifiable-in-audit"]},
+            ]
+        })
+    } else if entry["operation_id"] == "logoutSession" {
+        json!({
+            "coverage": "complete",
+            "evidence": [
+                {"binary":"requests","test":"api_v1::account::account_routes_share_the_fixed_general_limit","checks":["DELETE-429-recursive-RateLimitErrorEnvelope","DELETE-429-exact-RateLimit-and-Retry-After-headers-no-store"]},
+                {"binary":"requests","test":"api_v1::account::account_revoke_and_logout_preserve_namespace_idempotence_and_audit_effects","checks":["DELETE-204-empty-body-no-store-request-id-missing-unknown-and-replayed-bearers","DELETE-revokes-API-session-app-token-mobile-grant-once","DELETE-after-revocation-credential-returns-401-on-account-route"]},
+                {"binary":"requests","test":"api_v1::account::concurrent_account_revocation_and_logout_commit_one_effect_each","checks":["DELETE-simultaneous-idempotent-204-responses-with-one-persisted-audit"]},
+                {"binary":"requests","test":"api_v1::account::integration_grant_cannot_manage_account_sessions_but_can_log_out","checks":["DELETE-SMART-integration-grant-204-empty-body-replay-idempotent","DELETE-SMART-scoped-audit-request-ID-no-secret-leak"]},
+                {"binary":"care_api","test":"account_sessions::audit_failure_rolls_back_revocation_and_logout_instead_of_returning_no_content","checks":["DELETE-logout-and-audit-rollback-on-storage-failure"]},
+                {"binary":"care_api","test":"account_sessions::logout_is_idempotent_and_revokes_each_presented_credential_kind","checks":["DELETE-204-idempotent-across-API-session-app-token-mobile-grant"]},
+            ]
+        })
     } else {
         json!({"coverage": "unverified", "evidence": []})
     };
@@ -396,8 +448,19 @@ fn validate_metadata(document: &Value, entry: &Value) {
             pointer(document, header);
         }
     }
-    assert!(entry["candidate_revision"].is_null());
-    assert!(!entry["gaps"].as_array().unwrap().is_empty());
+    if matches!(
+        entry["operation_id"].as_str(),
+        Some("listHouseholds" | "listSessions" | "deleteSession" | "logoutSession")
+    ) {
+        assert_eq!(
+            entry["candidate_revision"],
+            "2ae0b911576912bccf22f10c5db65856bd8cdc60"
+        );
+        assert!(entry["gaps"].as_array().unwrap().is_empty());
+    } else {
+        assert!(entry["candidate_revision"].is_null());
+        assert!(!entry["gaps"].as_array().unwrap().is_empty());
+    }
     let handler = entry["handler_source"].as_str();
     if method == "post" && path == "/households/{household_id}/push_subscription/test" {
         assert!(handler.is_none());
@@ -513,6 +576,38 @@ pub mod baseline {
         entry["coverage"] = json!("partial");
         entry["evidence"][0]["test"] = json!("api_v1::baseline::invented");
         assert!(validate_evidence(&entry).is_err());
+    }
+
+    #[test]
+    fn complete_account_evidence_rejects_revision_and_proof_tampering() {
+        let document: Value =
+            serde_yaml_ng::from_str(include_str!("../../docs/api/openapi.v1.yaml")).unwrap();
+        let entries = inventory();
+        let complete = &entries[&("GET".to_owned(), "/auth/households".to_owned())];
+
+        let mut changed = complete.clone();
+        changed["candidate_revision"] = json!("invented-revision");
+        assert!(std::panic::catch_unwind(|| validate_metadata(&document, &changed)).is_err());
+
+        let mut changed = complete.clone();
+        changed["gaps"] = json!(["unproven"]);
+        assert!(std::panic::catch_unwind(|| validate_metadata(&document, &changed)).is_err());
+
+        let mut changed = complete.clone();
+        changed["evidence"].as_array_mut().unwrap().remove(0);
+        assert!(validate_evidence(&changed).is_err());
+
+        let mut changed = complete.clone();
+        changed["evidence"][0]["checks"][0] = json!("invented-check");
+        assert!(validate_evidence(&changed).is_err());
+
+        let mut invented = entries[&("GET".to_owned(), "/capabilities".to_owned())].clone();
+        invented["coverage"] = json!("complete");
+        invented["candidate_revision"] = complete["candidate_revision"].clone();
+        invented["gaps"] = json!([]);
+        invented["evidence"] = complete["evidence"].clone();
+        assert!(validate_evidence(&invented).is_err());
+        assert!(std::panic::catch_unwind(|| validate_metadata(&document, &invented)).is_err());
     }
 
     #[test]
