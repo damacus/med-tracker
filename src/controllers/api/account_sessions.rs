@@ -1,6 +1,6 @@
 use axum::{
     Json,
-    extract::{Path, State},
+    extract::{Path, State, rejection::PathRejection},
     http::{HeaderMap, HeaderValue, StatusCode, header},
     response::IntoResponse,
 };
@@ -67,7 +67,7 @@ async fn sessions(
 
 async fn revoke(
     State(ctx): State<AppContext>,
-    Path(id): Path<i64>,
+    id: Result<Path<String>, PathRejection>,
     headers: HeaderMap,
     request: Option<axum::Extension<LocoRequestId>>,
 ) -> Response {
@@ -77,12 +77,16 @@ async fn revoke(
             Ok(principal) => principal,
             Err(error) => return authentication(error, &request_id),
         };
+    let Some(id) = id.ok().and_then(|Path(id)| id.parse::<i64>().ok()) else {
+        return operation(OperationError::NotFound, &request_id);
+    };
     match account_sessions::revoke(
         &ctx.db,
         principal.account_id(),
         principal.provenance().method,
         id,
         &request_id,
+        ctx.config.settings.as_ref(),
     )
     .await
     {

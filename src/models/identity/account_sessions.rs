@@ -1,5 +1,5 @@
 use axum::http::{HeaderMap, header};
-use chrono::{DateTime, SecondsFormat, Utc};
+use chrono::{DateTime, NaiveDateTime, SecondsFormat, Utc};
 use headers::{Authorization, HeaderMapExt, authorization::Bearer};
 use sea_orm::{
     ColumnTrait, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, EntityTrait,
@@ -98,15 +98,9 @@ async fn mobile_sessions(
     let data = rows
         .into_iter()
         .filter_map(|row| {
-            let (Some(last_used), Some(authenticated)) = (row.last_used_at, row.authenticated_at)
-            else {
-                return None;
-            };
-            let refresh = last_used.checked_add_signed(lifetime.inactivity)?;
-            let refresh = match lifetime.maximum_age {
-                Some(maximum) => refresh.min(authenticated.checked_add_signed(maximum)?),
-                None => refresh,
-            };
+            let last_used = row.last_used_at?;
+            let refresh =
+                mobile_refresh_deadline(row.last_used_at, row.authenticated_at, &lifetime)?;
             (refresh > now).then(|| {
                 json!({
                     "id":row.id,"device_name":row.device_name,"household_id":Value::Null,
@@ -121,12 +115,27 @@ async fn mobile_sessions(
     Ok(data)
 }
 
+fn mobile_refresh_deadline(
+    last_used: Option<NaiveDateTime>,
+    authenticated: Option<NaiveDateTime>,
+    lifetime: &AuthenticationLifetime,
+) -> Option<NaiveDateTime> {
+    let last_used = last_used?;
+    let authenticated = authenticated?;
+    let refresh = last_used.checked_add_signed(lifetime.inactivity)?;
+    match lifetime.maximum_age {
+        Some(maximum) => Some(refresh.min(authenticated.checked_add_signed(maximum)?)),
+        None => Some(refresh),
+    }
+}
+
 pub async fn revoke(
     db: &DatabaseConnection,
     account_id: i64,
     method: CredentialMethod,
     id: i64,
     request_id: &str,
+    settings: Option<&Value>,
 ) -> Result<(), OperationError> {
     let transaction = begin(db, Some(account_id)).await?;
     let result = match method {
@@ -134,7 +143,7 @@ pub async fn revoke(
             revoke_api_session(&transaction, account_id, id, request_id).await
         }
         CredentialMethod::OauthGrant => {
-            revoke_mobile(&transaction, account_id, id, request_id).await
+            revoke_mobile(&transaction, account_id, id, request_id, settings).await
         }
         CredentialMethod::BrowserSession | CredentialMethod::PersonalApiKey => {
             Err(OperationError::Forbidden)
@@ -178,7 +187,9 @@ async fn revoke_mobile(
     account_id: i64,
     id: i64,
     request_id: &str,
+    settings: Option<&Value>,
 ) -> Result<(), OperationError> {
+    let lifetime = AuthenticationLifetime::from_settings(settings).map_err(unavailable)?;
     let row = oauth_grant::Entity::find_by_id(id)
         .filter(oauth_grant::Column::AccountId.eq(account_id))
         .filter(oauth_grant::Column::ClientKind.eq("mobile"))
@@ -188,6 +199,11 @@ async fn revoke_mobile(
         .await
         .map_err(unavailable)?
         .ok_or(OperationError::NotFound)?;
+    if mobile_refresh_deadline(row.last_used_at, row.authenticated_at, &lifetime)
+        .is_none_or(|refresh| refresh <= Utc::now().naive_utc())
+    {
+        return Err(OperationError::NotFound);
+    }
     let changed = transaction.execute_raw(statement(
         "UPDATE oauth_grants SET revoked_at=timezone('UTC',clock_timestamp()),updated_at=timezone('UTC',clock_timestamp()) WHERE id=$1 AND account_id=$2 AND client_kind='mobile' AND token_hash IS NOT NULL AND revoked_at IS NULL",
         [id.into(), account_id.into()],
@@ -377,4 +393,72 @@ fn stamp(value: chrono::NaiveDateTime) -> String {
 
 fn unavailable<E>(_: E) -> OperationError {
     OperationError::Unavailable
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Duration;
+
+    #[test]
+    fn mobile_login_deadline_honours_inactivity_absolute_age_and_disabled_maximum() {
+        let now = chrono::NaiveDate::from_ymd_opt(2024, 1, 31)
+            .unwrap()
+            .and_hms_opt(12, 0, 0)
+            .unwrap();
+        let bounded = AuthenticationLifetime::new(7, 30).unwrap();
+        let disabled_maximum = AuthenticationLifetime::new(7, 0).unwrap();
+        for (label, last_used, authenticated, lifetime, expected) in [
+            (
+                "inactivity first",
+                Some(now),
+                Some(now - Duration::days(1)),
+                &bounded,
+                Some(now + Duration::days(7)),
+            ),
+            (
+                "absolute age first",
+                Some(now),
+                Some(now - Duration::days(29)),
+                &bounded,
+                Some(now + Duration::days(1)),
+            ),
+            (
+                "maximum disabled",
+                Some(now),
+                Some(now - Duration::days(100)),
+                &disabled_maximum,
+                Some(now + Duration::days(7)),
+            ),
+            ("missing activity", None, Some(now), &bounded, None),
+            ("missing authentication", Some(now), None, &bounded, None),
+            (
+                "missing authentication with maximum disabled",
+                Some(now),
+                None,
+                &disabled_maximum,
+                None,
+            ),
+            (
+                "activity overflow",
+                Some(NaiveDateTime::MAX - Duration::hours(1)),
+                Some(now),
+                &bounded,
+                None,
+            ),
+            (
+                "absolute age overflow",
+                Some(now),
+                Some(NaiveDateTime::MAX - Duration::hours(1)),
+                &bounded,
+                None,
+            ),
+        ] {
+            assert_eq!(
+                mobile_refresh_deadline(last_used, authenticated, lifetime),
+                expected,
+                "{label}"
+            );
+        }
+    }
 }
