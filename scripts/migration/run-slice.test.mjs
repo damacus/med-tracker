@@ -264,6 +264,19 @@ test('API v1 contract task selects the native request binary and focused filter'
 });
 
 const creditedRequestTests = [
+  'api_v1::household_settings::settings_audit_failure_hides_read_and_rolls_back_both_write_methods',
+  'api_v1::household_settings::settings_current_manage_permission_blocks_writes_without_domain_effects',
+  'api_v1::household_settings::settings_methods_reject_invalid_revoked_and_wrong_namespace_credentials',
+  'api_v1::household_settings::settings_methods_reject_stale_membership_credentials_before_changes',
+  'api_v1::household_settings::settings_methods_share_fixed_general_limit_without_domain_effects',
+  'api_v1::household_settings::settings_patch_and_put_distinguish_inaccessible_and_absent_households_without_writes',
+  'api_v1::household_settings::settings_patch_and_put_save_allowed_fields_without_replacing_slug_or_omitted_fields',
+  'api_v1::household_settings::settings_patch_and_put_validate_bodies_and_leave_domain_state_unchanged',
+  'api_v1::household_settings::settings_patch_concurrent_keyed_requests_commit_once',
+  'api_v1::household_settings::settings_patch_replays_same_key_and_rejects_changed_body',
+  'api_v1::household_settings::settings_put_concurrent_keyed_requests_commit_once',
+  'api_v1::household_settings::settings_put_replays_same_key_and_rejects_changed_body',
+  'api_v1::household_settings::settings_reads_scope_three_credential_kinds_and_validate_responses',
   'api_v1::avatar::avatar_malformed_multipart_does_not_replace_current_image',
   'api_v1::avatar::avatar_methods_recheck_stale_permissions_and_membership',
   'api_v1::avatar::avatar_methods_reject_wrong_namespace_scope_and_revoked_credentials',
@@ -327,6 +340,12 @@ const creditedRequestTests = [
 ];
 
 const creditedCareTests = [
+  'administration::household_admin_settings_get_matches_documented_contract',
+  'administration::household_administration_saved_rails_retries_preserve_effects',
+  'administration::household_administration_strong_parameters_filter_protected_fields_and_reject_empty',
+  'administration::household_settings_and_grant_audit_failure_roll_back_effects_and_keys',
+  'administration::household_settings_concurrent_key_retries_apply_once_and_conflict_on_changed_body',
+  'administration::household_settings_partial_update_replay_and_permission_order',
   'avatar::avatar_failed_reply_cleanup_preserves_a_committed_attachment',
   'avatar::avatar_failed_reply_cleanup_waits_for_pending_attachment_commit',
   'avatar::avatar_read_prevents_content_sniffing',

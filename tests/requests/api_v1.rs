@@ -8,6 +8,8 @@ mod contract;
 mod fixture;
 #[path = "household_settings.rs"]
 mod household_settings;
+#[path = "household_settings_evidence.rs"]
+mod household_settings_evidence;
 #[path = "me_ui.rs"]
 mod me_ui;
 #[path = "people.rs"]
@@ -170,6 +172,18 @@ fn inventory() -> BTreeMap<(String, String), Value> {
 }
 
 fn validate_evidence(entry: &Value) -> Result<(), String> {
+    if let Some(expected) =
+        household_settings_evidence::expected(entry["operation_id"].as_str().unwrap_or(""))
+    {
+        for field in ["coverage", "candidate_revision", "gaps", "evidence"] {
+            if entry[field] != expected[field] {
+                return Err(format!(
+                    "Unsupported household settings evidence field: {field}"
+                ));
+            }
+        }
+        return Ok(());
+    }
     if let Some(expected) =
         profile_avatar_evidence::expected(entry["operation_id"].as_str().unwrap_or(""))
     {
@@ -507,6 +521,19 @@ fn validate_metadata(document: &Value, entry: &Value) {
         }
     }
     let candidate_revision = match entry["operation_id"].as_str() {
+        Some(
+            "getHouseholdAdminSettings"
+            | "updateHouseholdAdminSettings"
+            | "replaceHouseholdAdminSettings",
+        ) => {
+            let expected =
+                household_settings_evidence::expected(entry["operation_id"].as_str().unwrap())
+                    .unwrap();
+            Some((
+                household_settings_evidence::REVISION,
+                expected["gaps"].clone(),
+            ))
+        }
         Some(
             "getHouseholdProfile"
             | "updateHouseholdProfile"
