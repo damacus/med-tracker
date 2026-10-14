@@ -159,6 +159,104 @@ async fn support_expiry_expires_due_sessions_once() {
 }
 
 #[tokio::test]
+async fn support_expiry_records_security_audit_event() {
+    let app = Application::new().await;
+    platform_admin(&app).await;
+    let id = insert_session(&app, "now() - interval '1 minute'", "NULL", "NULL").await;
+    let processed = expiry::expire_due_support_sessions(&app.context)
+        .await
+        .unwrap();
+    let event = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            "SELECT household_id,actor_account_id,event_type,metadata->>'outcome' AS outcome,metadata->>'support_access_session_id' AS session,metadata->>'expired_at' AS deadline FROM security_audit_events WHERE event_type='support_access_session.expired' AND metadata->>'support_access_session_id'=$1",
+            [id.to_string().into()],
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    let household_id: i64 = event.try_get("", "household_id").unwrap();
+    let actor: i64 = event.try_get("", "actor_account_id").unwrap();
+    let outcome: String = event.try_get("", "outcome").unwrap();
+    let session: String = event.try_get("", "session").unwrap();
+    let deadline: String = event.try_get("", "deadline").unwrap();
+    app.close().await;
+    assert_eq!(processed, 1);
+    assert_eq!(household_id, 72001);
+    assert_eq!(actor, 71001);
+    assert_eq!(outcome, "expired");
+    assert_eq!(session, id.to_string());
+    assert!(deadline.starts_with("20"));
+}
+
+#[tokio::test]
+async fn support_expiry_drains_a_backlog_beyond_one_batch() {
+    let app = Application::new().await;
+    platform_admin(&app).await;
+    app.fixture
+        .admin
+        .execute_unprepared(
+            "INSERT INTO support_access_sessions(household_id,platform_admin_id,reason,request_id,ip,starts_at,expires_at,created_at,updated_at) SELECT 72001,(SELECT id FROM platform_admins WHERE account_id=71001),'Synthetic backlog','backlog-'||g,'127.0.0.1',now() - interval '1 day',now() - interval '1 minute',now(),now() FROM generate_series(1,501) g",
+        )
+        .await
+        .unwrap();
+    let processed = expiry::expire_due_support_sessions(&app.context)
+        .await
+        .unwrap();
+    let remaining = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT count(*) AS count FROM support_access_sessions WHERE request_id LIKE 'backlog-%' AND expired_at IS NULL".to_owned(),
+        ))
+        .await
+        .unwrap()
+        .and_then(|row| row.try_get::<i64>("", "count").ok())
+        .unwrap_or_default();
+    app.close().await;
+    assert_eq!(processed, 501);
+    assert_eq!(remaining, 0);
+}
+
+#[tokio::test]
+async fn support_expiry_pages_past_failing_sessions() {
+    let app = Application::new().await;
+    platform_admin(&app).await;
+    app.fixture
+        .admin
+        .execute_unprepared(
+            "INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71001,'Synthetic expiry overflow household','expiry-overflow-household','UTC',now(),now()); INSERT INTO support_access_sessions(household_id,platform_admin_id,reason,request_id,ip,starts_at,expires_at,created_at,updated_at) SELECT 72001,(SELECT id FROM platform_admins WHERE account_id=71001),'Synthetic failing','failing-'||g,'127.0.0.1',now() - interval '1 day',now() - interval '1 minute',now(),now() FROM generate_series(1,500) g; INSERT INTO support_access_sessions(household_id,platform_admin_id,reason,request_id,ip,starts_at,expires_at,created_at,updated_at) SELECT 72002,(SELECT id FROM platform_admins WHERE account_id=71001),'Synthetic passing','passing-later', '127.0.0.1',now() - interval '1 day',now() - interval '1 minute',now(),now()",
+        )
+        .await
+        .unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared("CREATE FUNCTION reject_backlog_expiry_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.item_type='SupportAccessSession' AND NEW.household_id=72001 THEN RAISE EXCEPTION 'synthetic backlog expiry audit rejection'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_backlog_expiry_audit BEFORE INSERT ON versions FOR EACH ROW EXECUTE FUNCTION reject_backlog_expiry_audit()")
+        .await
+        .unwrap();
+    let processed = expiry::expire_due_support_sessions(&app.context)
+        .await
+        .unwrap();
+    let passing_expired = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT expired_at IS NOT NULL AS expired FROM support_access_sessions WHERE request_id='passing-later'".to_owned(),
+        ))
+        .await
+        .unwrap()
+        .and_then(|row| row.try_get::<bool>("", "expired").ok())
+        .unwrap_or_default();
+    app.close().await;
+    assert_eq!(processed, 1);
+    assert!(passing_expired);
+}
+
+#[tokio::test]
 async fn support_expiry_ignores_ended_future_and_expired() {
     let app = Application::new().await;
     platform_admin(&app).await;
