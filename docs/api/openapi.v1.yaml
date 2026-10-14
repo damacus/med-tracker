@@ -7,14 +7,19 @@ info:
     API requests are limited per client IP to 300 requests in each five-minute window. GET
     household data exports are also limited to 10 per minute; POST sync batches to 30 per
     minute; GET medication lookup to 60 per minute; POST AI medication suggestions to 10 per
-    minute; and GET household admin audit logs to 100 per minute. Limits use epoch-aligned
+    minute; and GET household admin audit logs to 100 per minute. HEAD requests served by a
+    GET route share that route's rate limits. Limits use epoch-aligned
     fixed windows. The first exceeded limit rejects the request with 429 and Retry-After,
     RateLimit-Limit, RateLimit-Remaining and RateLimit-Reset response headers. Counters are
     local to each server process. Counter storage is bounded; a new client is rejected with
-    429 while the store is full of live counters. Expired counters are reclaimed. Health
+    429 while the store is full of live counters; its Retry-After and RateLimit-Reset reflect
+    the earliest live counter expiry. Expired counters are reclaimed. Health
     checks and direct loopback clients are exempt in production. The client IP is the socket
     peer unless a deployment explicitly configures trusted proxy IPs through
-    API_TRUSTED_PROXY_IPS. A configured loopback proxy is not exempt, and untrusted
+    API_TRUSTED_PROXY_IPS. Each trusted proxy must append the observed client address to
+    X-Forwarded-For or replace that header with the observed address. A proxy passing
+    client-supplied values through without an authoritative observation must not be trusted.
+    A configured loopback proxy is not exempt, and untrusted
     forwarding headers do not set the client IP.
     Ordinary household operations accept a valid API session, household app token,
     or mobile OAuth bearer with the medtracker scope. SMART integration grants
@@ -149,6 +154,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CapabilitiesResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /auth/households:
     get:
       operationId: listHouseholds
@@ -481,6 +488,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "503":
           $ref: "#/components/responses/InvitationDeliveryUnavailable"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /invitations/accept:
     post:
       operationId: acceptHouseholdInvitation
@@ -515,6 +524,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /households/{household_id}/profile/avatar:
     get:
       operationId: downloadCurrentAvatar
@@ -554,6 +565,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "503":
           $ref: "#/components/responses/AvatarUnavailable"
+        "429":
+          $ref: "#/components/responses/RateLimited"
     put:
       operationId: uploadCurrentAvatar
       tags: [Household, People]
@@ -595,6 +608,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "503":
           $ref: "#/components/responses/AvatarUnavailable"
+        "429":
+          $ref: "#/components/responses/RateLimited"
     delete:
       operationId: deleteCurrentAvatar
       tags: [Household, People]
@@ -620,6 +635,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "503":
           $ref: "#/components/responses/AvatarUnavailable"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /households/{household_id}/profile:
     get:
       operationId: getHouseholdProfile
@@ -645,6 +662,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "422":
           $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/RateLimited"
     patch:
       operationId: updateHouseholdProfile
       tags: [Household, People]
@@ -682,6 +701,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "422":
           $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/RateLimited"
     put:
       operationId: updateHouseholdProfileWithPut
       tags: [Household, People]
@@ -719,6 +740,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "422":
           $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /households/{household_id}/reports/health_history:
     get:
       operationId: getHealthHistoryReport
@@ -1153,6 +1176,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
     delete:
       operationId: releaseMedicationReviewPromptLease
       tags: [Household, Medication reviews]
@@ -1188,6 +1213,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /households/{household_id}/medication_review_prompts/{id}/lease/renew:
     post:
       operationId: renewMedicationReviewPromptLease
@@ -1220,6 +1247,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /households/{household_id}/ui_capabilities:
     get:
       operationId: getHouseholdUiCapabilities

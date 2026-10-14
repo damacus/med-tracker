@@ -11,6 +11,7 @@ use loco_rs::{
 };
 use migration::Migrator;
 use std::path::Path;
+use std::sync::Arc;
 
 pub struct App;
 
@@ -69,6 +70,12 @@ impl Hooks for App {
     }
 
     async fn after_context(ctx: AppContext) -> Result<AppContext> {
+        let rate_limit = crate::models::rate_limit::RateLimitState::from_settings(
+            ctx.config.settings.as_ref(),
+            &ctx.environment,
+        )
+        .map_err(|error| Error::string(&error.to_string()))?;
+        ctx.shared_store.insert(Arc::new(rate_limit));
         if let Some(push) =
             crate::models::care::browser_push::Service::from_context(&ctx).map_err(Error::string)?
         {
@@ -142,10 +149,19 @@ impl Hooks for App {
         Ok(())
     }
 
-    async fn after_routes(router: axum::Router, _ctx: &AppContext) -> Result<axum::Router> {
-        Ok(router.layer(axum::middleware::from_fn(
-            crate::models::identity::better_auth::http_boundary,
-        )))
+    async fn after_routes(router: axum::Router, ctx: &AppContext) -> Result<axum::Router> {
+        let rate_limit = ctx
+            .shared_store
+            .get::<Arc<crate::models::rate_limit::RateLimitState>>()
+            .ok_or_else(|| Error::string("API rate-limit state is unavailable"))?;
+        Ok(router
+            .layer(axum::middleware::from_fn(
+                crate::models::identity::better_auth::http_boundary,
+            ))
+            .layer(axum::middleware::from_fn_with_state(
+                rate_limit,
+                crate::controllers::api::rate_limit::boundary,
+            )))
     }
 
     fn register_tasks(tasks: &mut Tasks) {

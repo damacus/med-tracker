@@ -32,8 +32,12 @@ A1–A3 below retain the detailed API implementation and acceptance checks.
 
 ## s05-i01 execution agreement — 13 October 2026
 
-Complete all 119 current OpenAPI v1 operations, including portable imports and AI
-suggestions. Browser/native journeys, live-provider acceptance, FHIR/SMART, MCP
+The 13 October baseline contains 119 OpenAPI v1 operations. Care/review PR #2617
+merged on 14 October as `672dbc0d1520ee586ce625f0dbfec7fb3eba0544`, adding three
+approved review-lease operations. Current acceptance therefore covers all 122
+operations, including portable imports and AI suggestions. Preserve the earlier
+119-operation evidence as historical; route registration does not complete the
+three added operations. Browser/native journeys, live-provider acceptance, FHIR/SMART, MCP
 and production cutover remain separate. Preserve the authoritative wire contracts
 and approved migration differences; historical legacy-Rust acceptance is not Loco
 evidence.
@@ -47,6 +51,15 @@ documented departures in #2592. Do not enable global truncation or replace RLS
 credentials with administrator connections. Retain socket tests where transport
 behaviour specifically requires them. Coordinate coverage reporting with #2583;
 coverage numbers do not replace operation-level assertions.
+
+The shared rate limiter uses the socket peer unless `API_TRUSTED_PROXY_IPS`
+explicitly names a proxy. Configure each trusted proxy to overwrite incoming
+`X-Forwarded-For` with the observed client address, or append that observed address
+to the incoming chain. Passing client-supplied forwarding values through unchanged
+does not establish a trusted client identity. List only controlled proxy addresses,
+not ordinary clients. The application walks the chain from the socket peer and
+stops at the nearest untrusted address; earlier supplied values cannot change
+that client's bucket.
 
 The coordinator owns integration, shared-file allocation, evidence and publication.
 One Sol API writer owns each active area's implementation and regression tests.
@@ -75,7 +88,7 @@ passing. Correct lower-layer defects there and propagate them upwards.
 | 10 | Dose occurrences and medication takes | 10 |
 | 11 | Pause periods and health events | 8 |
 | 12 | Notifications and device subscriptions | 8 |
-| 13 | Review prompts and JSON/PDF reports | 8 |
+| 13 | Review prompts, edit leases and JSON/PDF reports | 11 |
 | 14 | Exports, imports and mobile snapshot | 5 |
 | 15 | Synchronisation | 3 |
 | 16 | Medication lookup and AI suggestions | 2 |
