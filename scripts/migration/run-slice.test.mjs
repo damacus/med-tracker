@@ -62,7 +62,8 @@ if (command === 'docker') {
   }
   const complete = () => {
     const transcript = args.includes('--include-ignored') && process.env.SLICE_FIXTURE_COMPLETION_TRANSCRIPT
-      ? process.env.SLICE_FIXTURE_COMPLETION_TRANSCRIPT : process.env.SLICE_FIXTURE_CARGO_TRANSCRIPT;
+      ? process.env.SLICE_FIXTURE_COMPLETION_TRANSCRIPT : args.includes('care_api') && process.env.SLICE_FIXTURE_CARE_TRANSCRIPT
+        ? process.env.SLICE_FIXTURE_CARE_TRANSCRIPT : process.env.SLICE_FIXTURE_CARGO_TRANSCRIPT;
     if (command === 'cargo' && transcript) process.stdout.write(transcript);
     if (command === 'cargo' && process.env.SLICE_FIXTURE_CARGO_OVERFLOW_BYTES) {
       process.stdout.write('x'.repeat(Number(process.env.SLICE_FIXTURE_CARGO_OVERFLOW_BYTES)));
@@ -108,7 +109,7 @@ syncBuiltinESMExports();
     }
     const options = {
       cwd: root,
-      env: { ...process.env, PATH: `${directory}:${process.env.PATH}`, DATABASE_URL: ambientUrl, MEDTRACKER_SESSION_KEY: 'ambient-identity-fixture-key-must-not-be-used', COMPOSE_FILE: '/unowned/compose.yaml', COMPOSE_PROJECT_NAME: 'unrelated', DOCKER_HOST: 'tcp://unowned.invalid:2376', DOCKER_CONTEXT: 'unrelated', DOCKER_CONFIG: '/unowned/docker-config', DOCKER_TLS_VERIFY: '1', DOCKER_CERT_PATH: '/unowned/certs', SLICE_FILTER: 'unrelated_filter', SLICE_FIXTURE_STATE: statePath, SLICE_FIXTURE_EXIT: String(exitCode), SLICE_FIXTURE_PROVISION_EXIT: String(provisionExit), CARGO_TARGET_DIR: '/unowned/target', CARGO_BUILD_BUILD_DIR: '/unowned/intermediates', LLVM_PROFILE_FILE: '/unowned/profile.profraw', CARGO_LLVM_COV_TARGET_DIR: '/unowned/llvm-cov-target', CARGO_LLVM_COV_BUILD_DIR: '/unowned/llvm-cov-build', CARGO_LLVM_COV_SETUP: 'skip', CARGO_LLVM_COV_FLAGS: '--unowned', CARGO_LLVM_PROFDATA_FLAGS: '--unowned', LLVM_COV: '/unowned/llvm-cov', LLVM_PROFDATA: '/unowned/llvm-profdata', LLVM_COV_FLAGS: '--unowned', LLVM_PROFDATA_FLAGS: '--unowned', LLVM_PROFILE_FILE_NAME: 'unowned.profraw', ...extraEnvironment, ...(gatePath ? { SLICE_FIXTURE_CARGO_GATE: gatePath } : {}), ...(preloadPath ? { NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import=${preloadPath}`.trim() } : {}) },
+      env: { ...process.env, PATH: `${directory}:${process.env.PATH}`, DATABASE_URL: ambientUrl, MEDTRACKER_SESSION_KEY: 'ambient-identity-fixture-key-must-not-be-used', COMPOSE_FILE: '/unowned/compose.yaml', COMPOSE_PROJECT_NAME: 'unrelated', DOCKER_HOST: 'tcp://unowned.invalid:2376', DOCKER_CONTEXT: 'unrelated', DOCKER_CONFIG: '/unowned/docker-config', DOCKER_TLS_VERIFY: '1', DOCKER_CERT_PATH: '/unowned/certs', SLICE_FILTER: 'unrelated_filter', SLICE_FIXTURE_STATE: statePath, SLICE_FIXTURE_EXIT: String(exitCode), SLICE_FIXTURE_PROVISION_EXIT: String(provisionExit), CARGO_TARGET_DIR: '/unowned/target', CARGO_BUILD_BUILD_DIR: '/unowned/intermediates', LLVM_PROFILE_FILE: '/unowned/profile.profraw', CARGO_LLVM_COV_TARGET_DIR: '/unowned/llvm-cov-target', CARGO_LLVM_COV_BUILD_DIR: '/unowned/llvm-cov-build', CARGO_LLVM_COV_SETUP: 'skip', CARGO_LLVM_COV_FLAGS: '--unowned', CARGO_LLVM_PROFDATA_FLAGS: '--unowned', LLVM_COV: '/unowned/llvm-cov', LLVM_PROFDATA: '/unowned/llvm-profdata', LLVM_COV_FLAGS: '--unowned', LLVM_PROFDATA_FLAGS: '--unowned', LLVM_PROFILE_FILE_NAME: 'unowned.profraw', ...(taskName === 'slice:contracts' && taskAssignments.includes('GROUP=api-v1') ? { SLICE_FIXTURE_CARE_TRANSCRIPT: requestTranscript(creditedCareTests, []) } : {}), ...extraEnvironment, ...(gatePath ? { SLICE_FIXTURE_CARGO_GATE: gatePath } : {}), ...(preloadPath ? { NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import=${preloadPath}`.trim() } : {}) },
       encoding: 'utf8',
       timeout: 15000,
       maxBuffer: 4 * 1024 * 1024,
@@ -248,11 +249,27 @@ test('API v1 contract task selects the native request binary and focused filter'
 });
 
 const creditedRequestTests = [
+  'api_v1::account::account_collections_keep_household_scope_and_session_secrets_out',
+  'api_v1::account::account_management_authentication_envelopes_match_each_route',
+  'api_v1::account::account_revoke_and_logout_preserve_namespace_idempotence_and_audit_effects',
+  'api_v1::account::account_routes_reject_invalid_revoked_and_stale_credentials_without_writes',
+  'api_v1::account::account_routes_share_the_fixed_general_limit',
+  'api_v1::account::concurrent_account_revocation_and_logout_commit_one_effect_each',
+  'api_v1::account::integration_grant_cannot_manage_account_sessions_but_can_log_out',
+  'api_v1::account::malformed_delete_session_authenticates_before_identifier_validation',
+  'api_v1::account::mobile_sessions_hide_foreign_and_expired_login_targets_from_listing_and_revocation',
   'api_v1::baseline::anonymous_access',
   'api_v1::rate_limit::fixed_export_window_rejects_eleventh_request_with_contract_headers',
   'api_v1::rate_limit::untrusted_forwarded_sources_share_the_socket_peer_bucket',
   'api_v1::rate_limit::configured_loopback_proxy_separates_forwarded_client_buckets',
   'api_v1::rate_limit::head_export_uses_the_get_export_bucket',
+];
+
+const creditedCareTests = [
+  'account_sessions::audit_failure_rolls_back_revocation_and_logout_instead_of_returning_no_content',
+  'account_sessions::logout_is_idempotent_and_revokes_each_presented_credential_kind',
+  'account_sessions::revocation_audit_identifies_the_target_credential_and_actor_without_secrets',
+  'account_sessions::same_application_mobile_revocations_identify_each_grant_in_audit',
 ];
 
 function requestTranscript(passed, ignored = ['api_v1::acceptance']) {
@@ -302,6 +319,21 @@ test('API v1 completion rejects a passing prefix of an unexecuted credited case'
   });
 });
 
+test('API v1 completion rejects a missing care API proof before the final gate', async () => {
+  const omitted = creditedCareTests.at(-1);
+  await withProcessFixture(0, (result, state) => {
+    assert.notEqual(result.status, 0, result.stderr);
+    assert.match(result.stderr, new RegExp(`Missing executed contract evidence: care_api::${omitted}`));
+    const cargo = state.calls.filter(call => call.command === 'cargo');
+    assert.deepEqual(cargo.map(call => call.args[call.args.indexOf('--test') + 1]), ['requests', 'care_api']);
+    assert.equal(cargo.some(call => call.args.includes('--include-ignored')), false);
+    assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
+  }, 'slice:contracts', ['GROUP=api-v1'], 0, {
+    SLICE_FIXTURE_CARGO_TRANSCRIPT: requestTranscript(creditedRequestTests),
+    SLICE_FIXTURE_CARE_TRANSCRIPT: requestTranscript(creditedCareTests.slice(0, -1), []),
+  });
+});
+
 test('API v1 completion rejects all credited lines without a final libtest summary and cleans up', async () => {
   const transcript = [
     `running ${creditedRequestTests.length} tests`,
@@ -318,7 +350,7 @@ test('API v1 completion rejects all credited lines without a final libtest summa
 
 test('API v1 completion rejects an inconsistent libtest summary and cleans up', async () => {
   const transcript = requestTranscript(creditedRequestTests)
-    .replace('5 passed; 0 failed; 1 ignored', '6 passed; 0 failed; 1 ignored');
+    .replace(`${creditedRequestTests.length} passed; 0 failed; 1 ignored`, `${creditedRequestTests.length + 1} passed; 0 failed; 1 ignored`);
   await withProcessFixture(0, (result, state) => {
     assert.notEqual(result.status, 0, result.stderr);
     assert.match(result.stderr, /summary|count|transcript/i);
@@ -368,10 +400,14 @@ test('readable Cargo output error cleans the owned database', async () => {
 test('API v1 completion observes exact credited cases and runs the existing acceptance gate', async () => {
   await withProcessFixture(42, (result, state) => {
     assert.notEqual(result.status, 0, result.stderr);
-    const requests = state.calls.filter(call => call.command === 'cargo' && call.args.includes('requests'));
+    const cargo = state.calls.filter(call => call.command === 'cargo');
+    assert.deepEqual(cargo.map(call => call.args[call.args.indexOf('--test') + 1]), ['requests', 'care_api', 'requests']);
+    const requests = cargo.filter(call => call.args.includes('requests'));
     assert.ok(requests.some(call => !call.args.includes('--include-ignored')));
     assert.deepEqual(requests[0].args,
       ['test', '--locked', '--test', 'requests', 'api_v1', '--', '--format=pretty', '--color=never']);
+    assert.deepEqual(cargo[1].args,
+      ['test', '--locked', '--test', 'care_api', '--', '--format=pretty', '--color=never']);
     assert.deepEqual(requests.at(-1).args,
       ['test', '--locked', '--test', 'requests', 'api_v1', '--', '--include-ignored', '--format=pretty', '--color=never']);
     assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
@@ -391,7 +427,7 @@ test('API v1 completion requires its exact gate case to pass in the final select
     await withProcessFixture(0, (result, state) => {
       assert.notEqual(result.status, 0, label);
       assert.match(result.stderr, /Missing executed API v1 acceptance gate/, label);
-      assert.equal(state.calls.filter(call => call.command === 'cargo').length, 2, label);
+      assert.equal(state.calls.filter(call => call.command === 'cargo').length, 3, label);
       assert.ok(state.calls.at(-2).args.includes('--include-ignored'), label);
       assert.deepEqual(state.resources, { unrelated: ['existing-volume'] }, label);
     }, 'slice:contracts', ['GROUP=api-v1'], 0, {
@@ -405,7 +441,7 @@ test('API v1 completion accepts the exact gate after its evidence selection', as
   await withProcessFixture(0, (result, state) => {
     assert.equal(result.status, 0, result.stderr);
     const requests = state.calls.filter(call => call.command === 'cargo');
-    assert.equal(requests.length, 2);
+    assert.equal(requests.length, 3);
     assert.ok(requests.at(-1).args.includes('--include-ignored'));
     assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
   }, 'slice:contracts', ['GROUP=api-v1'], 0, {
