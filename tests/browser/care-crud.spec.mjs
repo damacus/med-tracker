@@ -62,7 +62,7 @@ test('medication creation, stale editing and guarded deletion work through real 
   await expect(page.getByRole('link', { name: 'Synthetic display name', exact: true })).toHaveCount(0);
   expect((await page.request.get(createdDetail, { maxRedirects: 0 })).status()).toBe(404);
   await page.getByRole('link', { name: 'Synthetic tablets', exact: true }).click();
-  await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
+  await page.getByRole('button', { name: 'Record dose', exact: true }).click();
   await page.getByRole('dialog', { name: 'Record dose', exact: true }).getByRole('button', { name: 'Record dose', exact: true }).click();
   await expect(page.getByTestId('current-supply')).toHaveText('8 tablets');
   await page.getByRole('button', { name: 'Delete Medication', exact: true }).click();

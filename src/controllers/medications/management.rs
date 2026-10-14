@@ -232,6 +232,7 @@ impl<'a> Page<'a> {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) async fn new(
     State(ctx): State<AppContext>,
     Path(slug): Path<String>,

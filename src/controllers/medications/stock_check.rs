@@ -21,6 +21,7 @@ where
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) async fn show(
     State(ctx): State<AppContext>,
     Path(slug): Path<String>,
@@ -37,10 +38,12 @@ pub(super) async fn show(
     };
     render_page(
         tenant,
-        &slug,
-        &headers,
-        token,
-        &view,
+        RenderPage {
+            slug: &slug,
+            headers: &headers,
+            token,
+            view: &view,
+        },
         query.location_id,
         &HashMap::new(),
         None,
@@ -48,16 +51,26 @@ pub(super) async fn show(
     .await
 }
 
+struct RenderPage<'a> {
+    slug: &'a str,
+    headers: &'a HeaderMap,
+    token: CsrfToken,
+    view: &'a TeraView,
+}
+
 async fn render_page(
     tenant: TenantTransaction,
-    slug: &str,
-    headers: &HeaderMap,
-    token: CsrfToken,
-    view: &TeraView,
+    page: RenderPage<'_>,
     location_id: Option<i64>,
     draft: &HashMap<String, String>,
     error: Option<&OperationError>,
 ) -> Response {
+    let RenderPage {
+        slug,
+        headers,
+        token,
+        view,
+    } = page;
     let snapshot = match stock_check::read(&tenant, location_id).await {
         Ok(value) => value,
         Err(error) => return operation_error(error),
@@ -147,6 +160,7 @@ async fn render_page(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) async fn apply(
     State(ctx): State<AppContext>,
     Path(slug): Path<String>,
@@ -219,10 +233,12 @@ pub(super) async fn apply(
             };
             render_page(
                 tenant,
-                &slug,
-                &headers,
-                token,
-                &view,
+                RenderPage {
+                    slug: &slug,
+                    headers: &headers,
+                    token,
+                    view: &view,
+                },
                 query.location_id,
                 &draft,
                 Some(&error),

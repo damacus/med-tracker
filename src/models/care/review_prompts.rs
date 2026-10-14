@@ -219,7 +219,12 @@ pub async fn show(tenant: &TenantTransaction, id: &str) -> Result<(Value, String
     else {
         return Err(OperationError::NotFound);
     };
-    refresh(tenant, record.person_id, today_in_app_zone()).await?;
+    refresh(
+        tenant,
+        record.person_id,
+        today_in_app_zone(tenant.settings()),
+    )
+    .await?;
     let record = sync::review_prompts::visible_prompt(tenant.transaction(), &context, id)
         .await?
         .ok_or(OperationError::NotFound)?;

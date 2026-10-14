@@ -106,6 +106,7 @@ fn redirect(slug: &str) -> Response {
         .into_response()
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn index(
     State(ctx): State<AppContext>,
     Path(slug): Path<String>,
@@ -244,6 +245,7 @@ async fn history(
     response
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn edit_page(
     State(ctx): State<AppContext>,
     Path((slug, id)): Path<(String, String)>,
@@ -264,7 +266,7 @@ async fn edit_page(
     let lease = match edit::acquire(&tenant, &id).await {
         Ok(value) => value,
         Err(error)
-            if draft.get("etag").is_some() && matches!(error, OperationError::Conflict { .. }) =>
+            if draft.contains_key("etag") && matches!(error, OperationError::Conflict { .. }) =>
         {
             let (review, _) = match review_prompts::show(&tenant, &id).await {
                 Ok(value) => value,
@@ -279,7 +281,7 @@ async fn edit_page(
                 json!({"review":review["data"],"lease":{"token":"","expires_at":""},"draft":draft,"error":crate::controllers::medications::forms::message(&error),"changed":false,"reacquire":true}),
                 crate::controllers::medications::forms::status(&error),
             );
-            if !browser::authenticate(&ctx.db, &session)
+            if !browser::authenticate(&ctx.db, &session, ctx.config.settings.as_ref())
                 .await
                 .is_ok_and(|current| current.account_id() == principal.account_id())
             {
@@ -310,7 +312,7 @@ async fn edit_page(
         json!({"review":review["data"],"lease":lease["data"],"draft":draft,"changed":changed,"error":Value::Null}),
         StatusCode::OK,
     );
-    if !browser::authenticate(&ctx.db, &session)
+    if !browser::authenticate(&ctx.db, &session, ctx.config.settings.as_ref())
         .await
         .is_ok_and(|current| current.account_id() == principal.account_id())
     {
@@ -325,6 +327,7 @@ async fn edit_page(
     response
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn save(
     State(ctx): State<AppContext>,
     Path((slug, id)): Path<(String, String)>,
@@ -400,7 +403,7 @@ async fn save(
     }.await;
     match result {
         Ok(()) => {
-            if !browser::authenticate(&ctx.db, &session)
+            if !browser::authenticate(&ctx.db, &session, ctx.config.settings.as_ref())
                 .await
                 .is_ok_and(|current| current.account_id() == principal.account_id())
             {

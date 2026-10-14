@@ -1,4 +1,5 @@
 import { test, expect } from './care-fixtures.mjs';
+import { openCareSection } from './care-navigation.mjs';
 
 test.use({ actionTimeout: 10000 });
 
@@ -8,7 +9,7 @@ async function navigate(page) {
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
-  await page.getByRole('link', { name: 'People', exact: true }).click();
+  await openCareSection(page, 'People');
   await page.getByRole('link', { name: 'Synthetic adult', exact: true }).click();
   await page.getByRole('link', { name: 'Manage treatments', exact: true }).click();
 }
@@ -28,7 +29,7 @@ test('person treatment management makes schedules and medication assignments ava
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
-  await page.getByRole('link', { name: 'People', exact: true }).click();
+  await openCareSection(page, 'People');
   await page.getByRole('link', { name: 'Synthetic adult', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Synthetic adult', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Manage treatments', exact: true })).toBeVisible({ timeout: 5000 });
@@ -218,7 +219,7 @@ test('medication assignment creation and editing work immediately for recorded c
   await page.getByRole('button', { name: 'Save Medication', exact: true }).click();
   await page.getByRole('link', { name: 'Done', exact: true }).click();
   await page.getByRole('link', { name: 'Medications', exact: true }).click();
-  await page.getByRole('link', { name: 'People', exact: true }).click();
+  await openCareSection(page, 'People');
   await page.getByRole('link', { name: 'Synthetic adult', exact: true }).click();
   await page.getByRole('link', { name: 'Manage treatments', exact: true }).click();
   await page.getByRole('link', { name: 'Assign medication', exact: true }).click();
@@ -254,7 +255,7 @@ test('medication assignment creation and editing work immediately for recorded c
   await expect(card).toContainText('Active');
   await card.getByRole('link', { name: 'Synthetic assigned medicine', exact: true }).click();
   await expect(page.locator('form[data-dose-form]')).toContainText('2 tablets');
-  await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
+  await page.getByRole('button', { name: 'Record dose', exact: true }).click();
   await page.getByRole('form', { name: /Synthetic adult.*Synthetic assigned medicine.*2 tablets.*Ongoing medication/ }).getByRole('button', { name: 'Record dose', exact: true }).click();
   await expect(page.getByTestId('current-supply')).toHaveText('8 tablets');
 });
@@ -271,11 +272,11 @@ test('retiring a schedule and unassigning medication preserve historical clinica
   const assignment = page.getByRole('article', { name: 'Synthetic tablets assignments', exact: true });
   await expect(assignment.getByRole('button', { name: 'Unassign medication', exact: true })).toBeVisible();
   await assignment.getByRole('link', { name: 'Synthetic tablets', exact: true }).click();
-  await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
+  await page.getByRole('button', { name: 'Record dose', exact: true }).click();
   await page.getByRole('form', { name: /Synthetic adult.*Synthetic tablets.*2 tablets.*Ongoing medication/ }).getByRole('button', { name: 'Record dose', exact: true }).click();
   await expect(page.getByTestId('current-supply')).toHaveText('8 tablets');
   await page.getByRole('link', { name: 'Medications', exact: true }).click();
-  await page.getByRole('link', { name: 'People', exact: true }).click();
+  await openCareSection(page, 'People');
   await page.getByRole('link', { name: 'Synthetic adult', exact: true }).click();
   await page.getByRole('link', { name: 'Manage treatments', exact: true }).click();
   await assignment.getByRole('button', { name: 'Unassign medication', exact: true }).click();
@@ -310,7 +311,7 @@ test('retirement audit failure preserves both treatment sources and historical d
   await careFixture.scheduledMedicine();
   await navigate(page);
   await page.getByRole('article', { name: 'Synthetic tablets assignments', exact: true }).getByRole('link', { name: 'Synthetic tablets', exact: true }).click();
-  await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
+  await page.getByRole('button', { name: 'Record dose', exact: true }).click();
   await page.getByRole('form', { name: /Synthetic adult.*Synthetic tablets.*2 tablets.*Ongoing medication/ }).getByRole('button', { name: 'Record dose', exact: true }).click();
   await expect(page.getByTestId('current-supply')).toHaveText('8 tablets');
   const token = await page.locator('input[name="authenticity_token"]').first().inputValue();

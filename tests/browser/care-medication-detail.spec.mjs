@@ -17,7 +17,7 @@ test('record dialog presents each treatment as a clear dose confirmation', async
   await careFixture.scheduledMedicine();
   await openMedication(page);
   expect(await page.locator('noscript').textContent()).toContain('Recording doses here requires JavaScript.');
-  await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
+  await page.getByRole('button', { name: 'Record dose', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Record dose', exact: true });
   await expect(page.getByText('Check the person, medication, dose and time before recording.', { exact: true }).first()).toBeVisible();
   await expect(dialog.getByText('Check the person, medication, dose and time before recording.', { exact: true })).toBeVisible();
@@ -48,7 +48,7 @@ test('first recordable treatment receives focus when an earlier source is view o
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
   await page.getByRole('link', { name: 'Synthetic tablets', exact: true }).click();
-  await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
+  await page.getByRole('button', { name: 'Record dose', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Record dose', exact: true });
   await expect(dialog.getByText(/Synthetic adult.*view only/i)).toBeVisible();
   await expect(dialog.getByRole('form', { name: /Synthetic administration member.*Synthetic tablets.*1 tablet/ }).getByLabel('Taken at', { exact: true })).toBeFocused();
@@ -56,7 +56,7 @@ test('first recordable treatment receives focus when an earlier source is view o
 
 test('invalid dose time marks only its field and restores focus after rerender', async ({ page }) => {
   await openMedication(page);
-  await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
+  await page.getByRole('button', { name: 'Record dose', exact: true }).click();
   const form = page.locator('form[data-dose-form]').first();
   await form.getByLabel('Taken at', { exact: true }).evaluate(input => { input.value = ''; input.required = false; });
   const response = page.waitForResponse(value => value.request().method() === 'POST' && value.url().endsWith('/doses'));
@@ -71,7 +71,7 @@ test('invalid dose time marks only its field and restores focus after rerender',
   await expect(dialog.getByRole('alert')).toContainText('Taken at is invalid');
   await expect(dialog.locator('[name="taken_from_medication_id"]')).not.toHaveAttribute('aria-invalid', 'true');
   await page.keyboard.press('Escape');
-  await expect(page.getByRole('button', { name: 'Record a dose', exact: true })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Record dose', exact: true })).toBeFocused();
 });
 
 test.describe('Spanish dose dialog', () => {
@@ -109,7 +109,7 @@ test('record confirmation remains readable in color and neutral themes at narrow
   for (const appearance of ['light', 'dark']) for (const palette of palettes) {
     await chooseProfileAppearance(page, appearance, palette);
     await expect(page.locator('html')).toHaveAttribute('data-theme', `${palette}-${appearance}`);
-    await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
+    await page.getByRole('button', { name: 'Record dose', exact: true }).click();
     const dialog = page.getByRole('dialog', { name: 'Record dose', exact: true });
     const samples = await measureCareContrast(page);
     for (const sample of samples.filter(sample => sample.selector.startsWith('#record-dose-dialog'))) {
@@ -123,7 +123,7 @@ test('record confirmation remains readable in color and neutral themes at narrow
   }
   for (const theme of ['neutral-light', 'neutral-dark']) {
     await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
-    await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
+    await page.getByRole('button', { name: 'Record dose', exact: true }).click();
     const samples = await measureCareContrast(page);
     for (const sample of samples.filter(sample => sample.selector.startsWith('#record-dose-dialog'))) {
       expect.soft(sample.ratio, `${theme} ${sample.selector} contrast ${sample.ratio}`).toBeGreaterThanOrEqual(4.5);
@@ -135,7 +135,7 @@ test('record confirmation remains readable in color and neutral themes at narrow
 test('record dialog traps keyboard focus and reflows at 200 percent text', async ({ page }) => {
   await openMedication(page);
   await page.setViewportSize({ width: 320, height: 812 });
-  await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
+  await page.getByRole('button', { name: 'Record dose', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Record dose', exact: true });
   await expect(dialog).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -147,13 +147,13 @@ test('record dialog traps keyboard focus and reflows at 200 percent text', async
   const time = dialog.getByLabel('Taken at', { exact: true });
   await time.focus();
   await page.keyboard.press('Shift+Tab');
-  expect(await page.getByRole('button', { name: 'Record a dose', exact: true }).evaluate(element => element !== document.activeElement)).toBe(true);
+  expect(await page.getByRole('button', { name: 'Record dose', exact: true }).evaluate(element => element !== document.activeElement)).toBe(true);
   expect(await dialog.evaluate(element => element.matches(':modal'))).toBe(true);
   await page.keyboard.press('Tab');
   expect(await dialog.evaluate(element => element.contains(document.activeElement))).toBe(true);
   await dialog.getByRole('button', { name: 'Record dose', exact: true }).focus();
   await page.keyboard.press('Tab');
-  expect(await page.getByRole('button', { name: 'Record a dose', exact: true }).evaluate(element => element !== document.activeElement)).toBe(true);
+  expect(await page.getByRole('button', { name: 'Record dose', exact: true }).evaluate(element => element !== document.activeElement)).toBe(true);
   await page.keyboard.press('Shift+Tab');
   expect(await dialog.evaluate(element => element.contains(document.activeElement))).toBe(true);
   await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; });
@@ -185,7 +185,7 @@ test('empty supporting medication details stay secondary without displacing dose
   const record = await page.getByRole('heading', { name: 'Record dose', exact: true }).boundingBox();
   const supply = await page.getByRole('heading', { name: 'Inventory status', exact: true }).boundingBox();
   if (info.project.name === 'mobile') {
-    const action = await page.getByRole('button', { name: 'Record a dose', exact: true }).boundingBox();
+    const action = await page.getByRole('button', { name: 'Record dose', exact: true }).boundingBox();
     expect(action.y + action.height).toBeLessThanOrEqual(page.viewportSize().height);
   } else {
     expect(record.y).toBeLessThanOrEqual(supply.y + 20);
@@ -428,7 +428,7 @@ test('schedule-only medication can record a dose from its planned source', async
   await careFixture.scheduledMedicine();
   await careFixture.scheduleOnlyMedicine();
   await openMedication(page);
-  await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
+  await page.getByRole('button', { name: 'Record dose', exact: true }).click();
   const form = page.getByRole('form', { name: /Synthetic adult.*Synthetic tablets.*2 tablets.*Scheduled treatment/ });
   await expect(form.locator('[name="source_type"]')).toHaveValue('schedule');
   await form.getByRole('button', { name: 'Record dose', exact: true }).click();
@@ -441,7 +441,7 @@ test('review: a taper defaults to the selected date and records that amount', as
   await careFixture.scheduleOnlyMedicine();
   await careFixture.dateSensitiveSchedule();
   await openMedication(page);
-  await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
+  await page.getByRole('button', { name: 'Record dose', exact: true }).click();
   const form = page.locator('form[data-dose-form]').first();
   await expect(form.locator('[name="dose_amount"]')).toHaveValue('1');
   await expect(form).toContainText('1 tablet');
@@ -455,7 +455,7 @@ test('review: changing a taper dose date previews its amount and records the sel
   await careFixture.scheduleOnlyMedicine();
   await careFixture.dateSensitiveSchedule();
   await openMedication(page);
-  await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
+  await page.getByRole('button', { name: 'Record dose', exact: true }).click();
   const form = page.locator('form[data-dose-form]').first();
   const takenAt = form.getByLabel('Taken at', { exact: true });
   const today = await takenAt.inputValue();
@@ -474,7 +474,7 @@ test('review: a changed taper step requires reconfirmation without losing the da
   await careFixture.scheduleOnlyMedicine();
   await careFixture.dateSensitiveSchedule();
   await openMedication(page);
-  await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
+  await page.getByRole('button', { name: 'Record dose', exact: true }).click();
   const form = page.locator('form[data-dose-form]').first();
   const takenAt = await form.getByLabel('Taken at', { exact: true }).inputValue();
   await careFixture.changeTaperStep();
@@ -500,7 +500,7 @@ test('review: selecting another date replaces a stale dose confirmation and anno
   await careFixture.scheduleOnlyMedicine();
   await careFixture.dateSensitiveSchedule();
   await openMedication(page);
-  await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
+  await page.getByRole('button', { name: 'Record dose', exact: true }).click();
   await careFixture.changeTaperStep();
   const form = page.locator('form[data-dose-form]').first();
   const submitted = page.waitForResponse(value => value.request().method() === 'POST' && value.url().endsWith('/doses'));
@@ -537,7 +537,7 @@ test('review: selecting another date replaces a stale dose confirmation and anno
 
 test('review: failed dose preview explains the unavailable state and prevents submission', async ({ page }) => {
   await openMedication(page);
-  await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
+  await page.getByRole('button', { name: 'Record dose', exact: true }).click();
   const form = page.locator('form[data-dose-form]').first();
   const takenAt = form.getByLabel('Taken at', { exact: true });
   await page.route('**/doses/preview?*', route => route.fulfill({ status: 503, body: 'Unavailable' }));
@@ -549,7 +549,7 @@ test('review: failed dose preview explains the unavailable state and prevents su
 
 test('review: missing or altered fixed browser dose confirmation never writes stock', async ({ page, careFixture }) => {
   await openMedication(page);
-  await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
+  await page.getByRole('button', { name: 'Record dose', exact: true }).click();
   const form = page.locator('form[data-dose-form]').first();
   const fields = await form.evaluate(element => Object.fromEntries(new FormData(element)));
   const path = await form.getAttribute('action');
@@ -570,7 +570,7 @@ test('review: an off-day schedule cannot be submitted until a valid dose date is
   await careFixture.scheduleOnlyMedicine();
   await careFixture.offdaySchedule();
   await openMedication(page);
-  await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
+  await page.getByRole('button', { name: 'Record dose', exact: true }).click();
   const form = page.locator('form[data-dose-form]').first();
   await expect(form.getByRole('button', { name: 'Record dose', exact: true })).toBeDisabled();
   await expect(form).toContainText(/not scheduled|not available/i);
@@ -631,7 +631,7 @@ test('colliding dose source IDs keep labels and failed drafts separate', async (
   await careFixture.scheduledMedicine();
   await careFixture.collidingDoseSources();
   await openMedication(page);
-  await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
+  await page.getByRole('button', { name: 'Record dose', exact: true }).click();
   const assignment = page.getByRole('form', { name: /Synthetic adult.*Synthetic tablets.*2 tablets.*Ongoing medication/ });
   const schedule = page.getByRole('form', { name: /Synthetic adult.*Synthetic tablets.*2 tablets.*Scheduled treatment/ });
   const ids = await page.getByRole('dialog', { name: 'Record dose', exact: true }).locator('[id]').evaluateAll(nodes => nodes.map(node => node.id));
@@ -649,7 +649,7 @@ test('colliding dose source IDs keep labels and failed drafts separate', async (
 
 test('medication details show the latest recorded dose without a second write', async ({ page, careFixture }) => {
   await openMedication(page);
-  await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
+  await page.getByRole('button', { name: 'Record dose', exact: true }).click();
   const form = page.getByRole('form', { name: /Synthetic adult.*Synthetic tablets.*2 tablets.*Ongoing medication/ });
   await form.getByRole('button', { name: 'Record dose', exact: true }).click();
   await expect(page.getByTestId('current-supply')).toHaveText('8 tablets');
@@ -681,7 +681,7 @@ test('medication detail order and stock actions show their distinct effects', as
 
 test('medication actions open focused dialogs and restore keyboard focus on close', async ({ page }, info) => {
   await openMedication(page);
-  const recordButton = page.getByRole('button', { name: 'Record a dose', exact: true });
+  const recordButton = page.getByRole('button', { name: 'Record dose', exact: true });
   await recordButton.focus();
   await page.keyboard.press('Enter');
   const recordDialog = page.getByRole('dialog', { name: 'Record dose', exact: true });
@@ -823,7 +823,7 @@ test('a recorded dose changes stock and conflicts with an already open refill', 
   await dialog.getByLabel('Quantity to add', { exact: true }).fill('5');
   const concurrent = await page.context().newPage();
   await concurrent.goto(page.url());
-  await concurrent.getByRole('button', { name: 'Record a dose', exact: true }).click();
+  await concurrent.getByRole('button', { name: 'Record dose', exact: true }).click();
   await concurrent.getByRole('form', { name: /Synthetic adult.*Synthetic tablets.*2 tablets.*Ongoing medication/ }).getByRole('button', { name: 'Record dose', exact: true }).click();
   await expect(concurrent.getByTestId('current-supply')).toHaveText('8 tablets');
   await concurrent.close();
@@ -881,7 +881,7 @@ test('visible view-only carer may refill but loses that access when the grant en
 
 test('forged dose source and stock remain rejected without a take', async ({ page, careFixture }) => {
   await openMedication(page);
-  await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
+  await page.getByRole('button', { name: 'Record dose', exact: true }).click();
   const form = page.getByRole('form', { name: /Synthetic adult.*Synthetic tablets.*2 tablets.*Ongoing medication/ });
   const fields = await form.evaluate(element => Object.fromEntries(new FormData(element)));
   const path = await form.getAttribute('action');

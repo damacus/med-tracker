@@ -1,4 +1,5 @@
 import { test, expect } from './care-fixtures.mjs';
+import { openCareSection } from './care-navigation.mjs';
 
 test.use({ actionTimeout: 10000 });
 
@@ -8,8 +9,7 @@ async function openPerson(page) {
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
-  await page.getByRole('button', { name: 'Open menu', exact: true }).click();
-  await page.getByRole('link', { name: 'People', exact: true }).click();
+  await openCareSection(page, 'People');
   await page.getByRole('link', { name: 'Synthetic adult', exact: true }).click();
 }
 
@@ -92,7 +92,7 @@ test('person keeps a paused source visible and shows its recorded pause history'
 test('person with no treatment has a useful empty state and readable overview', async ({ page, careFixture }) => {
   await careFixture.seedAdministration();
   await openPerson(page);
-  await page.getByRole('link', { name: 'People', exact: true }).click();
+  await openCareSection(page, 'People');
   await page.getByRole('link', { name: 'Synthetic administration member', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Current medications', exact: true })).toBeVisible();
   await expect(page.getByRole('article')).toHaveCount(0);
@@ -110,7 +110,7 @@ test('a view-only carer can read source cards without record or management actio
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
-  await page.getByRole('link', { name: 'People', exact: true }).click();
+  await openCareSection(page, 'People');
   await page.getByRole('link', { name: 'Synthetic adult', exact: true }).click();
   const schedule = page.getByRole('article', { name: 'Synthetic tablets scheduled treatment', exact: true });
   await expect(schedule).toContainText('Every other day');

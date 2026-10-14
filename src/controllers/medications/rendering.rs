@@ -49,13 +49,16 @@ pub fn index(
     view: &TeraView,
     token: &CsrfToken,
     slug: &str,
-    inventory: Inventory,
-    location_id: Option<i64>,
-    category: Option<&str>,
+    page: IndexPage<'_>,
     locale: &str,
     labels: Value,
     permissions: IndexPermissions,
 ) -> Response {
+    let IndexPage {
+        inventory,
+        location_id,
+        category,
+    } = page;
     let mut data = appearance_context();
     data["slug"] = json!(slug);
     data["lang"] = json!(locale);
@@ -88,6 +91,12 @@ pub struct IndexPermissions {
     pub adjust: bool,
     pub assign: bool,
     pub manage: bool,
+}
+
+pub struct IndexPage<'a> {
+    pub inventory: Inventory,
+    pub location_id: Option<i64>,
+    pub category: Option<&'a str>,
 }
 
 pub fn detail(
@@ -523,12 +532,15 @@ pub fn stock(
     view: &TeraView,
     token: &CsrfToken,
     slug: &str,
-    snapshot: StockSnapshot,
-    draft: &HashMap<String, String>,
-    error: Option<String>,
-    status: StatusCode,
+    page: StockPage<'_>,
     language: &str,
 ) -> Response {
+    let StockPage {
+        snapshot,
+        draft,
+        error,
+        status,
+    } = page;
     let locale = crate::models::care::report_pdf::locale(language);
     let Ok(labels) = crate::models::care::report_pdf::translations(locale) else {
         return super::unavailable();
@@ -548,6 +560,13 @@ pub fn stock(
     data["stock_tracked"] = json!(snapshot.medication.current_supply.is_some());
     data["stock_changed"] = json!(changed);
     render(view, token, "medications/stock.html", data, status)
+}
+
+pub struct StockPage<'a> {
+    pub snapshot: StockSnapshot,
+    pub draft: &'a HashMap<String, String>,
+    pub error: Option<String>,
+    pub status: StatusCode,
 }
 
 fn render(

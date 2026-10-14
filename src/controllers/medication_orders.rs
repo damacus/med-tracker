@@ -58,6 +58,7 @@ async fn show(
     response
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn order(
     State(ctx): State<AppContext>,
     Path((slug, id)): Path<(String, String)>,

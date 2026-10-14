@@ -131,6 +131,7 @@ async fn dose_preview(
         .into_response()
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn index(
     State(ctx): State<AppContext>,
     Path(slug): Path<String>,
@@ -178,9 +179,11 @@ async fn index(
         &view,
         &token,
         &slug,
-        inventory,
-        filters.location_id,
-        filters.category.as_deref(),
+        rendering::IndexPage {
+            inventory,
+            location_id: filters.location_id,
+            category: filters.category.as_deref(),
+        },
         locale,
         labels,
         rendering::IndexPermissions {
@@ -321,10 +324,12 @@ async fn edit_stock(
         &view,
         &token,
         &slug,
-        snapshot,
-        &draft,
-        None,
-        StatusCode::OK,
+        rendering::StockPage {
+            snapshot,
+            draft: &draft,
+            error: None,
+            status: StatusCode::OK,
+        },
         language,
     );
     if tenant.commit().await.is_err() {
@@ -601,10 +606,12 @@ async fn adjust_stock(
                     &view,
                     &token,
                     &slug,
-                    snapshot,
-                    &draft,
-                    Some(forms::message(&error)),
-                    forms::status(&error),
+                    rendering::StockPage {
+                        snapshot,
+                        draft: &draft,
+                        error: Some(forms::message(&error)),
+                        status: forms::status(&error),
+                    },
                     headers
                         .get(header::ACCEPT_LANGUAGE)
                         .and_then(|value| value.to_str().ok())

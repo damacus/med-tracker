@@ -47,7 +47,7 @@ test('real signin, dose replay, permission withdrawal and stale stock preserve c
   await careFixture.restart();
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Synthetic tablets', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
+  await page.getByRole('button', { name: 'Record dose', exact: true }).click();
   await expect(page.locator('form[data-dose-form]')).toContainText('2 tablets');
   const original = await page.locator('form[data-dose-form]').evaluate(form => Object.fromEntries(new FormData(form)));
   const recordedResponse = page.waitForResponse(response => response.url().endsWith('/doses') && response.request().method() === 'POST');

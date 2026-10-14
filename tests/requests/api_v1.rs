@@ -50,7 +50,7 @@ fn operations() -> BTreeMap<(String, String), Value> {
     let source = include_str!("../../docs/api/openapi.v1.yaml");
     assert_eq!(
         hex::encode(Sha256::digest(source.as_bytes())),
-        "08948b972a6a759122fdec88da3ceffe076173aaf014a6abed3c25b60ee61273",
+        "586c715a07c33d84df78e0d7195ad23f81c42b920cc6cad0c759b0f3512aaee7",
         "The full API schema or headers changed; refresh the operation inventory and its evidence"
     );
     let document: Value = serde_yaml_ng::from_str(source).unwrap();
@@ -395,7 +395,7 @@ pub mod baseline {
         let recorded = inventory();
         let document: Value =
             serde_yaml_ng::from_str(include_str!("../../docs/api/openapi.v1.yaml")).unwrap();
-        assert_eq!(expected.len(), 119);
+        assert_eq!(expected.len(), 122);
         assert_eq!(recorded.len(), expected.len());
         assert_eq!(
             recorded.keys().collect::<Vec<_>>(),

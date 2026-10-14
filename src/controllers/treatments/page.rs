@@ -119,14 +119,14 @@ impl<'a> Page<'a> {
             Err(error) => return browser::operation_error(error),
         };
         let mut draft = forms::defaults(record.as_ref().map(|value| &value.0["data"]));
-        if id.is_none() {
-            if let Some(medication_id) = medication_id.filter(|id| {
+        if id.is_none()
+            && let Some(medication_id) = medication_id.filter(|id| {
                 options["medications"]
                     .as_array()
                     .is_some_and(|rows| rows.iter().any(|row| row["id"].as_i64() == Some(*id)))
-            }) {
-                draft.insert("medication_id".into(), medication_id.to_string());
-            }
+            })
+        {
+            draft.insert("medication_id".into(), medication_id.to_string());
         }
         if let Some((_, etag)) = &record {
             draft.insert("etag".into(), etag.clone());

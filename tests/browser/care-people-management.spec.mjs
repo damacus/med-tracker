@@ -1,4 +1,5 @@
 import { test, expect } from './care-fixtures.mjs';
+import { openCareSection } from './care-navigation.mjs';
 
 test.use({ actionTimeout: 10000 });
 
@@ -10,8 +11,7 @@ test('people creation and editing preserve dependent care and existing medicatio
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
-  await expect(page.getByRole('link', { name: 'People', exact: true })).toBeVisible({ timeout: 5000 });
-  await page.getByRole('link', { name: 'People', exact: true }).click();
+  await openCareSection(page, 'People');
   await expect(page.getByRole('heading', { name: 'People', exact: true })).toBeVisible();
   const peopleUrl = page.url();
   await expect(page.getByRole('link', { name: 'Synthetic minor', exact: true })).toHaveCount(0);
@@ -55,7 +55,7 @@ test('people creation and editing preserve dependent care and existing medicatio
   await expect(page.getByRole('link', { name: 'Synthetic edited minor', exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Synthetic adult', exact: true }).click();
   await page.getByRole('link', { name: 'Synthetic tablets', exact: true }).click();
-  await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
+  await page.getByRole('button', { name: 'Record dose', exact: true }).click();
   await page.getByRole('dialog', { name: 'Record dose', exact: true }).getByRole('button', { name: 'Record dose', exact: true }).click();
   await expect(page.getByTestId('current-supply')).toHaveText('8 tablets');
   expect((await careFixture.probe()).takes).toBe(1);

@@ -231,6 +231,7 @@ pub(super) struct WizardRequest<'a> {
     pub language: &'a str,
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) async fn create(
     State(ctx): State<AppContext>,
     Path(slug): Path<String>,

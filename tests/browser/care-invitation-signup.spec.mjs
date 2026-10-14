@@ -1,4 +1,5 @@
 import { test, expect } from './care-fixtures.mjs';
+import { openCareSection } from './care-navigation.mjs';
 
 test.use({ actionTimeout: 10000, captureMail: true });
 
@@ -9,7 +10,7 @@ async function invite(page, careFixture, email) {
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
-  await page.getByRole('link', { name: 'Administration', exact: true }).click();
+  await openCareSection(page, 'Administration');
   await page.getByRole('link', { name: 'Invitations', exact: true }).click();
   await page.getByLabel('Email', { exact: true }).fill(email);
   await page.getByRole('button', { name: 'Send invitation', exact: true }).click();

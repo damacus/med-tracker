@@ -1,5 +1,6 @@
 import { test, expect } from './care-fixtures.mjs';
 import { measureCareContrast } from './care-contrast.mjs';
+import { openCareSection } from './care-navigation.mjs';
 
 async function signIn(page) {
   await page.goto('/login');
@@ -14,7 +15,7 @@ test('dependent care page assigns removes and restores the last carer without bl
   await careFixture.seedAdministration();
   await careFixture.personCarerManager();
   await signIn(page);
-  await page.getByRole('link', { name: 'People', exact: true }).click();
+  await openCareSection(page, 'People');
   await page.getByRole('link', { name: 'Synthetic minor', exact: true }).click();
   const personUrl = page.url();
   await expect(page.getByText('No active carer is assigned.', { exact: true })).toBeVisible();
@@ -68,7 +69,7 @@ test('person manager assigns an eligible parent by email without household admin
   await careFixture.seedAdministration();
   await careFixture.personCarerNonmanager();
   await signIn(page);
-  await page.getByRole('link', { name: 'People', exact: true }).click();
+  await openCareSection(page, 'People');
   await page.getByRole('link', { name: 'Synthetic minor', exact: true }).click();
   const personUrl = page.url();
   await page.getByRole('link', { name: 'Assign or invite a carer', exact: true }).click();
@@ -92,7 +93,7 @@ test.describe('person-scoped parent invitations', () => {
     await careFixture.seedAdministration();
     await careFixture.personCarerNonmanager();
     await signIn(page);
-    await page.getByRole('link', { name: 'People', exact: true }).click();
+    await openCareSection(page, 'People');
     await page.getByRole('link', { name: 'Synthetic minor', exact: true }).click();
     const personUrl = page.url();
     const email = 'person-parent-invitation@example.test';
@@ -134,7 +135,7 @@ test.describe('person-scoped parent invitations', () => {
       await signup.getByLabel('I have saved my recovery codes', { exact: true }).check();
       await signup.getByRole('button', { name: 'Continue', exact: true }).click();
       await signup.getByRole('link', { name: 'Synthetic household', exact: true }).click();
-      await signup.getByRole('link', { name: 'People', exact: true }).click();
+      await openCareSection(signup, 'People');
       await signup.getByRole('link', { name: 'Synthetic minor', exact: true }).click();
       await expect(signup.getByRole('link', { name: 'Edit Person', exact: true })).toBeVisible();
       await expect(signup.getByText('No active carer is assigned.', { exact: true })).toHaveCount(0);
@@ -150,8 +151,9 @@ test.describe('person-scoped parent invitations', () => {
     test.setTimeout(180000);
     await careFixture.seedAdministration();
     await signIn(page);
-    const peopleUrl = await page.getByRole('link', { name: 'People', exact: true }).getAttribute('href');
-    await page.getByRole('link', { name: 'Administration', exact: true }).click();
+    await openCareSection(page, 'People');
+    const peopleUrl = page.url();
+    await openCareSection(page, 'Administration');
     await page.getByRole('link', { name: 'Invitations', exact: true }).click();
     const email = 'incompatible-person-parent@example.test';
     await page.getByLabel('Email', { exact: true }).fill(email);

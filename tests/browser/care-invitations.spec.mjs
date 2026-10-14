@@ -1,5 +1,6 @@
 import { test, expect } from './care-fixtures.mjs';
 import { TOTP, Secret } from 'otpauth';
+import { openCareSection } from './care-navigation.mjs';
 
 test.use({ actionTimeout: 10000, captureMail: true });
 
@@ -12,7 +13,7 @@ test('household managers issue, resend and cancel invitations through actual SMT
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
-  await page.getByRole('link', { name: 'Administration', exact: true }).click();
+  await openCareSection(page, 'Administration');
   await expect(page.getByRole('link', { name: 'Invitations', exact: true })).toBeVisible({ timeout: 5000 });
   await page.getByRole('link', { name: 'Invitations', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Invitations', exact: true })).toBeVisible();
@@ -75,7 +76,7 @@ for (const factor of ['password', 'OTP']) {
     await page.getByLabel('Password', { exact: true }).fill('password');
     await page.getByRole('button', { name: 'Sign in', exact: true }).click();
     await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
-    await page.getByRole('link', { name: 'Administration', exact: true }).click();
+    await openCareSection(page, 'Administration');
     await page.getByRole('link', { name: 'Invitations', exact: true }).click();
     await page.getByLabel('Email', { exact: true }).fill('foreign@example.test');
     await page.getByLabel('Dependent relationship', { exact: true }).selectOption('parent');
@@ -127,7 +128,7 @@ for (const factor of ['password', 'OTP']) {
       const replay = await invited.request.post('/invitations/accept', { form, headers: { Origin: careFixture.origin }, maxRedirects: 0 });
       expect(replay.status()).toBe(303);
       expect(await careFixture.invitationAcceptanceProbe()).toMatchObject(accepted);
-      await invited.getByRole('link', { name: 'People', exact: true }).click();
+      await openCareSection(invited, 'People');
       await expect(invited.getByRole('link', { name: 'Synthetic minor', exact: true })).toBeVisible();
     } finally {
       await guest.close();

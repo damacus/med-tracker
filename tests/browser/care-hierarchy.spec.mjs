@@ -1,6 +1,7 @@
 import { chooseProfileAppearance } from './profile-appearance.mjs';
 import { test, expect } from './care-fixtures.mjs';
 import { measureCareContrast } from './care-contrast.mjs';
+import { openCareSection } from './care-navigation.mjs';
 
 test.use({ actionTimeout: 10000 });
 
@@ -13,7 +14,7 @@ async function signIn(page) {
 }
 
 async function openNewSchedule(page) {
-  await page.getByRole('link', { name: 'People', exact: true }).click();
+  await openCareSection(page, 'People');
   await page.getByRole('link', { name: 'Synthetic adult', exact: true }).click();
   await page.getByRole('link', { name: 'Manage treatments', exact: true }).click();
   await page.getByRole('link', { name: 'Add schedule', exact: true }).click();
@@ -113,7 +114,7 @@ test('record-dose and care edit actions remain compact on desktop and mobile', a
   const management = page.getByRole('region', { name: 'Manage medication', exact: true });
   const [recordHeadingBox, managementBox] = await Promise.all([recordSection.boundingBox(), management.boundingBox()]);
   expect(recordHeadingBox.y).toBeLessThan(managementBox.y);
-  await page.getByRole('button', { name: 'Record a dose', exact: true }).click();
+  await page.getByRole('button', { name: 'Record dose', exact: true }).click();
   const record = page.getByRole('form', { name: /Synthetic adult.*Synthetic tablets.*2 tablets.*Ongoing medication/ });
   const recordBox = await record.getByRole('button', { name: 'Record dose', exact: true }).boundingBox();
   const formBox = await record.boundingBox();
@@ -123,7 +124,7 @@ test('record-dose and care edit actions remain compact on desktop and mobile', a
   await page.getByRole('link', { name: 'Edit Medication', exact: true }).click();
   await expectIntrinsicActions(page, 'Save Medication');
   await page.getByRole('link', { name: 'Back to Medications', exact: true }).click();
-  await page.getByRole('link', { name: 'Locations', exact: true }).click();
+  await openCareSection(page, 'Locations');
   await page.getByRole('link', { name: 'Add Location', exact: true }).click();
   await page.screenshot({ path: info.outputPath(`care-hierarchy-location-before-${info.project.name}.png`), fullPage: true });
   await expectIntrinsicActions(page, 'Save Location');
@@ -265,7 +266,7 @@ test('medication editing leads with identity then pairs dose and stock before no
 
 test('person editing groups identity and medication support with compact actions', async ({ page }, info) => {
   await signIn(page);
-  await page.getByRole('link', { name: 'People', exact: true }).click();
+  await openCareSection(page, 'People');
   await page.getByRole('link', { name: 'Add Person', exact: true }).click();
   await page.screenshot({ path: info.outputPath(`care-hierarchy-person-before-${info.project.name}.png`), fullPage: true });
   const identity = page.getByRole('group', { name: 'Identity', exact: true });
@@ -279,7 +280,7 @@ test('person editing groups identity and medication support with compact actions
 
 test('person detail leads with treatment and current medication before profile facts', async ({ page }, info) => {
   await signIn(page);
-  await page.getByRole('link', { name: 'People', exact: true }).click();
+  await openCareSection(page, 'People');
   await page.getByRole('link', { name: 'Synthetic adult', exact: true }).click();
   await page.screenshot({ path: info.outputPath(`care-hierarchy-person-detail-before-${info.project.name}.png`), fullPage: true });
   const action = page.getByRole('link', { name: 'Manage treatments', exact: true });
@@ -299,7 +300,7 @@ test('person detail leads with treatment and current medication before profile f
 
 test('location details lead with medication stock before management actions', async ({ page }, info) => {
   await signIn(page);
-  await page.getByRole('link', { name: 'Locations', exact: true }).click();
+  await openCareSection(page, 'Locations');
   await page.getByRole('link', { name: 'Synthetic cabinet', exact: true }).click();
   await page.screenshot({ path: info.outputPath(`care-hierarchy-location-detail-before-${info.project.name}.png`), fullPage: true });
   const stock = page.getByText('Stock: 10 tablet', { exact: true });
@@ -320,7 +321,7 @@ test('location details lead with medication stock before management actions', as
 
 test('treatment editing leads with dose, groups timing and limits, and keeps footer actions compact', async ({ page }, info) => {
   await signIn(page);
-  await page.getByRole('link', { name: 'People', exact: true }).click();
+  await openCareSection(page, 'People');
   await page.getByRole('link', { name: 'Synthetic adult', exact: true }).click();
   await page.getByRole('link', { name: 'Manage treatments', exact: true }).click();
   await page.getByRole('link', { name: 'Add schedule', exact: true }).click();
@@ -339,7 +340,7 @@ test('treatment editing leads with dose, groups timing and limits, and keeps foo
 test('treatment cards lead with dose and hide pause fields until requested', async ({ page, careFixture }, info) => {
   await careFixture.scheduledMedicine();
   await signIn(page);
-  await page.getByRole('link', { name: 'People', exact: true }).click();
+  await openCareSection(page, 'People');
   await page.getByRole('link', { name: 'Synthetic adult', exact: true }).click();
   await page.getByRole('link', { name: 'Manage treatments', exact: true }).click();
   const card = page.getByRole('article', { name: 'Synthetic tablets schedules', exact: true });
