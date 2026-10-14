@@ -31,6 +31,13 @@ async fn boot_fixture() -> (Fixture, BootResult) {
 }
 
 async fn boot_rate_fixture(trusted_proxy_ips: &[&str]) -> (Fixture, BootResult) {
+    boot_rate_fixture_with(trusted_proxy_ips, None).await
+}
+
+async fn boot_rate_fixture_with(
+    trusted_proxy_ips: &[&str],
+    request_id_enabled: Option<bool>,
+) -> (Fixture, BootResult) {
     let fixture = Fixture::new().await;
     let mut config = Config::new(&Environment::Test).unwrap();
     config.database.uri = fixture.runtime_uri.clone();
@@ -42,6 +49,10 @@ async fn boot_rate_fixture(trusted_proxy_ips: &[&str]) -> (Fixture, BootResult) 
         "fixed_now_unix_seconds": 1000,
         "trusted_proxy_ips": trusted_proxy_ips.join(","),
     });
+    if let Some(enable) = request_id_enabled {
+        config.server.middlewares.request_id =
+            Some(loco_rs::controller::middleware::request_id::RequestId { enable });
+    }
     let boot = med_tracker::app::App::boot(StartMode::ServerOnly, &Environment::Test, config)
         .await
         .unwrap();
@@ -856,6 +867,11 @@ pub mod rate_limit {
         assert_eq!(rejected.header("cache-control"), "no-store");
         assert_eq!(rejected.header("content-type"), "application/json");
         assert!(!rejected.headers().contains_key("idempotency-replayed"));
+        let request_id = rejected
+            .headers()
+            .get("x-request-id")
+            .and_then(|value| value.to_str().ok())
+            .map(str::to_owned);
         let body: Value = rejected.json();
         assert_eq!(body["error"]["code"], "rate_limited");
         assert!(
@@ -866,6 +882,114 @@ pub mod rate_limit {
         assert_eq!(fixture.effect().await, before);
         drop(request);
         close(fixture, boot).await;
+        let document = contract::contract();
+        contract::assert_value(
+            document,
+            &contract::resolve(
+                document,
+                &document["paths"]["/households/{household_id}/data_exports/{mode}"]["get"]["responses"]
+                    ["429"],
+            )["content"]["application/json"]["schema"],
+            &body,
+            "getDataExport 429",
+        );
+        assert!(request_id.is_some_and(|id| !id.is_empty()));
+    }
+
+    #[tokio::test]
+    async fn rejected_export_preserves_sanitized_supplied_request_id() {
+        let (fixture, boot) = boot_rate_fixture(&[]).await;
+        let request = server(&boot);
+        for attempt in 1..=10 {
+            let response = request.get(EXPORT).await;
+            assert_eq!(response.status_code(), 401, "request {attempt}");
+        }
+        let before = fixture.effect().await;
+        let rejected = request
+            .get(EXPORT)
+            .add_header("x-request-id", "client-42 / spoof")
+            .await;
+        let status = rejected.status_code();
+        let retry_after = rejected.header("retry-after").to_owned();
+        let limit = rejected.header("ratelimit-limit").to_owned();
+        let remaining = rejected.header("ratelimit-remaining").to_owned();
+        let reset = rejected.header("ratelimit-reset").to_owned();
+        let content_type = rejected.header("content-type").to_owned();
+        let cache_control = rejected.header("cache-control").to_owned();
+        let request_id = rejected
+            .headers()
+            .get("x-request-id")
+            .and_then(|value| value.to_str().ok())
+            .map(str::to_owned);
+        let body: Value = rejected.json();
+        let after = fixture.effect().await;
+        drop(request);
+        close(fixture, boot).await;
+        assert_eq!(status, 429);
+        assert_eq!(retry_after, "20");
+        assert_eq!(limit, "10");
+        assert_eq!(remaining, "0");
+        assert_eq!(reset, "1020");
+        assert_eq!(content_type, "application/json");
+        assert_eq!(cache_control, "no-store");
+        let document = contract::contract();
+        contract::assert_value(
+            document,
+            &contract::resolve(
+                document,
+                &document["paths"]["/households/{household_id}/data_exports/{mode}"]["get"]["responses"]
+                    ["429"],
+            )["content"]["application/json"]["schema"],
+            &body,
+            "getDataExport 429 supplied request ID",
+        );
+        assert_eq!(after, before);
+        assert_eq!(request_id.as_deref(), Some("client-42spoof"));
+    }
+
+    #[tokio::test]
+    async fn disabled_request_id_layer_keeps_rejected_export_without_an_id() {
+        let (fixture, boot) = boot_rate_fixture_with(&[], Some(false)).await;
+        let request = server(&boot);
+        for attempt in 1..=10 {
+            let response = request.get(EXPORT).await;
+            assert_eq!(response.status_code(), 401, "request {attempt}");
+            assert!(!response.header("x-request-id").is_empty());
+        }
+        let before = fixture.effect().await;
+        let rejected = request.get(EXPORT).await;
+        let status = rejected.status_code();
+        let retry_after = rejected.header("retry-after").to_owned();
+        let limit = rejected.header("ratelimit-limit").to_owned();
+        let remaining = rejected.header("ratelimit-remaining").to_owned();
+        let reset = rejected.header("ratelimit-reset").to_owned();
+        let cache_control = rejected.header("cache-control").to_owned();
+        let content_type = rejected.header("content-type").to_owned();
+        let request_id = rejected.headers().get("x-request-id").cloned();
+        let body: Value = rejected.json();
+        let after = fixture.effect().await;
+        drop(request);
+        close(fixture, boot).await;
+        assert_eq!(status, 429);
+        assert_eq!(retry_after, "20");
+        assert_eq!(limit, "10");
+        assert_eq!(remaining, "0");
+        assert_eq!(reset, "1020");
+        assert_eq!(cache_control, "no-store");
+        assert_eq!(content_type, "application/json");
+        let document = contract::contract();
+        contract::assert_value(
+            document,
+            &contract::resolve(
+                document,
+                &document["paths"]["/households/{household_id}/data_exports/{mode}"]["get"]["responses"]
+                    ["429"],
+            )["content"]["application/json"]["schema"],
+            &body,
+            "getDataExport 429 disabled request ID",
+        );
+        assert_eq!(after, before);
+        assert!(request_id.is_none());
     }
 
     #[tokio::test]
