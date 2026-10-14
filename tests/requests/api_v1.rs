@@ -14,6 +14,8 @@ mod people;
 mod people_evidence;
 #[path = "profile.rs"]
 mod profile;
+#[path = "profile_avatar_evidence.rs"]
+mod profile_avatar_evidence;
 
 use fixture::Fixture;
 use loco_rs::{
@@ -166,6 +168,18 @@ fn inventory() -> BTreeMap<(String, String), Value> {
 }
 
 fn validate_evidence(entry: &Value) -> Result<(), String> {
+    if let Some(expected) =
+        profile_avatar_evidence::expected(entry["operation_id"].as_str().unwrap_or(""))
+    {
+        for field in ["coverage", "candidate_revision", "gaps", "evidence"] {
+            if entry[field] != expected[field] {
+                return Err(format!(
+                    "Unsupported profile or avatar evidence field: {field}"
+                ));
+            }
+        }
+        return Ok(());
+    }
     if let Some(expected) = people_evidence::expected(entry["operation_id"].as_str().unwrap_or(""))
     {
         for field in ["coverage", "candidate_revision", "gaps", "evidence"] {
@@ -491,6 +505,18 @@ fn validate_metadata(document: &Value, entry: &Value) {
         }
     }
     let candidate_revision = match entry["operation_id"].as_str() {
+        Some(
+            "getHouseholdProfile"
+            | "updateHouseholdProfile"
+            | "updateHouseholdProfileWithPut"
+            | "downloadCurrentAvatar"
+            | "uploadCurrentAvatar"
+            | "deleteCurrentAvatar",
+        ) => {
+            let expected =
+                profile_avatar_evidence::expected(entry["operation_id"].as_str().unwrap()).unwrap();
+            Some((profile_avatar_evidence::REVISION, expected["gaps"].clone()))
+        }
         Some("listPeople" | "createPerson" | "updatePerson" | "updatePersonWithPut") => {
             Some((people_evidence::REVISION, json!([people_evidence::GAP])))
         }
