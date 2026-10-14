@@ -1,3 +1,5 @@
+#[path = "avatar.rs"]
+mod avatar;
 #[path = "capabilities.rs"]
 mod capabilities;
 #[path = "../care_api/contract.rs"]
@@ -10,6 +12,8 @@ mod me_ui;
 mod people;
 #[path = "people_evidence.rs"]
 mod people_evidence;
+#[path = "profile.rs"]
+mod profile;
 
 use fixture::Fixture;
 use loco_rs::{
@@ -86,7 +90,7 @@ fn operations() -> BTreeMap<(String, String), Value> {
     let source = include_str!("../../docs/api/openapi.v1.yaml");
     assert_eq!(
         hex::encode(Sha256::digest(source.as_bytes())),
-        "f0b5b4c4a4eabeaa36b1591cf21b54f757cb3c068de5cd369299aa3c91ac3d8b",
+        "a4ecd84ab5ce8247b1104919dfaf9b48dd6eba79ff79fbadb91a03ccc3f0a140",
         "The full API schema or headers changed; refresh the operation inventory and its evidence"
     );
     let document: Value = serde_yaml_ng::from_str(source).unwrap();

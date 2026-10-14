@@ -148,7 +148,10 @@ pub fn routes() -> Routes {
             "/{household_id}/profile",
             get(profile::show)
                 .patch(profile::update)
-                .put(profile::update),
+                .put(profile::update)
+                .layer(axum::middleware::map_response(|response| async {
+                    profile::no_store(response)
+                })),
         )
         .add(
             "/{household_id}/notification_preference",

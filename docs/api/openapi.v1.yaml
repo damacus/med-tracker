@@ -689,12 +689,15 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
     patch:
       operationId: updateHouseholdProfile
       tags: [Household, People]
       summary: Atomically save non-security preferences and date of birth online.
       parameters:
         - $ref: "#/components/parameters/household_id"
+        - $ref: "#/components/parameters/idempotency_key"
       requestBody:
         required: true
         content:
@@ -724,16 +727,21 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "422":
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
     put:
       operationId: updateHouseholdProfileWithPut
       tags: [Household, People]
       summary: Atomically save non-security preferences and date of birth online.
       parameters:
         - $ref: "#/components/parameters/household_id"
+        - $ref: "#/components/parameters/idempotency_key"
       requestBody:
         required: true
         content:
@@ -763,10 +771,14 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "422":
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /households/{household_id}/reports/health_history:
     get:
       operationId: getHealthHistoryReport

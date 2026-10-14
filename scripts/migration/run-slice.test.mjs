@@ -38,6 +38,7 @@ if (command === 'docker') {
   state.owned_endpoint_used = process.env.DATABASE_URL === 'postgres://medtracker:medtracker_password@127.0.0.1:54321/medtracker_loco';
   state.owned_storage_used = process.env.S3_ENDPOINT === 'http://127.0.0.1:54322' && process.env.S3_BUCKET === 'scanner-fixture' && process.env.AWS_ACCESS_KEY_ID === 'storage-smoke-access' && process.env.MEDTRACKER_OWNED_STORAGE === '1';
   state.owned_storage_endpoint_used = process.env.ACTIVE_STORAGE_S3_ENDPOINT === 'http://127.0.0.1:54322';
+  state.owned_avatar_storage_used = state.owned_storage_endpoint_used && process.env.ACTIVE_STORAGE_SERVICE === 's3' && process.env.ACTIVE_STORAGE_S3_BUCKET === 'medtracker-fixture' && process.env.ACTIVE_STORAGE_S3_REGION === 'us-east-1' && process.env.ACTIVE_STORAGE_S3_ACCESS_KEY_ID === 'storage-smoke-access' && process.env.ACTIVE_STORAGE_S3_SECRET_ACCESS_KEY === 'storage-smoke-secret' && process.env.ACTIVE_STORAGE_S3_FORCE_PATH_STYLE === 'true';
   state.child_identity_key_synthetic = process.env.MEDTRACKER_SESSION_KEY === Buffer.alloc(64, 7).toString('base64');
   state.child_verification_key_synthetic = process.env.RAILS_SECRET_KEY_BASE === 'synthetic-slice-rails-verification-secret';
   state.child_compose_environment_removed = ['COMPOSE_FILE', 'COMPOSE_PROJECT_NAME', 'COMPOSE_PROFILES'].every(name => process.env[name] === undefined);
@@ -161,6 +162,20 @@ test('scanner import tests provision owned object storage and clean it on failur
     assert.equal(state.owned_storage_used,true,`Import tests require real isolated storage, without silent skipping: ${JSON.stringify(state.calls)} ${result.stderr}`);
     assert.deepEqual(state.resources,{unrelated:['existing-volume']});
   },'slice:test',['TARGET=care_api','FILTER=nhs_dmd']);
+});
+
+test('request acceptance provisions owned avatar storage and removes it on success or failure', async () => {
+  for (const exitCode of [0, 42]) {
+    await withProcessFixture(exitCode, (result, state) => {
+      assert.equal(result.status === 0, exitCode === 0, result.stderr);
+      assert.equal(state.owned_avatar_storage_used, true, `requests need owned avatar storage: ${JSON.stringify(state.calls)}`);
+      const docker = state.calls.filter(call => call.command === 'docker');
+      assert.ok(docker.some(call => call.operation === 'up' && call.args.includes('rustfs')));
+      assert.ok(docker.some(call => call.operation === 'down' && call.args.includes('--profile') && call.args.includes('fixture-storage') && call.args.includes('--volumes')));
+      assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
+      assert.equal(state.foreign_resources_touched, 0);
+    }, 'slice:contracts', ['GROUP=api-v1-inventory', 'FILTER=api_v1::avatar'], 0);
+  }
 });
 
 test('fixture and Cargo subprocesses remove ambient Docker endpoint and credential settings', async () => {
@@ -413,7 +428,7 @@ test('closed contract output stops Cargo and cleans the owned database', async (
   await withProcessFixture(0, (result, state) => {
     assert.notEqual(result.status, 0, result.stderr);
     assert.match(result.stderr, /EPIPE|broken pipe/i);
-    assert.deepEqual(state.calls.filter(call => call.command === 'docker').map(call => call.operation), ['up', 'port', 'exec', 'down']);
+    assert.deepEqual(state.calls.filter(call => call.command === 'docker').map(call => call.operation), ['up', 'port', 'up', 'port', 'exec', 'down']);
     assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
     assert.equal(state.calls.filter(call => call.command === 'cargo').length, 1);
     assert.equal(state.calls.some(call => call.command === 'cargo' && call.args.includes('--include-ignored')), false);
@@ -426,7 +441,7 @@ test('readable Cargo output error cleans the owned database', async () => {
   await withProcessFixture(0, (result, state) => {
     assert.notEqual(result.status, 0, result.stderr);
     assert.match(result.stderr, /synthetic EIO/);
-    assert.deepEqual(state.calls.filter(call => call.command === 'docker').map(call => call.operation), ['up', 'port', 'exec', 'down']);
+    assert.deepEqual(state.calls.filter(call => call.command === 'docker').map(call => call.operation), ['up', 'port', 'up', 'port', 'exec', 'down']);
     assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
     assert.equal(state.calls.filter(call => call.command === 'cargo').length, 1);
     assert.equal(state.calls.some(call => call.command === 'cargo' && call.args.includes('--include-ignored')), false);
