@@ -191,6 +191,18 @@ fn validate_evidence(entry: &Value) -> Result<(), String> {
                 }
             ]
         })
+    } else if entry["operation_id"] == "getCapabilities" {
+        json!({
+            "coverage": "complete",
+            "evidence": [
+                {"binary":"requests","test":"api_v1::capabilities::advertised_features_match_executed_root_routes","checks":["GET-200-anonymous-implemented-feature-flags","GET-unsupported-CLI-MCP-FHIR-remain-false-empty"]},
+                {"binary":"requests","test":"api_v1::capabilities::profile_and_avatar_support_is_discoverable","checks":["GET-200-profile-avatar-actions-upload-size-and-content-types"]},
+                {"binary":"requests","test":"api_v1::capabilities::public_mobile_clients_include_name_and_exclude_secrets","checks":["GET-200-recursive-CapabilitiesResponse-including-RFC-URI-formats","GET-mobile-client-names-redirects-scopes-exclude-integration-clients-and-secrets","GET-default-mobile-login-lifetime-7-30-days","GET-JSON-no-store-no-cache-request-id"]},
+                {"binary":"requests","test":"api_v1::capabilities::configured_mobile_lifetimes_include_disabled_maximum_age","checks":["GET-200-custom-mobile-login-lifetime-3-14-days","GET-200-disabled-absolute-login-deadline-3-0-days-through-booted-app"]},
+                {"binary":"requests","test":"api_v1::capabilities::capability_requests_use_the_fixed_general_limit","checks":["GET-300-successes-then-429-recursive-RateLimitErrorEnvelope","GET-429-Retry-After-200-Limit-300-Remaining-0-Reset-1200","GET-429-JSON-no-store-request-id","GET-success-and-rejection-unchanged-medication-effects-and-credential-counts"]},
+                {"binary":"requests","test":"api_v1::capabilities::capability_database_lookup_failure_uses_existing_unavailable_envelope","checks":["GET-503-existing-unlisted-temporarily_unavailable-envelope-for-controlled-query-failure","GET-503-JSON-no-store-no-cache-request-id","GET-503-unchanged-medication-effects-and-credential-counts"]},
+            ]
+        })
     } else if entry["operation_id"] == "listHouseholds" {
         json!({
             "coverage": "complete",
@@ -458,14 +470,15 @@ fn validate_metadata(document: &Value, entry: &Value) {
             pointer(document, header);
         }
     }
-    if matches!(
-        entry["operation_id"].as_str(),
-        Some("listHouseholds" | "listSessions" | "deleteSession" | "logoutSession")
-    ) {
-        assert_eq!(
-            entry["candidate_revision"],
-            "2ae0b911576912bccf22f10c5db65856bd8cdc60"
-        );
+    let candidate_revision = match entry["operation_id"].as_str() {
+        Some("listHouseholds" | "listSessions" | "deleteSession" | "logoutSession") => {
+            Some("2ae0b911576912bccf22f10c5db65856bd8cdc60")
+        }
+        Some("getCapabilities") => Some("96d81719e900296f3b72ab5f7c86ad3aee22a00f"),
+        _ => None,
+    };
+    if let Some(candidate_revision) = candidate_revision {
+        assert_eq!(entry["candidate_revision"], candidate_revision);
         assert!(entry["gaps"].as_array().unwrap().is_empty());
     } else {
         assert!(entry["candidate_revision"].is_null());
@@ -589,35 +602,40 @@ pub mod baseline {
     }
 
     #[test]
-    fn complete_account_evidence_rejects_revision_and_proof_tampering() {
+    fn complete_evidence_rejects_revision_and_proof_tampering() {
         let document: Value =
             serde_yaml_ng::from_str(include_str!("../../docs/api/openapi.v1.yaml")).unwrap();
         let entries = inventory();
-        let complete = &entries[&("GET".to_owned(), "/auth/households".to_owned())];
+        for path in ["/auth/households", "/capabilities"] {
+            let complete = &entries[&("GET".to_owned(), path.to_owned())];
+            assert!(validate_evidence(complete).is_ok());
+            validate_metadata(&document, complete);
 
-        let mut changed = complete.clone();
-        changed["candidate_revision"] = json!("invented-revision");
-        assert!(std::panic::catch_unwind(|| validate_metadata(&document, &changed)).is_err());
+            let mut changed = complete.clone();
+            changed["candidate_revision"] = json!("invented-revision");
+            assert!(std::panic::catch_unwind(|| validate_metadata(&document, &changed)).is_err());
 
-        let mut changed = complete.clone();
-        changed["gaps"] = json!(["unproven"]);
-        assert!(std::panic::catch_unwind(|| validate_metadata(&document, &changed)).is_err());
+            let mut changed = complete.clone();
+            changed["gaps"] = json!(["unproven"]);
+            assert!(std::panic::catch_unwind(|| validate_metadata(&document, &changed)).is_err());
 
-        let mut changed = complete.clone();
-        changed["evidence"].as_array_mut().unwrap().remove(0);
-        assert!(validate_evidence(&changed).is_err());
+            let mut changed = complete.clone();
+            changed["evidence"].as_array_mut().unwrap().remove(0);
+            assert!(validate_evidence(&changed).is_err());
 
-        let mut changed = complete.clone();
-        changed["evidence"][0]["checks"][0] = json!("invented-check");
-        assert!(validate_evidence(&changed).is_err());
+            let mut changed = complete.clone();
+            changed["evidence"][0]["checks"][0] = json!("invented-check");
+            assert!(validate_evidence(&changed).is_err());
 
-        let mut invented = entries[&("GET".to_owned(), "/capabilities".to_owned())].clone();
-        invented["coverage"] = json!("complete");
-        invented["candidate_revision"] = complete["candidate_revision"].clone();
-        invented["gaps"] = json!([]);
-        invented["evidence"] = complete["evidence"].clone();
-        assert!(validate_evidence(&invented).is_err());
-        assert!(std::panic::catch_unwind(|| validate_metadata(&document, &invented)).is_err());
+            let mut invented =
+                entries[&("GET".to_owned(), "/households/{household_id}/me".to_owned())].clone();
+            invented["coverage"] = json!("complete");
+            invented["candidate_revision"] = complete["candidate_revision"].clone();
+            invented["gaps"] = json!([]);
+            invented["evidence"] = complete["evidence"].clone();
+            assert!(validate_evidence(&invented).is_err());
+            assert!(std::panic::catch_unwind(|| validate_metadata(&document, &invented)).is_err());
+        }
     }
 
     #[test]

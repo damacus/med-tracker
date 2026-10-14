@@ -124,6 +124,13 @@ the inventory is four complete, two partial and 116 unverified. Same independent
 SWE-2 Max review `important-platypus` accepted the final correction in `59730`.
 Cumulative CI and publication remain separate gates recorded in `../progress.md`.
 
+Capability evidence, 14 October: source `96d81719` adds six executed request
+proofs for `getCapabilities`, independently pinned in the inventory oracle.
+Dispatcher `30195` ran 55 request and 524 care tests successfully before the final
+acceptance test correctly rejected 117 incomplete operations. Current local
+evidence is five complete, two partial and 115 unverified. Capability review,
+cumulative CI and publication remain separate gates in `../progress.md`.
+
 ## Review focus
 
 Malformed requests preserve status/envelope (A1). Stale tokens and wrong households fail all transports
