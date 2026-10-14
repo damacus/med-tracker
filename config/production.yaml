@@ -35,6 +35,8 @@ settings:
     region: <%= get_env(name="AWS_REGION", default="us-east-1") %>
     access_key_id: <%= get_env(name="AWS_ACCESS_KEY_ID", default="") %>
     secret_access_key: <%= get_env(name="AWS_SECRET_ACCESS_KEY", default="") %>
+  api_rate_limit:
+    trusted_proxy_ips: "<%= get_env(name="API_TRUSTED_PROXY_IPS", default="") %>"
   dose_occurrences:
     signing_key: <%= get_env(name="AUTH_SESSION_SECRET", default="") %>
   ai_medication_help:

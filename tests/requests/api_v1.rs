@@ -28,6 +28,24 @@ async fn boot_fixture() -> (Fixture, BootResult) {
     (fixture, boot)
 }
 
+async fn boot_rate_fixture(trusted_proxy_ips: &[&str]) -> (Fixture, BootResult) {
+    let fixture = Fixture::new().await;
+    let mut config = Config::new(&Environment::Test).unwrap();
+    config.database.uri = fixture.runtime_uri.clone();
+    let Some(QueueConfig::Postgres(queue)) = config.queue.as_mut() else {
+        panic!("PostgreSQL queue required")
+    };
+    queue.uri = fixture.runtime_uri.clone();
+    config.settings.get_or_insert_with(|| json!({}))["api_rate_limit"] = json!({
+        "fixed_now_unix_seconds": 1000,
+        "trusted_proxy_ips": trusted_proxy_ips.join(","),
+    });
+    let boot = med_tracker::app::App::boot(StartMode::ServerOnly, &Environment::Test, config)
+        .await
+        .unwrap();
+    (fixture, boot)
+}
+
 async fn close(fixture: Fixture, boot: BootResult) {
     if let Some(queue) = boot.app_context.queue_provider.as_ref() {
         queue.shutdown().unwrap();
@@ -50,7 +68,7 @@ fn operations() -> BTreeMap<(String, String), Value> {
     let source = include_str!("../../docs/api/openapi.v1.yaml");
     assert_eq!(
         hex::encode(Sha256::digest(source.as_bytes())),
-        "586c715a07c33d84df78e0d7195ad23f81c42b920cc6cad0c759b0f3512aaee7",
+        "fae2da8212338c04dea75628e35c5892e5e5bbde722d160b3072048c6ea31036",
         "The full API schema or headers changed; refresh the operation inventory and its evidence"
     );
     let document: Value = serde_yaml_ng::from_str(source).unwrap();
@@ -134,6 +152,32 @@ fn validate_evidence(entry: &Value) -> Result<(), String> {
                 "test": "api_v1::baseline::anonymous_access",
                 "checks": ["401", "cache-control:no-store", "restricted-runtime-role", "RLS"]
             }]
+        })
+    } else if entry["operation_id"] == "getDataExport" {
+        json!({
+            "coverage": "partial",
+            "evidence": [
+                {
+                    "binary": "requests",
+                    "test": "api_v1::rate_limit::fixed_export_window_rejects_eleventh_request_with_contract_headers",
+                    "checks": ["401", "429", "Retry-After:20", "RateLimit-Limit:10", "RateLimit-Remaining:0", "RateLimit-Reset:1020", "cache-control:no-store", "application/json", "rate_limited", "unchanged-medication-takes-supply-audits-change-events"]
+                },
+                {
+                    "binary": "requests",
+                    "test": "api_v1::rate_limit::untrusted_forwarded_sources_share_the_socket_peer_bucket",
+                    "checks": ["untrusted-forwarded-source", "429"]
+                },
+                {
+                    "binary": "requests",
+                    "test": "api_v1::rate_limit::configured_loopback_proxy_separates_forwarded_client_buckets",
+                    "checks": ["trusted-proxy-source", "malformed-forwarded-chain", "429"]
+                },
+                {
+                    "binary": "requests",
+                    "test": "api_v1::rate_limit::head_export_uses_the_get_export_bucket",
+                    "checks": ["HEAD:200", "GET-HEAD-shared-bucket", "HEAD:429"]
+                }
+            ]
         })
     } else {
         json!({"coverage": "unverified", "evidence": []})
@@ -440,6 +484,25 @@ pub mod baseline {
     }
 
     #[test]
+    fn every_documented_operation_references_shared_rate_limit_response() {
+        let document: Value =
+            serde_yaml_ng::from_str(include_str!("../../docs/api/openapi.v1.yaml")).unwrap();
+        let documented = operations();
+        let missing = documented
+            .keys()
+            .filter(|(method, path)| {
+                let method = method.to_lowercase();
+                document["paths"][path.as_str()][method.as_str()]["responses"]["429"]["$ref"]
+                    != "#/components/responses/RateLimited"
+            })
+            .collect::<Vec<_>>();
+        assert!(
+            missing.is_empty(),
+            "Documented API operations without shared RateLimited 429 response: {missing:?}"
+        );
+    }
+
+    #[test]
     fn invented_complete_coverage_and_nonexistent_test_are_rejected() {
         let mut entry =
             inventory()[&("GET".to_owned(), "/households/{household_id}/me".to_owned())].clone();
@@ -606,6 +669,199 @@ pub mod baseline {
             buckets[0].try_get::<String>("", "bucket").unwrap(),
             hex::encode(Sha256::digest("source:127.0.0.1".as_bytes()))
         );
+        drop(request);
+        close(fixture, boot).await;
+    }
+}
+
+pub mod rate_limit {
+    use super::*;
+    use axum::{Extension, extract::ConnectInfo, http::Method};
+    use std::net::SocketAddr;
+
+    const EXPORT: &str = "/api/v1/households/72001/data_exports/health_data_json";
+
+    #[tokio::test]
+    async fn missing_socket_peer_returns_json_unavailable_error() {
+        let (fixture, boot) = boot_rate_fixture(&[]).await;
+        let request = TestServer::new(boot.router.clone().unwrap()).unwrap();
+        let response = request.get(EXPORT).await;
+        assert_eq!(response.status_code(), 503);
+        assert_eq!(response.header("content-type"), "application/json");
+        assert_eq!(response.header("cache-control"), "no-store");
+        let body: Value = response.json();
+        assert_eq!(body["error"]["code"], "service_unavailable");
+        drop(request);
+        close(fixture, boot).await;
+    }
+
+    #[tokio::test]
+    async fn missing_socket_peer_head_response_has_no_body() {
+        let (fixture, boot) = boot_rate_fixture(&[]).await;
+        let request = TestServer::builder()
+            .mock_transport()
+            .build(boot.router.clone().unwrap())
+            .unwrap();
+        let response = request.method(Method::HEAD, EXPORT).await;
+        assert_eq!(response.status_code(), 503);
+        assert_eq!(response.header("cache-control"), "no-store");
+        assert!(response.as_bytes().is_empty());
+        drop(request);
+        close(fixture, boot).await;
+    }
+
+    #[tokio::test]
+    async fn exhausted_export_head_response_has_no_body() {
+        let (fixture, boot) = boot_rate_fixture(&[]).await;
+        let peer = ConnectInfo(SocketAddr::from(([127, 0, 0, 1], 12345)));
+        let request = TestServer::builder()
+            .mock_transport()
+            .build(boot.router.clone().unwrap().layer(Extension(peer)))
+            .unwrap();
+        for attempt in 1..=10 {
+            let response = request.get(EXPORT).await;
+            assert_eq!(response.status_code(), 401, "request {attempt}");
+        }
+        let response = request.method(Method::HEAD, EXPORT).await;
+        assert_eq!(response.status_code(), 429);
+        assert_eq!(response.header("retry-after"), "20");
+        assert_eq!(response.header("cache-control"), "no-store");
+        assert!(response.as_bytes().is_empty());
+        drop(request);
+        close(fixture, boot).await;
+    }
+
+    #[tokio::test]
+    async fn fixed_export_window_rejects_eleventh_request_with_contract_headers() {
+        let (fixture, boot) = boot_rate_fixture(&[]).await;
+        let request = server(&boot);
+        for attempt in 1..=10 {
+            let response = request.get(EXPORT).await;
+            assert_eq!(response.status_code(), 401, "request {attempt}");
+        }
+        let before = fixture.effect().await;
+        let rejected = request.get(EXPORT).await;
+        assert_eq!(rejected.status_code(), 429);
+        assert_eq!(rejected.header("retry-after"), "20");
+        assert_eq!(rejected.header("ratelimit-limit"), "10");
+        assert_eq!(rejected.header("ratelimit-remaining"), "0");
+        assert_eq!(rejected.header("ratelimit-reset"), "1020");
+        assert_eq!(rejected.header("cache-control"), "no-store");
+        assert_eq!(rejected.header("content-type"), "application/json");
+        assert!(!rejected.headers().contains_key("idempotency-replayed"));
+        let body: Value = rejected.json();
+        assert_eq!(body["error"]["code"], "rate_limited");
+        assert!(
+            body["error"]["message"]
+                .as_str()
+                .is_some_and(|message| !message.is_empty())
+        );
+        assert_eq!(fixture.effect().await, before);
+        drop(request);
+        close(fixture, boot).await;
+    }
+
+    #[tokio::test]
+    async fn head_export_uses_the_get_export_bucket() {
+        let (fixture, boot) = boot_rate_fixture(&[]).await;
+        let token_request = axum::http::Request::builder()
+            .method("POST")
+            .uri("/token")
+            .header("content-type", "application/x-www-form-urlencoded")
+            .body(axum::body::Body::from(
+                serde_urlencoded::to_string([
+                    ("grant_type", "authorization_code"),
+                    ("client_id", "native"),
+                    ("code", "synthetic-legacy-code"),
+                    ("redirect_uri", "io.damacus.medtracker:/oauth2redirect"),
+                    (
+                        "code_verifier",
+                        "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
+                    ),
+                ])
+                .unwrap(),
+            ))
+            .unwrap();
+        let token = med_tracker::models::identity::exchange(&fixture.runtime, token_request, None)
+            .await
+            .unwrap()["access_token"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+        let request = server(&boot);
+        let first = request
+            .method(Method::HEAD, EXPORT)
+            .add_header("authorization", format!("Bearer {token}"))
+            .await;
+        assert_eq!(first.status_code(), 200);
+        for attempt in 1..=9 {
+            let response = request.get(EXPORT).await;
+            assert_eq!(response.status_code(), 401, "request {attempt}");
+        }
+        let rejected = request
+            .method(Method::HEAD, EXPORT)
+            .add_header("authorization", format!("Bearer {token}"))
+            .await;
+        assert_eq!(rejected.status_code(), 429);
+        assert_eq!(rejected.header("ratelimit-limit"), "10");
+        drop(request);
+        close(fixture, boot).await;
+    }
+
+    #[tokio::test]
+    async fn untrusted_forwarded_sources_share_the_socket_peer_bucket() {
+        let (fixture, boot) = boot_rate_fixture(&[]).await;
+        let request = server(&boot);
+        for attempt in 1..=10 {
+            let response = request
+                .get(EXPORT)
+                .add_header("x-forwarded-for", format!("198.51.100.{attempt}"))
+                .await;
+            assert_eq!(response.status_code(), 401, "request {attempt}");
+        }
+        let rejected = request
+            .get(EXPORT)
+            .add_header("x-forwarded-for", "203.0.113.11")
+            .await;
+        assert_eq!(rejected.status_code(), 429);
+        assert_eq!(rejected.header("ratelimit-limit"), "10");
+        drop(request);
+        close(fixture, boot).await;
+    }
+
+    #[tokio::test]
+    async fn configured_loopback_proxy_separates_forwarded_client_buckets() {
+        let (fixture, boot) = boot_rate_fixture(&["127.0.0.1"]).await;
+        let request = server(&boot);
+        for attempt in 1..=10 {
+            let response = request
+                .get(EXPORT)
+                .add_header("x-forwarded-for", "198.51.100.20")
+                .await;
+            assert_eq!(response.status_code(), 401, "request {attempt}");
+        }
+        let other_client = request
+            .get(EXPORT)
+            .add_header("x-forwarded-for", "203.0.113.20")
+            .await;
+        assert_eq!(other_client.status_code(), 401);
+        let malformed_chain = request
+            .get(EXPORT)
+            .add_header("x-forwarded-for", "198.51.100.20, invalid")
+            .await;
+        assert_eq!(malformed_chain.status_code(), 401);
+        for attempt in 1..=9 {
+            let peer = request.get(EXPORT).await;
+            assert_eq!(peer.status_code(), 401, "socket peer request {attempt}");
+        }
+        let exhausted_peer = request.get(EXPORT).await;
+        assert_eq!(exhausted_peer.status_code(), 429);
+        let exhausted = request
+            .get(EXPORT)
+            .add_header("x-forwarded-for", "198.51.100.20")
+            .await;
+        assert_eq!(exhausted.status_code(), 429);
+        assert_eq!(exhausted.header("ratelimit-reset"), "1020");
         drop(request);
         close(fixture, boot).await;
     }
