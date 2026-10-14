@@ -54,6 +54,7 @@ async fn dose_history_preserves_pagination_filter_and_decimal_representation() {
 #[tokio::test]
 async fn dose_history_checks_live_view_grants_expiry_and_invalid_filters() {
     let app = Application::new().await;
+    app.fixture.seed_foreign_household(99999).await;
     let token = app.token().await;
     let endpoint = format!("{}/api/v1/households/72001/medication_takes", app.origin);
     let created = app
@@ -141,6 +142,7 @@ async fn dose_history_checks_live_view_grants_expiry_and_invalid_filters() {
 async fn medication_take_list_matches_documented_contract() {
     use super::contract::{assert_value, contract, resolve};
     let app = Application::new().await;
+    app.fixture.seed_foreign_household(72002).await;
     let token = app.token().await;
     let collection = format!("{}/api/v1/households/72001/medication_takes", app.origin);
     let contract = contract();

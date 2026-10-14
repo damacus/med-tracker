@@ -81,6 +81,7 @@ async fn legacy_pause_routes_record_legacy_reason_and_resume_both_sources() {
 #[tokio::test]
 async fn legacy_pause_routes_validate_empty_body_and_current_manage_authority() {
     let app = Application::new().await;
+    app.fixture.seed_foreign_household(72002).await;
     let token = app.token().await;
     legacy_schedule(&app).await;
     let schedule = format!("{}/api/v1/households/72001/schedules/83998", app.origin);

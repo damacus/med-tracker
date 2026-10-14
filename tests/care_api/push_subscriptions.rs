@@ -207,6 +207,7 @@ async fn push_subscription_cannot_transfer_or_revoke_another_accounts_device() {
 #[tokio::test]
 async fn push_subscription_checks_current_membership_before_mutating() {
     let app = Application::new().await;
+    app.fixture.seed_foreign_household(72002).await;
     let token = app.token().await;
     let body = subscription(
         "https://fcm.googleapis.com/fcm/send/synthetic-access",

@@ -3,6 +3,7 @@ use super::*;
 #[tokio::test]
 async fn sync_snapshot_is_portable_scoped_and_rechecks_withdrawn_visibility() {
     let app = Application::new().await;
+    app.fixture.seed_foreign_household(72002).await;
     app.fixture
         .admin
         .execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001")
@@ -269,6 +270,7 @@ async fn sync_batch_invalid_later_operation_rolls_back_earlier_take() {
 #[tokio::test]
 async fn sync_batch_replay_rechecks_current_record_grant_and_household() {
     let app = Application::new().await;
+    app.fixture.seed_foreign_household(72002).await;
     app.fixture
         .admin
         .execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001")

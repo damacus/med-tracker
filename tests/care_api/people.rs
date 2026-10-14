@@ -598,6 +598,7 @@ async fn person_get_matches_documented_contract() {
 #[tokio::test]
 async fn people_list_matches_documented_contract() {
     let app = Application::new().await;
+    app.fixture.seed_foreign_household(72002).await;
     let token = app.token().await;
     let collection = format!("{}/api/v1/households/72001/people", app.origin);
     let contract = contract();

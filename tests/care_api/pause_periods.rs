@@ -156,6 +156,7 @@ async fn pause_periods_preserve_reason_history_and_exact_resume_identity() {
 #[tokio::test]
 async fn pause_periods_require_current_manage_and_reject_foreign_household() {
     let app = Application::new().await;
+    app.fixture.seed_foreign_household(72002).await;
     let token = app.token().await;
     let source = pause_source(&app, false).await;
     let body = pause_body("person_medication", &source);
@@ -251,6 +252,7 @@ async fn pause_periods_audit_rejection_rolls_back_source_period_and_key() {
 async fn pause_period_list_matches_documented_contract() {
     use super::contract::{assert_value, contract, resolve};
     let app = Application::new().await;
+    app.fixture.seed_foreign_household(72002).await;
     let token = app.token().await;
     let source = pause_source(&app, false).await;
     let collection = format!(

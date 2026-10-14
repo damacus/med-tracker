@@ -114,6 +114,7 @@ async fn mobile_snapshot_returns_a_v1_portable_payload() {
 #[tokio::test]
 async fn mobile_snapshot_rejects_anonymous_and_foreign_households() {
     let app = Application::new().await;
+    app.fixture.seed_foreign_household(99999).await;
     let token = app.token().await;
     let anonymous = app.client.get(snapshot_url(&app)).send().await.unwrap();
     let anonymous_status = anonymous.status().as_u16();

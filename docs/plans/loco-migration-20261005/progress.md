@@ -20,7 +20,7 @@ did not merge it. Its 1,499-line candidate and historical failures remain below.
 | [#2633](https://github.com/damacus/med-tracker/pull/2633): executed acceptance proof | `codex/s05-i01-dmd-storage` | `630a7f016d364becfb682b855a7da0c57c0b7f7c` | 498 | Reviewed; local and exact-head hosted gates pass |
 | [#2636](https://github.com/damacus/med-tracker/pull/2636): account session contracts | `codex/s05-i01-contract-execution` | `451c357c4f71539bf62056c5ac0459d235528a63` | 1,711 | Reviewed; local and exact-head hosted gates pass |
 | [#2637](https://github.com/damacus/med-tracker/pull/2637): request IDs on rate-limit responses | `codex/s05-i01-account-sessions` | `adfe373fa79bd575d53db6b25f17e76f7600352a` | 399 | Reviewed; local CI and exact-head hosted checks pass |
-| [#2639](https://github.com/damacus/med-tracker/pull/2639): capability discovery | `codex/s05-i01-rate-request-ids` | `022854c80a921d2601970b5bad03ec8e950d6fd9` | 1,101 | Reviewed; local CI passes; exact-head hosted checks running |
+| [#2639](https://github.com/damacus/med-tracker/pull/2639): capability discovery | `codex/s05-i01-rate-request-ids` | `022854c80a921d2601970b5bad03ec8e950d6fd9` | 1,101 | Reviewed; local CI and exact-head hosted checks pass |
 
 Stack `2634` is published; no layer is merged or deployed. Full local
 CI `61813` passed 111 units, 20 request cases, 508 care cases and all 744 browser
@@ -350,6 +350,40 @@ The capability handler is 15/17: invalid-configuration and serialization-error
 fallbacks remain uncovered; the handler alone is below the 90% target. Raw
 application coverage is 63.16%, API controllers 91.29%. General coverage remains
 below target; coverage does not replace the 117 incomplete operation records.
+All 61 capability hosted checks have now passed on exact published `022854`;
+roll-up job `116060644770` in run `38619565391` is green. Hosted generated Swift
+`116043761157`, Kotlin `116043761698`, Android `116043332516` and coverage
+`116043331721` passed, as did published-head Devin Review. Actual inline review
+threads are empty. The latest Codex artifact attachment retry still failed to
+load the tool; no successful attachment is claimed. No merge or deployment occurred.
+
+Me/UI immutable source `e9b6475c6c30c2a9bdce77f082ece454995b2b13` now has
+proposed partial evidence for both operations. Guard RED `49932` rejected the
+new evidence before registration; GREEN `15873` rejects changed source pins,
+proof lists, gaps and promotion to complete. Runner fixture `5939` passed 47/47.
+Full dispatcher `53961` then stopped before final completeness acceptance:
+64 request tests passed (one ignored), while care had 491 passes, 33 failures
+and two ignores. All seven new request proofs and nine me/UI care cases passed.
+The 33 failures expect foreign-household 403 but use absent households: 23 use
+72002 and ten use 99999. Neither row exists in the loaded care fixture.
+The global contract explicitly requires missing-household 404, so the writer
+owns scoped foreign-household fixture corrections in those tests and the shared
+fixture helper, without changing the common template or runtime policy.
+Classification is retained in `me-ui-care-household-classification.md` beside
+the dispatcher log. Review, full CI and publication remain held until the
+dispatcher passes its actual suites. The existing Sol API writer retains
+ownership: this is a bounded fixture correction with objective database and
+HTTP assertions, not a change to the agreed permission rules.
+The frozen correction adds one helper and exactly 33 scoped setup calls, without
+changing expectations, comments or production. `task fmt:apply`, `task fmt` and
+diff checks pass. Dispatcher rerun `26127` passed 64 request tests (one ignored)
+and all 524 care tests (two ignored), including every previously failing case.
+The final request phase passed 64 and failed only `api_v1::acceptance`, correctly
+rejecting the 117 incomplete operations; Task exit 201 is that intentional
+completion rejection, not an ordinary-suite failure. Owned resources cleaned
+normally. Both partial-evidence and global-404 guards executed and passed.
+Local evidence now records five complete, three partial and 114 unverified
+operations. No new complete credit, merge or deployment is implied.
 
 Entries below retain historical revisions, failed attempts and publication states.
 
