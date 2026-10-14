@@ -4,6 +4,7 @@ use std::io::Write;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use tracing::field::{Field, Visit};
+use tracing::instrument::WithSubscriber;
 use tracing::span::{Attributes, Id, Record};
 use tracing::{Event, Metadata, Subscriber};
 
@@ -156,6 +157,7 @@ async fn nhs_dmd_import_emits_numeric_phase_and_total_timings_for_success_and_fa
         .await
         .unwrap();
     med_tracker::models::nhs_dmd::run(&app.context, success)
+        .with_subscriber(timings.clone())
         .await
         .unwrap();
     let failure = med_tracker::models::nhs_dmd::upload(
@@ -166,6 +168,7 @@ async fn nhs_dmd_import_emits_numeric_phase_and_total_timings_for_success_and_fa
     .await
     .unwrap();
     med_tracker::models::nhs_dmd::run(&app.context, failure)
+        .with_subscriber(timings.clone())
         .await
         .unwrap();
     app.close().await;
@@ -310,6 +313,7 @@ async fn nhs_dmd_official_release_comparison_snapshot() {
     let upload_ms = upload_started.elapsed().as_secs_f64() * 1000.0;
     let worker_run_started = Instant::now();
     med_tracker::models::nhs_dmd::run(&app.context, id)
+        .with_subscriber(timings.clone())
         .await
         .unwrap();
     let worker_run_ms = worker_run_started.elapsed().as_secs_f64() * 1000.0;
