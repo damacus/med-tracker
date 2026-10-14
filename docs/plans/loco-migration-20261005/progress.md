@@ -561,9 +561,8 @@ Source commit `4bd788c1592a29b505217a4e92e4e2a6116bf0d8` pins the tested behavio
 before evidence promotion. On that committed source, fresh existing care-profile
 job `37711` passed all 16 selected tests and care-avatar job `20183` passed all 15.
 Both owned fixtures cleaned up. The source diff is 1,253 lines against published
-People `4229289b`; no native pins changed. The writer now owns only the independent
-six-operation evidence guard, inventory promotion and exact runner transcripts;
-the coordinator retains progress and Git ownership.
+People `4229289b`; no native pins changed. The API writer transferred source,
+evidence and runner ownership to the coordinator after their frozen corrections.
 Evidence guard RED `23814` compiled and executed its one selected test, rejecting
 the proposed profile proof before inventory promotion. This was an assertion
 failure, not a compiler or fixture failure. The guard pins the six operation rows
@@ -580,11 +579,32 @@ unnecessary borrow. The test-only correction names the proof slice type and
 passes the existing document reference directly; formatting passes. No runtime,
 contract, proof assertions or inventory values changed for this correction.
 Corrected all-target lint `90937` passes; the final focused guard `25342` passes
-its one test. The full dispatcher is now verifying every credited test identity
-before independent review and cumulative CI. Publication remains held.
-Independent pinned evidence, SWE-2 Max review, full CI, publication and exact-head
-hosted acceptance remain required. All seven published layers remain unmerged and
-undeployed. Whole-API acceptance still rejects 117 incomplete operations.
+its one test. Dispatcher `44888` executed 99 passing request checks and 524 passing
+care tests with two ignored. Its final selection passed 99 and failed only
+`api_v1::acceptance`, correctly rejecting all 117 incomplete operations.
+
+Frozen candidate `f4feb6224ccf9b0d9d029f52c219a23b2c9403f5` has 1,748 changed lines
+against published People `4229289b`. Independent Devin job `42687`, session
+`florentine-trunk`, model SWE-2 Max, accepted it in nine steps without required
+corrections. Review packet SHA-256:
+`bee743c38990850aac33b933879a039d3b4ce1ebb3417697aa650ad069656e77`.
+Full `task ci` job `6669` passed on that exact candidate: policy 138, runner 48,
+Rust units 115, requests 99 with two ignored, care 508 with two ignored and 16
+filtered, all other integration binaries and 744 desktop/mobile browser cases
+(19.3 minutes). Owned fixtures cleaned up and no Task job remains live.
+The 40 generated screenshot changes were preserved as
+`/private/tmp/s05-i01-evidence/profile-avatar-ci-f4feb622-screenshots.patch`, SHA-256
+`c75a429ffab53e3b3be7ad5bed9b0f506bd28c954957775c16961f50d74648d6`.
+The coordinator verified the exact paths, current hashes and binary patch before
+reversing only that patch; all 1,141 pre-CI screenshot hashes match again.
+
+The coordinator owns integration/publication, Sol owns implementation/tests, and
+the verifier owns disposable fixtures and the serial build lane. Publication and
+exact-head hosted acceptance remain required. All seven published layers remain
+unmerged and undeployed. Whole-API acceptance still rejects 117 incomplete operations.
+The next three-operation settings draft is isolated on
+`codex/s05-i01-household-settings`: 13 request cases, no production or contract
+changes, awaiting its first executed RED after the verification lane is released.
 
 Entries below retain historical revisions, failed attempts and publication states.
 
