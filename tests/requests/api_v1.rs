@@ -68,7 +68,7 @@ fn operations() -> BTreeMap<(String, String), Value> {
     let source = include_str!("../../docs/api/openapi.v1.yaml");
     assert_eq!(
         hex::encode(Sha256::digest(source.as_bytes())),
-        "bef3d7a3db6d51d6756c864301f24821cd6b53ed8f6dbc68196bc6f7eff1f063",
+        "acfdc42aee410991c16183a65074bb1e2961397722731a88b4477b34fad831eb",
         "The full API schema or headers changed; refresh the operation inventory and its evidence"
     );
     let document: Value = serde_yaml_ng::from_str(source).unwrap();
@@ -481,6 +481,25 @@ pub mod baseline {
             assert!(entry["evidence"].as_array().is_some());
             validate_evidence(entry).unwrap();
         }
+    }
+
+    #[test]
+    fn every_documented_operation_references_shared_rate_limit_response() {
+        let document: Value =
+            serde_yaml_ng::from_str(include_str!("../../docs/api/openapi.v1.yaml")).unwrap();
+        let documented = operations();
+        let missing = documented
+            .keys()
+            .filter(|(method, path)| {
+                let method = method.to_lowercase();
+                document["paths"][path.as_str()][method.as_str()]["responses"]["429"]["$ref"]
+                    != "#/components/responses/RateLimited"
+            })
+            .collect::<Vec<_>>();
+        assert!(
+            missing.is_empty(),
+            "Documented API operations without shared RateLimited 429 response: {missing:?}"
+        );
     }
 
     #[test]

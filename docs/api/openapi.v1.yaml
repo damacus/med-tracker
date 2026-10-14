@@ -1172,6 +1172,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
     delete:
       operationId: releaseMedicationReviewPromptLease
       tags: [Household, Medication reviews]
@@ -1207,6 +1209,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /households/{household_id}/medication_review_prompts/{id}/lease/renew:
     post:
       operationId: renewMedicationReviewPromptLease
@@ -1239,6 +1243,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /households/{household_id}/ui_capabilities:
     get:
       operationId: getHouseholdUiCapabilities

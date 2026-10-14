@@ -353,6 +353,57 @@ Shared HTTP rate-limit work:
   fixture and typed negative cases. No blocking findings remain for this bounded
   rate-limit candidate; full root CI on its committed freeze is the remaining
   publication gate.
+- Final full CI job 47196 on `56a3b1f3439e186dcb081ad2ffe4aded5ed705ac`
+  exited 201 after normal Task cleanup. All 99 units and 664 browser cases passed
+  (browser duration 17.1 minutes); request inventory passed 17 with one intentional
+  ignore. Care API integration passed 489, failed one and ignored two, with 14
+  filtered: the dm+d timing test reported `missing extract timing: []`. The
+  sequential integration runner stopped there, so later OAuth tests did not run;
+  separate full OAuth job 98800 remains the valid 17/17 result. The 31 generated
+  screenshot diffs were preserved in `ci-56a3b1f3-generated-screenshots.patch` and
+  restored, retaining unrelated Serena configuration.
+- Original-source timing job 2141 passed alone (one pass, 505 filtered), but
+  dm+d module job 1917 reproduced the same failure (17 passes, one failure, one
+  ignore). This establishes an interaction in the broader run, without proving
+  its cause. All verifier jobs have exited. A narrow diagnostic patch records a
+  tracing probe, persisted import statuses and raw events; it remains unapplied
+  pending permission to coordinate ownership of the dm+d test. No production
+  correction, unchanged full-CI retry, rate-limit PR publication, merge or
+  deployment occurred. The reviewed GET/HEAD policy and all-119 acceptance scope
+  are unchanged; required CI failure blocks dependent work.
+- Care/review PR #2617 is now confirmed merged at 08:38:23 UTC on 14 October as
+  `672dbc0d1520ee586ce625f0dbfec7fb3eba0544`; the coordinator released its hold
+  and reported local cleanup. GitHub merge identity was checked before refresh.
+  The API stack rebased onto that main, retaining unsigned commits as authorised;
+  current replayed head is `7880e85c9`. Progress and unrelated Serena changes were
+  preserved in named stash `s05-i01 preserved progress and Serena before care2617
+  refresh`, then restored while retaining the recovery stash. The sole request-test
+  conflict keeps main's 122-operation count and lease metadata alongside all rate
+  tests and partial evidence. Main already contains the equivalent inventory patch,
+  so its earlier unapplied handoff is superseded.
+- The current schema plus the approved rate declarations hashes to
+  `bef3d7a3db6d51d6756c864301f24821cd6b53ed8f6dbc68196bc6f7eff1f063`.
+  Static reconciliation found 122 operation rows, 121 route pins, no extra routes
+  and the preexisting missing push-subscription test route. Coverage remains two
+  partial and 120 unverified operations. Acceptance now includes the three merged
+  lease operations; the historical 119-operation results remain separate. Main
+  also binds the dm+d timing subscriber to each import future; this test-only
+  correction is retained, with local regression verification still required.
+  New lease responses omit the existing global 429 contract, so the next bounded
+  correction starts with a failing metadata assertion before updating those
+  declarations and inventory. No new rate policy or native pin update is planned.
+- Initial lease metadata job 70308 stopped at test compilation (E0716); no
+  behavioral result was credited. After a test-only binding correction, job
+  72917 executed the assertion and failed on exactly the three lease operations
+  missing shared RateLimited 429 responses. The correction adds those three
+  declarations, their inventory response/schema/header entries and schema SHA
+  `acfdc42aee410991c16183a65074bb1e2961397722731a88b4477b34fad831eb`.
+  Inventory job 69691 then passed 18 with one deliberate ignore; limiter unit
+  job 51413 passed ten matching cases. Merged dm+d module job 45508 passed 18
+  with one ignore and 504 filtered, including the formerly failing timing case.
+  No new timing diagnostic or production importer correction was applied.
+  Evidence and coverage states remain unchanged. Independent correction review,
+  current coverage measurement and full CI remain required before publication.
 
 Session close-out on 11 October 2026:
 
