@@ -11,6 +11,60 @@ pub struct Operators {
     pub dmd: Option<opendal::Operator>,
 }
 
+#[derive(Clone, Default)]
+pub struct ArtifactStores(pub BTreeMap<String, Vec<opendal::Operator>>);
+
+pub fn artifact_stores(settings: Option<&Value>) -> ArtifactStores {
+    let persistent =
+        crate::models::settings::text(settings, &["active_storage", "root"]).map(fs_operator);
+    let s3 = s3_service_operator(settings);
+    let mut stores = BTreeMap::new();
+    if let Some(operator) = &persistent {
+        stores.insert("persistent".to_owned(), vec![operator.clone()]);
+    }
+    if let Some(operator) = &s3 {
+        stores.insert("s3".to_owned(), vec![operator.clone()]);
+    }
+    if let (Some(primary), Some(mirror)) = (&persistent, &s3) {
+        stores.insert(
+            "persistent_with_s3_mirror".to_owned(),
+            vec![primary.clone(), mirror.clone()],
+        );
+        stores.insert(
+            "s3_with_persistent_mirror".to_owned(),
+            vec![mirror.clone(), primary.clone()],
+        );
+    }
+    ArtifactStores(stores)
+}
+
+fn fs_operator(root: &str) -> opendal::Operator {
+    opendal::install_default();
+    opendal::Operator::new(opendal::services::Fs::default().root(root))
+        .expect("fs operator requires a root")
+}
+
+fn s3_service_operator(settings: Option<&Value>) -> Option<opendal::Operator> {
+    let section = "active_storage_s3";
+    let text =
+        |key: &str| crate::models::settings::text(settings, &[section, key]).map(str::to_owned);
+    let endpoint = text("endpoint")?;
+    let bucket = text("bucket")?;
+    let region = text("region")?;
+    let access_key = text("access_key_id")?;
+    let secret_key = text("secret_access_key")?;
+    let path_style =
+        crate::models::settings::flag(settings, &[section, "force_path_style"]).unwrap_or(true);
+    Some(s3_operator(
+        &endpoint,
+        &bucket,
+        &region,
+        &access_key,
+        &secret_key,
+        path_style,
+    ))
+}
+
 pub fn configured(settings: Option<&Value>) -> Option<(loco_rs::storage::Storage, Operators)> {
     let avatar = avatar_operator(settings, None);
     let dmd = dmd_operator(settings, None);

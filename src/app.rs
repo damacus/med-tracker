@@ -74,6 +74,10 @@ impl Hooks for App {
         {
             ctx.shared_store.insert(push);
         }
+        let artifacts = crate::models::storage::artifact_stores(ctx.config.settings.as_ref());
+        if !artifacts.0.is_empty() {
+            ctx.shared_store.insert(artifacts);
+        }
         if let Some((storage, operators)) =
             crate::models::storage::configured(ctx.config.settings.as_ref())
         {
@@ -150,6 +154,7 @@ impl Hooks for App {
         tasks.register(crate::models::care::browser_push::scheduler::ReminderTask);
         tasks.register(crate::models::platform::expiry::SupportExpiryTask);
         tasks.register(crate::models::observability::ObservabilityCanaryTask);
+        tasks.register(crate::models::care::hosted_exports::HouseholdExportsExpiryTask);
     }
 
     async fn truncate(_ctx: &AppContext) -> Result<()> {

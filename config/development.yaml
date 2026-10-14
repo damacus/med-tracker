@@ -29,6 +29,18 @@ settings:
     access_key_id: <%= get_env(name="ACTIVE_STORAGE_S3_ACCESS_KEY_ID", default="") %>
     secret_access_key: <%= get_env(name="ACTIVE_STORAGE_S3_SECRET_ACCESS_KEY", default="") %>
     force_path_style: <%= get_env(name="ACTIVE_STORAGE_S3_FORCE_PATH_STYLE", default="true") %>
+  active_storage:
+    root: <%= get_env(name="ACTIVE_STORAGE_ROOT", default="/app/storage") %>
+  active_storage_s3:
+    endpoint: <%= get_env(name="ACTIVE_STORAGE_S3_ENDPOINT", default="") %>
+    bucket: <%= get_env(name="ACTIVE_STORAGE_S3_BUCKET", default="") %>
+    region: <%= get_env(name="ACTIVE_STORAGE_S3_REGION", default="") %>
+    access_key_id: <%= get_env(name="ACTIVE_STORAGE_S3_ACCESS_KEY_ID", default="") %>
+    secret_access_key: <%= get_env(name="ACTIVE_STORAGE_S3_SECRET_ACCESS_KEY", default="") %>
+    force_path_style: <%= get_env(name="ACTIVE_STORAGE_S3_FORCE_PATH_STYLE", default="true") %>
+  household_exports:
+    retention_days: <%= get_env(name="HOUSEHOLD_EXPORT_RETENTION_DAYS", default="30") %>
+    generation_timeout_minutes: <%= get_env(name="HOUSEHOLD_EXPORT_GENERATION_TIMEOUT_MINUTES", default="60") %>
   dmd_storage:
     endpoint: <%= get_env(name="S3_ENDPOINT", default="") %>
     bucket: <%= get_env(name="S3_BUCKET", default="") %>
@@ -79,6 +91,9 @@ scheduler:
     support_access_expiry:
       run: support-access-expire
       schedule: "0 * * * * *"
+    household_exports_expiry:
+      run: household-exports-expire
+      schedule: "0 0 * * * *"
 queue:
   kind: Postgres
   uri: <%= get_env(name="DATABASE_URL", default="postgres://medtracker:medtracker_password@localhost:5432/medtracker_loco") %>

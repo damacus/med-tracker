@@ -12,6 +12,7 @@ pub mod dose_occurrences;
 pub mod doses;
 pub mod global_search;
 pub mod health_events;
+pub mod hosted_exports;
 pub mod invitations;
 pub mod locations;
 pub mod medication_lookup;
