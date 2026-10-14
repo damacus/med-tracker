@@ -8,6 +8,7 @@ mod fixture;
 mod me_ui;
 #[path = "people.rs"]
 mod people;
+#[path = "people_evidence.rs"]
 mod people_evidence;
 
 use fixture::Fixture;
