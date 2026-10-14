@@ -170,6 +170,24 @@ async fn profile_avatar_api_upload_read_replace_remove_and_recheck_access() {
     assert_eq!(read.headers().get("content-type").unwrap(), "image/png");
     assert_eq!(read.headers().get("cache-control").unwrap(), "no-store");
     assert_eq!(&read.bytes().await.unwrap()[..8], &png[..8]);
+    let blob = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT key FROM active_storage_blobs ORDER BY id DESC LIMIT 1",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    let object = crate::avatar_storage::owned_client()
+        .head_object()
+        .bucket("medtracker-fixture")
+        .key(blob.try_get::<String>("", "key").unwrap())
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(object.content_type().unwrap(), "image/png");
     let unauthenticated = app.client.get(&endpoint).send().await.unwrap();
     assert_eq!(unauthenticated.status().as_u16(), 401);
 

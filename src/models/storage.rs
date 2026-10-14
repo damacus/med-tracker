@@ -5,14 +5,32 @@ use serde_json::Value;
 pub(crate) const AVATAR_STORE: &str = "avatar";
 pub(crate) const DMD_STORE: &str = "dmd";
 
-pub fn configured(settings: Option<&Value>) -> Option<loco_rs::storage::Storage> {
+#[derive(Clone)]
+pub struct Operators {
+    pub avatar: Option<opendal::Operator>,
+    pub dmd: Option<opendal::Operator>,
+}
+
+pub fn configured(settings: Option<&Value>) -> Option<(loco_rs::storage::Storage, Operators)> {
+    let avatar = avatar_operator(settings, None);
+    let dmd = dmd_operator(settings, None);
     let mut stores: BTreeMap<String, Box<dyn loco_rs::storage::drivers::StoreDriver>> =
         BTreeMap::new();
-    if let Some(driver) = avatar_driver(settings, None) {
-        stores.insert(AVATAR_STORE.to_string(), driver);
+    if let Some(operator) = &avatar {
+        stores.insert(
+            AVATAR_STORE.to_string(),
+            Box::new(
+                loco_rs::storage::drivers::opendal_adapter::OpendalAdapter::new(operator.clone()),
+            ),
+        );
     }
-    if let Some(driver) = dmd_driver(settings, None) {
-        stores.insert(DMD_STORE.to_string(), driver);
+    if let Some(operator) = &dmd {
+        stores.insert(
+            DMD_STORE.to_string(),
+            Box::new(
+                loco_rs::storage::drivers::opendal_adapter::OpendalAdapter::new(operator.clone()),
+            ),
+        );
     }
     if stores.is_empty() {
         return None;
@@ -22,18 +40,21 @@ pub fn configured(settings: Option<&Value>) -> Option<loco_rs::storage::Storage>
     } else {
         DMD_STORE
     };
-    Some(loco_rs::storage::Storage::new(
-        stores,
-        Box::new(loco_rs::storage::strategies::single::SingleStrategy::new(
-            primary,
-        )),
+    Some((
+        loco_rs::storage::Storage::new(
+            stores,
+            Box::new(loco_rs::storage::strategies::single::SingleStrategy::new(
+                primary,
+            )),
+        ),
+        Operators { avatar, dmd },
     ))
 }
 
-pub fn avatar_driver(
+pub(crate) fn avatar_operator(
     settings: Option<&Value>,
     bucket: Option<&str>,
-) -> Option<Box<dyn loco_rs::storage::drivers::StoreDriver>> {
+) -> Option<opendal::Operator> {
     let section = "avatar_storage";
     let text =
         |key: &str| crate::models::settings::text(settings, &[section, key]).map(str::to_owned);
@@ -44,7 +65,7 @@ pub fn avatar_driver(
     let secret_key = text("secret_access_key")?;
     let path_style =
         crate::models::settings::flag(settings, &[section, "force_path_style"]).unwrap_or(true);
-    Some(s3_driver(
+    Some(s3_operator(
         &endpoint,
         bucket.unwrap_or(&configured_bucket),
         &region,
@@ -54,10 +75,7 @@ pub fn avatar_driver(
     ))
 }
 
-fn dmd_driver(
-    settings: Option<&Value>,
-    bucket: Option<&str>,
-) -> Option<Box<dyn loco_rs::storage::drivers::StoreDriver>> {
+fn dmd_operator(settings: Option<&Value>, bucket: Option<&str>) -> Option<opendal::Operator> {
     let section = "dmd_storage";
     let text =
         |key: &str| crate::models::settings::text(settings, &[section, key]).map(str::to_owned);
@@ -66,7 +84,7 @@ fn dmd_driver(
     let access_key = text("access_key_id")?;
     let secret_key = text("secret_access_key")?;
     let region = text("region").unwrap_or_else(|| "us-east-1".to_string());
-    Some(s3_driver(
+    Some(s3_operator(
         &endpoint,
         bucket.unwrap_or(&configured_bucket),
         &region,
@@ -76,14 +94,14 @@ fn dmd_driver(
     ))
 }
 
-fn s3_driver(
+fn s3_operator(
     endpoint: &str,
     bucket: &str,
     region: &str,
     access_key: &str,
     secret_key: &str,
     path_style: bool,
-) -> Box<dyn loco_rs::storage::drivers::StoreDriver> {
+) -> opendal::Operator {
     opendal::install_default();
     let mut builder = opendal::services::S3::default()
         .bucket(bucket)
@@ -94,8 +112,7 @@ fn s3_driver(
     if !path_style {
         builder = builder.enable_virtual_host_style();
     }
-    let operator = opendal::Operator::new(builder).expect("S3 operator requires a bucket");
-    Box::new(loco_rs::storage::drivers::opendal_adapter::OpendalAdapter::new(operator))
+    opendal::Operator::new(builder).expect("S3 operator requires a bucket")
 }
 
 #[cfg(test)]
@@ -123,9 +140,11 @@ mod tests {
 
     #[test]
     fn fully_configured_avatar_storage_registers_named_store() {
-        let storage = configured(Some(&avatar_settings())).unwrap();
+        let (storage, operators) = configured(Some(&avatar_settings())).unwrap();
         assert!(storage.as_store(AVATAR_STORE).is_some());
         assert!(storage.as_store(DMD_STORE).is_none());
+        assert!(operators.avatar.is_some());
+        assert!(operators.dmd.is_none());
     }
 
     #[test]
@@ -145,8 +164,9 @@ mod tests {
                 "secret_access_key": "secret",
             }
         });
-        let storage = configured(Some(&settings)).unwrap();
+        let (storage, operators) = configured(Some(&settings)).unwrap();
         assert!(storage.as_store(DMD_STORE).is_some());
+        assert!(operators.dmd.is_some());
     }
 
     #[test]

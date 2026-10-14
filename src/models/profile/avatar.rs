@@ -3,11 +3,11 @@ use crate::models::entities::{active_storage_blob, security_audit_event};
 use base64::{Engine, engine::general_purpose::STANDARD};
 use futures_util::StreamExt;
 use image::{ImageFormat, ImageReader, Limits, imageops::FilterType};
-use loco_rs::{Error, app::AppContext, bgworker::BackgroundWorker, storage::drivers::StoreDriver};
+use loco_rs::{Error, app::AppContext, bgworker::BackgroundWorker};
 use md5::{Digest, Md5};
 use sea_orm::{ConnectionTrait, DbBackend, Statement, TransactionTrait};
 use serde::{Deserialize, Serialize};
-use std::{io::Cursor, path::Path, sync::Arc, time::Duration};
+use std::{io::Cursor, time::Duration};
 
 const MAX_UPLOAD: usize = 5 * 1024 * 1024;
 const OPERATION_TIMEOUT: Duration = Duration::from_secs(10);
@@ -15,7 +15,10 @@ const OPERATION_TIMEOUT: Duration = Duration::from_secs(10);
 #[cfg(test)]
 mod bounded_read_tests {
     use super::*;
-    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    };
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
     #[tokio::test]
@@ -54,12 +57,7 @@ mod bounded_read_tests {
         )
         .unwrap();
         let storage = Storage {
-            inner: Arc::new(loco_rs::storage::Storage::single(
-                loco_rs::storage::drivers::null::new(),
-            )),
-            driver_override: Some(Box::new(
-                loco_rs::storage::drivers::opendal_adapter::OpendalAdapter::new(operator),
-            )),
+            operator,
             bucket: "synthetic".into(),
         };
         assert!(storage.get("oversized").await.is_err());
@@ -86,8 +84,7 @@ pub struct Attachment {
 }
 
 pub struct Storage {
-    inner: Arc<loco_rs::storage::Storage>,
-    driver_override: Option<Box<dyn StoreDriver>>,
+    operator: opendal::Operator,
     bucket: String,
 }
 
@@ -163,46 +160,36 @@ impl Storage {
         ctx.storage
             .as_store(crate::models::storage::AVATAR_STORE)
             .ok_or(OperationError::Unavailable)?;
-        Ok(Self {
-            inner: ctx.storage.clone(),
-            driver_override: None,
-            bucket,
-        })
+        let operator = ctx
+            .shared_store
+            .get::<crate::models::storage::Operators>()
+            .and_then(|operators| operators.avatar)
+            .ok_or(OperationError::Unavailable)?;
+        Ok(Self { operator, bucket })
     }
 
     pub fn at_bucket(&self, ctx: &AppContext, bucket: &str) -> Result<Self, OperationError> {
         if bucket == self.bucket {
             return Ok(Self {
-                inner: self.inner.clone(),
-                driver_override: None,
+                operator: self.operator.clone(),
                 bucket: self.bucket.clone(),
             });
         }
-        let driver =
-            crate::models::storage::avatar_driver(ctx.config.settings.as_ref(), Some(bucket))
+        let operator =
+            crate::models::storage::avatar_operator(ctx.config.settings.as_ref(), Some(bucket))
                 .ok_or(OperationError::Unavailable)?;
         Ok(Self {
-            inner: self.inner.clone(),
-            driver_override: Some(driver),
+            operator,
             bucket: bucket.to_owned(),
         })
     }
 
-    fn driver(&self) -> Result<&dyn StoreDriver, OperationError> {
-        match &self.driver_override {
-            Some(driver) => Ok(&**driver),
-            None => self
-                .inner
-                .as_store_err(crate::models::storage::AVATAR_STORE)
-                .map_err(|_| OperationError::Unavailable),
-        }
-    }
-
     pub async fn put(&self, key: &str, image: &Image) -> Result<(), OperationError> {
-        let content: bytes::Bytes = image.bytes.clone().into();
         tokio::time::timeout(
             OPERATION_TIMEOUT,
-            self.driver()?.upload(Path::new(key), &content),
+            self.operator
+                .write_with(key, image.bytes.clone())
+                .content_type(image.content_type),
         )
         .await
         .map_err(|_| OperationError::Unavailable)?
@@ -212,11 +199,14 @@ impl Storage {
 
     pub async fn get(&self, key: &str) -> Result<Vec<u8>, OperationError> {
         const LIMIT: usize = 8 * 1024 * 1024;
-        let mut stream =
-            tokio::time::timeout(OPERATION_TIMEOUT, self.driver()?.get_stream(Path::new(key)))
-                .await
-                .map_err(|_| OperationError::Unavailable)?
-                .map_err(|_| OperationError::Unavailable)?;
+        let reader = tokio::time::timeout(OPERATION_TIMEOUT, self.operator.reader(key))
+            .await
+            .map_err(|_| OperationError::Unavailable)?
+            .map_err(|_| OperationError::Unavailable)?;
+        let mut stream = tokio::time::timeout(OPERATION_TIMEOUT, reader.into_bytes_stream(..))
+            .await
+            .map_err(|_| OperationError::Unavailable)?
+            .map_err(|_| OperationError::Unavailable)?;
         let mut bytes = Vec::new();
         let collect = async {
             while let Some(chunk) = stream.next().await {
@@ -235,7 +225,7 @@ impl Storage {
     }
 
     pub async fn delete(&self, key: &str) -> Result<(), OperationError> {
-        tokio::time::timeout(OPERATION_TIMEOUT, self.driver()?.delete(Path::new(key)))
+        tokio::time::timeout(OPERATION_TIMEOUT, self.operator.delete(key))
             .await
             .map_err(|_| OperationError::Unavailable)?
             .map_err(|_| OperationError::Unavailable)
