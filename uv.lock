@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.13"
 
 [[package]]
@@ -101,16 +101,8 @@ dependencies = [
     { name = "zensical" },
 ]
 
-[package.dev-dependencies]
-dev = [
-    { name = "zensical" },
-]
-
 [package.metadata]
 requires-dist = [{ name = "zensical", specifier = ">=0.0.24" }]
-
-[package.metadata.requires-dev]
-dev = [{ name = "zensical", specifier = ">=0.0.24" }]
 
 [[package]]
 name = "pathspec"

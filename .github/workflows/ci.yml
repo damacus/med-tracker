@@ -571,6 +571,7 @@ jobs:
         with:
           python-version: "3.x"
           cache: "pip"
+          cache-dependency-path: pyproject.toml
 
       - name: Install documentation dependencies
         run: pip install uv==0.10.12

@@ -8,7 +8,6 @@ name: Docs
     paths:
       - docs/**
       - zensical.toml
-      - requirements.txt
       - pyproject.toml
       - uv.lock
       - .python-version
@@ -43,6 +42,7 @@ jobs:
         with:
           python-version: "3.x"
           cache: "pip"
+          cache-dependency-path: pyproject.toml
 
       - name: Install docs dependencies
         run: pip install uv==0.10.12
