@@ -6,6 +6,22 @@ migration areas stay in scope. No live deployment has occurred.
 
 ## Current delivery
 
+### People observed concurrency, 15 October 2026
+
+PR [#2641](https://github.com/damacus/med-tracker/pull/2641) now uses immutable
+test source `3ce8cbc0f766e1dc70654ce7f3d50abd6f963ceb`. Its three keyed-write
+tests observe two distinct restricted-role household lock waiters before
+release. Focused job `19216` passed all three; full People job `30448` passed
+16/16. The independent evidence guard first failed on the old source pin
+(`70572`), then passed with exactly four updated partial rows (`2033`).
+Inventory `83577` passed 81 with one ignore; runner `15386` passed 47/47.
+Logs are under `/private/tmp/s05-i01-evidence/people-overlap-*`.
+No People production change was needed. The existing gaps remain explicit;
+strict lint passed (`96460`). Dispatcher `10422` executed 81 request cases,
+524 care cases (two ignored), then rejected only final acceptance for 117
+incomplete operations. Cumulative CI, resumed review and publication remain
+pending. No additional operation acceptance, PR merge or deployment is claimed.
+
 ### People local stack propagation, 15 October 2026
 
 The coordinator integrates local predecessor `29474452da992057afbfefa9f0b5d7865be40a61` into

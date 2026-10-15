@@ -1,6 +1,6 @@
 use super::*;
 
-pub(super) const REVISION: &str = "7ba79ac8cbfdffa365c0e15646ea13075a1e6918";
+pub(super) const REVISION: &str = "3ce8cbc0f766e1dc70654ce7f3d50abd6f963ceb";
 pub(super) const GAP: &str = "Malformed household-ID extraction remains undecided; full operation acceptance, including remaining conditional and side-effect boundaries, is not yet established";
 
 pub(super) fn expected(operation: &str) -> Option<Value> {
@@ -44,7 +44,7 @@ pub(super) fn expected(operation: &str) -> Option<Value> {
                 (
                     "concurrent_create_person_key_replays_one_write",
                     vec![
-                        "barrier-overlap-one-creation-and-replay-or-current-permission-denial",
+                        "two-restricted-runtime-household-lock-waiters-before-release-one-creation-and-replay-or-current-permission-denial",
                         "fresh-same-key-retry-201-equal-body-replay-marker-changed-body-409",
                         "one-person-one-version-and-one-sync-change",
                     ],
@@ -64,7 +64,9 @@ pub(super) fn expected(operation: &str) -> Option<Value> {
                 ),
                 (
                     "concurrent_patch_person_key_replays_one_write",
-                    vec!["barrier-overlap-two-200-equal-bodies-one-replay-one-persisted-write"],
+                    vec![
+                        "two-restricted-runtime-household-lock-waiters-before-release-two-200-equal-bodies-one-replay-one-persisted-write",
+                    ],
                 ),
             ],
         ),
@@ -81,7 +83,9 @@ pub(super) fn expected(operation: &str) -> Option<Value> {
                 ),
                 (
                     "concurrent_put_person_key_replays_one_write",
-                    vec!["barrier-overlap-two-200-equal-bodies-one-replay-one-persisted-write"],
+                    vec![
+                        "two-restricted-runtime-household-lock-waiters-before-release-two-200-equal-bodies-one-replay-one-persisted-write",
+                    ],
                 ),
             ],
         ),
