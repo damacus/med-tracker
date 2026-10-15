@@ -184,11 +184,15 @@ tasks:
   machete:test:
     desc: Test the workspace unused-dependency gate
     cmds: [node --test scripts/migration/check-unused-deps.test.mjs]
+  deny:
+    desc: Check Rust dependency advisories, bans and sources
+    cmds: [cargo deny --workspace --locked --all-features check advisories bans sources]
   lint:
     desc: Lint Loco
     cmds:
       - cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
       - task: machete
+      - task: deny
   lint:fix:
     desc: Apply safe Loco Clippy suggestions
     cmds: [cargo clippy --locked --all-targets --fix --allow-dirty --allow-staged -- -D warnings]
@@ -340,7 +344,7 @@ tasks:
     env:
       CUTOVER_DATABASE_URL: '{{.CUTOVER_DATABASE_URL}}'
       MEDTRACKER_OWNED_DATABASE: '{{.MEDTRACKER_OWNED_DATABASE}}'
-    cmds: [cargo test --locked --features cutover-rehearsal --test cutover]
+    cmds: [cargo nextest run --locked --features cutover-rehearsal --test cutover --no-tests=fail]
   rails:rollback:journey:
     requires:
       vars: [FOUNDATION_PROJECT, CARE_DATABASE_URL, RAILS_ROLLBACK_IMAGE]

@@ -65,7 +65,13 @@ tasks:
       vars: [CARE_DATABASE_URL]
     cmds: ['psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align -c "SELECT json_object_agg(person_id,missed_dose_notifications_enabled) FROM public.person_access_grants WHERE household_membership_id=74001"']
   prepare-avatar-storage:
-    cmds: ['{{if .LOCO_PREBUILT}}./target/ci/care_api avatar_storage::prepare_owned_bucket --ignored --exact{{else}}cargo test --locked --test care_api avatar_storage::prepare_owned_bucket -- --ignored --exact{{end}}']
+    cmds:
+      - >-
+        {{if .LOCO_PREBUILT}}node scripts/ci/loco-validate.mjs &&
+        cargo nextest run --archive-file target/ci/loco-tests.tar.zst --workspace-remap {{.ROOT_DIR | shellQuote}}
+        {{else}}cargo nextest run --locked --test care_api{{end}}
+        --run-ignored only --no-tests=fail
+        -E 'binary_id(=med-tracker::care_api) & test(=avatar_storage::prepare_owned_bucket)'
   occurrence-probe:
     requires:
       vars: [CARE_DATABASE_URL]
