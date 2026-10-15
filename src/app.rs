@@ -5,7 +5,10 @@ use loco_rs::{
     bgworker::{BackgroundWorker, Queue},
     boot::{BootResult, StartMode, create_app},
     config::Config,
-    controller::AppRoutes,
+    controller::{
+        AppRoutes,
+        middleware::{self, MiddlewareLayer, MiddlewareStackExt},
+    },
     environment::Environment,
     task::Tasks,
 };
@@ -67,6 +70,12 @@ impl Hooks for App {
             .add_route(browser(crate::controllers::invitations::routes()))
             .add_route(browser(crate::controllers::invitations::acceptance_routes()))
             .add_route(browser(crate::controllers::platform::routes()))
+    }
+
+    fn middlewares(ctx: &AppContext) -> Vec<Box<dyn MiddlewareLayer>> {
+        let mut middlewares = middleware::default_middleware_stack(ctx);
+        middlewares.delete("request_id");
+        middlewares
     }
 
     async fn after_context(ctx: AppContext) -> Result<AppContext> {
@@ -150,14 +159,28 @@ impl Hooks for App {
             .shared_store
             .get::<Arc<crate::models::rate_limit::RateLimitState>>()
             .ok_or_else(|| Error::string("API rate-limit state is unavailable"))?;
-        Ok(router
+        let router = router
             .layer(axum::middleware::from_fn(
                 crate::models::identity::better_auth::http_boundary,
             ))
             .layer(axum::middleware::from_fn_with_state(
                 rate_limit,
                 crate::controllers::api::rate_limit::boundary,
+            ));
+        if ctx
+            .config
+            .server
+            .middlewares
+            .request_id
+            .as_ref()
+            .is_none_or(|request_id| request_id.enable)
+        {
+            Ok(router.layer(axum::middleware::from_fn(
+                middleware::request_id::request_id_middleware,
             )))
+        } else {
+            Ok(router)
+        }
     }
 
     fn register_tasks(tasks: &mut Tasks) {
