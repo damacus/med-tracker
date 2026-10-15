@@ -172,6 +172,8 @@ paths:
                 $ref: "#/components/schemas/AuthHouseholdCollectionResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/AccountForbidden"
         "429":
           $ref: "#/components/responses/RateLimited"
   /auth/sessions:
@@ -196,6 +198,8 @@ paths:
                 $ref: "#/components/schemas/AuthSessionCollectionResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/AccountForbidden"
         "429":
           $ref: "#/components/responses/RateLimited"
   /auth/sessions/{id}:
@@ -217,6 +221,8 @@ paths:
           description: API session revoked.
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/AccountForbidden"
         "404":
           $ref: "#/components/responses/NotFound"
         "429":
@@ -4599,6 +4605,19 @@ components:
             $ref: "#/components/schemas/ErrorEnvelope"
     Unauthorized:
       description: The bearer credential is absent, invalid, expired, revoked, or no longer active.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    AccountForbidden:
+      description: The OAuth credential lacks the medtracker scope required for account management.
+      headers:
+        WWW-Authenticate:
+          description: The bearer challenge identifies the required OAuth scope.
+          required: true
+          schema:
+            type: string
+          example: 'Bearer error="insufficient_scope" scope="medtracker"'
       content:
         application/json:
           schema:

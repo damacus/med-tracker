@@ -1,10 +1,41 @@
 # Migration progress
 
-Updated 14 October 2026. Complete every slice in [the plan](plan.md).
+Updated 15 October 2026. Complete every slice in [the plan](plan.md).
 Foundation is accepted. The verified baseline PR #2451 is merged; all remaining
 migration areas stay in scope. No live deployment has occurred.
 
 ## Current delivery
+
+### Account stack propagation, 15 October 2026
+
+The coordinator integrates published predecessor `80f34a50fb6973624f40530523d71482907147ea`
+into PR [#2636](https://github.com/damacus/med-tracker/pull/2636), preserving
+the tested account correction `294f38d93e29309825456c4efdddfc075233f8f4` and
+immutable proof source `0893879794d009bbb94cc72a0dd5df11aa7f6dfa` as ancestors.
+The original three account overlap tests, helper, oracle and four evidence rows
+are unchanged. The published prerequisite `faf0cc2f` passed every applicable
+hosted check; its former browser failure is corrected on that exact head.
+Execution-proof runner, inventory and full CI passed on `3004fb7d`; resumed
+review and final documentation review accepted. Its final head `80f34a50`
+is published and hosted accepted: run `38678068738` passed 25 checks with
+16 skipped, including CI Success `116239828257`. Root verified coverage
+artifact `11946842546` and source `83188ec9`; its tree exactly matches `80f34a50`.
+Same-session account review `68306` accepted candidate `8b94ed4c` with no required
+corrections (seventeen SWE-2 Max steps). Account code, tests and proof rows are
+unchanged from the earlier reviewed correction. Frozen candidate
+`9ec67c71af5725ef4fcb517a4cc2a34fb544271b` passed inventory `25929`
+(45 passed, one ignored), runner `67022` (47/47) and strict lint `51810`.
+Dispatcher `48028` executed all thirteen credited account identities: nine
+request cases and four care cases. Its request phase passed 45 with one ignore,
+care passed 522 with two ignores, and only final acceptance failed for 118
+incomplete operations. Full `task ci` job `81494` then exited zero: 112 Rust
+units, all integrations including 508 care cases (two ignored, fourteen filtered),
+and all 744 browser cases. Root independently verified/restored only generated
+PNG changes and checked all 1,093 baseline hashes; Serena work remains preserved.
+Log: `/private/tmp/s05-i01-evidence/account-propagation-full-ci-9ec67c71.log`.
+Final documentation checks/review, publication and exact-head hosted checks remain
+pending. Earlier CI and review below retain their exact candidate scope. No new
+operation credit, PR merge or deployment is claimed.
 
 ### s05-i01 execution-proof propagation, 15 October 2026
 
@@ -70,33 +101,137 @@ documentation checks, push and fresh exact-head hosted checks are still pending.
 Dependent propagation remains held until required gates pass; no operation
 acceptance, merge or deployment is credited.
 
-### s05-i01 — API contract completion, 14 October 2026
+### s05-i01 — API contract completion, 15 October 2026
 
-Merged rate-limit candidate: [PR #2623](https://github.com/damacus/med-tracker/pull/2623),
-`codex/s05-i01-http-rate-limits`, head `c85ffa02437f8c0612c652e401e878d99583ea73`,
-base `main` at `672dbc0d1520ee586ce625f0dbfec7fb3eba0544`. The immediate-base diff is
-1,473 additions and 26 deletions (1,499 total). Full local CI and independent
-review pass. All applicable hosted checks pass after one recorded coverage
-retry; the original two NHS dm+d failures remain retained and unexplained.
-GitHub records an external merge as `1800d858ef99e71edcf5e00cf5a0530616673dc6`;
-this coordinator did not perform the merge. Its tree exactly matches the accepted
-hosted merge candidate `a68b371af`. No deployment has occurred.
-The reminder test-clock correction is committed locally as
-`caf79acaedbd23ba662068d4085e352d9efed11f`, based on refreshed main `1800d858e`.
-Independent session `just-toothbrush`, job `42221`, accepted its 26-line diff.
-Focused real verification passed before refresh (`96528`) and again on the
-committed head (`34022`), with normal cleanup. The execution-proof branch now
-follows it at `8733febeea9786d896ab7d30ecbdc196ec83560f`, with an unchanged
-reviewed JS diff and 574 changed lines against its immediate base. Cumulative
-CI `29550` failed a dm+d archive read on merged main; publication and dependent
-work are held pending the authorised prerequisite diagnosis and correction.
-The account-session regression has now executed and failed as expected; its
-narrow controller correction is authorised after that genuine RED.
-The current inventory has 122 operations after the merged review leases:
-two partial and 120 unverified. Historical snapshots below retain their original
-operation counts and publication states.
+### Account overlap evidence correction, 15 October
 
-Current prerequisite failure, 14 October:
+The coordinator owns this correction to PR #2636 on
+`codex/s05-i01-account-sessions`, base `630a7f016d364becfb682b855a7da0c57c0b7f7c`.
+Its previously published head is `451c357c4f71539bf62056c5ac0459d235528a63`.
+The later settings review exposed that client barriers alone do not prove
+handler overlap. This audit also applies to account revocation and logout;
+their old complete labels require stronger evidence before whole-API acceptance.
+The test-only correction holds each target credential row and observes two
+distinct restricted-role UPDATE waiters, tied to the controlled holder, before
+release. A bounded condition check releases on timeout, and assertions follow
+fixture cleanup. No production race or runtime correction is claimed.
+
+Immutable tested source `0893879794d009bbb94cc72a0dd5df11aa7f6dfa` passed focused
+`87259` (one case), all ten account cases `45760`, and strict lint `79310`.
+Nine of those ten cases are credited request proofs; the tenth checks metadata.
+The independent guard now positively validates all four account rows before its
+tamper negatives. RED `46302` executed one case and rejected stale revision
+`2ae0b911`; after exactly four inventory-row updates, GREEN `73360` passed.
+The proof labels now explicitly require two target-UPDATE waiters before release.
+Inventory `3820` passed 45 cases with one intentional completion ignore;
+runner `75633` passed 47/47 and strict lint `92718` passed. Dispatcher `36151`
+passed 45 inventory cases, 522 care cases with two ignored, then 45 request
+cases before rejecting only final acceptance for 118 incomplete operations.
+All 13 credited identities executed: nine request proofs and four care proofs.
+The fourth care proof identifies separate same-application mobile grants in
+their audits; it must not be omitted from the executed evidence count.
+This earlier stack layer lacks the later capability credit, so its remaining
+count is 118 while the published upper stack reports 117. Neither is completion.
+Same-session `important-platypus` SWE-2 Max review `27798` accepted the exact
+corrective candidate `294f38d93e29309825456c4efdddfc075233f8f4` with no
+required correction. Full local `task ci` job `29691` exited zero on that same
+candidate: 112 Rust units; 45 API request cases with one intentional ignore;
+508 broad care cases with two ignored and 14 filtered; 17 OAuth cases; and
+744 browser cases in 19.4 minutes. Root preserved and verified exactly 39
+generated PNG changes, restored only those files, and confirmed all 1,093
+baseline PNG hashes. The unrelated Serena configuration remained unchanged.
+The four account rows still pin immutable source `0893879794d009bbb94cc72a0dd5df11aa7f6dfa`
+and 13 executed proof identities (nine request, four care). No new operation
+acceptance is inferred. Publication and dependent stack propagation remain
+held by the separate hosted NHS dm+d browser failure; this local correction
+has not been published, merged or deployed.
+Native pins and production code are unchanged. The unrelated
+Serena configuration is preserved and excluded from commits. Later People and
+profile/avatar proof drafts remain unexecuted; membership execution stays held
+until lower corrections are published and propagated. Older entries below retain
+their original revisions and results as history.
+
+The API coordinator owns integration, contracts and evidence; one API writer
+owns account implementation/tests and one verifier owns the serial heavy lane.
+Rate-limit [PR #2623](https://github.com/damacus/med-tracker/pull/2623) was merged
+externally as main `1800d858ef99e71edcf5e00cf5a0530616673dc6`; this coordinator
+did not merge it. Its 1,499-line candidate and historical failures remain below.
+
+| Published prerequisite | Base | Exact head | Changed lines | State |
+| --- | --- | --- | ---: | --- |
+| [#2632](https://github.com/damacus/med-tracker/pull/2632): storage transport and reminder clock | main `1800` | `923d5b63098a61ed4a9df0dfd4f27ae348d0b26a` | 496 | Reviewed; local application and exact-head hosted gates pass |
+| [#2633](https://github.com/damacus/med-tracker/pull/2633): executed acceptance proof | `codex/s05-i01-dmd-storage` | `630a7f016d364becfb682b855a7da0c57c0b7f7c` | 498 | Reviewed; local and exact-head hosted gates pass |
+
+Stack `2634` is published; neither prerequisite is merged or deployed. Full local
+CI `61813` passed 111 units, 20 request cases, 508 care cases and all 744 browser
+cases. Hosted coverage and clean source manifests are retained below. The storage
+defect has controlled RED/GREEN; its relationship to the original intermittent
+failure remains an inference, not a captured historical root cause.
+
+Local account branch `codex/s05-i01-account-sessions` follows `630a`. Malformed-ID
+and mobile-login target corrections each have genuine behavioural RED/GREEN.
+Existing care contracts pass 12 cases; pure deadline boundaries pass one table;
+the full request inventory passes 44 cases with final acceptance intentionally
+ignored. Final foreign-account collection case `75396` and full inventory rerun
+`72412` both pass; owned resources cleaned up normally. Tested source candidate
+is `2ae0b911576912bccf22f10c5db65856bd8cdc60`, with request SHA `abeb3c38`.
+Exact executed evidence now credits these four account operations locally;
+publication awaits the next stack layer. Earlier review
+`78959` accepted saved source `9219c243`; final review `66814` checked the later
+production and evidence changes and required only a negative-test lookup fix.
+That fix passes; same-session correction review `59730` accepted the final source
+and exact evidence, retaining full CI and published-head gates. The final
+source includes seeded foreign households and API sessions whose exclusion is
+asserted through the booted router.
+
+Cumulative CI `11105` on `b846a681` stopped in the fake-Cargo runner tests:
+40 passed and six failed because their explicit transcripts still lacked the
+newly credited account names and multi-binary call sequence. No Rust, database
+or browser phase ran and no screenshots changed. Publication and dependent work
+are held for the writer's test-fixture correction, same-review follow-up and a
+fresh cumulative run. Log: `/private/tmp/s05-i01-evidence/account-full-ci-b846.log`.
+The correction changes only explicit fake transcripts and their assertions:
+requests, care API, then final requests. Missing-care evidence now has a negative
+case; summary-count mutation remains effective as the credited set grows.
+Intermediate `90084` passed 44/46 before two stale call-count assertions were
+fixed. Final `86436` passed all 47 runner cases, with fixture SHA `599a20d6`.
+`account-runner-fixture-green-b846.log` beside the CI log is explicitly a
+reconstructed summary of tool output, not a captured raw transcript. Same
+independent review `25548` accepted this test-only delta; runtime and evidence
+hashes remain unchanged. No real database or browser job ran in these unit tests.
+Fresh cumulative CI `51506` passed on exact code candidate
+`d0781fb84e2fd3f73454d8899157986517b4089f`: 112 units, 45 request cases (one
+intentional completion ignore), 508 care cases (two ignored, 14 filtered) and
+all 744 browser cases in 19.3 minutes. Full Task exit was zero with normal
+owned-resource cleanup. Log: `/private/tmp/s05-i01-evidence/account-full-ci-d078.log`.
+The 39 generated screenshots are preserved in `account-full-ci-d078-screenshots.patch`
+beside that log, SHA-256 `db5c08c171f9b9be2ba35c0d38e2424a2a9d5cfd9184cf1b2eadc92d55a6907b`;
+only those verified paths were restored. Unrelated Serena drift remains excluded.
+This final evidence update changes documentation only; tested code, schemas,
+runner fixtures and request assertions remain unchanged. Hosted acceptance,
+publication, merge and deployment remain separate.
+
+| Final account evidence | Job | Result | Retained log under `/private/tmp/s05-i01-evidence/` |
+| --- | --- | --- | --- |
+| Mobile login target regression | `82913` / `75274` | Behavioural RED / GREEN | `account-mobile-target-lifetime-{red,green}-630a.log` |
+| Pure checked deadline boundaries | `3355` | One table passed after equivalent helper refactor | `account-mobile-deadline-unit-630a.log` |
+| Existing account schema/transactions | `20402` | 12 passed; two people-route activity tests excluded from account credit | `account-existing-care-api-lifetime-630a.log` |
+| Final seeded foreign collection | `75396` | One passed | `account-foreign-collections-focused-7d2.log` |
+| Final request inventory | `72412` | 44 passed; one intentional completion ignore | `account-foreign-full-inventory-7d2.log` |
+| Strict evidence registration | `2733` | Expected RED: old validator rejects non-null candidate revision | `account-evidence-metadata-red-2ae0.log` |
+| Negative-test lookup correction | `16340` / `69593` | Test-only lookup failure; corrected baseline passes 10/10 | `account-evidence-metadata-green{-v2,}-2ae0.log` |
+| Credited execution dispatcher | `58221` | Requests 45 pass; care 522 pass; final gate correctly rejects 118 remaining operations | `account-evidence-dispatcher-2ae0.log` |
+
+The authoritative inventory remains 122 operations, 121 registered routes,
+four complete, two partial and 116 unverified. The missing route is the existing
+notification test operation. All 13 unique credited account test names executed
+and passed before the final completion rejection, with normal owned cleanup.
+Final request and inventory hashes are `17190df2` and `656073df`; candidate
+revision pins remain `2ae0b911`. Next: publish that
+bounded layer. Native pins are unchanged; broader slice 05 is not complete.
+Entries below retain historical revisions, failed attempts and publication states.
+
+Historical prerequisite failure, 14 October:
 
 - Frozen execution-proof `8733febee` CI job `29550` passed tooling checks, 110
   Rust units, documentation, strict checking and preceding integration binaries.
@@ -207,6 +342,82 @@ Current prerequisite failure, 14 October:
   establish the historical intermittent failure's exact cause. Source is frozen;
   unrelated generated `.serena/project.yml` drift is preserved and excluded from
   the candidate. No full cumulative success or publication is claimed yet.
+- Combined prerequisite is committed as `923d5b63098a61ed4a9df0dfd4f27ae348d0b26a`
+  on `codex/s05-i01-dmd-storage`, targeting main `1800`: 496 changed lines across
+  five files, including both tested corrections and this existing progress record.
+  Same independent SWE-2 Max session `successful-dollar` accepted code in `33298`
+  and final combined scope in `14601`, both exit zero; no code corrections remain.
+  The final review confirmed the sole production S3 factory and the real GREEN
+  and provider proofs. Execution/hosted gates remain mandatory.
+- Execution-proof tooling now follows at clean
+  `630a7f016d364becfb682b855a7da0c57c0b7f7c`, based on `923d5b63`; its immediate
+  diff is three reviewed JS files, 477 additions and 21 deletions. All three
+  reviewed hashes remain unchanged. The sole rebase conflict was this coordinator
+  progress file, resolved by retaining the newest preserved lower-layer record.
+  Every Rust/application/config/asset file matches the prerequisite exactly.
+  Fresh cumulative CI is job `61813`, log
+  `/private/tmp/s05-i01-evidence/contract-execution-full-ci-630a.log`.
+  Its 111 Rust units, request suite (20 passed, one intentionally ignored) and
+  full care suite (508 passed, zero failed, two ignored, 14 filtered) passed.
+  Both previously failing dm+d cases and avatar lifecycle passed. The 744-case
+  browser stage passed all 744 cases in 25.4 minutes. The complete Task exited
+  zero on this exact candidate. Hosted checks and publication remain separate.
+  CI generated exactly 42 tracked screenshot changes and no other changed or
+  untracked paths. Their binary patch is preserved at
+  `/private/tmp/s05-i01-evidence/contract-execution-ci-630a-screenshots.patch`
+  (SHA-256 `e87e3fbca5dd8afe7a3e1b0318aa66b90fb7e75e1dfc4bd0a8c8452246386919`);
+  the exact paths are in `contract-execution-ci-630a-screenshot-paths.txt` beside it.
+- Published through `gh stack link` as stack `2634`: prerequisite PR
+  [#2632](https://github.com/damacus/med-tracker/pull/2632), base `main`, exact head
+  `923d5b63098a61ed4a9df0dfd4f27ae348d0b26a`, 486 additions plus ten deletions;
+  execution PR [#2633](https://github.com/damacus/med-tracker/pull/2633), base
+  `codex/s05-i01-dmd-storage`, exact head `630a7f016d364becfb682b855a7da0c57c0b7f7c`,
+  477 additions plus 21 deletions. Both are attached to this chat. No merge or
+  deployment occurred. Exact-head hosted checks are active (root CI runs
+  `38579974030` and `38579993324` respectively). Initial generated titles failed
+  title validation; both titles were corrected to Conventional Commits and
+  replacement title checks passed. Hosted acceptance is not claimed.
+- Published-head Devin review found no issues in PR #2632. PR #2633's sole thread
+  asked whether incomplete inventory should fail the final completion gate.
+  Root checked the current runner and acceptance assertion, confirmed this is
+  explicitly required by the plan and replied with the real dispatcher and
+  cumulative CI evidence. Reply
+  [4272091290](https://github.com/damacus/med-tracker/pull/2633#discussion_r4272091290)
+  was created before resolving exact thread `PRRT_kwDOPAWvwc6sXMlM`; a fresh
+  thread read confirmed `is_resolved: true`. No code correction or weaker gate
+  was introduced. Hosted execution/coverage jobs remain active.
+- PR #2632 hosted coverage job `115907098466` passed: 111 units, 20 request cases
+  (one ignored), and all 522 care cases (two ignored). Artifact `11902762626`
+  is preserved as `/private/tmp/s05-i01-evidence/loco-rust-coverage-2632-923d.zip`,
+  SHA-256 `bf456b3aad1916f3cfd33a1178fe729cac7c48c3e6bc454bdc784afea78e6ee1`.
+  Its clean manifest identifies merge-test source
+  `f80b89423a1529aac4ea037b2df45b23fce4e20f`, parents `1800` and `923d`;
+  Git comparison confirms no source difference against the published head.
+  Extracted manifest and LCOV are under
+  `/private/tmp/s05-i01-evidence/hosted-coverage-2632-923d/024c7554-2371-4c0e-bf31-5786fc15dca7/`.
+  Report-only totals: application 39,616/62,582 lines (63.30%); API controllers
+  6,877/7,448 (92.33%); storage production factory 100/101. Its sole uncovered
+  line is pre-existing virtual-host configuration at `src/models/storage.rs:112`;
+  every added transport/context runtime line is covered. Inline regression lines
+  are counted separately, not credited as business logic. Whole-application and
+  operation-level acceptance remain incomplete; hosted browser gates are active.
+- Both published prerequisites now pass exact-head hosted acceptance: PR #2632
+  head `923d`, CI roll-up job `115916215172` in run `38579974030`; PR #2633
+  head `630a`, CI roll-up job `115914704499` in run `38579993324`. Latest title,
+  lint, security, unit, integration, coverage and browser gates passed; older
+  auto-generated-title failures were superseded by passing corrected-title runs.
+  Devin review has no unresolved findings. Neither PR is merged or deployed.
+  Highest-head coverage artifact `11903381637` is preserved as
+  `/private/tmp/s05-i01-evidence/loco-rust-coverage-2633-630a.zip`, SHA-256
+  `54009d32e20402ecea8b8675cefec360b687bd7179c4064f26b489fe1809eeb7`.
+  Its clean source manifest is merge-test `80076e371dde06bcf9f4a16414d406768948b7e2`;
+  Git comparison confirms no source difference from published head `630a`.
+- Account correction and unrelated Serena drift were preserved in a named stash
+  before propagation, then restored on `630a7f016`. Both controller and test hashes
+  remain unchanged. Stash identity is retained at
+  `/private/tmp/s05-i01-evidence/account-before-combined-prerequisite-stash.txt`.
+  No old/unknown stashes were removed. Its GREEN request test subsequently passed
+  in job `1890`; no complete API operation credit has changed.
 
 Account regression update, 14 October:
 
@@ -236,8 +447,112 @@ Account regression update, 14 October:
   verification requirement and recommends actual positive-ID revocation proof
   in the already-planned account acceptance tranche. Packet, output and session
   export are retained under `/private/tmp/s05-i01-review/account-malformed-*`.
-  Real GREEN remains pending; production changes do not earn credit from
-  formatting or source inspection.
+  Subsequent genuine GREEN job `1890` exited zero after compiling and executing
+  this exact case: one passed, zero failed, 21 filtered, 2.80 seconds. Both frozen
+  source hashes match and the owned fixture cleaned up normally. Log:
+  `/private/tmp/s05-i01-evidence/account-malformed-delete-green-630a.log`.
+  The writer now owns the full four-operation account test candidate on this
+  branch; root retains OpenAPI, inventory and progress. New production corrections
+  still require their own failing behavioural tests. No full operation is yet
+  credited from this single boundary regression.
+- Account metadata test-only candidate produced genuine RED in job `73953`:
+  one named test compiled and failed because `GET /auth/households` had no 403
+  response reference, rather than the required `AccountForbidden`. Log:
+  `/private/tmp/s05-i01-evidence/account-scope-denial-metadata-red-630a.log`.
+  Root then applied the user's approved missing 403 entries to the three
+  authenticated account operations, using a narrow response with the existing
+  `ErrorEnvelope` and exact OAuth challenge. No runtime security or native pin
+  changed. OpenAPI SHA-256 is now
+  `88749db9cdffb0aa8ca66d03c59d8487d25c1fadfaa05093e485495aab6b18dc`.
+  Only the three corresponding inventory response/schema/header records changed;
+  they remain unverified until actual acceptance execution. GREEN is queued
+  after the writer updates the owned test pin and removes its unused import.
+- Focused framework contract dispatcher job `34551` executed all eight account
+  tests: six passed, two failed, 21 filtered. The missing-403 metadata test is
+  GREEN. Neither failure established a runtime defect: one challenge expectation
+  incorrectly inferred a comma where the actual library response uses a space;
+  the SMART fixture omitted authority fields required by a PostgreSQL constraint
+  and never reached its request. Log:
+  `/private/tmp/s05-i01-evidence/account-focused-contracts-green-630a.log`.
+  Root corrected only the new header example to the observed response, giving
+  OpenAPI SHA-256
+  `2e974738ac88e583452ac342690814e651226c93cf85571bf89908cd0a200758`.
+  Writer owns test corrections and remaining independently aged mobile/credential
+  boundary assertions before a fresh freeze. Controller remains unchanged;
+  complete operation credit remains pending.
+- Follow-up focused account job `32767` compiled and executed all eight cases:
+  seven passed, one failed, 21 filtered. The observed challenge and SMART authority
+  fixture corrections passed, as did independent mobile age/inactivity and stale
+  credential boundaries. Remaining failure is test-only: SMART logout correctly
+  revoked the grant, but the assertion queried the mobile `versions` audit table.
+  Existing non-mobile revocation writes `security_audit_events`; writer is
+  correcting that assertion and replay count. No production correction is
+  justified. Log: `/private/tmp/s05-i01-evidence/account-focused-contracts-green-v2-630a.log`.
+- Corrected account candidate, requests SHA-256
+  `5ae2af17d81861fae2145be16fcf8fcd78d5a1fe38ccbe8486e2a841ff34b796`, passed
+  framework dispatcher `92761` (eight account cases), inventory dispatcher
+  `37623` (28 passed, one intentionally ignored final acceptance), and existing
+  account schema/transaction cases `7699` (12 passed, 512 filtered), sequentially.
+  Owned fixture cleanup completed normally. Logs are respectively
+  `/private/tmp/s05-i01-evidence/account-focused-contracts-green-v3-630a.log`,
+  `account-full-api-v1-inventory-630a.log`, and `account-existing-care-api-630a.log`.
+  Historical simultaneous-revocation evidence belongs to the legacy runtime;
+  writer is adding its missing Loco TestServer proof before full operation credit.
+  The unchanged generic account projections are separately tracked apparent
+  drift #2588, not an invented #2592 exception; this bounded correction preserves
+  already-correct responses and introduces no new response component.
+- Added the missing current-runtime concurrency proof without production changes:
+  request source SHA-256
+  `9219c243db5d7ac572ecc272a88d8f014fb93e44b322c4f20193dacd658a4d09`.
+  TestServer case `concurrent_account_revocation_and_logout_commit_one_effect_each`
+  uses a controlled Tokio barrier for stored and mobile session revocation and
+  app-token logout; job `35496` passed one named case. Full inventory dispatcher
+  `18199` then passed 29 cases with one intentionally ignored acceptance gate.
+  Both owned runs cleaned up normally; route reconciliation remains 121/122.
+  Logs: `/private/tmp/s05-i01-evidence/account-concurrent-revocation-630a.log` and
+  `account-full-api-v1-inventory-concurrency-630a.log`.
+  Same independent SWE-2 Max session `important-platypus` resumed as job `78959`
+  for the full four-operation candidate, inline controller/domain/auth/audit,
+  fixtures, schemas and tests. Packet and export are
+  `/private/tmp/s05-i01-review/account-complete-review-*`. Review is active;
+  complete evidence mapping and full cumulative gates remain pending.
+- Further tests-only request source `dcec718f` reuses the recursive contract
+  helper for actual account error bodies and checks mobile foreign-account and
+  expired-login target isolation. Genuine HTTP RED job `82913` compiled and
+  executed one case: foreign target returned 404, maximum-age and inactivity
+  targets each returned 204 instead of 404. Listing had correctly excluded those
+  targets. The Rails reference uses the same lifetime-filtered `sessions_for`
+  lookup for listing and revocation, establishing the required parity behaviour.
+  Log: `/private/tmp/s05-i01-evidence/account-mobile-target-lifetime-red-630a.log`.
+  The fixture queried persistence/audits but failed before asserting or printing
+  them; the RED log does not establish those values, and cleanup has completed.
+  Writer now owns the narrow model/controller correction, reusing configured
+  `AuthenticationLifetime` and preserving stored-session namespace, token-expiry
+  distinctions, concurrency and transactional audits. No OpenAPI change is needed.
+  Existing independent review uses saved source `9219c243`; the corrected source
+  and actual RED/GREEN will require a same-session follow-up before publication.
+- Earlier full account review `78959`, same SWE-2 Max `important-platypus`,
+  exited zero and accepted saved source `9219c243` with no required corrections,
+  retaining operation mapping, cumulative CI and hosted gates. Counts are
+  unambiguous: `92761` ran all eight then-existing account tests including metadata;
+  subsequent `35496` added the ninth concurrency case, which `18199` also executed.
+  The later discovered lifetime correction is outside that accepted snapshot and
+  will receive the required same-session follow-up, not inherit its acceptance.
+- Minimum lifetime correction reuses one model deadline calculation for listing
+  and revocation, with settings supplied by the controller's `AppContext`.
+  Frozen model/controller/request SHA-256 values are respectively
+  `800b7665a0e31799b8bff426ae215d311884d2e433b3252236392a83e0eb1785`,
+  `5f9a7ce2b8bcbb5fc3d9a046bf6eee349f7e9e471b32f0948b00d129d85b2a69`,
+  `6c577cbf44c82a949ec162df723d1eea19ea79f2e627052f1085fe1524139397`.
+  Genuine GREEN `75274` passed its one named case: foreign/max-age/inactive targets
+  returned 404, stayed active and produced no revocation audit; a token-expired
+  but login-active target returned 204 and produced exactly one audit. Full
+  inventory `4188` then passed 44 tests with one intentional acceptance ignore;
+  imported recursive schema helper tests are compiled and executed too.
+  Logs: `/private/tmp/s05-i01-evidence/account-mobile-target-lifetime-green-630a.log`
+  and `account-full-api-v1-inventory-lifetime-630a.log`. Both owned runs cleaned
+  up normally. Existing care-account verification `20402` is active; no operation
+  credit, full account CI or publication is claimed yet.
 - The shared report renderer rejected unsupported local-check states `complete`
   in `s07-i01` and `s07-i08`, and an unevidenced publication claim in `s07-i08`.
   Root preserved the prior JSON snapshot and conservatively recorded those
