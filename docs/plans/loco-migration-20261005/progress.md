@@ -666,7 +666,30 @@ with two ignored, then passed 113 requests and failed only the final acceptance
 case for 117 incomplete operations. All 13 new settings cases and the evidence
 guard executed in both request phases, and all six relevant care identities
 passed. This is a deliberately closed completion gate, not whole-API acceptance.
-Review, full CI and publication remain pending on the frozen evidence candidate.
+Clean evidence candidate `c40b44b9ad76f9d0f6b5aa12de3290e9d82ceccb` has 1,287
+additions plus nine deletions against published profile base `9eb729dd`.
+Independent Devin job `69596` accepted it without corrections: session
+`gorgeous-layer`, SWE-2 Max, nine steps. Its immutable packet SHA-256 is
+`b8bab6e5754c3c461afd45eb442b25741c6cb4d6808e78b3c936a469a87fcb34`.
+Full CI `49704` passed on that exact clean revision: 115 Rust units, the 16
+selected care cases, 508 broad care cases with two ignored and 16 filtered,
+113 API requests with two ignored, remaining integration shards and all 744
+desktop/mobile browser cases in 19.5 minutes. The original dm+d archive queue
+regression passed again. No production changes were needed for settings.
+CI generated 42 tracked PNG differences. The coordinator independently verified
+the exact paths, current hashes, byte-identical binary patch and reverse
+applicability before restoring only those differences. All 1,093 original PNG
+hashes match again; the reviewed source is clean. The preserved patch SHA-256 is
+`deef384c5c142cfb7328912a5974fe7e35f7f69daff559ead8b1551d9469cd42`.
+The coordinator owns integration, Git and publication; Sol owns implementation
+and tests; the verifier owns disposable resources and the serial test lane.
+Final documentation checks and publication follow this verified point.
+
+The next membership family is isolated on `codex/s05-i01-household-memberships`,
+with 17 test-only cases prepared for GET, PATCH, PUT and DELETE. Formatting and
+diff checks pass; no runtime changes, contract edits or membership test jobs
+have run. Its first full-module RED waits for the released verifier lane and
+propagation of the final published settings parent. It earns no operation credit.
 
 Entries below retain historical revisions, failed attempts and publication states.
 
