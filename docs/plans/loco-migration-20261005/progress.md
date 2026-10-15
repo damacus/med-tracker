@@ -6,6 +6,24 @@ migration areas stay in scope. No live deployment has occurred.
 
 ## Current delivery
 
+### Membership contracts execute through Loco, 15 October 2026
+
+The membership writer now inherits settings `fd1d0e02`, including reviewed
+People/profile/avatar overlap corrections. The coordinator preserved and
+reapplied only three owned draft paths, verified both module backups and
+removed only its recorded stash; pre-existing stash SHAs are unchanged.
+First real run `49258` executed 17 cases: 11 passed and six failed. Three
+concurrency witnesses incorrectly waited at the membership row although
+authorization already locks the household first; one target session fixture
+lacked its linked active user/person. Genuine metadata failures identified
+three missing Idempotency-Key parameters and four existing 500 responses.
+After these bounded test and metadata corrections, run `3326` passed all 17
+cases. The module SHA-256 is
+`be4f59deb6b4378b61fb7f66fdf57c9a8383e04c83e1a573cc5d82a0439ebdb2`;
+immutable tested revision is `0dd17f5b88081726c832032d7bc0edcf6efbf16b`.
+No production correction was needed. Evidence guards, cumulative gates,
+independent review and publication remain pending; no operation credit yet.
+
 ### Household settings local stack propagation, 15 October 2026
 
 The coordinator integrates local predecessor `d317b0a5b40f3729fffa47aedea3fbda73b124be` into
@@ -243,6 +261,7 @@ did not merge it. Its 1,499-line candidate and historical failures remain below.
 | [#2640](https://github.com/damacus/med-tracker/pull/2640): household errors and UI privacy | `codex/s05-i01-capabilities` | `012e8cfe9b2e2555fedd3001213a877795aac4a4` | 990 | Reviewed; local CI and all 45 exact-head hosted checks completed successfully or skipped |
 | [#2641](https://github.com/damacus/med-tracker/pull/2641): People collection and writes | `codex/s05-i01-me-ui` | `4229289bdf729defa3b21bf5589a296c14c6924d` | 1,551 | Reviewed; local CI and all 45 exact-head hosted checks pass or skip |
 | [#2643](https://github.com/damacus/med-tracker/pull/2643): profile privacy and avatar acceptance | `codex/s05-i01-people-write` | `9eb729ddb9f7aecb4229899ebdcdeab82b002013` | 1,768 | Independent review, full local CI and all 45 exact-head hosted checks pass or skip |
+| [#2644](https://github.com/damacus/med-tracker/pull/2644): household settings contracts | `codex/s05-i01-profile` | `a49eaef902fbb05dde9750c24fffda6275000698` | 1,319 | Original local CI passes; hosted review requires actual handler-overlap proof |
 
 Stack `2634` is published; no layer is merged or deployed. Full local
 CI `61813` passed 111 units, 20 request cases, 508 care cases and all 744 browser
@@ -964,6 +983,29 @@ with 17 test-only cases prepared for GET, PATCH, PUT and DELETE. Formatting and
 diff checks pass; no runtime changes, contract edits or membership test jobs
 have run. Its first full-module RED waits for the released verifier lane and
 propagation of the final published settings parent. It earns no operation credit.
+
+Settings PR #2644 is published in stack `2634` at `a49eaef9`, 1,310 additions
+plus nine deletions against exact profile base `9eb729dd`. Its final commit
+changes only the verified progress document; docs gate `41536` passed. Pull/rebase
+and push succeeded, and its clean branch tracks origin. The app artifact tool
+failed to load again, so no attachment is claimed. Hosted checks for this exact
+head are pending in run `38660243245`; no merge or deployment occurred.
+
+The coordinator propagated that published parent into the isolated membership
+draft through owned autostash `e1e58562b`, which applied successfully. Both test
+file hashes are unchanged: module `2f13890cf12661971352dcd82c990e19f4b51bc6e8982c759f41f9962d57acf9`
+and registration `8ea6f13ffca199cf73d46e1d66406009145e17561456e4263cf05a06c4ae4a9a`.
+The verifier now owns the first full-module RED run; runtime, OpenAPI and all
+membership inventory rows remain unchanged. No membership evidence is credited.
+The first membership job `9320` stopped at test compile-only E0425: a raw-body
+case used `replies` in the success loop without that binding. Zero cases executed;
+this is not behavioural RED. The writer owns the narrow test-only correction
+before the same full module is rerun. Runtime and contract files remain unchanged.
+Membership execution is now held for the lower settings PR's hosted review
+finding: its client barrier does not prove handler overlap. The owning settings
+branch is gaining a real database-lock observation before review, full CI and
+publication are repeated. The test-only membership compile fix is frozen at
+`646cc1fd80a56cbbd57cd991827ff372a37b0befbc5fc48be51c8726fa5b2447`.
 
 Entries below retain historical revisions, failed attempts and publication states.
 
