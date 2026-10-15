@@ -60,6 +60,27 @@ handoffs appear in the final section of this document.
 - Remaining application-wide strict lint and dependency remediation.
 - Extraction and full acceptance of independently releasable foundation PRs.
 
+### Morning result
+
+The bounded demonstration passed on desktop and mobile. Four focused request
+checks also passed for session-local selection, CSRF, foreign inventory and live
+membership revocation. No application source changes were needed for this gate.
+The delivery owner inspected the saved screenshots and the Playwright result
+report: two expected results, no skipped, unexpected or flaky results.
+
+See the [walkthrough and screenshots](../household-inventory-demo.md). The native
+browser-install prerequisite stalled; after the build completed, the existing
+owned browser runner passed with the matching pinned Chromium cache. This
+exception is documented and does not imply the whole Task chain passed.
+
+A narrow hosted prerequisite fix updates the immutable tool-installer pin to a
+release supporting the already-pinned nextest version. Its regression failed
+before the fix and all 153 CI-tooling tests passed afterwards. It does not fix
+or waive the remaining strict application/dependency gates.
+
+The morning implementation gate ends here. Do not start H1–H6 automatically.
+Further capability work needs a separately chosen bounded gate.
+
 ## Owner delivery reset: pause at the next gate
 
 The stop gate has now been reached: both focused browser-history checks returned

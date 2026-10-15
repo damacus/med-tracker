@@ -14,6 +14,9 @@ It links to exactly one **person**, the clinical subject whose care is tracked.
 A person can exist without an account, and can belong to several households.
 There is no separate user or duplicate profile record.
 
+For a short working inventory journey with desktop and mobile screenshots, see
+the [household inventory demo](household-inventory-demo.md).
+
 Accountless people can receive care without obtaining sign-in access. Minors
 cannot sign in. Preserve these person types:
 
