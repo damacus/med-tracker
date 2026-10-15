@@ -1,6 +1,6 @@
 use super::*;
 
-pub(super) const REVISION: &str = "fed7aa3f503229fffa29b2baab45a856def6f6e2";
+pub(super) const REVISION: &str = "441bf461a3ebe3d6a2097e251bf5d2946645d3ae";
 pub(super) const PATH_GAP: &str = "Malformed household-ID wire behavior and authentication ordering remain undecided for settings routes";
 pub(super) const AUTH_GAP: &str = "Account lockout and expired credential denial have not been exercised on these exact settings routes";
 pub(super) const WRITE_GAP: &str =
@@ -51,7 +51,7 @@ pub(super) fn expected(operation: &str) -> Option<Value> {
                 ),
                 (
                     "settings_patch_concurrent_keyed_requests_commit_once",
-                    "barrier-overlap-two-200-one-replay-one-version-one-update-audit-409-changed-body",
+                    "two-distinct-runtime-household-lock-waiters-before-release-two-200-one-replay-one-version-one-update-audit-409-changed-body",
                 ),
             ],
             &[
@@ -99,7 +99,7 @@ pub(super) fn expected(operation: &str) -> Option<Value> {
                 ),
                 (
                     "settings_put_concurrent_keyed_requests_commit_once",
-                    "barrier-overlap-two-200-one-replay-one-version-one-update-audit-409-changed-body",
+                    "two-distinct-runtime-household-lock-waiters-before-release-two-200-one-replay-one-version-one-update-audit-409-changed-body",
                 ),
             ],
             &[],

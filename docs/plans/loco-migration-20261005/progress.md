@@ -909,6 +909,23 @@ passed focused `12085` (13/13, including both lock observations), fresh care
 administration `34102` (14/14) and strict all-target lint `29095`. Runtime,
 OpenAPI and native pins are unchanged. The independent evidence revision is
 being refreshed from this tested source before the same review resumes.
+The new immutable tested source is `441bf461a3ebe3d6a2097e251bf5d2946645d3ae`.
+Refreshed guard RED `58507` compiled and executed one case, rejecting the old
+`fed7aa3f` inventory revision against this new pin. The writer now owns only
+the matching three-row revision/proof update; partial status and gaps stay intact.
+Refreshed guard GREEN `26508` passed one case, inventory `74502` passed 113
+with one ignored and one filtered, runner `17423` passed 48/48, and strict lint
+`71817` passed. Dispatcher `5392` passed 113 request cases and 524 care cases
+with two ignored, then passed 113 requests and rejected only final acceptance
+for 117 incomplete operations. Every settings request proof and its six care
+identities executed. The corrected candidate can now resume the same review.
+
+A read-only audit found similar overlap gaps in earlier account, People and
+avatar tests: their final outcomes remain useful evidence, but client barriers
+alone do not prove handler overlap. Account revocation/logout rows currently
+carry complete labels, so those claims require stronger verification before
+whole-API acceptance. These findings remain in s05-i01 scope; no new operation
+credit is inferred from the audit, and dependent membership execution stays held.
 
 The next membership family is isolated on `codex/s05-i01-household-memberships`,
 with 17 test-only cases prepared for GET, PATCH, PUT and DELETE. Formatting and
