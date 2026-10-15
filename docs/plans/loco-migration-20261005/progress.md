@@ -6,6 +6,35 @@ migration areas stay in scope. No live deployment has occurred.
 
 ## Current delivery
 
+### Capabilities local stack propagation, 15 October 2026
+
+The coordinator integrates published predecessor `1a2e59bcbb528d15b0e5ce9937b18fc3d0d07484` into
+PR [#2639](https://github.com/damacus/med-tracker/pull/2639), retaining
+previous head `022854c80a921d2601970b5bad03ec8e950d6fd9` and all existing proof ancestors.
+This ordinary branch merge preserves the immutable capability proof and all
+existing behaviour. Source `8f2d3d70b1bcec64b1a09c1f22c4d6c63ea4ad73` passed
+focused `48052` (six cases), inventory `87017` (55 passed, one ignored),
+runner `57537` (47/47) and strict lint `78646`. Dispatcher `28021` passed
+55 request and 524 care cases, then rejected only the 117 incomplete operations.
+Resumed review `endurable-continent` accepted this candidate in `46973`
+(SWE-2 Max, 15 steps), with no required corrections. Existing capability 503
+metadata remains tracked in #2638; no owner decision or new credit is implied.
+Full CI `37168` passed 115 units, 55 requests (one ignored), 508 care cases
+(two ignored, 16 filtered) and all 744 browser cases in 19.6 minutes.
+The coordinator independently verified and reversed only 41 generated PNG
+changes; all 1,093 baseline hashes pass and the tested source is clean.
+Final documentation/review, publication and fresh exact-head hosted checks
+remain pending. Earlier results retain their exact scope; no whole-API
+acceptance, PR merge or deployment is claimed.
+
+Request-ID predecessor `1a2e59bc` is now hosted accepted: run `38691350791`
+finished all 42 checks (26 successful, 16 skipped), aggregate `116282371577`
+passed, including every browser and integration shard. Review threads are empty.
+Coverage artifact `11953410231` has verified digest `cb39792c6e6c23eed76223f097c5ee6443ab75f9faf5717197d367ef0fe1be11`;
+complete clean source `e5a40888` has the published head's exact tree.
+Its 16 added executable runtime lines are covered. Wider general coverage is
+64.05% including inline tests, report-only and below the 80% target.
+
 ### Request-ID successor passes cumulative CI, 15 October 2026
 
 The coordinator integrates published account `1178c11491e434e9cbfba5d739ebd9a6d8d0cf93`
@@ -27,6 +56,12 @@ rate-bucket test also passed. Root independently verified and reversed only
 Final documentation checks/review, publication and exact-head hosted checks
 remain pending. Earlier results retain their exact scope; no new operation
 credit, whole-API acceptance, PR merge or deployment is claimed.
+
+Subsequent final docs `20967` passed, and same-session review `92487`
+accepted the progress-only commit (SWE-2 Max, 17 steps). Request-ID head
+`1a2e59bcbb528d15b0e5ce9937b18fc3d0d07484` is published, 427 changed
+lines against account `1178c114`; fresh hosted checks run in `38691350791`.
+This updates publication only; hosted acceptance remains pending.
 
 Account predecessor `1178c114` is hosted accepted: run `38684411332`
 finished all 44 checks (30 succeeded, 14 skipped), aggregate `116259564959`
