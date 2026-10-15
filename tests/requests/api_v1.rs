@@ -19,7 +19,7 @@ use loco_rs::{
     config::{Config, QueueConfig},
     environment::Environment,
 };
-use sea_orm::{ConnectionTrait, DbBackend, Statement};
+use sea_orm::{ConnectionTrait, DbBackend, Statement, TransactionTrait};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
@@ -252,7 +252,7 @@ fn validate_evidence(entry: &Value) -> Result<(), String> {
                 {"binary":"requests","test":"api_v1::account::account_routes_share_the_fixed_general_limit","checks":["DELETE-429-recursive-RateLimitErrorEnvelope","DELETE-429-exact-RateLimit-and-Retry-After-headers-no-store"]},
                 {"binary":"requests","test":"api_v1::account::account_revoke_and_logout_preserve_namespace_idempotence_and_audit_effects","checks":["DELETE-204-empty-body-no-store-request-id-own-expired-API-session","DELETE-404-recursive-ErrorEnvelope-foreign-missing-repeat-wrong-namespace","DELETE-repeat-404-and-version-audit-counts"]},
                 {"binary":"requests","test":"api_v1::account::mobile_sessions_hide_foreign_and_expired_login_targets_from_listing_and_revocation","checks":["DELETE-mobile-404-foreign-max-aged-inactive-grants-no-revocation-or-audit","DELETE-mobile-204-login-active-grant-even-with-expired-access-token"]},
-                {"binary":"requests","test":"api_v1::account::concurrent_account_revocation_and_logout_commit_one_effect_each","checks":["DELETE-two-stored-callers-one-204-one-404-one-audit","DELETE-two-mobile-callers-one-204-one-404-one-audit"]},
+                {"binary":"requests","test":"api_v1::account::concurrent_account_revocation_and_logout_commit_one_effect_each","checks":["DELETE-two-restricted-runtime-api-session-target-UPDATE-waiters-before-release-one-204-one-404-one-audit","DELETE-two-restricted-runtime-mobile-grant-target-UPDATE-waiters-before-release-one-204-one-404-one-audit"]},
                 {"binary":"requests","test":"api_v1::account::integration_grant_cannot_manage_account_sessions_but_can_log_out","checks":["DELETE-401-SMART-integration-grant-no-account-revocation"]},
                 {"binary":"care_api","test":"account_sessions::audit_failure_rolls_back_revocation_and_logout_instead_of_returning_no_content","checks":["DELETE-revocation-and-audit-rollback-on-storage-failure"]},
                 {"binary":"care_api","test":"account_sessions::revocation_audit_identifies_the_target_credential_and_actor_without_secrets","checks":["DELETE-target-ID-actor-request-ID-audit-without-token-secret"]},
@@ -265,7 +265,7 @@ fn validate_evidence(entry: &Value) -> Result<(), String> {
             "evidence": [
                 {"binary":"requests","test":"api_v1::account::account_routes_share_the_fixed_general_limit","checks":["DELETE-429-recursive-RateLimitErrorEnvelope","DELETE-429-exact-RateLimit-and-Retry-After-headers-no-store"]},
                 {"binary":"requests","test":"api_v1::account::account_revoke_and_logout_preserve_namespace_idempotence_and_audit_effects","checks":["DELETE-204-empty-body-no-store-request-id-missing-unknown-and-replayed-bearers","DELETE-revokes-API-session-app-token-mobile-grant-once","DELETE-after-revocation-credential-returns-401-on-account-route"]},
-                {"binary":"requests","test":"api_v1::account::concurrent_account_revocation_and_logout_commit_one_effect_each","checks":["DELETE-simultaneous-idempotent-204-responses-with-one-persisted-audit"]},
+                {"binary":"requests","test":"api_v1::account::concurrent_account_revocation_and_logout_commit_one_effect_each","checks":["DELETE-two-restricted-runtime-app-token-target-UPDATE-waiters-before-release-idempotent-204-responses-one-audit"]},
                 {"binary":"requests","test":"api_v1::account::integration_grant_cannot_manage_account_sessions_but_can_log_out","checks":["DELETE-SMART-integration-grant-204-empty-body-replay-idempotent","DELETE-SMART-scoped-audit-request-ID-no-secret-leak"]},
                 {"binary":"care_api","test":"account_sessions::audit_failure_rolls_back_revocation_and_logout_instead_of_returning_no_content","checks":["DELETE-logout-and-audit-rollback-on-storage-failure"]},
                 {"binary":"care_api","test":"account_sessions::logout_is_idempotent_and_revokes_each_presented_credential_kind","checks":["DELETE-204-idempotent-across-API-session-app-token-mobile-grant"]},
@@ -491,7 +491,7 @@ fn validate_metadata(document: &Value, entry: &Value) {
             Some((people_evidence::REVISION, json!([people_evidence::GAP])))
         }
         Some("listHouseholds" | "listSessions" | "deleteSession" | "logoutSession") => {
-            Some(("2ae0b911576912bccf22f10c5db65856bd8cdc60", json!([])))
+            Some(("0893879794d009bbb94cc72a0dd5df11aa7f6dfa", json!([])))
         }
         Some("getCapabilities") => Some(("96d81719e900296f3b72ab5f7c86ad3aee22a00f", json!([]))),
         Some("getCurrentProfile") => Some((
@@ -671,10 +671,16 @@ pub mod baseline {
         let document: Value =
             serde_yaml_ng::from_str(include_str!("../../docs/api/openapi.v1.yaml")).unwrap();
         let entries = inventory();
-        for path in ["/auth/households", "/capabilities"] {
-            let complete = &entries[&("GET".to_owned(), path.to_owned())];
-            assert!(validate_evidence(complete).is_ok());
+        for (method, path) in [
+            ("GET", "/auth/households"),
+            ("GET", "/auth/sessions"),
+            ("DELETE", "/auth/sessions/{id}"),
+            ("DELETE", "/auth/logout"),
+            ("GET", "/capabilities"),
+        ] {
+            let complete = &entries[&(method.to_owned(), path.to_owned())];
             validate_metadata(&document, complete);
+            assert!(validate_evidence(complete).is_ok(), "{method} {path}");
 
             let mut changed = complete.clone();
             changed["candidate_revision"] = json!("invented-revision");
@@ -1223,6 +1229,60 @@ pub mod rate_limit {
         drop(request);
         close(fixture, boot).await;
     }
+}
+
+async fn overlap_requests_at_row_lock<A, B>(
+    fixture: &Fixture,
+    lock_sql: &str,
+    wait_query_pattern: &str,
+    first: A,
+    second: B,
+) -> (A::Output, B::Output, bool)
+where
+    A: std::future::Future,
+    B: std::future::Future,
+{
+    let blocker = fixture.admin.begin().await.unwrap();
+    let row = blocker
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT pg_backend_pid() AS pid",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    let blocker_pid = row.try_get::<i32>("", "pid").unwrap();
+    blocker
+        .query_one_raw(Statement::from_string(DbBackend::Postgres, lock_sql))
+        .await
+        .unwrap()
+        .unwrap();
+    let runtime_role = url::Url::parse(&fixture.runtime_uri)
+        .unwrap()
+        .username()
+        .to_owned();
+    let release = async {
+        let observed = tokio::time::timeout(std::time::Duration::from_secs(10), async {
+            loop {
+                let row = fixture.admin.query_one_raw(Statement::from_sql_and_values(
+                    DbBackend::Postgres,
+                    "SELECT count(DISTINCT pid) AS waiting, count(DISTINCT pid) FILTER (WHERE $2::int=ANY(pg_blocking_pids(pid))) AS held_waiters FROM pg_stat_activity WHERE datname=current_database() AND usename=$1 AND wait_event_type='Lock' AND query LIKE $3 AND cardinality(pg_blocking_pids(pid))>0",
+                    [runtime_role.clone().into(), blocker_pid.into(), wait_query_pattern.into()],
+                )).await.unwrap().unwrap();
+                if row.try_get::<i64>("", "waiting").unwrap() == 2
+                    && row.try_get::<i64>("", "held_waiters").unwrap() >= 1
+                {
+                    break true;
+                }
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .unwrap_or(false);
+        blocker.commit().await.unwrap();
+        observed
+    };
+    tokio::join!(first, second, release)
 }
 
 pub mod account {
@@ -2134,8 +2194,11 @@ pub mod account {
         )).await.unwrap();
         let request = server(&boot);
 
-        let start = std::sync::Arc::new(tokio::sync::Barrier::new(3));
-        let (session_first, session_second, _) = tokio::join!(
+        let start = std::sync::Arc::new(tokio::sync::Barrier::new(2));
+        let (session_first, session_second, session_overlapped) = overlap_requests_at_row_lock(
+            &fixture,
+            "SELECT id FROM api_sessions WHERE id=88002 FOR UPDATE",
+            "UPDATE api_sessions SET revoked_at=%",
             async {
                 start.wait().await;
                 request
@@ -2150,11 +2213,14 @@ pub mod account {
                     .add_header("authorization", "Bearer synthetic-app-token")
                     .await
             },
-            async { start.wait().await }
-        );
+        )
+        .await;
 
-        let start = std::sync::Arc::new(tokio::sync::Barrier::new(3));
-        let (mobile_first, mobile_second, _) = tokio::join!(
+        let start = std::sync::Arc::new(tokio::sync::Barrier::new(2));
+        let (mobile_first, mobile_second, mobile_overlapped) = overlap_requests_at_row_lock(
+            &fixture,
+            "SELECT id FROM oauth_grants WHERE id=76006 FOR UPDATE",
+            "UPDATE oauth_grants SET revoked_at=%",
             async {
                 start.wait().await;
                 request
@@ -2169,11 +2235,14 @@ pub mod account {
                     .add_header("authorization", format!("Bearer {other_mobile}"))
                     .await
             },
-            async { start.wait().await }
-        );
+        )
+        .await;
 
-        let start = std::sync::Arc::new(tokio::sync::Barrier::new(3));
-        let (logout_first, logout_second, _) = tokio::join!(
+        let start = std::sync::Arc::new(tokio::sync::Barrier::new(2));
+        let (logout_first, logout_second, logout_overlapped) = overlap_requests_at_row_lock(
+            &fixture,
+            "SELECT id FROM api_app_tokens WHERE id=88010 FOR UPDATE",
+            "UPDATE api_app_tokens SET revoked_at=%",
             async {
                 start.wait().await;
                 request
@@ -2188,8 +2257,8 @@ pub mod account {
                     .add_header("authorization", "Bearer synthetic-app-token")
                     .await
             },
-            async { start.wait().await }
-        );
+        )
+        .await;
 
         let effects = fixture.admin.query_one_raw(Statement::from_string(
             DbBackend::Postgres,
@@ -2205,6 +2274,16 @@ pub mod account {
         );
         drop(request);
         close(fixture, boot).await;
+
+        assert!(
+            session_overlapped,
+            "two API session revocations reached the target lock"
+        );
+        assert!(
+            mobile_overlapped,
+            "two mobile revocations reached the target lock"
+        );
+        assert!(logout_overlapped, "two app logouts reached the target lock");
 
         for (label, pair) in [
             ("API session", [session_first, session_second]),
