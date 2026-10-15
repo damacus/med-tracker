@@ -58,6 +58,14 @@ tasks:
           GROUP: '{{.GROUP | default "shell"}}'
   slice:test-runner:
     cmds: [node --test scripts/migration/run-slice.test.mjs]
+  test:template-concurrency:
+    desc: Verify cross-process PostgreSQL template preparation in an owned database
+    cmds: [node tests/support/template_concurrency.mjs]
+  test:template-concurrency:child:
+    cmds:
+      - cargo nextest run --locked --test template_concurrency --run-ignored all --no-tests=fail -E 'test(=competing_processes_prepare_once)'
+  test:template-concurrency:process:
+    cmds: [node --test tests/support/template_task_process.test.mjs]
   coverage:check:
     desc: Check pinned Rust coverage prerequisites without installing them
     cmds: [node scripts/migration/coverage-check.mjs]
