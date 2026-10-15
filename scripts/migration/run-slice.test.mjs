@@ -264,6 +264,7 @@ test('API v1 contract task selects the native request binary and focused filter'
 });
 
 const creditedRequestTests = [
+  'api_v1::avatar::concurrent_avatar_replace_and_remove_retain_only_the_winning_object',
   'api_v1::avatar::avatar_malformed_multipart_does_not_replace_current_image',
   'api_v1::avatar::avatar_methods_recheck_stale_permissions_and_membership',
   'api_v1::avatar::avatar_methods_reject_wrong_namespace_scope_and_revoked_credentials',

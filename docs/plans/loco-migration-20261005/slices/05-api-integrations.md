@@ -117,6 +117,13 @@ Stop dependent work for unresolved contract decisions, ownership collisions,
 failed required checks, unavailable review or oversized PRs. Acceptance,
 publication, merge and deployment are separate; no merge or deployment is granted.
 
+People/profile concurrency evidence, 15 October: People source `3ce8cbc0`
+proves actual household lock overlap; all sixteen credited names executed.
+Profile/avatar source `1e9ff00f` passes three focused overlap cases and all
+ten profile/eight avatar request cases. Independent freshness guards failed
+on old pins before their exact partial rows changed, then passed. These
+operations remain partial; final gates and publication are tracked in [progress](../progress.md).
+
 Account correction, 15 October: immutable source `0893879794d009bbb94cc72a0dd5df11aa7f6dfa`
 pins four account rows and 13 proof identities (nine request, four care).
 Dispatcher `36151` executed those proofs; only final acceptance rejected 118

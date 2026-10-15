@@ -6,6 +6,21 @@ migration areas stay in scope. No live deployment has occurred.
 
 ## Current delivery
 
+### Profile/avatar observed concurrency, 15 October 2026
+
+PR #2643 pins tested source `1e9ff00f51a63fbf18073554f249e1291ec62df9`.
+Focused PATCH `63698`, PUT `16865` and avatar `97348` passed; full Profile
+`89938` passed 10/10 and Avatar `55476` passed 8/8. Freshness RED `38981`
+failed on the old pin; GREEN `40461` passed after exactly six partial rows
+changed. Inventory `27208` passed 100 (one ignored, one filtered).
+Remaining gaps are retained; no production correction or completion is claimed.
+Runner `88398` first failed seven fixture cases because its explicit transcript
+omitted the new avatar name. Adding that exact name passed 48/48 (`91212`).
+Strict lint `62232` passed. Dispatcher `77249` passed 100 request checks and
+524 care cases, then rejected only final acceptance for 117 incomplete operations.
+All 48 credited profile/avatar identities executed. Review, cumulative CI and
+publication remain pending.
+
 ### Profile and avatar local stack propagation, 15 October 2026
 
 The coordinator integrates local predecessor `1d84d1e3c48ea4aefd504da031401f9915bb1409` into
