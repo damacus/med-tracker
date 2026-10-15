@@ -108,6 +108,26 @@ impl MigratorTrait for Migrator {
             )).await?.ok_or_else(|| DbErr::Migration("Cannot inspect migration ledger".into()))?;
             if installed.try_get::<bool>("", "installed")? {
                 transaction.execute_unprepared("SET LOCAL ROLE med_tracker_owner").await?;
+            } else {
+                transaction.execute_unprepared(
+                    "DO $$ BEGIN
+                       IF EXISTS (
+                         SELECT 1 FROM pg_class relation
+                         JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+                         WHERE namespace.nspname = 'public'
+                           AND relation.relname <> 'seaql_migrations'
+                           AND relation.relkind IN ('r', 'p', 'v', 'm', 'S', 'f')
+                           AND NOT EXISTS (
+                             SELECT 1 FROM pg_depend dependency
+                             WHERE dependency.classid = 'pg_class'::regclass
+                               AND dependency.objid = relation.oid
+                               AND dependency.deptype = 'e'
+                           )
+                       ) THEN
+                         RAISE EXCEPTION 'Fresh migrations require an empty database; existing schema will not be adopted';
+                       END IF;
+                     END $$",
+                ).await?;
             }
             StandardMigrator::up(&transaction, steps).await?;
             Ok(())
