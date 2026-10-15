@@ -35,11 +35,18 @@ The three execution-proof JavaScript files are unchanged from `630a7f01`:
 477 additions and 21 deletions against the predecessor, before this progress
 update. Only the verified lower browser correction and progress are inherited.
 Existing proof commits are preserved through an ordinary branch merge.
-Focused runner and inventory checks, fresh cumulative `task ci`, and resumed
-`fate-button` SWE-2 Max review remain pending on the new frozen candidate.
-Publication and exact-head hosted checks remain separate gates. No operation
-acceptance, PR merge or deployment is credited; account and later API work
-continues in its existing order after this layer passes its required gates.
+Frozen candidate `3004fb7d520a9000639612861ed43d58f915db17` passed runner
+job `11623` (46/46) and inventory job `95949` (20 passed, one ignored).
+Same-session `fate-button` SWE-2 Max review `91629` accepted the integration
+with no required corrections (nineteen exported steps). Full `task ci` job
+`43141` exited zero: 111 Rust units, all integrations including 508 care cases
+(two ignored, fourteen filtered), and all 744 browser cases (19.4m).
+Log: `/private/tmp/s05-i01-evidence/execution-propagation-full-ci-3004fb7d.log`.
+Root independently verified and restored only forty generated PNG changes;
+all 1,093 baseline hashes pass and unrelated Serena work remains preserved.
+Final documentation checks and review, publication and exact-head hosted
+checks remain pending. No operation acceptance, PR merge or deployment is
+credited; account and later API work continues in its existing order.
 
 ### s05-i01 prerequisite browser correction, 15 October 2026
 
