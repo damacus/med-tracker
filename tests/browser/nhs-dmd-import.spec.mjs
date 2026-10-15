@@ -11,6 +11,25 @@ async function latestStatus(page) {
   return (await page.locator('article').first().getByRole('status').textContent())?.trim();
 }
 
+async function submitRelease(page) {
+  const url = new URL('/admin/nhs-dmd', page.url()).href;
+  const [response] = await Promise.all([
+    page.waitForResponse(candidate =>
+      candidate.url() === url &&
+      candidate.request().method() === 'POST' &&
+      candidate.request().isNavigationRequest()),
+    page.waitForEvent('load'),
+    page.getByRole('button', { name: 'Import release', exact: true }).click(),
+  ]);
+  expect(response.status()).toBe(303);
+  expect(response.headers().location).toBe('/admin/nhs-dmd');
+  expect(response.request().frame()).toBe(page.mainFrame());
+  const redirected = response.request().redirectedTo();
+  expect(redirected?.method()).toBe('GET');
+  expect(redirected?.url()).toBe(url);
+  expect(redirected?.frame()).toBe(page.mainFrame());
+}
+
 test('administrator sees failed and completed imports and can use the imported barcode', async ({ page, careFixture }, testInfo) => {
   test.setTimeout(90000);
   await careFixture.startStorage();
@@ -25,12 +44,12 @@ test('administrator sees failed and completed imports and can use the imported b
   await page.getByLabel('Release archive', { exact: true }).setInputFiles({
     name: 'broken.zip', mimeType: 'application/zip', buffer: Buffer.from('invalid release'),
   });
-  await page.getByRole('button', { name: 'Import release', exact: true }).click();
+  await submitRelease(page);
   await expect.poll(() => latestStatus(page), { timeout: 30000 }).toContain('Failed');
   await expect(page.getByRole('alert')).toContainText('ZIP');
 
   await page.getByLabel('Release archive', { exact: true }).setInputFiles(releasePath);
-  await page.getByRole('button', { name: 'Import release', exact: true }).click();
+  await submitRelease(page);
   await expect.poll(() => latestStatus(page), { timeout: 30000 }).toContain('Completed');
   await expect(page.locator('article').first()).toContainText('1 new');
   await page.screenshot({ path: testInfo.outputPath('nhs-dmd-import-completed.png'), fullPage: true });

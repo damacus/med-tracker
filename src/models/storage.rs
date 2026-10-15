@@ -102,7 +102,6 @@ fn s3_operator(
     secret_key: &str,
     path_style: bool,
 ) -> opendal::Operator {
-    opendal::install_default();
     let mut builder = opendal::services::S3::default()
         .bucket(bucket)
         .endpoint(endpoint)
@@ -112,13 +111,169 @@ fn s3_operator(
     if !path_style {
         builder = builder.enable_virtual_host_style();
     }
-    opendal::Operator::new(builder).expect("S3 operator requires a bucket")
+    let transport = opendal::HttpTransporter::new(
+        opendal_http_transport_reqwest::ReqwestTransport::new(reqwest::Client::new()),
+    );
+    opendal::Operator::new(builder)
+        .expect("S3 operator requires a bucket")
+        .with_context(opendal::OperationContext::new().with_http_transport(transport))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum::Router;
+    use axum::body::Body;
+    use axum::extract::{ConnectInfo, State};
+    use axum::http::{Response, Uri};
+    use bytes::Bytes;
     use serde_json::json;
+    use std::convert::Infallible;
+    use std::net::SocketAddr;
+    use std::sync::{Arc, Mutex, mpsc};
+    use std::time::Duration;
+
+    struct RuntimeReadFixture {
+        peers: mpsc::Sender<(String, SocketAddr)>,
+        body_started: mpsc::Sender<()>,
+        release_body: Mutex<Option<tokio::sync::oneshot::Receiver<()>>>,
+    }
+
+    async fn runtime_read_response(
+        State(fixture): State<Arc<RuntimeReadFixture>>,
+        ConnectInfo(peer): ConnectInfo<SocketAddr>,
+        uri: Uri,
+    ) -> Response<Body> {
+        let path = uri.path().to_string();
+        fixture.peers.send((path.clone(), peer)).unwrap();
+        if path.ends_with("/warm") {
+            return Response::builder()
+                .header("content-length", "4")
+                .body(Body::from("warm"))
+                .unwrap();
+        }
+        let gate = fixture.release_body.lock().unwrap().take().unwrap();
+        let started = fixture.body_started.clone();
+        let stream = futures_util::stream::once(async move {
+            started.send(()).unwrap();
+            let _ = gate.await;
+            Ok::<Bytes, Infallible>(Bytes::from_static(b"held"))
+        });
+        Response::builder()
+            .header("content-length", "4")
+            .body(Body::from_stream(stream))
+            .unwrap()
+    }
+
+    #[test]
+    fn s3_read_survives_first_runtime_shutdown_during_reused_response() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        listener.set_nonblocking(true).unwrap();
+        let endpoint = format!("http://{}", listener.local_addr().unwrap());
+        let (peer_tx, peer_rx) = mpsc::channel();
+        let (started_tx, started_rx) = mpsc::channel();
+        let (release_tx, release_rx) = tokio::sync::oneshot::channel();
+        let fixture = Arc::new(RuntimeReadFixture {
+            peers: peer_tx,
+            body_started: started_tx,
+            release_body: Mutex::new(Some(release_rx)),
+        });
+        let (stop_server_tx, stop_server_rx) = tokio::sync::oneshot::channel::<()>();
+        let server = std::thread::spawn(move || {
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            runtime.block_on(async move {
+                let listener = tokio::net::TcpListener::from_std(listener).unwrap();
+                let routes = Router::new()
+                    .fallback(runtime_read_response)
+                    .with_state(fixture);
+                tokio::select! {
+                    result = axum::serve(listener, routes.into_make_service_with_connect_info::<SocketAddr>()) => result.unwrap(),
+                    _ = stop_server_rx => {}
+                }
+            });
+        });
+        let (first_done_tx, first_done_rx) = mpsc::channel();
+        let (stop_first_tx, stop_first_rx) = tokio::sync::oneshot::channel::<()>();
+        let first_endpoint = endpoint.clone();
+        let first = std::thread::spawn(move || {
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            runtime.block_on(async move {
+                let operator = s3_operator(
+                    &first_endpoint,
+                    "fixture",
+                    "us-east-1",
+                    "key",
+                    "secret",
+                    true,
+                );
+                let result = tokio::time::timeout(Duration::from_secs(25), operator.read("warm"))
+                    .await
+                    .map_err(|_| "warm read timed out".to_string())
+                    .and_then(|result| {
+                        result.map(|bytes| bytes.to_bytes()).map_err(|error| {
+                            format!("kind={:?} temporary={}", error.kind(), error.is_temporary())
+                        })
+                    });
+                first_done_tx.send(result).unwrap();
+                let _ = stop_first_rx.await;
+            });
+        });
+        let first_result = first_done_rx.recv_timeout(Duration::from_secs(30));
+        let (second_done_tx, second_done_rx) = mpsc::channel();
+        let second = std::thread::spawn(move || {
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            let result = runtime.block_on(async move {
+                let operator =
+                    s3_operator(&endpoint, "fixture", "us-east-1", "key", "secret", true);
+                tokio::time::timeout(Duration::from_secs(25), operator.read("held"))
+                    .await
+                    .map_err(|_| "held read timed out".to_string())
+                    .and_then(|result| {
+                        result.map(|bytes| bytes.to_bytes()).map_err(|error| {
+                            format!("kind={:?} temporary={}", error.kind(), error.is_temporary())
+                        })
+                    })
+            });
+            second_done_tx.send(result).unwrap();
+        });
+        let started = started_rx.recv_timeout(Duration::from_secs(30));
+        let first_peer = peer_rx.recv_timeout(Duration::from_secs(30));
+        let second_peer = peer_rx.recv_timeout(Duration::from_secs(30));
+        let _ = stop_first_tx.send(());
+        let first_join = first.join();
+        let _ = release_tx.send(());
+        let second_result = second_done_rx.recv_timeout(Duration::from_secs(30));
+        let _ = stop_server_tx.send(());
+        let server_join = server.join();
+        let second_join = second.join();
+        first_join.unwrap();
+        server_join.unwrap();
+        second_join.unwrap();
+        let first_result = first_result.unwrap();
+        let first_peer = first_peer.unwrap();
+        let second_peer = second_peer.unwrap();
+        let second_result = second_result.unwrap();
+        assert_eq!(first_result.unwrap().as_ref(), b"warm");
+        assert!(started.is_ok(), "second response body did not start");
+        assert_eq!(first_peer.0, "/fixture/warm");
+        assert_eq!(second_peer.0, "/fixture/held");
+        if let Err(error) = &second_result {
+            assert_eq!(
+                first_peer.1, second_peer.1,
+                "second read failed on a different socket; cause is inconclusive: {error}"
+            );
+        }
+        assert_eq!(second_result.unwrap().as_ref(), b"held");
+    }
 
     fn avatar_settings() -> Value {
         json!({

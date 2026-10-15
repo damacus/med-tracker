@@ -1003,7 +1003,31 @@ async fn browser_reminder_obeys_retry_after_and_attempt_limit() {
         0
     );
     assert_eq!(*transport.1.lock().unwrap(), 1);
-    app.fixture.admin.execute_unprepared("UPDATE notification_deliveries SET attempt_count=4,next_attempt_at=now()-interval '1 second' WHERE status='pending'").await.unwrap();
+    let next_attempt_at = (now - chrono::Duration::seconds(1)).naive_utc();
+    app.fixture
+        .admin
+        .execute_raw(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            "UPDATE notification_deliveries SET attempt_count=4,next_attempt_at=$1 WHERE status='pending'",
+            [next_attempt_at.into()],
+        ))
+        .await
+        .unwrap();
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT next_attempt_at FROM notification_deliveries WHERE status='pending'",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        row.try_get::<chrono::NaiveDateTime>("", "next_attempt_at")
+            .unwrap(),
+        next_attempt_at
+    );
     assert_eq!(
         browser_push::reminders::drain_pending(
             &app.context,
