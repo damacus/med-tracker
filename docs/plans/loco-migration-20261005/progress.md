@@ -6,6 +6,33 @@ migration areas stay in scope. No live deployment has occurred.
 
 ## Current delivery
 
+### s05-i01 execution-proof propagation, 15 October 2026
+
+Coordinator-owned PR [#2633](https://github.com/damacus/med-tracker/pull/2633)
+now integrates its verified predecessor `faf0cc2f58707555b794829bb05ec4574e44698e`.
+The previous execution-proof head `630a7f016d364becfb682b855a7da0c57c0b7f7c`
+is preserved as an ancestor. The parent passed full local CI and independent
+review, then all applicable hosted checks (27 succeeded, 16 skipped). Its
+hosted merge tree exactly matches the published source; coverage covers all
+five added runtime lines, with wider migration gaps retained separately.
+
+The three execution-proof JavaScript files are unchanged from `630a7f01`:
+477 additions and 21 deletions against the predecessor, before this progress
+update. Only the verified lower browser correction and progress are inherited.
+Existing proof commits are preserved through an ordinary branch merge.
+Frozen candidate `3004fb7d520a9000639612861ed43d58f915db17` passed runner
+job `11623` (46/46) and inventory job `95949` (20 passed, one ignored).
+Same-session `fate-button` SWE-2 Max review `91629` accepted the integration
+with no required corrections (nineteen exported steps). Full `task ci` job
+`43141` exited zero: 111 Rust units, all integrations including 508 care cases
+(two ignored, fourteen filtered), and all 744 browser cases (19.4m).
+Log: `/private/tmp/s05-i01-evidence/execution-propagation-full-ci-3004fb7d.log`.
+Root independently verified and restored only forty generated PNG changes;
+all 1,093 baseline hashes pass and unrelated Serena work remains preserved.
+Final documentation checks and review, publication and exact-head hosted
+checks remain pending. No operation acceptance, PR merge or deployment is
+credited; account and later API work continues in its existing order.
+
 ### s05-i01 prerequisite browser correction, 15 October 2026
 
 Published settings PR #2644 (`eb9ac904`) failed its hosted NHS dm+d import
