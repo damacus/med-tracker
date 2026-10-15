@@ -27,10 +27,12 @@ pub fn format_api_error(error: ApiError) -> anyhow::Error {
         } => {
             let mut text = format!("{code}: {message}");
             if let Some(request_id) = request_id {
-                text.push_str(&format!(" request_id={request_id}"));
+                text.push_str(" request_id=");
+                text.push_str(&request_id);
             }
             if let Some(retry_after) = retry_after {
-                text.push_str(&format!(" retry_after={retry_after}"));
+                text.push_str(" retry_after=");
+                text.push_str(&retry_after);
             }
             anyhow::anyhow!(text)
         }
