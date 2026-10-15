@@ -671,6 +671,91 @@ async fn membership_updates_validate_fields_and_preserve_last_owner() {
 }
 
 #[tokio::test]
+async fn membership_put_ignores_protected_input_when_allowed_status_is_present() {
+    let (fixture, boot) = boot_fixture().await;
+    seed(&fixture).await;
+    let server = server(&boot);
+    let before = state(&fixture).await;
+    let audits_before = audit_count(&fixture).await;
+    let reply = send(
+        &server,
+        Method::PUT,
+        72001,
+        Some("74002"),
+        Some("profile-session"),
+        Some(&json!({"household_membership":{"status":"suspended","permissions_version":900}})),
+        Some("membership-protected-input"),
+    )
+    .await;
+    let after = state(&fixture).await;
+    let audits_after = audit_count(&fixture).await;
+    let audit_rows = fixture.admin.query_all_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+        "SELECT event_type,request_id,actor_account_id,actor_membership_id,metadata,audit_context FROM security_audit_events WHERE household_id=72001 AND request_id=$1 ORDER BY id",
+        [reply.request_id.clone().unwrap().into()],
+    )).await.unwrap();
+    let audits: Vec<Value> = audit_rows
+        .iter()
+        .map(|row| {
+            json!({
+                "event_type":row.try_get::<String>("", "event_type").unwrap(),
+                "request_id":row.try_get::<String>("", "request_id").unwrap(),
+                "account":row.try_get::<i64>("", "actor_account_id").unwrap(),
+                "membership":row.try_get::<i64>("", "actor_membership_id").unwrap(),
+                "metadata":row.try_get::<Value>("", "metadata").unwrap(),
+                "context":row.try_get::<Value>("", "audit_context").unwrap(),
+            })
+        })
+        .collect();
+    drop(server);
+    close(fixture, boot).await;
+    assert_eq!(reply.status, 200, "{}", reply.body);
+    assert_wire(&reply);
+    assert_schema("put", &reply);
+    assert_eq!(reply.body["data"]["status"], "suspended");
+    assert_eq!(reply.body["data"]["permissions_version"], 2);
+    assert_eq!(after["status"], "suspended");
+    assert_eq!(after["permissions"], 2);
+    assert_eq!(after["role"], before["role"]);
+    assert_eq!(after["person_id"], before["person_id"]);
+    assert_eq!(after["revoked"], before["revoked"]);
+    assert_eq!(
+        after["keys"].as_i64(),
+        before["keys"].as_i64().map(|count| count + 1)
+    );
+    assert_eq!(after["changes"], before["changes"]);
+    assert_eq!(audits_after, audits_before + 2);
+    assert_eq!(audits.len(), 2);
+    let change = audits
+        .iter()
+        .find(|audit| audit["event_type"] == "household_access.membership_changed")
+        .unwrap();
+    let request = audits
+        .iter()
+        .find(|audit| audit["event_type"] == "api.request")
+        .unwrap();
+    for audit in [change, request] {
+        assert_eq!(audit["request_id"], reply.request_id.as_deref().unwrap());
+        assert_eq!(audit["account"], 71001);
+        assert_eq!(audit["membership"], 74001);
+        assert_eq!(
+            audit["context"]["request_id"],
+            reply.request_id.as_deref().unwrap()
+        );
+    }
+    assert_eq!(change["metadata"]["target_membership_id"], 74002);
+    assert_eq!(change["metadata"]["new_state"]["status"], "suspended");
+    assert_eq!(change["metadata"]["outcome"], "success");
+    assert_eq!(request["metadata"]["http_method"], "PUT");
+    assert_eq!(
+        request["metadata"]["controller"],
+        "api/v1/admin/memberships"
+    );
+    assert_eq!(request["metadata"]["action"], "update");
+    assert_eq!(request["metadata"]["outcome"], "success");
+    assert_eq!(request["metadata"]["status"], 200);
+}
+
+#[tokio::test]
 async fn membership_routes_reject_invalid_revoked_smart_and_insufficient_scope_credentials() {
     let (fixture, boot) = boot_fixture().await;
     seed(&fixture).await;
@@ -1114,5 +1199,254 @@ async fn membership_audit_failure_hides_reads_and_rolls_back_writes() {
     }
     for (method, reply) in replies {
         assert_schema(&method, &reply);
+    }
+}
+
+#[tokio::test]
+async fn membership_routes_reject_locked_and_expired_credentials_before_domain_access() {
+    for condition in [
+        "api_expired",
+        "app_expired",
+        "mobile_expired",
+        "account_locked",
+    ] {
+        let (fixture, boot) = boot_fixture().await;
+        seed(&fixture).await;
+        let mobile = profile::mobile_token(&fixture).await;
+        match condition {
+            "api_expired" => fixture.admin.execute_unprepared(
+                "UPDATE api_sessions SET access_expires_at=now()-interval '1 minute' WHERE id=88031"
+            ).await.unwrap(),
+            "app_expired" => fixture.admin.execute_unprepared(
+                "UPDATE api_app_tokens SET created_at=now()-interval '2 days',expires_at=now()-interval '1 day' WHERE id=88032"
+            ).await.unwrap(),
+            "mobile_expired" => fixture.admin.execute_unprepared(
+                "UPDATE oauth_grants SET expires_in=now()-interval '1 minute' WHERE id=76001"
+            ).await.unwrap(),
+            _ => fixture.admin.execute_unprepared(
+                "INSERT INTO account_lockouts(account_id,deadline,key,created_at,updated_at) VALUES(71001,now()+interval '1 hour','membership-route-lockout',now(),now())"
+            ).await.unwrap(),
+        };
+        let server = server(&boot);
+        let before = state(&fixture).await;
+        let audits_before = audit_count(&fixture).await;
+        let mut replies = Vec::new();
+        let bearers: Vec<&str> = if condition == "account_locked" {
+            vec!["profile-session", "profile-app", mobile.as_str()]
+        } else {
+            vec![match condition {
+                "api_expired" => "profile-session",
+                "app_expired" => "profile-app",
+                _ => mobile.as_str(),
+            }]
+        };
+        let body = json!({"household_membership":{"status":"suspended"}});
+        for bearer in bearers {
+            for method in [Method::GET, Method::PATCH, Method::PUT, Method::DELETE] {
+                replies.push((
+                    method.as_str().to_lowercase(),
+                    bearer.to_owned(),
+                    send(
+                        &server,
+                        method.clone(),
+                        72001,
+                        (method != Method::GET).then_some("74002"),
+                        Some(bearer),
+                        matches!(method, Method::PATCH | Method::PUT).then_some(&body),
+                        Some("membership-denied-saved-key"),
+                    )
+                    .await,
+                ));
+            }
+        }
+        let after = state(&fixture).await;
+        let audits_after = audit_count(&fixture).await;
+        drop(server);
+        close(fixture, boot).await;
+        assert_eq!(after, before, "{condition} changed target/key/change state");
+        assert_eq!(
+            audits_after, audits_before,
+            "{condition} wrote a target audit"
+        );
+        for (method, bearer, reply) in replies {
+            assert_eq!(
+                reply.status, 401,
+                "{condition} {method} {bearer}: {}",
+                reply.body
+            );
+            assert_eq!(reply.body["error"]["code"], "unauthorized");
+            assert!(reply.body.get("data").is_none());
+            assert_eq!(reply.challenge.as_deref(), Some("Bearer"));
+            assert_wire(&reply);
+            assert_schema(&method, &reply);
+        }
+    }
+}
+
+#[tokio::test]
+async fn membership_keyed_writes_recheck_actor_withdrawn_while_waiting_for_household_lock() {
+    for method in [Method::PATCH, Method::PUT, Method::DELETE] {
+        let (fixture, boot) = boot_fixture().await;
+        seed(&fixture).await;
+        fixture.admin.execute_unprepared("INSERT INTO accounts(id,email,password_hash,status,created_at,updated_at) VALUES(71004,'membership-second-owner@example.test',crypt('password',gen_salt('bf',4)),2,now(),now()); INSERT INTO people(id,household_id,account_id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73008,72001,71004,'Membership second owner','1990-01-01',0,true,now(),now()); INSERT INTO users(id,person_id,email_address,password_digest,active,created_at,updated_at) VALUES(77008,73008,'membership-second-owner@example.test',crypt('password',gen_salt('bf',4)),true,now(),now()); INSERT INTO household_memberships(id,account_id,household_id,person_id,role,status,permissions_version,joined_at,created_at,updated_at) VALUES(74008,71004,72001,73008,'owner','active',1,now(),now(),now())").await.unwrap();
+        let server = server(&boot);
+        let before = state(&fixture).await;
+        let audits_before = audit_count(&fixture).await;
+        let blocker = fixture.admin.begin().await.unwrap();
+        let row = blocker
+            .query_one_raw(Statement::from_string(
+                DbBackend::Postgres,
+                "SELECT pg_backend_pid() AS pid",
+            ))
+            .await
+            .unwrap()
+            .unwrap();
+        let blocker_pid = row.try_get::<i32>("", "pid").unwrap();
+        blocker
+            .query_one_raw(Statement::from_string(
+                DbBackend::Postgres,
+                "SELECT id FROM households WHERE id=72001 FOR UPDATE",
+            ))
+            .await
+            .unwrap()
+            .unwrap();
+        let runtime_role = url::Url::parse(&fixture.runtime_uri)
+            .unwrap()
+            .username()
+            .to_owned();
+        let body = json!({"household_membership":{"status":"suspended"}});
+        let name = method.as_str().to_lowercase();
+        let key = format!("membership-withdrawn-{name}");
+        let request = send(
+            &server,
+            method.clone(),
+            72001,
+            Some("74002"),
+            Some("profile-session"),
+            (method != Method::DELETE).then_some(&body),
+            Some(&key),
+        );
+        let release = async {
+            let observed = tokio::time::timeout(std::time::Duration::from_secs(10), async {
+                loop {
+                    let row = fixture.admin.query_one_raw(Statement::from_sql_and_values(
+                        DbBackend::Postgres,
+                        "SELECT count(DISTINCT pid) AS waiting, count(DISTINCT pid) FILTER (WHERE $2::int=ANY(pg_blocking_pids(pid))) AS held_waiters FROM pg_stat_activity WHERE datname=current_database() AND usename=$1 AND wait_event_type='Lock' AND query LIKE $3 AND cardinality(pg_blocking_pids(pid))>0",
+                        [runtime_role.clone().into(), blocker_pid.into(), "%households%FOR UPDATE%".into()],
+                    )).await.unwrap().unwrap();
+                    if row.try_get::<i64>("", "waiting").unwrap() == 1
+                        && row.try_get::<i64>("", "held_waiters").unwrap() == 1 {
+                        break true;
+                    }
+                    tokio::task::yield_now().await;
+                }
+            }).await.unwrap_or(false);
+            if observed {
+                blocker.execute_unprepared(
+                    "UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001"
+                ).await.unwrap();
+            }
+            blocker.commit().await.unwrap();
+            observed
+        };
+        let (reply, observed) = tokio::join!(request, release);
+        let actor = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+            "SELECT status,permissions_version,revoked_at IS NOT NULL AS revoked FROM household_memberships WHERE id=74001"
+        )).await.unwrap().unwrap();
+        let actor_state = json!({
+            "status":actor.try_get::<String>("", "status").unwrap(),
+            "version":actor.try_get::<i32>("", "permissions_version").unwrap(),
+            "revoked":actor.try_get::<bool>("", "revoked").unwrap(),
+        });
+        let owner = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+            "SELECT role,status,permissions_version,revoked_at IS NOT NULL AS revoked FROM household_memberships WHERE id=74008"
+        )).await.unwrap().unwrap();
+        let owner_state = json!({
+            "role":owner.try_get::<String>("", "role").unwrap(),
+            "status":owner.try_get::<String>("", "status").unwrap(),
+            "version":owner.try_get::<i32>("", "permissions_version").unwrap(),
+            "revoked":owner.try_get::<bool>("", "revoked").unwrap(),
+        });
+        let retry = send(
+            &server,
+            method.clone(),
+            72001,
+            Some("74002"),
+            Some("profile-session"),
+            (method != Method::DELETE).then_some(&body),
+            Some(&key),
+        )
+        .await;
+        let after = state(&fixture).await;
+        let audits_after = audit_count(&fixture).await;
+        let audit_rows = fixture.admin.query_all_raw(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            "SELECT event_type,request_id,actor_account_id,actor_membership_id,metadata,audit_context FROM security_audit_events WHERE household_id=72001 AND request_id=$1",
+            [reply.request_id.clone().unwrap().into()],
+        )).await.unwrap();
+        let audits: Vec<Value> = audit_rows
+            .iter()
+            .map(|row| {
+                json!({
+                    "event_type":row.try_get::<String>("", "event_type").unwrap(),
+                    "request_id":row.try_get::<String>("", "request_id").unwrap(),
+                    "account":row.try_get::<i64>("", "actor_account_id").unwrap(),
+                    "membership":row.try_get::<i64>("", "actor_membership_id").unwrap(),
+                    "metadata":row.try_get::<Value>("", "metadata").unwrap(),
+                    "context":row.try_get::<Value>("", "audit_context").unwrap(),
+                })
+            })
+            .collect();
+        drop(server);
+        close(fixture, boot).await;
+        assert!(
+            observed,
+            "{name}: restricted runtime never waited on held household row"
+        );
+        assert_eq!(
+            actor_state,
+            json!({"status":"revoked","version":2,"revoked":true})
+        );
+        assert_eq!(
+            owner_state,
+            json!({"role":"owner","status":"active","version":1,"revoked":false})
+        );
+        assert_eq!(reply.status, 403, "{name}: {}", reply.body);
+        assert_eq!(retry.status, 401, "{name}: {}", retry.body);
+        assert_eq!(retry.challenge.as_deref(), Some("Bearer"));
+        assert_eq!(
+            after, before,
+            "{name}: denied write changed target/key/change state"
+        );
+        assert_eq!(audits_after, audits_before + 1);
+        assert_eq!(audits.len(), 1, "{name}: expected one denial audit");
+        let audit = &audits[0];
+        assert_eq!(audit["event_type"], "api.request");
+        assert_eq!(audit["request_id"], reply.request_id.as_deref().unwrap());
+        assert_eq!(audit["account"], 71001);
+        assert_eq!(audit["membership"], 74001);
+        assert_eq!(audit["metadata"]["http_method"], method.as_str());
+        assert_eq!(audit["metadata"]["controller"], "api/v1/admin/memberships");
+        assert_eq!(
+            audit["metadata"]["action"],
+            if method == Method::DELETE {
+                "destroy"
+            } else {
+                "update"
+            }
+        );
+        assert_eq!(audit["metadata"]["outcome"], "failure");
+        assert_eq!(audit["metadata"]["status"], 403);
+        assert_eq!(
+            audit["context"]["request_id"],
+            reply.request_id.as_deref().unwrap()
+        );
+        assert_eq!(audit["context"]["authentication_method"], "api_session");
+        assert_eq!(audit["context"]["session_reference"], "api_session:88031");
+        for denied in [&reply, &retry] {
+            assert!(denied.body.get("data").is_none());
+            assert_wire(denied);
+            assert_schema(&name, denied);
+        }
     }
 }
