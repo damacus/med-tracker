@@ -772,6 +772,8 @@ async fn settings_put_replays_same_key_and_rejects_changed_body() {
 }
 
 async fn concurrent_keyed_write(method: Method) {
+    use sea_orm::TransactionTrait;
+
     let (fixture, boot) = boot_fixture().await;
     profile::seed_credentials(&fixture).await;
     let server = server(&boot);
@@ -779,6 +781,28 @@ async fn concurrent_keyed_write(method: Method) {
     let method_name = method.as_str().to_lowercase();
     let body = json!({"household":{"name":"Concurrent settings"}});
     let changed = json!({"household":{"name":"Changed concurrent body"}});
+    let blocker = fixture.admin.begin().await.unwrap();
+    let blocker_pid: i32 = blocker
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT pg_backend_pid() AS pid",
+        ))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("", "pid")
+        .unwrap();
+    blocker
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT id FROM households WHERE id=72001 FOR UPDATE",
+        ))
+        .await
+        .unwrap();
+    let runtime_role = url::Url::parse(&fixture.runtime_uri)
+        .unwrap()
+        .username()
+        .to_owned();
     let barrier = std::sync::Arc::new(tokio::sync::Barrier::new(2));
     let first = async {
         barrier.wait().await;
@@ -786,7 +810,7 @@ async fn concurrent_keyed_write(method: Method) {
             &server,
             method.clone(),
             72001,
-            Some("profile-session"),
+            Some("profile-app"),
             Some(&body),
             Some("settings-concurrent"),
         )
@@ -804,7 +828,28 @@ async fn concurrent_keyed_write(method: Method) {
         )
         .await
     };
-    let (first, second) = tokio::join!(first, second);
+    let release = async {
+        let observed = tokio::time::timeout(std::time::Duration::from_secs(10), async {
+            loop {
+                let row = fixture.admin.query_one_raw(Statement::from_sql_and_values(
+                    DbBackend::Postgres,
+                    "SELECT count(DISTINCT pid) AS waiting,count(DISTINCT pid) FILTER (WHERE $2::int=ANY(pg_blocking_pids(pid))) AS held_waiters FROM pg_stat_activity WHERE datname=current_database() AND usename=$1 AND wait_event_type='Lock' AND query LIKE '%households%' AND query LIKE '%FOR UPDATE%' AND cardinality(pg_blocking_pids(pid))>0",
+                    [runtime_role.clone().into(), blocker_pid.into()],
+                )).await.unwrap().unwrap();
+                if row.try_get::<i64>("", "waiting").unwrap() == 2
+                    && row.try_get::<i64>("", "held_waiters").unwrap() >= 1
+                {
+                    break true;
+                }
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .unwrap_or(false);
+        blocker.commit().await.unwrap();
+        observed
+    };
+    let (first, second, observed) = tokio::join!(first, second, release);
     let changed_reply = send(
         &server,
         method,
@@ -817,6 +862,10 @@ async fn concurrent_keyed_write(method: Method) {
     let after = state(&fixture).await;
     drop(server);
     close(fixture, boot).await;
+    assert!(
+        observed,
+        "both runtime settings writes must wait on the same household row"
+    );
     assert_eq!(
         (first.status, second.status, changed_reply.status),
         (200, 200, 409)
