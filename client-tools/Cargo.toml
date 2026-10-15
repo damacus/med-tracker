@@ -11,6 +11,26 @@ edition = "2024"
 license = "Apache-2.0"
 repository = "https://github.com/damacus/med-tracker"
 
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+dbg_macro = "deny"
+todo = "deny"
+unimplemented = "deny"
+float_cmp = "deny"
+mem_forget = "deny"
+cast_precision_loss = "deny"
+cast_possible_truncation = "deny"
+cast_sign_loss = "deny"
+lossy_float_literal = "deny"
+unwrap_used = "warn"
+expect_used = "warn"
+indexing_slicing = "warn"
+needless_pass_by_value = "warn"
+implicit_clone = "warn"
+
 [workspace.dependencies]
 anyhow = "1"
 assert_cmd = "2"

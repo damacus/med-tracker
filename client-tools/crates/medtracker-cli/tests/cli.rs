@@ -4,9 +4,8 @@ use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 #[test]
-fn login_accepts_an_app_token_instead_of_a_password() {
-    Command::cargo_bin("medtracker")
-        .unwrap()
+fn login_accepts_an_app_token_instead_of_a_password() -> Result<(), Box<dyn std::error::Error>> {
+    Command::cargo_bin("medtracker")?
         .args(["auth", "login", "--help"])
         .env("MEDTRACKER_TOKEN", "private-token-sentinel")
         .assert()
@@ -14,19 +13,21 @@ fn login_accepts_an_app_token_instead_of_a_password() {
         .stdout(predicate::str::contains("--token"))
         .stdout(predicate::str::contains("--password").not())
         .stdout(predicate::str::contains("private-token-sentinel").not());
+    Ok(())
 }
 
 #[test]
-fn custom_refresh_command_is_retired() {
-    Command::cargo_bin("medtracker")
-        .unwrap()
+fn custom_refresh_command_is_retired() -> Result<(), Box<dyn std::error::Error>> {
+    Command::cargo_bin("medtracker")?
         .args(["auth", "refresh", "--help"])
         .assert()
         .failure();
+    Ok(())
 }
 
 #[tokio::test]
-async fn backup_export_returns_unsupported_when_server_capability_is_missing() {
+async fn backup_export_returns_unsupported_when_server_capability_is_missing()
+-> Result<(), Box<dyn std::error::Error>> {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
         .and(path("/api/v1/capabilities"))
@@ -46,7 +47,7 @@ async fn backup_export_returns_unsupported_when_server_capability_is_missing() {
         .mount(&server)
         .await;
 
-    let mut command = Command::cargo_bin("medtracker").unwrap();
+    let mut command = Command::cargo_bin("medtracker")?;
     command
         .arg("--base-url")
         .arg(server.uri())
@@ -58,4 +59,5 @@ async fn backup_export_returns_unsupported_when_server_capability_is_missing() {
         .assert()
         .failure()
         .stderr(predicate::str::contains("unsupported_by_server"));
+    Ok(())
 }

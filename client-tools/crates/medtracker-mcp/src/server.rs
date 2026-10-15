@@ -32,7 +32,7 @@ pub async fn run_stdio() -> Result<()> {
 
         let response = match handle_line(&client, &line).await {
             Ok(response) => response,
-            Err(error) => error_response(None, error.to_string()),
+            Err(error) => error_response(None, &error.to_string()),
         };
         writeln!(stdout, "{response}")?;
         stdout.flush()?;
@@ -77,7 +77,7 @@ async fn call_tool(client: &ApiClient, params: Value) -> Result<Value> {
         .cloned()
         .unwrap_or_else(|| json!({}));
     let value = match name {
-        "medtracker_capabilities" => json_value(client.capabilities().await?),
+        "medtracker_capabilities" => json_value(client.capabilities().await?)?,
         "medtracker_households" => client.households().await?,
         "medtracker_me" => {
             let args: HouseholdParams = serde_json::from_value(arguments)?;
@@ -116,11 +116,11 @@ async fn call_tool(client: &ApiClient, params: Value) -> Result<Value> {
     }))
 }
 
-fn json_value<T: serde::Serialize>(value: T) -> Value {
-    serde_json::to_value(value).expect("serializable API model")
+fn json_value<T: serde::Serialize>(value: T) -> Result<Value> {
+    serde_json::to_value(value).context("failed to serialize API model")
 }
 
-fn error_response(id: Option<Value>, message: String) -> Value {
+fn error_response(id: Option<&Value>, message: &str) -> Value {
     json!({
         "jsonrpc": "2.0",
         "id": id,
@@ -135,21 +135,42 @@ fn error_response(id: Option<Value>, message: String) -> Value {
 mod tests {
     use super::*;
 
+    struct FailingSerialization;
+
+    impl serde::Serialize for FailingSerialization {
+        fn serialize<S>(&self, _serializer: S) -> std::result::Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            Err(serde::ser::Error::custom("serialization failed"))
+        }
+    }
+
+    #[test]
+    fn api_model_serialization_failure_is_returned() {
+        let result = json_value(FailingSerialization);
+        assert!(
+            matches!(result, Err(error) if error.to_string().contains("failed to serialize API model"))
+        );
+    }
+
     #[tokio::test]
-    async fn tools_list_returns_schema_definitions() {
-        let client = ApiClient::new("http://localhost:3000", None).unwrap();
-        let response = handle_line(&client, r#"{"jsonrpc":"2.0","id":1,"method":"tools/list"}"#)
-            .await
-            .unwrap();
+    async fn tools_list_returns_schema_definitions() -> Result<()> {
+        let client = ApiClient::new("http://localhost:3000", None)?;
+        let response =
+            handle_line(&client, r#"{"jsonrpc":"2.0","id":1,"method":"tools/list"}"#).await?;
 
         assert_eq!(
-            response["result"]["tools"][0]["name"],
-            "medtracker_capabilities"
+            response
+                .pointer("/result/tools/0/name")
+                .and_then(Value::as_str),
+            Some("medtracker_capabilities")
         );
         assert!(
-            response["result"]["tools"][3]["inputSchema"]["properties"]
-                .get("household_id")
+            response
+                .pointer("/result/tools/3/inputSchema/properties/household_id")
                 .is_some()
         );
+        Ok(())
     }
 }

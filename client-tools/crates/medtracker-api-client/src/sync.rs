@@ -5,6 +5,7 @@ use crate::error::ApiError;
 use crate::models::{BatchMutationPayload, BatchMutationRequest};
 
 impl ApiClient {
+    #[doc = "# Errors\nSync is unsupported, the request fails, or the response cannot be decoded."]
     pub async fn sync_snapshot(&self, household_id: &str) -> Result<Value, ApiError> {
         self.require_capability("sync snapshot", &["sync", "mobile_snapshot"])
             .await?;
@@ -12,6 +13,7 @@ impl ApiClient {
             .await
     }
 
+    #[doc = "# Errors\nSync is unsupported, the request fails, or the response cannot be decoded."]
     pub async fn sync_changes(
         &self,
         household_id: &str,
@@ -26,6 +28,7 @@ impl ApiClient {
         }
     }
 
+    #[doc = "# Errors\nSync is unsupported, the request fails, or the response cannot be decoded."]
     pub async fn sync_batch(
         &self,
         household_id: &str,
@@ -53,7 +56,8 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn sync_changes_sends_the_rails_cursor_parameter() {
+    async fn sync_changes_sends_the_rails_cursor_parameter()
+    -> Result<(), Box<dyn std::error::Error>> {
         let server = MockServer::start().await;
         mount_sync_capabilities(&server).await;
         Mock::given(method("GET"))
@@ -65,16 +69,17 @@ mod tests {
             .mount(&server)
             .await;
 
-        let client = ApiClient::new(server.uri(), Some("test-token".to_string())).unwrap();
+        let client = ApiClient::new(server.uri(), Some("test-token".to_string()))?;
         let result = client
             .sync_changes("household-1", Some("2026-07-14T12:00:00+05:00"))
             .await;
 
         assert!(result.is_ok());
+        Ok(())
     }
 
     #[tokio::test]
-    async fn sync_batch_sends_the_rails_batch_envelope() {
+    async fn sync_batch_sends_the_rails_batch_envelope() -> Result<(), Box<dyn std::error::Error>> {
         let server = MockServer::start().await;
         mount_sync_capabilities(&server).await;
         let operations = vec![json!({
@@ -91,10 +96,11 @@ mod tests {
             .mount(&server)
             .await;
 
-        let client = ApiClient::new(server.uri(), Some("test-token".to_string())).unwrap();
+        let client = ApiClient::new(server.uri(), Some("test-token".to_string()))?;
         let result = client.sync_batch("household-1", operations).await;
 
         assert!(result.is_ok());
+        Ok(())
     }
 
     async fn mount_sync_capabilities(server: &MockServer) {
