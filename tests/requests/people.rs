@@ -921,13 +921,26 @@ async fn concurrent_person_key_replays_one_write(method: Method) {
     } else {
         String::new()
     };
+    let second_mobile = if method == Method::POST {
+        let token = "synthetic-people-overlap-mobile";
+        let digest =
+            base64::engine::general_purpose::URL_SAFE.encode(Sha256::digest(token.as_bytes()));
+        fixture.admin.execute_raw(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            "INSERT INTO oauth_grants(id,account_id,oauth_application_id,client_kind,redirect_uri,scopes,token_hash,expires_in,authenticated_at,last_used_at,device_name,created_at,updated_at) VALUES(76011,71001,75001,'mobile','io.damacus.medtracker:/oauth2redirect','medtracker offline_access',$1,now()+interval '15 minutes',now(),now(),'Second People writer',now(),now())",
+            [digest.into()],
+        )).await.unwrap();
+        token
+    } else {
+        ""
+    };
     let first_bearer = if method == Method::POST {
         mobile.as_str()
     } else {
         "people-session"
     };
     let second_bearer = if method == Method::POST {
-        mobile.as_str()
+        second_mobile
     } else {
         "people-app"
     };
@@ -949,8 +962,11 @@ async fn concurrent_person_key_replays_one_write(method: Method) {
     };
     let key = format!("people-overlap-{}", method.as_str().to_lowercase());
     let before = people_effect(&fixture).await;
-    let start = std::sync::Arc::new(tokio::sync::Barrier::new(3));
-    let (first, second, _) = tokio::join!(
+    let start = std::sync::Arc::new(tokio::sync::Barrier::new(2));
+    let (first, second, overlapped) = super::overlap_requests_at_row_lock(
+        &fixture,
+        "SELECT id FROM households WHERE id=72001 FOR UPDATE",
+        "%households%FOR UPDATE%",
         async {
             start.wait().await;
             send(
@@ -975,8 +991,8 @@ async fn concurrent_person_key_replays_one_write(method: Method) {
             )
             .await
         },
-        async { start.wait().await }
-    );
+    )
+    .await;
     let after_overlap = people_effect(&fixture).await;
     let replay = if method == Method::POST {
         Some(
@@ -1006,6 +1022,10 @@ async fn concurrent_person_key_replays_one_write(method: Method) {
     let after_conflict = people_effect(&fixture).await;
     drop(server);
     close(fixture, boot).await;
+    assert!(
+        overlapped,
+        "two {method} People requests reached the household lock"
+    );
     let expected_status = if method == Method::POST { 201 } else { 200 };
     let expected_people = if method == Method::POST { 1 } else { 0 };
     if method == Method::POST {
