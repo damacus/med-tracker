@@ -1,5 +1,65 @@
 # Rust household architecture and guardrails delivery
 
+## Morning delivery scope: 16 October 2026
+
+The owner has resumed work with a smaller delivery target: have a useful result
+to demonstrate by morning, and hand off anything estimated above six hours of
+Sol work or two human working days. This supersedes the pause instruction below
+for this bounded delivery only. The accepted architecture remains unchanged.
+
+The target is 09:00 Europe/London on 16 October, interpreted from "by the morning".
+Deliver a reproducible household-inventory demonstration, screenshots and a
+published draft checkpoint. Do not describe it as a production-ready migration.
+
+The demonstration must show:
+
+1. A real maintained browser sign-in and selection of an authorised household.
+2. Creation and use of medication inventory without a mandatory storage location.
+3. Recording a dose, exact stock reduction, saved history and persistence after
+   refresh. Reads must not create further doses or deduct stock again.
+4. Active-household selection restricted to current memberships, with another
+   household's inventory inaccessible and revoked access rejected.
+5. Desktop and mobile screenshots inspected by the delivery owner, plus a short
+   walkthrough naming the synthetic fixtures, launch command and limitations.
+
+Use the existing browser and restricted-role request fixtures. One Sol owner
+controls source and verification; the delivery owner maintains this plan and
+publishes the result. No additional review team is planned. Account usage was
+checked: the weekly ordinary allowance is exhausted; no reset is authorised.
+
+Treat the following as spending limits, not duration promises: allow 45 minutes
+for inventory and first proof, at most two evidence-based correction attempts
+per failure, and at most six hours of Sol work for this delivery. Reserve time
+inside that limit for visual inspection, documentation and publication. Stop a
+work item early when its prerequisites or risk make the threshold unrealistic.
+Record the actual failure and hand it off rather than weakening its checks.
+
+The history browser/download checks currently fail with HTTP 503 rather than
+200. They are outside this demonstration and must remain visible as failures.
+Do not delete their tests, claim they passed or add preparation-audit machinery
+to rescue the overnight scope. The account-wide history API's earlier focused
+results are separate evidence. Existing Android changes remain deferred locally.
+
+Completion of this morning delivery means the listed demonstration has current
+evidence and its code/docs are pushed. Required full CI and independent security
+acceptance still govern any future ready-for-merge claim. Do not waive lint,
+dependency or security gates to meet the demonstration deadline.
+
+### Expensive work disposition
+
+The items below are conservatively treated as above the owner's threshold
+because they require unresolved product decisions, several security-sensitive
+workflows or application-wide repairs. This is a scope decision, not a measured
+runtime estimate. Do not start them during the morning delivery. Detailed
+handoffs appear in the final section of this document.
+
+- Complete personal-history browser/download security and acceptance.
+- Canonical personal care plans and disclosure across households.
+- Person-allocated stock transfers between households.
+- Rust-native encrypted portability and a verified restore rehearsal.
+- Remaining application-wide strict lint and dependency remediation.
+- Extraction and full acceptance of independently releasable foundation PRs.
+
 ## Owner delivery reset: pause at the next gate
 
 The stop gate has now been reached: both focused browser-history checks returned
@@ -306,3 +366,226 @@ PR description explains behavioural changes and retained legacy rust consumers;
 omit routine CI test sections. Report published/hosted/merged/deployed states
 accurately and identify any unfinished required acceptance rather than marking
 partial work complete.
+
+## Detailed handoffs for work outside the morning scope
+
+These are executable handoffs, not permission to start the work automatically.
+Take one bounded gate at a time after owner prioritisation. Begin from the
+published checkpoint `0a426de97` and its subsequent morning commits; compare
+current files before applying any retained patch. Never restore a historical
+snapshot over newer work. The checkpoint is a draft, not an accepted baseline.
+
+Each owner must name the source revision, included paths, actual test command,
+first failing assertion and stop condition before implementation. Keep one source
+writer and one Cargo/browser runner. Preserve restricted runtime credentials,
+PostgreSQL RLS, immutable clinical attribution and maintained authentication.
+Use the repository Task commands and nextest's nonzero-test requirement. Do not
+reset populated databases or introduce advisory waivers or broad lint allows.
+
+### H1: Finish personal-history browser and download
+
+Why deferred: the ordinary browser path already fails; secure download release
+also needs concurrent credential revocation, historical denial attribution and
+several database/HTTP/browser proofs. Treat the combined work as above six Sol
+hours or two human days until a bounded diagnostic establishes otherwise.
+
+Starting evidence and files:
+
+- `tests/requests/self_medication_history_browser.rs`: two actual failures,
+  HTTP 503 versus 200, run `d7582316-d04a-4d62-a4a9-a618ab4002a4`.
+- `src/controllers/profile/medication_history.rs`, the shared response DTO in
+  `src/controllers/medication_history.rs`, `src/models/identity/browser.rs`,
+  `src/models/care/account_clinical_access.rs`, and the profile Tera template.
+- [ADR 0017](../adrs/0017-personal-history-download-authorisation-and-audit.md)
+  is accepted design with implementation acceptance pending.
+- Prepared SQL test and browser drafts are retained in the pause checkpoint
+  `/private/tmp/medtracker-owner-pause.OQ9Wrp`; they are not executed evidence.
+
+Ordered gates:
+
+1. Reproduce only the two failing requests using
+   `task slice:test TARGET=requests FILTER=api_v1::self_medication_history_browser:: NO_FAIL_FAST=true`.
+   Capture privacy-safe error categories and actual PostgreSQL blockers before
+   changing locks. Five-second timing alone does not prove a lock timeout.
+2. Make the smallest demonstrated correction and rerun that pair. Do not widen
+   RLS, duplicate session lifetime policy or replace maintained session deletion.
+   Stop after two unsuccessful evidence-based fixes and hand off the observations.
+3. Add the real maintained-session hard-delete race before the historical
+   preparation change. Prove the request reached preparation/release boundaries;
+   a setup failure or 404 is not evidence for the missing security invariant.
+4. Implement the fixed preparation/terminal functions from ADR 0017 only after
+   the boundary failure is reproduced. Preserve the existing source and ledger
+   transaction, minimal metadata, private typed handle, narrow owner access,
+   database-enforced single terminal outcome and fresh exact-session validation.
+5. Cover success, deletion before release, account disable, Account-to-Person
+   reassignment, both lock orderings, source/ledger failure, cancellation and
+   multi-page output. No clinical bytes may precede the committed release audit.
+6. Integrate the retained browser draft with real fixture writers. Check the
+   exact four-field version-1 envelope and allowlisted 21-field entries, two own
+   households, foreign-Person exclusion and unchanged stock/reminders/history.
+   Inspect desktop/mobile screenshots and refresh/download behaviour.
+
+Done means the focused request, restricted SQL, adjacent profile/API contract
+and real browser checks all pass on one frozen revision, with bounded security
+review. A success audit proves authorised release, not receipt of all bytes.
+
+### H2: Canonical personal care and controlled household disclosure
+
+Why deferred: current treatments, schedules and pauses are still household-local.
+This is a new clinical authority and concurrency model, not a rendering change.
+Unresolved guardian bootstrap and canonical timezone decisions prevent a reliable
+small estimate; classify the full capability above the owner's threshold.
+
+Use [ADR 0014](../adrs/0014-household-inventory-and-personal-care.md), the current
+care-continuity SQL and `src/models/care/{treatments,doses,pause_periods}` as the
+starting map. Inspect actual modules before deciding migration boundaries.
+
+Before implementation obtain decisions on who grants/revokes guardian authority,
+how existing care plans acquire a canonical identity without guessing from names,
+and the timezone governing calendar schedules. A manager is never automatically
+a guardian. An elapsed-hours as-needed slice cannot count as complete DST support.
+
+Ordered gates:
+
+1. Specify a Person-owned clinical medicine identity and plan revision, separate
+   from each household's inventory. Add failing tests for explicit authoring
+   authority and denial of manager-only plan edits.
+2. Implement one as-needed plan journey with explicit audited manager stock
+   matching. Do not infer equivalence from medication names or dose strings.
+3. Prove cross-household latest-dose/safety visibility and simultaneous writes.
+   Serialise the same canonical medicine across plans without locking a foreign
+   household. Check self-edit and household-write lock ordering with real blockers.
+4. Add current treatment/schedule/pause projections only for active participations.
+   Exclude historical narrative by default; test departure cutoffs and revocation
+   after lock waits. Preserve each original administration's source and revision.
+5. Add calendar schedules with timezone/DST properties, then the person/guardian
+   browser authoring and household stock-matching journeys. Update external
+   contracts with the deliberate semantics and inspect desktop/mobile output.
+
+Done means the real A/B household journeys, person/guardian denial cases,
+concurrency, departure, immutable audit and DST checks pass. Keep this separate
+from stock movement and general account/profile changes.
+
+### H3: Explicit transfer of person-allocated stock
+
+Why deferred: allocation is not yet a proved domain invariant, and a transfer
+touches two household inventories, permissions, replay and attributable history.
+Treat the complete transfer capability as above the threshold.
+
+Before coding agree how quantities become allocated to a person, who may allocate
+or release them, whether partial allocations are allowed and what happens on
+departure. Reuse Decimal quantities and canonical stock operations; do not model
+allocation as an editable medicine-name label.
+
+Ordered gates:
+
+1. Write the allocation invariant and explicit transfer command: actor, person,
+   source/destination memberships, stock identities, exact amount and replay ID.
+2. Add failing tests for communal-stock exclusion, foreign/revoked membership,
+   insufficient allocation, incompatible stock, zero/negative amount and stale
+   authority. No automatic transfer occurs when a person changes household.
+3. Choose and document deterministic household/stock locking order. Recheck both
+   sides after waits, then apply debit, credit, allocation and both audit records
+   in one transaction. Any audit failure must roll back the entire transfer.
+4. Prove replay, conflicting replay, simultaneous opposite-direction transfers,
+   precision and conservation properties using real restricted-role operations.
+5. Add a review/confirmation UI that makes both households and exact quantities
+   explicit, then verify saved balances, cancellation and desktop/mobile use.
+
+Done means stock is conserved, each transfer is attributable and atomic, and
+replays cannot create or deduct stock twice. No clinical plan edit is implied.
+
+### H4: Rust-native portability and restore rehearsal
+
+Why deferred: original provenance, departed-household history and complete fresh
+restore have not reached acceptance. Crypto/resource limits, transactional apply
+and real restore proof make this larger than an overnight demonstration.
+
+Inspect `src/models/care/portable_imports`, export code, `tests/rehearsal/cutover.rs`
+and the existing owned cutover tasks. The accepted package pipeline remains
+decrypt, validate, authorise, preflight, apply. FHIR remains an interoperability
+adapter and MCP remains a trigger. No Rails credential/data migration is planned.
+
+Ordered gates:
+
+1. Inventory every exported entity and provenance field against current Rust
+   consumers. Define a versioned package fixture with multiple households, a
+   departed person and original administration/plan attribution.
+2. Reproduce missing round-trip facts before changing the format. Specify version
+   rejection/upgrade behaviour; never silently reset an existing populated DB.
+3. Bound application-owned blocking crypto with a semaphore, use maintained
+   primitives and remove demonstrated redundant buffers without broad rewrites.
+4. Apply historical records without current stock deduction, live reminders/mail
+   or replacement of original clinical timestamps/actors by restore metadata.
+5. Add replay and failure-injection properties proving zero operational effects
+   and transaction rollback, then run the real owned save/restore rehearsal on
+   disposable PostgreSQL and storage. Confirm the test selection ran actual tests.
+
+Done means a fresh restore can be read through real API/browser consumers with
+original provenance, no duplicate writes and no operational side effects.
+Schema-only tests or a package parser passing are insufficient.
+
+### H5: Remaining strict Rust lint and dependency repairs
+
+Why deferred: the last measured strict root result spans hundreds of files and
+thousands of diagnostics; two dependency advisories are independently unresolved.
+It is above the owner's threshold and must not turn the demonstration into an
+application-wide cleanup. Keep the requested strict policy unchanged.
+
+Known advisory observations are `rsa` RUSTSEC-2023-0071 and `unsafe-libyaml`
+RUSTSEC-2024-0449. Re-resolve the current lockfile and maintained upstream fixes
+before choosing remediation. No waiver or unsupported cargo-deny configuration
+has been approved. Prior investigation did not establish a released upgrade
+providing the proposed expiry/parent-restricted ignores.
+
+Ordered gates:
+
+1. Capture fresh root and client-tools diagnostics separately with existing Task
+   gates and retain machine-readable results grouped by owned capability.
+2. Split deterministic, behaviour-preserving lint fixes into bounded changes.
+   Start with reviewed retained patches only after checking their preimages;
+   each patch still needs compilation and relevant regression checks.
+3. Handle typed domain changes as separate behaviour-sensitive work with public
+   contract tests, exact Decimal/timestamp handling and no internal JSON bridges.
+4. Trace each vulnerable dependency to direct consumers. Propose the smallest
+   maintained upgrade/replacement with compatibility and negative security tests;
+   ask before any policy exception rather than burying it in lint cleanup.
+5. Run fmt, all-target/all-feature Clippy with warnings denied, machete, deny and
+   nextest with no-tests failure, plus separate doctests, on the frozen candidate.
+   Exercise installed local hooks and the actual hosted workflow independently.
+
+Done means those exact gates pass without broad allows or hidden exclusions.
+Ordinary `cargo check`, selected tests or the absence of a local hook file do not
+prove strict CI acceptance.
+
+### H6: Extract and accept the household foundation for release
+
+Why deferred: the published checkpoint spans 358 files and shares fresh-schema,
+identity and consumer changes. Safe extraction and full acceptance may exceed
+the threshold; it must not be attempted by arbitrarily cherry-picking files.
+
+Begin with a capability/path inventory of the published branch against current
+main. Separate guidance/tooling, household foundation, own history and deferred
+Android. Preserve all source and snapshots. P2/P3 in the table above remain
+provisional until independently compiled and exercised.
+
+Ordered gates:
+
+1. Identify the actual schema/API/runtime dependency closure for account-owned
+   profiles, person memberships, active sessions and optional storage labels.
+2. Try one coherent extraction in an isolated owned worktree. If it needs the
+   history schema to boot safely, retain that dependency explicitly; do not add
+   compatibility tables or weaken RLS to manufacture a smaller PR.
+3. Prove create, invite/accept, current-membership selection, stale-form rejection,
+   removal, account-owned profile and attributable dose/stock writes through real
+   browser/API journeys. Include restricted-role foreign/revoked denial and
+   invitation/audit rollback. Native regeneration is a separate authorised gate.
+4. Refresh main before the final frozen checks, reconcile contracts and obtain
+   one bounded independent security review. Address only verified findings in
+   that capability; classify unrelated discoveries for separate follow-up.
+5. Run the required full gates and publish a ready PR only after acceptance.
+   Otherwise keep it draft and name the exact blocker. No merge or deployment is
+   implied by the morning demo or by pushing a checkpoint.
+
+Done means the extraction has its own real acceptance evidence and can land
+without relying on uncommitted work or another PR's unpublished schema.
