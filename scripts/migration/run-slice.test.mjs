@@ -354,6 +354,18 @@ test('provisioning creates only an empty database without importing application 
   });
 });
 
+test('request trace acceptance provisions an owned reference database', async () => {
+  await withProcessFixture(0, (result, state) => {
+    assert.equal(result.status, 0, result.stderr);
+    const provision = state.calls.filter(call => call.operation === 'exec');
+    assert.equal(provision.length, 1);
+    assert.equal(provision[0].args[provision[0].args.indexOf('-c') + 1], 'CREATE DATABASE medtracker_reference');
+    assert.equal(state.owned_endpoint_used, true);
+    assert.deepEqual(state.calls.find(call => call.command === 'cargo').args,
+      ['nextest', 'run', '--locked', '--no-tests=fail', '-p', 'med-tracker', '--test', 'request_trace', 'booted_router_uses_private_server_trace_reference']);
+  }, 'slice:test', ['TARGET=request_trace', 'FILTER=booted_router_uses_private_server_trace_reference']);
+});
+
 
 test('owned application tests use a synthetic identity key instead of the inherited key', async () => {
   await withProcessFixture(0, (result, state) => {

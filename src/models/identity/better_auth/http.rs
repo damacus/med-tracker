@@ -38,10 +38,6 @@ pub async fn boundary(mut request: Request, next: Next) -> Response {
         .get::<MatchedPath>()
         .map_or("unmatched", MatchedPath::as_str)
         .to_owned();
-    let framework_request_id = request
-        .extensions()
-        .get::<loco_rs::controller::middleware::request_id::LocoRequestId>()
-        .map(|request_id| request_id.get().to_owned());
     let method = request.method().clone();
     let started = Instant::now();
     let response = if missing_auth_peer {
@@ -50,15 +46,8 @@ pub async fn boundary(mut request: Request, next: Next) -> Response {
     } else {
         next.run(request).await
     };
-    let request_id = framework_request_id.as_deref().unwrap_or_else(|| {
-        response
-            .headers()
-            .get("x-request-id")
-            .and_then(|value| value.to_str().ok())
-            .unwrap_or("unavailable")
-    });
     tracing::info!(method = %method, route, status = response.status().as_u16(),
-        duration_ms = started.elapsed().as_secs_f64() * 1000.0, request_id,
+        duration_ms = started.elapsed().as_secs_f64() * 1000.0,
         "HTTP request completed");
     response
 }
@@ -168,7 +157,7 @@ mod tests {
     }
 
     #[tokio::test(flavor = "current_thread")]
-    async fn completion_log_matches_outer_framework_request_id() {
+    async fn completion_log_omits_client_controlled_framework_request_id() {
         let events = RequestIdEvents::default();
         let _subscriber = tracing::subscriber::set_default(events.clone());
         let peer = ConnectInfo(SocketAddr::from(([127, 0, 0, 1], 12345)));
@@ -199,6 +188,6 @@ mod tests {
         drop(request);
         assert!(!generated.is_empty());
         assert_eq!(supplied, "client42");
-        assert_eq!(*events.0.lock().unwrap(), vec![generated, supplied]);
+        assert!(events.0.lock().unwrap().is_empty());
     }
 }
