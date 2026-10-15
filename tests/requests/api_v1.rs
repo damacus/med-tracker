@@ -20,6 +20,8 @@ mod me_ui;
 mod people;
 #[path = "people_evidence.rs"]
 mod people_evidence;
+#[path = "person_access_grants.rs"]
+mod person_access_grants;
 #[path = "profile.rs"]
 mod profile;
 #[path = "profile_avatar_evidence.rs"]
@@ -100,7 +102,7 @@ fn operations() -> BTreeMap<(String, String), Value> {
     let source = include_str!("../../docs/api/openapi.v1.yaml");
     assert_eq!(
         hex::encode(Sha256::digest(source.as_bytes())),
-        "8e7ed35092ad445380725330a3238a5d65d5993affbfee5f1e5fa312028b2e52",
+        "2932c6985892b66bdf8745b668b23158b076ed0b0181b812cd43f750b35318d9",
         "The full API schema or headers changed; refresh the operation inventory and its evidence"
     );
     let document: Value = serde_yaml_ng::from_str(source).unwrap();

@@ -4346,6 +4346,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
     post:
       operationId: createPersonAccessGrant
       tags:
@@ -4354,6 +4356,7 @@ paths:
       summary: Create a person access grant.
       parameters:
         - $ref: "#/components/parameters/household_id"
+        - $ref: "#/components/parameters/idempotency_key"
       requestBody:
         required: true
         content:
@@ -4381,6 +4384,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /households/{household_id}/admin/person_access_grants/{id}:
     delete:
       operationId: deletePersonAccessGrant
@@ -4391,6 +4396,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/household_id"
         - $ref: "#/components/parameters/id"
+        - $ref: "#/components/parameters/idempotency_key"
       responses:
         "204":
           description: Access grant revoked.
@@ -4406,6 +4412,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /households/{household_id}/admin/app_tokens:
     get:
       operationId: listAppTokens
