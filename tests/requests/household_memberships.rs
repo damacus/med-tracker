@@ -1110,7 +1110,7 @@ async fn membership_audit_failure_hides_reads_and_rolls_back_writes() {
         assert_eq!(reply.status, 500, "{method}: {}", reply.body);
         assert_eq!(reply.body["error"]["code"], "internal_error");
         assert!(reply.body.get("data").is_none());
-        assert_wire(&reply);
+        assert_wire(reply);
     }
     for (method, reply) in replies {
         assert_schema(&method, &reply);
