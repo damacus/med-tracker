@@ -8,16 +8,17 @@ migration areas stay in scope. No live deployment has occurred.
 
 ### Account stack propagation, 15 October 2026
 
-The coordinator integrates local predecessor `3004fb7d520a9000639612861ed43d58f915db17`
+The coordinator integrates published predecessor `80f34a50fb6973624f40530523d71482907147ea`
 into PR [#2636](https://github.com/damacus/med-tracker/pull/2636), preserving
 the tested account correction `294f38d93e29309825456c4efdddfc075233f8f4` and
 immutable proof source `0893879794d009bbb94cc72a0dd5df11aa7f6dfa` as ancestors.
 The original three account overlap tests, helper, oracle and four evidence rows
 are unchanged. The published prerequisite `faf0cc2f` passed every applicable
 hosted check; its former browser failure is corrected on that exact head.
-Execution-proof runner and inventory checks passed on `3004fb7d`; its full CI,
-review and publication remain pending. Fresh account checks and same-session
-review are also required before publication. Earlier account CI and review
+Execution-proof runner, inventory and full CI passed on `3004fb7d`; resumed
+review and final documentation review accepted. Its final head `80f34a50`
+is published, with fresh hosted checks pending. Fresh account checks and
+same-session review are required before publication. Earlier account CI and review
 below retain their exact candidate scope. No new operation credit, PR merge
 or deployment is claimed.
 
