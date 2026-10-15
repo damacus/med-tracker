@@ -6,6 +6,29 @@ migration areas stay in scope. No live deployment has occurred.
 
 ## Current delivery
 
+### s05-i01 prerequisite browser correction, 15 October 2026
+
+Published settings PR #2644 (`eb9ac904`) failed its hosted NHS dm+d import
+browser journey in both desktop and mobile jobs (`116197321693` and
+`116197321724`). The broken ZIP reached Failed and passed its ZIP alert. The
+failure was the first `Completed` poll reload after the valid ZIP upload:
+`Page.reload` reported `Not attached to an active page`. Trace shows the valid
+upload POST returned 303 and its redirected GET returned 200; the reload began
+about 1.4 ms after the desktop click returned and 1.1 ms after mobile. The
+exact Chromium attachment cause remains unproved; the logs do not show an
+importer or storage failure.
+
+The previously reviewed dm+d prerequisite source is `923d5b63098a61ed4a9df0dfd4f27ae348d0b26a`.
+A browser-test-only correction is applied locally in its owning checkout:
+both upload clicks now wait for the exact navigation POST and page load,
+then verify the 303 redirect before the existing status poll. The test file
+is SHA-256 `ff19b1e6a9859312cc350071d538d4dc772d2326fe49039a72d80e92e93b19b2`.
+The existing Failed, ZIP alert, Completed count and barcode checks remain.
+Focused desktop/mobile browser verification is running; a fresh full CI,
+same-session `successful-dollar` SWE-2 Max correction review, commit, push and
+hosted rerun are pending. This local correction has no publication or new
+acceptance credit yet. The unrelated Serena change remains preserved.
+
 ### s05-i01 — API contract completion, 14 October 2026
 
 Merged rate-limit candidate: [PR #2623](https://github.com/damacus/med-tracker/pull/2623),
