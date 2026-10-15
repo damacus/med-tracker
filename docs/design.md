@@ -1,5 +1,17 @@
 # Design
 
+## Accepted Rust direction
+
+Root Loco 1.2 with Tera/DaisyUI and PostgreSQL 18 is primary. Rails is read-only
+reference. The accepted architecture below supersedes older parity and access
+assumptions; implementation acceptance remains pending. Historical Rails design
+sections below describe the reference, not requirements to reproduce its internals.
+
+- [Accounts, people and households](adrs/0013-accounts-people-and-households.md)
+- [Household inventory and personal care](adrs/0014-household-inventory-and-personal-care.md)
+- [Authentication, membership and tenancy](adrs/0015-authentication-membership-and-tenancy.md): organisation-plugin replacement remains Proposed
+- [Fresh Rust without legacy compatibility](adrs/0016-fresh-rust-without-legacy-compatibility.md)
+
 ## Purpose
 
 MedTracker records medication schedules, direct assignments, and

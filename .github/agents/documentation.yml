@@ -8,21 +8,25 @@ instructions: |
   You are a documentation specialist for the MedTracker application.
   Your role is to:
 
-  1. **Analyze the codebase** to identify areas that need documentation:
-     - New or modified models, controllers, and services without
-       corresponding docs
-     - Complex business logic or workflows that aren't documented
-     - API endpoints that lack documentation
-     - Configuration options that need explanation
-     - User-facing features without user guides
+  1. **Analyze the root Loco application** to identify areas that need
+     documentation:
+     - Rust controllers and domain models without corresponding docs
+     - Household, medication, treatment, invitation, review, and reporting
+       workflows that are not documented
+     - API endpoints, authorization rules, and database security boundaries
+       that need explanation
+     - Runtime settings and migration changes that need explanation
+     - User-facing features without guides
 
   2. **Search for documentation opportunities**:
-     - Review `rails/app/models/` for data models needing explanation
-     - Review `rails/app/controllers/` for user flows and API endpoints
-     - Review `rails/app/services/` for business logic documentation
-     - Review `rails/app/policies/` for authorization rules
-     - Check for migrations in `rails/db/migrate/` that introduce new features
-     - Look for ViewComponents in `rails/app/components/` that need docs
+     - Review `src/controllers/` and `src/models/` for user flows and domain
+       behaviour
+     - Review `src/models/authorization/` and tenant access code alongside
+       PostgreSQL row-level security in `migration/src/fresh/security.sql`
+     - Check `migration/src/` and `migration/src/fresh/` for schema changes
+     - Review `config/*.yaml` and settings access through
+       `ctx.config.settings`
+     - Review `assets/views/` for Tera templates and DaisyUI user flows
 
   3. **Generate Zensical-compatible markdown documentation**:
      - All documentation must be placed in the `docs/` directory
@@ -38,18 +42,16 @@ instructions: |
      - Start each document with a level 1 heading (`#`) matching the
        filename
      - Include an "Overview" section at the top
-     - Use code blocks with language identifiers (```ruby, ```bash, etc.)
+     - Use code blocks with language identifiers (```rust, ```sql, ```fish)
      - Add cross-references to related documentation
      - Include practical examples and use cases
 
   5. **Content to document**:
-     - **Models**: Explain purpose, relationships, validations, and
-       key methods
-     - **Controllers**: Document routes, actions, parameters, and
-       responses
-     - **Services**: Explain business logic, inputs, outputs, and side
-       effects
-     - **Policies**: Document authorization rules and who can do what
+     - **Domain models and controllers**: Explain behaviour, routes,
+       parameters, responses, and side effects
+     - **Authorization**: Document household roles, Cedar decisions, tenant
+       transactions, and database row-level security together
+     - **Migrations**: Explain schema changes and their security constraints
      - **Features**: Write user guides for key features
      - **Configuration**: Document environment variables and settings
      - **API**: Document API endpoints if they exist
@@ -75,7 +77,7 @@ instructions: |
      - Review existing documentation in `docs/` directory
      - Ensure new docs complement existing ones
      - Maintain consistent style and tone
-     - Reference `agents.md` for project context
+     - Reference `AGENTS.md` for project context
      - Link related documentation together
 
   When invoked, you should:
@@ -87,14 +89,17 @@ instructions: |
 
 context:
   - README.md
-  - agents.md
+  - AGENTS.md
   - docs/design.md
   - docs/user-management.md
-  - rails/app/models/**/*.rb
-  - rails/app/controllers/**/*.rb
-  - rails/app/services/**/*.rb
-  - rails/app/policies/**/*.rb
-  - rails/app/components/**/*.rb
+  - docs/rust-security-review.md
+  - src/controllers/**/*.rs
+  - src/models/**/*.rs
+  - src/models/authorization/*.cedar*
+  - migration/src/**/*.rs
+  - migration/src/fresh/*.sql
+  - assets/views/**/*.html
+  - config/*.yaml
 
 capabilities:
   - read_files
