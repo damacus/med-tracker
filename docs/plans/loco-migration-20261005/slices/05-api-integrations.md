@@ -117,6 +117,14 @@ Stop dependent work for unresolved contract decisions, ownership collisions,
 failed required checks, unavailable review or oversized PRs. Acceptance,
 publication, merge and deployment are separate; no merge or deployment is granted.
 
+Account correction, 15 October: immutable source `0893879794d009bbb94cc72a0dd5df11aa7f6dfa`
+pins four account rows and 13 proof identities (nine request, four care).
+Dispatcher `36151` executed those proofs; only final acceptance rejected 118
+incomplete operations. Corrective candidate `294f38d93e29309825456c4efdddfc075233f8f4`
+passed full local CI `29691` and same-session review `27798`. The prerequisite
+now passes hosted checks; publication awaits propagation and exact-head gates.
+No new operation credit or native pin change is claimed; see `../progress.md`.
+
 Account evidence, 14 October: source candidate `2ae0b911` has four exact operation
 records, exercised by 13 credited request/database tests through dispatcher
 `58221`. Its final completion gate correctly rejects 118 remaining operations;
