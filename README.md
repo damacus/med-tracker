@@ -1,26 +1,26 @@
-# MedTracker
+# Med-Tracker
 
 [![CI](https://github.com/damacus/med-tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/damacus/med-tracker/actions/workflows/ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/damacus/med-tracker)](https://github.com/damacus/med-tracker/releases)
 [![License](https://img.shields.io/github/license/damacus/med-tracker)](LICENSE)
 
-MedTracker is an open-source, self-hosted medication tracker for individuals,
+Med-Tracker is an open-source, self-hosted medication tracker for individuals,
 families, and carers. It supports household medication schedules, dose
 recording, stock tracking, reminders, and auditable history.
 
 > [!IMPORTANT]
-> MedTracker is currently in beta. It should supplement your
+> Med-Tracker is currently in beta. It should supplement your
 > existing medication routine. Do not depend on it for clinical decisions,
 > emergency information, or your sole medication reminders, and do not use it
 > as a replacement for established care.
 
-![MedTracker dashboard showing today's medication schedule, dose status, and stock](docs/screenshots/dashboard-desktop.png)
+![Med-Tracker dashboard showing today's medication schedule, dose status, and stock](docs/screenshots/dashboard-desktop.png)
 
-## Why MedTracker?
+## Why Med-Tracker?
 
 Medication management is rarely just a list of pills. When care is shared,
 families need to know what is due, what has already happened, whether supplies
-are running low, and who recorded each action. MedTracker brings that context
+are running low, and who recorded each action. Med-Tracker brings that context
 together without handing control of it to a hosted service.
 
 - See today's medication routine for everyone you care for in one place
@@ -28,14 +28,16 @@ together without handing control of it to a hosted service.
 - Spot low stock before it becomes a last-minute problem
 - Coordinate care for children, dependent adults, and other household members
 - Keep an attributable record of who did what and when
-- Run MedTracker on infrastructure you control
+- Run Med-Tracker on infrastructure you control
 
 ## Migration checkout
 
 This branch makes Loco 1.2 the root Rust application and retains Rails under
-`rails/` as the reference and rollback runtime. The foundation currently exposes
+`rails/` as read-only reference code. The foundation currently exposes
 `/up`, framework database readiness at `/_health`, and a Tera landing page.
-Product workflows remain migration work; use Rails for the existing application.
+The accepted fresh Rust architecture is recorded in
+[ADRs 0013–0016](docs/design.md#accepted-rust-direction). These decisions do not
+certify implementation acceptance.
 
 Use `task deps` once to resolve dependencies, `task build` to compile and `task ci`
 to verify Loco. Set `DATABASE_URL` to a dedicated PostgreSQL 18 database and run
@@ -49,7 +51,7 @@ verification at a live database. See [database setup](docs/testing.md#loco-datab
 
 ## Try the Rails self-hosted beta
 
-We are looking for technically confident self-hosters to run MedTracker and try
+We are looking for technically confident self-hosters to run Med-Tracker and try
 the journey from household setup to recording doses. Tell us where the app is
 confusing or unreliable.
 
@@ -75,7 +77,7 @@ production-style installation.
 
 ## Share feedback
 
-GitHub is the main home for MedTracker feedback:
+GitHub is the main home for Med-Tracker feedback:
 
 - [Start a Discussion](https://github.com/damacus/med-tracker/discussions) for
   questions, early impressions, and self-hosting help

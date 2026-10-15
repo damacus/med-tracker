@@ -75,7 +75,7 @@ instructions: |
      - Review existing documentation in `docs/` directory
      - Ensure new docs complement existing ones
      - Maintain consistent style and tone
-     - Reference `agents.md` for project context
+     - Reference `AGENTS.md` for project context
      - Link related documentation together
 
   When invoked, you should:
@@ -87,7 +87,7 @@ instructions: |
 
 context:
   - README.md
-  - agents.md
+  - AGENTS.md
   - docs/design.md
   - docs/user-management.md
   - rails/app/models/**/*.rb

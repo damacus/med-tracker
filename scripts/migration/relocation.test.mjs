@@ -40,8 +40,16 @@ test('release metadata locates its existing Rails version source', () => {
   assert.ok(existsSync(config.packages['.']['version-file']));
 });
 
-test('agent guides remain identical', () => {
-  assert.deepEqual(readFileSync('AGENTS.md'), readFileSync('agents.md'));
+test('one root agent guide requires local Rust skills and a read-only Rails guide', () => {
+  const guides = execFileSync('git', ['ls-files'], { encoding: 'utf8' }).split('\n');
+  assert.ok(guides.includes('AGENTS.md'));
+  assert.equal(guides.includes('agents.md'), false);
+  assert.equal(existsSync('CLAUDE.md'), false);
+  for (const skill of ['rust-loco-architecture', 'rust-migration-and-tooling', 'rust-drift-audit']) {
+    assert.ok(readFileSync('AGENTS.md', 'utf8').includes(skill));
+    assert.ok(existsSync(`.agents/skills/${skill}/SKILL.md`));
+  }
+  assert.match(readFileSync('rails/AGENTS.md', 'utf8'), /read-only/i);
 });
 
 test('host Rails ignore rules remain readable by Git and match the canonical rules', () => {
