@@ -264,6 +264,22 @@ test('API v1 contract task selects the native request binary and focused filter'
 });
 
 const creditedRequestTests = [
+  'api_v1::household_memberships::membership_audit_failure_hides_reads_and_rolls_back_writes',
+  'api_v1::household_memberships::membership_collection_scopes_three_credentials_and_validates_schema',
+  'api_v1::household_memberships::membership_delete_revokes_target_with_each_credential',
+  'api_v1::household_memberships::membership_routes_recheck_current_manager_and_withdrawn_membership',
+  'api_v1::household_memberships::membership_routes_reject_invalid_revoked_smart_and_insufficient_scope_credentials',
+  'api_v1::household_memberships::membership_routes_share_fixed_general_rate_limit_without_domain_effects',
+  'api_v1::household_memberships::membership_status_change_invalidates_its_own_live_session',
+  'api_v1::household_memberships::membership_updates_validate_fields_and_preserve_last_owner',
+  'api_v1::household_memberships::membership_write_methods_save_current_target_and_return_method_schemas',
+  'api_v1::household_memberships::membership_writes_distinguish_foreign_absent_and_invalid_targets_without_changes',
+  'api_v1::household_memberships::patch_membership_keyed_replay_commits_once',
+  'api_v1::household_memberships::patch_membership_overlap_replays_one_write',
+  'api_v1::household_memberships::put_membership_keyed_replay_commits_once',
+  'api_v1::household_memberships::put_membership_overlap_replays_one_write',
+  'api_v1::household_memberships::delete_membership_keyed_replay_commits_once',
+  'api_v1::household_memberships::delete_membership_overlap_replays_one_write',
   'api_v1::household_settings::settings_audit_failure_hides_read_and_rolls_back_both_write_methods',
   'api_v1::household_settings::settings_current_manage_permission_blocks_writes_without_domain_effects',
   'api_v1::household_settings::settings_methods_reject_invalid_revoked_and_wrong_namespace_credentials',

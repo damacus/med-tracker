@@ -10,6 +10,13 @@ FHIR/SMART and MCP adapt the same authorised operations; external services use m
 
 ## Global constraints
 
+Membership execution on 15 October pins tested revision `20119ffb` and records
+all 17 real request/metadata cases passing. Four operation rows remain partial,
+with exact proof identities and unresolved boundaries retained. The dispatcher
+still rejects whole-API completion for 117 incomplete operations. See
+[the current progress record](../progress.md) for failures, corrections and gates;
+full CI, independent review and publication are still required.
+
 C1–C3 supply care operations; I3 supplies protocol flows. Queue infrastructure from W1 precedes
 any endpoint that enqueues work. No private compatibility adapter becomes a second business-logic owner.
 Writer owns API/integration code; existing contracts/native pinned files are reference inputs.

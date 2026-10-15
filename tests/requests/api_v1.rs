@@ -8,6 +8,8 @@ mod contract;
 mod fixture;
 #[path = "household_memberships.rs"]
 mod household_memberships;
+#[path = "household_memberships_evidence.rs"]
+mod household_memberships_evidence;
 #[path = "household_settings.rs"]
 mod household_settings;
 #[path = "household_settings_evidence.rs"]
@@ -174,6 +176,16 @@ fn inventory() -> BTreeMap<(String, String), Value> {
 }
 
 fn validate_evidence(entry: &Value) -> Result<(), String> {
+    if let Some(expected) =
+        household_memberships_evidence::expected(entry["operation_id"].as_str().unwrap_or(""))
+    {
+        for field in ["coverage", "candidate_revision", "gaps", "evidence"] {
+            if entry[field] != expected[field] {
+                return Err(format!("Unsupported membership evidence field: {field}"));
+            }
+        }
+        return Ok(());
+    }
     if let Some(expected) =
         household_settings_evidence::expected(entry["operation_id"].as_str().unwrap_or(""))
     {
@@ -523,6 +535,15 @@ fn validate_metadata(document: &Value, entry: &Value) {
         }
     }
     let candidate_revision = match entry["operation_id"].as_str() {
+        Some("listMemberships" | "updateMembership" | "replaceMembership" | "deleteMembership") => {
+            let expected =
+                household_memberships_evidence::expected(entry["operation_id"].as_str().unwrap())
+                    .unwrap();
+            Some((
+                household_memberships_evidence::REVISION,
+                expected["gaps"].clone(),
+            ))
+        }
         Some(
             "getHouseholdAdminSettings"
             | "updateHouseholdAdminSettings"

@@ -8,7 +8,7 @@ migration areas stay in scope. No live deployment has occurred.
 
 ### Membership contracts execute through Loco, 15 October 2026
 
-The membership writer now inherits settings `fd1d0e02`, including reviewed
+The membership writer now inherits local settings `336d8ab4`, including reviewed
 People/profile/avatar overlap corrections. The coordinator preserved and
 reapplied only three owned draft paths, verified both module backups and
 removed only its recorded stash; pre-existing stash SHAs are unchanged.
@@ -18,11 +18,21 @@ authorization already locks the household first; one target session fixture
 lacked its linked active user/person. Genuine metadata failures identified
 three missing Idempotency-Key parameters and four existing 500 responses.
 After these bounded test and metadata corrections, run `3326` passed all 17
-cases. The module SHA-256 is
-`be4f59deb6b4378b61fb7f66fdf57c9a8383e04c83e1a573cc5d82a0439ebdb2`;
-immutable tested revision is `0dd17f5b88081726c832032d7bc0edcf6efbf16b`.
-No production correction was needed. Evidence guards, cumulative gates,
-independent review and publication remain pending; no operation credit yet.
+cases on historical source `0dd17f5b`. Initial guard RED `28491` rejected
+unsupported proposed evidence; GREEN `81321` passed after four partial rows.
+Strict lint `50371` then found one needless borrow in the test. That test-only
+correction passed all 17 cases in `22198` and lint `6938`, yielding immutable
+tested revision `20119ffba412db94a287d7bc8138e2f4f4fb17c4`, module SHA-256
+`543a774fb4be2b99a700e6f4a875a133f0682ce3126e223b3da6f118524ad59c`.
+Freshness RED `75767` rejected old `0dd17f5b`; exactly four repinned rows passed
+guard `30811`, inventory `11866` (132 passed, one ignored, one filtered),
+runner `84462` (48/48) and strict lint `54102`. Dispatcher `27466` passed
+132 request cases and 524 care cases (two ignored), then rejected only the
+117 incomplete operations at final acceptance. All 16 unique credited
+membership request identities actually passed; none were missing.
+No production correction was needed. Four operations remain partial; further
+credential and in-flight withdrawal assertions are being prepared. Full CI,
+independent review, publication and hosted acceptance remain pending.
 
 ### Household settings local stack propagation, 15 October 2026
 
