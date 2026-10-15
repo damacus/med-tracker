@@ -32,8 +32,8 @@ use input::{
     decimal, identifier, numeric_10_2, optional_string, positive_integer, required_string,
     whole_hours,
 };
-fn database_error(_: sea_orm::DbErr) -> OperationError {
-    OperationError::Unavailable
+fn database_error(error: sea_orm::DbErr) -> OperationError {
+    OperationError::from(error)
 }
 fn parse_decimal(value: &Value) -> Option<Decimal> {
     value

@@ -35,8 +35,8 @@ fn invalid() -> OperationError {
         details: json!({"errors":{"dosage_option":["is invalid"]}}),
     }
 }
-fn database_error(_: sea_orm::DbErr) -> OperationError {
-    OperationError::Unavailable
+fn database_error(error: sea_orm::DbErr) -> OperationError {
+    OperationError::from(error)
 }
 
 pub async fn can_manage(tenant: &TenantTransaction) -> Result<bool, OperationError> {
