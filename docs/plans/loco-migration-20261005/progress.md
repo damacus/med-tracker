@@ -1,12 +1,48 @@
 # Migration progress
 
-Updated 14 October 2026. Complete every slice in [the plan](plan.md).
+Updated 15 October 2026. Complete every slice in [the plan](plan.md).
 Foundation is accepted. The verified baseline PR #2451 is merged; all remaining
 migration areas stay in scope. No live deployment has occurred.
 
 ## Current delivery
 
-### s05-i01 — API contract completion, 14 October 2026
+### s05-i01 — API contract completion, 15 October 2026
+
+### Account overlap evidence correction, 15 October
+
+The coordinator owns this correction to PR #2636 on
+`codex/s05-i01-account-sessions`, base `630a7f016d364becfb682b855a7da0c57c0b7f7c`.
+Its previously published head is `451c357c4f71539bf62056c5ac0459d235528a63`.
+The later settings review exposed that client barriers alone do not prove
+handler overlap. This audit also applies to account revocation and logout;
+their old complete labels require stronger evidence before whole-API acceptance.
+The test-only correction holds each target credential row and observes two
+distinct restricted-role UPDATE waiters, tied to the controlled holder, before
+release. A bounded condition check releases on timeout, and assertions follow
+fixture cleanup. No production race or runtime correction is claimed.
+
+Immutable tested source `0893879794d009bbb94cc72a0dd5df11aa7f6dfa` passed focused
+`87259` (one case), all ten account cases `45760`, and strict lint `79310`.
+Nine of those ten cases are credited request proofs; the tenth checks metadata.
+The independent guard now positively validates all four account rows before its
+tamper negatives. RED `46302` executed one case and rejected stale revision
+`2ae0b911`; after exactly four inventory-row updates, GREEN `73360` passed.
+The proof labels now explicitly require two target-UPDATE waiters before release.
+Inventory `3820` passed 45 cases with one intentional completion ignore;
+runner `75633` passed 47/47 and strict lint `92718` passed. Dispatcher `36151`
+passed 45 inventory cases, 522 care cases with two ignored, then 45 request
+cases before rejecting only final acceptance for 118 incomplete operations.
+All 13 credited identities executed: nine request proofs and four care proofs.
+The fourth care proof identifies separate same-application mobile grants in
+their audits; it must not be omitted from the executed evidence count.
+This earlier stack layer lacks the later capability credit, so its remaining
+count is 118 while the published upper stack reports 117. Neither is completion.
+Same-session review, cumulative CI and publication remain pending.
+Native pins and production code are unchanged. The unrelated
+Serena configuration is preserved and excluded from commits. Later People and
+profile/avatar proof drafts remain unexecuted; membership execution stays held
+until lower corrections are published and propagated. Older entries below retain
+their original revisions and results as history.
 
 The API coordinator owns integration, contracts and evidence; one API writer
 owns account implementation/tests and one verifier owns the serial heavy lane.
