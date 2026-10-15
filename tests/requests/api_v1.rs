@@ -11,7 +11,7 @@ use loco_rs::{
     config::{Config, QueueConfig},
     environment::Environment,
 };
-use sea_orm::{ConnectionTrait, DbBackend, Statement};
+use sea_orm::{ConnectionTrait, DbBackend, Statement, TransactionTrait};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
@@ -964,6 +964,60 @@ pub mod rate_limit {
     }
 }
 
+async fn overlap_requests_at_row_lock<A, B>(
+    fixture: &Fixture,
+    lock_sql: &str,
+    wait_query_pattern: &str,
+    first: A,
+    second: B,
+) -> (A::Output, B::Output, bool)
+where
+    A: std::future::Future,
+    B: std::future::Future,
+{
+    let blocker = fixture.admin.begin().await.unwrap();
+    let row = blocker
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT pg_backend_pid() AS pid",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    let blocker_pid = row.try_get::<i32>("", "pid").unwrap();
+    blocker
+        .query_one_raw(Statement::from_string(DbBackend::Postgres, lock_sql))
+        .await
+        .unwrap()
+        .unwrap();
+    let runtime_role = url::Url::parse(&fixture.runtime_uri)
+        .unwrap()
+        .username()
+        .to_owned();
+    let release = async {
+        let observed = tokio::time::timeout(std::time::Duration::from_secs(10), async {
+            loop {
+                let row = fixture.admin.query_one_raw(Statement::from_sql_and_values(
+                    DbBackend::Postgres,
+                    "SELECT count(DISTINCT pid) AS waiting, count(DISTINCT pid) FILTER (WHERE $2::int=ANY(pg_blocking_pids(pid))) AS held_waiters FROM pg_stat_activity WHERE datname=current_database() AND usename=$1 AND wait_event_type='Lock' AND query LIKE $3 AND cardinality(pg_blocking_pids(pid))>0",
+                    [runtime_role.clone().into(), blocker_pid.into(), wait_query_pattern.into()],
+                )).await.unwrap().unwrap();
+                if row.try_get::<i64>("", "waiting").unwrap() == 2
+                    && row.try_get::<i64>("", "held_waiters").unwrap() >= 1
+                {
+                    break true;
+                }
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .unwrap_or(false);
+        blocker.commit().await.unwrap();
+        observed
+    };
+    tokio::join!(first, second, release)
+}
+
 pub mod account {
     use super::*;
     use axum::http::Method;
@@ -1873,8 +1927,11 @@ pub mod account {
         )).await.unwrap();
         let request = server(&boot);
 
-        let start = std::sync::Arc::new(tokio::sync::Barrier::new(3));
-        let (session_first, session_second, _) = tokio::join!(
+        let start = std::sync::Arc::new(tokio::sync::Barrier::new(2));
+        let (session_first, session_second, session_overlapped) = overlap_requests_at_row_lock(
+            &fixture,
+            "SELECT id FROM api_sessions WHERE id=88002 FOR UPDATE",
+            "UPDATE api_sessions SET revoked_at=%",
             async {
                 start.wait().await;
                 request
@@ -1889,11 +1946,14 @@ pub mod account {
                     .add_header("authorization", "Bearer synthetic-app-token")
                     .await
             },
-            async { start.wait().await }
-        );
+        )
+        .await;
 
-        let start = std::sync::Arc::new(tokio::sync::Barrier::new(3));
-        let (mobile_first, mobile_second, _) = tokio::join!(
+        let start = std::sync::Arc::new(tokio::sync::Barrier::new(2));
+        let (mobile_first, mobile_second, mobile_overlapped) = overlap_requests_at_row_lock(
+            &fixture,
+            "SELECT id FROM oauth_grants WHERE id=76006 FOR UPDATE",
+            "UPDATE oauth_grants SET revoked_at=%",
             async {
                 start.wait().await;
                 request
@@ -1908,11 +1968,14 @@ pub mod account {
                     .add_header("authorization", format!("Bearer {other_mobile}"))
                     .await
             },
-            async { start.wait().await }
-        );
+        )
+        .await;
 
-        let start = std::sync::Arc::new(tokio::sync::Barrier::new(3));
-        let (logout_first, logout_second, _) = tokio::join!(
+        let start = std::sync::Arc::new(tokio::sync::Barrier::new(2));
+        let (logout_first, logout_second, logout_overlapped) = overlap_requests_at_row_lock(
+            &fixture,
+            "SELECT id FROM api_app_tokens WHERE id=88010 FOR UPDATE",
+            "UPDATE api_app_tokens SET revoked_at=%",
             async {
                 start.wait().await;
                 request
@@ -1927,8 +1990,8 @@ pub mod account {
                     .add_header("authorization", "Bearer synthetic-app-token")
                     .await
             },
-            async { start.wait().await }
-        );
+        )
+        .await;
 
         let effects = fixture.admin.query_one_raw(Statement::from_string(
             DbBackend::Postgres,
@@ -1944,6 +2007,16 @@ pub mod account {
         );
         drop(request);
         close(fixture, boot).await;
+
+        assert!(
+            session_overlapped,
+            "two API session revocations reached the target lock"
+        );
+        assert!(
+            mobile_overlapped,
+            "two mobile revocations reached the target lock"
+        );
+        assert!(logout_overlapped, "two app logouts reached the target lock");
 
         for (label, pair) in [
             ("API session", [session_first, session_second]),
