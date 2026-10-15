@@ -59,16 +59,28 @@ test('host Rails ignore rules remain readable by Git and match the canonical rul
   assert.deepEqual(readFileSync('rails/.gitignore'), readFileSync('.gitignore'));
 });
 
-test('documentation agent context globs select existing Ruby source', () => {
+test('documentation agent context globs select existing Rust, Tera and config sources', () => {
   const source = readFileSync('.github/agents/documentation.yml', 'utf8');
   const context = source.split('\ncontext:\n')[1].split('\ncapabilities:')[0];
-  const globs = context.split('\n').filter(line => line.endsWith('/**/*.rb')).map(line => line.trim().slice(2));
-  assert.equal(globs.length, 5);
-  for (const glob of globs) {
-    const directory = glob.slice(0, -'/**/*.rb'.length);
+  const sourceGroups = [
+    ['src/controllers/**/*.rs', 'src/controllers', /\.rs\n/],
+    ['src/models/**/*.rs', 'src/models', /\.rs\n/],
+    ['migration/src/**/*.rs', 'migration/src', /\.rs\n/],
+    ['migration/src/fresh/*.sql', 'migration/src/fresh', /\.sql\n/],
+    ['src/models/authorization/*.cedar*', 'src/models/authorization', /\.cedar(?:schema)?\n/],
+    ['assets/views/**/*.html', 'assets/views', /\.html\n/],
+    ['config/*.yaml', 'config', /\.yaml\n/],
+  ];
+  for (const [glob, directory, filePattern] of sourceGroups) {
+    assert.ok(context.split('\n').some(line => line.trim() === `- ${glob}`), `Documentation context missing: ${glob}`);
     assert.ok(existsSync(directory), `Documentation source context missing: ${glob}`);
-    assert.match(execFileSync('rg', ['--files', directory], { encoding: 'utf8' }), /\.rb\n/);
+    assert.match(execFileSync('rg', ['--files', directory], { encoding: 'utf8' }), filePattern);
   }
+  for (const line of context.split('\n').filter(line => line.trim().startsWith('- '))) {
+    const path = line.trim().slice(2);
+    if (!path.includes('*')) assert.ok(existsSync(path), `Documentation context path missing: ${path}`);
+  }
+  assert.doesNotMatch(context, /rails\/|\.rb(?:\s|$)/i);
 });
 
 test('Git textconv dispatch resolves the relocated Rails entrypoint using synthetic input', () => {
