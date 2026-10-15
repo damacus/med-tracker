@@ -19,7 +19,7 @@ exact source scope. No new operation credit, PR merge or deployment is claimed.
 
 ### Capabilities local stack propagation, 15 October 2026
 
-The coordinator integrates local predecessor `24ed1cd81095719f8b04cd90ccd529495ca27b8b` into
+The coordinator integrates published predecessor `1a2e59bcbb528d15b0e5ce9937b18fc3d0d07484` into
 PR [#2639](https://github.com/damacus/med-tracker/pull/2639), retaining
 previous head `022854c80a921d2601970b5bad03ec8e950d6fd9` and all existing proof ancestors.
 This ordinary branch merge carries the verified lower correction and account
@@ -28,16 +28,39 @@ retained; fresh focused checks, cumulative CI, independent review and publicatio
 remain pending on the integrated candidate. Earlier results below retain their
 exact source scope. No new operation credit, PR merge or deployment is claimed.
 
-### Request-ID local stack propagation, 15 October 2026
+### Request-ID successor passes cumulative CI, 15 October 2026
 
-The coordinator integrates local predecessor `52a06b6a19209d0c48b55ca7b8224115d307e905` into
-PR [#2637](https://github.com/damacus/med-tracker/pull/2637), retaining
-previous head `adfe373fa79bd575d53db6b25f17e76f7600352a` and all existing proof ancestors.
-This ordinary branch merge carries the verified lower correction and account
-evidence without rewriting proof revisions. The layer's original source is
-retained; fresh focused checks, cumulative CI, independent review and publication
-remain pending on the integrated candidate. Earlier results below retain their
-exact source scope. No new operation credit, PR merge or deployment is claimed.
+The coordinator integrates published account `1178c11491e434e9cbfba5d739ebd9a6d8d0cf93`
+into PR [#2637](https://github.com/damacus/med-tracker/pull/2637), preserving
+previous head `adfe373fa79bd575d53db6b25f17e76f7600352a` and all proof ancestors.
+Both production files and the complete rate-limit test module are unchanged.
+Resumed Devin session `smart-hallway` accepted source `3000e9f2` in review
+`68995` (SWE-2 Max, 15 steps); coordinator owns integration and publication.
+The verifier's first rerun `93506` stopped at linker ENOSPC before any tests.
+No cache was deleted: scoped Task settings moved this lane to an owned internal
+build directory. Rate `81309` passed 9/9, account `15905` passed 10/10,
+HTTP units `30016` passed 3/3, inventory `16343` passed 47 (one ignored),
+runner `87371` passed 47/47 and strict lint `49313` passed.
+Full CI `92048` then passed on exact `3000e9f20aae75aeb16cc5bcf0938b6dae9a4e1a`:
+113 units, 47 requests (one ignored), 508 care cases (two ignored, 14 filtered)
+and all 744 desktop/mobile browser cases in 19.4 minutes. The HEAD/GET shared
+rate-bucket test also passed. Root independently verified and reversed only
+39 generated PNG changes; all 1,093 baseline hashes pass and source is clean.
+Final documentation checks/review, publication and exact-head hosted checks
+remain pending. Earlier results retain their exact scope; no new operation
+credit, whole-API acceptance, PR merge or deployment is claimed.
+
+Subsequent final docs `20967` passed, and same-session review `92487`
+accepted the progress-only commit (SWE-2 Max, 17 steps). Request-ID head
+`1a2e59bcbb528d15b0e5ce9937b18fc3d0d07484` is published, 427 changed
+lines against account `1178c114`; fresh hosted checks run in `38691350791`.
+This updates publication only; hosted acceptance remains pending.
+
+Account predecessor `1178c114` is hosted accepted: run `38684411332`
+finished all 44 checks (30 succeeded, 14 skipped), aggregate `116259564959`
+passed. Root verified coverage artifact `11949803598`, its digest and source
+`0ef19dd4`; its tree matches the published head. Added runtime lines cover
+27/27; retained account paths and general coverage gaps remain explicit.
 
 ### Account stack propagation, 15 October 2026
 
