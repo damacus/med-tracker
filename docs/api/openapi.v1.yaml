@@ -4132,6 +4132,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /households/{household_id}/admin/memberships/{id}:
     patch:
       operationId: updateMembership
@@ -4142,6 +4144,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/household_id"
         - $ref: "#/components/parameters/id"
+        - $ref: "#/components/parameters/idempotency_key"
       requestBody:
         required: true
         content:
@@ -4169,6 +4172,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
     put:
       operationId: replaceMembership
       tags:
@@ -4178,6 +4183,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/household_id"
         - $ref: "#/components/parameters/id"
+        - $ref: "#/components/parameters/idempotency_key"
       requestBody:
         required: true
         content:
@@ -4205,6 +4211,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
     delete:
       operationId: deleteMembership
       tags:
@@ -4214,6 +4222,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/household_id"
         - $ref: "#/components/parameters/id"
+        - $ref: "#/components/parameters/idempotency_key"
       responses:
         "204":
           description: Membership revoked.
@@ -4229,6 +4238,8 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /households/{household_id}/admin/invitations:
     get:
       operationId: listInvitations

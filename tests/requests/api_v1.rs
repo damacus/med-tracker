@@ -6,6 +6,8 @@ mod capabilities;
 mod contract;
 #[path = "../care_api/fixture.rs"]
 mod fixture;
+#[path = "household_memberships.rs"]
+mod household_memberships;
 #[path = "household_settings.rs"]
 mod household_settings;
 #[path = "household_settings_evidence.rs"]
@@ -96,7 +98,7 @@ fn operations() -> BTreeMap<(String, String), Value> {
     let source = include_str!("../../docs/api/openapi.v1.yaml");
     assert_eq!(
         hex::encode(Sha256::digest(source.as_bytes())),
-        "361c9e366b28fc632f6bafecdc1c85f80e2ea31a75f25c350bdaedf2ed6d88cd",
+        "8e7ed35092ad445380725330a3238a5d65d5993affbfee5f1e5fa312028b2e52",
         "The full API schema or headers changed; refresh the operation inventory and its evidence"
     );
     let document: Value = serde_yaml_ng::from_str(source).unwrap();
