@@ -17,10 +17,11 @@ test('hosted archive workers install the pinned runner before Task and lint inst
   const pinned = readFileSync('mise.toml', 'utf8');
   const nextest = pinned.match(/"cargo:cargo-nextest" = "([^"]+)"/)?.[1];
   const machete = pinned.match(/"cargo:cargo-machete" = "([^"]+)"/)?.[1];
-  for (const [jobName, nextJob] of [['loco_foundation', 'loco_lint'], ['loco_integration', 'loco_browser']]) {
+  for (const [jobName, nextJob] of [['loco_foundation', 'loco_lint'], ['loco_coverage', 'loco_integration'], ['loco_integration', 'loco_browser']]) {
     const job = workflow.split(`  ${jobName}:`)[1].split(`  ${nextJob}:`)[0];
     assert.ok(job.indexOf(`cargo-nextest@${nextest}`) >= 0);
-    assert.ok(job.indexOf(`cargo-nextest@${nextest}`) < job.indexOf(jobName === 'loco_foundation' ? 'run: task test:unit' : 'run: task test:integration'));
+    const task = jobName === 'loco_foundation' ? 'run: task test:unit' : jobName === 'loco_coverage' ? 'run: task test:coverage' : 'run: task test:integration';
+    assert.ok(job.indexOf(`cargo-nextest@${nextest}`) < job.indexOf(task));
     assert.match(job, /taiki-e\/install-action@9983c65e42da123ff25d1f78505eb6de315aa172/);
   }
   const lint = workflow.split('  loco_lint:')[1].split('  loco_coverage:')[0];

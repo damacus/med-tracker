@@ -1,0 +1,46 @@
+glob_matcher: doublestar
+
+pre-commit:
+  jobs:
+    - name: rust-format
+      glob:
+        - "{src,tests,migration}/**/*.rs"
+        - "client-tools/**/*.rs"
+        - "Cargo.{toml,lock}"
+        - "client-tools/**/Cargo.{toml,lock}"
+        - "build.rs"
+      run: task fmt client-tools:fmt:check
+
+pre-push:
+  piped: true
+  jobs:
+    - name: loco-quality
+      glob:
+        - "{src,tests,migration,assets,config}/**"
+        - "scripts/{migration,ci,frontend}/**"
+        - "Taskfiles/{ci,frontend,browser-care}.yml"
+        - "Cargo.{toml,lock}"
+        - "build.rs"
+        - "package{,-lock}.json"
+        - "playwright.config.mjs"
+        - "scripts/build-scanner.mjs"
+        - ".cargo/**"
+        - "rust-toolchain{,.toml}"
+        - ".github/workflows/ci.yml"
+        - "docs/api/openapi.v1.yaml"
+        - "Taskfile.yml"
+        - "{mise,deny}.toml"
+        - "lefthook.yml"
+      exclude:
+        - "**/*.md"
+      run: task ci
+    - name: client-tools-quality
+      glob:
+        - "client-tools/**"
+        - "{mise,deny}.toml"
+        - "lefthook.yml"
+        - ".github/workflows/{ci,client-tools-release}.yml"
+        - "docs/api/openapi.v1.yaml"
+      exclude:
+        - "**/*.md"
+      run: task client-tools:ci

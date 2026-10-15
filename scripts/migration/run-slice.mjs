@@ -39,22 +39,29 @@ export async function sourceIdentity(environment, ownedReportDirectory, checkout
   return { revision, dirty: status.length > 0, sha256: hash.digest('hex') };
 }
 
-async function runCargo(args, databaseUrl, inheritedEnvironment, signal, coverageEnvironment, { controlledCapture = false } = {}) {
+async function runCargo(args, databaseUrl, inheritedEnvironment, signal, coverageEnvironment, { controlledCapture = false, captureOutput = false } = {}) {
   signal.throwIfAborted();
   const environment = { ...(coverageEnvironment ? withoutCoverageOverrides(inheritedEnvironment) : inheritedEnvironment), ...coverageEnvironment, DATABASE_URL: databaseUrl, MEDTRACKER_OWNED_DATABASE: '1', MEDTRACKER_SESSION_KEY: Buffer.alloc(64, 7).toString('base64'), RAILS_SECRET_KEY_BASE: 'synthetic-slice-rails-verification-secret' };
   if (controlledCapture) delete environment.RUST_TEST_NOCAPTURE;
   for (const name of ['COMPOSE_FILE', 'COMPOSE_PROJECT_NAME', 'COMPOSE_PROFILES', 'DOCKER_HOST', 'DOCKER_CONTEXT', 'DOCKER_CONFIG', 'DOCKER_TLS_VERIFY', 'DOCKER_CERT_PATH']) delete environment[name];
-  const child = spawn('cargo', args, { cwd: root, env: environment, detached: true, stdio: 'inherit' });
+  const child = spawn('cargo', args, { cwd: root, env: environment, detached: true, stdio: captureOutput ? ['inherit', 'pipe', 'inherit'] : 'inherit' });
   let timer;
   let interrupt;
   let failed = false;
   try {
     return await new Promise((resolve, reject) => {
+      const chunks = [];
+      let bytes = 0;
+      if (captureOutput) child.stdout.on('data', chunk => {
+        bytes += chunk.length;
+        if (bytes > 16 * 1024 * 1024) reject(new Error('Slice Cargo inventory exceeded size limit'));
+        else chunks.push(chunk);
+      });
       interrupt = () => reject(signal.reason);
       signal.addEventListener('abort', interrupt, { once: true });
       timer = setTimeout(() => reject(new Error('Slice Cargo execution exceeded 30 minutes')), 1800000);
       child.once('error', reject);
-      child.once('close', code => code === 0 ? resolve() : reject(new Error(`Slice Cargo execution exited ${code}`)));
+      child.once('close', code => code === 0 ? resolve(captureOutput ? Buffer.concat(chunks).toString('utf8') : undefined) : reject(new Error(`Slice Cargo execution exited ${code}`)));
     });
   } catch (error) {
     failed = true;
@@ -67,6 +74,19 @@ async function runCargo(args, databaseUrl, inheritedEnvironment, signal, coverag
       process.stderr.write(`Slice child cleanup failed: ${error.message}\n`);
     }
   }
+}
+
+function coverageSelection(listing, binary, filter = '') {
+  const suites = listing?.['rust-suites'];
+  if (!Number.isSafeInteger(listing?.['test-count']) || listing['test-count'] <= 0 || !suites || Object.keys(suites).length !== 1) throw new Error('Missing or incomplete nextest coverage inventory');
+  const suite = suites[binary];
+  if (!suite || suite['binary-id'] !== binary || suite.status !== 'listed' || !suite.testcases || typeof suite.testcases !== 'object') throw new Error(`Unexpected nextest coverage binary: ${binary}`);
+  const cases = Object.entries(suite.testcases);
+  if (cases.length !== listing['test-count'] || cases.some(([name, details]) => !/^[A-Za-z0-9_]+(?:::[A-Za-z0-9_]+)*$/.test(name) || typeof details?.ignored !== 'boolean')) throw new Error('Invalid nextest coverage inventory count or case');
+  const passed = cases.filter(([name, details]) => !details.ignored && name.includes(filter)).map(([name]) => name).sort();
+  const ignored = cases.filter(([, details]) => details.ignored).map(([name]) => name).sort();
+  if (!passed.length) throw new Error(`Nextest coverage selected no tests: ${binary}`);
+  return { passed, ignored };
 }
 
 export async function runCoverage({ outputDir = 'target/coverage/reports' } = {}, inheritedEnvironment = process.env) {
@@ -89,10 +109,12 @@ export async function runCoverage({ outputDir = 'target/coverage/reports' } = {}
   process.on('SIGTERM', onTerm);
   process.on('SIGINT', onInt);
   let complete = false;
+  const execution = [];
   try {
     const sourceAtStart = await sourceIdentity(metadataEnvironment);
     const rustc = execFileSync('rustc', ['--version'], { cwd: root, env: metadataEnvironment, encoding: 'utf8' }).trim();
     const cargoLlvmCov = execFileSync('cargo', ['llvm-cov', '--version'], { cwd: root, env: metadataEnvironment, encoding: 'utf8' }).trim();
+    const cargoNextest = execFileSync('cargo', ['nextest', '--version'], { cwd: root, env: metadataEnvironment, encoding: 'utf8' }).split('\n')[0].trim();
     await mkdir(reportDirectory, { recursive: true });
     await withOwnedDatabase(async (url, provision, ownership) => {
       await provision();
@@ -100,9 +122,24 @@ export async function runCoverage({ outputDir = 'target/coverage/reports' } = {}
       const environment = { ...inheritedEnvironment, ...ownership.storageEnvironment, ...scannerEnvironment };
       const run = args => runCargo(['llvm-cov', ...args], url, environment, controller.signal, coverageEnvironment);
       await run(['clean', '--workspace']);
-      await run(['test', '--no-report', '--locked', '--lib']);
-      await run(['test', '--no-report', '--locked', '--test', 'requests', 'api_v1']);
-      await run(['test', '--no-report', '--locked', '--test', 'care_api', '--', '--test-threads=2']);
+      const selections = [
+        { binary: 'med-tracker', args: ['--lib'] },
+        { binary: 'med-tracker::requests', args: ['--test', 'requests'], filter: 'api_v1' },
+        { binary: 'med-tracker::care_api', args: ['--test', 'care_api'] },
+      ];
+      for (const selection of selections) {
+        const listed = await runCargo(['nextest', 'list', '--locked', '-p', 'med-tracker', ...selection.args, '--message-format', 'json'], url, environment, controller.signal, coverageEnvironment, { captureOutput: true });
+        const expected = coverageSelection(JSON.parse(listed), selection.binary, selection.filter);
+        const proof = await (await import('./nextest-proof.mjs')).createNextestProofReport(join(root, 'target'));
+        try {
+          await run(['nextest', '--no-report', '--locked', '-p', 'med-tracker', ...selection.args, '--no-tests=fail', '--retries', '0', '--config-file', proof.configPath, '--profile', 'contract-proof', ...(selection.binary === 'med-tracker::care_api' ? ['--test-threads', '2'] : []), ...(selection.filter ? [selection.filter] : [])]);
+          const actual = await proof.read(selection.binary);
+          if (JSON.stringify([...actual.passed].sort()) !== JSON.stringify(expected.passed) || JSON.stringify([...actual.ignored].sort()) !== JSON.stringify(expected.ignored)) throw new Error(`Nextest coverage execution did not match inventory: ${selection.binary}`);
+          execution.push({ binary: selection.binary, passed: expected.passed, ignored: expected.ignored });
+        } finally {
+          await proof.cleanup();
+        }
+      }
       await run(['report', '--lcov', '--output-path', reportPath]);
     }, undefined, inheritedEnvironment, { storage: true });
     if (!(await readFile(reportPath)).length) throw new Error('Rust coverage report is empty');
@@ -114,7 +151,9 @@ export async function runCoverage({ outputDir = 'target/coverage/reports' } = {}
       source_state: { dirty: sourceAtEnd.dirty, sha256: sourceAtEnd.sha256 },
       rustc,
       cargo_llvm_cov: cargoLlvmCov,
+      cargo_nextest: cargoNextest,
       selectors: ['lib', 'requests:api_v1', 'care_api'],
+      execution,
       report: reportPath,
       generated_at: new Date().toISOString(),
     };

@@ -222,10 +222,19 @@ tasks:
     cmds:
       - task: frontend:install
       - node --test scripts/ci/tests/loco_nextest.test.mjs
+  test:coverage-runner:
+    cmds:
+      - task: frontend:install
+      - node --test --test-name-pattern=coverage scripts/migration/run-slice.test.mjs
+  test:coverage-prerequisite:
+    cmds:
+      - task: frontend:install
+      - node --test --test-name-pattern='coverage Task installs' scripts/migration/run-slice.test.mjs
   test:coverage:
     desc: Report Rust unit and API integration coverage against owned fixtures
     cmds:
       - task: coverage:check
+      - task: frontend:install
       - 'node scripts/migration/run-slice.mjs --coverage --output-dir {{.OUTPUT_DIR | default "target/coverage/reports" | shellQuote}}'
   test:integration:
     desc: Run compiled API, security and database integration tests
