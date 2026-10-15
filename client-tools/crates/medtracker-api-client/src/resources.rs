@@ -16,6 +16,7 @@ pub enum ResourceKind {
 }
 
 impl ResourceKind {
+    #[must_use]
     pub fn path_segment(self) -> &'static str {
         match self {
             Self::People => "people",
@@ -31,11 +32,13 @@ impl ResourceKind {
 }
 
 impl ApiClient {
+    #[doc = "# Errors\nThe profile request fails, is rejected, or cannot be decoded."]
     pub async fn me(&self, household_id: &str) -> Result<Value, ApiError> {
         self.get_data(&format!("/api/v1/households/{household_id}/me"))
             .await
     }
 
+    #[doc = "# Errors\nThe resource request fails, is rejected, or cannot be decoded."]
     pub async fn list_resource(
         &self,
         household_id: &str,

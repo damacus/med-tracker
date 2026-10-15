@@ -105,17 +105,18 @@ mod tests {
         let tools = tool_list();
         let resource_tool = tools
             .iter()
-            .find(|tool| tool.name == "medtracker_resource_list")
-            .unwrap();
+            .find(|tool| tool.name == "medtracker_resource_list");
 
         assert_eq!(tools.len(), 7);
         assert_eq!(
-            resource_tool.input_schema["properties"]["household_id"]["type"],
-            "string"
+            resource_tool
+                .and_then(|tool| tool.input_schema.pointer("/properties/household_id/type"))
+                .and_then(Value::as_str),
+            Some("string")
         );
         assert!(
-            resource_tool.input_schema["properties"]
-                .get("kind")
+            resource_tool
+                .and_then(|tool| tool.input_schema.pointer("/properties/kind"))
                 .is_some()
         );
     }
