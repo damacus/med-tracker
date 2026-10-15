@@ -714,6 +714,25 @@ with two ignored, then passed 113 requests and rejected only final acceptance
 for 117 incomplete operations. Every settings request proof and its six care
 identities executed. The corrected candidate can now resume the same review.
 
+Corrective candidate `96f49c3014130c4ca9fad051fc67603f009e7927` passed the
+resumed independent review `80874`: the same `gorgeous-layer` session,
+SWE-2 Max, 11 steps, ACCEPT with no actionable corrections. Its immutable
+packet SHA-256 is
+`d0e60459e7575a7dc1a9348c4162c39a1b9b2295e00137a32ec959212d674889`.
+Full cumulative `task ci` job `32206` then passed on that exact revision:
+115 Rust units, 113 request cases with two ignored, 16 selected care cases,
+508 broad care cases with two ignored and 16 filtered, all other integration
+shards, and all 744 desktop/mobile browser cases in 19.7 minutes. The verifier
+preserved exactly 41 generated tracked PNG differences. Root independently
+verified their exact paths, current hashes, byte-identical patch and reverse
+applicability, then reversed only that patch. All 1,093 baseline PNG hashes
+match again and the source is clean. Preserved patch SHA-256:
+`d4eb898efe4d08e98c52f450d3c4d15e202987083bc089ff0c34590c74f98a41`.
+The corrected PR is 1,404 changed lines before this result entry, against
+published profile base `9eb729dd`. Final docs and publication follow; the hosted
+thread will be answered only after the correction is pushed. These results do
+not accept the remaining API operations or the older concurrency proof gaps.
+
 A read-only audit found similar overlap gaps in earlier account, People and
 avatar tests: their final outcomes remain useful evidence, but client barriers
 alone do not prove handler overlap. Account revocation/logout rows currently
