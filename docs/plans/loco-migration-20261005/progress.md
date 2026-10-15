@@ -891,6 +891,25 @@ The coordinator owns integration, Git and publication; Sol owns implementation
 and tests; the verifier owns disposable resources and the serial test lane.
 Final documentation checks and publication follow this verified point.
 
+The first published settings head is `a49eaef9`, PR #2644 in stack `2634`,
+1,319 changed lines. Final docs `41536`, pull/rebase and push passed. Hosted Devin
+completed in 1m19s but left an actionable finding: the client barrier permits
+sequential processing and therefore does not prove handler overlap. The
+coordinator verified that gap and held dependent membership execution. The
+writer strengthened only the two existing concurrency cases' shared helper:
+a dedicated transaction holds the household row, API/app requests enter the
+booted router, and both distinct runtime-role lock waiters must be observed
+before release. The bounded database-condition check uses no blind sleeps or
+production hooks. Existing write/replay/conflict assertions remain unchanged.
+This is a stronger behavioural characterisation, not a claimed runtime defect
+or production correction. Focused execution, refreshed evidence, same-session
+review and full CI are required before the correction is published.
+The stronger test source `63a87ceef59462334a1308c79ece5672030b3c101a33660f21a7e4e1c4d585d7`
+passed focused `12085` (13/13, including both lock observations), fresh care
+administration `34102` (14/14) and strict all-target lint `29095`. Runtime,
+OpenAPI and native pins are unchanged. The independent evidence revision is
+being refreshed from this tested source before the same review resumes.
+
 The next membership family is isolated on `codex/s05-i01-household-memberships`,
 with 17 test-only cases prepared for GET, PATCH, PUT and DELETE. Formatting and
 diff checks pass; no runtime changes, contract edits or membership test jobs
