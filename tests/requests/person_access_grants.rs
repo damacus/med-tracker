@@ -680,6 +680,22 @@ async fn person_grant_creation_validation_duplicate_and_relationship_owned_revok
         owned_before.try_get::<bool>("", "revoked").unwrap(),
     );
     let mut replies = Vec::new();
+    let malformed_response = server
+        .method(
+            Method::POST,
+            "/api/v1/households/72001/admin/person_access_grants",
+        )
+        .add_header("authorization", "Bearer profile-session")
+        .content_type("application/json")
+        .text("{")
+        .await;
+    let malformed = collect(
+        malformed_response.status_code().as_u16(),
+        malformed_response.json(),
+        malformed_response.as_bytes().is_empty(),
+        malformed_response.headers(),
+    );
+    let after_malformed = state(&fixture).await;
     for input in [
         json!({"person_access_grant":{"revoked_at":"2000-01-01"}}),
         json!({"person_access_grant":{"household_membership_id":74002,"person_id":73002,"access_level":"owner","relationship_type":"parent"}}),
@@ -736,6 +752,16 @@ async fn person_grant_creation_validation_duplicate_and_relationship_owned_revok
     let after = state(&fixture).await;
     drop(server);
     close(fixture, boot).await;
+    assert_eq!(malformed.status, 400, "{}", malformed.body);
+    assert_eq!(malformed.body["error"]["code"], "bad_request");
+    assert_eq!(
+        malformed.body["error"]["message"],
+        "Invalid JSON request body"
+    );
+    assert!(malformed.body["data"].is_null());
+    assert_eq!(after_malformed, before);
+    assert_wire(&malformed);
+    assert_schema("post", &malformed);
     assert_eq!(replies[0].status, 400);
     for reply in replies.iter().skip(1) {
         assert_eq!(reply.status, 422, "{}", reply.body);
