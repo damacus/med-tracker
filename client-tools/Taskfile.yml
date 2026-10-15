@@ -1,26 +1,69 @@
 version: "3"
 
 tasks:
+  test:taskfile:
+    dir: "{{.TASKFILE_DIR}}"
+    desc: Check the client tools CI gate commands and order
+    cmds:
+      - fish scripts/check-task-gates.fish
+      - fish scripts/check-unused-deps-regression.fish
+
   fmt:
     dir: "{{.TASKFILE_DIR}}"
     desc: Format Rust client tools
     cmds:
       - cargo fmt --manifest-path Cargo.toml --all
 
+  fmt:check:
+    dir: "{{.TASKFILE_DIR}}"
+    desc: Check Rust client tools formatting without changing files
+    cmds:
+      - cargo fmt --manifest-path Cargo.toml --all -- --check
+
   check:
     dir: "{{.TASKFILE_DIR}}"
     desc: Check Rust client tools
     cmds:
-      - cargo check --manifest-path Cargo.toml --workspace --all-targets
+      - cargo check --manifest-path Cargo.toml --locked --workspace --all-targets --all-features
 
   clippy:
     dir: "{{.TASKFILE_DIR}}"
     desc: Lint Rust client tools
     cmds:
-      - cargo clippy --manifest-path Cargo.toml --workspace --all-targets -- -D warnings
+      - cargo clippy --manifest-path Cargo.toml --locked --workspace --all-targets --all-features -- -D warnings
+
+  machete:
+    dir: "{{.TASKFILE_DIR}}"
+    desc: Check unused client tool dependencies
+    cmds:
+      - fish scripts/check-unused-deps.fish
+
+  deny:
+    dir: "{{.TASKFILE_DIR}}"
+    desc: Check client tool dependency advisories and sources
+    cmds:
+      - cargo deny --manifest-path Cargo.toml --config ../deny.toml --workspace --locked --all-features check advisories bans sources
 
   test:
     dir: "{{.TASKFILE_DIR}}"
     desc: Test Rust client tools
     cmds:
-      - cargo test --manifest-path Cargo.toml --workspace
+      - cargo nextest run --manifest-path Cargo.toml --locked --workspace --all-features --no-tests=fail
+      - cargo test --manifest-path Cargo.toml --locked --workspace --all-features --doc
+
+  lint:
+    dir: "{{.TASKFILE_DIR}}"
+    desc: Check formatting, Clippy and dependencies
+    cmds:
+      - task: fmt:check
+      - task: clippy
+      - task: machete
+      - task: deny
+
+  ci:
+    dir: "{{.TASKFILE_DIR}}"
+    desc: Run all client tool quality gates
+    cmds:
+      - task: test:taskfile
+      - task: lint
+      - task: test
