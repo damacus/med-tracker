@@ -235,13 +235,30 @@ pub(super) async fn confirm(
             }
             redirect
         }
-        _ => render(
-            &view,
-            token,
-            Some(&form.operation_id),
-            Some("Authentication failed. Check your current sign-in details and retry."),
-            StatusCode::UNAUTHORIZED,
-            (true, false, false),
-        ),
+        failure => {
+            let code = match failure {
+                Ok(response) => response.status,
+                Err(error) => error.status_code(),
+            };
+            let status = StatusCode::from_u16(code)
+                .ok()
+                .filter(|status| status.is_client_error() || status.is_server_error())
+                .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+            let message = if status == StatusCode::UNAUTHORIZED {
+                "Authentication failed. Check your current sign-in details and retry."
+            } else if status.is_server_error() {
+                "The operation is temporarily unavailable. Please retry."
+            } else {
+                "The operation could not be completed. Check your access and retry."
+            };
+            render(
+                &view,
+                token,
+                Some(&form.operation_id),
+                Some(message),
+                status,
+                (true, false, false),
+            )
+        }
     }
 }

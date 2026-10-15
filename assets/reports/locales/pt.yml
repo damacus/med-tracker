@@ -2272,6 +2272,8 @@ pt:
       password_blocked: "Escolha uma palavra-passe que não seja comum nem tenha sido exposta."
       password_unavailable: "Não é possível alterar a palavra-passe. Inicie sessão novamente e tente outra vez."
       proof_failed: "A autenticação falhou. Verifique os dados de início de sessão atuais e tente novamente."
+      operation_unavailable: "A operação está temporariamente indisponível. Tente novamente."
+      operation_denied: "Não foi possível concluir a operação. Verifique as suas permissões e tente novamente."
       password_failed: "A autenticação falhou. Verifique a palavra-passe atual."
       code_invalid: "Código de autenticação inválido. Verifique a aplicação e tente novamente."
       auth_unavailable: "A autenticação está indisponível. Tente iniciar sessão novamente."

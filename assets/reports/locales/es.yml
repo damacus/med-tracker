@@ -1936,6 +1936,8 @@ es:
       password_blocked: "Elige una contraseña que no sea común ni se haya filtrado."
       password_unavailable: "No se puede cambiar la contraseña. Vuelve a iniciar sesión e inténtalo de nuevo."
       proof_failed: "La autenticación ha fallado. Comprueba tus datos de inicio de sesión actuales e inténtalo de nuevo."
+      operation_unavailable: "La operación no está disponible temporalmente. Inténtalo de nuevo."
+      operation_denied: "No se pudo completar la operación. Comprueba tus permisos e inténtalo de nuevo."
       password_failed: "La autenticación ha fallado. Comprueba tu contraseña actual."
       code_invalid: "Código de autenticación no válido. Comprueba tu aplicación e inténtalo de nuevo."
       auth_unavailable: "La autenticación no está disponible. Intenta iniciar sesión de nuevo."

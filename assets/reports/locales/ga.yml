@@ -1937,6 +1937,8 @@ ga:
       password_blocked: "Roghnaigh pasfhocal nach bhfuil coitianta ná sceite."
       password_unavailable: "Níl athrú pasfhocail ar fáil. Sínigh isteach arís agus bain triail eile as."
       proof_failed: "Theip ar an bhfíordheimhniú. Seiceáil do shonraí reatha sínithe isteach agus bain triail eile as."
+      operation_unavailable: "Níl an oibríocht ar fáil faoi láthair. Bain triail eile as."
+      operation_denied: "Níorbh fhéidir an oibríocht a chur i gcrích. Seiceáil do cheadanna agus bain triail eile as."
       password_failed: "Theip ar an bhfíordheimhniú. Seiceáil do phasfhocal reatha."
       code_invalid: "Cód fíordheimhnithe neamhbhailí. Seiceáil d’aip agus bain triail eile as."
       auth_unavailable: "Níl fíordheimhniú ar fáil. Bain triail as síniú isteach arís."

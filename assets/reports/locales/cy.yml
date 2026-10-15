@@ -1964,6 +1964,8 @@ cy:
       password_blocked: "Dewiswch gyfrinair nad yw’n gyffredin nac wedi’i ddatgelu."
       password_unavailable: "Ni ellir newid y cyfrinair. Mewngofnodwch eto a rhoi cynnig arall arni."
       proof_failed: "Methodd y dilysu. Gwiriwch eich manylion mewngofnodi presennol a cheisiwch eto."
+      operation_unavailable: "Nid yw’r weithred ar gael dros dro. Ceisiwch eto."
+      operation_denied: "Ni ellid cwblhau’r weithred. Gwiriwch eich caniatâd a cheisiwch eto."
       password_failed: "Methodd y dilysu. Gwiriwch eich cyfrinair presennol."
       code_invalid: "Cod dilysu annilys. Gwiriwch eich ap a cheisiwch eto."
       auth_unavailable: "Nid yw dilysu ar gael. Ceisiwch fewngofnodi eto."

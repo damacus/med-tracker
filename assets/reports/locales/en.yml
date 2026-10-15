@@ -2280,6 +2280,8 @@ en:
       password_blocked: "Choose a password that is not commonly used or breached."
       password_unavailable: "Password change is unavailable. Sign in again and retry."
       proof_failed: "Authentication failed. Check your current sign-in details and retry."
+      operation_unavailable: "The operation is temporarily unavailable. Please retry."
+      operation_denied: "The operation could not be completed. Check your access and retry."
       password_failed: "Authentication failed. Check your current password."
       code_invalid: "Invalid authentication code. Check your app and retry."
       auth_unavailable: "Authentication is unavailable. Try signing in again."
