@@ -219,6 +219,116 @@ async fn avatar_upload_download_delete_use_real_owned_storage_and_private_wire()
 }
 
 #[tokio::test]
+async fn concurrent_avatar_replace_and_remove_retain_only_the_winning_object() {
+    use loco_rs::bgworker::BackgroundWorker;
+    use med_tracker::models::profile::avatar::{AvatarRetirementWorker, RetiredAvatar, Storage};
+
+    let (fixture, boot) = owned_avatar_fixture().await;
+    profile::seed_credentials(&fixture).await;
+    fixture
+        .admin
+        .execute_unprepared("UPDATE people SET date_of_birth='1990-01-01' WHERE id=73001")
+        .await
+        .unwrap();
+    let png = STANDARD.decode(AVATAR).unwrap();
+    let server = server(&boot);
+    let initial = send(
+        &server,
+        Method::PUT,
+        72001,
+        Some("profile-session"),
+        Some((&png, "image/png")),
+    )
+    .await;
+    let start = std::sync::Arc::new(tokio::sync::Barrier::new(2));
+    let (replaced, removed, overlapped) = super::overlap_requests_at_row_lock(
+        &fixture,
+        "SELECT id FROM people WHERE id=73001 FOR UPDATE",
+        "%people%FOR UPDATE%",
+        async {
+            start.wait().await;
+            send(
+                &server,
+                Method::PUT,
+                72001,
+                Some("profile-session"),
+                Some((&png, "image/png")),
+            )
+            .await
+        },
+        async {
+            start.wait().await;
+            send(&server, Method::DELETE, 72001, Some("profile-app"), None).await
+        },
+    )
+    .await;
+    let state = avatar_state(&fixture).await;
+    let attached_key = fixture.admin.query_one_raw(Statement::from_string(
+        DbBackend::Postgres,
+        "SELECT b.key FROM active_storage_attachments a JOIN active_storage_blobs b ON b.id=a.blob_id WHERE a.record_type='Person' AND a.record_id=73001 AND a.name='avatar'",
+    )).await.unwrap().map(|row| row.try_get::<String>("", "key").unwrap());
+    let jobs = fixture
+        .admin
+        .query_all_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT task_data FROM pg_loco_queue WHERE name='AvatarRetirementWorker'",
+        ))
+        .await
+        .unwrap();
+    let worker = AvatarRetirementWorker::build(&boot.app_context);
+    let storage = Storage::configured(&boot.app_context).unwrap();
+    let mut retirements = Vec::new();
+    for row in jobs {
+        let payload: Value = row.try_get("", "task_data").unwrap();
+        let retired: RetiredAvatar = serde_json::from_value(payload).unwrap();
+        let first = worker.perform(retired.clone()).await;
+        let second = worker.perform(retired.clone()).await;
+        let absent = storage.get(&retired.key).await.is_err();
+        retirements.push((first.is_ok(), second.is_ok(), absent));
+    }
+    let active_object = if let Some(key) = attached_key.as_ref() {
+        storage.get(key).await.ok()
+    } else {
+        None
+    };
+    let read = send(&server, Method::GET, 72001, Some("profile-session"), None).await;
+    drop(worker);
+    drop(server);
+    close(fixture, boot).await;
+    assert!(overlapped, "PUT and DELETE reached the same person lock");
+    assert_eq!(initial.status, 200);
+    assert_eq!(replaced.status, 200);
+    assert_eq!(removed.status, 204);
+    assert!(removed.bytes.is_empty());
+    assert_private(&initial);
+    assert_private(&replaced);
+    assert_private(&removed);
+    assert_json("put", &initial);
+    assert_json("put", &replaced);
+    assert!(!retirements.is_empty());
+    assert!(
+        retirements
+            .iter()
+            .all(|(first, second, absent)| *first && *second && *absent)
+    );
+    assert_eq!(
+        state["attachments"],
+        json!(i64::from(attached_key.is_some()))
+    );
+    assert_eq!(state["blobs"], state["attachments"]);
+    if let Some(bytes) = active_object {
+        assert_same_png_pixels(&png, &bytes);
+        assert_eq!(read.status, 200);
+        assert_same_png_pixels(&png, &read.bytes);
+    } else {
+        assert!(attached_key.is_none());
+        assert_eq!(read.status, 404);
+        assert_json("get", &read);
+    }
+    assert_private(&read);
+}
+
+#[tokio::test]
 async fn avatar_methods_separate_own_foreign_absent_and_invalid_credentials() {
     let (fixture, boot) = owned_avatar_fixture().await;
     profile::seed_credentials(&fixture).await;

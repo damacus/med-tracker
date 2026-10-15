@@ -393,21 +393,44 @@ async fn keyed_profile_write(method: Method) {
     let body = json!({"profile":{"time_zone":"Europe/London"}});
     let changed = json!({"profile":{"time_zone":"UTC"}});
     let key = format!("profile-{method}-key");
-    let first = send(
-        &server,
-        method.clone(),
-        72001,
-        Some("profile-session"),
-        Some(&body),
-        Some(&key),
+    let before = state(&fixture).await;
+    let start = std::sync::Arc::new(tokio::sync::Barrier::new(2));
+    let (first, second, overlapped) = super::overlap_requests_at_row_lock(
+        &fixture,
+        "SELECT id FROM accounts WHERE id=71001 FOR UPDATE",
+        "%accounts%FOR NO KEY UPDATE%",
+        async {
+            start.wait().await;
+            send(
+                &server,
+                method.clone(),
+                72001,
+                Some("profile-session"),
+                Some(&body),
+                Some(&key),
+            )
+            .await
+        },
+        async {
+            start.wait().await;
+            send(
+                &server,
+                method.clone(),
+                72001,
+                Some("profile-app"),
+                Some(&body),
+                Some(&key),
+            )
+            .await
+        },
     )
     .await;
-    let after_first = state(&fixture).await;
+    let after_overlap = state(&fixture).await;
     let replay = send(
         &server,
         method.clone(),
         72001,
-        Some("profile-app"),
+        Some("profile-session"),
         Some(&body),
         Some(&key),
     )
@@ -425,16 +448,44 @@ async fn keyed_profile_write(method: Method) {
     let after_conflict = state(&fixture).await;
     drop(server);
     close(fixture, boot).await;
+    assert!(
+        overlapped,
+        "two {method_name} profile requests reached the account lock"
+    );
     assert_eq!(first.status, 200);
+    assert_eq!(second.status, 200);
+    assert_eq!(first.body, second.body);
+    for marker in [first.replayed.as_deref(), second.replayed.as_deref()] {
+        assert!(
+            matches!(marker, None | Some("true")),
+            "{method_name} replay marker"
+        );
+    }
+    assert_eq!(
+        usize::from(first.replayed.as_deref() == Some("true"))
+            + usize::from(second.replayed.as_deref() == Some("true")),
+        1,
+    );
     assert_eq!(replay.status, 200);
     assert_eq!(conflict.status, 409);
     assert_eq!(replay.replayed.as_deref(), Some("true"));
     assert_eq!(replay.body, first.body);
-    assert_eq!(after_replay["versions"], after_first["versions"]);
-    assert_eq!(after_replay["changes"], after_first["changes"]);
-    assert_eq!(after_conflict["versions"], after_first["versions"]);
-    assert_eq!(after_conflict["changes"], after_first["changes"]);
-    for response in [&first, &replay, &conflict] {
+    assert_eq!(
+        after_overlap["versions"],
+        json!(before["versions"].as_i64().unwrap() + 1)
+    );
+    assert_eq!(after_overlap["changes"], before["changes"]);
+    assert_ne!(after_overlap["preferences"], before["preferences"]);
+    assert_eq!(
+        after_overlap["keys"],
+        json!(before["keys"].as_i64().unwrap() + 1)
+    );
+    for after in [&after_replay, &after_conflict] {
+        for field in ["versions", "changes", "preferences", "keys"] {
+            assert_eq!(after[field], after_overlap[field], "{method_name} {field}");
+        }
+    }
+    for response in [&first, &second, &replay, &conflict] {
         assert_wire(response);
         assert_schema(&method_name, response);
     }

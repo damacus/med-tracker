@@ -1,10 +1,8 @@
 use super::*;
 
-pub(super) const REVISION: &str = "4bd788c1592a29b505217a4e92e4e2a6116bf0d8";
+pub(super) const REVISION: &str = "1e9ff00f51a63fbf18073554f249e1291ec62df9";
 pub(super) const PATH_GAP: &str = "Malformed household-ID wire behavior and authentication ordering remain undecided for these routes";
 pub(super) const FORMAT_GAP: &str = "JPEG and WebP avatar upload and download behavior has not been proved through this full-router acceptance suite";
-pub(super) const PUT_GAP: &str =
-    "Concurrent PUT profile idempotency under overlapping requests has not been proved";
 pub(super) const WRITE_SCOPE_GAP: &str = "Seeded foreign and absent household targets have not been exercised through this profile write method";
 pub(super) const PUT_BODY_GAP: &str =
     "Malformed PUT profile JSON has not been exercised through this full-router acceptance suite";
@@ -82,7 +80,7 @@ pub(super) fn expected(operation: &str) -> Option<Value> {
                 ),
                 (
                     "patch_profile_replays_exact_key_and_rejects_changed_body",
-                    "200-same-key-replay-one-version-409-changed-body",
+                    "200-two-restricted-runtime-account-FOR-NO-KEY-UPDATE-waiters-before-release-one-version-one-replay-409-changed-body",
                 ),
                 (
                     "profile_permissions_and_membership_recheck_before_mutation",
@@ -166,7 +164,7 @@ pub(super) fn expected(operation: &str) -> Option<Value> {
                 ),
                 (
                     "put_profile_replays_exact_key_and_rejects_changed_body",
-                    "200-same-key-replay-one-version-409-changed-body",
+                    "200-two-restricted-runtime-account-FOR-NO-KEY-UPDATE-waiters-before-release-one-version-one-replay-409-changed-body",
                 ),
                 (
                     "profile_permissions_and_membership_recheck_before_mutation",
@@ -182,7 +180,7 @@ pub(super) fn expected(operation: &str) -> Option<Value> {
                 ),
             ],
             &[],
-            &[PATH_GAP, WRITE_SCOPE_GAP, PUT_BODY_GAP, PUT_GAP],
+            &[PATH_GAP, WRITE_SCOPE_GAP, PUT_BODY_GAP],
         ),
         "downloadCurrentAvatar" => (
             "GET",
@@ -231,6 +229,10 @@ pub(super) fn expected(operation: &str) -> Option<Value> {
         "uploadCurrentAvatar" => (
             "PUT",
             &[
+                (
+                    "concurrent_avatar_replace_and_remove_retain_only_the_winning_object",
+                    "200-two-restricted-runtime-person-FOR-UPDATE-waiters-before-release-winning-attachment-and-idempotent-retirement",
+                ),
                 (
                     "avatar_upload_download_delete_use_real_owned_storage_and_private_wire",
                     "200-API-app-mobile-upload-recursive-profile-schema-owned-S3-attachment",
@@ -291,6 +293,10 @@ pub(super) fn expected(operation: &str) -> Option<Value> {
         "deleteCurrentAvatar" => (
             "DELETE",
             &[
+                (
+                    "concurrent_avatar_replace_and_remove_retain_only_the_winning_object",
+                    "204-two-restricted-runtime-person-FOR-UPDATE-waiters-before-release-winning-attachment-and-idempotent-retirement",
+                ),
                 (
                     "avatar_upload_download_delete_use_real_owned_storage_and_private_wire",
                     "204-API-app-mobile-empty-body-detaches-owned-avatar",

@@ -277,6 +277,7 @@ const creditedRequestTests = [
   'api_v1::household_settings::settings_put_concurrent_keyed_requests_commit_once',
   'api_v1::household_settings::settings_put_replays_same_key_and_rejects_changed_body',
   'api_v1::household_settings::settings_reads_scope_three_credential_kinds_and_validate_responses',
+  'api_v1::avatar::concurrent_avatar_replace_and_remove_retain_only_the_winning_object',
   'api_v1::avatar::avatar_malformed_multipart_does_not_replace_current_image',
   'api_v1::avatar::avatar_methods_recheck_stale_permissions_and_membership',
   'api_v1::avatar::avatar_methods_reject_wrong_namespace_scope_and_revoked_credentials',

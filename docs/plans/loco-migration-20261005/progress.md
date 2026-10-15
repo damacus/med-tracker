@@ -8,7 +8,7 @@ migration areas stay in scope. No live deployment has occurred.
 
 ### Household settings local stack propagation, 15 October 2026
 
-The coordinator integrates local predecessor `c755946dccba7cf00f367d3108aeaf05c5d73b04` into
+The coordinator integrates local predecessor `d317b0a5b40f3729fffa47aedea3fbda73b124be` into
 PR [#2644](https://github.com/damacus/med-tracker/pull/2644), retaining
 previous head `eb9ac90421be01c56829da439fff3cb1b2a4885f` and all existing proof ancestors.
 This ordinary branch merge carries the verified lower correction and account
@@ -16,10 +16,27 @@ evidence without rewriting proof revisions. Existing operation behaviour is
 retained; fresh focused checks, cumulative CI, independent review and publication
 remain pending on the integrated candidate. Earlier results below retain their
 exact source scope. No new operation credit, PR merge or deployment is claimed.
+Inherited profile/avatar scoped gates and same-session review `18376` passed
+(fifteen SWE-2 Max steps); its cumulative CI and publication remain pending.
+
+### Profile/avatar observed concurrency, 15 October 2026
+
+PR #2643 pins tested source `1e9ff00f51a63fbf18073554f249e1291ec62df9`.
+Focused PATCH `63698`, PUT `16865` and avatar `97348` passed; full Profile
+`89938` passed 10/10 and Avatar `55476` passed 8/8. Freshness RED `38981`
+failed on the old pin; GREEN `40461` passed after exactly six partial rows
+changed. Inventory `27208` passed 100 (one ignored, one filtered).
+Remaining gaps are retained; no production correction or completion is claimed.
+Runner `88398` first failed seven fixture cases because its explicit transcript
+omitted the new avatar name. Adding that exact name passed 48/48 (`91212`).
+Strict lint `62232` passed. Dispatcher `77249` passed 100 request checks and
+524 care cases, then rejected only final acceptance for 117 incomplete operations.
+All 48 credited profile/avatar identities executed. Review, cumulative CI and
+publication remain pending.
 
 ### Profile and avatar local stack propagation, 15 October 2026
 
-The coordinator integrates local predecessor `d9e4ad4f9cc0945c51f15c78d15365cefc0172f7` into
+The coordinator integrates local predecessor `1d84d1e3c48ea4aefd504da031401f9915bb1409` into
 PR [#2643](https://github.com/damacus/med-tracker/pull/2643), retaining
 previous head `9eb729ddb9f7aecb4229899ebdcdeab82b002013` and all existing proof ancestors.
 This ordinary branch merge carries the verified lower correction and account
@@ -27,6 +44,22 @@ evidence without rewriting proof revisions. Existing operation behaviour is
 retained; fresh focused checks, cumulative CI, independent review and publication
 remain pending on the integrated candidate. Earlier results below retain their
 exact source scope. No new operation credit, PR merge or deployment is claimed.
+
+### People observed concurrency, 15 October 2026
+
+PR [#2641](https://github.com/damacus/med-tracker/pull/2641) now uses immutable
+test source `3ce8cbc0f766e1dc70654ce7f3d50abd6f963ceb`. Its three keyed-write
+tests observe two distinct restricted-role household lock waiters before
+release. Focused job `19216` passed all three; full People job `30448` passed
+16/16. The independent evidence guard first failed on the old source pin
+(`70572`), then passed with exactly four updated partial rows (`2033`).
+Inventory `83577` passed 81 with one ignore; runner `15386` passed 47/47.
+Logs are under `/private/tmp/s05-i01-evidence/people-overlap-*`.
+No People production change was needed. The existing gaps remain explicit;
+strict lint passed (`96460`). Dispatcher `10422` executed 81 request cases,
+524 care cases (two ignored), then rejected only final acceptance for 117
+incomplete operations. Cumulative CI, resumed review and publication remain
+pending. No additional operation acceptance, PR merge or deployment is claimed.
 
 ### People local stack propagation, 15 October 2026
 
