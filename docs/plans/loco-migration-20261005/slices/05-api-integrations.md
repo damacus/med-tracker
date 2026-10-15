@@ -10,9 +10,10 @@ FHIR/SMART and MCP adapt the same authorised operations; external services use m
 
 ## Global constraints
 
-Membership execution on 15 October pins tested revision `20119ffb` and records
-all 17 real request/metadata cases passing. Four operation rows remain partial,
-with exact proof identities and unresolved boundaries retained. The dispatcher
+Membership execution on 15 October pins tested revision `68865eca` and records
+all 20 real request/metadata cases passing, including 19 credited request identities.
+Four operation rows remain partial for the malformed household-ID contract and
+authentication order, with exact proof identities retained. The dispatcher
 still rejects whole-API completion for 117 incomplete operations. See
 [the current progress record](../progress.md) for failures, corrections and gates;
 full CI, independent review and publication are still required.

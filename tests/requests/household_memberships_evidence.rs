@@ -1,15 +1,8 @@
 use super::*;
 
-pub(super) const REVISION: &str = "20119ffba412db94a287d7bc8138e2f4f4fb17c4";
+pub(super) const REVISION: &str = "68865ecaf337a53abe7cfc8574eb5292042af9bf";
 const PATH_GAP: &str =
     "Malformed household-ID wire behavior and authentication ordering remain undecided";
-const READ_GAP: &str =
-    "Account lockout and expired credential denial have not been exercised on this exact route";
-const WRITE_GAP: &str =
-    "Membership withdrawal during an in-flight keyed membership write has not been exercised";
-const PUT_GAP: &str =
-    "Mixed allowed and protected attributes have not been exercised through PUT membership";
-
 type Proofs = &'static [(&'static str, &'static str)];
 
 pub(super) fn expected(operation: &str) -> Option<Value> {
@@ -20,7 +13,7 @@ pub(super) fn expected(operation: &str) -> Option<Value> {
                 "membership_collection_scopes_three_credentials_and_validates_schema",
                 "200-API-app-mobile-recursive-collection-schema-403-seeded-foreign-404-absent-401-anonymous-no-membership-write",
             )],
-            &[PATH_GAP, READ_GAP],
+            &[PATH_GAP],
         ),
         "updateMembership" => (
             "PATCH",
@@ -49,8 +42,12 @@ pub(super) fn expected(operation: &str) -> Option<Value> {
                     "patch_membership_overlap_replays_one_write",
                     "two-distinct-restricted-runtime-household-lock-waiters-before-release-two-200-one-replay-one-permission-version-one-key",
                 ),
+                (
+                    "membership_keyed_writes_recheck_actor_withdrawn_while_waiting_for_household_lock",
+                    "403-inflight-revoked-actor-after-household-lock-wait-one-failure-request-audit-401-saved-key-retry-no-target-key-sync-write",
+                ),
             ],
-            &[PATH_GAP, READ_GAP, WRITE_GAP],
+            &[PATH_GAP],
         ),
         "replaceMembership" => (
             "PUT",
@@ -75,8 +72,16 @@ pub(super) fn expected(operation: &str) -> Option<Value> {
                     "put_membership_overlap_replays_one_write",
                     "two-distinct-restricted-runtime-household-lock-waiters-before-release-two-200-one-replay-one-permission-version-one-key",
                 ),
+                (
+                    "membership_keyed_writes_recheck_actor_withdrawn_while_waiting_for_household_lock",
+                    "403-inflight-revoked-actor-after-household-lock-wait-one-failure-request-audit-401-saved-key-retry-no-target-key-sync-write",
+                ),
+                (
+                    "membership_put_ignores_protected_input_when_allowed_status_is_present",
+                    "200-allowed-status-only-protected-version-ignored-natural-version-2-one-key-two-scoped-audits",
+                ),
             ],
-            &[PATH_GAP, READ_GAP, WRITE_GAP, PUT_GAP],
+            &[PATH_GAP],
         ),
         "deleteMembership" => (
             "DELETE",
@@ -105,8 +110,12 @@ pub(super) fn expected(operation: &str) -> Option<Value> {
                     "delete_membership_overlap_replays_one_write",
                     "two-distinct-restricted-runtime-household-lock-waiters-before-release-two-204-one-replay-one-permission-version-one-key",
                 ),
+                (
+                    "membership_keyed_writes_recheck_actor_withdrawn_while_waiting_for_household_lock",
+                    "403-inflight-revoked-actor-after-household-lock-wait-one-failure-request-audit-401-saved-key-retry-no-target-key-sync-write",
+                ),
             ],
-            &[PATH_GAP, READ_GAP, WRITE_GAP],
+            &[PATH_GAP],
         ),
         _ => return None,
     };
@@ -114,6 +123,10 @@ pub(super) fn expected(operation: &str) -> Option<Value> {
         (
             "membership_routes_reject_invalid_revoked_smart_and_insufficient_scope_credentials",
             "401-invalid-revoked-SMART-403-mobile-insufficient-scope-exact-challenge-no-domain-write",
+        ),
+        (
+            "membership_routes_reject_locked_and_expired_credentials_before_domain_access",
+            "401-expired-API-app-mobile-and-locked-account-exact-Bearer-no-domain-or-household-audit",
         ),
         (
             "membership_routes_recheck_current_manager_and_withdrawn_membership",

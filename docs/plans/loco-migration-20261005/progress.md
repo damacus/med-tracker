@@ -30,9 +30,23 @@ runner `84462` (48/48) and strict lint `54102`. Dispatcher `27466` passed
 132 request cases and 524 care cases (two ignored), then rejected only the
 117 incomplete operations at final acceptance. All 16 unique credited
 membership request identities actually passed; none were missing.
-No production correction was needed. Four operations remain partial; further
-credential and in-flight withdrawal assertions are being prepared. Full CI,
-independent review, publication and hosted acceptance remain pending.
+Expanded source `68865ecaf337a53abe7cfc8574eb5292042af9bf` adds locked/expired
+credential, in-flight actor withdrawal and mixed PUT protected-field assertions.
+Compile-only `97162` executed zero cases; `37864` exposed an invalid app-token
+expiry fixture, corrected to a valid positive lifetime. Neither is behavioural
+RED. All 20 cases passed `98610` and strict lint `74578`, on module SHA-256
+`c7bf2fba495cc997effb97e2cd2da74bc4edb7ecca7eb42a388d5cc6a9dbc105`.
+Freshness RED `44472` rejected the old pin; exactly four partial rows then passed
+guard `16862`, inventory `19093` (135 passed, one ignored, one filtered),
+runner `89620` (48/48) and lint `45542`. Dispatcher `38224` passed 135 request
+and 524 care cases, then rejected only the 117 incomplete operations at final
+acceptance. The coordinator independently matched all 19 unique credited
+membership request identities to passing results; the twentieth is metadata.
+No production correction was needed. The mixed PUT case characterises existing
+filtering of protected fields; it does not make that body OpenAPI-conforming.
+Four operations remain partial solely for the unresolved malformed household-ID
+contract and authentication order. Full CI, independent review, publication and
+hosted acceptance remain pending.
 
 ### Household settings local stack propagation, 15 October 2026
 
