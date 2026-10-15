@@ -197,7 +197,7 @@ mod tests {
 
     #[test]
     fn portable_import_does_not_accept_passphrase_argument() {
-        let error = Cli::try_parse_from([
+        let result = Cli::try_parse_from([
             "medtracker",
             "portable",
             "import",
@@ -207,9 +207,8 @@ mod tests {
             "bundle.json",
             "--passphrase",
             "secret",
-        ])
-        .unwrap_err();
+        ]);
 
-        assert!(error.to_string().contains("unexpected argument"));
+        assert!(matches!(result, Err(error) if error.to_string().contains("unexpected argument")));
     }
 }

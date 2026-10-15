@@ -17,6 +17,7 @@ pub struct ApiClient {
 }
 
 impl ApiClient {
+    #[doc = "# Errors\nThe base URL is invalid or the HTTP client cannot be built."]
     pub fn new(base_url: impl AsRef<str>, bearer_token: Option<String>) -> Result<Self, ApiError> {
         let mut parsed = Url::parse(base_url.as_ref())?;
         if !parsed.path().ends_with('/') {
@@ -36,11 +37,13 @@ impl ApiClient {
         })
     }
 
+    #[doc = "# Errors\nThe URL is invalid, the request fails or is rejected, or JSON decoding fails."]
     pub async fn get_json<T: DeserializeOwned>(&self, path: &str) -> Result<T, ApiError> {
         let request = self.authorize(self.http.get(self.url(path)?));
         self.send_json(request).await
     }
 
+    #[doc = "# Errors\nThe URL is invalid, the request fails or is rejected, or JSON decoding fails."]
     pub async fn post_json<B, T>(&self, path: &str, body: &B) -> Result<T, ApiError>
     where
         B: Serialize + ?Sized,
@@ -50,6 +53,7 @@ impl ApiClient {
         self.send_json(request).await
     }
 
+    #[doc = "# Errors\nPosting or decoding the response envelope fails."]
     pub async fn post_json_data<B, T>(&self, path: &str, body: &B) -> Result<T, ApiError>
     where
         B: Serialize + ?Sized,
@@ -59,6 +63,7 @@ impl ApiClient {
         Ok(envelope.data)
     }
 
+    #[doc = "# Errors\nThe URL is invalid, the request fails, or the server rejects it."]
     pub async fn delete_empty(&self, path: &str) -> Result<(), ApiError> {
         let request = self.authorize(self.http.delete(self.url(path)?));
         let response = request.send().await?;
@@ -72,6 +77,7 @@ impl ApiClient {
             .await)
     }
 
+    #[doc = "# Errors\nFetching or decoding the response envelope fails."]
     pub async fn get_data<T: DeserializeOwned>(&self, path: &str) -> Result<T, ApiError> {
         let envelope: DataEnvelope<T> = self.get_json(path).await?;
         Ok(envelope.data)
@@ -153,7 +159,7 @@ mod tests {
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     #[tokio::test]
-    async fn get_json_sends_bearer_and_decodes_data() {
+    async fn get_json_sends_bearer_and_decodes_data() -> Result<(), Box<dyn std::error::Error>> {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
             .and(path("/api/v1/capabilities"))
@@ -164,14 +170,19 @@ mod tests {
             .mount(&server)
             .await;
 
-        let client = ApiClient::new(server.uri(), Some("test-token".to_string())).unwrap();
-        let value: serde_json::Value = client.get_json("/api/v1/capabilities").await.unwrap();
+        let client = ApiClient::new(server.uri(), Some("test-token".to_string()))?;
+        let value: serde_json::Value = client.get_json("/api/v1/capabilities").await?;
 
-        assert_eq!(value["data"]["format"], "medtracker.api.capabilities.v1");
+        assert_eq!(
+            value.pointer("/data/format"),
+            Some(&serde_json::json!("medtracker.api.capabilities.v1"))
+        );
+        Ok(())
     }
 
     #[tokio::test]
-    async fn get_json_decodes_api_error_with_request_id() {
+    async fn get_json_decodes_api_error_with_request_id() -> Result<(), Box<dyn std::error::Error>>
+    {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
             .and(path("/api/v1/households/1/me"))
@@ -185,25 +196,26 @@ mod tests {
             .mount(&server)
             .await;
 
-        let client = ApiClient::new(server.uri(), None).unwrap();
-        let error = client
+        let client = ApiClient::new(server.uri(), None)?;
+        let result = client
             .get_json::<serde_json::Value>("/api/v1/households/1/me")
-            .await
-            .unwrap_err();
+            .await;
 
         assert!(matches!(
-            error,
+            result,
+            Err(
             ApiError::Server {
                 status: 401,
                 ref code,
                 ref request_id,
                 ..
-            } if code == "unauthorized" && request_id.as_deref() == Some("req-test")
+            }) if code == "unauthorized" && request_id.as_deref() == Some("req-test")
         ));
+        Ok(())
     }
 
     #[tokio::test]
-    async fn get_json_surfaces_retry_after() {
+    async fn get_json_surfaces_retry_after() -> Result<(), Box<dyn std::error::Error>> {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
             .and(path("/api/v1/households/1/me"))
@@ -221,19 +233,20 @@ mod tests {
             .mount(&server)
             .await;
 
-        let client = ApiClient::new(server.uri(), None).unwrap();
-        let error = client
+        let client = ApiClient::new(server.uri(), None)?;
+        let result = client
             .get_json::<serde_json::Value>("/api/v1/households/1/me")
-            .await
-            .unwrap_err();
+            .await;
 
         assert!(matches!(
-            error,
+            result,
+            Err(
             ApiError::Server {
                 status: 429,
                 ref retry_after,
                 ..
-            } if retry_after.as_deref() == Some("60")
+            }) if retry_after.as_deref() == Some("60")
         ));
+        Ok(())
     }
 }
