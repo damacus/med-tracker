@@ -30,6 +30,8 @@ pub struct Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
+    #[sea_orm(has_many = "super::clinical_history_entries::Entity")]
+    ClinicalHistoryEntries,
     #[sea_orm(
         belongs_to = "super::households::Entity",
         from = "Column::HouseholdId",
@@ -102,6 +104,12 @@ pub enum Relation {
         on_delete = "NoAction"
     )]
     Schedules1,
+}
+
+impl Related<super::clinical_history_entries::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ClinicalHistoryEntries.def()
+    }
 }
 
 impl Related<super::households::Entity> for Entity {

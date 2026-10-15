@@ -1,7 +1,6 @@
 pub mod app_tokens;
 pub mod audit_logs;
 pub mod delegation;
-pub mod grants;
 pub mod memberships;
 pub(crate) mod persistence;
 pub mod settings;
@@ -9,16 +8,12 @@ pub mod settings;
 use crate::models::{
     access::{self, TenantTransaction},
     care::{doses::CredentialProvenance, locations},
-    entities::{
-        account, carer_relationship, grant, household, membership, person, security_audit_event,
-        user, version,
-    },
+    entities::{carer_relationship, membership, person, security_audit_event, version},
     errors::OperationError,
 };
 use chrono::{DateTime, Utc};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
-    QuerySelect, Set,
+    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect, Set,
 };
 use serde_json::{Value, json};
 use std::collections::HashMap;
@@ -47,11 +42,4 @@ fn fields<'a>(
         return Err(invalid(name, "is invalid"));
     }
     Ok(fields)
-}
-fn positive_id(attributes: &Value, name: &str) -> Result<i64, OperationError> {
-    attributes
-        .get(name)
-        .and_then(Value::as_i64)
-        .filter(|id| *id > 0)
-        .ok_or_else(|| invalid(name, "is invalid"))
 }

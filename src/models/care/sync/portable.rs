@@ -1,5 +1,7 @@
 use super::*;
-use crate::models::entities::{location, location_membership, membership, notification_preference};
+
+pub(crate) const CURRENT_PORTABLE_FORMAT: &str = "medtracker.portable.v3";
+use crate::models::entities::{location, membership, notification_preference};
 use chrono::NaiveDateTime;
 use loco_rs::model::TenantQueryExt;
 use sea_orm::Condition;
@@ -101,9 +103,10 @@ fn severity(value: Option<i32>) -> Option<&'static str> {
 pub(super) async fn visible_people(
     tenant: &TenantTransaction,
 ) -> Result<Vec<person::Model>, OperationError> {
-    let query = person::Entity::find()
-        .in_tenant(tenant.scope().household_id)
-        .order_by_asc(person::Column::Id);
+    let query = crate::models::access::person_scope(
+        crate::models::ids::HouseholdId::from_database(tenant.scope().household_id),
+    )
+    .order_by_asc(person::Column::Id);
     let query = if access::can_manage_household(tenant) {
         query
     } else {
@@ -118,14 +121,14 @@ pub(super) async fn payload(
     tenant: &TenantTransaction,
     zone: chrono_tz::Tz,
 ) -> Result<AppliedBatch, OperationError> {
-    scoped_payload(tenant, zone, false, false, "medtracker.portable.v2", true).await
+    scoped_payload(tenant, zone, false, false, CURRENT_PORTABLE_FORMAT, true).await
 }
 
 pub(crate) async fn export_payload(
     tenant: &TenantTransaction,
     zone: chrono_tz::Tz,
 ) -> Result<AppliedBatch, OperationError> {
-    scoped_payload(tenant, zone, true, true, "medtracker.portable.v2", true).await
+    scoped_payload(tenant, zone, true, true, CURRENT_PORTABLE_FORMAT, true).await
 }
 
 pub(crate) async fn api_export_payload(
@@ -141,7 +144,7 @@ pub(crate) async fn mobile_payload(
     tenant: &TenantTransaction,
     zone: chrono_tz::Tz,
 ) -> Result<AppliedBatch, OperationError> {
-    api_export_payload(tenant, zone, "medtracker.portable.v1", true).await
+    api_export_payload(tenant, zone, CURRENT_PORTABLE_FORMAT, true).await
 }
 
 pub(crate) async fn bundle_payload(
@@ -160,30 +163,16 @@ async fn scoped_payload(
     format: &str,
     include_health_events: bool,
 ) -> Result<AppliedBatch, OperationError> {
+    if format != CURRENT_PORTABLE_FORMAT {
+        return Err(OperationError::Validation {
+            details: json!({"error":"This schema requires portable format v3"}),
+        });
+    }
     let db = tenant.transaction();
     let household_id = tenant.scope().household_id;
     let mut people = visible_people(tenant).await?;
     if exporting && !access::can_manage_household(tenant) {
-        let manageable = crate::models::entities::grant::Entity::find()
-            .in_tenant(household_id)
-            .filter(
-                crate::models::entities::grant::Column::HouseholdMembershipId
-                    .eq(tenant.membership().id),
-            )
-            .filter(crate::models::entities::grant::Column::AccessLevel.eq("manage"))
-            .filter(crate::models::entities::grant::Column::RevokedAt.is_null())
-            .filter(
-                Condition::any()
-                    .add(crate::models::entities::grant::Column::ExpiresAt.is_null())
-                    .add(
-                        crate::models::entities::grant::Column::ExpiresAt
-                            .gt(Utc::now().naive_utc()),
-                    ),
-            )
-            .all(db)
-            .await?;
-        let ids: HashSet<i64> = manageable.iter().map(|grant| grant.person_id).collect();
-        people.retain(|person| ids.contains(&person.id));
+        people.retain(|person| person.id == tenant.person_id().get());
     }
     let person_ids: Vec<i64> = people.iter().map(|person| person.id).collect();
     let schedules = schedule::Entity::find()
@@ -266,20 +255,18 @@ async fn scoped_payload(
         .all(db)
         .await
         .map_err(database_error)?;
-    let memberships = location_membership::Entity::find()
-        .in_tenant(household_id)
-        .filter(location_membership::Column::PersonId.is_in(person_ids.clone()))
-        .all(db)
-        .await
-        .map_err(database_error)?;
-    let mut location_ids: HashSet<i64> = memberships
+    let mut location_ids: HashSet<i64> = medications
         .iter()
-        .map(|row| row.location_id)
-        .chain(medications.iter().map(|row| row.location_id))
+        .filter_map(|row| row.location_id)
         .chain(takes.iter().filter_map(|row| row.taken_from_location_id))
         .collect();
     location_ids.retain(|id| *id > 0);
     let locations_query = location::Entity::find().in_tenant(household_id);
+    let locations_query = if exporting {
+        locations_query
+    } else {
+        locations_query.filter(location::Column::RetiredAt.is_null())
+    };
     let locations_query = if exporting && household_wide && access::can_manage_household(tenant) {
         locations_query
     } else {
@@ -291,15 +278,20 @@ async fn scoped_payload(
         .all(db)
         .await
         .map_err(database_error)?;
-    let preferences = notification_preference::Entity::find()
-        .in_tenant(household_id)
-        .filter(notification_preference::Column::PersonId.is_in(person_ids.clone()))
-        .order_by_asc(notification_preference::Column::Id)
-        .all(db)
-        .await
-        .map_err(database_error)?;
-    let v2 = format == "medtracker.portable.v2";
-    let periods = if v2 {
+    let preference_person_id = tenant.person_id();
+    let preferences = if person_ids.contains(&preference_person_id.get()) {
+        notification_preference::Entity::find()
+            .in_tenant(household_id)
+            .filter(notification_preference::Column::AccountId.eq(tenant.scope().actor.account_id))
+            .order_by_asc(notification_preference::Column::Id)
+            .all(db)
+            .await
+            .map_err(database_error)?
+    } else {
+        Vec::new()
+    };
+    let extended_records = format == CURRENT_PORTABLE_FORMAT;
+    let periods = if extended_records {
         pause_period::Entity::find()
             .in_tenant(household_id)
             .filter(
@@ -320,7 +312,7 @@ async fn scoped_payload(
     } else {
         Vec::new()
     };
-    let occurrences = if v2 {
+    let occurrences = if extended_records {
         dose_occurrence::Entity::find()
             .in_tenant(household_id)
             .filter(
@@ -352,28 +344,22 @@ async fn scoped_payload(
         .all(db)
         .await
         .map_err(database_error)?;
-    let actor_person_ids: HashSet<i64> = actor_memberships
-        .iter()
-        .filter_map(|row| row.person_id)
-        .collect();
-    let actor_people = person::Entity::find()
-        .in_tenant(household_id)
-        .filter(person::Column::Id.is_in(actor_person_ids.into_iter().collect::<Vec<_>>()))
-        .all(db)
-        .await
-        .map_err(database_error)?;
+    let actor_person_ids: HashSet<i64> =
+        actor_memberships.iter().map(|row| row.person_id).collect();
+    let actor_people = crate::models::access::person_scope(
+        crate::models::ids::HouseholdId::from_database(household_id),
+    )
+    .filter(person::Column::Id.is_in(actor_person_ids.into_iter().collect::<Vec<_>>()))
+    .all(db)
+    .await
+    .map_err(database_error)?;
     let actor_person_ids_by_id: HashMap<i64, &str> = actor_people
         .iter()
         .map(|row| (row.id, row.portable_id.as_str()))
         .collect();
     let actor_by_membership: HashMap<i64, &str> = actor_memberships
         .iter()
-        .filter_map(|row| {
-            Some((
-                row.id,
-                actor_person_ids_by_id.get(&row.person_id?).copied()?,
-            ))
-        })
+        .filter_map(|row| Some((row.id, actor_person_ids_by_id.get(&row.person_id).copied()?)))
         .collect();
 
     let person_ids_by_id: HashMap<i64, &str> = people
@@ -406,27 +392,24 @@ async fn scoped_payload(
         .collect();
     let preference_ids: HashMap<i64, &str> = preferences
         .iter()
-        .map(|row| (row.person_id, row.portable_id.as_str()))
+        .map(|row| (preference_person_id.get(), row.portable_id.as_str()))
         .collect();
-    let mut person_locations: HashMap<i64, Vec<&str>> = HashMap::new();
-    for row in &memberships {
-        if let Some(portable_id) = location_ids_by_id.get(&row.location_id) {
-            person_locations
-                .entry(row.person_id)
-                .or_default()
-                .push(portable_id);
-        }
-    }
     let canonical_health = health_events::values(db, &health).await?;
     let health_medications: HashMap<i64, Value> = canonical_health
         .iter()
         .filter_map(|row| Some((row["id"].as_i64()?, row["medication_portable_ids"].clone())))
         .collect();
 
+    let person_names = crate::models::person_identity::display_names(
+        tenant,
+        people
+            .iter()
+            .map(|row| crate::models::ids::PersonId::from_database(row.id)),
+    )
+    .await?;
     let people_values: Vec<Value> = people.iter().map(|row| merge(identity(&row.portable_id, row.updated_at), json!({
-        "name": row.name, "email": row.email, "date_of_birth": row.date_of_birth.map(|date| date.to_string()),
+        "name": person_names.get(&crate::models::ids::PersonId::from_database(row.id)), "date_of_birth": row.date_of_birth.map(|date| date.to_string()),
         "person_type": person_type(row.person_type), "has_capacity": row.has_capacity,
-        "location_portable_ids": person_locations.get(&row.id).cloned().unwrap_or_default(),
         "notification_preference_portable_id": preference_ids.get(&row.id),
     }))).collect();
     let location_values: Vec<Value> = locations
@@ -435,13 +418,13 @@ async fn scoped_payload(
             merge(
                 identity(&row.portable_id, row.updated_at),
                 json!({
-                    "name": row.name, "description": row.description,
+                    "name": row.name, "description": row.description, "retired_at": row.retired_at.map(timestamp),
                 }),
             )
         })
         .collect();
     let medication_values: Vec<Value> = medications.iter().map(|row| merge(identity(&row.portable_id, row.updated_at), json!({
-        "location_portable_id": location_ids_by_id.get(&row.location_id), "name": row.name,
+        "location_portable_id": row.location_id.and_then(|id| location_ids_by_id.get(&id)), "name": row.name,
         "friendly_name": row.friendly_name, "category": row.category, "description": row.description,
         "dose_amount": row.dose_amount, "dose_unit": row.dose_unit,
         "default_schedule_type": schedule_type(row.default_schedule_type),
@@ -496,7 +479,7 @@ async fn scoped_payload(
         }))
     }).collect();
     let preference_values: Vec<Value> = preferences.iter().map(|row| merge(identity(&row.portable_id, row.updated_at), json!({
-        "person_portable_id": person_ids_by_id.get(&row.person_id), "enabled": row.enabled,
+        "person_portable_id": person_ids_by_id.get(&preference_person_id.get()), "enabled": row.enabled,
         "dose_due_enabled": row.dose_due_enabled, "missed_dose_enabled": row.missed_dose_enabled,
         "low_stock_enabled": row.low_stock_enabled, "private_text_enabled": row.private_text_enabled,
         "morning_time": row.morning_time.map(|time| time.format("%H:%M:%S").to_string()),
@@ -518,7 +501,7 @@ async fn scoped_payload(
             "medication_portable_ids": health_medications.get(&row.id).cloned().unwrap_or_else(|| json!([])),
         }))).collect::<Vec<_>>());
     }
-    if v2 {
+    if extended_records {
         records["medication_pause_periods"] = json!(periods.iter().map(|row| {
             let (source_type, source_id) = if let Some(id) = row.schedule_id {
                 ("schedule", source_ids.get(&id))
@@ -604,12 +587,12 @@ async fn scoped_payload(
     }
     for row in &preferences {
         let owner = person_ids_by_id
-            .get(&row.person_id)
+            .get(&preference_person_id.get())
             .ok_or(OperationError::Unavailable)?;
         let formatted =
             |time: Option<chrono::NaiveTime>| time.map(|time| time.format("%H:%M:%S").to_string());
         let canonical = json!({"data":{
-            "id":row.id,"portable_id":row.portable_id,"person_id":row.person_id,
+            "id":row.id,"portable_id":row.portable_id,"person_id":preference_person_id,
             "person_portable_id":owner,"enabled":row.enabled,"dose_due_enabled":row.dose_due_enabled,
             "missed_dose_enabled":row.missed_dose_enabled,"low_stock_enabled":row.low_stock_enabled,
             "private_text_enabled":row.private_text_enabled,"morning_time":formatted(row.morning_time),

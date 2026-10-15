@@ -58,7 +58,7 @@ pub async fn export(
         return Err(validation("Portable passphrase header is required"));
     }
     let mut payload =
-        sync::api_export_payload(tenant, chrono_tz::UTC, "medtracker.portable.v1", false)
+        sync::api_export_payload(tenant, chrono_tz::UTC, sync::CURRENT_PORTABLE_FORMAT, false)
             .await?
             .body;
     let counts = profile_export::record_counts(&payload);
@@ -67,11 +67,11 @@ pub async fn export(
             encrypt_bundle(payload, passphrase.unwrap_or_default()).await?
         }
         "health_data_json" => {
-            payload["format"] = json!("medtracker.health_data.v1");
+            payload["format"] = json!(profile_export::HEALTH_DATA_FORMAT);
             payload
         }
         _ => {
-            payload["format"] = json!("medtracker.backup.v1");
+            payload["format"] = json!(profile_export::BACKUP_FORMAT);
             let content =
                 serde_json::to_vec_pretty(&payload).map_err(|_| OperationError::Unavailable)?;
             if content.len() > MAX_BACKUP_BYTES {
@@ -99,28 +99,17 @@ pub async fn portable_export(
     let Some(passphrase) = passphrase.filter(|value| !value.trim().is_empty()) else {
         return Err(validation("Portable passphrase header is required"));
     };
-    if query
-        .version
-        .as_deref()
-        .is_some_and(|value| !matches!(value, "1" | "2"))
-    {
+    if query.version.as_deref().is_some_and(|value| value != "3") {
         return Err(validation("Unsupported portable data version"));
     }
     if query
         .portable_format
         .as_deref()
-        .is_some_and(|value| !matches!(value, "medtracker.portable.v1" | "medtracker.portable.v2"))
+        .is_some_and(|value| value != sync::CURRENT_PORTABLE_FORMAT)
     {
         return Err(validation("Unsupported portable data format"));
     }
-    let format = if query.version.as_deref() == Some("2") {
-        "medtracker.portable.v2"
-    } else {
-        query
-            .portable_format
-            .as_deref()
-            .unwrap_or("medtracker.portable.v1")
-    };
+    let format = sync::CURRENT_PORTABLE_FORMAT;
     let payload = sync::bundle_payload(tenant, chrono_tz::UTC, format)
         .await?
         .body;

@@ -1,6 +1,5 @@
 use super::*;
 use chrono::Datelike;
-use loco_rs::model::TenantQueryExt;
 use sea_orm::{IntoActiveModel, PaginatorTrait, QueryOrder};
 use serde::Deserialize;
 
@@ -13,15 +12,14 @@ pub struct Pagination {
 
 pub async fn list(tenant: &TenantTransaction, page: Pagination) -> Result<Value, OperationError> {
     access::recheck(tenant).await?;
-    let person_id = tenant
-        .membership()
-        .person_id
-        .ok_or(OperationError::Forbidden)?;
-    let actor = person::Entity::find_by_id(person_id)
-        .in_tenant(tenant.scope().household_id)
-        .one(tenant.transaction())
-        .await?
-        .ok_or(OperationError::Forbidden)?;
+    let person_id = tenant.membership().person_id;
+    let actor = crate::models::access::person_scope(
+        crate::models::ids::HouseholdId::from_database(tenant.scope().household_id),
+    )
+    .filter(person::Column::Id.eq(person_id))
+    .one(tenant.transaction())
+    .await?
+    .ok_or(OperationError::Forbidden)?;
     let today = Utc::now()
         .with_timezone(&crate::models::care::doses::app_zone(tenant.settings()))
         .date_naive();
@@ -72,7 +70,7 @@ async fn find(
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::NotFound)?;
-    if !person_access(tenant.transaction(), tenant, row.person_id, false).await? {
+    if !person_access(tenant.transaction(), tenant, row.person_id).await? {
         return Err(OperationError::NotFound);
     }
     Ok(row)
@@ -105,7 +103,7 @@ pub async fn authorize_update(tenant: &TenantTransaction, id: &str) -> Result<()
         .await?
         .ok_or(OperationError::NotFound)?;
     let row = find(tenant, id, true).await?;
-    access::require_person_access(tenant, row.person_id, PersonAccess::Manage).await
+    access::require_participation(tenant, row.person_id).await
 }
 pub async fn update(
     tenant: &TenantTransaction,

@@ -182,7 +182,7 @@ async fn reorder(
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::NotFound)?;
-    access::require_person_access(tenant, source.person_id, PersonAccess::Manage).await?;
+    access::require_participation(tenant, source.person_id).await?;
     let query = person_medication::Entity::find()
         .in_tenant(tenant.scope().household_id)
         .filter(person_medication::Column::PersonId.eq(source.person_id))
@@ -201,11 +201,13 @@ async fn reorder(
     let Some(adjacent) = query.lock_exclusive().one(tenant.transaction()).await? else {
         return Ok(());
     };
-    let person = person::Entity::find_by_id(source.person_id)
-        .in_tenant(tenant.scope().household_id)
-        .one(tenant.transaction())
-        .await?
-        .ok_or(OperationError::NotFound)?;
+    let person = crate::models::access::person_scope(
+        crate::models::ids::HouseholdId::from_database(tenant.scope().household_id),
+    )
+    .filter(person::Column::Id.eq(source.person_id))
+    .one(tenant.transaction())
+    .await?
+    .ok_or(OperationError::NotFound)?;
     for (row, position) in [
         (source.clone(), adjacent.position),
         (adjacent, source.position),

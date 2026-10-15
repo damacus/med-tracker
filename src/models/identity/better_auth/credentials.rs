@@ -15,6 +15,7 @@ use serde_json::json;
 use std::sync::Arc;
 
 use crate::models::errors::OperationError;
+use crate::models::ids::{AccountId, HouseholdId, HouseholdMembershipId};
 
 #[derive(Serialize, Deserialize, PartialEq)]
 #[serde(tag = "action", rename_all = "snake_case", deny_unknown_fields)]
@@ -65,6 +66,29 @@ pub(super) enum Action {
     SupportActivate {
         support_id: i64,
     },
+}
+
+impl Action {
+    pub(super) async fn lock_platform(
+        &self,
+        transaction: &sea_orm::DatabaseTransaction,
+    ) -> AuthResult<()> {
+        if let Self::CreateApiKey { key } = self {
+            super::personal_keys::lock_creation_households(transaction, key).await?;
+        }
+        if matches!(
+            self,
+            Self::PlatformAdministrator { .. }
+                | Self::PlatformUser { .. }
+                | Self::PlatformOwnerRecovery { .. }
+                | Self::CloseAccount
+        ) {
+            crate::models::platform::serialize(transaction)
+                .await
+                .map_err(platform_error)?;
+        }
+        Ok(())
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -195,9 +219,9 @@ async fn validate(
             let transaction = store.transaction().await?;
             crate::models::platform::recovery::check(
                 &transaction,
-                clinical_id(&user.id)?,
-                *household_id,
-                *membership_id,
+                AccountId::from_database(clinical_id(&user.id)?),
+                HouseholdId::from_database(*household_id),
+                HouseholdMembershipId::from_database(*membership_id),
                 reason,
             )
             .await
@@ -307,6 +331,7 @@ impl Credentials {
             return Err(AuthError::forbidden("Fresh email confirmation is required"));
         }
         let transaction = self.0.transaction().await?;
+        action.lock_platform(&transaction).await?;
         self.0.lock_security_session(&transaction, &session).await?;
         validate(&self.0, ctx, &user, &action).await?;
         let accounts = ctx.database.get_user_accounts(&user.id).await?;
@@ -462,9 +487,9 @@ pub(super) async fn complete(
         let transaction = store.transaction().await?;
         crate::models::platform::recovery::promote(
             &transaction,
-            clinical_id(&user.id)?,
-            *household_id,
-            *membership_id,
+            AccountId::from_database(clinical_id(&user.id)?),
+            HouseholdId::from_database(*household_id),
+            HouseholdMembershipId::from_database(*membership_id),
             reason,
             &request_meta(session, request),
         )

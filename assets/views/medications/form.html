@@ -15,7 +15,7 @@
           {% for field in identity_fields %}{% include "medications/input.html" %}{% endfor %}
         </div>
         <div class="grid gap-2 min-w-0"><label for="location_id" class="font-semibold">Location</label>
-          <select id="location_id" name="location_id" class="select w-full min-w-0" required {% if location_invalid %}aria-invalid="true" aria-describedby="form-error-location_id"{% endif %}>
+          <select id="location_id" name="location_id" class="select w-full min-w-0" {% if location_invalid %}aria-invalid="true" aria-describedby="form-error-location_id"{% endif %}>
             <option value="">Select a location...</option>
             {% for location in locations %}<option value="{{ location.id }}" {% if location.id == selected_location %}selected{% endif %}>{{ location.name }}</option>{% endfor %}
           </select></div>

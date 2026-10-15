@@ -1,8 +1,10 @@
+#[path = "support/recorded_takes.rs"]
+mod recorded_takes;
 #[path = "support/template.rs"]
 mod template;
 use med_tracker::models::{
     access::{self, Actor, HouseholdScope},
-    care::doses::{self, Command, Outcome, Take},
+    care::doses::{self, Outcome, Request as Command, TakeRequest as Take},
     errors::OperationError,
 };
 use sea_orm::{ConnectionTrait, Database, DatabaseConnection, DbBackend, Statement};
@@ -85,8 +87,8 @@ fn scope() -> HouseholdScope {
     }
 }
 
-fn command() -> Command {
-    Command::Take(Take {
+fn command() -> Take {
+    Take {
         client_uuid: Some("006b49d9-1da2-42f1-800b-8c80867aee1c".into()),
         source_type: "person_medication".into(),
         source_id: "81001".into(),
@@ -96,12 +98,21 @@ fn command() -> Command {
         taken_from_medication_id: Some(80001),
         expected_effective_amount: None,
         expected_effective_unit: None,
-    })
+    }
 }
 
-async fn take(fixture: &Fixture, command: Command) -> Result<Outcome, OperationError> {
+async fn perform_request(
+    tenant: &access::TenantTransaction,
+    request: Take,
+    zone: chrono_tz::Tz,
+) -> Result<Outcome, OperationError> {
+    let prepared = doses::prepare_request(request, zone)?;
+    doses::execute(tenant, Command::Take(prepared)).await
+}
+
+async fn take(fixture: &Fixture, command: Take) -> Result<Outcome, OperationError> {
     let tenant = access::begin(&fixture.runtime, &scope(), None).await?;
-    match doses::execute(&tenant, command).await {
+    match perform_request(&tenant, command, chrono_tz::UTC).await {
         Ok(outcome) => {
             tenant.commit().await?;
             Ok(outcome)
@@ -143,10 +154,10 @@ async fn dose_take_duplicate_replay_does_not_repeat_clinical_effects() {
 async fn dose_take_rejects_payload_mismatch_without_writes() {
     let fixture = Fixture::new().await;
     assert!(take(&fixture, command()).await.is_ok());
-    let Command::Take(mut changed) = command();
+    let mut changed = command();
     changed.dose_amount = Some("3".into());
     assert!(matches!(
-        take(&fixture, Command::Take(changed)).await,
+        take(&fixture, changed).await,
         Err(OperationError::Conflict { .. })
     ));
     assert_eq!(fixture.effect().await, (1, "8.00".into(), 1, 1));
@@ -170,17 +181,17 @@ async fn dose_take_insufficient_stock_has_no_partial_writes() {
 }
 
 #[tokio::test]
-async fn dose_take_rechecks_current_grant_in_open_transaction() {
+async fn dose_take_rechecks_current_membership_in_open_transaction() {
     let fixture = Fixture::new().await;
     let tenant = access::begin(&fixture.runtime, &scope(), None)
         .await
         .unwrap();
     fixture
         .admin
-        .execute_unprepared("UPDATE person_access_grants SET revoked_at = now() WHERE id = 78001")
+        .execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001")
         .await
         .unwrap();
-    let result = doses::execute(&tenant, command()).await;
+    let result = perform_request(&tenant, command(), chrono_tz::UTC).await;
     assert_eq!(result.unwrap_err(), OperationError::NotFound);
     tenant.rollback().await.unwrap();
     assert_eq!(fixture.effect().await, (0, "10.00".into(), 0, 0));
@@ -261,9 +272,9 @@ async fn dose_take_unrelated_unique_collision_is_not_a_replay_conflict() {
         Ok(Outcome::Created(_))
     ));
     fixture.admin.execute_unprepared("CREATE FUNCTION public.synthetic_portable_collision() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN NEW.portable_id := (SELECT portable_id FROM medication_takes LIMIT 1); RETURN NEW; END $$; CREATE TRIGGER synthetic_portable_collision BEFORE INSERT ON medication_takes FOR EACH ROW EXECUTE FUNCTION public.synthetic_portable_collision()").await.unwrap();
-    let Command::Take(mut input) = command();
+    let mut input = command();
     input.client_uuid = Some("22222222-2222-4222-8222-222222222222".into());
-    let result = take(&fixture, Command::Take(input)).await;
+    let result = take(&fixture, input).await;
     assert_eq!(
         result.unwrap_err(),
         OperationError::Unavailable,
@@ -287,12 +298,12 @@ async fn dose_take_omitted_replay_options_preserve_original_after_default_change
         )
         .await
         .unwrap();
-    let Command::Take(mut input) = command();
+    let mut input = command();
     input.dose_amount = None;
     input.dose_unit = None;
     input.taken_from_medication_id = None;
     assert!(matches!(
-        take(&fixture, Command::Take(input)).await,
+        take(&fixture, input).await,
         Ok(Outcome::Replayed(_))
     ));
     assert_eq!(fixture.effect().await, (1, "8.00".into(), 1, 1));
@@ -307,7 +318,7 @@ async fn dose_take_explicit_replay_options_must_match_stored_effect() {
         Ok(Outcome::Created(_))
     ));
     for field in ["amount", "unit", "location"] {
-        let Command::Take(mut input) = command();
+        let mut input = command();
         match field {
             "amount" => input.dose_amount = Some("3".into()),
             "unit" => input.dose_unit = Some("capsule".into()),
@@ -315,7 +326,7 @@ async fn dose_take_explicit_replay_options_must_match_stored_effect() {
         }
         assert!(
             matches!(
-                take(&fixture, Command::Take(input)).await,
+                take(&fixture, input).await,
                 Err(OperationError::Conflict { .. })
             ),
             "{field}"
@@ -354,17 +365,17 @@ async fn dose_take_paused_and_retired_sources_have_no_clinical_effect() {
 async fn dose_take_multiple_locations_require_selection_and_preserve_other_stock() {
     let fixture = Fixture::new().await;
     fixture.admin.execute_unprepared("INSERT INTO locations(id,household_id,name,created_at,updated_at) VALUES(79002,72001,'Other synthetic cabinet',now(),now()); INSERT INTO medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at) VALUES(80002,72001,79002,'Synthetic tablets',10,2,'tablet',now(),now()); INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(81002,72001,73001,80002,2,'tablet',1,now(),now())").await.unwrap();
-    let Command::Take(mut input) = command();
+    let mut input = command();
     input.taken_from_medication_id = None;
     assert!(matches!(
-        take(&fixture, Command::Take(input)).await,
+        take(&fixture, input).await,
         Err(OperationError::Validation { .. })
     ));
     assert_eq!(fixture.effect().await, (0, "10.00".into(), 0, 0));
-    let Command::Take(mut input) = command();
+    let mut input = command();
     input.taken_from_medication_id = Some(80002);
     assert!(matches!(
-        take(&fixture, Command::Take(input)).await,
+        take(&fixture, input).await,
         Ok(Outcome::Created(_))
     ));
     assert_eq!(fixture.effect().await, (1, "10.00".into(), 1, 1));
@@ -437,11 +448,11 @@ async fn dose_take_schedule_date_kinds_and_taper_amounts() {
     ] {
         let fixture = Fixture::new().await;
         fixture.admin.execute_unprepared(&format!("INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83001,72001,73001,80001,true,'2026-10-05','2026-10-10',2,'tablet',{kind},'{config}',now(),now())")).await.unwrap();
-        let Command::Take(mut input) = command();
+        let mut input = command();
         input.source_type = "schedule".into();
         input.source_id = "83001".into();
         input.dose_amount = None;
-        let result = take(&fixture, Command::Take(input)).await;
+        let result = take(&fixture, input).await;
         if allowed {
             let Ok(Outcome::Created(row)) = result else {
                 panic!("Expected supported schedule {kind}: {result:?}")
@@ -458,9 +469,9 @@ async fn dose_take_schedule_date_kinds_and_taper_amounts() {
 #[tokio::test]
 async fn public_take_keeps_an_explicit_amount_override_without_browser_confirmation() {
     let fixture = Fixture::new().await;
-    let Command::Take(mut input) = command();
+    let mut input = command();
     input.dose_amount = Some("3".into());
-    let outcome = take(&fixture, Command::Take(input)).await;
+    let outcome = take(&fixture, input).await;
     let Ok(Outcome::Created(record)) = outcome else {
         panic!("Expected public dose override: {outcome:?}");
     };
@@ -484,11 +495,11 @@ async fn dose_take_timing_cycle_and_minimum_interval_deny_extra_effects() {
             take(&fixture, command()).await,
             Ok(Outcome::Created(_))
         ));
-        let Command::Take(mut input) = command();
+        let mut input = command();
         input.client_uuid = None;
         input.taken_at = "2026-10-05T11:00:00Z".into();
         assert!(matches!(
-            take(&fixture, Command::Take(input)).await,
+            take(&fixture, input).await,
             Err(OperationError::Validation { .. })
         ));
         assert_eq!(fixture.effect().await, (1, "8.00".into(), 1, 1));
@@ -506,11 +517,11 @@ async fn dose_take_timing_cycle_and_minimum_interval_deny_extra_effects() {
         take(&fixture, command()).await,
         Ok(Outcome::Created(_))
     ));
-    let Command::Take(mut input) = command();
+    let mut input = command();
     input.client_uuid = None;
     input.taken_at = "2026-10-05T11:00:00Z".into();
     assert!(matches!(
-        take(&fixture, Command::Take(input)).await,
+        take(&fixture, input).await,
         Err(OperationError::Validation { .. })
     ));
     assert_eq!(fixture.effect().await, (1, "8.00".into(), 1, 1));
@@ -521,28 +532,20 @@ async fn dose_take_timing_cycle_and_minimum_interval_deny_extra_effects() {
 async fn dose_take_request_timezone_selects_near_midnight_schedule_date() {
     let fixture = Fixture::new().await;
     fixture.admin.execute_unprepared(r#"INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83001,72001,73001,80001,true,'2026-09-28','2026-09-30',2,'tablet',2,'{"weekdays":["tuesday"]}',now(),now())"#).await.unwrap();
-    let Command::Take(mut input) = command();
+    let mut input = command();
     input.source_type = "schedule".into();
     input.source_id = "83001".into();
     input.taken_at = "2026-09-28T23:30:00Z".into();
     let tenant = access::begin(&fixture.runtime, &scope(), None)
         .await
         .unwrap();
-    let utc =
-        doses::execute_in_timezone(&tenant, Command::Take(input.clone()), chrono_tz::UTC, None)
-            .await;
+    let utc = perform_request(&tenant, input.clone(), chrono_tz::UTC).await;
     assert!(matches!(utc, Err(OperationError::Validation { .. })));
     tenant.rollback().await.unwrap();
     let tenant = access::begin(&fixture.runtime, &scope(), None)
         .await
         .unwrap();
-    let london = doses::execute_in_timezone(
-        &tenant,
-        Command::Take(input),
-        chrono_tz::Europe::London,
-        None,
-    )
-    .await;
+    let london = perform_request(&tenant, input, chrono_tz::Europe::London).await;
     assert!(
         matches!(london, Ok(Outcome::Created(_))),
         "The validated request timezone was ignored: {london:?}"
@@ -553,14 +556,20 @@ async fn dose_take_request_timezone_selects_near_midnight_schedule_date() {
 }
 
 #[tokio::test]
-async fn dose_take_grant_expired_after_begin_has_no_effect() {
+async fn dose_take_source_participation_revoked_after_begin_has_no_effect() {
     let fixture = Fixture::new().await;
-    fixture.admin.execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001; UPDATE person_access_grants SET expires_at=timezone('UTC',clock_timestamp())+interval '100 milliseconds' WHERE id=78001").await.unwrap();
+    fixture
+        .admin
+        .execute_unprepared("INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(81002,72001,73002,80001,2,'tablet',0,now(),now())")
+        .await
+        .unwrap();
     let tenant = access::begin(&fixture.runtime, &scope(), None)
         .await
         .unwrap();
-    fixture.admin.execute_unprepared("UPDATE person_access_grants SET expires_at=timezone('UTC',clock_timestamp())-interval '1 second' WHERE id=78001").await.unwrap();
-    let result = doses::execute(&tenant, command()).await;
+    fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74902").await.unwrap();
+    let mut request = command();
+    request.source_id = "81002".into();
+    let result = perform_request(&tenant, request, chrono_tz::UTC).await;
     assert_eq!(result.unwrap_err(), OperationError::NotFound);
     tenant.rollback().await.unwrap();
     assert_eq!(fixture.effect().await, (0, "10.00".into(), 0, 0));
@@ -569,11 +578,11 @@ async fn dose_take_grant_expired_after_begin_has_no_effect() {
 
 async fn take_in_timezone(
     fixture: &Fixture,
-    command: Command,
+    command: Take,
     zone: chrono_tz::Tz,
 ) -> Result<Outcome, OperationError> {
     let tenant = access::begin(&fixture.runtime, &scope(), None).await?;
-    match doses::execute_in_timezone(&tenant, command, zone, None).await {
+    match perform_request(&tenant, command, zone).await {
         Ok(outcome) => {
             tenant.commit().await?;
             Ok(outcome)
@@ -601,21 +610,15 @@ async fn dose_take_request_timezone_controls_daily_weekly_monthly_and_dst_cycles
             ))
             .await
             .unwrap();
-        let Command::Take(mut input) = command();
+        let mut input = command();
         input.taken_at = first.into();
         assert!(matches!(
-            take_in_timezone(
-                &fixture,
-                Command::Take(input.clone()),
-                chrono_tz::Europe::London
-            )
-            .await,
+            take_in_timezone(&fixture, input.clone(), chrono_tz::Europe::London).await,
             Ok(Outcome::Created(_))
         ));
         input.client_uuid = None;
         input.taken_at = second.into();
-        let result =
-            take_in_timezone(&fixture, Command::Take(input), chrono_tz::Europe::London).await;
+        let result = take_in_timezone(&fixture, input, chrono_tz::Europe::London).await;
         if allowed {
             assert!(matches!(result, Ok(Outcome::Created(_))));
             assert_eq!(fixture.effect().await, (2, "6.00".into(), 2, 2));
@@ -631,22 +634,42 @@ async fn dose_take_request_timezone_controls_daily_weekly_monthly_and_dst_cycles
 }
 
 #[tokio::test]
-async fn dose_take_member_uses_assignment_stock_and_excludes_unlinked_match() {
+async fn dose_take_member_can_select_matching_household_stock_without_person_link() {
     let fixture = Fixture::new().await;
-    fixture.admin.execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001; INSERT INTO locations(id,household_id,name,created_at,updated_at) VALUES(79002,72001,'Unlinked synthetic cabinet',now(),now()); INSERT INTO medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_by_membership_id,created_at,updated_at) VALUES(80002,72001,79002,'Synthetic tablets',20,2,'tablet',74001,now(),now())").await.unwrap();
-    let Command::Take(mut input) = command();
+    fixture.admin.execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001; INSERT INTO locations(id,household_id,name,created_at,updated_at) VALUES(79002,72001,'Shared synthetic cabinet',now(),now()); INSERT INTO medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at) VALUES(80002,72001,79002,'Synthetic tablets',20,2,'tablet',now(),now())").await.unwrap();
+    let mut input = command();
+    input.taken_from_medication_id = Some(80002);
+    let outcome = take(&fixture, input).await;
+    assert!(
+        matches!(outcome, Ok(Outcome::Created(_))),
+        "Current household member could not select matching household stock: {outcome:?}"
+    );
+    assert_eq!(fixture.effect().await, (1, "10.00".into(), 1, 1));
+    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT current_supply::text AS supply, (SELECT count(*) FROM person_medications WHERE medication_id=80002) AS links FROM medications WHERE id=80002"
+    )).await.unwrap().unwrap();
+    assert_eq!(row.try_get::<String>("", "supply").unwrap(), "18.00");
+    assert_eq!(row.try_get::<i64>("", "links").unwrap(), 0);
+    fixture.close().await;
+}
+
+#[tokio::test]
+async fn dose_take_member_uses_matching_stock_and_rejects_wrong_signature() {
+    let fixture = Fixture::new().await;
+    fixture.admin.execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001; INSERT INTO locations(id,household_id,name,created_at,updated_at) VALUES(79002,72001,'Unlinked synthetic cabinet',now(),now()); INSERT INTO medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_by_membership_id,created_at,updated_at) VALUES(80002,72001,79002,'Synthetic tablets',20,3,'tablet',74001,now(),now())").await.unwrap();
+    let mut input = command();
     input.taken_from_medication_id = None;
-    let created = take(&fixture, Command::Take(input)).await;
+    let created = take(&fixture, input).await;
     let Ok(Outcome::Created(record)) = created else {
         panic!("The canonical member could not take linked stock: {created:?}");
     };
     assert_eq!(record.taken_from_medication_id, Some(80001));
     assert_eq!(fixture.effect().await, (1, "8.00".into(), 1, 1));
-    let Command::Take(mut input) = command();
+    let mut input = command();
     input.client_uuid = None;
     input.taken_from_medication_id = Some(80002);
     assert!(matches!(
-        take(&fixture, Command::Take(input)).await,
+        take(&fixture, input).await,
         Err(OperationError::Validation { .. })
     ));
     assert_eq!(fixture.effect().await, (1, "8.00".into(), 1, 1));
@@ -680,10 +703,10 @@ async fn dose_take_rejects_unrepresentable_tracked_aggregate_without_effects() {
     fixture.close().await;
 }
 
-fn uuid_command(client_uuid: String) -> Command {
-    let Command::Take(mut input) = command();
+fn uuid_command(client_uuid: String) -> Take {
+    let mut input = command();
     input.client_uuid = Some(client_uuid);
-    Command::Take(input)
+    input
 }
 
 #[tokio::test]
@@ -727,22 +750,16 @@ async fn dose_take_uuid_canonical_retry_preserves_historical_spelling() {
         "URN:UUID:006B49D9-1DA2-42F1-800B-8C80867AEE1C",
     ] {
         let fixture = Fixture::new().await;
-        let Outcome::Created(first) = take(&fixture, command()).await.unwrap() else {
-            panic!("First dose was not created")
-        };
-        fixture
-            .admin
-            .execute_unprepared(&format!(
-                "UPDATE medication_takes SET client_uuid='{historical}' WHERE id={}",
-                first.id
-            ))
+        recorded_takes::seed(&fixture.admin, recorded_takes::SyntheticActor::canonical(), &format!(
+                "INSERT INTO medication_takes(id,household_id,client_uuid,person_medication_id,taken_from_medication_id,taken_from_location_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(82001,72001,'{historical}',81001,80001,79001,2,'tablet','2026-10-05T10:00:00',now(),now())"
+            ), &[recorded_takes::TakeSeed::new(82001,80001)])
             .await
             .unwrap();
         let replay = take(&fixture, command()).await.unwrap();
         assert!(
-            matches!(replay, Outcome::Replayed(record) if record.id == first.id && record.client_uuid.as_deref() == Some(historical))
+            matches!(replay, Outcome::Replayed(record) if record.id == 82001 && record.client_uuid.as_deref() == Some(historical))
         );
-        assert_eq!(fixture.effect().await, (1, "8.00".into(), 1, 1));
+        assert_eq!(fixture.effect().await, (1, "10.00".into(), 0, 0));
         fixture.close().await;
     }
 }
@@ -768,28 +785,44 @@ async fn dose_take_uuid_concurrent_variants_share_one_effect() {
 }
 
 #[tokio::test]
-async fn dose_take_uuid_historical_duplicate_is_a_stable_conflict() {
+async fn dose_take_uuid_historical_duplicate_is_a_stable_conflict()
+-> Result<(), Box<dyn std::error::Error>> {
     let fixture = Fixture::new().await;
-    take(&fixture, command()).await.unwrap();
-    fixture
-        .admin
-        .execute_unprepared("DROP INDEX IF EXISTS index_medication_takes_on_client_uuid_canonical")
-        .await
-        .unwrap();
-    fixture.admin.execute_unprepared("INSERT INTO medication_takes(household_id, client_uuid, person_medication_id, taken_from_medication_id, taken_from_location_id, dose_amount, dose_unit, taken_at, created_at, updated_at) SELECT household_id, upper(client_uuid), person_medication_id, taken_from_medication_id, taken_from_location_id, dose_amount, dose_unit, taken_at, created_at, updated_at FROM medication_takes LIMIT 1").await.unwrap();
-    let before = fixture.effect().await;
-    assert!(matches!(
-        take(&fixture, command()).await,
-        Err(OperationError::Conflict { .. })
-    ));
-    assert_eq!(fixture.effect().await, before);
+    let result = async {
+        take(&fixture, command()).await?;
+        fixture.admin.execute_unprepared(
+            "DROP INDEX IF EXISTS index_medication_takes_on_client_uuid_canonical",
+        ).await?;
+        let transaction = recorded_takes::begin(
+            &fixture.admin, recorded_takes::SyntheticActor::canonical(),
+        ).await?;
+        let copied = transaction.query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "INSERT INTO medication_takes(household_id, client_uuid, person_medication_id, taken_from_medication_id, taken_from_location_id, dose_amount, dose_unit, taken_at, created_at, updated_at) SELECT household_id, upper(client_uuid), person_medication_id, taken_from_medication_id, taken_from_location_id, dose_amount, dose_unit, taken_at, created_at, updated_at FROM medication_takes LIMIT 1 RETURNING id",
+        )).await?.ok_or("missing copied take")?;
+        let copied_id = copied.try_get::<i64>("", "id")?;
+        recorded_takes::capture(
+            &transaction,
+            med_tracker::models::ids::TakeId::from_database(copied_id),
+            med_tracker::models::ids::MedicationId::from_database(80001),
+        ).await?;
+        transaction.commit().await?;
+        let before = fixture.effect().await;
+        let repeated = take(&fixture, command()).await;
+        let after = fixture.effect().await;
+        Ok::<_, Box<dyn std::error::Error>>((before, repeated, after))
+    }.await;
     fixture.close().await;
+    let (before, repeated, after) = result?;
+    assert!(matches!(repeated, Err(OperationError::Conflict { .. })));
+    assert_eq!(after, before);
+    Ok(())
 }
 
 #[tokio::test]
 async fn dose_take_uuid_foreign_historical_collision_is_hidden_without_new_effect() {
     let fixture = Fixture::new().await;
-    fixture.admin.execute_unprepared("INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(92001,71001,'Other synthetic household','uuid-foreign-household','UTC',now(),now()); INSERT INTO people(id,household_id,name,person_type,has_capacity,created_at,updated_at) VALUES(92002,92001,'Other synthetic adult',0,true,now(),now()); INSERT INTO locations(id,household_id,name,created_at,updated_at) VALUES(92003,92001,'Other synthetic cabinet',now(),now()); INSERT INTO medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at) VALUES(92004,92001,92003,'Other synthetic tablets',10,2,'tablet',now(),now()); INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(92005,92001,92002,92004,2,'tablet',0,now(),now()); INSERT INTO medication_takes(id,household_id,client_uuid,person_medication_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(92006,92001,'006B49D9-1DA2-42F1-800B-8C80867AEE1C',92005,2,'tablet','2026-10-05T10:00:00',now(),now())").await.unwrap();
+    recorded_takes::seed(&fixture.admin, recorded_takes::SyntheticActor::new(92008,92001,92007), "INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(92001,71001,'Other synthetic household','uuid-foreign-household','UTC',now(),now()); INSERT INTO people(id,clinical_name,person_type,has_capacity,created_at,updated_at) VALUES(92002,'Other synthetic adult',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(92007,92001,92002,'member',now(),now(),now()); INSERT INTO accounts(id,person_id,name,email,status,created_at,updated_at) VALUES(92008,92002,'Foreign synthetic recording actor','foreign-history-actor@example.test',2,now(),now()); INSERT INTO locations(id,household_id,name,created_at,updated_at) VALUES(92003,92001,'Other synthetic cabinet',now(),now()); INSERT INTO medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at) VALUES(92004,92001,92003,'Other synthetic tablets',10,2,'tablet',now(),now()); INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(92005,92001,92002,92004,2,'tablet',0,now(),now()); INSERT INTO medication_takes(id,household_id,client_uuid,person_medication_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(92006,92001,'006B49D9-1DA2-42F1-800B-8C80867AEE1C',92005,2,'tablet','2026-10-05T10:00:00',now(),now())", &[recorded_takes::TakeSeed::new(92006,92004)]).await.unwrap();
     let before = fixture.effect().await;
     let error = take(&fixture, command()).await.unwrap_err();
     assert!(
@@ -805,19 +838,19 @@ async fn dose_take_conformance_backdated_interval_preserves_preceding_neighbour_
     let fixture = Fixture::new().await;
     fixture.admin.execute_unprepared("UPDATE person_medications SET max_daily_doses=4,min_hours_between_doses=4 WHERE id=81001").await.unwrap();
     for time in ["2026-10-05T10:00:00Z", "2026-10-05T18:00:00Z"] {
-        let Command::Take(mut input) = command();
+        let mut input = command();
         input.client_uuid = None;
         input.taken_at = time.into();
         assert!(matches!(
-            take(&fixture, Command::Take(input)).await,
+            take(&fixture, input).await,
             Ok(Outcome::Created(_))
         ));
     }
-    let Command::Take(mut input) = command();
+    let mut input = command();
     input.client_uuid = None;
     input.taken_at = "2026-10-05T16:00:00Z".into();
     assert!(matches!(
-        take(&fixture, Command::Take(input)).await,
+        take(&fixture, input).await,
         Ok(Outcome::Created(_))
     ));
     assert_eq!(fixture.effect().await, (3, "4.00".into(), 3, 3));
@@ -829,19 +862,13 @@ async fn dose_take_review_skipped_midnight_keeps_local_daily_cycles_separate() {
     let fixture = Fixture::new().await;
     fixture.admin.execute_unprepared("UPDATE person_medications SET max_daily_doses=1,min_hours_between_doses=0,dose_cycle=0 WHERE id=81001").await.unwrap();
     for time in ["2025-09-07T02:30:00Z", "2025-09-07T04:30:00Z"] {
-        let Command::Take(mut input) = command();
+        let mut input = command();
         input.client_uuid = None;
         input.taken_at = time.into();
         let tenant = access::begin(&fixture.runtime, &scope(), None)
             .await
             .unwrap();
-        let result = doses::execute_in_timezone(
-            &tenant,
-            Command::Take(input),
-            chrono_tz::America::Santiago,
-            None,
-        )
-        .await;
+        let result = perform_request(&tenant, input, chrono_tz::America::Santiago).await;
         if result.is_ok() {
             tenant.commit().await.unwrap();
         } else {
@@ -854,4 +881,209 @@ async fn dose_take_review_skipped_midnight_keeps_local_daily_cycles_separate() {
     }
     assert_eq!(fixture.effect().await, (2, "6.00".into(), 2, 2));
     fixture.close().await;
+}
+
+#[tokio::test]
+async fn dose_take_replay_invalid_semantics_conflict_without_repeating_effects() {
+    let fixture = Fixture::new().await;
+    assert!(matches!(
+        take(&fixture, command()).await,
+        Ok(Outcome::Created(_))
+    ));
+    for field in ["time", "amount"] {
+        let mut input = command();
+        match field {
+            "time" => input.taken_at = "not-a-timestamp".into(),
+            _ => input.dose_amount = Some("not-a-decimal".into()),
+        }
+        assert!(
+            matches!(
+                take(&fixture, input).await,
+                Err(OperationError::Conflict { .. })
+            ),
+            "Invalid duplicate {field} must preserve replay conflict precedence"
+        );
+    }
+    assert_eq!(fixture.effect().await, (1, "8.00".into(), 1, 1));
+    fixture.close().await;
+}
+
+#[tokio::test]
+async fn dose_take_portable_assignment_reference_replays_numeric_source_once() {
+    let fixture = Fixture::new().await;
+    let row = fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT portable_id FROM person_medications WHERE id=81001",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    let portable: String = row.try_get("", "portable_id").unwrap();
+    let mut input = command();
+    input.source_id = portable;
+    assert!(matches!(
+        take(&fixture, input).await,
+        Ok(Outcome::Created(_))
+    ));
+    assert!(matches!(
+        take(&fixture, command()).await,
+        Ok(Outcome::Replayed(_))
+    ));
+    assert_eq!(fixture.effect().await, (1, "8.00".into(), 1, 1));
+    fixture.close().await;
+}
+
+#[tokio::test]
+async fn dose_take_portable_schedule_reference_replays_numeric_source_once() {
+    let fixture = Fixture::new().await;
+    fixture.admin.execute_unprepared("INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83001,72001,73001,80001,true,'2026-10-05','2026-10-10',2,'tablet',0,'{}',now(),now())").await.unwrap();
+    let row = fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT portable_id FROM schedules WHERE id=83001",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    let portable: String = row.try_get("", "portable_id").unwrap();
+    let mut input = command();
+    input.source_type = "schedule".into();
+    input.source_id = portable;
+    assert!(matches!(
+        take(&fixture, input.clone()).await,
+        Ok(Outcome::Created(_))
+    ));
+    input.source_id = "83001".into();
+    assert!(matches!(
+        take(&fixture, input).await,
+        Ok(Outcome::Replayed(_))
+    ));
+    assert_eq!(fixture.effect().await, (1, "8.00".into(), 1, 1));
+    fixture.close().await;
+}
+
+#[tokio::test]
+async fn dose_take_member_cannot_select_foreign_household_matching_stock() {
+    let fixture = Fixture::new().await;
+    fixture.admin.execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001; INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(92001,71001,'Other synthetic household','foreign-stock','UTC',now(),now()); INSERT INTO locations(id,household_id,name,created_at,updated_at) VALUES(92003,92001,'Foreign synthetic cabinet',now(),now()); INSERT INTO medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at) VALUES(92004,92001,92003,'Synthetic tablets',20,2,'tablet',now(),now())").await.unwrap();
+    let mut input = command();
+    input.taken_from_medication_id = Some(92004);
+    assert!(matches!(
+        take(&fixture, input).await,
+        Err(OperationError::Validation { .. })
+    ));
+    assert_eq!(fixture.effect().await, (0, "10.00".into(), 0, 0));
+    let row = fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT current_supply::text AS supply FROM medications WHERE id=92004",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(row.try_get::<String>("", "supply").unwrap(), "20.00");
+    fixture.close().await;
+}
+
+#[tokio::test]
+async fn dose_take_exact_fraction_and_invalid_new_requests_preserve_effects() {
+    let fixture = Fixture::new().await;
+    let mut input = command();
+    input.dose_amount = Some("0.10".into());
+    assert!(matches!(
+        take(&fixture, input).await,
+        Ok(Outcome::Created(_))
+    ));
+    assert_eq!(fixture.effect().await, (1, "9.90".into(), 1, 1));
+    for field in ["timestamp", "fraction", "range", "exponent"] {
+        let mut input = command();
+        input.client_uuid = Some(uuid::Uuid::new_v4().to_string());
+        match field {
+            "timestamp" => input.taken_at = "not-a-timestamp".into(),
+            "fraction" => input.dose_amount = Some("0.001".into()),
+            "range" => input.dose_amount = Some("100000000".into()),
+            _ => input.dose_amount = Some("1e2".into()),
+        }
+        assert!(
+            matches!(
+                take(&fixture, input).await,
+                Err(OperationError::Validation { .. })
+            ),
+            "Invalid new {field} must fail before clinical effects"
+        );
+        assert_eq!(fixture.effect().await, (1, "9.90".into(), 1, 1));
+    }
+    fixture.close().await;
+}
+
+#[tokio::test]
+async fn dose_take_invalid_numeric_schedule_config_never_rounds_or_falls_back() {
+    for amount in [
+        "0.1000000000000000000000000001",
+        "0.1000000000000000000000000000000000000000001",
+        "99999999.990000000000000000000000000001",
+        "1e400",
+        "1e-400",
+        "1e-29",
+        "100000000",
+        "1.001",
+        "1.00000000000000000000000000001e-1",
+        "\"malformed\"",
+        "\"0.10000000000000000000000000000000000000001\"",
+    ] {
+        let fixture = Fixture::new().await;
+        fixture.admin.execute_unprepared(&format!("INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83001,72001,73001,80001,true,'2026-10-05','2026-10-10',2,'tablet',0,'{{\"amount\":{amount}}}',now(),now())")).await.unwrap();
+        let mut input = command();
+        input.source_type = "schedule".into();
+        input.source_id = "83001".into();
+        input.dose_amount = None;
+        let outcome = take(&fixture, input.clone()).await;
+        assert!(
+            matches!(outcome, Err(OperationError::Validation { .. })),
+            "Invalid configured dose {amount} must fail closed, not round or use source default: {outcome:?}"
+        );
+        assert_eq!(fixture.effect().await, (0, "10.00".into(), 0, 0));
+        input.dose_amount = Some("2".into());
+        assert!(
+            matches!(
+                take(&fixture, input).await,
+                Err(OperationError::Validation { .. })
+            ),
+            "An explicit dose must not conceal invalid configuration {amount}"
+        );
+        assert_eq!(fixture.effect().await, (0, "10.00".into(), 0, 0));
+        fixture.close().await;
+    }
+}
+
+#[tokio::test]
+async fn dose_take_exact_numeric_and_scientific_schedule_config_remain_supported() {
+    for (amount, stored, remaining) in [
+        ("0.10", "0.10", "9.90"),
+        ("1e-1", "0.10", "9.90"),
+        ("2e0", "2.00", "8.00"),
+        ("1e+0", "1.00", "9.00"),
+        ("\"2.00\"", "2.00", "8.00"),
+    ] {
+        let fixture = Fixture::new().await;
+        fixture.admin.execute_unprepared(&format!("INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83001,72001,73001,80001,true,'2026-10-05','2026-10-10',2,'tablet',0,'{{\"amount\":{amount}}}',now(),now())")).await.unwrap();
+        let mut input = command();
+        input.source_type = "schedule".into();
+        input.source_id = "83001".into();
+        input.dose_amount = None;
+        let outcome = take(&fixture, input).await;
+        let Ok(Outcome::Created(record)) = outcome else {
+            panic!("Exact configured dose {amount} failed: {outcome:?}");
+        };
+        assert_eq!(
+            record.dose_amount.map(|value| value.to_string()).as_deref(),
+            Some(stored)
+        );
+        assert_eq!(fixture.effect().await, (1, remaining.into(), 1, 1));
+        fixture.close().await;
+    }
 }

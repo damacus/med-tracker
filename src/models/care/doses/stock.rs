@@ -11,10 +11,10 @@ pub(super) async fn decrement_stock(
     db: &DatabaseTransaction,
     context: &DoseContext<'_>,
     request_id: &str,
-    proposed: &ProposedTake,
+    proposed: &ValidatedTake,
 ) -> Result<(), ApiError> {
-    lock_row(db, "medications", proposed.selected.id).await?;
-    let selected = medication::Entity::find_by_id(proposed.selected.id)
+    lock_row(db, "medications", proposed.selected.id.get()).await?;
+    let selected = medication::Entity::find_by_id(proposed.selected.id.get())
         .in_tenant(context.scope().household_id)
         .one(db)
         .await
@@ -147,7 +147,7 @@ pub(super) async fn decrement_stock(
     .await?;
     let total = dosage::Entity::find()
         .in_tenant(context.scope().household_id)
-        .filter(dosage::Column::MedicationId.eq(proposed.selected.id))
+        .filter(dosage::Column::MedicationId.eq(proposed.selected.id.get()))
         .filter(dosage::Column::CurrentSupply.is_not_null())
         .all(db)
         .await

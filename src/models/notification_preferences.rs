@@ -1,13 +1,12 @@
 use crate::models::{
-    access::{PersonAccess, TenantTransaction},
-    entities::{api_change_event, household, notification_preference, person, version},
+    access::TenantTransaction,
+    entities::{api_change_event, notification_preference, person, version},
     errors::OperationError,
+    ids::AccountId,
     profile,
 };
 use chrono::{NaiveTime, Utc};
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect, Set,
-};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, Set};
 use serde_json::{Map, Value, json};
 use sha2::{Digest, Sha256};
 
@@ -175,7 +174,7 @@ pub fn representation(
     let body = json!({"data": {
         "id":row.id,
         "portable_id":row.portable_id,
-        "person_id":row.person_id,
+        "person_id":owner.id,
         "person_portable_id":owner.portable_id,
         "enabled":row.enabled,
         "dose_due_enabled":row.dose_due_enabled,
@@ -195,18 +194,13 @@ pub fn representation(
 
 pub async fn read(
     tenant: &TenantTransaction,
-    account_id: i64,
+    account_id: AccountId,
 ) -> Result<(notification_preference::Model, person::Model), OperationError> {
-    let owner = profile::linked_person_scoped(
-        tenant,
-        account_id,
-        PersonAccess::View,
-        OperationError::NotFound,
-    )
-    .await?;
+    let owner =
+        profile::linked_person_scoped(tenant, account_id.get(), OperationError::NotFound).await?;
     let row = notification_preference::Entity::find()
         .filter(notification_preference::Column::HouseholdId.eq(tenant.scope().household_id))
-        .filter(notification_preference::Column::PersonId.eq(owner.id))
+        .filter(notification_preference::Column::AccountId.eq(account_id.get()))
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::NotFound)?;
@@ -215,18 +209,14 @@ pub async fn read(
 
 pub async fn update(
     tenant: &TenantTransaction,
-    account_id: i64,
+    account_id: AccountId,
     changes: Changes,
 ) -> Result<(notification_preference::Model, person::Model), OperationError> {
-    household::Entity::find_by_id(tenant.scope().household_id)
-        .lock_exclusive()
-        .one(tenant.transaction())
-        .await?
-        .ok_or(OperationError::NotFound)?;
-    let owner = profile::linked_person(tenant, account_id, PersonAccess::Manage).await?;
+    crate::models::access::lock_household(tenant).await?;
+    let owner = profile::linked_person(tenant, account_id.get()).await?;
     let previous = notification_preference::Entity::find()
         .filter(notification_preference::Column::HouseholdId.eq(tenant.scope().household_id))
-        .filter(notification_preference::Column::PersonId.eq(owner.id))
+        .filter(notification_preference::Column::AccountId.eq(account_id.get()))
         .one(tenant.transaction())
         .await?;
     if let Some(row) = &previous
@@ -240,7 +230,7 @@ pub async fn update(
     } else {
         notification_preference::ActiveModel {
             household_id: Set(tenant.scope().household_id),
-            person_id: Set(owner.id),
+            account_id: Set(account_id.get()),
             created_at: Set(now),
             ..Default::default()
         }
@@ -279,7 +269,7 @@ pub async fn update(
         event: Set(event.into()),
         object: Set(old.map(|value| value.to_string())),
         object_changes: Set(Some(Value::Object(changes).to_string())),
-        whodunnit: Set(Some(tenant.user_id().to_string())),
+        whodunnit: Set(Some(tenant.person_id().to_string())),
         request_id: Set(Some(tenant.scope().request_id.clone())),
         household_id: Set(Some(tenant.scope().household_id)),
         actor_membership_id: Set(Some(tenant.membership().id)),
@@ -290,7 +280,7 @@ pub async fn update(
     api_change_event::ActiveModel {
         household_id: Set(tenant.scope().household_id),
         household_membership_id: Set(Some(tenant.membership().id)),
-        account_id: Set(Some(account_id)),
+        account_id: Set(Some(account_id.get())),
         action: Set(event.into()),
         record_type: Set("NotificationPreference".into()),
         record_id: Set(row.id),

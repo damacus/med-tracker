@@ -4,9 +4,9 @@ mod reading;
 mod retirement;
 mod writing;
 use crate::models::{
-    access::{self, PersonAccess, TenantTransaction},
+    access::{self, TenantTransaction},
     care::{administration, doses::CredentialProvenance},
-    entities::{api_change_event, dosage, household, medication, person, person_medication},
+    entities::{api_change_event, dosage, medication, person, person_medication},
     errors::OperationError,
 };
 use axum::http::StatusCode;

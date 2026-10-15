@@ -57,7 +57,7 @@ async fn source(
         }
     }
     .ok_or(OperationError::NotFound)?;
-    if !access::can_access_person(tenant, source.person_id(), PersonAccess::View).await? {
+    if !access::participates(tenant, source.person_id()).await? {
         return Err(OperationError::NotFound);
     }
     Ok(source)
@@ -69,26 +69,11 @@ pub async fn authorize(
     action: &str,
 ) -> Result<(), OperationError> {
     if action != "index" {
-        household::Entity::find_by_id(tenant.scope().household_id)
-            .lock_exclusive()
-            .one(tenant.transaction())
-            .await?
-            .ok_or(OperationError::NotFound)?;
+        access::lock_household(tenant).await?;
     }
     access::recheck(tenant).await?;
     let source = source(tenant, kind, id, action != "index").await?;
-    access::require_person_access(
-        tenant,
-        source.person_id(),
-        if action == "reopen" {
-            PersonAccess::Manage
-        } else if action == "index" {
-            PersonAccess::View
-        } else {
-            PersonAccess::Record
-        },
-    )
-    .await
+    access::require_participation(tenant, source.person_id()).await
 }
 pub async fn list(
     tenant: &TenantTransaction,
@@ -305,32 +290,31 @@ pub async fn change(
                     return Err(invalid("taken_at", "does not match the occurrence window"));
                 }
             }
-            let command = doses::Command::Take(doses::Take {
-                source_type: source.kind().name().into(),
-                source_id: source.portable_id().into(),
-                taken_at: attrs["taken_at"].as_str().unwrap_or_default().into(),
-                client_uuid: attrs
-                    .get("client_uuid")
-                    .and_then(Value::as_str)
-                    .map(str::to_owned),
-                dose_amount: attrs
-                    .get("dose_amount")
-                    .and_then(Value::as_str)
-                    .map(str::to_owned),
-                dose_unit: None,
-                taken_from_medication_id: attrs
-                    .get("taken_from_medication_id")
-                    .and_then(Value::as_i64),
-                expected_effective_amount: None,
-                expected_effective_unit: None,
-            });
-            let outcome = doses::execute_in_timezone(
-                tenant,
-                command,
+            let request = doses::prepare_request(
+                doses::TakeRequest {
+                    source_type: source.kind().name().into(),
+                    source_id: source.portable_id().into(),
+                    taken_at: attrs["taken_at"].as_str().unwrap_or_default().into(),
+                    client_uuid: attrs
+                        .get("client_uuid")
+                        .and_then(Value::as_str)
+                        .map(str::to_owned),
+                    dose_amount: attrs
+                        .get("dose_amount")
+                        .and_then(Value::as_str)
+                        .map(str::to_owned),
+                    dose_unit: None,
+                    taken_from_medication_id: attrs
+                        .get("taken_from_medication_id")
+                        .and_then(Value::as_i64),
+                    expected_effective_amount: None,
+                    expected_effective_unit: None,
+                },
                 calendar::current_zone(tenant.settings()),
-                provenance,
-            )
-            .await?;
+            )?;
+            let outcome =
+                doses::execute_with_provenance(tenant, doses::Request::Take(request), provenance)
+                    .await?;
             let take = match outcome {
                 doses::Outcome::Created(row) | doses::Outcome::Replayed(row) => row,
             };

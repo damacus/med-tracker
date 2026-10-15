@@ -1,6 +1,9 @@
 use super::*;
 
-pub(super) fn take(body: Value) -> std::result::Result<doses::Take, response::Failure> {
+pub(super) fn take(
+    body: Value,
+    zone: chrono_tz::Tz,
+) -> std::result::Result<doses::PreparedRequest, response::Failure> {
     let attributes = body
         .get("medication_take")
         .and_then(Value::as_object)
@@ -56,17 +59,21 @@ pub(super) fn take(body: Value) -> std::result::Result<doses::Take, response::Fa
                 response::Failure::validation("invalid taken_from_medication_id")
             })?),
         };
-    Ok(doses::Take {
-        client_uuid,
-        source_type: source_type.into(),
-        source_id: source_id.into(),
-        taken_at: taken_at.into(),
-        dose_amount,
-        dose_unit,
-        taken_from_medication_id,
-        expected_effective_amount: None,
-        expected_effective_unit: None,
-    })
+    doses::prepare_request(
+        doses::TakeRequest {
+            client_uuid,
+            source_type: source_type.into(),
+            source_id: source_id.into(),
+            taken_at: taken_at.into(),
+            dose_amount,
+            dose_unit,
+            taken_from_medication_id,
+            expected_effective_amount: None,
+            expected_effective_unit: None,
+        },
+        zone,
+    )
+    .map_err(response::operation)
 }
 
 fn optional_string(

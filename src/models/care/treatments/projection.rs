@@ -1,13 +1,8 @@
 use super::source_stock::source_stock;
 use super::*;
-use crate::models::{
-    authorization,
-    entities::{grant, membership, pause_period, person_medication},
-};
+use crate::models::entities::{membership, pause_period, person_medication};
 use chrono::NaiveDate;
 use loco_rs::model::TenantQueryExt;
-use sea_orm::sea_query::{Expr, ExprTrait};
-use sea_orm::{Condition, ConnectionTrait, DbBackend, Statement};
 use std::collections::{HashMap, HashSet};
 fn timestamp(value: chrono::NaiveDateTime) -> String {
     value.format("%Y-%m-%dT%H:%M:%SZ").to_string()
@@ -54,12 +49,13 @@ async fn source_context(
     }
     let person_ids: Vec<i64> = sources.iter().map(|source| source.person_id).collect();
     let medication_ids: Vec<i64> = sources.iter().map(|source| source.medication_id).collect();
-    let subjects = person::Entity::find()
-        .in_tenant(context.scope().household_id)
-        .filter(person::Column::Id.is_in(person_ids.clone()))
-        .all(db)
-        .await
-        .map_err(database_error)?;
+    let subjects = crate::models::access::person_scope(
+        crate::models::ids::HouseholdId::from_database(context.scope().household_id),
+    )
+    .filter(person::Column::Id.is_in(person_ids.clone()))
+    .all(db)
+    .await
+    .map_err(database_error)?;
     let people = subjects
         .iter()
         .map(|person| (person.id, person.portable_id.clone()))
@@ -73,67 +69,9 @@ async fn source_context(
         .into_iter()
         .map(|medication| (medication.id, medication))
         .collect();
-    let permission_grants = grant::Entity::find()
-        .in_tenant(context.scope().household_id)
-        .filter(grant::Column::HouseholdMembershipId.eq(context.membership().id))
-        .filter(grant::Column::PersonId.is_in(person_ids))
-        .filter(grant::Column::AccessLevel.is_in(["record", "manage"]))
-        .filter(grant::Column::RevokedAt.is_null())
-        .filter(
-            Condition::any()
-                .add(grant::Column::ExpiresAt.is_null())
-                .add(
-                    Expr::col((grant::Entity, grant::Column::ExpiresAt))
-                        .gt(Expr::cust("timezone('UTC', clock_timestamp())")),
-                ),
-        )
-        .all(db)
-        .await
-        .map_err(database_error)?;
-    let clock = db
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT timezone('UTC', clock_timestamp()) AS now",
-        ))
-        .await?
-        .ok_or(OperationError::Unavailable)?;
-    let now: chrono::NaiveDateTime = clock.try_get("", "now")?;
-    let recordable_people = permission_grants
-        .iter()
-        .filter(|record| {
-            subjects
-                .iter()
-                .find(|subject| subject.id == record.person_id)
-                .is_some_and(|subject| {
-                    authorization::person_access(
-                        context.membership(),
-                        subject,
-                        record,
-                        PersonAccess::Record,
-                        now,
-                    )
-                })
-        })
-        .map(|record| record.person_id)
-        .collect();
-    let manageable_people = permission_grants
-        .iter()
-        .filter(|record| {
-            subjects
-                .iter()
-                .find(|subject| subject.id == record.person_id)
-                .is_some_and(|subject| {
-                    authorization::person_access(
-                        context.membership(),
-                        subject,
-                        record,
-                        PersonAccess::Manage,
-                        now,
-                    )
-                })
-        })
-        .map(|record| record.person_id)
-        .collect();
+    access::recheck(context).await?;
+    let recordable_people = subjects.iter().map(|subject| subject.id).collect();
+    let manageable_people = subjects.iter().map(|subject| subject.id).collect();
     let eligible_stock = source_stock(
         db,
         context,
@@ -180,27 +118,24 @@ async fn source_context(
     };
     let actor_person_ids: Vec<i64> = actor_memberships
         .iter()
-        .filter_map(|membership| membership.person_id)
+        .map(|membership| membership.person_id)
         .collect();
-    let actor_people: HashMap<i64, String> = if actor_person_ids.is_empty() {
-        HashMap::new()
-    } else {
-        person::Entity::find()
-            .in_tenant(context.scope().household_id)
-            .filter(person::Column::Id.is_in(actor_person_ids))
-            .all(db)
-            .await
-            .map_err(database_error)?
+    let actor_people: HashMap<i64, String> = crate::models::person_identity::display_names(
+        context,
+        actor_person_ids
             .into_iter()
-            .map(|person| (person.id, person.name))
-            .collect()
-    };
+            .map(crate::models::ids::PersonId::from_database),
+    )
+    .await?
+    .into_iter()
+    .map(|(id, name)| (id.get(), name))
+    .collect();
     let actor_names: HashMap<i64, String> = actor_memberships
         .into_iter()
         .filter_map(|membership| {
-            membership
-                .person_id
-                .and_then(|person_id| actor_people.get(&person_id).cloned())
+            actor_people
+                .get(&membership.person_id)
+                .cloned()
                 .map(|name| (membership.id, name))
         })
         .collect();

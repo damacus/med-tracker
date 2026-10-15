@@ -1,5 +1,4 @@
 use super::*;
-use crate::models::access::PersonAccess;
 use crate::models::care::locations::SavedResponse;
 use crate::models::profile::{self, Changes, Snapshot};
 use axum::http::{HeaderValue, header};
@@ -146,10 +145,9 @@ pub(super) async fn update(
         .and_then(|value| value.to_str().ok())
         .filter(|value| !value.trim().is_empty());
     if let (Ok(body), Some(key)) = (&body, key) {
-        let authorized =
-            profile::linked_person(&tenant, principal.account_id(), PersonAccess::Manage)
-                .await
-                .map_err(response::operation);
+        let authorized = profile::linked_person(&tenant, principal.account_id())
+            .await
+            .map_err(response::operation);
         let replay = match authorized {
             Ok(_) => super::locations::keyed_replay(&tenant, key, method, &path, body).await,
             Err(error) => Err(error),

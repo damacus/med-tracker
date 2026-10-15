@@ -14,7 +14,7 @@ use crate::models::{
 use axum::{
     Extension,
     extract::Form as AxumForm,
-    http::{StatusCode, header},
+    http::{HeaderMap, StatusCode, header},
     response::IntoResponse,
 };
 use axum_csrf::CsrfToken;
@@ -41,9 +41,11 @@ async fn index(
     session: Session<SessionPgPool>,
     request: Option<Extension<LocoRequestId>>,
     token: CsrfToken,
+    headers: HeaderMap,
     ViewEngine(view): ViewEngine<TeraView>,
 ) -> Response {
     page::Page::new(&ctx, &session, &token, &view, &slug, request)
+        .language(&headers)
         .index()
         .await
 }
@@ -54,9 +56,11 @@ async fn show(
     session: Session<SessionPgPool>,
     request: Option<Extension<LocoRequestId>>,
     token: CsrfToken,
+    headers: HeaderMap,
     ViewEngine(view): ViewEngine<TeraView>,
 ) -> Response {
     page::Page::new(&ctx, &session, &token, &view, &slug, request)
+        .language(&headers)
         .show(&id, None)
         .await
 }
@@ -67,9 +71,11 @@ async fn new(
     session: Session<SessionPgPool>,
     request: Option<Extension<LocoRequestId>>,
     token: CsrfToken,
+    headers: HeaderMap,
     ViewEngine(view): ViewEngine<TeraView>,
 ) -> Response {
     page::Page::new(&ctx, &session, &token, &view, &slug, request)
+        .language(&headers)
         .form(None, None, None)
         .await
 }
@@ -80,9 +86,11 @@ async fn edit(
     session: Session<SessionPgPool>,
     request: Option<Extension<LocoRequestId>>,
     token: CsrfToken,
+    headers: HeaderMap,
     ViewEngine(view): ViewEngine<TeraView>,
 ) -> Response {
     page::Page::new(&ctx, &session, &token, &view, &slug, request)
+        .language(&headers)
         .form(Some(&id), None, None)
         .await
 }
@@ -93,10 +101,12 @@ async fn create(
     session: Session<SessionPgPool>,
     request: Option<Extension<LocoRequestId>>,
     token: CsrfToken,
+    headers: HeaderMap,
     ViewEngine(view): ViewEngine<TeraView>,
     AxumForm(draft): AxumForm<HashMap<String, String>>,
 ) -> Response {
     page::Page::new(&ctx, &session, &token, &view, &slug, request)
+        .language(&headers)
         .save(None, draft, false)
         .await
 }
@@ -107,10 +117,12 @@ async fn update(
     session: Session<SessionPgPool>,
     request: Option<Extension<LocoRequestId>>,
     token: CsrfToken,
+    headers: HeaderMap,
     ViewEngine(view): ViewEngine<TeraView>,
     AxumForm(draft): AxumForm<HashMap<String, String>>,
 ) -> Response {
     page::Page::new(&ctx, &session, &token, &view, &slug, request)
+        .language(&headers)
         .save(Some(&id), draft, false)
         .await
 }
@@ -121,10 +133,12 @@ async fn destroy(
     session: Session<SessionPgPool>,
     request: Option<Extension<LocoRequestId>>,
     token: CsrfToken,
+    headers: HeaderMap,
     ViewEngine(view): ViewEngine<TeraView>,
     AxumForm(draft): AxumForm<HashMap<String, String>>,
 ) -> Response {
     page::Page::new(&ctx, &session, &token, &view, &slug, request)
+        .language(&headers)
         .save(Some(&id), draft, true)
         .await
 }

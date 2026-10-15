@@ -92,7 +92,7 @@ async fn data_export_health_data_json_returns_the_documented_shape() {
             "source_instance_id"
         ]
     );
-    assert_eq!(data["format"], "medtracker.health_data.v1");
+    assert_eq!(data["format"], "medtracker.health_data.v2");
     assert_eq!(data["scope"], "single_person");
     assert!(
         data["source_instance_id"]
@@ -183,7 +183,7 @@ async fn data_export_backup_zip_returns_a_base64_archive() {
         .read_to_string(&mut json)
         .unwrap();
     let payload: Value = serde_json::from_str(&json).unwrap();
-    assert_eq!(payload["format"], "medtracker.backup.v1");
+    assert_eq!(payload["format"], "medtracker.backup.v2");
     assert!(!payload["records"]["people"].as_array().unwrap().is_empty());
     assert!(!json.contains("password_hash"));
     assert_eq!(audits, 1);
@@ -333,4 +333,96 @@ async fn data_export_rejects_unknown_modes_and_anonymous_requests() {
     assert_eq!(authenticate.as_deref(), Some("Bearer"));
     assert_eq!(foreign_status, 403);
     assert_eq!(audits, 0);
+}
+
+async fn optional_label_wrapper(mode: &str) -> Result<Value, Box<dyn std::error::Error>> {
+    let app = Application::new().await;
+    let result: Result<_, Box<dyn std::error::Error>> = async {
+        app.fixture
+            .admin
+            .execute_unprepared("UPDATE medications SET location_id=NULL WHERE household_id=72001")
+            .await?;
+        let token = app.token().await;
+        let response = app
+            .client
+            .get(export_url(&app, mode))
+            .bearer_auth(&token)
+            .send()
+            .await?;
+        Ok((response.status().as_u16(), response.json::<Value>().await?))
+    }
+    .await;
+    app.close().await;
+    let (status, body) = result?;
+    assert_eq!(status, 200, "{body}");
+    body.get("data")
+        .cloned()
+        .ok_or_else(|| "Missing wrapper data".into())
+}
+
+fn assert_optional_label_records(payload: &Value) -> Result<(), Box<dyn std::error::Error>> {
+    let records = payload
+        .get("records")
+        .and_then(Value::as_object)
+        .ok_or("Missing records")?;
+    let medicines = records
+        .get("medications")
+        .and_then(Value::as_array)
+        .ok_or("Missing medications")?;
+    assert!(!medicines.is_empty());
+    assert!(
+        medicines
+            .iter()
+            .all(|row| row.get("location_portable_id").is_some_and(Value::is_null))
+    );
+    assert!(!records.contains_key("location_memberships"));
+    assert!(!records.contains_key("person_access_grants"));
+    let people = records
+        .get("people")
+        .and_then(Value::as_array)
+        .ok_or("Missing people")?;
+    assert!(
+        people
+            .iter()
+            .all(|row| row.get("location_portable_ids").is_none())
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn optional_label_wrapper_health_data_uses_v2_without_permission_edges()
+-> Result<(), Box<dyn std::error::Error>> {
+    let payload = optional_label_wrapper("health_data_json").await?;
+    assert_eq!(
+        payload.get("format").and_then(Value::as_str),
+        Some("medtracker.health_data.v2")
+    );
+    assert_optional_label_records(&payload)
+}
+
+#[tokio::test]
+async fn optional_label_wrapper_backup_uses_v2_without_permission_edges()
+-> Result<(), Box<dyn std::error::Error>> {
+    let data = optional_label_wrapper("backup_zip").await?;
+    assert_eq!(
+        data.get("content_type").and_then(Value::as_str),
+        Some("application/zip")
+    );
+    let archive = STANDARD.decode(
+        data.get("base64")
+            .and_then(Value::as_str)
+            .ok_or("Missing archive")?,
+    )?;
+    let mut archive = zip::ZipArchive::new(Cursor::new(archive))?;
+    assert_eq!(archive.len(), 1);
+    let mut contents = String::new();
+    archive
+        .by_name("medtracker-backup.json")?
+        .read_to_string(&mut contents)?;
+    let payload: Value = serde_json::from_str(&contents)?;
+    assert_eq!(
+        payload.get("format").and_then(Value::as_str),
+        Some("medtracker.backup.v2")
+    );
+    assert_optional_label_records(&payload)
 }

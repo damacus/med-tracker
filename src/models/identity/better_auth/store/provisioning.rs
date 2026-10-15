@@ -46,7 +46,7 @@ impl ClinicalStore {
         transaction
             .execute_raw(super::statement(
                 "INSERT INTO public.identity_onboarding(account_id) VALUES($1)",
-                [provisioned.account_id.into()],
+                [provisioned.account_id.get().into()],
             ))
             .await
             .map_err(super::database_error)?;

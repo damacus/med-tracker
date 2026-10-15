@@ -905,8 +905,7 @@ en:
       view: View
       delete_dialog:
         title: Delete Location
-        confirm: Are you sure you want to delete %{name}? This will also delete all
-          medications at this location.
+        confirm: "Remove the storage label %{name}? Medications, stock and recorded history will be kept."
         cancel: Cancel
         submit: Delete
     show:
@@ -2190,6 +2189,19 @@ en:
         metric_label: Review
         metric_value: Schedule
   profiles:
+    medication_history:
+      title: "Medication history"
+      description: "Your recorded doses, including records from households you have left."
+      download: "Download history"
+      subset: "The download contains recorded doses only. It is not a full personal record or a migration package."
+      back: "Back to profile"
+      empty: "No medication doses have been recorded."
+      next: "Next page"
+      origin: "Original household"
+      stock: "Recorded stock"
+      actor: "Recorded by"
+      unknown: "Not recorded"
+      imported: "Imported record"
     security_flow:
       change_password: "Change password"
       new_password: "New password"
@@ -2498,10 +2510,8 @@ en:
       reminder_times_description: Set when you want to receive reminders each day
       categories_description: Choose which notification types to receive
       managed_people:
-        title: People you manage
-        description: Missed-dose alerts for children and dependent adults are included
-          automatically. Choose any adults you also want to follow.
-        automatic: Included automatically
+        title: Household people
+        description: Choose whose missed-dose alerts you want to receive. Alerts are off until you select someone.
         notify_me: Notify me
         toggle_label: Notify me when %{name} misses a dose
       periods:

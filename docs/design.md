@@ -11,6 +11,7 @@ sections below describe the reference, not requirements to reproduce its interna
 - [Household inventory and personal care](adrs/0014-household-inventory-and-personal-care.md)
 - [Authentication, membership and tenancy](adrs/0015-authentication-membership-and-tenancy.md): organisation-plugin replacement remains Proposed
 - [Fresh Rust without legacy compatibility](adrs/0016-fresh-rust-without-legacy-compatibility.md)
+- [Personal-history download authorisation and audit](adrs/0017-personal-history-download-authorisation-and-audit.md): design accepted; implementation and verification pending
 
 ## Purpose
 
@@ -127,8 +128,9 @@ exception.
 insights from administration, inventory, health, and safety records. They own
 their report calculations and detector results, not the source facts.
 
-Notifications own person preferences, subscriptions, delivery deduplication,
-and push transport. Reminder and stock notification jobs consume outcomes from
+Notifications own per-household delivery settings for recipient Accounts,
+explicit Account/household/Person subscriptions, delivery deduplication and push
+transport. Account profile and identity preferences remain Account-owned. Reminder and stock notification jobs consume outcomes from
 the contexts that own administration and inventory rules.
 
 ## Auditing and Compliance
@@ -145,3 +147,10 @@ UI behavior and styling are guided by:
 
 - [Accessibility](accessibility.md)
 - [Theming](theming.md)
+
+
+### Portable format transition
+
+The current Rust portable export format is `medtracker.portable.v3`. Storage labels are optional and do not carry person access or household membership. Explicit requests for older output versions fail instead of receiving a changed v1/v2 shape. The encrypted envelope remains `medtracker.portable.encrypted.v1`; the payload version is independent of its encryption format.
+
+The v1/v2 input definitions remain available for validation. Permission-bearing legacy location links and doses without supported original provenance fail preflight before writes. Older ambiguous-provenance import policy is unresolved; this is an unfinished compatibility boundary, not an accepted data-loss migration. Full v3 history restoration remains an implementation and acceptance gate.

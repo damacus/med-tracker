@@ -26,7 +26,11 @@ pub(super) async fn finder(
     data["title"] = json!("Medication Finder");
     data["slug"] = json!(slug);
     data["can_create"] = found.body["permissions"]["can_create"].clone();
-    match format::render().view(&view, "medications/finder.html", data) {
+    match format::render().view(
+        &view,
+        "medications/finder.html",
+        crate::views::template_data(&data),
+    ) {
         Ok(response) => (token, [(header::CACHE_CONTROL, "no-store")], response).into_response(),
         Err(_) => unavailable(),
     }

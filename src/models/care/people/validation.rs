@@ -12,33 +12,22 @@ pub(super) fn assign(
         || fields.keys().any(|name| {
             !matches!(
                 name.as_str(),
-                "name" | "email" | "date_of_birth" | "person_type" | "has_capacity"
+                "name" | "date_of_birth" | "person_type" | "has_capacity"
             )
         })
     {
         return Err(invalid("person", "is invalid"));
     }
     if let Some(value) = fields.get("name") {
-        record.name = value
-            .as_str()
-            .filter(|s| !s.trim().is_empty())
-            .ok_or_else(|| invalid("name", "can't be blank"))?
-            .to_owned();
+        record.clinical_name = Some(
+            value
+                .as_str()
+                .filter(|s| !s.trim().is_empty())
+                .ok_or_else(|| invalid("name", "can't be blank"))?
+                .to_owned(),
+        );
     } else if create {
         return Err(invalid("name", "can't be blank"));
-    }
-    if let Some(value) = fields.get("email") {
-        record.email = match value {
-            Value::Null => None,
-            Value::String(value) => {
-                let value = value.trim().to_lowercase();
-                if !value.is_empty() && !email_valid(&value) {
-                    return Err(invalid("email", "is invalid"));
-                }
-                (!value.is_empty()).then_some(value)
-            }
-            _ => return Err(invalid("email", "is invalid")),
-        };
     }
     if let Some(value) = fields.get("date_of_birth") {
         record.date_of_birth = Some(
@@ -67,30 +56,6 @@ pub(super) fn assign(
             .ok_or_else(|| invalid("has_capacity", "is invalid"))?;
     }
     Ok(())
-}
-
-fn email_valid(value: &str) -> bool {
-    let Some((local, domain)) = value.split_once('@') else {
-        return false;
-    };
-    !local.is_empty()
-        && local
-            .bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b".!#$%&'*+/=?^_`{|}~-".contains(&b))
-        && domain.split('.').all(|label| {
-            label.len() <= 63
-                && label
-                    .bytes()
-                    .next()
-                    .is_some_and(|b| b.is_ascii_alphanumeric())
-                && label
-                    .bytes()
-                    .last()
-                    .is_some_and(|b| b.is_ascii_alphanumeric())
-                && label
-                    .bytes()
-                    .all(|b| b.is_ascii_alphanumeric() || b == b'-')
-        })
 }
 
 pub(super) fn capacity(

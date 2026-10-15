@@ -1,11 +1,21 @@
 use migration::sea_orm;
 use migration::{Migrator, MigratorTrait};
+#[path = "identity_schema/audit_isolation.rs"]
+mod audit_isolation;
+#[path = "identity_schema/account_clinical_access.rs"]
+mod account_clinical_access;
+#[path = "identity_schema/care_provenance.rs"]
+mod care_provenance;
 #[path = "../../src/models/_entities/mod.rs"]
 pub mod entities;
 #[path = "../examples/generate_entities/relations.rs"]
 mod generated_relations;
+#[path = "identity_schema/report_denials.rs"]
+mod report_denials;
 #[path = "identity_schema/review_regressions.rs"]
 mod review_regressions;
+#[path = "identity_schema/runtime_provisioning.rs"]
+mod runtime_provisioning;
 use sea_orm::{ConnectionTrait, Database, DatabaseConnection, DbBackend, Statement};
 
 #[tokio::test]

@@ -2,7 +2,7 @@ use loco_rs::model::TenantQueryExt;
 pub mod browser;
 
 use crate::models::{
-    access::{self, PersonAccess, TenantTransaction},
+    access::{self, TenantTransaction},
     care::{doses::CredentialProvenance, people::Pagination, sync},
     entities::health_event,
     errors::OperationError,
@@ -36,7 +36,7 @@ pub async fn selected(
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::NotFound)?;
-    access::require_person_access(tenant, row.person_id, PersonAccess::View).await?;
+    access::require_participation(tenant, row.person_id).await?;
     Ok(row)
 }
 
@@ -85,7 +85,7 @@ pub async fn mutate(
     sync::lock(tenant).await?;
     if let Some(id) = id {
         let row = selected(tenant, id).await?;
-        access::require_person_access(tenant, row.person_id, PersonAccess::Manage).await?;
+        access::require_participation(tenant, row.person_id).await?;
     }
     let fields = body
         .as_object()

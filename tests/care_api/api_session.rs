@@ -39,7 +39,6 @@ async fn api_session_retained_principal_preserves_target_context_and_canonical_a
         (actor.account_id, actor.person_id, actor.session_id),
         (71001, 73001, 88001)
     );
-    assert_eq!(actor.user_id, 77001);
     assert_eq!(actor.email, "persistence@example.test");
     let row=transaction.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT current_setting('med_tracker.current_household_id') AS household,current_setting('med_tracker.current_membership_id') AS membership,current_setting('med_tracker.current_invitation_token_digest') AS invitation")).await.unwrap().unwrap();
     assert_eq!(row.try_get::<String>("", "household").unwrap(), "72002");

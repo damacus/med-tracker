@@ -1,5 +1,5 @@
 use crate::models::{
-    access::{self, PersonAccess, TenantTransaction},
+    access::{self, TenantTransaction},
     care::{locations, medications, people, reports},
     entities::{medication, person_medication, schedule},
     errors::OperationError,
@@ -105,9 +105,9 @@ async fn commands(
     today: NaiveDate,
 ) -> Result<Vec<SearchResult>, OperationError> {
     let can_create = medications::crud::can_create(tenant).await?;
-    let can_manage_person = access::has_person_access(tenant, PersonAccess::Manage).await?;
+    let can_manage_person = access::has_participants(tenant).await?;
     let can_create_person = people::can_create(tenant).await?;
-    let can_view_person = access::has_person_access(tenant, PersonAccess::View).await?;
+    let can_view_person = access::has_participants(tenant).await?;
     let manager = access::can_manage_household(tenant);
     let can_report = manager || reports::actor_adult(tenant, today).await?;
     let mut results = Vec::new();
@@ -153,8 +153,8 @@ async fn records(
 ) -> Result<Vec<SearchResult>, OperationError> {
     let household_id = tenant.scope().household_id;
     let term = format!("%{}%", escape_pattern(query));
-    let people = access::people_with_access(tenant, PersonAccess::View).await?;
-    let people_by_id: HashMap<_, _> = people.iter().map(|row| (row.id, row)).collect();
+    let people = crate::models::person_identity::current_summaries(tenant).await?;
+    let people_by_id: HashMap<_, _> = people.iter().map(|row| (row.id.get(), row)).collect();
     let matching_people: Vec<_> = people
         .iter()
         .filter(|row| row.name.to_lowercase().contains(&query.to_lowercase()))
@@ -191,7 +191,9 @@ async fn records(
     for row in &medicines {
         let subtitle = [
             row.category.as_deref(),
-            location_names.get(&row.location_id).copied(),
+            row.location_id
+                .and_then(|id| location_names.get(&id))
+                .copied(),
         ]
         .into_iter()
         .flatten()
@@ -231,7 +233,7 @@ async fn records(
             &[],
         ));
     }
-    let matching_person_ids: Vec<_> = matching_people.iter().map(|row| row.id).collect();
+    let matching_person_ids: Vec<_> = matching_people.iter().map(|row| row.id.get()).collect();
     let matching_medicine_ids = medication::Entity::find()
         .in_tenant(household_id)
         .filter(medication::Column::Name.ilike(&term))

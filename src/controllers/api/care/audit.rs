@@ -308,10 +308,7 @@ impl RequestAudit {
             "memberships" => ("api/v1/admin/memberships", "HouseholdMembershipPolicy"),
             "audit_logs" => ("api/v1/admin/audit_logs", "AuditLogPolicy"),
             "app_tokens" => ("api/v1/admin/app_tokens", "HouseholdPolicy"),
-            _ => (
-                "api/v1/admin/person_access_grants",
-                "PersonAccessGrantPolicy",
-            ),
+            _ => ("api/v1/admin", "HouseholdPolicy"),
         };
         Self {
             method,
@@ -343,19 +340,6 @@ impl RequestAudit {
     }
     pub fn location_create() -> Self {
         Self::location("POST", "create")
-    }
-    pub fn location_membership(method: &'static str, action: &'static str) -> Self {
-        Self {
-            method,
-            controller: "api/v1/location_memberships",
-            action,
-            policy: "LocationMembershipPolicy",
-            query: if action == "create" {
-                "create?"
-            } else {
-                "destroy?"
-            },
-        }
     }
     pub fn location(method: &'static str, action: &'static str) -> Self {
         Self {
@@ -440,7 +424,7 @@ pub(super) async fn record(
         CredentialMethod::BrowserSession => ("browser_session", "browser_session"),
     };
     let mut context = json!({
-        "actor_account_id": tenant.scope().actor.account_id, "actor_user_id": tenant.user_id(),
+        "actor_account_id": tenant.scope().actor.account_id, "actor_person_id": tenant.person_id(),
         "actor_membership_id": tenant.membership().id, "active_role": tenant.membership().role,
         "permissions_version": tenant.membership().permissions_version, "household_id": tenant.scope().household_id,
         "authentication_method": method, "session_reference": format!("{prefix}:{}", provenance.reference),

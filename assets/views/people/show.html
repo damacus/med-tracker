@@ -63,7 +63,6 @@
         <h2 class="card-title" id="person-overview-heading">{{ labels.people.show.browser.profile_details }}</h2>
         <dl class="grid gap-4">
           <div><dt class="font-semibold">{{ labels.people.form.date_of_birth }}</dt><dd>{% if person.date_of_birth %}{{ date_of_birth_display }}{% else %}{{ labels.people.show.browser.not_recorded }}{% endif %}</dd></div>
-          <div><dt class="font-semibold">{{ labels.people.form.email }}</dt><dd>{% if person.email %}{{ email_display }}{% else %}{{ labels.people.show.browser.not_recorded }}{% endif %}</dd></div>
           <div><dt class="font-semibold">{{ labels.people.form.person_type }}</dt><dd>{{ labels.forms.medications.wizard.dose.person_types[person.person_type] }}</dd></div>
           <div><dt class="font-semibold">{{ labels.people.form.has_capacity }}</dt><dd>{% if person.has_capacity %}{{ labels.people.show.browser.yes }}{% else %}{{ labels.people.show.browser.no }}{% endif %}</dd></div>
         </dl>

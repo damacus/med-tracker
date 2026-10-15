@@ -18,6 +18,20 @@ use crate::models::{
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("/api/v1/auth")
+        .add(
+            "/medication_history",
+            get(super::self_medication_history::show).layer(axum::middleware::map_response(
+                |response| async { super::account_profile::no_store(response) },
+            )),
+        )
+        .add(
+            "/profile",
+            get(super::account_profile::show)
+                .patch(super::account_profile::update)
+                .layer(axum::middleware::map_response(|response| async {
+                    super::account_profile::no_store(response)
+                })),
+        )
         .add("/households", get(households))
         .add("/sessions", get(sessions))
         .add("/sessions/{id}", delete(revoke))

@@ -87,7 +87,11 @@ pub(super) async fn page(
             .collect::<Vec<Value>>()
     );
     data["authenticity_token"] = json!(authenticity);
-    let response = match format::render().view(&view, "identity_onboarding/support.html", data) {
+    let response = match format::render().view(
+        &view,
+        "identity_onboarding/support.html",
+        crate::views::template_data(&data),
+    ) {
         Ok(response) => (
             StatusCode::OK,
             token.clone(),

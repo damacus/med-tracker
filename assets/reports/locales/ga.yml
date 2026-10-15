@@ -739,8 +739,7 @@ ga:
       view: Amharc
       delete_dialog:
         title: Scrios Suíomh
-        confirm: An bhfuil tú cinnte gur mian leat %{name} a scriosadh? Scriosfaidh
-          sé seo gach leigheas sa suíomh seo freisin.
+        confirm: "Bain an lipéad stórála %{name}? Coinneofar na cógais, an stoc agus an stair thaifeadta."
         cancel: Cealaigh
         submit: Scrios
     show:
@@ -1847,6 +1846,19 @@ ga:
     paused: 'Ní féidir an leigheas a thógáil: ar sos'
     overlapping_prescription_restriction: 'Ní féidir an leigheas a thógáil: leagann oideas gníomhach eile don leigheas seo teorainn ama níos déine síos.'
   profiles:
+    medication_history:
+      title: "Stair cógas"
+      description: "Do dháileoga cógais taifeadta, lena n-áirítear taifid ó theaghlaigh a d’fhág tú."
+      download: "Íoslódáil stair"
+      subset: "Níl san íoslódáil ach dáileoga taifeadta. Ní taifead pearsanta iomlán ná pacáiste aistrithe í."
+      back: "Ar ais chuig an bpróifíl"
+      empty: "Níor taifeadadh aon dáileoga cógais."
+      next: "An chéad leathanach eile"
+      origin: "Bunteaghlach"
+      stock: "Stoc taifeadta"
+      actor: "Taifeadta ag"
+      unknown: "Gan taifead"
+      imported: "Taifead iompórtáilte"
     security_flow:
       change_password: "Athraigh an pasfhocal"
       new_password: "Pasfhocal nua"
@@ -2159,10 +2171,8 @@ ga:
         gach lá
       categories_description: Roghnaigh na cineálacha fógraí is mian leat a fháil
       managed_people:
-        title: Daoine a bhainistíonn tú
-        description: Cuirtear foláirimh faoi dháileoga caillte do leanaí agus do dhaoine
-          fásta cleithiúnacha san áireamh go huathoibríoch. Roghnaigh aon duine fásta ar mhaith leat monatóireacht a dhéanamh air freisin.
-        automatic: San áireamh go huathoibríoch
+        title: Daoine sa teaghlach
+        description: Roghnaigh na daoine ar mhaith leat foláirimh faoi dháileoga caillte a fháil ina leith. Bíonn na foláirimh múchta go dtí go roghnaíonn tú duine éigin.
         notify_me: Cuir in iúl dom
         toggle_label: Cuir in iúl dom nuair a chailleann %{name} dáileog
       periods:

@@ -18,7 +18,7 @@ use crate::models::{
 pub async fn households(db: &DatabaseConnection, account_id: i64) -> Result<Value, OperationError> {
     let transaction = begin(db, Some(account_id)).await?;
     let rows = transaction.query_all_raw(statement(
-        "SELECT h.id,h.slug,h.name,m.role,m.id AS membership_id FROM household_memberships m JOIN households h ON h.id=m.household_id WHERE m.account_id=$1 AND m.status='active' AND m.revoked_at IS NULL AND h.status='active' AND h.lifecycle_state='active' ORDER BY m.id",
+        "SELECT h.id,h.slug,h.name,m.role,m.id AS membership_id FROM household_memberships m JOIN households h ON h.id=m.household_id WHERE m.person_id=(SELECT person_id FROM accounts WHERE id=$1) AND m.status='active' AND m.revoked_at IS NULL AND h.status='active' AND h.lifecycle_state='active' ORDER BY m.id",
         [account_id.into()],
     )).await.map_err(unavailable)?;
     let data = rows
@@ -62,7 +62,7 @@ async fn api_sessions(
     account_id: i64,
 ) -> Result<Vec<Value>, OperationError> {
     let rows = transaction.query_all_raw(statement(
-        "SELECT s.id,s.device_name,m.household_id,s.last_used_at,s.access_expires_at,s.refresh_expires_at,s.created_at FROM api_sessions s LEFT JOIN household_memberships m ON m.id=s.household_membership_id AND m.account_id=s.account_id WHERE s.account_id=$1 AND s.revoked_at IS NULL ORDER BY s.created_at DESC,s.id DESC",
+        "SELECT s.id,s.device_name,m.household_id,s.last_used_at,s.access_expires_at,s.refresh_expires_at,s.created_at FROM api_sessions s LEFT JOIN household_memberships m ON m.id=s.household_membership_id AND m.person_id=(SELECT person_id FROM accounts WHERE id=s.account_id) WHERE s.account_id=$1 AND s.revoked_at IS NULL ORDER BY s.created_at DESC,s.id DESC",
         [account_id.into()],
     )).await.map_err(unavailable)?;
     rows.into_iter().map(|row| -> Result<Value, OperationError> {
@@ -318,24 +318,26 @@ async fn audit_token(
 ) -> Result<(), OperationError> {
     let event = format!("auth_token/{kind}/revoked");
     let metadata = json!({"account_id":account_id,"credential_id":credential_id,"token_type":kind,"action":"revoked"});
-    let actor = transaction.query_one_raw(statement(
-        "SELECT u.id AS user_id FROM people p LEFT JOIN users u ON u.person_id=p.id WHERE p.account_id=$1 ORDER BY p.id LIMIT 1",
-        [account_id.into()],
-    )).await.map_err(unavailable)?;
-    let user_id: Option<i64> = match actor {
-        Some(row) => row.try_get("", "user_id").map_err(unavailable)?,
-        None => None,
-    };
-    let context =
-        json!({"actor_account_id":account_id,"actor_user_id":user_id,"request_id":request_id});
+    let actor = transaction
+        .query_one_raw(statement(
+            "SELECT person_id FROM accounts WHERE id=$1",
+            [account_id.into()],
+        ))
+        .await
+        .map_err(unavailable)?
+        .ok_or(OperationError::Unauthenticated)?;
+    let person_id = crate::models::ids::PersonId::from_database(
+        actor.try_get("", "person_id").map_err(unavailable)?,
+    );
+    let context = json!({"actor_account_id":crate::models::ids::AccountId::from_database(account_id),"actor_person_id":person_id,"request_id":request_id});
     transaction.execute_raw(statement(
         "INSERT INTO versions(item_type,item_id,event,object,whodunnit,request_id,audit_context,created_at) VALUES('AuthenticationToken',$1,$2,$3,$4,$5,$6,timezone('UTC',clock_timestamp()))",
-        [account_id.into(), event.clone().into(), metadata.to_string().into(), user_id.map(|id| id.to_string()).into(), request_id.into(), context.clone().into()],
+        [account_id.into(), event.clone().into(), metadata.to_string().into(), person_id.get().to_string().into(), request_id.into(), context.clone().into()],
     )).await.map_err(unavailable)?;
     if let Some(member_id) = member_id {
         let row = transaction
             .query_one_raw(statement(
-                "SELECT household_id FROM household_memberships WHERE id=$1 AND account_id=$2",
+                "SELECT household_id FROM household_memberships WHERE id=$1 AND person_id=(SELECT person_id FROM accounts WHERE id=$2) AND status='active' AND revoked_at IS NULL",
                 [member_id.into(), account_id.into()],
             ))
             .await

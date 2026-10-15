@@ -1,6 +1,166 @@
 use sea_orm_migration::prelude::*;
 
 pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
+    create_account_clinical_access(manager).await?;
+    create_take_history(manager).await?;
+    create_part_01(manager).await?;
+    create_part_02(manager).await?;
+    create_part_03(manager).await?;
+    create_part_04(manager).await?;
+    create_part_05(manager).await?;
+    create_part_06(manager).await?;
+    create_part_07(manager).await?;
+    create_part_08(manager).await?;
+    create_part_09(manager).await?;
+    create_part_10(manager).await?;
+    create_part_11(manager).await?;
+    create_part_12(manager).await?;
+    create_part_13(manager).await?;
+    create_part_14(manager).await?;
+    create_part_15(manager).await?;
+    create_part_16(manager).await?;
+    create_part_17(manager).await?;
+    Box::pin(create_part_18(manager)).await?;
+    create_part_19(manager).await?;
+    create_part_20(manager).await?;
+    create_part_21(manager).await?;
+    create_part_22(manager).await?;
+    create_part_23(manager).await?;
+    create_part_24(manager).await?;
+    create_part_25(manager).await?;
+    create_part_26(manager).await?;
+    create_part_27(manager).await?;
+    create_part_28(manager).await?;
+    create_part_29(manager).await?;
+    create_part_30(manager).await?;
+    create_part_31(manager).await?;
+    create_part_32(manager).await?;
+    Box::pin(create_part_33(manager)).await?;
+    create_part_34(manager).await?;
+    Box::pin(create_part_35(manager)).await?;
+    create_part_36(manager).await?;
+    Box::pin(create_part_37(manager)).await?;
+    create_part_38(manager).await?;
+    create_part_39(manager).await?;
+    Box::pin(create_part_40(manager)).await?;
+    create_part_41(manager).await?;
+    create_part_42(manager).await?;
+    create_part_43(manager).await?;
+    create_part_44(manager).await?;
+    Box::pin(create_part_45(manager)).await?;
+    create_part_46(manager).await?;
+    create_part_48(manager).await?;
+    create_part_49(manager).await?;
+    Box::pin(create_part_50(manager)).await?;
+    create_part_51(manager).await?;
+    create_part_52(manager).await?;
+    create_part_53(manager).await?;
+    create_part_54(manager).await?;
+    Ok(())
+}
+
+async fn create_account_clinical_access(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
+    let mut table = Table::create();
+    table
+        .table(Alias::new("account_clinical_access_events"))
+        .col(
+            ColumnDef::new(Alias::new("id"))
+                .big_integer()
+                .not_null()
+                .auto_increment()
+                .primary_key(),
+        )
+        .col(
+            ColumnDef::new(Alias::new("account_id"))
+                .big_integer()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(Alias::new("person_id"))
+                .big_integer()
+                .not_null(),
+        )
+        .col(ColumnDef::new(Alias::new("event_type")).text().not_null())
+        .col(
+            ColumnDef::new(Alias::new("metadata"))
+                .json_binary()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(Alias::new("audit_context"))
+                .json_binary()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(Alias::new("created_at"))
+                .timestamp_with_time_zone()
+                .not_null()
+                .default(Expr::cust("clock_timestamp()")),
+        );
+    create_table(manager, table.to_owned()).await
+}
+
+async fn create_take_history(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
+    create_table(
+        manager,
+        Table::create()
+            .table(Alias::new("clinical_history_entries"))
+            .col(
+                ColumnDef::new(Alias::new("id"))
+                    .big_integer()
+                    .not_null()
+                    .auto_increment()
+                    .primary_key(),
+            )
+            .col(
+                ColumnDef::new(Alias::new("take_id"))
+                    .big_integer()
+                    .not_null(),
+            )
+            .col(
+                ColumnDef::new(Alias::new("event_revision"))
+                    .integer()
+                    .not_null()
+                    .default(1),
+            )
+            .col(
+                ColumnDef::new(Alias::new("person_id"))
+                    .big_integer()
+                    .not_null(),
+            )
+            .col(
+                ColumnDef::new(Alias::new("origin_household_id"))
+                    .big_integer()
+                    .not_null(),
+            )
+            .col(
+                ColumnDef::new(Alias::new("occurred_at"))
+                    .custom(Alias::new("timestamp with time zone"))
+                    .not_null(),
+            )
+            .col(
+                ColumnDef::new(Alias::new("recorded_at"))
+                    .custom(Alias::new("timestamp with time zone"))
+                    .not_null()
+                    .default(Expr::cust("clock_timestamp()")),
+            )
+            .col(
+                ColumnDef::new(Alias::new("snapshot_version"))
+                    .integer()
+                    .not_null()
+                    .default(1),
+            )
+            .col(
+                ColumnDef::new(Alias::new("snapshot"))
+                    .json_binary()
+                    .not_null(),
+            )
+            .to_owned(),
+    )
+    .await
+}
+
+async fn create_part_01(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -58,6 +218,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_02(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -120,6 +284,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_03(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -177,6 +345,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_04(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -250,6 +422,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_05(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -306,6 +482,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_06(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -388,6 +568,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_07(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -411,6 +595,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                     .not_null(),
             )
             .col(ColumnDef::new(Alias::new("password_hash")).string())
+            .col(
+                ColumnDef::new(Alias::new("disabled_at"))
+                    .custom(Alias::new("timestamp(6) without time zone")),
+            )
             .col(
                 ColumnDef::new(Alias::new("preferences"))
                     .json_binary()
@@ -471,6 +659,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_08(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -527,6 +719,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_09(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -586,6 +782,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_10(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -640,6 +840,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_11(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -694,6 +898,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_12(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -767,6 +975,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_13(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -843,6 +1055,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_14(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -910,6 +1126,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
         .col(ColumnDef::new(Alias::new("updated_at")).custom(Alias::new("timestamp(6) without time zone")).not_null())
         .primary_key(Index::create().name("app_settings_pkey").col(Alias::new("id")))
         .to_owned()).await?;
+    Ok(())
+}
+
+async fn create_part_15(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -978,6 +1198,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_16(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -1022,6 +1246,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_17(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -1077,6 +1305,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_18(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -1163,6 +1395,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_19(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -1232,6 +1468,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_20(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -1277,6 +1517,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_21(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -1345,6 +1589,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_22(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -1384,6 +1632,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_23(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -1440,6 +1692,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_24(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -1517,6 +1773,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_25(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -1569,6 +1829,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_26(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -1630,6 +1894,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_27(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -1690,6 +1958,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_28(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -1749,6 +2021,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_29(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -1800,6 +2076,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_30(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -1849,44 +2129,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
-    create_table(
-        manager,
-        Table::create()
-            .table(Alias::new("location_memberships"))
-            .col(ColumnDef::new(Alias::new("id")).big_integer().not_null())
-            .col(
-                ColumnDef::new(Alias::new("created_at"))
-                    .custom(Alias::new("timestamp(6) without time zone"))
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("household_id"))
-                    .big_integer()
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("location_id"))
-                    .big_integer()
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("person_id"))
-                    .big_integer()
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("updated_at"))
-                    .custom(Alias::new("timestamp(6) without time zone"))
-                    .not_null(),
-            )
-            .primary_key(
-                Index::create()
-                    .name("location_memberships_pkey")
-                    .col(Alias::new("id")),
-            )
-            .to_owned(),
-    )
-    .await?;
+    Ok(())
+}
+
+async fn create_part_31(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -1915,10 +2161,18 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                     .custom(Alias::new("timestamp(6) without time zone"))
                     .not_null(),
             )
+            .col(
+                ColumnDef::new(Alias::new("retired_at"))
+                    .custom(Alias::new("timestamp(6) without time zone")),
+            )
             .primary_key(Index::create().name("locations_pkey").col(Alias::new("id")))
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_32(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -1980,6 +2234,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_33(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -2068,6 +2326,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
         .col(ColumnDef::new(Alias::new("updated_at")).custom(Alias::new("timestamp(6) without time zone")).not_null())
         .primary_key(Index::create().name("medication_review_evidence_records_pkey").col(Alias::new("id")))
         .to_owned()).await?;
+    Ok(())
+}
+
+async fn create_part_34(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(manager, Table::create().table(Alias::new("medication_review_evidence_refresh_runs"))
         .col(ColumnDef::new(Alias::new("id")).big_integer().not_null())
         .col(ColumnDef::new(Alias::new("change_summary")).json_binary().default(Expr::cust("'{}'::jsonb")).not_null())
@@ -2085,123 +2347,133 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
         .col(ColumnDef::new(Alias::new("updated_count")).integer().default(Expr::cust("0")).not_null())
         .primary_key(Index::create().name("medication_review_evidence_refresh_runs_pkey").col(Alias::new("id")))
         .to_owned()).await?;
-    create_table(
-        manager,
-        Table::create()
-            .table(Alias::new("medication_review_prompts"))
-            .col(ColumnDef::new(Alias::new("id")).big_integer().not_null())
-            .col(
-                ColumnDef::new(Alias::new("created_at"))
-                    .custom(Alias::new("timestamp(6) without time zone"))
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("evidence_record_id"))
-                    .big_integer()
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("evidence_source_checked_on"))
-                    .date()
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("evidence_source_effective_on"))
-                    .date()
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("evidence_source_name"))
-                    .string()
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("evidence_source_url"))
-                    .string()
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("evidence_source_version"))
-                    .string()
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("evidence_text"))
-                    .text()
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("household_id"))
-                    .big_integer()
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("interacting_medication_id"))
-                    .big_integer()
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("interacting_medication_name"))
-                    .string()
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("match_confidence"))
-                    .string()
-                    .not_null(),
-            )
-            .col(ColumnDef::new(Alias::new("match_reason")).text().not_null())
-            .col(ColumnDef::new(Alias::new("match_type")).string().not_null())
-            .col(
-                ColumnDef::new(Alias::new("matched_term"))
-                    .string()
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("person_id"))
-                    .big_integer()
-                    .not_null(),
-            )
-            .col(ColumnDef::new(Alias::new("practitioner_name")).string())
-            .col(ColumnDef::new(Alias::new("practitioner_role")).string())
-            .col(
-                ColumnDef::new(Alias::new("primary_medication_id"))
-                    .big_integer()
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("primary_medication_name"))
-                    .string()
-                    .not_null(),
-            )
-            .col(ColumnDef::new(Alias::new("review_note")).text())
-            .col(ColumnDef::new(Alias::new("reviewed_by_membership_id")).big_integer())
-            .col(ColumnDef::new(Alias::new("reviewed_on")).date())
-            .col(ColumnDef::new(Alias::new("risk_level")).string().not_null())
-            .col(
-                ColumnDef::new(Alias::new("source_instruction"))
-                    .string()
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("status"))
-                    .string()
-                    .default(Expr::cust("'needs_review'::character varying"))
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("updated_at"))
-                    .custom(Alias::new("timestamp(6) without time zone"))
-                    .not_null(),
-            )
-            .primary_key(
-                Index::create()
-                    .name("medication_review_prompts_pkey")
-                    .col(Alias::new("id")),
-            )
-            .to_owned(),
-    )
-    .await?;
+    Ok(())
+}
+
+fn medication_review_prompts_start() -> TableCreateStatement {
+    Table::create()
+        .table(Alias::new("medication_review_prompts"))
+        .col(ColumnDef::new(Alias::new("id")).big_integer().not_null())
+        .col(
+            ColumnDef::new(Alias::new("created_at"))
+                .custom(Alias::new("timestamp(6) without time zone"))
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(Alias::new("evidence_record_id"))
+                .big_integer()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(Alias::new("evidence_source_checked_on"))
+                .date()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(Alias::new("evidence_source_effective_on"))
+                .date()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(Alias::new("evidence_source_name"))
+                .string()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(Alias::new("evidence_source_url"))
+                .string()
+                .not_null(),
+        )
+        .to_owned()
+}
+
+async fn create_part_35(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
+    let mut table = medication_review_prompts_start();
+    table
+        .col(
+            ColumnDef::new(Alias::new("evidence_source_version"))
+                .string()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(Alias::new("evidence_text"))
+                .text()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(Alias::new("household_id"))
+                .big_integer()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(Alias::new("interacting_medication_id"))
+                .big_integer()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(Alias::new("interacting_medication_name"))
+                .string()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(Alias::new("match_confidence"))
+                .string()
+                .not_null(),
+        )
+        .col(ColumnDef::new(Alias::new("match_reason")).text().not_null())
+        .col(ColumnDef::new(Alias::new("match_type")).string().not_null())
+        .col(
+            ColumnDef::new(Alias::new("matched_term"))
+                .string()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(Alias::new("person_id"))
+                .big_integer()
+                .not_null(),
+        )
+        .col(ColumnDef::new(Alias::new("practitioner_name")).string())
+        .col(ColumnDef::new(Alias::new("practitioner_role")).string())
+        .col(
+            ColumnDef::new(Alias::new("primary_medication_id"))
+                .big_integer()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(Alias::new("primary_medication_name"))
+                .string()
+                .not_null(),
+        )
+        .col(ColumnDef::new(Alias::new("review_note")).text())
+        .col(ColumnDef::new(Alias::new("reviewed_by_membership_id")).big_integer())
+        .col(ColumnDef::new(Alias::new("reviewed_on")).date())
+        .col(ColumnDef::new(Alias::new("risk_level")).string().not_null())
+        .col(
+            ColumnDef::new(Alias::new("source_instruction"))
+                .string()
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(Alias::new("status"))
+                .string()
+                .default(Expr::cust("'needs_review'::character varying"))
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(Alias::new("updated_at"))
+                .custom(Alias::new("timestamp(6) without time zone"))
+                .not_null(),
+        )
+        .primary_key(
+            Index::create()
+                .name("medication_review_prompts_pkey")
+                .col(Alias::new("id")),
+        );
+    create_table(manager, table).await?;
+    Ok(())
+}
+
+async fn create_part_36(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -2247,6 +2519,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_37(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -2286,11 +2562,7 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                     .big_integer()
                     .not_null(),
             )
-            .col(
-                ColumnDef::new(Alias::new("location_id"))
-                    .big_integer()
-                    .not_null(),
-            )
+            .col(ColumnDef::new(Alias::new("location_id")).big_integer())
             .col(ColumnDef::new(Alias::new("name")).string())
             .col(ColumnDef::new(Alias::new("expected_arrival_on")).date())
             .col(
@@ -2331,6 +2603,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_38(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -2396,6 +2672,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_39(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -2456,114 +2736,124 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
-    create_table(
-        manager,
-        Table::create()
-            .table(Alias::new("nhs_dmd_imports"))
-            .col(ColumnDef::new(Alias::new("id")).big_integer().not_null())
-            .col(ColumnDef::new(Alias::new("archive_byte_size")).big_integer())
-            .col(ColumnDef::new(Alias::new("archive_checksum")).string())
-            .col(ColumnDef::new(Alias::new("archive_key")).string())
-            .col(ColumnDef::new(Alias::new("archive_service_name")).string())
-            .col(
-                ColumnDef::new(Alias::new("completed_at"))
-                    .custom(Alias::new("timestamp(6) without time zone")),
-            )
-            .col(
-                ColumnDef::new(Alias::new("created_at"))
-                    .custom(Alias::new("timestamp(6) without time zone"))
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("created_count"))
-                    .integer()
-                    .default(Expr::cust("0"))
-                    .not_null(),
-            )
-            .col(ColumnDef::new(Alias::new("error_message")).text())
-            .col(
-                ColumnDef::new(Alias::new("imported_count"))
-                    .integer()
-                    .default(Expr::cust("0"))
-                    .not_null(),
-            )
-            .col(ColumnDef::new(Alias::new("log")).text())
-            .col(
-                ColumnDef::new(Alias::new("processed_records"))
-                    .integer()
-                    .default(Expr::cust("0"))
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("skipped_count"))
-                    .integer()
-                    .default(Expr::cust("0"))
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("skipped_expired_count"))
-                    .integer()
-                    .default(Expr::cust("0"))
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("skipped_invalid_count"))
-                    .integer()
-                    .default(Expr::cust("0"))
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("skipped_missing_name_count"))
-                    .integer()
-                    .default(Expr::cust("0"))
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("started_at"))
-                    .custom(Alias::new("timestamp(6) without time zone")),
-            )
-            .col(
-                ColumnDef::new(Alias::new("status"))
-                    .integer()
-                    .default(Expr::cust("0"))
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("total_records"))
-                    .integer()
-                    .default(Expr::cust("0"))
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("unchanged_count"))
-                    .integer()
-                    .default(Expr::cust("0"))
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("updated_at"))
-                    .custom(Alias::new("timestamp(6) without time zone"))
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("updated_count"))
-                    .integer()
-                    .default(Expr::cust("0"))
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("uploaded_filename"))
-                    .string()
-                    .not_null(),
-            )
-            .primary_key(
-                Index::create()
-                    .name("nhs_dmd_imports_pkey")
-                    .col(Alias::new("id")),
-            )
-            .to_owned(),
-    )
-    .await?;
+    Ok(())
+}
+
+fn nhs_dmd_imports_start() -> TableCreateStatement {
+    Table::create()
+        .table(Alias::new("nhs_dmd_imports"))
+        .col(ColumnDef::new(Alias::new("id")).big_integer().not_null())
+        .col(ColumnDef::new(Alias::new("archive_byte_size")).big_integer())
+        .col(ColumnDef::new(Alias::new("archive_checksum")).string())
+        .col(ColumnDef::new(Alias::new("archive_key")).string())
+        .col(ColumnDef::new(Alias::new("archive_service_name")).string())
+        .col(
+            ColumnDef::new(Alias::new("completed_at"))
+                .custom(Alias::new("timestamp(6) without time zone")),
+        )
+        .col(
+            ColumnDef::new(Alias::new("created_at"))
+                .custom(Alias::new("timestamp(6) without time zone"))
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(Alias::new("created_count"))
+                .integer()
+                .default(Expr::cust("0"))
+                .not_null(),
+        )
+        .col(ColumnDef::new(Alias::new("error_message")).text())
+        .to_owned()
+}
+
+async fn create_part_40(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
+    let mut table = nhs_dmd_imports_start();
+    table
+        .col(
+            ColumnDef::new(Alias::new("imported_count"))
+                .integer()
+                .default(Expr::cust("0"))
+                .not_null(),
+        )
+        .col(ColumnDef::new(Alias::new("log")).text())
+        .col(
+            ColumnDef::new(Alias::new("processed_records"))
+                .integer()
+                .default(Expr::cust("0"))
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(Alias::new("skipped_count"))
+                .integer()
+                .default(Expr::cust("0"))
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(Alias::new("skipped_expired_count"))
+                .integer()
+                .default(Expr::cust("0"))
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(Alias::new("skipped_invalid_count"))
+                .integer()
+                .default(Expr::cust("0"))
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(Alias::new("skipped_missing_name_count"))
+                .integer()
+                .default(Expr::cust("0"))
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(Alias::new("started_at"))
+                .custom(Alias::new("timestamp(6) without time zone")),
+        )
+        .col(
+            ColumnDef::new(Alias::new("status"))
+                .integer()
+                .default(Expr::cust("0"))
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(Alias::new("total_records"))
+                .integer()
+                .default(Expr::cust("0"))
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(Alias::new("unchanged_count"))
+                .integer()
+                .default(Expr::cust("0"))
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(Alias::new("updated_at"))
+                .custom(Alias::new("timestamp(6) without time zone"))
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(Alias::new("updated_count"))
+                .integer()
+                .default(Expr::cust("0"))
+                .not_null(),
+        )
+        .col(
+            ColumnDef::new(Alias::new("uploaded_filename"))
+                .string()
+                .not_null(),
+        )
+        .primary_key(
+            Index::create()
+                .name("nhs_dmd_imports_pkey")
+                .col(Alias::new("id")),
+        );
+    create_table(manager, table).await?;
+    Ok(())
+}
+
+async fn create_part_41(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -2639,6 +2929,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_42(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -2681,6 +2975,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_43(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -2741,7 +3039,7 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                     .default(Expr::cust("'22:00:00'::time without time zone")),
             )
             .col(
-                ColumnDef::new(Alias::new("person_id"))
+                ColumnDef::new(Alias::new("account_id"))
                     .big_integer()
                     .not_null(),
             )
@@ -2770,6 +3068,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_44(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -2815,6 +3117,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_45(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -2844,6 +3150,7 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .col(ColumnDef::new(Alias::new("code")).string())
             .col(ColumnDef::new(Alias::new("code_challenge")).string())
             .col(ColumnDef::new(Alias::new("code_challenge_method")).string())
+            .col(ColumnDef::new(Alias::new("consent_request_id")).uuid())
             .col(
                 ColumnDef::new(Alias::new("created_at"))
                     .custom(Alias::new("timestamp(6) without time zone"))
@@ -2891,6 +3198,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_46(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -2930,70 +3241,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
-    create_table(
-        manager,
-        Table::create()
-            .table(Alias::new("person_access_grants"))
-            .col(ColumnDef::new(Alias::new("id")).big_integer().not_null())
-            .col(
-                ColumnDef::new(Alias::new("access_level"))
-                    .string()
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("created_at"))
-                    .custom(Alias::new("timestamp(6) without time zone"))
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("expires_at"))
-                    .custom(Alias::new("timestamp(6) without time zone")),
-            )
-            .col(ColumnDef::new(Alias::new("granted_by_membership_id")).big_integer())
-            .col(
-                ColumnDef::new(Alias::new("household_id"))
-                    .big_integer()
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("household_membership_id"))
-                    .big_integer()
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("missed_dose_notifications_enabled"))
-                    .boolean()
-                    .default(Expr::cust("false"))
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("person_id"))
-                    .big_integer()
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("relationship_type"))
-                    .string()
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("revoked_at"))
-                    .custom(Alias::new("timestamp(6) without time zone")),
-            )
-            .col(
-                ColumnDef::new(Alias::new("updated_at"))
-                    .custom(Alias::new("timestamp(6) without time zone"))
-                    .not_null(),
-            )
-            .col(ColumnDef::new(Alias::new("carer_relationship_id")).big_integer())
-            .primary_key(
-                Index::create()
-                    .name("person_access_grants_pkey")
-                    .col(Alias::new("id")),
-            )
-            .to_owned(),
-    )
-    .await?;
+    Ok(())
+}
+
+async fn create_part_48(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -3062,6 +3313,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_49(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -3128,6 +3383,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_50(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -3204,6 +3463,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_51(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -3262,6 +3525,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_52(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -3354,6 +3621,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_53(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()
@@ -3412,6 +3683,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .to_owned(),
     )
     .await?;
+    Ok(())
+}
+
+async fn create_part_54(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     create_table(
         manager,
         Table::create()

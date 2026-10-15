@@ -18,7 +18,7 @@ pub(crate) fn for_request(
     build(
         tenant.scope(),
         tenant.membership(),
-        tenant.user_id(),
+        tenant.person_id(),
         request_id,
         provenance,
     )
@@ -27,13 +27,13 @@ pub(crate) fn for_request(
 fn build(
     scope: &HouseholdScope,
     membership: &membership::Model,
-    user_id: i64,
+    person_id: crate::models::ids::PersonId,
     request_id: &str,
     provenance: Option<&CredentialProvenance>,
 ) -> Value {
     let mut context = json!({
         "actor_account_id": scope.actor.account_id,
-        "actor_user_id": user_id,
+        "actor_person_id": person_id,
         "actor_membership_id": membership.id,
         "household_id": scope.household_id,
         "request_id": request_id,
@@ -71,9 +71,8 @@ mod tests {
             },
             membership::Model {
                 id: 74,
-                account_id: 71,
                 household_id: 72,
-                person_id: Some(73),
+                person_id: 73,
                 permissions_version: 5,
                 role: "administrator".into(),
                 status: "active".into(),
@@ -88,10 +87,16 @@ mod tests {
     #[test]
     fn household_audit_preserves_actor_and_explicit_request_without_credentials() {
         let (scope, membership) = fixture();
-        let context = build(&scope, &membership, 77, "operation-request", None);
+        let context = build(
+            &scope,
+            &membership,
+            crate::models::ids::PersonId::from_database(77),
+            "operation-request",
+            None,
+        );
         assert_eq!(
             context,
-            json!({"actor_account_id":71,"actor_user_id":77,"actor_membership_id":74,"household_id":72,"request_id":"operation-request","active_role":"administrator","permissions_version":5})
+            json!({"actor_account_id":71,"actor_person_id":77,"actor_membership_id":74,"household_id":72,"request_id":"operation-request","active_role":"administrator","permissions_version":5})
         );
     }
 
@@ -124,7 +129,7 @@ mod tests {
             let context = build(
                 &scope,
                 &membership,
-                77,
+                crate::models::ids::PersonId::from_database(77),
                 &scope.request_id,
                 Some(&provenance),
             );

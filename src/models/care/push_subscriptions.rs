@@ -1,6 +1,6 @@
 use crate::models::{
     access::{self, TenantTransaction},
-    entities::{account, household, push_subscription},
+    entities::{account, push_subscription},
     errors::OperationError,
 };
 use chrono::Utc;
@@ -113,11 +113,7 @@ pub(crate) async fn lock_account(tenant: &TenantTransaction) -> Result<(), Opera
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::Forbidden)?;
-    household::Entity::find_by_id(tenant.scope().household_id)
-        .lock_exclusive()
-        .one(tenant.transaction())
-        .await?
-        .ok_or(OperationError::NotFound)?;
+    access::lock_household(tenant).await?;
     access::recheck(tenant).await?;
     Ok(())
 }

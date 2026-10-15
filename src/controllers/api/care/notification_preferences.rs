@@ -1,6 +1,6 @@
 use super::*;
 use crate::models::notification_preferences;
-use crate::models::{access::PersonAccess, care::locations::SavedResponse, profile};
+use crate::models::{care::locations::SavedResponse, profile};
 use axum::http::HeaderValue;
 
 pub(super) async fn show(
@@ -17,13 +17,16 @@ pub(super) async fn show(
         Ok(value) => value,
         Err(error) => return response::error(error, &request_id),
     };
-    let reply = notification_preferences::read(&tenant, principal.account_id())
-        .await
-        .map(|(row, owner)| {
-            let (body, etag) = notification_preferences::representation(&row, &owner);
-            (StatusCode::OK, body, Some(etag))
-        })
-        .map_err(response::operation);
+    let reply = notification_preferences::read(
+        &tenant,
+        crate::models::ids::AccountId::from_database(principal.account_id()),
+    )
+    .await
+    .map(|(row, owner)| {
+        let (body, etag) = notification_preferences::representation(&row, &owner);
+        (StatusCode::OK, body, Some(etag))
+    })
+    .map_err(response::operation);
     finish(
         tenant,
         principal.provenance(),
@@ -65,10 +68,9 @@ pub(super) async fn update(
         .map(|AxumJson(value)| value)
         .map_err(|_| response::Failure::bad_request("Invalid JSON request body"));
     if let (Ok(body), Some(key)) = (&raw, key) {
-        let authorized =
-            profile::linked_person(&tenant, principal.account_id(), PersonAccess::Manage)
-                .await
-                .map_err(response::operation);
+        let authorized = profile::linked_person(&tenant, principal.account_id())
+            .await
+            .map_err(response::operation);
         let replay = match authorized {
             Ok(_) => super::locations::keyed_replay(&tenant, key, method, &path, body).await,
             Err(error) => Err(error),
@@ -124,10 +126,13 @@ pub(super) async fn update(
     };
     let reply = async {
         let changes = input?;
-        let (row, owner) =
-            notification_preferences::update(&tenant, principal.account_id(), changes)
-                .await
-                .map_err(response::operation)?;
+        let (row, owner) = notification_preferences::update(
+            &tenant,
+            crate::models::ids::AccountId::from_database(principal.account_id()),
+            changes,
+        )
+        .await
+        .map_err(response::operation)?;
         let (body, etag) = notification_preferences::representation(&row, &owner);
         if let (Some(key), Ok(raw)) = (key, &raw) {
             crate::models::care::locations::store(

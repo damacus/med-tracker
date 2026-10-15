@@ -40,7 +40,7 @@ impl ClinicalStore {
         transaction: &sea_orm::DatabaseTransaction,
         row: &household_invitation::Model,
     ) -> AuthResult<Invitation> {
-        let found = transaction.query_one_raw(statement("SELECT COALESCE((SELECT account_id FROM public.household_memberships WHERE id=$1 AND household_id=$2),public.identity_invitation_inviter($3)) AS inviter", [row.invited_by_membership_id.into(),row.household_id.into(),row.id.into()])).await.map_err(database_error)?.ok_or_else(||AuthError::internal("Invitation owner unavailable"))?;
+        let found = transaction.query_one_raw(statement("SELECT COALESCE(med_tracker.invitation_historical_inviter($1),public.identity_invitation_inviter($1)) AS inviter", [row.id.into()])).await.map_err(database_error)?.ok_or_else(||AuthError::internal("Invitation owner unavailable"))?;
         let inviter: i64 = found.try_get("", "inviter").map_err(database_error)?;
         Ok(value(row, inviter))
     }
@@ -54,6 +54,11 @@ impl ClinicalStore {
         let actor = request::authenticated()?;
         let transaction = self.account_transaction().await?;
         if let Some(id) = org {
+            if actor.active_household_id != Some(id) {
+                return Err(AuthError::forbidden(
+                    "Selected household does not match request",
+                ));
+            }
             context(
                 &transaction,
                 "med_tracker.current_household_id",
@@ -62,7 +67,10 @@ impl ClinicalStore {
             .await?;
             let member = membership::Entity::find()
                 .filter(membership::Column::HouseholdId.eq(id))
-                .filter(membership::Column::AccountId.eq(actor.account_id))
+                .filter(sea_orm::sea_query::Expr::cust_with_values(
+                    "person_id=(SELECT person_id FROM public.accounts WHERE id=$1)",
+                    [actor.account_id],
+                ))
                 .one(&*transaction)
                 .await
                 .map_err(database_error)?
@@ -80,7 +88,7 @@ impl ClinicalStore {
                 return Err(AuthError::forbidden("Invitation access denied"));
             }
         }
-        let rows=transaction.query_all_raw(statement("SELECT i.id,i.household_id,i.email,i.membership_role,i.expires_at,i.created_at,i.accepted_at,i.revoked_at,COALESCE(m.account_id,public.identity_invitation_inviter(i.id)) AS inviter FROM public.household_invitations i LEFT JOIN public.household_memberships m ON m.id=i.invited_by_membership_id AND m.household_id=i.household_id WHERE ($1::bigint IS NULL OR i.household_id=$1) AND ($2::text IS NULL OR i.email=$2) AND (NOT $3 OR (i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at>CURRENT_TIMESTAMP)) ORDER BY i.id",[org.into(),email.map(str::to_owned).into(),pending.into()])).await.map_err(database_error)?;
+        let rows=transaction.query_all_raw(statement("SELECT i.id,i.household_id,i.email,i.membership_role,i.expires_at,i.created_at,i.accepted_at,i.revoked_at,COALESCE(med_tracker.invitation_historical_inviter(i.id),public.identity_invitation_inviter(i.id)) AS inviter FROM public.household_invitations i WHERE ($1::bigint IS NULL OR i.household_id=$1) AND ($2::text IS NULL OR i.email=$2) AND (NOT $3 OR (i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at>CURRENT_TIMESTAMP)) ORDER BY i.id",[org.into(),email.map(str::to_owned).into(),pending.into()])).await.map_err(database_error)?;
         let result = rows
             .into_iter()
             .map(|row| {

@@ -1,8 +1,5 @@
 use super::*;
-use crate::models::{
-    access::PersonAccess,
-    profile::{self, avatar},
-};
+use crate::models::profile::{self, avatar};
 use axum::{
     body::Body,
     extract::{Multipart, multipart::MultipartRejection},
@@ -66,34 +63,33 @@ pub(super) async fn show(
         Ok(value) => value,
         Err(error) => return no_store(response::error(error, &request_id)),
     };
-    let attached =
-        match avatar::attachment(&tenant, principal.account_id(), PersonAccess::View).await {
-            Ok(Some(value)) => value,
-            Ok(None) => {
-                return no_store(
-                    finish(
-                        tenant,
-                        principal.provenance(),
-                        audit::RequestAudit::avatar("GET", "show"),
-                        Err(response::operation(OperationError::NotFound)),
-                        &request_id,
-                    )
-                    .await,
-                );
-            }
-            Err(error) => {
-                return no_store(
-                    finish(
-                        tenant,
-                        principal.provenance(),
-                        audit::RequestAudit::avatar("GET", "show"),
-                        Err(response::operation(error)),
-                        &request_id,
-                    )
-                    .await,
-                );
-            }
-        };
+    let attached = match avatar::attachment(&tenant, principal.account_id()).await {
+        Ok(Some(value)) => value,
+        Ok(None) => {
+            return no_store(
+                finish(
+                    tenant,
+                    principal.provenance(),
+                    audit::RequestAudit::avatar("GET", "show"),
+                    Err(response::operation(OperationError::NotFound)),
+                    &request_id,
+                )
+                .await,
+            );
+        }
+        Err(error) => {
+            return no_store(
+                finish(
+                    tenant,
+                    principal.provenance(),
+                    audit::RequestAudit::avatar("GET", "show"),
+                    Err(response::operation(error)),
+                    &request_id,
+                )
+                .await,
+            );
+        }
+    };
     if tenant.commit().await.is_err() {
         return storage_error(&request_id);
     }
@@ -126,7 +122,7 @@ pub(super) async fn show(
             ));
         }
     };
-    let current = avatar::attachment(&tenant, principal.account_id(), PersonAccess::View).await;
+    let current = avatar::attachment(&tenant, principal.account_id()).await;
     match current {
         Ok(Some(value)) if value.key == attached.key => {}
         Ok(Some(_)) | Ok(None) => {
@@ -194,9 +190,7 @@ pub(super) async fn upload(
         Ok(value) => value,
         Err(error) => return no_store(response::error(error, &request_id)),
     };
-    if let Err(error) =
-        profile::linked_person(&tenant, principal.account_id(), PersonAccess::Manage).await
-    {
+    if let Err(error) = profile::linked_person(&tenant, principal.account_id()).await {
         return no_store(
             finish(
                 tenant,

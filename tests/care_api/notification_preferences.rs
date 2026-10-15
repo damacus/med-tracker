@@ -2,6 +2,124 @@ use super::contract::{assert_value, contract, resolve};
 use super::*;
 
 #[tokio::test]
+async fn managed_notifications_require_explicit_opt_in_for_current_people_of_every_type() {
+    use med_tracker::models::{
+        access::{self, Actor, HouseholdScope},
+        notification_preferences,
+    };
+    let app = Application::new().await;
+    app.fixture.admin.execute_unprepared("INSERT INTO people(id,clinical_name,person_type,has_capacity,created_at,updated_at) VALUES(73991,'Dependent notification subject',2,false,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74991,72001,73991,'member','active',now(),now(),now())").await.unwrap();
+    let scope = HouseholdScope {
+        actor: Actor { account_id: 71001 },
+        household_id: 72001,
+        request_id: "notification-opt-in".into(),
+    };
+    let tenant = access::begin(&app.fixture.runtime, &scope, None)
+        .await
+        .unwrap();
+    let people = notification_preferences::managed::read(&tenant).await;
+    assert!(
+        people.is_ok(),
+        "current household participants can be projected without legacy person grants"
+    );
+    let people = serde_json::to_value(people.unwrap()).unwrap();
+    for id in [73002, 73991] {
+        let person = people
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["id"] == id)
+            .expect("current participant is selectable");
+        assert_eq!(
+            person["enabled"], false,
+            "no automatic child/dependent subscription"
+        );
+    }
+    assert!(
+        !people
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|row| row["id"] == 73001)
+    );
+    notification_preferences::managed::update(
+        &tenant,
+        med_tracker::models::ids::AccountId::from_database(71001),
+        notification_preferences::Changes::default(),
+        &[
+            med_tracker::models::ids::PersonId::from_database(73002),
+            med_tracker::models::ids::PersonId::from_database(73991),
+        ],
+    )
+    .await
+    .expect("explicit opt-in accepts minors and dependent adults");
+    tenant.commit().await.unwrap();
+    let opted=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT count(*) AS count FROM household_notification_subscriptions WHERE account_id=71001 AND household_id=72001 AND enabled")).await.unwrap().unwrap();
+    assert_eq!(opted.try_get::<i64>("", "count").unwrap(), 2);
+    app.fixture.admin.execute_unprepared("CREATE SEQUENCE notification_subscription_audit_reached; GRANT USAGE ON SEQUENCE notification_subscription_audit_reached TO med_tracker_app; CREATE FUNCTION reject_notification_subscription_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.event_type='notification_preferences.managed_people.updated' THEN PERFORM nextval('public.notification_subscription_audit_reached'); RAISE EXCEPTION 'synthetic subscription audit failure' USING ERRCODE='42501'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_notification_subscription_audit BEFORE INSERT ON security_audit_events FOR EACH ROW EXECUTE FUNCTION reject_notification_subscription_audit()").await.unwrap();
+    let tenant = access::begin(&app.fixture.runtime, &scope, None)
+        .await
+        .unwrap();
+    let failed = notification_preferences::managed::update(
+        &tenant,
+        med_tracker::models::ids::AccountId::from_database(71001),
+        notification_preferences::Changes {
+            enabled: Some(false),
+            ..Default::default()
+        },
+        &[],
+    )
+    .await;
+    assert!(failed.is_err());
+    tenant.rollback().await.unwrap();
+    let rollback=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT is_called FROM notification_subscription_audit_reached) AS reached,(SELECT enabled FROM notification_preferences WHERE account_id=71001 AND household_id=72001) AS enabled,(SELECT count(*) FROM household_notification_subscriptions WHERE account_id=71001 AND enabled) AS subscriptions,(SELECT count(*) FROM security_audit_events WHERE event_type='notification_preferences.managed_people.updated') AS audits,(SELECT count(*) FROM versions WHERE item_type='NotificationPreference') AS versions")).await.unwrap().unwrap();
+    assert!(rollback.try_get::<bool>("", "reached").unwrap());
+    assert!(rollback.try_get::<bool>("", "enabled").unwrap());
+    assert_eq!(rollback.try_get::<i64>("", "subscriptions").unwrap(), 2);
+    assert_eq!(rollback.try_get::<i64>("", "audits").unwrap(), 1);
+    assert_eq!(rollback.try_get::<i64>("", "versions").unwrap(), 1);
+    app.fixture.admin.execute_unprepared("DROP TRIGGER reject_notification_subscription_audit ON security_audit_events; DROP FUNCTION reject_notification_subscription_audit()").await.unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared(
+            "UPDATE household_memberships SET status='revoked',revoked_at=now() WHERE id=74991",
+        )
+        .await
+        .unwrap();
+    let tenant = access::begin(&app.fixture.runtime, &scope, None)
+        .await
+        .unwrap();
+    let current = serde_json::to_value(
+        notification_preferences::managed::read(&tenant)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    assert!(
+        !current
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|row| row["id"] == 73991)
+    );
+    assert!(
+        notification_preferences::managed::update(
+            &tenant,
+            med_tracker::models::ids::AccountId::from_database(71001),
+            notification_preferences::Changes::default(),
+            &[med_tracker::models::ids::PersonId::from_database(73991)]
+        )
+        .await
+        .is_err(),
+        "departed subject cannot be subscribed"
+    );
+    tenant.rollback().await.unwrap();
+    let retained=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT enabled FROM household_notification_subscriptions WHERE account_id=71001 AND person_id=73002")).await.unwrap().unwrap();
+    assert!(retained.try_get::<bool>("", "enabled").unwrap());
+    app.close().await;
+}
+
+#[tokio::test]
 async fn notification_preference_api_creates_defaults_and_preserves_omitted_fields() {
     let app = Application::new().await;
     let token = app.token().await;
@@ -122,7 +240,7 @@ async fn notification_preference_api_rejects_invalid_input_without_partial_write
 }
 
 #[tokio::test]
-async fn notification_preference_api_keyed_replay_conflict_and_current_grant_denial() {
+async fn notification_preference_api_keyed_replay_conflict_and_current_membership_denial() {
     let app = Application::new().await;
     let token = app.token().await;
     let endpoint = format!(
@@ -171,9 +289,19 @@ async fn notification_preference_api_keyed_replay_conflict_and_current_grant_den
     assert_eq!(conflict.status().as_u16(), 409);
     let conflict: Value = conflict.json().await.unwrap();
     assert_eq!(conflict["error"]["code"], "idempotency_key_reused");
+    let snapshot_sql = "SELECT jsonb_build_object('preferences',(SELECT jsonb_agg(to_jsonb(n)) FROM notification_preferences n),'versions',(SELECT count(*) FROM versions WHERE item_type='NotificationPreference'),'keys',(SELECT count(*) FROM api_idempotency_keys WHERE key='synthetic-notification-key')) AS state";
+    let before = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(DbBackend::Postgres, snapshot_sql))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get::<Value>("", "state")
+        .unwrap();
     app.fixture
         .admin
-        .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78001")
+        .execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001")
         .await
         .unwrap();
     let denied_replay = app
@@ -185,12 +313,25 @@ async fn notification_preference_api_keyed_replay_conflict_and_current_grant_den
         .send()
         .await
         .unwrap();
-    assert!(matches!(denied_replay.status().as_u16(), 403 | 404));
+    assert_eq!(denied_replay.status().as_u16(), 403);
     assert!(
         denied_replay
             .headers()
             .get("idempotency-replayed")
             .is_none()
+    );
+    let after = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(DbBackend::Postgres, snapshot_sql))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get::<Value>("", "state")
+        .unwrap();
+    assert_eq!(
+        before, after,
+        "revoked replay leaves preferences, audit and replay cache unchanged"
     );
     app.close().await;
 }
@@ -277,7 +418,8 @@ async fn notification_audit_versions_record_old_new_pairs_and_omit_unchanged_fie
 #[tokio::test]
 async fn notification_preference_get_matches_documented_contract() {
     let app = Application::new().await;
-    let token = app.token().await;
+    let issued = app.token_pair().await;
+    let token = issued["access_token"].as_str().unwrap();
     let endpoint = format!(
         "{}/api/v1/households/72001/notification_preference",
         app.origin
@@ -379,7 +521,7 @@ async fn notification_preference_get_matches_documented_contract() {
 
     app.fixture
         .admin
-        .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78001")
+        .execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001")
         .await
         .unwrap();
     let denied = app
@@ -391,24 +533,45 @@ async fn notification_preference_get_matches_documented_contract() {
         .unwrap();
     let denied_status = denied.status().as_u16();
     let denied_body: Value = denied.json().await.unwrap();
-    assert_eq!(denied_status, 404);
+    assert_eq!(denied_status, 403);
+    let forbidden = resolve(contract, &operation["responses"]["403"]);
     assert_value(
         contract,
-        not_found_schema,
+        resolve(
+            contract,
+            &forbidden["content"]["application/json"]["schema"],
+        ),
         &denied_body,
-        "outside view scope",
+        "revoked household participation",
     );
-    assert_eq!(denied_body["error"]["code"], "not_found");
+    assert_eq!(denied_body["error"]["code"], "forbidden");
 
     app.fixture
         .admin
-        .execute_unprepared("UPDATE person_access_grants SET revoked_at=NULL WHERE id=78001")
+        .execute_unprepared("UPDATE household_memberships SET status='active',revoked_at=NULL,permissions_version=permissions_version+1 WHERE id=74001")
         .await
         .unwrap();
+    let refreshed = app
+        .client
+        .post(format!("{}/token", app.origin))
+        .header("content-type", "application/x-www-form-urlencoded")
+        .body(
+            serde_urlencoded::to_string([
+                ("grant_type", "refresh_token"),
+                ("client_id", "native"),
+                ("refresh_token", issued["refresh_token"].as_str().unwrap()),
+            ])
+            .unwrap(),
+        )
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(refreshed.status().as_u16(), 200);
+    let refreshed: Value = refreshed.json().await.unwrap();
     let restored = app
         .client
         .get(&endpoint)
-        .bearer_auth(&token)
+        .bearer_auth(refreshed["access_token"].as_str().unwrap())
         .send()
         .await
         .unwrap();

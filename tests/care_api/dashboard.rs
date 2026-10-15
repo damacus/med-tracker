@@ -5,8 +5,12 @@ use med_tracker::models::{
 };
 
 #[tokio::test]
-async fn dashboard_respects_shared_dose_limits_and_person_access() {
+async fn dashboard_respects_shared_dose_limits_and_household_membership() -> CareTestResult {
     let app = Application::new().await;
+    if let Err(error) = seed_foreign_care_subject(&app.fixture).await {
+        app.close().await;
+        return Err(error.into());
+    }
     let scope = HouseholdScope {
         actor: Actor { account_id: 71001 },
         household_id: 72001,
@@ -14,7 +18,7 @@ async fn dashboard_respects_shared_dose_limits_and_person_access() {
     };
     app.fixture
         .admin
-        .execute_unprepared("UPDATE person_medications SET max_daily_doses=0 WHERE id=81001")
+        .execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001; UPDATE person_medications SET max_daily_doses=0 WHERE id=81001")
         .await
         .unwrap();
     let tenant = access::begin(&app.context.db, &scope, None).await.unwrap();
@@ -46,10 +50,21 @@ async fn dashboard_respects_shared_dose_limits_and_person_access() {
             &labels
         )
         .await
+        .is_ok()
+    );
+    assert!(
+        dashboard::read(
+            &tenant,
+            chrono_tz::UTC,
+            Some(96802),
+            "persistence-fixture",
+            &labels
+        )
+        .await
         .is_err()
     );
     tenant.commit().await.unwrap();
-    app.fixture.admin.execute_unprepared("UPDATE person_medications SET max_daily_doses=NULL,min_hours_between_doses=4 WHERE id=81001; INSERT INTO medication_takes(id,household_id,person_medication_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(84997,72001,81001,1,'tablet',now(),now(),now())").await.unwrap();
+    recorded_takes::seed(&app.fixture.admin, recorded_takes::SyntheticActor::canonical(), "UPDATE person_medications SET max_daily_doses=NULL,min_hours_between_doses=4 WHERE id=81001; INSERT INTO medication_takes(id,household_id,person_medication_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(84997,72001,81001,1,'tablet',now(),now(),now())", &[recorded_takes::TakeSeed::new(84997,80001)]).await.unwrap();
     let tenant = access::begin(&app.context.db, &scope, None).await.unwrap();
     let data = dashboard::read(
         &tenant,
@@ -70,7 +85,10 @@ async fn dashboard_respects_shared_dose_limits_and_person_access() {
     assert_eq!(data["completed"].as_array().unwrap().len(), 1);
     assert_eq!(data["completed"][0]["dose"], "1 tablet");
     tenant.commit().await.unwrap();
-    app.fixture.close().await;
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001").await?;
+    assert!(access::begin(&app.context.db, &scope, None).await.is_err());
+    app.close().await;
+    Ok(())
 }
 
 async fn snapshot(app: &Application) -> serde_json::Value {
@@ -175,7 +193,7 @@ async fn dashboard_taper_dose_matches_preview_and_preserves_recorded_doses() {
         format!("{} {}", preview.amount.unwrap(), preview.unit.unwrap())
     );
     tenant.commit().await.unwrap();
-    app.fixture.admin.execute_unprepared("INSERT INTO medication_takes(id,household_id,schedule_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(84992,72001,83992,3,'tablet',timezone('UTC',now()),now(),now())").await.unwrap();
+    recorded_takes::seed(&app.fixture.admin, recorded_takes::SyntheticActor::canonical(), "INSERT INTO medication_takes(id,household_id,schedule_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(84992,72001,83992,3,'tablet',timezone('UTC',now()),now(),now())", &[recorded_takes::TakeSeed::new(84992,80001)]).await.unwrap();
     let data = snapshot(&app).await;
     let taken = data["completed"]
         .as_array()
@@ -214,9 +232,17 @@ async fn dashboard_preserves_legacy_as_needed_sources_and_excludes_them_from_met
 }
 
 #[tokio::test]
-async fn dashboard_view_only_does_not_mean_out_of_stock() {
+async fn dashboard_ordinary_member_availability_follows_stock() -> CareTestResult {
     let app = Application::new().await;
-    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001; UPDATE person_access_grants SET access_level='view' WHERE id=78001").await.unwrap();
+    if let Err(error) = seed_foreign_care_subject(&app.fixture).await {
+        app.close().await;
+        return Err(error.into());
+    }
+    app.fixture
+        .admin
+        .execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001")
+        .await
+        .unwrap();
     let data = snapshot(&app).await;
     let row = data["rows"]
         .as_array()
@@ -225,9 +251,9 @@ async fn dashboard_view_only_does_not_mean_out_of_stock() {
         .find(|row| row["source_id"] == 81001)
         .unwrap();
     assert_eq!(row["status"], "available");
-    assert_eq!(row["can_record"], false);
-    assert_eq!(row["stock_ids"], json!([]));
-    assert_eq!(data["people"].as_array().unwrap().len(), 1);
+    assert_eq!(row["can_record"], true);
+    assert_eq!(row["stock_ids"], json!([80001]));
+    assert_eq!(data["people"].as_array().unwrap().len(), 3);
     app.fixture
         .admin
         .execute_unprepared("UPDATE medications SET current_supply=0 WHERE id=80001")
@@ -243,18 +269,39 @@ async fn dashboard_view_only_does_not_mean_out_of_stock() {
     assert_eq!(row["status"], "out_of_stock");
     assert_eq!(row["can_record"], false);
     assert_eq!(row["stock_ids"], json!([]));
-    app.fixture.close().await;
+    let scope = HouseholdScope {
+        actor: Actor { account_id: 71001 },
+        household_id: 72001,
+        request_id: "revoked-stock-dashboard".into(),
+    };
+    let tenant = access::begin(&app.context.db, &scope, None).await?;
+    assert!(
+        dashboard::read(
+            &tenant,
+            chrono_tz::UTC,
+            Some(96802),
+            "persistence-fixture",
+            &json!({})
+        )
+        .await
+        .is_err()
+    );
+    tenant.rollback().await?;
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001").await?;
+    assert!(access::begin(&app.context.db, &scope, None).await.is_err());
+    app.close().await;
+    Ok(())
 }
 
 #[tokio::test]
 async fn dashboard_history_is_actual_today_takes_and_interval_work_remains() {
     let app = Application::new().await;
-    app.fixture.admin.execute_unprepared("UPDATE person_medications SET administration_kind=0,max_daily_doses=1,dose_cycle=2,created_at=now()-interval '2 months' WHERE id=81001; INSERT INTO medication_takes(id,household_id,person_medication_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(84997,72001,81001,1,'tablet',timezone('UTC',now())-interval '1 day',now(),now())").await.unwrap();
+    recorded_takes::seed(&app.fixture.admin, recorded_takes::SyntheticActor::canonical(), "UPDATE person_medications SET administration_kind=0,max_daily_doses=1,dose_cycle=2,created_at=now()-interval '2 months' WHERE id=81001; INSERT INTO medication_takes(id,household_id,person_medication_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(84997,72001,81001,1,'tablet',timezone('UTC',now())-interval '1 day',now(),now())", &[recorded_takes::TakeSeed::new(84997,80001)]).await.unwrap();
     assert_eq!(
         snapshot(&app).await["completed"].as_array().unwrap().len(),
         0
     );
-    app.fixture.admin.execute_unprepared("INSERT INTO medication_takes(id,household_id,person_medication_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(84998,72001,81001,3,'tablet',timezone('UTC',now()),now(),now()); UPDATE person_medications SET max_daily_doses=NULL WHERE id=81001; INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,frequency,min_hours_between_doses,created_at,updated_at) VALUES(83998,72001,73001,80001,true,'2020-01-01','2099-12-31',2,'tablet',0,'{}','Every 2 hours',2,now(),now()); INSERT INTO medication_takes(id,household_id,schedule_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(84999,72001,83998,1,'tablet',timezone('UTC',now()),now(),now())").await.unwrap();
+    recorded_takes::seed(&app.fixture.admin, recorded_takes::SyntheticActor::canonical(), "INSERT INTO medication_takes(id,household_id,person_medication_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(84998,72001,81001,3,'tablet',timezone('UTC',now()),now(),now()); UPDATE person_medications SET max_daily_doses=NULL WHERE id=81001; INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,frequency,min_hours_between_doses,created_at,updated_at) VALUES(83998,72001,73001,80001,true,'2020-01-01','2099-12-31',2,'tablet',0,'{}','Every 2 hours',2,now(),now()); INSERT INTO medication_takes(id,household_id,schedule_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(84999,72001,83998,1,'tablet',timezone('UTC',now()),now(),now())", &[recorded_takes::TakeSeed::new(84998,80001), recorded_takes::TakeSeed::new(84999,80001)]).await.unwrap();
     let data = snapshot(&app).await;
     assert_eq!(data["completed"].as_array().unwrap().len(), 2);
     assert!(

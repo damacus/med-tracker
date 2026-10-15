@@ -1,4 +1,6 @@
 use super::*;
+use crate::models::ids::{AccountId, HouseholdId, PersonId};
+use sha2::Digest;
 
 pub struct AccountProfile {
     pub email: String,
@@ -8,10 +10,9 @@ pub struct AccountProfile {
 }
 
 pub struct ProvisionedAccount {
-    pub account_id: i64,
-    pub person_id: i64,
-    pub user_id: i64,
-    pub household_id: i64,
+    pub account_id: AccountId,
+    pub person_id: PersonId,
+    pub household_id: HouseholdId,
     pub email: String,
 }
 
@@ -56,11 +57,48 @@ pub(super) async fn provision_with_password_in(
         None => invitations::validated_email(&profile.email).map_err(operation_error)?,
     };
     let preferences = initial_preferences(settings)?;
-    let account = transaction.query_one_raw(sql(
-        "INSERT INTO accounts(email,password_hash,status,preferences,created_at,updated_at) VALUES($1,$2,1,$3,now(),now()) ON CONFLICT(email) WHERE status = ANY(ARRAY[1,2]) DO NOTHING RETURNING id",
-        [email.clone().into(),password_hash.map(str::to_owned).into(),preferences.into()])).await.map_err(unavailable)?
-        .ok_or_else(|| invalid("email", "is already registered"))?;
-    let account_id: i64 = account.try_get("", "id").map_err(unavailable)?;
+    let account = if let Some(token) = invitation_token {
+        transaction
+            .query_one_raw(sql(
+                "SELECT * FROM med_tracker.bootstrap_invited_registration($1,$2,$3,$4,$5)",
+                [
+                    hex::encode(sha2::Sha256::digest(token.as_bytes())).into(),
+                    profile.name.trim().to_owned().into(),
+                    profile.date_of_birth.into(),
+                    password_hash.map(str::to_owned).into(),
+                    request_id.map(str::to_owned).into(),
+                ],
+            ))
+            .await
+    } else {
+        let name = format!("{} Household", profile.name.trim());
+        let mut suffix = [0u8; 4];
+        getrandom::fill(&mut suffix).map_err(unavailable)?;
+        let slug = format!("{}-{}", slug::slugify(&name), hex::encode(suffix));
+        let timezone = super::super::time_zone::preferred(&serde_json::json!({}), settings)
+            .map_err(unavailable)?
+            .to_string();
+        transaction
+            .query_one_raw(sql(
+                "SELECT * FROM med_tracker.bootstrap_registration($1,$2,$3,$4,$5,$6,$7,$8)",
+                [
+                    email.clone().into(),
+                    profile.name.trim().to_owned().into(),
+                    profile.date_of_birth.into(),
+                    password_hash.map(str::to_owned).into(),
+                    name.into(),
+                    slug.into(),
+                    timezone.into(),
+                    request_id.map(str::to_owned).into(),
+                ],
+            ))
+            .await
+    }
+    .map_err(provisioning_failure)?
+    .ok_or(SignupError::Unavailable)?;
+    let account_id =
+        AccountId::from_database(account.try_get("", "account_id").map_err(unavailable)?);
+    let person_id = PersonId::from_database(account.try_get("", "person_id").map_err(unavailable)?);
     transaction
         .execute_raw(sql(
             "SELECT set_config('med_tracker.current_account_id',$1,true)",
@@ -68,45 +106,35 @@ pub(super) async fn provision_with_password_in(
         ))
         .await
         .map_err(unavailable)?;
-    let household_id = match &invitation {
+    transaction
+        .execute_raw(sql(
+            "UPDATE accounts SET preferences=$2 WHERE id=$1",
+            [account_id.get().into(), preferences.into()],
+        ))
+        .await
+        .map_err(unavailable)?;
+    let household_id = HouseholdId::from_database(match &invitation {
         Some(invitation) => invitation.household_id,
-        None => bootstrap::household(transaction, account_id, &profile.name, settings).await?,
-    };
-    let person = transaction.query_one_raw(sql(
-        "INSERT INTO people(account_id,household_id,name,email,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES($1,$2,$3,$4,$5,0,true,now(),now()) RETURNING id",
-        [account_id.into(),household_id.into(),profile.name.trim().to_owned().into(),email.clone().into(),profile.date_of_birth.into()])).await.map_err(unavailable)?.ok_or(SignupError::Unavailable)?;
-    let person_id: i64 = person.try_get("", "id").map_err(unavailable)?;
-    let user = transaction.query_one_raw(sql(
-        "INSERT INTO users(person_id,email_address,password_digest,active,created_at,updated_at) VALUES($1,$2,$3,true,now(),now()) RETURNING id",
-        [person_id.into(),email.clone().into(),password_hash.map(str::to_owned).into()])).await.map_err(unavailable)?.ok_or(SignupError::Unavailable)?;
-    let user_id: i64 = user.try_get("", "id").map_err(unavailable)?;
-    let context = SignupInvitationContext {
-        account_id,
-        person_id,
-        user_id,
-        email: email.clone(),
-    };
-    if let Some(token) = invitation_token {
-        invitations::accept_signup(transaction, &context, token, request_id.unwrap_or(""))
-            .await
-            .map_err(operation_error)?;
-    } else {
-        bootstrap::owner(
-            transaction,
-            &context,
-            household_id,
-            &profile.name,
-            request_id,
-        )
-        .await?;
-    }
+        None => account.try_get("", "household_id").map_err(unavailable)?,
+    });
     Ok(ProvisionedAccount {
         account_id,
         person_id,
-        user_id,
         household_id,
         email,
     })
+}
+
+fn provisioning_failure(error: sea_orm::DbErr) -> SignupError {
+    if let sea_orm::DbErr::Query(sea_orm::RuntimeErr::SqlxError(ref source)) = error
+        && source.as_database_error().is_some_and(|database| {
+            database.code().as_deref() == Some("23505")
+                && database.constraint() == Some("index_accounts_on_email")
+        })
+    {
+        return invalid("email", "is already registered");
+    }
+    unavailable(error)
 }
 
 pub(crate) fn profile_errors(

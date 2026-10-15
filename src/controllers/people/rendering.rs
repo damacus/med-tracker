@@ -2,7 +2,6 @@ use super::*;
 
 const FIELDS: &[(&str, &str, &str, bool)] = &[
     ("name", "Name", "text", true),
-    ("email", "Email", "email", false),
     ("date_of_birth", "Date of Birth", "date", true),
 ];
 
@@ -68,12 +67,6 @@ pub(super) fn detail(
             .filter(|value| !value.is_empty())
             .unwrap_or("Not recorded")
     );
-    data["email_display"] = json!(
-        data["person"]["email"]
-            .as_str()
-            .filter(|value| !value.is_empty())
-            .unwrap_or("Not recorded")
-    );
     data["medications"] = json!(medications);
     data["can_manage"] = json!(can_manage);
     data["can_manage_household"] = json!(can_manage_household);
@@ -115,7 +108,7 @@ pub(super) fn attributes(draft: &HashMap<String, String>) -> Value {
         Some("true") => json!(true),
         Some(value) => json!(value),
     };
-    json!({"name":forms::field(draft,"name"),"email":forms::field(draft,"email"),"date_of_birth":forms::field(draft,"date_of_birth"),"person_type":forms::field(draft,"person_type"),"has_capacity":capacity})
+    json!({"name":forms::field(draft,"name"),"date_of_birth":forms::field(draft,"date_of_birth"),"person_type":forms::field(draft,"person_type"),"has_capacity":capacity})
 }
 
 pub(super) fn form(
@@ -207,7 +200,7 @@ pub(super) fn render(
         return unavailable();
     };
     data["authenticity_token"] = json!(authenticity);
-    match format::render().view(view, template, data) {
+    match format::render().view(view, template, crate::views::template_data(&data)) {
         Ok(response) => (
             error.map(forms::status).unwrap_or(StatusCode::OK),
             token.clone(),

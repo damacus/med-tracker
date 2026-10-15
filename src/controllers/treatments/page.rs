@@ -59,7 +59,7 @@ impl<'a> Page<'a> {
         data["authenticity_token"] = json!(authenticity);
         data["slug"] = json!(self.slug);
         data["person_id"] = json!(self.person);
-        match format::render().view(self.view, template, data) {
+        match format::render().view(self.view, template, crate::views::template_data(&data)) {
             Ok(response) => (
                 status,
                 self.token.clone(),

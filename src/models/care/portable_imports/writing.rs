@@ -127,10 +127,6 @@ pub(crate) async fn write_records(
                     .ok_or_else(|| format!("{kind} could not be imported"))?
             };
             index.put(kind, portable_id.clone(), id);
-            if kind == "people" {
-                grant_importer_access(db, tenant, id).await?;
-                write_location_memberships(db, tenant, row, index, id).await?;
-            }
             if kind == "health_events" {
                 write_health_links(db, tenant, row, index, id).await?;
             }

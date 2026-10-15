@@ -11,20 +11,7 @@ pub(crate) async fn authorized(
     if !plan.rows("locations").is_empty() {
         return Ok(false);
     }
-    let grants = grant::Entity::find()
-        .filter(grant::Column::HouseholdId.eq(tenant.scope().household_id))
-        .filter(grant::Column::HouseholdMembershipId.eq(tenant.membership().id))
-        .filter(grant::Column::RevokedAt.is_null())
-        .all(tenant.transaction())
-        .await?;
-    let now = Utc::now().naive_utc();
-    let manageable_ids: HashSet<i64> = grants
-        .into_iter()
-        .filter(|grant| {
-            grant.access_level == "manage" && grant.expires_at.is_none_or(|expires| expires > now)
-        })
-        .map(|grant| grant.person_id)
-        .collect();
+    let manageable_ids = HashSet::from([tenant.person_id().get()]);
     let mut referenced_people = HashSet::new();
     for kind in [
         "people",

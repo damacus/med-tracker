@@ -1,19 +1,17 @@
 use crate::models::{
-    access::{self, PersonAccess, TenantTransaction},
-    authorization,
+    access::{self, TenantTransaction},
     care::{
         doses,
         medications::{self, StockSnapshot},
     },
     entities::{
-        dosage, grant, location, medication, medication_take, person, person_medication, schedule,
+        dosage, location, medication, medication_take, person, person_medication, schedule,
     },
     errors::OperationError,
 };
 use loco_rs::model::TenantQueryExt;
 use sea_orm::{
-    ColumnTrait, Condition, ConnectionTrait, DbBackend, EntityTrait, QueryFilter, QueryOrder,
-    QuerySelect, QueryTrait, Statement,
+    ColumnTrait, Condition, EntityTrait, QueryFilter, QueryOrder, QuerySelect, QueryTrait,
 };
 use serde::Serialize;
 use std::collections::HashMap;
@@ -65,6 +63,7 @@ pub async fn form_context(
     access::recheck(tenant).await?;
     let household_id = tenant.scope().household_id;
     let locations = location::Entity::find()
+        .filter(location::Column::RetiredAt.is_null())
         .in_tenant(household_id)
         .order_by_asc(location::Column::Name)
         .order_by_asc(location::Column::Id)
@@ -99,7 +98,7 @@ pub async fn form_context(
 #[derive(Serialize)]
 pub struct MedicationCard {
     pub id: i64,
-    pub location_id: i64,
+    pub location_id: Option<i64>,
     pub name: String,
     pub quantity: Option<String>,
     pub unit: String,
@@ -131,6 +130,7 @@ pub async fn inventory(
 ) -> Result<Inventory, OperationError> {
     access::recheck(tenant).await?;
     let locations = location::Entity::find()
+        .filter(location::Column::RetiredAt.is_null())
         .in_tenant(tenant.scope().household_id)
         .order_by_asc(location::Column::Name)
         .all(tenant.transaction())
@@ -183,10 +183,11 @@ pub async fn inventory(
                     .unwrap_or("Medication")
                     .to_owned(),
                 description: row.description,
-                location_name: location_names
-                    .get(&row.location_id)
+                location_name: row
+                    .location_id
+                    .and_then(|id| location_names.get(&id))
                     .copied()
-                    .unwrap_or("Location")
+                    .unwrap_or_default()
                     .to_owned(),
                 category: row.category,
                 quantity: row
@@ -243,7 +244,7 @@ pub async fn person_medications(
     tenant: &TenantTransaction,
     person_id: i64,
 ) -> Result<Vec<MedicationCard>, OperationError> {
-    access::require_person_access(tenant, person_id, PersonAccess::View).await?;
+    access::require_participation(tenant, person_id).await?;
     let assignments = person_medication::Entity::find()
         .select_only()
         .column(person_medication::Column::MedicationId)
@@ -284,12 +285,17 @@ pub async fn detail(
 ) -> Result<Detail, OperationError> {
     let stock = medications::read_stock_snapshot(tenant, id).await?;
     let household_id = tenant.scope().household_id;
-    let location_name = location::Entity::find_by_id(stock.medication.location_id)
-        .in_tenant(household_id)
-        .one(tenant.transaction())
-        .await?
-        .ok_or(OperationError::NotFound)?
-        .name;
+    let location_name = match stock.medication.location_id {
+        Some(id) => {
+            location::Entity::find_by_id(id)
+                .in_tenant(household_id)
+                .one(tenant.transaction())
+                .await?
+                .ok_or(OperationError::NotFound)?
+                .name
+        }
+        None => String::new(),
+    };
     let dose_options = dosage::Entity::find()
         .in_tenant(household_id)
         .filter(dosage::Column::MedicationId.eq(stock.medication.id))
@@ -342,21 +348,18 @@ pub async fn detail(
         .into_iter()
         .map(|source| (source.id, source.person_id))
         .collect();
-    let history_people: HashMap<i64, String> = person::Entity::find()
-        .in_tenant(household_id)
-        .filter(
-            person::Column::Id.is_in(
-                history_schedules
-                    .values()
-                    .chain(history_assignments.values())
-                    .copied(),
-            ),
-        )
-        .all(tenant.transaction())
-        .await?
-        .into_iter()
-        .map(|person| (person.id, person.name))
-        .collect();
+    let history_people: HashMap<i64, String> = crate::models::person_identity::display_names(
+        tenant,
+        history_schedules
+            .values()
+            .chain(history_assignments.values())
+            .copied()
+            .map(crate::models::ids::PersonId::from_database),
+    )
+    .await?
+    .into_iter()
+    .map(|(id, name)| (id.get(), name))
+    .collect();
     let dose_history = takes
         .into_iter()
         .filter_map(|take| {
@@ -393,66 +396,33 @@ pub async fn detail(
         .order_by_asc(schedule::Column::Id)
         .all(tenant.transaction())
         .await?;
-    let people: HashMap<i64, person::Model> = person::Entity::find()
-        .in_tenant(household_id)
-        .filter(
-            person::Column::Id.is_in(
-                records
-                    .iter()
-                    .map(|record| record.person_id)
-                    .chain(schedules.iter().map(|record| record.person_id)),
-            ),
-        )
-        .all(tenant.transaction())
-        .await?
-        .into_iter()
-        .map(|person| (person.id, person))
-        .collect();
+    let people: HashMap<i64, person::Model> = crate::models::access::person_scope(
+        crate::models::ids::HouseholdId::from_database(household_id),
+    )
+    .filter(
+        person::Column::Id.is_in(
+            records
+                .iter()
+                .map(|record| record.person_id)
+                .chain(schedules.iter().map(|record| record.person_id)),
+        ),
+    )
+    .all(tenant.transaction())
+    .await?
+    .into_iter()
+    .map(|person| (person.id, person))
+    .collect();
     access::recheck(tenant).await?;
-    let permission_grants: HashMap<i64, grant::Model> = grant::Entity::find()
-        .in_tenant(household_id)
-        .filter(grant::Column::HouseholdMembershipId.eq(tenant.membership().id))
-        .filter(grant::Column::PersonId.is_in(people.keys().copied()))
-        .filter(grant::Column::RevokedAt.is_null())
-        .all(tenant.transaction())
-        .await?
-        .into_iter()
-        .map(|record| (record.person_id, record))
-        .collect();
-    let clock = tenant
-        .transaction()
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT timezone('UTC', clock_timestamp()) AS now",
-        ))
-        .await?
-        .ok_or(OperationError::Unavailable)?;
-    let now: chrono::NaiveDateTime = clock.try_get("", "now")?;
-    let permissions: HashMap<i64, (bool, bool)> = people
-        .iter()
-        .map(|(person_id, subject)| {
-            let view = permission_grants.get(person_id).is_some_and(|record| {
-                authorization::person_access(
-                    tenant.membership(),
-                    subject,
-                    record,
-                    PersonAccess::View,
-                    now,
-                )
-            });
-            let record = view
-                && permission_grants.get(person_id).is_some_and(|record| {
-                    authorization::person_access(
-                        tenant.membership(),
-                        subject,
-                        record,
-                        PersonAccess::Record,
-                        now,
-                    )
-                });
-            (*person_id, (view, record))
-        })
-        .collect();
+    let names = crate::models::person_identity::display_names(
+        tenant,
+        people
+            .keys()
+            .copied()
+            .map(crate::models::ids::PersonId::from_database),
+    )
+    .await?;
+    let permissions: HashMap<i64, (bool, bool)> =
+        people.keys().map(|id| (*id, (true, true))).collect();
     let mut assignments = Vec::new();
     for record in records {
         let permission = permissions
@@ -472,7 +442,10 @@ pub async fn detail(
             id: record.id,
             person_id: record.person_id,
             source_type: "person_medication",
-            person_name: subject.name.clone(),
+            person_name: names
+                .get(&crate::models::ids::PersonId::from_database(subject.id))
+                .ok_or(OperationError::Unavailable)?
+                .clone(),
             amount: amount.normalize().to_string(),
             unit,
             can_record: permission.1,
@@ -497,7 +470,10 @@ pub async fn detail(
             id: record.id,
             person_id: record.person_id,
             source_type: "schedule",
-            person_name: subject.name.clone(),
+            person_name: names
+                .get(&crate::models::ids::PersonId::from_database(subject.id))
+                .ok_or(OperationError::Unavailable)?
+                .clone(),
             amount,
             unit,
             can_record: permission.1,

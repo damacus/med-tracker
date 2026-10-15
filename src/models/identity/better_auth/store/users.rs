@@ -27,7 +27,10 @@ impl UserStore<ClinicalAuthSchema> for ClinicalStore {
 
     async fn get_user_by_email(&self, email: &str) -> AuthResult<Option<UserView>> {
         let transaction = self.transaction().await?;
-        let row = transaction.query_one_raw(statement("SELECT id FROM public.accounts WHERE lower(email::text)=lower($1) AND status IN(1,2) ORDER BY id LIMIT 1 FOR UPDATE", [email.trim().into()])).await.map_err(database_error)?;
+        context(&transaction, "med_tracker.identity_email", email.trim()).await?;
+        let result = transaction.query_one_raw(statement("SELECT id FROM public.accounts WHERE lower(email::text)=lower($1) AND status IN(1,2) ORDER BY id LIMIT 1", [email.trim().into()])).await;
+        context(&transaction, "med_tracker.identity_email", "").await?;
+        let row = result.map_err(database_error)?;
         let user = match row {
             Some(row) => {
                 let id: i64 = row.try_get("", "id").map_err(database_error)?;
@@ -89,7 +92,6 @@ impl UserStore<ClinicalAuthSchema> for ClinicalStore {
         }
         if let Some(email) = input.email {
             transaction.execute_raw(statement("UPDATE public.accounts SET email=$2,updated_at=clock_timestamp() WHERE id=$1 AND status=2", [account_id.into(), email.clone().into()])).await.map_err(database_error)?;
-            transaction.execute_raw(statement("UPDATE public.users SET email_address=$2,updated_at=clock_timestamp() WHERE person_id IN(SELECT id FROM public.people WHERE account_id=$1)", [account_id.into(), email.into()])).await.map_err(database_error)?;
         }
         if let Some(enabled) = input.two_factor_enabled {
             let row = transaction.query_one_raw(statement("SELECT EXISTS(SELECT 1 FROM public.identity_two_factors WHERE account_id=$1 AND verified) AS enabled", [account_id.into()])).await.map_err(database_error)?.ok_or_else(|| AuthError::internal("Factor state unavailable"))?;

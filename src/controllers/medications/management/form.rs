@@ -50,7 +50,13 @@ pub(super) fn draft(context: &FormContext) -> HashMap<String, String> {
             "reorder_threshold".into(),
             record.reorder_threshold.normalize().to_string(),
         );
-        draft.insert("location_id".into(), record.location_id.to_string());
+        draft.insert(
+            "location_id".into(),
+            record
+                .location_id
+                .map(|id| id.to_string())
+                .unwrap_or_default(),
+        );
         draft.insert("etag".into(), snapshot.etag.clone());
     }
     draft
@@ -88,9 +94,13 @@ pub(super) fn attributes(
     let location = forms::field(draft, "location_id");
     attributes.insert(
         "location_id".into(),
-        location
-            .parse::<i64>()
-            .map_or_else(|_| json!(location), |value| json!(value)),
+        if location.is_empty() {
+            Value::Null
+        } else {
+            location
+                .parse::<i64>()
+                .map_or_else(|_| json!(location), |value| json!(value))
+        },
     );
     if !options_mode {
         attributes.insert(

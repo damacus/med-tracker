@@ -71,7 +71,7 @@ impl<'a> Page<'a> {
         let medicines = medications
             .iter()
             .filter(|medicine| eligible.iter().any(|id| id.as_i64() == Some(medicine.id)))
-            .map(|medicine| json!({"id":medicine.id.to_string(),"name":medicine.name,"quantity":medicine.quantity,"unit":medicine.unit,"location":locations.iter().find(|location| location.id == medicine.location_id).map(|location| location.name.as_str()).unwrap_or_default()}))
+            .map(|medicine| json!({"id":medicine.id.to_string(),"name":medicine.name,"quantity":medicine.quantity,"unit":medicine.unit,"location":locations.iter().find(|location| Some(location.id) == medicine.location_id).map(|location| location.name.as_str()).unwrap_or_default()}))
             .collect::<Vec<_>>();
         Ok(
             json!({"person":person["data"],"source":source,"medications":medicines,"medication_name":medication_name,"locale":self.locale,"labels":labels}),
@@ -117,7 +117,11 @@ impl<'a> Page<'a> {
             "/households/{}/people/{}/treatments",
             self.path.0, self.path.1
         ));
-        match format::render().view(self.view, "dose_occurrences/index.html", data) {
+        match format::render().view(
+            self.view,
+            "dose_occurrences/index.html",
+            crate::views::template_data(&data),
+        ) {
             Ok(response) => (
                 status,
                 self.token.clone(),

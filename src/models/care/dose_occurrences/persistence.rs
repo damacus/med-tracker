@@ -1,5 +1,4 @@
 use super::*;
-use loco_rs::model::TenantQueryExt;
 
 async fn record_transition(
     db: &DatabaseTransaction,
@@ -19,13 +18,15 @@ async fn record_transition(
         Some(snapshot(record)),
     )
     .await?;
-    let person_portable_id = person::Entity::find_by_id(source.person_id())
-        .in_tenant(context.tenant.scope().household_id)
-        .one(db)
-        .await
-        .map_err(database_error)?
-        .ok_or_else(not_found)?
-        .portable_id;
+    let person_portable_id = crate::models::access::person_scope(
+        crate::models::ids::HouseholdId::from_database(context.tenant.scope().household_id),
+    )
+    .filter(person::Column::Id.eq(source.person_id()))
+    .one(db)
+    .await
+    .map_err(database_error)?
+    .ok_or_else(not_found)?
+    .portable_id;
     record_change(
         db,
         context,

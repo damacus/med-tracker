@@ -1,5 +1,4 @@
 use super::*;
-use loco_rs::model::TenantQueryExt;
 
 pub(super) struct StockVersionChange<'a> {
     pub(super) item_type: &'a str,
@@ -27,7 +26,7 @@ pub(super) async fn stock_version(
         item_type: Set(change.item_type.to_owned()), item_id: Set(change.item_id), event: Set(change.event.to_owned()),
         object: Set(Some(json!({"current_supply": decimal_string(change.previous.to_string())}).to_string())),
         object_changes: Set(Some(json!({"current_supply": [decimal_string(change.previous.to_string()), decimal_string(change.current.to_string())]}).to_string())),
-        whodunnit: Set(Some(context.tenant.user_id().to_string())), request_id: Set(Some(request_id.to_owned())),
+        whodunnit: Set(Some(context.tenant.person_id().to_string())), request_id: Set(Some(request_id.to_owned())),
         household_id: Set(Some(context.membership().household_id)), actor_membership_id: Set(Some(context.membership().id)),
         audit_context: Set(domain_audit_context(context, request_id)),
         created_at: Set(Some(Utc::now().naive_utc())), ..Default::default()
@@ -40,7 +39,7 @@ pub(super) async fn record_domain_audit(
     context: &DoseContext<'_>,
     request_id: &str,
     take: &medication_take::Model,
-    proposed: &ProposedTake,
+    proposed: &ValidatedTake,
 ) -> Result<(), ApiError> {
     let now = Utc::now().naive_utc();
     let mut context_value = domain_audit_context(context, request_id);
@@ -71,7 +70,7 @@ pub(super) async fn record_domain_audit(
         event: Set("create".to_owned()),
         object: Set(Some(snapshot.to_string())),
         object_changes: Set(Some(Value::Object(changes).to_string())),
-        whodunnit: Set(Some(context.tenant.user_id().to_string())),
+        whodunnit: Set(Some(context.tenant.person_id().to_string())),
         request_id: Set(Some(request_id.to_owned())),
         household_id: Set(Some(context.membership().household_id)),
         actor_membership_id: Set(Some(context.membership().id)),
@@ -82,12 +81,14 @@ pub(super) async fn record_domain_audit(
     .insert(db)
     .await
     .map_err(database_error)?;
-    let person = crate::models::entities::person::Entity::find_by_id(proposed.source.person_id)
-        .in_tenant(context.scope().household_id)
-        .one(db)
-        .await
-        .map_err(database_error)?
-        .ok_or(OperationError::NotFound)?;
+    let person = crate::models::access::person_scope(
+        crate::models::ids::HouseholdId::from_database(context.scope().household_id),
+    )
+    .filter(crate::models::entities::person::Column::Id.eq(proposed.source.person_id.get()))
+    .one(db)
+    .await
+    .map_err(database_error)?
+    .ok_or(OperationError::NotFound)?;
     record_change(
         db,
         context,

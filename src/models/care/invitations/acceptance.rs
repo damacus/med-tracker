@@ -1,12 +1,10 @@
 use super::*;
 use crate::models::{
-    entities::{household, membership, person},
-    identity::api_session::ApiSessionPrincipal,
+    entities::membership, identity::api_session::ApiSessionPrincipal,
     identity::browser::BrowserPrincipal,
 };
-use loco_rs::model::TenantQueryExt;
 use sea_orm::{
-    ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, QuerySelect, Statement,
+    ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, Statement,
     TransactionTrait,
 };
 
@@ -38,10 +36,7 @@ pub async fn accept_browser(
 }
 
 pub(crate) struct AcceptanceActor {
-    pub account_id: i64,
-    pub person_id: i64,
-    pub email: String,
-    pub provenance: Option<crate::models::care::doses::CredentialProvenance>,
+    pub person_id: crate::models::ids::PersonId,
 }
 
 enum Principal<'a> {
@@ -55,7 +50,6 @@ impl Principal<'_> {
         transaction: &DatabaseTransaction,
         settings: Option<&serde_json::Value>,
     ) -> Result<AcceptanceActor, OperationError> {
-        use crate::models::care::doses::{CredentialMethod, CredentialProvenance};
         match self {
             Self::Api(principal) => {
                 let actor = principal
@@ -63,13 +57,7 @@ impl Principal<'_> {
                     .await
                     .map_err(authentication)?;
                 Ok(AcceptanceActor {
-                    account_id: actor.account_id,
-                    person_id: actor.person_id,
-                    email: actor.email,
-                    provenance: Some(CredentialProvenance {
-                        method: CredentialMethod::ApiSession,
-                        reference: actor.session_id.to_string(),
-                    }),
+                    person_id: crate::models::ids::PersonId::from_database(actor.person_id),
                 })
             }
             Self::Browser(principal) => {
@@ -78,10 +66,7 @@ impl Principal<'_> {
                     .await
                     .map_err(authentication)?;
                 Ok(AcceptanceActor {
-                    account_id: actor.account_id,
-                    person_id: actor.person_id,
-                    email: actor.email,
-                    provenance: Some(actor.provenance),
+                    person_id: crate::models::ids::PersonId::from_database(actor.person_id),
                 })
             }
         }
@@ -103,169 +88,44 @@ async fn accept_validated(
         .execute_unprepared("SET LOCAL ROLE med_tracker_app")
         .await?;
     let actor = principal.revalidate(&transaction, settings).await?;
-    let digest = tokens::digest(token);
-    transaction.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,"SELECT set_config('med_tracker.current_household_id','',true),set_config('med_tracker.current_membership_id','',true),set_config('med_tracker.current_invitation_token_digest',$1,true)",[digest.clone().into()])).await?;
-    let invitation = household_invitation::Entity::find()
-        .filter(household_invitation::Column::TokenDigest.eq(&digest))
-        .filter(household_invitation::Column::AcceptedAt.is_null())
-        .filter(household_invitation::Column::RevokedAt.is_null())
-        .filter(household_invitation::Column::ExpiresAt.gt(Utc::now().naive_utc()))
-        .one(&transaction)
-        .await?;
-    let member = if let Some(invitation) = invitation {
-        context(&transaction, invitation.household_id).await?;
-        if !operational(&transaction, invitation.household_id).await? {
-            return Err(unavailable());
-        }
-        let current = principal.revalidate(&transaction, settings).await?;
-        if current.account_id != actor.account_id
-            || current.provenance.as_ref().map(|value| &value.reference)
-                != actor.provenance.as_ref().map(|value| &value.reference)
-        {
-            return Err(unavailable());
-        }
-        let invitation = household_invitation::Entity::find_by_id(invitation.id)
-            .in_tenant(invitation.household_id)
-            .lock_exclusive()
-            .one(&transaction)
-            .await?
-            .ok_or_else(unavailable)?;
-        if invitation.email != actor.email.trim().to_lowercase()
-            || invitation.token_digest != digest
-            || invitation.revoked_at.is_some()
-            || invitation.expires_at <= Utc::now().naive_utc()
-        {
-            return Err(unavailable());
-        }
-        if invitation.accepted_at.is_some() {
-            membership::Entity::find()
-                .in_tenant(invitation.household_id)
-                .filter(membership::Column::AccountId.eq(actor.account_id))
-                .filter(membership::Column::Status.eq("active"))
-                .filter(membership::Column::RevokedAt.is_null())
-                .one(&transaction)
-                .await?
-                .ok_or_else(unavailable)?
-        } else {
-            let inviter = membership::Entity::find_by_id(invitation.invited_by_membership_id)
-                .in_tenant(invitation.household_id)
-                .lock_exclusive()
-                .one(&transaction)
-                .await?
-                .ok_or_else(unavailable)?;
-            super::authority::authorize(&transaction, &inviter, &invitation).await?;
-            if membership::Entity::find()
-                .in_tenant(invitation.household_id)
-                .filter(membership::Column::AccountId.eq(actor.account_id))
-                .one(&transaction)
-                .await?
-                .is_some()
+    let row = transaction
+        .query_one_raw(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            "SELECT * FROM med_tracker.accept_household_invitation($1,$2)",
+            [tokens::digest(token).into(), request_id.into()],
+        ))
+        .await
+        .map_err(|error| {
+            if let sea_orm::DbErr::Query(sea_orm::RuntimeErr::SqlxError(ref source)) = error
+                && source
+                    .as_database_error()
+                    .is_some_and(|database| database.code().as_deref() == Some("MT001"))
             {
-                return Err(unavailable());
+                unavailable()
+            } else {
+                OperationError::from(error)
             }
-            let source = person::Entity::find_by_id(actor.person_id)
-                .filter(person::Column::AccountId.eq(actor.account_id))
-                .one(&transaction)
-                .await?
-                .ok_or_else(unavailable)?;
-            super::acceptance_effects::apply(
-                &transaction,
-                &actor,
-                &source,
-                &inviter,
-                invitation,
-                request_id,
-            )
-            .await?
-        }
-    } else {
-        retry(&transaction, &principal, &actor, &digest, settings)
-            .await?
-            .ok_or_else(unavailable)?
-    };
+        })?
+        .ok_or_else(unavailable)?;
+    let household_id =
+        crate::models::ids::HouseholdId::from_database(row.try_get("", "household_id")?);
+    let person_id = crate::models::ids::PersonId::from_database(row.try_get("", "person_id")?);
+    if person_id != actor.person_id {
+        return Err(unavailable());
+    }
+    let membership_id: i64 = row.try_get("", "membership_id")?;
+    let member = membership::Entity::find_by_id(membership_id)
+        .one(&transaction)
+        .await?
+        .ok_or_else(unavailable)?;
     transaction.commit().await?;
     Ok(
-        json!({"data":{"household_id":member.household_id.to_string(),"membership_id":member.id.to_string(),"person_id":member.person_id.map(|id|id.to_string()),"role":member.role}}),
+        json!({"data":{"household_id":household_id.to_string(),"membership_id":membership_id.to_string(),"person_id":person_id.to_string(),"role":member.role}}),
     )
 }
 
 pub(super) fn unavailable() -> OperationError {
     invalid("base", "Invitation unavailable")
-}
-
-async fn context(
-    transaction: &DatabaseTransaction,
-    household_id: i64,
-) -> Result<(), OperationError> {
-    transaction
-        .query_one_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "SELECT set_config('med_tracker.current_household_id',$1,true)",
-            [household_id.to_string().into()],
-        ))
-        .await?;
-    Ok(())
-}
-async fn operational(
-    transaction: &DatabaseTransaction,
-    household_id: i64,
-) -> Result<bool, OperationError> {
-    let home = household::Entity::find_by_id(household_id)
-        .lock_exclusive()
-        .one(transaction)
-        .await?;
-    Ok(home.is_some_and(|home| home.status == "active" && home.lifecycle_state == "active"))
-}
-
-async fn retry(
-    transaction: &DatabaseTransaction,
-    principal: &Principal<'_>,
-    actor: &AcceptanceActor,
-    digest: &str,
-    settings: Option<&serde_json::Value>,
-) -> Result<Option<membership::Model>, OperationError> {
-    let members = membership::Entity::find()
-        .filter(membership::Column::AccountId.eq(actor.account_id))
-        .filter(membership::Column::Status.eq("active"))
-        .filter(membership::Column::RevokedAt.is_null())
-        .order_by_asc(membership::Column::HouseholdId)
-        .order_by_asc(membership::Column::Id)
-        .all(transaction)
-        .await?;
-    for member in members {
-        context(transaction, member.household_id).await?;
-        if !operational(transaction, member.household_id).await? {
-            continue;
-        }
-        let current = principal.revalidate(transaction, settings).await?;
-        if current.account_id != actor.account_id
-            || current.provenance.as_ref().map(|value| &value.reference)
-                != actor.provenance.as_ref().map(|value| &value.reference)
-        {
-            return Err(unavailable());
-        }
-        let current = membership::Entity::find_by_id(member.id)
-            .filter(membership::Column::AccountId.eq(actor.account_id))
-            .filter(membership::Column::Status.eq("active"))
-            .filter(membership::Column::RevokedAt.is_null())
-            .lock_exclusive()
-            .one(transaction)
-            .await?;
-        if let Some(current) = current {
-            let accepted = household_invitation::Entity::find()
-                .in_tenant(member.household_id)
-                .filter(household_invitation::Column::TokenDigest.eq(digest))
-                .filter(household_invitation::Column::Email.eq(&actor.email))
-                .filter(household_invitation::Column::AcceptedAt.is_not_null())
-                .filter(household_invitation::Column::RevokedAt.is_null())
-                .one(transaction)
-                .await?;
-            if accepted.is_some() {
-                return Ok(Some(current));
-            }
-        }
-    }
-    Ok(None)
 }
 
 fn authentication(error: crate::models::identity::resource::AuthenticationError) -> OperationError {

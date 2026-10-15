@@ -2,7 +2,7 @@ use axum::http::{HeaderMap, header};
 use headers::{Authorization, HeaderMapExt, authorization::Bearer};
 use sea_orm::{
     ColumnTrait, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, EntityTrait,
-    QueryFilter, QueryOrder, Statement, TransactionTrait,
+    QueryFilter, QuerySelect, QueryTrait, Statement, TransactionTrait,
     sea_query::{Expr, ExprTrait},
 };
 use sha2::{Digest, Sha256};
@@ -11,7 +11,7 @@ use super::resource::{self, AuthenticationError};
 use crate::models::{
     access::{self, Actor, HouseholdScope},
     care::doses::{CredentialMethod, CredentialProvenance},
-    entities::{account, api_app_token, api_session, membership, person},
+    entities::{account, api_app_token, api_session, membership},
     errors::OperationError,
 };
 
@@ -19,7 +19,6 @@ pub struct ApiSessionPrincipal(StoredPrincipal);
 
 pub struct UserSessionActor {
     pub account_id: i64,
-    pub user_id: i64,
     pub person_id: i64,
     pub session_id: i64,
     pub email: String,
@@ -41,7 +40,6 @@ pub(super) struct StoredPrincipal {
 pub(super) struct StoredAuthority {
     pub account_id: i64,
     pub household_id: i64,
-    pub user_id: i64,
     pub person_id: i64,
     pub email: String,
     pub preferences: serde_json::Value,
@@ -125,7 +123,6 @@ impl ApiSessionPrincipal {
         let actor = self.0.revalidate(transaction, settings).await?;
         Ok(UserSessionActor {
             account_id: actor.account_id,
-            user_id: actor.user_id,
             person_id: actor.person_id,
             session_id: self.0.id,
             email: actor.email,
@@ -244,12 +241,20 @@ async fn authority(
         .await
         .map_err(unavailable)?;
     let source = membership::Entity::find_by_id(membership_id)
-        .filter(membership::Column::AccountId.eq(account_id))
+        .filter(
+            membership::Column::PersonId.in_subquery(
+                account::Entity::find()
+                    .select_only()
+                    .column(account::Column::PersonId)
+                    .filter(account::Column::Id.eq(account_id))
+                    .into_query(),
+            ),
+        )
         .one(transaction)
         .await
         .map_err(unavailable)?
         .ok_or(AuthenticationError::Unauthenticated)?;
-    let (current, user_id) = access::verify_membership(
+    let (current, person_id) = access::verify_membership(
         transaction,
         &HouseholdScope {
             actor: Actor { account_id },
@@ -265,13 +270,6 @@ async fn authority(
     if current.id != membership_id || current.permissions_version != permissions_version {
         return Err(AuthenticationError::Unauthenticated);
     }
-    let person = person::Entity::find()
-        .filter(person::Column::AccountId.eq(account_id))
-        .order_by_asc(person::Column::Id)
-        .one(transaction)
-        .await
-        .map_err(unavailable)?
-        .ok_or(AuthenticationError::Unauthenticated)?;
     let account = account::Entity::find_by_id(account_id)
         .one(transaction)
         .await
@@ -280,8 +278,7 @@ async fn authority(
     Ok(StoredAuthority {
         account_id,
         household_id: current.household_id,
-        user_id,
-        person_id: person.id,
+        person_id: person_id.get(),
         email: account.email,
         preferences: account.preferences,
     })

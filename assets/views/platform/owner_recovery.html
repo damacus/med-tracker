@@ -46,6 +46,13 @@
       </li>
       {% endfor %}
     </ul>
+    {% if selected.member_pages > 1 %}
+    <footer class="platform-pagination"><p class="shell-muted">Page {{ selected.member_page }} of {{ selected.member_pages }}</p>
+      <nav class="join" aria-label="Recovery member pages">
+      {% for number in selected.member_page_links %}{% if number == selected.member_page %}<span class="join-item btn btn-sm btn-active" aria-current="page">{{ number }}</span>{% else %}<a class="join-item btn btn-sm" aria-label="Page {{ number }}" href="/platform/owner-recovery?household={{ selected.id }}&amp;member_page={{ number }}">{{ number }}</a>{% endif %}{% endfor %}
+      </nav>
+    </footer>
+    {% endif %}
     {% endif %}
   </section>
   {% else %}<section class="platform-panel platform-empty-state"><h2>Select a household</h2><p>Review its current ownership and eligible members before starting a recovery.</p></section>

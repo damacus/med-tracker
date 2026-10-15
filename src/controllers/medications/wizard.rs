@@ -1,8 +1,7 @@
 use super::*;
 use crate::models::{
-    access,
     care::{assignments, dosages, medication_lookup, treatments},
-    entities::{account, dosage, person},
+    entities::{account, dosage},
 };
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder};
 use serde_json::{Value, json};
@@ -89,19 +88,13 @@ pub(super) async fn open(
     let duplicate_choices = if error.is_some() && !forms::field(&draft, "name").is_empty() {
         let candidate = json!({"barcode":forms::field(&draft,"barcode"),"code":forms::field(&draft,"dmd_code"),"name":forms::field(&draft,"name")});
         match medication_lookup::stock_matches(&tenant, &candidate).await {
-            Ok(rows) => rows.into_iter().map(|row| json!({"name":row.friendly_name.as_deref().filter(|name|!name.is_empty()).or(row.name.as_deref()).unwrap_or("Medication"),"location":context.locations.iter().find(|location|location.id==row.location_id).map(|location|location.name.as_str()).unwrap_or("Location"),"path":format!("/households/{slug}/medications/{}?refill=true",row.id)})).collect::<Vec<_>>(),
+            Ok(rows) => rows.into_iter().map(|row| json!({"name":row.friendly_name.as_deref().filter(|name|!name.is_empty()).or(row.name.as_deref()).unwrap_or("Medication"),"location":context.locations.iter().find(|location|Some(location.id)==row.location_id).map(|location|location.name.as_str()).unwrap_or_default(),"path":format!("/households/{slug}/medications/{}?refill=true",row.id)})).collect::<Vec<_>>(),
             Err(error) => return operation_error(error),
         }
     } else {
         Vec::new()
     };
-    let people = match person::Entity::find()
-        .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
-        .filter(person::Column::Id.in_subquery(access::granted_people(tenant.membership())))
-        .order_by_asc(person::Column::Name)
-        .all(tenant.transaction())
-        .await
-    {
+    let people = match crate::models::person_identity::current_summaries(&tenant).await {
         Ok(value) => value,
         Err(_) => return unavailable(),
     };
@@ -147,13 +140,7 @@ pub(super) async fn open(
     draft
         .entry("end_date".into())
         .or_insert((today + chrono::Duration::days(365)).to_string());
-    draft.entry("location_id".into()).or_insert_with(|| {
-        context
-            .locations
-            .first()
-            .map(|value| value.id.to_string())
-            .unwrap_or_default()
-    });
+    draft.entry("location_id".into()).or_default();
     let Ok(authenticity) = token.authenticity_token() else {
         return unavailable();
     };
@@ -211,7 +198,11 @@ pub(super) async fn open(
     if tenant.commit().await.is_err() {
         return unavailable();
     }
-    match format::render().view(view, "medications/wizard.html", data) {
+    match format::render().view(
+        view,
+        "medications/wizard.html",
+        crate::views::template_data(&data),
+    ) {
         Ok(response) => (
             error.map(forms::status).unwrap_or(StatusCode::OK),
             token.clone(),
@@ -298,7 +289,11 @@ pub(super) async fn create(
                     ))
                     .collect::<Vec<_>>()
             );
-            match format::render().view(&view, "medications/created.html", data) {
+            match format::render().view(
+                &view,
+                "medications/created.html",
+                crate::views::template_data(&data),
+            ) {
                 Ok(response) => ([(header::CACHE_CONTROL, "no-store")], response).into_response(),
                 Err(_) => unavailable(),
             }
@@ -379,7 +374,13 @@ async fn save(
     }
     attrs.insert(
         "location_id".into(),
-        json!(value("location_id").parse::<i64>().unwrap_or_default()),
+        if value("location_id").is_empty() {
+            Value::Null
+        } else {
+            value("location_id")
+                .parse::<i64>()
+                .map_or_else(|_| json!(value("location_id")), |id| json!(id))
+        },
     );
     for key in ["dose_amount", "current_supply"] {
         attrs.insert(

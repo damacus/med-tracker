@@ -1,8 +1,9 @@
 use super::*;
 use crate::models::{
-    access::{self, PersonAccess},
-    care::{report_pdf, reports as report_data},
+    access,
+    care::{report_denials, report_pdf, reports as report_data},
     entities::person,
+    person_identity,
 };
 use axum::{
     extract::{Query, rejection::QueryRejection},
@@ -64,25 +65,31 @@ async fn selected_person(
     tenant: &TenantTransaction,
     id: &str,
     manage: bool,
-) -> Result<person::Model, OperationError> {
-    let mut query =
-        person::Entity::find().filter(person::Column::HouseholdId.eq(tenant.scope().household_id));
+) -> Result<report_data::HistoryReportSubject, OperationError> {
+    let mut query = access::person_scope(crate::models::ids::HouseholdId::from_database(
+        tenant.scope().household_id,
+    ));
     query = if let Ok(id) = id.parse::<i64>() {
         query.filter(person::Column::Id.eq(id))
     } else {
         query.filter(person::Column::PortableId.eq(id))
     };
-    let person = query
-        .one(tenant.transaction())
-        .await?
-        .ok_or(OperationError::NotFound)?;
-    let access = if manage {
-        PersonAccess::Manage
-    } else {
-        PersonAccess::View
+    let Some(person) = query.one(tenant.transaction()).await? else {
+        return if manage {
+            crate::models::care::take_history::subject(tenant, id)
+                .await?
+                .map(report_data::HistoryReportSubject::OriginLocalHistorical)
+                .ok_or(OperationError::NotFound)
+        } else {
+            Err(OperationError::NotFound)
+        };
     };
-    match access::require_person_access(tenant, person.id, access).await {
-        Ok(()) => Ok(person),
+    match access::require_participation(tenant, person.id).await {
+        Ok(()) => person_identity::summaries(tenant, vec![person])
+            .await?
+            .pop()
+            .map(report_data::HistoryReportSubject::Current)
+            .ok_or(OperationError::NotFound),
         Err(OperationError::Forbidden) => Err(OperationError::NotFound),
         Err(error) => Err(error),
     }
@@ -174,18 +181,19 @@ async fn execute(
             .as_deref()
             .filter(|id| !id.is_empty())
             .ok_or_else(|| response::Failure::bad_request("person_id is required"))?;
-        let person = selected_person(&tenant, id, matches!(kind, Kind::Health))
+        let subject = selected_person(&tenant, id, matches!(kind, Kind::Health))
             .await
             .map_err(response::operation)?;
+        let person = subject.person();
         parameters(&query, kind, pdf)?;
         let generated_at = Utc::now();
-        let (data, filename, render_kind, metadata, person_id) = match kind {
+        let (data, filename, render_kind, metadata) = match kind {
             Kind::Health => {
                 let (start, end) = dates(&query, today).ok_or_else(validation)?;
                 let include_takes = query.include_medication_takes.as_deref() == Some("1");
                 let mut data = report_data::gp_history(
                     &tenant,
-                    &person,
+                    &subject,
                     start,
                     end,
                     include_takes,
@@ -201,14 +209,13 @@ async fn execute(
                     data,
                     format!("medtracker-health-history-{start}-to-{end}.pdf"),
                     report_pdf::Kind::GpHistory,
-                    json!({"person_id":person.id,"start_date":start.to_string(),"end_date":end.to_string(),"include_medication_takes":include_takes,"format":"pdf","outcome":"success"}),
-                    person.id,
+                    json!({"person_id":person.id.get(),"start_date":start.to_string(),"end_date":end.to_string(),"include_medication_takes":include_takes,"format":"pdf","outcome":"success"}),
                 )
             }
             Kind::Reviews => {
                 let mut data = report_data::medication_reviews(
                     &tenant,
-                    &person,
+                    person,
                     query.status.as_deref(),
                     generated_at,
                     today,
@@ -218,7 +225,7 @@ async fn execute(
                 if pdf {
                     data = report_data::medication_review_pdf(
                         data,
-                        std::slice::from_ref(&person),
+                        std::slice::from_ref(person),
                         principal.time_zone(),
                     );
                 }
@@ -229,16 +236,15 @@ async fn execute(
                         generated_at.date_naive()
                     ),
                     report_pdf::Kind::MedicationReview,
-                    json!({"person_id":person.id,"status":query.status,"format":"pdf","outcome":"success"}),
-                    person.id,
+                    json!({"person_id":person.id.get(),"status":query.status,"format":"pdf","outcome":"success"}),
                 )
             }
         };
-        Ok::<_, response::Failure>((data, filename, render_kind, metadata, person_id))
+        Ok::<_, response::Failure>((data, filename, render_kind, metadata, subject))
     }
     .await;
     let audit_request = audit::RequestAudit::report(matches!(kind, Kind::Reviews));
-    let (data, filename, render_kind, metadata, person_id) = match result {
+    let (data, filename, render_kind, metadata, subject) = match result {
         Ok(value) => value,
         Err(error) => {
             return no_store(
@@ -266,6 +272,19 @@ async fn execute(
         );
     }
     let snapshot_account = principal.account_id();
+    let denied_snapshot = match report_denials::AuthenticatedSnapshot::capture(
+        &principal,
+        &tenant,
+        match kind {
+            Kind::Health => report_denials::ReportKind::Health,
+            Kind::Reviews => report_denials::ReportKind::Reviews,
+        },
+    )
+    .await
+    {
+        Ok(snapshot) => snapshot,
+        Err(error) => return no_store(response::error(response::operation(error), &request_id)),
+    };
     if tenant.commit().await.is_err() {
         return no_store(response::error(response::unavailable(), &request_id));
     }
@@ -279,7 +298,19 @@ async fn execute(
             .await;
     let (principal, tenant) = match begin(&ctx, &headers, household_id, &request_id).await {
         Ok(value) => value,
-        Err(error) => return no_store(response::error(error, &request_id)),
+        Err(error) => {
+            let denial = match error.status {
+                StatusCode::UNAUTHORIZED => Some(report_denials::Denial::Unauthenticated),
+                StatusCode::FORBIDDEN => Some(report_denials::Denial::Forbidden),
+                _ => None,
+            };
+            if let Some(denial) = denial
+                && denied_snapshot.record(&ctx.db, denial).await.is_err()
+            {
+                return no_store(response::error(response::unavailable(), &request_id));
+            }
+            return no_store(response::error(error, &request_id));
+        }
     };
     if principal.account_id() != snapshot_account {
         return no_store(response::error(
@@ -338,12 +369,7 @@ async fn execute(
             .await,
         );
     }
-    let level = if matches!(kind, Kind::Health) {
-        PersonAccess::Manage
-    } else {
-        PersonAccess::View
-    };
-    if let Err(error) = access::require_person_access(&tenant, person_id, level).await {
+    if let Err(error) = subject.recheck(&tenant).await {
         let failure = response::operation(match error {
             OperationError::Forbidden => OperationError::NotFound,
             other => other,

@@ -3,10 +3,11 @@ use super::medications::{
     unavailable,
 };
 use crate::models::{
-    access::{self, PersonAccess, TenantTransaction},
+    access::{self, TenantTransaction},
     care::{report_pdf, reports as report_data},
     entities::person,
     errors::OperationError,
+    person_identity::{self, PersonSummary},
 };
 use axum::{
     Extension,
@@ -19,7 +20,7 @@ use axum_session::Session;
 use axum_session_sqlx::SessionPgPool;
 use chrono::{Duration, Months, NaiveDate, Utc};
 use loco_rs::{controller::middleware::request_id::LocoRequestId, prelude::*};
-use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
+use sea_orm::{ColumnTrait, QueryFilter};
 use serde::Deserialize;
 use serde_json::{Value, json};
 
@@ -91,7 +92,11 @@ fn page(
     context["lang"] = json!(selected);
     context["labels"] = labels;
     context["report"] = data;
-    match format::render().view(view, "reports/index.html", context) {
+    match format::render().view(
+        view,
+        "reports/index.html",
+        crate::views::template_data(&context),
+    ) {
         Ok(response) => (
             status,
             token.clone(),
@@ -111,11 +116,11 @@ async fn invalid_page(
     tenant: TenantTransaction,
     filters: &Filters,
 ) -> Response {
-    let people = match report_data::accessible_people(&tenant, PersonAccess::View).await {
+    let people = match report_data::accessible_people(&tenant).await {
         Ok(people) => people,
         Err(error) => return operation_error(error),
     };
-    let manageable = match report_data::accessible_people(&tenant, PersonAccess::Manage).await {
+    let manageable = match report_data::accessible_people(&tenant).await {
         Ok(people) => people,
         Err(error) => return operation_error(error),
     };
@@ -143,21 +148,22 @@ fn report_redirect(slug: &str) -> Response {
     no_store(Redirect::to(&format!("/households/{slug}/reports")).into_response())
 }
 
-async fn selection(
-    tenant: &TenantTransaction,
-    id: &str,
-    level: PersonAccess,
-) -> Result<person::Model, OperationError> {
+async fn selection(tenant: &TenantTransaction, id: &str) -> Result<PersonSummary, OperationError> {
     let Some(id) = id.parse::<i64>().ok().filter(|id| *id > 0) else {
         return Err(OperationError::NotFound);
     };
-    let person = person::Entity::find_by_id(id)
-        .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
-        .one(tenant.transaction())
-        .await?
-        .ok_or(OperationError::NotFound)?;
-    match access::require_person_access(tenant, person.id, level).await {
-        Ok(()) => Ok(person),
+    let person = access::person_scope(crate::models::ids::HouseholdId::from_database(
+        tenant.scope().household_id,
+    ))
+    .filter(person::Column::Id.eq(id))
+    .one(tenant.transaction())
+    .await?
+    .ok_or(OperationError::NotFound)?;
+    match access::require_participation(tenant, person.id).await {
+        Ok(()) => person_identity::summaries(tenant, vec![person])
+            .await?
+            .pop()
+            .ok_or(OperationError::NotFound),
         Err(OperationError::Forbidden) => Err(OperationError::NotFound),
         Err(error) => Err(error),
     }
@@ -199,9 +205,9 @@ async fn index(
         let (start, end) = ordinary_dates(&filters, today).ok_or(OperationError::Validation {
             details: json!({"error":"Report date range is invalid"}),
         })?;
-        let people = report_data::accessible_people(&tenant, PersonAccess::View).await?;
-        let manageable = report_data::accessible_people(&tenant, PersonAccess::Manage).await?;
-        let selected: Vec<person::Model> = match filters.person_id.as_deref() {
+        let people = report_data::accessible_people(&tenant).await?;
+        let manageable = report_data::accessible_people(&tenant).await?;
+        let selected: Vec<PersonSummary> = match filters.person_id.as_deref() {
             Some(id) if !id.is_empty() => people
                 .iter()
                 .filter(|person| person.id.to_string() == id)
@@ -283,11 +289,18 @@ async fn gp_download(
         let allowed = access::can_manage_household(&tenant) || report_data::actor_adult(&tenant, today).await?;
         if !allowed { return Err(OperationError::Forbidden); }
         let id = filters.person_id.as_deref().filter(|id| id.parse::<i64>().is_ok_and(|value| value > 0)).ok_or(OperationError::Validation { details: json!({"error":"Select one person"}) })?;
-        let person = selection(&tenant, id, PersonAccess::Manage).await?;
+        let subject = match selection(&tenant,id).await {
+            Ok(person)=>report_data::HistoryReportSubject::Current(person),
+            Err(OperationError::NotFound)=>crate::models::care::take_history::subject(&tenant,id).await?
+                .map(report_data::HistoryReportSubject::OriginLocalHistorical)
+                .ok_or(OperationError::NotFound)?,
+            Err(error)=>return Err(error),
+        };
+        let person=subject.person();
         let (start, end) = gp_dates(&filters, today).ok_or(OperationError::Validation { details: json!({"error":"Report date range is invalid"}) })?;
         let include_takes = filters.include_medication_takes.as_deref() == Some("1");
-        let data = report_data::gp_history_pdf(report_data::gp_history(&tenant, &person, start, end, include_takes, Utc::now(), principal.time_zone()).await?, principal.time_zone(), include_takes);
-        Ok::<_, OperationError>((data, format!("medtracker-health-history-{start}-to-{end}.pdf"), json!({"person_id":person.id,"start_date":start.to_string(),"end_date":end.to_string(),"include_medication_takes":include_takes}), vec![person.id]))
+        let data = report_data::gp_history_pdf(report_data::gp_history(&tenant, &subject, start, end, include_takes, Utc::now(), principal.time_zone()).await?, principal.time_zone(), include_takes);
+        Ok::<_, OperationError>((data, format!("medtracker-health-history-{start}-to-{end}.pdf"), json!({"person_id":person.id,"start_date":start.to_string(),"end_date":end.to_string(),"include_medication_takes":include_takes}), vec![subject]))
     }.await;
     let (data, filename, metadata, people) = match result {
         Ok(value) => value,
@@ -313,7 +326,6 @@ async fn gp_download(
             event_type: "health_history_report.downloaded",
             metadata,
             account: principal.account_id(),
-            level: PersonAccess::Manage,
             people,
         },
         &request_id,
@@ -359,15 +371,14 @@ async fn review_download(
                 details: json!({"error":"Report parameters are invalid"}),
             });
         }
-        let people = report_data::accessible_people(&tenant, PersonAccess::View).await?;
-        let selected: Vec<person::Model> = match filters.person_id.as_deref() {
+        let people = report_data::accessible_people(&tenant).await?;
+        let selected: Vec<PersonSummary> = match filters.person_id.as_deref() {
             Some(id) if !id.is_empty() => people
                 .into_iter()
                 .filter(|person| person.id.to_string() == id)
                 .collect(),
             _ => people,
         };
-        let people: Vec<i64> = selected.iter().map(|person| person.id).collect();
         let data = report_data::household_medication_reviews(
             &tenant,
             &selected,
@@ -380,7 +391,10 @@ async fn review_download(
             data,
             format!("medtracker-medication-review-{today}.pdf"),
             json!({"status":filters.status}),
-            people,
+            selected
+                .into_iter()
+                .map(report_data::HistoryReportSubject::Current)
+                .collect(),
         ))
     }
     .await;
@@ -407,7 +421,6 @@ async fn review_download(
             event_type: "medication_review_report.downloaded",
             metadata,
             account: principal.account_id(),
-            level: PersonAccess::View,
             people,
         },
         &request_id,
@@ -423,8 +436,7 @@ struct DownloadPayload<'a> {
     event_type: &'a str,
     metadata: Value,
     account: i64,
-    level: PersonAccess,
-    people: Vec<i64>,
+    people: Vec<report_data::HistoryReportSubject>,
 }
 
 struct DownloadContext<'a> {
@@ -448,7 +460,6 @@ async fn download(
         event_type,
         metadata,
         account,
-        level,
         people,
     } = payload;
     if tenant.commit().await.is_err() {
@@ -502,14 +513,10 @@ async fn download(
     if !permitted {
         return operation_error(OperationError::Forbidden);
     }
-    let accessible = match report_data::accessible_people(&tenant, level).await {
-        Ok(people) => people,
-        Err(error) => return operation_error(error),
-    };
-    let accessible: std::collections::HashSet<i64> =
-        accessible.into_iter().map(|person| person.id).collect();
-    if people.iter().any(|id| !accessible.contains(id)) {
-        return operation_error(OperationError::Forbidden);
+    for subject in people {
+        if let Err(error) = subject.recheck(&tenant).await {
+            return operation_error(error);
+        }
     }
     let mut metadata = metadata;
     metadata["format"] = json!("pdf");

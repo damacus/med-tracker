@@ -348,16 +348,6 @@ CREATE SEQUENCE public.households_id_seq
 
 ALTER SEQUENCE public.households_id_seq OWNER TO med_tracker_owner;
 
-CREATE SEQUENCE public.location_memberships_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE public.location_memberships_id_seq OWNER TO med_tracker_owner;
-
 CREATE SEQUENCE public.locations_id_seq
     START WITH 1
     INCREMENT BY 1
@@ -568,16 +558,6 @@ CREATE SEQUENCE public.people_id_seq
 
 ALTER SEQUENCE public.people_id_seq OWNER TO med_tracker_owner;
 
-CREATE SEQUENCE public.person_access_grants_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE public.person_access_grants_id_seq OWNER TO med_tracker_owner;
-
 CREATE SEQUENCE public.person_medications_id_seq
     START WITH 1
     INCREMENT BY 1
@@ -731,8 +711,6 @@ ALTER SEQUENCE public.household_retention_holds_id_seq OWNED BY public.household
 
 ALTER SEQUENCE public.households_id_seq OWNED BY public.households.id;
 
-ALTER SEQUENCE public.location_memberships_id_seq OWNED BY public.location_memberships.id;
-
 ALTER SEQUENCE public.locations_id_seq OWNED BY public.locations.id;
 
 ALTER SEQUENCE public.medication_dose_occurrences_id_seq OWNED BY public.medication_dose_occurrences.id;
@@ -774,8 +752,6 @@ ALTER SEQUENCE public.oauth_applications_id_seq OWNED BY public.oauth_applicatio
 ALTER SEQUENCE public.oauth_grants_id_seq OWNED BY public.oauth_grants.id;
 
 ALTER SEQUENCE public.people_id_seq OWNED BY public.people.id;
-
-ALTER SEQUENCE public.person_access_grants_id_seq OWNED BY public.person_access_grants.id;
 
 ALTER SEQUENCE public.person_medications_id_seq OWNED BY public.person_medications.id;
 
@@ -864,8 +840,6 @@ ALTER TABLE ONLY public.household_retention_holds ALTER COLUMN id SET DEFAULT ne
 
 ALTER TABLE ONLY public.households ALTER COLUMN id SET DEFAULT nextval('public.households_id_seq'::regclass);
 
-ALTER TABLE ONLY public.location_memberships ALTER COLUMN id SET DEFAULT nextval('public.location_memberships_id_seq'::regclass);
-
 ALTER TABLE ONLY public.locations ALTER COLUMN id SET DEFAULT nextval('public.locations_id_seq'::regclass);
 
 ALTER TABLE ONLY public.medication_dose_occurrences ALTER COLUMN id SET DEFAULT nextval('public.medication_dose_occurrences_id_seq'::regclass);
@@ -907,8 +881,6 @@ ALTER TABLE ONLY public.oauth_applications ALTER COLUMN id SET DEFAULT nextval('
 ALTER TABLE ONLY public.oauth_grants ALTER COLUMN id SET DEFAULT nextval('public.oauth_grants_id_seq'::regclass);
 
 ALTER TABLE ONLY public.people ALTER COLUMN id SET DEFAULT nextval('public.people_id_seq'::regclass);
-
-ALTER TABLE ONLY public.person_access_grants ALTER COLUMN id SET DEFAULT nextval('public.person_access_grants_id_seq'::regclass);
 
 ALTER TABLE ONLY public.person_medications ALTER COLUMN id SET DEFAULT nextval('public.person_medications_id_seq'::regclass);
 

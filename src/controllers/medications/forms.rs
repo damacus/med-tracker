@@ -2,7 +2,7 @@ use crate::models::{
     access::TenantTransaction,
     care::{
         browser_query::{Assignment, Detail},
-        doses::Take,
+        doses::{self, PreparedRequest, TakeRequest},
     },
     errors::OperationError,
 };
@@ -53,7 +53,7 @@ pub fn take(
     detail: &Detail,
     draft: &HashMap<String, String>,
     zone: chrono_tz::Tz,
-) -> Result<Take, OperationError> {
+) -> Result<PreparedRequest, OperationError> {
     if !detail.assignments.iter().any(|source| {
         source.can_record
             && source.source_type == field(draft, "source_type")
@@ -80,17 +80,20 @@ pub fn take(
         optional(draft, "dose_unit").ok_or_else(|| OperationError::Validation {
             details: serde_json::json!({"error":"Dose confirmation is incomplete."}),
         })?;
-    Ok(Take {
-        client_uuid: optional(draft, "client_uuid"),
-        source_type: field(draft, "source_type").into(),
-        source_id: field(draft, "source_id").into(),
-        taken_at: time.to_rfc3339(),
-        dose_amount: Some(confirmed_amount.clone()),
-        dose_unit: Some(confirmed_unit.clone()),
-        taken_from_medication_id: Some(stock_id),
-        expected_effective_amount: Some(confirmed_amount),
-        expected_effective_unit: Some(confirmed_unit),
-    })
+    doses::prepare_request(
+        TakeRequest {
+            client_uuid: optional(draft, "client_uuid"),
+            source_type: field(draft, "source_type").into(),
+            source_id: field(draft, "source_id").into(),
+            taken_at: time.to_rfc3339(),
+            dose_amount: Some(confirmed_amount.clone()),
+            dose_unit: Some(confirmed_unit.clone()),
+            taken_from_medication_id: Some(stock_id),
+            expected_effective_amount: Some(confirmed_amount),
+            expected_effective_unit: Some(confirmed_unit),
+        },
+        zone,
+    )
 }
 
 pub fn can_adjust(tenant: &TenantTransaction) -> bool {

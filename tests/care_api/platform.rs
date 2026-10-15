@@ -9,12 +9,11 @@ async fn platform_owner_recovery_cannot_be_bypassed_through_membership_updates()
             &app,
             71002,
             73004,
-            77002,
             "platform-recovery-member@example.test",
             2,
         )
         .await;
-        app.fixture.admin.execute_unprepared("INSERT INTO household_memberships(id,account_id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74002,71002,72001,73004,'member','active',now(),now(),now())").await.unwrap();
+        app.fixture.admin.execute_unprepared("INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74002,72001,73004,'member','active',now(),now(),now())").await.unwrap();
         admin_session(&app).await;
         let bearer = app.token().await;
         let response = app
@@ -97,13 +96,20 @@ async fn synthetic_account(
     app: &Application,
     account_id: i64,
     person_id: i64,
-    user_id: i64,
     email: &str,
     status: i32,
 ) {
-    app.fixture.admin.execute_unprepared(&format!("INSERT INTO accounts(id,email,password_hash,status,created_at,updated_at) VALUES({account_id},'{email}',crypt('password',gen_salt('bf',4)),{status},now(),now())")).await.unwrap();
-    app.fixture.admin.execute_unprepared(&format!("INSERT INTO people(id,account_id,household_id,name,person_type,has_capacity,created_at,updated_at) VALUES({person_id},{account_id},72001,'Synthetic platform member',0,true,now(),now())")).await.unwrap();
-    app.fixture.admin.execute_unprepared(&format!("INSERT INTO users(id,person_id,email_address,password_digest,active,created_at,updated_at) VALUES({user_id},{person_id},'{email}',crypt('password',gen_salt('bf',4)),true,now(),now())")).await.unwrap();
+    let transaction = app.fixture.admin.begin().await.unwrap();
+    transaction.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+        "INSERT INTO people(id,clinical_name,person_type,has_capacity,created_at,updated_at) VALUES($1,CASE WHEN $2=3 THEN 'Synthetic platform member' ELSE NULL END,0,true,now(),now())",
+        [person_id.into(),status.into()])).await.unwrap();
+    transaction.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+        "INSERT INTO accounts(id,person_id,name,email,status,created_at,updated_at) VALUES($1,$2,'Synthetic platform member',$3,$4,now(),now())",
+        [account_id.into(),person_id.into(),email.into(),status.into()])).await.unwrap();
+    transaction.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+        "INSERT INTO identity_provider_accounts(id,account_id,provider_id,provider_account_id,password,created_at,updated_at) VALUES($1,$2,'credential',$3,crypt('password',gen_salt('bf',4)),now(),now())",
+        [format!("platform-credential-{account_id}").into(),account_id.into(),account_id.to_string().into()])).await.unwrap();
+    transaction.commit().await.unwrap();
 }
 
 async fn operation_start(
@@ -130,6 +136,16 @@ async fn operation_confirm(
     cookie: &str,
     operation_id: &str,
 ) -> reqwest::StatusCode {
+    operation_confirm_response(app, cookie, operation_id)
+        .await
+        .status()
+}
+
+async fn operation_confirm_response(
+    app: &Application,
+    cookie: &str,
+    operation_id: &str,
+) -> reqwest::Response {
     app.client
         .post(format!("{}/api/auth/security/password/confirm", app.origin))
         .header("cookie", cookie)
@@ -138,7 +154,6 @@ async fn operation_confirm(
         .send()
         .await
         .unwrap()
-        .status()
 }
 
 async fn admin_status(app: &Application, account_id: i64) -> Option<String> {
@@ -167,13 +182,13 @@ async fn account_status(app: &Application, account_id: i64) -> Option<i32> {
         .and_then(|row| row.try_get::<i32>("", "status").ok())
 }
 
-async fn user_active(app: &Application, user_id: i64) -> Option<bool> {
+async fn account_active(app: &Application, account_id: i64) -> Option<bool> {
     app.fixture
         .admin
         .query_one_raw(Statement::from_sql_and_values(
             DbBackend::Postgres,
-            "SELECT active FROM users WHERE id=$1",
-            [user_id.into()],
+            "SELECT disabled_at IS NULL AS active FROM accounts WHERE id=$1",
+            [account_id.into()],
         ))
         .await
         .unwrap()
@@ -458,7 +473,7 @@ async fn platform_users_requires_a_live_identity_session() {
 #[tokio::test]
 async fn platform_administrator_grant_after_password_proof() {
     let app = Application::new().await;
-    synthetic_account(&app, 71002, 73004, 77002, "platform-second@example.test", 2).await;
+    synthetic_account(&app, 71002, 73004, "platform-second@example.test", 2).await;
     let cookie = admin_session(&app).await;
     let (status, body) = operation_start(
         &app,
@@ -483,7 +498,7 @@ async fn platform_administrator_grant_after_password_proof() {
 #[tokio::test]
 async fn platform_administrator_revoke_after_password_proof() {
     let app = Application::new().await;
-    synthetic_account(&app, 71002, 73004, 77002, "platform-second@example.test", 2).await;
+    synthetic_account(&app, 71002, 73004, "platform-second@example.test", 2).await;
     app.fixture.admin.execute_unprepared("INSERT INTO platform_admins(account_id,status,created_at,updated_at) VALUES(71002,'active',now(),now())").await.unwrap();
     let cookie = admin_session(&app).await;
     let (status, body) = operation_start(
@@ -502,9 +517,118 @@ async fn platform_administrator_revoke_after_password_proof() {
 }
 
 #[tokio::test]
+async fn platform_reenable_does_not_resurrect_api_or_oauth_credentials() {
+    use base64::Engine;
+    use sha2::{Digest, Sha256};
+    let app = Application::new().await;
+    synthetic_account(&app, 71002, 73004, "platform-revoker@example.test", 2).await;
+    app.fixture.admin.execute_unprepared("INSERT INTO platform_admins(account_id,status,created_at,updated_at) VALUES(71002,'active',now(),now())").await.unwrap();
+    let admin = sign_in(&app, 71002, "platform-revoker@example.test").await;
+    let mobile = app.token_pair().await;
+    let access = "disable-api-access";
+    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+        "INSERT INTO api_sessions(id,account_id,household_membership_id,access_token_digest,refresh_token_digest,permissions_version,access_expires_at,refresh_expires_at,last_used_at,created_at,updated_at) VALUES(98901,71001,74001,$1,$2,1,now()+interval '1 hour',now()+interval '1 day',now(),now(),now())",
+        [hex::encode(Sha256::digest(access.as_bytes())).into(),hex::encode(Sha256::digest(b"disable-api-refresh")).into()],
+    )).await.unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO oauth_applications(id,account_id,client_id,client_kind,name,redirect_uri,scopes,token_endpoint_auth_method,created_at,updated_at) VALUES(98902,71001,'disable-smart','integration','Disable SMART','https://example.test/callback','patient/*.read offline_access','none',now(),now())").await.unwrap();
+    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+        "INSERT INTO oauth_grants(id,account_id,oauth_application_id,client_kind,household_membership_id,person_id,permissions_version,redirect_uri,scopes,refresh_token_hash,expires_in,authenticated_at,last_used_at,created_at,updated_at) VALUES(98903,71001,98902,'integration',74001,73001,1,'https://example.test/callback','patient/*.read offline_access',$1,now()+interval '15 minutes',now(),now(),now(),now())",
+        [base64::engine::general_purpose::URL_SAFE.encode(Sha256::digest(b"disable-smart-refresh")).into()],
+    )).await.unwrap();
+    let smart = app
+        .client
+        .post(format!("{}/token", app.origin))
+        .header("content-type", "application/x-www-form-urlencoded")
+        .body(
+            serde_urlencoded::to_string([
+                ("grant_type", "refresh_token"),
+                ("client_id", "disable-smart"),
+                ("refresh_token", "disable-smart-refresh"),
+            ])
+            .unwrap(),
+        )
+        .send()
+        .await
+        .unwrap();
+    let smart_status = smart.status();
+    let smart: Value = smart.json().await.unwrap();
+    assert_eq!(
+        smart_status,
+        reqwest::StatusCode::OK,
+        "SMART refresh is usable before disabling: {}",
+        smart.get("error").unwrap_or(&Value::Null)
+    );
+    for bearer in [access, mobile["access_token"].as_str().unwrap()] {
+        let response = app
+            .client
+            .get(format!("{}/api/v1/auth/sessions", app.origin))
+            .bearer_auth(bearer)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), reqwest::StatusCode::OK);
+    }
+    for enabled in [false, true] {
+        let (status, body) = operation_start(
+            &app,
+            &admin,
+            json!({"action":"platform_user","account_id":71001,"active":enabled}),
+        )
+        .await;
+        assert_eq!(status, reqwest::StatusCode::OK);
+        assert_eq!(
+            operation_confirm(&app, &admin, body["operation_id"].as_str().unwrap()).await,
+            reqwest::StatusCode::OK
+        );
+        for bearer in [access, mobile["access_token"].as_str().unwrap()] {
+            let response = app
+                .client
+                .get(format!("{}/api/v1/auth/sessions", app.origin))
+                .bearer_auth(bearer)
+                .send()
+                .await
+                .unwrap();
+            assert_eq!(
+                response.status(),
+                reqwest::StatusCode::UNAUTHORIZED,
+                "old access after enabled={enabled}"
+            );
+        }
+        for (client, pair) in [("native", &mobile), ("disable-smart", &smart)] {
+            let response = app
+                .client
+                .post(format!("{}/token", app.origin))
+                .header("content-type", "application/x-www-form-urlencoded")
+                .body(
+                    serde_urlencoded::to_string([
+                        ("grant_type", "refresh_token"),
+                        ("client_id", client),
+                        ("refresh_token", pair["refresh_token"].as_str().unwrap()),
+                    ])
+                    .unwrap(),
+                )
+                .send()
+                .await
+                .unwrap();
+            let status = response.status();
+            let body: Value = response.json().await.unwrap();
+            assert_eq!(
+                status,
+                reqwest::StatusCode::BAD_REQUEST,
+                "{client} refresh after enabled={enabled}"
+            );
+            assert_eq!(body["error"], "invalid_grant");
+            assert!(body.get("access_token").is_none());
+        }
+    }
+    app.close().await;
+}
+
+#[tokio::test]
 async fn platform_user_deactivate_and_reactivate_after_password_proof() {
     let app = Application::new().await;
-    synthetic_account(&app, 71002, 73004, 77002, "platform-second@example.test", 2).await;
+    synthetic_account(&app, 71002, 73004, "platform-second@example.test", 2).await;
+    let old_target_cookie = sign_in(&app, 71002, "platform-second@example.test").await;
     let cookie = admin_session(&app).await;
     let (status, body) = operation_start(
         &app,
@@ -512,21 +636,35 @@ async fn platform_user_deactivate_and_reactivate_after_password_proof() {
         json!({"action":"platform_user","account_id":71002,"active":false}),
     )
     .await;
-    assert_eq!(status, reqwest::StatusCode::OK);
+    assert_eq!(status, reqwest::StatusCode::OK, "{body}");
     let operation_id = body["operation_id"].as_str().unwrap().to_owned();
     assert_eq!(
-        user_active(&app, 77002).await,
+        account_active(&app, 71002).await,
         Some(true),
         "no mutation at proof start"
     );
-    let confirm = operation_confirm(&app, &cookie, &operation_id).await;
-    assert!(confirm.is_success());
-    assert_eq!(user_active(&app, 77002).await, Some(false));
+    let confirmation = operation_confirm_response(&app, &cookie, &operation_id).await;
+    let confirm = confirmation.status();
+    let result = confirmation.json::<Value>().await.unwrap_or_default();
+    assert_eq!(
+        confirm,
+        reqwest::StatusCode::OK,
+        "{}",
+        result.get("message").unwrap_or(&Value::Null)
+    );
+    assert_eq!(account_active(&app, 71002).await, Some(false));
     assert_eq!(
         account_status(&app, 71002).await,
         Some(2),
         "verified account must not be closed by platform disable"
     );
+    let (denied, _) = operation_start(
+        &app,
+        &old_target_cookie,
+        json!({"action":"remove_password"}),
+    )
+    .await;
+    assert_eq!(denied, reqwest::StatusCode::UNAUTHORIZED);
     let (status, body) = operation_start(
         &app,
         &cookie,
@@ -536,7 +674,30 @@ async fn platform_user_deactivate_and_reactivate_after_password_proof() {
     assert_eq!(status, reqwest::StatusCode::OK);
     let operation_id = body["operation_id"].as_str().unwrap().to_owned();
     let confirm = operation_confirm(&app, &cookie, &operation_id).await;
-    let active = user_active(&app, 77002).await;
+    let active = account_active(&app, 71002).await;
+    let (denied, _) = operation_start(
+        &app,
+        &old_target_cookie,
+        json!({"action":"remove_password"}),
+    )
+    .await;
+    assert_eq!(
+        denied,
+        reqwest::StatusCode::UNAUTHORIZED,
+        "re-enable must not resurrect the old browser session"
+    );
+    let fresh_target_cookie = sign_in(&app, 71002, "platform-second@example.test").await;
+    let (fresh, _) = operation_start(
+        &app,
+        &fresh_target_cookie,
+        json!({"action":"change_email","new_email":"reenabled@example.test"}),
+    )
+    .await;
+    assert_eq!(
+        fresh,
+        reqwest::StatusCode::OK,
+        "re-enabled account can use a fresh sign-in"
+    );
     app.close().await;
     assert!(confirm.is_success());
     assert_eq!(active, Some(true));
@@ -545,7 +706,7 @@ async fn platform_user_deactivate_and_reactivate_after_password_proof() {
 #[tokio::test]
 async fn platform_operation_denied_without_platform_rights() {
     let app = Application::new().await;
-    synthetic_account(&app, 71002, 73004, 77002, "platform-second@example.test", 2).await;
+    synthetic_account(&app, 71002, 73004, "platform-second@example.test", 2).await;
     let cookie = session(&app).await;
     let (status, _) = operation_start(
         &app,
@@ -562,7 +723,7 @@ async fn platform_operation_denied_without_platform_rights() {
 #[tokio::test]
 async fn platform_operation_refused_when_admin_rights_withdrawn_before_confirm() {
     let app = Application::new().await;
-    synthetic_account(&app, 71002, 73004, 77002, "platform-second@example.test", 2).await;
+    synthetic_account(&app, 71002, 73004, "platform-second@example.test", 2).await;
     let cookie = admin_session(&app).await;
     let (status, body) = operation_start(
         &app,
@@ -587,7 +748,7 @@ async fn platform_operation_refused_when_admin_rights_withdrawn_before_confirm()
 #[tokio::test]
 async fn platform_operation_refused_when_session_revoked_before_confirm() {
     let app = Application::new().await;
-    synthetic_account(&app, 71002, 73004, 77002, "platform-second@example.test", 2).await;
+    synthetic_account(&app, 71002, 73004, "platform-second@example.test", 2).await;
     let cookie = admin_session(&app).await;
     let (status, body) = operation_start(
         &app,
@@ -612,7 +773,7 @@ async fn platform_operation_refused_when_session_revoked_before_confirm() {
 #[tokio::test]
 async fn platform_proof_bound_to_requesting_session() {
     let app = Application::new().await;
-    synthetic_account(&app, 71002, 73004, 77002, "platform-second@example.test", 2).await;
+    synthetic_account(&app, 71002, 73004, "platform-second@example.test", 2).await;
     let cookie = admin_session(&app).await;
     let other = session(&app).await;
     let (status, body) = operation_start(
@@ -633,8 +794,8 @@ async fn platform_proof_bound_to_requesting_session() {
 #[tokio::test]
 async fn platform_proof_bound_to_target_account() {
     let app = Application::new().await;
-    synthetic_account(&app, 71002, 73004, 77002, "platform-second@example.test", 2).await;
-    synthetic_account(&app, 71003, 73005, 77003, "platform-third@example.test", 2).await;
+    synthetic_account(&app, 71002, 73004, "platform-second@example.test", 2).await;
+    synthetic_account(&app, 71003, 73005, "platform-third@example.test", 2).await;
     let cookie = admin_session(&app).await;
     let (status, body) = operation_start(
         &app,
@@ -656,7 +817,7 @@ async fn platform_proof_bound_to_target_account() {
 #[tokio::test]
 async fn platform_proof_bound_to_action() {
     let app = Application::new().await;
-    synthetic_account(&app, 71002, 73004, 77002, "platform-second@example.test", 2).await;
+    synthetic_account(&app, 71002, 73004, "platform-second@example.test", 2).await;
     let cookie = admin_session(&app).await;
     let (status, body) = operation_start(
         &app,
@@ -667,7 +828,7 @@ async fn platform_proof_bound_to_action() {
     assert_eq!(status, reqwest::StatusCode::OK);
     let operation_id = body["operation_id"].as_str().unwrap().to_owned();
     let confirm = operation_confirm(&app, &cookie, &operation_id).await;
-    let active = user_active(&app, 77002).await;
+    let active = account_active(&app, 71002).await;
     let granted = admin_status(&app, 71002).await;
     app.close().await;
     assert!(confirm.is_success());
@@ -681,7 +842,7 @@ async fn platform_proof_bound_to_action() {
 #[tokio::test]
 async fn platform_proof_expires() {
     let app = Application::new().await;
-    synthetic_account(&app, 71002, 73004, 77002, "platform-second@example.test", 2).await;
+    synthetic_account(&app, 71002, 73004, "platform-second@example.test", 2).await;
     let cookie = admin_session(&app).await;
     let (status, body) = operation_start(
         &app,
@@ -702,7 +863,7 @@ async fn platform_proof_expires() {
 #[tokio::test]
 async fn platform_proof_single_use() {
     let app = Application::new().await;
-    synthetic_account(&app, 71002, 73004, 77002, "platform-second@example.test", 2).await;
+    synthetic_account(&app, 71002, 73004, "platform-second@example.test", 2).await;
     let cookie = admin_session(&app).await;
     let (status, body) = operation_start(
         &app,
@@ -756,7 +917,7 @@ async fn platform_user_disable_refuses_last_active_administrator() {
     assert_eq!(status, reqwest::StatusCode::OK);
     let operation_id = body["operation_id"].as_str().unwrap().to_owned();
     let confirm = operation_confirm(&app, &cookie, &operation_id).await;
-    let active = user_active(&app, 77001).await;
+    let active = account_active(&app, 71001).await;
     app.close().await;
     assert!(!confirm.is_success());
     assert_eq!(active, Some(true));
@@ -765,7 +926,7 @@ async fn platform_user_disable_refuses_last_active_administrator() {
 #[tokio::test]
 async fn platform_last_administrator_guard_survives_concurrent_removals() {
     let app = Application::new().await;
-    synthetic_account(&app, 71002, 73004, 77002, "platform-second@example.test", 2).await;
+    synthetic_account(&app, 71002, 73004, "platform-second@example.test", 2).await;
     app.fixture.admin.execute_unprepared("INSERT INTO platform_admins(account_id,status,created_at,updated_at) VALUES(71002,'active',now(),now())").await.unwrap();
     let first = admin_session(&app).await;
     let second = sign_in(&app, 71002, "platform-second@example.test").await;
@@ -829,9 +990,123 @@ async fn platform_last_administrator_guard_survives_concurrent_removals() {
 }
 
 #[tokio::test]
+async fn platform_disable_serializes_cross_administrator_password_proofs() {
+    competing_platform_disables(false).await;
+}
+
+#[tokio::test]
+async fn platform_disable_serializes_against_target_self_closure() {
+    competing_platform_disables(true).await;
+}
+
+async fn competing_platform_disables(close_target: bool) {
+    let app = Application::new().await;
+    synthetic_account(&app, 71002, 73004, "platform-second@example.test", 2).await;
+    app.fixture.admin.execute_unprepared("INSERT INTO platform_admins(account_id,status,created_at,updated_at) VALUES(71002,'active',now(),now())").await.unwrap();
+    let first = admin_session(&app).await;
+    let second = sign_in(&app, 71002, "platform-second@example.test").await;
+    let (status, body) = operation_start(
+        &app,
+        &first,
+        json!({"action":"platform_user","account_id":71002,"active":false}),
+    )
+    .await;
+    assert_eq!(status, reqwest::StatusCode::OK);
+    let first_operation = body["operation_id"].as_str().unwrap().to_owned();
+    let (status, body) = operation_start(
+        &app,
+        &second,
+        if close_target {
+            json!({"action":"close_account"})
+        } else {
+            json!({"action":"platform_user","account_id":71001,"active":false})
+        },
+    )
+    .await;
+    assert_eq!(status, reqwest::StatusCode::OK);
+    let second_operation = body["operation_id"].as_str().unwrap().to_owned();
+    let barrier = app.fixture.admin.begin().await.unwrap();
+    barrier
+        .execute_unprepared("SELECT pg_advisory_xact_lock(1920296809,3)")
+        .await
+        .unwrap();
+    let release = async {
+        let waiting = tokio::time::timeout(std::time::Duration::from_secs(10), async {
+            loop {
+                let row = app.fixture.admin.query_one_raw(sea_orm::Statement::from_string(
+                    sea_orm::DbBackend::Postgres,
+                    "SELECT count(*) AS count FROM pg_locks WHERE locktype='advisory' AND database=(SELECT oid FROM pg_database WHERE datname=current_database()) AND classid=1920296809 AND objid=3 AND NOT granted",
+                )).await.unwrap().unwrap();
+                if row.try_get::<i64>("", "count").unwrap() == 2 {
+                    break;
+                }
+                tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+            }
+        }).await;
+        barrier.commit().await.unwrap();
+        waiting.unwrap();
+    };
+    let outcome = tokio::time::timeout(std::time::Duration::from_secs(15), async {
+        tokio::join!(
+            operation_confirm(&app, &first, &first_operation),
+            operation_confirm(&app, &second, &second_operation),
+            release
+        )
+    })
+    .await;
+    let (one, two, ()) =
+        outcome.expect("cross-administrator confirmations must finish within the bounded deadline");
+    let remaining = account_active(&app, 71001).await;
+    let second_remaining = account_active(&app, 71002).await;
+    let outcome = app.fixture.admin.query_one_raw(sea_orm::Statement::from_string(
+        sea_orm::DbBackend::Postgres,
+        "SELECT (SELECT status FROM accounts WHERE id=71002) AS target_status,(SELECT count(*) FROM versions WHERE event='platform/user/deactivated') AS disables,(SELECT count(*) FROM versions WHERE event='platform/user/deactivated' AND ((item_id=71002 AND audit_context->>'actor_account_id'='71001') OR (item_id=71001 AND audit_context->>'actor_account_id'='71002'))) AS attributed,(SELECT count(*) FROM identity_sessions s JOIN accounts a ON a.id=s.account_id WHERE s.active AND (a.disabled_at IS NOT NULL OR a.status=3)) AS invalid_sessions",
+    )).await.unwrap().unwrap();
+    app.close().await;
+    assert_eq!(outcome.try_get::<i64>("", "invalid_sessions").unwrap(), 0);
+    assert_eq!(
+        outcome.try_get::<i64>("", "disables").unwrap(),
+        outcome.try_get::<i64>("", "attributed").unwrap()
+    );
+    if close_target {
+        assert!(
+            one.is_success(),
+            "administrator disable completes after target closure or before it: {one} {two}"
+        );
+        assert!(
+            two.is_success() || matches!(two.as_u16(), 401 | 403 | 409),
+            "closure completes or is deliberately denied: {two}"
+        );
+        assert_eq!(remaining, Some(true));
+        assert_eq!(second_remaining, Some(false));
+        assert_eq!(
+            outcome.try_get::<i32>("", "target_status").unwrap(),
+            if two.is_success() { 3 } else { 2 }
+        );
+        assert_eq!(outcome.try_get::<i64>("", "disables").unwrap(), 1);
+        return;
+    }
+    assert_eq!(outcome.try_get::<i64>("", "disables").unwrap(), 1);
+    assert!(
+        one.is_success() ^ two.is_success(),
+        "exactly one disable should win: {one} {two}"
+    );
+    assert!(
+        (if one.is_success() { two } else { one }) == reqwest::StatusCode::UNAUTHORIZED
+            || (if one.is_success() { two } else { one }) == reqwest::StatusCode::FORBIDDEN
+            || (if one.is_success() { two } else { one }) == reqwest::StatusCode::CONFLICT,
+        "competing disables must return a deliberate authorization or conflict result: {one} {two}"
+    );
+    assert!(
+        remaining == Some(one.is_success()) && second_remaining == Some(two.is_success()),
+        "only the winning administrator remains active"
+    );
+}
+
+#[tokio::test]
 async fn platform_audit_failure_rolls_back_mutation_and_proof() {
     let app = Application::new().await;
-    synthetic_account(&app, 71002, 73004, 77002, "platform-second@example.test", 2).await;
+    synthetic_account(&app, 71002, 73004, "platform-second@example.test", 2).await;
     let cookie = admin_session(&app).await;
     let (status, body) = operation_start(
         &app,
@@ -868,14 +1143,14 @@ async fn platform_audit_failure_rolls_back_mutation_and_proof() {
 #[tokio::test]
 async fn platform_inactive_user_administrator_is_not_viable_remaining_admin() {
     let app = Application::new().await;
-    synthetic_account(&app, 71002, 73004, 77002, "platform-second@example.test", 2).await;
+    synthetic_account(&app, 71002, 73004, "platform-second@example.test", 2).await;
     app.fixture.admin.execute_unprepared("INSERT INTO platform_admins(account_id,status,created_at,updated_at) VALUES(71002,'active',now(),now())").await.unwrap();
     app.fixture
         .admin
-        .execute_unprepared("UPDATE users SET active=false WHERE id=77002")
+        .execute_unprepared("UPDATE accounts SET disabled_at=now() WHERE id=71002")
         .await
         .unwrap();
-    app.fixture.admin.execute_unprepared("INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71002,'Second profile household','second-profile-household','Europe/London',now(),now()); INSERT INTO people(id,account_id,household_id,name,person_type,has_capacity,created_at,updated_at) VALUES(73005,71002,72002,'Later active profile',0,true,now(),now()); INSERT INTO users(id,person_id,email_address,password_digest,active,created_at,updated_at) VALUES(77003,73005,'later-profile@example.test',crypt('password',gen_salt('bf',4)),true,now(),now())").await.unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71002,'Second participation household','second-participation-household','Europe/London',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74002,72002,73004,'owner','active',now(),now(),now())").await.unwrap();
     let cookie = admin_session(&app).await;
     let (status, body) = operation_start(
         &app,
@@ -895,18 +1170,10 @@ async fn platform_inactive_user_administrator_is_not_viable_remaining_admin() {
 #[tokio::test]
 async fn platform_administrator_grant_refuses_ineligible_accounts() {
     let app = Application::new().await;
-    synthetic_account(&app, 71003, 73005, 77003, "platform-closed@example.test", 3).await;
-    synthetic_account(
-        &app,
-        71004,
-        73006,
-        77004,
-        "platform-unverified@example.test",
-        1,
-    )
-    .await;
-    synthetic_account(&app, 71005, 73007, 77005, "platform-mixed@example.test", 2).await;
-    app.fixture.admin.execute_unprepared("INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71005,'Second grant household','second-grant-household','Europe/London',now(),now()); UPDATE users SET active=false WHERE id=77005; INSERT INTO people(id,account_id,household_id,name,person_type,has_capacity,created_at,updated_at) VALUES(73008,71005,72002,'Later active profile',0,true,now(),now()); INSERT INTO users(id,person_id,email_address,password_digest,active,created_at,updated_at) VALUES(77006,73008,'later-grant@example.test',crypt('password',gen_salt('bf',4)),true,now(),now())").await.unwrap();
+    synthetic_account(&app, 71003, 73005, "platform-closed@example.test", 3).await;
+    synthetic_account(&app, 71004, 73006, "platform-unverified@example.test", 1).await;
+    synthetic_account(&app, 71005, 73007, "platform-mixed@example.test", 2).await;
+    app.fixture.admin.execute_unprepared("INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71005,'Second grant household','second-grant-household','Europe/London',now(),now()); UPDATE accounts SET disabled_at=now() WHERE id=71005; INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74002,72002,73007,'owner','active',now(),now(),now())").await.unwrap();
     let cookie = admin_session(&app).await;
     for target in [71003, 71004, 71005, 79999] {
         let (status, body) = operation_start(
@@ -935,23 +1202,15 @@ async fn platform_administrator_grant_refuses_ineligible_accounts() {
 #[tokio::test]
 async fn platform_user_enable_refuses_closed_and_unverified_accounts() {
     let app = Application::new().await;
-    synthetic_account(&app, 71003, 73005, 77003, "platform-closed@example.test", 3).await;
-    synthetic_account(
-        &app,
-        71004,
-        73006,
-        77004,
-        "platform-unverified@example.test",
-        1,
-    )
-    .await;
+    synthetic_account(&app, 71003, 73005, "platform-closed@example.test", 3).await;
+    synthetic_account(&app, 71004, 73006, "platform-unverified@example.test", 1).await;
     app.fixture
         .admin
-        .execute_unprepared("UPDATE users SET active=false WHERE id IN (77003,77004)")
+        .execute_unprepared("UPDATE accounts SET disabled_at=now() WHERE id IN (71003,71004)")
         .await
         .unwrap();
     let cookie = admin_session(&app).await;
-    for (account_id, user_id) in [(71003, 77003), (71004, 77004)] {
+    for account_id in [71003, 71004] {
         let (status, body) = operation_start(
             &app,
             &cookie,
@@ -967,7 +1226,7 @@ async fn platform_user_enable_refuses_closed_and_unverified_accounts() {
             );
         }
         assert_eq!(
-            user_active(&app, user_id).await,
+            account_active(&app, account_id).await,
             Some(false),
             "account {account_id} user must stay disabled"
         );
@@ -986,7 +1245,7 @@ async fn platform_last_administrator_cannot_close_own_account() {
         status
     };
     let account = account_status(&app, 71001).await;
-    let active = user_active(&app, 77001).await;
+    let active = account_active(&app, 71001).await;
     app.close().await;
     assert!(
         !confirmed.is_success(),
@@ -999,7 +1258,7 @@ async fn platform_last_administrator_cannot_close_own_account() {
 #[tokio::test]
 async fn platform_last_administrator_guard_survives_concurrent_self_closures() {
     let app = Application::new().await;
-    synthetic_account(&app, 71002, 73004, 77002, "platform-second@example.test", 2).await;
+    synthetic_account(&app, 71002, 73004, "platform-second@example.test", 2).await;
     app.fixture.admin.execute_unprepared("INSERT INTO platform_admins(account_id,status,created_at,updated_at) VALUES(71002,'active',now(),now())").await.unwrap();
     let first = admin_session(&app).await;
     let second = sign_in(&app, 71002, "platform-second@example.test").await;
@@ -1029,8 +1288,8 @@ async fn platform_last_administrator_guard_survives_concurrent_self_closures() {
 #[tokio::test]
 async fn platform_can_revoke_an_inactive_administrator_without_removing_the_last_usable_admin() {
     let app = Application::new().await;
-    synthetic_account(&app, 71002, 73004, 77002, "platform-second@example.test", 2).await;
-    app.fixture.admin.execute_unprepared("INSERT INTO platform_admins(account_id,status,created_at,updated_at) VALUES(71002,'active',now(),now()); UPDATE users SET active=false WHERE id=77002").await.unwrap();
+    synthetic_account(&app, 71002, 73004, "platform-second@example.test", 2).await;
+    app.fixture.admin.execute_unprepared("INSERT INTO platform_admins(account_id,status,created_at,updated_at) VALUES(71002,'active',now(),now()); UPDATE accounts SET disabled_at=now() WHERE id=71002").await.unwrap();
     let cookie = admin_session(&app).await;
     let (status, body) = operation_start(
         &app,
@@ -1051,8 +1310,8 @@ async fn platform_can_revoke_an_inactive_administrator_without_removing_the_last
 #[tokio::test]
 async fn platform_confirmation_cannot_replace_the_bound_target_or_action() {
     let app = Application::new().await;
-    synthetic_account(&app, 71002, 73004, 77002, "platform-second@example.test", 2).await;
-    synthetic_account(&app, 71003, 73005, 77003, "platform-third@example.test", 2).await;
+    synthetic_account(&app, 71002, 73004, "platform-second@example.test", 2).await;
+    synthetic_account(&app, 71003, 73005, "platform-third@example.test", 2).await;
     let cookie = admin_session(&app).await;
     let (status, body) = operation_start(
         &app,
@@ -1069,7 +1328,7 @@ async fn platform_confirmation_cannot_replace_the_bound_target_or_action() {
     assert!(!rejected.is_success());
     assert_eq!(admin_status(&app, 71002).await, None);
     assert_eq!(admin_status(&app, 71003).await, None);
-    assert_eq!(user_active(&app, 77003).await, Some(true));
+    assert_eq!(account_active(&app, 71003).await, Some(true));
     let accepted = operation_confirm(&app, &cookie, operation_id).await;
     let bound = admin_status(&app, 71002).await;
     let other = admin_status(&app, 71003).await;
@@ -1082,7 +1341,7 @@ async fn platform_confirmation_cannot_replace_the_bound_target_or_action() {
 #[tokio::test]
 async fn platform_user_reactivation_does_not_revive_old_sessions() {
     let app = Application::new().await;
-    synthetic_account(&app, 71002, 73004, 77002, "platform-second@example.test", 2).await;
+    synthetic_account(&app, 71002, 73004, "platform-second@example.test", 2).await;
     let actor = admin_session(&app).await;
     let old = sign_in(&app, 71002, "platform-second@example.test").await;
     for active in [false, true] {
@@ -1132,10 +1391,10 @@ async fn platform_user_reactivation_does_not_revive_old_sessions() {
 #[tokio::test]
 async fn platform_users_page_shows_user_state_and_action_forms() {
     let app = Application::new().await;
-    synthetic_account(&app, 71002, 73004, 77002, "platform-second@example.test", 2).await;
+    synthetic_account(&app, 71002, 73004, "platform-second@example.test", 2).await;
     app.fixture
         .admin
-        .execute_unprepared("UPDATE users SET active=false WHERE id=77002")
+        .execute_unprepared("UPDATE accounts SET disabled_at=now() WHERE id=71002")
         .await
         .unwrap();
     let cookie = admin_session(&app).await;
@@ -1158,7 +1417,7 @@ async fn platform_users_page_shows_user_state_and_action_forms() {
 #[tokio::test]
 async fn platform_users_page_links_are_bounded() {
     let app = Application::new().await;
-    app.fixture.admin.execute_unprepared("INSERT INTO accounts(id,email,password_hash,status,created_at,updated_at) SELECT 80000+i,format('bulk-%s@example.test',i),crypt('password',gen_salt('bf',4)),2,now(),now() FROM generate_series(1,300) i").await.unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO people(id,person_type,has_capacity,created_at,updated_at) SELECT 90000+i,0,true,now(),now() FROM generate_series(1,300) i; INSERT INTO accounts(id,person_id,name,email,status,created_at,updated_at) SELECT 80000+i,90000+i,format('Bulk %s',i),format('bulk-%s@example.test',i),2,now(),now() FROM generate_series(1,300) i").await.unwrap();
     let cookie = admin_session(&app).await;
     let (_cookies, body) =
         form_page(&app, &cookie, "/platform/users?page=9223372036854775807").await;
@@ -1174,7 +1433,7 @@ async fn platform_users_page_links_are_bounded() {
 #[tokio::test]
 async fn platform_browser_administrator_grant_roundtrip() {
     let app = Application::new().await;
-    synthetic_account(&app, 71002, 73004, 77002, "platform-second@example.test", 2).await;
+    synthetic_account(&app, 71002, 73004, "platform-second@example.test", 2).await;
     let cookie = admin_session(&app).await;
     let (cookies, body) = form_page(&app, &cookie, "/platform/users").await;
     let token = hidden_field(&body, "authenticity_token");
@@ -1206,7 +1465,7 @@ async fn platform_browser_administrator_grant_roundtrip() {
 #[tokio::test]
 async fn platform_browser_preserves_the_authentication_origin_boundary() {
     let app = Application::new().await;
-    synthetic_account(&app, 71002, 73004, 77002, "platform-second@example.test", 2).await;
+    synthetic_account(&app, 71002, 73004, "platform-second@example.test", 2).await;
     let cookie = admin_session(&app).await;
     let (cookies, body) = form_page(&app, &cookie, "/platform/users").await;
     let token = hidden_field(&body, "authenticity_token");
@@ -1310,7 +1569,7 @@ async fn platform_settings_initialization_cannot_race_signup_into_two_rows() {
 #[tokio::test]
 async fn platform_browser_administrator_revoke_roundtrip() {
     let app = Application::new().await;
-    synthetic_account(&app, 71002, 73004, 77002, "platform-second@example.test", 2).await;
+    synthetic_account(&app, 71002, 73004, "platform-second@example.test", 2).await;
     app.fixture.admin.execute_unprepared("INSERT INTO platform_admins(account_id,status,created_at,updated_at) VALUES(71002,'active',now(),now())").await.unwrap();
     let cookie = admin_session(&app).await;
     let (cookies, body) = form_page(&app, &cookie, "/platform/users").await;
@@ -1342,7 +1601,7 @@ async fn platform_browser_administrator_revoke_roundtrip() {
 #[tokio::test]
 async fn platform_browser_user_disable_and_enable_roundtrip() {
     let app = Application::new().await;
-    synthetic_account(&app, 71002, 73004, 77002, "platform-second@example.test", 2).await;
+    synthetic_account(&app, 71002, 73004, "platform-second@example.test", 2).await;
     let cookie = admin_session(&app).await;
     for (active, expected) in [("false", false), ("true", true)] {
         let (cookies, body) = form_page(&app, &cookie, "/platform/users").await;
@@ -1368,7 +1627,7 @@ async fn platform_browser_user_disable_and_enable_roundtrip() {
         let (confirmed, outcome) =
             browser_confirm(&app, &cookies, &operation_id, &confirm_token).await;
         assert_eq!(confirmed, reqwest::StatusCode::OK, "{outcome}");
-        assert_eq!(user_active(&app, 77002).await, Some(expected));
+        assert_eq!(account_active(&app, 71002).await, Some(expected));
         assert_eq!(account_status(&app, 71002).await, Some(2));
     }
     app.close().await;
@@ -1377,7 +1636,7 @@ async fn platform_browser_user_disable_and_enable_roundtrip() {
 #[tokio::test]
 async fn platform_browser_forms_require_csrf_and_platform_rights() {
     let app = Application::new().await;
-    synthetic_account(&app, 71002, 73004, 77002, "platform-second@example.test", 2).await;
+    synthetic_account(&app, 71002, 73004, "platform-second@example.test", 2).await;
     let cookie = admin_session(&app).await;
     let denied = post_form(
         &app,
@@ -1693,23 +1952,32 @@ async fn household(app: &Application, id: i64, slug: &str, name: &str) {
 
 async fn household_member(
     app: &Application,
-    ids: (i64, i64, i64, i64, i64),
+    ids: (i64, i64, i64, i64),
     email: &str,
     name: &str,
     role: &str,
 ) {
-    let (account_id, person_id, user_id, membership_id, household_id) = ids;
-    app.fixture.admin.execute_unprepared(&format!("INSERT INTO accounts(id,email,password_hash,status,created_at,updated_at) VALUES({account_id},'{email}',crypt('password',gen_salt('bf',4)),2,now(),now())")).await.unwrap();
-    app.fixture.admin.execute_unprepared(&format!("INSERT INTO people(id,account_id,household_id,name,person_type,has_capacity,created_at,updated_at) VALUES({person_id},{account_id},{household_id},'{name}',0,true,now(),now())")).await.unwrap();
-    app.fixture.admin.execute_unprepared(&format!("INSERT INTO users(id,person_id,email_address,password_digest,active,created_at,updated_at) VALUES({user_id},{person_id},'{email}',crypt('password',gen_salt('bf',4)),true,now(),now())")).await.unwrap();
-    app.fixture.admin.execute_unprepared(&format!("INSERT INTO household_memberships(id,account_id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES({membership_id},{account_id},{household_id},{person_id},'{role}','active',now(),now(),now())")).await.unwrap();
+    let (account_id, person_id, membership_id, household_id) = ids;
+    synthetic_account(app, account_id, person_id, email, 2).await;
+    app.fixture
+        .admin
+        .execute_raw(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            "UPDATE accounts SET name=$1 WHERE id=$2",
+            [name.into(), account_id.into()],
+        ))
+        .await
+        .unwrap();
+    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+        "INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES($1,$2,$3,$4,'active',now(),now(),now())",
+        [membership_id.into(),household_id.into(),person_id.into(),role.into()])).await.unwrap();
 }
 
 async fn recovery_household(app: &Application) {
     household(app, 72601, "recovery-fixture", "Recovery household").await;
     household_member(
         app,
-        (71601, 73601, 77601, 74601, 72601),
+        (71601, 73601, 74601, 72601),
         "recovery-member@example.test",
         "Recovery member",
         "member",
@@ -1721,7 +1989,7 @@ async fn supported_household(app: &Application) {
     household(app, 72602, "supported-fixture", "Supported household").await;
     household_member(
         app,
-        (71605, 73605, 77605, 74605, 72602),
+        (71605, 73605, 74605, 72602),
         "support-owner@example.test",
         "Supported owner",
         "owner",
@@ -1729,7 +1997,7 @@ async fn supported_household(app: &Application) {
     .await;
     household_member(
         app,
-        (71611, 73611, 77611, 74611, 72602),
+        (71611, 73611, 74611, 72602),
         "supported-member@example.test",
         "Supported member",
         "member",
@@ -2153,17 +2421,10 @@ async fn platform_owner_recovery_refuses_self_promotion() {
 async fn platform_owner_recovery_refuses_ineligible_members() {
     let app = Application::new().await;
     recovery_household(&app).await;
+    app.fixture.admin.execute_unprepared("INSERT INTO people(id,clinical_name,person_type,has_capacity,created_at,updated_at) VALUES(73603,'Recovery minor',1,false,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74603,72601,73603,'member','active',now(),now(),now())").await.unwrap();
     household_member(
         &app,
-        (71603, 73603, 77603, 74603, 72601),
-        "recovery-minor@example.test",
-        "Recovery minor",
-        "member",
-    )
-    .await;
-    household_member(
-        &app,
-        (71604, 73604, 77604, 74604, 72601),
+        (71604, 73604, 74604, 72601),
         "recovery-dependent@example.test",
         "Recovery dependent",
         "member",
@@ -2171,7 +2432,7 @@ async fn platform_owner_recovery_refuses_ineligible_members() {
     .await;
     household_member(
         &app,
-        (71606, 73606, 77606, 74606, 72601),
+        (71606, 73606, 74606, 72601),
         "recovery-nocapacity@example.test",
         "Recovery no capacity",
         "member",
@@ -2179,7 +2440,7 @@ async fn platform_owner_recovery_refuses_ineligible_members() {
     .await;
     household_member(
         &app,
-        (71607, 73607, 77607, 74607, 72601),
+        (71607, 73607, 74607, 72601),
         "recovery-inactive@example.test",
         "Recovery inactive",
         "member",
@@ -2187,7 +2448,7 @@ async fn platform_owner_recovery_refuses_ineligible_members() {
     .await;
     household_member(
         &app,
-        (71608, 73608, 77608, 74608, 72601),
+        (71608, 73608, 74608, 72601),
         "recovery-revoked@example.test",
         "Recovery revoked",
         "member",
@@ -2195,17 +2456,12 @@ async fn platform_owner_recovery_refuses_ineligible_members() {
     .await;
     household_member(
         &app,
-        (71609, 73609, 77609, 74609, 72601),
+        (71609, 73609, 74609, 72601),
         "recovery-closed@example.test",
         "Recovery closed",
         "member",
     )
     .await;
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE people SET person_type=1,has_capacity=false WHERE id=73603")
-        .await
-        .unwrap();
     app.fixture
         .admin
         .execute_unprepared("UPDATE people SET person_type=2,has_capacity=false WHERE id=73604")
@@ -2218,7 +2474,7 @@ async fn platform_owner_recovery_refuses_ineligible_members() {
         .unwrap();
     app.fixture
         .admin
-        .execute_unprepared("UPDATE users SET active=false WHERE id=77607")
+        .execute_unprepared("UPDATE accounts SET disabled_at=now() WHERE id=71607")
         .await
         .unwrap();
     app.fixture
@@ -2238,7 +2494,7 @@ async fn platform_owner_recovery_refuses_ineligible_members() {
         (74603_i64, "minor"),
         (74604, "dependent adult"),
         (74606, "no capacity"),
-        (74607, "inactive user"),
+        (74607, "disabled account"),
         (74608, "revoked membership"),
         (74609, "closed account"),
     ] {
@@ -2415,7 +2671,7 @@ async fn platform_owner_recovery_proof_binds_household_target_and_reason() {
     recovery_household(&app).await;
     household_member(
         &app,
-        (71602, 73602, 77602, 74602, 72601),
+        (71602, 73602, 74602, 72601),
         "recovery-other@example.test",
         "Recovery other",
         "member",
@@ -2476,13 +2732,13 @@ async fn platform_owner_recovery_serializes_concurrent_confirmations() {
     recovery_household(&app).await;
     household_member(
         &app,
-        (71602, 73602, 77602, 74602, 72601),
+        (71602, 73602, 74602, 72601),
         "recovery-other@example.test",
         "Recovery other",
         "member",
     )
     .await;
-    synthetic_account(&app, 71002, 73004, 77002, "platform-second@example.test", 2).await;
+    synthetic_account(&app, 71002, 73004, "platform-second@example.test", 2).await;
     app.fixture.admin.execute_unprepared("INSERT INTO platform_admins(account_id,status,created_at,updated_at) VALUES(71002,'active',now(),now())").await.unwrap();
     let first = admin_session(&app).await;
     let second = sign_in(&app, 71002, "platform-second@example.test").await;
@@ -2507,9 +2763,35 @@ async fn platform_owner_recovery_serializes_concurrent_confirmations() {
     }
     let (cookies_a, op_a, token_a) = proofs[0].clone();
     let (cookies_b, op_b, token_b) = proofs[1].clone();
-    let (won, outcome) = browser_confirm(&app, &cookies_a, &op_a, &token_a).await;
-    assert_eq!(won, reqwest::StatusCode::OK, "{outcome}");
-    let (lost, outcome) = browser_confirm(&app, &cookies_b, &op_b, &token_b).await;
+    let barrier = app.fixture.admin.begin().await.unwrap();
+    barrier
+        .execute_unprepared("SELECT pg_advisory_xact_lock(1920296809,3)")
+        .await
+        .unwrap();
+    let release = async {
+        let waiting = tokio::time::timeout(std::time::Duration::from_secs(10), async {
+            loop {
+                let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+                    "SELECT count(*) AS count FROM pg_locks WHERE locktype='advisory' AND database=(SELECT oid FROM pg_database WHERE datname=current_database()) AND classid=1920296809 AND objid=3 AND NOT granted"
+                )).await.unwrap().unwrap();
+                if row.try_get::<i64>("", "count").unwrap() == 2 { break; }
+                tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+            }
+        }).await;
+        barrier.commit().await.unwrap();
+        waiting
+    };
+    let completed = tokio::time::timeout(std::time::Duration::from_secs(20), async {
+        tokio::join!(
+            browser_confirm(&app, &cookies_a, &op_a, &token_a),
+            browser_confirm(&app, &cookies_b, &op_b, &token_b),
+            release
+        )
+    })
+    .await
+    .expect("recovery confirmations complete within the bound");
+    let ((one, first_outcome), (two, second_outcome), waiting) = completed;
+    waiting.expect("both proof confirmations waited on platform serialization");
     let first_role = membership_state(&app, 74601).await.map(|row| row.0);
     let second_role = membership_state(&app, 74602).await.map(|row| row.0);
     let owners = app
@@ -2524,14 +2806,31 @@ async fn platform_owner_recovery_serializes_concurrent_confirmations() {
         .unwrap()
         .and_then(|row| row.try_get::<i64>("", "count").ok())
         .unwrap_or_default();
+    let audits = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT (SELECT count(*) FROM versions WHERE household_id=72601 AND event='platform/owner_recovered') AS audits,(SELECT count(*) FROM api_change_events WHERE household_id=72601 AND record_type='HouseholdMembership' AND action='update') AS changes"
+    )).await.unwrap().unwrap();
     app.close().await;
     assert!(
-        !lost.is_success(),
-        "second recovery must lose the race: {outcome}"
+        one.is_success() ^ two.is_success(),
+        "exactly one recovery wins: {one} {first_outcome}; {two} {second_outcome}"
     );
-    assert_eq!(first_role, Some("owner".to_owned()));
-    assert_eq!(second_role, Some("member".to_owned()));
+    let loser = if one.is_success() { two } else { one };
+    assert_eq!(
+        loser,
+        reqwest::StatusCode::FORBIDDEN,
+        "first {one}: {first_outcome}; second {two}: {second_outcome}"
+    );
+    assert_eq!(
+        first_role.as_deref(),
+        Some(if one.is_success() { "owner" } else { "member" })
+    );
+    assert_eq!(
+        second_role.as_deref(),
+        Some(if two.is_success() { "owner" } else { "member" })
+    );
     assert_eq!(owners, 1);
+    assert_eq!(audits.try_get::<i64>("", "audits").unwrap(), 1);
+    assert_eq!(audits.try_get::<i64>("", "changes").unwrap(), 1);
 }
 
 #[tokio::test]
@@ -2557,20 +2856,36 @@ async fn platform_owner_recovery_audit_failure_rolls_back() {
     let (cookies, operation_id, confirm_token) = start_browser_proof(response, &cookies).await;
     app.fixture
         .admin
-        .execute_unprepared("REVOKE INSERT ON public.versions FROM med_tracker_app")
+        .execute_unprepared("CREATE SEQUENCE public.recovery_audit_probe; GRANT USAGE ON SEQUENCE public.recovery_audit_probe TO med_tracker_owner; CREATE FUNCTION public.reject_recovery_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.event='platform/owner_recovered' THEN PERFORM nextval('public.recovery_audit_probe'); RAISE EXCEPTION 'synthetic audit failure' USING ERRCODE='42501'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_recovery_audit BEFORE INSERT ON public.versions FOR EACH ROW EXECUTE FUNCTION public.reject_recovery_audit()")
         .await
         .unwrap();
     let (blocked, _) = browser_confirm(&app, &cookies, &operation_id, &confirm_token).await;
+    let reached: bool = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT is_called FROM public.recovery_audit_probe",
+        ))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("", "is_called")
+        .unwrap();
     let unchanged = membership_state(&app, 74601).await.map(|row| row.0);
     app.fixture
         .admin
-        .execute_unprepared("GRANT INSERT ON public.versions TO med_tracker_app")
+        .execute_unprepared("DROP TRIGGER reject_recovery_audit ON public.versions")
         .await
         .unwrap();
     let (retried, outcome) = browser_confirm(&app, &cookies, &operation_id, &confirm_token).await;
     let applied = membership_state(&app, 74601).await.map(|row| row.0);
     app.close().await;
-    assert!(!blocked.is_success());
+    assert!(
+        reached,
+        "the actual recovery audit insert reached the failing trigger"
+    );
+    assert_eq!(blocked, reqwest::StatusCode::INTERNAL_SERVER_ERROR);
     assert_eq!(unchanged, Some("member".to_owned()));
     assert!(
         retried.is_success(),
@@ -2835,7 +3150,7 @@ async fn platform_support_cannot_activate_without_owner_approval() {
 #[tokio::test]
 async fn platform_support_activate_replay_and_wrong_operator_rejected() {
     let app = Application::new().await;
-    synthetic_account(&app, 71002, 73004, 77002, "platform-second@example.test", 2).await;
+    synthetic_account(&app, 71002, 73004, "platform-second@example.test", 2).await;
     app.fixture.admin.execute_unprepared("INSERT INTO platform_admins(account_id,status,created_at,updated_at) VALUES(71002,'active',now(),now())").await.unwrap();
     let cookie = admin_session(&app).await;
     let other = sign_in(&app, 71002, "platform-second@example.test").await;
@@ -3301,9 +3616,7 @@ async fn support_audit_count(app: &Application, event: &str, support_id: i64) ->
 async fn platform_owner_recovery_page_omits_the_administrator_membership() {
     let app = Application::new().await;
     recovery_household(&app).await;
-    app.fixture.admin.execute_unprepared("INSERT INTO people(id,account_id,household_id,name,person_type,has_capacity,created_at,updated_at) VALUES(73005,71001,72601,'Administrator recovery person',0,true,now(),now())").await.unwrap();
-    app.fixture.admin.execute_unprepared("INSERT INTO users(id,person_id,email_address,password_digest,active,created_at,updated_at) VALUES(77005,73005,'administrator-member@example.test',crypt('password',gen_salt('bf',4)),true,now(),now())").await.unwrap();
-    app.fixture.admin.execute_unprepared("INSERT INTO household_memberships(id,account_id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74003,71001,72601,73005,'member','active',now(),now(),now())").await.unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) SELECT 74003,72601,person_id,'member','active',now(),now(),now() FROM accounts WHERE id=71001").await.unwrap();
     let cookie = admin_session(&app).await;
     let (status, detail) = {
         let response = app
@@ -3325,14 +3638,10 @@ async fn platform_owner_recovery_page_omits_the_administrator_membership() {
 }
 
 #[tokio::test]
-async fn platform_owner_recovery_excludes_mismatched_person_ownership() {
+async fn platform_owner_recovery_excludes_accountless_participation() {
     let app = Application::new().await;
     recovery_household(&app).await;
-    app.fixture.admin.execute_unprepared("INSERT INTO accounts(id,email,password_hash,status,created_at,updated_at) VALUES(71613,'mismatched-holder@example.test',crypt('password',gen_salt('bf',4)),2,now(),now())").await.unwrap();
-    app.fixture.admin.execute_unprepared("INSERT INTO people(id,account_id,household_id,name,person_type,has_capacity,created_at,updated_at) VALUES(73615,71613,72601,'Mismatched person',0,true,now(),now())").await.unwrap();
-    app.fixture.admin.execute_unprepared("INSERT INTO accounts(id,email,password_hash,status,created_at,updated_at) VALUES(71614,'mismatched-member@example.test',crypt('password',gen_salt('bf',4)),2,now(),now())").await.unwrap();
-    app.fixture.admin.execute_unprepared("INSERT INTO users(id,person_id,email_address,password_digest,active,created_at,updated_at) VALUES(77614,73615,'mismatched-member@example.test',crypt('password',gen_salt('bf',4)),true,now(),now())").await.unwrap();
-    app.fixture.admin.execute_unprepared("INSERT INTO household_memberships(id,account_id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74615,71614,72601,73615,'member','active',now(),now(),now())").await.unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO people(id,clinical_name,person_type,has_capacity,created_at,updated_at) VALUES(73615,'Accountless adult',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74615,72601,73615,'member','active',now(),now(),now())").await.unwrap();
     let cookie = admin_session(&app).await;
     let (cookies, detail) =
         form_page(&app, &cookie, "/platform/owner-recovery?household=72601").await;
@@ -3346,7 +3655,7 @@ async fn platform_owner_recovery_excludes_mismatched_person_ownership() {
         &[
             ("household_id", "72601"),
             ("membership_id", "74615"),
-            ("reason", "mismatched account person ownership"),
+            ("reason", "accountless participation cannot gain ownership"),
             ("authenticity_token", &token),
         ],
     )
@@ -3359,17 +3668,19 @@ async fn platform_owner_recovery_excludes_mismatched_person_ownership() {
 }
 
 #[tokio::test]
-async fn platform_owner_recovery_treats_mismatched_owner_as_ownerless() {
+async fn platform_owner_recovery_treats_accountless_owner_as_unusable() {
     let app = Application::new().await;
-    household(&app, 72603, "mismatched-fixture", "Mismatched household").await;
-    app.fixture.admin.execute_unprepared("INSERT INTO accounts(id,email,password_hash,status,created_at,updated_at) VALUES(71602,'mismatched-owner-account@example.test',crypt('password',gen_salt('bf',4)),2,now(),now())").await.unwrap();
-    app.fixture.admin.execute_unprepared("INSERT INTO accounts(id,email,password_hash,status,created_at,updated_at) VALUES(71603,'mismatched-person-account@example.test',crypt('password',gen_salt('bf',4)),2,now(),now())").await.unwrap();
-    app.fixture.admin.execute_unprepared("INSERT INTO people(id,account_id,household_id,name,person_type,has_capacity,created_at,updated_at) VALUES(73603,71603,72603,'Mismatched owner person',0,true,now(),now())").await.unwrap();
-    app.fixture.admin.execute_unprepared("INSERT INTO users(id,person_id,email_address,password_digest,active,created_at,updated_at) VALUES(77616,73603,'mismatched-owner-user@example.test',crypt('password',gen_salt('bf',4)),true,now(),now())").await.unwrap();
-    app.fixture.admin.execute_unprepared("INSERT INTO household_memberships(id,account_id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74604,71602,72603,73603,'owner','active',now(),now(),now())").await.unwrap();
+    household(
+        &app,
+        72603,
+        "accountless-owner-fixture",
+        "Accountless owner household",
+    )
+    .await;
+    app.fixture.admin.execute_unprepared("INSERT INTO people(id,clinical_name,person_type,has_capacity,created_at,updated_at) VALUES(73603,'Accountless owner',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74604,72603,73603,'owner','active',now(),now(),now())").await.unwrap();
     household_member(
         &app,
-        (71614, 73614, 77614, 74614, 72603),
+        (71614, 73614, 74614, 72603),
         "mismatched-member@example.test",
         "Mismatched member",
         "member",
@@ -4596,4 +4907,53 @@ async fn platform_support_listing_does_not_expire_an_ended_session() {
         "ending before expiry must remain the final state"
     );
     assert_eq!(audits, 0);
+}
+
+#[tokio::test]
+async fn platform_users_lists_anonymised_closed_account_without_clinical_name() {
+    let app = Application::new().await;
+    synthetic_account(&app, 71002, 73004, "closed-listing@example.test", 3).await;
+    app.fixture.admin.execute_unprepared("UPDATE accounts SET name=NULL WHERE id=71002; UPDATE people SET clinical_name='Retained private clinical identity' WHERE id=73004").await.unwrap();
+    let cookie = admin_session(&app).await;
+    let response = app
+        .client
+        .get(format!("{}/platform/users", app.origin))
+        .header("cookie", cookie)
+        .send()
+        .await
+        .unwrap();
+    let status = response.status();
+    let body = response.text().await.unwrap();
+    app.close().await;
+    assert_eq!(status, reqwest::StatusCode::OK);
+    assert!(body.contains("Synthetic adult"));
+    assert!(body.contains("closed-listing@example.test"));
+    assert!(body.contains("Closed"));
+    assert!(!body.contains("Retained private clinical identity"));
+}
+
+#[tokio::test]
+async fn platform_owner_recovery_member_pages_keep_every_eligible_target_reachable() {
+    let app = Application::new().await;
+    recovery_household(&app).await;
+    app.fixture.admin.execute_unprepared("INSERT INTO people(id,clinical_name,person_type,has_capacity,created_at,updated_at) SELECT 73700+i,format('Private clinical marker %s',i),0,true,now(),now() FROM generate_series(1,51) i; INSERT INTO accounts(id,person_id,name,email,status,created_at,updated_at) SELECT 71700+i,73700+i,format('Recovery page member %s',i),format('recovery-page-%s@example.test',i),2,now(),now() FROM generate_series(1,51) i; INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) SELECT 74700+i,72601,73700+i,'member','active',now(),now(),now() FROM generate_series(1,51) i").await.unwrap();
+    let cookie = admin_session(&app).await;
+    let (_, first) = form_page(&app, &cookie, "/platform/owner-recovery?household=72601").await;
+    let (_, last) = form_page(
+        &app,
+        &cookie,
+        "/platform/owner-recovery?household=72601&member_page=9223372036854775807",
+    )
+    .await;
+    assert_eq!(first.matches("name=\"membership_id\"").count(), 50);
+    assert_eq!(last.matches("name=\"membership_id\"").count(), 2);
+    assert!(first.contains("member_page=2"));
+    assert!(last.contains("Page 2 of 2"));
+    assert!(last.contains("name=\"membership_id\" value=\"74751\""));
+    assert!(
+        !first.contains("Private clinical marker") && !last.contains("Private clinical marker")
+    );
+    assert_eq!(membership_state(&app, 74751).await.unwrap().0, "member");
+    assert_eq!(membership_count(&app, 72601).await, 52);
+    app.close().await;
 }

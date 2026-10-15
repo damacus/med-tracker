@@ -20,16 +20,32 @@ pub(super) fn operation_error(error: OperationError) -> AuthError {
 
 impl ClinicalStore {
     pub(crate) async fn account_transaction(&self) -> AuthResult<super::Transaction> {
-        let request = request::authenticated()?;
         let transaction = self.transaction().await?;
+        self.verify_account_transaction(&transaction).await?;
+        Ok(transaction)
+    }
+
+    pub(super) async fn account_read_transaction(
+        &self,
+    ) -> AuthResult<sea_orm::DatabaseTransaction> {
+        let transaction = self.begin_transaction().await?;
+        self.verify_account_transaction(&transaction).await?;
+        Ok(transaction)
+    }
+
+    async fn verify_account_transaction(
+        &self,
+        transaction: &sea_orm::DatabaseTransaction,
+    ) -> AuthResult<()> {
+        let request = request::authenticated()?;
         context(
-            &transaction,
+            transaction,
             "med_tracker.identity_session_token",
             &token_digest(&request.session_token),
         )
         .await?;
         context(
-            &transaction,
+            transaction,
             "med_tracker.current_account_id",
             &request.account_id.to_string(),
         )
@@ -44,14 +60,14 @@ impl ClinicalStore {
         if account.is_none() {
             return Err(AuthError::Unauthenticated);
         }
-        access::verify_account_actor(&transaction, request.account_id)
+        access::verify_account_actor(transaction, request.account_id)
             .await
             .map_err(operation_error)?;
         let session = transaction.query_one_raw(statement("SELECT s.id FROM public.identity_sessions s JOIN public.accounts a ON a.id=s.account_id WHERE s.account_id=$1 AND s.token=$2 AND s.active AND s.purpose='authenticated' AND s.expires_at>CURRENT_TIMESTAMP AND a.status=2 FOR SHARE OF s", [request.account_id.into(), token_digest(&request.session_token).into()])).await.map_err(database_error)?;
         if session.is_none() {
             return Err(AuthError::Unauthenticated);
         }
-        Ok(transaction)
+        Ok(())
     }
 
     pub(super) async fn tenant(&self, household_id: i64) -> AuthResult<TenantTransaction> {

@@ -8,7 +8,7 @@ pub async fn collection(
     person_id: i64,
 ) -> Result<Vec<Value>, OperationError> {
     access::recheck(tenant).await?;
-    access::require_person_access(tenant, person_id, PersonAccess::View).await?;
+    access::require_participation(tenant, person_id).await?;
     let rows = health_event::Entity::find()
         .in_tenant(tenant.scope().household_id)
         .filter(health_event::Column::PersonId.eq(person_id))
@@ -80,7 +80,7 @@ pub async fn medication_options(
     use crate::models::entities::{medication, person_medication, schedule};
     use sea_orm::{Condition, QueryTrait};
     access::recheck(tenant).await?;
-    access::require_person_access(tenant, person_id, PersonAccess::View).await?;
+    access::require_participation(tenant, person_id).await?;
     let schedules = schedule::Entity::find()
         .select_only()
         .column(schedule::Column::MedicationId)
@@ -120,16 +120,7 @@ pub async fn save(
     provenance: &CredentialProvenance,
 ) -> Result<Value, OperationError> {
     sync::lock(tenant).await?;
-    access::require_person_access(
-        tenant,
-        person_id,
-        if id.is_some() {
-            PersonAccess::Manage
-        } else {
-            PersonAccess::Record
-        },
-    )
-    .await?;
+    access::require_participation(tenant, person_id).await?;
     let if_match = if let Some(id) = id {
         let (row, _, etag) = event(tenant, person_id, id).await?;
         if draft.get("etag").map(String::as_str) != Some(etag.as_str()) {
@@ -217,7 +208,7 @@ pub async fn delete(
     provenance: &CredentialProvenance,
 ) -> Result<(), OperationError> {
     sync::lock(tenant).await?;
-    access::require_person_access(tenant, person_id, PersonAccess::Manage).await?;
+    access::require_participation(tenant, person_id).await?;
     let (row, _, etag) = event(tenant, person_id, id).await?;
     if expected != etag {
         return Err(OperationError::Conflict {

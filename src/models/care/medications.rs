@@ -152,7 +152,9 @@ pub(crate) async fn lock_row(
     id: i64,
 ) -> Result<(), OperationError> {
     let sql = match table {
-        "households" => "SELECT id FROM households WHERE id=$1 FOR UPDATE",
+        "households" => {
+            "SELECT med_tracker.lock_current_household() WHERE med_tracker.current_household_id()=$1"
+        }
         "medications" => "SELECT id FROM medications WHERE id=$1 FOR UPDATE",
         _ => return Err(OperationError::Unavailable),
     };
@@ -167,8 +169,8 @@ pub(crate) async fn lock_row(
     Ok(())
 }
 
-fn database_error(_: sea_orm::DbErr) -> OperationError {
-    OperationError::Unavailable
+fn database_error(error: sea_orm::DbErr) -> OperationError {
+    OperationError::from(error)
 }
 
 fn validation(message: &str) -> OperationError {

@@ -3,17 +3,13 @@ mod idempotency;
 mod rails_digest;
 pub use collection::{Pagination, collection};
 mod lifecycle;
-mod memberships;
 pub use idempotency::{KeyedResponse, SavedResponse, lookup, store};
 pub use lifecycle::{can_manage, list, read, retire, update};
-pub use memberships::{
-    create_membership, destroy_membership, representation as membership_representation,
-};
 
 use crate::models::{
     access::{self, TenantTransaction},
     care::doses::CredentialProvenance,
-    entities::{api_change_event, household, location, version},
+    entities::{api_change_event, location, version},
     errors::OperationError,
 };
 use chrono::Utc;
@@ -23,13 +19,7 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 
 pub async fn authorize(tenant: &TenantTransaction) -> Result<(), OperationError> {
-    household::Entity::find_by_id(tenant.scope().household_id)
-        .lock_exclusive()
-        .one(tenant.transaction())
-        .await
-        .map_err(|_| OperationError::Unavailable)?
-        .ok_or(OperationError::NotFound)?;
-    access::recheck(tenant).await?;
+    access::lock_household(tenant).await?;
     if !access::can_manage_household(tenant) {
         return Err(OperationError::Forbidden);
     }
@@ -170,7 +160,7 @@ async fn record_change(
         event: Set(event.into()),
         object: Set(before.as_ref().map(Value::to_string)),
         object_changes: Set(Some(Value::Object(changes).to_string())),
-        whodunnit: Set(Some(tenant.user_id().to_string())),
+        whodunnit: Set(Some(tenant.person_id().to_string())),
         request_id: Set(Some(tenant.scope().request_id.clone())),
         household_id: Set(Some(tenant.scope().household_id)),
         actor_membership_id: Set(Some(tenant.membership().id)),
@@ -181,9 +171,6 @@ async fn record_change(
     .insert(tenant.transaction())
     .await
     .map_err(|_| OperationError::Unavailable)?;
-    if event == "destroy" {
-        return Ok(());
-    }
-    api_change_event::ActiveModel { household_id:Set(tenant.scope().household_id),household_membership_id:Set(Some(tenant.membership().id)),account_id:Set(Some(tenant.scope().actor.account_id)),action:Set(event.into()),record_type:Set("Location".into()),record_id:Set(record.id),record_portable_id:Set(Some(record.portable_id.clone())),request_id:Set(Some(tenant.scope().request_id.clone())),metadata:Set(json!({"record_type":"Location","record_id":record.id,"portable_id":record.portable_id})),occurred_at:Set(now),created_at:Set(now),updated_at:Set(now),..Default::default() }.insert(tenant.transaction()).await.map_err(|_|OperationError::Unavailable)?;
+    api_change_event::ActiveModel { household_id:Set(tenant.scope().household_id),household_membership_id:Set(Some(tenant.membership().id)),account_id:Set(Some(tenant.scope().actor.account_id)),action:Set(if event == "destroy" { "delete" } else { event }.into()),record_type:Set("Location".into()),record_id:Set(record.id),record_portable_id:Set(Some(record.portable_id.clone())),request_id:Set(Some(tenant.scope().request_id.clone())),metadata:Set(json!({"record_type":"Location","record_id":record.id,"portable_id":record.portable_id})),occurred_at:Set(now),created_at:Set(now),updated_at:Set(now),..Default::default() }.insert(tenant.transaction()).await.map_err(|_|OperationError::Unavailable)?;
     Ok(())
 }

@@ -143,7 +143,7 @@ impl Page<'_> {
         } else {
             "dosage_options/form.html"
         };
-        match format::render().view(self.view, template, data) {
+        match format::render().view(self.view, template, crate::views::template_data(&data)) {
             Ok(mut response) => {
                 *response.status_mut() = status;
                 response.headers_mut().insert(

@@ -166,6 +166,8 @@ pub(super) async fn confirm(
         return Err(AuthError::forbidden("A recovery session is required"));
     }
     let transaction = store.transaction().await?;
+    super::operations::lock_pending_platform(&transaction, ctx, &session, &input.operation_id)
+        .await?;
     store.lock_security_session(&transaction, &session).await?;
     let pending = super::operations::pending_password(ctx, &session, &input.operation_id).await?;
     let identifier = format!("password-email:{}", input.operation_id);

@@ -5,10 +5,7 @@ use cedar_policy::{
 use serde_json::{Value, json};
 use std::sync::OnceLock;
 
-use super::{
-    access::PersonAccess,
-    entities::{account, grant, membership, person, platform_admin},
-};
+use super::entities::{account, membership, platform_admin};
 
 #[cfg(test)]
 mod matrix;
@@ -147,53 +144,6 @@ pub(crate) fn household_manager(member: &membership::Model, household_id: i64) -
         json!({"id":household_id,"household_id":household_id}),
         "manage_household",
         json!({}),
-    )
-}
-
-pub(crate) fn person_access(
-    member: &membership::Model,
-    subject: &person::Model,
-    grant: &grant::Model,
-    access: PersonAccess,
-    now: chrono::NaiveDateTime,
-) -> bool {
-    let action = match access {
-        PersonAccess::View => "view_person",
-        PersonAccess::Record => "record_person",
-        PersonAccess::Manage => "manage_person",
-    };
-    evaluate(
-        member_facts(member),
-        json!({"id":subject.id,"household_id":subject.household_id}),
-        action,
-        json!({
-            "household_id":grant.household_id,"membership_id":grant.household_membership_id,
-            "person_id":grant.person_id,"level":grant.access_level,"revoked":grant.revoked_at.is_some(),
-            "expiring":grant.expires_at.is_some(),"expires_at":grant.expires_at.map_or(0,|time|time.and_utc().timestamp_micros()),
-            "now":now.and_utc().timestamp_micros()
-        }),
-    )
-}
-
-pub(crate) fn may_delegate(member: &membership::Model, subject: &person::Model) -> bool {
-    evaluate(
-        member_facts(member),
-        json!({"id":subject.id,"household_id":subject.household_id}),
-        "delegate_person",
-        json!({"person_type":subject.person_type,"has_capacity":subject.has_capacity}),
-    )
-}
-
-pub(crate) fn may_change_owner(
-    member: &membership::Model,
-    household_id: i64,
-    next_owner: bool,
-) -> bool {
-    evaluate(
-        member_facts(member),
-        json!({"id":household_id,"household_id":household_id}),
-        "change_owner",
-        json!({"next_owner":next_owner}),
     )
 }
 

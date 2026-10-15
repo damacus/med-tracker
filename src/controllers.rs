@@ -10,10 +10,12 @@ pub mod dashboard;
 pub mod dosage_options;
 pub mod dose_occurrences;
 pub mod home;
+pub mod households;
 pub mod identity_onboarding;
 pub mod invitations;
 pub mod locations;
 pub mod medication_orders;
+pub(crate) mod medication_history;
 pub mod medications;
 pub mod nhs_dmd;
 pub mod oauth_server;
@@ -49,5 +51,9 @@ async fn profile_worker() -> impl axum::response::IntoResponse {
 }
 
 pub fn browser_routes() -> Routes {
-    Routes::new().add("/", get(home::index))
+    Routes::new()
+        .add("/", get(home::index))
+        .add("/households/select", post(home::select))
+        .add("/households/new", get(households::new))
+        .add("/households", post(households::create))
 }

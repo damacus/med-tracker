@@ -8,6 +8,174 @@ use med_tracker::models::{
 use std::sync::{Arc, Mutex};
 use tokio::sync::Notify;
 
+async fn await_provider_start(
+    started: &Notify,
+    sender: &mut tokio::task::JoinHandle<
+        Result<usize, med_tracker::models::errors::OperationError>,
+    >,
+) {
+    tokio::select! {
+        () = started.notified() => {},
+        result = &mut *sender => {
+            match result {
+                Ok(Err(error)) => panic!("Reminder ended before provider: {error}"),
+                Ok(Ok(_)) => panic!("Reminder ended without reaching provider"),
+                Err(_) => panic!("Reminder task failed before provider"),
+            }
+        },
+        () = tokio::time::sleep(std::time::Duration::from_secs(10)) => {
+            sender.abort();
+            panic!("Reminder did not reach provider within bounded wait");
+        },
+    }
+}
+
+fn assert_stock_sqlstate(error: sea_orm::DbErr, expected: &str) {
+    let (sea_orm::DbErr::Exec(sea_orm::RuntimeErr::SqlxError(error))
+    | sea_orm::DbErr::Query(sea_orm::RuntimeErr::SqlxError(error))) = error
+    else {
+        panic!("Expected PostgreSQL failure category");
+    };
+    assert_eq!(
+        error
+            .as_database_error()
+            .and_then(|error| error.code())
+            .as_deref(),
+        Some(expected)
+    );
+}
+
+#[tokio::test]
+async fn browser_low_stock_records_private_recipient_intent_atomically() {
+    use med_tracker::models::access;
+    let app = Application::new().await;
+    recorded_takes::seed(&app.fixture.admin, recorded_takes::SyntheticActor::canonical(), "INSERT INTO people(id,clinical_name,created_at,updated_at) VALUES(95901,'Stock recipient',now(),now()); INSERT INTO accounts(id,person_id,name,email,status,created_at,updated_at) VALUES(95902,95901,'Stock recipient','stock-recipient@example.test',2,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(95903,72001,95901,'member','active',now(),now(),now()); INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(95904,72001,95901,80001,2,'tablet',0,now(),now()); INSERT INTO notification_preferences(account_id,household_id,enabled,low_stock_enabled,created_at,updated_at) VALUES(95902,72001,true,true,now(),now()); UPDATE medications SET current_supply=9,reorder_threshold=10 WHERE id=80001; INSERT INTO medication_takes(id,household_id,person_medication_id,taken_from_medication_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(95905,72001,81001,80001,2,'tablet',now(),now(),now()),(95906,72001,81001,80001,2,'tablet',now(),now(),now()),(95907,72001,81001,80001,2,'tablet',now(),now(),now())", &[recorded_takes::TakeSeed::new(95905,80001), recorded_takes::TakeSeed::new(95906,80001), recorded_takes::TakeSeed::new(95907,80001)]).await.unwrap();
+    let scope = HouseholdScope {
+        actor: Actor { account_id: 71001 },
+        household_id: 72001,
+        request_id: "stock-capability".into(),
+    };
+    let tenant = access::begin(&app.context.db, &scope, None).await.unwrap();
+    let private = tenant
+        .transaction()
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT count(*) AS count FROM notification_preferences WHERE account_id=95902",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(private.try_get::<i64>("", "count").unwrap(), 0);
+    tenant
+        .transaction()
+        .execute_unprepared(
+            "SELECT med_tracker.record_low_stock_notifications(80001,95905,'stock-capability')",
+        )
+        .await
+        .expect("narrow stock intent capability");
+    tenant
+        .transaction()
+        .execute_unprepared(
+            "SELECT med_tracker.record_low_stock_notifications(80001,95905,'stock-capability')",
+        )
+        .await
+        .unwrap();
+    tenant.commit().await.unwrap();
+    assert_stock_sqlstate(
+        app.context
+            .db
+            .execute_unprepared(
+                "SELECT med_tracker.record_low_stock_notifications(80001,95906,'stock-capability')",
+            )
+            .await
+            .expect_err("anonymous capability denied"),
+        "MT001",
+    );
+    let tenant = access::begin(&app.context.db, &scope, None).await.unwrap();
+    assert_stock_sqlstate(tenant.transaction().execute_unprepared("SELECT med_tracker.record_low_stock_notifications(80001,999999,'stock-capability')").await.expect_err("unrelated take denied"),"MT002");
+    tenant.rollback().await.unwrap();
+    app.fixture.admin.execute_unprepared("CREATE SEQUENCE stock_intent_audit_reached; GRANT USAGE ON SEQUENCE stock_intent_audit_reached TO med_tracker_owner; CREATE FUNCTION reject_stock_intent_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.event_type='browser_push.low_stock.queued' THEN PERFORM nextval('public.stock_intent_audit_reached'); RAISE EXCEPTION 'synthetic intent audit failure' USING ERRCODE='42501'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_stock_intent_audit BEFORE INSERT ON security_audit_events FOR EACH ROW EXECUTE FUNCTION reject_stock_intent_audit()").await.unwrap();
+    let tenant = access::begin(&app.context.db, &scope, None).await.unwrap();
+    assert_stock_sqlstate(
+        tenant
+            .transaction()
+            .execute_unprepared(
+                "SELECT med_tracker.record_low_stock_notifications(80001,95906,'stock-capability')",
+            )
+            .await
+            .expect_err("audit failure retained"),
+        "42501",
+    );
+    tenant.rollback().await.unwrap();
+    let state=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT is_called FROM stock_intent_audit_reached) AS reached,(SELECT count(*) FROM notification_events WHERE event_type='browser_low_stock_pending') AS events,(SELECT count(*) FROM security_audit_events WHERE event_type='browser_push.low_stock.queued' AND actor_account_id=71001 AND actor_membership_id=74001) AS audits")).await.unwrap().unwrap();
+    assert!(state.try_get::<bool>("", "reached").unwrap());
+    assert_eq!(state.try_get::<i64>("", "events").unwrap(), 1);
+    assert_eq!(state.try_get::<i64>("", "audits").unwrap(), 1);
+    app.fixture.admin.execute_unprepared("DROP TRIGGER reject_stock_intent_audit ON security_audit_events; UPDATE accounts SET disabled_at=now() WHERE id=95902").await.unwrap();
+    let tenant = access::begin(&app.context.db, &scope, None).await.unwrap();
+    tenant
+        .transaction()
+        .execute_unprepared(
+            "SELECT med_tracker.record_low_stock_notifications(80001,95907,'stock-capability')",
+        )
+        .await
+        .unwrap();
+    tenant.commit().await.unwrap();
+    let events=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT count(*) AS count FROM notification_events WHERE event_type='browser_low_stock_pending'")).await.unwrap().unwrap();
+    assert_eq!(events.try_get::<i64>("", "count").unwrap(), 1);
+    app.close().await;
+}
+
+#[tokio::test]
+async fn browser_reminder_discovery_is_bounded_across_more_than_one_page() {
+    let app = Application::new().await;
+    app.fixture.admin.execute_unprepared("INSERT INTO people(id,clinical_name,created_at,updated_at) SELECT 96000+n,'Recipient '||n,now(),now() FROM generate_series(1,101) n; INSERT INTO accounts(id,person_id,name,email,status,created_at,updated_at) SELECT 97000+n,96000+n,'Recipient '||n,'recipient-'||n||'@example.test',2,now(),now() FROM generate_series(1,101) n; INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) SELECT 98000+n,72001,96000+n,'member','active',now(),now(),now() FROM generate_series(1,101) n; INSERT INTO notification_preferences(account_id,household_id,enabled,created_at,updated_at) SELECT 97000+n,72001,true,now(),now() FROM generate_series(1,101) n").await.unwrap();
+    let page = browser_push::scheduler::recipients(&app.context, Utc::now())
+        .await
+        .unwrap();
+    assert_eq!(
+        page.len(),
+        100,
+        "scheduler discovery must not collect every recipient"
+    );
+    assert_eq!(page.first().unwrap().account_id, 97001);
+    assert_eq!(page.last().unwrap().account_id, 97100);
+    let next = browser_push::scheduler::recipients_after(
+        &app.context,
+        Utc::now(),
+        Some(page.last().unwrap().cursor()),
+    )
+    .await
+    .unwrap();
+    assert_eq!(next.len(), 1);
+    assert_eq!(next[0].account_id, 97101);
+    let last =
+        browser_push::scheduler::recipients_after(&app.context, Utc::now(), Some(next[0].cursor()))
+            .await
+            .unwrap();
+    assert!(last.is_empty());
+    let distinct: std::collections::HashSet<_> = page
+        .iter()
+        .chain(next.iter())
+        .map(|run| (run.household_id, run.account_id))
+        .collect();
+    assert_eq!(distinct.len(), 101);
+    app.context.shared_store.insert(Service {
+        public_key: String::new(),
+        transport: Arc::new(Reminders(Mutex::new(vec![]))),
+    });
+    use loco_rs::task::{Task, Vars};
+    browser_push::scheduler::ReminderTask
+        .run(&app.context, &Vars::default())
+        .await
+        .unwrap();
+    let queued=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT count(*) AS count,count(DISTINCT (task_data->>'household_id',task_data->>'account_id')) AS recipients FROM pg_loco_queue WHERE (task_data->>'account_id')::bigint BETWEEN 97001 AND 97101")).await.unwrap().unwrap();
+    assert_eq!(queued.try_get::<i64>("", "count").unwrap(), 101);
+    assert_eq!(queued.try_get::<i64>("", "recipients").unwrap(), 101);
+
+    app.close().await;
+}
+
 #[tokio::test]
 async fn browser_reminder_terminal_cleanup_audit_failure_is_atomic() {
     let app = Application::new().await;
@@ -23,7 +191,7 @@ async fn browser_reminder_terminal_cleanup_audit_failure_is_atomic() {
     browser_push::reminders::deliver_account(&app.context, &scope, now)
         .await
         .unwrap();
-    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET revoked_at=now() WHERE account_id=71001; CREATE FUNCTION public.reject_browser_cleanup_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.event_type='browser_push.reminder.invalid' THEN RAISE EXCEPTION 'synthetic cleanup audit failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_browser_cleanup_audit BEFORE INSERT ON security_audit_events FOR EACH ROW EXECUTE FUNCTION public.reject_browser_cleanup_audit()").await.unwrap();
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET revoked_at=now() WHERE person_id=(SELECT person_id FROM accounts WHERE id=71001); CREATE FUNCTION public.reject_browser_cleanup_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.event_type='browser_push.reminder.invalid' THEN RAISE EXCEPTION 'synthetic cleanup audit failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_browser_cleanup_audit BEFORE INSERT ON security_audit_events FOR EACH ROW EXECUTE FUNCTION public.reject_browser_cleanup_audit()").await.unwrap();
     assert!(
         browser_push::scheduler::recipients(&app.context, Utc::now())
             .await
@@ -115,8 +283,9 @@ async fn browser_reminder_profile_update_uses_same_lock_order() {
 #[tokio::test]
 async fn browser_reminder_lifecycle_revocation_recovers_without_resend() {
     for mutation in [
-        "UPDATE household_memberships SET revoked_at=now() WHERE account_id=71001",
+        "UPDATE household_memberships SET revoked_at=now() WHERE person_id=(SELECT person_id FROM accounts WHERE id=71001)",
         "UPDATE accounts SET status=3 WHERE id=71001",
+        "UPDATE accounts SET disabled_at=now() WHERE id=71001",
         "UPDATE households SET status='archived',lifecycle_state='offboarded' WHERE id=72001",
     ] {
         let app = Application::new().await;
@@ -131,10 +300,10 @@ async fn browser_reminder_lifecycle_revocation_recovers_without_resend() {
         });
         let ctx = app.context.clone();
         let sending_scope = scope.clone();
-        let sender = tokio::spawn(async move {
+        let mut sender = tokio::spawn(async move {
             browser_push::reminders::deliver_account(&ctx, &sending_scope, now).await
         });
-        transport.started.notified().await;
+        await_provider_start(&transport.started, &mut sender).await;
         app.fixture
             .admin
             .execute_unprepared(mutation)
@@ -165,7 +334,7 @@ async fn browser_reminder_lifecycle_revocation_recovers_without_resend() {
             .unwrap();
         assert_eq!(row.try_get::<String>("", "status").unwrap(), "uncertain");
         assert_eq!(row.try_get::<i32>("", "attempt_count").unwrap(), 1);
-        app.fixture.admin.execute_unprepared("UPDATE household_memberships SET revoked_at=NULL WHERE account_id=71001; UPDATE accounts SET status=2 WHERE id=71001; UPDATE households SET status='active',lifecycle_state='active' WHERE id=72001").await.unwrap();
+        app.fixture.admin.execute_unprepared("UPDATE household_memberships SET revoked_at=NULL WHERE person_id=(SELECT person_id FROM accounts WHERE id=71001); UPDATE accounts SET status=2,disabled_at=NULL WHERE id=71001; UPDATE households SET status='active',lifecycle_state='active' WHERE id=72001").await.unwrap();
         assert_eq!(
             browser_push::reminders::drain_pending(&app.context, &scope, Utc::now())
                 .await
@@ -179,8 +348,9 @@ async fn browser_reminder_lifecycle_revocation_recovers_without_resend() {
 #[tokio::test]
 async fn browser_reminder_lifecycle_revocation_invalidates_pending() {
     for mutation in [
-        "UPDATE household_memberships SET revoked_at=now() WHERE account_id=71001",
+        "UPDATE household_memberships SET revoked_at=now() WHERE person_id=(SELECT person_id FROM accounts WHERE id=71001)",
         "UPDATE accounts SET status=3 WHERE id=71001",
+        "UPDATE accounts SET disabled_at=now() WHERE id=71001",
         "UPDATE households SET status='archived',lifecycle_state='offboarded' WHERE id=72001",
     ] {
         let app = Application::new().await;
@@ -238,7 +408,7 @@ async fn browser_reminder_lifecycle_revocation_invalidates_pending() {
             .unwrap()
             .unwrap();
         assert_eq!(row.try_get::<String>("", "status").unwrap(), "invalid");
-        app.fixture.admin.execute_unprepared("UPDATE household_memberships SET revoked_at=NULL WHERE account_id=71001; UPDATE accounts SET status=2 WHERE id=71001; UPDATE households SET status='active',lifecycle_state='active' WHERE id=72001").await.unwrap();
+        app.fixture.admin.execute_unprepared("UPDATE household_memberships SET revoked_at=NULL WHERE person_id=(SELECT person_id FROM accounts WHERE id=71001); UPDATE accounts SET status=2,disabled_at=NULL WHERE id=71001; UPDATE households SET status='active',lifecycle_state='active' WHERE id=72001").await.unwrap();
         browser_push::reminders::deliver_account(&app.context, &scope, now)
             .await
             .unwrap();
@@ -407,10 +577,10 @@ async fn browser_reminder_refreshes_clock_between_device_sends() {
     });
     let ctx = app.context.clone();
     let sending_scope = scope.clone();
-    let sender = tokio::spawn(async move {
+    let mut sender = tokio::spawn(async move {
         browser_push::reminders::deliver_account(&ctx, &sending_scope, now).await
     });
-    transport.started.notified().await;
+    await_provider_start(&transport.started, &mut sender).await;
     app.fixture
         .admin
         .execute_raw(Statement::from_sql_and_values(
@@ -508,7 +678,7 @@ async fn prepare_due_delivery(
         .unwrap();
     app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences=jsonb_build_object('time_zone','UTC') WHERE id=71001; UPDATE person_medications SET administration_kind=0,dose_cycle=0,max_daily_doses=1,created_at=now()-interval '2 days' WHERE id=81001; INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/failed','synthetic','synthetic',now(),now())").await.unwrap();
     app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,morning_time,afternoon_time,evening_time,night_time,created_at,updated_at) VALUES(72001,73001,true,true,false,false,true,$1,NULL,NULL,NULL,now(),now())", [now.time().into()])).await.unwrap();
+        "INSERT INTO notification_preferences(household_id,account_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,morning_time,afternoon_time,evening_time,night_time,created_at,updated_at) VALUES(72001,71001,true,true,false,false,true,$1,NULL,NULL,NULL,now(),now())", [now.time().into()])).await.unwrap();
     (
         now,
         HouseholdScope {
@@ -570,7 +740,7 @@ async fn browser_reminder_stops_pending_delivery_after_dose_outcome() {
             0
         );
         if outcome == "taken" {
-            app.fixture.admin.execute_unprepared("INSERT INTO medication_takes(id,household_id,person_medication_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(84991,72001,81001,2,'tablet',now(),now(),now())").await.unwrap();
+            recorded_takes::seed(&app.fixture.admin, recorded_takes::SyntheticActor::canonical(), "INSERT INTO medication_takes(id,household_id,person_medication_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(84991,72001,81001,2,'tablet',now(),now(),now())", &[recorded_takes::TakeSeed::new(84991,80001)]).await.unwrap();
             app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
                 "INSERT INTO medication_dose_occurrences(id,household_id,person_medication_id,medication_take_id,window_starts_on,window_ends_on,position,outcome,resolved_at,resolved_by_membership_id,created_at,updated_at) VALUES(85991,72001,81001,84991,$1,$1,1,'taken',now(),74001,now(),now())",
                 [now.date_naive().into()]
@@ -619,7 +789,16 @@ async fn browser_reminder_stops_pending_delivery_after_schedule_pause() {
 }
 
 #[tokio::test]
-async fn browser_reminder_stops_pending_missed_delivery_after_grant_withdrawal() {
+async fn browser_reminder_stops_pending_missed_delivery_after_opt_in_withdrawal() {
+    pending_missed_delivery_loses_eligibility("UPDATE household_notification_subscriptions SET enabled=false WHERE account_id=71001 AND household_id=72001 AND person_id=73002").await;
+}
+
+#[tokio::test]
+async fn browser_reminder_stops_pending_missed_delivery_after_subject_departure() {
+    pending_missed_delivery_loses_eligibility("UPDATE household_memberships SET status='revoked',revoked_at=now() WHERE household_id=72001 AND person_id=73002").await;
+}
+
+async fn pending_missed_delivery_loses_eligibility(mutation: &str) {
     let app = Application::new().await;
     let now = Utc::now()
         .with_second(0)
@@ -627,7 +806,7 @@ async fn browser_reminder_stops_pending_missed_delivery_after_grant_withdrawal()
         .with_nanosecond(0)
         .unwrap();
     let scheduled = now - chrono::Duration::minutes(30);
-    app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences=jsonb_build_object('time_zone','UTC') WHERE id=71001; INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,missed_dose_notifications_enabled,created_at,updated_at) VALUES(78091,72001,74001,73002,'manage','parent',true,now(),now()); INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,created_at,updated_at) VALUES(72001,73001,true,false,true,false,true,now(),now()); INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/grant-withdrawal','synthetic','synthetic',now(),now())").await.unwrap();
+    app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences=jsonb_build_object('time_zone','UTC') WHERE id=71001; INSERT INTO household_notification_subscriptions(account_id,household_id,person_id,enabled) VALUES(71001,72001,73002,true); INSERT INTO notification_preferences(household_id,account_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,created_at,updated_at) VALUES(72001,71001,true,false,true,false,true,now(),now()); INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/grant-withdrawal','synthetic','synthetic',now(),now())").await.unwrap();
     app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
         "INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83092,72001,73002,80001,true,$1,$2,2,'tablet',0,jsonb_build_object('times',jsonb_build_array($3::text)),now()-interval '2 days',now())",
         [(now.date_naive()-chrono::Duration::days(1)).into(),(now.date_naive()+chrono::Duration::days(1)).into(),scheduled.format("%H:%M").to_string().into()]
@@ -653,7 +832,7 @@ async fn browser_reminder_stops_pending_missed_delivery_after_grant_withdrawal()
     );
     app.fixture
         .admin
-        .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78091")
+        .execute_unprepared(mutation)
         .await
         .unwrap();
     assert_pending_reminder_invalid_after_change(&app, &scope, &transport).await;
@@ -664,7 +843,7 @@ async fn prepare_pending_low_stock(
     app: &Application,
     crossed_at: chrono::DateTime<Utc>,
 ) -> HouseholdScope {
-    app.fixture.admin.execute_unprepared("UPDATE medications SET current_supply=9,reorder_threshold=10 WHERE id=80001; INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,created_at,updated_at) VALUES(72001,73001,true,false,false,true,true,now(),now()); INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/stock-catchup','synthetic','synthetic',now(),now())").await.unwrap();
+    app.fixture.admin.execute_unprepared("UPDATE medications SET current_supply=9,reorder_threshold=10 WHERE id=80001; INSERT INTO notification_preferences(household_id,account_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,created_at,updated_at) VALUES(72001,71001,true,false,false,true,true,now(),now()); INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/stock-catchup','synthetic','synthetic',now(),now())").await.unwrap();
     app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
         "INSERT INTO notification_events(household_id,person_id,event_type,event_key,metadata,created_at,updated_at) VALUES(72001,73001,'browser_low_stock_pending','low-stock:80001:99091:73001',jsonb_build_object('account_id',71001,'medication_id',80001,'take_id',99091),$1,now())",
         [crossed_at.naive_utc().into()]
@@ -764,7 +943,7 @@ async fn browser_reminder_catches_up_a_missed_due_tick_once() {
     let intended = now - chrono::Duration::minutes(20);
     app.fixture.admin.execute_raw(Statement::from_sql_and_values(
         DbBackend::Postgres,
-        "UPDATE notification_preferences SET morning_time=$1 WHERE household_id=72001 AND person_id=73001",
+        "UPDATE notification_preferences SET morning_time=$1 WHERE household_id=72001 AND account_id=71001",
         [intended.time().into()],
     )).await.unwrap();
     let transport = Arc::new(Reminders(Mutex::new(vec![])));
@@ -808,7 +987,7 @@ async fn browser_missed_reminder_catches_up_after_grace_and_stops_at_expiry() {
         .with_nanosecond(0)
         .unwrap();
     let scheduled = now - chrono::Duration::minutes(45);
-    app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences=jsonb_build_object('time_zone','UTC') WHERE id=71001; INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,created_at,updated_at) VALUES(72001,73001,true,false,true,false,true,now(),now()); INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/missed-catchup','synthetic','synthetic',now(),now())").await.unwrap();
+    app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences=jsonb_build_object('time_zone','UTC') WHERE id=71001; INSERT INTO notification_preferences(household_id,account_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,created_at,updated_at) VALUES(72001,71001,true,false,true,false,true,now(),now()); INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/missed-catchup','synthetic','synthetic',now(),now())").await.unwrap();
     app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
         "INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83009,72001,73001,80001,true,$1,$2,2,'tablet',0,jsonb_build_object('times',jsonb_build_array($3::text)),now()-interval '2 days',now())",
         [(now.date_naive()-chrono::Duration::days(1)).into(),(now.date_naive()+chrono::Duration::days(1)).into(),scheduled.format("%H:%M").to_string().into()]
@@ -881,7 +1060,7 @@ async fn browser_reminder_does_not_reserve_at_exact_expiry() {
     let (now, scope) = prepare_due_delivery(&app, "synthetic-exact-expiry").await;
     let expired = now - chrono::Duration::hours(1);
     app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "UPDATE notification_preferences SET morning_time=$1 WHERE household_id=72001 AND person_id=73001",
+        "UPDATE notification_preferences SET morning_time=$1 WHERE household_id=72001 AND account_id=71001",
         [expired.time().into()]
     )).await.unwrap();
     let transport = Arc::new(Reminders(Mutex::new(vec![])));
@@ -1121,7 +1300,7 @@ async fn browser_reminder_deadline_and_revoked_preference_stop_retries() {
     app.fixture
         .admin
         .execute_unprepared(
-            "UPDATE notification_preferences SET enabled=false WHERE person_id=73001",
+            "UPDATE notification_preferences SET enabled=false WHERE account_id=71001",
         )
         .await
         .unwrap();
@@ -1246,10 +1425,10 @@ async fn browser_reminder_stale_accepted_result_cannot_overwrite_uncertain_recov
     });
     let ctx = app.context.clone();
     let sending_scope = scope.clone();
-    let sender = tokio::spawn(async move {
+    let mut sender = tokio::spawn(async move {
         browser_push::reminders::deliver_account(&ctx, &sending_scope, now).await
     });
-    transport.started.notified().await;
+    await_provider_start(&transport.started, &mut sender).await;
     app.fixture.admin.execute_unprepared("UPDATE notification_deliveries SET claimed_at=now()-interval '121 seconds' WHERE status='sending'").await.unwrap();
     assert_eq!(
         browser_push::reminders::drain_pending(&app.context, &scope, Utc::now())
@@ -1293,7 +1472,7 @@ async fn browser_reminder_keeps_independent_device_outcomes() {
         - chrono::Duration::minutes(1);
     app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences=jsonb_build_object('time_zone','UTC') WHERE id=71001; UPDATE person_medications SET administration_kind=0,dose_cycle=0,max_daily_doses=1,created_at=now()-interval '2 days' WHERE id=81001; INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/accepted','synthetic','synthetic',now(),now()),(71001,'https://fcm.googleapis.com/fcm/send/failed','synthetic','synthetic',now(),now())").await.unwrap();
     app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,morning_time,afternoon_time,evening_time,night_time,created_at,updated_at) VALUES(72001,73001,true,true,false,false,true,$1,NULL,NULL,NULL,now(),now())", [now.time().into()])).await.unwrap();
+        "INSERT INTO notification_preferences(household_id,account_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,morning_time,afternoon_time,evening_time,night_time,created_at,updated_at) VALUES(72001,71001,true,true,false,false,true,$1,NULL,NULL,NULL,now(),now())", [now.time().into()])).await.unwrap();
     let transport = Arc::new(PartialDelivery(Mutex::new(vec![])));
     app.context.shared_store.insert(Service {
         public_key: String::new(),
@@ -1355,7 +1534,7 @@ async fn browser_reminder_recovers_stale_claim_as_uncertain_without_resending() 
         .unwrap();
     app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences=jsonb_build_object('time_zone','UTC') WHERE id=71001; UPDATE person_medications SET administration_kind=0,dose_cycle=0,max_daily_doses=1,created_at=now()-interval '2 days' WHERE id=81001; INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/failed','synthetic','synthetic',now(),now())").await.unwrap();
     app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,morning_time,afternoon_time,evening_time,night_time,created_at,updated_at) VALUES(72001,73001,true,true,false,false,true,$1,NULL,NULL,NULL,now(),now())", [now.time().into()])).await.unwrap();
+        "INSERT INTO notification_preferences(household_id,account_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,morning_time,afternoon_time,evening_time,night_time,created_at,updated_at) VALUES(72001,71001,true,true,false,false,true,$1,NULL,NULL,NULL,now(),now())", [now.time().into()])).await.unwrap();
     let transport = Arc::new(PartialDelivery(Mutex::new(vec![])));
     app.context.shared_store.insert(Service {
         public_key: String::new(),
@@ -1429,7 +1608,7 @@ async fn browser_reminder_retries_a_pending_reservation_once_after_database_fail
         .unwrap();
     app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences=jsonb_build_object('time_zone','UTC') WHERE id=71001; UPDATE person_medications SET administration_kind=0,dose_cycle=0,max_daily_doses=1,created_at=now()-interval '2 days' WHERE id=81001; INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/retry','synthetic','synthetic',now(),now())").await.unwrap();
     app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,morning_time,afternoon_time,evening_time,night_time,created_at,updated_at) VALUES(72001,73001,true,true,false,false,true,$1,NULL,NULL,NULL,now(),now())", [now.time().into()])).await.unwrap();
+        "INSERT INTO notification_preferences(household_id,account_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,morning_time,afternoon_time,evening_time,night_time,created_at,updated_at) VALUES(72001,71001,true,true,false,false,true,$1,NULL,NULL,NULL,now(),now())", [now.time().into()])).await.unwrap();
     app.fixture.admin.execute_unprepared("CREATE FUNCTION fail_reminder_delivery_read() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS $$ BEGIN REVOKE SELECT ON public.push_subscriptions FROM med_tracker_app; RETURN NEW; END $$; CREATE TRIGGER fail_reminder_delivery_read AFTER INSERT ON security_audit_events FOR EACH ROW WHEN (NEW.event_type='browser_push.reminder.requested') EXECUTE FUNCTION fail_reminder_delivery_read()").await.unwrap();
     let transport = Arc::new(Reminders(Mutex::new(vec![])));
     app.context.shared_store.insert(Service {
@@ -1498,7 +1677,7 @@ async fn browser_reminder_retries_a_pending_reservation_once_after_database_fail
 #[tokio::test]
 async fn browser_low_stock_reminder_follows_committed_threshold_crossing_once() {
     let app = Application::new().await;
-    app.fixture.admin.execute_unprepared("UPDATE medications SET current_supply=11,reorder_threshold=10 WHERE id=80001; INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,created_at,updated_at) VALUES(72001,73001,true,false,false,true,false,now(),now()); INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/stock-reminder','synthetic','synthetic',now(),now())").await.unwrap();
+    app.fixture.admin.execute_unprepared("UPDATE medications SET current_supply=11,reorder_threshold=10 WHERE id=80001; INSERT INTO notification_preferences(household_id,account_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,created_at,updated_at) VALUES(72001,71001,true,false,false,true,false,now(),now()); INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/stock-reminder','synthetic','synthetic',now(),now())").await.unwrap();
     let transport = Arc::new(Reminders(Mutex::new(vec![])));
     app.context.shared_store.insert(Service {
         public_key: String::new(),
@@ -1517,7 +1696,7 @@ async fn browser_low_stock_reminder_follows_committed_threshold_crossing_once() 
     );
     let token = app.token().await;
     let endpoint = format!("{}/api/v1/households/72001/medication_takes", app.origin);
-    app.fixture.admin.execute_unprepared("CREATE FUNCTION reject_stock_take_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.item_type='MedicationTake' THEN RAISE EXCEPTION 'synthetic take audit failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_stock_take_audit BEFORE INSERT ON versions FOR EACH ROW EXECUTE FUNCTION reject_stock_take_audit()").await.unwrap();
+    app.fixture.admin.execute_unprepared("CREATE SEQUENCE stock_take_audit_reached; GRANT USAGE ON SEQUENCE stock_take_audit_reached TO med_tracker_app,med_tracker_owner; CREATE FUNCTION reject_stock_take_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.item_type='MedicationTake' THEN PERFORM nextval('public.stock_take_audit_reached'); RAISE EXCEPTION 'synthetic take audit failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_stock_take_audit BEFORE INSERT ON versions FOR EACH ROW EXECUTE FUNCTION reject_stock_take_audit()").await.unwrap();
     let rejected = app
         .client
         .post(&endpoint)
@@ -1527,6 +1706,17 @@ async fn browser_low_stock_reminder_follows_committed_threshold_crossing_once() 
         .await
         .unwrap();
     assert_eq!(rejected.status().as_u16(), 500);
+    let rollback=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT is_called FROM stock_take_audit_reached) AS reached,(SELECT count(*) FROM notification_events WHERE event_type='browser_low_stock_pending') AS events,(SELECT count(*) FROM medication_takes WHERE household_id=72001) AS takes,(SELECT count(*) FROM security_audit_events WHERE event_type='browser_push.low_stock.queued') AS audits,(SELECT current_supply::integer FROM medications WHERE id=80001) AS stock")).await.unwrap().unwrap();
+    assert!(rollback.try_get::<bool>("", "reached").unwrap());
+    for field in ["events", "takes", "audits"] {
+        assert_eq!(
+            rollback.try_get::<i64>("", field).unwrap(),
+            0,
+            "rollback {field}"
+        );
+    }
+    assert_eq!(rollback.try_get::<i32>("", "stock").unwrap(), 11);
+
     assert_eq!(
         browser_push::reminders::deliver_account(&app.context, &scope, Utc::now())
             .await
@@ -1546,7 +1736,7 @@ async fn browser_low_stock_reminder_follows_committed_threshold_crossing_once() 
     app.fixture
         .admin
         .execute_unprepared(
-            "UPDATE notification_preferences SET low_stock_enabled=false WHERE person_id=73001",
+            "UPDATE notification_preferences SET low_stock_enabled=false WHERE account_id=71001",
         )
         .await
         .unwrap();
@@ -1559,7 +1749,7 @@ async fn browser_low_stock_reminder_follows_committed_threshold_crossing_once() 
     app.fixture
         .admin
         .execute_unprepared(
-            "UPDATE notification_preferences SET low_stock_enabled=true WHERE person_id=73001",
+            "UPDATE notification_preferences SET low_stock_enabled=true WHERE account_id=71001",
         )
         .await
         .unwrap();
@@ -1633,7 +1823,7 @@ async fn reminders_use_saved_zone(saved_zone: &str, zone: chrono_tz::Tz) {
         .await
         .unwrap();
     app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,morning_time,afternoon_time,evening_time,night_time,created_at,updated_at) VALUES(72001,73001,true,true,false,false,true,$1,NULL,NULL,NULL,now(),now())", [now.with_timezone(&zone).time().into()]
+        "INSERT INTO notification_preferences(household_id,account_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,morning_time,afternoon_time,evening_time,night_time,created_at,updated_at) VALUES(72001,71001,true,true,false,false,true,$1,NULL,NULL,NULL,now(),now())", [now.with_timezone(&zone).time().into()]
     )).await.unwrap();
     app.fixture.admin.execute_unprepared("UPDATE person_medications SET administration_kind=0,dose_cycle=0,max_daily_doses=1,created_at=now()-interval '2 days' WHERE id=81001; INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/reminder','synthetic','synthetic',now(),now())").await.unwrap();
     let transport = Arc::new(Reminders(Mutex::new(vec![])));
@@ -1672,7 +1862,7 @@ async fn reminders_use_saved_zone(saved_zone: &str, zone: chrono_tz::Tz) {
     app.fixture
         .admin
         .execute_unprepared(
-            "UPDATE notification_preferences SET enabled=false WHERE person_id=73001",
+            "UPDATE notification_preferences SET enabled=false WHERE account_id=71001",
         )
         .await
         .unwrap();
@@ -1701,7 +1891,7 @@ async fn browser_missed_reminders_respect_grace_managed_opt_in_and_private_conte
     let scheduled = (now - chrono::Duration::minutes(30))
         .format("%H:%M")
         .to_string();
-    app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences=jsonb_build_object('time_zone','UTC') WHERE id=71001; INSERT INTO people(id,household_id,name,person_type,has_capacity,created_at,updated_at) VALUES(73004,72001,'Managed adult',0,true,now(),now()),(73005,72001,'View-only adult',0,true,now(),now()); INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,missed_dose_notifications_enabled,created_at,updated_at) VALUES(78002,72001,74001,73002,'manage','parent',false,now(),now()),(78004,72001,74001,73004,'manage','carer',false,now(),now()),(78005,72001,74001,73005,'view','carer',true,now(),now()); INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,created_at,updated_at) VALUES(72001,73001,true,false,true,false,false,now(),now()); INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/managed-reminder','synthetic','synthetic',now(),now())").await.unwrap();
+    app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences=jsonb_build_object('time_zone','UTC') WHERE id=71001; INSERT INTO people(id,clinical_name,person_type,has_capacity,created_at,updated_at) VALUES(73004,'Managed adult',0,true,now(),now()),(73005,'Other adult',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74004,72001,73004,'member','active',now(),now(),now()),(74005,72001,73005,'member','active',now(),now(),now()); INSERT INTO household_notification_subscriptions(account_id,household_id,person_id,enabled) VALUES(71001,72001,73002,true),(71001,72001,73004,false),(71001,72001,73005,false); INSERT INTO notification_preferences(household_id,account_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,created_at,updated_at) VALUES(72001,71001,true,false,true,false,false,now(),now()); INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/managed-reminder','synthetic','synthetic',now(),now())").await.unwrap();
     app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
         "INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) SELECT 83000+id-73000,72001,id,80001,true,$1,$2,2,'tablet',0,jsonb_build_object('times',jsonb_build_array($3::text)),now(),now() FROM people WHERE id IN(73002,73004,73005)", [(now.date_naive()-chrono::Duration::days(1)).into(),(now.date_naive()+chrono::Duration::days(2)).into(),scheduled.into()]
     )).await.unwrap();
@@ -1738,7 +1928,7 @@ async fn browser_missed_reminders_respect_grace_managed_opt_in_and_private_conte
     app.fixture
         .admin
         .execute_unprepared(
-            "UPDATE person_access_grants SET missed_dose_notifications_enabled=true WHERE id=78004",
+            "UPDATE household_notification_subscriptions SET enabled=true WHERE account_id=71001 AND household_id=72001 AND person_id=73004",
         )
         .await
         .unwrap();
@@ -1755,7 +1945,7 @@ async fn browser_missed_reminders_respect_grace_managed_opt_in_and_private_conte
     app.fixture
         .admin
         .execute_unprepared(
-            "UPDATE person_access_grants SET revoked_at=now() WHERE id IN(78002,78004)",
+            "UPDATE household_memberships SET revoked_at=now() WHERE household_id=72001 AND person_id IN(73002,73004)",
         )
         .await
         .unwrap();

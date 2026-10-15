@@ -1,14 +1,99 @@
 use super::*;
 use loco_rs::model::TenantQueryExt;
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DoseSource {
+    Schedule(ScheduleId),
+    Assignment(AssignmentId),
+}
+
+impl DoseSource {
+    pub(super) fn schedule_id(self) -> Option<i64> {
+        match self {
+            Self::Schedule(id) => Some(id.get()),
+            Self::Assignment(_) => None,
+        }
+    }
+    pub(super) fn assignment_id(self) -> Option<i64> {
+        match self {
+            Self::Assignment(id) => Some(id.get()),
+            Self::Schedule(_) => None,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub(super) enum Reference<I> {
+    Id(I),
+    Portable(PortableSourceId),
+}
+
+#[derive(Clone, Debug)]
+pub(super) struct PortableSourceId(String);
+
+impl PortableSourceId {
+    fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+#[derive(Clone, Debug)]
+pub(super) enum SourceReference {
+    Schedule(Reference<ScheduleId>),
+    Assignment(Reference<AssignmentId>),
+}
+
+impl SourceReference {
+    pub(super) fn parse(kind: &str, id: &str) -> Result<Self, ApiError> {
+        if !valid_identifier(id) || kind.trim().is_empty() {
+            return Err(error(ErrorKind::Validation, "invalid medication source"));
+        }
+        let numeric = if id.bytes().all(|byte| byte.is_ascii_digit()) {
+            Some(
+                id.parse::<i64>()
+                    .map_err(|_| error(ErrorKind::Validation, "invalid medication source"))?,
+            )
+        } else {
+            None
+        };
+        match kind {
+            "schedule" => Ok(Self::Schedule(numeric.map_or_else(
+                || Reference::Portable(PortableSourceId(id.to_owned())),
+                |id| Reference::Id(ScheduleId::from_database(id)),
+            ))),
+            "person_medication" => Ok(Self::Assignment(numeric.map_or_else(
+                || Reference::Portable(PortableSourceId(id.to_owned())),
+                |id| Reference::Id(AssignmentId::from_database(id)),
+            ))),
+            _ => Err(OperationError::NotFound),
+        }
+    }
+
+    pub(super) fn matches(&self, source: DoseSource, portable_id: &str) -> bool {
+        match (self, source) {
+            (Self::Schedule(Reference::Id(request)), DoseSource::Schedule(stored)) => {
+                *request == stored
+            }
+            (Self::Assignment(Reference::Id(request)), DoseSource::Assignment(stored)) => {
+                *request == stored
+            }
+            (Self::Schedule(Reference::Portable(request)), DoseSource::Schedule(_))
+            | (Self::Assignment(Reference::Portable(request)), DoseSource::Assignment(_)) => {
+                request.as_str() == portable_id
+            }
+            _ => false,
+        }
+    }
+}
+
 #[derive(Clone)]
 pub(super) struct Source {
-    pub(super) kind: &'static str,
-    pub(super) id: i64,
+    pub(super) identity: DoseSource,
     pub(super) active: bool,
     pub(super) retired: bool,
-    pub(super) person_id: i64,
-    pub(super) medication_id: i64,
+    pub(super) invalid_configured_amount: bool,
+    pub(super) person_id: PersonId,
+    pub(super) medication_id: MedicationId,
     pub(super) dose_amount: Option<Decimal>,
     pub(super) dose_unit: Option<String>,
     pub(super) max_daily_doses: Option<i32>,
@@ -21,14 +106,36 @@ pub(super) struct Source {
     pub(super) end_date: Option<NaiveDate>,
 }
 
+pub(super) struct DosePrescription {
+    pub(super) identity: DoseSource,
+    pub(super) person_id: PersonId,
+    pub(super) medication_id: MedicationId,
+    pub(super) dose_amount: Option<Decimal>,
+    pub(super) dose_unit: Option<String>,
+    pub(super) source_dosage_option_id: Option<i64>,
+}
+
+impl Source {
+    pub(super) fn into_prescription(self) -> DosePrescription {
+        DosePrescription {
+            identity: self.identity,
+            person_id: self.person_id,
+            medication_id: self.medication_id,
+            dose_amount: self.dose_amount,
+            dose_unit: self.dose_unit,
+            source_dosage_option_id: self.source_dosage_option_id,
+        }
+    }
+}
+
 pub(super) fn source_from_assignment(value: person_medication::Model) -> Source {
     Source {
-        kind: "person_medication",
-        id: value.id,
+        identity: DoseSource::Assignment(AssignmentId::from_database(value.id)),
         active: value.active,
         retired: value.retired_at.is_some(),
-        person_id: value.person_id,
-        medication_id: value.medication_id,
+        invalid_configured_amount: false,
+        person_id: PersonId::from_database(value.person_id),
+        medication_id: MedicationId::from_database(value.medication_id),
         dose_amount: value.dose_amount,
         dose_unit: value.dose_unit,
         max_daily_doses: value.max_daily_doses,
@@ -44,12 +151,12 @@ pub(super) fn source_from_assignment(value: person_medication::Model) -> Source 
 
 pub(super) fn source_from_schedule(value: schedule::Model) -> Source {
     Source {
-        kind: "schedule",
-        id: value.id,
+        identity: DoseSource::Schedule(ScheduleId::from_database(value.id)),
         active: value.active,
         retired: value.retired_at.is_some(),
-        person_id: value.person_id,
-        medication_id: value.medication_id,
+        invalid_configured_amount: false,
+        person_id: PersonId::from_database(value.person_id),
+        medication_id: MedicationId::from_database(value.medication_id),
         dose_amount: value.dose_amount,
         dose_unit: value.dose_unit,
         max_daily_doses: value.max_daily_doses,
@@ -80,14 +187,20 @@ pub(crate) fn config_value<'a>(config: &'a Value, names: &[&str]) -> Option<&'a 
 }
 
 pub(crate) fn config_decimal(config: &Value, names: &[&str]) -> Option<Decimal> {
-    config_value(config, names)
-        .and_then(|value| {
-            value
-                .as_str()
-                .map(str::to_owned)
-                .or_else(|| value.as_f64().map(|value| value.to_string()))
-        })
-        .and_then(|value| Decimal::from_str(&value).ok())
+    match config_value(config, names)? {
+        Value::String(text) => Decimal::from_str_exact(text).ok(),
+        Value::Number(number) => {
+            let text = number.to_string();
+            let mantissa = text.split(['e', 'E']).next()?;
+            Decimal::from_str_exact(mantissa).ok()?;
+            if text.contains(['e', 'E']) {
+                Decimal::from_scientific(&text).ok()
+            } else {
+                Decimal::from_str_exact(&text).ok()
+            }
+        }
+        _ => None,
+    }
 }
 
 pub(super) fn effective_source(source: &mut Source, date: NaiveDate) {
@@ -117,8 +230,12 @@ pub(super) fn effective_source(source: &mut Source, date: NaiveDate) {
     } else {
         config
     };
-    source.dose_amount =
-        config_decimal(effective, &["amount", "dose_amount"]).or(source.dose_amount);
+    if config_value(effective, &["amount", "dose_amount"]).is_some() {
+        let amount = config_decimal(effective, &["amount", "dose_amount"]);
+        source.invalid_configured_amount =
+            amount.is_none_or(|amount| !input::valid_numeric_10_2(amount));
+        source.dose_amount = amount;
+    }
     source.dose_unit = config_value(effective, &["unit", "dose_unit"])
         .and_then(Value::as_str)
         .map(str::to_owned)
@@ -150,43 +267,45 @@ pub(super) fn effective_source(source: &mut Source, date: NaiveDate) {
 pub(super) async fn source(
     db: &DatabaseTransaction,
     context: &DoseContext<'_>,
-    household_id: i64,
-    kind: &str,
-    id: &str,
+    household_id: HouseholdId,
+    reference: &SourceReference,
 ) -> Result<Source, ApiError> {
-    match kind {
-        "person_medication" => {
-            let mut query = person_medication::Entity::find().in_tenant(household_id);
-            query = match id.parse::<i64>() {
-                Ok(id) => query.filter(person_medication::Column::Id.eq(id)),
-                Err(_) => query.filter(person_medication::Column::PortableId.eq(id)),
+    match reference {
+        SourceReference::Assignment(reference) => {
+            let mut query = person_medication::Entity::find().in_tenant(household_id.get());
+            query = match reference {
+                Reference::Id(id) => query.filter(person_medication::Column::Id.eq(id.get())),
+                Reference::Portable(id) => {
+                    query.filter(person_medication::Column::PortableId.eq(id.as_str()))
+                }
             };
             let value = query
                 .one(db)
                 .await
                 .map_err(database_error)?
                 .ok_or(OperationError::NotFound)?;
-            if !allowed_person(db, context, value.person_id, false).await? {
+            if !allowed_person(db, context, PersonId::from_database(value.person_id)).await? {
                 return Err(OperationError::NotFound);
             }
             Ok(source_from_assignment(value))
         }
-        "schedule" => {
-            let mut query = schedule::Entity::find().in_tenant(household_id);
-            query = match id.parse::<i64>() {
-                Ok(id) => query.filter(schedule::Column::Id.eq(id)),
-                Err(_) => query.filter(schedule::Column::PortableId.eq(id)),
+        SourceReference::Schedule(reference) => {
+            let mut query = schedule::Entity::find().in_tenant(household_id.get());
+            query = match reference {
+                Reference::Id(id) => query.filter(schedule::Column::Id.eq(id.get())),
+                Reference::Portable(id) => {
+                    query.filter(schedule::Column::PortableId.eq(id.as_str()))
+                }
             };
             let value = query
                 .one(db)
                 .await
                 .map_err(database_error)?
                 .ok_or(OperationError::NotFound)?;
-            if !allowed_person(db, context, value.person_id, false).await? {
+            if !allowed_person(db, context, PersonId::from_database(value.person_id)).await? {
                 return Err(OperationError::NotFound);
             }
             Ok(source_from_schedule(value))
         }
-        _ => Err(OperationError::NotFound),
     }
 }

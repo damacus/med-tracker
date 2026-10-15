@@ -957,8 +957,7 @@ cy:
       view: Gweld
       delete_dialog:
         title: Dileu Lleoliad
-        confirm: Ydych chi'n siŵr eich bod am ddileu %{name}? Bydd hyn hefyd yn dileu
-          pob meddyginiaeth yn y lleoliad hwn.
+        confirm: "Tynnu’r label storio %{name}? Bydd meddyginiaethau, stoc a hanes a gofnodwyd yn cael eu cadw."
         cancel: Canslo
         submit: Dileu
     show:
@@ -1874,6 +1873,19 @@ cy:
     paused: 'Methu cymryd meddyginiaeth: wedi''i hoedi'
     overlapping_prescription_restriction: 'Methu cymryd meddyginiaeth: mae presgripsiwn gweithredol arall ar gyfer y feddyginiaeth hon yn gosod terfyn amser llymach.'
   profiles:
+    medication_history:
+      title: "Hanes meddyginiaeth"
+      description: "Eich dosau a gofnodwyd, gan gynnwys cofnodion o aelwydydd rydych wedi'u gadael."
+      download: "Lawrlwytho hanes"
+      subset: "Mae'r lawrlwythiad yn cynnwys dosau a gofnodwyd yn unig. Nid yw'n gofnod personol llawn nac yn becyn mudo."
+      back: "Yn ôl i’r proffil"
+      empty: "Nid oes dosau o feddyginiaeth wedi’u cofnodi."
+      next: "Tudalen nesaf"
+      origin: "Aelwyd wreiddiol"
+      stock: "Stoc a gofnodwyd"
+      actor: "Cofnodwyd gan"
+      unknown: "Heb ei gofnodi"
+      imported: "Cofnod wedi’i fewnforio"
     security_flow:
       change_password: "Newid cyfrinair"
       new_password: "Cyfrinair newydd"
@@ -2185,10 +2197,8 @@ cy:
       reminder_times_description: Gosod pryd rydych am dderbyn atgoffa bob dydd
       categories_description: Dewiswch pa fathau o hysbysiadau i'w derbyn
       managed_people:
-        title: Pobl rydych chi'n eu rheoli
-        description: Mae rhybuddion dos a fethwyd ar gyfer plant ac oedolion dibynnol
-          yn cael eu cynnwys yn awtomatig. Dewiswch unrhyw oedolion rydych hefyd am eu dilyn.
-        automatic: Wedi'i gynnwys yn awtomatig
+        title: Pobl y cartref
+        description: Dewiswch am bwy rydych am gael rhybuddion dosau a fethwyd. Mae rhybuddion wedi'u diffodd nes i chi ddewis rhywun.
         notify_me: Rhoi gwybod i mi
         toggle_label: Rhoi gwybod i mi pan fydd %{name} yn methu dos
       periods:

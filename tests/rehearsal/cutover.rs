@@ -3,7 +3,7 @@
 mod template;
 use med_tracker::models::{
     access::{self, Actor, HouseholdScope},
-    care::doses::{self, Command, Outcome, Take},
+    care::doses::{self, Outcome, Request as Command, TakeRequest as Take},
     errors::OperationError,
 };
 use sea_orm::{ConnectionTrait, Database, DbBackend, Statement};
@@ -29,9 +29,8 @@ async fn take(
         request_id: "cutover-dose".into(),
     };
     let tenant = access::begin(runtime, &scope, None).await?;
-    let result = doses::execute(
-        &tenant,
-        Command::Take(Take {
+    let request = doses::prepare_request(
+        Take {
             client_uuid: Some("d87cc65d-b3c3-49d4-9236-87da302d3465".into()),
             source_type: "person_medication".into(),
             source_id: "81001".into(),
@@ -41,9 +40,13 @@ async fn take(
             taken_from_medication_id: Some(80001),
             expected_effective_amount: None,
             expected_effective_unit: None,
-        }),
-    )
-    .await;
+        },
+        chrono_tz::UTC,
+    );
+    let result = match request {
+        Ok(request) => doses::execute(&tenant, Command::Take(request)).await,
+        Err(error) => Err(error),
+    };
     match result {
         Ok(outcome) => {
             tenant.commit().await?;

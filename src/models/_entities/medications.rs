@@ -29,7 +29,7 @@ pub struct Model {
     pub friendly_name: Option<String>,
     #[sea_orm(unique_key = "index_medications_on_id_and_household_id")]
     pub household_id: i64,
-    pub location_id: i64,
+    pub location_id: Option<i64>,
     pub name: Option<String>,
     pub expected_arrival_on: Option<Date>,
     pub ordered_at: Option<DateTime>,

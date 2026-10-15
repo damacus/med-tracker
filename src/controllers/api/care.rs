@@ -53,8 +53,7 @@ use chrono::Utc;
 use loco_rs::controller::middleware::request_id::LocoRequestId;
 use loco_rs::prelude::*;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter, Set,
-    TransactionTrait,
+    ActiveModelTrait, ColumnTrait, DatabaseTransaction, QueryFilter, Set, TransactionTrait,
 };
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -340,14 +339,6 @@ pub fn routes() -> Routes {
                 .delete(administration::memberships_destroy),
         )
         .add(
-            "/{household_id}/admin/person_access_grants",
-            get(administration::grants_index).post(administration::grants_create),
-        )
-        .add(
-            "/{household_id}/admin/person_access_grants/{id}",
-            delete(administration::grants_destroy),
-        )
-        .add(
             "/{household_id}/people",
             get(people::index).post(people::create),
         )
@@ -365,14 +356,6 @@ pub fn routes() -> Routes {
                 .patch(locations::update)
                 .put(locations::update)
                 .delete(locations::destroy),
-        )
-        .add(
-            "/{household_id}/locations/{location_id}/location_memberships",
-            post(locations::create_membership),
-        )
-        .add(
-            "/{household_id}/locations/{location_id}/location_memberships/{id}",
-            delete(locations::destroy_membership),
         )
         .add(
             "/{household_id}/medications",
@@ -464,7 +447,7 @@ async fn take(
         Err(error) => return response::error(error, &request_id),
     };
     let input = match body {
-        Ok(AxumJson(body)) => input::take(body),
+        Ok(AxumJson(body)) => input::take(body, principal.time_zone()),
         Err(_) => Err(response::Failure::bad_request("Invalid JSON request body")),
     };
     let savepoint = match tenant.transaction().begin().await {
@@ -472,10 +455,9 @@ async fn take(
         Err(_) => return response::error(response::unavailable(), &request_id),
     };
     let result = match input {
-        Ok(command) => doses::execute_in_timezone(
+        Ok(command) => doses::execute_with_provenance(
             &tenant,
-            doses::Command::Take(command),
-            principal.time_zone(),
+            doses::Request::Take(command),
             Some(principal.provenance()),
         )
         .await

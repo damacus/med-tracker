@@ -56,12 +56,16 @@ async fn plans(
     tenant: &TenantTransaction,
     now: DateTime<Utc>,
 ) -> Result<Vec<Intent>, OperationError> {
-    let (preference, person) =
-        match notification_preferences::read(tenant, tenant.scope().actor.account_id).await {
-            Ok(value) => value,
-            Err(OperationError::NotFound) => return Ok(vec![]),
-            Err(error) => return Err(error),
-        };
+    let (preference, person) = match notification_preferences::read(
+        tenant,
+        crate::models::ids::AccountId::from_database(tenant.scope().actor.account_id),
+    )
+    .await
+    {
+        Ok(value) => value,
+        Err(OperationError::NotFound) => return Ok(vec![]),
+        Err(error) => return Err(error),
+    };
     if !preference.enabled {
         return Ok(vec![]);
     }
@@ -83,8 +87,8 @@ async fn plans(
     subjects.extend(
         managed
             .iter()
-            .filter(|person| !person.adult || person.enabled)
-            .map(|person| person.id),
+            .filter(|person| person.enabled)
+            .map(|person| person.id.get()),
     );
     let occurrences = dose_occurrences::with_dashboard_timezone(
         zone,
@@ -203,10 +207,9 @@ async fn plans(
             let body = if preference.private_text_enabled || occurrence.person_id == person.id {
                 "A dose may have been missed.".to_owned()
             } else {
-                let Some(subject) = managed
-                    .iter()
-                    .find(|person| person.id == occurrence.person_id)
-                else {
+                let Some(subject) = managed.iter().find(|person| {
+                    person.id == crate::models::ids::PersonId::from_database(occurrence.person_id)
+                }) else {
                     continue;
                 };
                 format!("{} may have missed a dose.", subject.name)

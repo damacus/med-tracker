@@ -146,5 +146,5 @@ impl<'a> Page<'a> {
 }
 
 fn attributes(draft: &[(String, String)]) -> Value {
-    json!({"email":field(draft,"email"),"membership_role":field(draft,"membership_role"),"relationship_type":field(draft,"relationship_type"),"access_level":field(draft,"access_level"),"dependent_ids":draft.iter().filter(|(key,_)|key=="dependent_ids[]").map(|(_,value)|value).collect::<Vec<_>>()})
+    json!({"email":field(draft,"email"),"membership_role":field(draft,"membership_role")})
 }

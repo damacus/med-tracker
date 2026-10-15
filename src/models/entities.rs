@@ -20,7 +20,6 @@ pub use super::_entities::household_invitation_grants as household_invitation_gr
 pub use super::_entities::household_invitations as household_invitation;
 pub use super::_entities::household_memberships as membership;
 pub use super::_entities::households as household;
-pub use super::_entities::location_memberships as location_membership;
 pub use super::_entities::locations as location;
 pub use super::_entities::medication_dose_occurrences as dose_occurrence;
 pub use super::_entities::medication_pause_periods as pause_period;
@@ -40,13 +39,11 @@ pub use super::_entities::notification_preferences as notification_preference;
 pub use super::_entities::oauth_applications as oauth_application;
 pub use super::_entities::oauth_grants as oauth_grant;
 pub use super::_entities::people as person;
-pub use super::_entities::person_access_grants as grant;
 pub use super::_entities::person_medications as person_medication;
 pub use super::_entities::platform_admins as platform_admin;
 pub use super::_entities::push_subscriptions as push_subscription;
 pub use super::_entities::schedules as schedule;
 pub use super::_entities::security_audit_events as security_audit_event;
-pub use super::_entities::users as user;
 pub use super::_entities::versions as version;
 
 pub mod active_session_key {

@@ -7,8 +7,8 @@
   {% for member in members %}
     <li class="card bg-base-100 border border-base-300"><div class="card-body">
       <h2 class="card-title">{{ member.name }}</h2>
-      <p>{{ member.email }}</p><p>Household role: {{ member.role }}</p>
-      {% if member.user_id %}<a class="link" href="/households/{{ slug }}/admin/users/{{ member.user_id }}/edit">Edit household role for {{ member.name }}</a>{% endif %}
+      <p>Household role: {{ member.role }}</p>
+      <a class="link" href="/households/{{ slug }}/admin/users/{{ member.id }}/edit">Edit household role for {{ member.name }}</a>
     </div></li>
   {% else %}<li>No household users are available.</li>{% endfor %}
   </ul>

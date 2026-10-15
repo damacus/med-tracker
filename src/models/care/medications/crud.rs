@@ -38,6 +38,7 @@ pub(crate) async fn create_with_schedule_config(
     let now = Utc::now().naive_utc();
     let mut active = medication::ActiveModel {
         household_id: Set(tenant.scope().household_id),
+        location_id: Set(None),
         created_by_membership_id: Set(Some(tenant.membership().id)),
         created_at: Set(now),
         updated_at: Set(now),
@@ -150,15 +151,6 @@ pub async fn retire(
     retire_with_event(tenant, id, etag, provenance, "api_destroy").await
 }
 
-pub(crate) async fn retire_cascade(
-    tenant: &TenantTransaction,
-    id: &str,
-    provenance: Option<&CredentialProvenance>,
-    event: &str,
-) -> Result<(), OperationError> {
-    retire_with_event(tenant, id, None, provenance, event).await
-}
-
 async fn retire_with_event(
     tenant: &TenantTransaction,
     id: &str,
@@ -231,7 +223,7 @@ async fn may_create(tenant: &TenantTransaction) -> Result<bool, OperationError> 
     if access::can_manage_household(tenant) {
         return Ok(true);
     }
-    access::has_person_access(tenant, crate::models::access::PersonAccess::Manage).await
+    access::has_participants(tenant).await
 }
 
 pub async fn can_create(tenant: &TenantTransaction) -> Result<bool, OperationError> {

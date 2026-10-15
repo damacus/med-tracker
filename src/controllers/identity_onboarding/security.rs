@@ -82,7 +82,11 @@ pub(super) async fn settings(
     data["platform_admin"] = json!(platform_admin);
     data["support_access"] = json!(support_access);
     data["authenticity_token"] = json!(authenticity_token);
-    match format::render().view(&view, "identity_onboarding/security.html", data) {
+    match format::render().view(
+        &view,
+        "identity_onboarding/security.html",
+        crate::views::template_data(&data),
+    ) {
         Ok(response) => (
             StatusCode::OK,
             token,

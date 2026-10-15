@@ -20,18 +20,8 @@ pub(crate) async fn person_access(
     _: &DatabaseTransaction,
     context: &AuthContext<'_>,
     id: i64,
-    manage: bool,
 ) -> Result<bool, OperationError> {
-    access::can_access_person(
-        context.tenant,
-        id,
-        if manage {
-            PersonAccess::Manage
-        } else {
-            PersonAccess::View
-        },
-    )
-    .await
+    access::participates(context.tenant, id).await
 }
 fn sync_error(status: StatusCode) -> OperationError {
     match status {
@@ -85,9 +75,7 @@ pub(crate) async fn actor_adult(
     db: &DatabaseTransaction,
     context: &AuthContext<'_>,
 ) -> Result<bool, OperationError> {
-    let Some(actor_id) = context.tenant.membership().person_id else {
-        return Ok(false);
-    };
+    let actor_id = context.tenant.membership().person_id;
     let Some(actor) = person::Entity::find_by_id(actor_id)
         .one(db)
         .await
@@ -103,8 +91,7 @@ pub(crate) async fn actor_adult(
         }
         age >= 18
     });
-    Ok(actor.household_id == context.tenant.scope().household_id
-        && (actor.person_type == 0 || adult_by_age))
+    Ok(actor.person_type == 0 || adult_by_age)
 }
 
 pub(crate) async fn visible_prompt(
@@ -315,7 +302,7 @@ async fn apply_sync_operation(
     let record = visible_prompt(db, context, id)
         .await?
         .ok_or_else(|| sync_error(StatusCode::NOT_FOUND))?;
-    if !person_access(db, context, record.person_id, true).await? {
+    if !person_access(db, context, record.person_id).await? {
         return Err(sync_error(StatusCode::FORBIDDEN));
     }
     crate::models::care::review_prompts::reconcile_person(context.tenant, record.person_id).await?;
@@ -400,7 +387,7 @@ async fn authorize_sync_replay(
         .await?
         .ok_or(OperationError::Forbidden)?;
     if saved.get("record_id").and_then(Value::as_str) != Some(record.id.to_string().as_str())
-        || !person_access(db, context, record.person_id, true).await?
+        || !person_access(db, context, record.person_id).await?
     {
         return Err(OperationError::Forbidden);
     }

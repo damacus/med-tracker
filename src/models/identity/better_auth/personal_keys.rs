@@ -56,11 +56,7 @@ fn plugin() -> ApiKeyPlugin {
         .build()
 }
 
-pub(super) async fn validate(
-    store: &ClinicalStore,
-    user: &UserView,
-    input: &Creation,
-) -> AuthResult<()> {
+fn validated_households(input: &Creation) -> AuthResult<Vec<i64>> {
     if input.name.trim().is_empty()
         || input.name.len() > 100
         || !(1..=365).contains(&input.expires_days)
@@ -79,9 +75,69 @@ pub(super) async fn validate(
             "Choose a name, households, explicit permissions and an expiry of 1 to 365 days",
         ));
     }
-    let transaction = store.account_transaction().await?;
     let mut households = input.households.clone();
     households.sort_unstable();
+    Ok(households)
+}
+
+fn household_access_error(error: crate::models::errors::OperationError) -> AuthError {
+    use crate::models::errors::OperationError;
+    match error {
+        OperationError::Unauthenticated => AuthError::Unauthenticated,
+        OperationError::Forbidden | OperationError::NotFound => {
+            AuthError::forbidden("Household access denied")
+        }
+        _ => AuthError::internal("Household access unavailable"),
+    }
+}
+
+pub(super) async fn lock_creation_households(
+    transaction: &sea_orm::DatabaseTransaction,
+    input: &Creation,
+) -> AuthResult<()> {
+    let households = validated_households(input)?;
+    let request = super::request::authenticated()?;
+    context(
+        transaction,
+        "med_tracker.current_account_id",
+        &request.account_id.to_string(),
+    )
+    .await?;
+    for household_id in households {
+        context(
+            transaction,
+            "med_tracker.current_household_id",
+            &household_id.to_string(),
+        )
+        .await?;
+        let scope = HouseholdScope {
+            actor: Actor {
+                account_id: request.account_id,
+            },
+            household_id,
+            request_id: request.request_id.clone(),
+        };
+        access::verify_membership(transaction, &scope)
+            .await
+            .map_err(household_access_error)?;
+        transaction
+            .query_one_raw(statement("SELECT med_tracker.lock_current_household()", []))
+            .await
+            .map_err(database_error)?;
+        access::verify_membership(transaction, &scope)
+            .await
+            .map_err(household_access_error)?;
+    }
+    Ok(())
+}
+
+pub(super) async fn validate(
+    store: &ClinicalStore,
+    user: &UserView,
+    input: &Creation,
+) -> AuthResult<()> {
+    let households = validated_households(input)?;
+    let transaction = store.account_transaction().await?;
     for household in households {
         context(
             &transaction,
@@ -89,20 +145,23 @@ pub(super) async fn validate(
             &household.to_string(),
         )
         .await?;
-        transaction.query_one_raw(statement("SELECT id FROM public.households WHERE id=$1 AND status='active' AND lifecycle_state='active' FOR SHARE", [household.into()])).await.map_err(database_error)?.ok_or(AuthError::InvalidCredentials)?;
-        transaction.query_one_raw(statement("SELECT id FROM public.household_memberships WHERE account_id=$1 AND household_id=$2 AND status='active' AND revoked_at IS NULL FOR SHARE", [clinical_id(&user.id)?.into(), household.into()])).await.map_err(database_error)?.ok_or(AuthError::InvalidCredentials)?;
-        let (membership, _) = access::verify_membership(
-            &transaction,
-            &HouseholdScope {
-                actor: Actor {
-                    account_id: clinical_id(&user.id)?,
-                },
-                household_id: household,
-                request_id: super::request::request_id().unwrap_or_default(),
+        let scope = HouseholdScope {
+            actor: Actor {
+                account_id: clinical_id(&user.id)?,
             },
-        )
-        .await
-        .map_err(|_| AuthError::forbidden("Household access denied"))?;
+            household_id: household,
+            request_id: super::request::request_id().unwrap_or_default(),
+        };
+        access::verify_membership(&transaction, &scope)
+            .await
+            .map_err(|_| AuthError::forbidden("Household access denied"))?;
+        transaction
+            .query_one_raw(statement("SELECT med_tracker.lock_current_household()", []))
+            .await
+            .map_err(database_error)?;
+        let (membership, _) = access::verify_membership(&transaction, &scope)
+            .await
+            .map_err(|_| AuthError::forbidden("Household access denied"))?;
         if input
             .permissions
             .iter()
@@ -311,6 +370,9 @@ impl Principal {
     ) -> Result<(), AuthenticationError> {
         let transaction = tenant.transaction();
         let scope = tenant.scope();
+        access::lock_household(tenant)
+            .await
+            .map_err(super::super::resource::operation_error)?;
         transaction
             .query_one_raw(statement(
                 "SELECT id FROM public.accounts WHERE id=$1 AND status=2 FOR SHARE",
@@ -319,7 +381,6 @@ impl Principal {
             .await
             .map_err(|_| AuthenticationError::Unavailable)?
             .ok_or(AuthenticationError::Unauthenticated)?;
-        transaction.query_one_raw(statement("SELECT id FROM public.household_memberships WHERE account_id=$1 AND household_id=$2 AND status='active' AND revoked_at IS NULL FOR SHARE", [self.account_id.into(), scope.household_id.into()])).await.map_err(|_| AuthenticationError::Unavailable)?.ok_or(AuthenticationError::Forbidden)?;
         let row = transaction.query_one_raw(statement("SELECT payload FROM public.identity_api_keys WHERE id=$1 AND account_id=$2 AND expires_at>clock_timestamp() AND payload->>'configId'=$3 AND payload->>'enabled'='true' FOR SHARE", [self.id.clone().into(), self.account_id.into(), CONFIG.into()])).await.map_err(|_| AuthenticationError::Unavailable)?.ok_or(AuthenticationError::Unauthenticated)?;
         let payload: Value = row
             .try_get("", "payload")

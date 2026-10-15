@@ -1,12 +1,8 @@
 use super::*;
 
 pub(super) fn snapshot(record: &person::Model) -> Value {
-    json!({"id":record.id,"account_id":record.account_id,"household_id":record.household_id,"portable_id":record.portable_id,"name":record.name,"email":record.email,"date_of_birth":record.date_of_birth,"person_type":record.person_type,"has_capacity":record.has_capacity,"created_at":record.created_at,"updated_at":record.updated_at})
+    json!({"id":record.id,"portable_id":record.portable_id,"clinical_name":record.clinical_name,"date_of_birth":record.date_of_birth,"person_type":record.person_type,"has_capacity":record.has_capacity,"created_at":record.created_at,"updated_at":record.updated_at})
 }
-pub(super) fn grant_state(record: &grant::Model) -> Value {
-    json!({"household_membership_id":record.household_membership_id,"person_id":record.person_id,"access_level":record.access_level,"relationship_type":record.relationship_type,"expires_at":record.expires_at,"revoked_at":record.revoked_at,"carer_relationship_id":record.carer_relationship_id})
-}
-
 fn context(
     tenant: &TenantTransaction,
     event: &str,
@@ -54,7 +50,7 @@ pub(super) async fn record_version(
         event: Set(event.into()),
         object: Set(before.map(|value| value.to_string())),
         object_changes: Set(Some(Value::Object(changes).to_string())),
-        whodunnit: Set(Some(tenant.user_id().to_string())),
+        whodunnit: Set(Some(tenant.person_id().to_string())),
         request_id: Set(Some(tenant.scope().request_id.clone())),
         household_id: Set(Some(tenant.scope().household_id)),
         actor_membership_id: Set(Some(tenant.membership().id)),
@@ -94,16 +90,5 @@ pub(super) async fn change(
     }
     .insert(tenant.transaction())
     .await?;
-    Ok(())
-}
-
-pub(super) async fn grant_event(
-    tenant: &TenantTransaction,
-    record: &grant::Model,
-    before: Option<Value>,
-    provenance: Option<&CredentialProvenance>,
-) -> Result<(), OperationError> {
-    let now = Utc::now().naive_utc();
-    security_audit_event::ActiveModel{household_id:Set(tenant.scope().household_id),actor_account_id:Set(Some(tenant.scope().actor.account_id)),actor_membership_id:Set(Some(tenant.membership().id)),event_type:Set("household_access.person_grant_changed".into()),request_id:Set(Some(tenant.scope().request_id.clone())),metadata:Set(json!({"target_membership_id":record.household_membership_id,"target_grant_id":record.id,"previous_state":before,"new_state":grant_state(record),"outcome":"success"})),audit_context:Set(context(tenant,"create",provenance)),created_at:Set(now),updated_at:Set(now),..Default::default()}.insert(tenant.transaction()).await?;
     Ok(())
 }

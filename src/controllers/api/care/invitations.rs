@@ -21,6 +21,14 @@ fn attributes(body: &Value) -> std::result::Result<Value, response::Failure> {
         .get("household_invitation")
         .and_then(Value::as_object)
         .ok_or_else(|| response::Failure::bad_request("Invalid request body"))?;
+    if source.keys().any(|name| {
+        matches!(
+            name.as_str(),
+            "dependent_ids" | "relationship_type" | "access_level"
+        )
+    }) {
+        return Err(response::operation(OperationError::Forbidden));
+    }
     let values: serde_json::Map<_, _> = source
         .iter()
         .filter(|(name, value)| {

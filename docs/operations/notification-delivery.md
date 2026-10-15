@@ -48,14 +48,27 @@ device attempt. Due and missed deliveries expire one hour after their intended
 notification time; the missed time includes the 30-minute grace period.
 Low-stock deliveries expire 24 hours after threshold crossing.
 
-Every poll also performs terminal cleanup within the existing restricted
-household database role, including inactive households and former recipients.
-It visits households in batches of 100 and changes at most 100 outstanding
-deliveries per household per poll; it does not scan terminal delivery history.
-Revoked memberships, closed accounts and inactive households invalidate pending
-deliveries. Sending claims at least 120 seconds old become `uncertain`, even
-when the former recipient can no longer authenticate. Cleanup and its audit
-commit together. It cannot send, create retries or revive terminal rows.
+Household delivery settings belong to the recipient Account. Notifications about
+another Person require an explicit subscription for that Account, household and
+Person. New subscriptions default to off for adults, children and dependent
+adults alike. Current participation makes a Person eligible for selection; it
+does not establish guardianship or consent. Delivery rechecks both current
+participation and the saved opt-in.
+
+The scheduler uses the restricted application database role. A narrow database
+capability exposes only eligible Account and household IDs, in pages of at most
+100; the scheduler enqueues each page before fetching another. This is an
+application-wide ID-discovery capability, not an isolated worker credential or
+permission to read clinical records or profile fields without a recipient.
+
+Every poll also performs terminal cleanup through a separate atomic capability,
+including inactive households and former recipients. It changes at most 100
+outstanding deliveries per poll and does not scan terminal delivery history.
+Revoked participation, disabled or closed accounts, security lockouts and
+inactive households invalidate pending deliveries. Sending claims at least
+120 seconds old according to the database clock become `uncertain`, even when
+the former recipient can no longer authenticate. Cleanup and its actorless
+audit commit together. It cannot send, create retries or revive terminal rows.
 Completion still requires recipient access: if access disappears while a send
 is in flight, the known provider result cannot be recorded through that path
 and the claim becomes `uncertain` on cleanup. Restoring access does not resend it.

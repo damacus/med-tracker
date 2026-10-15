@@ -106,7 +106,7 @@ impl ClinicalStore {
             &token_digest(token),
         )
         .await?;
-        let mut row = SessionRow::find_by_statement(statement("SELECT s.* FROM public.identity_sessions s JOIN public.accounts a ON a.id=s.account_id WHERE s.token=$1 AND s.active AND s.expires_at>clock_timestamp() AND s.created_at>clock_timestamp()-interval '30 days' AND (s.additional_fields->>'legacy_factor_pending' IS DISTINCT FROM 'true' OR s.created_at>clock_timestamp()-interval '5 minutes') AND a.status=2", [token_digest(token).into()])).one(&*transaction).await.map_err(database_error)?;
+        let mut row = SessionRow::find_by_statement(statement("SELECT s.* FROM public.identity_sessions s WHERE s.token=$1 AND s.active AND s.expires_at>clock_timestamp() AND s.created_at>clock_timestamp()-interval '30 days' AND (s.additional_fields->>'legacy_factor_pending' IS DISTINCT FROM 'true' OR s.created_at>clock_timestamp()-interval '5 minutes') ", [token_digest(token).into()])).one(&*transaction).await.map_err(database_error)?;
         if let Some(row) = &mut row {
             row.token = token.to_owned();
             context(
@@ -115,6 +115,9 @@ impl ClinicalStore {
                 &row.account_id.to_string(),
             )
             .await?;
+            crate::models::access::verify_account_actor(&transaction, row.account_id)
+                .await
+                .map_err(super::tenant::operation_error)?;
         }
         Ok((transaction, row))
     }
@@ -153,7 +156,7 @@ impl ClinicalStore {
             .map(clinical_id)
             .transpose()?;
         if let Some(household) = household {
-            let membership = transaction.query_one_raw(statement("SELECT id FROM public.household_memberships WHERE account_id=$1 AND household_id=$2 AND status='active' AND revoked_at IS NULL", [account_id.into(), household.into()])).await.map_err(database_error)?;
+            let membership = transaction.query_one_raw(statement("SELECT id FROM public.household_memberships WHERE person_id=(SELECT person_id FROM public.accounts WHERE id=$1) AND household_id=$2 AND status='active' AND revoked_at IS NULL", [account_id.into(), household.into()])).await.map_err(database_error)?;
             if membership.is_none() {
                 return Err(AuthError::forbidden("Household membership unavailable"));
             }
@@ -301,7 +304,7 @@ impl SessionStore<ClinicalAuthSchema> for ClinicalStore {
         }
         let household = organization_id.map(clinical_id).transpose()?;
         if let Some(id) = household {
-            let membership = transaction.query_one_raw(statement("SELECT id FROM public.household_memberships WHERE account_id=$1 AND household_id=$2 AND status='active' AND revoked_at IS NULL",[session.account_id.into(),id.into()])).await.map_err(database_error)?;
+            let membership = transaction.query_one_raw(statement("SELECT id FROM public.household_memberships WHERE person_id=(SELECT person_id FROM public.accounts WHERE id=$1) AND household_id=$2 AND status='active' AND revoked_at IS NULL",[session.account_id.into(),id.into()])).await.map_err(database_error)?;
             if membership.is_none() {
                 return Err(AuthError::forbidden("Household membership unavailable"));
             }

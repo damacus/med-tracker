@@ -63,12 +63,13 @@ pub(super) async fn record_cascade_effects(
     let people = if person_ids.is_empty() {
         Vec::new()
     } else {
-        person::Entity::find()
-            .in_tenant(context.tenant.scope().household_id)
-            .filter(person::Column::Id.is_in(person_ids))
-            .all(db)
-            .await
-            .map_err(database_error)?
+        crate::models::access::person_scope(crate::models::ids::HouseholdId::from_database(
+            context.tenant.scope().household_id,
+        ))
+        .filter(person::Column::Id.is_in(person_ids))
+        .all(db)
+        .await
+        .map_err(database_error)?
     };
     let person_portable_ids: HashMap<i64, String> = people
         .into_iter()

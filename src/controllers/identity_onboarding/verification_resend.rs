@@ -23,7 +23,11 @@ pub(super) async fn show(token: CsrfToken, ViewEngine(view): ViewEngine<TeraView
     let mut data = crate::controllers::medications::rendering::appearance_context();
     data["title"] = serde_json::json!("Resend verification email");
     data["authenticity_token"] = serde_json::json!(authenticity_token);
-    match format::render().view(&view, "identity_onboarding/verification_resend.html", data) {
+    match format::render().view(
+        &view,
+        "identity_onboarding/verification_resend.html",
+        crate::views::template_data(&data),
+    ) {
         Ok(response) => (
             StatusCode::OK,
             token,

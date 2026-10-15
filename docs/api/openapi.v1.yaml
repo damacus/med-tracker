@@ -156,6 +156,170 @@ paths:
                 $ref: "#/components/schemas/CapabilitiesResponse"
         "429":
           $ref: "#/components/responses/RateLimited"
+  /auth/profile:
+    get:
+      operationId: getAccountProfile
+      tags: [Account]
+      summary: Read the authenticated account profile without selecting a household.
+      description: Returns only account identity and preferences. Mobile OAuth remains usable after household departure; household-bound credentials retain their existing membership binding. Every response uses Cache-Control no-store. Clinical history, clinical person fields, credential metadata and avatar storage details are excluded.
+      responses:
+        "200":
+          description: Current account profile.
+          headers:
+            Cache-Control:
+              required: true
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountProfileResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/AccountForbidden"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          description: The profile could not be read safely.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    patch:
+      operationId: updateAccountProfile
+      tags: [Account]
+      summary: Update the authenticated account name and preferences atomically.
+      description: Omitted fields are preserved. Explicit nulls, unknown fields, email, identifiers and clinical fields are rejected. All changes and attributable account audit records commit together. Every response uses Cache-Control no-store. No household membership or clinical authority is created.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccountProfileUpdate"
+      responses:
+        "200":
+          description: Saved account profile.
+          headers:
+            Cache-Control:
+              required: true
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountProfileResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/AccountForbidden"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          description: The profile update was rolled back.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /auth/medication_history:
+    get:
+      operationId: listSelfMedicationHistory
+      tags: [Account, Medication takes]
+      summary: Read the authenticated account holder's original medication administrations.
+      description: |
+        Returns the authenticated account's own Person history across origin households,
+        including after departure from every household. Only an account-bound first-party
+        mobile OAuth access token with the medtracker scope is accepted. Household-bound
+        API sessions and app tokens, personal keys, and integration credentials cannot
+        read global history. Entries are ordered by their captured clinical event time
+        and then history_entry_id; the opaque cursor identifies that exact ordered
+        position, not the original take ID. The page contains original captured facts rather
+        than current household projections. A successful read and its account-owned
+        clinical-access audit commit together before the response is released.
+      parameters:
+        - name: after
+          in: query
+          required: false
+          description: Exclusive opaque cursor returned in meta.next_cursor. Pass it back unchanged to continue the same ordered history read.
+          schema:
+            type: string
+        - name: from
+          in: query
+          required: false
+          description: Inclusive lower bound on captured clinical event time. RFC 3339 with no finer than microsecond precision.
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: false
+          description: Exclusive upper bound on captured clinical event time. RFC 3339 with no finer than microsecond precision; must be later than from when both are present.
+          schema:
+            type: string
+            format: date-time
+        - name: limit
+          in: query
+          required: false
+          description: Maximum entries in this page.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        "200":
+          description: One page of original administrations, including an empty page when there are no entries.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/no_store"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OwnMedicationHistoryResponse"
+        "401":
+          description: The bearer credential is absent, invalid, expired, revoked, or no longer active.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/no_store"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: The credential type is not eligible for global self history, or an OAuth token lacks the medtracker scope. A scope denial includes a bearer challenge.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/no_store"
+            WWW-Authenticate:
+              description: Present only when the OAuth access token has insufficient scope.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          description: The cursor, date bounds, limit or query parameters are invalid.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/no_store"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          description: The history read or clinical-access audit failed; no history is released and the error envelope contains no clinical data.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/no_store"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
   /auth/households:
     get:
       operationId: listHouseholds
@@ -1503,90 +1667,6 @@ paths:
           $ref: "#/components/responses/ValidationFailed"
         "428":
           $ref: "#/components/responses/PreconditionRequired"
-        "429":
-          $ref: "#/components/responses/RateLimited"
-  /households/{household_id}/locations/{location_id}/location_memberships:
-    post:
-      operationId: createLocationMembership
-      tags: [Household, Locations]
-      summary: Assign a managed person to a location or replay the existing assignment.
-      description: |
-        Only an active household owner or administrator can assign a person to an in-scope
-        location. The person must be visible to the caller and have a current manage grant;
-        a person outside view scope returns 404, while a visible person without manage
-        access returns 403. Replaying the same assignment returns the existing resource.
-      parameters:
-        - $ref: "#/components/parameters/household_id"
-        - name: location_id
-          in: path
-          required: true
-          schema:
-            $ref: "#/components/schemas/ResourceIdentifier"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/LocationMembershipRequest"
-      responses:
-        "201":
-          description: Assign a managed person to a location or replay the existing assignment.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/LocationMembershipResponse"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "409":
-          $ref: "#/components/responses/Conflict"
-        "422":
-          $ref: "#/components/responses/ValidationFailed"
-        "429":
-          $ref: "#/components/responses/RateLimited"
-  /households/{household_id}/locations/{location_id}/location_memberships/{id}:
-    delete:
-      operationId: deleteLocationMembership
-      tags: [Household, Locations]
-      summary: Remove a managed person from the selected location.
-      description: |
-        Only an active household owner or administrator can remove an assignment from an
-        in-scope location. The assigned person must be visible to the caller and have a
-        current manage grant; out-of-scope person or assignment returns 404, and a visible
-        person without manage access returns 403.
-      parameters:
-        - $ref: "#/components/parameters/household_id"
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            pattern: "^[1-9][0-9]*$"
-        - name: location_id
-          in: path
-          required: true
-          schema:
-            $ref: "#/components/schemas/ResourceIdentifier"
-      responses:
-        "204":
-          description: Remove a managed person from the selected location.
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "409":
-          $ref: "#/components/responses/Conflict"
-        "422":
-          $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/RateLimited"
   /households/{household_id}/medications:
@@ -3691,19 +3771,19 @@ paths:
         - $ref: "#/components/parameters/portable_passphrase"
         - name: version
           in: query
-          description: Portable export format. Omit or use `1` for the original format; use `2` to include pause history.
+          description: Current portable export format. Omit or use `3`; older output versions are unsupported.
           schema:
             type: string
-            enum: ["1", "2"]
-            default: "1"
+            enum: ["3"]
+            default: "3"
         - name: portable_format
           in: query
           required: false
-          description: Select v2 to include persisted dose outcomes. Omitted requests retain the v1 collection shape.
+          description: Current format supports optional physical storage labels without person permission edges.
           schema:
             type: string
-            enum: [medtracker.portable.v1, medtracker.portable.v2]
-            default: medtracker.portable.v1
+            enum: [medtracker.portable.v3]
+            default: medtracker.portable.v3
       responses:
         "200":
           description: Encrypted portable bundle.
@@ -4260,90 +4340,7 @@ paths:
           $ref: "#/components/responses/Conflict"
         "429":
           $ref: "#/components/responses/RateLimited"
-  /households/{household_id}/admin/person_access_grants:
-    get:
-      operationId: listPersonAccessGrants
-      tags:
-        - Household administration
-        - Access grants
-      summary: List person access grants.
-      parameters:
-        - $ref: "#/components/parameters/household_id"
-      responses:
-        "200":
-          description: Access grant collection.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/PersonAccessGrantCollectionResponse"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "429":
-          $ref: "#/components/responses/RateLimited"
-    post:
-      operationId: createPersonAccessGrant
-      tags:
-        - Household administration
-        - Access grants
-      summary: Create a person access grant.
-      parameters:
-        - $ref: "#/components/parameters/household_id"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/PersonAccessGrantCreateRequest"
-      responses:
-        "201":
-          description: Access grant created.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/PersonAccessGrantResponse"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/AdminWriteForbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "409":
-          $ref: "#/components/responses/Conflict"
-        "422":
-          $ref: "#/components/responses/ValidationFailed"
-        "429":
-          $ref: "#/components/responses/RateLimited"
-  /households/{household_id}/admin/person_access_grants/{id}:
-    delete:
-      operationId: deletePersonAccessGrant
-      tags:
-        - Household administration
-        - Access grants
-      summary: Revoke a person access grant.
-      parameters:
-        - $ref: "#/components/parameters/household_id"
-        - $ref: "#/components/parameters/id"
-      responses:
-        "204":
-          description: Access grant revoked.
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/AdminWriteForbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "409":
-          $ref: "#/components/responses/Conflict"
-        "422":
-          $ref: "#/components/responses/ValidationFailed"
-        "429":
-          $ref: "#/components/responses/RateLimited"
+
   /households/{household_id}/admin/app_tokens:
     get:
       operationId: listAppTokens
@@ -4984,101 +4981,6 @@ components:
       properties:
         household_invitation:
           $ref: "#/components/schemas/HouseholdInvitationAttributes"
-    PersonAccessGrant:
-      type: object
-      additionalProperties: false
-      required:
-        - id
-        - household_membership_id
-        - person_id
-        - person_name
-        - access_level
-        - relationship_type
-        - expires_at
-        - revoked_at
-      properties:
-        id:
-          $ref: "#/components/schemas/NumericId"
-        household_membership_id:
-          $ref: "#/components/schemas/NumericId"
-        person_id:
-          $ref: "#/components/schemas/NumericId"
-        person_name:
-          type: string
-          minLength: 1
-        access_level:
-          type: string
-          enum:
-            - view
-            - record
-            - manage
-        relationship_type:
-          type: string
-          enum:
-            - self
-            - parent
-            - family_member
-            - carer
-            - professional
-        expires_at:
-          $ref: "#/components/schemas/NullableTimestamp"
-        revoked_at:
-          $ref: "#/components/schemas/NullableTimestamp"
-    PersonAccessGrantResponse:
-      type: object
-      additionalProperties: false
-      required:
-        - data
-      properties:
-        data:
-          $ref: "#/components/schemas/PersonAccessGrant"
-    PersonAccessGrantCollectionResponse:
-      type: object
-      additionalProperties: false
-      required:
-        - data
-      properties:
-        data:
-          type: array
-          items:
-            $ref: "#/components/schemas/PersonAccessGrant"
-    PersonAccessGrantAttributes:
-      type: object
-      additionalProperties: false
-      required:
-        - household_membership_id
-        - person_id
-        - access_level
-        - relationship_type
-      properties:
-        household_membership_id:
-          $ref: "#/components/schemas/NumericId"
-        person_id:
-          $ref: "#/components/schemas/NumericId"
-        access_level:
-          type: string
-          enum:
-            - view
-            - record
-            - manage
-        relationship_type:
-          type: string
-          enum:
-            - self
-            - parent
-            - family_member
-            - carer
-            - professional
-        expires_at:
-          $ref: "#/components/schemas/NullableTimestamp"
-    PersonAccessGrantCreateRequest:
-      type: object
-      additionalProperties: false
-      required:
-        - person_access_grant
-      properties:
-        person_access_grant:
-          $ref: "#/components/schemas/PersonAccessGrantAttributes"
     ApiAppTokenSummary:
       type: object
       additionalProperties: false
@@ -6157,6 +6059,193 @@ components:
                 profile,
                 administration,
               ]
+    AccountProfileUpdate:
+      type: object
+      additionalProperties: false
+      required: [profile]
+      properties:
+        profile:
+          type: object
+          additionalProperties: false
+          properties:
+            name:
+              type: string
+              minLength: 1
+            time_zone:
+              type: string
+              description: Supported timezone name; an empty value restores the configured fallback.
+              example: Europe/Paris
+            gravatar_enabled:
+              type: boolean
+            mobile_shortcuts:
+              type: array
+              minItems: 1
+              maxItems: 3
+              uniqueItems: true
+              items:
+                type: string
+                enum: [dashboard, inventory, locations, people, finder, medicine_reviews, reports, profile, administration]
+    AccountProfile:
+      type: object
+      additionalProperties: false
+      required: [account_id, name, email, time_zone, gravatar_enabled, mobile_shortcuts, avatar_attached]
+      properties:
+        account_id:
+          type: string
+          pattern: '^[0-9]+$'
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+        time_zone:
+          type: string
+          description: Effective IANA timezone after applying account preferences and configured fallback.
+        gravatar_enabled:
+          type: boolean
+        mobile_shortcuts:
+          type: array
+          items:
+            type: string
+        avatar_attached:
+          type: boolean
+    AccountProfileResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/AccountProfile"
+    OwnMedicationHistoryResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/OwnMedicationHistoryEntry"
+        meta:
+          type: object
+          additionalProperties: false
+          required: [next_cursor]
+          properties:
+            next_cursor:
+              type: string
+              nullable: true
+              description: Opaque exclusive cursor for the next page, or null when this page is complete. Pass it back unchanged in after.
+    OwnMedicationHistoryEntry:
+      type: object
+      additionalProperties: false
+      required: [history_entry_id, id, portable_id, client_uuid, person_id, person_portable_id, origin_household_id, subject_name, medication_id, medication_portable_id, medication_name, administration, dose_amount, dose_unit, taken_at, recorded_at, updated_at, source, selected_stock, location, actor]
+      properties:
+        history_entry_id:
+          type: string
+          pattern: '^[1-9][0-9]*$'
+          description: Immutable personal-history entry ID, distinct from the original take ID.
+        id:
+          type: string
+          pattern: '^[1-9][0-9]*$'
+          description: Original medication take ID in its origin household.
+        portable_id:
+          $ref: "#/components/schemas/PortableId"
+        client_uuid:
+          $ref: "#/components/schemas/NullablePortableId"
+        person_id:
+          type: string
+          pattern: '^[1-9][0-9]*$'
+        person_portable_id:
+          $ref: "#/components/schemas/PortableId"
+        origin_household_id:
+          type: string
+          pattern: '^[1-9][0-9]*$'
+        subject_name:
+          type: string
+          description: Person name captured when the administration was recorded.
+        medication_id:
+          type: string
+          pattern: '^[1-9][0-9]*$'
+        medication_portable_id:
+          $ref: "#/components/schemas/PortableId"
+        medication_name:
+          type: string
+          nullable: true
+          description: Medication name captured with the original administration.
+        administration:
+          type: string
+          enum: [scheduled, routine, as_needed]
+        dose_amount:
+          $ref: "#/components/schemas/NullableDecimalValue"
+        dose_unit:
+          type: string
+          nullable: true
+        taken_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Original clinical administration time in UTC, with up to microsecond precision; may be null for older records.
+        recorded_at:
+          type: string
+          format: date-time
+          description: Original event creation time in UTC, with up to microsecond precision; distinct from taken_at and the cursor's captured clinical event time.
+        updated_at:
+          type: string
+          format: date-time
+          description: Original take update time in UTC, with up to microsecond precision.
+        source:
+          $ref: "#/components/schemas/OwnMedicationHistorySource"
+        selected_stock:
+          type: object
+          nullable: true
+          additionalProperties: false
+          required: [medication_id, portable_id, name]
+          properties:
+            medication_id:
+              type: string
+              pattern: '^[1-9][0-9]*$'
+            portable_id:
+              $ref: "#/components/schemas/NullablePortableId"
+            name:
+              type: string
+              nullable: true
+        location:
+          type: object
+          nullable: true
+          additionalProperties: false
+          required: [id, portable_id, name]
+          properties:
+            id:
+              type: string
+              pattern: '^[1-9][0-9]*$'
+            portable_id:
+              $ref: "#/components/schemas/NullablePortableId"
+            name:
+              type: string
+              nullable: true
+        actor:
+          $ref: "#/components/schemas/OwnMedicationHistoryActor"
+    OwnMedicationHistorySource:
+      type: object
+      additionalProperties: false
+      required: [kind, id, portable_id]
+      properties:
+        kind: {type: string, enum: [schedule, assignment]}
+        id: {type: string, pattern: '^[1-9][0-9]*$'}
+        portable_id: {$ref: "#/components/schemas/PortableId"}
+    OwnMedicationHistoryActor:
+      type: object
+      additionalProperties: false
+      required: [kind]
+      description: Known actors include person_id, membership_id and name; unknown and imported actors contain only kind. Membership ID may be null for a known actor outside a household.
+      properties:
+        kind: {type: string, enum: [known, unknown, imported]}
+        person_id: {type: string, pattern: '^[1-9][0-9]*$'}
+        membership_id:
+          type: string
+          pattern: '^[1-9][0-9]*$'
+          nullable: true
+        name: {type: string}
     HouseholdProfileResponse:
       type: object
       additionalProperties: false
@@ -6522,58 +6611,11 @@ components:
             description:
               type: string
               nullable: true
-    LocationMembershipRequest:
-      type: object
-      additionalProperties: false
-      required: [location_membership]
-      properties:
-        location_membership:
-          type: object
-          additionalProperties: false
-          required: [person_id]
-          properties:
-            person_id:
-              $ref: "#/components/schemas/ResourceIdentifier"
-    LocationMembership:
-      type: object
-      additionalProperties: false
-      required:
-        [
-          id,
-          location_id,
-          location_portable_id,
-          person_id,
-          person_portable_id,
-          created_at,
-        ]
-      properties:
-        id:
-          type: string
-          pattern: "^[1-9][0-9]*$"
-        location_id:
-          type: string
-          pattern: "^[1-9][0-9]*$"
-        location_portable_id:
-          $ref: "#/components/schemas/PortableId"
-        person_id:
-          type: string
-          pattern: "^[1-9][0-9]*$"
-        person_portable_id:
-          $ref: "#/components/schemas/PortableId"
-        created_at:
-          $ref: "#/components/schemas/Timestamp"
-    LocationMembershipResponse:
-      type: object
-      additionalProperties: false
-      required: [data]
-      properties:
-        data:
-          $ref: "#/components/schemas/LocationMembership"
     CapabilityLocationManagement:
       type: object
       additionalProperties: false
       required:
-        [actions, version_required, person_memberships, memberships_online_only]
+        [actions, version_required]
       properties:
         actions:
           type: array
@@ -6581,13 +6623,6 @@ components:
             type: string
             enum: [create, update, destroy]
         version_required:
-          type: boolean
-        person_memberships:
-          type: array
-          items:
-            type: string
-            enum: [create, destroy]
-        memberships_online_only:
           type: boolean
     Location:
       type: object
@@ -6737,7 +6772,7 @@ components:
             - ordered
             - received
         location_id:
-          $ref: "#/components/schemas/NumericId"
+          $ref: "#/components/schemas/NullableNumericId"
         location_portable_id:
           $ref: "#/components/schemas/NullablePortableId"
         updated_at:
@@ -6795,7 +6830,6 @@ components:
       required:
         - name
         - reorder_threshold
-        - location_id
       properties:
         name:
           type: string
@@ -6839,7 +6873,7 @@ components:
         warnings:
           type: string
         location_id:
-          $ref: "#/components/schemas/NumericId"
+          $ref: "#/components/schemas/NullableNumericId"
         default_schedule_type:
           type: string
           enum:
@@ -6897,7 +6931,7 @@ components:
         warnings:
           type: string
         location_id:
-          $ref: "#/components/schemas/NumericId"
+          $ref: "#/components/schemas/NullableNumericId"
         default_schedule_type:
           type: string
           enum:
@@ -8274,8 +8308,6 @@ components:
         - person_type
         - has_capacity
         - age
-        - location_ids
-        - location_portable_ids
         - notification_preference_id
         - notification_preference_portable_id
       properties:
@@ -8307,14 +8339,6 @@ components:
         age:
           type: integer
           nullable: true
-        location_ids:
-          type: array
-          items:
-            $ref: "#/components/schemas/NumericId"
-        location_portable_ids:
-          type: array
-          items:
-            $ref: "#/components/schemas/PortableId"
         notification_preference_id:
           $ref: "#/components/schemas/NullableNumericId"
         notification_preference_portable_id:
@@ -8440,9 +8464,8 @@ components:
           items:
             type: string
             enum:
-              - medtracker.portable.v1
+              - medtracker.portable.v3
               - medtracker.portable.encrypted.v1
-              - medtracker.portable.v2
         backups:
           $ref: "#/components/schemas/CapabilityBackups"
         fhir:
@@ -8667,7 +8690,6 @@ components:
         - app_tokens
         - audit_logs
         - invitations
-        - person_access_grants
       properties:
         household:
           type: boolean
@@ -8684,9 +8706,6 @@ components:
         invitations:
           type: boolean
           description: Whether invitations are supported.
-        person_access_grants:
-          type: boolean
-          description: Whether person access grants are supported.
     CapabilityBackups:
       type: object
       additionalProperties: false
@@ -9231,7 +9250,7 @@ components:
           $ref: "#/components/schemas/PortableRecordCollection"
         dose_occurrences:
           type: array
-          description: Persisted outcomes included in portable v2 bundles.
+          description: Persisted outcomes included in portable v3 bundles.
           items:
             $ref: "#/components/schemas/PortableDoseOccurrence"
         notification_preferences:
@@ -9327,8 +9346,7 @@ components:
         format:
           type: string
           enum:
-            - medtracker.portable.v1
-            - medtracker.portable.v2
+            - medtracker.portable.v3
         scope:
           type: string
           enum:
@@ -9363,7 +9381,7 @@ components:
         format:
           type: string
           enum:
-            - medtracker.portable.v2
+            - medtracker.portable.v3
         scope:
           type: string
           enum:
@@ -9429,7 +9447,7 @@ components:
             format:
               type: string
               enum:
-                - medtracker.health_data.v1
+                - medtracker.health_data.v2
             scope:
               type: string
               enum:
@@ -9455,9 +9473,8 @@ components:
             format:
               type: string
               enum:
-                - medtracker.portable.v1
-                - medtracker.portable.v2
-                - medtracker.health_data.v1
+                - medtracker.portable.v3
+                - medtracker.health_data.v2
                 - medtracker.portable.encrypted.v1
             scope:
               type: string

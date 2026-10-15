@@ -1,80 +1,133 @@
-# Manage People and Household Access
+# User Management
 
-MedTracker keeps health records separate from sign-in access. A person can
-have a medication record without having an account.
+## Overview
 
-## People and accounts
+This page describes the agreed Rust household model. The architecture is
+accepted; complete implementation acceptance is still pending. See the
+[delivery plan](plans/rust-household-guardrails-20261015.md) and
+[accounts, people and households decision](adrs/0013-accounts-people-and-households.md).
 
-A **person** is someone whose health and medication are tracked. Their profile
-contains their date of birth, medication plans, dose history, and health
-events.
+## Accounts and people
 
-An **account** lets someone sign in. An account joins a household through a
-household membership. It can also be linked to a person when the account holder
-manages their own medication.
+An **account** owns sign-in credentials, profile information and preferences.
+It links to exactly one **person**, the clinical subject whose care is tracked.
+A person can exist without an account, and can belong to several households.
+There is no separate user or duplicate profile record.
 
-A child or dependent adult usually has a person profile without a separate
-sign-in.
+Accountless people can receive care without obtaining sign-in access. Minors
+cannot sign in. Preserve these person types:
 
-## Person types
+| Type | Capacity rule |
+| --- | --- |
+| Adult | Capacity is recorded explicitly. |
+| Minor | `has_capacity` is false. |
+| Dependent adult | `has_capacity` is false. |
 
-Choose the type that describes the person's support needs:
+Guardianship must be explicit. Being a household manager, or appearing in a
+carer relationship, does not by itself establish guardian authority.
 
-- **Adult:** an adult who can manage their own medication.
-- **Minor:** a child who needs a parent or carer's support.
-- **Dependent adult:** an adult who needs someone else to manage their
-  medication.
+## Account profile API
 
-Minors and dependent adults cannot be marked as having capacity to manage
-their own medication. Assign at least one parent or carer before saving a
-person who does not have capacity.
+`GET /api/v1/auth/profile` reads the authenticated account's profile without
+selecting a household. `PATCH` updates its name and preferences together:
 
-## Household roles
+```json
+{
+  "profile": {
+    "name": "Example account",
+    "time_zone": "Europe/London",
+    "gravatar_enabled": false,
+    "mobile_shortcuts": ["profile", "dashboard"]
+  }
+}
+```
 
-Each signed-in account has one household role:
+Omitted fields stay unchanged. Explicit nulls, unknown fields, clinical fields
+and supplied account or person IDs are rejected. Successful responses contain
+only `account_id`, `name`, `email`, `time_zone`, `gravatar_enabled`,
+`mobile_shortcuts` and `avatar_attached`, inside `data`. Email is read-only here;
+avatar storage details and clinical records are excluded.
 
-- **Owner:** controls the household and its memberships. A household must
-  always have an active owner.
-- **Administrator:** manages household records and members but cannot promote
-  someone to owner.
-- **Member:** receives access only to the people covered by their active
-  grants.
+Account-bound mobile OAuth credentials remain valid for this profile after the
+last household membership is revoked. Household-bound API credentials retain
+their membership restrictions. Personal keys and integration credentials cannot
+use this endpoint. Every response uses `Cache-Control: no-store`.
 
-Platform administrators can manage every household. This is separate from a
-household role.
+Name and preference updates have attributable account audit records. Validation
+or audit failure leaves both unchanged. See the [API contract](api/openapi.v1.yaml)
+for request and response schemas.
 
-## Access to a person's records
+## Personal history access
 
-Owners and household administrators manage access for members. A grant applies
-to one person and has one of these levels:
+The self-history reader is being implemented. It will let an account holder
+read their original medication administrations across households, including
+after leaving every household. A dependent adult with a legitimate account
+retains access to their own records. Original names and administration facts
+must remain unchanged when current profiles, medicines or sources change.
 
-- **View:** read the person's records.
-- **Record:** view records and record medication or health events.
-- **Manage:** change the person's medication plans and other records.
+Global clinical-history access uses the browser session or account-bound
+first-party mobile OAuth. Permission to read account profile fields does not
+grant this access. Household-bound credentials retain their household limits;
+personal keys and integration credentials cannot gain global history access.
+See the [authentication and tenancy decision](adrs/0015-authentication-membership-and-tenancy.md).
 
-A grant can represent self-management or a relationship with a parent, family
-member, carer, or professional. It can expire or be revoked. Access to one
-person does not give access to everyone in the household.
+The first reader covers original medication administrations. Complete personal
+history, browser downloads and shared care still require their own implementation
+and acceptance; a passing dose-history test does not establish those journeys.
 
-## Add a person
+## Household membership
 
-1. Open **People** and select **New Person**.
-2. Enter the person's name and date of birth.
-3. Choose the person type.
-4. Confirm whether the person has capacity to manage their own medication.
-5. Assign a parent or carer when the person needs support.
-6. Select **Create Person**.
+A household is the tenancy boundary for medication inventory and stock.
+Membership belongs to a person. A signed-in account uses its linked person's
+current memberships.
 
-## Invite someone to the household
+| Role | Household access |
+| --- | --- |
+| Owner | Member care access and household administration; the last active owner cannot be removed. |
+| Administrator | Member care access and membership administration within the role's limits. |
+| Member | View and record care for current household participants. |
 
-A household owner or administrator can invite an account and choose its
-household role. Give members access only to the people they support and select
-the lowest access level they need.
+There are no separate intra-household person view, record or manage grants.
+Manager-only actions remain subject to their own checks. Platform administration
+does not automatically grant household clinical access.
 
-Review access when a care relationship changes. Revoke an old grant instead of
-sharing an account or leaving broad access in place.
+A person can create a household or accept a manager's invitation. Sharing an
+existing person's care with another household additionally requires approval
+from that adult person or an authorised guardian. An invitation must not be
+treated as that approval or as proof of guardianship.
 
-## Continue setup
+## Active household
 
-- [Add their first medication](families/adding-first-medicine.md)
-- [Record their first dose](families/taking-first-dose.md)
+Each session or device selects an active household from its current memberships.
+Switching one device must not switch another device. The active household
+determines the inventory, stock and storage labels shown.
+
+An open form and any queued write stay bound to their original household.
+Revoked membership must be rejected at request and mutation boundaries. Late
+responses from the previous household must not populate the newly selected
+household's screen.
+
+## Storage labels and care continuity
+
+Locations are optional physical storage labels, such as a kitchen cupboard.
+They have no memberships or permissions. Medication can be created and used
+without a location. Removing a label detaches medication from it while retaining
+stock and recorded history; see [record lifecycle](operations/record-lifecycle.md).
+
+The accepted care-continuity design shares current treatments, schedules,
+active pauses and latest administration status with current households. It does
+not automatically share another household's detailed history or narrative notes.
+The person controls additional disclosure and retains personal-history access.
+After departure, the old household retains its original events and attribution,
+without receiving future updates.
+
+Care sharing, guardian approval and explicit transfer of person-allocated stock
+still require complete implementation acceptance. Communal stock never moves
+automatically. See the [inventory and personal care decision](adrs/0014-household-inventory-and-personal-care.md)
+for these rules and their acceptance requirements.
+
+Only the person or an explicitly authorised guardian may change a shared
+treatment plan's medicine, dose, schedule or pause. A household manager may
+explicitly match local stock to the prescribed medicine, with an audit record.
+The application must never infer that match from medicine names or dose text.
+These rules are accepted decisions; their implementation remains unfinished.

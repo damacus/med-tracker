@@ -78,7 +78,6 @@ async fn person_carer_nonmanager_cannot_restore_or_assign_ineligible_existing_ac
         method: CredentialMethod::BrowserSession,
         reference: "synthetic-session".into(),
     };
-    let target = url::Url::parse("http://127.0.0.1/invitations/accept").unwrap();
     let draft = std::collections::HashMap::from([
         ("email".into(), "parent-candidate@example.test".into()),
         ("relationship_type".into(), "professional_carer".into()),
@@ -102,7 +101,7 @@ async fn person_carer_nonmanager_cannot_restore_or_assign_ineligible_existing_ac
         let tenant = access::begin(&app.fixture.runtime, &scope, None)
             .await
             .unwrap();
-        let result = person_carers::assign(&tenant, 73002, &draft, &target, &provenance).await;
+        let result = person_carers::assign(&tenant, 73002, &draft, &provenance).await;
         tenant.rollback().await.unwrap();
         assert!(result.is_err(), "{mutation}");
     }
@@ -144,7 +143,6 @@ async fn person_carer_nonmanager_ignores_forged_role_and_rejects_unmanaged_or_ad
         method: CredentialMethod::BrowserSession,
         reference: "synthetic-session".into(),
     };
-    let target = url::Url::parse("http://127.0.0.1/invitations/accept").unwrap();
     let draft = std::collections::HashMap::from([
         ("email".into(), "parent-candidate@example.test".into()),
         ("relationship_type".into(), "professional_carer".into()),
@@ -155,7 +153,7 @@ async fn person_carer_nonmanager_ignores_forged_role_and_rejects_unmanaged_or_ad
             .await
             .unwrap();
         assert!(
-            person_carers::assign(&tenant, person_id, &draft, &target, &provenance)
+            person_carers::assign(&tenant, person_id, &draft, &provenance)
                 .await
                 .is_err()
         );
@@ -165,7 +163,7 @@ async fn person_carer_nonmanager_ignores_forged_role_and_rejects_unmanaged_or_ad
         .await
         .unwrap();
     assert!(matches!(
-        person_carers::assign(&tenant, 73002, &draft, &target, &provenance)
+        person_carers::assign(&tenant, 73002, &draft, &provenance)
             .await
             .unwrap(),
         person_carers::AssignmentOutcome::Assigned
@@ -211,7 +209,6 @@ async fn person_carer_removal_withdraws_real_health_access_without_removing_manu
         method: CredentialMethod::BrowserSession,
         reference: "synthetic-session".into(),
     };
-    let target = url::Url::parse("http://127.0.0.1/invitations/accept").unwrap();
     let draft = std::collections::HashMap::from([
         ("carer_id".into(), "73004".into()),
         ("relationship_type".into(), "parent".into()),
@@ -219,7 +216,7 @@ async fn person_carer_removal_withdraws_real_health_access_without_removing_manu
     let tenant = access::begin(&app.fixture.runtime, &manager, None)
         .await
         .unwrap();
-    person_carers::assign(&tenant, 73002, &draft, &target, &provenance)
+    person_carers::assign(&tenant, 73002, &draft, &provenance)
         .await
         .unwrap();
     tenant.commit().await.unwrap();
@@ -297,13 +294,12 @@ async fn person_carer_pending_invitation_cannot_attach_a_dependent_its_original_
         method: CredentialMethod::BrowserSession,
         reference: "synthetic-session".into(),
     };
-    let target = url::Url::parse("http://127.0.0.1/invitations/accept").unwrap();
     let draft =
         std::collections::HashMap::from([("email".into(), "pending-parent@example.test".into())]);
     let tenant = access::begin(&app.fixture.runtime, &scope, None)
         .await
         .unwrap();
-    let result = person_carers::assign(&tenant, 73002, &draft, &target, &provenance).await;
+    let result = person_carers::assign(&tenant, 73002, &draft, &provenance).await;
     tenant.rollback().await.unwrap();
     assert!(
         result.is_err(),

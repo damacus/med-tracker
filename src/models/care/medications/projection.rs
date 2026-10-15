@@ -10,7 +10,10 @@ pub(crate) async fn serialize_many(
     records: Vec<medication::Model>,
     settings: Option<&serde_json::Value>,
 ) -> Result<Vec<Value>, ApiError> {
-    let location_ids: Vec<i64> = records.iter().map(|record| record.location_id).collect();
+    let location_ids: Vec<i64> = records
+        .iter()
+        .filter_map(|record| record.location_id)
+        .collect();
     let locations: HashMap<i64, String> = if location_ids.is_empty() {
         HashMap::new()
     } else {
@@ -47,7 +50,7 @@ pub(crate) async fn serialize_many(
             "reorder_threshold": decimal_string(record.reorder_threshold.to_string()),
             "reorder_status": record.reorder_status.map(|value| if value == 1 { "ordered" } else { "received" }),
             "location_id": record.location_id,
-            "location_portable_id": locations.get(&record.location_id),
+            "location_portable_id": record.location_id.and_then(|id| locations.get(&id)),
             "updated_at": medication_timestamp(record.updated_at),
             "low_stock": low_stock,
             "out_of_stock": out_of_stock,

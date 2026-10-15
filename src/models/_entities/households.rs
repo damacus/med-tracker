@@ -47,6 +47,8 @@ pub enum Relation {
     AuditLedgerEntries,
     #[sea_orm(has_many = "super::carer_relationships::Entity")]
     CarerRelationships,
+    #[sea_orm(has_many = "super::clinical_history_entries::Entity")]
+    ClinicalHistoryEntries,
     #[sea_orm(has_many = "super::dosages::Entity")]
     Dosages,
     #[sea_orm(has_many = "super::health_event_medications::Entity")]
@@ -61,14 +63,14 @@ pub enum Relation {
     HouseholdInvitations,
     #[sea_orm(has_many = "super::household_memberships::Entity")]
     HouseholdMemberships,
+    #[sea_orm(has_many = "super::household_notification_subscriptions::Entity")]
+    HouseholdNotificationSubscriptions,
     #[sea_orm(has_one = "super::household_purge_runs::Entity")]
     HouseholdPurgeRuns,
     #[sea_orm(has_many = "super::household_retention_holds::Entity")]
     HouseholdRetentionHolds,
     #[sea_orm(has_many = "super::identity_sessions::Entity")]
     IdentitySessions,
-    #[sea_orm(has_many = "super::location_memberships::Entity")]
-    LocationMemberships,
     #[sea_orm(has_many = "super::locations::Entity")]
     Locations,
     #[sea_orm(has_many = "super::medication_dose_occurrences::Entity")]
@@ -89,10 +91,6 @@ pub enum Relation {
     NotificationDeliveries,
     #[sea_orm(has_many = "super::notification_events::Entity")]
     NotificationEvents,
-    #[sea_orm(has_many = "super::notification_preferences::Entity")]
-    NotificationPreferences,
-    #[sea_orm(has_many = "super::person_access_grants::Entity")]
-    PersonAccessGrants,
     #[sea_orm(has_many = "super::person_medications::Entity")]
     PersonMedications,
     #[sea_orm(has_many = "super::schedules::Entity")]
@@ -159,6 +157,12 @@ impl Related<super::carer_relationships::Entity> for Entity {
     }
 }
 
+impl Related<super::clinical_history_entries::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ClinicalHistoryEntries.def()
+    }
+}
+
 impl Related<super::dosages::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Dosages.def()
@@ -201,6 +205,12 @@ impl Related<super::household_memberships::Entity> for Entity {
     }
 }
 
+impl Related<super::household_notification_subscriptions::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::HouseholdNotificationSubscriptions.def()
+    }
+}
+
 impl Related<super::household_purge_runs::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::HouseholdPurgeRuns.def()
@@ -216,12 +226,6 @@ impl Related<super::household_retention_holds::Entity> for Entity {
 impl Related<super::identity_sessions::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::IdentitySessions.def()
-    }
-}
-
-impl Related<super::location_memberships::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::LocationMemberships.def()
     }
 }
 
@@ -282,18 +286,6 @@ impl Related<super::notification_deliveries::Entity> for Entity {
 impl Related<super::notification_events::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::NotificationEvents.def()
-    }
-}
-
-impl Related<super::notification_preferences::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::NotificationPreferences.def()
-    }
-}
-
-impl Related<super::person_access_grants::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::PersonAccessGrants.def()
     }
 }
 

@@ -45,7 +45,11 @@ pub(super) async fn preview(
     data["invitation_token"] = json!(invitation.token);
     data["signed_in"] = json!(signed_in);
     data["authenticity_token"] = json!(authenticity_token);
-    match format::render().view(&view, "invitations/accept.html", data) {
+    match format::render().view(
+        &view,
+        "invitations/accept.html",
+        crate::views::template_data(&data),
+    ) {
         Ok(response) => (token, [(header::CACHE_CONTROL, "no-store")], response).into_response(),
         Err(error) => error.into_response(),
     }

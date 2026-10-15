@@ -2,20 +2,21 @@ use super::*;
 
 pub(super) async fn insert_take(
     db: &DatabaseTransaction,
-    household_id: i64,
-    proposed: &ProposedTake,
-    client_uuid: Option<&str>,
+    household_id: HouseholdId,
+    proposed: &ValidatedTake,
+    client_uuid: Option<Uuid>,
 ) -> Result<Option<medication_take::Model>, ApiError> {
     let now = Utc::now().naive_utc();
     let model = medication_take::ActiveModel {
-        household_id: Set(household_id),
-        client_uuid: Set(client_uuid.map(str::to_owned)),
-        schedule_id: Set((proposed.source.kind == "schedule").then_some(proposed.source.id)),
-        person_medication_id: Set(
-            (proposed.source.kind == "person_medication").then_some(proposed.source.id)
-        ),
-        taken_from_medication_id: Set(Some(proposed.selected.id)),
-        taken_from_location_id: Set(Some(proposed.selected.location_id)),
+        household_id: Set(household_id.get()),
+        client_uuid: Set(client_uuid.map(|id| id.hyphenated().to_string())),
+        schedule_id: Set(proposed.source.identity.schedule_id()),
+        person_medication_id: Set(proposed.source.identity.assignment_id()),
+        taken_from_medication_id: Set(Some(proposed.selected.id.get())),
+        taken_from_location_id: Set(proposed
+            .selected
+            .location_id
+            .map(crate::models::ids::LocationId::get)),
         dose_amount: Set(Some(proposed.amount)),
         dose_unit: Set(Some(proposed.unit.clone())),
         taken_at: Set(Some(proposed.taken_at)),

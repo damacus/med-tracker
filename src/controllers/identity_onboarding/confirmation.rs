@@ -39,7 +39,11 @@ pub(super) async fn show(
     data["email"] = json!(email);
     data["token"] = json!(link.token);
     data["authenticity_token"] = json!(authenticity_token);
-    match format::render().view(&view, "identity_onboarding/confirm_email.html", data) {
+    match format::render().view(
+        &view,
+        "identity_onboarding/confirm_email.html",
+        crate::views::template_data(&data),
+    ) {
         Ok(response) => (
             token,
             [

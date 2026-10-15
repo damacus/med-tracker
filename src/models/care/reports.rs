@@ -1,12 +1,12 @@
 use crate::models::{
-    access::{self, PersonAccess, TenantTransaction},
-    authorization,
+    access::{self, TenantTransaction},
     care::{dose_occurrences, doses, review_prompts},
     entities::{
-        grant, health_event, health_event_medication, medication, medication_take, person,
+        health_event, health_event_medication, medication, medication_take, person,
         person_medication, review_prompt, schedule, security_audit_event,
     },
     errors::OperationError,
+    person_identity::{self, PersonSummary},
 };
 use chrono::{DateTime, Datelike, Duration, NaiveDate, Utc};
 use chrono_tz::Tz;
@@ -31,9 +31,7 @@ pub async fn actor_adult(
     tenant: &TenantTransaction,
     today: NaiveDate,
 ) -> Result<bool, OperationError> {
-    let Some(id) = tenant.membership().person_id else {
-        return Ok(false);
-    };
+    let id = tenant.membership().person_id;
     let Some(actor) = person::Entity::find_by_id(id)
         .one(tenant.transaction())
         .await?
@@ -47,40 +45,13 @@ pub async fn actor_adult(
         }
         age >= 18
     });
-    Ok(actor.household_id == tenant.scope().household_id && (actor.person_type == 0 || by_age))
+    Ok(actor.person_type == 0 || by_age)
 }
 
 pub async fn accessible_people(
     tenant: &TenantTransaction,
-    level: PersonAccess,
-) -> Result<Vec<person::Model>, OperationError> {
-    access::recheck(tenant).await?;
-    if !authorization::ready() {
-        return Err(OperationError::Unavailable);
-    }
-    let people = person::Entity::find()
-        .in_tenant(tenant.scope().household_id)
-        .order_by_asc(person::Column::Name)
-        .order_by_asc(person::Column::Id)
-        .all(tenant.transaction())
-        .await?;
-    let grants = grant::Entity::find()
-        .in_tenant(tenant.scope().household_id)
-        .filter(grant::Column::HouseholdMembershipId.eq(tenant.membership().id))
-        .filter(grant::Column::RevokedAt.is_null())
-        .all(tenant.transaction())
-        .await?;
-    let grants: HashMap<i64, grant::Model> =
-        grants.into_iter().map(|row| (row.person_id, row)).collect();
-    let now = Utc::now().naive_utc();
-    Ok(people
-        .into_iter()
-        .filter(|person| {
-            grants.get(&person.id).is_some_and(|grant| {
-                authorization::person_access(tenant.membership(), person, grant, level, now)
-            })
-        })
-        .collect())
+) -> Result<Vec<PersonSummary>, OperationError> {
+    person_identity::current_summaries(tenant).await
 }
 
 pub async fn record_download(
@@ -119,51 +90,79 @@ async fn json_rows(
     row.try_get("", "payload").map_err(Into::into)
 }
 
+#[derive(Clone, Debug)]
+pub enum HistoryReportSubject {
+    Current(PersonSummary),
+    OriginLocalHistorical(PersonSummary),
+}
+
+impl HistoryReportSubject {
+    pub fn person(&self) -> &PersonSummary {
+        match self {
+            Self::Current(person) | Self::OriginLocalHistorical(person) => person,
+        }
+    }
+
+    pub async fn recheck(&self, tenant: &TenantTransaction) -> Result<(), OperationError> {
+        access::recheck(tenant).await?;
+        match self {
+            Self::Current(person) => access::require_participation(tenant, person.id.get()).await,
+            Self::OriginLocalHistorical(person) => {
+                super::take_history::subject(tenant, &person.id.to_string())
+                    .await?
+                    .filter(|recorded| recorded.id == person.id)
+                    .ok_or(OperationError::NotFound)?;
+                Ok(())
+            }
+        }
+    }
+}
+
 pub async fn gp_history(
     tenant: &TenantTransaction,
-    person: &person::Model,
+    subject: &HistoryReportSubject,
     start: NaiveDate,
     end: NaiveDate,
     include_takes: bool,
     generated_at: DateTime<Utc>,
     zone: Tz,
 ) -> Result<Value, OperationError> {
-    let medicines = json_rows(
+    subject.recheck(tenant).await?;
+    let person = subject.person();
+    let medicines = if matches!(subject, HistoryReportSubject::Current(_)) {
+        json_rows(
         tenant,
         "SELECT COALESCE(jsonb_agg(jsonb_build_object('id', m.id::text, 'name', COALESCE(NULLIF(m.friendly_name, ''), m.name)) ORDER BY lower(COALESCE(m.friendly_name, '')), m.id), '[]'::jsonb) AS payload FROM medications m WHERE m.household_id = $1 AND m.id IN (SELECT s.medication_id FROM schedules s WHERE s.person_id = $2 AND s.household_id = $1 AND s.active AND s.retired_at IS NULL AND s.start_date <= $3::date AND s.end_date >= $3::date UNION SELECT pm.medication_id FROM person_medications pm WHERE pm.person_id = $2 AND pm.household_id = $1 AND pm.active AND pm.retired_at IS NULL)",
-        vec![person.household_id.into(), person.id.into(), generated_at.with_timezone(&zone).date_naive().to_string().into()],
+        vec![tenant.scope().household_id.into(), person.id.get().into(), generated_at.with_timezone(&zone).date_naive().to_string().into()],
     )
-    .await?;
+    .await?
+    } else {
+        json!([])
+    };
     let chronology = json_rows(
         tenant,
         "SELECT COALESCE(jsonb_agg(jsonb_build_object('id', he.id::text, 'event_kind', CASE he.event_kind WHEN 0 THEN 'illness' ELSE 'suspected_side_effect' END, 'title', btrim(he.title), 'started_on', he.started_on, 'ended_on', he.ended_on, 'ongoing', he.ended_on IS NULL, 'duration_days', CASE WHEN he.ended_on IS NULL THEN NULL ELSE he.ended_on - he.started_on + 1 END, 'severity', CASE he.severity WHEN 0 THEN 'mild' WHEN 1 THEN 'moderate' WHEN 2 THEN 'severe' ELSE NULL END, 'notes', he.notes, 'action_taken', he.action_taken, 'medical_help_sought', he.medical_help_sought, 'medication_names', (SELECT COALESCE(jsonb_agg(hem.medication_name ORDER BY hem.id), '[]'::jsonb) FROM health_event_medications hem WHERE hem.health_event_id = he.id AND hem.household_id = $1)) ORDER BY he.started_on DESC, he.id DESC), '[]'::jsonb) AS payload FROM health_events he WHERE he.household_id = $1 AND he.person_id = $2 AND he.started_on <= $4::date AND (he.ended_on IS NULL OR he.ended_on >= $3::date)",
-        vec![person.household_id.into(), person.id.into(), start.to_string().into(), end.to_string().into()],
+        vec![tenant.scope().household_id.into(), person.id.get().into(), start.to_string().into(), end.to_string().into()],
     )
     .await?;
     let takes = if include_takes {
-        let mut takes = json_rows(
-            tenant,
-            "SELECT COALESCE(jsonb_agg(jsonb_build_object('taken_at', to_char(t.taken_at, 'YYYY-MM-DD\"T\"HH24:MI:SS') || 'Z', 'medication_name', COALESCE(NULLIF(sm.friendly_name, ''), sm.name, NULLIF(dm.friendly_name, ''), dm.name), 'dose_amount', t.dose_amount::text, 'dose_unit', t.dose_unit, 'source_type', CASE WHEN pm.id IS NOT NULL AND pm.administration_kind = 0 THEN 'routine' WHEN pm.id IS NOT NULL OR s.schedule_type = 4 THEN 'as_needed' ELSE 'scheduled' END, 'location_name', tfl.name) ORDER BY t.taken_at, t.id), '[]'::jsonb) AS payload FROM medication_takes t LEFT JOIN schedules s ON s.id = t.schedule_id AND s.household_id = $1 LEFT JOIN person_medications pm ON pm.id = t.person_medication_id AND pm.household_id = $1 LEFT JOIN medications sm ON sm.id = COALESCE(s.medication_id, pm.medication_id) AND sm.household_id = $1 LEFT JOIN medications dm ON dm.id = t.taken_from_medication_id AND dm.household_id = $1 LEFT JOIN locations tfl ON tfl.id = t.taken_from_location_id AND tfl.household_id = $1 WHERE t.household_id = $1 AND (s.person_id = $2 OR pm.person_id = $2) AND t.taken_at >= $3::timestamp AND t.taken_at < ($4::date + INTERVAL '1 day')",
-            vec![person.household_id.into(), person.id.into(), (start - Duration::days(1)).to_string().into(), (end + Duration::days(1)).to_string().into()],
-        )
-        .await?;
-        if let Some(rows) = takes.as_array_mut() {
-            rows.retain_mut(|row| {
-                let Some(at) = row["taken_at"]
-                    .as_str()
-                    .and_then(|value| DateTime::parse_from_rfc3339(value).ok())
-                else {
-                    return false;
-                };
-                let local = at.with_timezone(&zone);
-                if !(start..=end).contains(&local.date_naive()) {
-                    return false;
-                }
-                row["taken_at"] = json!(local.to_rfc3339());
-                true
-            });
-        }
-        takes
+        let first = (start - Duration::days(1))
+            .and_hms_opt(0, 0, 0)
+            .ok_or(OperationError::Unavailable)?;
+        let last = (end + Duration::days(2))
+            .and_hms_opt(0, 0, 0)
+            .ok_or(OperationError::Unavailable)?;
+        let records = super::take_history::report(tenant, person.id, first, last).await?;
+        let rows=records.into_iter().filter_map(|take| {
+            let local=take.taken_at?.and_utc().with_timezone(&zone);
+            if !(start..=end).contains(&local.date_naive()) { return None; }
+            Some(json!({
+                "taken_at":local.to_rfc3339(),"medication_name":take.medication_name,
+                "dose_amount":take.dose_amount.map(|amount|amount.to_string()),"dose_unit":take.dose_unit,
+                "source_type":take.administration.label(),"location_name":take.location_name
+            }))
+        }).collect::<Vec<_>>();
+        json!(rows)
     } else {
         json!([])
     };
@@ -198,15 +197,15 @@ pub fn gp_history_pdf(mut data: Value, zone: Tz, include_takes: bool) -> Value {
 
 pub async fn medication_reviews(
     tenant: &TenantTransaction,
-    person: &person::Model,
+    person: &PersonSummary,
     status: Option<&str>,
     generated_at: DateTime<Utc>,
     today: NaiveDate,
 ) -> Result<Value, OperationError> {
-    review_prompts::refresh(tenant, person.id, today).await?;
+    review_prompts::refresh(tenant, person.id.get(), today).await?;
     let mut query = review_prompt::Entity::find()
-        .in_tenant(person.household_id)
-        .filter(review_prompt::Column::PersonId.eq(person.id));
+        .in_tenant(tenant.scope().household_id)
+        .filter(review_prompt::Column::PersonId.eq(person.id.get()));
     query = if let Some(status) = status {
         query.filter(review_prompt::Column::Status.eq(status))
     } else {
@@ -225,10 +224,10 @@ pub async fn medication_reviews(
     }))
 }
 
-pub fn medication_review_pdf(mut data: Value, people: &[person::Model], zone: Tz) -> Value {
+pub fn medication_review_pdf(mut data: Value, people: &[PersonSummary], zone: Tz) -> Value {
     let names: HashMap<i64, &str> = people
         .iter()
-        .map(|row| (row.id, row.name.as_str()))
+        .map(|row| (row.id.get(), row.name.as_str()))
         .collect();
     let mut to_discuss = 0usize;
     let mut reviewed = 0usize;
@@ -262,12 +261,12 @@ pub fn medication_review_pdf(mut data: Value, people: &[person::Model], zone: Tz
 
 pub async fn household_medication_reviews(
     tenant: &TenantTransaction,
-    people: &[person::Model],
+    people: &[PersonSummary],
     status: Option<&str>,
     generated_at: DateTime<Utc>,
     today: NaiveDate,
 ) -> Result<Value, OperationError> {
-    let ids: Vec<i64> = people.iter().map(|row| row.id).collect();
+    let ids: Vec<i64> = people.iter().map(|row| row.id.get()).collect();
     review_prompts::refresh_many(tenant, &ids, today).await?;
     let mut query = review_prompt::Entity::find()
         .in_tenant(tenant.scope().household_id)
@@ -284,7 +283,7 @@ pub async fn household_medication_reviews(
         .await?;
     let names: HashMap<i64, &str> = people
         .iter()
-        .map(|row| (row.id, row.name.as_str()))
+        .map(|row| (row.id.get(), row.name.as_str()))
         .collect();
     let prompts: Vec<Value> = rows
         .iter()
@@ -551,16 +550,16 @@ fn insight_summary(
 
 pub async fn ordinary_history(
     tenant: &TenantTransaction,
-    people: &[person::Model],
+    people: &[PersonSummary],
     start: NaiveDate,
     end: NaiveDate,
     generated_at: DateTime<Utc>,
     zone: Tz,
 ) -> Result<Value, OperationError> {
-    let ids: Vec<i64> = people.iter().map(|row| row.id).collect();
+    let ids: Vec<i64> = people.iter().map(|row| row.id.get()).collect();
     let names: HashMap<i64, &str> = people
         .iter()
-        .map(|row| (row.id, row.name.as_str()))
+        .map(|row| (row.id.get(), row.name.as_str()))
         .collect();
     let db = tenant.transaction();
     let household_id = tenant.scope().household_id;

@@ -70,7 +70,6 @@ struct Administration {
     app_tokens: bool,
     audit_logs: bool,
     invitations: bool,
-    person_access_grants: bool,
 }
 
 #[derive(Serialize)]
@@ -99,8 +98,6 @@ struct StockRemovals {
 struct LocationManagement {
     actions: &'static [&'static str],
     version_required: bool,
-    person_memberships: &'static [&'static str],
-    memberships_online_only: bool,
 }
 
 #[derive(Serialize)]
@@ -286,7 +283,6 @@ impl CapabilitiesResponse {
                     app_tokens: true,
                     audit_logs: true,
                     invitations: true,
-                    person_access_grants: true,
                 },
                 medication_pause_periods: MedicationPausePeriods {
                     supported: true,
@@ -313,8 +309,6 @@ impl CapabilitiesResponse {
                 location_management: LocationManagement {
                     actions: &["create", "update", "destroy"],
                     version_required: true,
-                    person_memberships: &["create", "destroy"],
-                    memberships_online_only: true,
                 },
                 medication_reviews: MedicationReviews {
                     actions: &["index", "show", "update"],
@@ -343,9 +337,8 @@ impl CapabilitiesResponse {
                     },
                 },
                 portable_formats: &[
-                    "medtracker.portable.v1",
+                    crate::models::care::sync::CURRENT_PORTABLE_FORMAT,
                     "medtracker.portable.encrypted.v1",
-                    "medtracker.portable.v2",
                 ],
                 backups: Backups {
                     encrypted_migration_bundle: true,
@@ -373,8 +366,6 @@ impl CapabilitiesResponse {
                         "avatar",
                         "invitation",
                         "household_membership",
-                        "person_access_grant",
-                        "location_membership",
                         "report",
                         "api_session",
                         "api_app_token",

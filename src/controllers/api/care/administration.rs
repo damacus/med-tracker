@@ -5,16 +5,12 @@ use crate::models::care::{
 };
 mod app_tokens;
 mod audit_logs;
-mod grants;
 mod memberships;
 mod settings;
 pub(super) use app_tokens::{
     create as app_tokens_create, destroy as app_tokens_destroy, index as app_tokens_index,
 };
 pub(super) use audit_logs::index as audit_logs_index;
-pub(super) use grants::{
-    create as grants_create, destroy as grants_destroy, index as grants_index,
-};
 pub(super) use memberships::{
     destroy as memberships_destroy, index as memberships_index, update as memberships_update,
 };
@@ -36,13 +32,6 @@ fn attributes(body: &Value, envelope: &str) -> std::result::Result<Value, respon
     let allowed: &[&str] = match envelope {
         "household" => &["name", "timezone", "subscription_plan"],
         "household_membership" => &["role", "status", "person_id"],
-        "person_access_grant" => &[
-            "household_membership_id",
-            "person_id",
-            "access_level",
-            "relationship_type",
-            "expires_at",
-        ],
         _ => return Err(response::Failure::bad_request("Invalid request body")),
     };
     let fields = body

@@ -1,11 +1,7 @@
 use super::super::medications::{
     authentication_error, begin, operation_error, request_id, unavailable,
 };
-use crate::models::{
-    access::PersonAccess,
-    errors::OperationError,
-    profile::{self, avatar},
-};
+use crate::models::{errors::OperationError, profile::avatar};
 use axum::{
     Extension,
     extract::{Form as AxumForm, Multipart, multipart::MultipartRejection},
@@ -19,6 +15,17 @@ use loco_rs::controller::middleware::request_id::LocoRequestId;
 use loco_rs::prelude::*;
 use serde_json::json;
 use std::collections::HashMap;
+
+pub fn account_routes() -> Routes {
+    Routes::new()
+        .add(
+            "/profile/avatar",
+            get(show)
+                .post(upload)
+                .layer(axum::extract::DefaultBodyLimit::max(6 * 1024 * 1024)),
+        )
+        .add("/profile/avatar/remove", post(remove))
+}
 
 pub fn routes() -> Routes {
     Routes::new()
@@ -87,7 +94,11 @@ impl Page<'_> {
                 StatusCode::SEE_OTHER,
                 [(
                     header::LOCATION,
-                    format!("/households/{}/profile#profile", self.slug),
+                    if self.slug.is_empty() {
+                        "/profile#profile".to_owned()
+                    } else {
+                        format!("/households/{}/profile#profile", self.slug)
+                    },
                 )],
             )
                 .into_response(),
@@ -116,13 +127,62 @@ async fn settings(
     .await
 }
 
-async fn show(
-    State(ctx): State<AppContext>,
-    Path(slug): Path<String>,
-    session: Session<SessionPgPool>,
-    request: Option<Extension<LocoRequestId>>,
-) -> Response {
-    show_image(ctx, slug, session, request, None).await
+async fn show(State(ctx): State<AppContext>, session: Session<SessionPgPool>) -> Response {
+    let principal = match crate::models::identity::browser::authenticate(
+        &ctx.db,
+        &session,
+        ctx.config.settings.as_ref(),
+    )
+    .await
+    {
+        Ok(value) => value,
+        Err(error) => return private(authentication_error(error)),
+    };
+    let transaction = match principal.account_transaction(&ctx.db).await {
+        Ok(value) => value,
+        Err(error) => return private(authentication_error(error)),
+    };
+    let account_id = crate::models::ids::AccountId::from_database(principal.account_id());
+    let attachment = match avatar::account_attachment(&transaction, account_id).await {
+        Ok(Some(value)) => value,
+        Ok(None) => return private(operation_error(OperationError::NotFound)),
+        Err(error) => return private(operation_error(error)),
+    };
+    if transaction.commit().await.is_err() {
+        return private(unavailable());
+    }
+    let storage = match avatar::Storage::configured(&ctx) {
+        Ok(value) => value,
+        Err(_) => return private(unavailable()),
+    };
+    let bytes = match storage.get(&attachment.key).await {
+        Ok(value) => value,
+        Err(_) => return private(unavailable()),
+    };
+    let image = match avatar::decode(&bytes, &attachment.content_type) {
+        Ok(value) => value,
+        Err(_) => return private(unavailable()),
+    };
+    let transaction = match principal.account_transaction(&ctx.db).await {
+        Ok(value) => value,
+        Err(error) => return private(authentication_error(error)),
+    };
+    match avatar::account_attachment(&transaction, account_id).await {
+        Ok(Some(current)) if current.key == attachment.key => {}
+        Ok(_) => return private(operation_error(OperationError::NotFound)),
+        Err(error) => return private(operation_error(error)),
+    }
+    if transaction.commit().await.is_err() {
+        return private(unavailable());
+    }
+    private(
+        (
+            StatusCode::OK,
+            [(header::CONTENT_TYPE, image.content_type)],
+            image.bytes,
+        )
+            .into_response(),
+    )
 }
 
 async fn show_person(
@@ -141,7 +201,7 @@ async fn attached(
 ) -> std::result::Result<Option<avatar::Attachment>, OperationError> {
     match person_id {
         Some(id) => avatar::person_attachment(tenant, id).await,
-        None => avatar::attachment(tenant, account_id, PersonAccess::View).await,
+        None => avatar::attachment(tenant, account_id).await,
     }
 }
 
@@ -244,13 +304,16 @@ async fn uploaded(
 
 async fn upload(
     State(ctx): State<AppContext>,
-    Path(slug): Path<String>,
+    path: Option<Path<HashMap<String, String>>>,
     session: Session<SessionPgPool>,
     token: CsrfToken,
     (headers, request): (HeaderMap, Option<Extension<LocoRequestId>>),
     ViewEngine(view): ViewEngine<TeraView>,
     form: std::result::Result<Multipart, MultipartRejection>,
 ) -> Response {
+    let slug = path
+        .and_then(|Path(mut path)| path.remove("slug"))
+        .unwrap_or_default();
     let page = Page {
         ctx: &ctx,
         session: &session,
@@ -260,19 +323,16 @@ async fn upload(
         slug: &slug,
         request_id: request_id(request),
     };
-    let (principal, tenant) = match begin(&ctx, &session, &slug, &page.request_id).await {
+    let principal = match crate::models::identity::browser::authenticate(
+        &ctx.db,
+        &session,
+        ctx.config.settings.as_ref(),
+    )
+    .await
+    {
         Ok(value) => value,
         Err(error) => return private(authentication_error(error)),
     };
-    if let Err(error) =
-        profile::linked_person(&tenant, principal.account_id(), PersonAccess::Manage).await
-    {
-        return private(operation_error(error));
-    }
-    let tenant_household_id = tenant.scope().household_id;
-    if tenant.commit().await.is_err() {
-        return private(unavailable());
-    }
     let image = match form {
         Ok(form) => uploaded(form, &token).await,
         Err(_) => Err(OperationError::Validation {
@@ -297,8 +357,8 @@ async fn upload(
         }
     };
     let key = format!(
-        "avatars/{}/{}",
-        tenant_household_id,
+        "avatars/accounts/{}/{}",
+        principal.account_id(),
         uuid::Uuid::new_v4().simple()
     );
     if storage.put(&key, &image).await.is_err() {
@@ -307,24 +367,17 @@ async fn upload(
             .render(Some("storage_unavailable"), StatusCode::SERVICE_UNAVAILABLE)
             .await;
     }
-    let tenant = match principal
-        .begin_household_slug(
-            &ctx.db,
-            &slug,
-            page.request_id.clone(),
-            ctx.config.settings.as_ref(),
-        )
-        .await
-    {
+    let transaction = match principal.account_transaction(&ctx.db).await {
         Ok(value) => value,
         Err(error) => {
             avatar::discard_upload(&ctx, &storage, &key).await;
             return private(authentication_error(error));
         }
     };
-    match avatar::replace(
-        &tenant,
-        principal.account_id(),
+    match avatar::replace_account(
+        &transaction,
+        crate::models::ids::AccountId::from_database(principal.account_id()),
+        &page.request_id,
         key.clone(),
         &image,
         storage.bucket(),
@@ -332,7 +385,7 @@ async fn upload(
     .await
     {
         Ok(_) => {
-            if tenant.commit().await.is_err() {
+            if transaction.commit().await.is_err() {
                 avatar::discard_upload(&ctx, &storage, &key).await;
                 return page
                     .render(Some("storage_unavailable"), StatusCode::SERVICE_UNAVAILABLE)
@@ -341,7 +394,7 @@ async fn upload(
             page.redirect()
         }
         Err(error) => {
-            let _ = tenant.rollback().await;
+            let _ = transaction.rollback().await;
             avatar::discard_upload(&ctx, &storage, &key).await;
             if matches!(error, OperationError::Unavailable) {
                 page.render(Some("storage_unavailable"), StatusCode::SERVICE_UNAVAILABLE)
@@ -355,13 +408,16 @@ async fn upload(
 
 async fn remove(
     State(ctx): State<AppContext>,
-    Path(slug): Path<String>,
+    path: Option<Path<HashMap<String, String>>>,
     session: Session<SessionPgPool>,
     token: CsrfToken,
     (headers, request): (HeaderMap, Option<Extension<LocoRequestId>>),
     ViewEngine(view): ViewEngine<TeraView>,
     AxumForm(form): AxumForm<HashMap<String, String>>,
 ) -> Response {
+    let slug = path
+        .and_then(|Path(mut path)| path.remove("slug"))
+        .unwrap_or_default();
     if token
         .verify(
             form.get("authenticity_token")
@@ -381,7 +437,17 @@ async fn remove(
         slug: &slug,
         request_id: request_id(request),
     };
-    let (principal, tenant) = match begin(&ctx, &session, &slug, &page.request_id).await {
+    let principal = match crate::models::identity::browser::authenticate(
+        &ctx.db,
+        &session,
+        ctx.config.settings.as_ref(),
+    )
+    .await
+    {
+        Ok(value) => value,
+        Err(error) => return private(authentication_error(error)),
+    };
+    let transaction = match principal.account_transaction(&ctx.db).await {
         Ok(value) => value,
         Err(error) => return private(authentication_error(error)),
     };
@@ -393,9 +459,16 @@ async fn remove(
                 .await;
         }
     };
-    match avatar::remove(&tenant, principal.account_id(), storage.bucket()).await {
+    match avatar::remove_account(
+        &transaction,
+        crate::models::ids::AccountId::from_database(principal.account_id()),
+        &page.request_id,
+        storage.bucket(),
+    )
+    .await
+    {
         Ok(_) => {
-            if tenant.commit().await.is_err() {
+            if transaction.commit().await.is_err() {
                 return page
                     .render(Some("storage_unavailable"), StatusCode::SERVICE_UNAVAILABLE)
                     .await;
@@ -403,7 +476,7 @@ async fn remove(
             page.redirect()
         }
         Err(error) => {
-            let _ = tenant.rollback().await;
+            let _ = transaction.rollback().await;
             private(operation_error(error))
         }
     }

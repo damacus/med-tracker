@@ -963,8 +963,7 @@ es:
       view: Ver
       delete_dialog:
         title: Eliminar Ubicación
-        confirm: "¿Está seguro de que desea eliminar %{name}? Esto también eliminará
-          todos los medicamentos en esta ubicación."
+        confirm: "¿Eliminar la etiqueta de almacenamiento %{name}? Se conservarán los medicamentos, las existencias y el historial registrado."
         cancel: Cancelar
         submit: Eliminar
     show:
@@ -1846,6 +1845,19 @@ es:
     paused: 'No se puede tomar el medicamento: está en pausa'
     overlapping_prescription_restriction: 'No se puede tomar el medicamento: otra receta activa para este medicamento establece un límite de tiempo más estricto.'
   profiles:
+    medication_history:
+      title: "Historial de medicación"
+      description: "Tus dosis registradas, incluidos los registros de hogares de los que has salido."
+      download: "Descargar historial"
+      subset: "La descarga solo incluye dosis registradas. No es un expediente personal completo ni un paquete de migración."
+      back: "Volver al perfil"
+      empty: "No se han registrado dosis de medicación."
+      next: "Página siguiente"
+      origin: "Hogar de origen"
+      stock: "Existencias registradas"
+      actor: "Registrado por"
+      unknown: "Sin registrar"
+      imported: "Registro importado"
     security_flow:
       change_password: "Cambiar contraseña"
       new_password: "Nueva contraseña"
@@ -2167,10 +2179,8 @@ es:
         día
       categories_description: Elige qué tipos de notificaciones quieres recibir
       managed_people:
-        title: Personas que gestionas
-        description: Las alertas de dosis omitidas para niños y adultos dependientes
-          se incluyen automáticamente. Elige a los adultos que también quieras seguir.
-        automatic: Incluido automáticamente
+        title: Personas del hogar
+        description: Elige de quién quieres recibir alertas de dosis omitidas. Las alertas están desactivadas hasta que selecciones a alguien.
         notify_me: Notificarme
         toggle_label: Notificarme cuando %{name} omita una dosis
       periods:

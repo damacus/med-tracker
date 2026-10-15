@@ -73,44 +73,58 @@ impl<'a> Page<'a> {
         screen: Screen,
         submitted: Option<&HashMap<String, String>>,
         error: Option<&OperationError>,
-    ) -> std::result::Result<(&'static str, Value), OperationError> {
+    ) -> std::result::Result<(&'static str, serde_json::Map<String, Value>), OperationError> {
         administration::authorize(tenant).await?;
-        let mut data = rendering::context(self.slug, error);
+        let mut data = rendering::context(self.slug, error)?;
         let template = match screen {
             Screen::Index => {
                 let warnings = crate::models::care::care_warning::project(tenant, None).await?;
                 let mut warnings = warnings.into_values().collect::<Vec<_>>();
                 warnings.sort_by(|a, b| a["person_name"].as_str().cmp(&b["person_name"].as_str()));
-                data["care_warnings"] = json!(warnings);
-                data["care_warning_labels"] = crate::models::care::report_pdf::translations("en")
-                    .map_err(|_| OperationError::Unavailable)?["care_warning"]
-                    .clone();
+                data.insert("care_warnings".into(), json!(warnings));
+                data.insert(
+                    "care_warning_labels".into(),
+                    crate::models::care::report_pdf::translations("en")
+                        .map_err(|_| OperationError::Unavailable)?["care_warning"]
+                        .clone(),
+                );
                 "administration/index.html"
             }
             Screen::Settings => {
                 let current = administration::settings::read(tenant).await?;
-                data["draft"] = submitted.map_or_else(
-                    || json!({"name":current["data"]["name"]}),
-                    |draft| json!(draft),
+                data.insert(
+                    "draft".into(),
+                    submitted.map_or_else(
+                        || json!({"name":current["data"]["name"]}),
+                        |draft| json!(draft),
+                    ),
                 );
                 "administration/household.html"
             }
             Screen::Users => {
-                data["members"] = json!(rendering::members(
-                    &administration::memberships::list(tenant).await?
-                )?);
+                data.insert(
+                    "members".into(),
+                    json!(rendering::members(
+                        &administration::memberships::list(tenant).await?
+                    )?),
+                );
                 "administration/users.html"
             }
-            Screen::Role(user_id) => {
-                let member = self.member(tenant, user_id).await?;
-                data["draft"] =
-                    submitted.map_or_else(|| json!({"role":member["role"]}), |draft| json!(draft));
-                data["member"] = member;
+            Screen::Role(membership_id) => {
+                let member = self.member(tenant, membership_id).await?;
+                let role = member.get("role").ok_or(OperationError::Unavailable)?;
+                data.insert(
+                    "draft".into(),
+                    submitted.map_or_else(|| json!({"role":role}), |draft| json!(draft)),
+                );
+                data.insert("member".into(), member);
                 "administration/role.html"
             }
             Screen::Relationships => {
-                data["relationships"] =
-                    administration::delegation::list(tenant).await?["data"].clone();
+                data.insert(
+                    "relationships".into(),
+                    administration::delegation::list(tenant).await?["data"].clone(),
+                );
                 "administration/relationships.html"
             }
             Screen::NewRelationship => {
@@ -122,10 +136,22 @@ impl<'a> Page<'a> {
                     ])
                 });
                 let mut options = administration::delegation::options(tenant).await?;
-                rendering::selected(&mut options, &draft);
-                data["carers"] = options["carers"].clone();
-                data["patients"] = options["patients"].clone();
-                data["draft"] = json!(draft);
+                rendering::selected(&mut options, &draft)?;
+                data.insert(
+                    "carers".into(),
+                    options
+                        .get("carers")
+                        .cloned()
+                        .ok_or(OperationError::Unavailable)?,
+                );
+                data.insert(
+                    "patients".into(),
+                    options
+                        .get("patients")
+                        .cloned()
+                        .ok_or(OperationError::Unavailable)?,
+                );
+                data.insert("draft".into(), json!(draft));
                 "administration/relationship_form.html"
             }
         };
@@ -135,11 +161,11 @@ impl<'a> Page<'a> {
     async fn member(
         &self,
         tenant: &TenantTransaction,
-        user_id: i64,
+        membership_id: i64,
     ) -> std::result::Result<Value, OperationError> {
         rendering::members(&administration::memberships::list(tenant).await?)?
             .into_iter()
-            .find(|member| member["user_id"].as_i64() == Some(user_id))
+            .find(|member| member.get("id").and_then(Value::as_i64) == Some(membership_id))
             .ok_or(OperationError::NotFound)
     }
 
@@ -170,7 +196,10 @@ impl<'a> Page<'a> {
                 }
                 Change::Role(id) => {
                     let member = self.member(&tenant, id).await?;
-                    let membership_id = member["id"].as_i64().ok_or(OperationError::Unavailable)?;
+                    let membership_id = member
+                        .get("id")
+                        .and_then(Value::as_i64)
+                        .ok_or(OperationError::Unavailable)?;
                     administration::memberships::change(
                         &tenant,
                         membership_id,

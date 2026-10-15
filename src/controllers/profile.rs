@@ -1,5 +1,6 @@
 pub(crate) mod avatar;
 mod export;
+mod medication_history;
 mod notifications;
 mod push;
 
@@ -8,7 +9,6 @@ use crate::{
         authentication_error, begin, operation_error, request_id, unavailable,
     },
     models::{
-        access::PersonAccess,
         care::{administration, report_pdf},
         entities::account,
         errors::OperationError,
@@ -29,6 +29,140 @@ use loco_rs::{controller::middleware::request_id::LocoRequestId, prelude::*};
 use sea_orm::EntityTrait;
 use serde_json::{Value, json};
 use std::collections::HashMap;
+
+pub fn account_routes() -> Routes {
+    Routes::new()
+        .add("/profile", get(account_show).post(account_save))
+        .add(
+            "/profile/medication-history",
+            get(medication_history::show).layer(axum::middleware::map_response(|response| async {
+                medication_history::no_store(response)
+            })),
+        )
+        .add(
+            "/profile/medication-history/download",
+            get(medication_history::download).layer(axum::middleware::map_response(
+                |response| async { medication_history::no_store(response) },
+            )),
+        )
+}
+
+async fn account_show(
+    State(ctx): State<AppContext>,
+    session: Session<SessionPgPool>,
+    (headers, request): (HeaderMap, Option<Extension<LocoRequestId>>),
+    token: CsrfToken,
+    ViewEngine(view): ViewEngine<TeraView>,
+) -> Response {
+    Page {
+        ctx: &ctx,
+        slug: "",
+        session: &session,
+        request_id: request_id(request),
+        headers: &headers,
+        token: &token,
+        view: &view,
+    }
+    .render(None)
+    .await
+}
+
+async fn account_save(
+    State(ctx): State<AppContext>,
+    session: Session<SessionPgPool>,
+    (headers, request): (HeaderMap, Option<Extension<LocoRequestId>>),
+    token: CsrfToken,
+    ViewEngine(view): ViewEngine<TeraView>,
+    Form(draft): Form<HashMap<String, String>>,
+) -> Response {
+    if token
+        .verify(
+            draft
+                .get("authenticity_token")
+                .map(String::as_str)
+                .unwrap_or(""),
+        )
+        .is_err()
+    {
+        return operation_error(OperationError::Forbidden);
+    }
+    let principal = match crate::models::identity::browser::authenticate(
+        &ctx.db,
+        &session,
+        ctx.config.settings.as_ref(),
+    )
+    .await
+    {
+        Ok(value) => value,
+        Err(error) => return authentication_error(error),
+    };
+    let transaction = match principal.account_transaction(&ctx.db).await {
+        Ok(value) => value,
+        Err(error) => return authentication_error(error),
+    };
+    let request_id = request_id(request);
+    let result = async {
+        if draft.get("setting").map(String::as_str) == Some("name") {
+            if draft
+                .keys()
+                .any(|key| !["setting", "name", "authenticity_token"].contains(&key.as_str()))
+            {
+                return Err(profile::validation(
+                    "profile",
+                    "contains an unsupported field",
+                ));
+            }
+            return profile::update_account_name(
+                &transaction,
+                crate::models::ids::AccountId::from_database(principal.account_id()),
+                &request_id,
+                draft.get("name").map(String::as_str).unwrap_or(""),
+            )
+            .await;
+        }
+        let changes = parse_preferences(&draft)?;
+        profile::update_account_preferences(
+            &transaction,
+            crate::models::ids::AccountId::from_database(principal.account_id()),
+            &request_id,
+            changes,
+        )
+        .await
+    }
+    .await;
+    match result {
+        Ok(()) => {
+            if transaction.commit().await.is_err() {
+                return unavailable();
+            }
+            (
+                StatusCode::SEE_OTHER,
+                [
+                    (header::LOCATION, "/profile#profile"),
+                    (header::CACHE_CONTROL, "no-store"),
+                ],
+            )
+                .into_response()
+        }
+        Err(OperationError::Validation { .. }) => {
+            if transaction.rollback().await.is_err() {
+                return unavailable();
+            }
+            Page {
+                ctx: &ctx,
+                slug: "",
+                session: &session,
+                request_id,
+                headers: &headers,
+                token: &token,
+                view: &view,
+            }
+            .render(Some(draft))
+            .await
+        }
+        Err(error) => operation_error(error),
+    }
+}
 
 pub fn routes() -> Routes {
     Routes::new()
@@ -286,15 +420,14 @@ async fn navigation(
         .into_iter()
         .filter_map(|id| choices.iter().find(|choice| choice["id"] == id).cloned())
         .collect::<Vec<_>>();
-    let person =
-        match profile::linked_person(&tenant, principal.account_id(), PersonAccess::View).await {
-            Ok(person) => Some(person),
-            Err(OperationError::Forbidden | OperationError::NotFound) => None,
-            Err(error) => return operation_error(error),
-        };
-    let name = person
-        .as_ref()
-        .map_or(account.email.as_str(), |person| person.name.as_str());
+    let person = match profile::linked_person(&tenant, principal.account_id()).await {
+        Ok(person) => Some(person),
+        Err(OperationError::Forbidden | OperationError::NotFound) => None,
+        Err(error) => return operation_error(error),
+    };
+    let Some(name) = account.name.as_deref() else {
+        return unavailable();
+    };
     let initials = name
         .split_whitespace()
         .filter_map(|word| word.chars().next())
@@ -302,8 +435,7 @@ async fn navigation(
         .flat_map(char::to_uppercase)
         .collect::<String>();
     let avatar_attached = if person.is_some() {
-        match profile::avatar::attachment(&tenant, principal.account_id(), PersonAccess::View).await
-        {
+        match profile::avatar::attachment(&tenant, principal.account_id()).await {
             Ok(value) => value.is_some(),
             Err(error) => return operation_error(error),
         }
@@ -355,23 +487,49 @@ impl Page<'_> {
             token,
             view,
         } = self;
-        let (principal, tenant) = match begin(ctx, session, slug, &request_id).await {
+        let principal = match crate::models::identity::browser::authenticate(
+            &ctx.db,
+            session,
+            ctx.config.settings.as_ref(),
+        )
+        .await
+        {
             Ok(value) => value,
             Err(error) => return authentication_error(error),
         };
-        let person =
-            match profile::linked_person(&tenant, principal.account_id(), PersonAccess::View).await
+        let tenant = if slug.is_empty() {
+            None
+        } else {
+            match principal
+                .begin_household_slug(
+                    &ctx.db,
+                    slug,
+                    request_id.clone(),
+                    ctx.config.settings.as_ref(),
+                )
+                .await
             {
-                Ok(value) => value,
-                Err(error) => return operation_error(error),
-            };
+                Ok(value) => Some(value),
+                Err(error) => return authentication_error(error),
+            }
+        };
+        let transaction = match principal.account_transaction(&ctx.db).await {
+            Ok(value) => value,
+            Err(error) => return authentication_error(error),
+        };
         let account = match account::Entity::find_by_id(principal.account_id())
-            .one(tenant.transaction())
+            .one(&transaction)
             .await
         {
             Ok(Some(value)) => value,
-            Ok(None) => return operation_error(OperationError::Unauthenticated),
-            Err(_) => return unavailable(),
+            _ => return unavailable(),
+        };
+        let person = match crate::models::entities::person::Entity::find_by_id(account.person_id)
+            .one(&transaction)
+            .await
+        {
+            Ok(Some(value)) => value,
+            _ => return unavailable(),
         };
         let locale = report_pdf::locale(
             headers
@@ -398,12 +556,19 @@ impl Page<'_> {
         data["lang"] = json!(locale);
         data["labels"] = labels.clone();
         data["slug"] = json!(slug);
-        data["name"] = json!(person.name);
+        data["account_only"] = json!(slug.is_empty());
+        data["profile_path"] = json!(if slug.is_empty() {
+            "/profile".to_owned()
+        } else {
+            format!("/households/{slug}/profile")
+        });
+        let Some(name) = account.name.as_deref() else {
+            return unavailable();
+        };
+        data["name"] = json!(name);
         data["email"] = json!(account.email);
         data["initials"] = json!(
-            person
-                .name
-                .split_whitespace()
+            name.split_whitespace()
                 .filter_map(|word| word.chars().next())
                 .take(2)
                 .flat_map(char::to_uppercase)
@@ -434,24 +599,16 @@ impl Page<'_> {
         );
         data["person_type"] = json!(person.person_type);
         data["has_capacity"] = json!(person.has_capacity);
-        data["avatar_attached"] =
-            match profile::avatar::attachment(&tenant, principal.account_id(), PersonAccess::View)
-                .await
-            {
-                Ok(value) => json!(value.is_some()),
-                Err(error) => return operation_error(error),
-            };
-        data["can_edit_profile"] = match crate::models::access::require_person_access(
-            &tenant,
-            person.id,
-            PersonAccess::Manage,
+        data["avatar_attached"] = match profile::avatar::account_attachment(
+            &transaction,
+            crate::models::ids::AccountId::from_database(account.id),
         )
         .await
         {
-            Ok(()) => json!(true),
-            Err(OperationError::Forbidden) => json!(false),
+            Ok(value) => json!(value.is_some()),
             Err(error) => return operation_error(error),
         };
+        data["can_edit_profile"] = json!(true);
         data["gravatar_enabled"] = json!(profile::gravatar::enabled(&account.preferences));
         data["selected_gravatar"] = json!(
             draft
@@ -465,16 +622,10 @@ impl Page<'_> {
                         .is_some_and(|value| value == "true")
                 })
         );
-        data["gravatar_url"] = match profile::gravatar::for_person(
-            &tenant,
-            person.id,
-            data["avatar_attached"].as_bool().unwrap_or(false),
-        )
-        .await
-        {
-            Ok(value) => json!(value),
-            Err(error) => return operation_error(error),
-        };
+        data["gravatar_url"] = json!(profile::gravatar::for_account(
+            &account,
+            data["avatar_attached"].as_bool().unwrap_or(false)
+        ));
         data["time_zone"] = json!(
             account.preferences["time_zone"]
                 .as_str()
@@ -502,6 +653,14 @@ impl Page<'_> {
             .as_ref()
             .and_then(|draft| draft.get("setting"))
             .map(String::as_str);
+        data["name_error"] = json!(setting == Some("name"));
+        data["name_draft"] = json!(
+            draft
+                .as_ref()
+                .and_then(|value| value.get("name"))
+                .map(String::as_str)
+                .unwrap_or(name)
+        );
         data["timezone_error"] = json!(setting == Some("time_zone"));
         data["shortcuts_error"] = json!(setting == Some("shortcuts"));
         data["gravatar_error"] = json!(setting == Some("gravatar"));
@@ -509,11 +668,19 @@ impl Page<'_> {
             .as_ref()
             .and_then(|draft| draft.get("avatar_error"))
             .map_or(Value::Null, |key| labels["profiles"]["avatar"][key].clone());
-        let can_manage = match administration::can_manage(&tenant).await {
-            Ok(value) => value,
-            Err(error) => return operation_error(error),
+        let can_manage = if let Some(tenant) = &tenant {
+            match administration::can_manage(tenant).await {
+                Ok(value) => value,
+                Err(error) => return operation_error(error),
+            }
+        } else {
+            false
         };
-        data["shortcut_choices"] = json!(shortcut_choices(slug, &labels, can_manage));
+        data["shortcut_choices"] = json!(shortcut_choices(
+            slug,
+            &labels,
+            can_manage || slug.is_empty()
+        ));
         data["sidebar_links"] = json!(
             shortcut_choices(slug, &labels, can_manage)
                 .into_iter()
@@ -525,23 +692,35 @@ impl Page<'_> {
                 })
                 .collect::<Vec<_>>()
         );
-        data["role_label"] =
-            labels["admin"]["labels"]["membership_roles"][&tenant.membership().role].clone();
+        data["role_label"] = tenant.as_ref().map_or(Value::Null, |tenant| {
+            labels["admin"]["labels"]["membership_roles"][&tenant.membership().role].clone()
+        });
+        if slug.is_empty() {
+            data["sidebar_links"] = json!([]);
+        }
         let stored = stored_shortcuts(&account);
         data["shortcut_slots"] = json!((1..=3).map(|slot| {
         let selected = if setting == Some("shortcuts") { draft.as_ref().and_then(|draft| draft.get(&format!("shortcut_{slot}"))).cloned().unwrap_or_default() } else { stored.get(slot - 1).cloned().unwrap_or_default() };
         json!({"number":slot,"label":labels["profiles"]["mobile_shortcuts"]["slot"].as_str().unwrap_or("").replace("%{number}", &slot.to_string()),"selected":selected})
     }).collect::<Vec<_>>());
         data["authenticity_token"] = json!(authenticity_token);
-        data["notifications"] =
-            match notifications::context(&tenant, principal.account_id(), &labels, draft.as_ref())
+        data["notifications"] = if let Some(tenant) = &tenant {
+            match notifications::context(tenant, principal.account_id(), &labels, draft.as_ref())
                 .await
             {
                 Ok(value) => value,
                 Err(error) => return operation_error(error),
-            };
+            }
+        } else {
+            Value::Null
+        };
         data["notifications_error"] = json!(setting == Some("notifications"));
-        if tenant.commit().await.is_err() {
+        if let Some(tenant) = tenant {
+            if tenant.commit().await.is_err() {
+                return unavailable();
+            }
+        }
+        if transaction.commit().await.is_err() {
             return unavailable();
         }
         let Some(service) = ctx
@@ -568,19 +747,18 @@ impl Page<'_> {
             Ok(_) => return operation_error(OperationError::Forbidden),
             Err(_) => return unavailable(),
         };
-        let (_, tenant) = match begin(ctx, session, slug, &request_id).await {
+        let transaction = match principal.account_transaction(&ctx.db).await {
             Ok(value) => value,
             Err(error) => return authentication_error(error),
         };
-        match profile::linked_person(&tenant, principal.account_id(), PersonAccess::View).await {
-            Ok(current) if current.id == person.id => {}
-            Ok(_) => return unavailable(),
-            Err(error) => return operation_error(error),
-        }
-        if tenant.commit().await.is_err() {
+        if transaction.commit().await.is_err() {
             return unavailable();
         }
-        match format::render().view(view, "profile/show.html", data) {
+        match format::render().view(
+            view,
+            "profile/show.html",
+            crate::views::template_data(&data),
+        ) {
             Ok(response) => (
                 if draft.is_some() {
                     StatusCode::UNPROCESSABLE_ENTITY

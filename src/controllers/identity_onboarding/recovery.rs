@@ -26,7 +26,11 @@ fn render(view: &TeraView, token: CsrfToken, invalid: bool, status: StatusCode) 
     data["title"] = serde_json::json!("Sign in with recovery code");
     data["authenticity_token"] = serde_json::json!(authenticity_token);
     data["invalid"] = serde_json::json!(invalid);
-    match format::render().view(view, "identity_onboarding/recovery.html", data) {
+    match format::render().view(
+        view,
+        "identity_onboarding/recovery.html",
+        crate::views::template_data(&data),
+    ) {
         Ok(response) => (
             status,
             token,

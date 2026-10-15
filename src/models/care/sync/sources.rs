@@ -112,11 +112,13 @@ pub(super) async fn apply(
         Some(provenance),
     )
     .await?;
-    let person = person::Entity::find_by_id(person_id)
-        .in_tenant(tenant.scope().household_id)
-        .one(tenant.transaction())
-        .await?
-        .ok_or(OperationError::NotFound)?;
+    let person = crate::models::access::person_scope(
+        crate::models::ids::HouseholdId::from_database(tenant.scope().household_id),
+    )
+    .filter(person::Column::Id.eq(person_id))
+    .one(tenant.transaction())
+    .await?
+    .ok_or(OperationError::NotFound)?;
     super::persistence::change(
         tenant,
         kind,

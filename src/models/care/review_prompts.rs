@@ -140,11 +140,12 @@ pub async fn index(
     if !sync::review_prompts::actor_adult(tenant.transaction(), &context).await? {
         return Err(OperationError::Forbidden);
     }
-    let people = person::Entity::find()
-        .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
-        .filter(person::Column::Id.in_subquery(access::granted_people(tenant.membership())))
-        .all(tenant.transaction())
-        .await?;
+    let people = crate::models::access::person_scope(
+        crate::models::ids::HouseholdId::from_database(tenant.scope().household_id),
+    )
+    .filter(person::Column::Id.in_subquery(access::granted_people(tenant.membership())))
+    .all(tenant.transaction())
+    .await?;
     let ids: Vec<i64> = people.iter().map(|row| row.id).collect();
     refresh_many(tenant, &ids, today_in_app_zone(tenant.settings())).await?;
     let mut query = review_prompt::Entity::find()

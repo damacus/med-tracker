@@ -1,6 +1,6 @@
 use super::*;
 use crate::models::{
-    access::{self, PersonAccess},
+    access,
     care::{health_events::browser, report_pdf},
 };
 use serde::Deserialize;
@@ -49,10 +49,8 @@ pub(super) async fn index(
         data["labels"] = labels.clone();
         data["back_label"] = labels["people"]["show"]["back"].clone();
         data["events"] = json!(events);
-        data["can_record"] =
-            json!(access::can_access_person(&tenant, person_id, PersonAccess::Record).await?);
-        data["can_manage"] =
-            json!(access::can_access_person(&tenant, person_id, PersonAccess::Manage).await?);
+        data["can_record"] = json!(access::participates(&tenant, person_id).await?);
+        data["can_manage"] = json!(access::participates(&tenant, person_id).await?);
         Ok::<_, OperationError>(data)
     }
     .await;
@@ -93,7 +91,7 @@ impl FormPage<'_> {
         let result=async {
             let (person,_) = people::read(&tenant,self.person_id,principal.time_zone()).await?;
             let person_id=person["data"]["id"].as_i64().ok_or(OperationError::Unavailable)?;
-            access::require_person_access(&tenant,person_id,if id.is_some(){PersonAccess::Manage}else{PersonAccess::Record}).await?;
+            access::require_participation(&tenant, person_id).await?;
             let language=report_pdf::locale(submitted.and_then(|draft|draft.get("locale").map(String::as_str)).or(filters.locale.as_deref()).unwrap_or("en"));
             let all_labels=report_pdf::translations(language).map_err(|_|OperationError::Unavailable)?;
             let labels=&all_labels["health_events"];

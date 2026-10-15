@@ -20,35 +20,45 @@ pub struct Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
+    #[sea_orm(has_many = "super::account_profile_events::Entity")]
+    AccountProfileEvents,
     #[sea_orm(has_one = "super::accounts::Entity")]
     Accounts,
+    #[sea_orm(has_many = "super::clinical_history_entries::Entity")]
+    ClinicalHistoryEntries,
     #[sea_orm(has_many = "super::health_events::Entity")]
     HealthEvents,
     #[sea_orm(has_many = "super::household_invitation_grants::Entity")]
     HouseholdInvitationGrants,
     #[sea_orm(has_many = "super::household_memberships::Entity")]
     HouseholdMemberships,
-    #[sea_orm(has_many = "super::location_memberships::Entity")]
-    LocationMemberships,
     #[sea_orm(has_many = "super::medication_review_prompts::Entity")]
     MedicationReviewPrompts,
     #[sea_orm(has_many = "super::notification_events::Entity")]
     NotificationEvents,
-    #[sea_orm(has_one = "super::notification_preferences::Entity")]
-    NotificationPreferences,
     #[sea_orm(has_many = "super::oauth_grants::Entity")]
     OauthGrants,
-    #[sea_orm(has_many = "super::person_access_grants::Entity")]
-    PersonAccessGrants,
     #[sea_orm(has_many = "super::person_medications::Entity")]
     PersonMedications,
     #[sea_orm(has_many = "super::schedules::Entity")]
     Schedules,
 }
 
+impl Related<super::account_profile_events::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::AccountProfileEvents.def()
+    }
+}
+
 impl Related<super::accounts::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Accounts.def()
+    }
+}
+
+impl Related<super::clinical_history_entries::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ClinicalHistoryEntries.def()
     }
 }
 
@@ -70,12 +80,6 @@ impl Related<super::household_memberships::Entity> for Entity {
     }
 }
 
-impl Related<super::location_memberships::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::LocationMemberships.def()
-    }
-}
-
 impl Related<super::medication_review_prompts::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::MedicationReviewPrompts.def()
@@ -88,21 +92,9 @@ impl Related<super::notification_events::Entity> for Entity {
     }
 }
 
-impl Related<super::notification_preferences::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::NotificationPreferences.def()
-    }
-}
-
 impl Related<super::oauth_grants::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::OauthGrants.def()
-    }
-}
-
-impl Related<super::person_access_grants::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::PersonAccessGrants.def()
     }
 }
 

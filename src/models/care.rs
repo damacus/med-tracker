@@ -24,14 +24,17 @@ pub mod portable_crypto;
 pub mod portable_imports;
 pub mod profile_export;
 pub mod push_subscriptions;
+pub(crate) mod report_denials;
 pub mod report_pdf;
 pub mod reports;
 pub mod review_prompts;
 pub mod stock_check;
 pub mod sync;
+pub mod take_history;
 pub mod treatments;
 pub mod ui_capabilities;
 
 pub mod care_warning;
 
 pub mod person_carers;
+pub(crate) mod account_clinical_access;

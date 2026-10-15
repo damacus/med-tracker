@@ -225,7 +225,7 @@ pub(super) async fn apply_attributes(
         let Some(person) = find_person(db, context, id).await? else {
             return Ok(Err(InputFailure::NotFound));
         };
-        if !person_access(db, context, person.id, false).await? {
+        if !person_access(db, context, person.id).await? {
             return Ok(Err(InputFailure::NotFound));
         }
         if existing.is_some_and(|existing| existing.person_id != person.id) {

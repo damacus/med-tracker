@@ -16,10 +16,28 @@ use axum_session::Session;
 use axum_session_sqlx::SessionPgPool;
 use chrono::Timelike;
 use loco_rs::{controller::middleware::request_id::LocoRequestId, prelude::*};
-use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use serde::Deserialize;
 use serde_json::json;
 use std::collections::HashMap;
+
+#[derive(Clone)]
+pub struct DashboardClock {
+    instant: chrono::DateTime<chrono::Utc>,
+}
+
+impl DashboardClock {
+    #[must_use]
+    pub fn fixed(instant: chrono::DateTime<chrono::Utc>) -> Self {
+        Self { instant }
+    }
+}
+
+fn reference_time(ctx: &AppContext) -> chrono::DateTime<chrono::Utc> {
+    ctx.shared_store
+        .get::<DashboardClock>()
+        .map_or_else(chrono::Utc::now, |clock| clock.instant)
+}
 
 #[derive(Default, Deserialize)]
 struct Selection {
@@ -47,6 +65,7 @@ async fn show(
     ViewEngine(view): ViewEngine<TeraView>,
     (Query(query), failure): (Query<Selection>, Option<Extension<DoseFailure>>),
 ) -> Response {
+    let now = reference_time(&ctx);
     let (principal, tenant) = match begin(&ctx, &session, &slug, &request_id(request)).await {
         Ok(value) => value,
         Err(error) => return authentication_error(error),
@@ -69,22 +88,16 @@ async fn show(
         .unwrap_or("current");
     let selected = match query.dashboard_person_id.as_deref() {
         None if variant != "family_lanes" => {
-            let candidates = match person::Entity::find()
-                .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
-                .filter(person::Column::Id.in_subquery(access::granted_people(tenant.membership())))
-                .order_by_asc(person::Column::Name)
-                .order_by_asc(person::Column::Id)
-                .all(tenant.transaction())
-                .await
+            let candidates = match crate::models::person_identity::current_summaries(&tenant).await
             {
                 Ok(value) => value,
                 Err(_) => return unavailable(),
             };
             candidates
                 .iter()
-                .find(|person| person.account_id == Some(principal.account_id()))
+                .find(|person| person.id.get() == owner.person_id)
                 .or(candidates.first())
-                .map(|person| person.id)
+                .map(|person| person.id.get())
         }
         None | Some("all") => None,
         Some(value) => match value.parse::<i64>() {
@@ -102,22 +115,29 @@ async fn show(
         Ok(value) => value,
         Err(_) => return unavailable(),
     };
-    let snapshot =
-        match dashboard::read(&tenant, principal.time_zone(), selected, &slug, &labels).await {
-            Ok(value) => value,
-            Err(error) => return operation_error(error),
-        };
-    let own_person =
-        match person::Entity::find_by_id(tenant.membership().person_id.unwrap_or_default())
-            .one(tenant.transaction())
-            .await
-        {
-            Ok(value) => value,
-            Err(_) => return unavailable(),
-        };
-    let name = own_person
-        .as_ref()
-        .map_or(owner.email.as_str(), |person| person.name.as_str());
+    let snapshot = match dashboard::read_at(
+        &tenant,
+        principal.time_zone(),
+        selected,
+        &slug,
+        &labels,
+        now,
+    )
+    .await
+    {
+        Ok(value) => value,
+        Err(error) => return operation_error(error),
+    };
+    let own_person = match person::Entity::find_by_id(tenant.membership().person_id)
+        .one(tenant.transaction())
+        .await
+    {
+        Ok(value) => value,
+        Err(_) => return unavailable(),
+    };
+    let Some(name) = owner.name.as_deref() else {
+        return unavailable();
+    };
     let can_manage = match administration::can_manage(&tenant).await {
         Ok(value) => value,
         Err(error) => return operation_error(error),
@@ -265,14 +285,13 @@ async fn show(
         data["dose"] = dose;
     }
     if variant == "current" {
-        let people = match reports::accessible_people(&tenant, access::PersonAccess::View).await {
+        let people = match reports::accessible_people(&tenant).await {
             Ok(people) => people
                 .into_iter()
-                .filter(|person| selected.is_none_or(|id| person.id == id))
+                .filter(|person| selected.is_none_or(|id| person.id.get() == id))
                 .collect::<Vec<_>>(),
             Err(error) => return operation_error(error),
         };
-        let now = chrono::Utc::now();
         let today = now.with_timezone(&principal.time_zone()).date_naive();
         let history = match reports::ordinary_history(
             &tenant,
@@ -298,9 +317,7 @@ async fn show(
     });
     data["can_create_person"] = json!(can_create_person);
     data["version"] = json!(env!("CARGO_PKG_VERSION"));
-    let hour = chrono::Utc::now()
-        .with_timezone(&principal.time_zone())
-        .hour();
+    let hour = now.with_timezone(&principal.time_zone()).hour();
     let greeting = match hour {
         5..=11 => "greeting_morning",
         12..=17 => "greeting_afternoon",
@@ -315,7 +332,11 @@ async fn show(
     if tenant.commit().await.is_err() {
         return unavailable();
     }
-    match format::render().view(&view, "dashboard/show.html", data) {
+    match format::render().view(
+        &view,
+        "dashboard/show.html",
+        crate::views::template_data(&data),
+    ) {
         Ok(response) => (
             status,
             token,
@@ -336,8 +357,12 @@ async fn stock_options(
         .all(tenant.transaction())
         .await?;
     let locations: HashMap<_, _> = location::Entity::find()
+        .filter(location::Column::RetiredAt.is_null())
         .filter(location::Column::HouseholdId.eq(tenant.scope().household_id))
-        .filter(location::Column::Id.is_in(medicines.iter().map(|medicine| medicine.location_id)))
+        .filter(
+            location::Column::Id
+                .is_in(medicines.iter().filter_map(|medicine| medicine.location_id)),
+        )
         .all(tenant.transaction())
         .await?
         .into_iter()
@@ -347,7 +372,7 @@ async fn stock_options(
         .iter()
         .filter_map(|id| {
             let medicine = medicines.iter().find(|medicine| medicine.id == *id)?;
-            let location = locations.get(&medicine.location_id)?;
+            let location = medicine.location_id.and_then(|id| locations.get(&id));
             let supply = medicine
                 .current_supply
                 .map(|value| value.normalize().to_string())
@@ -359,7 +384,11 @@ async fn stock_options(
             } else {
                 "units"
             };
-            Some(json!({"id":id.to_string(),"label":format!("{location} · {supply} {unit}")}))
+            let label = match location {
+                Some(location) => format!("{location} · {supply} {unit}"),
+                None => format!("{supply} {unit}"),
+            };
+            Some(json!({"id":id.to_string(),"label":label}))
         })
         .collect())
 }
@@ -427,10 +456,9 @@ async fn take(
     let result = async {
         let detail = browser_query::detail(&tenant, &id.to_string(), principal.time_zone()).await?;
         let input = super::medications::forms::take(&detail, &draft, principal.time_zone())?;
-        doses::execute_in_timezone(
+        doses::execute_with_provenance(
             &tenant,
-            doses::Command::Take(input),
-            principal.time_zone(),
+            doses::Request::Take(input),
             Some(principal.provenance()),
         )
         .await

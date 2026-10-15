@@ -191,3 +191,61 @@ async fn portable_export_rejects_invalid_options_and_foreign_households() {
     assert_eq!(foreign_status, 403);
     assert_eq!(audits, 0);
 }
+
+#[tokio::test]
+async fn portable_v3_exports_unlabelled_inventory_without_permission_edges()
+-> Result<(), Box<dyn std::error::Error>> {
+    let app = Application::new().await;
+    let observed: Result<_, Box<dyn std::error::Error>> = async {
+        app.fixture
+            .admin
+            .execute_unprepared("UPDATE medications SET location_id=NULL WHERE household_id=72001")
+            .await?;
+        let token = app.token().await;
+        let response = app
+            .client
+            .get(export_url(&app, "?version=3"))
+            .bearer_auth(&token)
+            .header("x-medtracker-portable-passphrase", PASSPHRASE)
+            .send()
+            .await?;
+        Ok((response.status().as_u16(), response.json::<Value>().await?))
+    }
+    .await;
+    app.close().await;
+    let (status, body) = observed?;
+    assert_eq!(status, 200, "{body}");
+    let envelope = body.get("data").ok_or("Missing portable envelope")?;
+    let payload = portable_crypto::decrypt(envelope, PASSPHRASE)
+        .map_err(|_| "Portable envelope did not decrypt")?;
+    assert_eq!(
+        payload.get("format").and_then(Value::as_str),
+        Some("medtracker.portable.v3")
+    );
+    let records = payload
+        .get("records")
+        .and_then(Value::as_object)
+        .ok_or("Missing records")?;
+    let medications = records
+        .get("medications")
+        .and_then(Value::as_array)
+        .ok_or("Missing medications")?;
+    assert!(!medications.is_empty());
+    assert!(
+        medications
+            .iter()
+            .all(|row| row.get("location_portable_id").is_some_and(Value::is_null))
+    );
+    assert!(!records.contains_key("person_access_grants"));
+    assert!(!records.contains_key("location_memberships"));
+    let people = records
+        .get("people")
+        .and_then(Value::as_array)
+        .ok_or("Missing people")?;
+    assert!(
+        people
+            .iter()
+            .all(|row| row.get("location_portable_ids").is_none())
+    );
+    Ok(())
+}

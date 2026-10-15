@@ -1,3 +1,5 @@
+#[path = "support/recorded_takes.rs"]
+mod recorded_takes;
 #[path = "support/template.rs"]
 mod template;
 use med_tracker::models::{
@@ -160,7 +162,7 @@ async fn stock_adjustment_atomically_records_quantity_audit_and_change() {
         "adjust inventory (qty: 12.25, reason: cycle count)"
     );
     assert_eq!(row.try_get::<String>("", "previous").unwrap(), "10.00");
-    assert_eq!(row.try_get::<String>("", "whodunnit").unwrap(), "77001");
+    assert_eq!(row.try_get::<String>("", "whodunnit").unwrap(), "73001");
     assert_eq!(
         row.try_get::<String>("", "request_id").unwrap(),
         scope().request_id
@@ -200,7 +202,7 @@ async fn stock_adjustment_preserves_exact_decimal_bounds_and_zero() {
 }
 
 #[tokio::test]
-async fn stock_adjustment_member_manage_grant_does_not_elevate_household_role() {
+async fn stock_adjustment_member_cannot_elevate_household_role() {
     let fixture = Fixture::new().await;
     fixture
         .admin
@@ -445,7 +447,7 @@ async fn stock_adjustment_portable_id_and_trusted_provenance_preserve_audit() {
         .unwrap();
     let audit: serde_json::Value = row.try_get("", "audit_context").unwrap();
     assert_eq!(audit["actor_account_id"], 71001);
-    assert_eq!(audit["actor_user_id"], 77001);
+    assert_eq!(audit["actor_person_id"], 73001);
     assert_eq!(audit["actor_membership_id"], 74001);
     assert_eq!(audit["household_id"], 72001);
     assert_eq!(audit["request_id"], "synthetic-stock-adjustment");

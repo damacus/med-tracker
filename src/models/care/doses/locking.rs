@@ -6,7 +6,6 @@ pub(super) async fn lock_row(
     id: i64,
 ) -> Result<(), ApiError> {
     let sql = match table {
-        "households" => "SELECT id FROM households WHERE id = $1 FOR UPDATE",
         "medications" => "SELECT id FROM medications WHERE id = $1 FOR UPDATE",
         "dosages" => "SELECT id FROM dosages WHERE id = $1 FOR UPDATE",
         _ => return Err(OperationError::Unavailable),

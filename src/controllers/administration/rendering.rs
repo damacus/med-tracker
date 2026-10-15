@@ -1,9 +1,21 @@
-use super::*;
+use super::{OperationError, TeraView, format, forms, unavailable};
+use axum::{
+    http::{StatusCode, header},
+    response::{IntoResponse, Response},
+};
+use axum_csrf::CsrfToken;
+use serde_json::{Map, Value, json};
+use std::collections::HashMap;
 
-pub(super) fn context(slug: &str, error: Option<&OperationError>) -> Value {
-    let mut data = super::super::medications::rendering::appearance_context();
-    data["slug"] = json!(slug);
-    data["title"] = json!("Administration");
+pub(super) fn context(
+    slug: &str,
+    error: Option<&OperationError>,
+) -> Result<Map<String, Value>, OperationError> {
+    let Value::Object(mut data) = super::super::medications::rendering::appearance_context() else {
+        return Err(OperationError::Unavailable);
+    };
+    data.insert("slug".into(), json!(slug));
+    data.insert("title".into(), json!("Administration"));
     let errors = field_errors(error);
     for field in [
         "name",
@@ -12,13 +24,22 @@ pub(super) fn context(slug: &str, error: Option<&OperationError>) -> Value {
         "patient_id",
         "relationship_type",
     ] {
-        data[format!("{field}_invalid")] =
-            json!(errors.iter().any(|error| error["field"] == field));
+        data.insert(
+            format!("{field}_invalid"),
+            json!(
+                errors
+                    .iter()
+                    .any(|error| error.get("field").and_then(Value::as_str) == Some(field))
+            ),
+        );
     }
-    data["errors"] = json!(errors);
-    data["roles"] = json!(["owner", "administrator", "member"]);
-    data["relationship_types"] = json!(["parent", "family_member", "professional_carer", "self"]);
-    data
+    data.insert("errors".into(), json!(errors));
+    data.insert("roles".into(), json!(["owner", "administrator", "member"]));
+    data.insert(
+        "relationship_types".into(),
+        json!(["parent", "family_member", "professional_carer", "self"]),
+    );
+    Ok(data)
 }
 
 fn field_errors(error: Option<&OperationError>) -> Vec<Value> {
@@ -33,7 +54,7 @@ fn field_errors(error: Option<&OperationError>) -> Vec<Value> {
             let label = match field {
                 "name" => "Household name", "role" => "Household role", "carer_id" => "Carer", "patient_id" => "Patient", "relationship_type" => "Relationship type", _ => "",
             };
-            let message = messages.as_array().map(|items| items.iter().filter_map(Value::as_str).collect::<Vec<_>>().join(", ")).unwrap_or_else(||messages.as_str().unwrap_or("is invalid").into());
+            let message = messages.as_array().map_or_else(||messages.as_str().unwrap_or("is invalid").into(), |items| items.iter().filter_map(Value::as_str).collect::<Vec<_>>().join(", "));
             json!({"field":if field=="base" {"administration-form"}else{field},"message":format!("{label} {message}").trim()})
         }).collect();
     }
@@ -44,16 +65,17 @@ pub(super) fn render(
     view: &TeraView,
     token: &CsrfToken,
     template: &str,
-    mut data: Value,
+    mut data: Map<String, Value>,
     error: Option<&OperationError>,
 ) -> Response {
     let Ok(authenticity) = token.authenticity_token() else {
         return unavailable();
     };
-    data["authenticity_token"] = json!(authenticity);
-    match format::render().view(view, template, data) {
+    data.insert("authenticity_token".into(), json!(authenticity));
+    let data = Value::Object(data);
+    match format::render().view(view, template, crate::views::template_data(&data)) {
         Ok(response) => (
-            error.map(forms::status).unwrap_or(StatusCode::OK),
+            error.map_or(StatusCode::OK, forms::status),
             token.clone(),
             [(header::CACHE_CONTROL, "no-store")],
             response,
@@ -64,32 +86,71 @@ pub(super) fn render(
 }
 
 pub(super) fn members(value: &Value) -> std::result::Result<Vec<Value>, OperationError> {
-    let rows = value["data"]
-        .as_array()
+    let rows = value
+        .get("data")
+        .and_then(Value::as_array)
         .ok_or(OperationError::Unavailable)?;
-    Ok(rows
-        .iter()
-        .filter(|row| row["status"] == "active")
-        .map(|row| {
-            let mut row = row.clone();
-            row["name"] = row["person_name"]
-                .as_str()
-                .map_or_else(|| row["email"].clone(), |name| json!(name));
-            row
-        })
-        .collect())
+    let mut active = Vec::new();
+    for row in rows {
+        let row = row.as_object().ok_or(OperationError::Unavailable)?;
+        let status = row
+            .get("status")
+            .and_then(Value::as_str)
+            .ok_or(OperationError::Unavailable)?;
+        if status != "active" {
+            continue;
+        }
+        let id = row
+            .get("id")
+            .and_then(Value::as_i64)
+            .ok_or(OperationError::Unavailable)?;
+        let name = row
+            .get("person_name")
+            .and_then(Value::as_str)
+            .ok_or(OperationError::Unavailable)?;
+        let role = row
+            .get("role")
+            .and_then(Value::as_str)
+            .ok_or(OperationError::Unavailable)?;
+        active.push(json!({"id":id,"name":name,"role":role}));
+    }
+    Ok(active)
 }
 
-pub(super) fn selected(options: &mut Value, draft: &HashMap<String, String>) {
-    for (key, field) in [("carers", "carer_id"), ("patients", "patient_id")] {
-        if let Some(rows) = options[key].as_array_mut() {
-            for row in rows {
-                row["selected"] = json!(
-                    row["id"]
-                        .as_i64()
-                        .is_some_and(|id| id.to_string() == forms::field(draft, field))
-                );
-            }
+pub(super) fn selected(
+    options: &mut Value,
+    draft: &HashMap<String, String>,
+) -> Result<(), OperationError> {
+    for key in ["carers", "patients"] {
+        let rows = options
+            .get(key)
+            .and_then(Value::as_array)
+            .ok_or(OperationError::Unavailable)?;
+        if rows.iter().any(|row| {
+            row.as_object()
+                .and_then(|row| row.get("id"))
+                .and_then(Value::as_i64)
+                .is_none()
+        }) {
+            return Err(OperationError::Unavailable);
         }
     }
+    for (key, field) in [("carers", "carer_id"), ("patients", "patient_id")] {
+        let rows = options
+            .get_mut(key)
+            .and_then(Value::as_array_mut)
+            .ok_or(OperationError::Unavailable)?;
+        for row in rows {
+            let row = row.as_object_mut().ok_or(OperationError::Unavailable)?;
+            let id = row
+                .get("id")
+                .and_then(Value::as_i64)
+                .ok_or(OperationError::Unavailable)?;
+            row.insert(
+                "selected".into(),
+                json!(id.to_string() == forms::field(draft, field)),
+            );
+        }
+    }
+    Ok(())
 }

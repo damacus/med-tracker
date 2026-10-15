@@ -1,14 +1,15 @@
 pub mod avatar;
 pub mod gravatar;
+pub(crate) mod self_account;
 
 use crate::models::{
-    access::{self, PersonAccess, TenantTransaction},
+    access::{self, TenantTransaction},
     care::{doses::CredentialProvenance, people},
-    entities::{account, active_storage_attachment, person, version},
+    entities::{account, person, version},
     errors::OperationError,
 };
 use chrono::{NaiveDate, Utc};
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QuerySelect, Set};
+use sea_orm::{ActiveModelTrait, EntityTrait, QuerySelect, Set};
 use serde::Serialize;
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, HashSet};
@@ -63,6 +64,9 @@ fn valid_zone(value: &str) -> bool {
         || supported_zones().iter().any(|(name, _)| name == value)
 }
 
+/// # Errors
+///
+/// Returns a validation error for an unsupported time zone or invalid mobile shortcuts.
 pub fn validate(changes: &Changes) -> Result<(), OperationError> {
     if changes
         .time_zone
@@ -88,6 +92,9 @@ pub fn validate(changes: &Changes) -> Result<(), OperationError> {
     Ok(())
 }
 
+/// # Errors
+///
+/// Returns a validation error when the date is not a valid `YYYY-MM-DD` calendar date.
 pub fn parse_date(value: &str) -> Result<NaiveDate, OperationError> {
     let bytes = value.as_bytes();
     if bytes.len() != 10
@@ -113,28 +120,23 @@ pub fn validation(field: &str, message: &str) -> OperationError {
 pub(crate) async fn linked_person(
     tenant: &TenantTransaction,
     account_id: i64,
-    access_level: PersonAccess,
 ) -> Result<person::Model, OperationError> {
-    linked_person_scoped(tenant, account_id, access_level, OperationError::Forbidden).await
+    linked_person_scoped(tenant, account_id, OperationError::Forbidden).await
 }
 
 pub(crate) async fn linked_person_scoped(
     tenant: &TenantTransaction,
     account_id: i64,
-    access_level: PersonAccess,
     out_of_scope: OperationError,
 ) -> Result<person::Model, OperationError> {
-    let person_id = tenant
-        .membership()
-        .person_id
-        .ok_or_else(|| out_of_scope.clone())?;
-    let current = person::Entity::find_by_id(person_id)
-        .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
-        .filter(person::Column::AccountId.eq(account_id))
+    if account_id != tenant.scope().actor.account_id {
+        return Err(out_of_scope);
+    }
+    let current = person::Entity::find_by_id(tenant.person_id().get())
         .one(tenant.transaction())
         .await?
         .ok_or_else(|| out_of_scope.clone())?;
-    if access::can_access_person(tenant, current.id, access_level).await? {
+    if access::participates(tenant, current.id).await? {
         Ok(current)
     } else {
         Err(out_of_scope)
@@ -147,12 +149,7 @@ async fn snapshot(
     account: &account::Model,
 ) -> Result<Snapshot, OperationError> {
     let preferences = &account.preferences;
-    let avatar_attached = active_storage_attachment::Entity::find()
-        .filter(active_storage_attachment::Column::HouseholdId.eq(current.household_id))
-        .filter(active_storage_attachment::Column::RecordType.eq("Person"))
-        .filter(active_storage_attachment::Column::RecordId.eq(current.id))
-        .filter(active_storage_attachment::Column::Name.eq("avatar"))
-        .one(tenant.transaction())
+    let avatar_attached = avatar::person_attachment(tenant, current.id)
         .await?
         .is_some();
     let time_zone = preferences["time_zone"]
@@ -186,14 +183,11 @@ async fn snapshot(
     })
 }
 
+/// # Errors
+///
+/// Returns an error if account access is denied, the account is unavailable, or its profile or avatar cannot be read.
 pub async fn read(tenant: &TenantTransaction, account_id: i64) -> Result<Snapshot, OperationError> {
-    let current = linked_person_scoped(
-        tenant,
-        account_id,
-        PersonAccess::View,
-        OperationError::NotFound,
-    )
-    .await?;
+    let current = linked_person_scoped(tenant, account_id, OperationError::NotFound).await?;
     let account = account::Entity::find_by_id(account_id)
         .one(tenant.transaction())
         .await?
@@ -201,6 +195,9 @@ pub async fn read(tenant: &TenantTransaction, account_id: i64) -> Result<Snapsho
     snapshot(tenant, &current, &account).await
 }
 
+/// # Errors
+///
+/// Returns an error if changes are invalid, account access fails, or the person, preferences, or resulting profile cannot be saved or read.
 pub async fn update(
     tenant: &TenantTransaction,
     account_id: i64,
@@ -214,7 +211,7 @@ pub async fn update(
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::Unauthenticated)?;
-    let current = linked_person(tenant, account_id, PersonAccess::Manage).await?;
+    let current = linked_person(tenant, account_id).await?;
     let person = if let Some(date) = changes.date_of_birth {
         people::update(
             tenant,
@@ -231,6 +228,9 @@ pub async fn update(
     snapshot(tenant, &person, &account).await
 }
 
+/// # Errors
+///
+/// Returns an error for invalid or unsupported changes, denied account access, or a failed preference save.
 pub async fn update_preferences(
     tenant: &TenantTransaction,
     account_id: i64,
@@ -240,7 +240,7 @@ pub async fn update_preferences(
     if changes.date_of_birth.is_some() {
         return Err(validation("profile", "contains an unsupported field"));
     }
-    linked_person(tenant, account_id, PersonAccess::Manage).await?;
+    linked_person(tenant, account_id).await?;
     let account = account::Entity::find_by_id(account_id)
         .lock(sea_orm::sea_query::LockType::NoKeyUpdate)
         .one(tenant.transaction())
@@ -250,12 +250,104 @@ pub async fn update_preferences(
     Ok(())
 }
 
+/// # Errors
+///
+/// Returns an error if the name is blank, the account is unavailable, or the update or audit write fails.
+pub async fn update_account_name(
+    transaction: &sea_orm::DatabaseTransaction,
+    account_id: crate::models::ids::AccountId,
+    request_id: &str,
+    name: &str,
+) -> Result<(), OperationError> {
+    let name = name.trim();
+    if name.is_empty() {
+        return Err(validation("name", "can't be blank"));
+    }
+    let account = account::Entity::find_by_id(account_id.get())
+        .lock(sea_orm::sea_query::LockType::NoKeyUpdate)
+        .one(transaction)
+        .await?
+        .ok_or(OperationError::Unauthenticated)?;
+    if account.name.as_deref() == Some(name) {
+        return Ok(());
+    }
+    let previous = account.name.clone();
+    let person_id = crate::models::ids::PersonId::from_database(account.person_id);
+    let mut active: account::ActiveModel = account.into();
+    active.name = Set(Some(name.to_owned()));
+    active.updated_at = Set(Utc::now().naive_utc());
+    active.update(transaction).await?;
+    version::ActiveModel {
+        item_type: Set("Account".into()), item_id: Set(account_id.get()), event: Set("update".into()),
+        object: Set(Some(json!({"name":previous}).to_string())),
+        object_changes: Set(Some(json!({"name":[previous,name]}).to_string())),
+        whodunnit: Set(Some(person_id.get().to_string())), request_id: Set(Some(request_id.to_owned())),
+        audit_context: Set(json!({"actor_account_id":account_id,"actor_person_id":person_id,"request_id":request_id,"policy_query":"update_own_profile"})),
+        created_at: Set(Some(Utc::now().naive_utc())), ..Default::default()
+    }.insert(transaction).await?;
+    Ok(())
+}
+
+/// # Errors
+///
+/// Returns an error for invalid or unsupported changes, an unavailable account, or a failed preference or audit write.
+pub async fn update_account_preferences(
+    transaction: &sea_orm::DatabaseTransaction,
+    account_id: crate::models::ids::AccountId,
+    request_id: &str,
+    changes: Changes,
+) -> Result<(), OperationError> {
+    validate(&changes)?;
+    if changes.date_of_birth.is_some() {
+        return Err(validation("profile", "contains an unsupported field"));
+    }
+    let account = account::Entity::find_by_id(account_id.get())
+        .lock(sea_orm::sea_query::LockType::NoKeyUpdate)
+        .one(transaction)
+        .await?
+        .ok_or(OperationError::Unauthenticated)?;
+    let context = json!({"actor_account_id":account_id,"actor_person_id":account.person_id,"request_id":request_id,"policy_query":"update_own_profile"});
+    persist_preferences(
+        transaction,
+        account,
+        changes,
+        request_id,
+        context,
+        None,
+        None,
+    )
+    .await?;
+    Ok(())
+}
+
 async fn save_preferences(
     tenant: &TenantTransaction,
-    mut account: account::Model,
+    account: account::Model,
     changes: Changes,
 ) -> Result<account::Model, OperationError> {
-    let account_id = account.id;
+    persist_preferences(
+        tenant.transaction(),
+        account,
+        changes,
+        &tenant.scope().request_id,
+        crate::models::audit_context::household(tenant, None),
+        Some(crate::models::ids::HouseholdId::from_database(
+            tenant.scope().household_id,
+        )),
+        Some(tenant.membership().id),
+    )
+    .await
+}
+
+async fn persist_preferences(
+    transaction: &sea_orm::DatabaseTransaction,
+    mut account: account::Model,
+    changes: Changes,
+    request_id: &str,
+    context: Value,
+    household_id: Option<crate::models::ids::HouseholdId>,
+    membership_id: Option<i64>,
+) -> Result<account::Model, OperationError> {
     let mut preferences = account.preferences.as_object().cloned().unwrap_or_default();
     if let Some(zone) = changes.time_zone {
         preferences.insert("time_zone".into(), json!(zone));
@@ -271,21 +363,25 @@ async fn save_preferences(
         let mut active: account::ActiveModel = account.into();
         active.preferences = Set(Value::Object(preferences));
         active.updated_at = Set(Utc::now().naive_utc());
-        account = active.update(tenant.transaction()).await?;
+        account = active.update(transaction).await?;
         version::ActiveModel {
             item_type: Set("Account".into()),
             item_id: Set(account.id),
             event: Set("update".into()),
             object: Set(Some(json!({"preferences": before.clone()}).to_string())),
-            object_changes: Set(Some(json!({"preferences": [before, account.preferences.clone()]}).to_string())),
-            whodunnit: Set(Some(tenant.user_id().to_string())),
-            request_id: Set(Some(tenant.scope().request_id.clone())),
-            household_id: Set(Some(tenant.scope().household_id)),
-            actor_membership_id: Set(Some(tenant.membership().id)),
-            audit_context: Set(json!({"policy_class":"PersonPolicy","policy_query":"update?","actor_account_id":account_id,"household_id":tenant.scope().household_id,"request_id":tenant.scope().request_id})),
+            object_changes: Set(Some(
+                json!({"preferences": [before, account.preferences.clone()]}).to_string(),
+            )),
+            whodunnit: Set(Some(account.person_id.to_string())),
+            request_id: Set(Some(request_id.to_owned())),
+            household_id: Set(household_id.map(crate::models::ids::HouseholdId::get)),
+            actor_membership_id: Set(membership_id),
+            audit_context: Set(context),
             created_at: Set(Some(Utc::now().naive_utc())),
             ..Default::default()
-        }.insert(tenant.transaction()).await?;
+        }
+        .insert(transaction)
+        .await?;
     }
     Ok(account)
 }

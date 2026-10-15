@@ -101,7 +101,9 @@ async fn person_identifier(
     tenant: &TenantTransaction,
     id: &str,
 ) -> Result<person::Model, OperationError> {
-    let query = person::Entity::find().in_tenant(tenant.scope().household_id);
+    let query = crate::models::access::person_scope(
+        crate::models::ids::HouseholdId::from_database(tenant.scope().household_id),
+    );
     let query = if let Ok(id) = id.parse::<i64>() {
         query.filter(person::Column::Id.eq(id))
     } else {
@@ -248,7 +250,7 @@ async fn authorize(
                 )
             };
             let (person, source_portable, _) = source(tenant, kind, source_id).await?;
-            access::require_person_access(tenant, person, PersonAccess::Record).await?;
+            access::require_participation(tenant, person).await?;
             if operation
                 .attributes
                 .get("source_type")
@@ -269,7 +271,7 @@ async fn authorize(
             if Some(source_portable.as_str()) != portable {
                 return Err(OperationError::Forbidden);
             }
-            access::require_person_access(tenant, person, PersonAccess::Manage).await?;
+            access::require_participation(tenant, person).await?;
             if operation.action == "delete" {
                 if !retired {
                     return Err(OperationError::Forbidden);
@@ -320,7 +322,7 @@ async fn authorize(
                 )
             };
             let (person, source_portable, _) = source(tenant, kind, source_id).await?;
-            access::require_person_access(tenant, person, PersonAccess::Manage).await?;
+            access::require_participation(tenant, person).await?;
             if operation.action == "create"
                 && (operation
                     .attributes
@@ -354,16 +356,7 @@ async fn authorize(
                 )
             };
             let (person, source_portable, _) = source(tenant, kind, source_id).await?;
-            access::require_person_access(
-                tenant,
-                person,
-                if operation.action == "create" {
-                    PersonAccess::Record
-                } else {
-                    PersonAccess::Manage
-                },
-            )
-            .await?;
+            access::require_participation(tenant, person).await?;
             if operation.action == "create"
                 && (operation
                     .attributes

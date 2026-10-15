@@ -1,17 +1,34 @@
-# Proposed Root Record Lifecycle
+# Root Record Lifecycle
+
+## Overview
+
+Storage labels have a current soft-retirement workflow. The broader Medication
+and Person lifecycle described below remains a proposal.
 
 > [!WARNING]
-> This page records a future design. MedTracker does not currently support
-> retirement or reactivation for Medication, Person, or Location records.
+> Medication and Person root retirement, and root reactivation, remain future
+> design. Location deletion retires a storage label; it does not provide a
+> reactivation endpoint.
 
 ## Current behaviour
 
 `Schedule` and `PersonMedication` can be retired through their existing
 `retired_at` fields. Their dose history remains available.
 
-Medication, Person, and Location do not have the root lifecycle states or
-routes described below. Do not promise users that these records can be retired,
-reactivated, or moved to logical cold storage.
+Deleting a Location is manager-only and requires its current ETag. The operation
+detaches medication through the normal audited medication update and retains
+the label row for historical dose references. It preserves medication, stock,
+assignments, takes and original history.
+
+Current lists, selectors and direct reads exclude retired labels. The API returns
+404 for a retired label, and a new active label may reuse its name. Retirement,
+medication detach audits, location audit/change and tombstone writes are atomic:
+an audit failure rolls back the entire operation.
+
+Medication and Person do not have the proposed root retirement/reactivation
+routes below. Do not promise logical cold storage or root reactivation. See the
+[household inventory decision](../adrs/0014-household-inventory-and-personal-care.md)
+for the accepted storage-label boundary.
 
 Household offboarding has its own lifecycle and retention process. It does not
 deliver the root lifecycle proposed here.
@@ -63,13 +80,14 @@ stay active and enter a needs-carer workflow.
 Reactivation would not recreate memberships, grants, care relationships, or
 medication plans.
 
-## Location proposal
+## Remaining Location proposal
 
-Location retirement would be blocked while the location is a required primary
-location or holds active stock. Operators would first move the primary status
-and stock to another active location.
+The former proposal to block retirement while a location holds stock is
+superseded. Locations are optional labels: removing one detaches medication
+without moving or deleting stock.
 
-Reactivation would not restore prior stock placement or person memberships.
+Reactivation remains unimplemented. It must not recreate old stock placement or
+introduce location memberships or permissions.
 
 ## Authorization and evidence
 

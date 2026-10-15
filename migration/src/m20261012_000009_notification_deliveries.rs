@@ -10,6 +10,10 @@ impl MigrationTrait for Migration {
             .get_connection()
             .execute_unprepared(include_str!("../notification-deliveries.sql"))
             .await?;
+        manager
+            .get_connection()
+            .execute_unprepared(include_str!("fresh/notification_jobs.sql"))
+            .await?;
         Ok(())
     }
 }

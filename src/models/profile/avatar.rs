@@ -1,5 +1,5 @@
 use super::*;
-use crate::models::entities::{active_storage_blob, security_audit_event};
+use crate::models::ids::{AccountId, PersonId};
 use base64::{Engine, engine::general_purpose::STANDARD};
 use futures_util::StreamExt;
 use image::{ImageFormat, ImageReader, Limits, imageops::FilterType};
@@ -134,7 +134,7 @@ async fn delete_unretained(
     let retained = transaction
         .query_one_raw(Statement::from_sql_and_values(
             DbBackend::Postgres,
-            "SELECT EXISTS(SELECT 1 FROM public.active_storage_blobs WHERE key=$1) AS retained",
+            "SELECT EXISTS(SELECT 1 FROM public.active_storage_blobs WHERE key=$1) OR med_tracker.avatar_key_retained($1) AS retained",
             [key.into()],
         ))
         .await?
@@ -150,6 +150,9 @@ async fn delete_unretained(
 }
 
 impl Storage {
+    /// # Errors
+    ///
+    /// Returns an error when the avatar bucket or configured storage operator is unavailable.
     pub fn configured(ctx: &AppContext) -> Result<Self, OperationError> {
         let bucket = crate::models::settings::text(
             ctx.config.settings.as_ref(),
@@ -168,6 +171,9 @@ impl Storage {
         Ok(Self { operator, bucket })
     }
 
+    /// # Errors
+    ///
+    /// Returns an error when the requested bucket has no configured storage operator.
     pub fn at_bucket(&self, ctx: &AppContext, bucket: &str) -> Result<Self, OperationError> {
         if bucket == self.bucket {
             return Ok(Self {
@@ -184,6 +190,9 @@ impl Storage {
         })
     }
 
+    /// # Errors
+    ///
+    /// Returns an error if the storage write fails or exceeds the operation timeout.
     pub async fn put(&self, key: &str, image: &Image) -> Result<(), OperationError> {
         tokio::time::timeout(
             OPERATION_TIMEOUT,
@@ -197,6 +206,9 @@ impl Storage {
         .map_err(|_| OperationError::Unavailable)
     }
 
+    /// # Errors
+    ///
+    /// Returns an error if storage access fails, times out, or the image exceeds the read limit.
     pub async fn get(&self, key: &str) -> Result<Vec<u8>, OperationError> {
         const LIMIT: usize = 8 * 1024 * 1024;
         let reader = tokio::time::timeout(OPERATION_TIMEOUT, self.operator.reader(key))
@@ -224,6 +236,9 @@ impl Storage {
         Ok(bytes)
     }
 
+    /// # Errors
+    ///
+    /// Returns an error if the storage delete fails or exceeds the operation timeout.
     pub async fn delete(&self, key: &str) -> Result<(), OperationError> {
         tokio::time::timeout(OPERATION_TIMEOUT, self.operator.delete(key))
             .await
@@ -252,8 +267,8 @@ pub async fn discard_upload(ctx: &AppContext, storage: &Storage, key: &str) {
     }
 }
 
-pub async fn enqueue_retirement(
-    tenant: &TenantTransaction,
+async fn enqueue_retirement(
+    transaction: &sea_orm::DatabaseTransaction,
     bucket: &str,
     key: &str,
 ) -> Result<(), OperationError> {
@@ -261,7 +276,7 @@ pub async fn enqueue_retirement(
         bucket: bucket.to_owned(),
         key: key.to_owned()
     });
-    tenant.transaction().execute_raw(Statement::from_sql_and_values(
+    transaction.execute_raw(Statement::from_sql_and_values(
         DbBackend::Postgres,
         "INSERT INTO pg_loco_queue(id,task_data,name,run_at,priority) VALUES($1,$2,$3,clock_timestamp(),$4)",
         [ulid::Ulid::generate().to_string().into(),payload.into(),AvatarRetirementWorker::class_name().into(),0.into()],
@@ -269,6 +284,9 @@ pub async fn enqueue_retirement(
     Ok(())
 }
 
+/// # Errors
+///
+/// Returns a validation error for empty, oversized, unsupported, mismatched, or invalid image data.
 pub fn decode(bytes: &[u8], claimed_type: &str) -> Result<Image, OperationError> {
     if bytes.is_empty() || bytes.len() > MAX_UPLOAD {
         return Err(validation(
@@ -314,83 +332,105 @@ pub fn decode(bytes: &[u8], claimed_type: &str) -> Result<Image, OperationError>
     })
 }
 
+/// # Errors
+///
+/// Returns an error if the attachment query or row decoding fails, or its storage service is unsupported.
+pub async fn account_attachment(
+    transaction: &sea_orm::DatabaseTransaction,
+    account_id: AccountId,
+) -> Result<Option<Attachment>, OperationError> {
+    let row = transaction
+        .query_one_raw(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            "SELECT key,content_type,service_name FROM account_avatars WHERE account_id=$1",
+            [account_id.get().into()],
+        ))
+        .await?;
+    row.map(|row| {
+        let service_name: String = row.try_get("", "service_name")?;
+        if service_name != "s3" {
+            return Err(OperationError::Unavailable);
+        }
+        Ok(Attachment {
+            key: row.try_get("", "key")?,
+            content_type: row.try_get("", "content_type")?,
+            service_name,
+        })
+    })
+    .transpose()
+}
+
+/// # Errors
+///
+/// Returns an error if account access is denied or the person's attachment cannot be read.
 pub async fn attachment(
     tenant: &TenantTransaction,
     account_id: i64,
-    access: PersonAccess,
 ) -> Result<Option<Attachment>, OperationError> {
-    let current = linked_person(tenant, account_id, access).await?;
+    let current = linked_person(tenant, account_id).await?;
     person_attachment(tenant, current.id).await
 }
 
+/// # Errors
+///
+/// Returns an error if household participation is denied, the query or row decoding fails, or the storage service is unsupported.
 pub async fn person_attachment(
     tenant: &TenantTransaction,
     person_id: i64,
 ) -> Result<Option<Attachment>, OperationError> {
-    crate::models::access::require_person_access(tenant, person_id, PersonAccess::View).await?;
-    let attached = active_storage_attachment::Entity::find()
-        .filter(active_storage_attachment::Column::HouseholdId.eq(tenant.scope().household_id))
-        .filter(active_storage_attachment::Column::RecordType.eq("Person"))
-        .filter(active_storage_attachment::Column::RecordId.eq(person_id))
-        .filter(active_storage_attachment::Column::Name.eq("avatar"))
-        .one(tenant.transaction())
+    crate::models::access::require_participation(tenant, person_id).await?;
+    let row = tenant
+        .transaction()
+        .query_one_raw(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            "SELECT * FROM med_tracker.person_avatar($1)",
+            [person_id.into()],
+        ))
         .await?;
-    let Some(attached) = attached else {
-        return Ok(None);
-    };
-    let blob = active_storage_blob::Entity::find_by_id(attached.blob_id)
-        .one(tenant.transaction())
-        .await?
-        .ok_or(OperationError::Unavailable)?;
-    if !matches!(
-        blob.service_name.as_str(),
-        "s3" | "s3_with_persistent_mirror"
-    ) {
-        return Err(OperationError::Unavailable);
-    }
-    Ok(Some(Attachment {
-        key: blob.key,
-        content_type: blob.content_type.unwrap_or_else(|| "image/png".into()),
-        service_name: blob.service_name,
-    }))
+    row.map(|row| {
+        let service_name: String = row.try_get("", "service_name")?;
+        if service_name != "s3" {
+            return Err(OperationError::Unavailable);
+        }
+        Ok(Attachment {
+            key: row.try_get("", "key")?,
+            content_type: row.try_get("", "content_type")?,
+            service_name,
+        })
+    })
+    .transpose()
 }
 
 async fn audit(
-    tenant: &TenantTransaction,
-    current: &person::Model,
+    transaction: &sea_orm::DatabaseTransaction,
+    account_id: AccountId,
+    person_id: PersonId,
+    request_id: &str,
     action: &str,
 ) -> Result<(), OperationError> {
-    let now = Utc::now().naive_utc();
-    security_audit_event::ActiveModel {
-        household_id: Set(current.household_id),
-        actor_account_id: Set(Some(tenant.scope().actor.account_id)),
-        actor_membership_id: Set(Some(tenant.membership().id)),
-        event_type: Set(format!("profile.avatar.{action}")),
-        request_id: Set(Some(tenant.scope().request_id.clone())),
-        metadata: Set(json!({"person_id":current.id})),
-        audit_context: Set(json!({"actor_account_id":tenant.scope().actor.account_id,"actor_membership_id":tenant.membership().id,"household_id":current.household_id,"request_id":tenant.scope().request_id})),
-        created_at: Set(now),
-        updated_at: Set(now),
-        ..Default::default()
-    }
-    .insert(tenant.transaction())
-    .await?;
+    transaction.execute_raw(Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        "INSERT INTO account_profile_events(account_id,actor_person_id,event_type,request_id,metadata) VALUES($1,$2,$3,$4,$5)",
+        [account_id.get().into(),person_id.get().into(),format!("profile.avatar.{action}").into(),request_id.into(),json!({"person_id":person_id.get()}).into()],
+    )).await?;
     Ok(())
 }
 
-async fn lock_current(
-    tenant: &TenantTransaction,
-    account_id: i64,
-) -> Result<person::Model, OperationError> {
-    let current = linked_person(tenant, account_id, PersonAccess::Manage).await?;
-    person::Entity::find_by_id(current.id)
+async fn lock_account(
+    transaction: &sea_orm::DatabaseTransaction,
+    account_id: AccountId,
+) -> Result<PersonId, OperationError> {
+    let account = account::Entity::find_by_id(account_id.get())
         .lock_exclusive()
-        .one(tenant.transaction())
+        .one(transaction)
         .await?
         .ok_or(OperationError::Forbidden)?;
-    linked_person(tenant, account_id, PersonAccess::Manage).await
+    crate::models::access::verify_account_actor(transaction, account.id).await
 }
 
+/// # Errors
+///
+/// Returns an error if account access is denied or the avatar write, audit, or retirement enqueue fails.
 pub async fn replace(
     tenant: &TenantTransaction,
     account_id: i64,
@@ -398,99 +438,94 @@ pub async fn replace(
     image: &Image,
     bucket: &str,
 ) -> Result<Option<String>, OperationError> {
-    let current = lock_current(tenant, account_id).await?;
-    lock_avatar_key(tenant.transaction(), &key).await?;
-    let previous = attachment(tenant, account_id, PersonAccess::Manage).await?;
-    if previous.as_ref().is_some_and(|old| {
-        !matches!(
-            old.service_name.as_str(),
-            "s3" | "s3_with_persistent_mirror"
-        )
-    }) {
-        return Err(OperationError::Unavailable);
-    }
-    let now = Utc::now().naive_utc();
-    let blob = active_storage_blob::ActiveModel {
-        key: Set(key),
-        filename: Set("avatar.png".into()),
-        content_type: Set(Some(image.content_type.into())),
-        byte_size: Set(image.bytes.len() as i64),
-        checksum: Set(Some(image.checksum.clone())),
-        metadata: Set(Some("{}".into())),
-        service_name: Set("s3".into()),
-        created_at: Set(now),
-        ..Default::default()
-    }
-    .insert(tenant.transaction())
-    .await?;
-    if previous.is_some() {
-        let attached = active_storage_attachment::Entity::find()
-            .filter(active_storage_attachment::Column::RecordType.eq("Person"))
-            .filter(active_storage_attachment::Column::RecordId.eq(current.id))
-            .filter(active_storage_attachment::Column::Name.eq("avatar"))
-            .one(tenant.transaction())
-            .await?
-            .ok_or(OperationError::Unavailable)?;
-        let old_blob = attached.blob_id;
-        active_storage_attachment::Entity::delete_by_id(attached.id)
-            .exec(tenant.transaction())
-            .await?;
-        active_storage_blob::Entity::delete_by_id(old_blob)
-            .exec(tenant.transaction())
-            .await?;
-    }
-    active_storage_attachment::ActiveModel {
-        name: Set("avatar".into()),
-        record_type: Set("Person".into()),
-        record_id: Set(current.id),
-        blob_id: Set(blob.id),
-        household_id: Set(current.household_id),
-        created_at: Set(now),
-        ..Default::default()
-    }
-    .insert(tenant.transaction())
-    .await?;
-    audit(tenant, &current, "updated").await?;
-    if let Some(old) = &previous {
-        enqueue_retirement(tenant, bucket, &old.key).await?;
-    }
-    Ok(previous.map(|old| old.key))
+    linked_person(tenant, account_id).await?;
+    replace_account(
+        tenant.transaction(),
+        AccountId::from_database(account_id),
+        &tenant.scope().request_id,
+        key,
+        image,
+        bucket,
+    )
+    .await
 }
 
+/// # Errors
+///
+/// Returns an error if account access is denied or the avatar removal, audit, or retirement enqueue fails.
 pub async fn remove(
     tenant: &TenantTransaction,
     account_id: i64,
     bucket: &str,
 ) -> Result<Option<String>, OperationError> {
-    let current = lock_current(tenant, account_id).await?;
-    let previous = attachment(tenant, account_id, PersonAccess::Manage).await?;
-    if previous.as_ref().is_some_and(|old| {
-        !matches!(
-            old.service_name.as_str(),
-            "s3" | "s3_with_persistent_mirror"
-        )
-    }) {
-        return Err(OperationError::Unavailable);
-    }
-    if previous.is_some() {
-        let attached = active_storage_attachment::Entity::find()
-            .filter(active_storage_attachment::Column::RecordType.eq("Person"))
-            .filter(active_storage_attachment::Column::RecordId.eq(current.id))
-            .filter(active_storage_attachment::Column::Name.eq("avatar"))
-            .one(tenant.transaction())
-            .await?
-            .ok_or(OperationError::Unavailable)?;
-        let old_blob = attached.blob_id;
-        active_storage_attachment::Entity::delete_by_id(attached.id)
-            .exec(tenant.transaction())
-            .await?;
-        active_storage_blob::Entity::delete_by_id(old_blob)
-            .exec(tenant.transaction())
-            .await?;
-    }
-    audit(tenant, &current, "removed").await?;
+    linked_person(tenant, account_id).await?;
+    remove_account(
+        tenant.transaction(),
+        AccountId::from_database(account_id),
+        &tenant.scope().request_id,
+        bucket,
+    )
+    .await
+}
+
+/// # Errors
+///
+/// Returns an error if the account cannot be authorised or an attachment, lock, write, audit, or retirement enqueue fails.
+pub async fn replace_account(
+    transaction: &sea_orm::DatabaseTransaction,
+    account_id: AccountId,
+    request_id: &str,
+    key: String,
+    image: &Image,
+    bucket: &str,
+) -> Result<Option<String>, OperationError> {
+    let person_id = lock_account(transaction, account_id).await?;
+    let previous = account_attachment(transaction, account_id).await?;
+    let mut keys = vec![key.as_str()];
     if let Some(old) = &previous {
-        enqueue_retirement(tenant, bucket, &old.key).await?;
+        keys.push(&old.key);
+    }
+    keys.sort_unstable();
+    keys.dedup();
+    for retained_key in keys {
+        lock_avatar_key(transaction, retained_key).await?;
+    }
+    transaction.execute_raw(Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        "INSERT INTO account_avatars(account_id,key,content_type,service_name,byte_size,checksum) VALUES($1,$2,$3,'s3',$4,$5) ON CONFLICT(account_id) DO UPDATE SET key=EXCLUDED.key,content_type=EXCLUDED.content_type,service_name=EXCLUDED.service_name,byte_size=EXCLUDED.byte_size,checksum=EXCLUDED.checksum,updated_at=clock_timestamp()",
+        [account_id.get().into(),key.into(),image.content_type.into(),(image.bytes.len() as i64).into(),image.checksum.clone().into()],
+    )).await?;
+    audit(transaction, account_id, person_id, request_id, "updated").await?;
+    if let Some(old) = &previous {
+        enqueue_retirement(transaction, bucket, &old.key).await?;
+    }
+    Ok(previous.map(|old| old.key))
+}
+
+/// # Errors
+///
+/// Returns an error if the account cannot be authorised or an attachment, lock, delete, audit, or retirement enqueue fails.
+pub async fn remove_account(
+    transaction: &sea_orm::DatabaseTransaction,
+    account_id: AccountId,
+    request_id: &str,
+    bucket: &str,
+) -> Result<Option<String>, OperationError> {
+    let person_id = lock_account(transaction, account_id).await?;
+    let previous = account_attachment(transaction, account_id).await?;
+    if let Some(old) = &previous {
+        lock_avatar_key(transaction, &old.key).await?;
+    }
+    transaction
+        .execute_raw(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            "DELETE FROM account_avatars WHERE account_id=$1",
+            [account_id.get().into()],
+        ))
+        .await?;
+    audit(transaction, account_id, person_id, request_id, "removed").await?;
+    if let Some(old) = &previous {
+        enqueue_retirement(transaction, bucket, &old.key).await?;
     }
     Ok(previous.map(|old| old.key))
 }

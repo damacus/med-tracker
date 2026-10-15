@@ -105,7 +105,7 @@ enum GtinParsed {
 }
 
 pub(crate) fn normalize_gtin(value: &str) -> String {
-    value.chars().filter(|c| c.is_ascii_digit()).collect()
+    value.chars().filter(char::is_ascii_digit).collect()
 }
 
 fn glob_paths(dir: &Path, pattern: &str) -> Vec<PathBuf> {
@@ -167,17 +167,17 @@ fn text_fragment(event: Event<'_>) -> Result<String, String> {
         Event::Text(event) => {
             let raw = event.xml10_content().map_err(|error| error.to_string())?;
             quick_xml::escape::unescape(&raw)
-                .map(|text| text.into_owned())
+                .map(std::borrow::Cow::into_owned)
                 .map_err(|error| error.to_string())
         }
         Event::CData(event) => event
             .xml10_content()
-            .map(|text| text.into_owned())
+            .map(std::borrow::Cow::into_owned)
             .map_err(|error| error.to_string()),
         Event::GeneralRef(event) => {
             let name = event.decode().map_err(|error| error.to_string())?;
             quick_xml::escape::unescape(&format!("&{name};"))
-                .map(|text| text.into_owned())
+                .map(std::borrow::Cow::into_owned)
                 .map_err(|error| error.to_string())
         }
         _ => unreachable!(),

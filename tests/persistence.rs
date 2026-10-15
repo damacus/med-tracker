@@ -265,8 +265,11 @@ async fn development_seed_creates_a_usable_account_and_household() {
         "medications.yaml",
         "person_medications.yaml",
     ] {
-        std::fs::copy(std::path::Path::new("src/fixtures").join(name), broken.path().join(name))
-            .unwrap();
+        std::fs::copy(
+            std::path::Path::new("src/fixtures").join(name),
+            broken.path().join(name),
+        )
+        .unwrap();
     }
     let assignment = broken.path().join("person_medications.yaml");
     std::fs::write(
@@ -276,7 +279,11 @@ async fn development_seed_creates_a_usable_account_and_household() {
             .replace("medication_id: 80001", "medication_id: 99999"),
     )
     .unwrap();
-    assert!(med_tracker::app::App::seed(&context, broken.path()).await.is_err());
+    assert!(
+        med_tracker::app::App::seed(&context, broken.path())
+            .await
+            .is_err()
+    );
     let rolled_back = db
         .query_one_raw(migration::sea_orm::Statement::from_string(
             migration::sea_orm::DbBackend::Postgres,
@@ -285,7 +292,13 @@ async fn development_seed_creates_a_usable_account_and_household() {
         .await
         .unwrap()
         .unwrap();
-    for table in ["people", "accounts", "medications", "credentials", "onboarding"] {
+    for table in [
+        "people",
+        "accounts",
+        "medications",
+        "credentials",
+        "onboarding",
+    ] {
         assert_eq!(rolled_back.try_get::<i64>("", table).unwrap(), 0, "{table}");
     }
     let database = db
@@ -346,7 +359,9 @@ async fn development_seed_creates_a_usable_account_and_household() {
         .unwrap()
         .unwrap();
     assert_eq!(
-        credential.try_get::<String>("", "provider_account_id").unwrap(),
+        credential
+            .try_get::<String>("", "provider_account_id")
+            .unwrap(),
         "71001"
     );
     better_auth_core::utils::password::verify_password(

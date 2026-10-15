@@ -25,7 +25,7 @@ pub(super) async fn open(
         Ok(value) => value,
         Err(error) => return authentication_error(error),
     };
-    let people = match access::people_with_access(&tenant, PersonAccess::Manage).await {
+    let people = match crate::models::person_identity::current_summaries(&tenant).await {
         Ok(value) => value,
         Err(error) => return operation_error(error),
     };
@@ -46,7 +46,7 @@ pub(super) async fn open(
             .is_none_or(|value| matches!(value, "assign_medication" | "schedule"))
         && let Some(person) = people
             .iter()
-            .find(|person| Some(person.id) == query.person_id)
+            .find(|person| Some(person.id.get()) == query.person_id)
     {
         if tenant.commit().await.is_err() {
             return unavailable();
@@ -106,7 +106,11 @@ pub(super) async fn open(
     if tenant.commit().await.is_err() {
         return unavailable();
     }
-    match format::render().view(&view, "medications/workflow.html", data) {
+    match format::render().view(
+        &view,
+        "medications/workflow.html",
+        crate::views::template_data(&data),
+    ) {
         Ok(response) => ([(header::CACHE_CONTROL, "no-store")], response).into_response(),
         Err(_) => unavailable(),
     }

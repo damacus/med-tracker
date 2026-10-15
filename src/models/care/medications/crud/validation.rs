@@ -15,6 +15,7 @@ pub(super) async fn valid_location(
     };
     Ok(location::Entity::find_by_id(id)
         .in_tenant(household_id)
+        .filter(location::Column::RetiredAt.is_null())
         .one(db)
         .await
         .map_err(database_error)?
@@ -101,10 +102,9 @@ pub(super) fn validate_attributes(
             return Err(("name", "can't be blank"));
         }
     }
-    if existing.is_none() && location_id(attributes).is_none() {
-        return Err(("location_id", "can't be blank"));
-    }
-    if attributes.get("location_id").is_some()
+    if attributes
+        .get("location_id")
+        .is_some_and(|value| !value.is_null())
         && !attributes
             .get("location_id")
             .and_then(Value::as_i64)
@@ -295,8 +295,8 @@ pub(super) fn assign_attributes(
             _ => {}
         }
     }
-    if let Some(id) = location_id(attributes) {
-        active.location_id = Set(id);
+    if attributes.get("location_id").is_some() {
+        active.location_id = Set(location_id(attributes));
     }
     if attributes.get("dose_amount").is_some() {
         let value =

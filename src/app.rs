@@ -61,7 +61,11 @@ impl Hooks for App {
             .add_route(browser(crate::controllers::locations::routes()))
             .add_route(browser(crate::controllers::people::routes()))
             .add_route(browser(crate::controllers::profile::routes()))
+            .add_route(browser(crate::controllers::profile::account_routes()))
             .add_route(browser(crate::controllers::profile::avatar::routes()))
+            .add_route(browser(
+                crate::controllers::profile::avatar::account_routes(),
+            ))
             .add_route(browser(crate::controllers::treatments::routes()))
             .add_route(browser(crate::controllers::reports::routes()))
             .add_route(browser(crate::controllers::review_prompts::routes()))

@@ -1,7 +1,7 @@
 use super::*;
 use sha2::{Digest, Sha256};
 
-async fn stored_credentials(app: &Application) {
+pub(super) async fn stored_credentials(app: &Application) {
     let current = hex::encode(Sha256::digest(b"synthetic-current-session"));
     let app_token = hex::encode(Sha256::digest(b"synthetic-app-token"));
     app.fixture.admin.execute_raw(Statement::from_sql_and_values(
@@ -25,7 +25,7 @@ async fn stored_credentials(app: &Application) {
 async fn account_households_and_sessions_are_scoped_and_never_expose_tokens() {
     let app = Application::new().await;
     stored_credentials(&app).await;
-    app.fixture.admin.execute_unprepared("INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71001,'Second household','second-household','UTC',now(),now()); INSERT INTO people(id,household_id,account_id,name,person_type,has_capacity,created_at,updated_at) VALUES(73004,72002,71001,'Second household person',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,account_id,person_id,role,joined_at,created_at,updated_at) VALUES(74002,72002,71001,73004,'member',now(),now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,status,lifecycle_state,created_at,updated_at) VALUES(72003,71001,'Archived household','archived-household','UTC','active','held',now(),now()); INSERT INTO household_memberships(id,household_id,account_id,role,joined_at,created_at,updated_at) VALUES(74003,72003,71001,'member',now(),now(),now())").await.unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71001,'Second household','second-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74002,72002,73001,'member',now(),now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,status,lifecycle_state,created_at,updated_at) VALUES(72003,71001,'Archived household','archived-household','UTC','active','held',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74003,72003,73001,'member',now(),now(),now())").await.unwrap();
     for bearer in ["synthetic-current-session", "synthetic-app-token"] {
         let households = app
             .client
@@ -68,7 +68,7 @@ async fn account_households_and_sessions_are_scoped_and_never_expose_tokens() {
 async fn stored_session_revoke_is_account_scoped_and_invalidates_the_credential() {
     let app = Application::new().await;
     stored_credentials(&app).await;
-    app.fixture.admin.execute_unprepared("INSERT INTO accounts(id,email,password_hash,created_at,updated_at) VALUES(71002,'other-session-account@example.test',crypt('password',gen_salt('bf',4)),now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71002,'Foreign household','foreign-session-household','UTC',now(),now()); INSERT INTO people(id,household_id,account_id,name,person_type,has_capacity,created_at,updated_at) VALUES(73004,72002,71002,'Foreign person',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,account_id,person_id,role,joined_at,created_at,updated_at) VALUES(74002,72002,71002,73004,'owner',now(),now(),now()); INSERT INTO api_sessions(id,account_id,household_membership_id,access_token_digest,refresh_token_digest,permissions_version,access_expires_at,refresh_expires_at,last_used_at,created_at,updated_at) VALUES(88004,71002,74002,'foreign-digest','foreign-refresh',1,now()+interval '15 minutes',now()+interval '1 day',now(),now(),now())").await.unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO people(id,person_type,has_capacity,created_at,updated_at) VALUES(73004,0,true,now(),now()); INSERT INTO accounts(id,person_id,name,email,password_hash,created_at,updated_at) VALUES(71002,73004,'Foreign person','other-session-account@example.test',crypt('password',gen_salt('bf',4)),now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71002,'Foreign household','foreign-session-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74002,72002,73004,'owner',now(),now(),now()); INSERT INTO api_sessions(id,account_id,household_membership_id,access_token_digest,refresh_token_digest,permissions_version,access_expires_at,refresh_expires_at,last_used_at,created_at,updated_at) VALUES(88004,71002,74002,'foreign-digest','foreign-refresh',1,now()+interval '15 minutes',now()+interval '1 day',now(),now(),now())").await.unwrap();
     let path = format!("{}/api/v1/auth/sessions", app.origin);
     for id in [99999, 88003, 88004, 76001] {
         let response = app
@@ -314,11 +314,11 @@ async fn revocation_audit_identifies_the_target_credential_and_actor_without_sec
             row.try_get::<Option<String>>("", "whodunnit")
                 .unwrap()
                 .as_deref(),
-            Some("77001")
+            Some("73001")
         );
         let context: Value = row.try_get("", "audit_context").unwrap();
         assert_eq!(context["actor_account_id"], 71001);
-        assert_eq!(context["actor_user_id"], 77001);
+        assert_eq!(context["actor_person_id"], 73001);
         assert!(!object.contains("synthetic-app-token"));
         assert!(!object.contains("synthetic-expired-refresh"));
     }
@@ -600,4 +600,89 @@ async fn auth_session_list_matches_documented_contract() {
         .unwrap();
     assert_eq!(anonymous.status().as_u16(), 401);
     app.close().await;
+}
+
+#[tokio::test]
+async fn native_oauth_without_households_keeps_account_access_but_denies_clinical_reads()
+-> Result<(), Box<dyn std::error::Error>> {
+    let app = Application::new().await;
+    let observed: Result<_, Box<dyn std::error::Error>> = async {
+        app.fixture.admin.execute_unprepared("UPDATE people SET date_of_birth='1985-02-03' WHERE id=73001").await?;
+        let token = app.token().await;
+        let mut before = Vec::new();
+        for path in ["/api/v1/auth/households", "/api/v1/households/72001/me", "/api/v1/households/72001/profile"] {
+            let response = app.client.get(format!("{}{path}", app.origin)).bearer_auth(&token).send().await?;
+            before.push((path, response.status().as_u16(), response.json::<Value>().await?));
+        }
+        let revoked = app.fixture.admin.execute_unprepared(
+            "UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE person_id=(SELECT person_id FROM accounts WHERE id=71001) AND status='active' AND revoked_at IS NULL"
+        ).await?.rows_affected();
+        let mut after = Vec::new();
+        for path in ["/api/v1/auth/households", "/api/v1/auth/sessions", "/api/v1/households/72001/me", "/api/v1/households/72001/profile", "/api/v1/households/72001/people"] {
+            let response = app.client.get(format!("{}{path}", app.origin)).bearer_auth(&token).send().await?;
+            after.push((path, response.status().as_u16(), response.json::<Value>().await?));
+        }
+        let logged_out = app.client.delete(format!("{}/api/v1/auth/logout", app.origin)).bearer_auth(&token).send().await?.status().as_u16();
+        let rejected = app.client.get(format!("{}/api/v1/auth/households", app.origin)).bearer_auth(&token).send().await?.status().as_u16();
+        Ok((before, revoked, after, logged_out, rejected))
+    }.await;
+    app.close().await;
+    let (before, revoked, after, logged_out, rejected) = observed?;
+    assert_eq!(before.len(), 3);
+    for (path, status, body) in &before {
+        assert_eq!(*status, 200, "pre-revocation {path}: {body}");
+    }
+    let initial = before.first().ok_or("Missing initial household response")?;
+    assert_eq!(
+        initial
+            .2
+            .get("data")
+            .and_then(Value::as_array)
+            .map(Vec::len),
+        Some(1)
+    );
+    assert_eq!(revoked, 1);
+    assert_eq!(after.len(), 5);
+    for (path, status, body) in after {
+        match path {
+            "/api/v1/auth/households" => {
+                assert_eq!(status, 200);
+                assert_eq!(body.get("account_id").and_then(Value::as_i64), Some(71001));
+                assert_eq!(
+                    body.get("data").and_then(Value::as_array).map(Vec::len),
+                    Some(0)
+                );
+            }
+            "/api/v1/auth/sessions" => {
+                assert_eq!(status, 200);
+                let sessions = body
+                    .get("data")
+                    .and_then(Value::as_array)
+                    .ok_or("Missing account sessions")?;
+                assert!(
+                    sessions
+                        .iter()
+                        .any(|session| session.get("id").and_then(Value::as_i64) == Some(76001))
+                );
+                assert!(
+                    sessions
+                        .iter()
+                        .all(|session| session.get("household_id").is_some_and(Value::is_null))
+                );
+            }
+            _ => {
+                assert_eq!(status, 403);
+                assert_eq!(
+                    body.get("error")
+                        .and_then(|error| error.get("code"))
+                        .and_then(Value::as_str),
+                    Some("forbidden")
+                );
+                assert!(body.get("data").is_none());
+            }
+        }
+    }
+    assert_eq!(logged_out, 204);
+    assert_eq!(rejected, 401);
+    Ok(())
 }

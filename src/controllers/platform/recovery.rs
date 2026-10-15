@@ -2,12 +2,15 @@ use super::*;
 
 fn household_json(household: &platform::recovery::RecoveryHousehold) -> Value {
     json!({
-        "id": household.id,
+        "id": household.id.get(),
         "name": household.name,
         "slug": household.slug,
         "has_owner": household.has_owner,
+        "member_page":household.member_page,
+        "member_pages":household.member_pages,
+        "member_page_links":household.member_page_links,
         "members": household.members.iter().map(|member| json!({
-            "id": member.id,
+            "id": member.id.get(),
             "name": member.name,
             "email": member.email,
         })).collect::<Vec<Value>>(),
@@ -35,7 +38,11 @@ fn render(
     );
     data["selected"] = json!(selected.map(household_json));
     data["authenticity_token"] = json!(authenticity);
-    match format::render().view(view, "platform/owner_recovery.html", data) {
+    match format::render().view(
+        view,
+        "platform/owner_recovery.html",
+        crate::views::template_data(&data),
+    ) {
         Ok(response) => (
             StatusCode::OK,
             token.clone(),
@@ -49,7 +56,8 @@ fn render(
 
 #[derive(Deserialize)]
 pub(super) struct RecoveryQuery {
-    household: Option<i64>,
+    household: Option<crate::models::ids::HouseholdId>,
+    member_page: Option<i64>,
     search: Option<String>,
 }
 
@@ -71,6 +79,7 @@ pub(super) async fn show(
     let Ok(account_id) = clinical_id(&user.id) else {
         return unavailable();
     };
+    let account_id = crate::models::ids::AccountId::from_database(account_id);
     let Ok(transaction) = platform::begin(&ctx.db).await else {
         return unavailable();
     };
@@ -79,7 +88,7 @@ pub(super) async fn show(
             platform::recovery::page(&transaction, account_id, query.search.as_deref()).await?;
         let selected = match query.household {
             Some(household_id) => {
-                platform::recovery::detail(&transaction, account_id, household_id).await?
+                platform::recovery::detail(&transaction, account_id, household_id, query.member_page.unwrap_or(1)).await?
             }
             None => None,
         };

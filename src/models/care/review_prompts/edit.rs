@@ -27,7 +27,7 @@ async fn authorised(
     let record = sync::review_prompts::visible_prompt(tenant.transaction(), &context, id)
         .await?
         .ok_or(OperationError::NotFound)?;
-    if !sync::review_prompts::person_access(tenant.transaction(), &context, record.person_id, true)
+    if !sync::review_prompts::person_access(tenant.transaction(), &context, record.person_id)
         .await?
     {
         return Err(OperationError::Forbidden);

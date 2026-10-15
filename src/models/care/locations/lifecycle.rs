@@ -1,43 +1,7 @@
 use super::*;
-use crate::models::entities::{api_tombstone, location_membership, medication};
+use crate::models::entities::{api_tombstone, medication};
 use loco_rs::model::TenantQueryExt;
 use sea_orm::QueryOrder;
-
-pub(super) async fn record_membership_destroy(
-    tenant: &TenantTransaction,
-    record: &location_membership::Model,
-    provenance: Option<&CredentialProvenance>,
-    policy_class: &str,
-) -> Result<(), OperationError> {
-    let before = json!({"id":record.id,"household_id":record.household_id,"location_id":record.location_id,"person_id":record.person_id,"created_at":record.created_at,"updated_at":record.updated_at});
-    let changes: serde_json::Map<String, Value> = before
-        .as_object()
-        .ok_or(OperationError::Unavailable)?
-        .iter()
-        .map(|(key, value)| (key.clone(), json!([value, null])))
-        .collect();
-    let mut context = crate::models::audit_context::household(tenant, provenance);
-    context["policy_class"] = json!(policy_class);
-    context["policy_query"] = json!("destroy?");
-    version::ActiveModel {
-        item_type: Set("LocationMembership".into()),
-        item_id: Set(record.id),
-        event: Set("destroy".into()),
-        object: Set(Some(before.to_string())),
-        object_changes: Set(Some(Value::Object(changes).to_string())),
-        whodunnit: Set(Some(tenant.user_id().to_string())),
-        request_id: Set(Some(tenant.scope().request_id.clone())),
-        household_id: Set(Some(tenant.scope().household_id)),
-        actor_membership_id: Set(Some(tenant.membership().id)),
-        audit_context: Set(context),
-        created_at: Set(Some(Utc::now().naive_utc())),
-        ..Default::default()
-    }
-    .insert(tenant.transaction())
-    .await
-    .map_err(|_| OperationError::Unavailable)?;
-    Ok(())
-}
 
 pub async fn can_manage(tenant: &TenantTransaction) -> Result<bool, OperationError> {
     access::recheck(tenant).await?;
@@ -48,6 +12,7 @@ pub async fn list(tenant: &TenantTransaction) -> Result<Vec<location::Model>, Op
     access::recheck(tenant).await?;
     location::Entity::find()
         .in_tenant(tenant.scope().household_id)
+        .filter(location::Column::RetiredAt.is_null())
         .order_by_asc(location::Column::Id)
         .all(tenant.transaction())
         .await
@@ -56,7 +21,9 @@ pub async fn list(tenant: &TenantTransaction) -> Result<Vec<location::Model>, Op
 
 pub async fn read(tenant: &TenantTransaction, id: &str) -> Result<location::Model, OperationError> {
     access::recheck(tenant).await?;
-    let query = location::Entity::find().in_tenant(tenant.scope().household_id);
+    let query = location::Entity::find()
+        .in_tenant(tenant.scope().household_id)
+        .filter(location::Column::RetiredAt.is_null());
     let query = if let Ok(id) = id.parse::<i64>() {
         query.filter(location::Column::Id.eq(id))
     } else {
@@ -78,6 +45,7 @@ async fn locked(
     let found = read(tenant, id).await?;
     let found = location::Entity::find_by_id(found.id)
         .in_tenant(tenant.scope().household_id)
+        .filter(location::Column::RetiredAt.is_null())
         .lock_exclusive()
         .one(tenant.transaction())
         .await
@@ -136,43 +104,27 @@ pub async fn retire(
         .lock_exclusive()
         .all(tenant.transaction())
         .await
-        .map_err(|_| OperationError::Unavailable)?;
+        .map_err(OperationError::from)?;
     for medicine in medicines {
-        crate::models::care::medications::crud::retire_cascade(
+        crate::models::care::medications::crud::update(
             tenant,
             &medicine.id.to_string(),
+            json!({"location_id":null}),
+            None,
             provenance,
-            "destroy",
         )
         .await?;
     }
-    let memberships = location_membership::Entity::find()
-        .in_tenant(tenant.scope().household_id)
-        .filter(location_membership::Column::LocationId.eq(found.id))
-        .lock_exclusive()
-        .all(tenant.transaction())
-        .await
-        .map_err(|_| OperationError::Unavailable)?;
-    for membership in memberships {
-        record_membership_destroy(tenant, &membership, provenance, "LocationPolicy").await?;
-        location_membership::Entity::delete_by_id(membership.id)
-            .exec(tenant.transaction())
-            .await
-            .map_err(|_| OperationError::Unavailable)?;
-    }
-    location::Entity::delete_by_id(found.id)
-        .exec(tenant.transaction())
-        .await
-        .map_err(|_| OperationError::Unavailable)?;
-    record_change(
-        tenant,
-        &found,
-        "destroy",
-        Some(snapshot(&found)),
-        provenance,
-    )
-    .await?;
+    let before = snapshot(&found);
     let now = Utc::now().naive_utc();
+    let mut retired: location::ActiveModel = found.clone().into();
+    retired.retired_at = Set(Some(now));
+    retired.updated_at = Set(now);
+    retired
+        .update(tenant.transaction())
+        .await
+        .map_err(OperationError::from)?;
+    record_change(tenant, &found, "destroy", Some(before), provenance).await?;
     api_tombstone::ActiveModel {
         household_id: Set(tenant.scope().household_id),
         household_membership_id: Set(Some(tenant.membership().id)),
@@ -190,6 +142,6 @@ pub async fn retire(
     }
     .insert(tenant.transaction())
     .await
-    .map_err(|_| OperationError::Unavailable)?;
+    .map_err(OperationError::from)?;
     Ok(())
 }

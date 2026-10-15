@@ -160,9 +160,9 @@ async fn seed_acceptance(app: &Application) -> &'static str {
     let access = "synthetic-user-api-session";
     let invitation = "synthetic-account-invitation";
     app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"INSERT INTO api_sessions(id,account_id,household_membership_id,access_token_digest,refresh_token_digest,permissions_version,access_expires_at,refresh_expires_at,last_used_at,created_at,updated_at) VALUES(88001,71001,74001,$1,'synthetic-unused-refresh',1,now()+interval '1 hour',now()+interval '1 day',now(),now(),now())",[hex::encode(Sha256::digest(access.as_bytes())).into()])).await.unwrap();
-    app.fixture.admin.execute_unprepared("INSERT INTO accounts(id,email,status,created_at,updated_at) VALUES(71002,'synthetic-inviter@example.test',2,now(),now()); INSERT INTO households(id,name,slug,timezone,created_at,updated_at) VALUES(72002,'Synthetic invited household','synthetic-invited-household','UTC',now(),now()); INSERT INTO people(id,household_id,account_id,name,person_type,has_capacity,created_at,updated_at) VALUES(73103,72002,71002,'Synthetic inviter',0,true,now(),now()),(73104,72002,NULL,'Synthetic invited child',1,false,now(),now()); INSERT INTO household_memberships(id,household_id,account_id,person_id,role,status,permissions_version,joined_at,created_at,updated_at) VALUES(74002,72002,71002,73103,'owner','active',1,now(),now(),now())").await.unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO people(id,clinical_name,person_type,has_capacity,created_at,updated_at) VALUES(73103,NULL,0,true,now(),now()),(73104,'Synthetic invited child',1,false,now(),now()); INSERT INTO accounts(id,person_id,name,email,status,created_at,updated_at) VALUES(71002,73103,'Synthetic inviter','synthetic-inviter@example.test',2,now(),now()); INSERT INTO households(id,name,slug,timezone,created_at,updated_at) VALUES(72002,'Synthetic invited household','synthetic-invited-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,permissions_version,joined_at,created_at,updated_at) VALUES(74002,72002,73103,'owner','active',1,now(),now(),now())").await.unwrap();
     app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"INSERT INTO household_invitations(id,household_id,email,membership_role,token_digest,invited_by_membership_id,expires_at,created_at,updated_at) SELECT 87001,72002,email,'member',$1,74002,now()+interval '7 days',now(),now() FROM accounts WHERE id=71001",[hex::encode(Sha256::digest(invitation.as_bytes())).into()])).await.unwrap();
-    app.fixture.admin.execute_unprepared("INSERT INTO household_invitation_grants(id,household_id,household_invitation_id,person_id,access_level,relationship_type,created_at,updated_at) VALUES(87002,72002,87001,73104,'manage','parent',now(),now()); SELECT setval(pg_get_serial_sequence('people','id'),73104,true); SELECT setval(pg_get_serial_sequence('household_memberships','id'),74002,true); SELECT setval(pg_get_serial_sequence('person_access_grants','id'),78001,true)").await.unwrap();
+    app.fixture.admin.execute_unprepared("SELECT setval(pg_get_serial_sequence('people','id'),73104,true); SELECT setval(pg_get_serial_sequence('household_memberships','id'),74002,true)").await.unwrap();
     access
 }
 
@@ -170,6 +170,18 @@ async fn seed_acceptance(app: &Application) -> &'static str {
 async fn invitations_user_session_acceptance_replays_once_and_never_restores_revoked_access() {
     let app = Application::new().await;
     let access = seed_acceptance(&app).await;
+    let before_people = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT count(*) AS count FROM people",
+        ))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get::<i64>("", "count")
+        .unwrap();
     let endpoint = format!("{}/api/v1/invitations/accept", app.origin);
     let body = json!({"token":"synthetic-account-invitation"});
     let first = app
@@ -192,7 +204,7 @@ async fn invitations_user_session_acceptance_replays_once_and_never_restores_rev
         .unwrap();
     let repeated_status = repeated.status().as_u16();
     let repeated: Value = repeated.json().await.unwrap_or(Value::Null);
-    let row=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM people WHERE household_id=72002 AND account_id=71001) AS people,(SELECT count(*) FROM household_memberships WHERE household_id=72002 AND account_id=71001) AS memberships,(SELECT count(*) FROM person_access_grants WHERE household_id=72002) AS grants,(SELECT count(*) FROM carer_relationships WHERE household_id=72002) AS relationships,(SELECT count(*) FROM api_change_events WHERE household_id=72002 AND record_type='Person') AS changes")).await.unwrap().unwrap();
+    let row=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM people WHERE id=(SELECT person_id FROM accounts WHERE id=71001)) AS people,(SELECT count(*) FROM household_memberships WHERE household_id=72002 AND person_id=73001) AS memberships,(SELECT count(*) FROM person_access_grants WHERE household_id=72002) AS grants,(SELECT count(*) FROM carer_relationships WHERE household_id=72002) AS relationships,(SELECT count(*) FROM api_change_events WHERE household_id=72002 AND record_type='HouseholdMembership') AS changes")).await.unwrap().unwrap();
     let counts: Vec<i64> = [
         "people",
         "memberships",
@@ -203,7 +215,22 @@ async fn invitations_user_session_acceptance_replays_once_and_never_restores_rev
     .iter()
     .map(|field| row.try_get("", field).unwrap())
     .collect();
-    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now() WHERE household_id=72002 AND account_id=71001").await.unwrap();
+    let identity = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT person_id,(SELECT count(*) FROM people) AS people FROM accounts WHERE id=71001",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(identity.try_get::<i64>("", "person_id").unwrap(), 73001);
+    assert_eq!(
+        identity.try_get::<i64>("", "people").unwrap(),
+        before_people
+    );
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now() WHERE household_id=72002 AND person_id=73001").await.unwrap();
     let revoked = app
         .client
         .post(&endpoint)
@@ -219,7 +246,7 @@ async fn invitations_user_session_acceptance_replays_once_and_never_restores_rev
         (200, 200, 422)
     );
     assert_eq!(first, repeated);
-    assert_eq!(counts, vec![1, 1, 2, 1, 1]);
+    assert_eq!(counts, vec![1, 1, 0, 0, 1]);
 }
 
 #[tokio::test]
@@ -257,7 +284,7 @@ async fn invitations_expiry_and_current_inviter_authority_prevent_partial_accept
         .admin
         .query_one_raw(Statement::from_string(
             DbBackend::Postgres,
-            "SELECT count(*) AS people FROM people WHERE household_id=72002 AND account_id=71001",
+            "SELECT count(*) AS people FROM people WHERE id=(SELECT person_id FROM accounts WHERE id=71001)",
         ))
         .await
         .unwrap()
@@ -266,7 +293,7 @@ async fn invitations_expiry_and_current_inviter_authority_prevent_partial_accept
     let statuses = (expired.status().as_u16(), demoted.status().as_u16());
     app.close().await;
     assert_eq!(statuses, (422, 422));
-    assert_eq!(people, 0);
+    assert_eq!(people, 1);
 }
 
 #[tokio::test]
@@ -290,7 +317,13 @@ async fn invitations_queue_failure_rolls_back_invitation_grants_and_audit() {
         .await
         .unwrap();
     let target = url::Url::parse("https://synthetic.example.test/invitations/accept").unwrap();
-    let result = invitations::create(&tenant,json!({"email":"synthetic-queue-failure@example.test","membership_role":"member","dependent_ids":[73002],"relationship_type":"parent"}),Some(&target),Some(principal.provenance())).await;
+    let result = invitations::create(
+        &tenant,
+        json!({"email":"synthetic-queue-failure@example.test","membership_role":"member"}),
+        Some(&target),
+        Some(principal.provenance()),
+    )
+    .await;
     tenant.rollback().await.unwrap();
     let row=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT is_called FROM invitation_queue_reached) AS reached,(SELECT count(*) FROM household_invitations) AS invitations,(SELECT count(*) FROM household_invitation_grants) AS grants,(SELECT count(*) FROM pg_loco_queue) AS jobs,(SELECT count(*) FROM versions WHERE item_type='HouseholdInvitation') AS versions")).await.unwrap().unwrap();
     let reached: bool = row.try_get("", "reached").unwrap();
@@ -329,7 +362,14 @@ async fn invitations_committed_job_is_delivered_by_standard_worker() {
         .await
         .unwrap();
     let target = url::Url::parse("https://synthetic.example.test/invitations/accept").unwrap();
-    let created=invitations::create(&tenant,json!({"email":"synthetic-worker@example.test","membership_role":"member","dependent_ids":[73002,73002,999999],"relationship_type":"parent"}),Some(&target),Some(principal.provenance())).await.unwrap();
+    let created = invitations::create(
+        &tenant,
+        json!({"email":"synthetic-worker@example.test","membership_role":"member"}),
+        Some(&target),
+        Some(principal.provenance()),
+    )
+    .await
+    .unwrap();
     tenant.commit().await.unwrap();
     let queue = app.context.queue_provider.as_ref().unwrap().clone();
     queue
@@ -352,7 +392,7 @@ async fn invitations_committed_job_is_delivered_by_standard_worker() {
     app.close().await;
     assert!(created["data"]["id"].as_i64().is_some());
     assert_eq!(count, 1);
-    assert_eq!(grants, 1);
+    assert_eq!(grants, 0);
 }
 
 #[tokio::test]
@@ -483,65 +523,26 @@ async fn invitation_list_matches_documented_contract() {
 }
 
 #[tokio::test]
-async fn parent_invitation_acceptance_requires_current_scoped_manage_authority() {
+async fn invitation_dependent_selection_cannot_infer_guardian_authority() {
     let app = Application::new().await;
-    let access = seed_acceptance(&app).await;
-    app.fixture.admin.execute_unprepared(
-        "UPDATE household_memberships SET role='member' WHERE id=74002;
-         INSERT INTO users(id,person_id,email_address,password_digest,created_at,updated_at) VALUES(77002,73103,'synthetic-inviter@example.test',crypt('password',gen_salt('bf',4)),now(),now());
-         INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,created_at,updated_at) VALUES(78010,72002,74002,73104,'manage','parent',now(),now());"
-    ).await.unwrap();
-    let endpoint = format!("{}/api/v1/invitations/accept", app.origin);
-    for mutation in [
-        "UPDATE person_access_grants SET revoked_at=now() WHERE id=78010",
-        "UPDATE person_access_grants SET revoked_at=NULL,access_level='record' WHERE id=78010",
-        "UPDATE person_access_grants SET access_level='manage',expires_at=now()-interval '1 second' WHERE id=78010",
-        "UPDATE person_access_grants SET expires_at=NULL WHERE id=78010; UPDATE household_invitation_grants SET relationship_type='professional' WHERE id=87002",
-        "UPDATE household_invitation_grants SET relationship_type='parent',access_level='record' WHERE id=87002",
-        "UPDATE household_invitation_grants SET access_level='manage' WHERE id=87002; UPDATE household_invitations SET membership_role='administrator' WHERE id=87001",
-        "UPDATE household_invitations SET membership_role='member' WHERE id=87001; UPDATE household_memberships SET revoked_at=now() WHERE id=74002",
-        "UPDATE household_memberships SET revoked_at=NULL WHERE id=74002; UPDATE people SET person_type=0,has_capacity=true WHERE id=73104",
-    ] {
+    let token = app.token().await;
+    let endpoint = format!("{}/api/v1/households/72001/admin/invitations", app.origin);
+    for role in ["administrator", "member"] {
         app.fixture
             .admin
-            .execute_unprepared(mutation)
+            .execute_raw(Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                "UPDATE household_memberships SET role=$1 WHERE id=74001",
+                [role.into()],
+            ))
             .await
             .unwrap();
-        let response = app
-            .client
-            .post(&endpoint)
-            .bearer_auth(access)
-            .json(&json!({"token":"synthetic-account-invitation"}))
-            .send()
-            .await
-            .unwrap();
-        assert_eq!(response.status().as_u16(), 422, "{mutation}");
-        let row=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-            "SELECT (SELECT count(*) FROM household_memberships WHERE household_id=72002 AND account_id=71001) AS memberships,(SELECT count(*) FROM carer_relationships WHERE household_id=72002) AS relationships,(SELECT count(*) FROM versions WHERE item_type='HouseholdInvitation') AS audits"
-        )).await.unwrap().unwrap();
-        for field in ["memberships", "relationships", "audits"] {
-            assert_eq!(
-                row.try_get::<i64>("", field).unwrap(),
-                0,
-                "{mutation}: {field}"
-            );
-        }
+        let denied = app.client.post(&endpoint).bearer_auth(&token).json(&json!({"household_invitation":{"email":"forged-parent@example.test","membership_role":"member","dependent_ids":[73002],"relationship_type":"parent"}})).send().await.unwrap();
+        assert_eq!(denied.status().as_u16(), 403);
     }
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE people SET person_type=1,has_capacity=false WHERE id=73104")
-        .await
-        .unwrap();
-    let accepted = app
-        .client
-        .post(&endpoint)
-        .bearer_auth(access)
-        .json(&json!({"token":"synthetic-account-invitation"}))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(accepted.status().as_u16(), 200);
-    let body: Value = accepted.json().await.unwrap();
-    assert_eq!(body["data"]["role"], "member");
+    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM household_invitations) AS invitations,(SELECT count(*) FROM household_invitation_grants) AS grants,(SELECT count(*) FROM carer_relationships) AS relationships,(SELECT count(*) FROM pg_loco_queue) AS jobs,(SELECT count(*) FROM versions WHERE item_type='HouseholdInvitation') AS versions")).await.unwrap().unwrap();
+    for field in ["invitations", "grants", "relationships", "jobs", "versions"] {
+        assert_eq!(row.try_get::<i64>("", field).unwrap(), 0, "{field}");
+    }
     app.close().await;
 }

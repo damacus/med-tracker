@@ -6,14 +6,16 @@ mod operations;
 mod pauses;
 mod persistence;
 mod portable;
-pub(crate) use portable::{api_export_payload, bundle_payload, export_payload, mobile_payload};
+pub(crate) use portable::{
+    CURRENT_PORTABLE_FORMAT, api_export_payload, bundle_payload, export_payload, mobile_payload,
+};
 mod reading;
 mod replay;
 pub(crate) mod review_prompts;
 mod sources;
 
 use crate::models::{
-    access::{self, PersonAccess, TenantTransaction},
+    access::{self, TenantTransaction},
     care::doses::CredentialProvenance,
     care::{
         assignments, dosages, doses, locations, medications, orders, pause_periods, people,
@@ -21,7 +23,7 @@ use crate::models::{
     },
     entities::{
         api_change_event, api_tombstone, dosage, dose_occurrence, health_event,
-        health_event_medication, household, medication, medication_take, pause_period, person,
+        health_event_medication, medication, medication_take, pause_period, person,
         person_medication, review_prompt, schedule, security_audit_event,
     },
     errors::OperationError,
@@ -38,12 +40,7 @@ use serde_json::{Map, Value, json};
 use std::collections::{HashMap, HashSet};
 
 pub async fn lock(tenant: &TenantTransaction) -> Result<(), OperationError> {
-    household::Entity::find_by_id(tenant.scope().household_id)
-        .lock_exclusive()
-        .one(tenant.transaction())
-        .await?
-        .ok_or(OperationError::NotFound)?;
-    access::recheck(tenant).await
+    access::lock_household(tenant).await
 }
 
 pub struct AppliedBatch {

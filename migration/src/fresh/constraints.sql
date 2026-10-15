@@ -52,8 +52,6 @@ CREATE UNIQUE INDEX idx_med_pause_periods_open_person_medication ON public.medic
 
 CREATE UNIQUE INDEX idx_med_pause_periods_open_schedule ON public.medication_pause_periods USING btree (schedule_id) WHERE ((ended_at IS NULL) AND (schedule_id IS NOT NULL));
 
-CREATE UNIQUE INDEX idx_on_household_membership_id_person_id_6ddc5a2882 ON public.person_access_grants USING btree (household_membership_id, person_id) WHERE (revoked_at IS NULL);
-
 CREATE INDEX idx_on_pharmacologic_classes_df53f96090 ON public.medication_review_evidence_records USING gin (pharmacologic_classes);
 
 CREATE UNIQUE INDEX idx_one_active_retention_hold_per_household ON public.household_retention_holds USING btree (household_id) WHERE ((status)::text = 'active'::text);
@@ -71,7 +69,7 @@ CREATE UNIQUE INDEX index_health_event_medications_on_health_event_id_and_med_id
 CREATE UNIQUE INDEX index_household_invitations_on_household_id_and_email ON public.household_invitations USING btree (household_id, email) WHERE ((accepted_at IS NULL) AND (revoked_at IS NULL));
 
 
-CREATE UNIQUE INDEX index_locations_on_household_id_and_lower_name ON public.locations USING btree (household_id, lower((name)::text)) WHERE (household_id IS NOT NULL);
+CREATE UNIQUE INDEX index_locations_on_household_id_and_lower_name ON public.locations USING btree (household_id, lower((name)::text)) WHERE (retired_at IS NULL);
 
 CREATE INDEX index_locations_on_name_trigram ON public.locations USING gin (name public.gin_trgm_ops);
 

@@ -61,7 +61,7 @@ pub(super) fn setup(view: &TeraView, password: bool) -> Response {
 }
 
 fn render(view: &TeraView, path: &str, data: Value, status: StatusCode) -> Response {
-    match format::render().view(view, path, data) {
+    match format::render().view(view, path, crate::views::template_data(&data)) {
         Ok(response) => (status, [(header::CACHE_CONTROL, "no-store")], response).into_response(),
         Err(_) => unavailable(),
     }

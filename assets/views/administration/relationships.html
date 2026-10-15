@@ -15,7 +15,7 @@
         <dialog id="deactivate-{{ relationship.id }}" class="modal" aria-labelledby="deactivate-title-{{ relationship.id }}">
           <div class="modal-box">
             <h3 id="deactivate-title-{{ relationship.id }}" class="text-xl font-semibold">Deactivate Relationship</h3>
-            <p class="mt-4">Remove the access provided by this carer relationship?</p>
+            <p class="mt-4">Mark this carer relationship as inactive? Household members will keep their care access.</p>
             <form action="/households/{{ slug }}/admin/carer_relationships/{{ relationship.id }}/deactivate" method="post" class="modal-action">
               <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
               <button class="btn btn-neutral" type="submit">Deactivate</button>

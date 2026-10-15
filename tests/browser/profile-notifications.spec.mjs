@@ -195,28 +195,37 @@ test('recovery sign-in closes notifications retained from a previous account', a
   expect(closed).toBe(1);
 });
 
-test('managed adult opt-ins exclude self, view-only and revoked grants while dependants remain automatic', async ({ page, careFixture }) => {
+test('household opt-ins include adults and dependants only when selected and exclude self and revoked participants', async ({ page, careFixture }) => {
   test.setTimeout(180000);
   await careFixture.profileNotificationFixture();
   await openNotifications(page);
   const panel = page.getByRole('tabpanel', { name: 'Notifications', exact: true });
-  await panel.getByText('People you manage', { exact: true }).click();
-  await expect(panel.getByText('Included automatically', { exact: true })).toHaveCount(2);
-  await expect(panel.getByText('View-only adult', { exact: true })).toHaveCount(0);
+  await panel.getByText('Household people', { exact: true }).click();
+  await expect(panel.getByText('Included automatically', { exact: true })).toHaveCount(0);
+  await expect(panel.getByText('Another adult', { exact: true })).toHaveCount(1);
   await expect(panel.getByText('Revoked adult', { exact: true })).toHaveCount(0);
   await expect(panel.getByRole('checkbox', { name: 'Notify me when Synthetic adult misses a dose', exact: true })).toHaveCount(0);
   const toggle = panel.getByRole('checkbox', { name: 'Notify me when Managed adult misses a dose', exact: true });
-  await toggle.check();
+  const child = panel.locator('input[name="managed_73002"]');
+  const dependent = panel.getByRole('checkbox', { name: 'Notify me when Dependent adult misses a dose', exact: true });
+  for (const choice of [toggle, child, dependent]) {
+    await expect(choice).not.toBeChecked();
+    await choice.check();
+  }
   await panel.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.locator('[data-profile-status]')).toContainText('Profile updated successfully.');
-  expect((await careFixture.profileNotificationProbe())['73400']).toBe(true);
+  const selected = await careFixture.profileNotificationProbe();
+  for (const id of ['73400', '73002', '73403']) expect(selected[id]).toBe(true);
   await page.reload();
-  await panel.getByText('People you manage', { exact: true }).click();
-  await expect(toggle).toBeChecked();
-  await toggle.uncheck();
+  await panel.getByText('Household people', { exact: true }).click();
+  for (const choice of [toggle, child, dependent]) {
+    await expect(choice).toBeChecked();
+    await choice.uncheck();
+  }
   await panel.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.locator('[data-profile-status]')).toContainText('Profile updated successfully.');
-  expect((await careFixture.profileNotificationProbe())['73400']).toBe(false);
+  const unselected = await careFixture.profileNotificationProbe();
+  for (const id of ['73400', '73002', '73403']) expect(unselected[id]).toBe(false);
 });
 
 test('a rejected reminder update keeps other entries and focuses its error without persisting them', async ({ page }) => {

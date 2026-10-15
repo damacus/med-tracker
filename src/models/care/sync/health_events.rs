@@ -103,18 +103,8 @@ async fn access(
     _: &DatabaseTransaction,
     context: &AuthContext<'_>,
     id: i64,
-    level: &str,
 ) -> Result<bool, OperationError> {
-    access::can_access_person(
-        context.tenant,
-        id,
-        match level {
-            "manage" => PersonAccess::Manage,
-            "record" => PersonAccess::Record,
-            _ => PersonAccess::View,
-        },
-    )
-    .await
+    access::participates(context.tenant, id).await
 }
 async fn visible_medication(
     _: &DatabaseTransaction,
@@ -474,7 +464,9 @@ async fn visible_person(
     if !valid_identifier(id) {
         return Ok(None);
     }
-    let mut query = person::Entity::find().in_tenant(context.tenant.scope().household_id);
+    let mut query = crate::models::access::person_scope(
+        crate::models::ids::HouseholdId::from_database(context.tenant.scope().household_id),
+    );
     query = if let Ok(id) = id.parse::<i64>() {
         query.filter(person::Column::Id.eq(id))
     } else {
@@ -484,7 +476,7 @@ async fn visible_person(
     let Some(found) = found else {
         return Ok(None);
     };
-    if access(db, context, found.id, "view").await? {
+    if access(db, context, found.id).await? {
         Ok(Some(found))
     } else {
         Ok(None)
@@ -509,7 +501,7 @@ async fn visible_event(
     let Some(found) = found else {
         return Ok(None);
     };
-    if access(db, context, found.person_id, "view").await? {
+    if access(db, context, found.person_id).await? {
         Ok(Some(found))
     } else {
         Ok(None)
@@ -628,7 +620,7 @@ async fn apply_sync_operation(
         let person = visible_person(db, context, attrs.person_id.as_deref().unwrap())
             .await?
             .ok_or_else(|| sync_error(StatusCode::NOT_FOUND))?;
-        if !access(db, context, person.id, "record").await? {
+        if !access(db, context, person.id).await? {
             return Err(sync_error(StatusCode::FORBIDDEN));
         }
         if context
@@ -709,7 +701,7 @@ async fn apply_sync_operation(
     let record = visible_event(db, context, id)
         .await?
         .ok_or_else(|| sync_error(StatusCode::NOT_FOUND))?;
-    if !access(db, context, record.person_id, "manage").await? {
+    if !access(db, context, record.person_id).await? {
         return Err(sync_error(StatusCode::FORBIDDEN));
     }
     if context
@@ -740,7 +732,7 @@ async fn apply_sync_operation(
                 let requested = visible_person(db, context, id)
                     .await?
                     .ok_or_else(|| sync_error(StatusCode::NOT_FOUND))?;
-                if !access(db, context, requested.id, "manage").await? {
+                if !access(db, context, requested.id).await? {
                     return Err(sync_error(StatusCode::FORBIDDEN));
                 }
                 requested
@@ -969,23 +961,19 @@ async fn authorize_sync_replay(
             .get("person_portable_id")
             .and_then(Value::as_str)
             .ok_or(OperationError::Forbidden)?;
-        person::Entity::find()
-            .in_tenant(context.tenant.scope().household_id)
-            .filter(person::Column::PortableId.eq(person_portable_id))
-            .one(db)
-            .await
-            .map_err(database_error)?
-            .ok_or(OperationError::Forbidden)?
-            .id
+        crate::models::access::person_scope(crate::models::ids::HouseholdId::from_database(
+            context.tenant.scope().household_id,
+        ))
+        .filter(person::Column::PortableId.eq(person_portable_id))
+        .one(db)
+        .await
+        .map_err(database_error)?
+        .ok_or(OperationError::Forbidden)?
+        .id
     } else {
         return Err(OperationError::Forbidden);
     };
-    let level = if operation.action == "create" {
-        "record"
-    } else {
-        "manage"
-    };
-    if !access(db, context, current_person_id, level).await? {
+    if !access(db, context, current_person_id).await? {
         return Err(OperationError::Forbidden);
     }
     let versions = version::Entity::find()
@@ -1032,7 +1020,7 @@ async fn authorize_sync_replay(
         historical_person_ids.insert(current_person_id);
     }
     for person_id in &historical_person_ids {
-        if !access(db, context, *person_id, level).await? {
+        if !access(db, context, *person_id).await? {
             return Err(OperationError::Forbidden);
         }
     }

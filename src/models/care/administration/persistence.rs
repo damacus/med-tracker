@@ -1,5 +1,4 @@
 use super::*;
-use loco_rs::model::TenantQueryExt;
 
 fn context(tenant: &TenantTransaction, provenance: Option<&CredentialProvenance>) -> Value {
     crate::models::audit_context::household(tenant, provenance)
@@ -49,7 +48,7 @@ pub(crate) async fn token_event(
         event: Set(event.clone()),
         object: Set(Some(metadata.to_string())),
         object_changes: Set(None),
-        whodunnit: Set(Some(tenant.user_id().to_string())),
+        whodunnit: Set(Some(tenant.person_id().to_string())),
         request_id: Set(Some(tenant.scope().request_id.clone())),
         household_id: Set(Some(tenant.scope().household_id)),
         actor_membership_id: Set(Some(tenant.membership().id)),
@@ -131,7 +130,7 @@ pub(crate) async fn record_version_as(
         event: Set(event.into()),
         object: Set(before.map(|value| value.to_string())),
         object_changes: Set(Some(Value::Object(changes).to_string())),
-        whodunnit: Set(Some(tenant.user_id().to_string())),
+        whodunnit: Set(Some(tenant.person_id().to_string())),
         request_id: Set(Some(tenant.scope().request_id.clone())),
         household_id: Set(Some(tenant.scope().household_id)),
         actor_membership_id: Set(Some(tenant.membership().id)),
@@ -141,22 +140,5 @@ pub(crate) async fn record_version_as(
     }
     .insert(tenant.transaction())
     .await?;
-    Ok(())
-}
-pub(crate) async fn bump(tenant: &TenantTransaction, id: i64) -> Result<(), OperationError> {
-    use sea_orm::sea_query::{Expr, ExprTrait};
-    membership::Entity::update_many()
-        .col_expr(
-            membership::Column::PermissionsVersion,
-            Expr::col(membership::Column::PermissionsVersion).add(1),
-        )
-        .col_expr(
-            membership::Column::UpdatedAt,
-            Expr::value(Utc::now().naive_utc()),
-        )
-        .filter(membership::Column::Id.eq(id))
-        .in_tenant(tenant.scope().household_id)
-        .exec(tenant.transaction())
-        .await?;
     Ok(())
 }

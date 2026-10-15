@@ -215,6 +215,9 @@ impl AuthPlugin<ClinicalAuthSchema> for ClinicalRequest {
                     | "/onboarding/recovery-codes"
                     | "/onboarding/complete"
                     | "/get-session"
+                    | "/organization/set-active"
+                    | "/organization/list-members"
+                    | "/organization/list-invitations"
                     | "/sign-out"
                     | "/security/password/start"
                     | "/security/password/confirm"
@@ -271,6 +274,17 @@ pub fn router(service: IdentityService) -> Router {
         .axum_router()
         .with_state(service.auth.clone())
         .layer(middleware::from_fn_with_state(service, request_context))
+        .layer(middleware::from_fn(normalize_cookie_headers))
+}
+
+pub(crate) async fn normalize_cookie_headers(mut request: Request, next: Next) -> Response {
+    use headers::HeaderMapExt;
+    match request.headers().typed_try_get::<headers::Cookie>() {
+        Ok(Some(cookie)) => request.headers_mut().typed_insert(cookie),
+        Ok(None) => {}
+        Err(_) => return axum::http::StatusCode::BAD_REQUEST.into_response(),
+    }
+    next.run(request).await
 }
 
 async fn request_context(

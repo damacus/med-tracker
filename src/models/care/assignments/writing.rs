@@ -2,15 +2,12 @@ use super::*;
 use loco_rs::model::TenantQueryExt;
 
 async fn lock_household(tenant: &TenantTransaction) -> Result<(), OperationError> {
-    household::Entity::find_by_id(tenant.scope().household_id)
-        .lock_exclusive()
-        .one(tenant.transaction())
-        .await?
-        .ok_or(OperationError::NotFound)?;
-    access::recheck(tenant).await
+    access::lock_household(tenant).await
 }
 async fn person(tenant: &TenantTransaction, id: &str) -> Result<person::Model, OperationError> {
-    let query = person::Entity::find().in_tenant(tenant.scope().household_id);
+    let query = crate::models::access::person_scope(
+        crate::models::ids::HouseholdId::from_database(tenant.scope().household_id),
+    );
     let query = if let Ok(id) = id.parse::<i64>() {
         query.filter(person::Column::Id.eq(id))
     } else {
@@ -20,7 +17,7 @@ async fn person(tenant: &TenantTransaction, id: &str) -> Result<person::Model, O
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::NotFound)?;
-    if !access::can_access_person(tenant, row.id, PersonAccess::View).await? {
+    if !access::participates(tenant, row.id).await? {
         return Err(OperationError::NotFound);
     }
     Ok(row)
@@ -71,12 +68,12 @@ pub async fn authorize_create(
         .filter(|value| valid_identifier(value))
         .ok_or_else(invalid)?;
     let row = person(tenant, id).await?;
-    access::require_person_access(tenant, row.id, PersonAccess::Manage).await
+    access::require_participation(tenant, row.id).await
 }
 pub async fn authorize_update(tenant: &TenantTransaction, id: &str) -> Result<(), OperationError> {
     lock_household(tenant).await?;
     let row = reading::find(tenant, id, true).await?;
-    access::require_person_access(tenant, row.person_id, PersonAccess::Manage).await
+    access::require_participation(tenant, row.person_id).await
 }
 pub async fn create(
     tenant: &TenantTransaction,

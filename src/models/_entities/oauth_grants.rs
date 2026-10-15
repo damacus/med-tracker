@@ -16,6 +16,8 @@ pub struct Model {
     pub code: Option<String>,
     pub code_challenge: Option<String>,
     pub code_challenge_method: Option<String>,
+    #[sea_orm(unique)]
+    pub consent_request_id: Option<Uuid>,
     pub created_at: DateTime,
     pub device_name: Option<String>,
     pub expires_in: DateTime,

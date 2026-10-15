@@ -6,6 +6,9 @@ use sea_orm::{ActiveModelTrait, Set};
 use serde_json::{Value, json};
 use std::io::{Cursor, Write};
 
+pub(crate) const BACKUP_FORMAT: &str = "medtracker.backup.v2";
+pub(crate) const HEALTH_DATA_FORMAT: &str = "medtracker.health_data.v2";
+
 pub struct Download {
     pub bytes: Vec<u8>,
     pub filename: String,
@@ -67,8 +70,8 @@ pub(crate) fn backup_archive(content: &[u8]) -> Result<Vec<u8>, OperationError> 
 
 pub async fn build(tenant: &TenantTransaction, mode: &str) -> Result<Download, OperationError> {
     let (format, extension, content_type) = match mode {
-        "health_data_json" => ("medtracker.health_data.v1", "json", "application/json"),
-        "backup_zip" => ("medtracker.backup.v1", "zip", "application/zip"),
+        "health_data_json" => (HEALTH_DATA_FORMAT, "json", "application/json"),
+        "backup_zip" => (BACKUP_FORMAT, "zip", "application/zip"),
         _ => {
             return Err(OperationError::Validation {
                 details: json!({"mode":["Export mode is unsupported"]}),

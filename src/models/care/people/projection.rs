@@ -9,17 +9,9 @@ pub struct Pagination {
 }
 
 fn scope(tenant: &TenantTransaction) -> sea_orm::Select<person::Entity> {
-    person::Entity::find()
-        .in_tenant(tenant.scope().household_id)
-        .filter(
-            person::Column::Id.in_subquery(
-                active_grants(tenant)
-                    .filter(grant::Column::AccessLevel.is_in(["view", "record", "manage"]))
-                    .select_only()
-                    .column(grant::Column::PersonId)
-                    .into_query(),
-            ),
-        )
+    access::person_scope(crate::models::ids::HouseholdId::from_database(
+        tenant.scope().household_id,
+    ))
 }
 
 pub(super) async fn selected(
@@ -113,35 +105,26 @@ pub(crate) async fn values_in(
     if records.is_empty() {
         return Ok(vec![]);
     }
-    let ids: Vec<i64> = records.iter().map(|row| row.id).collect();
-    let links = location_membership::Entity::find()
-        .in_tenant(household_id)
-        .filter(location_membership::Column::PersonId.is_in(ids.clone()))
-        .order_by_asc(location_membership::Column::Id)
-        .all(tenant.transaction())
-        .await?;
-    let location_ids: Vec<i64> = links.iter().map(|row| row.location_id).collect();
-    let locations: HashMap<i64, String> = if location_ids.is_empty() {
-        HashMap::new()
-    } else {
-        location::Entity::find()
-            .in_tenant(household_id)
-            .filter(location::Column::Id.is_in(location_ids))
-            .all(tenant.transaction())
-            .await?
-            .into_iter()
-            .map(|row| (row.id, row.portable_id))
-            .collect()
-    };
-    let preferences: HashMap<i64, notification_preference::Model> =
+    let preferences: HashMap<crate::models::ids::PersonId, notification_preference::Model> =
         notification_preference::Entity::find()
             .in_tenant(household_id)
-            .filter(notification_preference::Column::PersonId.is_in(ids))
+            .filter(notification_preference::Column::AccountId.eq(tenant.scope().actor.account_id))
             .all(tenant.transaction())
             .await?
             .into_iter()
-            .map(|row| (row.person_id, row))
+            .map(|row| (tenant.person_id(), row))
             .collect();
+    let names = crate::models::person_identity::display_names(
+        tenant,
+        records
+            .iter()
+            .map(|record| crate::models::ids::PersonId::from_database(record.id)),
+    )
+    .await?;
+    let own_account =
+        crate::models::entities::account::Entity::find_by_id(tenant.scope().actor.account_id)
+            .one(tenant.transaction())
+            .await?;
     let today = Utc::now().with_timezone(&zone).date_naive();
-    Ok(records.iter().map(|record|{let location_ids:Vec<i64>=links.iter().filter(|row|row.person_id==record.id).map(|row|row.location_id).collect();let portable:Vec<&String>=location_ids.iter().filter_map(|id|locations.get(id)).collect();let preference=preferences.get(&record.id);json!({"id":record.id,"portable_id":record.portable_id,"updated_at":record.updated_at.format("%Y-%m-%dT%H:%M:%SZ").to_string(),"name":record.name,"email":record.email,"date_of_birth":record.date_of_birth.map(|value|value.to_string()),"person_type":match record.person_type{1=>"minor",2=>"dependent_adult",_=>"adult"},"has_capacity":record.has_capacity,"age":record.date_of_birth.map(|date|age(date,today)),"location_ids":location_ids,"location_portable_ids":portable,"notification_preference_id":preference.map(|row|row.id),"notification_preference_portable_id":preference.map(|row|&row.portable_id)})}).collect())
+    Ok(records.iter().map(|record|{let preference=preferences.get(&crate::models::ids::PersonId::from_database(record.id));json!({"id":record.id,"portable_id":record.portable_id,"updated_at":record.updated_at.format("%Y-%m-%dT%H:%M:%SZ").to_string(),"name":names.get(&crate::models::ids::PersonId::from_database(record.id)),"email":own_account.as_ref().filter(|account| account.person_id == record.id).map(|account| &account.email),"date_of_birth":record.date_of_birth.map(|value|value.to_string()),"person_type":match record.person_type{1=>"minor",2=>"dependent_adult",_=>"adult"},"has_capacity":record.has_capacity,"age":record.date_of_birth.map(|date|age(date,today)),"notification_preference_id":preference.map(|row|row.id),"notification_preference_portable_id":preference.map(|row|&row.portable_id)})}).collect())
 }

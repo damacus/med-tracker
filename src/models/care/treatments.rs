@@ -5,7 +5,7 @@ pub(crate) mod projection;
 mod retirement;
 mod source_stock;
 use crate::models::{
-    access::{self, PersonAccess, TenantTransaction},
+    access::{self, TenantTransaction},
     care::{administration, doses::CredentialProvenance, medications},
     entities::{api_change_event, dosage, household, medication, person, schedule},
     errors::OperationError,
@@ -26,7 +26,9 @@ async fn find_person(
     context: &TenantTransaction,
     id: &str,
 ) -> Result<Option<person::Model>, OperationError> {
-    let query = person::Entity::find().in_tenant(context.scope().household_id);
+    let query = crate::models::access::person_scope(
+        crate::models::ids::HouseholdId::from_database(context.scope().household_id),
+    );
     let query = if let Ok(id) = id.parse::<i64>() {
         query.filter(person::Column::Id.eq(id))
     } else {
@@ -38,19 +40,8 @@ async fn person_access(
     _: &DatabaseTransaction,
     context: &TenantTransaction,
     id: i64,
-    manage: bool,
 ) -> Result<bool, OperationError> {
-    match access::require_person_access(
-        context,
-        id,
-        if manage {
-            PersonAccess::Manage
-        } else {
-            PersonAccess::View
-        },
-    )
-    .await
-    {
+    match access::require_participation(context, id).await {
         Ok(()) => Ok(true),
         Err(OperationError::Forbidden | OperationError::NotFound) => Ok(false),
         Err(error) => Err(error),
@@ -107,12 +98,7 @@ pub async fn authorize_person(
     tenant: &TenantTransaction,
     body: &Value,
 ) -> Result<(), OperationError> {
-    household::Entity::find_by_id(tenant.scope().household_id)
-        .lock_exclusive()
-        .one(tenant.transaction())
-        .await?
-        .ok_or(OperationError::NotFound)?;
-    access::recheck(tenant).await?;
+    access::lock_household(tenant).await?;
     let attributes = input::attributes(body).map_err(failure)?;
     let id = attributes
         .get("person_id")
@@ -121,10 +107,10 @@ pub async fn authorize_person(
     let row = find_person(tenant.transaction(), tenant, id)
         .await?
         .ok_or(OperationError::NotFound)?;
-    if !person_access(tenant.transaction(), tenant, row.id, false).await? {
+    if !person_access(tenant.transaction(), tenant, row.id).await? {
         return Err(OperationError::NotFound);
     }
-    access::require_person_access(tenant, row.id, PersonAccess::Manage).await
+    access::require_participation(tenant, row.id).await
 }
 pub async fn create(
     tenant: &TenantTransaction,
@@ -200,8 +186,8 @@ pub(crate) fn representation(row: &schedule::Model) -> (Value, String) {
     );
     (body, etag)
 }
-fn database_error(_: sea_orm::DbErr) -> OperationError {
-    OperationError::Unavailable
+fn database_error(error: sea_orm::DbErr) -> OperationError {
+    OperationError::from(error)
 }
 fn valid_identifier(id: &str) -> bool {
     id.parse::<i64>().is_ok_and(|id| id > 0) || Uuid::parse_str(id).is_ok()

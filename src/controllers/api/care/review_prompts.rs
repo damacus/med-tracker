@@ -241,7 +241,7 @@ async fn mutation(
     else {
         return Err(response::operation(OperationError::NotFound));
     };
-    if !prompts::person_access(tenant.transaction(), &context, record.person_id, true)
+    if !prompts::person_access(tenant.transaction(), &context, record.person_id)
         .await
         .map_err(response::operation)?
     {
@@ -251,7 +251,7 @@ async fn mutation(
     if !prompts::actor_adult(tenant.transaction(), &context)
         .await
         .map_err(response::operation)?
-        || !prompts::person_access(tenant.transaction(), &context, record.person_id, true)
+        || !prompts::person_access(tenant.transaction(), &context, record.person_id)
             .await
             .map_err(response::operation)?
     {

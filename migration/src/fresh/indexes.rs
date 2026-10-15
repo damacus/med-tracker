@@ -4,6 +4,91 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_index(
             Index::create()
+                .name("account_clinical_access_account_cursor")
+                .table(Alias::new("account_clinical_access_events"))
+                .col(Alias::new("account_id"))
+                .col(Alias::new("id"))
+                .to_owned(),
+        )
+        .await?;
+    create_take_history_indexes(manager).await?;
+    create_part_01(manager).await?;
+    create_part_02(manager).await?;
+    create_part_03(manager).await?;
+    create_part_04(manager).await?;
+    create_part_05(manager).await?;
+    create_part_06(manager).await?;
+    create_part_07(manager).await?;
+    create_part_08(manager).await?;
+    create_part_09(manager).await?;
+    create_part_10(manager).await?;
+    create_part_11(manager).await?;
+    create_part_12(manager).await?;
+    create_part_13(manager).await?;
+    create_part_14(manager).await?;
+    create_part_15(manager).await?;
+    create_part_16(manager).await?;
+    create_part_17(manager).await?;
+    create_part_18(manager).await?;
+    create_part_19(manager).await?;
+    create_part_20(manager).await?;
+    create_part_21(manager).await?;
+    create_part_22(manager).await?;
+    create_part_23(manager).await?;
+    create_part_24(manager).await?;
+    create_part_25(manager).await?;
+    create_part_26(manager).await?;
+    create_part_27(manager).await?;
+    create_part_28(manager).await?;
+    create_part_29(manager).await?;
+    Ok(())
+}
+
+async fn create_take_history_indexes(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
+    manager
+        .create_index(
+            Index::create()
+                .name("clinical_history_original_revision")
+                .table(Alias::new("clinical_history_entries"))
+                .col(Alias::new("take_id"))
+                .col(Alias::new("event_revision"))
+                .unique()
+                .to_owned(),
+        )
+        .await?;
+    for (name, column) in [
+        ("clinical_history_person_time", "person_id"),
+        ("clinical_history_origin_time", "origin_household_id"),
+    ] {
+        manager
+            .create_index(
+                Index::create()
+                    .name(name)
+                    .table(Alias::new("clinical_history_entries"))
+                    .col(Alias::new(column))
+                    .col(Alias::new("occurred_at"))
+                    .col(Alias::new("id"))
+                    .to_owned(),
+            )
+            .await?;
+    }
+    Ok(())
+}
+
+async fn create_part_01(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
+    manager
+        .create_index(
+            Index::create()
+                .name("oauth_grants_consent_request_id_unique")
+                .table(Alias::new("oauth_grants"))
+                .unique()
+                .col(Alias::new("consent_request_id"))
+                .to_owned(),
+        )
+        .await?;
+    manager
+        .create_index(
+            Index::create()
                 .name("idx_audit_checkpoint_chain_sequence")
                 .table(Alias::new("audit_checkpoints"))
                 .unique()
@@ -63,22 +148,16 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_index(
             Index::create()
-                .name("idx_person_access_grants_on_delegation_household")
-                .table(Alias::new("person_access_grants"))
-                .col(Alias::new("carer_relationship_id"))
-                .col(Alias::new("household_id"))
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_index(
-            Index::create()
                 .name("index_account_active_session_keys_on_account_id")
                 .table(Alias::new("account_active_session_keys"))
                 .col(Alias::new("account_id"))
                 .to_owned(),
         )
         .await?;
+    Ok(())
+}
+
+async fn create_part_02(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_index(
             Index::create()
@@ -164,6 +243,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 .to_owned(),
         )
         .await?;
+    Ok(())
+}
+
+async fn create_part_03(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_index(
             Index::create()
@@ -242,6 +325,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 .to_owned(),
         )
         .await?;
+    Ok(())
+}
+
+async fn create_part_04(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_index(
             Index::create()
@@ -323,6 +410,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 .to_owned(),
         )
         .await?;
+    Ok(())
+}
+
+async fn create_part_05(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_index(
             Index::create()
@@ -408,6 +499,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 .to_owned(),
         )
         .await?;
+    Ok(())
+}
+
+async fn create_part_06(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_index(
             Index::create()
@@ -492,6 +587,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 .to_owned(),
         )
         .await?;
+    Ok(())
+}
+
+async fn create_part_07(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_index(
             Index::create()
@@ -576,6 +675,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 .to_owned(),
         )
         .await?;
+    Ok(())
+}
+
+async fn create_part_08(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_index(
             Index::create()
@@ -663,6 +766,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 .to_owned(),
         )
         .await?;
+    Ok(())
+}
+
+async fn create_part_09(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_index(
             Index::create()
@@ -741,6 +848,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 .to_owned(),
         )
         .await?;
+    Ok(())
+}
+
+async fn create_part_10(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_index(
             Index::create()
@@ -822,6 +933,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 .to_owned(),
         )
         .await?;
+    Ok(())
+}
+
+async fn create_part_11(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_index(
             Index::create()
@@ -900,6 +1015,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 .to_owned(),
         )
         .await?;
+    Ok(())
+}
+
+async fn create_part_12(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_index(
             Index::create()
@@ -988,6 +1107,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 .to_owned(),
         )
         .await?;
+    Ok(())
+}
+
+async fn create_part_13(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_index(
             Index::create()
@@ -1076,6 +1199,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 .to_owned(),
         )
         .await?;
+    Ok(())
+}
+
+async fn create_part_14(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_index(
             Index::create()
@@ -1164,6 +1291,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 .to_owned(),
         )
         .await?;
+    Ok(())
+}
+
+async fn create_part_15(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_index(
             Index::create()
@@ -1195,61 +1326,16 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_index(
             Index::create()
-                .name("index_location_memberships_on_household_id")
-                .table(Alias::new("location_memberships"))
-                .col(Alias::new("household_id"))
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_index(
-            Index::create()
-                .name("index_location_memberships_on_id_and_household_id")
-                .table(Alias::new("location_memberships"))
-                .unique()
-                .col(Alias::new("id"))
-                .col(Alias::new("household_id"))
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_index(
-            Index::create()
-                .name("index_location_memberships_on_location_id")
-                .table(Alias::new("location_memberships"))
-                .col(Alias::new("location_id"))
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_index(
-            Index::create()
-                .name("index_location_memberships_on_person_id")
-                .table(Alias::new("location_memberships"))
-                .col(Alias::new("person_id"))
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_index(
-            Index::create()
-                .name("index_location_memberships_on_person_id_and_location_id")
-                .table(Alias::new("location_memberships"))
-                .unique()
-                .col(Alias::new("person_id"))
-                .col(Alias::new("location_id"))
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_index(
-            Index::create()
                 .name("index_locations_on_household_id")
                 .table(Alias::new("locations"))
                 .col(Alias::new("household_id"))
                 .to_owned(),
         )
         .await?;
+    Ok(())
+}
+
+async fn create_part_16(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_index(
             Index::create()
@@ -1338,6 +1424,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 .to_owned(),
         )
         .await?;
+    Ok(())
+}
+
+async fn create_part_17(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_index(
             Index::create()
@@ -1424,6 +1514,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 .to_owned(),
         )
         .await?;
+    Ok(())
+}
+
+async fn create_part_18(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_index(
             Index::create()
@@ -1510,6 +1604,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 .to_owned(),
         )
         .await?;
+    Ok(())
+}
+
+async fn create_part_19(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_index(
             Index::create()
@@ -1593,6 +1691,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 .to_owned(),
         )
         .await?;
+    Ok(())
+}
+
+async fn create_part_20(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_index(
             Index::create()
@@ -1681,6 +1783,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 .to_owned(),
         )
         .await?;
+    Ok(())
+}
+
+async fn create_part_21(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_index(
             Index::create()
@@ -1767,6 +1873,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 .to_owned(),
         )
         .await?;
+    Ok(())
+}
+
+async fn create_part_22(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_index(
             Index::create()
@@ -1847,13 +1957,18 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 .to_owned(),
         )
         .await?;
+    Ok(())
+}
+
+async fn create_part_23(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_index(
             Index::create()
-                .name("index_notification_preferences_on_person_id")
+                .name("index_notification_preferences_on_account_household")
                 .table(Alias::new("notification_preferences"))
                 .unique()
-                .col(Alias::new("person_id"))
+                .col(Alias::new("account_id"))
+                .col(Alias::new("household_id"))
                 .to_owned(),
         )
         .await?;
@@ -1934,6 +2049,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 .to_owned(),
         )
         .await?;
+    Ok(())
+}
+
+async fn create_part_24(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_index(
             Index::create()
@@ -1993,53 +2112,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 .to_owned(),
         )
         .await?;
-    manager
-        .create_index(
-            Index::create()
-                .name("index_person_access_grants_on_granted_by_membership_id")
-                .table(Alias::new("person_access_grants"))
-                .col(Alias::new("granted_by_membership_id"))
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_index(
-            Index::create()
-                .name("index_person_access_grants_on_household_id")
-                .table(Alias::new("person_access_grants"))
-                .col(Alias::new("household_id"))
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_index(
-            Index::create()
-                .name("index_person_access_grants_on_household_membership_id")
-                .table(Alias::new("person_access_grants"))
-                .col(Alias::new("household_membership_id"))
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_index(
-            Index::create()
-                .name("index_person_access_grants_on_id_and_household_id")
-                .table(Alias::new("person_access_grants"))
-                .unique()
-                .col(Alias::new("id"))
-                .col(Alias::new("household_id"))
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_index(
-            Index::create()
-                .name("index_person_access_grants_on_person_id")
-                .table(Alias::new("person_access_grants"))
-                .col(Alias::new("person_id"))
-                .to_owned(),
-        )
-        .await?;
+    Ok(())
+}
+
+async fn create_part_25(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_index(
             Index::create()
@@ -2107,6 +2183,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 .to_owned(),
         )
         .await?;
+    Ok(())
+}
+
+async fn create_part_26(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_index(
             Index::create()
@@ -2194,6 +2274,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 .to_owned(),
         )
         .await?;
+    Ok(())
+}
+
+async fn create_part_27(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_index(
             Index::create()
@@ -2275,6 +2359,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 .to_owned(),
         )
         .await?;
+    Ok(())
+}
+
+async fn create_part_28(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_index(
             Index::create()
@@ -2363,6 +2451,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 .to_owned(),
         )
         .await?;
+    Ok(())
+}
+
+async fn create_part_29(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_index(
             Index::create()

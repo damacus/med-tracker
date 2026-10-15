@@ -137,18 +137,12 @@ impl Page<'_> {
                 .ok_or(OperationError::Unavailable)?;
             let notice = match change {
                 Change::Assign => {
-                    let target = url::Url::parse(&self.ctx.config.server.full_url())
+                    url::Url::parse(&self.ctx.config.server.full_url())
                         .and_then(|url| url.join("/invitations/accept"))
                         .map_err(|_| OperationError::Unavailable)?;
                     Some(
-                        match person_carers::assign(
-                            &tenant,
-                            id,
-                            &draft,
-                            &target,
-                            principal.provenance(),
-                        )
-                        .await?
+                        match person_carers::assign(&tenant, id, &draft, principal.provenance())
+                            .await?
                         {
                             person_carers::AssignmentOutcome::Assigned => "created",
                             person_carers::AssignmentOutcome::Invited => "invited",

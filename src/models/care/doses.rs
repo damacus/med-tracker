@@ -10,8 +10,9 @@ mod timing;
 mod validation;
 mod writing;
 
+use crate::models::ids::{AssignmentId, HouseholdId, MedicationId, PersonId, ScheduleId};
 use crate::models::{
-    access::{self, HouseholdScope, PersonAccess, TenantTransaction},
+    access::{self, HouseholdScope, TenantTransaction},
     entities::{
         api_change_event, dosage, medication, medication_take, membership, person_medication,
         schedule,
@@ -21,7 +22,8 @@ use crate::models::{
 use audit::{StockVersionChange, record_domain_audit, stock_version};
 use changes::{SyncRecord, record_change};
 use chrono::{DateTime, Datelike, Duration, NaiveDate, NaiveDateTime, TimeZone, Utc};
-use input::{ProposedTake, decimal_from_json, parse_input_time, prepare};
+pub use input::{PreparedRequest, prepare_request};
+use input::{TakeCandidate, ValidatedTake, prepare};
 use locking::lock_row;
 use persistence::insert_take;
 use replay::{existing_take, lock_client_uuid, replay_matches};
@@ -32,15 +34,16 @@ use sea_orm::{
 };
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
+pub use source::DoseSource;
 pub(crate) use source::app_zone;
 use source::{
-    Source, effective_source, local_date_in_zone, source, source_from_assignment,
-    source_from_schedule,
+    DosePrescription, Source, SourceReference, effective_source, local_date_in_zone, source,
+    source_from_assignment, source_from_schedule,
 };
 pub(crate) use source::{config_decimal, config_value};
-use std::{collections::HashSet, str::FromStr};
 use stock::decrement_stock;
 pub(crate) use stock::same_stock_signature;
+pub(crate) use timing::cycle_bounds_in_zone;
 pub(crate) use timing::dashboard_timing;
 use timing::{applies_on, timing_allowed};
 use uuid::Uuid;
@@ -50,7 +53,7 @@ pub(crate) use validation::valid_identifier;
 type ApiError = OperationError;
 
 #[derive(Clone, Debug)]
-pub struct Take {
+pub struct TakeRequest {
     pub client_uuid: Option<String>,
     pub source_type: String,
     pub source_id: String,
@@ -73,7 +76,7 @@ fn preview_source(mut source: Source, date: NaiveDate) -> BrowserDosePreview {
     let available = source.active && !source.retired && applies_on(&source, date);
     effective_source(&mut source, date);
     BrowserDosePreview {
-        available,
+        available: available && !source.invalid_configured_amount,
         amount: source
             .dose_amount
             .map(|value| value.normalize().to_string()),
@@ -107,23 +110,22 @@ pub async fn browser_preview(
     let source = source(
         tenant.transaction(),
         &context,
-        tenant.scope().household_id,
-        kind,
-        id,
+        HouseholdId::from_database(tenant.scope().household_id),
+        &SourceReference::parse(kind, id)?,
     )
     .await?;
-    if source.medication_id != medication_id {
+    if source.medication_id.get() != medication_id {
         return Err(OperationError::NotFound);
     }
-    access::require_person_access(tenant, source.person_id, PersonAccess::Record).await?;
+    access::require_participation(tenant, source.person_id.get()).await?;
     let mut preview = preview_source(source, taken_at.date_naive());
     preview.available &= taken_at.with_timezone(&Utc) <= Utc::now() + Duration::hours(1);
     Ok(preview)
 }
 
 #[derive(Clone, Debug)]
-pub enum Command {
-    Take(Take),
+pub enum Request {
+    Take(PreparedRequest),
 }
 
 #[derive(Debug)]
@@ -185,26 +187,49 @@ impl DoseContext<'_> {
 
 enum ErrorKind {
     Validation,
-    Conflict,
+}
+
+enum DoseConflict {
+    PayloadMismatch,
+    DoseChanged,
+    IdempotencyKeyUnavailable,
+}
+
+impl DoseConflict {
+    fn into_error(self) -> OperationError {
+        let (code, details) = match self {
+            Self::PayloadMismatch => (
+                "conflict",
+                json!({"error":"client_uuid was already used for a different dose"}),
+            ),
+            Self::DoseChanged => (
+                "dose_changed",
+                json!({"error":"Dose changed. Review the updated dose before recording."}),
+            ),
+            Self::IdempotencyKeyUnavailable => (
+                "idempotency_key_unavailable",
+                json!({"message":"Medication take idempotency key is unavailable"}),
+            ),
+        };
+        OperationError::Conflict {
+            code: code.to_owned(),
+            details,
+        }
+    }
 }
 fn error(kind: ErrorKind, message: &str) -> OperationError {
     match kind {
         ErrorKind::Validation => OperationError::Validation {
             details: json!({"error": message}),
         },
-        ErrorKind::Conflict => OperationError::Conflict {
-            code: "conflict".to_owned(),
-            details: json!({"error": message}),
-        },
     }
 }
-fn database_error(_: sea_orm::DbErr) -> OperationError {
-    OperationError::Unavailable
+fn database_error(error: sea_orm::DbErr) -> OperationError {
+    error.into()
 }
 
 enum TakeFailureCause {
     Paused,
-    NumericDoseAmount,
     OutOfStock,
 }
 struct TakeFailure {
@@ -222,7 +247,6 @@ impl TakeFailure {
         if let (Some(cause), OperationError::Validation { details }) = (self.cause, &mut error) {
             details["code"] = json!(match cause {
                 TakeFailureCause::Paused => "paused",
-                TakeFailureCause::NumericDoseAmount => "numeric_dose_amount",
                 TakeFailureCause::OutOfStock => "out_of_stock",
             });
         }
@@ -232,47 +256,27 @@ impl TakeFailure {
 
 pub async fn execute(
     tenant: &TenantTransaction,
-    command: Command,
+    request: Request,
 ) -> Result<Outcome, OperationError> {
-    execute_with_provenance(tenant, command, None).await
+    execute_with_provenance(tenant, request, None).await
 }
 
-pub async fn execute_in_timezone(
+pub async fn execute_with_provenance(
     tenant: &TenantTransaction,
-    command: Command,
-    zone: chrono_tz::Tz,
+    request: Request,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<Outcome, OperationError> {
-    let Command::Take(take) = command;
-    let mut attributes = json!({"source_type": take.source_type, "source_id": take.source_id, "taken_at": take.taken_at});
-    if let Some(value) = take.client_uuid {
-        attributes["client_uuid"] = json!(value);
-    }
-    if let Some(value) = take.dose_amount {
-        attributes["dose_amount"] = json!(value);
-    }
-    if let Some(value) = take.dose_unit {
-        attributes["dose_unit"] = json!(value);
-    }
-    if let Some(value) = take.taken_from_medication_id {
-        attributes["taken_from_medication_id"] = json!(value);
-    }
-    if let Some(value) = take.expected_effective_amount {
-        attributes["expected_effective_amount"] = json!(value);
-    }
-    if let Some(value) = take.expected_effective_unit {
-        attributes["expected_effective_unit"] = json!(value);
-    }
+    let Request::Take(request) = request;
     let context = DoseContext {
         tenant,
         provenance,
-        zone,
+        zone: request.zone,
     };
     let (replayed, record) = writing::create_with_failure(
         tenant.transaction(),
         &context,
-        tenant.scope().household_id,
-        &json!({"medication_take": attributes}),
+        HouseholdId::from_database(tenant.scope().household_id),
+        &request,
         &tenant.scope().request_id,
     )
     .await
@@ -284,31 +288,12 @@ pub async fn execute_in_timezone(
     })
 }
 
-pub async fn execute_with_provenance(
-    tenant: &TenantTransaction,
-    command: Command,
-    provenance: Option<&CredentialProvenance>,
-) -> Result<Outcome, OperationError> {
-    execute_in_timezone(tenant, command, app_zone(tenant.settings()), provenance).await
-}
-
 async fn allowed_person(
     _: &DatabaseTransaction,
     context: &DoseContext<'_>,
-    person_id: i64,
-    write: bool,
+    person_id: PersonId,
 ) -> Result<bool, OperationError> {
-    match access::require_person_access(
-        context.tenant,
-        person_id,
-        if write {
-            PersonAccess::Record
-        } else {
-            PersonAccess::View
-        },
-    )
-    .await
-    {
+    match access::require_participation(context.tenant, person_id.get()).await {
         Ok(()) => Ok(true),
         Err(OperationError::Forbidden) => Ok(false),
         Err(error) => Err(error),

@@ -1,9 +1,9 @@
 use crate::models::{
-    access::{self, PersonAccess, TenantTransaction},
-    entities::{account, person, user},
+    access::{self, TenantTransaction},
+    entities::person,
     errors::OperationError,
 };
-use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder};
+use sea_orm::{ConnectionTrait, DbBackend, Statement};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
@@ -18,47 +18,38 @@ pub(crate) fn enabled(preferences: &Value) -> bool {
         })
 }
 
+pub fn for_account(
+    account: &crate::models::entities::account::Model,
+    uploaded: bool,
+) -> Option<String> {
+    if uploaded || !enabled(&account.preferences) {
+        None
+    } else {
+        image_url(&account.email)
+    }
+}
+
 pub async fn for_person(
     tenant: &TenantTransaction,
     person_id: i64,
     uploaded: bool,
 ) -> Result<Option<String>, OperationError> {
-    access::require_person_access(tenant, person_id, PersonAccess::View).await?;
+    access::require_participation(tenant, person_id).await?;
     if uploaded {
         return Ok(None);
     }
-    let person = person::Entity::find_by_id(person_id)
-        .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
-        .one(tenant.transaction())
+    let row = tenant
+        .transaction()
+        .query_one_raw(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            "SELECT med_tracker.person_avatar_digest($1) AS digest",
+            [person_id.into()],
+        ))
         .await?
-        .ok_or(OperationError::NotFound)?;
-    let Some(account_id) = person.account_id else {
-        return Ok(None);
-    };
-    let Some(account) = account::Entity::find_by_id(account_id)
-        .one(tenant.transaction())
-        .await?
-        .filter(|account| enabled(&account.preferences))
-    else {
-        return Ok(None);
-    };
-    if let Some(email) = person
-        .email
-        .as_deref()
-        .filter(|email| !email.trim().is_empty())
-    {
-        return Ok(image_url(email));
-    }
-    let user = user::Entity::find()
-        .filter(user::Column::PersonId.eq(person.id))
-        .one(tenant.transaction())
-        .await?;
-    let email = user
-        .as_ref()
-        .map(|user| user.email_address.as_str())
-        .filter(|email| !email.trim().is_empty())
-        .unwrap_or(&account.email);
-    Ok(image_url(email))
+        .ok_or(OperationError::Unavailable)?;
+    Ok(row
+        .try_get::<Option<String>>("", "digest")?
+        .map(|digest| image_url_from_digest(&digest)))
 }
 
 pub async fn for_visible_people(
@@ -66,49 +57,31 @@ pub async fn for_visible_people(
     people: &[person::Model],
     uploaded: &HashSet<i64>,
 ) -> Result<HashMap<i64, String>, OperationError> {
-    let eligible: Vec<_> = people
+    access::recheck(tenant).await?;
+    let ids: Vec<i64> = people
         .iter()
-        .filter(|person| !uploaded.contains(&person.id) && person.account_id.is_some())
+        .filter(|person| !uploaded.contains(&person.id))
+        .map(|person| person.id)
         .collect();
-    if eligible.is_empty() {
+    if ids.is_empty() {
         return Ok(HashMap::new());
     }
-    let accounts: HashMap<_, _> = account::Entity::find()
-        .filter(account::Column::Id.is_in(eligible.iter().filter_map(|person| person.account_id)))
-        .all(tenant.transaction())
-        .await?
-        .into_iter()
-        .filter(|account| enabled(&account.preferences))
-        .map(|account| (account.id, account))
-        .collect();
-    let users: HashMap<_, _> = user::Entity::find()
-        .filter(user::Column::PersonId.is_in(eligible.iter().map(|person| person.id)))
-        .order_by_asc(user::Column::Id)
-        .all(tenant.transaction())
-        .await?
-        .into_iter()
-        .fold(HashMap::new(), |mut users, user| {
-            users.entry(user.person_id).or_insert(user);
-            users
-        });
-    Ok(eligible
-        .into_iter()
-        .filter_map(|person| {
-            let account = accounts.get(&person.account_id?)?;
-            let email = person
-                .email
-                .as_deref()
-                .filter(|email| !email.trim().is_empty())
-                .or_else(|| {
-                    users
-                        .get(&person.id)
-                        .map(|user| user.email_address.as_str())
-                })
-                .filter(|email| !email.trim().is_empty())
-                .unwrap_or(&account.email);
-            image_url(email).map(|url| (person.id, url))
-        })
-        .collect())
+    let rows = tenant.transaction().query_all_raw(Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        "SELECT id,med_tracker.person_avatar_digest(id) AS digest FROM people WHERE id=ANY($1::bigint[])",
+        [ids.into()],
+    )).await?;
+    let mut urls = HashMap::new();
+    for row in rows {
+        if let Some(digest) = row.try_get::<Option<String>>("", "digest")? {
+            urls.insert(row.try_get("", "id")?, image_url_from_digest(&digest));
+        }
+    }
+    Ok(urls)
+}
+
+fn image_url_from_digest(digest: &str) -> String {
+    format!("https://www.gravatar.com/avatar/{digest}?s=128&d=404&r=g")
 }
 
 fn image_url(email: &str) -> Option<String> {

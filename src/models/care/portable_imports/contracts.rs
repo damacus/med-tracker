@@ -52,6 +52,28 @@ impl ImportPlan {
             .ok_or("Portable data records are required")?;
         let mut counts = Map::new();
         let mut errors = Vec::new();
+        if records
+            .get("people")
+            .and_then(Value::as_array)
+            .is_some_and(|rows| {
+                rows.iter().any(|row| {
+                    row.get("location_portable_ids")
+                        .and_then(Value::as_array)
+                        .is_some_and(|ids| !ids.is_empty())
+                })
+            })
+        {
+            errors.push("Legacy permission-bearing location links are unsupported".to_owned());
+        }
+        if records
+            .get("medication_takes")
+            .and_then(Value::as_array)
+            .is_some_and(|rows| !rows.is_empty())
+        {
+            errors
+                .push("Legacy dose provenance is unsupported pending migration policy".to_owned());
+        }
+
         for (kind, rows) in records {
             if !BASE_TYPES.contains(&kind.as_str())
                 && !(format == "medtracker.portable.v2" && V2_TYPES.contains(&kind.as_str()))

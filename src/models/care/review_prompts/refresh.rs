@@ -622,9 +622,7 @@ async fn import_claimed_snapshot(
         if household.status != "active" || household.lifecycle_state != "active" {
             continue;
         }
-        let tenant =
-            crate::models::care::browser_push::scheduler::household_transaction(ctx, household.id)
-                .await?;
+        let tenant = crate::models::care::browser_push::scheduler::job_transaction(ctx).await?;
         household::Entity::find_by_id(household.id)
             .lock_exclusive()
             .one(&tenant)

@@ -211,7 +211,7 @@ async fn medication_crud_retire_unused_medication_records_audit_and_tombstone() 
 #[tokio::test]
 async fn medication_crud_retire_preserves_administration_history() {
     let fixture = Fixture::new().await;
-    fixture.admin.execute_unprepared("INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(97001,72001,73001,90001,2,'tablet',0,now(),now()); INSERT INTO medication_takes(id,household_id,person_medication_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(97002,72001,97001,2,'tablet',now(),now(),now())").await.unwrap();
+    recorded_takes::seed(&fixture.admin, recorded_takes::SyntheticActor::canonical(), "INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(97001,72001,73001,90001,2,'tablet',0,now(),now()); INSERT INTO medication_takes(id,household_id,person_medication_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(97002,72001,97001,2,'tablet',now(),now(),now())", &[recorded_takes::TakeSeed::new(97002,90001)]).await.unwrap();
     let tenant = access::begin(&fixture.runtime, &scope(), None)
         .await
         .unwrap();

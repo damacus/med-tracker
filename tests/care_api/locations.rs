@@ -204,6 +204,7 @@ fn location_etag_retains_published_sorted_json_encoding() {
         id: 1,
         household_id: 2,
         portable_id: "fixed".into(),
+        retired_at: None,
         name: "Synthetic cabinet".into(),
         description: Some("Upstairs".into()),
         created_at: timestamp,
@@ -341,148 +342,109 @@ async fn location_saved_rails_retry_replays_without_new_effect() {
 }
 
 #[tokio::test]
-async fn location_lifecycle_api_read_update_preconditions_and_guarded_delete() {
+async fn location_lifecycle_api_preserves_preconditions_and_soft_retires_label()
+-> Result<(), Box<dyn std::error::Error>> {
     let app = Application::new().await;
-    let token = app.token().await;
-    let endpoint = format!("{}/api/v1/households/72001/locations", app.origin);
-    let created = app
-        .client
-        .post(&endpoint)
-        .bearer_auth(&token)
-        .json(&json!({"location":{"name":"Synthetic lifecycle cupboard","description":"Original"}}))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(created.status().as_u16(), 201);
-    let etag = created
-        .headers()
-        .get("etag")
-        .unwrap()
-        .to_str()
-        .unwrap()
-        .to_owned();
-    let created: Value = created.json().await.unwrap();
-    let id = created["data"]["id"].as_i64().unwrap();
-    let resource = format!("{endpoint}/{id}");
-    let read = app
-        .client
-        .get(&resource)
-        .bearer_auth(&token)
-        .send()
-        .await
-        .unwrap();
-    let read_status = read.status().as_u16();
-    let missing = app
-        .client
-        .patch(&resource)
-        .bearer_auth(&token)
-        .json(&json!({"location":{"description":"Revised"}}))
-        .send()
-        .await
-        .unwrap();
-    let missing_status = missing.status().as_u16();
-    let updated = app
-        .client
-        .patch(&resource)
-        .bearer_auth(&token)
-        .header("if-match", &etag)
-        .json(&json!({"location":{"description":"Revised"}}))
-        .send()
-        .await
-        .unwrap();
-    let updated_status = updated.status().as_u16();
-    let revised_etag = updated
-        .headers()
-        .get("etag")
-        .and_then(|value| value.to_str().ok())
-        .unwrap_or("")
-        .to_owned();
-    let updated: Value = updated.json().await.unwrap_or(Value::Null);
-    let stale = app
-        .client
-        .delete(&resource)
-        .bearer_auth(&token)
-        .header("if-match", &etag)
-        .send()
-        .await
-        .unwrap();
-    let stale_status = stale.status().as_u16();
-    let deleted = app
-        .client
-        .delete(&resource)
-        .bearer_auth(&token)
-        .header("if-match", &revised_etag)
-        .send()
-        .await
-        .unwrap();
-    let deleted_status = deleted.status().as_u16();
-    let row = app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,"SELECT (SELECT count(*) FROM locations WHERE id=$1) AS remaining,(SELECT count(*) FROM api_tombstones WHERE record_type='Location' AND record_portable_id=$2) AS tombstones",[id.into(),created["data"]["portable_id"].as_str().unwrap().into()])).await.unwrap().unwrap();
-    let remaining: i64 = row.try_get("", "remaining").unwrap();
-    let tombstones: i64 = row.try_get("", "tombstones").unwrap();
+    let observed: Result<_, Box<dyn std::error::Error>> = async {
+        let token = app.token().await;
+        let endpoint = format!("{}/api/v1/households/72001/locations", app.origin);
+        let created = app.client.post(&endpoint).bearer_auth(&token)
+            .json(&json!({"location":{"name":"Synthetic lifecycle cupboard","description":"Original"}})).send().await?;
+        let created_status = created.status().as_u16();
+        let etag = created.headers().get("etag").ok_or("Missing created etag")?.to_str()?.to_owned();
+        let created: Value = created.json().await?;
+        let id = created.get("data").and_then(|data| data.get("id")).and_then(Value::as_i64).ok_or("Missing created id")?;
+        let portable_id = created.get("data").and_then(|data| data.get("portable_id")).and_then(Value::as_str).ok_or("Missing portable id")?;
+        let resource = format!("{endpoint}/{id}");
+        let read = app.client.get(&resource).bearer_auth(&token).send().await?.status().as_u16();
+        let missing = app.client.patch(&resource).bearer_auth(&token).json(&json!({"location":{"description":"Revised"}})).send().await?.status().as_u16();
+        let updated = app.client.patch(&resource).bearer_auth(&token).header("if-match",&etag)
+            .json(&json!({"location":{"description":"Revised"}})).send().await?;
+        let updated_status = updated.status().as_u16();
+        let revised_etag = updated.headers().get("etag").ok_or("Missing revised etag")?.to_str()?.to_owned();
+        let updated: Value = updated.json().await?;
+        let stale = app.client.delete(&resource).bearer_auth(&token).header("if-match",etag).send().await?.status().as_u16();
+        let deleted = app.client.delete(&resource).bearer_auth(&token).header("if-match",revised_etag).send().await?.status().as_u16();
+        let hidden = app.client.get(&resource).bearer_auth(&token).send().await?.status().as_u16();
+        let row = app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+            "SELECT (SELECT count(*) FROM locations WHERE id=$1 AND retired_at IS NOT NULL) AS retained,(SELECT count(*) FROM api_tombstones WHERE record_type='Location' AND record_portable_id=$2) AS tombstones",[id.into(),portable_id.into()])).await?.ok_or("Missing retirement state")?;
+        let retained: i64 = row.try_get("","retained")?;
+        let tombstones: i64 = row.try_get("","tombstones")?;
+        Ok((created_status,read,missing,updated_status,updated,stale,deleted,hidden,retained,tombstones))
+    }.await;
     app.close().await;
-    assert_eq!(read_status, 200);
-    assert_eq!(missing_status, 428);
-    assert_eq!(updated_status, 200);
-    assert_eq!(updated["data"]["name"], "Synthetic lifecycle cupboard");
-    assert_eq!(updated["data"]["description"], "Revised");
-    assert_eq!(stale_status, 409);
-    assert_eq!(deleted_status, 204);
-    assert_eq!((remaining, tombstones), (0, 1));
+    let (
+        created,
+        read,
+        missing,
+        updated_status,
+        updated,
+        stale,
+        deleted,
+        hidden,
+        retained,
+        tombstones,
+    ) = observed?;
+    assert_eq!(
+        (
+            created,
+            read,
+            missing,
+            updated_status,
+            stale,
+            deleted,
+            hidden
+        ),
+        (201, 200, 428, 200, 409, 204, 404)
+    );
+    assert_eq!(
+        updated.pointer("/data/name"),
+        Some(&json!("Synthetic lifecycle cupboard"))
+    );
+    assert_eq!(
+        updated.pointer("/data/description"),
+        Some(&json!("Revised"))
+    );
+    assert_eq!((retained, tombstones), (1, 1));
+    Ok(())
 }
 
 #[tokio::test]
-async fn location_lifecycle_api_history_prevents_cascade_and_names_are_case_insensitive() {
+async fn location_lifecycle_api_retains_history_and_case_insensitive_active_names()
+-> Result<(), Box<dyn std::error::Error>> {
     let app = Application::new().await;
-    let token = app.token().await;
-    let endpoint = format!("{}/api/v1/households/72001/locations", app.origin);
-    let created = app
-        .client
-        .post(&endpoint)
-        .bearer_auth(&token)
-        .json(&json!({"location":{"name":"Synthetic unique cupboard"}}))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(created.status().as_u16(), 201);
-    let duplicate = app
-        .client
-        .post(&endpoint)
-        .bearer_auth(&token)
-        .json(&json!({"location":{"name":"SYNTHETIC UNIQUE CUPBOARD"}}))
-        .send()
-        .await
-        .unwrap();
-    let duplicate_status = duplicate.status().as_u16();
-    app.fixture.admin.execute_unprepared("INSERT INTO medication_takes(id,household_id,person_medication_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(99001,72001,81001,2,'tablet',now(),now(),now())").await.unwrap();
-    let resource = format!("{endpoint}/79001");
-    let read = app
-        .client
-        .get(&resource)
-        .bearer_auth(&token)
-        .send()
-        .await
-        .unwrap();
-    let etag = read
-        .headers()
-        .get("etag")
-        .and_then(|value| value.to_str().ok())
-        .unwrap_or("missing")
-        .to_owned();
-    let deletion = app
-        .client
-        .delete(&resource)
-        .bearer_auth(&token)
-        .header("if-match", etag)
-        .send()
-        .await
-        .unwrap();
-    let status = deletion.status().as_u16();
-    let effect = app.fixture.effect().await;
+    let observed: Result<_, Box<dyn std::error::Error>> = async {
+        let token = app.token().await;
+        let endpoint = format!("{}/api/v1/households/72001/locations",app.origin);
+        let created = app.client.post(&endpoint).bearer_auth(&token)
+            .json(&json!({"location":{"name":"Synthetic unique cupboard"}})).send().await?.status().as_u16();
+        let duplicate = app.client.post(&endpoint).bearer_auth(&token)
+            .json(&json!({"location":{"name":"SYNTHETIC UNIQUE CUPBOARD"}})).send().await?.status().as_u16();
+        recorded_takes::seed(&app.fixture.admin,recorded_takes::SyntheticActor::canonical(),
+            "INSERT INTO medication_takes(id,household_id,person_medication_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(99001,72001,81001,2,'tablet',now(),now(),now())",&[recorded_takes::TakeSeed::new(99001,80001)]).await?;
+        let before = retained_label_state(&app).await?;
+        let resource = format!("{endpoint}/79001");
+        let read = app.client.get(&resource).bearer_auth(&token).send().await?;
+        let etag = read.headers().get("etag").ok_or("Missing history label etag")?.to_str()?.to_owned();
+        let deleted = app.client.delete(&resource).bearer_auth(&token).header("if-match",etag).send().await?.status().as_u16();
+        let hidden = app.client.get(&resource).bearer_auth(&token).send().await?.status().as_u16();
+        let after = retained_label_state(&app).await?;
+        let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+            "SELECT (SELECT location_id FROM medications WHERE id=80001) AS label,(SELECT count(*) FROM locations WHERE id=79001 AND retired_at IS NOT NULL) AS retained")).await?.ok_or("Missing history retirement state")?;
+        let label: Option<i64> = row.try_get("","label")?;
+        let retained: i64 = row.try_get("","retained")?;
+        let effect = app.fixture.effect().await;
+        Ok((created,duplicate,deleted,hidden,before,after,label,retained,effect))
+    }.await;
     app.close().await;
-    assert_eq!(duplicate_status, 422);
-    assert_eq!(status, 422);
+    let (created, duplicate, deleted, hidden, before, after, label, retained, effect) = observed?;
+    assert_eq!((created, duplicate, deleted, hidden), (201, 422, 204, 404));
+    assert_eq!(before, after);
+    assert_eq!(label, None);
+    assert_eq!(retained, 1);
     assert_eq!(effect.0, 1);
     assert_eq!(effect.1, "10.00");
+    Ok(())
 }
 
 #[tokio::test]
@@ -806,4 +768,140 @@ async fn location_list_matches_documented_contract() {
     );
     assert_eq!(foreign_body["error"]["code"], "forbidden");
     app.close().await;
+}
+
+async fn retained_label_state(app: &Application) -> Result<Value, Box<dyn std::error::Error>> {
+    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT jsonb_build_object('medicine',(SELECT to_jsonb(m)-'location_id'-'updated_at' FROM medications m WHERE id=80001),'source',(SELECT to_jsonb(s) FROM person_medications s WHERE id=81001),'takes',(SELECT jsonb_agg(to_jsonb(t) ORDER BY id) FROM medication_takes t WHERE taken_from_medication_id=80001),'history',(SELECT jsonb_agg(to_jsonb(h) ORDER BY id) FROM clinical_history_entries h WHERE take_id IN (SELECT id FROM medication_takes WHERE taken_from_medication_id=80001))) AS facts"
+    )).await?.ok_or("Missing retained facts")?;
+    Ok(row.try_get("", "facts")?)
+}
+
+#[tokio::test]
+async fn optional_label_retirement_detaches_stock_but_preserves_recorded_history()
+-> Result<(), Box<dyn std::error::Error>> {
+    let app = Application::new().await;
+    let observed: Result<_, Box<dyn std::error::Error>> = async {
+        let token = app.token().await;
+        let take = app.client.post(format!("{}/api/v1/households/72001/medication_takes", app.origin))
+            .bearer_auth(&token).json(&take_body()).send().await?;
+        let take_status = take.status().as_u16();
+        let take_text = take.text().await?;
+        if take_status != 201 { return Err(format!("History prerequisite {take_status}: {take_text}").into()); }
+        let endpoint = format!("{}/api/v1/households/72001/locations/79001", app.origin);
+        let read = app.client.get(&endpoint).bearer_auth(&token).send().await?;
+        let etag = read.headers().get("etag").ok_or("Missing label etag")?.to_str()?.to_owned();
+        let before = retained_label_state(&app).await?;
+        app.fixture.admin.execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001").await?;
+        let denied = app.client.delete(&endpoint).bearer_auth(&token).header("if-match", &etag).send().await?.status().as_u16();
+        let after_denial = retained_label_state(&app).await?;
+        app.fixture.admin.execute_unprepared("UPDATE household_memberships SET role='owner' WHERE id=74001").await?;
+        let deleted = app.client.delete(&endpoint).bearer_auth(&token).header("if-match", &etag).send().await?;
+        let delete_status = deleted.status().as_u16();
+        let delete_body = deleted.text().await?;
+        let after = retained_label_state(&app).await?;
+        let read_status = app.client.get(&endpoint).bearer_auth(&token).send().await?.status().as_u16();
+        let listed = app.client.get(format!("{}/api/v1/households/72001/locations", app.origin)).bearer_auth(&token).send().await?;
+        let list_status = listed.status().as_u16();
+        let list_body = listed.json::<Value>().await?;
+        let metadata = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+            "SELECT (SELECT location_id FROM medications WHERE id=80001) AS current_label,(SELECT count(*) FROM locations WHERE id=79001) AS retained_labels,(SELECT count(*) FROM medication_takes WHERE taken_from_medication_id=80001 AND taken_from_location_id=79001) AS original_labels,(SELECT count(*) FROM versions WHERE item_type='Medication' AND item_id=80001 AND event='api_update') AS detach_audits,(SELECT count(*) FROM api_tombstones WHERE record_type='Location' AND metadata->>'record_id'='79001') AS tombstones"
+        )).await?.ok_or("Missing retirement metadata")?;
+        let state: (Option<i64>,i64,i64,i64,i64) = (metadata.try_get("", "current_label")?,metadata.try_get("", "retained_labels")?,metadata.try_get("", "original_labels")?,metadata.try_get("", "detach_audits")?,metadata.try_get("", "tombstones")?);
+        Ok((denied,before,after_denial,delete_status,delete_body,after,read_status,list_status,list_body,state))
+    }.await;
+    app.close().await;
+    let (
+        denied,
+        before,
+        after_denial,
+        delete_status,
+        delete_body,
+        after,
+        read_status,
+        list_status,
+        list_body,
+        state,
+    ) = observed?;
+    assert_eq!(delete_status, 204, "{delete_body}");
+    assert_eq!(denied, 403);
+    assert_eq!(after_denial, before);
+    assert_eq!(after, before);
+    assert_eq!((read_status, list_status), (404, 200));
+    let labels = list_body
+        .get("data")
+        .and_then(Value::as_array)
+        .ok_or("Missing label list")?;
+    assert!(
+        labels
+            .iter()
+            .all(|row| row.get("id") != Some(&json!(79001)))
+    );
+    assert_eq!(state, (None, 1, 1, 1, 1));
+    Ok(())
+}
+
+#[tokio::test]
+async fn optional_label_retirement_reuses_name_but_rejects_retired_selection()
+-> Result<(), Box<dyn std::error::Error>> {
+    let app = Application::new().await;
+    let observed: Result<_, Box<dyn std::error::Error>> = async {
+        let token = app.token().await;
+        let endpoint = format!("{}/api/v1/households/72001/locations/79001", app.origin);
+        let read = app.client.get(&endpoint).bearer_auth(&token).send().await?;
+        let etag = read.headers().get("etag").ok_or("Missing label etag")?.to_str()?.to_owned();
+        let body = read.json::<Value>().await?;
+        let name = body.pointer("/data/name").and_then(Value::as_str).ok_or("Missing label name")?.to_uppercase();
+        let deleted = app.client.delete(&endpoint).bearer_auth(&token).header("if-match",etag).send().await?.status().as_u16();
+        let retired_selection = app.client.post(format!("{}/api/v1/households/72001/medications", app.origin))
+            .bearer_auth(&token).json(&json!({"medication":{"name":"Rejected retired label stock","location_id":79001,"reorder_threshold":"0"}})).send().await?.status().as_u16();
+        let collection = format!("{}/api/v1/households/72001/locations",app.origin);
+        let request = json!({"location":{"name":name}});
+        let reused = app.client.post(&collection).bearer_auth(&token).json(&request).send().await?.status().as_u16();
+        let duplicate = app.client.post(&collection).bearer_auth(&token).json(&request).send().await?.status().as_u16();
+        let rejected_count: i64 = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT count(*) AS count FROM medications WHERE name='Rejected retired label stock'")).await?.ok_or("Missing rejected count")?.try_get("","count")?;
+        Ok((deleted,retired_selection,reused,duplicate,rejected_count))
+    }.await;
+    app.close().await;
+    assert_eq!(observed?, (204, 404, 201, 422, 0));
+    Ok(())
+}
+
+async fn retirement_atomic_state(app: &Application) -> Result<Value, Box<dyn std::error::Error>> {
+    Ok(app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT jsonb_build_object('label',(SELECT to_jsonb(l) FROM locations l WHERE id=79001),'medications',(SELECT jsonb_agg(to_jsonb(m) ORDER BY id) FROM medications m WHERE household_id=72001),'versions',(SELECT count(*) FROM versions),'changes',(SELECT count(*) FROM api_change_events),'tombstones',(SELECT count(*) FROM api_tombstones)) AS state"
+    )).await?.ok_or("Missing atomic state")?.try_get("","state")?)
+}
+
+#[tokio::test]
+async fn optional_label_retirement_audit_failure_rolls_back_detachment_and_history()
+-> Result<(), Box<dyn std::error::Error>> {
+    let app = Application::new().await;
+    let observed: Result<_, Box<dyn std::error::Error>> = async {
+        let token = app.token().await;
+        let take = app.client.post(format!("{}/api/v1/households/72001/medication_takes",app.origin)).bearer_auth(&token).json(&take_body()).send().await?;
+        if take.status().as_u16()!=201 { return Err("Real history prerequisite failed".into()); }
+        let endpoint = format!("{}/api/v1/households/72001/locations/79001", app.origin);
+        let read = app.client.get(&endpoint).bearer_auth(&token).send().await?;
+        let etag = read.headers().get("etag").ok_or("Missing label etag")?.to_str()?.to_owned();
+        let before = retirement_atomic_state(&app).await?;
+        let history = retained_label_state(&app).await?;
+        app.fixture.admin.execute_unprepared("CREATE SEQUENCE public.label_retirement_probe; GRANT USAGE ON SEQUENCE public.label_retirement_probe TO med_tracker_app,med_tracker_owner; CREATE FUNCTION public.reject_label_retirement_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.item_type='Location' AND NEW.event='destroy' THEN PERFORM nextval('public.label_retirement_probe'); RAISE EXCEPTION 'synthetic label audit failure' USING ERRCODE='42501'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_label_retirement_audit BEFORE INSERT ON public.versions FOR EACH ROW EXECUTE FUNCTION public.reject_label_retirement_audit()").await?;
+        let response = app.client.delete(&endpoint).bearer_auth(&token).header("if-match",&etag).send().await?;
+        let status = response.status().as_u16();
+        let after = retirement_atomic_state(&app).await?;
+        let history_after = retained_label_state(&app).await?;
+        let reached: bool = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT is_called FROM public.label_retirement_probe")).await?.ok_or("Missing probe")?.try_get("","is_called")?;
+        app.fixture.admin.execute_unprepared("DROP TRIGGER reject_label_retirement_audit ON public.versions; DROP FUNCTION public.reject_label_retirement_audit(); DROP SEQUENCE public.label_retirement_probe").await?;
+        let retry = app.client.delete(&endpoint).bearer_auth(&token).header("if-match",etag).send().await?.status().as_u16();
+        Ok((status,before,after,history,history_after,reached,retry))
+    }.await;
+    app.close().await;
+    let (status, before, after, history, history_after, reached, retry) = observed?;
+    assert!(reached, "Audit failure trigger was not reached");
+    assert_eq!(status, 500);
+    assert_eq!(after, before);
+    assert_eq!(history_after, history);
+    assert_eq!(retry, 204);
+    Ok(())
 }

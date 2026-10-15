@@ -74,7 +74,7 @@ async fn login_form(
         return StatusCode::SERVICE_UNAVAILABLE.into_response();
     };
     let data = serde_json::json!({ "title":"Sign in", "allow_palette":false, "appearances":[{"id":"light","label":"Light"},{"id":"dark","label":"Dark"},{"id":"system","label":"System"}], "palettes":[], "authenticity_token":authenticity_token, "error":error, "registration_open":registration_open, "zitadel":crate::models::settings::text(ctx.config.settings.as_ref(), &["zitadel","issuer"]).is_some() });
-    match format::render().view(view, "auth/login.html", data) {
+    match format::render().view(view, "auth/login.html", crate::views::template_data(&data)) {
         Ok(response) => (
             status,
             token.clone(),

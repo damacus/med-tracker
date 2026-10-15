@@ -1,19 +1,15 @@
 use super::*;
-use crate::models::access::PersonAccess;
 use loco_rs::model::TenantQueryExt;
-use sea_orm::sea_query::{Expr, ExprTrait};
 
 fn snapshot(row: &carer_relationship::Model) -> Value {
     json!({"id":row.id,"household_id":row.household_id,"carer_id":row.carer_id,"patient_id":row.patient_id,"relationship_type":row.relationship_type,"active":row.active,"created_at":row.created_at,"updated_at":row.updated_at})
 }
 pub async fn list(tenant: &TenantTransaction) -> Result<Value, OperationError> {
     authorize(tenant).await?;
-    let people: HashMap<i64, person::Model> = person::Entity::find()
-        .in_tenant(tenant.scope().household_id)
-        .all(tenant.transaction())
+    let people: HashMap<_, _> = crate::models::person_identity::current_summaries(tenant)
         .await?
         .into_iter()
-        .map(|row| (row.id, row))
+        .map(|row| (row.id.get(), row))
         .collect();
     let rows = carer_relationship::Entity::find()
         .in_tenant(tenant.scope().household_id)
@@ -37,35 +33,21 @@ pub async fn list(tenant: &TenantTransaction) -> Result<Value, OperationError> {
 }
 pub async fn options(tenant: &TenantTransaction) -> Result<Value, OperationError> {
     access::recheck(tenant).await?;
-    let grants = grant::Entity::find()
-        .in_tenant(tenant.scope().household_id)
-        .filter(grant::Column::HouseholdMembershipId.eq(tenant.membership().id))
-        .filter(grant::Column::RevokedAt.is_null())
-        .filter(
-            sea_orm::Condition::any()
-                .add(grant::Column::ExpiresAt.is_null())
-                .add(
-                    Expr::col(grant::Column::ExpiresAt)
-                        .gt(Expr::cust("timezone('UTC', clock_timestamp())")),
-                ),
-        )
-        .all(tenant.transaction())
-        .await?;
-    let rows = person::Entity::find()
-        .in_tenant(tenant.scope().household_id)
-        .filter(
-            person::Column::Id.is_in(grants.iter().map(|row| row.person_id).collect::<Vec<_>>()),
-        )
-        .order_by_asc(person::Column::Name)
-        .all(tenant.transaction())
-        .await?;
+    authorize(tenant).await?;
+    let records = access::current_people(tenant).await?;
+    let capable: std::collections::HashSet<_> = records
+        .iter()
+        .filter(|row| row.has_capacity)
+        .map(|row| row.id)
+        .collect();
+    let rows = crate::models::person_identity::summaries(tenant, records).await?;
     let patients: Vec<Value> = rows
         .iter()
         .map(|row| json!({"id":row.id,"name":row.name}))
         .collect();
     let carers: Vec<Value> = rows
         .iter()
-        .filter(|row| row.has_capacity)
+        .filter(|row| capable.contains(&row.id.get()))
         .map(|row| json!({"id":row.id,"name":row.name}))
         .collect();
     Ok(json!({"carers":carers,"patients":patients}))
@@ -77,35 +59,32 @@ pub async fn assign(
     relationship_type: &str,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<carer_relationship::Model, OperationError> {
-    household::Entity::find_by_id(tenant.scope().household_id)
-        .lock_exclusive()
-        .one(tenant.transaction())
-        .await?
-        .ok_or(OperationError::NotFound)?;
+    access::lock_household(tenant).await?;
     access::recheck(tenant).await?;
-    let carer = person::Entity::find_by_id(carer_id)
-        .in_tenant(tenant.scope().household_id)
-        .one(tenant.transaction())
-        .await?
-        .ok_or_else(|| invalid("carer", "must belong to the relationship household"))?;
-    let patient = person::Entity::find_by_id(patient_id)
-        .in_tenant(tenant.scope().household_id)
-        .one(tenant.transaction())
-        .await?
-        .ok_or_else(|| invalid("patient", "must belong to the relationship household"))?;
-    if !crate::models::authorization::may_delegate(tenant.membership(), &patient) {
-        return Err(OperationError::Forbidden);
+    let carer = crate::models::access::person_scope(
+        crate::models::ids::HouseholdId::from_database(tenant.scope().household_id),
+    )
+    .filter(person::Column::Id.eq(carer_id))
+    .one(tenant.transaction())
+    .await?
+    .ok_or_else(|| invalid("carer", "must belong to the relationship household"))?;
+    crate::models::access::person_scope(crate::models::ids::HouseholdId::from_database(
+        tenant.scope().household_id,
+    ))
+    .filter(person::Column::Id.eq(patient_id))
+    .one(tenant.transaction())
+    .await?
+    .ok_or_else(|| invalid("patient", "must belong to the relationship household"))?;
+    authorize(tenant).await?;
+    if !carer.has_capacity {
+        return Err(invalid("carer", "must have capacity"));
     }
-    if !can_manage(tenant).await? {
-        access::require_person_access(tenant, patient_id, PersonAccess::Manage).await?;
+    if !matches!(
+        relationship_type,
+        "parent" | "family_member" | "professional_carer" | "self"
+    ) {
+        return Err(invalid("relationship_type", "is invalid"));
     }
-    let (level, kind) = match relationship_type {
-        "parent" => ("manage", "parent"),
-        "family_member" => ("manage", "family_member"),
-        "professional_carer" => ("record", "professional"),
-        "self" => ("manage", "self"),
-        _ => return Err(invalid("relationship_type", "is invalid")),
-    };
     let existing = carer_relationship::Entity::find()
         .in_tenant(tenant.scope().household_id)
         .filter(carer_relationship::Column::CarerId.eq(carer_id))
@@ -152,170 +131,7 @@ pub async fn assign(
         )
         .await?;
     }
-    if let Some(account_id) = carer.account_id {
-        let member = membership::Entity::find()
-            .in_tenant(tenant.scope().household_id)
-            .filter(membership::Column::AccountId.eq(account_id))
-            .lock_exclusive()
-            .one(tenant.transaction())
-            .await?;
-        let member = if let Some(member) = member {
-            memberships::change_for_delegation(tenant, member.id, carer_id, provenance).await?;
-            membership::Entity::find_by_id(member.id)
-                .one(tenant.transaction())
-                .await?
-                .ok_or(OperationError::Unavailable)?
-        } else {
-            let member = membership::ActiveModel {
-                account_id: Set(account_id),
-                household_id: Set(tenant.scope().household_id),
-                person_id: Set(Some(carer_id)),
-                role: Set("member".into()),
-                status: Set("active".into()),
-                permissions_version: Set(1),
-                revoked_at: Set(None),
-                joined_at: Set(now),
-                created_at: Set(now),
-                updated_at: Set(now),
-                ..Default::default()
-            }
-            .insert(tenant.transaction())
-            .await?;
-            persistence::event(tenant,"household_access.membership_created",json!({"target_account_id":member.account_id,"target_membership_id":member.id,"previous_state":null,"new_state":{"role":member.role,"status":member.status,"person_id":member.person_id},"outcome":"success"}),provenance).await?;
-            member
-        };
-        upsert(
-            tenant, member.id, carer_id, "manage", "self", None, provenance,
-        )
-        .await?;
-        if !(carer_id == patient_id && relationship_type == "self") {
-            patient_grant(tenant, &row, member.id, level, kind, provenance).await?;
-        }
-    }
     Ok(row)
-}
-async fn patient_grant(
-    tenant: &TenantTransaction,
-    relationship: &carer_relationship::Model,
-    member_id: i64,
-    level: &str,
-    kind: &str,
-    provenance: Option<&CredentialProvenance>,
-) -> Result<(), OperationError> {
-    let active = grant::Entity::find()
-        .in_tenant(tenant.scope().household_id)
-        .filter(grant::Column::HouseholdMembershipId.eq(member_id))
-        .filter(grant::Column::PersonId.eq(relationship.patient_id))
-        .filter(grant::Column::RevokedAt.is_null())
-        .lock_exclusive()
-        .one(tenant.transaction())
-        .await?;
-    if let Some(row) = active {
-        if row
-            .expires_at
-            .is_some_and(|expiry| expiry <= Utc::now().naive_utc())
-        {
-            grants::revoke_owned(tenant, row, provenance).await?;
-        } else if row.carer_relationship_id != Some(relationship.id) {
-            let rank = |level: &str| match level {
-                "manage" => 3,
-                "record" => 2,
-                "view" => 1,
-                _ => 0,
-            };
-            if rank(&row.access_level) >= rank(level) && row.expires_at.is_none() {
-                return Ok(());
-            }
-            return Err(invalid(
-                "base",
-                "existing manual grant does not cover the delegated access level",
-            ));
-        }
-    }
-    upsert(
-        tenant,
-        member_id,
-        relationship.patient_id,
-        level,
-        kind,
-        Some(relationship.id),
-        provenance,
-    )
-    .await
-}
-async fn upsert(
-    tenant: &TenantTransaction,
-    member_id: i64,
-    person_id: i64,
-    level: &str,
-    kind: &str,
-    relationship_id: Option<i64>,
-    provenance: Option<&CredentialProvenance>,
-) -> Result<(), OperationError> {
-    let query = grant::Entity::find()
-        .in_tenant(tenant.scope().household_id)
-        .filter(grant::Column::HouseholdMembershipId.eq(member_id))
-        .filter(grant::Column::PersonId.eq(person_id));
-    let active = query
-        .clone()
-        .filter(grant::Column::RevokedAt.is_null())
-        .lock_exclusive()
-        .one(tenant.transaction())
-        .await?;
-    let existing = if active.is_some() {
-        active
-    } else {
-        let query = if let Some(id) = relationship_id {
-            query.filter(grant::Column::CarerRelationshipId.eq(id))
-        } else {
-            query
-        };
-        query
-            .order_by_desc(grant::Column::Id)
-            .lock_exclusive()
-            .one(tenant.transaction())
-            .await?
-    };
-    let now = Utc::now().naive_utc();
-    let before = existing.as_ref().map(grants::state);
-    if existing.as_ref().is_some_and(|row| {
-        row.access_level == level
-            && row.relationship_type == kind
-            && row.expires_at.is_none()
-            && row.revoked_at.is_none()
-            && row.carer_relationship_id == relationship_id
-    }) {
-        return Ok(());
-    }
-    let row = if let Some(row) = existing {
-        let mut active: grant::ActiveModel = row.into();
-        active.access_level = Set(level.into());
-        active.relationship_type = Set(kind.into());
-        active.expires_at = Set(None);
-        active.revoked_at = Set(None);
-        active.carer_relationship_id = Set(relationship_id);
-        active.updated_at = Set(now);
-        active.update(tenant.transaction()).await?
-    } else {
-        grant::ActiveModel {
-            household_id: Set(tenant.scope().household_id),
-            household_membership_id: Set(member_id),
-            person_id: Set(person_id),
-            access_level: Set(level.into()),
-            relationship_type: Set(kind.into()),
-            expires_at: Set(None),
-            revoked_at: Set(None),
-            carer_relationship_id: Set(relationship_id),
-            granted_by_membership_id: Set(Some(tenant.membership().id)),
-            created_at: Set(now),
-            updated_at: Set(now),
-            ..Default::default()
-        }
-        .insert(tenant.transaction())
-        .await?
-    };
-    persistence::bump(tenant, member_id).await?;
-    grants::record(tenant, &row, before, "success", provenance).await
 }
 pub async fn deactivate(
     tenant: &TenantTransaction,
@@ -329,18 +145,6 @@ pub async fn deactivate(
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::NotFound)?;
-    if !(row.carer_id == row.patient_id && row.relationship_type.as_deref() == Some("self")) {
-        let grants = grant::Entity::find()
-            .in_tenant(tenant.scope().household_id)
-            .filter(grant::Column::CarerRelationshipId.eq(id))
-            .filter(grant::Column::RevokedAt.is_null())
-            .lock_exclusive()
-            .all(tenant.transaction())
-            .await?;
-        for grant in grants {
-            grants::revoke_owned(tenant, grant, provenance).await?;
-        }
-    }
     if !row.active {
         return Ok(row);
     }

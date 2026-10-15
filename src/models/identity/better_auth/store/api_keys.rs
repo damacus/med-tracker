@@ -205,7 +205,13 @@ impl ApiKeyStore for ClinicalStore {
     async fn get_api_key_by_hash(&self, hash: &str) -> AuthResult<Option<ApiKey>> {
         let transaction = self.transaction().await?;
         context(&transaction, "med_tracker.identity_api_key_hash", hash).await?;
-        let row = KeyRow::find_by_statement(statement("SELECT k.payload FROM public.identity_api_keys k JOIN public.accounts a ON a.id=k.account_id WHERE k.key_hash=$1 AND a.status=2", [hash.into()])).one(&*transaction).await.map_err(database_error)?;
+        let row = KeyRow::find_by_statement(statement(
+            "SELECT payload FROM public.identity_api_keys WHERE key_hash=$1",
+            [hash.into()],
+        ))
+        .one(&*transaction)
+        .await
+        .map_err(database_error)?;
         transaction.commit().await.map_err(database_error)?;
         row.map(decoded).transpose()
     }

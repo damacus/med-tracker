@@ -4,7 +4,7 @@ use axum_session_sqlx::SessionPgPool;
 use base64::{Engine, engine::general_purpose::STANDARD};
 use sea_orm::{
     ColumnTrait, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, EntityTrait,
-    QueryFilter, QueryOrder, QuerySelect, Statement, TransactionTrait,
+    QueryFilter, QuerySelect, Statement, TransactionTrait,
 };
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -19,7 +19,7 @@ use super::{resource::AuthenticationError, store::Lifetime};
 use crate::models::{
     access::{self, Actor, HouseholdScope, TenantTransaction},
     care::doses::{CredentialMethod, CredentialProvenance},
-    entities::{account, household, person, user},
+    entities::{account, household},
     settings,
 };
 
@@ -55,36 +55,78 @@ pub struct BrowserHousehold {
 
 pub struct BrowserInvitationActor {
     pub account_id: i64,
-    pub user_id: i64,
     pub person_id: i64,
     pub email: String,
     pub provenance: CredentialProvenance,
 }
 
 impl BrowserPrincipal {
+    pub(crate) async fn clinical_history_transaction(
+        &self,
+        db: &DatabaseConnection,
+        isolation: sea_orm::IsolationLevel,
+    ) -> Result<DatabaseTransaction, AuthenticationError> {
+        let transaction = db
+            .begin_with_config(Some(isolation), None)
+            .await
+            .map_err(|error| super::resource::operation_error(error.into()))?;
+        let checked = async {
+            transaction.execute_unprepared("SET LOCAL ROLE med_tracker_app; SET LOCAL search_path=pg_catalog,public,pg_temp; SET LOCAL lock_timeout='5s'; SET LOCAL statement_timeout='30s'; SELECT set_config('med_tracker.current_account_id','',true),set_config('med_tracker.current_person_id','',true),set_config('med_tracker.current_household_id','',true),set_config('med_tracker.current_membership_id','',true),set_config('med_tracker.current_invitation_token_digest','',true),set_config('med_tracker.identity_factor_id','',true)").await
+                .map_err(|error| super::resource::operation_error(error.into()))?;
+            transaction.execute_raw(sql("SELECT set_config('med_tracker.current_account_id',$1,true)",
+                [self.account_id().to_string().into()])).await
+                .map_err(|error| super::resource::operation_error(error.into()))?;
+            account::Entity::find_by_id(self.account_id())
+                .lock(sea_orm::sea_query::LockType::Share).one(&transaction).await
+                .map_err(|error| super::resource::operation_error(error.into()))?
+                .ok_or(AuthenticationError::Unauthenticated)?;
+            validate(&transaction, &self.identity, false).await?;
+            Ok::<_,AuthenticationError>(())
+        }.await;
+        if let Err(error) = checked {
+            transaction
+                .rollback()
+                .await
+                .map_err(|error| super::resource::operation_error(error.into()))?;
+            return Err(error);
+        }
+        Ok(transaction)
+    }
+
+    pub async fn account_transaction(
+        &self,
+        db: &DatabaseConnection,
+    ) -> Result<DatabaseTransaction, AuthenticationError> {
+        let transaction = transaction(db).await?;
+        validate(&transaction, &self.identity, false).await?;
+        Ok(transaction)
+    }
+
     pub async fn revalidate_invitation(
         &self,
         transaction: &DatabaseTransaction,
     ) -> Result<BrowserInvitationActor, AuthenticationError> {
+        transaction
+            .execute_raw(sql(
+                "SELECT set_config('med_tracker.current_account_id',$1,true)",
+                [self.identity.account_id.to_string().into()],
+            ))
+            .await
+            .map_err(unavailable)?;
+        let locked = transaction
+            .query_one_raw(sql(
+                "SELECT id FROM public.accounts WHERE id=$1 AND status=2 FOR UPDATE",
+                [self.identity.account_id.into()],
+            ))
+            .await
+            .map_err(unavailable)?;
+        if locked.is_none() {
+            return Err(AuthenticationError::Unauthenticated);
+        }
         let account = validate(transaction, &self.identity, false).await?;
-        let person = person::Entity::find()
-            .filter(person::Column::AccountId.eq(account.id))
-            .order_by_asc(person::Column::Id)
-            .one(transaction)
-            .await
-            .map_err(unavailable)?
-            .ok_or(AuthenticationError::Unauthenticated)?;
-        let user = user::Entity::find()
-            .filter(user::Column::PersonId.eq(person.id))
-            .filter(user::Column::Active.eq(true))
-            .one(transaction)
-            .await
-            .map_err(unavailable)?
-            .ok_or(AuthenticationError::Unauthenticated)?;
         Ok(BrowserInvitationActor {
             account_id: account.id,
-            user_id: user.id,
-            person_id: person.id,
+            person_id: account.person_id,
             email: account.email,
             provenance: self.provenance.clone(),
         })
@@ -128,7 +170,7 @@ impl BrowserPrincipal {
         let transaction = transaction(db).await?;
         validate(&transaction, &self.identity, false).await?;
         let rows = transaction.query_all_raw(sql(
-            "SELECT h.id, h.name, h.slug FROM households h JOIN household_memberships m ON m.household_id = h.id WHERE m.account_id = $1 AND m.status = 'active' AND m.revoked_at IS NULL AND h.status = 'active' AND h.lifecycle_state = 'active' ORDER BY h.name, h.id",
+            "SELECT h.id, h.name, h.slug FROM households h JOIN household_memberships m ON m.household_id = h.id WHERE m.person_id = (SELECT person_id FROM accounts WHERE id=$1) AND m.status = 'active' AND m.revoked_at IS NULL AND h.status = 'active' AND h.lifecycle_state = 'active' ORDER BY h.name, h.id",
             [self.account_id().into()],
         )).await.map_err(unavailable)?;
         let households = rows
@@ -413,7 +455,10 @@ pub fn route_layers(
         Some(layers) => routes
             .layer(axum_session::SessionLayer::new(layers.store))
             .layer(axum_csrf::CsrfLayer::new(layers.csrf))
-            .layer(tower_http::csrf::CsrfLayer::new()),
+            .layer(tower_http::csrf::CsrfLayer::new())
+            .layer(axum::middleware::from_fn(
+                super::better_auth::normalize_cookie_headers,
+            )),
         None => routes,
     }
 }

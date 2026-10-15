@@ -247,7 +247,11 @@ fn render(
     }
     data["errors"] = errors;
     let status = error.map(forms::status).unwrap_or(StatusCode::OK);
-    match format::render().view(view, "medications/order.html", data) {
+    match format::render().view(
+        view,
+        "medications/order.html",
+        crate::views::template_data(&data),
+    ) {
         Ok(response) => (
             status,
             token.clone(),

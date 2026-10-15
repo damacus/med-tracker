@@ -15,7 +15,7 @@ impl ClinicalStore {
             .canonical_user_in(&transaction, id)
             .await?
             .ok_or(AuthError::Unauthenticated)?;
-        let homes = transaction.query_all_raw(statement("SELECT household_id FROM public.household_memberships WHERE account_id=$1 ORDER BY household_id", [account_id.into()])).await.map_err(database_error)?;
+        let homes = transaction.query_all_raw(statement("SELECT household_id FROM public.household_memberships WHERE person_id=(SELECT person_id FROM public.accounts WHERE id=$1) ORDER BY household_id", [account_id.into()])).await.map_err(database_error)?;
         for home in homes {
             let household_id: i64 = home.try_get("", "household_id").map_err(database_error)?;
             context(
@@ -31,7 +31,7 @@ impl ClinicalStore {
                 ))
                 .await
                 .map_err(database_error)?;
-            let row = transaction.query_one_raw(statement("SELECT EXISTS(SELECT 1 FROM public.household_memberships m JOIN public.households h ON h.id=m.household_id WHERE m.household_id=$1 AND m.account_id=$2 AND m.role='owner' AND m.status='active' AND m.revoked_at IS NULL AND h.status='active' AND h.lifecycle_state='active') AND NOT EXISTS(SELECT 1 FROM public.household_memberships WHERE household_id=$1 AND account_id<>$2 AND role='owner' AND status='active' AND revoked_at IS NULL) AS sole_owner", [household_id.into(), account_id.into()])).await.map_err(database_error)?.ok_or_else(|| AuthError::internal("Household ownership unavailable"))?;
+            let row = transaction.query_one_raw(statement("SELECT EXISTS(SELECT 1 FROM public.household_memberships m JOIN public.households h ON h.id=m.household_id WHERE m.household_id=$1 AND m.person_id=(SELECT person_id FROM public.accounts WHERE id=$2) AND m.role='owner' AND m.status='active' AND m.revoked_at IS NULL AND h.status='active' AND h.lifecycle_state='active') AND NOT EXISTS(SELECT 1 FROM public.household_memberships WHERE household_id=$1 AND person_id<>(SELECT person_id FROM public.accounts WHERE id=$2) AND role='owner' AND status='active' AND revoked_at IS NULL) AS sole_owner", [household_id.into(), account_id.into()])).await.map_err(database_error)?.ok_or_else(|| AuthError::internal("Household ownership unavailable"))?;
             if row
                 .try_get::<bool>("", "sole_owner")
                 .map_err(database_error)?
@@ -40,8 +40,6 @@ impl ClinicalStore {
                     "Transfer household ownership before closing your account",
                 ));
             }
-            transaction.execute_raw(statement("UPDATE public.users SET active=false,updated_at=timezone('UTC',clock_timestamp()) WHERE person_id IN(SELECT id FROM public.people WHERE account_id=$1 AND household_id=$2)", [account_id.into(), household_id.into()])).await.map_err(database_error)?;
-            transaction.execute_raw(statement("UPDATE public.person_access_grants SET revoked_at=timezone('UTC',clock_timestamp()),updated_at=timezone('UTC',clock_timestamp()) WHERE household_id=$1 AND household_membership_id IN(SELECT id FROM public.household_memberships WHERE household_id=$1 AND account_id=$2) AND revoked_at IS NULL", [household_id.into(), account_id.into()])).await.map_err(database_error)?;
             transaction.execute_raw(statement("UPDATE public.household_memberships SET status='revoked',revoked_at=timezone('UTC',clock_timestamp()),permissions_version=permissions_version+1,updated_at=timezone('UTC',clock_timestamp()) WHERE household_id=$1 AND account_id=$2 AND revoked_at IS NULL", [household_id.into(), account_id.into()])).await.map_err(database_error)?;
         }
         transaction

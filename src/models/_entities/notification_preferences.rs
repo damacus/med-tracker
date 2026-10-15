@@ -16,14 +16,14 @@ pub struct Model {
     pub dose_due_enabled: bool,
     pub enabled: bool,
     pub evening_time: Option<Time>,
-    #[sea_orm(unique_key = "index_notification_preferences_on_id_and_household_id")]
+    #[sea_orm(unique_key = "index_notification_preferences_on_account_household")]
     pub household_id: i64,
     pub low_stock_enabled: bool,
     pub missed_dose_enabled: bool,
     pub morning_time: Option<Time>,
     pub night_time: Option<Time>,
-    #[sea_orm(unique)]
-    pub person_id: i64,
+    #[sea_orm(unique_key = "index_notification_preferences_on_account_household")]
+    pub account_id: i64,
     #[sea_orm(unique_key = "index_notification_preferences_on_household_id_and_portable_id")]
     pub portable_id: String,
     pub private_text_enabled: bool,
@@ -33,13 +33,13 @@ pub struct Model {
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
     #[sea_orm(
-        belongs_to = "super::household_memberships::Entity",
-        from = "(Column::PersonId, Column::HouseholdId)",
-        to = "(super::household_memberships::Column::PersonId, super::household_memberships::Column::HouseholdId)",
+        belongs_to = "super::accounts::Entity",
+        from = "Column::AccountId",
+        to = "super::accounts::Column::Id",
         on_update = "NoAction",
         on_delete = "NoAction"
     )]
-    HouseholdMemberships,
+    Accounts,
     #[sea_orm(
         belongs_to = "super::households::Entity",
         from = "Column::HouseholdId",
@@ -47,32 +47,20 @@ pub enum Relation {
         on_update = "NoAction",
         on_delete = "NoAction"
     )]
-    Households,
+    Households2,
     #[sea_orm(
-        belongs_to = "super::people::Entity",
-        from = "Column::PersonId",
-        to = "super::people::Column::Id",
+        belongs_to = "super::households::Entity",
+        from = "Column::HouseholdId",
+        to = "super::households::Column::Id",
         on_update = "NoAction",
         on_delete = "NoAction"
     )]
-    People,
+    Households1,
 }
 
-impl Related<super::household_memberships::Entity> for Entity {
+impl Related<super::accounts::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::HouseholdMemberships.def()
-    }
-}
-
-impl Related<super::households::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Households.def()
-    }
-}
-
-impl Related<super::people::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::People.def()
+        Relation::Accounts.def()
     }
 }
 

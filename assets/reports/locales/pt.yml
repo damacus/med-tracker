@@ -964,8 +964,7 @@ pt:
       view: Ver
       delete_dialog:
         title: Eliminar Localização
-        confirm: Tem a certeza que deseja eliminar %{name}? Isto também eliminará
-          todos os medicamentos nesta localização.
+        confirm: "Remover a etiqueta de armazenamento %{name}? Os medicamentos, o stock e o histórico registado serão mantidos."
         cancel: Cancelar
         submit: Eliminar
     show:
@@ -2182,6 +2181,19 @@ pt:
         metric_label: Rever
         metric_value: Horário
   profiles:
+    medication_history:
+      title: "Histórico de medicação"
+      description: "As suas doses registadas, incluindo registos de agregados familiares dos quais saiu."
+      download: "Transferir histórico"
+      subset: "A transferência contém apenas doses registadas. Não é um registo pessoal completo nem um pacote de migração."
+      back: "Voltar ao perfil"
+      empty: "Não foram registadas doses de medicação."
+      next: "Página seguinte"
+      origin: "Agregado familiar de origem"
+      stock: "Stock registado"
+      actor: "Registado por"
+      unknown: "Não registado"
+      imported: "Registo importado"
     security_flow:
       change_password: "Alterar palavra-passe"
       new_password: "Nova palavra-passe"
@@ -2492,10 +2504,8 @@ pt:
       reminder_times_description: Defina quando quer receber lembretes todos os dias
       categories_description: Escolha que tipos de notificação quer receber
       managed_people:
-        title: Pessoas que gere
-        description: Os alertas de doses em falta para crianças e adultos dependentes
-          são incluídos automaticamente. Escolha os adultos que também pretende acompanhar.
-        automatic: Incluído automaticamente
+        title: Pessoas do agregado familiar
+        description: Escolha de quem pretende receber alertas de doses em falta. Os alertas ficam desativados até selecionar alguém.
         notify_me: Notificar-me
         toggle_label: Notificar-me quando %{name} não tomar uma dose
       periods:

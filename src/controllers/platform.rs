@@ -75,13 +75,12 @@ fn render(view: &TeraView, token: &CsrfToken, page: &platform::UsersPage) -> Res
         page.users
             .iter()
             .map(|entry| json!({
-                "id": entry.id,
+                "id": entry.id.get(),
                 "email": entry.email,
-                "name": entry.name,
+                "name": entry.name.as_deref().unwrap_or_default(),
                 "account_state": match entry.status { 2 => "Verified", 3 => "Closed", _ => "Unverified" },
                 "active": entry.status == 2,
-                "user_active": entry.user_active,
-                "user_linked": entry.user_linked,
+                "sign_in_enabled": entry.sign_in_enabled,
                 "administrator": entry.administrator.as_deref() == Some("active"),
             }))
             .collect::<Vec<Value>>()
@@ -94,7 +93,11 @@ fn render(view: &TeraView, token: &CsrfToken, page: &platform::UsersPage) -> Res
     data["page_links"] = json!(page.page_links);
     data["total"] = json!(page.total);
     data["authenticity_token"] = json!(authenticity);
-    match format::render().view(view, "platform/users.html", data) {
+    match format::render().view(
+        view,
+        "platform/users.html",
+        crate::views::template_data(&data),
+    ) {
         Ok(response) => (
             StatusCode::OK,
             token.clone(),
@@ -308,7 +311,11 @@ fn render_settings(view: &TeraView, token: &CsrfToken, settings: &platform::Sett
         json!(settings.medicine_lookup_source_priority.join(","));
     data["lookup_sources"] = json!(platform::LOOKUP_SOURCES.join(", "));
     data["authenticity_token"] = json!(authenticity);
-    match format::render().view(view, "platform/settings.html", data) {
+    match format::render().view(
+        view,
+        "platform/settings.html",
+        crate::views::template_data(&data),
+    ) {
         Ok(response) => (
             StatusCode::OK,
             token.clone(),

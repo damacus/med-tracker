@@ -20,6 +20,7 @@ pub struct Model {
     )]
     pub email: String,
     pub password_hash: Option<String>,
+    pub disabled_at: Option<DateTime>,
     #[sea_orm(column_type = "JsonBinary")]
     pub preferences: Json,
     pub status: i32,
@@ -28,6 +29,8 @@ pub struct Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
+    #[sea_orm(has_one = "super::account_avatars::Entity")]
+    AccountAvatars,
     #[sea_orm(has_many = "super::account_identities::Entity")]
     AccountIdentities,
     #[sea_orm(has_one = "super::account_lockouts::Entity")]
@@ -36,6 +39,8 @@ pub enum Relation {
     AccountLoginFailures,
     #[sea_orm(has_one = "super::account_otp_keys::Entity")]
     AccountOtpKeys,
+    #[sea_orm(has_many = "super::account_profile_events::Entity")]
+    AccountProfileEvents,
     #[sea_orm(has_many = "super::account_recovery_codes::Entity")]
     AccountRecoveryCodes,
     #[sea_orm(has_many = "super::account_webauthn_keys::Entity")]
@@ -56,6 +61,8 @@ pub enum Relation {
     ApiTombstones,
     #[sea_orm(has_many = "super::household_exports::Entity")]
     HouseholdExports,
+    #[sea_orm(has_many = "super::household_notification_subscriptions::Entity")]
+    HouseholdNotificationSubscriptions,
     #[sea_orm(has_many = "super::household_purge_runs::Entity")]
     HouseholdPurgeRuns,
     #[sea_orm(has_many = "super::households::Entity")]
@@ -78,6 +85,8 @@ pub enum Relation {
     NativeDeviceTokens,
     #[sea_orm(has_many = "super::notification_deliveries::Entity")]
     NotificationDeliveries,
+    #[sea_orm(has_many = "super::notification_preferences::Entity")]
+    NotificationPreferences,
     #[sea_orm(has_many = "super::oauth_applications::Entity")]
     OauthApplications,
     #[sea_orm(has_many = "super::oauth_grants::Entity")]
@@ -96,6 +105,12 @@ pub enum Relation {
     PushSubscriptions,
     #[sea_orm(has_many = "super::security_audit_events::Entity")]
     SecurityAuditEvents,
+}
+
+impl Related<super::account_avatars::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::AccountAvatars.def()
+    }
 }
 
 impl Related<super::account_identities::Entity> for Entity {
@@ -119,6 +134,12 @@ impl Related<super::account_login_failures::Entity> for Entity {
 impl Related<super::account_otp_keys::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::AccountOtpKeys.def()
+    }
+}
+
+impl Related<super::account_profile_events::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::AccountProfileEvents.def()
     }
 }
 
@@ -179,6 +200,12 @@ impl Related<super::api_tombstones::Entity> for Entity {
 impl Related<super::household_exports::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::HouseholdExports.def()
+    }
+}
+
+impl Related<super::household_notification_subscriptions::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::HouseholdNotificationSubscriptions.def()
     }
 }
 
@@ -245,6 +272,12 @@ impl Related<super::native_device_tokens::Entity> for Entity {
 impl Related<super::notification_deliveries::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::NotificationDeliveries.def()
+    }
+}
+
+impl Related<super::notification_preferences::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::NotificationPreferences.def()
     }
 }
 

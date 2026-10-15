@@ -43,7 +43,7 @@ struct ConfirmPassword {
     totp_code: Option<String>,
 }
 
-pub(super) async fn pending_password(
+async fn pending_record(
     ctx: &AuthContext<ClinicalAuthSchema>,
     session: &SessionView,
     operation_id: &str,
@@ -60,14 +60,36 @@ pub(super) async fn pending_password(
         return Err(AuthError::InvalidCredentials);
     }
     let pending: PendingPassword = serde_json::from_str(&verification.value)?;
+    if pending.account_id != session.user_id || pending.session_id != session.id {
+        return Err(AuthError::InvalidCredentials);
+    }
+    Ok(pending)
+}
+
+pub(super) async fn lock_pending_platform(
+    transaction: &sea_orm::DatabaseTransaction,
+    ctx: &AuthContext<ClinicalAuthSchema>,
+    session: &SessionView,
+    operation_id: &str,
+) -> AuthResult<()> {
+    pending_record(ctx, session, operation_id)
+        .await?
+        .action
+        .lock_platform(transaction)
+        .await
+}
+
+pub(super) async fn pending_password(
+    ctx: &AuthContext<ClinicalAuthSchema>,
+    session: &SessionView,
+    operation_id: &str,
+) -> AuthResult<PendingPassword> {
+    let pending = pending_record(ctx, session, operation_id).await?;
     let accounts = ctx.database.get_user_accounts(&session.user_id).await?;
     let credential = accounts
         .iter()
         .find(|account| account.provider_id == "credential");
-    if pending.account_id != session.user_id
-        || pending.session_id != session.id
-        || pending.credential_id.as_deref() != credential.map(|account| account.id.as_str())
-    {
+    if pending.credential_id.as_deref() != credential.map(|account| account.id.as_str()) {
         return Err(AuthError::InvalidCredentials);
     }
     Ok(pending)
@@ -82,6 +104,7 @@ pub(super) async fn complete_password(
     operation_id: &str,
 ) -> AuthResult<AuthResponse> {
     let transaction = store.transaction().await?;
+    lock_pending_platform(&transaction, ctx, session, operation_id).await?;
     store.lock_security_session(&transaction, session).await?;
     let pending = pending_password(ctx, session, operation_id).await?;
     ctx.database
@@ -158,6 +181,12 @@ impl Operations {
             return Err(AuthError::forbidden("Fresh email confirmation is required"));
         }
         let transaction = self.0.transaction().await?;
+        if request.path != "/security/password/start" {
+            let input: ConfirmPassword = request
+                .body_as_json()
+                .map_err(|_| AuthError::bad_request("Invalid password operation"))?;
+            lock_pending_platform(&transaction, ctx, &session, &input.operation_id).await?;
+        }
         self.0.lock_security_session(&transaction, &session).await?;
         let user = ctx
             .database

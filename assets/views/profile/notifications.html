@@ -14,8 +14,7 @@
       <details id="profile-managed-people" class="card bg-base-100 border border-base-300" {% if notifications_error %}open{% endif %}>
         <summary class="cursor-pointer p-4"><strong>{{ labels.profiles.notifications.managed_people.title }}</strong><span>{{ labels.profiles.notifications.managed_people.description }}</span></summary>
         <div class="grid gap-3 px-4 pb-4">{% for person in notifications.managed_people %}
-          {% if person.adult %}<label class="flex items-center justify-between gap-4 py-3"><strong>{{ person.name }}</strong><input class="toggle" type="checkbox" name="managed_{{ person.id }}" value="true" aria-label="{{ person.label }}" {% if person.enabled %}checked{% endif %}></label>
-          {% else %}<div class="flex items-center justify-between gap-4 py-3"><strong>{{ person.name }}</strong><span class="badge">{{ labels.profiles.notifications.managed_people.automatic }}</span></div>{% endif %}
+          <label class="flex items-center justify-between gap-4 py-3"><strong>{{ person.name }}</strong><input class="toggle" type="checkbox" name="managed_{{ person.id }}" value="true" aria-label="{{ person.label }}" {% if person.enabled %}checked{% endif %}></label>
         {% endfor %}</div>
       </details>
       {% endif %}

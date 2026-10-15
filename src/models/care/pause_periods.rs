@@ -5,7 +5,7 @@ mod reading;
 pub(crate) use reading::period_values;
 mod writing;
 use crate::models::{
-    access::{self, PersonAccess, TenantTransaction},
+    access::{self, TenantTransaction},
     care::{administration, doses::CredentialProvenance},
     entities::{
         api_change_event, household, membership, pause_period, person, person_medication, schedule,
@@ -150,7 +150,7 @@ async fn find_source(
         }
     }
     .ok_or(OperationError::NotFound)?;
-    if !access::can_access_person(tenant, row.person_id(), PersonAccess::View).await? {
+    if !access::participates(tenant, row.person_id()).await? {
         return Err(OperationError::NotFound);
     }
     Ok(row)
@@ -177,9 +177,7 @@ async fn source_for_period(
         None
     }
     .ok_or(OperationError::NotFound)?;
-    if source.retired()
-        || !access::can_access_person(tenant, source.person_id(), PersonAccess::View).await?
-    {
+    if source.retired() || !access::participates(tenant, source.person_id()).await? {
         return Err(OperationError::NotFound);
     }
     Ok(source)

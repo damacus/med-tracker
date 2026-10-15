@@ -130,7 +130,7 @@ pub(super) fn render(
         return unavailable();
     };
     data["authenticity_token"] = json!(authenticity);
-    match format::render().view(view, template, data) {
+    match format::render().view(view, template, crate::views::template_data(&data)) {
         Ok(response) => (
             error.map(forms::status).unwrap_or(StatusCode::OK),
             token.clone(),

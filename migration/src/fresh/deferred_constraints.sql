@@ -22,9 +22,6 @@ ALTER TABLE ONLY public.medication_review_prompts
 ALTER TABLE ONLY public.notification_events
     ADD CONSTRAINT fk_rails_1e2df17b6b FOREIGN KEY (person_id) REFERENCES public.people(id) DEFERRABLE INITIALLY DEFERRED;
 
-ALTER TABLE ONLY public.location_memberships
-    ADD CONSTRAINT fk_rails_280552daaa FOREIGN KEY (person_id) REFERENCES public.people(id) DEFERRABLE INITIALLY DEFERRED;
-
 ALTER TABLE ONLY public.medication_review_prompts
     ADD CONSTRAINT fk_rails_417ee86956 FOREIGN KEY (evidence_record_id) REFERENCES public.medication_review_evidence_records(id) DEFERRABLE INITIALLY DEFERRED;
 
@@ -53,7 +50,7 @@ ALTER TABLE ONLY public.medication_review_prompts
     ADD CONSTRAINT fk_rails_93516870c8 FOREIGN KEY (person_id) REFERENCES public.people(id) DEFERRABLE INITIALLY DEFERRED;
 
 ALTER TABLE ONLY public.notification_preferences
-    ADD CONSTRAINT fk_rails_a1af1e497f FOREIGN KEY (person_id) REFERENCES public.people(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT fk_notification_preferences_account FOREIGN KEY (account_id) REFERENCES public.accounts(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 ALTER TABLE ONLY public.dosages
@@ -82,9 +79,6 @@ ALTER TABLE ONLY public.medications
 
 ALTER TABLE ONLY public.medication_review_prompts
     ADD CONSTRAINT fk_rails_d7ad4ad8a3 FOREIGN KEY (interacting_medication_id) REFERENCES public.medications(id) DEFERRABLE INITIALLY DEFERRED;
-
-ALTER TABLE ONLY public.location_memberships
-    ADD CONSTRAINT fk_rails_e70491d63b FOREIGN KEY (location_id) REFERENCES public.locations(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 ALTER TABLE ONLY public.medication_review_prompts

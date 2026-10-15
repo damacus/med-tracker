@@ -1,5 +1,5 @@
 use crate::models::{
-    access::{self, PersonAccess, TenantTransaction},
+    access::{self, TenantTransaction},
     care::{people, treatments::projection},
     entities::{dosage, medication, pause_period, person, person_medication, schedule},
     errors::OperationError,
@@ -18,7 +18,7 @@ pub async fn person_cards(
     zone: chrono_tz::Tz,
     labels: &Value,
 ) -> Result<Vec<Value>, OperationError> {
-    access::require_person_access(tenant, person_id, PersonAccess::View).await?;
+    access::require_participation(tenant, person_id).await?;
     let schedules = access::schedule_scope(tenant)
         .filter(schedule::Column::PersonId.eq(person_id))
         .order_by_asc(schedule::Column::Id)
@@ -336,7 +336,7 @@ pub async fn index(
         projection::serialize_schedules(tenant.transaction(), tenant, schedules).await?;
     let assignments =
         projection::serialize_assignments(tenant.transaction(), tenant, assignments).await?;
-    let can_manage = access::can_access_person(tenant, person_id, PersonAccess::Manage).await?;
+    let can_manage = access::participates(tenant, person_id).await?;
     let medications = super::browser_query::index(tenant).await?;
     Ok(
         json!({"person":person_data["data"],"schedules":schedules,"assignments":assignments,"medications":medications,"can_manage":can_manage,"page":page,"has_next":schedule_count.max(assignment_count)>(page as u64).saturating_mul(20)}),
@@ -345,7 +345,9 @@ pub async fn index(
 
 pub async fn options(tenant: &TenantTransaction, person_id: &str) -> Result<Value, OperationError> {
     access::recheck(tenant).await?;
-    let query = person::Entity::find().in_tenant(tenant.scope().household_id);
+    let query = crate::models::access::person_scope(
+        crate::models::ids::HouseholdId::from_database(tenant.scope().household_id),
+    );
     let query = if let Ok(id) = person_id.parse::<i64>() {
         query.filter(person::Column::Id.eq(id))
     } else {
@@ -355,7 +357,11 @@ pub async fn options(tenant: &TenantTransaction, person_id: &str) -> Result<Valu
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::NotFound)?;
-    access::require_person_access(tenant, row.id, PersonAccess::Manage).await?;
+    access::require_participation(tenant, row.id).await?;
+    let row = crate::models::person_identity::summaries(tenant, vec![row])
+        .await?
+        .pop()
+        .ok_or(OperationError::NotFound)?;
     let medications = access::medication_scope(tenant)
         .order_by_asc(medication::Column::Name)
         .all(tenant.transaction())

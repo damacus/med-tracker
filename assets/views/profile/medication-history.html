@@ -1,0 +1,23 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="grid gap-6" aria-labelledby="medication-history-title">
+  <header class="flex flex-wrap items-start justify-between gap-4">
+    <div class="grid gap-2"><h1 id="medication-history-title" class="text-3xl font-semibold">{{ labels.profiles.medication_history.title }}</h1><p class="shell-muted">{{ labels.profiles.medication_history.description }}</p></div>
+    <div class="flex flex-wrap gap-3"><a class="btn btn-outline" href="/profile">{{ labels.profiles.medication_history.back }}</a><a class="btn btn-primary" href="/profile/medication-history/download">{{ labels.profiles.medication_history.download }}</a></div>
+  </header>
+  <p class="text-sm shell-muted">{{ labels.profiles.medication_history.subset }}</p>
+  {% if entries | length > 0 %}
+  <div class="overflow-x-auto rounded-box border border-base-300 bg-base-100">
+    <table class="table"><caption class="sr-only">{{ labels.profiles.medication_history.title }}</caption><thead><tr>
+      <th scope="col">{{ labels.reports.health_history.medication_takes.time }}</th><th scope="col">{{ labels.dose_records.medication }}</th><th scope="col">{{ labels.dose_records.dose }}</th><th scope="col">{{ labels.profiles.medication_history.origin }}</th><th scope="col">{{ labels.profiles.medication_history.actor }}</th>
+    </tr></thead><tbody>{% for entry in entries %}<tr data-history-entry="{{ entry.history_entry_id }}">
+      <td><time datetime="{{ entry.taken_at }}">{{ entry.taken_at }}</time></td>
+      <td><strong>{{ entry.medication_name }}</strong><p class="text-xs shell-muted">{{ entry.subject_name }}</p><p class="text-xs">{{ labels.profiles.medication_history.stock }}: {% if entry.selected_stock %}{{ entry.selected_stock.name }}{% else %}{{ labels.profiles.medication_history.unknown }}{% endif %}</p>{% if entry.location %}<p class="text-xs">{{ entry.location.name }}</p>{% endif %}</td>
+      <td>{{ entry.dose_amount }} {{ entry.dose_unit }}</td><td>{{ entry.origin_household_id }}</td>
+      <td>{% if entry.actor.kind == "known" %}{{ entry.actor.name }}{% elif entry.actor.kind == "imported" %}{{ labels.profiles.medication_history.imported }}{% else %}{{ labels.profiles.medication_history.unknown }}{% endif %}<p class="text-xs shell-muted">{{ labels.dose_records.recorded }}: <time datetime="{{ entry.recorded_at }}">{{ entry.recorded_at }}</time></p></td>
+    </tr>{% endfor %}</tbody></table>
+  </div>
+  {% else %}<p class="rounded-box border border-base-300 p-6">{{ labels.profiles.medication_history.empty }}</p>{% endif %}
+  {% if next_page %}<nav aria-label="{{ labels.profiles.medication_history.title }}"><a class="btn btn-outline" rel="next" href="{{ next_page }}">{{ labels.profiles.medication_history.next }}</a></nav>{% endif %}
+</section>
+{% endblock content %}

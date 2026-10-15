@@ -7,7 +7,7 @@ mod tables;
 pub struct Migration;
 
 impl MigrationName for Migration {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "m20261015_000001_create_medtracker"
     }
 }
@@ -19,7 +19,7 @@ impl MigrationTrait for Migration {
         db.execute_unprepared(include_str!("roles.sql")).await?;
         db.execute_unprepared("SET LOCAL ROLE med_tracker_owner")
             .await?;
-        tables::create(manager).await?;
+        Box::pin(tables::create(manager)).await?;
         db.execute_unprepared(include_str!("sequences.sql")).await?;
         indexes::create(manager).await?;
         db.execute_unprepared(include_str!("constraints.sql"))
@@ -33,6 +33,14 @@ impl MigrationTrait for Migration {
         db.execute_unprepared("SET LOCAL ROLE med_tracker_owner")
             .await?;
         db.execute_unprepared(include_str!("identity.sql")).await?;
+        db.execute_unprepared(include_str!("report_denials.sql"))
+            .await?;
+        db.execute_unprepared(include_str!("care_continuity.sql"))
+            .await?;
+        db.execute_unprepared(include_str!("self_history.sql"))
+            .await?;
+        db.execute_unprepared(include_str!("account_clinical_access.sql"))
+            .await?;
         Ok(())
     }
 }

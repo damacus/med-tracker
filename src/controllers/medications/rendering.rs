@@ -583,7 +583,7 @@ fn render(
     if template == "medications/show.html" {
         data["dose"] = data.clone();
     }
-    match format::render().view(view, template, data) {
+    match format::render().view(view, template, crate::views::template_data(&data)) {
         Ok(response) => (
             status,
             token.clone(),

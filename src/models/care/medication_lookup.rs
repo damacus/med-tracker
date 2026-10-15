@@ -1,5 +1,5 @@
 use crate::models::{
-    access::{self, PersonAccess, TenantTransaction},
+    access::{self, TenantTransaction},
     care::medications,
     entities::{barcode_catalog_entry, household, location, medication, nhs_dmd_barcode},
     errors::OperationError,
@@ -303,8 +303,8 @@ fn matches_from(visible: &[medication::Model], candidate: &Value) -> Vec<medicat
 pub async fn search(tenant: &TenantTransaction, search: &Search) -> Result<Found, OperationError> {
     access::recheck(tenant).await?;
     let can_create = medications::crud::can_create(tenant).await?;
-    let can_refill = access::can_manage_household(tenant)
-        || access::has_person_access(tenant, PersonAccess::View).await?;
+    let can_refill =
+        access::can_manage_household(tenant) || access::has_participants(tenant).await?;
     if !can_create && !can_refill {
         return Err(OperationError::Forbidden);
     }
@@ -331,6 +331,7 @@ pub async fn search(tenant: &TenantTransaction, search: &Search) -> Result<Found
         .as_deref()
         .and_then(matching::normalize_strength);
     let locations: HashMap<i64, String> = location::Entity::find()
+        .filter(location::Column::RetiredAt.is_null())
         .in_tenant(tenant.scope().household_id)
         .all(tenant.transaction())
         .await?
@@ -511,5 +512,5 @@ fn normalized_form(value: Option<&str>) -> Option<String> {
 }
 
 fn stock_value(row: &medication::Model, locations: &HashMap<i64, String>, slug: &str) -> Value {
-    json!({"id":row.id,"name":row.friendly_name.as_deref().filter(|value|!value.is_empty()).or(row.name.as_deref()).unwrap_or("Medication"),"location":locations.get(&row.location_id).map(String::as_str).unwrap_or("Location"),"path":format!("/households/{slug}/medications/{}",row.id),"current_supply":row.current_supply.map(|quantity|quantity.normalize().to_string()).unwrap_or_default()})
+    json!({"id":row.id,"name":row.friendly_name.as_deref().filter(|value|!value.is_empty()).or(row.name.as_deref()).unwrap_or("Medication"),"location":row.location_id.and_then(|id| locations.get(&id)).map(String::as_str).unwrap_or_default(),"path":format!("/households/{slug}/medications/{}",row.id),"current_supply":row.current_supply.map(|quantity|quantity.normalize().to_string()).unwrap_or_default()})
 }

@@ -24,7 +24,7 @@ pub async fn authorize_create(
     lock(tenant).await?;
     let (kind, id) = source_identity(body)?;
     let source = find_source(tenant, kind, id, false).await?;
-    access::require_person_access(tenant, source.person_id(), PersonAccess::Manage).await
+    access::require_participation(tenant, source.person_id()).await
 }
 async fn period(
     tenant: &TenantTransaction,
@@ -45,7 +45,7 @@ pub async fn authorize_resume(tenant: &TenantTransaction, id: &str) -> Result<()
     lock(tenant).await?;
     let row = period(tenant, id).await?;
     let source = source_for_period(tenant, &row).await?;
-    access::require_person_access(tenant, source.person_id(), PersonAccess::Manage).await
+    access::require_participation(tenant, source.person_id()).await
 }
 pub async fn create(
     tenant: &TenantTransaction,

@@ -1,14 +1,11 @@
 use crate::models::{
     access::{self, TenantTransaction},
-    entities::{medication_take, person_medication, schedule},
+    entities::medication_take,
     errors::OperationError,
 };
 use chrono::NaiveDateTime;
 use loco_rs::model::TenantQueryExt;
-use sea_orm::{
-    ColumnTrait, Condition, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect,
-    QueryTrait,
-};
+use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect};
 
 pub struct History {
     pub records: Vec<medication_take::Model>,
@@ -29,26 +26,6 @@ pub async fn list(
     }
     let household_id = tenant.scope().household_id;
     let mut query = medication_take::Entity::find().in_tenant(household_id);
-    if !access::can_manage_household(tenant) {
-        let people = access::granted_people(tenant.membership());
-        let schedules = schedule::Entity::find()
-            .select_only()
-            .column(schedule::Column::Id)
-            .in_tenant(household_id)
-            .filter(schedule::Column::PersonId.in_subquery(people.clone()))
-            .into_query();
-        let assignments = person_medication::Entity::find()
-            .select_only()
-            .column(person_medication::Column::Id)
-            .in_tenant(household_id)
-            .filter(person_medication::Column::PersonId.in_subquery(people))
-            .into_query();
-        query = query.filter(
-            Condition::any()
-                .add(medication_take::Column::ScheduleId.in_subquery(schedules))
-                .add(medication_take::Column::PersonMedicationId.in_subquery(assignments)),
-        );
-    }
     if let Some(timestamp) = updated_since {
         query = query.filter(medication_take::Column::UpdatedAt.gte(timestamp));
     }

@@ -1,5 +1,5 @@
 use crate::models::{
-    access::{self, PersonAccess, TenantTransaction},
+    access::{self, TenantTransaction},
     entities::{household, version},
     errors::OperationError,
 };
@@ -679,11 +679,11 @@ pub(crate) async fn record_suggestion(
         event: Set("ai_medication/suggestion".to_owned()),
         object: Set(Some(object.to_string())),
         object_changes: Set(None),
-        whodunnit: Set(Some(tenant.user_id().to_string())),
+        whodunnit: Set(Some(tenant.person_id().to_string())),
         request_id: Set(Some(request_id.clone())),
         household_id: Set(Some(tenant.scope().household_id)),
         actor_membership_id: Set(Some(tenant.membership().id)),
-        audit_context: Set(json!({"request_id": request_id, "actor_user_id": tenant.user_id(), "household_id": tenant.scope().household_id})),
+        audit_context: Set(json!({"request_id": request_id, "actor_person_id": tenant.person_id(), "household_id": tenant.scope().household_id})),
         created_at: Set(Some(Utc::now().naive_utc())),
         ..Default::default()
     }
@@ -697,8 +697,7 @@ pub(crate) async fn authorize(
     settings: Option<&Value>,
 ) -> Result<(), OperationError> {
     access::recheck(tenant).await?;
-    let allowed = access::can_manage_household(tenant)
-        || access::has_person_access(tenant, PersonAccess::View).await?;
+    let allowed = access::can_manage_household(tenant) || access::has_participants(tenant).await?;
     if !allowed {
         return Err(OperationError::Forbidden);
     }

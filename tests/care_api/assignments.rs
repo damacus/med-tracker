@@ -7,7 +7,7 @@ async fn assignment_unassign_preserves_history_and_records_soft_update() {
         care::assignments,
     };
     let app = Application::new().await;
-    app.fixture.admin.execute_unprepared("INSERT INTO medication_takes(id,household_id,person_medication_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(99991,72001,81001,2,'tablet',now(),now(),now()); INSERT INTO medication_pause_periods(household_id,person_medication_id,reason,legacy_context,imported_context,imported_actor_references,created_at,updated_at) VALUES(72001,81001,'reason_not_recorded',true,false,'{}',now(),now())").await.unwrap();
+    recorded_takes::seed(&app.fixture.admin, recorded_takes::SyntheticActor::canonical(), "INSERT INTO medication_takes(id,household_id,person_medication_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(99991,72001,81001,2,'tablet',now(),now(),now()); INSERT INTO medication_pause_periods(household_id,person_medication_id,reason,legacy_context,imported_context,imported_actor_references,created_at,updated_at) VALUES(72001,81001,'reason_not_recorded',true,false,'{}',now(),now())", &[recorded_takes::TakeSeed::new(99991,80001)]).await.unwrap();
     let scope = HouseholdScope {
         actor: Actor { account_id: 71001 },
         household_id: 72001,
@@ -210,7 +210,7 @@ async fn assignment_create_defaults_duplicate_and_retired_reassignment() {
 }
 
 #[tokio::test]
-async fn assignment_reads_obey_current_person_grants_and_foreign_household() {
+async fn assignment_reads_obey_current_membership_and_foreign_household() -> CareTestResult {
     let app = Application::new().await;
     let token = app.token().await;
     let endpoint = format!("{}/api/v1/households/72001/person_medications", app.origin);
@@ -259,7 +259,11 @@ async fn assignment_reads_obey_current_person_grants_and_foreign_household() {
         .unwrap()
         .status()
         .as_u16();
-    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001; UPDATE person_access_grants SET revoked_at=now() WHERE id=78001").await.unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001")
+        .await
+        .unwrap();
     let withdrawn = app
         .client
         .get(format!("{endpoint}/81001"))
@@ -269,19 +273,32 @@ async fn assignment_reads_obey_current_person_grants_and_foreign_household() {
         .unwrap()
         .status()
         .as_u16();
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001").await?;
+    let revoked = app
+        .client
+        .get(format!("{endpoint}/81001"))
+        .bearer_auth(&token)
+        .send()
+        .await?;
+    assert_eq!(revoked.status().as_u16(), 403);
     app.close().await;
     assert_eq!(
         (listed, read, unchanged, foreign, withdrawn),
-        (200, 200, 304, 403, 404)
+        (200, 200, 304, 403, 200)
     );
     assert_eq!(list["meta"]["total_count"], 1);
     assert_eq!(list["data"][0]["id"], 81001);
+    Ok(())
 }
 
 #[tokio::test]
-async fn assignment_update_replay_stale_and_record_only_permission() {
+async fn assignment_update_replay_stale_and_revoked_membership() -> CareTestResult {
     let app = Application::new().await;
     let token = app.token().await;
+    app.fixture
+        .admin
+        .execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001")
+        .await?;
     let endpoint = format!(
         "{}/api/v1/households/72001/person_medications/81001",
         app.origin
@@ -335,7 +352,7 @@ async fn assignment_update_replay_stale_and_record_only_permission() {
         .unwrap()
         .status()
         .as_u16();
-    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001; UPDATE person_access_grants SET access_level='record' WHERE id=78001").await.unwrap();
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001").await.unwrap();
     let denied = app
         .client
         .patch(&endpoint)
@@ -360,6 +377,7 @@ async fn assignment_update_replay_stale_and_record_only_permission() {
     assert_eq!(amount.as_deref(), Some("3.00"));
     assert_eq!(notes.as_deref(), Some("Synthetic assignment update"));
     assert_eq!((versions, changes), (1, 1));
+    Ok(())
 }
 
 #[tokio::test]
@@ -406,10 +424,15 @@ async fn assignment_invalid_option_and_audit_failure_preserve_all_writes() {
 }
 
 #[tokio::test]
-async fn person_medication_get_matches_documented_contract() {
+async fn person_medication_get_matches_documented_contract() -> CareTestResult {
     use super::contract::{assert_value, contract, resolve};
     let app = Application::new().await;
     let token = app.token().await;
+    if let Err(error) = seed_foreign_care_subject(&app.fixture).await {
+        app.close().await;
+        return Err(error.into());
+    }
+
     let endpoint = format!(
         "{}/api/v1/households/72001/person_medications/81001",
         app.origin
@@ -537,7 +560,7 @@ async fn person_medication_get_matches_documented_contract() {
         .execute_unprepared("INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(92010,72001,73002,80001,2,'tablet',0,now(),now()); UPDATE household_memberships SET role='member' WHERE id=74001")
         .await
         .unwrap();
-    let ungranted = app
+    let local_subject = app
         .client
         .get(format!(
             "{}/api/v1/households/72001/person_medications/92010",
@@ -547,14 +570,17 @@ async fn person_medication_get_matches_documented_contract() {
         .send()
         .await
         .unwrap();
-    let ungranted_status = ungranted.status().as_u16();
-    let ungranted_body: Value = ungranted.json().await.unwrap();
-    assert_eq!(ungranted_status, 404);
+    let local_subject_status = local_subject.status().as_u16();
+    let local_subject_body: Value = local_subject.json().await.unwrap();
+    assert_eq!(local_subject_status, 200);
     assert_value(
         contract,
-        not_found_schema,
-        &ungranted_body,
-        "ungranted person assignment",
+        resolve(
+            contract,
+            &operation["responses"]["200"]["content"]["application/json"]["schema"],
+        ),
+        &local_subject_body,
+        "ordinary member local subject assignment",
     );
 
     let foreign = app
@@ -582,11 +608,25 @@ async fn person_medication_get_matches_documented_contract() {
     );
     assert_eq!(foreign_body["error"]["code"], "forbidden");
     assert_eq!(foreign_body["error"]["request_id"], foreign_request_id);
+    let other_household_record = app
+        .client
+        .get(format!(
+            "{}/api/v1/households/72001/person_medications/96861",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await?;
+    assert_eq!(other_household_record.status().as_u16(), 404);
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001").await?;
+    let revoked = app.client.get(&endpoint).bearer_auth(&token).send().await?;
+    assert_eq!(revoked.status().as_u16(), 403);
     app.close().await;
+    Ok(())
 }
 
 #[tokio::test]
-async fn person_medication_list_matches_documented_contract() {
+async fn person_medication_list_matches_documented_contract() -> CareTestResult {
     use super::contract::{assert_value, contract, resolve};
     let app = Application::new().await;
     let token = app.token().await;
@@ -645,7 +685,7 @@ async fn person_medication_list_matches_documented_contract() {
         .await
         .unwrap();
 
-    for (page, expected_id) in [(1, 81001), (2, 92010)] {
+    for (page, expected_id) in [(1, 81001), (2, 92010), (3, 92011)] {
         let paginated = app
             .client
             .get(format!("{collection}?page={page}&per_page=1"))
@@ -666,7 +706,7 @@ async fn person_medication_list_matches_documented_contract() {
             "paginated person medication collection",
         );
         assert_eq!(paginated_body["meta"]["per_page"], 1);
-        assert_eq!(paginated_body["meta"]["total_count"], 2);
+        assert_eq!(paginated_body["meta"]["total_count"], 3);
         assert_eq!(paginated_body["data"][0]["id"], expected_id);
     }
 
@@ -711,12 +751,13 @@ async fn person_medication_list_matches_documented_contract() {
             &operation["responses"]["200"]["content"]["application/json"]["schema"],
         ),
         &scoped_body,
-        "grant scoped collection",
+        "ordinary member household collection",
     );
-    assert_eq!(scoped_body["meta"]["total_count"], 2);
-    assert_eq!(scoped_body["data"].as_array().unwrap().len(), 2);
+    assert_eq!(scoped_body["meta"]["total_count"], 3);
+    assert_eq!(scoped_body["data"].as_array().unwrap().len(), 3);
     assert_eq!(scoped_body["data"][0]["id"], 81001);
     assert_eq!(scoped_body["data"][1]["id"], 92010);
+    assert_eq!(scoped_body.pointer("/data/2/id"), Some(&json!(92011)));
 
     let foreign = app
         .client
@@ -743,5 +784,14 @@ async fn person_medication_list_matches_documented_contract() {
     );
     assert_eq!(foreign_body["error"]["code"], "forbidden");
     assert_eq!(foreign_body["error"]["request_id"], foreign_request_id);
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001").await?;
+    let revoked = app
+        .client
+        .get(&collection)
+        .bearer_auth(&token)
+        .send()
+        .await?;
+    assert_eq!(revoked.status().as_u16(), 403);
     app.close().await;
+    Ok(())
 }

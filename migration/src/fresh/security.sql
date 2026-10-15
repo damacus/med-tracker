@@ -11,7 +11,6 @@ ALTER TABLE ONLY public.household_invitation_grants FORCE ROW LEVEL SECURITY;
 ALTER TABLE ONLY public.household_invitations FORCE ROW LEVEL SECURITY;
 ALTER TABLE ONLY public.household_memberships FORCE ROW LEVEL SECURITY;
 ALTER TABLE ONLY public.household_retention_holds FORCE ROW LEVEL SECURITY;
-ALTER TABLE ONLY public.location_memberships FORCE ROW LEVEL SECURITY;
 ALTER TABLE ONLY public.locations FORCE ROW LEVEL SECURITY;
 ALTER TABLE ONLY public.medication_dose_occurrences FORCE ROW LEVEL SECURITY;
 ALTER TABLE ONLY public.medication_pause_periods FORCE ROW LEVEL SECURITY;
@@ -21,10 +20,10 @@ ALTER TABLE ONLY public.medications FORCE ROW LEVEL SECURITY;
 ALTER TABLE ONLY public.notification_events FORCE ROW LEVEL SECURITY;
 ALTER TABLE ONLY public.notification_preferences FORCE ROW LEVEL SECURITY;
 ALTER TABLE ONLY public.people FORCE ROW LEVEL SECURITY;
-ALTER TABLE ONLY public.person_access_grants FORCE ROW LEVEL SECURITY;
 ALTER TABLE ONLY public.person_medications FORCE ROW LEVEL SECURITY;
 ALTER TABLE ONLY public.schedules FORCE ROW LEVEL SECURITY;
 ALTER TABLE ONLY public.security_audit_events FORCE ROW LEVEL SECURITY;
+ALTER TABLE ONLY public.versions FORCE ROW LEVEL SECURITY;
 
 ALTER TABLE public.ar_internal_metadata OWNER TO CURRENT_USER;
 ALTER TABLE public.schema_migrations OWNER TO CURRENT_USER;
@@ -83,8 +82,6 @@ ALTER TABLE public.household_memberships ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE public.household_retention_holds ENABLE ROW LEVEL SECURITY;
 
-ALTER TABLE public.location_memberships ENABLE ROW LEVEL SECURITY;
-
 ALTER TABLE public.locations ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE public.medication_dose_occurrences ENABLE ROW LEVEL SECURITY;
@@ -103,15 +100,16 @@ ALTER TABLE public.notification_preferences ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE public.people ENABLE ROW LEVEL SECURITY;
 
-ALTER TABLE public.person_access_grants ENABLE ROW LEVEL SECURITY;
-
 ALTER TABLE public.person_medications ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE public.schedules ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE public.security_audit_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.versions ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY audit_verifier_complete_visibility ON public.security_audit_events FOR SELECT TO med_tracker_audit_verifier USING (true);
+CREATE POLICY versions_owner ON public.versions TO med_tracker_owner USING (true) WITH CHECK (true);
+CREATE POLICY versions_verifier_complete_visibility ON public.versions FOR SELECT TO med_tracker_audit_verifier USING (true);
 
 CREATE POLICY household_tenant_isolation ON public.active_storage_attachments USING ((household_id = med_tracker.current_household_id())) WITH CHECK ((household_id = med_tracker.current_household_id()));
 
@@ -138,8 +136,6 @@ CREATE POLICY household_tenant_isolation ON public.household_invitations USING (
 
 CREATE POLICY household_tenant_isolation ON public.household_retention_holds USING ((household_id = med_tracker.current_household_id())) WITH CHECK ((household_id = med_tracker.current_household_id()));
 
-CREATE POLICY household_tenant_isolation ON public.location_memberships USING ((household_id = med_tracker.current_household_id())) WITH CHECK ((household_id = med_tracker.current_household_id()));
-
 CREATE POLICY household_tenant_isolation ON public.locations USING ((household_id = med_tracker.current_household_id())) WITH CHECK ((household_id = med_tracker.current_household_id()));
 
 CREATE POLICY household_tenant_isolation ON public.medication_dose_occurrences USING ((household_id = med_tracker.current_household_id())) WITH CHECK ((household_id = med_tracker.current_household_id()));
@@ -155,9 +151,6 @@ CREATE POLICY household_tenant_isolation ON public.medications USING ((household
 CREATE POLICY household_tenant_isolation ON public.notification_events USING ((household_id = med_tracker.current_household_id())) WITH CHECK ((household_id = med_tracker.current_household_id()));
 
 CREATE POLICY household_tenant_isolation ON public.notification_preferences USING ((household_id = med_tracker.current_household_id())) WITH CHECK ((household_id = med_tracker.current_household_id()));
-
-
-CREATE POLICY household_tenant_isolation ON public.person_access_grants USING ((household_id = med_tracker.current_household_id())) WITH CHECK ((household_id = med_tracker.current_household_id()));
 
 CREATE POLICY household_tenant_isolation ON public.person_medications USING ((household_id = med_tracker.current_household_id())) WITH CHECK ((household_id = med_tracker.current_household_id()));
 
@@ -341,10 +334,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.households TO med_tracker_app;
 
 GRANT SELECT,USAGE ON SEQUENCE public.households_id_seq TO med_tracker_app;
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.location_memberships TO med_tracker_app;
-
-GRANT SELECT,USAGE ON SEQUENCE public.location_memberships_id_seq TO med_tracker_app;
-
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.locations TO med_tracker_app;
 
 GRANT SELECT,USAGE ON SEQUENCE public.locations_id_seq TO med_tracker_app;
@@ -428,10 +417,6 @@ GRANT SELECT,USAGE ON SEQUENCE public.oauth_grants_id_seq TO med_tracker_app;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.people TO med_tracker_app;
 
 GRANT SELECT,USAGE ON SEQUENCE public.people_id_seq TO med_tracker_app;
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.person_access_grants TO med_tracker_app;
-
-GRANT SELECT,USAGE ON SEQUENCE public.person_access_grants_id_seq TO med_tracker_app;
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.person_medications TO med_tracker_app;
 

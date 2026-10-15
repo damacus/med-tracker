@@ -1,7 +1,11 @@
+#[path = "care_api/account_profile.rs"]
+mod account_profile;
 #[path = "care_api/account_sessions.rs"]
 mod account_sessions;
 #[path = "care_api/administration.rs"]
 mod administration;
+#[path = "care_api/administration_browser.rs"]
+mod administration_browser;
 #[path = "care_api/ai_suggestions.rs"]
 mod ai_suggestions;
 #[path = "care_api/api_session.rs"]
@@ -82,8 +86,12 @@ mod portable_imports;
 mod profile;
 #[path = "care_api/profile_export.rs"]
 mod profile_export;
+#[path = "care_api/self_medication_history_security.rs"]
+mod self_medication_history_security;
 #[path = "care_api/push_subscriptions.rs"]
 mod push_subscriptions;
+#[path = "support/recorded_takes.rs"]
+mod recorded_takes;
 #[path = "care_api/reports.rs"]
 mod reports;
 #[path = "care_api/resource_credentials.rs"]
@@ -110,6 +118,8 @@ mod template;
 mod treatment_timestamps;
 #[path = "care_api/treatments.rs"]
 mod treatments;
+#[path = "care_api/typed_doses.rs"]
+mod typed_doses;
 #[path = "care_api/ui_capabilities.rs"]
 mod ui_capabilities;
 
@@ -292,6 +302,21 @@ impl Application {
     }
 }
 
+type CareTestResult = Result<(), Box<dyn std::error::Error>>;
+
+async fn seed_foreign_care_subject(fixture: &Fixture) -> Result<(), sea_orm::DbErr> {
+    fixture.admin.execute_unprepared(
+        "INSERT INTO people(id,clinical_name,person_type,has_capacity,created_at,updated_at) VALUES(96802,'Foreign synthetic subject',0,true,now(),now());
+         INSERT INTO accounts(id,person_id,name,email,status,created_at,updated_at) VALUES(96811,96802,'Foreign synthetic subject','foreign-care@example.test',2,now(),now());
+         INSERT INTO households(id,name,slug,timezone,created_at,updated_at) VALUES(96821,'Foreign synthetic care','foreign-synthetic-care','UTC',now(),now());
+         INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(96831,96821,96802,'member','active',now(),now(),now());
+         INSERT INTO locations(id,household_id,name,created_at,updated_at) VALUES(96841,96821,'Foreign synthetic cabinet',now(),now());
+         INSERT INTO medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at) VALUES(96851,96821,96841,'Foreign synthetic medicine',10,2,'tablet',now(),now());
+         INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(96861,96821,96802,96851,2,'tablet',0,now(),now())"
+    ).await?;
+    Ok(())
+}
+
 fn take_body() -> Value {
     json!({"medication_take": {
         "client_uuid":"006b49d9-1da2-42f1-800b-8c80867aee1c", "source_type":"person_medication", "source_id":"81001",
@@ -393,7 +418,7 @@ async fn authenticated_take_replay_and_stock_adjustment_use_real_loco_routes() {
 }
 
 #[tokio::test]
-async fn authenticated_foreign_household_and_revoked_person_grant_have_no_effects() {
+async fn authenticated_foreign_household_and_revoked_membership_have_no_effects() {
     let app = Application::new().await;
     let token = app.token().await;
     let foreign = app
@@ -409,7 +434,7 @@ async fn authenticated_foreign_household_and_revoked_person_grant_have_no_effect
         .unwrap();
     app.fixture
         .admin
-        .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78001")
+        .execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001")
         .await
         .unwrap();
     let revoked = app
@@ -426,7 +451,7 @@ async fn authenticated_foreign_household_and_revoked_person_grant_have_no_effect
     let statuses = (foreign.status().as_u16(), revoked.status().as_u16());
     let effect = app.fixture.effect().await;
     app.close().await;
-    assert_eq!(statuses, (403, 404));
+    assert_eq!(statuses, (403, 403));
     assert_eq!(effect, (0, "10.00".into(), 0, 0));
 }
 
@@ -476,7 +501,7 @@ async fn failed_clinical_audit_rolls_back_effects_but_records_http_attempt() {
 async fn equivalent_hidden_uuid_collision_preserves_private_conflict_contract() {
     let app = Application::new().await;
     let token = app.token().await;
-    app.fixture.admin.execute_unprepared("INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(92001,71001,'Other synthetic household','api-uuid-foreign-household','UTC',now(),now()); INSERT INTO people(id,household_id,name,person_type,has_capacity,created_at,updated_at) VALUES(92002,92001,'Other synthetic adult',0,true,now(),now()); INSERT INTO locations(id,household_id,name,created_at,updated_at) VALUES(92003,92001,'Other synthetic cabinet',now(),now()); INSERT INTO medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at) VALUES(92004,92001,92003,'Other synthetic tablets',10,2,'tablet',now(),now()); INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(92005,92001,92002,92004,2,'tablet',0,now(),now()); INSERT INTO medication_takes(id,household_id,client_uuid,person_medication_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(92006,92001,'006B49D9-1DA2-42F1-800B-8C80867AEE1C',92005,2,'tablet','2026-10-05T10:00:00',now(),now())").await.unwrap();
+    recorded_takes::seed(&app.fixture.admin, recorded_takes::SyntheticActor::new(92008,92001,92007), "INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(92001,71001,'Other synthetic household','api-uuid-foreign-household','UTC',now(),now()); INSERT INTO people(id,clinical_name,person_type,has_capacity,created_at,updated_at) VALUES(92002,'Other synthetic adult',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(92007,92001,92002,'member',now(),now(),now()); INSERT INTO accounts(id,person_id,name,email,status,created_at,updated_at) VALUES(92008,92002,'Foreign synthetic recording actor','foreign-history-actor@example.test',2,now(),now()); INSERT INTO locations(id,household_id,name,created_at,updated_at) VALUES(92003,92001,'Other synthetic cabinet',now(),now()); INSERT INTO medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at) VALUES(92004,92001,92003,'Other synthetic tablets',10,2,'tablet',now(),now()); INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(92005,92001,92002,92004,2,'tablet',0,now(),now()); INSERT INTO medication_takes(id,household_id,client_uuid,person_medication_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(92006,92001,'006B49D9-1DA2-42F1-800B-8C80867AEE1C',92005,2,'tablet','2026-10-05T10:00:00',now(),now())", &[recorded_takes::TakeSeed::new(92006,92004)]).await.unwrap();
     let before = app.fixture.effect().await;
     let response = app
         .client

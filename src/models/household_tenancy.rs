@@ -48,14 +48,6 @@ impl loco_rs::model::TenantEntity for dose_occurrence::Entity {
     }
 }
 
-impl loco_rs::model::TenantEntity for grant::Entity {
-    type TenantId = i64;
-
-    fn tenant_column() -> grant::Column {
-        grant::Column::HouseholdId
-    }
-}
-
 impl loco_rs::model::TenantEntity for health_event::Entity {
     type TenantId = i64;
 
@@ -96,14 +88,6 @@ impl loco_rs::model::TenantEntity for location::Entity {
     }
 }
 
-impl loco_rs::model::TenantEntity for location_membership::Entity {
-    type TenantId = i64;
-
-    fn tenant_column() -> location_membership::Column {
-        location_membership::Column::HouseholdId
-    }
-}
-
 impl loco_rs::model::TenantEntity for medication::Entity {
     type TenantId = i64;
 
@@ -141,14 +125,6 @@ impl loco_rs::model::TenantEntity for pause_period::Entity {
 
     fn tenant_column() -> pause_period::Column {
         pause_period::Column::HouseholdId
-    }
-}
-
-impl loco_rs::model::TenantEntity for person::Entity {
-    type TenantId = i64;
-
-    fn tenant_column() -> person::Column {
-        person::Column::HouseholdId
     }
 }
 

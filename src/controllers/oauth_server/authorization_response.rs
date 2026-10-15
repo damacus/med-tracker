@@ -42,7 +42,9 @@ pub(super) fn render(
     match format::render().view(
         view,
         "oauth/form_post.html",
-        serde_json::json!({"callback":output.callback.as_str(),"fields":fields}),
+        crate::views::template_data(
+            &serde_json::json!({"callback":output.callback.as_str(),"fields":fields}),
+        ),
     ) {
         Ok(response) => (
             [

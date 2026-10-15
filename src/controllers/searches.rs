@@ -83,7 +83,11 @@ async fn show(
     data["slug"] = json!(slug);
     data["query"] = json!(query);
     data["results"] = json!(results);
-    match format::render().view(&view, "searches/show.html", data) {
+    match format::render().view(
+        &view,
+        "searches/show.html",
+        crate::views::template_data(&data),
+    ) {
         Ok(response) => ([(header::CACHE_CONTROL, "no-store")], response).into_response(),
         Err(_) => unavailable(),
     }

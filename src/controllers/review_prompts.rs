@@ -4,7 +4,6 @@ use crate::{
         unavailable,
     },
     models::{
-        access::{self, PersonAccess},
         care::{
             report_pdf,
             review_prompts::{self, edit},
@@ -74,7 +73,7 @@ fn render(
             .unwrap()
             .extend(payload.as_object_mut().unwrap().clone());
     }
-    match format::render().view(view, template, context) {
+    match format::render().view(view, template, crate::views::template_data(&context)) {
         Ok(response) => (
             status,
             token.clone(),
@@ -131,20 +130,22 @@ async fn index(
         Ok(value) => value,
         Err(error) => return operation_error(error),
     };
-    let people = match access::people_with_access(&tenant, PersonAccess::View).await {
+    let people = match crate::models::person_identity::current_summaries(&tenant).await {
         Ok(value) => value,
         Err(error) => return operation_error(error),
     };
-    let manageable = match access::people_with_access(&tenant, PersonAccess::Manage).await {
+    let manageable = match crate::models::person_identity::current_summaries(&tenant).await {
         Ok(value) => value,
         Err(error) => return operation_error(error),
     };
     let names: HashMap<i64, String> = people
         .into_iter()
-        .map(|person| (person.id, person.name))
+        .map(|person| (person.id.get(), person.name))
         .collect();
-    let managed: std::collections::HashSet<i64> =
-        manageable.into_iter().map(|person| person.id).collect();
+    let managed: std::collections::HashSet<i64> = manageable
+        .into_iter()
+        .map(|person| person.id.get())
+        .collect();
     if let Some(rows) = data["data"].as_array_mut() {
         for row in rows {
             if let Some(id) = row["person_id"].as_str().and_then(|id| id.parse().ok()) {
@@ -352,7 +353,7 @@ async fn save(
             return Err(OperationError::Forbidden);
         }
         let record = sync::review_prompts::visible_prompt(tenant.transaction(), &context, &id).await?.ok_or(OperationError::NotFound)?;
-        if !sync::review_prompts::person_access(tenant.transaction(), &context, record.person_id, true).await? {
+        if !sync::review_prompts::person_access(tenant.transaction(), &context, record.person_id).await? {
             return Err(OperationError::Forbidden);
         }
         review_prompts::reconcile_person(&tenant, record.person_id).await?;

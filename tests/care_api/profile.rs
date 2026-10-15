@@ -124,7 +124,7 @@ async fn current_person_profile_api_saves_nonsecurity_fields_and_preserves_omitt
 }
 
 #[tokio::test]
-async fn profile_api_rejects_invalid_and_security_fields_atomically_and_rechecks_grants() {
+async fn profile_api_rejects_invalid_and_security_fields_atomically_and_rechecks_membership() {
     let app = profile_application().await;
     let token = app.token().await;
     let endpoint = format!("{}/api/v1/households/72001/profile", app.origin);
@@ -176,7 +176,7 @@ async fn profile_api_rejects_invalid_and_security_fields_atomically_and_rechecks
     assert_eq!(foreign.status().as_u16(), 403);
     app.fixture
         .admin
-        .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78001")
+        .execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001")
         .await
         .unwrap();
     let revoked = app
@@ -186,7 +186,7 @@ async fn profile_api_rejects_invalid_and_security_fields_atomically_and_rechecks
         .send()
         .await
         .unwrap();
-    assert!(matches!(revoked.status().as_u16(), 403 | 404));
+    assert_eq!(revoked.status().as_u16(), 403);
     app.close().await;
 }
 
@@ -202,10 +202,10 @@ async fn profile_get_matches_documented_contract() {
         operation["responses"]["404"]["$ref"],
         "#/components/responses/NotFound"
     );
-    let not_found = resolve(contract, &operation["responses"]["404"]);
-    let not_found_schema = resolve(
+    let forbidden = resolve(contract, &operation["responses"]["403"]);
+    let forbidden_schema = resolve(
         contract,
-        &not_found["content"]["application/json"]["schema"],
+        &forbidden["content"]["application/json"]["schema"],
     );
 
     let read = app
@@ -252,7 +252,7 @@ async fn profile_get_matches_documented_contract() {
 
     app.fixture
         .admin
-        .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78001")
+        .execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001")
         .await
         .unwrap();
     let denied = app
@@ -268,19 +268,19 @@ async fn profile_get_matches_documented_contract() {
         .unwrap()
         .to_owned();
     let denied_body: Value = denied.json().await.unwrap();
-    assert_eq!(denied_status, 404);
+    assert_eq!(denied_status, 403);
     assert_value(
         contract,
-        not_found_schema,
+        forbidden_schema,
         &denied_body,
-        "outside view scope",
+        "revoked household membership",
     );
-    assert_eq!(denied_body["error"]["code"], "not_found");
+    assert_eq!(denied_body["error"]["code"], "forbidden");
     assert_eq!(denied_body["error"]["request_id"], denied_request_id);
 
     app.fixture
         .admin
-        .execute_unprepared("UPDATE person_access_grants SET revoked_at=NULL WHERE id=78001")
+        .execute_unprepared("UPDATE household_memberships SET status='active',revoked_at=NULL,permissions_version=permissions_version+1 WHERE id=74001")
         .await
         .unwrap();
     let restored = app
@@ -426,7 +426,7 @@ async fn keyed_profile_update_replays_without_a_second_account_version() {
     assert_eq!(row.try_get::<i64>("", "n").unwrap(), 1);
     app.fixture
         .admin
-        .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78001")
+        .execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001")
         .await
         .unwrap();
     let denied_replay = app
@@ -438,7 +438,7 @@ async fn keyed_profile_update_replays_without_a_second_account_version() {
         .send()
         .await
         .unwrap();
-    assert!(matches!(denied_replay.status().as_u16(), 403 | 404));
+    assert_eq!(denied_replay.status().as_u16(), 403);
     assert!(
         denied_replay
             .headers()
@@ -485,7 +485,7 @@ async fn profile_and_notification_apis_reject_malformed_requests_without_writes(
         }
     }
     let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT (SELECT count(*) FROM versions WHERE item_type IN ('Account','Person','NotificationPreference')) AS versions, (SELECT count(*) FROM notification_preferences WHERE person_id=73001) AS preferences"
+        "SELECT (SELECT count(*) FROM versions WHERE item_type IN ('Account','Person','NotificationPreference')) AS versions, (SELECT count(*) FROM notification_preferences WHERE account_id=71001) AS preferences"
     )).await.unwrap().unwrap();
     assert_eq!(row.try_get::<i64>("", "versions").unwrap(), 0);
     assert_eq!(row.try_get::<i64>("", "preferences").unwrap(), 0);
@@ -493,12 +493,12 @@ async fn profile_and_notification_apis_reject_malformed_requests_without_writes(
 }
 
 #[tokio::test]
-async fn profile_and_notification_apis_require_the_account_linked_membership_person() {
+async fn profile_and_notification_apis_do_not_substitute_another_member_after_departure() {
     let app = profile_application().await;
     let token = app.token().await;
     app.fixture
         .admin
-        .execute_unprepared("UPDATE household_memberships SET person_id=73002 WHERE id=74001")
+        .execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001")
         .await
         .unwrap();
     for resource in ["profile", "notification_preference"] {
@@ -520,9 +520,15 @@ async fn profile_and_notification_apis_require_the_account_linked_membership_per
                 .send()
                 .await
                 .unwrap();
-            assert!(matches!(response.status().as_u16(), 403 | 404));
+            assert_eq!(response.status().as_u16(), 403);
         }
     }
+    let unchanged = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT (SELECT count(*) FROM household_memberships WHERE id IN(74902,74903) AND status='active' AND revoked_at IS NULL) AS other_members,(SELECT count(*) FROM versions WHERE item_type IN('Account','Person','NotificationPreference')) AS edits,(SELECT count(*) FROM notification_preferences WHERE account_id=71001) AS preferences"
+    )).await.unwrap().unwrap();
+    assert_eq!(unchanged.try_get::<i64>("", "other_members").unwrap(), 2);
+    assert_eq!(unchanged.try_get::<i64>("", "edits").unwrap(), 0);
+    assert_eq!(unchanged.try_get::<i64>("", "preferences").unwrap(), 0);
     app.close().await;
 }
 
@@ -575,7 +581,7 @@ async fn profile_and_notification_apis_roll_back_mutations_when_request_audit_fa
         .unwrap();
     assert_eq!(current, initial);
     let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT (SELECT is_called FROM profile_request_audit_reached) AS reached, (SELECT count(*) FROM versions WHERE item_type IN ('Account','Person','NotificationPreference')) AS versions, (SELECT count(*) FROM notification_preferences WHERE person_id=73001) AS preferences, (SELECT count(*) FROM api_idempotency_keys WHERE key LIKE 'synthetic-audit-%') AS keys, (SELECT count(*) FROM api_change_events WHERE record_type IN ('Person','NotificationPreference')) AS changes"
+        "SELECT (SELECT is_called FROM profile_request_audit_reached) AS reached, (SELECT count(*) FROM versions WHERE item_type IN ('Account','Person','NotificationPreference')) AS versions, (SELECT count(*) FROM notification_preferences WHERE account_id=71001) AS preferences, (SELECT count(*) FROM api_idempotency_keys WHERE key LIKE 'synthetic-audit-%') AS keys, (SELECT count(*) FROM api_change_events WHERE record_type IN ('Person','NotificationPreference')) AS changes"
     )).await.unwrap().unwrap();
     assert!(row.try_get::<bool>("", "reached").unwrap());
     for column in ["versions", "preferences", "keys", "changes"] {
@@ -655,12 +661,15 @@ async fn overlapping_profile_requests(
         ("households", 72001)
     };
     let blocker = app.fixture.admin.begin().await.unwrap();
-    blocker
+    let blocker_pid: i32 = blocker
         .query_one_raw(Statement::from_string(
             DbBackend::Postgres,
-            format!("SELECT id FROM {table} WHERE id={id} FOR UPDATE"),
+            format!("SELECT id,pg_backend_pid() AS pid FROM {table} WHERE id={id} FOR UPDATE"),
         ))
         .await
+        .unwrap()
+        .unwrap()
+        .try_get("", "pid")
         .unwrap();
     let endpoint = format!("{}/api/v1/households/72001/{resource}", app.origin);
     let first = app
@@ -680,8 +689,8 @@ async fn overlapping_profile_requests(
     let release = async {
         let mut reached = false;
         for _ in 0..200 {
-            let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-                "SELECT count(*) AS waiting FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND (query LIKE '%FOR UPDATE%' OR query LIKE '%FOR NO KEY UPDATE%')"
+            let row = app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+                "WITH RECURSIVE blocked(pid) AS (SELECT pid FROM pg_stat_activity WHERE datname=current_database() AND $1=ANY(pg_blocking_pids(pid)) UNION SELECT a.pid FROM pg_stat_activity a JOIN blocked b ON b.pid=ANY(pg_blocking_pids(a.pid)) WHERE a.datname=current_database()) SELECT count(*) AS waiting FROM blocked", [blocker_pid.into()]
             )).await.unwrap().unwrap();
             if row.try_get::<i64>("", "waiting").unwrap() >= 2 {
                 reached = true;
@@ -761,7 +770,7 @@ async fn overlapping_keyed_profile_and_notification_requests_replay_once_and_con
     app.close().await;
 }
 
-async fn issue_profile_personal_key(app: &Application, name: &str) -> String {
+pub(super) async fn issue_profile_personal_key(app: &Application, name: &str) -> String {
     use better_auth_core::{AuthRequest, HttpMethod};
     use med_tracker::models::identity::better_auth::{IdentityService, dispatch};
     app.fixture.admin.execute_unprepared(
@@ -926,6 +935,17 @@ async fn profile_write_does_not_deadlock_a_household_writer_recording_actor_audi
     .await
     .unwrap();
     locations::authorize(&tenant).await.unwrap();
+    let blocker_pid: i32 = tenant
+        .transaction()
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT pg_backend_pid() AS pid",
+        ))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("", "pid")
+        .unwrap();
     let client = app.client.clone();
     let endpoint = format!("{}/api/v1/households/72001/profile", app.origin);
     let profile = tokio::spawn(async move {
@@ -939,8 +959,8 @@ async fn profile_write_does_not_deadlock_a_household_writer_recording_actor_audi
     });
     let mut waiting = false;
     for _ in 0..200 {
-        let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-            "SELECT count(*) AS waiting FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE '%households%' AND query LIKE '%FOR UPDATE%'"
+        let row = app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+            "WITH RECURSIVE blocked(pid) AS (SELECT pid FROM pg_stat_activity WHERE datname=current_database() AND $1=ANY(pg_blocking_pids(pid)) UNION SELECT a.pid FROM pg_stat_activity a JOIN blocked b ON b.pid=ANY(pg_blocking_pids(a.pid)) WHERE a.datname=current_database()) SELECT count(*) AS waiting FROM blocked", [blocker_pid.into()]
         )).await.unwrap().unwrap();
         if row.try_get::<i64>("", "waiting").unwrap() > 0 {
             waiting = true;
@@ -1043,6 +1063,19 @@ async fn membership_change_during_read_reports_forbidden_not_missing_profile() {
         notification_preferences, profile,
     };
     let app = profile_application().await;
+    let token = app.token().await;
+    let created = app
+        .client
+        .patch(format!(
+            "{}/api/v1/households/72001/notification_preference",
+            app.origin
+        ))
+        .bearer_auth(token)
+        .json(&json!({"notification_preference":{"enabled":false}}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(created.status().as_u16(), 200);
     let scope = HouseholdScope {
         actor: Actor { account_id: 71001 },
         household_id: 72001,
@@ -1059,20 +1092,42 @@ async fn membership_change_during_read_reports_forbidden_not_missing_profile() {
         .await
         .unwrap();
     let snapshot = profile::read(&tenant, 71001).await;
-    let preferences = notification_preferences::read(&tenant, 71001).await;
+    let preferences = notification_preferences::read(
+        &tenant,
+        med_tracker::models::ids::AccountId::from_database(71001),
+    )
+    .await;
     tenant.rollback().await.unwrap();
+    let current_tenant = access::begin(&app.fixture.runtime, &scope, None)
+        .await
+        .unwrap();
+    let current_profile = profile::read(&current_tenant, 71001).await;
+    let current_preferences = notification_preferences::read(
+        &current_tenant,
+        med_tracker::models::ids::AccountId::from_database(71001),
+    )
+    .await;
     app.fixture
         .admin
-        .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78001")
+        .execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001")
         .await
         .unwrap();
-    let unscoped_tenant = access::begin(&app.fixture.runtime, &scope, None)
+    let revoked_profile = profile::read(&current_tenant, 71001).await;
+    let revoked_preferences = notification_preferences::read(
+        &current_tenant,
+        med_tracker::models::ids::AccountId::from_database(71001),
+    )
+    .await;
+    current_tenant.rollback().await.unwrap();
+    let fresh_denial = access::begin(&app.fixture.runtime, &scope, None)
         .await
-        .unwrap();
-    let unscoped = profile::read(&unscoped_tenant, 71001).await;
-    unscoped_tenant.rollback().await.unwrap();
+        .err();
     app.close().await;
     assert_eq!(snapshot.err(), Some(OperationError::Forbidden));
     assert_eq!(preferences.err(), Some(OperationError::Forbidden));
-    assert_eq!(unscoped.err(), Some(OperationError::NotFound));
+    assert!(current_profile.is_ok());
+    assert!(current_preferences.is_ok());
+    assert_eq!(revoked_profile.err(), Some(OperationError::Forbidden));
+    assert_eq!(revoked_preferences.err(), Some(OperationError::Forbidden));
+    assert_eq!(fresh_denial, Some(OperationError::Forbidden));
 }

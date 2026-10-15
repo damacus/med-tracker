@@ -17,6 +17,7 @@ pub struct Model {
     #[sea_orm(unique_key = "index_locations_on_household_id_and_portable_id")]
     pub portable_id: String,
     pub updated_at: DateTime,
+    pub retired_at: Option<DateTime>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

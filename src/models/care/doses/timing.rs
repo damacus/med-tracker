@@ -1,5 +1,7 @@
 use super::*;
+use crate::models::care::take_history::{self, TimingFacts, TimingWindow};
 use loco_rs::model::TenantQueryExt;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 pub(super) fn applies_on(source: &Source, date: NaiveDate) -> bool {
     let Some(kind) = source.schedule_type else {
@@ -52,7 +54,9 @@ pub(super) fn applies_on(source: &Source, date: NaiveDate) -> bool {
 }
 
 fn local_midnight_utc(date: NaiveDate, zone: chrono_tz::Tz) -> Result<NaiveDateTime, ApiError> {
-    let midnight = date.and_hms_opt(0, 0, 0).expect("midnight is valid");
+    let midnight = date
+        .and_hms_opt(0, 0, 0)
+        .ok_or(OperationError::Unavailable)?;
     zone.from_local_datetime(&midnight)
         .earliest()
         .or_else(|| chrono_tz::GapInfo::new(&midnight, &zone).and_then(|gap| gap.end))
@@ -68,14 +72,16 @@ fn cycle_bounds(
     cycle_bounds_in_zone(time, cycle, zone)
 }
 
-pub(super) fn cycle_bounds_in_zone(
+/// # Errors
+/// Returns an error when local calendar boundaries cannot resolve to UTC.
+pub(crate) fn cycle_bounds_in_zone(
     time: NaiveDateTime,
     cycle: Option<i32>,
     zone: chrono_tz::Tz,
 ) -> Result<(NaiveDateTime, NaiveDateTime), ApiError> {
     let date = local_date_in_zone(time, zone);
     let start = match cycle.unwrap_or(0) {
-        1 => date - Duration::days(date.weekday().num_days_from_monday() as i64),
+        1 => date - Duration::days(i64::from(date.weekday().num_days_from_monday())),
         2 => NaiveDate::from_ymd_opt(date.year(), date.month(), 1).unwrap_or(date),
         _ => date,
     };
@@ -99,12 +105,12 @@ pub(super) fn cycle_bounds_in_zone(
 
 pub(super) async fn timing_allowed(
     db: &DatabaseTransaction,
-    proposed: &ProposedTake,
+    proposed: &TakeCandidate,
 ) -> Result<bool, ApiError> {
     let assignments = person_medication::Entity::find()
         .in_tenant(proposed.selected.household_id)
-        .filter(person_medication::Column::PersonId.eq(proposed.source.person_id))
-        .filter(person_medication::Column::MedicationId.eq(proposed.source.medication_id))
+        .filter(person_medication::Column::PersonId.eq(proposed.source.person_id.get()))
+        .filter(person_medication::Column::MedicationId.eq(proposed.source.medication_id.get()))
         .filter(person_medication::Column::Active.eq(true))
         .filter(person_medication::Column::RetiredAt.is_null())
         .all(db)
@@ -112,8 +118,8 @@ pub(super) async fn timing_allowed(
         .map_err(database_error)?;
     let schedules = schedule::Entity::find()
         .in_tenant(proposed.selected.household_id)
-        .filter(schedule::Column::PersonId.eq(proposed.source.person_id))
-        .filter(schedule::Column::MedicationId.eq(proposed.source.medication_id))
+        .filter(schedule::Column::PersonId.eq(proposed.source.person_id.get()))
+        .filter(schedule::Column::MedicationId.eq(proposed.source.medication_id.get()))
         .filter(schedule::Column::Active.eq(true))
         .filter(schedule::Column::RetiredAt.is_null())
         .all(db)
@@ -131,70 +137,82 @@ pub(super) async fn timing_allowed(
                 }),
         )
         .collect();
-    if related.is_empty() {
-        return Ok(true);
+    let rules = timing_rules(related, proposed.taken_at, proposed.zone)?;
+    let windows = unique_windows(rules.iter());
+    let facts = take_history::timing_facts(
+        db,
+        HouseholdId::from_database(proposed.selected.household_id),
+        &windows,
+        proposed.taken_at,
+    )
+    .await?;
+    Ok(timing_block(&rules, &facts, proposed.taken_at)?.is_none())
+}
+
+struct TimingRule {
+    window: TimingWindow,
+    maximum: Option<u64>,
+    minimum_hours: Option<Decimal>,
+}
+
+fn timing_rules(
+    sources: Vec<Source>,
+    taken_at: NaiveDateTime,
+    zone: chrono_tz::Tz,
+) -> Result<Vec<TimingRule>, ApiError> {
+    let mut rules = Vec::new();
+    for mut source in sources {
+        effective_source(&mut source, local_date_in_zone(taken_at, zone));
+        let minimum_hours = source
+            .min_hours_between_doses
+            .filter(|hours| *hours > Decimal::ZERO);
+        if source.max_daily_doses.is_none() && minimum_hours.is_none() {
+            continue;
+        }
+        let (start, end) = cycle_bounds(taken_at, source.dose_cycle, zone)?;
+        rules.push(TimingRule {
+            window: TimingWindow {
+                person_id: source.person_id,
+                medication_id: source.medication_id,
+                start,
+                end,
+            },
+            maximum: source
+                .max_daily_doses
+                .map(|maximum| u64::try_from(maximum.max(0)))
+                .transpose()
+                .map_err(|_| OperationError::Unavailable)?,
+            minimum_hours,
+        });
     }
-    let schedule_ids: Vec<i64> = related
-        .iter()
-        .filter(|source| source.kind == "schedule")
-        .map(|source| source.id)
-        .collect();
-    let assignment_ids: Vec<i64> = related
-        .iter()
-        .filter(|source| source.kind == "person_medication")
-        .map(|source| source.id)
-        .collect();
-    let mut condition = Condition::any();
-    if !schedule_ids.is_empty() {
-        condition = condition.add(medication_take::Column::ScheduleId.is_in(schedule_ids));
-    }
-    if !assignment_ids.is_empty() {
-        condition =
-            condition.add(medication_take::Column::PersonMedicationId.is_in(assignment_ids));
-    }
-    let takes = medication_take::Entity::find()
-        .in_tenant(proposed.selected.household_id)
-        .filter(condition)
-        .all(db)
-        .await
-        .map_err(database_error)?;
-    Ok(timing_block(&related, &takes, proposed.taken_at, proposed.zone)?.is_none())
+    Ok(rules)
+}
+
+fn unique_windows<'a>(rules: impl Iterator<Item = &'a TimingRule>) -> Vec<TimingWindow> {
+    rules
+        .map(|rule| rule.window)
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect()
 }
 
 fn timing_block(
-    related: &[Source],
-    takes: &[medication_take::Model],
+    rules: &[TimingRule],
+    facts: &HashMap<TimingWindow, TimingFacts>,
     taken_at: NaiveDateTime,
-    zone: chrono_tz::Tz,
 ) -> Result<Option<&'static str>, ApiError> {
-    for mut source in related.iter().cloned() {
-        effective_source(&mut source, local_date_in_zone(taken_at, zone));
-        if let Some(max_doses) = source.max_daily_doses {
-            let (start, end) = cycle_bounds(taken_at, source.dose_cycle, zone)?;
-            let count = takes
-                .iter()
-                .filter(|take| {
-                    take.taken_at
-                        .is_some_and(|time| time >= start && time < end)
-                })
-                .count();
-            if count >= max_doses.max(0) as usize {
-                return Ok(Some("max_reached"));
-            }
-        }
-        if let Some(hours) = source.min_hours_between_doses
-            && hours > Decimal::ZERO
+    for rule in rules {
+        let facts = facts.get(&rule.window).ok_or(OperationError::Unavailable)?;
+        if rule
+            .maximum
+            .is_some_and(|maximum| facts.cycle_count >= maximum)
         {
-            let recent = takes
-                .iter()
-                .filter_map(|take| take.taken_at)
-                .filter(|time| *time <= taken_at)
-                .max();
-            if let Some(recent) = recent {
-                let elapsed = Decimal::from((taken_at - recent).num_seconds());
-                if elapsed < hours * Decimal::from(3600) {
-                    return Ok(Some("cooldown"));
-                }
+            return Ok(Some("max_reached"));
+        }
+        if let (Some(hours), Some(recent)) = (rule.minimum_hours, facts.latest_at) {
+            let elapsed = Decimal::from((taken_at - recent).num_seconds());
+            if elapsed < hours * Decimal::from(3600) {
+                return Ok(Some("cooldown"));
             }
         }
     }
@@ -207,8 +225,8 @@ pub(crate) async fn dashboard_timing(
     assignments: &[person_medication::Model],
     now: DateTime<Utc>,
     zone: chrono_tz::Tz,
-) -> Result<std::collections::HashMap<(i64, i64), &'static str>, ApiError> {
-    let sources: Vec<_> = assignments
+) -> Result<HashMap<(i64, i64), &'static str>, ApiError> {
+    let sources = assignments
         .iter()
         .cloned()
         .map(source_from_assignment)
@@ -217,48 +235,30 @@ pub(crate) async fn dashboard_timing(
             source.active
                 && !source.retired
                 && applies_on(source, now.with_timezone(&zone).date_naive())
-        })
-        .collect();
-    let schedule_ids: Vec<_> = sources
-        .iter()
-        .filter(|source| source.kind == "schedule")
-        .map(|source| source.id)
-        .collect();
-    let assignment_ids: Vec<_> = sources
-        .iter()
-        .filter(|source| source.kind == "person_medication")
-        .map(|source| source.id)
-        .collect();
-    let takes = medication_take::Entity::find()
-        .filter(medication_take::Column::HouseholdId.eq(tenant.scope().household_id))
-        .filter(
-            Condition::any()
-                .add(medication_take::Column::ScheduleId.is_in(schedule_ids))
-                .add(medication_take::Column::PersonMedicationId.is_in(assignment_ids)),
-        )
-        .all(tenant.transaction())
-        .await?;
-    let mut groups = std::collections::HashMap::<_, Vec<Source>>::new();
+        });
+    let mut groups = BTreeMap::<_, Vec<Source>>::new();
     for source in sources {
         groups
             .entry((source.person_id, source.medication_id))
             .or_default()
             .push(source);
     }
-    let mut result = std::collections::HashMap::new();
-    for (key, related) in groups {
-        let related_takes: Vec<_> = takes
-            .iter()
-            .filter(|take| {
-                related.iter().any(|source| match source.kind {
-                    "schedule" => take.schedule_id == Some(source.id),
-                    _ => take.person_medication_id == Some(source.id),
-                })
-            })
-            .cloned()
-            .collect();
-        if let Some(reason) = timing_block(&related, &related_takes, now.naive_utc(), zone)? {
-            result.insert(key, reason);
+    let mut rules = BTreeMap::new();
+    for (key, sources) in groups {
+        rules.insert(key, timing_rules(sources, now.naive_utc(), zone)?);
+    }
+    let windows = unique_windows(rules.values().flat_map(|rules| rules.iter()));
+    let facts = take_history::timing_facts(
+        tenant.transaction(),
+        HouseholdId::from_database(tenant.scope().household_id),
+        &windows,
+        now.naive_utc(),
+    )
+    .await?;
+    let mut result = HashMap::new();
+    for ((person, medication), rules) in rules {
+        if let Some(reason) = timing_block(&rules, &facts, now.naive_utc())? {
+            result.insert((person.get(), medication.get()), reason);
         }
     }
     Ok(result)

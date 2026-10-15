@@ -40,7 +40,11 @@ fn render_index(
             .collect::<Vec<Value>>()
     );
     data["authenticity_token"] = json!(authenticity);
-    match format::render().view(view, "platform/support.html", data) {
+    match format::render().view(
+        view,
+        "platform/support.html",
+        crate::views::template_data(&data),
+    ) {
         Ok(response) => (
             StatusCode::OK,
             token.clone(),
@@ -91,7 +95,11 @@ fn render_read(
             .collect::<Vec<Value>>()
     );
     data["authenticity_token"] = json!(authenticity);
-    match format::render().view(view, "platform/support_read.html", data) {
+    match format::render().view(
+        view,
+        "platform/support_read.html",
+        crate::views::template_data(&data),
+    ) {
         Ok(response) => (
             StatusCode::OK,
             token.clone(),

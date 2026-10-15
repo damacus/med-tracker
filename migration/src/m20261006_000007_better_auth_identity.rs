@@ -3,10 +3,7 @@ use sea_orm_migration::prelude::*;
 #[derive(DeriveMigrationName)]
 pub struct Migration;
 
-#[async_trait::async_trait]
-impl MigrationTrait for Migration {
-    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        manager.get_connection().execute_unprepared(r#"
+const IDENTITY_SQL: &str = r"
 CREATE TABLE public.identity_rate_limits (
     bucket text PRIMARY KEY,
     attempts integer NOT NULL CHECK(attempts > 0),
@@ -222,18 +219,39 @@ REVOKE ALL ON FUNCTION public.identity_delete_expired_sessions() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.identity_delete_expired_sessions() TO med_tracker_app;
 CREATE POLICY identity_invitation_recipient ON public.household_invitations FOR SELECT TO med_tracker_app, med_tracker_owner
 USING (accepted_at IS NULL AND revoked_at IS NULL AND expires_at>CURRENT_TIMESTAMP
-AND email = (SELECT a.email FROM public.accounts a WHERE a.id=med_tracker.current_account_id() AND a.status=2 AND NOT EXISTS(SELECT 1 FROM public.account_lockouts l WHERE l.account_id=a.id AND l.deadline>CURRENT_TIMESTAMP))
+AND email = (SELECT a.email FROM public.accounts a WHERE a.id=med_tracker.current_account_id() AND a.status=2 AND a.disabled_at IS NULL AND NOT EXISTS(SELECT 1 FROM public.account_lockouts l WHERE l.account_id=a.id AND l.deadline>CURRENT_TIMESTAMP))
 AND EXISTS(SELECT 1 FROM public.identity_sessions s WHERE s.account_id=med_tracker.current_account_id() AND s.token=NULLIF(current_setting('med_tracker.identity_session_token',true),'') AND s.active AND s.purpose='authenticated' AND s.expires_at>CURRENT_TIMESTAMP));
 CREATE POLICY identity_inviter_projection ON public.household_memberships FOR SELECT TO med_tracker_owner
-USING (EXISTS(SELECT 1 FROM public.household_invitations i WHERE i.invited_by_membership_id=household_memberships.id AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at>CURRENT_TIMESTAMP AND i.email=(SELECT a.email FROM public.accounts a WHERE a.id=med_tracker.current_account_id() AND a.status=2)));
+USING (EXISTS(SELECT 1 FROM public.household_invitations i WHERE i.invited_by_membership_id=household_memberships.id AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at>CURRENT_TIMESTAMP AND i.email=(SELECT a.email FROM public.accounts a WHERE a.id=med_tracker.current_account_id() AND a.status=2 AND a.disabled_at IS NULL)));
 CREATE POLICY identity_invitation_session_owner ON public.identity_sessions FOR SELECT TO med_tracker_owner
 USING (account_id=med_tracker.current_account_id() AND token=NULLIF(current_setting('med_tracker.identity_session_token',true),''));
 CREATE FUNCTION public.identity_invitation_inviter(invitation_id bigint) RETURNS bigint
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog
-AS 'SELECT inviter.id FROM public.household_invitations i JOIN public.household_memberships m ON m.id=i.invited_by_membership_id AND m.household_id=i.household_id JOIN public.accounts inviter ON inviter.person_id=m.person_id WHERE i.id=invitation_id AND i.email=(SELECT a.email FROM public.accounts a WHERE a.id=med_tracker.current_account_id() AND a.status=2)';
+AS 'SELECT inviter.id FROM public.household_invitations i JOIN public.household_memberships m ON m.id=i.invited_by_membership_id AND m.household_id=i.household_id JOIN public.accounts inviter ON inviter.person_id=m.person_id WHERE i.id=invitation_id AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at>CURRENT_TIMESTAMP
+AND m.status=''active'' AND m.revoked_at IS NULL AND m.role IN (''owner'',''administrator'')
+AND inviter.status=2 AND inviter.disabled_at IS NULL AND NOT EXISTS(SELECT 1 FROM public.account_lockouts l WHERE l.account_id=inviter.id AND l.deadline>CURRENT_TIMESTAMP)
+AND EXISTS(SELECT 1 FROM public.households h WHERE h.id=i.household_id AND h.status=''active'' AND h.lifecycle_state=''active'')
+AND i.email=(SELECT a.email FROM public.accounts a WHERE a.id=med_tracker.current_account_id() AND a.status=2 AND a.disabled_at IS NULL AND NOT EXISTS(SELECT 1 FROM public.account_lockouts l WHERE l.account_id=a.id AND l.deadline>CURRENT_TIMESTAMP))
+AND EXISTS(SELECT 1 FROM public.identity_sessions s WHERE s.account_id=med_tracker.current_account_id() AND s.token=NULLIF(current_setting(''med_tracker.identity_session_token'',true),'''') AND s.active AND s.purpose=''authenticated'' AND s.expires_at>CURRENT_TIMESTAMP)';
 REVOKE ALL ON FUNCTION public.identity_invitation_inviter(bigint) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.identity_invitation_inviter(bigint) TO med_tracker_app;
-"#).await?;
+";
+
+#[async_trait::async_trait]
+impl MigrationTrait for Migration {
+    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager
+            .get_connection()
+            .execute_unprepared(IDENTITY_SQL)
+            .await?;
+        manager
+            .get_connection()
+            .execute_unprepared(include_str!("fresh/platform.sql"))
+            .await?;
+        manager
+            .get_connection()
+            .execute_unprepared(include_str!("fresh/notifications.sql"))
+            .await?;
         Ok(())
     }
 }

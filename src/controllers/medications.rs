@@ -7,7 +7,7 @@ mod wizard;
 mod workflow;
 
 use crate::models::{
-    access::{self, PersonAccess, TenantTransaction},
+    access::{self, TenantTransaction},
     care::{browser_query, doses, medications},
     errors::OperationError,
     identity::{
@@ -161,7 +161,7 @@ async fn index(
         Ok(value) => value,
         Err(error) => return operation_error(error),
     };
-    let can_assign = match access::has_person_access(&tenant, PersonAccess::Manage).await {
+    let can_assign = match access::has_participants(&tenant).await {
         Ok(value) => value,
         Err(error) => return operation_error(error),
     };
@@ -361,10 +361,9 @@ async fn take(
     let result = async {
         let detail = browser_query::detail(&tenant, &id, principal.time_zone()).await?;
         let input = forms::take(&detail, &draft, principal.time_zone())?;
-        doses::execute_in_timezone(
+        doses::execute_with_provenance(
             &tenant,
-            doses::Command::Take(input),
-            principal.time_zone(),
+            doses::Request::Take(input),
             Some(principal.provenance()),
         )
         .await

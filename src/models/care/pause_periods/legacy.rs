@@ -36,7 +36,7 @@ async fn change(
 ) -> Result<(Value, String), OperationError> {
     lock(tenant).await?;
     let source = source_path(tenant, kind, id).await?;
-    access::require_person_access(tenant, source.person_id(), PersonAccess::Manage).await?;
+    access::require_participation(tenant, source.person_id()).await?;
     if body.as_object().is_none_or(|body| !body.is_empty()) {
         return Err(invalid("body", "must be empty"));
     }
@@ -114,7 +114,7 @@ pub async fn reorder_assignment(
     let Source::Assignment(source) = source_path(tenant, Kind::Assignment, id).await? else {
         return Err(OperationError::NotFound);
     };
-    access::require_person_access(tenant, source.person_id, PersonAccess::Manage).await?;
+    access::require_participation(tenant, source.person_id).await?;
     let direction = body
         .as_object()
         .filter(|map| map.len() == 1)

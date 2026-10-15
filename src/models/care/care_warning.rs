@@ -1,11 +1,9 @@
 use crate::models::{
     access::{self, TenantTransaction},
-    authorization,
-    entities::{carer_relationship, grant, person},
+    entities::{carer_relationship, person},
     errors::OperationError,
 };
 use loco_rs::model::TenantQueryExt;
-use sea_orm::sea_query::{Expr, ExprTrait};
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect};
 use serde_json::{Value, json};
 use std::collections::{HashMap, HashSet};
@@ -15,11 +13,12 @@ pub async fn project(
     selected: Option<&[i64]>,
 ) -> Result<HashMap<i64, Value>, OperationError> {
     access::recheck(tenant).await?;
-    let mut query = person::Entity::find()
-        .in_tenant(tenant.scope().household_id)
-        .filter(person::Column::Id.in_subquery(access::granted_people(tenant.membership())))
-        .filter(person::Column::PersonType.is_in([1, 2]))
-        .filter(person::Column::HasCapacity.eq(false));
+    let mut query = crate::models::access::person_scope(
+        crate::models::ids::HouseholdId::from_database(tenant.scope().household_id),
+    )
+    .filter(person::Column::Id.in_subquery(access::granted_people(tenant.membership())))
+    .filter(person::Column::PersonType.is_in([1, 2]))
+    .filter(person::Column::HasCapacity.eq(false));
     if let Some(ids) = selected {
         if ids.is_empty() {
             return Ok(HashMap::new());
@@ -27,7 +26,7 @@ pub async fn project(
         query = query.filter(person::Column::Id.is_in(ids.iter().copied()));
     }
     let rows = query
-        .order_by_asc(person::Column::Name)
+        .order_by_asc(person::Column::Id)
         .all(tenant.transaction())
         .await?;
     if rows.is_empty() {
@@ -44,28 +43,20 @@ pub async fn project(
         .await?
         .into_iter()
         .collect();
-    let mut manageable = access::granted_people(tenant.membership());
-    manageable.and_where(Expr::col(grant::Column::AccessLevel).eq("manage"));
-    let manageable: HashSet<i64> = person::Entity::find()
-        .select_only()
-        .column(person::Column::Id)
-        .in_tenant(tenant.scope().household_id)
-        .filter(person::Column::Id.in_subquery(manageable))
-        .filter(person::Column::Id.is_in(rows.iter().map(|row| row.id)))
-        .into_tuple::<i64>()
-        .all(tenant.transaction())
-        .await?
-        .into_iter()
-        .collect();
+    let names = crate::models::person_identity::display_names(
+        tenant,
+        rows.iter()
+            .map(|row| crate::models::ids::PersonId::from_database(row.id)),
+    )
+    .await?;
     Ok(rows
         .into_iter()
         .filter(|row| !assigned.contains(&row.id))
         .map(|row| {
-            let can_assign = authorization::may_delegate(tenant.membership(), &row)
-                && (access::can_manage_household(tenant) || manageable.contains(&row.id));
+            let can_assign = access::can_manage_household(tenant);
             (
                 row.id,
-                json!({"person_id":row.id,"person_name":row.name,"can_assign":can_assign}),
+                json!({"person_id":row.id,"person_name":names.get(&crate::models::ids::PersonId::from_database(row.id)),"can_assign":can_assign}),
             )
         })
         .collect())

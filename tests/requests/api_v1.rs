@@ -1,9 +1,21 @@
 #[path = "capabilities.rs"]
 mod capabilities;
+#[path = "care_history.rs"]
+mod care_history;
+#[path = "self_medication_history.rs"]
+mod self_medication_history;
+#[path = "self_medication_history_browser.rs"]
+mod self_medication_history_browser;
 #[path = "../care_api/contract.rs"]
 mod contract;
+#[path = "dose_history_safety.rs"]
+mod dose_history_safety;
 #[path = "../care_api/fixture.rs"]
 mod fixture;
+#[path = "identity_runtime.rs"]
+mod identity_runtime;
+#[path = "location_labels.rs"]
+mod location_labels;
 
 use fixture::Fixture;
 use loco_rs::{
@@ -80,7 +92,7 @@ fn operations() -> BTreeMap<(String, String), Value> {
     let source = include_str!("../../docs/api/openapi.v1.yaml");
     assert_eq!(
         hex::encode(Sha256::digest(source.as_bytes())),
-        "2e974738ac88e583452ac342690814e651226c93cf85571bf89908cd0a200758",
+        "2c3a829bedb9c8409a9856c67817ba577a9a14f19a4567fedc2db39253e3b920",
         "The full API schema or headers changed; refresh the operation inventory and its evidence"
     );
     let document: Value = serde_yaml_ng::from_str(source).unwrap();
@@ -203,6 +215,12 @@ fn validate_evidence(entry: &Value) -> Result<(), String> {
                 {"binary":"requests","test":"api_v1::capabilities::capability_database_lookup_failure_uses_existing_unavailable_envelope","checks":["GET-503-existing-unlisted-temporarily_unavailable-envelope-for-controlled-query-failure","GET-503-JSON-no-store-no-cache-request-id","GET-503-unchanged-medication-effects-and-credential-counts"]},
             ]
         })
+    } else if entry["operation_id"] == "listSelfMedicationHistory" {
+        json!({"coverage":"partial","evidence":[{"binary":"requests","test":"api_v1::self_medication_history::own_original_medication_history_survives_departure_from_every_household","checks":["GET-200-recursive-OwnMedicationHistoryResponse-zero-household-own-originals-foreign-person-excluded","unchanged-clinical-state-stock-queue"]},{"binary":"requests","test":"api_v1::self_medication_history::self_history_pages_backdated_and_equal_time_events_in_clinical_order","checks":["GET-200-two-page-chronological-keyset-equal-time-ID-tiebreak","half-open-UTC-bounds-no-clinical-effects"]},{"binary":"requests","test":"api_v1::self_medication_history::self_history_returns_original_source_stock_location_and_recording_provenance","checks":["GET-200-original-source-stock-location-portable-identities-clientUUID-recorded-time-after-renames-retirement-departure"]},{"binary":"requests","test":"api_v1::self_medication_history::self_history_rejects_unrepresentable_or_inexact_time_boundaries","checks":["GET-422-PG-range-overflow-submicrosecond-and-leap-second-bounds"]},{"binary":"requests","test":"api_v1::self_medication_history::self_history_account_authority_is_held_until_success_audit_commit","checks":["GET-200-revoker-waits-for-Account-SHARE-through-success-audit-commit"]},{"binary":"requests","test":"api_v1::self_medication_history::self_history_account_disable_committing_first_denies_without_success_audit","checks":["GET-401-after-waiting-for-Account-disable-commit-no-success-audit"]},{"binary":"care_api","test":"self_medication_history_security::self_history_excludes_personal_smart_and_household_bound_stored_credentials","checks":["valid-local-credential-prerequisites-global401-personal-SMART-global403-bound-session-app","no-store-no-global-access-audit"]},{"binary":"care_api","test":"self_medication_history_security::source_audit_uses_server_trace_and_excludes_clinical_and_client_markers","checks":["GET-200-server-generated-audit-and-response-UUIDv4-ignore-both-forged-trace-headers","source-ledger-exclude-clinical-and-client-markers"]},{"binary":"care_api","test":"self_medication_history_security::source_audit_failure_returns_no_clinical_response_and_rolls_back","checks":["GET-500-reached-source-insert-failure-no-clinical-data-no-store","zero-source-ledger-delivery-after-rollback"]}]})
+    } else if entry["operation_id"] == "getAccountProfile" {
+        json!({"coverage":"partial","evidence":[{"binary":"care_api","test":"account_profile::zero_household_mobile_account_reads_updates_and_refreshes_its_own_profile","checks":["GET-200-recursive-AccountProfileResponse-seven-account-fields-no-store","zero-household-mobile-account-read-write-refresh-clinical403-attributed-global-audit"]},{"binary":"care_api","test":"account_profile::account_profile_rejects_inactive_locked_expired_revoked_and_narrowed_oauth","checks":["GET-401-unverified-disabled-locked-expired-revoked-and403-effective-scope-no-store-no-mutation"]}]})
+    } else if entry["operation_id"] == "updateAccountProfile" {
+        json!({"coverage":"partial","evidence":[{"binary":"care_api","test":"account_profile::zero_household_mobile_account_reads_updates_and_refreshes_its_own_profile","checks":["PATCH-200-recursive-AccountProfileResponse-seven-account-fields-no-store","zero-household-mobile-account-read-write-refresh-clinical403-attributed-global-audit"]},{"binary":"care_api","test":"account_profile::account_profile_rejects_inactive_locked_expired_revoked_and_narrowed_oauth","checks":["PATCH-401-unverified-disabled-locked-expired-revoked-and403-effective-scope-no-store-no-mutation"]},{"binary":"care_api","test":"account_profile::patch_rejects_unknown_null_wrong_type_and_clinical_fields_atomically","checks":["PATCH-400-malformed-json-422-unknown-nested-null-type-target-clinical-fields-no-store-atomic-state","PATCH-absent-fields-preserved"]},{"binary":"care_api","test":"account_profile::account_version_failure_rolls_back_earlier_name_and_preferences","checks":["PATCH-reached-version-failure-500-safe-envelope-name-preferences-audit-rollback"]},{"binary":"care_api","test":"account_profile::patch_revalidates_revoked_credential_after_waiting_for_account_lock","checks":["PATCH-initial-auth-marker-and-account-lock-wait-before-token-revocation-401-no-effects"]}]})
     } else if entry["operation_id"] == "listHouseholds" {
         json!({
             "coverage": "complete",
@@ -527,7 +545,7 @@ pub mod baseline {
         let recorded = inventory();
         let document: Value =
             serde_yaml_ng::from_str(include_str!("../../docs/api/openapi.v1.yaml")).unwrap();
-        assert_eq!(expected.len(), 122);
+        assert_eq!(expected.len(), 120);
         assert_eq!(recorded.len(), expected.len());
         assert_eq!(
             recorded.keys().collect::<Vec<_>>(),

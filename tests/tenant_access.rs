@@ -1,8 +1,8 @@
 #[path = "support/template.rs"]
 mod template;
 use loco_rs::model::{TenantActiveModelExt, TenantQueryExt};
-use med_tracker::models::access::{self, Actor, HouseholdScope, PersonAccess};
-use med_tracker::models::entities::{grant, location};
+use med_tracker::models::access::{self, Actor, HouseholdScope};
+use med_tracker::models::entities::location;
 use med_tracker::models::errors::OperationError;
 use sea_orm::{ConnectionTrait, Database, DatabaseConnection, DbBackend, Statement};
 use sea_orm::{EntityTrait, Set};
@@ -21,14 +21,14 @@ fn household_assignment_rejects_conflicting_ownership() {
 async fn loco_scoping_and_rls_independently_reject_other_households() {
     let fixture = Fixture::new().await;
     assert!(
-        grant::Entity::find_by_id(78002)
+        location::Entity::find_by_id(79002)
             .one(&fixture.admin)
             .await
             .unwrap()
             .is_some()
     );
     assert!(
-        grant::Entity::find_by_id(78002)
+        location::Entity::find_by_id(79002)
             .in_tenant(72001)
             .one(&fixture.admin)
             .await
@@ -40,7 +40,7 @@ async fn loco_scoping_and_rls_independently_reject_other_households() {
         .unwrap();
     let db = tenant.transaction();
     assert!(
-        grant::Entity::find_by_id(78002)
+        location::Entity::find_by_id(79002)
             .in_tenant(72001)
             .one(db)
             .await
@@ -48,14 +48,14 @@ async fn loco_scoping_and_rls_independently_reject_other_households() {
             .is_none()
     );
     assert!(
-        grant::Entity::find_by_id(78002)
+        location::Entity::find_by_id(79002)
             .one(db)
             .await
             .unwrap()
             .is_none()
     );
     assert!(
-        grant::Entity::find()
+        location::Entity::find()
             .in_tenant(72002)
             .all(db)
             .await
@@ -63,7 +63,7 @@ async fn loco_scoping_and_rls_independently_reject_other_households() {
             .is_empty()
     );
     assert_eq!(
-        grant::Entity::find()
+        location::Entity::find()
             .in_tenant(72001)
             .all(db)
             .await
@@ -71,17 +71,17 @@ async fn loco_scoping_and_rls_independently_reject_other_households() {
             .len(),
         1
     );
-    let updated = grant::Entity::update_many()
+    let updated = location::Entity::update_many()
         .col_expr(
-            grant::Column::AccessLevel,
-            sea_orm::sea_query::Expr::value("manage"),
+            location::Column::Description,
+            sea_orm::sea_query::Expr::value("Forbidden foreign label change"),
         )
         .in_tenant(72002)
         .exec(db)
         .await
         .unwrap();
     assert_eq!(updated.rows_affected, 0);
-    let deleted = grant::Entity::delete_many()
+    let deleted = location::Entity::delete_many()
         .in_tenant(72002)
         .exec(db)
         .await
@@ -112,22 +112,17 @@ admin
             .unwrap();
         admin.execute_unprepared(
             "UPDATE public.accounts SET status = 2;
-             INSERT INTO public.users(id, person_id, email_address, password_digest, created_at, updated_at)
-             VALUES (77001, 73001, 'persistence@example.test', crypt('password', gen_salt('bf', 4)), now(), now());
-             INSERT INTO public.person_access_grants(id, household_id, household_membership_id, person_id, access_level, relationship_type, created_at, updated_at)
-             VALUES (78001, 72001, 74001, 73001, 'manage', 'self', now(), now());
-             INSERT INTO public.accounts(id, email, status, password_hash, created_at, updated_at)
-             VALUES (71002, 'other@example.test', 2, crypt('password', gen_salt('bf', 4)), now(), now());
+             INSERT INTO public.people(id, clinical_name, person_type, has_capacity, created_at, updated_at)
+             VALUES (73004, 'Other adult', 0, true, now(), now());
+             INSERT INTO public.accounts(id, person_id, name, email, status, password_hash, created_at, updated_at)
+             VALUES (71002, 73004, 'Other adult', 'other@example.test', 2, crypt('password', gen_salt('bf', 4)), now(), now());
              INSERT INTO public.households(id, name, slug, timezone, created_at, updated_at)
              VALUES (72002, 'Other household', 'other-fixture', 'Europe/London', now(), now());
-             INSERT INTO public.people(id, account_id, household_id, name, created_at, updated_at)
-             VALUES (73004, 71002, 72002, 'Other adult', now(), now());
-             INSERT INTO public.household_memberships(id, account_id, household_id, person_id, joined_at, created_at, updated_at)
-             VALUES (74002, 71002, 72002, 73004, now(), now(), now());
-             INSERT INTO public.users(id, person_id, email_address, password_digest, created_at, updated_at)
-             VALUES (77002, 73004, 'other@example.test', crypt('password', gen_salt('bf', 4)), now(), now());
-             INSERT INTO public.person_access_grants(id, household_id, household_membership_id, person_id, access_level, relationship_type, created_at, updated_at)
-             VALUES (78002, 72002, 74002, 73004, 'view', 'self', now(), now());"
+             INSERT INTO public.household_memberships(id, household_id, person_id, role, joined_at, created_at, updated_at)
+             VALUES (74002, 72002, 73004, 'owner', now(), now(), now());
+             INSERT INTO public.locations(id, household_id, name, created_at, updated_at)
+             VALUES (79001, 72001, 'Local cabinet', now(), now()),
+                    (79002, 72002, 'Other cabinet', now(), now());"
         ).await.unwrap();
         }).await;
         let suffix = uuid::Uuid::new_v4().simple();
@@ -172,10 +167,10 @@ fn scope(account_id: i64, household_id: i64) -> HouseholdScope {
     }
 }
 
-async fn visible_granted_people<C: ConnectionTrait>(db: &C) -> Vec<i64> {
+async fn visible_participants<C: ConnectionTrait>(db: &C) -> Vec<i64> {
     db.query_all_raw(Statement::from_string(
         DbBackend::Postgres,
-        "SELECT person_id AS id FROM public.person_access_grants ORDER BY person_id",
+        "SELECT id FROM public.people ORDER BY id",
     ))
     .await
     .unwrap()
@@ -197,30 +192,23 @@ async fn fixture_uses_canonical_administrator_role() {
 }
 
 #[tokio::test]
-async fn actor_identity_is_independent_of_household_linked_subject() {
+async fn actor_identity_is_stable_across_households() {
     let fixture = Fixture::new().await;
-    fixture.admin.execute_unprepared(
-        "UPDATE public.household_memberships SET person_id = NULL WHERE id = 74002;
-         INSERT INTO public.household_memberships(id, account_id, household_id, person_id, joined_at, created_at, updated_at)
-         VALUES (74003, 71001, 72002, 73004, now(), now(), now());
-         INSERT INTO public.person_access_grants(id, household_id, household_membership_id, person_id, access_level, relationship_type, created_at, updated_at)
-         VALUES (78003, 72002, 74003, 73004, 'view', 'carer', now(), now());"
-    ).await.unwrap();
+    fixture.admin.execute_unprepared("INSERT INTO household_memberships(id,household_id,person_id,joined_at,created_at,updated_at) VALUES(74003,72002,73001,now(),now(),now())").await.unwrap();
     let transaction = access::begin(&fixture.runtime, &scope(71001, 72002), None)
         .await
         .unwrap();
-    assert_eq!(transaction.user_id(), 77001);
-    assert_eq!(transaction.membership().person_id, Some(73004));
+    assert_eq!(transaction.person_id().get(), 73001);
+    assert_eq!(transaction.membership().person_id, 73001);
     assert_eq!(transaction.membership().household_id, 72002);
-    access::require_person_access(&transaction, 73004, PersonAccess::View)
+    access::require_participation(&transaction, 73004)
         .await
         .unwrap();
-    assert_eq!(
-        access::require_person_access(&transaction, 73001, PersonAccess::View).await,
-        Err(OperationError::Forbidden)
-    );
+    access::require_participation(&transaction, 73001)
+        .await
+        .unwrap();
     transaction.rollback().await.unwrap();
-    assert!(visible_granted_people(&fixture.runtime).await.is_empty());
+    assert!(visible_participants(&fixture.runtime).await.is_empty());
     fixture.close().await;
 }
 
@@ -236,7 +224,7 @@ async fn begin_rejects_unknown_and_locked_accounts() {
         access::begin(&fixture.runtime, &scope(71001, 72001), None).await,
         Err(OperationError::Unauthenticated)
     ));
-    assert!(visible_granted_people(&fixture.runtime).await.is_empty());
+    assert!(visible_participants(&fixture.runtime).await.is_empty());
     fixture.close().await;
 }
 
@@ -252,7 +240,7 @@ async fn begin_rejects_inactive_households() {
             access::begin(&fixture.runtime, &scope(71001, 72001), None).await,
             Err(OperationError::Forbidden)
         ));
-        assert!(visible_granted_people(&fixture.runtime).await.is_empty());
+        assert!(visible_participants(&fixture.runtime).await.is_empty());
     }
     fixture.close().await;
 }
@@ -264,20 +252,20 @@ async fn pool_reuse_does_not_leak_household() {
         .await
         .unwrap();
     assert_eq!(
-        visible_granted_people(first.transaction()).await,
-        vec![73001]
+        visible_participants(first.transaction()).await,
+        vec![73001, 73002, 73003]
     );
     first.commit().await.unwrap();
-    assert!(visible_granted_people(&fixture.runtime).await.is_empty());
+    assert!(visible_participants(&fixture.runtime).await.is_empty());
     let second = access::begin(&fixture.runtime, &scope(71002, 72002), None)
         .await
         .unwrap();
     assert_eq!(
-        visible_granted_people(second.transaction()).await,
+        visible_participants(second.transaction()).await,
         vec![73004]
     );
     second.rollback().await.unwrap();
-    assert!(visible_granted_people(&fixture.runtime).await.is_empty());
+    assert!(visible_participants(&fixture.runtime).await.is_empty());
     fixture.close().await;
 }
 
@@ -288,32 +276,32 @@ async fn actor_does_not_authorize_another_household() {
         access::begin(&fixture.runtime, &scope(71001, 72002), None).await,
         Err(OperationError::Forbidden)
     ));
-    assert!(visible_granted_people(&fixture.runtime).await.is_empty());
+    assert!(visible_participants(&fixture.runtime).await.is_empty());
     fixture.close().await;
 }
 
 #[tokio::test]
-async fn person_access_rechecks_live_grants() {
+async fn participation_rechecks_live_revocation() {
     let fixture = Fixture::new().await;
     let transaction = access::begin(&fixture.runtime, &scope(71001, 72001), None)
         .await
         .unwrap();
-    access::require_person_access(&transaction, 73001, PersonAccess::Manage)
+    access::require_participation(&transaction, 73001)
         .await
         .unwrap();
     assert_eq!(
-        access::require_person_access(&transaction, 73004, PersonAccess::View).await,
+        access::require_participation(&transaction, 73004).await,
         Err(OperationError::Forbidden)
     );
     fixture
         .admin
         .execute_unprepared(
-            "UPDATE public.person_access_grants SET revoked_at = now() WHERE id = 78001",
+            "UPDATE public.household_memberships SET revoked_at = now() WHERE id = 74001",
         )
         .await
         .unwrap();
     assert_eq!(
-        access::require_person_access(&transaction, 73001, PersonAccess::View).await,
+        access::require_participation(&transaction, 73001).await,
         Err(OperationError::Forbidden)
     );
     transaction.rollback().await.unwrap();
@@ -335,68 +323,38 @@ async fn runtime_role_cannot_alter_schema_or_migration_history() {
 }
 
 #[tokio::test]
-async fn cedar_person_access_uses_current_grant_level_and_database_expiry() {
-    use med_tracker::models::care::people;
+async fn household_members_can_access_current_participants_without_legacy_grant_tables() {
     let fixture = Fixture::new().await;
+    fixture
+        .admin
+        .execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001")
+        .await
+        .unwrap();
     let transaction = access::begin(&fixture.runtime, &scope(71001, 72001), None)
         .await
         .unwrap();
-    for (level, expected) in [
-        ("view", [true, false, false]),
-        ("record", [true, true, false]),
-        ("manage", [true, true, true]),
-    ] {
-        fixture
-            .admin
-            .execute_raw(Statement::from_sql_and_values(
-                DbBackend::Postgres,
-                "UPDATE person_access_grants SET access_level=$1 WHERE id=78001",
-                [level.into()],
-            ))
-            .await
-            .unwrap();
-        for (request, allowed) in [
-            PersonAccess::View,
-            PersonAccess::Record,
-            PersonAccess::Manage,
-        ]
-        .into_iter()
-        .zip(expected)
-        {
-            assert_eq!(
-                access::require_person_access(&transaction, 73001, request).await,
-                if allowed {
-                    Ok(())
-                } else {
-                    Err(OperationError::Forbidden)
-                }
-            );
-        }
-        let visible = people::list(&transaction, people::Pagination::default(), chrono_tz::UTC)
-            .await
-            .unwrap();
-        assert_eq!(visible["meta"]["total_count"], 1);
-        assert_eq!(visible["data"][0]["id"], 73001);
-    }
-    fixture.admin.execute_unprepared("UPDATE person_access_grants SET expires_at=timezone('UTC',clock_timestamp())-interval '1 second' WHERE id=78001").await.unwrap();
+    fixture
+        .admin
+        .execute_unprepared("DO $$ BEGIN IF to_regclass('public.person_access_grants') IS NOT NULL OR to_regclass('public.location_memberships') IS NOT NULL THEN RAISE EXCEPTION 'Obsolete permission table exists'; END IF; END $$")
+        .await
+        .unwrap();
+    access::require_participation(&transaction, 73001)
+        .await
+        .unwrap();
+    access::require_participation(&transaction, 73002)
+        .await
+        .unwrap();
+    access::require_participation(&transaction, 73003)
+        .await
+        .unwrap();
     assert_eq!(
-        access::require_person_access(&transaction, 73001, PersonAccess::View).await,
+        visible_participants(transaction.transaction()).await,
+        vec![73001, 73002, 73003]
+    );
+    assert_eq!(
+        access::require_participation(&transaction, 73004).await,
         Err(OperationError::Forbidden)
     );
-    let expired = people::list(&transaction, people::Pagination::default(), chrono_tz::UTC)
-        .await
-        .unwrap();
-    assert_eq!(expired["meta"]["total_count"], 0);
-    assert_eq!(expired["data"], serde_json::json!([]));
-    fixture.admin.execute_unprepared("UPDATE person_access_grants SET expires_at=timezone('UTC',clock_timestamp())+interval '1 day' WHERE id=78001").await.unwrap();
-    access::require_person_access(&transaction, 73001, PersonAccess::Manage)
-        .await
-        .unwrap();
-    let restored = people::list(&transaction, people::Pagination::default(), chrono_tz::UTC)
-        .await
-        .unwrap();
-    assert_eq!(restored["meta"]["total_count"], 1);
-    assert_eq!(restored["data"][0]["id"], 73001);
     transaction.rollback().await.unwrap();
     fixture.close().await;
 }
@@ -408,7 +366,7 @@ async fn shared_recheck_rejects_current_account_lockout() {
         .await
         .unwrap();
     fixture.admin.execute_unprepared("INSERT INTO public.account_lockouts(account_id, deadline, key) VALUES (71001, now() + interval '1 hour', 'synthetic-lockout')").await.unwrap();
-    let result = access::require_person_access(&transaction, 73001, PersonAccess::Manage).await;
+    let result = access::require_participation(&transaction, 73001).await;
     transaction.rollback().await.unwrap();
     fixture.close().await;
     assert_eq!(result, Err(OperationError::Unauthenticated));
@@ -427,7 +385,7 @@ async fn shared_recheck_rejects_membership_role_change() {
         )
         .await
         .unwrap();
-    let result = access::require_person_access(&transaction, 73001, PersonAccess::Manage).await;
+    let result = access::require_participation(&transaction, 73001).await;
     transaction.rollback().await.unwrap();
     fixture.close().await;
     assert_eq!(result, Err(OperationError::Forbidden));

@@ -63,7 +63,7 @@ pub(super) async fn find(
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::NotFound)?;
-    if !access::can_access_person(tenant, row.person_id, PersonAccess::View).await? {
+    if !access::participates(tenant, row.person_id).await? {
         return Err(OperationError::NotFound);
     }
     Ok(row)

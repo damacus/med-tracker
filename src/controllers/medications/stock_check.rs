@@ -148,7 +148,11 @@ async fn render_page(
     if tenant.commit().await.is_err() {
         return unavailable();
     }
-    match format::render().view(view, "medications/stock_check.html", data) {
+    match format::render().view(
+        view,
+        "medications/stock_check.html",
+        crate::views::template_data(&data),
+    ) {
         Ok(response) => (
             error.map_or(StatusCode::OK, forms::status),
             token,

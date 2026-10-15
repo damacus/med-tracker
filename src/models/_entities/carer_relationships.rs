@@ -65,19 +65,11 @@ pub enum Relation {
         on_delete = "NoAction"
     )]
     People1,
-    #[sea_orm(has_many = "super::person_access_grants::Entity")]
-    PersonAccessGrants,
 }
 
 impl Related<super::households::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Households.def()
-    }
-}
-
-impl Related<super::person_access_grants::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::PersonAccessGrants.def()
     }
 }
 

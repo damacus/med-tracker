@@ -24,25 +24,19 @@ async fn names(
         .filter(membership::Column::Id.is_in(ids))
         .all(db)
         .await?;
-    let people: HashMap<i64, String> = person::Entity::find()
-        .filter(
-            person::Column::Id.is_in(
-                members
-                    .iter()
-                    .filter_map(|row| row.person_id)
-                    .collect::<Vec<_>>(),
-            ),
-        )
-        .all(db)
-        .await?
-        .into_iter()
-        .map(|row| (row.id, row.name))
-        .collect();
+    let people = crate::models::person_identity::display_names_in(
+        db,
+        members
+            .iter()
+            .map(|row| crate::models::ids::PersonId::from_database(row.person_id)),
+    )
+    .await?;
     Ok(members
         .into_iter()
         .filter_map(|row| {
-            row.person_id
-                .and_then(|id| people.get(&id).cloned())
+            people
+                .get(&crate::models::ids::PersonId::from_database(row.person_id))
+                .cloned()
                 .map(|name| (row.id, name))
         })
         .collect())

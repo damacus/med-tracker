@@ -366,7 +366,7 @@ pub async fn page(
         {
             let household_id: i64 = get(row, "household_id")?;
             let audit = meta
-                .administrator(actor_account_id, actor.user_id)
+                .administrator(actor_account_id, actor.person_id)
                 .for_household(household_id);
             expire_row(transaction, get(row, "id")?, household_id, &audit).await?;
         }
@@ -427,7 +427,7 @@ pub async fn owner_page(
     actor_account_id: i64,
     meta: &RequestMeta,
 ) -> Result<Vec<SupportEntry>, OperationError> {
-    let user_id = access::verify_account_actor(transaction, actor_account_id).await?;
+    let person_id = access::verify_account_actor(transaction, actor_account_id).await?;
     account_scope(transaction, actor_account_id).await?;
     let ids = owned_households(transaction, actor_account_id).await?;
     if ids.is_empty() {
@@ -446,7 +446,7 @@ pub async fn owner_page(
         if get::<bool>(row, "past")?
             && get::<Option<chrono::NaiveDateTime>>(row, "expired_at")?.is_none()
         {
-            let audit = meta.owner(actor_account_id, user_id, household_id);
+            let audit = meta.owner(actor_account_id, person_id, household_id);
             expire_row(transaction, get(row, "id")?, household_id, &audit).await?;
         }
         sessions.push(entry(row)?);
@@ -499,7 +499,7 @@ pub async fn request(
         "platform/support/requested",
         json!({"household_id":household_id,"platform_admin_id":actor.admin.id,"reason":reason}),
         &meta
-            .administrator(actor_account_id, actor.user_id)
+            .administrator(actor_account_id, actor.person_id)
             .for_household(household_id),
     )
     .await
@@ -511,7 +511,11 @@ async fn approve_allowed(
     household_id: i64,
     locked: bool,
 ) -> Result<Option<(i64, i32)>, OperationError> {
-    let account = target_account(transaction, actor_account_id).await?;
+    let account = verified_actor_account(
+        transaction,
+        crate::models::ids::AccountId::from_database(actor_account_id),
+    )
+    .await?;
     let admin = admin_record(transaction, actor_account_id).await?;
     let owner = owner_membership(transaction, actor_account_id, household_id, locked).await?;
     if !authorization::support_action(
@@ -559,11 +563,11 @@ pub async fn approve(
     else {
         return Err(OperationError::Forbidden);
     };
-    let user_id = access::verify_account_actor(transaction, actor_account_id).await?;
+    let person_id = access::verify_account_actor(transaction, actor_account_id).await?;
     if !household_open(transaction, session.household_id).await? {
         return Err(invalid("The household is not open."));
     }
-    let expiry_audit = meta.owner(actor_account_id, user_id, session.household_id);
+    let expiry_audit = meta.owner(actor_account_id, person_id, session.household_id);
     if expire(transaction, support_id, &session, &expiry_audit).await? {
         return Ok(SupportDecision::Expired);
     }
@@ -587,7 +591,7 @@ pub async fn approve(
         support_id,
         "platform/support/approved",
         json!({"household_id":session.household_id,"approved_by_membership_id":membership_id}),
-        &meta.owner(actor_account_id, user_id, session.household_id),
+        &meta.owner(actor_account_id, person_id, session.household_id),
     )
     .await?;
     Ok(SupportDecision::Applied)
@@ -635,7 +639,7 @@ pub async fn activate(
         return Err(OperationError::Forbidden);
     }
     let expiry_audit = meta
-        .administrator(actor_account_id, actor.user_id)
+        .administrator(actor_account_id, actor.person_id)
         .for_household(session.household_id);
     if expire(transaction, support_id, &session, &expiry_audit).await? {
         return Ok(SupportDecision::Expired);
@@ -655,7 +659,7 @@ pub async fn activate(
         "platform/support/activated",
         json!({"household_id":session.household_id,"platform_admin_id":actor.admin.id}),
         &meta
-            .administrator(actor_account_id, actor.user_id)
+            .administrator(actor_account_id, actor.person_id)
             .for_household(session.household_id),
     )
     .await?;
@@ -670,8 +674,12 @@ pub async fn end(
 ) -> Result<EndedBy, OperationError> {
     access::verify_account_actor(transaction, actor_account_id).await?;
     let session = session_row(transaction, support_id, true).await?;
-    let user_id = access::verify_account_actor(transaction, actor_account_id).await?;
-    let account = target_account(transaction, actor_account_id).await?;
+    let person_id = access::verify_account_actor(transaction, actor_account_id).await?;
+    let account = verified_actor_account(
+        transaction,
+        crate::models::ids::AccountId::from_database(actor_account_id),
+    )
+    .await?;
     let admin = admin_record(transaction, actor_account_id).await?;
     let administrator = admin
         .as_ref()
@@ -691,9 +699,9 @@ pub async fn end(
         return Err(OperationError::Forbidden);
     }
     let audit = if administrator {
-        meta.administrator(actor_account_id, user_id)
+        meta.administrator(actor_account_id, person_id)
     } else {
-        meta.owner(actor_account_id, user_id, session.household_id)
+        meta.owner(actor_account_id, person_id, session.household_id)
     }
     .for_household(session.household_id);
     if session.ended_at.is_none() {
@@ -731,7 +739,7 @@ pub async fn read(
     support_id: i64,
     meta: &RequestMeta,
 ) -> Result<SupportRead, OperationError> {
-    let user_id = access::verify_account_actor(transaction, actor_account_id).await?;
+    let person_id = access::verify_account_actor(transaction, actor_account_id).await?;
     let session = session_row(transaction, support_id, true).await?;
     let Some(_) = admin_record(transaction, actor_account_id)
         .await?
@@ -747,14 +755,18 @@ pub async fn read(
         return Err(OperationError::Forbidden);
     }
     let audit = meta
-        .administrator(actor_account_id, user_id)
+        .administrator(actor_account_id, person_id)
         .for_household(session.household_id);
     if expire(transaction, support_id, &session, &audit).await? {
         return Err(OperationError::Forbidden);
     }
     let approved = approval_current(transaction, &session).await?;
-    let user_id = access::verify_account_actor(transaction, actor_account_id).await?;
-    let account = target_account(transaction, actor_account_id).await?;
+    let person_id = access::verify_account_actor(transaction, actor_account_id).await?;
+    let account = verified_actor_account(
+        transaction,
+        crate::models::ids::AccountId::from_database(actor_account_id),
+    )
+    .await?;
     let Some(admin) = admin_record(transaction, actor_account_id)
         .await?
         .filter(|admin| admin.id == session.platform_admin_id)
@@ -765,7 +777,7 @@ pub async fn read(
         return Err(OperationError::Forbidden);
     }
     let audit = meta
-        .administrator(actor_account_id, user_id)
+        .administrator(actor_account_id, person_id)
         .for_household(session.household_id);
     if expire(transaction, support_id, &session, &audit).await? || !approved {
         return Err(OperationError::Forbidden);

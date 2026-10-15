@@ -16,6 +16,12 @@ use axum_session_sqlx::SessionPgPool;
 use loco_rs::controller::middleware::request_id::LocoRequestId;
 use loco_rs::prelude::*;
 
+#[derive(serde::Serialize, serde::Deserialize)]
+struct PendingConsent {
+    input: AuthorizationInput,
+    approval: authorization::ConsentApproval,
+}
+
 pub fn routes() -> Routes {
     Routes::new().add("/authorize", get(consent).post(approve))
 }
@@ -35,6 +41,7 @@ async fn consent(
     ViewEngine(view): ViewEngine<TeraView>,
     Query(fields): Query<Vec<(String, String)>>,
 ) -> Response {
+    session.remove("oauth_consent");
     let mut input = AuthorizationInput(fields);
     let prepared = match authorization::prepare(&ctx.db, &input).await {
         Ok(prepared) => prepared,
@@ -54,7 +61,7 @@ async fn consent(
             Err(AuthenticationError::Unauthenticated) => return redirect("/login"),
             Err(_) => return StatusCode::FORBIDDEN.into_response(),
         };
-    let mut data = match authorization::context(
+    let (context, binding) = match authorization::context(
         &ctx.db,
         &principal,
         prepared.application.client_kind == "mobile",
@@ -64,6 +71,25 @@ async fn consent(
         Ok(data) => data,
         Err(error) => return super::failure(error),
     };
+    let mut data = match context {
+        authorization::ConsentContext::Native => {
+            serde_json::json!({"household_name":null,"person_name":null})
+        }
+        authorization::ConsentContext::Household {
+            household_name,
+            person_name,
+            ..
+        } => serde_json::json!({"household_name":household_name,"person_name":person_name}),
+    };
+    let consent_request_id = binding.id.to_string();
+    session.set(
+        "oauth_consent",
+        PendingConsent {
+            input: input.clone(),
+            approval: binding,
+        },
+    );
+    session.set_store(true);
     let Ok(authenticity_token) = token.authenticity_token() else {
         return StatusCode::SERVICE_UNAVAILABLE.into_response();
     };
@@ -83,8 +109,12 @@ async fn consent(
         .map(|(name, value)| serde_json::json!({"name":name,"value":value}))
         .collect::<Vec<_>>();
     let object = data.as_object_mut().expect("authorization context object");
-    object.extend(serde_json::json!({"title":"Authorise access","allow_palette":false,"appearances":[{"id":"light","label":"Light"},{"id":"dark","label":"Dark"},{"id":"system","label":"System"}],"palettes":[],"client_name":prepared.application.name,"fields":fields,"scopes":scopes,"authenticity_token":authenticity_token}).as_object().expect("consent context object").clone());
-    match format::render().view(&view, "oauth/consent.html", data) {
+    object.extend(serde_json::json!({"title":"Authorise access","allow_palette":false,"appearances":[{"id":"light","label":"Light"},{"id":"dark","label":"Dark"},{"id":"system","label":"System"}],"palettes":[],"client_name":prepared.application.name,"fields":fields,"scopes":scopes,"authenticity_token":authenticity_token,"consent_request_id":consent_request_id}).as_object().expect("consent context object").clone());
+    match format::render().view(
+        &view,
+        "oauth/consent.html",
+        crate::views::template_data(&data),
+    ) {
         Ok(response) => (token, [(header::CACHE_CONTROL, "no-store")], response).into_response(),
         Err(error) => error.into_response(),
     }
@@ -105,13 +135,26 @@ async fn approve(
     if supplied.len() != 1 || token.verify(&supplied[0].1).is_err() {
         return StatusCode::FORBIDDEN.into_response();
     }
-    let Some(original) = session.get::<AuthorizationInput>("oauth_pending") else {
+    let Some(pending) = session.get::<PendingConsent>("oauth_consent") else {
         return StatusCode::BAD_REQUEST.into_response();
     };
+    let identifiers = fields
+        .iter()
+        .filter(|(name, _)| name == "consent_request_id")
+        .collect::<Vec<_>>();
+    if identifiers.len() != 1
+        || uuid::Uuid::parse_str(&identifiers[0].1).ok() != Some(pending.approval.id)
+    {
+        return StatusCode::BAD_REQUEST.into_response();
+    }
+    let original = pending.input;
     let protocol_fields = fields
         .iter()
         .filter(|(name, _)| {
-            name != "scope[]" && name != "authenticity_token" && name != "consent_action"
+            name != "consent_request_id"
+                && name != "scope[]"
+                && name != "authenticity_token"
+                && name != "consent_action"
         })
         .cloned()
         .collect::<Vec<_>>();
@@ -145,6 +188,7 @@ async fn approve(
         return match authorization::deny(&ctx.db, &original).await {
             Ok(output) => {
                 session.remove("oauth_pending");
+                session.remove("oauth_consent");
                 authorization_response::render(&view, &original, output)
             }
             Err(error) => authorization_response::failure(&view, &original, error),
@@ -166,9 +210,18 @@ async fn approve(
     let mut input = AuthorizationInput(protocol_fields);
     input.0.push(("scope".into(), selected.join(" ")));
     let request_id = request_id.map(|Extension(id)| id.get().to_owned());
-    match authorization::approve(&ctx.db, &principal, &input, request_id.as_deref()).await {
+    match authorization::approve(
+        &ctx.db,
+        &principal,
+        &input,
+        &pending.approval,
+        request_id.as_deref(),
+    )
+    .await
+    {
         Ok(output) => {
             session.remove("oauth_pending");
+            session.remove("oauth_consent");
             authorization_response::render(&view, &input, output)
         }
         Err(error) => authorization_response::failure(&view, &input, error),

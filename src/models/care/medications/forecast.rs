@@ -262,7 +262,7 @@ mod tests {
             warnings: None,
             default_schedule_type: 1,
             default_schedule_config: json!({}),
-            location_id: 1,
+            location_id: Some(1),
             updated_at: day(2026, 1, 1).and_hms_opt(0, 0, 0).unwrap(),
         }
     }

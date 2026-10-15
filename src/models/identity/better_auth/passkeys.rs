@@ -78,6 +78,8 @@ impl Passkeys {
             return Err(AuthError::forbidden("Fresh email confirmation is required"));
         }
         let transaction = self.1.transaction().await?;
+        super::operations::lock_pending_platform(&transaction, ctx, &session, &input.operation_id)
+            .await?;
         self.1.lock_security_session(&transaction, &session).await?;
         super::operations::pending_password(ctx, &session, &input.operation_id).await?;
         let stored = ctx.database.list_passkeys_by_user(&user.id).await?;
@@ -129,6 +131,8 @@ impl Passkeys {
             return Err(AuthError::forbidden("Fresh email confirmation is required"));
         }
         let transaction = self.1.transaction().await?;
+        super::operations::lock_pending_platform(&transaction, ctx, &session, &input.operation_id)
+            .await?;
         self.1.lock_security_session(&transaction, &session).await?;
         super::operations::pending_password(ctx, &session, &input.operation_id).await?;
         let proof = ctx

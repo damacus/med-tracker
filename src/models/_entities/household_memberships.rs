@@ -40,6 +40,8 @@ pub enum Relation {
     HouseholdInvitationGrants,
     #[sea_orm(has_many = "super::household_invitations::Entity")]
     HouseholdInvitations,
+    #[sea_orm(has_many = "super::household_notification_subscriptions::Entity")]
+    HouseholdNotificationSubscriptions,
     #[sea_orm(
         belongs_to = "super::households::Entity",
         from = "Column::HouseholdId",
@@ -48,14 +50,10 @@ pub enum Relation {
         on_delete = "NoAction"
     )]
     Households,
-    #[sea_orm(has_many = "super::location_memberships::Entity")]
-    LocationMemberships,
     #[sea_orm(has_many = "super::medication_review_edit_leases::Entity")]
     MedicationReviewEditLeases,
     #[sea_orm(has_many = "super::notification_events::Entity")]
     NotificationEvents,
-    #[sea_orm(has_many = "super::notification_preferences::Entity")]
-    NotificationPreferences,
     #[sea_orm(has_many = "super::oauth_grants::Entity")]
     OauthGrants,
     #[sea_orm(
@@ -114,15 +112,15 @@ impl Related<super::household_invitations::Entity> for Entity {
     }
 }
 
-impl Related<super::households::Entity> for Entity {
+impl Related<super::household_notification_subscriptions::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Households.def()
+        Relation::HouseholdNotificationSubscriptions.def()
     }
 }
 
-impl Related<super::location_memberships::Entity> for Entity {
+impl Related<super::households::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::LocationMemberships.def()
+        Relation::Households.def()
     }
 }
 
@@ -135,12 +133,6 @@ impl Related<super::medication_review_edit_leases::Entity> for Entity {
 impl Related<super::notification_events::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::NotificationEvents.def()
-    }
-}
-
-impl Related<super::notification_preferences::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::NotificationPreferences.def()
     }
 }
 

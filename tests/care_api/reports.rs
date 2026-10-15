@@ -42,9 +42,19 @@ async fn reports_conformance_real_pdf_downloads_have_protected_headers_and_embed
 }
 
 #[tokio::test]
-async fn reports_json_requires_current_person_access_and_valid_dates() {
+async fn reports_json_requires_current_household_membership_and_valid_dates() -> CareTestResult {
     let app = Application::new().await;
     let token = app.token().await;
+    if let Err(error) = seed_foreign_care_subject(&app.fixture).await {
+        app.close().await;
+        return Err(error.into());
+    }
+    app.fixture
+        .admin
+        .execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001")
+        .await?;
+    let before = app.fixture.effect().await;
+
     let base = format!(
         "{}/api/v1/households/72001/reports/health_history",
         app.origin
@@ -62,7 +72,7 @@ async fn reports_json_requires_current_person_access_and_valid_dates() {
     assert_eq!(visible.headers()["cache-control"], "no-store");
     let body: Value = visible.json().await.unwrap();
     assert_eq!(body["data"]["person"]["id"], "73001");
-    let foreign = app
+    let local_subject = app
         .client
         .get(format!(
             "{base}?person_id=73002&start_date=2026-01-01&end_date=2026-01-31"
@@ -71,7 +81,7 @@ async fn reports_json_requires_current_person_access_and_valid_dates() {
         .send()
         .await
         .unwrap();
-    assert_eq!(foreign.status().as_u16(), 404);
+    assert_eq!(local_subject.status().as_u16(), 200);
     let invalid = app
         .client
         .get(format!(
@@ -82,9 +92,28 @@ async fn reports_json_requires_current_person_access_and_valid_dates() {
         .await
         .unwrap();
     assert_eq!(invalid.status().as_u16(), 422);
+    let foreign = app
+        .client
+        .get(format!("{base}?person_id=96802"))
+        .bearer_auth(&token)
+        .send()
+        .await?;
+    assert_eq!(foreign.status().as_u16(), 404);
+    let foreign_household = app
+        .client
+        .get(format!(
+            "{}/api/v1/households/96821/reports/health_history?person_id=96802",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await?;
+    assert_eq!(foreign_household.status().as_u16(), 403);
+    let anonymous = app.client.get(&base).send().await?;
+    assert_eq!(anonymous.status().as_u16(), 401);
     app.fixture
         .admin
-        .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78001")
+        .execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001")
         .await
         .unwrap();
     let revoked = app
@@ -96,27 +125,36 @@ async fn reports_json_requires_current_person_access_and_valid_dates() {
         .send()
         .await
         .unwrap();
-    assert_eq!(revoked.status().as_u16(), 404);
+    assert_eq!(revoked.status().as_u16(), 403);
+    assert_eq!(app.fixture.effect().await, before);
     app.close().await;
+    Ok(())
 }
 
 #[tokio::test]
-async fn medication_review_summary_counts_only_people_with_visible_prompts() {
+async fn medication_review_summary_counts_only_people_with_visible_prompts() -> CareTestResult {
     use med_tracker::models::{
-        access::{Actor, HouseholdScope, PersonAccess, begin},
+        access::{Actor, HouseholdScope, begin},
         care::reports,
     };
     let app = Application::new().await;
+    if let Err(error) = seed_foreign_care_subject(&app.fixture).await {
+        app.close().await;
+        return Err(error.into());
+    }
+    app.fixture
+        .admin
+        .execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001")
+        .await?;
     let scope = HouseholdScope {
         actor: Actor { account_id: 71001 },
         household_id: 72001,
         request_id: "synthetic-review-count".into(),
     };
     let tenant = begin(&app.fixture.runtime, &scope, None).await.unwrap();
-    let people = reports::accessible_people(&tenant, PersonAccess::View)
-        .await
-        .unwrap();
-    assert_eq!(people.len(), 1);
+    let people = reports::accessible_people(&tenant).await.unwrap();
+    assert_eq!(people.len(), 3);
+    assert!(!people.iter().any(|person| person.id.get() == 96802));
     let report = reports::household_medication_reviews(
         &tenant,
         &people,
@@ -129,13 +167,16 @@ async fn medication_review_summary_counts_only_people_with_visible_prompts() {
     assert_eq!(report["prompts"].as_array().unwrap().len(), 0);
     assert_eq!(report["people_count"], 0);
     tenant.rollback().await.unwrap();
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001").await?;
+    assert!(begin(&app.fixture.runtime, &scope, None).await.is_err());
     app.close().await;
+    Ok(())
 }
 
 #[tokio::test]
 async fn gp_history_displays_takes_in_the_account_time_zone() {
     let app = Application::new().await;
-    app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences=jsonb_set(preferences,'{time_zone}','\"Europe/London\"') WHERE id=71001; INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83999,72001,73001,80001,true,'2026-01-01','2026-12-31',2,'tablet',0,'{}',now(),now()); INSERT INTO medication_takes(id,household_id,schedule_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(84999,72001,83999,2,'tablet','2026-06-30 23:30:00',now(),now())").await.unwrap();
+    recorded_takes::seed(&app.fixture.admin, recorded_takes::SyntheticActor::canonical(), "UPDATE accounts SET preferences=jsonb_set(preferences,'{time_zone}','\"Europe/London\"') WHERE id=71001; INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83999,72001,73001,80001,true,'2026-01-01','2026-12-31',2,'tablet',0,'{}',now(),now()); INSERT INTO medication_takes(id,household_id,schedule_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(84999,72001,83999,2,'tablet','2026-06-30 23:30:00',now(),now())", &[recorded_takes::TakeSeed::new(84999,80001)]).await.unwrap();
     let token = app.token().await;
     let response = app.client.get(format!("{}/api/v1/households/72001/reports/health_history?person_id=73001&start_date=2026-07-01&end_date=2026-07-01&include_medication_takes=1", app.origin)).bearer_auth(&token).send().await.unwrap();
     assert_eq!(response.status().as_u16(), 200);
@@ -151,7 +192,7 @@ async fn gp_history_displays_takes_in_the_account_time_zone() {
 async fn report_json_payloads_expose_only_the_documented_public_keys() {
     use sha2::Digest;
     let app = Application::new().await;
-    app.fixture.admin.execute_unprepared("INSERT INTO medication_review_evidence_records(id,source_name,source_record_id,source_url,product_name,label_section,evidence_text,retrieved_on,risk_level,match_confidence,created_at,updated_at) VALUES(90001,'Synthetic reference','report-1','https://example.test/evidence/1','Synthetic tablets','Warnings','Representative clinical review evidence.',date '2026-01-01','moderate','high',now(),now()); INSERT INTO medication_review_prompts(id,household_id,person_id,primary_medication_id,interacting_medication_id,evidence_record_id,primary_medication_name,interacting_medication_name,evidence_source_name,evidence_source_url,evidence_source_version,evidence_source_checked_on,evidence_source_effective_on,evidence_text,match_confidence,match_reason,match_type,matched_term,risk_level,source_instruction,status,created_at,updated_at) VALUES(91001,72001,73001,80001,80001,90001,'Synthetic tablets','Synthetic tablets','Synthetic reference','https://example.test/evidence/1','1',date '2026-01-01',date '2026-01-01','Representative clinical review evidence.','high','Clinical review required','ingredient','synthetic','moderate','unclassified','needs_review',now(),now()); INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83999,72001,73001,80001,true,'2026-01-01','2026-12-31',2,'tablet',0,'{}',now(),now()); INSERT INTO medication_takes(id,household_id,schedule_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(84999,72001,83999,2,'tablet','2026-07-02 09:00:00',now(),now())").await.unwrap();
+    recorded_takes::seed(&app.fixture.admin, recorded_takes::SyntheticActor::canonical(), "INSERT INTO medication_review_evidence_records(id,source_name,source_record_id,source_url,product_name,label_section,evidence_text,retrieved_on,risk_level,match_confidence,created_at,updated_at) VALUES(90001,'Synthetic reference','report-1','https://example.test/evidence/1','Synthetic tablets','Warnings','Representative clinical review evidence.',date '2026-01-01','moderate','high',now(),now()); INSERT INTO medication_review_prompts(id,household_id,person_id,primary_medication_id,interacting_medication_id,evidence_record_id,primary_medication_name,interacting_medication_name,evidence_source_name,evidence_source_url,evidence_source_version,evidence_source_checked_on,evidence_source_effective_on,evidence_text,match_confidence,match_reason,match_type,matched_term,risk_level,source_instruction,status,created_at,updated_at) VALUES(91001,72001,73001,80001,80001,90001,'Synthetic tablets','Synthetic tablets','Synthetic reference','https://example.test/evidence/1','1',date '2026-01-01',date '2026-01-01','Representative clinical review evidence.','high','Clinical review required','ingredient','synthetic','moderate','unclassified','needs_review',now(),now()); INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83999,72001,73001,80001,true,'2026-01-01','2026-12-31',2,'tablet',0,'{}',now(),now()); INSERT INTO medication_takes(id,household_id,schedule_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(84999,72001,83999,2,'tablet','2026-07-02 09:00:00',now(),now())", &[recorded_takes::TakeSeed::new(84999,80001)]).await.unwrap();
     let token = app.token().await;
     let health = app
         .client
@@ -263,7 +304,7 @@ async fn report_json_payloads_expose_only_the_documented_public_keys() {
 #[tokio::test]
 async fn ordinary_report_compares_persisted_scheduled_at_as_utc_instants() {
     use med_tracker::models::{
-        access::{Actor, HouseholdScope, PersonAccess, begin},
+        access::{Actor, HouseholdScope, begin},
         care::reports,
     };
     use sea_orm::ConnectionTrait;
@@ -275,9 +316,7 @@ async fn ordinary_report_compares_persisted_scheduled_at_as_utc_instants() {
         request_id: "synthetic-utc-missed".into(),
     };
     let tenant = begin(&app.fixture.runtime, &scope, None).await.unwrap();
-    let people = reports::accessible_people(&tenant, PersonAccess::View)
-        .await
-        .unwrap();
+    let people = reports::accessible_people(&tenant).await.unwrap();
     let day = chrono::NaiveDate::from_ymd_opt(2026, 7, 1).unwrap();
     let london = reports::ordinary_history(
         &tenant,
@@ -359,20 +398,18 @@ async fn ordinary_report_compares_persisted_scheduled_at_as_utc_instants() {
 #[tokio::test]
 async fn ordinary_report_projects_and_attributes_takes_in_the_configured_zone() {
     use med_tracker::models::{
-        access::{Actor, HouseholdScope, PersonAccess, begin},
+        access::{Actor, HouseholdScope, begin},
         care::reports,
     };
     let app = Application::new().await;
-    app.fixture.admin.execute_unprepared("INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83999,72001,73001,80001,true,'2026-01-01','2026-12-31',2,'tablet',0,'{\"times\":[\"22:00\"]}',now(),now()); INSERT INTO medication_takes(id,household_id,schedule_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(84999,72001,83999,2,'tablet','2026-03-09 03:30:00',now(),now())").await.unwrap();
+    recorded_takes::seed(&app.fixture.admin, recorded_takes::SyntheticActor::canonical(), "INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83999,72001,73001,80001,true,'2026-01-01','2026-12-31',2,'tablet',0,'{\"times\":[\"22:00\"]}',now(),now()); INSERT INTO medication_takes(id,household_id,schedule_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(84999,72001,83999,2,'tablet','2026-03-09 03:30:00',now(),now())", &[recorded_takes::TakeSeed::new(84999,80001)]).await.unwrap();
     let scope = HouseholdScope {
         actor: Actor { account_id: 71001 },
         household_id: 72001,
         request_id: "synthetic-zone-projection".into(),
     };
     let tenant = begin(&app.fixture.runtime, &scope, None).await.unwrap();
-    let people = reports::accessible_people(&tenant, PersonAccess::View)
-        .await
-        .unwrap();
+    let people = reports::accessible_people(&tenant).await.unwrap();
     let report = reports::ordinary_history(
         &tenant,
         &people,
@@ -413,7 +450,7 @@ async fn ordinary_report_projects_and_attributes_takes_in_the_configured_zone() 
 #[tokio::test]
 async fn ordinary_report_forecasts_each_taper_step_at_its_own_dose() {
     use med_tracker::models::{
-        access::{Actor, HouseholdScope, PersonAccess, begin},
+        access::{Actor, HouseholdScope, begin},
         care::reports,
     };
     let app = Application::new().await;
@@ -424,9 +461,7 @@ async fn ordinary_report_forecasts_each_taper_step_at_its_own_dose() {
         request_id: "synthetic-taper-forecast".into(),
     };
     let tenant = begin(&app.fixture.runtime, &scope, None).await.unwrap();
-    let people = reports::accessible_people(&tenant, PersonAccess::View)
-        .await
-        .unwrap();
+    let people = reports::accessible_people(&tenant).await.unwrap();
     let report = reports::ordinary_history(
         &tenant,
         &people,
@@ -456,7 +491,7 @@ async fn ordinary_report_forecasts_each_taper_step_at_its_own_dose() {
 #[tokio::test]
 async fn ordinary_report_compliance_includes_cycle_expected_and_taken() {
     use med_tracker::models::{
-        access::{Actor, HouseholdScope, PersonAccess, begin},
+        access::{Actor, HouseholdScope, begin},
         care::reports,
     };
     let app = Application::new().await;
@@ -467,9 +502,7 @@ async fn ordinary_report_compliance_includes_cycle_expected_and_taken() {
         request_id: "synthetic-cycle-summary".into(),
     };
     let tenant = begin(&app.fixture.runtime, &scope, None).await.unwrap();
-    let people = reports::accessible_people(&tenant, PersonAccess::View)
-        .await
-        .unwrap();
+    let people = reports::accessible_people(&tenant).await.unwrap();
     let report = reports::ordinary_history(
         &tenant,
         &people,
@@ -493,20 +526,18 @@ async fn ordinary_report_compliance_includes_cycle_expected_and_taken() {
 #[tokio::test]
 async fn report_projection_does_not_suppress_a_take_linked_to_another_source() {
     use med_tracker::models::{
-        access::{Actor, HouseholdScope, PersonAccess, begin},
+        access::{Actor, HouseholdScope, begin},
         care::reports,
     };
     let app = Application::new().await;
-    app.fixture.admin.execute_unprepared("UPDATE person_medications SET administration_kind=0,dose_cycle=1,max_daily_doses=1,active=true,created_at='2026-01-01' WHERE id=81001; INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83999,72001,73001,80001,false,'2026-01-01','2026-12-31',2,'tablet',0,'{}',now(),now()); INSERT INTO medication_takes(id,household_id,person_medication_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(84999,72001,81001,2,'tablet','2026-07-06 09:00:00',now(),now()); INSERT INTO medication_dose_occurrences(id,household_id,schedule_id,medication_take_id,window_starts_on,window_ends_on,position,outcome,resolved_at,resolved_by_membership_id,created_at,updated_at) VALUES(85999,72001,83999,84999,'2026-07-06','2026-07-06',1,'taken',now(),74001,now(),now())").await.unwrap();
+    recorded_takes::seed(&app.fixture.admin, recorded_takes::SyntheticActor::canonical(), "UPDATE person_medications SET administration_kind=0,dose_cycle=1,max_daily_doses=1,active=true,created_at='2026-01-01' WHERE id=81001; INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83999,72001,73001,80001,false,'2026-01-01','2026-12-31',2,'tablet',0,'{}',now(),now()); INSERT INTO medication_takes(id,household_id,person_medication_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(84999,72001,81001,2,'tablet','2026-07-06 09:00:00',now(),now()); INSERT INTO medication_dose_occurrences(id,household_id,schedule_id,medication_take_id,window_starts_on,window_ends_on,position,outcome,resolved_at,resolved_by_membership_id,created_at,updated_at) VALUES(85999,72001,83999,84999,'2026-07-06','2026-07-06',1,'taken',now(),74001,now(),now())", &[recorded_takes::TakeSeed::new(84999,80001)]).await.unwrap();
     let scope = HouseholdScope {
         actor: Actor { account_id: 71001 },
         household_id: 72001,
         request_id: "synthetic-cross-source-report".into(),
     };
     let tenant = begin(&app.fixture.runtime, &scope, None).await.unwrap();
-    let people = reports::accessible_people(&tenant, PersonAccess::View)
-        .await
-        .unwrap();
+    let people = reports::accessible_people(&tenant).await.unwrap();
     let report = reports::ordinary_history(
         &tenant,
         &people,
@@ -552,7 +583,7 @@ async fn gp_pdf_audit_identifies_the_person_dates_and_take_option() {
 #[tokio::test]
 async fn gp_take_without_an_explicit_location_does_not_infer_one_from_the_medicine() {
     let app = Application::new().await;
-    app.fixture.admin.execute_unprepared("INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83999,72001,73001,80001,true,'2026-01-01','2026-12-31',2,'tablet',0,'{}',now(),now()); INSERT INTO medication_takes(id,household_id,schedule_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(84999,72001,83999,2,'tablet','2026-07-01 09:00:00',now(),now())").await.unwrap();
+    recorded_takes::seed(&app.fixture.admin, recorded_takes::SyntheticActor::canonical(), "INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83999,72001,73001,80001,true,'2026-01-01','2026-12-31',2,'tablet',0,'{}',now(),now()); INSERT INTO medication_takes(id,household_id,schedule_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(84999,72001,83999,2,'tablet','2026-07-01 09:00:00',now(),now())", &[recorded_takes::TakeSeed::new(84999,80001)]).await.unwrap();
     let token = app.token().await;
     let response = app.client.get(format!("{}/api/v1/households/72001/reports/health_history?person_id=73001&start_date=2026-07-01&end_date=2026-07-01&include_medication_takes=1", app.origin)).bearer_auth(&token).send().await.unwrap();
     assert_eq!(response.status().as_u16(), 200);
@@ -589,7 +620,7 @@ async fn gp_current_medicines_use_retained_friendly_name_sorting() {
 #[tokio::test]
 async fn ordinary_report_counts_daily_doses_from_each_taper_steps_times() {
     use med_tracker::models::{
-        access::{Actor, HouseholdScope, PersonAccess, begin},
+        access::{Actor, HouseholdScope, begin},
         care::reports,
     };
     let app = Application::new().await;
@@ -600,9 +631,7 @@ async fn ordinary_report_counts_daily_doses_from_each_taper_steps_times() {
         request_id: "synthetic-taper-times".into(),
     };
     let tenant = begin(&app.fixture.runtime, &scope, None).await.unwrap();
-    let people = reports::accessible_people(&tenant, PersonAccess::View)
-        .await
-        .unwrap();
+    let people = reports::accessible_people(&tenant).await.unwrap();
     let report = reports::ordinary_history(
         &tenant,
         &people,
@@ -726,81 +755,132 @@ async fn health_pdf_response_carries_no_bytes_or_audit_when_the_download_audit_f
 }
 
 #[tokio::test]
-async fn medication_review_pdf_rechecks_person_access_after_rendering() {
+async fn medication_review_pdf_rechecks_subject_participation_after_rendering() -> CareTestResult {
     let app = Application::new().await;
-    let token = app.token().await;
-    app.fixture.admin.execute_unprepared("INSERT INTO medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at) VALUES(80003,72001,79001,'Synthetic capsules',10,1,'capsule',now(),now()); INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(81003,72001,73001,80003,1,'capsule',1,now(),now()); INSERT INTO medication_review_evidence_records(id,source_name,source_record_id,source_url,product_name,label_section,evidence_text,retrieved_on,risk_level,match_confidence,match_status,candidate_terms,interacting_terms,created_at,updated_at) VALUES(90002,'Synthetic reference','report-2','https://example.test/evidence/2','Synthetic capsules','Warnings','Synthetic capsules increase exposure to synthetic compounds.',date '2026-01-01','moderate','high','reviewed_pair','{synthetic tablets}','{synthetic capsules}',now(),now()); CREATE FUNCTION synthetic_revoke_grant_on_prompt() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN UPDATE person_access_grants SET revoked_at=now() WHERE id=78001; RETURN NEW; END $$; CREATE TRIGGER synthetic_revoke_grant_on_prompt BEFORE INSERT ON medication_review_prompts FOR EACH ROW EXECUTE FUNCTION synthetic_revoke_grant_on_prompt()").await.unwrap();
-    let response = app
-        .client
-        .get(format!(
-            "{}/api/v1/households/72001/reports/medication_reviews.pdf?person_id=73001",
-            app.origin
-        ))
-        .bearer_auth(&token)
-        .send()
-        .await
-        .unwrap();
-    let status = response.status().as_u16();
-    let request_id = response
-        .headers()
-        .get("x-request-id")
-        .unwrap()
-        .to_str()
-        .unwrap()
-        .to_owned();
-    let bytes = response.bytes().await.unwrap();
-    let row = app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres, "SELECT count(*) AS events, count(*) FILTER (WHERE event_type='medication_review_report.downloaded') AS downloads FROM security_audit_events WHERE request_id=$1", [request_id.into()])).await.unwrap().unwrap();
-    let events: i64 = row.try_get("", "events").unwrap();
-    let downloads: i64 = row.try_get("", "downloads").unwrap();
+    let setup = r#"INSERT INTO people(id,clinical_name,person_type,has_capacity,date_of_birth,created_at,updated_at) VALUES(96802,'Snapshot clinical subject',0,true,'1980-01-01',now(),now());
+INSERT INTO accounts(id,person_id,name,email,status,created_at,updated_at) VALUES(96811,96802,'Snapshot clinical subject','snapshot-subject@example.test',2,now(),now());
+INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(96831,72001,96802,'member','active',now(),now(),now());
+INSERT INTO medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at) VALUES(80003,72001,79001,'Synthetic capsules',10,1,'capsule',now(),now());
+INSERT INTO medication_review_evidence_records(id,source_name,source_record_id,source_url,product_name,label_section,evidence_text,retrieved_on,risk_level,match_confidence,match_status,candidate_terms,interacting_terms,created_at,updated_at) VALUES(90002,'Synthetic reference','report-2','https://example.test/evidence/2','Synthetic capsules','Warnings','Synthetic capsules increase exposure to synthetic compounds.',date '2026-01-01','moderate','high','reviewed_pair','{synthetic tablets}','{synthetic capsules}',now(),now());
+INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(81003,72001,96802,80001,2,'tablet',0,now(),now()),(81004,72001,96802,80003,1,'capsule',1,now(),now());
+CREATE SEQUENCE synthetic_subject_departure_reached;
+CREATE FUNCTION synthetic_depart_subject_on_snapshot_commit() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$ BEGIN
+  PERFORM nextval('public.synthetic_subject_departure_reached');
+  UPDATE public.household_memberships SET status='revoked',revoked_at=clock_timestamp(),permissions_version=permissions_version+1 WHERE id=96831 AND revoked_at IS NULL;
+  RETURN NEW;
+END $$;
+CREATE CONSTRAINT TRIGGER synthetic_depart_subject_on_snapshot_commit AFTER INSERT ON public.medication_review_prompts DEFERRABLE INITIALLY DEFERRED FOR EACH ROW WHEN(NEW.person_id=96802) EXECUTE FUNCTION synthetic_depart_subject_on_snapshot_commit();"#;
+    let result=async {
+        let token=app.token().await;
+        app.fixture.admin.execute_unprepared(setup).await?;
+        let response=app.client.get(format!("{}/api/v1/households/72001/reports/medication_reviews.pdf?person_id=96802",app.origin)).bearer_auth(&token).send().await?;
+        let status=response.status().as_u16();
+        let request_id=response.headers().get("x-request-id").and_then(|value|value.to_str().ok()).ok_or("missing request ID")?.to_owned();
+        let bytes=response.bytes().await?;
+        let state=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+            "SELECT (SELECT is_called FROM synthetic_subject_departure_reached) AS reached,(SELECT status='revoked' AND revoked_at IS NOT NULL FROM household_memberships WHERE id=96831) AS changed"
+        )).await?.ok_or("missing race state")?;
+        let audit=app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+            "SELECT count(*) AS events,count(*) FILTER(WHERE event_type='medication_review_report.downloaded') AS downloads,count(*) FILTER(WHERE event_type='api.request' AND actor_account_id=71001 AND actor_membership_id=74001 AND audit_context->>'actor_person_id'='73001' AND audit_context->>'authentication_method'='oauth' AND metadata->>'status'='404') AS attributable_denials FROM security_audit_events WHERE request_id=$1",
+            [request_id.into()]
+        )).await?.ok_or("missing race audit")?;
+        Ok::<_,Box<dyn std::error::Error>>((status,bytes,state.try_get::<bool>("","reached")?,state.try_get::<bool>("","changed")?,audit.try_get::<i64>("","events")?,audit.try_get::<i64>("","downloads")?,audit.try_get::<i64>("","attributable_denials")?))
+    }.await;
     app.close().await;
-    assert_eq!(
-        status, 404,
-        "a grant revoked during the snapshot must deny the download"
-    );
+    let (status, bytes, reached, changed, events, downloads, attributable_denials) = result?;
+    assert!(reached, "commit-time race mutation must be reached");
+    assert!(changed, "subject membership must actually be revoked");
+    assert_eq!(status, 404);
     assert!(
         !bytes.starts_with(b"%PDF-"),
         "a denied request must not release PDF bytes"
     );
-    assert_eq!(events, 1, "the denied download still records an audit");
     assert_eq!(downloads, 0);
+    assert_eq!(events, 1, "the denied download still records an audit");
+    assert_eq!(
+        attributable_denials, 1,
+        "the denied request retains its original verified actor and actual response status"
+    );
+    Ok(())
 }
 
 #[tokio::test]
-async fn medication_review_pdf_rechecks_actor_policy_after_rendering() {
+async fn medication_review_pdf_rechecks_disabled_actor_after_rendering() -> CareTestResult {
     let app = Application::new().await;
-    let token = app.token().await;
-    app.fixture.admin.execute_unprepared("INSERT INTO medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at) VALUES(80003,72001,79001,'Synthetic capsules',10,1,'capsule',now(),now()); INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(81003,72001,73001,80003,1,'capsule',1,now(),now()); INSERT INTO medication_review_evidence_records(id,source_name,source_record_id,source_url,product_name,label_section,evidence_text,retrieved_on,risk_level,match_confidence,match_status,candidate_terms,interacting_terms,created_at,updated_at) VALUES(90002,'Synthetic reference','report-2','https://example.test/evidence/2','Synthetic capsules','Warnings','Synthetic capsules increase exposure to synthetic compounds.',date '2026-01-01','moderate','high','reviewed_pair','{synthetic tablets}','{synthetic capsules}',now(),now()); CREATE FUNCTION synthetic_minor_actor_on_prompt() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN UPDATE people SET person_type=1,has_capacity=false,date_of_birth=NULL WHERE id=(SELECT person_id FROM household_memberships WHERE id=74001); RETURN NEW; END $$; CREATE TRIGGER synthetic_minor_actor_on_prompt BEFORE INSERT ON medication_review_prompts FOR EACH ROW EXECUTE FUNCTION synthetic_minor_actor_on_prompt()").await.unwrap();
-    let response = app
-        .client
-        .get(format!(
-            "{}/api/v1/households/72001/reports/medication_reviews.pdf?person_id=73001",
-            app.origin
-        ))
-        .bearer_auth(&token)
-        .send()
-        .await
-        .unwrap();
-    let status = response.status().as_u16();
-    let request_id = response
-        .headers()
-        .get("x-request-id")
-        .unwrap()
-        .to_str()
-        .unwrap()
-        .to_owned();
-    let bytes = response.bytes().await.unwrap();
-    let row = app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres, "SELECT count(*) AS events, count(*) FILTER (WHERE event_type='medication_review_report.downloaded') AS downloads FROM security_audit_events WHERE request_id=$1", [request_id.into()])).await.unwrap().unwrap();
-    let events: i64 = row.try_get("", "events").unwrap();
-    let downloads: i64 = row.try_get("", "downloads").unwrap();
+    let setup = DISABLED_REPORT_ACTOR_SETUP;
+    let result=async {
+        let token=app.token().await;
+        app.fixture.admin.execute_unprepared(setup).await?;
+        let response=app.client.get(format!("{}/api/v1/households/72001/reports/medication_reviews.pdf?person_id=73001",app.origin)).bearer_auth(&token).send().await?;
+        let status=response.status().as_u16();
+        let request_id=response.headers().get("x-request-id").and_then(|value|value.to_str().ok()).ok_or("missing request ID")?.to_owned();
+        let bytes=response.bytes().await?;
+        let state=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+            "SELECT (SELECT is_called FROM synthetic_actor_disable_reached) AS reached,(SELECT a.disabled_at IS NOT NULL AND a.person_id=73001 AND p.person_type=0 AND p.has_capacity FROM accounts a JOIN people p ON p.id=a.person_id WHERE a.id=71001) AS changed"
+        )).await?.ok_or("missing race state")?;
+        let audit=app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+            "SELECT count(*) AS events,count(*) FILTER(WHERE event_type='medication_review_report.downloaded') AS downloads,count(*) FILTER(WHERE event_type='api.request' AND actor_account_id=71001 AND actor_membership_id=74001 AND audit_context->>'actor_person_id'='73001' AND audit_context->>'authentication_method'='oauth' AND metadata->>'status'='401') AS attributable_denials FROM security_audit_events WHERE request_id=$1",
+            [request_id.into()]
+        )).await?.ok_or("missing race audit")?;
+        Ok::<_,Box<dyn std::error::Error>>((status,bytes,state.try_get::<bool>("","reached")?,state.try_get::<bool>("","changed")?,audit.try_get::<i64>("","events")?,audit.try_get::<i64>("","downloads")?,audit.try_get::<i64>("","attributable_denials")?))
+    }.await;
     app.close().await;
-    assert_eq!(
-        status, 403,
-        "an actor losing adult status during the snapshot must deny the download"
+    let (status, bytes, reached, changed, events, downloads, attributable_denials) = result?;
+    assert!(reached, "commit-time race mutation must be reached");
+    assert!(
+        changed,
+        "actor must be disabled without changing its valid adult identity"
     );
+    assert_eq!(status, 401);
     assert!(
         !bytes.starts_with(b"%PDF-"),
         "a denied request must not release PDF bytes"
     );
-    assert_eq!(events, 1, "the denied download still records an audit");
     assert_eq!(downloads, 0);
+    assert_eq!(events, 1, "the denied download still records an audit");
+    assert_eq!(
+        attributable_denials, 1,
+        "the denied request retains its original verified actor and actual response status"
+    );
+    Ok(())
+}
+
+const DISABLED_REPORT_ACTOR_SETUP: &str = r#"INSERT INTO medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at) VALUES(80003,72001,79001,'Synthetic capsules',10,1,'capsule',now(),now());
+INSERT INTO medication_review_evidence_records(id,source_name,source_record_id,source_url,product_name,label_section,evidence_text,retrieved_on,risk_level,match_confidence,match_status,candidate_terms,interacting_terms,created_at,updated_at) VALUES(90002,'Synthetic reference','report-2','https://example.test/evidence/2','Synthetic capsules','Warnings','Synthetic capsules increase exposure to synthetic compounds.',date '2026-01-01','moderate','high','reviewed_pair','{synthetic tablets}','{synthetic capsules}',now(),now());
+INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(81003,72001,73001,80003,1,'capsule',1,now(),now());
+CREATE SEQUENCE synthetic_actor_disable_reached;
+CREATE FUNCTION synthetic_disable_actor_on_snapshot_commit() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$ BEGIN
+  PERFORM nextval('public.synthetic_actor_disable_reached');
+  UPDATE public.accounts SET disabled_at=clock_timestamp(),updated_at=clock_timestamp() WHERE id=71001 AND disabled_at IS NULL;
+  RETURN NEW;
+END $$;
+CREATE CONSTRAINT TRIGGER synthetic_disable_actor_on_snapshot_commit AFTER INSERT ON public.medication_review_prompts DEFERRABLE INITIALLY DEFERRED FOR EACH ROW WHEN(NEW.person_id=73001) EXECUTE FUNCTION synthetic_disable_actor_on_snapshot_commit();"#;
+
+#[tokio::test]
+async fn disabled_actor_pdf_releases_no_bytes_when_denial_audit_fails() -> CareTestResult {
+    let app = Application::new().await;
+    let result=async {
+        let token=app.token().await;
+        app.fixture.admin.execute_unprepared(DISABLED_REPORT_ACTOR_SETUP).await?;
+        app.fixture.admin.execute_unprepared("CREATE SEQUENCE synthetic_denial_audit_reached; CREATE FUNCTION synthetic_denial_audit_failure() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$ BEGIN PERFORM nextval('public.synthetic_denial_audit_reached'); RAISE EXCEPTION 'synthetic denial audit rejection' USING ERRCODE='23514'; END $$; CREATE TRIGGER synthetic_denial_audit_failure BEFORE INSERT ON public.audit_ledger_entries FOR EACH ROW WHEN (NEW.source_table='security_audit_events') EXECUTE FUNCTION synthetic_denial_audit_failure()").await?;
+        let response=app.client.get(format!("{}/api/v1/households/72001/reports/medication_reviews.pdf?person_id=73001",app.origin)).bearer_auth(&token).send().await?;
+        let status=response.status().as_u16();
+        let request_id=response.headers().get("x-request-id").and_then(|v|v.to_str().ok()).ok_or("missing request ID")?.to_owned();
+        let bytes=response.bytes().await?;
+        let state=app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,"SELECT (SELECT is_called FROM synthetic_actor_disable_reached) AS disabled,(SELECT is_called FROM synthetic_denial_audit_reached) AS attempted,(SELECT count(*) FROM security_audit_events WHERE request_id=$1) AS events,(SELECT count(*) FROM audit_ledger_entries WHERE envelope->'request'->>'request_id'=$1) AS entries",[request_id.into()])).await?.ok_or("missing denial failure state")?;
+        Ok::<_,Box<dyn std::error::Error>>((status,bytes,state.try_get::<bool>("","disabled")?,state.try_get::<bool>("","attempted")?,state.try_get::<i64>("","events")?,state.try_get::<i64>("","entries")?))
+    }.await;
+    app.close().await;
+    let (status, bytes, disabled, attempted, events, entries) = result?;
+    assert!(disabled, "actor disable must reach snapshot commit");
+    assert!(
+        attempted,
+        "denial appender must reach failing ledger trigger"
+    );
+    assert_eq!((events, entries), (0, 0));
+    assert_eq!(status, 500);
+    assert!(!bytes.starts_with(b"%PDF-"));
+    let body: Value = serde_json::from_slice(&bytes)?;
+    assert_eq!(body["error"]["code"], "internal_error");
+    Ok(())
 }

@@ -429,10 +429,10 @@ async fn identity_helpers_have_minimal_execution_grants_and_fixed_owner_search_p
           has_function_privilege('med_tracker_app',procedure.oid,'EXECUTE') AS app_execution
          FROM pg_proc procedure JOIN pg_namespace namespace ON namespace.oid=procedure.pronamespace
          WHERE namespace.nspname='med_tracker' AND procedure.proname IN
-          ('current_person_id','current_household_id','has_household_access','can_read_person','person_display_name','bootstrap_account','enforce_account_person','enforce_person_account','enforce_participation_identity','preserve_clinical_name','require_person_name') ORDER BY procedure.proname"
+          ('record_low_stock_notifications','reminder_recipients','cleanup_reminders','current_person_id','current_household_id','has_household_access','can_read_person','person_display_name','person_avatar_digest','person_avatar','avatar_key_retained','household_accounts','invitation_historical_inviter','platform_accounts','platform_recovery_households','platform_recovery_members','check_household_owner_recovery','recover_household_owner','platform_account_state','set_platform_account_active','bootstrap_account','bootstrap_registration','create_household','create_household_person','update_clinical_person','lock_current_household','change_household_membership','update_household_settings','can_edit_clinical_person','accept_household_invitation','invitation_preview','complete_household_invitation','bootstrap_invited_registration','enforce_account_person','enforce_person_account','enforce_participation_identity','preserve_clinical_name','require_person_name') ORDER BY procedure.proname"
     )).await.expect("actual helper ACL metadata");
     fixture.close().await;
-    assert_eq!(rows.len(), 11);
+    assert_eq!(rows.len(), 38);
     let mut violations = Vec::new();
     for row in rows {
         let name: String = row.try_get("", "proname").unwrap();
@@ -455,7 +455,8 @@ async fn identity_helpers_have_minimal_execution_grants_and_fixed_owner_search_p
             "preserve_clinical_name",
             "require_person_name",
         ]
-        .contains(&name.as_str());
+        .contains(&name.as_str())
+            || name == "complete_household_invitation";
         if row.try_get::<bool>("", "app_execution").unwrap() == trigger {
             violations.push(format!("Incorrect app execution for {name}"));
         }

@@ -21,7 +21,12 @@ pub(super) async fn context(
     labels: &Value,
     draft: Option<&HashMap<String, String>>,
 ) -> std::result::Result<Value, OperationError> {
-    let mut values = match notification_preferences::read(tenant, account_id).await {
+    let mut values = match notification_preferences::read(
+        tenant,
+        crate::models::ids::AccountId::from_database(account_id),
+    )
+    .await
+    {
         Ok((row, owner)) => {
             notification_preferences::representation(&row, &owner).0["data"].clone()
         }
@@ -88,7 +93,7 @@ pub(super) async fn context(
 
 fn selected_people(
     draft: &HashMap<String, String>,
-) -> std::result::Result<Vec<i64>, OperationError> {
+) -> std::result::Result<Vec<crate::models::ids::PersonId>, OperationError> {
     draft
         .iter()
         .filter(|(key, _)| key.starts_with("managed_"))
@@ -100,6 +105,7 @@ fn selected_people(
                 .parse::<i64>()
                 .ok()
                 .filter(|id| *id > 0)
+                .map(crate::models::ids::PersonId::from_database)
                 .ok_or_else(|| profile::validation("managed_person_ids", "is invalid"))
         })
         .collect()
@@ -167,7 +173,7 @@ pub(super) async fn save(
     let result = async {
         notification_preferences::managed::update(
             &tenant,
-            principal.account_id(),
+            crate::models::ids::AccountId::from_database(principal.account_id()),
             parse(&draft)?,
             &selected_people(&draft)?,
         )

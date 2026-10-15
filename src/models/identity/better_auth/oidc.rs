@@ -491,6 +491,8 @@ impl Provider {
         if let Some(operation_id) = flow.operation_id.as_deref() {
             let (user, session) = ctx.require_authoritative_session(request).await?;
             let transaction = service.store.transaction().await?;
+            super::operations::lock_pending_platform(&transaction, ctx, &session, operation_id)
+                .await?;
             service
                 .store
                 .lock_security_session(&transaction, &session)

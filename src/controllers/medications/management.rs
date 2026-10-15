@@ -219,7 +219,11 @@ impl<'a> Page<'a> {
             return unavailable();
         };
         let data = form::view(self.slug, context, draft, error, authenticity_token);
-        match format::render().view(self.view, "medications/form.html", data) {
+        match format::render().view(
+            self.view,
+            "medications/form.html",
+            crate::views::template_data(&data),
+        ) {
             Ok(response) => (
                 error.map(forms::status).unwrap_or(StatusCode::OK),
                 self.token.clone(),

@@ -20,12 +20,13 @@ pub(super) async fn sync_single_dose_mode(
         .await
         .map_err(database_error)?;
     let person_ids: Vec<i64> = sources.iter().map(|source| source.person_id).collect();
-    let people = person::Entity::find()
-        .in_tenant(context.tenant.scope().household_id)
-        .filter(person::Column::Id.is_in(person_ids))
-        .all(db)
-        .await
-        .map_err(database_error)?;
+    let people = crate::models::access::person_scope(
+        crate::models::ids::HouseholdId::from_database(context.tenant.scope().household_id),
+    )
+    .filter(person::Column::Id.is_in(person_ids))
+    .all(db)
+    .await
+    .map_err(database_error)?;
     let person_portable_ids: HashMap<i64, String> = people
         .into_iter()
         .map(|record| (record.id, record.portable_id))

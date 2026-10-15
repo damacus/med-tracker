@@ -7,6 +7,7 @@ pub(super) struct Page<'a> {
     view: &'a TeraView,
     slug: &'a str,
     request_id: String,
+    language: &'static str,
 }
 
 impl<'a> Page<'a> {
@@ -25,7 +26,18 @@ impl<'a> Page<'a> {
             view,
             slug,
             request_id: request_id(request),
+            language: crate::models::care::report_pdf::locale(""),
         }
+    }
+
+    pub(super) fn language(mut self, headers: &HeaderMap) -> Self {
+        self.language = crate::models::care::report_pdf::locale(
+            headers
+                .get(header::ACCEPT_LANGUAGE)
+                .and_then(|value| value.to_str().ok())
+                .unwrap_or_default(),
+        );
+        self
     }
 
     pub(super) async fn index(self) -> Response {
@@ -98,10 +110,16 @@ impl<'a> Page<'a> {
         data: std::result::Result<Value, OperationError>,
         error: Option<&OperationError>,
     ) -> Response {
-        let data = match data {
+        let mut data = match data {
             Ok(data) => data,
             Err(error) => return operation_error(error),
         };
+        let labels = match crate::models::care::report_pdf::translations(self.language) {
+            Ok(labels) => labels,
+            Err(_) => return unavailable(),
+        };
+        data["lang"] = json!(self.language);
+        data["labels"] = labels;
         let response = rendering::render(self.view, self.token, template, data, error);
         if tenant.commit().await.is_err() {
             return unavailable();

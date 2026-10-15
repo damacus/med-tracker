@@ -195,10 +195,11 @@ pub async fn read(
             .or(medicine.name.as_deref())
             .unwrap_or("Medication")
             .to_owned();
-        let location_name = location_names
-            .get(&medicine.location_id)
+        let location_name = medicine
+            .location_id
+            .and_then(|id| location_names.get(&id))
             .copied()
-            .unwrap_or("Location")
+            .unwrap_or_default()
             .to_owned();
         let options = options_by_medication
             .remove(&medicine.id)

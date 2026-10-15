@@ -1,5 +1,5 @@
 use crate::models::{
-    access::{self, PersonAccess, TenantTransaction},
+    access::{self, TenantTransaction},
     care::{locations, medications, people},
     errors::OperationError,
 };
@@ -10,7 +10,7 @@ pub async fn show(tenant: &TenantTransaction) -> Result<Value, OperationError> {
     let manager = access::can_manage_household(tenant);
     let manage_locations = locations::can_manage(tenant).await?;
     let create_person = people::can_create(tenant).await?;
-    let manage_ids = access::people_with_access(tenant, PersonAccess::Manage)
+    let manage_ids = access::current_people(tenant)
         .await?
         .iter()
         .map(|person| person.id)
