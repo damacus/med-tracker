@@ -9,6 +9,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { sourceIdentity } from './run-slice.mjs';
+import { parseNextestJUnit } from './nextest-proof.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const ambientUrl = 'postgres://unowned.invalid:1/unowned';
@@ -19,7 +20,7 @@ test('migration schema tests use only the migration crate and an owned database'
     assert.equal(state.owned_endpoint_used, true);
     assert.equal(state.foreign_resources_touched, 0);
     assert.deepEqual(state.calls.find(call => call.command === 'cargo').args,
-      ['test', '--locked', '-p', 'migration', '--test', 'identity_schema']);
+      ['nextest', 'run', '--locked', '--no-tests=fail', '-p', 'migration', '--test', 'identity_schema']);
     assert.equal(state.calls.some(call => call.operation === 'exec'), false);
     assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
   }, 'migration:test', []);
@@ -34,6 +35,37 @@ test('entity generation migrates only a disposable database', async () => {
     assert.equal(state.foreign_resources_touched, 0);
     assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
   }, 'migration:entities', []);
+});
+
+test('ordinary Rust entry points load without the optional proof parser', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'medtracker-missing-parser-'));
+  try {
+    const loader = join(directory, 'block-saxes.mjs');
+    await writeFile(loader, `export async function resolve(specifier, context, nextResolve) {
+  if (specifier === 'saxes') throw new Error('isolated checkout has no saxes');
+  return nextResolve(specifier, context);
+}\n`);
+    const environment = { NODE_OPTIONS: `--experimental-loader=${loader}` };
+    const imported = spawnSync(process.execPath, ['--input-type=module', '-e', 'await import("./scripts/migration/run-slice.mjs")'], { cwd: root, env: { ...process.env, ...environment }, encoding: 'utf8' });
+    assert.equal(imported.status, 0, imported.stderr);
+    for (const [taskName, assignments] of [['slice:test', ['TARGET=persistence']], ['migration:test', []], ['migration:entities', []]]) {
+      await withProcessFixture(0, (result, state) => {
+        assert.equal(result.status, 0, result.stderr);
+        assert.ok(state.calls.some(call => call.command === 'cargo'));
+      }, taskName, assignments, 0, environment);
+    }
+    const proof = spawnSync(process.execPath, ['--input-type=module', '-e', 'const { runSlice } = await import("./scripts/migration/run-slice.mjs"); await runSlice({ target: "persistence", executionProof: true })'], { cwd: root, env: { ...process.env, ...environment }, encoding: 'utf8' });
+    assert.notEqual(proof.status, 0);
+    assert.match(proof.stderr, /isolated checkout has no saxes/);
+    for (const taskName of ['slice:contracts', 'slice:result-proof']) {
+      const planned = spawnSync('task', ['--force', '--dry', '--verbose', taskName, ...(taskName === 'slice:contracts' ? ['GROUP=api-v1'] : [])], { cwd: root, encoding: 'utf8' });
+      assert.equal(planned.status, 0, planned.stderr);
+      const commands = `${planned.stdout}${planned.stderr}`;
+      assert.ok(commands.includes('npm ci') && commands.indexOf('npm ci') < commands.indexOf('node ', commands.indexOf('npm ci')), `${taskName} must install before loading proof: ${commands}`);
+    }
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 
 async function withProcessFixture(exitCode, callback, taskName = 'slice:test', assignments = ['TARGET=persistence'], provisionExit = 0, extraEnvironment = {}, { closeOutputBeforeCargo = false, injectReadableError = false } = {}) {
@@ -84,9 +116,24 @@ if (command === 'docker') {
     if (process.env.SLICE_FIXTURE_EXTRA_REPORT_PATH) fs.writeFileSync(process.env.SLICE_FIXTURE_EXTRA_REPORT_PATH, 'unrelated source change\\n');
   }
   const complete = () => {
-    const transcript = args.includes('--include-ignored') && process.env.SLICE_FIXTURE_COMPLETION_TRANSCRIPT
+    const transcript = args.includes('--run-ignored') && process.env.SLICE_FIXTURE_COMPLETION_TRANSCRIPT
       ? process.env.SLICE_FIXTURE_COMPLETION_TRANSCRIPT : args.includes('care_api') && process.env.SLICE_FIXTURE_CARE_TRANSCRIPT
         ? process.env.SLICE_FIXTURE_CARE_TRANSCRIPT : process.env.SLICE_FIXTURE_CARGO_TRANSCRIPT;
+    if (command === 'cargo' && args.includes('--config-file') && transcript) {
+      const config = fs.readFileSync(args[args.indexOf('--config-file') + 1], 'utf8');
+      const reportName = /path = "([^"]+)"/.exec(config)?.[1];
+      const reportPath = path.join(process.env.CARGO_TARGET_DIR, 'nextest', 'contract-proof', reportName);
+      const summary = /test result: ok\\. (\\d+) passed; (\\d+) failed; (\\d+) ignored;/.exec(transcript);
+      if (summary) {
+        const binary = (args.includes('-p') ? args[args.indexOf('-p') + 1] : 'med-tracker') + '::' + args[args.indexOf('--test') + 1];
+        const cases = [...transcript.matchAll(/^test ([A-Za-z0-9_:]+)(?: - should panic(?: - expected)?)? \\.\\.\\. (ok|ignored(?:, .+)?|FAILED)$/gm)];
+        const testcase = cases.map(([, name, status]) => '<testcase name="' + name + '" classname="' + binary + '">' + (status.startsWith('ignored') ? '<skipped/>' : status === 'FAILED' ? '<failure/>' : '') + '</testcase>').join('');
+        const tests = Number(summary[1]) + Number(summary[2]) + Number(summary[3]);
+        const counts = ' tests="' + tests + '" failures="' + summary[2] + '" errors="0"';
+        fs.mkdirSync(path.dirname(reportPath), { recursive: true });
+        fs.writeFileSync(reportPath, '<testsuites' + counts + '><testsuite name="' + binary + '"' + counts + '>' + testcase + '</testsuite></testsuites>' + 'x'.repeat(Number(process.env.SLICE_FIXTURE_CARGO_OVERFLOW_BYTES || 0)));
+      }
+    }
     if (command === 'cargo' && transcript) process.stdout.write(transcript);
     if (command === 'cargo' && process.env.SLICE_FIXTURE_CARGO_OVERFLOW_BYTES) {
       process.stdout.write('x'.repeat(Number(process.env.SLICE_FIXTURE_CARGO_OVERFLOW_BYTES)));
@@ -130,9 +177,9 @@ childProcess.spawn = (...args) => {
 syncBuiltinESMExports();
 `);
     }
-    const options = {
+      const options = {
       cwd: root,
-      env: { ...process.env, PATH: `${directory}:${process.env.PATH}`, DATABASE_URL: ambientUrl, MEDTRACKER_SESSION_KEY: 'ambient-identity-fixture-key-must-not-be-used', COMPOSE_FILE: '/unowned/compose.yaml', COMPOSE_PROJECT_NAME: 'unrelated', DOCKER_HOST: 'tcp://unowned.invalid:2376', DOCKER_CONTEXT: 'unrelated', DOCKER_CONFIG: '/unowned/docker-config', DOCKER_TLS_VERIFY: '1', DOCKER_CERT_PATH: '/unowned/certs', SLICE_FILTER: 'unrelated_filter', SLICE_FIXTURE_STATE: statePath, SLICE_FIXTURE_EXIT: String(exitCode), SLICE_FIXTURE_PROVISION_EXIT: String(provisionExit), CARGO_TARGET_DIR: '/unowned/target', CARGO_BUILD_BUILD_DIR: '/unowned/intermediates', LLVM_PROFILE_FILE: '/unowned/profile.profraw', CARGO_LLVM_COV_TARGET_DIR: '/unowned/llvm-cov-target', CARGO_LLVM_COV_BUILD_DIR: '/unowned/llvm-cov-build', CARGO_LLVM_COV_SETUP: 'skip', CARGO_LLVM_COV_FLAGS: '--unowned', CARGO_LLVM_PROFDATA_FLAGS: '--unowned', LLVM_COV: '/unowned/llvm-cov', LLVM_PROFDATA: '/unowned/llvm-profdata', LLVM_COV_FLAGS: '--unowned', LLVM_PROFDATA_FLAGS: '--unowned', LLVM_PROFILE_FILE_NAME: 'unowned.profraw', ...(taskName === 'slice:contracts' && taskAssignments.includes('GROUP=api-v1') ? { SLICE_FIXTURE_CARE_TRANSCRIPT: requestTranscript(creditedCareTests, []) } : {}), ...extraEnvironment, ...(gatePath ? { SLICE_FIXTURE_CARGO_GATE: gatePath } : {}), ...(preloadPath ? { NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import=${preloadPath}`.trim() } : {}) },
+      env: { ...process.env, PATH: `${directory}:${process.env.PATH}`, DATABASE_URL: ambientUrl, MEDTRACKER_SESSION_KEY: 'ambient-identity-fixture-key-must-not-be-used', COMPOSE_FILE: '/unowned/compose.yaml', COMPOSE_PROJECT_NAME: 'unrelated', DOCKER_HOST: 'tcp://unowned.invalid:2376', DOCKER_CONTEXT: 'unrelated', DOCKER_CONFIG: '/unowned/docker-config', DOCKER_TLS_VERIFY: '1', DOCKER_CERT_PATH: '/unowned/certs', SLICE_FILTER: 'unrelated_filter', SLICE_FIXTURE_STATE: statePath, SLICE_FIXTURE_EXIT: String(exitCode), SLICE_FIXTURE_PROVISION_EXIT: String(provisionExit), CARGO_TARGET_DIR: taskName === 'slice:contracts' ? join(directory, 'target') : '/unowned/target', CARGO_BUILD_BUILD_DIR: '/unowned/intermediates', LLVM_PROFILE_FILE: '/unowned/profile.profraw', CARGO_LLVM_COV_TARGET_DIR: '/unowned/llvm-cov-target', CARGO_LLVM_COV_BUILD_DIR: '/unowned/llvm-cov-build', CARGO_LLVM_COV_SETUP: 'skip', CARGO_LLVM_COV_FLAGS: '--unowned', CARGO_LLVM_PROFDATA_FLAGS: '--unowned', LLVM_COV: '/unowned/llvm-cov', LLVM_PROFDATA: '/unowned/llvm-profdata', LLVM_COV_FLAGS: '--unowned', LLVM_PROFDATA_FLAGS: '--unowned', LLVM_PROFILE_FILE_NAME: 'unowned.profraw', ...(taskName === 'slice:contracts' && taskAssignments.includes('GROUP=api-v1') ? { SLICE_FIXTURE_CARE_TRANSCRIPT: requestTranscript(creditedCareTests, []) } : {}), ...extraEnvironment, ...(gatePath ? { SLICE_FIXTURE_CARGO_GATE: gatePath } : {}), ...(preloadPath ? { NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import=${preloadPath}`.trim() } : {}) },
       encoding: 'utf8',
       timeout: 15000,
       maxBuffer: 4 * 1024 * 1024,
@@ -209,10 +256,18 @@ test('every public foundation database task pins the root Compose file and disab
 test('the complete Cargo phase retains unit, integration and doc tests without an ambient filter', async () => {
   await withProcessFixture(0, (result, state) => {
     assert.equal(result.status, 0, result.stderr);
-    assert.deepEqual(state.calls.find(call => call.command === 'cargo').args, ['test', '--locked']);
+    assert.deepEqual(state.calls.find(call => call.command === 'cargo').args, ['nextest', 'run', '--locked', '--no-tests=fail', '--workspace', '--test-threads', '4']);
     assert.equal(state.owned_endpoint_used, true);
     assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
   }, 'slice:test-all', []);
+});
+
+test('the explicit diagnostic option runs every selected test after a failure', async () => {
+  await withProcessFixture(0, (result, state) => {
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(state.calls.find(call => call.command === 'cargo').args,
+      ['nextest', 'run', '--locked', '--no-tests=fail', '-p', 'med-tracker', '--test', 'care_api', '--test-threads', '2', '--no-fail-fast', 'platform']);
+  }, 'slice:test', ['TARGET=care_api', 'FILTER=platform', 'NO_FAIL_FAST=true']);
 });
 
 test('the persistence baseline preserves the pinned administrative artifact bytes', async () => {
@@ -265,7 +320,7 @@ test('API v1 contract task selects the native request binary and focused filter'
   await withProcessFixture(0, (result, state) => {
     assert.equal(result.status, 0, result.stderr);
     assert.deepEqual(state.calls.find(call => call.command === 'cargo').args,
-      ['test', '--locked', '--test', 'requests', 'api_v1::baseline::anonymous_access', '--', '--nocapture']);
+      ['nextest', 'run', '--locked', '--no-tests=fail', '-p', 'med-tracker', '--test', 'requests', '--no-capture', 'api_v1::baseline::anonymous_access']);
     assert.equal(state.owned_endpoint_used, true);
     assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
   }, 'slice:contracts', ['GROUP=api-v1-inventory', 'FILTER=api_v1::baseline::anonymous_access']);
@@ -317,7 +372,7 @@ test('API v1 completion rejects Cargo success with zero executed credited tests'
     assert.notEqual(result.status, 0, result.stderr);
     assert.match(result.stderr, /contract|credited|evidence|executed/i);
     assert.ok(state.calls.some(call => call.command === 'cargo' && call.args.includes('requests')));
-    assert.equal(state.calls.some(call => call.command === 'cargo' && call.args.includes('--include-ignored')), false);
+    assert.equal(state.calls.some(call => call.command === 'cargo' && call.args.includes('--run-ignored')), false);
     assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
   }, 'slice:contracts', ['GROUP=api-v1'], 0, {
     SLICE_FIXTURE_CARGO_TRANSCRIPT: 'running 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n',
@@ -329,7 +384,7 @@ test('API v1 completion rejects an ignored credited case despite Cargo success',
   await withProcessFixture(0, (result, state) => {
     assert.notEqual(result.status, 0, result.stderr);
     assert.match(result.stderr, /head_export_uses_the_get_export_bucket|ignored|missing.*test|evidence/i);
-    assert.equal(state.calls.some(call => call.command === 'cargo' && call.args.includes('--include-ignored')), false);
+    assert.equal(state.calls.some(call => call.command === 'cargo' && call.args.includes('--run-ignored')), false);
     assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
   }, 'slice:contracts', ['GROUP=api-v1'], 0, {
     SLICE_FIXTURE_CARGO_TRANSCRIPT: requestTranscript(creditedRequestTests.slice(0, -1), ignored),
@@ -341,7 +396,7 @@ test('API v1 completion rejects a passing prefix of an unexecuted credited case'
   await withProcessFixture(0, (result, state) => {
     assert.notEqual(result.status, 0, result.stderr);
     assert.match(result.stderr, /head_export_uses_the_get_export_bucket|missing.*test|evidence/i);
-    assert.equal(state.calls.some(call => call.command === 'cargo' && call.args.includes('--include-ignored')), false);
+    assert.equal(state.calls.some(call => call.command === 'cargo' && call.args.includes('--run-ignored')), false);
     assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
   }, 'slice:contracts', ['GROUP=api-v1'], 0, {
     SLICE_FIXTURE_CARGO_TRANSCRIPT: requestTranscript(passed),
@@ -355,7 +410,7 @@ test('API v1 completion rejects a missing care API proof before the final gate',
     assert.match(result.stderr, new RegExp(`Missing executed contract evidence: care_api::${omitted}`));
     const cargo = state.calls.filter(call => call.command === 'cargo');
     assert.deepEqual(cargo.map(call => call.args[call.args.indexOf('--test') + 1]), ['requests', 'care_api']);
-    assert.equal(cargo.some(call => call.args.includes('--include-ignored')), false);
+    assert.equal(cargo.some(call => call.args.includes('--run-ignored')), false);
     assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
   }, 'slice:contracts', ['GROUP=api-v1'], 0, {
     SLICE_FIXTURE_CARGO_TRANSCRIPT: requestTranscript(creditedRequestTests),
@@ -363,7 +418,7 @@ test('API v1 completion rejects a missing care API proof before the final gate',
   });
 });
 
-test('API v1 completion rejects all credited lines without a final libtest summary and cleans up', async () => {
+test('API v1 completion rejects a missing JUnit report and cleans up', async () => {
   const transcript = [
     `running ${creditedRequestTests.length} tests`,
     ...creditedRequestTests.map(name => `test ${name} ... ok`),
@@ -371,8 +426,8 @@ test('API v1 completion rejects all credited lines without a final libtest summa
   ].join('\n');
   await withProcessFixture(0, (result, state) => {
     assert.notEqual(result.status, 0, result.stderr);
-    assert.match(result.stderr, /summary|incomplete|transcript/i);
-    assert.equal(state.calls.some(call => call.command === 'cargo' && call.args.includes('--include-ignored')), false);
+    assert.match(result.stderr, /missing.*JUnit/i);
+    assert.equal(state.calls.some(call => call.command === 'cargo' && call.args.includes('--run-ignored')), false);
     assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
   }, 'slice:contracts', ['GROUP=api-v1'], 0, { SLICE_FIXTURE_CARGO_TRANSCRIPT: transcript });
 });
@@ -383,47 +438,45 @@ test('API v1 completion rejects an inconsistent libtest summary and cleans up', 
   await withProcessFixture(0, (result, state) => {
     assert.notEqual(result.status, 0, result.stderr);
     assert.match(result.stderr, /summary|count|transcript/i);
-    assert.equal(state.calls.some(call => call.command === 'cargo' && call.args.includes('--include-ignored')), false);
+    assert.equal(state.calls.some(call => call.command === 'cargo' && call.args.includes('--run-ignored')), false);
     assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
   }, 'slice:contracts', ['GROUP=api-v1'], 0, { SLICE_FIXTURE_CARGO_TRANSCRIPT: transcript });
 });
 
-test('API v1 completion bounds libtest stdout and cleans up an oversized transcript', async () => {
+test('API v1 completion bounds JUnit report size and cleans up', async () => {
   await withProcessFixture(0, (result, state) => {
     assert.notEqual(result.status, 0, result.stderr);
     assert.match(result.stderr, /limit|large|budget|size/i);
-    assert.equal(state.calls.some(call => call.command === 'cargo' && call.args.includes('--include-ignored')), false);
+    assert.equal(state.calls.some(call => call.command === 'cargo' && call.args.includes('--run-ignored')), false);
     assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
   }, 'slice:contracts', ['GROUP=api-v1'], 0, {
-    SLICE_FIXTURE_CARGO_TRANSCRIPT: 'running 1 tests\n',
+    SLICE_FIXTURE_CARGO_TRANSCRIPT: requestTranscript(creditedRequestTests),
     SLICE_FIXTURE_CARGO_OVERFLOW_BYTES: String(1024 * 1024 + 1),
   });
 });
 
-test('closed contract output stops Cargo and cleans the owned database', async () => {
+test('missing contract report stops proof and cleans the owned database', async () => {
   await withProcessFixture(0, (result, state) => {
     assert.notEqual(result.status, 0, result.stderr);
-    assert.match(result.stderr, /EPIPE|broken pipe/i);
+    assert.match(result.stderr, /missing.*JUnit/i);
     assert.deepEqual(state.calls.filter(call => call.command === 'docker').map(call => call.operation), ['up', 'port', 'exec', 'down']);
     assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
     assert.equal(state.calls.filter(call => call.command === 'cargo').length, 1);
-    assert.equal(state.calls.some(call => call.command === 'cargo' && call.args.includes('--include-ignored')), false);
-  }, 'slice:contracts', ['GROUP=api-v1'], 0, {
-    SLICE_FIXTURE_CARGO_TRANSCRIPT: requestTranscript(creditedRequestTests),
-  }, { closeOutputBeforeCargo: true });
+    assert.equal(state.calls.some(call => call.command === 'cargo' && call.args.includes('--run-ignored')), false);
+  }, 'slice:contracts', ['GROUP=api-v1']);
 });
 
-test('readable Cargo output error cleans the owned database', async () => {
-  await withProcessFixture(0, (result, state) => {
+test('nonzero nextest execution cleans the owned database', async () => {
+  await withProcessFixture(42, (result, state) => {
     assert.notEqual(result.status, 0, result.stderr);
-    assert.match(result.stderr, /synthetic EIO/);
+    assert.match(result.stderr, /Slice Cargo execution exited 42/);
     assert.deepEqual(state.calls.filter(call => call.command === 'docker').map(call => call.operation), ['up', 'port', 'exec', 'down']);
     assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
     assert.equal(state.calls.filter(call => call.command === 'cargo').length, 1);
-    assert.equal(state.calls.some(call => call.command === 'cargo' && call.args.includes('--include-ignored')), false);
+    assert.equal(state.calls.some(call => call.command === 'cargo' && call.args.includes('--run-ignored')), false);
   }, 'slice:contracts', ['GROUP=api-v1'], 0, {
     SLICE_FIXTURE_CARGO_TRANSCRIPT: requestTranscript(creditedRequestTests),
-  }, { injectReadableError: true });
+  });
 });
 
 test('API v1 completion observes exact credited cases and runs the existing acceptance gate', async () => {
@@ -432,21 +485,21 @@ test('API v1 completion observes exact credited cases and runs the existing acce
     const cargo = state.calls.filter(call => call.command === 'cargo');
     assert.deepEqual(cargo.map(call => call.args[call.args.indexOf('--test') + 1]), ['requests', 'care_api', 'requests']);
     const requests = cargo.filter(call => call.args.includes('requests'));
-    assert.ok(requests.some(call => !call.args.includes('--include-ignored')));
-    assert.deepEqual(requests[0].args,
-      ['test', '--locked', '--test', 'requests', 'api_v1', '--', '--format=pretty', '--color=never']);
-    assert.deepEqual(cargo[1].args,
-      ['test', '--locked', '--test', 'care_api', '--', '--format=pretty', '--color=never']);
-    assert.deepEqual(requests.at(-1).args,
-      ['test', '--locked', '--test', 'requests', 'api_v1', '--', '--include-ignored', '--format=pretty', '--color=never']);
+    assert.ok(requests.some(call => !call.args.includes('--run-ignored')));
+    assert.deepEqual(requests[0].args.slice(0, 8),
+      ['nextest', 'run', '--locked', '--no-tests=fail', '-p', 'med-tracker', '--test', 'requests']);
+    assert.deepEqual(cargo[1].args.slice(0, 10),
+      ['nextest', 'run', '--locked', '--no-tests=fail', '-p', 'med-tracker', '--test', 'care_api', '--test-threads', '2']);
+    assert.ok(requests.at(-1).args.includes('--run-ignored'));
+    assert.ok(cargo.every(call => call.args.includes('--config-file') && call.args.includes('contract-proof') && call.args.includes('--retries')));
     assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
   }, 'slice:contracts', ['GROUP=api-v1'], 0, {
     SLICE_FIXTURE_CARGO_TRANSCRIPT: requestTranscript(creditedRequestTests),
-    SLICE_FIXTURE_FAIL_MATCH: '--include-ignored',
+    SLICE_FIXTURE_FAIL_MATCH: '--run-ignored',
   });
 });
 
-test('API v1 completion requires its exact gate case to pass in the final selection', async () => {
+test('API v1 completion requires its exact gate case and nonempty final selection', async () => {
   for (const [label, completion] of [
     ['absent', requestTranscript(creditedRequestTests, [])],
     ['renamed', requestTranscript([...creditedRequestTests, 'api_v1::acceptance_renamed'], [])],
@@ -455,9 +508,9 @@ test('API v1 completion requires its exact gate case to pass in the final select
   ]) {
     await withProcessFixture(0, (result, state) => {
       assert.notEqual(result.status, 0, label);
-      assert.match(result.stderr, /Missing executed API v1 acceptance gate/, label);
+      assert.match(result.stderr, label === 'zero' ? /empty.*JUnit/i : /Missing executed API v1 acceptance gate/, label);
       assert.equal(state.calls.filter(call => call.command === 'cargo').length, 3, label);
-      assert.ok(state.calls.at(-2).args.includes('--include-ignored'), label);
+      assert.ok(state.calls.at(-2).args.includes('--run-ignored'), label);
       assert.deepEqual(state.resources, { unrelated: ['existing-volume'] }, label);
     }, 'slice:contracts', ['GROUP=api-v1'], 0, {
       SLICE_FIXTURE_CARGO_TRANSCRIPT: requestTranscript(creditedRequestTests),
@@ -471,7 +524,7 @@ test('API v1 completion accepts the exact gate after its evidence selection', as
     assert.equal(result.status, 0, result.stderr);
     const requests = state.calls.filter(call => call.command === 'cargo');
     assert.equal(requests.length, 3);
-    assert.ok(requests.at(-1).args.includes('--include-ignored'));
+    assert.ok(requests.at(-1).args.includes('--run-ignored'));
     assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
   }, 'slice:contracts', ['GROUP=api-v1'], 0, {
     SLICE_FIXTURE_CARGO_TRANSCRIPT: requestTranscript(creditedRequestTests),
@@ -489,11 +542,11 @@ test('an unrelated ignored reason preserves credited passes and reaches the acce
     assert.match(result.stderr, /Slice Cargo execution exited 42/);
     const requests = state.calls.filter(call => call.command === 'cargo' && call.args.includes('requests'));
     assert.equal(requests.length, 2);
-    assert.ok(requests.at(-1).args.includes('--include-ignored'));
+    assert.ok(requests.at(-1).args.includes('--run-ignored'));
     assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
   }, 'slice:contracts', ['GROUP=api-v1'], 0, {
     SLICE_FIXTURE_CARGO_TRANSCRIPT: transcript,
-    SLICE_FIXTURE_FAIL_MATCH: '--include-ignored',
+    SLICE_FIXTURE_FAIL_MATCH: '--run-ignored',
   });
 });
 
@@ -506,7 +559,7 @@ test('a credited test with an ignored reason never earns execution credit', asyn
   await withProcessFixture(0, (result, state) => {
     assert.notEqual(result.status, 0, result.stderr);
     assert.match(result.stderr, new RegExp(`Missing executed contract evidence: requests::${credited}`));
-    assert.equal(state.calls.some(call => call.command === 'cargo' && call.args.includes('--include-ignored')), false);
+    assert.equal(state.calls.some(call => call.command === 'cargo' && call.args.includes('--run-ignored')), false);
     assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
   }, 'slice:contracts', ['GROUP=api-v1'], 0, { SLICE_FIXTURE_CARGO_TRANSCRIPT: transcript });
 });
@@ -522,7 +575,7 @@ test('API v1 completion removes inherited RUST_TEST_NOCAPTURE only from its Carg
   }, 'slice:contracts', ['GROUP=api-v1'], 0, {
     RUST_TEST_NOCAPTURE: '1',
     SLICE_FIXTURE_CARGO_TRANSCRIPT: requestTranscript(creditedRequestTests),
-    SLICE_FIXTURE_FAIL_MATCH: '--include-ignored',
+    SLICE_FIXTURE_FAIL_MATCH: '--run-ignored',
   });
   assert.equal(process.env.RUST_TEST_NOCAPTURE, parentValue);
 });
@@ -534,46 +587,27 @@ test('ordinary slice tests retain the developer RUST_TEST_NOCAPTURE setting', as
   }, 'slice:test', ['TARGET=persistence'], 0, { RUST_TEST_NOCAPTURE: '1' });
 });
 
-test('libtest execution proof handles split names and summaries without crediting ignored cases', async () => {
-  const { LibtestProof } = await import('./run-slice.mjs');
-  assert.equal(typeof LibtestProof, 'function');
-  const proof = new LibtestProof();
-  for (const chunk of [
-    Buffer.from('running 2 tests\ntest api_v1::baseline::anony'),
-    Buffer.from('mous_access ... ok\ntest api_v1::acceptance ... ign'),
-    Buffer.from('ored\n\ntest result: ok. 1 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.'),
-    Buffer.from('00s\n'),
-  ]) proof.write(chunk);
-  const result = proof.finish();
+test('JUnit execution proof credits passed cases without crediting ignored cases', () => {
+  const xml = '<testsuites tests="2" failures="0" errors="0"><testsuite name="med-tracker::requests" tests="2" failures="0" errors="0"><testcase name="api_v1::baseline::anonymous_access" classname="med-tracker::requests"/><testcase name="api_v1::acceptance" classname="med-tracker::requests"><skipped/></testcase></testsuite></testsuites>';
+  const result = parseNextestJUnit(xml, 'med-tracker::requests');
   assert.deepEqual([...result.passed], ['api_v1::baseline::anonymous_access']);
   assert.deepEqual([...result.ignored], ['api_v1::acceptance']);
 });
 
-test('libtest execution proof recognises a passing should-panic case', async () => {
-  const { LibtestProof } = await import('./run-slice.mjs');
-  const proof = new LibtestProof();
-  proof.write(Buffer.from('running 1 test\ntest contract::tests::contract_helper_rejects_duplicate_items - should panic ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n'));
-  assert.deepEqual([...proof.finish().passed], ['contract::tests::contract_helper_rejects_duplicate_items']);
+test('JUnit execution proof recognises a passing should-panic case', () => {
+  const xml = '<testsuites tests="1" failures="0" errors="0"><testsuite name="med-tracker::requests" tests="1" failures="0" errors="0"><testcase name="contract::tests::contract_helper_rejects_duplicate_items" classname="med-tracker::requests"/></testsuite></testsuites>';
+  assert.deepEqual([...parseNextestJUnit(xml, 'med-tracker::requests').passed], ['contract::tests::contract_helper_rejects_duplicate_items']);
 });
 
-test('libtest execution proof rejects a summary inconsistent with split case lines', async () => {
-  const { LibtestProof } = await import('./run-slice.mjs');
-  assert.equal(typeof LibtestProof, 'function');
-  const proof = new LibtestProof();
-  proof.write(Buffer.from('running 1 tests\ntest api_v1::baseline::anonymous_access ... ok\n'));
-  proof.write(Buffer.from('test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n'));
-  assert.throws(() => proof.finish(), /summary|count|transcript/i);
+test('JUnit execution proof rejects a count inconsistent with cases', () => {
+  const xml = '<testsuites tests="2" failures="0" errors="0"><testsuite name="med-tracker::requests" tests="2" failures="0" errors="0"><testcase name="api_v1::baseline::anonymous_access" classname="med-tracker::requests"/></testsuite></testsuites>';
+  assert.throws(() => parseNextestJUnit(xml, 'med-tracker::requests'), /count/i);
 });
 
-test('libtest execution proof rejects truncated or appended summary text', async () => {
-  const { LibtestProof } = await import('./run-slice.mjs');
-  for (const summary of [
-    'test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out;',
-    'test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s extra',
-  ]) {
-    const proof = new LibtestProof();
-    proof.write(Buffer.from(`running 1 test\ntest api_v1::baseline::anonymous_access ... ok\n${summary}\n`));
-    assert.throws(() => proof.finish(), /summary|transcript|incomplete/i, summary);
+test('JUnit execution proof rejects truncated or appended XML', () => {
+  const xml = '<testsuites tests="1" failures="0" errors="0"><testsuite name="med-tracker::requests" tests="1" failures="0" errors="0"><testcase name="api_v1::baseline::anonymous_access" classname="med-tracker::requests"/></testsuite></testsuites>';
+  for (const invalid of [xml.slice(0, -14), `${xml}<extra/>`]) {
+    assert.throws(() => parseNextestJUnit(invalid, 'med-tracker::requests'), /xml|closed|expected|text|root|tag/i);
   }
 });
 
@@ -581,7 +615,7 @@ test('API v1 inventory task selects all request and fixture cases', async () => 
   await withProcessFixture(0, (result, state) => {
     assert.equal(result.status, 0, result.stderr);
     assert.deepEqual(state.calls.find(call => call.command === 'cargo').args,
-      ['test', '--locked', '--test', 'requests', 'api_v1', '--', '--nocapture']);
+      ['nextest', 'run', '--locked', '--no-tests=fail', '-p', 'med-tracker', '--test', 'requests', '--no-capture', 'api_v1']);
   }, 'slice:contracts', ['GROUP=api-v1-inventory']);
 });
 
