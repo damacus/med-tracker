@@ -1,3 +1,5 @@
+#[path = "capabilities.rs"]
+mod capabilities;
 #[path = "../care_api/contract.rs"]
 mod contract;
 #[path = "../care_api/fixture.rs"]
@@ -17,6 +19,10 @@ use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 
 async fn boot_fixture() -> (Fixture, BootResult) {
+    boot_fixture_with(|_| {}).await
+}
+
+async fn boot_fixture_with(configure: impl FnOnce(&mut Config)) -> (Fixture, BootResult) {
     let fixture = Fixture::new().await;
     let mut config = Config::new(&Environment::Test).unwrap();
     config.database.uri = fixture.runtime_uri.clone();
@@ -24,6 +30,7 @@ async fn boot_fixture() -> (Fixture, BootResult) {
         panic!("PostgreSQL queue required")
     };
     queue.uri = fixture.runtime_uri.clone();
+    configure(&mut config);
     let boot = med_tracker::app::App::boot(StartMode::ServerOnly, &Environment::Test, config)
         .await
         .unwrap();
@@ -38,25 +45,17 @@ async fn boot_rate_fixture_with(
     trusted_proxy_ips: &[&str],
     request_id_enabled: Option<bool>,
 ) -> (Fixture, BootResult) {
-    let fixture = Fixture::new().await;
-    let mut config = Config::new(&Environment::Test).unwrap();
-    config.database.uri = fixture.runtime_uri.clone();
-    let Some(QueueConfig::Postgres(queue)) = config.queue.as_mut() else {
-        panic!("PostgreSQL queue required")
-    };
-    queue.uri = fixture.runtime_uri.clone();
-    config.settings.get_or_insert_with(|| json!({}))["api_rate_limit"] = json!({
-        "fixed_now_unix_seconds": 1000,
-        "trusted_proxy_ips": trusted_proxy_ips.join(","),
-    });
-    if let Some(enable) = request_id_enabled {
-        config.server.middlewares.request_id =
-            Some(loco_rs::controller::middleware::request_id::RequestId { enable });
-    }
-    let boot = med_tracker::app::App::boot(StartMode::ServerOnly, &Environment::Test, config)
-        .await
-        .unwrap();
-    (fixture, boot)
+    boot_fixture_with(|config| {
+        config.settings.get_or_insert_with(|| json!({}))["api_rate_limit"] = json!({
+            "fixed_now_unix_seconds": 1000,
+            "trusted_proxy_ips": trusted_proxy_ips.join(","),
+        });
+        if let Some(enable) = request_id_enabled {
+            config.server.middlewares.request_id =
+                Some(loco_rs::controller::middleware::request_id::RequestId { enable });
+        }
+    })
+    .await
 }
 
 async fn close(fixture: Fixture, boot: BootResult) {
@@ -190,6 +189,18 @@ fn validate_evidence(entry: &Value) -> Result<(), String> {
                     "test": "api_v1::rate_limit::head_export_uses_the_get_export_bucket",
                     "checks": ["HEAD:200", "GET-HEAD-shared-bucket", "HEAD:429"]
                 }
+            ]
+        })
+    } else if entry["operation_id"] == "getCapabilities" {
+        json!({
+            "coverage": "complete",
+            "evidence": [
+                {"binary":"requests","test":"api_v1::capabilities::advertised_features_match_executed_root_routes","checks":["GET-200-anonymous-implemented-feature-flags","GET-unsupported-CLI-MCP-FHIR-remain-false-empty"]},
+                {"binary":"requests","test":"api_v1::capabilities::profile_and_avatar_support_is_discoverable","checks":["GET-200-profile-avatar-actions-upload-size-and-content-types"]},
+                {"binary":"requests","test":"api_v1::capabilities::public_mobile_clients_include_name_and_exclude_secrets","checks":["GET-200-recursive-CapabilitiesResponse-including-RFC-URI-formats","GET-mobile-client-names-redirects-scopes-exclude-integration-clients-and-secrets","GET-default-mobile-login-lifetime-7-30-days","GET-JSON-no-store-no-cache-request-id"]},
+                {"binary":"requests","test":"api_v1::capabilities::configured_mobile_lifetimes_include_disabled_maximum_age","checks":["GET-200-custom-mobile-login-lifetime-3-14-days","GET-200-disabled-absolute-login-deadline-3-0-days-through-booted-app"]},
+                {"binary":"requests","test":"api_v1::capabilities::capability_requests_use_the_fixed_general_limit","checks":["GET-300-successes-then-429-recursive-RateLimitErrorEnvelope","GET-429-Retry-After-200-Limit-300-Remaining-0-Reset-1200","GET-429-JSON-no-store-request-id","GET-success-and-rejection-unchanged-medication-effects-and-credential-counts"]},
+                {"binary":"requests","test":"api_v1::capabilities::capability_database_lookup_failure_uses_existing_unavailable_envelope","checks":["GET-503-existing-unlisted-temporarily_unavailable-envelope-for-controlled-query-failure","GET-503-JSON-no-store-no-cache-request-id","GET-503-unchanged-medication-effects-and-credential-counts"]},
             ]
         })
     } else if entry["operation_id"] == "listHouseholds" {
@@ -459,14 +470,15 @@ fn validate_metadata(document: &Value, entry: &Value) {
             pointer(document, header);
         }
     }
-    if matches!(
-        entry["operation_id"].as_str(),
-        Some("listHouseholds" | "listSessions" | "deleteSession" | "logoutSession")
-    ) {
-        assert_eq!(
-            entry["candidate_revision"],
-            "0893879794d009bbb94cc72a0dd5df11aa7f6dfa"
-        );
+    let candidate_revision = match entry["operation_id"].as_str() {
+        Some("listHouseholds" | "listSessions" | "deleteSession" | "logoutSession") => {
+            Some("0893879794d009bbb94cc72a0dd5df11aa7f6dfa")
+        }
+        Some("getCapabilities") => Some("96d81719e900296f3b72ab5f7c86ad3aee22a00f"),
+        _ => None,
+    };
+    if let Some(candidate_revision) = candidate_revision {
+        assert_eq!(entry["candidate_revision"], candidate_revision);
         assert!(entry["gaps"].as_array().unwrap().is_empty());
     } else {
         assert!(entry["candidate_revision"].is_null());
@@ -590,7 +602,7 @@ pub mod baseline {
     }
 
     #[test]
-    fn complete_account_evidence_rejects_revision_and_proof_tampering() {
+    fn complete_evidence_rejects_revision_and_proof_tampering() {
         let document: Value =
             serde_yaml_ng::from_str(include_str!("../../docs/api/openapi.v1.yaml")).unwrap();
         let entries = inventory();
@@ -599,36 +611,37 @@ pub mod baseline {
             ("GET", "/auth/sessions"),
             ("DELETE", "/auth/sessions/{id}"),
             ("DELETE", "/auth/logout"),
+            ("GET", "/capabilities"),
         ] {
-            let entry = &entries[&(method.to_owned(), path.to_owned())];
-            validate_metadata(&document, entry);
-            assert!(validate_evidence(entry).is_ok(), "{method} {path}");
+            let complete = &entries[&(method.to_owned(), path.to_owned())];
+            validate_metadata(&document, complete);
+            assert!(validate_evidence(complete).is_ok(), "{method} {path}");
+
+            let mut changed = complete.clone();
+            changed["candidate_revision"] = json!("invented-revision");
+            assert!(std::panic::catch_unwind(|| validate_metadata(&document, &changed)).is_err());
+
+            let mut changed = complete.clone();
+            changed["gaps"] = json!(["unproven"]);
+            assert!(std::panic::catch_unwind(|| validate_metadata(&document, &changed)).is_err());
+
+            let mut changed = complete.clone();
+            changed["evidence"].as_array_mut().unwrap().remove(0);
+            assert!(validate_evidence(&changed).is_err());
+
+            let mut changed = complete.clone();
+            changed["evidence"][0]["checks"][0] = json!("invented-check");
+            assert!(validate_evidence(&changed).is_err());
+
+            let mut invented =
+                entries[&("GET".to_owned(), "/households/{household_id}/me".to_owned())].clone();
+            invented["coverage"] = json!("complete");
+            invented["candidate_revision"] = complete["candidate_revision"].clone();
+            invented["gaps"] = json!([]);
+            invented["evidence"] = complete["evidence"].clone();
+            assert!(validate_evidence(&invented).is_err());
+            assert!(std::panic::catch_unwind(|| validate_metadata(&document, &invented)).is_err());
         }
-        let complete = &entries[&("GET".to_owned(), "/auth/households".to_owned())];
-
-        let mut changed = complete.clone();
-        changed["candidate_revision"] = json!("invented-revision");
-        assert!(std::panic::catch_unwind(|| validate_metadata(&document, &changed)).is_err());
-
-        let mut changed = complete.clone();
-        changed["gaps"] = json!(["unproven"]);
-        assert!(std::panic::catch_unwind(|| validate_metadata(&document, &changed)).is_err());
-
-        let mut changed = complete.clone();
-        changed["evidence"].as_array_mut().unwrap().remove(0);
-        assert!(validate_evidence(&changed).is_err());
-
-        let mut changed = complete.clone();
-        changed["evidence"][0]["checks"][0] = json!("invented-check");
-        assert!(validate_evidence(&changed).is_err());
-
-        let mut invented = entries[&("GET".to_owned(), "/capabilities".to_owned())].clone();
-        invented["coverage"] = json!("complete");
-        invented["candidate_revision"] = complete["candidate_revision"].clone();
-        invented["gaps"] = json!([]);
-        invented["evidence"] = complete["evidence"].clone();
-        assert!(validate_evidence(&invented).is_err());
-        assert!(std::panic::catch_unwind(|| validate_metadata(&document, &invented)).is_err());
     }
 
     #[test]

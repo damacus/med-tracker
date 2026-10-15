@@ -101,6 +101,8 @@ tasks:
     cmds: [cargo update --workspace]
   deps:profile-export:
     cmds: [cargo update --workspace]
+  deps:contracts:
+    cmds: [cargo update --workspace]
   foundation:db-up:
     requires:
       vars: [FOUNDATION_PROJECT]

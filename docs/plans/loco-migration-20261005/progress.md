@@ -6,6 +6,35 @@ migration areas stay in scope. No live deployment has occurred.
 
 ## Current delivery
 
+### Capabilities local stack propagation, 15 October 2026
+
+The coordinator integrates published predecessor `1a2e59bcbb528d15b0e5ce9937b18fc3d0d07484` into
+PR [#2639](https://github.com/damacus/med-tracker/pull/2639), retaining
+previous head `022854c80a921d2601970b5bad03ec8e950d6fd9` and all existing proof ancestors.
+This ordinary branch merge preserves the immutable capability proof and all
+existing behaviour. Source `8f2d3d70b1bcec64b1a09c1f22c4d6c63ea4ad73` passed
+focused `48052` (six cases), inventory `87017` (55 passed, one ignored),
+runner `57537` (47/47) and strict lint `78646`. Dispatcher `28021` passed
+55 request and 524 care cases, then rejected only the 117 incomplete operations.
+Resumed review `endurable-continent` accepted this candidate in `46973`
+(SWE-2 Max, 15 steps), with no required corrections. Existing capability 503
+metadata remains tracked in #2638; no owner decision or new credit is implied.
+Full CI `37168` passed 115 units, 55 requests (one ignored), 508 care cases
+(two ignored, 16 filtered) and all 744 browser cases in 19.6 minutes.
+The coordinator independently verified and reversed only 41 generated PNG
+changes; all 1,093 baseline hashes pass and the tested source is clean.
+Final documentation/review, publication and fresh exact-head hosted checks
+remain pending. Earlier results retain their exact scope; no whole-API
+acceptance, PR merge or deployment is claimed.
+
+Request-ID predecessor `1a2e59bc` is now hosted accepted: run `38691350791`
+finished all 42 checks (26 successful, 16 skipped), aggregate `116282371577`
+passed, including every browser and integration shard. Review threads are empty.
+Coverage artifact `11953410231` has verified digest `cb39792c6e6c23eed76223f097c5ee6443ab75f9faf5717197d367ef0fe1be11`;
+complete clean source `e5a40888` has the published head's exact tree.
+Its 16 added executable runtime lines are covered. Wider general coverage is
+64.05% including inline tests, report-only and below the 80% target.
+
 ### Request-ID successor passes cumulative CI, 15 October 2026
 
 The coordinator integrates published account `1178c11491e434e9cbfba5d739ebd9a6d8d0cf93`
@@ -27,6 +56,12 @@ rate-bucket test also passed. Root independently verified and reversed only
 Final documentation checks/review, publication and exact-head hosted checks
 remain pending. Earlier results retain their exact scope; no new operation
 credit, whole-API acceptance, PR merge or deployment is claimed.
+
+Subsequent final docs `20967` passed, and same-session review `92487`
+accepted the progress-only commit (SWE-2 Max, 17 steps). Request-ID head
+`1a2e59bcbb528d15b0e5ce9937b18fc3d0d07484` is published, 427 changed
+lines against account `1178c114`; fresh hosted checks run in `38691350791`.
+This updates publication only; hosted acceptance remains pending.
 
 Account predecessor `1178c114` is hosted accepted: run `38684411332`
 finished all 44 checks (30 succeeded, 14 skipped), aggregate `116259564959`
@@ -190,6 +225,7 @@ did not merge it. Its 1,499-line candidate and historical failures remain below.
 | [#2632](https://github.com/damacus/med-tracker/pull/2632): storage transport and reminder clock | main `1800` | `923d5b63098a61ed4a9df0dfd4f27ae348d0b26a` | 496 | Reviewed; local application and exact-head hosted gates pass |
 | [#2633](https://github.com/damacus/med-tracker/pull/2633): executed acceptance proof | `codex/s05-i01-dmd-storage` | `630a7f016d364becfb682b855a7da0c57c0b7f7c` | 498 | Reviewed; local and exact-head hosted gates pass |
 | [#2636](https://github.com/damacus/med-tracker/pull/2636): account session contracts | `codex/s05-i01-contract-execution` | `451c357c4f71539bf62056c5ac0459d235528a63` | 1,711 | Reviewed; local and exact-head hosted gates pass |
+| [#2637](https://github.com/damacus/med-tracker/pull/2637): request IDs on rate-limit responses | `codex/s05-i01-account-sessions` | `adfe373fa79bd575d53db6b25f17e76f7600352a` | 399 | Reviewed; local CI and exact-head hosted checks pass |
 
 Stack `2634` is published; no layer is merged or deployed. Full local
 CI `61813` passed 111 units, 20 request cases, 508 care cases and all 744 browser
@@ -389,6 +425,80 @@ outputs. The checkout was clean afterwards. This final record changes only
 documentation; reviewed/tested application code, contracts and native pins
 remain identical. Publication, exact-head hosted acceptance, merge and deployment
 remain distinct, and no capability operation credit is added by this prerequisite.
+Request-ID PR #2637 is now published in stack `2634` at
+`adfe373fa79bd575d53db6b25f17e76f7600352a`, targeting account head `451c`.
+Its final documentation-only record passed docs build `11841`; runtime/tests
+remain identical to fully tested `0b767399`. The branch was pulled/rebased and
+pushed, and is synchronised with origin. Exact-head hosted run `38612969250`
+is active with no reported failure; published-head Devin Review passed and its
+actual inline review thread list is empty. Coverage job `116020860508` remains
+active. Codex artifact attachment remains unavailable; no attachment is claimed.
+
+The capability source has been preserved and integrated separately onto that
+published head. Automatic approval review rejected an initial reset-containing
+integration command before execution. The accepted alternative stashed every
+change, including progress notes, in owned stash
+`d88b1df9e33250c9c83eb7bbcefbd890a0f2b572`; all notes were retained while resolving
+the shared helper conflict. Eleven unaffected source hashes matched the backup.
+The shared boot helper keeps configurable settings and the inherited request-ID
+enable test; no duplicate runner was added. Integrated request source SHA-256 is
+`91d76d2567046029eac010164772e105ef79c93279b8493e18ede3d4ad8c7812`.
+Capability request SHA-256 is
+`e1795daf7fac11b29852ad6b9ceba605ab7ceaba9878bfda02e60a3528dbcb90`:
+its rate case now checks persisted effects and credential counts before/after
+both 300 successful requests and the rejection. Focused `31351` passed all six
+cases; full request inventory `62969` passed 55 with one intentional completion
+ignore. Both Tasks exited zero and cleaned owned fixtures normally. Logs:
+`capabilities-integrated-six-green-adfe.log` and
+`capabilities-integrated-inventory-green-adfe.log` in the existing evidence directory.
+The controlled 503 case preserves an existing failure envelope not declared in
+OpenAPI; no schema or native pin was changed. Exact immutable capability evidence,
+independent review and cumulative CI still precede its publication.
+Capability source is now committed as `96d81719e900296f3b72ab5f7c86ad3aee22a00f`.
+The independent inventory oracle pins `getCapabilities` to that immutable source
+and six explicit executed request proofs; revision/proof tampering is rejected.
+Runner fixtures `23204` passed 47/47. Dispatcher `30195` executed 55 request tests
+(one completion ignore) and 524 care tests (two ignores). Its final request run
+passed 55 tests and failed only `api_v1::acceptance`, correctly rejecting 117
+incomplete operations. This credits five local complete operations, two partial
+and 115 unverified; it does not pass whole-API acceptance. Evidence logs are
+`capabilities-runner-fixture-green-96d817.log` and
+`capabilities-evidence-dispatcher-96d817.log`. Capability review and full CI remain
+pending. Request-ID head `adfe373f` has now passed every applicable hosted check,
+including coverage job `116020860508` and roll-up `116027225928`; native/client
+checks were skipped for this prerequisite. Coverage artifact inspection remains.
+Capability candidate `ccf0c3522bad57b3835ad3c09894421a0afebe67` is accepted locally.
+Independent Devin session `endurable-continent` exported model `SWE-2 Max` and
+returned ACCEPT after nine steps; process `40156` exited zero. Its required
+separate tracking action is fulfilled by [#2638](https://github.com/damacus/med-tracker/issues/2638),
+which records the pre-existing undocumented 503 without changing this layer.
+Optional observations required no source correction. Full CI `93895` exited
+zero on that exact clean candidate: 115 units, 55 requests (one intentional
+completion ignore), 508 care tests (two ignores, 16 filtered), all other applicable
+integration suites and 744 browser cases passed. Browser duration was 19.6 minutes.
+The 38 generated screenshots were preserved in a 7,476,761-byte binary patch,
+SHA-256 `fad141b48c8e5f969adba0a3b8b1567451cb64726bd304f77f27a98d88cff8ba`;
+the exact path-list SHA is `795446e6f6eef7c668598f616197b5b5191f1129b547089cca3aa066bb278cc1`.
+Reverse-apply verification restored only those files; source hashes and clean
+HEAD matched the candidate. Review and full CI logs remain under the existing
+`/private/tmp/s05-i01-review` and evidence directory. Publication and exact-head
+hosted acceptance follow the final documentation gate.
+
+Request-ID hosted coverage artifact `11919385306` matches GitHub digest
+`c195e7921d563d890d084193241042a9d6a1b33bde4edca2a4821e9997771f21`.
+Its clean merge `c62557e6` has parents `451c` and published `adfe`, with identical
+tree to `adfe`. Added runtime lines are covered 16/16; raw application coverage
+is 63.05% and API controller coverage 91.29%. The report-only general baseline
+remains below target. This does not pass final API acceptance.
+
+The next isolated `codex/s05-i01-me-ui` branch contains seven tests only, based
+on `ccf0`; no RED or production correction has run. It distinguishes actual
+foreign households from absent ones, preserves integration-token 401 and mobile
+insufficient-scope 403, and checks private caching, revocation, audits and rates.
+The malformed household-path 400 is an executed existing behaviour omitted from
+me/UI contracts; its proposal, capability 503 and getPerson 304 await owner
+decisions. Independent work continues while those contract edits remain held.
+
 Entries below retain historical revisions, failed attempts and publication states.
 
 Historical prerequisite failure, 14 October:
