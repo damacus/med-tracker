@@ -22,7 +22,7 @@ test('hosted archive workers install the pinned runner before Task and lint inst
     assert.ok(job.indexOf(`cargo-nextest@${nextest}`) >= 0);
     const task = jobName === 'loco_foundation' ? 'run: task test:unit' : jobName === 'loco_coverage' ? 'run: task test:coverage' : 'run: task test:integration';
     assert.ok(job.indexOf(`cargo-nextest@${nextest}`) < job.indexOf(task));
-    assert.match(job, /taiki-e\/install-action@9983c65e42da123ff25d1f78505eb6de315aa172/);
+    assert.match(job, /taiki-e\/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8/);
   }
   const lint = workflow.split('  loco_lint:')[1].split('  loco_coverage:')[0];
   assert.ok(lint.includes(`cargo-machete@${machete}`));
