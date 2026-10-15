@@ -62,9 +62,7 @@ webauthn-rs = { version = "=0.5.5", features = [
     "danger-allow-state-serialisation",
     "conditional-ui",
 ] }
-web-push = { version = "=0.11.0", default-features = false, features = [
-    "hyper-client",
-] }
+web-push = { version = "=0.11.0", default-features = false }
 reqwest = { version = "=0.13.5", default-features = false, features = [
     "json",
     "rustls",
@@ -118,7 +116,6 @@ aws-sdk-s3 = { version = "=1.152.0", default-features = false, features = [
     "default-https-client",
     "http-1x",
     "rt-tokio",
-    "rustls",
     "behavior-version-latest",
 ] }
 proptest = "=1.12.0"
