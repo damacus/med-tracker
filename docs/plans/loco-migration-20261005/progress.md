@@ -17,8 +17,13 @@ are unchanged. The published prerequisite `faf0cc2f` passed every applicable
 hosted check; its former browser failure is corrected on that exact head.
 Execution-proof runner, inventory and full CI passed on `3004fb7d`; resumed
 review and final documentation review accepted. Its final head `80f34a50`
-is published, with fresh hosted checks pending. Fresh account checks and
-same-session review are required before publication. Earlier account CI and review
+is published and hosted accepted: run `38678068738` passed 25 checks with
+16 skipped, including CI Success `116239828257`. Root verified coverage
+artifact `11946842546` and source `83188ec9`; its tree exactly matches `80f34a50`.
+Same-session account review `68306` accepted candidate `8b94ed4c` with no required
+corrections (seventeen SWE-2 Max steps). Account code, tests and proof rows are
+unchanged from the earlier reviewed correction. Fresh account checks and full
+CI remain required before publication. Earlier account CI and review
 below retain their exact candidate scope. No new operation credit, PR merge
 or deployment is claimed.
 
