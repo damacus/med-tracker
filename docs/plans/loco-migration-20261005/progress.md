@@ -107,18 +107,34 @@ exact source scope. No new operation credit, PR merge or deployment is claimed.
 
 ### Account stack propagation, 15 October 2026
 
-The coordinator integrates local predecessor `3004fb7d520a9000639612861ed43d58f915db17`
+The coordinator integrates published predecessor `80f34a50fb6973624f40530523d71482907147ea`
 into PR [#2636](https://github.com/damacus/med-tracker/pull/2636), preserving
 the tested account correction `294f38d93e29309825456c4efdddfc075233f8f4` and
 immutable proof source `0893879794d009bbb94cc72a0dd5df11aa7f6dfa` as ancestors.
 The original three account overlap tests, helper, oracle and four evidence rows
 are unchanged. The published prerequisite `faf0cc2f` passed every applicable
 hosted check; its former browser failure is corrected on that exact head.
-Execution-proof runner and inventory checks passed on `3004fb7d`; its full CI,
-review and publication remain pending. Fresh account checks and same-session
-review are also required before publication. Earlier account CI and review
-below retain their exact candidate scope. No new operation credit, PR merge
-or deployment is claimed.
+Execution-proof runner, inventory and full CI passed on `3004fb7d`; resumed
+review and final documentation review accepted. Its final head `80f34a50`
+is published and hosted accepted: run `38678068738` passed 25 checks with
+16 skipped, including CI Success `116239828257`. Root verified coverage
+artifact `11946842546` and source `83188ec9`; its tree exactly matches `80f34a50`.
+Same-session account review `68306` accepted candidate `8b94ed4c` with no required
+corrections (seventeen SWE-2 Max steps). Account code, tests and proof rows are
+unchanged from the earlier reviewed correction. Frozen candidate
+`9ec67c71af5725ef4fcb517a4cc2a34fb544271b` passed inventory `25929`
+(45 passed, one ignored), runner `67022` (47/47) and strict lint `51810`.
+Dispatcher `48028` executed all thirteen credited account identities: nine
+request cases and four care cases. Its request phase passed 45 with one ignore,
+care passed 522 with two ignores, and only final acceptance failed for 118
+incomplete operations. Full `task ci` job `81494` then exited zero: 112 Rust
+units, all integrations including 508 care cases (two ignored, fourteen filtered),
+and all 744 browser cases. Root independently verified/restored only generated
+PNG changes and checked all 1,093 baseline hashes; Serena work remains preserved.
+Log: `/private/tmp/s05-i01-evidence/account-propagation-full-ci-9ec67c71.log`.
+Final documentation checks/review, publication and exact-head hosted checks remain
+pending. Earlier CI and review below retain their exact candidate scope. No new
+operation credit, PR merge or deployment is claimed.
 
 ### s05-i01 execution-proof propagation, 15 October 2026
 
@@ -134,11 +150,18 @@ The three execution-proof JavaScript files are unchanged from `630a7f01`:
 477 additions and 21 deletions against the predecessor, before this progress
 update. Only the verified lower browser correction and progress are inherited.
 Existing proof commits are preserved through an ordinary branch merge.
-Focused runner and inventory checks, fresh cumulative `task ci`, and resumed
-`fate-button` SWE-2 Max review remain pending on the new frozen candidate.
-Publication and exact-head hosted checks remain separate gates. No operation
-acceptance, PR merge or deployment is credited; account and later API work
-continues in its existing order after this layer passes its required gates.
+Frozen candidate `3004fb7d520a9000639612861ed43d58f915db17` passed runner
+job `11623` (46/46) and inventory job `95949` (20 passed, one ignored).
+Same-session `fate-button` SWE-2 Max review `91629` accepted the integration
+with no required corrections (nineteen exported steps). Full `task ci` job
+`43141` exited zero: 111 Rust units, all integrations including 508 care cases
+(two ignored, fourteen filtered), and all 744 browser cases (19.4m).
+Log: `/private/tmp/s05-i01-evidence/execution-propagation-full-ci-3004fb7d.log`.
+Root independently verified and restored only forty generated PNG changes;
+all 1,093 baseline hashes pass and unrelated Serena work remains preserved.
+Final documentation checks and review, publication and exact-head hosted
+checks remain pending. No operation acceptance, PR merge or deployment is
+credited; account and later API work continues in its existing order.
 
 ### s05-i01 prerequisite browser correction, 15 October 2026
 
