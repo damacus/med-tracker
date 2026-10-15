@@ -22,10 +22,20 @@ is published and hosted accepted: run `38678068738` passed 25 checks with
 artifact `11946842546` and source `83188ec9`; its tree exactly matches `80f34a50`.
 Same-session account review `68306` accepted candidate `8b94ed4c` with no required
 corrections (seventeen SWE-2 Max steps). Account code, tests and proof rows are
-unchanged from the earlier reviewed correction. Fresh account checks and full
-CI remain required before publication. Earlier account CI and review
-below retain their exact candidate scope. No new operation credit, PR merge
-or deployment is claimed.
+unchanged from the earlier reviewed correction. Frozen candidate
+`9ec67c71af5725ef4fcb517a4cc2a34fb544271b` passed inventory `25929`
+(45 passed, one ignored), runner `67022` (47/47) and strict lint `51810`.
+Dispatcher `48028` executed all thirteen credited account identities: nine
+request cases and four care cases. Its request phase passed 45 with one ignore,
+care passed 522 with two ignores, and only final acceptance failed for 118
+incomplete operations. Full `task ci` job `81494` then exited zero: 112 Rust
+units, all integrations including 508 care cases (two ignored, fourteen filtered),
+and all 744 browser cases. Root independently verified/restored only generated
+PNG changes and checked all 1,093 baseline hashes; Serena work remains preserved.
+Log: `/private/tmp/s05-i01-evidence/account-propagation-full-ci-9ec67c71.log`.
+Final documentation checks/review, publication and exact-head hosted checks remain
+pending. Earlier CI and review below retain their exact candidate scope. No new
+operation credit, PR merge or deployment is claimed.
 
 ### s05-i01 execution-proof propagation, 15 October 2026
 
