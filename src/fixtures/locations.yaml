@@ -1,5 +1,6 @@
 - id: 79001
   household_id: 72001
   name: "Synthetic cabinet"
+  portable_id: "00000000-0000-4000-8000-000000079001"
   created_at: "2026-10-06T00:00:00"
   updated_at: "2026-10-06T00:00:00"

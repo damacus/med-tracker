@@ -255,6 +255,39 @@ async fn development_seed_creates_a_usable_account_and_household() {
         Config::new(&Environment::Development).unwrap(),
     )
     .build();
+    let broken = tempfile::tempdir().unwrap();
+    for name in [
+        "people.yaml",
+        "accounts.yaml",
+        "households.yaml",
+        "household_memberships.yaml",
+        "locations.yaml",
+        "medications.yaml",
+        "person_medications.yaml",
+    ] {
+        std::fs::copy(std::path::Path::new("src/fixtures").join(name), broken.path().join(name))
+            .unwrap();
+    }
+    let assignment = broken.path().join("person_medications.yaml");
+    std::fs::write(
+        &assignment,
+        std::fs::read_to_string(&assignment)
+            .unwrap()
+            .replace("medication_id: 80001", "medication_id: 99999"),
+    )
+    .unwrap();
+    assert!(med_tracker::app::App::seed(&context, broken.path()).await.is_err());
+    let rolled_back = db
+        .query_one_raw(migration::sea_orm::Statement::from_string(
+            migration::sea_orm::DbBackend::Postgres,
+            "SELECT (SELECT count(*) FROM public.people) AS people,(SELECT count(*) FROM public.accounts) AS accounts,(SELECT count(*) FROM public.medications) AS medications,(SELECT count(*) FROM public.identity_provider_accounts) AS credentials,(SELECT count(*) FROM public.identity_onboarding) AS onboarding",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    for table in ["people", "accounts", "medications", "credentials", "onboarding"] {
+        assert_eq!(rolled_back.try_get::<i64>("", table).unwrap(), 0, "{table}");
+    }
     let database = db
         .query_one_raw(migration::sea_orm::Statement::from_string(
             migration::sea_orm::DbBackend::Postgres,
@@ -301,7 +334,108 @@ async fn development_seed_creates_a_usable_account_and_household() {
         .unwrap()
         .unwrap();
     assert_eq!(account.email, "persistence@example.test");
-    assert!(bcrypt::verify("password", account.password_hash.as_deref().unwrap()).unwrap());
+    assert_eq!(account.person_id, 73001);
+    assert_eq!(account.name.as_deref(), Some("Synthetic adult"));
+    assert!(account.password_hash.is_none());
+    let credential = db
+        .query_one_raw(migration::sea_orm::Statement::from_string(
+            migration::sea_orm::DbBackend::Postgres,
+            "SELECT provider_account_id,password FROM public.identity_provider_accounts WHERE account_id=71001 AND provider_id='credential'",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        credential.try_get::<String>("", "provider_account_id").unwrap(),
+        "71001"
+    );
+    better_auth_core::utils::password::verify_password(
+        None,
+        "password",
+        &credential.try_get::<String>("", "password").unwrap(),
+    )
+    .await
+    .unwrap();
+    let onboarding = db
+        .query_one_raw(migration::sea_orm::Statement::from_string(
+            migration::sea_orm::DbBackend::Postgres,
+            "SELECT recovery_saved_at IS NOT NULL AS completed FROM public.identity_onboarding WHERE account_id=71001",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(onboarding.try_get::<bool>("", "completed").unwrap());
+    let role = format!("seed_runtime_{}", uuid::Uuid::new_v4().simple());
+    db.execute_unprepared(&format!(
+        "CREATE ROLE {role} LOGIN PASSWORD 'password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS IN ROLE med_tracker_app"
+    ))
+    .await
+    .unwrap();
+    let mut runtime_uri = url::Url::parse(&owned_url).unwrap();
+    runtime_uri.set_path(&database);
+    runtime_uri.set_username(&role).unwrap();
+    runtime_uri.set_password(Some("password")).unwrap();
+    let mut config = Config::new(&Environment::Test).unwrap();
+    config.database.uri = runtime_uri.to_string();
+    let Some(loco_rs::config::QueueConfig::Postgres(queue)) = config.queue.as_mut() else {
+        panic!("PostgreSQL queue required")
+    };
+    queue.uri = runtime_uri.to_string();
+    let boot = med_tracker::app::App::boot(
+        loco_rs::boot::StartMode::ServerOnly,
+        &Environment::Test,
+        config,
+    )
+    .await
+    .unwrap();
+    let service = boot
+        .app_context
+        .shared_store
+        .get::<med_tracker::models::identity::better_auth::IdentityService>()
+        .unwrap();
+    let origin = url::Url::parse(&service.context().config.base_url)
+        .unwrap()
+        .origin()
+        .ascii_serialization();
+    let mut request = loco_rs::TestServer::new(
+        boot.router
+            .clone()
+            .unwrap()
+            .into_make_service_with_connect_info::<std::net::SocketAddr>(),
+    )
+    .unwrap();
+    request.save_cookies();
+    let login = request
+        .post("/api/auth/sign-in/email")
+        .add_header("origin", origin)
+        .json(&serde_json::json!({"email":"persistence@example.test","password":"password"}))
+        .await;
+    assert_eq!(login.status_code(), 200, "{}", login.text());
+    let cookie = login
+        .headers()
+        .get_all("set-cookie")
+        .iter()
+        .filter_map(|value| value.to_str().ok())
+        .filter_map(|value| value.split(';').next())
+        .collect::<Vec<_>>()
+        .join("; ");
+    let home = request.get("/").add_header("cookie", cookie.clone()).await;
+    assert_eq!(home.status_code(), 200, "{}", home.text());
+    assert!(home.text().contains("Synthetic household"));
+    let detail = request
+        .get("/households/persistence-fixture/medications/80001")
+        .add_header("cookie", cookie)
+        .await;
+    assert_eq!(detail.status_code(), 200, "{}", detail.text());
+    assert!(detail.text().contains("Synthetic tablets"));
+    drop(request);
+    if let Some(queue) = boot.app_context.queue_provider.as_ref() {
+        queue.shutdown().unwrap();
+    }
+    boot.app_context.db.close().await.unwrap();
+    db.execute_unprepared(&format!("DROP ROLE {role}"))
+        .await
+        .unwrap();
     let tenant = access::begin(
         &db,
         &HouseholdScope {
@@ -323,6 +457,24 @@ async fn development_seed_creates_a_usable_account_and_household() {
     assert_eq!(medicines[0].id, 80001);
     assert_eq!(medicines[0].current_supply.unwrap().to_string(), "10.00");
     tenant.rollback().await.unwrap();
+    db.execute_unprepared(
+        "INSERT INTO public.people(id,clinical_name,person_type,has_capacity,created_at,updated_at) VALUES(73002,'Foreign adult',0,true,now(),now()); INSERT INTO public.accounts(id,person_id,name,email,status,created_at,updated_at) VALUES(71002,73002,'Foreign adult','foreign@example.test',2,now(),now()); INSERT INTO public.households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71002,'Foreign household','foreign-fixture','Europe/London',now(),now()); INSERT INTO public.household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74002,72002,73002,'administrator',now(),now(),now())",
+    )
+    .await
+    .unwrap();
+    assert!(
+        access::begin(
+            &db,
+            &HouseholdScope {
+                actor: Actor { account_id: 71002 },
+                household_id: 72001,
+                request_id: "seed-foreign-denial".into(),
+            },
+            None,
+        )
+        .await
+        .is_err()
+    );
     let production =
         AppContext::builder(Environment::Production, db.clone(), context.config.clone()).build();
     assert!(
@@ -336,6 +488,15 @@ async fn development_seed_creates_a_usable_account_and_household() {
             .await
             .is_err()
     );
+    let onboarding = db
+        .query_one_raw(migration::sea_orm::Statement::from_string(
+            migration::sea_orm::DbBackend::Postgres,
+            "SELECT count(*) AS rows FROM public.identity_onboarding",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(onboarding.try_get::<i64>("", "rows").unwrap(), 1);
     db.close().await.unwrap();
 }
 

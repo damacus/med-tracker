@@ -1,38 +1,37 @@
-use std::path::Path;
+use std::{path::Path, sync::Arc, time::Duration};
 
 use loco_rs::{Error, Result, app::AppContext, environment::Environment};
 use migration::MigratorTrait;
-use sea_orm::{ConnectionTrait, DbBackend, Statement, TransactionTrait};
+use sea_orm::{
+    ActiveValue::Set, ConnectionTrait, DatabaseTransaction, DbBackend, EntityTrait,
+    IntoActiveModel, Statement, TransactionTrait,
+};
+use tokio::sync::Semaphore;
 
-macro_rules! fixture_entity {
-    ($name:ident, $table:literal, { $($field:ident: $kind:ty,)* }) => {
-        mod $name {
-            use sea_orm::entity::prelude::*;
-            #[derive(Clone, Debug, PartialEq, DeriveEntityModel, serde::Serialize, serde::Deserialize)]
-            #[sea_orm(table_name = $table)]
-            pub struct Model {
-                #[sea_orm(primary_key)]
-                pub id: i64,
-                pub created_at: DateTime,
-                pub updated_at: DateTime,
-                $(pub $field: $kind,)*
-            }
-            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-            pub enum Relation {}
-            impl ActiveModelBehavior for ActiveModel {}
-        }
-    };
+use super::{
+    _entities::{identity_onboarding, identity_provider_accounts},
+    entities::{account, household, location, medication, membership, person, person_medication},
+};
+
+#[derive(Clone)]
+struct SeedCryptoGate(Arc<Semaphore>);
+
+async fn bounded_seed_blocking<T, F>(gate: SeedCryptoGate, work: F) -> Result<T>
+where
+    T: Send + 'static,
+    F: FnOnce() -> T + Send + 'static,
+{
+    let permit = tokio::time::timeout(Duration::from_secs(30), gate.0.acquire_owned())
+        .await
+        .map_err(|error| Error::string(&error.to_string()))?
+        .map_err(|error| Error::string(&error.to_string()))?;
+    tokio::task::spawn_blocking(move || {
+        let _permit = permit;
+        work()
+    })
+    .await
+    .map_err(|error| Error::string(&error.to_string()))
 }
-
-fixture_entity!(accounts, "accounts", { email: String, status: i32, });
-fixture_entity!(households, "households", { created_by_account_id: i64, name: String, slug: String, timezone: String, });
-fixture_entity!(people, "people", { account_id: Option<i64>, household_id: i64, name: String, person_type: i32, has_capacity: bool, });
-fixture_entity!(users, "users", { person_id: i64, email_address: String, });
-fixture_entity!(household_memberships, "household_memberships", { account_id: i64, household_id: i64, person_id: i64, role: String, joined_at: DateTime, });
-fixture_entity!(person_access_grants, "person_access_grants", { household_id: i64, household_membership_id: i64, person_id: i64, access_level: String, relationship_type: String, });
-fixture_entity!(locations, "locations", { household_id: i64, name: String, });
-fixture_entity!(medications, "medications", { household_id: i64, location_id: i64, name: String, current_supply: Decimal, dose_amount: f64, dose_unit: String, });
-fixture_entity!(person_medications, "person_medications", { household_id: i64, person_id: i64, medication_id: i64, dose_amount: Decimal, dose_unit: String, position: i32, });
 
 #[allow(
     clippy::result_large_err,
@@ -48,11 +47,14 @@ pub async fn seed(ctx: &AppContext, base: &Path) -> Result<()> {
         ));
     }
     migration::Migrator::up(&ctx.db, None).await?;
-    let populated = ctx
-        .db
+    let transaction = ctx.db.begin().await?;
+    transaction
+        .execute_unprepared("SELECT pg_advisory_xact_lock(734821001)")
+        .await?;
+    let populated = transaction
         .query_one_raw(Statement::from_string(
             DbBackend::Postgres,
-            "SELECT EXISTS (SELECT 1 FROM accounts) AS populated",
+            "SELECT EXISTS (SELECT 1 FROM public.accounts UNION ALL SELECT 1 FROM public.people UNION ALL SELECT 1 FROM public.households UNION ALL SELECT 1 FROM public.household_memberships UNION ALL SELECT 1 FROM public.locations UNION ALL SELECT 1 FROM public.medications UNION ALL SELECT 1 FROM public.person_medications) AS populated",
         ))
         .await?
         .ok_or_else(|| Error::string("Cannot inspect fixture database"))?;
@@ -62,7 +64,6 @@ pub async fn seed(ctx: &AppContext, base: &Path) -> Result<()> {
         ));
     }
     if base == Path::new("tests/fixtures/browser") {
-        let transaction = ctx.db.begin().await?;
         for source in [
             include_str!("../../tests/fixtures/persistence-records.sql"),
             include_str!("../../tests/fixtures/care-doses.sql"),
@@ -74,43 +75,126 @@ pub async fn seed(ctx: &AppContext, base: &Path) -> Result<()> {
         transaction.commit().await?;
         return Ok(());
     }
-    let password = tokio::task::spawn_blocking(|| bcrypt::hash("password", 12))
-        .await
-        .map_err(|error| Error::string(&error.to_string()))?
-        .map_err(|error| Error::string(&error.to_string()))?;
-    macro_rules! load {
-        ($entity:ident) => {
-            loco_rs::db::seed::<$entity::ActiveModel>(
-                &ctx.db,
-                &base
-                    .join(concat!(stringify!($entity), ".yaml"))
-                    .to_string_lossy(),
-            )
-            .await?;
-        };
+    let gate = ctx.shared_store.get::<SeedCryptoGate>().unwrap_or_else(|| {
+        let gate = SeedCryptoGate(Arc::new(Semaphore::new(1)));
+        ctx.shared_store.insert(gate.clone());
+        gate
+    });
+    let handle = tokio::runtime::Handle::current();
+    let password = bounded_seed_blocking(gate, move || {
+        handle.block_on(better_auth_core::utils::password::hash_password(
+            None, "password",
+        ))
+    })
+    .await?
+    .map_err(|error| Error::string(&error.to_string()))?;
+    let result = seed_default_in(&transaction, base, password).await;
+    match result {
+        Ok(()) => transaction.commit().await.map_err(Into::into),
+        Err(error) => {
+            transaction.rollback().await?;
+            Err(error)
+        }
     }
-    load!(accounts);
-    load!(households);
-    load!(people);
-    load!(users);
-    load!(household_memberships);
-    load!(person_access_grants);
-    load!(locations);
-    load!(medications);
-    load!(person_medications);
-    ctx.db
-        .execute_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "UPDATE accounts SET password_hash = $1 WHERE id = 71001",
-            [password.clone().into()],
-        ))
-        .await?;
-    ctx.db
-        .execute_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "UPDATE users SET password_digest = $1 WHERE id = 77001",
-            [password.into()],
-        ))
-        .await?;
+}
+
+async fn seed_default_in(
+    transaction: &DatabaseTransaction,
+    base: &Path,
+    password: String,
+) -> Result<()> {
+    macro_rules! load {
+        ($entity:ident, $name:literal) => {{
+            let bytes = tokio::fs::read(base.join($name)).await?;
+            let models: Vec<$entity::Model> = serde_yaml_ng::from_slice(&bytes)
+                .map_err(|error| Error::string(&error.to_string()))?;
+            if models.is_empty() {
+                return Err(Error::string(concat!(
+                    $name,
+                    " must contain synthetic rows"
+                )));
+            }
+            $entity::Entity::insert_many(
+                models
+                    .iter()
+                    .cloned()
+                    .map(IntoActiveModel::into_active_model),
+            )
+            .exec(transaction)
+            .await?;
+            models
+        }};
+    }
+    load!(person, "people.yaml");
+    let accounts = load!(account, "accounts.yaml");
+    if accounts.len() != 1 {
+        return Err(Error::string("Synthetic seed requires exactly one account"));
+    }
+    let account_id = accounts[0].id;
+    load!(household, "households.yaml");
+    load!(membership, "household_memberships.yaml");
+    load!(location, "locations.yaml");
+    load!(medication, "medications.yaml");
+    load!(person_medication, "person_medications.yaml");
+    identity_onboarding::Entity::insert(identity_onboarding::ActiveModel {
+        account_id: Set(account_id),
+        recovery_saved_at: Set(Some(chrono::Utc::now().into())),
+        ..Default::default()
+    })
+    .exec(transaction)
+    .await?;
+    identity_provider_accounts::Entity::insert(identity_provider_accounts::ActiveModel {
+        id: Set(uuid::Uuid::new_v4().to_string()),
+        account_id: Set(account_id),
+        provider_id: Set("credential".to_owned()),
+        provider_account_id: Set(account_id.to_string()),
+        password: Set(Some(password)),
+        ..Default::default()
+    })
+    .exec(transaction)
+    .await?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn cancelled_seed_work_holds_its_crypto_permit_until_exit() {
+        let gate = SeedCryptoGate(std::sync::Arc::new(tokio::sync::Semaphore::new(1)));
+        let (started, starting) = tokio::sync::oneshot::channel();
+        let (release, released) = std::sync::mpsc::channel();
+        let first_gate = gate.clone();
+        let first = tokio::spawn(async move {
+            bounded_seed_blocking(first_gate, move || {
+                started.send(()).unwrap();
+                released.recv().unwrap();
+                1
+            })
+            .await
+        });
+        starting.await.unwrap();
+        first.abort();
+        assert!(first.await.is_err());
+        let (second_started, mut second_starting) = tokio::sync::oneshot::channel();
+        let second = tokio::spawn(async move {
+            bounded_seed_blocking(gate, move || {
+                second_started.send(()).unwrap();
+                2
+            })
+            .await
+        });
+        assert!(
+            tokio::time::timeout(std::time::Duration::from_millis(100), &mut second_starting)
+                .await
+                .is_err()
+        );
+        release.send(()).unwrap();
+        tokio::time::timeout(std::time::Duration::from_secs(5), second_starting)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(second.await.unwrap().unwrap(), 2);
+    }
 }

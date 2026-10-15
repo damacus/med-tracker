@@ -1,8 +1,7 @@
 - id: 73001
-  account_id: 71001
-  household_id: 72001
-  name: "Synthetic adult"
+  clinical_name: null
   person_type: 0
   has_capacity: true
+  portable_id: "00000000-0000-4000-8000-000000073001"
   created_at: "2026-10-06T00:00:00"
   updated_at: "2026-10-06T00:00:00"

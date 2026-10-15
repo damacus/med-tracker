@@ -3,7 +3,9 @@
   location_id: 79001
   name: "Synthetic tablets"
   current_supply: "10.00"
-  dose_amount: 2
-  dose_unit: "tablet"
+  default_schedule_config: {}
+  default_schedule_type: 1
+  portable_id: "00000000-0000-4000-8000-000000080001"
+  reorder_threshold: "10.00"
   created_at: "2026-10-06T00:00:00"
   updated_at: "2026-10-06T00:00:00"
