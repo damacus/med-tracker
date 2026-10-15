@@ -214,7 +214,7 @@ fn validate_evidence(entry: &Value) -> Result<(), String> {
                 {"binary":"requests","test":"api_v1::account::account_routes_share_the_fixed_general_limit","checks":["DELETE-429-recursive-RateLimitErrorEnvelope","DELETE-429-exact-RateLimit-and-Retry-After-headers-no-store"]},
                 {"binary":"requests","test":"api_v1::account::account_revoke_and_logout_preserve_namespace_idempotence_and_audit_effects","checks":["DELETE-204-empty-body-no-store-request-id-own-expired-API-session","DELETE-404-recursive-ErrorEnvelope-foreign-missing-repeat-wrong-namespace","DELETE-repeat-404-and-version-audit-counts"]},
                 {"binary":"requests","test":"api_v1::account::mobile_sessions_hide_foreign_and_expired_login_targets_from_listing_and_revocation","checks":["DELETE-mobile-404-foreign-max-aged-inactive-grants-no-revocation-or-audit","DELETE-mobile-204-login-active-grant-even-with-expired-access-token"]},
-                {"binary":"requests","test":"api_v1::account::concurrent_account_revocation_and_logout_commit_one_effect_each","checks":["DELETE-two-stored-callers-one-204-one-404-one-audit","DELETE-two-mobile-callers-one-204-one-404-one-audit"]},
+                {"binary":"requests","test":"api_v1::account::concurrent_account_revocation_and_logout_commit_one_effect_each","checks":["DELETE-two-restricted-runtime-api-session-target-UPDATE-waiters-before-release-one-204-one-404-one-audit","DELETE-two-restricted-runtime-mobile-grant-target-UPDATE-waiters-before-release-one-204-one-404-one-audit"]},
                 {"binary":"requests","test":"api_v1::account::integration_grant_cannot_manage_account_sessions_but_can_log_out","checks":["DELETE-401-SMART-integration-grant-no-account-revocation"]},
                 {"binary":"care_api","test":"account_sessions::audit_failure_rolls_back_revocation_and_logout_instead_of_returning_no_content","checks":["DELETE-revocation-and-audit-rollback-on-storage-failure"]},
                 {"binary":"care_api","test":"account_sessions::revocation_audit_identifies_the_target_credential_and_actor_without_secrets","checks":["DELETE-target-ID-actor-request-ID-audit-without-token-secret"]},
@@ -227,7 +227,7 @@ fn validate_evidence(entry: &Value) -> Result<(), String> {
             "evidence": [
                 {"binary":"requests","test":"api_v1::account::account_routes_share_the_fixed_general_limit","checks":["DELETE-429-recursive-RateLimitErrorEnvelope","DELETE-429-exact-RateLimit-and-Retry-After-headers-no-store"]},
                 {"binary":"requests","test":"api_v1::account::account_revoke_and_logout_preserve_namespace_idempotence_and_audit_effects","checks":["DELETE-204-empty-body-no-store-request-id-missing-unknown-and-replayed-bearers","DELETE-revokes-API-session-app-token-mobile-grant-once","DELETE-after-revocation-credential-returns-401-on-account-route"]},
-                {"binary":"requests","test":"api_v1::account::concurrent_account_revocation_and_logout_commit_one_effect_each","checks":["DELETE-simultaneous-idempotent-204-responses-with-one-persisted-audit"]},
+                {"binary":"requests","test":"api_v1::account::concurrent_account_revocation_and_logout_commit_one_effect_each","checks":["DELETE-two-restricted-runtime-app-token-target-UPDATE-waiters-before-release-idempotent-204-responses-one-audit"]},
                 {"binary":"requests","test":"api_v1::account::integration_grant_cannot_manage_account_sessions_but_can_log_out","checks":["DELETE-SMART-integration-grant-204-empty-body-replay-idempotent","DELETE-SMART-scoped-audit-request-ID-no-secret-leak"]},
                 {"binary":"care_api","test":"account_sessions::audit_failure_rolls_back_revocation_and_logout_instead_of_returning_no_content","checks":["DELETE-logout-and-audit-rollback-on-storage-failure"]},
                 {"binary":"care_api","test":"account_sessions::logout_is_idempotent_and_revokes_each_presented_credential_kind","checks":["DELETE-204-idempotent-across-API-session-app-token-mobile-grant"]},
@@ -454,7 +454,7 @@ fn validate_metadata(document: &Value, entry: &Value) {
     ) {
         assert_eq!(
             entry["candidate_revision"],
-            "2ae0b911576912bccf22f10c5db65856bd8cdc60"
+            "0893879794d009bbb94cc72a0dd5df11aa7f6dfa"
         );
         assert!(entry["gaps"].as_array().unwrap().is_empty());
     } else {
@@ -583,6 +583,16 @@ pub mod baseline {
         let document: Value =
             serde_yaml_ng::from_str(include_str!("../../docs/api/openapi.v1.yaml")).unwrap();
         let entries = inventory();
+        for (method, path) in [
+            ("GET", "/auth/households"),
+            ("GET", "/auth/sessions"),
+            ("DELETE", "/auth/sessions/{id}"),
+            ("DELETE", "/auth/logout"),
+        ] {
+            let entry = &entries[&(method.to_owned(), path.to_owned())];
+            validate_metadata(&document, entry);
+            assert!(validate_evidence(entry).is_ok(), "{method} {path}");
+        }
         let complete = &entries[&("GET".to_owned(), "/auth/households".to_owned())];
 
         let mut changed = complete.clone();
