@@ -8,7 +8,16 @@ use serde::{Deserialize, Serialize};
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i64,
+    #[sea_orm(unique)]
+    pub person_id: i64,
+    pub name: Option<String>,
+    pub professional_title: Option<String>,
     pub created_at: DateTime,
+    #[sea_orm(
+        column_type = "custom(\"citext\")",
+        select_as = "text",
+        save_as = "citext"
+    )]
     pub email: String,
     pub password_hash: Option<String>,
     #[sea_orm(column_type = "JsonBinary")]
@@ -47,8 +56,6 @@ pub enum Relation {
     ApiTombstones,
     #[sea_orm(has_many = "super::household_exports::Entity")]
     HouseholdExports,
-    #[sea_orm(has_many = "super::household_memberships::Entity")]
-    HouseholdMemberships,
     #[sea_orm(has_many = "super::household_purge_runs::Entity")]
     HouseholdPurgeRuns,
     #[sea_orm(has_many = "super::households::Entity")]
@@ -75,7 +82,13 @@ pub enum Relation {
     OauthApplications,
     #[sea_orm(has_many = "super::oauth_grants::Entity")]
     OauthGrants,
-    #[sea_orm(has_many = "super::people::Entity")]
+    #[sea_orm(
+        belongs_to = "super::people::Entity",
+        from = "Column::PersonId",
+        to = "super::people::Column::Id",
+        on_update = "NoAction",
+        on_delete = "NoAction"
+    )]
     People,
     #[sea_orm(has_one = "super::platform_admins::Entity")]
     PlatformAdmins,
@@ -166,12 +179,6 @@ impl Related<super::api_tombstones::Entity> for Entity {
 impl Related<super::household_exports::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::HouseholdExports.def()
-    }
-}
-
-impl Related<super::household_memberships::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::HouseholdMemberships.def()
     }
 }
 

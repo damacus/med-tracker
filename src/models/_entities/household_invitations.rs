@@ -13,6 +13,11 @@ pub struct Model {
     pub id: i64,
     pub accepted_at: Option<DateTime>,
     pub created_at: DateTime,
+    #[sea_orm(
+        column_type = "custom(\"citext\")",
+        select_as = "text",
+        save_as = "citext"
+    )]
     pub email: String,
     pub expires_at: DateTime,
     #[sea_orm(unique_key = "index_household_invitations_on_id_and_household_id")]

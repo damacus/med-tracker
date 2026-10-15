@@ -394,6 +394,13 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .table(Alias::new("accounts"))
             .col(ColumnDef::new(Alias::new("id")).big_integer().not_null())
             .col(
+                ColumnDef::new(Alias::new("person_id"))
+                    .big_integer()
+                    .not_null(),
+            )
+            .col(ColumnDef::new(Alias::new("name")).string())
+            .col(ColumnDef::new(Alias::new("professional_title")).string())
+            .col(
                 ColumnDef::new(Alias::new("created_at"))
                     .custom(Alias::new("timestamp(6) without time zone"))
                     .not_null(),
@@ -1629,11 +1636,6 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
             .table(Alias::new("household_memberships"))
             .col(ColumnDef::new(Alias::new("id")).big_integer().not_null())
             .col(
-                ColumnDef::new(Alias::new("account_id"))
-                    .big_integer()
-                    .not_null(),
-            )
-            .col(
                 ColumnDef::new(Alias::new("created_at"))
                     .custom(Alias::new("timestamp(6) without time zone"))
                     .not_null(),
@@ -1654,7 +1656,11 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                     .default(Expr::cust("1"))
                     .not_null(),
             )
-            .col(ColumnDef::new(Alias::new("person_id")).big_integer())
+            .col(
+                ColumnDef::new(Alias::new("person_id"))
+                    .big_integer()
+                    .not_null(),
+            )
             .col(
                 ColumnDef::new(Alias::new("revoked_at"))
                     .custom(Alias::new("timestamp(6) without time zone")),
@@ -2890,26 +2896,19 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
         Table::create()
             .table(Alias::new("people"))
             .col(ColumnDef::new(Alias::new("id")).big_integer().not_null())
-            .col(ColumnDef::new(Alias::new("account_id")).big_integer())
             .col(
                 ColumnDef::new(Alias::new("created_at"))
                     .custom(Alias::new("timestamp(6) without time zone"))
                     .not_null(),
             )
             .col(ColumnDef::new(Alias::new("date_of_birth")).date())
-            .col(ColumnDef::new(Alias::new("email")).string())
             .col(
                 ColumnDef::new(Alias::new("has_capacity"))
                     .boolean()
                     .default(Expr::cust("true"))
                     .not_null(),
             )
-            .col(
-                ColumnDef::new(Alias::new("household_id"))
-                    .big_integer()
-                    .not_null(),
-            )
-            .col(ColumnDef::new(Alias::new("name")).string().not_null())
+            .col(ColumnDef::new(Alias::new("clinical_name")).string())
             .col(
                 ColumnDef::new(Alias::new("person_type"))
                     .integer()
@@ -2922,7 +2921,6 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                     .default(Expr::cust("(gen_random_uuid())::text"))
                     .not_null(),
             )
-            .col(ColumnDef::new(Alias::new("professional_title")).string())
             .col(
                 ColumnDef::new(Alias::new("updated_at"))
                     .custom(Alias::new("timestamp(6) without time zone"))
@@ -3411,42 +3409,6 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                     .name("support_access_sessions_pkey")
                     .col(Alias::new("id")),
             )
-            .to_owned(),
-    )
-    .await?;
-    create_table(
-        manager,
-        Table::create()
-            .table(Alias::new("users"))
-            .col(ColumnDef::new(Alias::new("id")).big_integer().not_null())
-            .col(
-                ColumnDef::new(Alias::new("active"))
-                    .boolean()
-                    .default(Expr::cust("true"))
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("created_at"))
-                    .custom(Alias::new("timestamp(6) without time zone"))
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("email_address"))
-                    .string()
-                    .not_null(),
-            )
-            .col(ColumnDef::new(Alias::new("password_digest")).string())
-            .col(
-                ColumnDef::new(Alias::new("person_id"))
-                    .big_integer()
-                    .not_null(),
-            )
-            .col(
-                ColumnDef::new(Alias::new("updated_at"))
-                    .custom(Alias::new("timestamp(6) without time zone"))
-                    .not_null(),
-            )
-            .primary_key(Index::create().name("users_pkey").col(Alias::new("id")))
             .to_owned(),
     )
     .await?;

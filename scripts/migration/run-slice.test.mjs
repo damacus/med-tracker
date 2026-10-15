@@ -13,6 +13,29 @@ import { sourceIdentity } from './run-slice.mjs';
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const ambientUrl = 'postgres://unowned.invalid:1/unowned';
 
+test('migration schema tests use only the migration crate and an owned database', async () => {
+  await withProcessFixture(0, (result, state) => {
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(state.owned_endpoint_used, true);
+    assert.equal(state.foreign_resources_touched, 0);
+    assert.deepEqual(state.calls.find(call => call.command === 'cargo').args,
+      ['test', '--locked', '-p', 'migration', '--test', 'identity_schema']);
+    assert.equal(state.calls.some(call => call.operation === 'exec'), false);
+    assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
+  }, 'migration:test', []);
+});
+
+test('entity generation migrates only a disposable database', async () => {
+  await withProcessFixture(0, (result, state) => {
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(state.owned_endpoint_used, true);
+    assert.deepEqual(state.calls.find(call => call.command === 'cargo').args,
+      ['run', '--locked', '-p', 'migration', '--example', 'generate_entities']);
+    assert.equal(state.foreign_resources_touched, 0);
+    assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
+  }, 'migration:entities', []);
+});
+
 async function withProcessFixture(exitCode, callback, taskName = 'slice:test', assignments = ['TARGET=persistence'], provisionExit = 0, extraEnvironment = {}, { closeOutputBeforeCargo = false, injectReadableError = false } = {}) {
   const directory = await mkdtemp(join(tmpdir(), 'medtracker-slice-runner-'));
   const statePath = join(directory, 'state.json');

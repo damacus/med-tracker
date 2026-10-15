@@ -37,7 +37,7 @@ pub enum Relation {
     #[sea_orm(
         belongs_to = "super::household_memberships::Entity",
         from = "(Column::RecordedByMembershipId, Column::HouseholdId)",
-        to = "(super::household_memberships::Column::HouseholdId, super::household_memberships::Column::Id, super::household_memberships::Column::HouseholdId, super::household_memberships::Column::Id)",
+        to = "(super::household_memberships::Column::Id, super::household_memberships::Column::HouseholdId)",
         on_update = "NoAction",
         on_delete = "NoAction"
     )]
@@ -45,7 +45,7 @@ pub enum Relation {
     #[sea_orm(
         belongs_to = "super::household_memberships::Entity",
         from = "(Column::ResumedByMembershipId, Column::HouseholdId)",
-        to = "(super::household_memberships::Column::HouseholdId, super::household_memberships::Column::Id, super::household_memberships::Column::HouseholdId, super::household_memberships::Column::Id)",
+        to = "(super::household_memberships::Column::Id, super::household_memberships::Column::HouseholdId)",
         on_update = "NoAction",
         on_delete = "NoAction"
     )]
@@ -77,7 +77,7 @@ pub enum Relation {
     #[sea_orm(
         belongs_to = "super::person_medications::Entity",
         from = "(Column::PersonMedicationId, Column::HouseholdId)",
-        to = "(super::person_medications::Column::HouseholdId, super::person_medications::Column::Id, super::person_medications::Column::HouseholdId, super::person_medications::Column::Id)",
+        to = "(super::person_medications::Column::Id, super::person_medications::Column::HouseholdId)",
         on_update = "NoAction",
         on_delete = "NoAction"
     )]
@@ -93,7 +93,7 @@ pub enum Relation {
     #[sea_orm(
         belongs_to = "super::schedules::Entity",
         from = "(Column::ScheduleId, Column::HouseholdId)",
-        to = "(super::schedules::Column::HouseholdId, super::schedules::Column::Id, super::schedules::Column::HouseholdId, super::schedules::Column::Id)",
+        to = "(super::schedules::Column::Id, super::schedules::Column::HouseholdId)",
         on_update = "NoAction",
         on_delete = "NoAction"
     )]

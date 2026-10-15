@@ -6,45 +6,44 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "people")]
 pub struct Model {
-    #[sea_orm(primary_key, unique_key = "index_people_on_id_and_household_id")]
+    #[sea_orm(primary_key)]
     pub id: i64,
-    pub account_id: Option<i64>,
     pub created_at: DateTime,
     pub date_of_birth: Option<Date>,
-    pub email: Option<String>,
     pub has_capacity: bool,
-    #[sea_orm(unique_key = "index_people_on_id_and_household_id")]
-    pub household_id: i64,
-    pub name: String,
+    pub clinical_name: Option<String>,
     pub person_type: i32,
-    #[sea_orm(unique_key = "index_people_on_household_id_and_portable_id")]
+    #[sea_orm(unique)]
     pub portable_id: String,
-    pub professional_title: Option<String>,
     pub updated_at: DateTime,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(
-        belongs_to = "super::accounts::Entity",
-        from = "Column::AccountId",
-        to = "super::accounts::Column::Id",
-        on_update = "NoAction",
-        on_delete = "NoAction"
-    )]
+    #[sea_orm(has_one = "super::accounts::Entity")]
     Accounts,
-    #[sea_orm(
-        belongs_to = "super::households::Entity",
-        from = "Column::HouseholdId",
-        to = "super::households::Column::Id",
-        on_update = "NoAction",
-        on_delete = "NoAction"
-    )]
-    Households,
+    #[sea_orm(has_many = "super::health_events::Entity")]
+    HealthEvents,
+    #[sea_orm(has_many = "super::household_invitation_grants::Entity")]
+    HouseholdInvitationGrants,
+    #[sea_orm(has_many = "super::household_memberships::Entity")]
+    HouseholdMemberships,
+    #[sea_orm(has_many = "super::location_memberships::Entity")]
+    LocationMemberships,
+    #[sea_orm(has_many = "super::medication_review_prompts::Entity")]
+    MedicationReviewPrompts,
+    #[sea_orm(has_many = "super::notification_events::Entity")]
+    NotificationEvents,
+    #[sea_orm(has_one = "super::notification_preferences::Entity")]
+    NotificationPreferences,
     #[sea_orm(has_many = "super::oauth_grants::Entity")]
     OauthGrants,
-    #[sea_orm(has_one = "super::users::Entity")]
-    Users,
+    #[sea_orm(has_many = "super::person_access_grants::Entity")]
+    PersonAccessGrants,
+    #[sea_orm(has_many = "super::person_medications::Entity")]
+    PersonMedications,
+    #[sea_orm(has_many = "super::schedules::Entity")]
+    Schedules,
 }
 
 impl Related<super::accounts::Entity> for Entity {
@@ -53,9 +52,45 @@ impl Related<super::accounts::Entity> for Entity {
     }
 }
 
-impl Related<super::households::Entity> for Entity {
+impl Related<super::health_events::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Households.def()
+        Relation::HealthEvents.def()
+    }
+}
+
+impl Related<super::household_invitation_grants::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::HouseholdInvitationGrants.def()
+    }
+}
+
+impl Related<super::household_memberships::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::HouseholdMemberships.def()
+    }
+}
+
+impl Related<super::location_memberships::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::LocationMemberships.def()
+    }
+}
+
+impl Related<super::medication_review_prompts::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::MedicationReviewPrompts.def()
+    }
+}
+
+impl Related<super::notification_events::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::NotificationEvents.def()
+    }
+}
+
+impl Related<super::notification_preferences::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::NotificationPreferences.def()
     }
 }
 
@@ -65,9 +100,21 @@ impl Related<super::oauth_grants::Entity> for Entity {
     }
 }
 
-impl Related<super::users::Entity> for Entity {
+impl Related<super::person_access_grants::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Users.def()
+        Relation::PersonAccessGrants.def()
+    }
+}
+
+impl Related<super::person_medications::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::PersonMedications.def()
+    }
+}
+
+impl Related<super::schedules::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Schedules.def()
     }
 }
 

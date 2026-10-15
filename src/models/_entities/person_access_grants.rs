@@ -31,7 +31,7 @@ pub enum Relation {
     #[sea_orm(
         belongs_to = "super::carer_relationships::Entity",
         from = "(Column::CarerRelationshipId, Column::HouseholdId)",
-        to = "(super::carer_relationships::Column::HouseholdId, super::carer_relationships::Column::Id, super::carer_relationships::Column::HouseholdId, super::carer_relationships::Column::Id)",
+        to = "(super::carer_relationships::Column::Id, super::carer_relationships::Column::HouseholdId)",
         on_update = "NoAction",
         on_delete = "NoAction"
     )]
@@ -39,15 +39,23 @@ pub enum Relation {
     #[sea_orm(
         belongs_to = "super::household_memberships::Entity",
         from = "(Column::GrantedByMembershipId, Column::HouseholdId)",
-        to = "(super::household_memberships::Column::HouseholdId, super::household_memberships::Column::Id, super::household_memberships::Column::HouseholdId, super::household_memberships::Column::Id)",
+        to = "(super::household_memberships::Column::Id, super::household_memberships::Column::HouseholdId)",
+        on_update = "NoAction",
+        on_delete = "NoAction"
+    )]
+    HouseholdMemberships5,
+    #[sea_orm(
+        belongs_to = "super::household_memberships::Entity",
+        from = "(Column::HouseholdMembershipId, Column::HouseholdId)",
+        to = "(super::household_memberships::Column::Id, super::household_memberships::Column::HouseholdId)",
         on_update = "NoAction",
         on_delete = "NoAction"
     )]
     HouseholdMemberships4,
     #[sea_orm(
         belongs_to = "super::household_memberships::Entity",
-        from = "(Column::HouseholdMembershipId, Column::HouseholdId)",
-        to = "(super::household_memberships::Column::HouseholdId, super::household_memberships::Column::Id, super::household_memberships::Column::HouseholdId, super::household_memberships::Column::Id)",
+        from = "(Column::PersonId, Column::HouseholdId)",
+        to = "(super::household_memberships::Column::PersonId, super::household_memberships::Column::HouseholdId)",
         on_update = "NoAction",
         on_delete = "NoAction"
     )]
@@ -78,20 +86,12 @@ pub enum Relation {
     Households,
     #[sea_orm(
         belongs_to = "super::people::Entity",
-        from = "(Column::PersonId, Column::HouseholdId)",
-        to = "(super::people::Column::HouseholdId, super::people::Column::Id, super::people::Column::HouseholdId, super::people::Column::Id)",
-        on_update = "NoAction",
-        on_delete = "NoAction"
-    )]
-    People2,
-    #[sea_orm(
-        belongs_to = "super::people::Entity",
         from = "Column::PersonId",
         to = "super::people::Column::Id",
         on_update = "NoAction",
         on_delete = "NoAction"
     )]
-    People1,
+    People,
 }
 
 impl Related<super::carer_relationships::Entity> for Entity {
@@ -103,6 +103,12 @@ impl Related<super::carer_relationships::Entity> for Entity {
 impl Related<super::households::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Households.def()
+    }
+}
+
+impl Related<super::people::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::People.def()
     }
 }
 

@@ -73,7 +73,7 @@ pub enum Relation {
     #[sea_orm(
         belongs_to = "super::oauth_applications::Entity",
         from = "(Column::OauthApplicationId, Column::ClientKind)",
-        to = "(super::oauth_applications::Column::ClientKind, super::oauth_applications::Column::Id, super::oauth_applications::Column::ClientKind, super::oauth_applications::Column::Id)",
+        to = "(super::oauth_applications::Column::Id, super::oauth_applications::Column::ClientKind)",
         on_update = "NoAction",
         on_delete = "NoAction"
     )]

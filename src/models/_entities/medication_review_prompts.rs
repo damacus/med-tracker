@@ -46,6 +46,7 @@ pub struct Model {
     pub source_instruction: String,
     pub status: String,
     pub updated_at: DateTime,
+    pub evidence_source_fingerprint: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -57,11 +58,19 @@ pub enum Relation {
         on_update = "NoAction",
         on_delete = "NoAction"
     )]
+    HouseholdMemberships3,
+    #[sea_orm(
+        belongs_to = "super::household_memberships::Entity",
+        from = "(Column::PersonId, Column::HouseholdId)",
+        to = "(super::household_memberships::Column::PersonId, super::household_memberships::Column::HouseholdId)",
+        on_update = "NoAction",
+        on_delete = "NoAction"
+    )]
     HouseholdMemberships2,
     #[sea_orm(
         belongs_to = "super::household_memberships::Entity",
         from = "(Column::ReviewedByMembershipId, Column::HouseholdId)",
-        to = "(super::household_memberships::Column::HouseholdId, super::household_memberships::Column::Id, super::household_memberships::Column::HouseholdId, super::household_memberships::Column::Id)",
+        to = "(super::household_memberships::Column::Id, super::household_memberships::Column::HouseholdId)",
         on_update = "NoAction",
         on_delete = "NoAction"
     )]
@@ -74,6 +83,8 @@ pub enum Relation {
         on_delete = "NoAction"
     )]
     Households,
+    #[sea_orm(has_one = "super::medication_review_edit_leases::Entity")]
+    MedicationReviewEditLeases,
     #[sea_orm(
         belongs_to = "super::medication_review_evidence_records::Entity",
         from = "Column::EvidenceRecordId",
@@ -82,6 +93,8 @@ pub enum Relation {
         on_delete = "NoAction"
     )]
     MedicationReviewEvidenceRecords,
+    #[sea_orm(has_many = "super::medication_review_histories::Entity")]
+    MedicationReviewHistories,
     #[sea_orm(
         belongs_to = "super::medications::Entity",
         from = "Column::PrimaryMedicationId",
@@ -101,7 +114,7 @@ pub enum Relation {
     #[sea_orm(
         belongs_to = "super::medications::Entity",
         from = "(Column::InteractingMedicationId, Column::HouseholdId)",
-        to = "(super::medications::Column::HouseholdId, super::medications::Column::Id, super::medications::Column::HouseholdId, super::medications::Column::Id)",
+        to = "(super::medications::Column::Id, super::medications::Column::HouseholdId)",
         on_update = "NoAction",
         on_delete = "NoAction"
     )]
@@ -109,7 +122,7 @@ pub enum Relation {
     #[sea_orm(
         belongs_to = "super::medications::Entity",
         from = "(Column::PrimaryMedicationId, Column::HouseholdId)",
-        to = "(super::medications::Column::HouseholdId, super::medications::Column::Id, super::medications::Column::HouseholdId, super::medications::Column::Id)",
+        to = "(super::medications::Column::Id, super::medications::Column::HouseholdId)",
         on_update = "NoAction",
         on_delete = "NoAction"
     )]
@@ -121,15 +134,7 @@ pub enum Relation {
         on_update = "NoAction",
         on_delete = "NoAction"
     )]
-    People2,
-    #[sea_orm(
-        belongs_to = "super::people::Entity",
-        from = "(Column::PersonId, Column::HouseholdId)",
-        to = "(super::people::Column::HouseholdId, super::people::Column::Id, super::people::Column::HouseholdId, super::people::Column::Id)",
-        on_update = "NoAction",
-        on_delete = "NoAction"
-    )]
-    People1,
+    People,
 }
 
 impl Related<super::households::Entity> for Entity {
@@ -138,9 +143,27 @@ impl Related<super::households::Entity> for Entity {
     }
 }
 
+impl Related<super::medication_review_edit_leases::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::MedicationReviewEditLeases.def()
+    }
+}
+
 impl Related<super::medication_review_evidence_records::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::MedicationReviewEvidenceRecords.def()
+    }
+}
+
+impl Related<super::medication_review_histories::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::MedicationReviewHistories.def()
+    }
+}
+
+impl Related<super::people::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::People.def()
     }
 }
 

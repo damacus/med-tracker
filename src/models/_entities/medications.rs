@@ -54,7 +54,7 @@ pub enum Relation {
     #[sea_orm(
         belongs_to = "super::household_memberships::Entity",
         from = "(Column::CreatedByMembershipId, Column::HouseholdId)",
-        to = "(super::household_memberships::Column::HouseholdId, super::household_memberships::Column::Id, super::household_memberships::Column::HouseholdId, super::household_memberships::Column::Id)",
+        to = "(super::household_memberships::Column::Id, super::household_memberships::Column::HouseholdId)",
         on_update = "NoAction",
         on_delete = "NoAction"
     )]
@@ -78,7 +78,7 @@ pub enum Relation {
     #[sea_orm(
         belongs_to = "super::locations::Entity",
         from = "(Column::LocationId, Column::HouseholdId)",
-        to = "(super::locations::Column::HouseholdId, super::locations::Column::Id, super::locations::Column::HouseholdId, super::locations::Column::Id)",
+        to = "(super::locations::Column::Id, super::locations::Column::HouseholdId)",
         on_update = "NoAction",
         on_delete = "NoAction"
     )]

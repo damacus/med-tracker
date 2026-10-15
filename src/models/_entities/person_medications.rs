@@ -39,7 +39,7 @@ pub enum Relation {
     #[sea_orm(
         belongs_to = "super::dosages::Entity",
         from = "(Column::SourceDosageOptionId, Column::HouseholdId)",
-        to = "(super::dosages::Column::HouseholdId, super::dosages::Column::Id, super::dosages::Column::HouseholdId, super::dosages::Column::Id)",
+        to = "(super::dosages::Column::Id, super::dosages::Column::HouseholdId)",
         on_update = "NoAction",
         on_delete = "NoAction"
     )]
@@ -53,6 +53,14 @@ pub enum Relation {
     )]
     Dosages1,
     #[sea_orm(
+        belongs_to = "super::household_memberships::Entity",
+        from = "(Column::PersonId, Column::HouseholdId)",
+        to = "(super::household_memberships::Column::PersonId, super::household_memberships::Column::HouseholdId)",
+        on_update = "NoAction",
+        on_delete = "NoAction"
+    )]
+    HouseholdMemberships,
+    #[sea_orm(
         belongs_to = "super::households::Entity",
         from = "Column::HouseholdId",
         to = "super::households::Column::Id",
@@ -63,7 +71,7 @@ pub enum Relation {
     #[sea_orm(
         belongs_to = "super::medications::Entity",
         from = "(Column::MedicationId, Column::HouseholdId)",
-        to = "(super::medications::Column::HouseholdId, super::medications::Column::Id, super::medications::Column::HouseholdId, super::medications::Column::Id)",
+        to = "(super::medications::Column::Id, super::medications::Column::HouseholdId)",
         on_update = "NoAction",
         on_delete = "NoAction"
     )]
@@ -78,25 +86,29 @@ pub enum Relation {
     Medications1,
     #[sea_orm(
         belongs_to = "super::people::Entity",
-        from = "(Column::PersonId, Column::HouseholdId)",
-        to = "(super::people::Column::HouseholdId, super::people::Column::Id, super::people::Column::HouseholdId, super::people::Column::Id)",
-        on_update = "NoAction",
-        on_delete = "NoAction"
-    )]
-    People2,
-    #[sea_orm(
-        belongs_to = "super::people::Entity",
         from = "Column::PersonId",
         to = "super::people::Column::Id",
         on_update = "NoAction",
         on_delete = "NoAction"
     )]
-    People1,
+    People,
+}
+
+impl Related<super::household_memberships::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::HouseholdMemberships.def()
+    }
 }
 
 impl Related<super::households::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Households.def()
+    }
+}
+
+impl Related<super::people::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::People.def()
     }
 }
 

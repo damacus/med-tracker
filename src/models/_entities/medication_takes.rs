@@ -41,7 +41,7 @@ pub enum Relation {
     #[sea_orm(
         belongs_to = "super::locations::Entity",
         from = "(Column::TakenFromLocationId, Column::HouseholdId)",
-        to = "(super::locations::Column::HouseholdId, super::locations::Column::Id, super::locations::Column::HouseholdId, super::locations::Column::Id)",
+        to = "(super::locations::Column::Id, super::locations::Column::HouseholdId)",
         on_update = "NoAction",
         on_delete = "NoAction"
     )]
@@ -57,7 +57,7 @@ pub enum Relation {
     #[sea_orm(
         belongs_to = "super::medications::Entity",
         from = "(Column::TakenFromMedicationId, Column::HouseholdId)",
-        to = "(super::medications::Column::HouseholdId, super::medications::Column::Id, super::medications::Column::HouseholdId, super::medications::Column::Id)",
+        to = "(super::medications::Column::Id, super::medications::Column::HouseholdId)",
         on_update = "NoAction",
         on_delete = "NoAction"
     )]
@@ -73,7 +73,7 @@ pub enum Relation {
     #[sea_orm(
         belongs_to = "super::person_medications::Entity",
         from = "(Column::PersonMedicationId, Column::HouseholdId)",
-        to = "(super::person_medications::Column::HouseholdId, super::person_medications::Column::Id, super::person_medications::Column::HouseholdId, super::person_medications::Column::Id)",
+        to = "(super::person_medications::Column::Id, super::person_medications::Column::HouseholdId)",
         on_update = "NoAction",
         on_delete = "NoAction"
     )]
@@ -89,7 +89,7 @@ pub enum Relation {
     #[sea_orm(
         belongs_to = "super::schedules::Entity",
         from = "(Column::ScheduleId, Column::HouseholdId)",
-        to = "(super::schedules::Column::HouseholdId, super::schedules::Column::Id, super::schedules::Column::HouseholdId, super::schedules::Column::Id)",
+        to = "(super::schedules::Column::Id, super::schedules::Column::HouseholdId)",
         on_update = "NoAction",
         on_delete = "NoAction"
     )]

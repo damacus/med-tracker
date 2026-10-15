@@ -44,7 +44,7 @@ pub enum Relation {
     #[sea_orm(
         belongs_to = "super::medications::Entity",
         from = "(Column::MedicationId, Column::HouseholdId)",
-        to = "(super::medications::Column::HouseholdId, super::medications::Column::Id, super::medications::Column::HouseholdId, super::medications::Column::Id)",
+        to = "(super::medications::Column::Id, super::medications::Column::HouseholdId)",
         on_update = "NoAction",
         on_delete = "NoAction"
     )]

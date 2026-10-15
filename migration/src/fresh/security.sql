@@ -135,7 +135,6 @@ CREATE POLICY household_tenant_isolation ON public.household_invitation_grants U
 
 CREATE POLICY household_tenant_isolation ON public.household_invitations USING (((household_id = med_tracker.current_household_id()) OR (((token_digest)::text = med_tracker.current_invitation_token_digest()) AND (accepted_at IS NULL) AND (revoked_at IS NULL) AND (expires_at > CURRENT_TIMESTAMP)))) WITH CHECK ((household_id = med_tracker.current_household_id()));
 
-CREATE POLICY household_tenant_isolation ON public.household_memberships USING (((household_id = med_tracker.current_household_id()) OR (account_id = med_tracker.current_account_id()))) WITH CHECK ((household_id = med_tracker.current_household_id()));
 
 CREATE POLICY household_tenant_isolation ON public.household_retention_holds USING ((household_id = med_tracker.current_household_id())) WITH CHECK ((household_id = med_tracker.current_household_id()));
 
@@ -157,7 +156,6 @@ CREATE POLICY household_tenant_isolation ON public.notification_events USING ((h
 
 CREATE POLICY household_tenant_isolation ON public.notification_preferences USING ((household_id = med_tracker.current_household_id())) WITH CHECK ((household_id = med_tracker.current_household_id()));
 
-CREATE POLICY household_tenant_isolation ON public.people USING ((household_id = med_tracker.current_household_id())) WITH CHECK ((household_id = med_tracker.current_household_id()));
 
 CREATE POLICY household_tenant_isolation ON public.person_access_grants USING ((household_id = med_tracker.current_household_id())) WITH CHECK ((household_id = med_tracker.current_household_id()));
 
@@ -167,7 +165,6 @@ CREATE POLICY household_tenant_isolation ON public.schedules USING ((household_i
 
 CREATE POLICY household_tenant_isolation ON public.security_audit_events USING ((household_id = med_tracker.current_household_id())) WITH CHECK ((household_id = med_tracker.current_household_id()));
 
-CREATE POLICY people_account_login_lookup ON public.people FOR SELECT TO med_tracker_app USING ((account_id IS NOT NULL));
 
 GRANT USAGE ON SCHEMA med_tracker TO med_tracker_owner;
 GRANT USAGE ON SCHEMA med_tracker TO med_tracker_app;
@@ -465,9 +462,7 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.support_access_sessions TO med
 
 GRANT SELECT,USAGE ON SEQUENCE public.support_access_sessions_id_seq TO med_tracker_app;
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.users TO med_tracker_app;
 
-GRANT SELECT,USAGE ON SEQUENCE public.users_id_seq TO med_tracker_app;
 
 GRANT SELECT,INSERT ON TABLE public.versions TO med_tracker_app;
 GRANT SELECT ON TABLE public.versions TO med_tracker_audit_verifier;

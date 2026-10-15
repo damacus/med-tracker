@@ -21,6 +21,7 @@ PostgreSQL 18.
 | `task test:browser` | Desktop and mobile browser journeys |
 | `task test:browser GROUP=runtime-isolation PROJECT=desktop` | One browser file and viewport |
 | `task slice:test TARGET=care_api FILTER=fixture` | Focused Rust integration tests |
+| `task migration:test` | Fresh identity schema, constraints, restricted-role RLS and generated relationships; migration crate only |
 | `task ci:report` | Recorded command timings |
 
 Integration and browser tasks prepare their prerequisites automatically.
@@ -82,6 +83,18 @@ Loco owns schema installation through versioned SeaORM migrations. Ordinary
 tables, indexes and foreign keys use builders; PostgreSQL-specific definitions
 are bundled with their migration. No Rails command or separate schema SQL
 import is required. The seed hook invokes the migrator once before loading data.
+
+Regenerate SeaORM mappings with `task migration:entities`. This wrapper migrates
+an owned disposable PostgreSQL database, runs `sea-orm-cli`, excludes tables
+without primary keys, corrects composite relation targets using ordered
+PostgreSQL foreign-key metadata, and preserves `citext` columns with read/write
+casts. Direct CLI generation currently ignores these email fields and duplicates
+or misorders target columns when a foreign key references a unique index. Use the
+wrapper for repeatable mappings, then run `task migration:test`; its real email
+CRUD/filter queries, relationship queries and metadata checks detect these
+regressions. Neither command
+uses an ambient application database. Install the project-pinned SeaORM 2.0.4
+CLI before regeneration.
 
 Repeated migration is a no-op. Synthetic seeding refuses production environments
 and populated application databases. Reset and down commands remain disabled;

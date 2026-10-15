@@ -648,15 +648,8 @@ CREATE SEQUENCE public.support_access_sessions_id_seq
 
 ALTER SEQUENCE public.support_access_sessions_id_seq OWNER TO med_tracker_owner;
 
-CREATE SEQUENCE public.users_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
 
 
-ALTER SEQUENCE public.users_id_seq OWNER TO med_tracker_owner;
 
 CREATE SEQUENCE public.versions_id_seq
     START WITH 1
@@ -798,7 +791,6 @@ ALTER SEQUENCE public.storage_migration_runs_id_seq OWNED BY public.storage_migr
 
 ALTER SEQUENCE public.support_access_sessions_id_seq OWNED BY public.support_access_sessions.id;
 
-ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
 
 ALTER SEQUENCE public.versions_id_seq OWNED BY public.versions.id;
 
@@ -932,6 +924,5 @@ ALTER TABLE ONLY public.storage_migration_runs ALTER COLUMN id SET DEFAULT nextv
 
 ALTER TABLE ONLY public.support_access_sessions ALTER COLUMN id SET DEFAULT nextval('public.support_access_sessions_id_seq'::regclass);
 
-ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_id_seq'::regclass);
 
 ALTER TABLE ONLY public.versions ALTER COLUMN id SET DEFAULT nextval('public.versions_id_seq'::regclass);

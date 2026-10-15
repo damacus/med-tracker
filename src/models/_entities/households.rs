@@ -75,6 +75,10 @@ pub enum Relation {
     MedicationDoseOccurrences,
     #[sea_orm(has_many = "super::medication_pause_periods::Entity")]
     MedicationPausePeriods,
+    #[sea_orm(has_many = "super::medication_review_edit_leases::Entity")]
+    MedicationReviewEditLeases,
+    #[sea_orm(has_many = "super::medication_review_histories::Entity")]
+    MedicationReviewHistories,
     #[sea_orm(has_many = "super::medication_review_prompts::Entity")]
     MedicationReviewPrompts,
     #[sea_orm(has_many = "super::medication_takes::Entity")]
@@ -87,8 +91,6 @@ pub enum Relation {
     NotificationEvents,
     #[sea_orm(has_many = "super::notification_preferences::Entity")]
     NotificationPreferences,
-    #[sea_orm(has_many = "super::people::Entity")]
-    People,
     #[sea_orm(has_many = "super::person_access_grants::Entity")]
     PersonAccessGrants,
     #[sea_orm(has_many = "super::person_medications::Entity")]
@@ -241,6 +243,18 @@ impl Related<super::medication_pause_periods::Entity> for Entity {
     }
 }
 
+impl Related<super::medication_review_edit_leases::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::MedicationReviewEditLeases.def()
+    }
+}
+
+impl Related<super::medication_review_histories::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::MedicationReviewHistories.def()
+    }
+}
+
 impl Related<super::medication_review_prompts::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::MedicationReviewPrompts.def()
@@ -274,12 +288,6 @@ impl Related<super::notification_events::Entity> for Entity {
 impl Related<super::notification_preferences::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::NotificationPreferences.def()
-    }
-}
-
-impl Related<super::people::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::People.def()
     }
 }
 

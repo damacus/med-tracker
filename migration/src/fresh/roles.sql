@@ -16,6 +16,7 @@ BEGIN
   END LOOP;
 END $$;
 CREATE SCHEMA med_tracker;
+ALTER SCHEMA med_tracker OWNER TO med_tracker_owner;
 
 
 

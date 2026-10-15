@@ -231,11 +231,14 @@ export async function runCoverage({ outputDir = 'target/coverage/reports' } = {}
   }
 }
 
-export async function runSlice({ all = false, target, filter = '', includeIgnored = false, noCapture = false, executionProof = false, controlledCapture = false }, inheritedEnvironment = process.env) {
+export async function runSlice({ all = false, target, filter = '', includeIgnored = false, noCapture = false, executionProof = false, controlledCapture = false, migration = false, generateEntities = false }, inheritedEnvironment = process.env) {
+  if (generateEntities && (!migration || all || filter || target !== 'generate_entities')) throw new Error('Entity generation requires the migration example');
+  if (migration && (all || target !== (generateEntities ? 'generate_entities' : 'identity_schema'))) throw new Error('Migration tests must select identity_schema');
   if (!all && !/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(target ?? '')) throw new Error('TARGET must name a root Rust test binary');
   if (filter && !/^[A-Za-z0-9_:]+$/.test(filter)) throw new Error('FILTER must name a Rust test');
-  const args = ['test', '--locked'];
-  if (!all) args.push('--test', target);
+  const args = [generateEntities ? 'run' : 'test', '--locked'];
+  if (migration) args.push('-p', 'migration');
+  if (!all) args.push(generateEntities ? '--example' : '--test', target);
   if (filter) args.push(filter);
   if (includeIgnored || noCapture || executionProof) args.push('--', ...(includeIgnored ? ['--include-ignored'] : []), ...(noCapture ? ['--nocapture'] : []), ...(executionProof ? ['--format=pretty', '--color=never'] : []));
   const controller = new AbortController();
@@ -260,17 +263,17 @@ export async function runSlice({ all = false, target, filter = '', includeIgnore
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     const arguments_ = process.argv.slice(2);
-    if (arguments_.some((argument, index) => !['--all', '--target', '--filter', '--coverage', '--output-dir'].includes(argument) && !['--target', '--filter', '--output-dir'].includes(arguments_[index - 1]))) throw new Error('Unsupported slice runner argument');
+    if (arguments_.some((argument, index) => !['--all', '--target', '--filter', '--coverage', '--output-dir', '--migration', '--generate-entities'].includes(argument) && !['--target', '--filter', '--output-dir'].includes(arguments_[index - 1]))) throw new Error('Unsupported slice runner argument');
     const all = process.argv.includes('--all');
     const coverage = process.argv.includes('--coverage');
     const target = arguments_[arguments_.indexOf('--target') + 1];
-    const filter = arguments_[arguments_.indexOf('--filter') + 1];
+    const filter = arguments_.includes('--filter') ? arguments_[arguments_.indexOf('--filter') + 1] : '';
     const outputDir = arguments_.includes('--output-dir') ? arguments_[arguments_.indexOf('--output-dir') + 1] : undefined;
     if ((arguments_.includes('--target') && target === undefined) || (arguments_.includes('--filter') && filter === undefined) || (arguments_.includes('--output-dir') && outputDir === undefined)) throw new Error('Missing slice runner argument value');
     if (coverage && (all || arguments_.includes('--target') || arguments_.includes('--filter'))) throw new Error('Coverage cannot select slice test arguments');
     if (coverage) await runCoverage({ outputDir });
     else if (arguments_.includes('--output-dir')) throw new Error('Output directory requires coverage mode');
-    else await runSlice({ all, target, filter: all ? '' : filter });
+    else await runSlice({ all, target, filter: all ? '' : filter, migration: arguments_.includes('--migration'), generateEntities: arguments_.includes('--generate-entities') });
   } catch (error) {
     process.stderr.write(`${error.message}\n`);
     process.exitCode = 1;

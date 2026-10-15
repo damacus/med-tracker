@@ -70,7 +70,6 @@ CREATE UNIQUE INDEX index_health_event_medications_on_health_event_id_and_med_id
 
 CREATE UNIQUE INDEX index_household_invitations_on_household_id_and_email ON public.household_invitations USING btree (household_id, email) WHERE ((accepted_at IS NULL) AND (revoked_at IS NULL));
 
-CREATE UNIQUE INDEX index_household_memberships_on_person_id ON public.household_memberships USING btree (person_id) WHERE (person_id IS NOT NULL);
 
 CREATE UNIQUE INDEX index_locations_on_household_id_and_lower_name ON public.locations USING btree (household_id, lower((name)::text)) WHERE (household_id IS NOT NULL);
 
@@ -94,14 +93,18 @@ CREATE INDEX index_medications_on_name_trigram ON public.medications USING gin (
 
 CREATE UNIQUE INDEX index_nhs_dmd_imports_one_active ON public.nhs_dmd_imports USING btree ((1)) WHERE (status = ANY (ARRAY[0, 1, 2, 3]));
 
-CREATE UNIQUE INDEX index_people_on_email_present_unique ON public.people USING btree (email) WHERE ((email IS NOT NULL) AND (btrim((email)::text) <> ''::text));
 
-CREATE UNIQUE INDEX index_people_on_household_id_and_account_id ON public.people USING btree (household_id, account_id) WHERE ((household_id IS NOT NULL) AND (account_id IS NOT NULL));
 
-CREATE INDEX index_people_on_name_trigram ON public.people USING gin (name public.gin_trgm_ops);
+CREATE INDEX index_people_on_name_trigram ON public.people USING gin (clinical_name public.gin_trgm_ops);
 
 CREATE UNIQUE INDEX index_person_medications_on_person_id_and_medication_id ON public.person_medications USING btree (person_id, medication_id) WHERE (retired_at IS NULL);
 
 CREATE INDEX index_person_medications_on_person_id_and_position ON public.person_medications USING btree (person_id, "position");
 
 CREATE INDEX index_schedules_on_schedule_config ON public.schedules USING gin (schedule_config);
+CREATE UNIQUE INDEX index_accounts_on_person_id ON public.accounts(person_id);
+ALTER TABLE public.accounts ADD CONSTRAINT accounts_person_fk FOREIGN KEY(person_id) REFERENCES public.people(id);
+ALTER TABLE public.accounts ADD CONSTRAINT account_profile_name CHECK(status = 3 OR (name IS NOT NULL AND btrim(name) <> ''));
+ALTER TABLE public.people ADD CONSTRAINT person_type_valid CHECK(person_type IN (0, 1, 2));
+ALTER TABLE public.people ADD CONSTRAINT dependent_capacity CHECK(person_type = 0 OR has_capacity = false);
+ALTER TABLE public.people ADD CONSTRAINT clinical_name_present CHECK(clinical_name IS NULL OR btrim(clinical_name) <> '');

@@ -8,7 +8,7 @@ pub struct Migration;
 
 impl MigrationName for Migration {
     fn name(&self) -> &str {
-        "m20261013_000001_create_medtracker"
+        "m20261015_000001_create_medtracker"
     }
 }
 
@@ -32,6 +32,7 @@ impl MigrationTrait for Migration {
         db.execute_unprepared(include_str!("security.sql")).await?;
         db.execute_unprepared("SET LOCAL ROLE med_tracker_owner")
             .await?;
+        db.execute_unprepared(include_str!("identity.sql")).await?;
         Ok(())
     }
 }

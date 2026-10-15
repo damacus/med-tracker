@@ -31,6 +31,14 @@ pub struct Model {
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
     #[sea_orm(
+        belongs_to = "super::household_memberships::Entity",
+        from = "(Column::PersonId, Column::HouseholdId)",
+        to = "(super::household_memberships::Column::PersonId, super::household_memberships::Column::HouseholdId)",
+        on_update = "NoAction",
+        on_delete = "NoAction"
+    )]
+    HouseholdMemberships,
+    #[sea_orm(
         belongs_to = "super::households::Entity",
         from = "Column::HouseholdId",
         to = "super::households::Column::Id",
@@ -42,20 +50,18 @@ pub enum Relation {
     NotificationDeliveries,
     #[sea_orm(
         belongs_to = "super::people::Entity",
-        from = "(Column::PersonId, Column::HouseholdId)",
-        to = "(super::people::Column::HouseholdId, super::people::Column::Id, super::people::Column::HouseholdId, super::people::Column::Id)",
-        on_update = "NoAction",
-        on_delete = "NoAction"
-    )]
-    People2,
-    #[sea_orm(
-        belongs_to = "super::people::Entity",
         from = "Column::PersonId",
         to = "super::people::Column::Id",
         on_update = "NoAction",
         on_delete = "NoAction"
     )]
-    People1,
+    People,
+}
+
+impl Related<super::household_memberships::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::HouseholdMemberships.def()
+    }
 }
 
 impl Related<super::households::Entity> for Entity {
@@ -67,6 +73,12 @@ impl Related<super::households::Entity> for Entity {
 impl Related<super::notification_deliveries::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::NotificationDeliveries.def()
+    }
+}
+
+impl Related<super::people::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::People.def()
     }
 }
 

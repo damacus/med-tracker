@@ -78,6 +78,12 @@ tasks:
     env:
       RUST_TEST_THREADS: "4"
     cmds: [node scripts/migration/run-slice.mjs --all]
+  migration:test:
+    desc: Test the fresh schema independently of root runtime callers
+    cmds: [node scripts/migration/run-slice.mjs --migration --target identity_schema]
+  migration:entities:
+    desc: Regenerate SeaORM mappings from a fresh owned database
+    cmds: [node scripts/migration/run-slice.mjs --migration --generate-entities --target generate_entities]
   inventory:write:
     desc: Record reconciled migration inputs
     cmds: [node scripts/migration/inventory.mjs --write]
