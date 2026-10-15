@@ -26,10 +26,22 @@ is SHA-256 `ff19b1e6a9859312cc350071d538d4dc772d2326fe49039a72d80e92e93b19b2`.
 The existing Failed, ZIP alert, Completed count and barcode checks remain.
 Focused desktop/mobile browser job `22215` passed both cases (2/2, 6.8s)
 and exited zero with normal cleanup. All 1,093 tracked PNG hashes were unchanged.
-The test correction is committed at `b229c719`; its tested browser bytes remain
-unchanged. Full CI, same-session `successful-dollar` SWE-2 Max correction review,
-push and fresh hosted checks remain pending. No new operation acceptance is
-credited. The unrelated Serena change remains preserved.
+The frozen candidate is `a96876bfcb1613f6da6a4a7e9f404cfeeb9d6144`, based on
+main `1800d858ef99e71edcf5e00cf5a0530616673dc6`; owner is the API coordinator,
+PR [#2632](https://github.com/damacus/med-tracker/pull/2632). Same-session
+`successful-dollar` SWE-2 Max review `51331` accepted with no required code
+corrections (fourteen exported steps). Full CI `95472` exited zero on this exact
+candidate: 111 Rust units, all integrations including 508 care tests (two
+ignored, fourteen filtered), and all 744 browser cases (19.4m). Both NHS
+import viewports executed. Root independently verified and restored only the
+generated PNG delta and checked all 1,093 baseline hashes. The unrelated Serena
+change remains preserved. Full log is
+`/private/tmp/s05-i01-evidence/nhs-browser-full-ci-a968.log`.
+The reviewed prerequisite diff is 542 additions plus deletions against main;
+this final progress-only update remains below the 2,000-line limit. Final
+documentation checks, push and fresh exact-head hosted checks are still pending.
+Dependent propagation remains held until required gates pass; no operation
+acceptance, merge or deployment is credited.
 
 ### s05-i01 — API contract completion, 14 October 2026
 
