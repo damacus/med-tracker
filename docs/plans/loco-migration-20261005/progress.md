@@ -6,6 +6,63 @@ migration areas stay in scope. No live deployment has occurred.
 
 ## Current delivery
 
+### s05-i01 execution-proof propagation, 15 October 2026
+
+Coordinator-owned PR [#2633](https://github.com/damacus/med-tracker/pull/2633)
+now integrates its verified predecessor `faf0cc2f58707555b794829bb05ec4574e44698e`.
+The previous execution-proof head `630a7f016d364becfb682b855a7da0c57c0b7f7c`
+is preserved as an ancestor. The parent passed full local CI and independent
+review, then all applicable hosted checks (27 succeeded, 16 skipped). Its
+hosted merge tree exactly matches the published source; coverage covers all
+five added runtime lines, with wider migration gaps retained separately.
+
+The three execution-proof JavaScript files are unchanged from `630a7f01`:
+477 additions and 21 deletions against the predecessor, before this progress
+update. Only the verified lower browser correction and progress are inherited.
+Existing proof commits are preserved through an ordinary branch merge.
+Focused runner and inventory checks, fresh cumulative `task ci`, and resumed
+`fate-button` SWE-2 Max review remain pending on the new frozen candidate.
+Publication and exact-head hosted checks remain separate gates. No operation
+acceptance, PR merge or deployment is credited; account and later API work
+continues in its existing order after this layer passes its required gates.
+
+### s05-i01 prerequisite browser correction, 15 October 2026
+
+Published settings PR #2644 (`eb9ac904`) failed its hosted NHS dm+d import
+browser journey in both desktop and mobile jobs (`116197321693` and
+`116197321724`). The broken ZIP reached Failed and passed its ZIP alert. The
+failure was the first `Completed` poll reload after the valid ZIP upload:
+`Page.reload` reported `Not attached to an active page`. Trace shows the valid
+upload POST returned 303 and its redirected GET returned 200; the reload began
+about 1.4 ms after the desktop click returned and 1.1 ms after mobile. The
+exact Chromium attachment cause remains unproved; the logs do not show an
+importer or storage failure.
+
+The previously reviewed dm+d prerequisite source is `923d5b63098a61ed4a9df0dfd4f27ae348d0b26a`.
+A browser-test-only correction is applied locally in its owning checkout:
+both upload clicks now wait for the exact navigation POST and page load,
+then verify the 303 redirect before the existing status poll. The test file
+is SHA-256 `ff19b1e6a9859312cc350071d538d4dc772d2326fe49039a72d80e92e93b19b2`.
+The existing Failed, ZIP alert, Completed count and barcode checks remain.
+Focused desktop/mobile browser job `22215` passed both cases (2/2, 6.8s)
+and exited zero with normal cleanup. All 1,093 tracked PNG hashes were unchanged.
+The frozen candidate is `a96876bfcb1613f6da6a4a7e9f404cfeeb9d6144`, based on
+main `1800d858ef99e71edcf5e00cf5a0530616673dc6`; owner is the API coordinator,
+PR [#2632](https://github.com/damacus/med-tracker/pull/2632). Same-session
+`successful-dollar` SWE-2 Max review `51331` accepted with no required code
+corrections (fourteen exported steps). Full CI `95472` exited zero on this exact
+candidate: 111 Rust units, all integrations including 508 care tests (two
+ignored, fourteen filtered), and all 744 browser cases (19.4m). Both NHS
+import viewports executed. Root independently verified and restored only the
+generated PNG delta and checked all 1,093 baseline hashes. The unrelated Serena
+change remains preserved. Full log is
+`/private/tmp/s05-i01-evidence/nhs-browser-full-ci-a968.log`.
+The reviewed prerequisite diff is 542 additions plus deletions against main;
+this final progress-only update remains below the 2,000-line limit. Final
+documentation checks, push and fresh exact-head hosted checks are still pending.
+Dependent propagation remains held until required gates pass; no operation
+acceptance, merge or deployment is credited.
+
 ### s05-i01 — API contract completion, 14 October 2026
 
 Merged rate-limit candidate: [PR #2623](https://github.com/damacus/med-tracker/pull/2623),
