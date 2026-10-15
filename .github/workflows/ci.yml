@@ -135,6 +135,11 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes fish uuid-runtime ripgrep
+      - name: Install pinned nextest
+        uses: taiki-e/install-action@9983c65e42da123ff25d1f78505eb6de315aa172
+        with:
+          tool: cargo-nextest@0.9.148
+          fallback: none
       - name: Check path ownership and relocation before compilation
         run: task ci:paths foundation:test-relocation fmt
       - name: Run database-free unit and orchestration tests
@@ -184,6 +189,11 @@ jobs:
         with:
           shared-key: loco-tests-v1
           save-if: false
+      - name: Install pinned machete
+        uses: taiki-e/install-action@9983c65e42da123ff25d1f78505eb6de315aa172
+        with:
+          tool: cargo-machete@0.9.2
+          fallback: none
       - run: task fmt lint
 
   loco_coverage:
@@ -251,6 +261,15 @@ jobs:
         with:
           name: loco-tests
       - run: tar -xzf loco-tests.tar.gz
+      - name: Install pinned nextest
+        uses: taiki-e/install-action@9983c65e42da123ff25d1f78505eb6de315aa172
+        with:
+          tool: cargo-nextest@0.9.148
+          fallback: none
+      - name: Install owned-runner prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes fish uuid-runtime ripgrep
       - run: task test:integration SHARD=${{ matrix.shard }}/4
       - name: Preserve integration timings and selection
         if: always()
