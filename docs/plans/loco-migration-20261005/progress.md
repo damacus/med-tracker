@@ -24,10 +24,12 @@ both upload clicks now wait for the exact navigation POST and page load,
 then verify the 303 redirect before the existing status poll. The test file
 is SHA-256 `ff19b1e6a9859312cc350071d538d4dc772d2326fe49039a72d80e92e93b19b2`.
 The existing Failed, ZIP alert, Completed count and barcode checks remain.
-Focused desktop/mobile browser verification is running; a fresh full CI,
-same-session `successful-dollar` SWE-2 Max correction review, commit, push and
-hosted rerun are pending. This local correction has no publication or new
-acceptance credit yet. The unrelated Serena change remains preserved.
+Focused desktop/mobile browser job `22215` passed both cases (2/2, 6.8s)
+and exited zero with normal cleanup. All 1,093 tracked PNG hashes were unchanged.
+The test correction is committed at `b229c719`; its tested browser bytes remain
+unchanged. Full CI, same-session `successful-dollar` SWE-2 Max correction review,
+push and fresh hosted checks remain pending. No new operation acceptance is
+credited. The unrelated Serena change remains preserved.
 
 ### s05-i01 — API contract completion, 14 October 2026
 
