@@ -66,7 +66,7 @@ tasks:
     env:
       APP_IMAGE_REF: '{{ .APP_IMAGE_REF | default "med-tracker:local-production-build" }}'
     cmds:
-      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} build {{ if .NO_CACHE }}--no-cache{{ end }} {{ .WEB_SERVICE }}"
+      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} build {{ if .NO_CACHE }}--no-cache{{ end }} {{ if eq .ENVIRONMENT \"test\" }}migrate-test{{ end }} {{ .WEB_SERVICE }}"
 
   # Start Docker containers in detached mode
   # Required vars: ENVIRONMENT
