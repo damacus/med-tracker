@@ -123,7 +123,7 @@ API application tokens SHALL expire no later than the instance-configured maximu
 - **THEN** the reduced maximum caps validity from issuance and an increase does not extend the stored expiry or revive an expired credential
 
 ### Requirement: Instance URL discovery
-Mobile applications SHALL support a user-selected instance URL and labelled canary/demo presets. From that URL they SHALL discover the installation's authorization endpoints and public platform client configuration without requiring users to enter provider URLs or secrets.
+Mobile applications SHALL support a user-selected instance URL. From that URL they SHALL discover the installation's authorization endpoints and public platform client configuration without requiring users to enter provider URLs or secrets.
 
 #### Scenario: Discover a configured instance
 - **GIVEN** the user enters a supported instance URL or selects a preset

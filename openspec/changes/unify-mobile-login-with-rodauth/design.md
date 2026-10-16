@@ -80,7 +80,7 @@ Persist shortened deadlines when reducing the maximum so a later configuration i
 
 ## Instance discovery
 
-The phone needs only the chosen MedTracker instance URL. Provide an editable instance URL plus labelled canary/demo presets in distributed apps. This explicitly supersedes the active Android plan's fixed-server-only release constraint; it does not add native password forms. Changing instance clears active authentication state and keeps credentials and cached records isolated.
+The phone needs only the chosen MedTracker instance URL. Provide an editable instance URL in distributed apps. This explicitly supersedes the active Android plan's fixed-server-only release constraint; it does not add native password forms. Changing instance clears active authentication state and keeps credentials and cached records isolated.
 
 Expose OAuth authorization-server metadata at `/.well-known/oauth-authorization-server` through the Rodauth library. Discover issuer, authorization/token/revocation endpoints, supported grants, scopes and S256. Do not claim to be an OpenID Provider solely to provide discovery; upstream OIDC delegation is a separate role. Use the existing public API capabilities endpoint for MedTracker-specific information, including the public first-party client ID for each supported platform. Pre-provision registered clients with exact allowed callbacks; metadata discovery does not itself register an app and no client secret is delivered to phones.
 

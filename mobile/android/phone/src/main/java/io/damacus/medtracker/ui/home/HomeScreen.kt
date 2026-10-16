@@ -292,7 +292,7 @@ private fun HomeScreenPreview() {
     MedTrackerTheme {
         HomeScreen(
             session = AppSession(
-                serverUrl = "https://med-tracker-canary.damacus.io/",
+                serverUrl = "https://medtracker.example.com/",
                 sessionPayload = SessionPayload(
                     accessToken = "sample-token",
                     refreshToken = "sample-refresh",

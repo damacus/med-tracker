@@ -90,24 +90,6 @@ tasks:
           ENVIRONMENT: prod
           COMMAND: 'env DATABASE_ROLE=med_tracker_app rails support_access:expire'
 
-  canary:demo-reset:
-    dir: "{{.TASKFILE_DIR}}"
-    desc: Replace canary runtime state with the committed synthetic demo baseline
-    cmds:
-      - task: internal:run
-        vars:
-          ENVIRONMENT: prod
-          COMMAND: 'env DATABASE_ROLE=med_tracker_owner rails canary:demo_reset'
-
-  canary:register-mobile-clients:
-    dir: "{{.TASKFILE_DIR}}"
-    desc: Restore known public mobile OAuth clients on the guarded canary target
-    cmds:
-      - task: internal:run
-        vars:
-          ENVIRONMENT: prod
-          COMMAND: 'env DATABASE_ROLE=med_tracker_owner rails canary:register_mobile_clients'
-
   household-lifecycle:export:
     dir: "{{.TASKFILE_DIR}}"
     desc: Generate a complete hosted household export

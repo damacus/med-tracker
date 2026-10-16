@@ -5,7 +5,7 @@ Protects MedTracker credentials and health information by making secure authenti
 ## ADDED Requirements
 
 ### Requirement: Android authentication uses Rodauth browser PKCE
-As superseded by `unify-mobile-login-with-rodauth`, every Android build SHALL use the selected MedTracker instance's browser authorization-code flow with S256 PKCE. The application SHALL offer an editable instance URL and labelled canary/demo presets and SHALL NOT present a native password form.
+As superseded by `unify-mobile-login-with-rodauth`, every Android build SHALL use the selected MedTracker instance's browser authorization-code flow with S256 PKCE. The application SHALL offer an editable instance URL and SHALL NOT present a native password form.
 
 #### Scenario: Release sign-in
 - **WHEN** a user signs in to a release build
@@ -29,9 +29,12 @@ The release application SHALL disable HTTP logging. Debug and staging builds MAY
 - **WHEN** a release build performs an authenticated API request
 - **THEN** the request body, response body, credentials, and session headers are absent from logs
 
-### Requirement: Live canary tests are opt-in
-Tests that access a live MedTracker environment SHALL run only through a dedicated opt-in integration task, SHALL receive credentials through the environment, and SHALL be excluded from ordinary tests and pull-request CI.
+### Requirement: Ordinary tests are isolated from live services
+Ordinary Android tests and pull-request CI SHALL use isolated fixtures or mock
+servers. They SHALL NOT require live MedTracker credentials or contact a deployed
+MedTracker instance.
 
-#### Scenario: Pull-request CI
-- **WHEN** Android pull-request verification runs
-- **THEN** no live MedTracker environment is contacted and no literal demo credential is required
+#### Scenario: Pull-request verification
+- **WHEN** ordinary Android tests run
+- **THEN** no live MedTracker environment is contacted
+- **AND** no deployed-environment credentials are required

@@ -55,10 +55,3 @@ The obsolete `password_login` capability, generated password transport,
 ID-token exchange, selection grant and custom refresh operation are removed.
 There is one generated API surface for all variants. Household switching uses
 the account token and loads current authorised households.
-
-The live canary check is staging-only. It runs through
-`task android:integration:canary` with `MEDTRACKER_CANARY_BASE_URL` and
-`MEDTRACKER_CANARY_TOKEN`, a current token obtained through browser login.
-It verifies discovery and household access, not interactive SSO itself.
-The explicit Gradle opt-in is required. Ordinary tests and pull-request CI skip
-it even if those environment values exist.

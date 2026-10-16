@@ -92,24 +92,24 @@ RSpec.describe Otel::AllowlistedSpanExporter do
 
   it 'preserves host.name from attribute-enumerator resources without mutating the source resource' do
     resource = OpenTelemetry::SDK::Resources::Resource.create(
-      'host.name' => 'med-tracker-canary-7d5c8d7c8b-abcde',
+      'host.name' => 'example-app-7d5c8d7c8b-abcde',
       'process.pid' => 42,
       'unsafe.resource' => 'private-value'
     )
 
-    expect_allowlisted_resource(resource, 'med-tracker-canary-7d5c8d7c8b-abcde')
+    expect_allowlisted_resource(resource, 'example-app-7d5c8d7c8b-abcde')
   end
 
   it 'preserves host.name from attribute resources without mutating the source resource' do
     resource = Struct.new(:attributes).new(
       {
-        'host.name' => 'med-tracker-canary-7d5c8d7c8b-fghij',
+        'host.name' => 'example-app-7d5c8d7c8b-fghij',
         'process.pid' => 43,
         'unsafe.resource' => 'private-value'
       }
     )
 
-    expect_allowlisted_resource(resource, 'med-tracker-canary-7d5c8d7c8b-fghij')
+    expect_allowlisted_resource(resource, 'example-app-7d5c8d7c8b-fghij')
   end
 
   it 'preserves the OTLP encoding contract for SDK span data' do

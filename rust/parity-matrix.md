@@ -1,5 +1,12 @@
 # API parity matrix
 
+The owner retired the deployed MedTracker canary on 16 October 2026. Canary-only
+reset, demo-baseline provisioning, mobile-client repair and live Android canary
+tests are no longer migration requirements. Historical inventory and acceptance
+records describe the earlier source snapshot; they do not require reinstating
+those removed features. Production synthetic observability checks remain.
+
+
 This is the evolving coverage map. A source spec identifies Rails evidence,
 not proven operation-level coverage. The Rust product server now implements a
 focused medication list/show subset; other routes remain incomplete. Read the
