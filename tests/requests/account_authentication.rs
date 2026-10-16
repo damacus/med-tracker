@@ -1,4 +1,72 @@
 use super::*;
+use base64::Engine as _;
+
+#[tokio::test]
+async fn account_authentication_accepts_split_cookie_headers() {
+    let (fixture, boot) = boot_fixture_with(|config| {
+        let key = base64::engine::general_purpose::STANDARD.encode([7_u8; 64]);
+        config.settings.get_or_insert_with(|| json!({}))["browser_session"] =
+            json!({"key":key,"secure":false});
+    })
+    .await;
+    fixture.admin.execute_unprepared("INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET recovery_saved_at=now()").await.unwrap();
+    let request = server(&boot);
+    let signed_in = request
+        .post("/api/auth/sign-in/email")
+        .add_header("origin", boot.app_context.config.server.full_url())
+        .json(&json!({"email":"persistence@example.test","password":"password"}))
+        .await;
+    assert_eq!(signed_in.status_code(), 200, "{}", signed_in.text());
+    let cookie = signed_in
+        .header("set-cookie")
+        .to_str()
+        .unwrap()
+        .split(';')
+        .next()
+        .unwrap()
+        .to_owned();
+    let ordinary = request
+        .get("/api/auth/get-session")
+        .add_header("cookie", cookie.clone())
+        .await;
+    assert_eq!(ordinary.json::<Value>()["user"]["id"], "71001");
+    let anonymous = request.get("/api/auth/get-session").await;
+    assert!(anonymous.json::<Value>().is_null());
+    let refreshed = request
+        .get("/api/auth/get-session")
+        .add_header("cookie", cookie.clone())
+        .add_header("cookie", "unrelated=1")
+        .await;
+    assert_eq!(refreshed.status_code(), 200, "{}", refreshed.text());
+    assert_eq!(refreshed.json::<Value>()["user"]["id"], "71001");
+    let reversed = request
+        .get("/api/auth/get-session")
+        .add_header("cookie", "unrelated=1")
+        .add_header("cookie", cookie.clone())
+        .await;
+    assert_eq!(reversed.json::<Value>()["user"]["id"], "71001");
+    let browser = request
+        .get("/account/security")
+        .add_header("cookie", cookie)
+        .add_header("cookie", "unrelated=1")
+        .await;
+    assert_eq!(browser.status_code(), 200, "{}", browser.text());
+    let malformed = axum::http::HeaderValue::from_bytes(b"strange=\xff").unwrap();
+    let rejected = request
+        .get("/api/auth/get-session")
+        .add_header("cookie", malformed.clone())
+        .await;
+    assert_eq!(rejected.status_code(), 400);
+    assert_eq!(rejected.header("cache-control"), "no-store");
+    let rejected = request
+        .get("/account/security")
+        .add_header("cookie", malformed)
+        .await;
+    assert_eq!(rejected.status_code(), 400);
+    assert_eq!(rejected.header("cache-control"), "no-store");
+    drop(request);
+    close(fixture, boot).await;
+}
 
 #[tokio::test]
 async fn account_authentication_without_clinical_records_can_login_and_refresh() {

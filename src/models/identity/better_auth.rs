@@ -29,6 +29,7 @@ pub mod security;
 mod sessions;
 mod store;
 pub use http::boundary as http_boundary;
+pub(crate) use http::normalize_cookie_headers;
 mod legacy_totp;
 mod recovery_email;
 mod totp;
