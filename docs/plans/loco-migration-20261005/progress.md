@@ -229,6 +229,7 @@ did not merge it. Its 1,499-line candidate and historical failures remain below.
 | [#2639](https://github.com/damacus/med-tracker/pull/2639): capability discovery | `codex/s05-i01-rate-request-ids` | `022854c80a921d2601970b5bad03ec8e950d6fd9` | 1,101 | Reviewed; local CI and exact-head hosted checks pass |
 | [#2640](https://github.com/damacus/med-tracker/pull/2640): household errors and UI privacy | `codex/s05-i01-capabilities` | `012e8cfe9b2e2555fedd3001213a877795aac4a4` | 990 | Reviewed; local CI and all 45 exact-head hosted checks completed successfully or skipped |
 | [#2641](https://github.com/damacus/med-tracker/pull/2641): People collection and writes | `codex/s05-i01-me-ui` | `4229289bdf729defa3b21bf5589a296c14c6924d` | 1,551 | Reviewed; local CI and all 45 exact-head hosted checks pass or skip |
+| [#2643](https://github.com/damacus/med-tracker/pull/2643): profile privacy and avatar acceptance | `codex/s05-i01-people-write` | `9eb729ddb9f7aecb4229899ebdcdeab82b002013` | 1,768 | Independent review, full local CI and all 45 exact-head hosted checks pass or skip |
 
 Stack `2634` is published; no layer is merged or deployed. Full local
 CI `61813` passed 111 units, 20 request cases, 508 care cases and all 744 browser
@@ -805,12 +806,151 @@ The coordinator verified the exact paths, current hashes and binary patch before
 reversing only that patch; all 1,141 pre-CI screenshot hashes match again.
 
 The coordinator owns integration/publication, Sol owns implementation/tests, and
-the verifier owns disposable fixtures and the serial build lane. Publication and
-exact-head hosted acceptance remain required. All seven published layers remain
-unmerged and undeployed. Whole-API acceptance still rejects 117 incomplete operations.
+the verifier owns disposable fixtures and the serial build lane. Profile/avatar
+PR #2643 is published at `9eb729dd`, 1,757 additions plus 11 deletions. Its final
+commit changes only the verified progress document; docs job `66908` passed.
+Pull/rebase and push succeeded, and the clean branch tracks origin in stack `2634`.
+Hosted Devin review passed in 1m28s with no review threads; all 45 exact-head checks
+completed, 31 successful and 14 skipped. Coverage artifact `11935463623`, job
+`116154687913` in run `38652555229`, has a verified complete clean source manifest.
+Its SHA-256 is `231d4bee02540576b7baf564113ed11463edf03207f0d2fd1250e3c4fe9abb13`.
+Merge `f5698994` has parents `4229289b` and `9eb729dd`; its tree equals the published
+head. All four added runtime lines and the named critical error mapping's seven
+lines execute. Raw API coverage is 92.44%, general 63.75%; the called avatar
+controller is 84.87%, and two retained defensive adapters remain uncovered.
+These report-only figures do not establish all coverage targets or operation
+acceptance. Full details remain in `profile-avatar-hosted-coverage-9eb729dd.md`
+under `/private/tmp/s05-i01-evidence/`. All eight layers are unmerged and undeployed.
+Whole-API acceptance still rejects 117 incomplete operations.
+
 The next three-operation settings draft is isolated on
-`codex/s05-i01-household-settings`: 13 request cases, no production or contract
-changes, awaiting its first executed RED after the verification lane is released.
+`codex/s05-i01-household-settings`, based on published `9eb729dd`. Propagation of
+the final parent documentation preserved the exact two owned draft files through
+a temporary autostash, which applied successfully. Formatter `9480` passed.
+The first TestServer run `40624` compiled/executed 13 cases: 12 passed and one
+failed on missing GET 500 metadata. Before its schema lookup, the failing case
+proved GET/PATCH/PUT all return `500 internal_error`, JSON with coherent request
+IDs and no data, with unchanged domain state after controlled audit failure.
+It does not assert private cache headers for these responses. The API writer owns
+the narrow three-operation 500 declarations, their exact inventory metadata and
+full-schema hash; runtime, security, shared schemas and native pins stay unchanged.
+The coordinator owns evidence promotion, progress and Git integration.
+Initial settings GREEN `36695` passed all 13 cases; inventory `10527` passed 112,
+strict lint `49766` passed, generated-client determinism `80617`, Swift `83532`
+and Kotlin `19828` passed. Native pins stayed unchanged. Before source pinning,
+the writer strengthened the same 13 cases with individual audit actor/provenance,
+request IDs, exact version field changes, documented absence of Household sync
+events and broader body/type validation. Enhanced focused `12338` passed all 13,
+inventory `9556` passed 112 with one ignored and one filtered, and strict lint
+`52079` passed. These extra assertions confirm existing runtime behaviour; no
+additional behavioural RED or production correction is claimed. The three
+operation evidence rows remain unverified until independent pinned promotion.
+Source `86e81214` recorded that verified point; fresh care administration `94785`
+then passed all 14 selected cases, of which six have settings-route assertions.
+Before evidence promotion, the writer extended both keyed-write cases to prove
+mobile replay and denial of the same saved key after role demotion, membership
+withdrawal and API/app/mobile credential revocation, without reviving credentials.
+Focused `73836` passed all 13, strict lint `78557` passed and inventory `46911`
+passed 112 with one ignored and one filtered. These assertions confirm existing
+behaviour; runtime, OpenAPI and native inputs stayed unchanged. SDK checks remain
+valid for the unchanged API inputs. The stronger immutable test source is
+`fed7aa3f503229fffa29b2baab45a856def6f6e2`, 1,049 changed lines against the
+immediate profile base. Fresh care administration job `69348` passed all 14 on
+that clean revision. Exactly six contain settings-route assertions; unrelated
+administration cases earn no settings evidence. Independent evidence guard RED
+`45064` compiled and executed one case, failing because the existing validator
+rejected the proposed GET evidence before any inventory row was promoted. The
+writer completed the narrow validator, three-row inventory and fake-runner
+integration. Guard GREEN `13346` passed exactly one case, and inventory `77554`
+passed 113 with one ignored and one filtered. The ledger now records five
+complete, 16 partial and 101 unverified operations; 117 remain incomplete.
+Runner fixtures `27536` passed all 48, and strict all-target lint `21355` passed.
+Settings retain explicit malformed-ID/authentication-order, exact-route
+lockout/expiry, in-flight membership withdrawal and mixed PUT attribute gaps.
+Exact dispatcher `47127` passed 113 request inventory cases and 524 care cases
+with two ignored, then passed 113 requests and failed only the final acceptance
+case for 117 incomplete operations. All 13 new settings cases and the evidence
+guard executed in both request phases, and all six relevant care identities
+passed. This is a deliberately closed completion gate, not whole-API acceptance.
+Clean evidence candidate `c40b44b9ad76f9d0f6b5aa12de3290e9d82ceccb` has 1,287
+additions plus nine deletions against published profile base `9eb729dd`.
+Independent Devin job `69596` accepted it without corrections: session
+`gorgeous-layer`, SWE-2 Max, nine steps. Its immutable packet SHA-256 is
+`b8bab6e5754c3c461afd45eb442b25741c6cb4d6808e78b3c936a469a87fcb34`.
+Full CI `49704` passed on that exact clean revision: 115 Rust units, the 16
+selected care cases, 508 broad care cases with two ignored and 16 filtered,
+113 API requests with two ignored, remaining integration shards and all 744
+desktop/mobile browser cases in 19.5 minutes. The original dm+d archive queue
+regression passed again. No production changes were needed for settings.
+CI generated 42 tracked PNG differences. The coordinator independently verified
+the exact paths, current hashes, byte-identical binary patch and reverse
+applicability before restoring only those differences. All 1,093 original PNG
+hashes match again; the reviewed source is clean. The preserved patch SHA-256 is
+`deef384c5c142cfb7328912a5974fe7e35f7f69daff559ead8b1551d9469cd42`.
+The coordinator owns integration, Git and publication; Sol owns implementation
+and tests; the verifier owns disposable resources and the serial test lane.
+Final documentation checks and publication follow this verified point.
+
+The first published settings head is `a49eaef9`, PR #2644 in stack `2634`,
+1,319 changed lines. Final docs `41536`, pull/rebase and push passed. Hosted Devin
+completed in 1m19s but left an actionable finding: the client barrier permits
+sequential processing and therefore does not prove handler overlap. The
+coordinator verified that gap and held dependent membership execution. The
+writer strengthened only the two existing concurrency cases' shared helper:
+a dedicated transaction holds the household row, API/app requests enter the
+booted router, and both distinct runtime-role lock waiters must be observed
+before release. The bounded database-condition check uses no blind sleeps or
+production hooks. Existing write/replay/conflict assertions remain unchanged.
+This is a stronger behavioural characterisation, not a claimed runtime defect
+or production correction. Focused execution, refreshed evidence, same-session
+review and full CI are required before the correction is published.
+The stronger test source `63a87ceef59462334a1308c79ece5672030b3c101a33660f21a7e4e1c4d585d7`
+passed focused `12085` (13/13, including both lock observations), fresh care
+administration `34102` (14/14) and strict all-target lint `29095`. Runtime,
+OpenAPI and native pins are unchanged. The independent evidence revision is
+being refreshed from this tested source before the same review resumes.
+The new immutable tested source is `441bf461a3ebe3d6a2097e251bf5d2946645d3ae`.
+Refreshed guard RED `58507` compiled and executed one case, rejecting the old
+`fed7aa3f` inventory revision against this new pin. The writer now owns only
+the matching three-row revision/proof update; partial status and gaps stay intact.
+Refreshed guard GREEN `26508` passed one case, inventory `74502` passed 113
+with one ignored and one filtered, runner `17423` passed 48/48, and strict lint
+`71817` passed. Dispatcher `5392` passed 113 request cases and 524 care cases
+with two ignored, then passed 113 requests and rejected only final acceptance
+for 117 incomplete operations. Every settings request proof and its six care
+identities executed. The corrected candidate can now resume the same review.
+
+Corrective candidate `96f49c3014130c4ca9fad051fc67603f009e7927` passed the
+resumed independent review `80874`: the same `gorgeous-layer` session,
+SWE-2 Max, 11 steps, ACCEPT with no actionable corrections. Its immutable
+packet SHA-256 is
+`d0e60459e7575a7dc1a9348c4162c39a1b9b2295e00137a32ec959212d674889`.
+Full cumulative `task ci` job `32206` then passed on that exact revision:
+115 Rust units, 113 request cases with two ignored, 16 selected care cases,
+508 broad care cases with two ignored and 16 filtered, all other integration
+shards, and all 744 desktop/mobile browser cases in 19.7 minutes. The verifier
+preserved exactly 41 generated tracked PNG differences. Root independently
+verified their exact paths, current hashes, byte-identical patch and reverse
+applicability, then reversed only that patch. All 1,093 baseline PNG hashes
+match again and the source is clean. Preserved patch SHA-256:
+`d4eb898efe4d08e98c52f450d3c4d15e202987083bc089ff0c34590c74f98a41`.
+The corrected PR is 1,404 changed lines before this result entry, against
+published profile base `9eb729dd`. Final docs and publication follow; the hosted
+thread will be answered only after the correction is pushed. These results do
+not accept the remaining API operations or the older concurrency proof gaps.
+
+A read-only audit found similar overlap gaps in earlier account, People and
+avatar tests: their final outcomes remain useful evidence, but client barriers
+alone do not prove handler overlap. Account revocation/logout rows currently
+carry complete labels, so those claims require stronger verification before
+whole-API acceptance. These findings remain in s05-i01 scope; no new operation
+credit is inferred from the audit, and dependent membership execution stays held.
+
+The next membership family is isolated on `codex/s05-i01-household-memberships`,
+with 17 test-only cases prepared for GET, PATCH, PUT and DELETE. Formatting and
+diff checks pass; no runtime changes, contract edits or membership test jobs
+have run. Its first full-module RED waits for the released verifier lane and
+propagation of the final published settings parent. It earns no operation credit.
 
 Entries below retain historical revisions, failed attempts and publication states.
 

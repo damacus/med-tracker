@@ -6,6 +6,10 @@ mod capabilities;
 mod contract;
 #[path = "../care_api/fixture.rs"]
 mod fixture;
+#[path = "household_settings.rs"]
+mod household_settings;
+#[path = "household_settings_evidence.rs"]
+mod household_settings_evidence;
 #[path = "me_ui.rs"]
 mod me_ui;
 #[path = "people.rs"]
@@ -92,7 +96,7 @@ fn operations() -> BTreeMap<(String, String), Value> {
     let source = include_str!("../../docs/api/openapi.v1.yaml");
     assert_eq!(
         hex::encode(Sha256::digest(source.as_bytes())),
-        "a4ecd84ab5ce8247b1104919dfaf9b48dd6eba79ff79fbadb91a03ccc3f0a140",
+        "361c9e366b28fc632f6bafecdc1c85f80e2ea31a75f25c350bdaedf2ed6d88cd",
         "The full API schema or headers changed; refresh the operation inventory and its evidence"
     );
     let document: Value = serde_yaml_ng::from_str(source).unwrap();
@@ -168,6 +172,18 @@ fn inventory() -> BTreeMap<(String, String), Value> {
 }
 
 fn validate_evidence(entry: &Value) -> Result<(), String> {
+    if let Some(expected) =
+        household_settings_evidence::expected(entry["operation_id"].as_str().unwrap_or(""))
+    {
+        for field in ["coverage", "candidate_revision", "gaps", "evidence"] {
+            if entry[field] != expected[field] {
+                return Err(format!(
+                    "Unsupported household settings evidence field: {field}"
+                ));
+            }
+        }
+        return Ok(());
+    }
     if let Some(expected) =
         profile_avatar_evidence::expected(entry["operation_id"].as_str().unwrap_or(""))
     {
@@ -505,6 +521,19 @@ fn validate_metadata(document: &Value, entry: &Value) {
         }
     }
     let candidate_revision = match entry["operation_id"].as_str() {
+        Some(
+            "getHouseholdAdminSettings"
+            | "updateHouseholdAdminSettings"
+            | "replaceHouseholdAdminSettings",
+        ) => {
+            let expected =
+                household_settings_evidence::expected(entry["operation_id"].as_str().unwrap())
+                    .unwrap();
+            Some((
+                household_settings_evidence::REVISION,
+                expected["gaps"].clone(),
+            ))
+        }
         Some(
             "getHouseholdProfile"
             | "updateHouseholdProfile"
