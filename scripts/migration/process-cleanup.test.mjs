@@ -53,6 +53,40 @@ test('permission refusal to signal an owned group remains a cleanup error', asyn
   await assert.rejects(stopOwnedProcess(child), { code: 'EPERM' });
 });
 
+for (const deniedSignal of ['SIGTERM', 'SIGKILL']) {
+  test(`permission refusal during ${deniedSignal} accepts only confirmed group exit`, async t => {
+    const child = { pid: 2147483000, exitCode: 0, signalCode: null };
+    let exited = false;
+    const signals = [];
+    t.mock.method(process, 'kill', (pid, signal) => {
+      assert.equal(pid, -child.pid);
+      if (signal === 0) {
+        if (exited) throw Object.assign(new Error('no such process'), { code: 'ESRCH' });
+        return true;
+      }
+      signals.push(signal);
+      if (signal === deniedSignal) {
+        exited = true;
+        throw Object.assign(new Error('permission denied'), { code: 'EPERM' });
+      }
+      return true;
+    });
+    await stopOwnedProcess(child, { termMs: 20, killMs: 20 });
+    assert.equal(exited, true);
+    assert.deepEqual(signals, deniedSignal === 'SIGTERM' ? ['SIGTERM'] : ['SIGTERM', 'SIGKILL']);
+  });
+}
+
+test('permission refusal to kill a surviving group remains a cleanup error', async t => {
+  const child = { pid: 2147483000, exitCode: 0, signalCode: null };
+  t.mock.method(process, 'kill', (pid, signal) => {
+    assert.equal(pid, -child.pid);
+    if (signal === 'SIGKILL') throw Object.assign(new Error('permission denied'), { code: 'EPERM' });
+    return true;
+  });
+  await assert.rejects(stopOwnedProcess(child, { termMs: 20, killMs: 20 }), { code: 'EPERM' });
+});
+
 test('owned child ignoring TERM is killed within a bounded deadline', { timeout: 5000 }, async () => {
   const child = spawn(process.execPath, ['-e', "process.on('SIGTERM', () => {}); process.stdout.write('ready'); setInterval(() => {}, 1000)"], { detached: true, stdio: ['ignore', 'pipe', 'ignore'] });
   await once(child.stdout, 'data');
