@@ -1,10 +1,25 @@
 use axum::{
     extract::{ConnectInfo, MatchedPath, Request},
-    http::HeaderValue,
+    http::{HeaderMap, HeaderValue, StatusCode, header},
     middleware::Next,
     response::Response,
 };
 use std::{net::SocketAddr, time::Instant};
+
+pub(crate) fn normalize_cookie_headers(headers: &mut HeaderMap) -> Result<(), StatusCode> {
+    let cookies = headers
+        .get_all(header::COOKIE)
+        .iter()
+        .map(HeaderValue::to_str)
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|_| StatusCode::BAD_REQUEST)?;
+    if cookies.len() > 1 {
+        let combined =
+            HeaderValue::from_str(&cookies.join("; ")).map_err(|_| StatusCode::BAD_REQUEST)?;
+        headers.insert(header::COOKIE, combined);
+    }
+    Ok(())
+}
 
 pub async fn boundary(mut request: Request, next: Next) -> Response {
     let permission = request

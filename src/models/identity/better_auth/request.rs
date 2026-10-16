@@ -275,9 +275,12 @@ pub fn router(service: IdentityService) -> Router {
 
 async fn request_context(
     State(service): State<IdentityService>,
-    request: Request,
+    mut request: Request,
     next: Next,
 ) -> Response {
+    if let Err(status) = super::normalize_cookie_headers(request.headers_mut()) {
+        return (status, [(axum::http::header::CACHE_CONTROL, "no-store")]).into_response();
+    }
     let (parts, body) = request.into_parts();
     let Ok(body) = axum::body::to_bytes(body, 65536).await else {
         return axum::http::StatusCode::PAYLOAD_TOO_LARGE.into_response();

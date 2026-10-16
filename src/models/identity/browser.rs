@@ -421,10 +421,13 @@ pub fn route_layers(
 async fn identity_bridge(
     axum::Extension(service): axum::Extension<super::better_auth::IdentityService>,
     session: Session<SessionPgPool>,
-    request: axum::extract::Request,
+    mut request: axum::extract::Request,
     next: axum::middleware::Next,
 ) -> axum::response::Response {
     use axum::response::IntoResponse;
+    if let Err(status) = super::better_auth::normalize_cookie_headers(request.headers_mut()) {
+        return (status, [(axum::http::header::CACHE_CONTROL, "no-store")]).into_response();
+    }
     let mut auth =
         better_auth_core::AuthRequest::new(better_auth_core::HttpMethod::Get, "/get-session");
     auth.headers = request
