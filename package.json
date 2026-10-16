@@ -12,6 +12,7 @@
     "jose": "6.2.12",
     "html5-qrcode": "2.3.8",
     "otpauth": "9.5.2",
+    "saxes": "6.0.0",
     "tailwindcss": "4.3.0"
   }
 }

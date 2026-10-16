@@ -57,7 +57,17 @@ tasks:
         vars:
           GROUP: '{{.GROUP | default "shell"}}'
   slice:test-runner:
-    cmds: [node --test scripts/migration/run-slice.test.mjs]
+    cmds:
+      - task: slice:result-proof
+      - node --test scripts/migration/run-slice.test.mjs
+  slice:result-proof:
+    cmds:
+      - task: frontend:install
+      - node --test scripts/migration/nextest-proof.test.mjs
+  slice:prerequisite-regression:
+    cmds:
+      - task: frontend:install
+      - node --test --test-name-pattern='ordinary Rust entry points' scripts/migration/run-slice.test.mjs
   test:template-concurrency:
     desc: Verify cross-process PostgreSQL template preparation in an owned database
     cmds: [node tests/support/template_concurrency.mjs]
@@ -76,16 +86,20 @@ tasks:
       - cargo install cargo-llvm-cov --locked --version 0.9.1
   slice:contracts:
     desc: Run an API contract inventory or completion group
-    cmds: ['node scripts/migration/run-contracts.mjs --group {{.GROUP | default "" | shellQuote}} --filter {{.FILTER | default "" | shellQuote}}']
+    cmds:
+      - task: frontend:install
+      - 'node scripts/migration/run-contracts.mjs --group {{.GROUP | default "" | shellQuote}} --filter {{.FILTER | default "" | shellQuote}}'
   slice:test:
     requires:
       vars: [TARGET]
     cmds:
-      - node scripts/migration/run-slice.mjs --target '{{.TARGET}}' --filter '{{.FILTER | default ""}}'
+      - node scripts/migration/run-slice.mjs --target '{{.TARGET}}' --filter '{{.FILTER | default ""}}' {{if eq (.NO_FAIL_FAST | default "false") "true"}}--no-fail-fast{{end}}
   slice:test-all:
     env:
       RUST_TEST_THREADS: "4"
-    cmds: [node scripts/migration/run-slice.mjs --all]
+    cmds:
+      - node scripts/migration/run-slice.mjs --all
+      - cargo test --locked --doc
   inventory:write:
     desc: Record reconciled migration inputs
     cmds: [node scripts/migration/inventory.mjs --write]
