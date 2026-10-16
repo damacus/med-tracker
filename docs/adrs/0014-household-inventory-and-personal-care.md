@@ -25,6 +25,15 @@ the old household retains events recorded there and immutable attribution, but
 receives no future updates. Guardian authority must be explicit, not inferred
 from household management.
 
+Only the person or an explicitly authorised guardian may change a shared
+treatment plan, including its medicine, dose, schedule or pause. Household
+membership and management do not grant that clinical editing authority.
+
+A household manager may explicitly match local stock to the medicine prescribed
+by the shared plan. Record that decision in the audit trail. Never infer a match
+from medicine names, dose text or other descriptive similarities. Matching stock
+does not authorise changing the shared treatment plan.
+
 The moving person or authorised guardian may explicitly transfer stock allocated
 to that person. Communal stock stays put. Transfer exact selected quantities
 atomically and idempotently between valid source and destination household

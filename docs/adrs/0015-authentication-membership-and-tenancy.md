@@ -35,6 +35,20 @@ household selection cannot grant membership. Every request and mutation rechecks
 current authority; RLS, audit attribution, replay protection, stock atomicity and
 mail outbox remain mandatory.
 
+Account-profile access does not grant global clinical-history access. A global
+self-history reader derives the subject from the authenticated account and
+accepts account-bound first-party mobile OAuth or a maintained browser session.
+Household-bound API sessions, app tokens, personal keys and integration
+credentials cannot use it to read across origin households. Their existing
+household APIs and restrictions remain in force.
+
+Leaving the last household does not remove an account holder's own history
+access. A dependent adult with a legitimate account also retains self access;
+capacity rules for sharing or editing another person's care do not replace
+self identity. Historical reads preserve original attribution and require a
+separate account-owned clinical-access audit, without inventing a household.
+These are implementation constraints, not evidence that the reader is complete.
+
 ## Alternatives
 
 Blind plugin removal discards maintained capabilities without evidence. Separate

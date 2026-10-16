@@ -11,6 +11,7 @@ sections below describe the reference, not requirements to reproduce its interna
 - [Household inventory and personal care](adrs/0014-household-inventory-and-personal-care.md)
 - [Authentication, membership and tenancy](adrs/0015-authentication-membership-and-tenancy.md): organisation-plugin replacement remains Proposed
 - [Fresh Rust without legacy compatibility](adrs/0016-fresh-rust-without-legacy-compatibility.md)
+- [Personal-history download authorisation and audit](adrs/0017-personal-history-download-authorisation-and-audit.md): design accepted; implementation and verification pending
 
 ## Purpose
 
