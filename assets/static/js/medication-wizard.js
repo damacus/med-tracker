@@ -188,4 +188,5 @@
   root.querySelector('[data-specific-dates-list]').textContent = value('dates');
   schedule();
   show();
+  next.disabled = false;
 })();

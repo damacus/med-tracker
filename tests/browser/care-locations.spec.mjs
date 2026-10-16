@@ -3,6 +3,58 @@ import { openCareSection } from './care-navigation.mjs';
 
 test.use({ actionTimeout: 10000 });
 
+test('medication wizard waits for its delayed script before advancing entered details', async ({ page }, info) => {
+  test.setTimeout(180000);
+  await page.goto('/login');
+  await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
+  await page.getByLabel('Password', { exact: true }).fill('password');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.goto('/households/persistence-fixture/medications');
+  let requested;
+  let release;
+  const scriptRequested = new Promise(resolve => { requested = resolve; });
+  const scriptReleased = new Promise(resolve => { release = resolve; });
+  await page.route('**/static/js/medication-wizard.js', async route => {
+    requested();
+    await scriptReleased;
+    await route.continue();
+  });
+  try {
+    await page.getByRole('link', { name: 'Add Medication', exact: true }).click();
+    await scriptRequested;
+    const location = page.getByLabel('Location', { exact: true });
+    const name = page.getByLabel('Name', { exact: true });
+    const next = page.getByRole('button', { name: 'Continue', exact: true });
+    const dose = page.getByLabel('Dose', { exact: true });
+    await location.selectOption({ label: 'Synthetic cabinet' });
+    const selectedLocation = await location.inputValue();
+    await name.fill('Synthetic readiness medicine');
+    await expect(next).toBeDisabled();
+    release();
+    await expect(next).toBeEnabled();
+    await next.focus();
+    await page.keyboard.press('Enter');
+    await expect(dose).toBeVisible();
+    await expect(name).toHaveValue('Synthetic readiness medicine');
+    await expect(location).toHaveValue(selectedLocation);
+    await page.getByRole('button', { name: 'Back', exact: true }).click();
+    await expect(name).toBeVisible();
+    await expect(name).toHaveValue('Synthetic readiness medicine');
+    await expect(location).toHaveValue(selectedLocation);
+    await name.clear();
+    await next.click();
+    await expect(dose).toBeHidden();
+    await expect(name).toBeFocused();
+    await name.fill('Synthetic readiness medicine');
+    await next.click();
+    await expect(dose).toBeVisible();
+    await dose.fill('1');
+    await page.screenshot({ path: info.outputPath(`loco-wizard-ready-${info.project.name}.png`), fullPage: false });
+  } finally {
+    release();
+  }
+});
+
 test('locations can be created, edited, used by medication and safely deleted', async ({ page, careFixture }, testInfo) => {
   test.setTimeout(180000);
   await page.goto('/login');
