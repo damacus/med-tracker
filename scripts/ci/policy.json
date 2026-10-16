@@ -18,10 +18,10 @@
   "rules": [
     {"pattern": "^(src/|tests/|migration/|assets/|config/.*[.]yaml$|Cargo[.](toml|lock)$|build[.]rs$|compose[.]yaml$|scripts/(migration|lint-advisory|frontend)/|scripts/build-scanner[.]mjs$|Taskfiles/(browser-care|frontend|lint-advisory)[.]yml$|playwright[.]config[.]mjs$|package(?:-lock)?[.]json$)", "suites": ["loco"]},
     {"pattern": "^rails/(app/(components|views|javascript|assets)/|public/|config/routes[.]rb$|config/initializers/content_security_policy[.]rb$|db/seeds[.]rb$|spec/fixtures/|tasks/lighthouse[.]yml$|bin/lighthouse_score_gate[.]js$)", "suites": ["rails", "lighthouse"]},
-    {"pattern": "^(scripts/ci/|Taskfiles/ci\\.yml$|\\.github/workflows/ci\\.yml$|Taskfile\\.yml$|mise\\.toml$)", "suites": ["all"], "prose": true},
+    {"pattern": "^(scripts/ci/|Taskfiles/ci\\.yml$|\\.github/workflows/ci\\.yml$|Taskfile\\.yml$|mise\\.toml$)", "suites": ["loco", "rails", "rust", "rust_port", "docs", "markdown", "policy", "lighthouse"], "prose": true},
     {"pattern": "^mobile/android/", "suites": ["android"]},
     {"pattern": "^docs/", "suites": ["docs"], "prose": true},
-    {"pattern": "^docs/api/openapi\\.v1\\.yaml$", "suites": ["api_clients", "android_if_present"]},
+    {"pattern": "^docs/api/openapi\\.v1\\.yaml$", "suites": ["loco"]},
     {"pattern": "^client-tools/openapi-generator/", "suites": ["api_clients"]},
     {"pattern": "^client-tools/(?!openapi-generator/)", "suites": ["rust"]},
     {"pattern": "^(deny[.]toml|lefthook[.]yml)$", "suites": ["loco", "rust", "policy"]},

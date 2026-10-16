@@ -28,6 +28,35 @@ test('UI changes select Lighthouse while model changes select only Rails', () =>
   assert.equal(model.lighthouse, false);
 });
 
+test('OpenAPI contract changes select Rust and docs without native client suites', () => {
+  const selected = classify(['docs/api/openapi.v1.yaml'], { androidAvailable: true }).selected;
+  assert.equal(selected.loco, true);
+  assert.equal(selected.docs, true);
+  assert.equal(selected.api_clients, false);
+  assert.equal(selected.android, false);
+});
+
+test('shared Task, mise and CI policy selects every non-native suite explicitly', () => {
+  const suites = ['loco', 'rails', 'rust', 'rust_port', 'docs', 'markdown', 'policy', 'lighthouse'];
+  const paths = ['scripts/ci/policy.json', 'Taskfiles/ci.yml', '.github/workflows/ci.yml', 'Taskfile.yml', 'mise.toml'];
+  for (const path of paths) {
+    const selected = classify([path], { androidAvailable: true }).selected;
+    for (const suite of suites) assert.equal(selected[suite], true, `${path}: ${suite}`);
+    assert.equal(selected.android, false, `${path}: android`);
+    assert.equal(selected.api_clients, false, `${path}: api_clients`);
+  }
+});
+
+test('actual Android and API generator changes retain their native suites', () => {
+  const android = classify(['mobile/android/Taskfile.yml'], { androidAvailable: true }).selected;
+  assert.equal(android.android, true);
+  assert.equal(android.api_clients, false);
+
+  const apiClients = classify(['client-tools/openapi-generator/kotlin-config.yaml'], { androidAvailable: true }).selected;
+  assert.equal(apiClients.api_clients, true);
+  assert.equal(apiClients.android, false);
+});
+
 test('Rust port and contract infrastructure select their executable checks', () => {
   for (const path of ['rust/api/src/lib.rs', 'rust/web/src/lib.rs', 'rust/ui-preview/src/lib.rs', 'rust/contract-tests/tests/openapi_dosage_options.rs']) {
     const selected = classify([path]).selected;
