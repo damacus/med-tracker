@@ -34,6 +34,7 @@ test('real signin, dose replay, permission withdrawal and stale stock preserve c
   await expect(page.getByText('Synthetic foreign household', { exact: true })).not.toBeVisible();
   await page.screenshot({ path: testInfo.outputPath(`loco-households-${testInfo.project.name}.png`), fullPage: true });
   await page.getByRole('button', { name: 'Open Synthetic household', exact: true }).click();
+  await page.getByRole('link', { name: 'Inventory', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Medications', exact: true })).toBeVisible();
   await expect(page.getByText('Synthetic foreign medicine', { exact: true })).not.toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

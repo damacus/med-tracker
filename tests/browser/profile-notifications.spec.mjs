@@ -175,7 +175,7 @@ test('signing in closes notifications retained from a previous account', async (
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   expect(closed).toBe(1);
 });
 

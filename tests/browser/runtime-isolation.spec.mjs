@@ -59,5 +59,5 @@ test('reset removes process-local authentication throttles before the next brows
   const response = page.waitForResponse(value => value.url().endsWith('/login') && value.request().method() === 'POST');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   expect((await response).status()).toBe(303);
-  await expect(page).toHaveURL('/');
+  await expect(page).toHaveURL('/households/choose');
 });

@@ -2549,6 +2549,8 @@ pt:
       administration: Administração
       logout: Terminar sessão
       account: Conta
+      households: Agregados familiares
+      switch_to: Mudar para
     mobile_menu:
       brand: MedTracker
       open_menu: Abrir menu

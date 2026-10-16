@@ -28,7 +28,7 @@ test('configured old Rails secret completes a retained authenticator sign-in', a
   const oldGenerator = new TOTP({ algorithm: 'SHA1', digits: 6, period: 30, secret: Secret.fromBase32('WDHELZ44632D4NTV') });
   await page.getByLabel('Authentication code', { exact: true }).fill(oldGenerator.generate());
   await page.getByRole('button', { name: 'Verify', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto(detail);
   await expect(page.getByRole('heading', { name: 'Synthetic tablets', exact: true })).toBeVisible();
   expect((await careFixture.probe()).registry_sessions).toBe(1);
@@ -59,7 +59,7 @@ test('retained TOTP completes password sign-in and survives a real server restar
   await page.reload();
   await page.getByLabel('Authentication code', { exact: true }).fill(code());
   await page.getByRole('button', { name: 'Verify', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto(detail);
   await expect(page.getByRole('heading', { name: 'Synthetic tablets', exact: true })).toBeVisible();
   expect((await careFixture.probe()).registry_sessions).toBe(1);
@@ -173,7 +173,7 @@ test('a new password sign-in after retained factor setup stays gated until the c
   expect(preserved.supply).toBe('10.00');
   await page.getByLabel('Authentication code', { exact: true }).fill(code());
   await page.getByRole('button', { name: 'Verify', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto(detail);
   await expect(page.getByRole('heading', { name: 'Synthetic tablets', exact: true })).toBeVisible();
   expect((await careFixture.probe()).registry_sessions).toBe(1);

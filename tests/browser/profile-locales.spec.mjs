@@ -17,7 +17,7 @@ for (const [language, newPassword, currentPassword, newEmail, name, saveFirst] o
     await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
     await page.getByLabel('Password', { exact: true }).fill('password');
     await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-    await page.waitForURL('/');
+    await page.waitForURL('/households/choose');
     await page.goto('/households/persistence-fixture/profile#security');
     await expect(page.locator('html')).toHaveAttribute('lang', language);
     await page.locator('a[data-security-flow][href="/account/security/password"]').click();
@@ -57,7 +57,7 @@ test.describe('native localized security form', () => {
     await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
     await page.getByLabel('Password', { exact: true }).fill('password');
     await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-    await page.waitForURL('/');
+    await page.waitForURL('/households/choose');
     await page.goto('/households/persistence-fixture/profile#security');
     await page.locator('a[href="/account/security/password"]').click();
     await expect(page.locator('html')).toHaveAttribute('lang', 'es');

@@ -43,6 +43,7 @@ async function signIn(page) {
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.getByRole('button', { name: 'Open Synthetic household', exact: true }).click();
+  await page.goto('/households/persistence-fixture/medications');
   await expect(page.locator('header [data-app-drawer]')).toBeVisible();
 }
 

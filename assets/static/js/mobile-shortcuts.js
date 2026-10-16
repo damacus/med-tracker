@@ -1,5 +1,5 @@
 async function refreshMobileShortcuts() {
-  const match = location.pathname.match(/^\/households\/([^/]+)(?:\/|$)/);
+  const match = location.pathname.match(/^\/households\/([^/]+)\//);
   if (!match) return;
   try {
     const response = await fetch(`/households/${match[1]}/profile/navigation`, { headers: { Accept: 'application/json' }, cache: 'no-store' });

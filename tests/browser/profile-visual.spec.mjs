@@ -10,7 +10,7 @@ test('profile reference states retain readable desktop and mobile layouts', asyn
   await page.getByLabel('Email address', { exact: true }).fill('jane.doe@example.com');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto('/households/persistence-fixture/profile');
   await expect(page.getByTestId('profile-personal-info-card')).toContainText('Jane Doe');
   for (const appearance of ['light', 'dark']) {

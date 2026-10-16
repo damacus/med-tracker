@@ -29,18 +29,53 @@ fn authenticity_token(html: &str) -> Option<&str> {
 }
 
 #[tokio::test]
-async fn signed_in_home_offers_explicit_household_selection() -> TestResult {
+async fn signed_in_without_active_household_reaches_initial_selection() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
     fixture.admin.execute_unprepared("INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET recovery_saved_at=now()").await?;
     let mut request = server(&boot);
     request.save_cookies();
     sign_in(&request, &boot).await;
     let home = request.get("/").await;
-    assert_eq!(home.status_code(), 200, "{}", home.text());
+    assert_eq!(home.status_code(), 303, "{}", home.text());
+    assert_eq!(home.header("location"), "/households/choose");
     assert_eq!(home.header("cache-control"), "no-store");
-    assert!(home.text().contains("action=\"/households/select\""));
-    assert!(home.text().contains("name=\"authenticity_token\""));
-    assert!(home.text().contains("name=\"household_id\""));
+    let chooser = request.get("/households/choose").await;
+    assert_eq!(chooser.status_code(), 200, "{}", chooser.text());
+    assert_eq!(chooser.header("cache-control"), "no-store");
+    assert!(chooser.text().contains("action=\"/households/select\""));
+    assert!(chooser.text().contains("name=\"authenticity_token\""));
+    assert!(chooser.text().contains("name=\"household_id\""));
+    let chooser_html = chooser.text();
+    let token = authenticity_token(&chooser_html).ok_or("household form token missing")?;
+    let selected = request
+        .post("/households/select")
+        .add_header("sec-fetch-site", "same-origin")
+        .form(&[("household_id", "72001"), ("authenticity_token", token)])
+        .await;
+    assert_eq!(selected.status_code(), 303, "{}", selected.text());
+    assert_eq!(
+        selected.header("location"),
+        "/households/persistence-fixture/dashboard"
+    );
+    let chosen_again = request.get("/households/choose").await;
+    assert_eq!(chosen_again.status_code(), 303, "{}", chosen_again.text());
+    assert_eq!(
+        chosen_again.header("location"),
+        "/households/persistence-fixture/dashboard"
+    );
+    assert_eq!(chosen_again.header("cache-control"), "no-store");
+    fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now() WHERE household_id=72001 AND account_id=71001").await?;
+    let revoked_home = request.get("/").await;
+    assert_eq!(revoked_home.status_code(), 303, "{}", revoked_home.text());
+    assert_eq!(revoked_home.header("location"), "/households/choose");
+    assert_eq!(revoked_home.header("cache-control"), "no-store");
+    let empty_chooser = request.get("/households/choose").await;
+    assert_eq!(empty_chooser.status_code(), 200, "{}", empty_chooser.text());
+    assert!(
+        empty_chooser
+            .text()
+            .contains("You do not have an active household membership.")
+    );
     drop(request);
     close(fixture, boot).await;
     Ok(())
@@ -71,7 +106,7 @@ async fn household_selection_requires_csrf_and_does_not_change_session() -> Test
         missing.text()
     );
     assert_eq!(missing.header("cache-control"), "no-store");
-    let home = request.get("/").await;
+    let home = request.get("/households/choose").await;
     let html = home.text();
     let token = authenticity_token(&html).ok_or("household form token missing")?;
     let foreign = request
@@ -109,7 +144,7 @@ async fn household_selection_requires_current_account_and_session() -> TestResul
     let mut request = server(&boot);
     request.save_cookies();
     sign_in(&request, &boot).await;
-    let home = request.get("/").await;
+    let home = request.get("/households/choose").await;
     let token = authenticity_token(&home.text())
         .ok_or("household form token missing")?
         .to_owned();
@@ -149,7 +184,7 @@ async fn household_selection_is_independent_for_two_browser_sessions() -> TestRe
     sign_in(&first, &boot).await;
     sign_in(&second, &boot).await;
 
-    let first_home = first.get("/").await;
+    let first_home = first.get("/households/choose").await;
     let first_html = first_home.text();
     let first_token =
         authenticity_token(&first_html).ok_or("first household form token missing")?;
@@ -169,19 +204,41 @@ async fn household_selection_is_independent_for_two_browser_sessions() -> TestRe
     );
     assert_eq!(
         first_selected.header("location"),
-        "/households/persistence-fixture/medications"
+        "/households/persistence-fixture/dashboard"
     );
-    let first_inventory = first
-        .get("/households/persistence-fixture/medications")
-        .await;
+    let first_home_after_selection = first.get("/").await;
     assert_eq!(
-        first_inventory.status_code(),
+        first_home_after_selection.status_code(),
+        303,
+        "{}",
+        first_home_after_selection.text()
+    );
+    assert_eq!(
+        first_home_after_selection.header("location"),
+        "/households/persistence-fixture/dashboard"
+    );
+    let first_dashboard = first.get("/households/persistence-fixture/dashboard").await;
+    assert_eq!(
+        first_dashboard.status_code(),
         200,
         "{}",
-        first_inventory.text()
+        first_dashboard.text()
     );
+    let navigation = first
+        .get("/households/persistence-fixture/profile/navigation")
+        .await;
+    assert_eq!(navigation.status_code(), 200, "{}", navigation.text());
+    assert_eq!(navigation.header("cache-control"), "no-store");
+    let shell = &navigation.json::<Value>()["shell"];
+    assert_eq!(shell["active_household_id"], "72001");
+    assert_eq!(shell["households"].as_array().map(Vec::len), Some(2));
+    assert!(shell["households"].as_array().is_some_and(|households| {
+        households
+            .iter()
+            .any(|household| household["id"] == 72002 && household["name"] == "Second household")
+    }));
 
-    let second_home = second.get("/").await;
+    let second_home = second.get("/households/choose").await;
     let second_html = second_home.text();
     let second_token =
         authenticity_token(&second_html).ok_or("second household form token missing")?;
@@ -201,7 +258,18 @@ async fn household_selection_is_independent_for_two_browser_sessions() -> TestRe
     );
     assert_eq!(
         second_selected.header("location"),
-        "/households/second-household/medications"
+        "/households/second-household/dashboard"
+    );
+    let second_home_after_selection = second.get("/").await;
+    assert_eq!(
+        second_home_after_selection.status_code(),
+        303,
+        "{}",
+        second_home_after_selection.text()
+    );
+    assert_eq!(
+        second_home_after_selection.header("location"),
+        "/households/second-household/dashboard"
     );
     let second_inventory = second.get("/households/second-household/medications").await;
     assert_eq!(
@@ -247,13 +315,15 @@ async fn household_selection_rechecks_membership_and_household_state() -> TestRe
     let mut request = server(&boot);
     request.save_cookies();
     sign_in(&request, &boot).await;
-    let home = request.get("/").await;
+    let home = request.get("/households/choose").await;
     let html = home.text();
-    let token = authenticity_token(&html).ok_or("household form token missing")?;
+    let token = authenticity_token(&html)
+        .ok_or("household form token missing")?
+        .to_owned();
     let selected = request
         .post("/households/select")
         .add_header("sec-fetch-site", "same-origin")
-        .form(&[("household_id", "72001"), ("authenticity_token", token)])
+        .form(&[("household_id", "72001"), ("authenticity_token", &token)])
         .await;
     assert_eq!(selected.status_code(), 303, "{}", selected.text());
 
@@ -277,13 +347,10 @@ async fn household_selection_rechecks_membership_and_household_state() -> TestRe
         ),
     ] {
         fixture.admin.execute_unprepared(setup).await?;
-        let home = request.get("/").await;
-        let html = home.text();
-        let token = authenticity_token(&html).ok_or("household form token missing")?;
         let rejected = request
             .post("/households/select")
             .add_header("sec-fetch-site", "same-origin")
-            .form(&[("household_id", id), ("authenticity_token", token)])
+            .form(&[("household_id", id), ("authenticity_token", &token)])
             .await;
         assert!(
             rejected.status_code().is_client_error(),
@@ -310,7 +377,7 @@ async fn household_revocation_serializes_with_selection() -> TestResult {
     let mut request = server(&boot);
     request.save_cookies();
     sign_in(&request, &boot).await;
-    let home = request.get("/").await;
+    let home = request.get("/households/choose").await;
     let token = authenticity_token(&home.text())
         .ok_or("household form token missing")?
         .to_owned();

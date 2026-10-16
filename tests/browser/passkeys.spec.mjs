@@ -9,7 +9,7 @@ async function password(page) {
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
 }
 
 async function installAuthenticator(page, context) {
@@ -84,7 +84,7 @@ test('register, sign in, restart and remove a named passkey through security set
   await context.clearCookies();
   await page.goto('/login');
   expect((await signInWithPasskey(page)).status()).toBe(200);
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto(detail);
   await expect(page.getByRole('heading', { name: 'Synthetic tablets', exact: true })).toBeVisible();
   await careFixture.restart();
@@ -192,7 +192,7 @@ test('recovery completes sign-in after losing an enrolled passkey but cannot cha
   await page.goto('/recovery-login');
   await page.getByLabel('Recovery code', { exact: true }).fill(recoveryCodes[0]);
   await page.getByRole('button', { name: 'Sign in with recovery code', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto(detail);
   await expect(page.getByRole('heading', { name: 'Synthetic tablets', exact: true })).toBeVisible();
   expect((await careFixture.recoveryProbe()).count).toBe(9);
@@ -362,7 +362,7 @@ test('retained Rails passkey rows are never imported and maintained registration
   await context.clearCookies();
   await page.goto('/login');
   expect((await signInWithPasskey(page)).status()).toBe(200);
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto(detail);
   await expect(page.getByRole('heading', { name: 'Synthetic tablets', exact: true })).toBeVisible();
 });

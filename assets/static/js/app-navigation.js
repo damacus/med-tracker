@@ -91,12 +91,13 @@
   document.addEventListener('app-navigation', event => {
     const data = event.detail;
     const header = document.querySelector('.shell-header');
+    const dashboardTriggers = [...document.querySelectorAll('[data-dashboard-account]')];
     const template = document.getElementById('app-navigation-template');
-    if (!header || !template || !data?.labels || installed) return;
+    if ((!header && !dashboardTriggers.length) || !template || !data?.labels || installed) return;
     const labels = data.labels;
-    const searchTrigger = header.querySelector('[data-global-search-trigger]');
-    const appearanceTrigger = header.querySelector('[data-dialog-open="appearance-dialog"]');
-    const securityLink = header.querySelector('a[href="/account/security"]');
+    const searchTrigger = header?.querySelector('[data-global-search-trigger]');
+    const appearanceTrigger = header?.querySelector('[data-dialog-open="appearance-dialog"]');
+    const securityLink = header?.querySelector('a[href="/account/security"]');
     const link = item => {
       const anchor = element('a', item.label, 'app-navigation-link');
       anchor.href = item.href;
@@ -124,7 +125,7 @@
       form.append(token, button);
       return form;
     };
-    const dialog = (id, title, trigger) => {
+    const dialog = (id, title, triggers) => {
       const panel = element('dialog', null, `app-navigation-panel ${id}`);
       panel.id = id;
       panel.setAttribute('aria-label', title);
@@ -136,9 +137,13 @@
       close.addEventListener('click', () => panel.close());
       top.append(close);
       panel.append(top);
-      trigger.setAttribute('aria-label', title);
-      trigger.addEventListener('click', () => { panel.showModal(); trigger.setAttribute('aria-expanded', 'true'); });
-      panel.addEventListener('close', () => { trigger.setAttribute('aria-expanded', 'false'); trigger.focus(); });
+      let activeTrigger;
+      for (const trigger of Array.isArray(triggers) ? triggers : [triggers]) {
+        trigger.setAttribute('aria-label', title);
+        trigger.addEventListener('click', () => { activeTrigger = trigger; panel.showModal(); trigger.setAttribute('aria-expanded', 'true'); });
+        trigger.hidden = false;
+      }
+      panel.addEventListener('close', () => { activeTrigger?.setAttribute('aria-expanded', 'false'); activeTrigger?.focus(); });
       panel.addEventListener('click', event => {
         const bounds = panel.getBoundingClientRect();
         if (event.target === panel && (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom)) panel.close();
@@ -146,32 +151,33 @@
       document.body.append(panel);
       return panel;
     };
-    header.replaceChildren(template.content.cloneNode(true));
-    if (searchTrigger) header.querySelector('.app-header').insertBefore(searchTrigger, header.querySelector('[data-app-account]'));
-    const drawerTrigger = header.querySelector('[data-app-drawer]');
-    const drawer = dialog('app-drawer', data.navigation_label, drawerTrigger);
-    drawerTrigger.setAttribute('aria-label', labels.mobile_menu.open_menu);
-    const navigation = element('nav');
-    navigation.setAttribute('aria-label', labels.mobile_rail.primary_navigation);
-    data.sidebar.forEach(item => navigation.append(link(item)));
-    const profile = data.choices.find(item => item.id === 'profile');
-    if (profile) navigation.append(link(profile));
-    drawer.append(navigation, logout());
-    const accountTrigger = header.querySelector('[data-app-account]');
-    header.querySelector('[data-account-name]').textContent = data.name;
-    const avatar = header.querySelector('[data-profile-avatar]');
-    avatar.classList.add('relative');
-    avatar.append(element('span', data.initials));
-    if (data.avatar_attached || data.gravatar_url) {
-      const image = element('img');
-      image.src = data.avatar_attached ? `/households/${data.slug}/profile/avatar` : data.gravatar_url;
-      image.alt = '';
-      image.dataset.avatarImage = '';
-      image.referrerPolicy = 'no-referrer';
-      image.className = 'absolute inset-0';
-      avatar.append(image);
+    if (header) {
+      header.replaceChildren(template.content.cloneNode(true));
+      if (searchTrigger) header.querySelector('.app-header').insertBefore(searchTrigger, header.querySelector('[data-app-account]'));
+      const drawerTrigger = header.querySelector('[data-app-drawer]');
+      const drawer = dialog('app-drawer', data.navigation_label, drawerTrigger);
+      drawerTrigger.setAttribute('aria-label', labels.mobile_menu.open_menu);
+      const navigation = element('nav');
+      navigation.setAttribute('aria-label', labels.mobile_rail.primary_navigation);
+      data.sidebar.forEach(item => navigation.append(link(item)));
+      const profile = data.choices.find(item => item.id === 'profile');
+      if (profile) navigation.append(link(profile));
+      drawer.append(navigation, logout());
+      header.querySelector('[data-account-name]').textContent = data.name;
+      const avatar = header.querySelector('[data-profile-avatar]');
+      avatar.classList.add('relative');
+      avatar.append(element('span', data.initials));
+      if (data.avatar_attached || data.gravatar_url) {
+        const image = element('img');
+        image.src = data.avatar_attached ? `/households/${data.slug}/profile/avatar` : data.gravatar_url;
+        image.alt = '';
+        image.dataset.avatarImage = '';
+        image.referrerPolicy = 'no-referrer';
+        image.className = 'absolute inset-0';
+        avatar.append(image);
+      }
     }
-    const account = dialog('app-account', labels.profile_menu.my_account, accountTrigger);
+    const account = dialog('app-account', labels.profile_menu.my_account, header ? header.querySelector('[data-app-account]') : dashboardTriggers);
     if (appearanceTrigger) {
       appearanceTrigger.className = 'app-navigation-link';
       appearanceTrigger.addEventListener('click', () => account.close());
@@ -184,6 +190,29 @@
     for (const id of ['dashboard', 'profile', 'administration']) {
       const item = data.choices.find(item => item.id === id);
       if (item) account.append(link({ ...item, label: labels.profile_menu[id] }));
+    }
+    if (Array.isArray(data.households) && data.households.length) {
+      const section = element('section', null, 'border-t border-base-300 mt-2 pt-3');
+      section.append(element('h3', labels.profile_menu.households, 'text-sm font-semibold px-4'));
+      for (const household of data.households) {
+        if (!Number.isSafeInteger(household.id) || household.id <= 0 || typeof household.name !== 'string') continue;
+        const form = element('form');
+        form.method = 'post';
+        form.action = '/households/select';
+        for (const [name, value] of [['authenticity_token', data.authenticity_token], ['household_id', String(household.id)]]) {
+          const input = element('input');
+          input.type = 'hidden';
+          input.name = name;
+          input.value = value;
+          form.append(input);
+        }
+        const button = element('button', `${labels.profile_menu.switch_to} ${household.name}`, 'app-navigation-link');
+        button.type = 'submit';
+        if (String(household.id) === data.active_household_id) button.setAttribute('aria-current', 'true');
+        form.append(button);
+        section.append(form);
+      }
+      account.append(section);
     }
     account.append(logout());
     document.querySelector('[data-profile-navigation-fallback]')?.remove();

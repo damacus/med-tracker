@@ -47,7 +47,7 @@ async function createAndVerify(page, fixture, info) {
   await expect(page.getByRole('list', { name: 'Recovery codes', exact: true }).getByRole('listitem')).toHaveCount(10);
   await page.getByLabel('I have saved my recovery codes', { exact: true }).check();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.getByRole('button', { name: 'Open Synthetic registration Household', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Medications', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Add Medication', exact: true })).toBeVisible();

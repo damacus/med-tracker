@@ -2216,6 +2216,8 @@ es:
       administration: Administración
       logout: Cerrar sesión
       account: Cuenta
+      households: Hogares
+      switch_to: Cambiar a
     mobile_menu:
       brand: MedTracker
       open_menu: Abrir menú

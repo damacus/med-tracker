@@ -21,37 +21,64 @@ pub async fn index(
     token: std::result::Result<CsrfToken, <CsrfToken as FromRequestParts<AppContext>>::Rejection>,
     ViewEngine(view): ViewEngine<TeraView>,
 ) -> Response {
-    let mut households = Vec::new();
-    let mut signed_in = false;
     let mut auth_notice = None;
     if let Ok(session) = session {
-        auth_notice = session.get::<String>("auth_notice");
-        session.remove("auth_notice");
         match browser::authenticate(&ctx.db, &session, ctx.config.settings.as_ref()).await {
-            Ok(principal) => match principal.households(&ctx.db).await {
-                Ok(value) => {
-                    households = value;
-                    signed_in = true;
+            Ok(principal) => match principal.active_household(&ctx.db).await {
+                Ok(Some(household)) => {
+                    return redirect(&format!("/households/{}/dashboard", household.slug));
                 }
-                Err(_) => return StatusCode::SERVICE_UNAVAILABLE.into_response(),
+                Ok(None) => return redirect("/households/choose"),
+                Err(error) => return authentication_error(error),
             },
-            Err(AuthenticationError::Unauthenticated) => {}
-            Err(
-                AuthenticationError::Forbidden
-                | AuthenticationError::NotFound
-                | AuthenticationError::InsufficientScope { .. },
-            ) => {
-                return StatusCode::FORBIDDEN.into_response();
+            Err(AuthenticationError::Unauthenticated) => {
+                auth_notice = session.get::<String>("auth_notice");
+                session.remove("auth_notice");
             }
-            Err(AuthenticationError::Unavailable) => {
-                return StatusCode::SERVICE_UNAVAILABLE.into_response();
-            }
+            Err(error) => return authentication_error(error),
         }
     }
+    render_home(view, false, Vec::new(), auth_notice, token.ok())
+}
+
+pub async fn choose(
+    State(ctx): State<AppContext>,
+    session: Session<SessionPgPool>,
+    token: CsrfToken,
+    ViewEngine(view): ViewEngine<TeraView>,
+) -> Response {
+    let principal =
+        match browser::authenticate(&ctx.db, &session, ctx.config.settings.as_ref()).await {
+            Ok(principal) => principal,
+            Err(AuthenticationError::Unauthenticated) => return redirect("/login"),
+            Err(error) => return authentication_error(error),
+        };
+    match principal.active_household(&ctx.db).await {
+        Ok(Some(household)) => {
+            return redirect(&format!("/households/{}/dashboard", household.slug));
+        }
+        Ok(None) => {}
+        Err(error) => return authentication_error(error),
+    }
+    let households = match principal.households(&ctx.db).await {
+        Ok(households) => households,
+        Err(error) => return authentication_error(error),
+    };
+    let auth_notice = session.get::<String>("auth_notice");
+    session.remove("auth_notice");
+    render_home(view, true, households, auth_notice, Some(token))
+}
+
+fn render_home(
+    view: TeraView,
+    signed_in: bool,
+    households: Vec<browser::BrowserHousehold>,
+    auth_notice: Option<String>,
+    token: Option<CsrfToken>,
+) -> Response {
     let authenticity_token = if signed_in {
         match token
             .as_ref()
-            .ok()
             .and_then(|token| token.authenticity_token().ok())
         {
             Some(value) => value,
@@ -64,7 +91,7 @@ pub async fn index(
         &view,
         "home/index.html",
         data!({
-            "title": "Welcome",
+            "title": if signed_in { "Choose a household" } else { "Welcome" },
             "allow_palette": signed_in,
             "signed_in": signed_in,
             "auth_notice": auth_notice,
@@ -90,8 +117,8 @@ pub async fn index(
         }),
     ) {
         Ok(response) => match token {
-            Ok(token) => (token, [(header::CACHE_CONTROL, "no-store")], response).into_response(),
-            Err(_) => ([(header::CACHE_CONTROL, "no-store")], response).into_response(),
+            Some(token) => (token, [(header::CACHE_CONTROL, "no-store")], response).into_response(),
+            None => ([(header::CACHE_CONTROL, "no-store")], response).into_response(),
         },
         Err(error) => error.into_response(),
     }
@@ -149,7 +176,7 @@ pub async fn select(
             [
                 (
                     header::LOCATION,
-                    format!("/households/{}/medications", household.slug),
+                    format!("/households/{}/dashboard", household.slug),
                 ),
                 (header::CACHE_CONTROL, "no-store".to_owned()),
             ],
@@ -165,6 +192,17 @@ pub async fn select(
 
 fn forbidden() -> Response {
     (StatusCode::FORBIDDEN, [(header::CACHE_CONTROL, "no-store")]).into_response()
+}
+
+fn redirect(destination: &str) -> Response {
+    (
+        StatusCode::SEE_OTHER,
+        [
+            (header::LOCATION, destination),
+            (header::CACHE_CONTROL, "no-store"),
+        ],
+    )
+        .into_response()
 }
 
 fn unavailable() -> Response {

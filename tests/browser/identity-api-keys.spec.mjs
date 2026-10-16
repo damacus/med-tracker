@@ -7,7 +7,7 @@ async function login(page) {
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
 }
 
 async function startKey(page, origin, permissions, name = 'Synthetic scoped key') {
@@ -66,7 +66,7 @@ test('personal API keys use immutable household grants and cannot become securit
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto('/account/security');
   await page.getByRole('link', { name: 'Personal API keys', exact: true }).click();
   await page.getByLabel('Name', { exact: true }).fill('Synthetic read-only integration');

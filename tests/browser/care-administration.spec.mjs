@@ -32,7 +32,9 @@ test('household naming retains invalid drafts and immediately updates household 
   await expect(page.getByLabel('Household name', { exact: true })).toHaveValue('Synthetic renamed household');
   await page.screenshot({ path: info.outputPath(`loco-household-settings-${info.project.name}.png`), fullPage: true });
   await page.goto('/');
-  await expect(page.getByRole('button', { name: 'Open Synthetic renamed household', exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/\/households\/persistence-fixture\/dashboard$/);
+  await page.getByRole('button', { name: 'My Account', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'My Account', exact: true }).getByRole('button', { name: 'Switch to Synthetic renamed household', exact: true })).toBeVisible();
   expect([403, 404]).toContain((await page.request.get('/households/foreign-fixture/admin/household/edit', { maxRedirects: 0 })).status());
 });
 
