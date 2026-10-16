@@ -250,6 +250,110 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /auth/profile/avatar:
+    get:
+      operationId: getAccountAvatar
+      tags: [Account]
+      summary: Read the authenticated account avatar without a household.
+      description: Every response has Cache-Control no-store and X-Content-Type-Options nosniff. Credentials and the attachment are rechecked after storage reads.
+      responses:
+        "200":
+          description: Sanitised PNG avatar.
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/AccountForbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          description: Account authority could not be checked.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "503":
+          description: Avatar storage is temporarily unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    put:
+      operationId: updateAccountAvatar
+      tags: [Account]
+      summary: Replace the authenticated account avatar without a household.
+      description: Accepts exactly one avatar field, PNG, JPEG or WebP up to 5 MiB. Images are decoded with bounded dimensions and re-encoded as PNG. Metadata, audit and retirement commit together. Mobile OAuth credentials do not require household membership; stored credentials retain their existing validity rules. Every response has Cache-Control no-store and X-Content-Type-Options nosniff.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [avatar]
+              properties:
+                avatar:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Updated account profile.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountProfileResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/AccountForbidden"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          description: Account authority could not be checked.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "503":
+          description: Avatar storage, metadata or audit is temporarily unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    delete:
+      operationId: deleteAccountAvatar
+      tags: [Account]
+      summary: Remove the authenticated account avatar without a household.
+      description: Metadata, audit and retirement commit together. Repeated removal returns 204 without an additional audit. Every response has Cache-Control no-store and X-Content-Type-Options nosniff.
+      responses:
+        "204":
+          description: Avatar removed or already absent.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/AccountForbidden"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          description: Account authority could not be checked.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "503":
+          description: Avatar metadata or audit is temporarily unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
   /auth/households:
     get:
       operationId: listHouseholds
@@ -5865,7 +5969,7 @@ components:
         data:
           type: object
           additionalProperties: false
-          required: [account_id, name, email, time_zone, gravatar_enabled, mobile_shortcuts]
+          required: [account_id, name, email, time_zone, gravatar_enabled, avatar_attached, mobile_shortcuts]
           properties:
             account_id:
               type: string
@@ -5883,6 +5987,8 @@ components:
               minLength: 1
               example: Europe/London
             gravatar_enabled:
+              type: boolean
+            avatar_attached:
               type: boolean
             mobile_shortcuts:
               $ref: "#/components/schemas/AccountMobileShortcuts"

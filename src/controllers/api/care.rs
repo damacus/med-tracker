@@ -2,7 +2,7 @@ mod administration;
 mod ai_suggestions;
 mod assignments;
 mod audit;
-mod avatar;
+pub(super) mod avatar;
 mod data_exports;
 mod dosages;
 mod dose_history;
