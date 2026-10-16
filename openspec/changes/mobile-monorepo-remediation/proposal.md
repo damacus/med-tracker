@@ -18,7 +18,7 @@ The Rails checkout currently contains an Android Gradle project at its root, cau
 
 - `native-mobile-workspace`: Repository layout, root task interfaces, build isolation, and native CI boundaries.
 - `native-client-contract-pinning`: Per-client OpenAPI pinning, provenance, generation, and drift validation.
-- `android-client-security`: Release authentication, credential storage, backup, logging, and canary-test boundaries for the Android phone app.
+- `android-client-security`: Release authentication, credential storage, backup and logging boundaries for the Android phone app.
 - `wear-companion-connectivity`: Paired-phone discovery and persistent companion status for the connectivity-only Wear OS application.
 - `ios-history-import`: Full-history iOS subtree import, provenance, and GitHub-hosted Xcode verification.
 

@@ -3,7 +3,7 @@
 - [ ] 1.0 Implement the agreed environment-configurable 30-day interactive inactivity default with no absolute deadline by default; trace remember/background refresh behaviour and reproduce the reported logout path with diagnostic evidence. API/MCP maximum age remains a configurable default of 12 calendar months.
 
 - [x] 1.1 Trace current Rails household resolution, Rodauth OAuth grant/refresh hooks and API session consumers; record a concrete change map in design.md and verify it covers both new mobile and existing restricted credentials.
-- [ ] 1.2 Confirm native callback registrations and canary/demo preset URLs; reconcile mobile-monorepo-remediation's fixed-server restriction with instance selection and verify the revised Android contract preserves existing MFA policy.
+- [ ] 1.2 Confirm native callback registrations; reconcile mobile-monorepo-remediation's fixed-server restriction with instance selection and verify the revised Android contract preserves existing MFA policy.
 - [x] 1.3 Run `task test:preflight` before Rails implementation and verify the test environment is usable; use repository task definitions for all later focused checks.
 
 ## 2. Account-level OAuth credentials
@@ -28,7 +28,7 @@
 ## 4. Mobile contract and Android flow
 
 - [ ] 4.1 Add failing discovery/capability tests for OAuth server metadata, public platform client configuration, account-level login and household listing; update root OpenAPI and verify schema/generated-contract checks through task wrappers, including Android's pinned copy.
-- [ ] 4.2 Add failing Android tests for editable instance URL, labelled canary/demo presets, validated discovery, cross-instance credential isolation, state/callback handling and browser login without a household; implement the flow and verify Android unit/contract checks.
+- [ ] 4.2 Add failing Android tests for editable instance URL, validated discovery, cross-instance credential isolation, state/callback handling and browser login without a household; implement the flow and verify Android unit/contract checks.
 - [ ] 4.3 Add failing Android tests for zero/one/multiple household navigation and switching with the same credential; implement the UI and verify visible behaviour in the actual Android app.
 - [ ] 4.4 Add failing Android tests for late responses, account/instance changes, cache separation, original-household queued mutations and lost access; implement isolation and verify the relevant session, repository and sync tests.
 

@@ -2,42 +2,42 @@ schema_version: 1
 
 loki:
   datasource: Loki
-  stream_selector: '{namespace="home", app=~"med-tracker(-canary)?"}'
+  stream_selector: '{namespace="home", app="med-tracker"}'
   queries:
     by_event_id:
       window: 15m
       logql: >-
-        {namespace="home", app=~"med-tracker(-canary)?"}
+        {namespace="home", app="med-tracker"}
         | json | line_format "{{.message}}" | json
         | event_id="$EVENT_ID"
     by_workflow_id:
       window: 15m
       logql: >-
-        {namespace="home", app=~"med-tracker(-canary)?"}
+        {namespace="home", app="med-tracker"}
         | json | line_format "{{.message}}" | json
         | medtracker_workflow_id="$WORKFLOW_ID"
     by_request_id:
       window: 15m
       logql: >-
-        {namespace="home", app=~"med-tracker(-canary)?"}
+        {namespace="home", app="med-tracker"}
         | json | line_format "{{.message}}" | json
         | medtracker_request_id="$REQUEST_ID"
     by_job_id:
       window: 15m
       logql: >-
-        {namespace="home", app=~"med-tracker(-canary)?"}
+        {namespace="home", app="med-tracker"}
         | json | line_format "{{.message}}" | json
         | medtracker_job_id="$JOB_ID"
     by_trace_id:
       window: 15m
       logql: >-
-        {namespace="home", app=~"med-tracker(-canary)?"}
+        {namespace="home", app="med-tracker"}
         | json | line_format "{{.message}}" | json
         | trace_id="$TRACE_ID"
     deployment_identity:
       window: 15m
       logql: >-
-        {namespace="home", app=~"med-tracker(-canary)?"}
+        {namespace="home", app="med-tracker"}
         | json | line_format "{{.message}}" | json
         | event_name="observability.canary"
         | service_version="$APP_VERSION"
@@ -47,7 +47,7 @@ loki:
       logql: >-
         sum by (event_id) (
           count_over_time(
-            {namespace="home", app=~"med-tracker(-canary)?"}
+            {namespace="home", app="med-tracker"}
             | json | line_format "{{.message}}" | json
             | event_name="observability.canary" [15m]
           )
@@ -55,19 +55,19 @@ loki:
     outer_parser_failures:
       window: 15m
       logql: >-
-        {namespace="home", app=~"med-tracker(-canary)?"}
+        {namespace="home", app="med-tracker"}
         | json | __error__ != ""
     canonical_parser_failures:
       window: 15m
       logql: >-
-        {namespace="home", app=~"med-tracker(-canary)?"}
+        {namespace="home", app="med-tracker"}
         |= "\"event.name\""
         | json | line_format "{{.message}}" | json
         | __error__ != ""
     missing_severity:
       window: 15m
       logql: >-
-        {namespace="home", app=~"med-tracker(-canary)?"}
+        {namespace="home", app="med-tracker"}
         |= "\"event.name\""
         | json | line_format "{{.message}}" | json
         | log_level=""
@@ -76,7 +76,7 @@ loki:
       logql: >-
         sum by (event_dataset) (
           count_over_time(
-            {namespace="home", app=~"med-tracker(-canary)?"}
+            {namespace="home", app="med-tracker"}
             |= "\"event.dataset\""
             | json | line_format "{{.message}}" | json [15m]
           )

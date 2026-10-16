@@ -138,9 +138,6 @@ fun OidcAuthRoute(
                     enabled = !isLoading,
                     modifier = Modifier.fillMaxWidth()
                 )
-                TextButton(onClick = { instanceUrl = "https://med-tracker-canary.damacus.io/" }, enabled = !isLoading) {
-                    Text("Canary / demo")
-                }
 
                 Button(
                     onClick = { onOidcSignIn(instanceUrl.trim()) },

@@ -87,47 +87,6 @@ class ReleaseSecurityContractTest {
     }
 
     @Test
-    fun liveCanaryTestsAreOptInAndExcludedFromOrdinaryTestsAndPullRequestCi() {
-        val ordinaryCanary = File(
-            androidRoot,
-            "phone/src/test/java/io/damacus/medtracker/CanaryLiveIntegrationTest.kt"
-        )
-        val integrationCanary = File(
-            androidRoot,
-            "phone/src/testStagingCanaryIntegration/java/io/damacus/medtracker/CanaryLiveIntegrationTest.kt"
-        )
-        val integrationSource = integrationCanary.takeIf(File::isFile)?.readText().orEmpty()
-        val build = File(androidRoot, "phone/build.gradle.kts").readText()
-        val tasks = File(androidRoot, "Taskfile.yml").readText()
-        val integrationScript = File(androidRoot, "scripts/canary-integration.fish").readText()
-        val repositoryRoot = requireNotNull(androidRoot.parentFile?.parentFile)
-        val workflow = File(repositoryRoot, ".github/workflows/android.yml").readText()
-        val ordinaryTestTask = tasks.substringAfter("  test:").substringBefore("\n  lint:")
-        val ciTask = tasks.substringAfter("  ci:")
-
-        assertFalse(ordinaryCanary.exists())
-        assertTrue(integrationCanary.isFile)
-        assertTrue(build.contains("create(\"stagingCanaryIntegration\")"))
-        assertTrue(build.contains("medtracker.canaryIntegration"))
-        assertTrue(build.contains("testStagingCanaryIntegrationUnitTest"))
-        assertTrue(build.contains("enabled = canaryIntegrationOptIn.get()"))
-        assertTrue(tasks.contains("integration:canary:"))
-        assertTrue(integrationScript.contains(":phone:testStagingCanaryIntegrationUnitTest"))
-        assertTrue(integrationScript.contains("-Pmedtracker.canaryIntegration=true"))
-        assertTrue(integrationSource.contains("MEDTRACKER_CANARY_BASE_URL"))
-        assertTrue(integrationSource.contains("MEDTRACKER_CANARY_TOKEN"))
-        assertTrue(integrationSource.contains("MobileAuthDiscovery"))
-        assertFalse(integrationSource.contains("AuthenticationApi"))
-        assertFalse(integrationSource.contains("AuthLoginRequest"))
-        assertFalse(integrationSource.contains("OkHttpClient"))
-        assertFalse(integrationSource.contains("demo.owner@example.com"))
-        assertFalse(integrationSource.contains("password = \"password\""))
-        assertFalse(ordinaryTestTask.contains("StagingCanaryIntegration"))
-        assertFalse(ciTask.contains("integration:canary"))
-        assertFalse(workflow.contains("integration:canary"))
-    }
-
-    @Test
     fun releaseArtifactVerificationRejectsPasswordTransportDescriptors() {
         val tasks = File(androidRoot, "Taskfile.yml").readText()
         val verificationScript = File(

@@ -1,7 +1,3 @@
-import com.android.build.api.variant.ApplicationVariantBuilder
-import com.android.build.api.variant.HostTestBuilder
-import org.gradle.api.tasks.testing.Test
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
@@ -9,9 +5,6 @@ plugins {
 }
 
 val httpLoggingOptIn = providers.gradleProperty("medtracker.httpLogging")
-    .map(String::toBoolean)
-    .orElse(false)
-val canaryIntegrationOptIn = providers.gradleProperty("medtracker.canaryIntegration")
     .map(String::toBoolean)
     .orElse(false)
 val releaseServerUrl = providers.gradleProperty("medtracker.release.serverUrl")
@@ -68,11 +61,6 @@ android {
             manifestPlaceholders["appAuthRedirectScheme"] = "io.damacus.medtracker.staging"
             matchingFallbacks += listOf("debug")
         }
-        create("stagingCanaryIntegration") {
-            initWith(getByName("staging"))
-            applicationIdSuffix = ".canary.integration"
-            matchingFallbacks += listOf("staging", "debug")
-        }
         release {
             isMinifyEnabled = true
             buildConfigField("String", "SERVER_URL", releaseServerUrl.get().asBuildConfigString())
@@ -102,23 +90,11 @@ android {
         buildConfig = true
     }
     sourceSets {
-        listOf("debug", "staging", "stagingCanaryIntegration").forEach { buildType ->
+        listOf("debug", "staging").forEach { buildType ->
             named(buildType) {
                 kotlin.directories.addAll(listOf("src/nonRelease/java", "src/nonRelease/kotlin"))
             }
         }
-    }
-}
-
-androidComponents {
-    beforeVariants(selector().withBuildType("stagingCanaryIntegration")) { variant: ApplicationVariantBuilder ->
-        variant.hostTests.getValue(HostTestBuilder.UNIT_TEST_TYPE).enable = true
-    }
-}
-
-tasks.withType<Test>().configureEach {
-    if (name == "testStagingCanaryIntegrationUnitTest") {
-        enabled = canaryIntegrationOptIn.get()
     }
 }
 

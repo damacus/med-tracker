@@ -38,12 +38,6 @@ tasks:
     cmds:
       - ./gradlew :phone:assembleDebug --no-daemon
 
-  integration:canary:
-    dir: "{{.TASKFILE_DIR}}"
-    desc: Run the opt-in live canary integration test
-    cmds:
-      - fish --no-config ./scripts/canary-integration.fish
-
   lint:
     dir: "{{.TASKFILE_DIR}}"
     desc: Run phone and Wear lint

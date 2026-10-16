@@ -28,7 +28,7 @@ RSpec.describe 'OTLP trace resource verification' do # rubocop:disable RSpec/Des
 
       expect(status).not_to be_success
       expect(error).to include(trace_path, 'service.name')
-      expect(error).not_to include('med-tracker-canary')
+      expect(error).not_to include('example-app')
     end
   end
 
@@ -86,7 +86,7 @@ RSpec.describe 'OTLP trace resource verification' do # rubocop:disable RSpec/Des
   end
 
   def resource_with_host_name
-    resource('host.name' => 'med-tracker-canary', 'service.name' => 'med-tracker')
+    resource('host.name' => 'example-app', 'service.name' => 'med-tracker')
   end
 
   def resource_without_host_name

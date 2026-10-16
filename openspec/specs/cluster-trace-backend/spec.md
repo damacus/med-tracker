@@ -84,17 +84,17 @@ Grafana SHALL provision a healthy trace data source that supports trace-ID looku
 - **THEN** the prohibited value is absent
 - **AND** correlation uses opaque identifiers and allowlisted attributes
 
-### Requirement: Trace export is promoted through an exact-revision canary
-MedTracker production trace export SHALL remain disabled until the exact canary image and configuration pass finite ingestion, query, correlation, privacy, and fail-open acceptance checks.
+### Requirement: Trace export is promoted through an exact-revision isolated verification
+MedTracker production trace export SHALL remain disabled until the exact candidate image and configuration pass finite ingestion, query, correlation, privacy, and fail-open acceptance checks.
 
-#### Scenario: Backend is ready before canary enablement
+#### Scenario: Backend is ready before isolated verification
 - **GIVEN** the trace backend and Grafana data source are healthy
 - **WHEN** the rollout begins
-- **THEN** only MedTracker canary is configured to export traces
+- **THEN** only an isolated MedTracker verification instance is configured to export traces
 - **AND** production remains configured with trace export disabled
 
-#### Scenario: Canary emits a safe acceptance trace
-- **GIVEN** the exact canary image is configured for OTLP/HTTP export
+#### Scenario: Isolated verification emits a safe acceptance trace
+- **GIVEN** the exact candidate image is configured for OTLP/HTTP export
 - **WHEN** the synthetic observability canary runs
 - **THEN** its trace is queryable in Grafana within 15 minutes
 - **AND** the trace contains the expected safe service, deployment, trace, span, and correlation fields
@@ -106,14 +106,14 @@ MedTracker production trace export SHALL remain disabled until the exact canary 
 - **THEN** the operation is not blocked, rolled back, or altered by the telemetry failure
 - **AND** the failure is observable without sensitive payload data
 
-#### Scenario: Canary acceptance fails
-- **GIVEN** any required canary acceptance check fails
+#### Scenario: Isolated acceptance fails
+- **GIVEN** any required isolated acceptance check fails
 - **WHEN** promotion is evaluated
 - **THEN** production trace export remains disabled
-- **AND** rollback restores the last known-safe canary export configuration
+- **AND** rollback restores the last known-safe isolated export configuration
 
-#### Scenario: Canary acceptance passes
-- **GIVEN** the finite canary acceptance matrix passes for an immutable image digest
+#### Scenario: Isolated acceptance passes
+- **GIVEN** the finite isolated acceptance matrix passes for an immutable image digest
 - **WHEN** production trace export is enabled
 - **THEN** production uses the same tested endpoint, protocol, privacy, and failure-isolation contract
 - **AND** the deployed production digest is recorded with the acceptance evidence
