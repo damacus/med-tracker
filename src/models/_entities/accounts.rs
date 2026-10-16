@@ -10,6 +10,7 @@ pub struct Model {
     pub id: i64,
     pub created_at: DateTime,
     pub email: String,
+    pub name: Option<String>,
     pub password_hash: Option<String>,
     #[sea_orm(column_type = "JsonBinary")]
     pub preferences: Json,

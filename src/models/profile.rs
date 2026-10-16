@@ -1,5 +1,6 @@
 pub mod avatar;
 pub mod gravatar;
+pub(crate) mod self_account;
 
 use crate::models::{
     access::{self, PersonAccess, TenantTransaction},

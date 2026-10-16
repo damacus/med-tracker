@@ -376,7 +376,7 @@ pub(crate) async fn verify_account_actor(
     account_user(transaction, account_id).await
 }
 
-async fn verify_account(
+pub(crate) async fn verify_account(
     transaction: &DatabaseTransaction,
     account_id: i64,
 ) -> Result<(), OperationError> {

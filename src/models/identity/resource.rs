@@ -50,6 +50,60 @@ enum Credential {
 }
 
 impl ValidatedPrincipal {
+    pub(crate) async fn account_transaction(
+        &self,
+        db: &DatabaseConnection,
+        settings: Option<&serde_json::Value>,
+        write: bool,
+    ) -> Result<DatabaseTransaction, AuthenticationError> {
+        if matches!(self.credential, Credential::PersonalKey(_)) {
+            return Err(AuthenticationError::Forbidden);
+        }
+        let transaction = db.begin().await.map_err(account_database_error)?;
+        let checked = async {
+            transaction.execute_unprepared("SET LOCAL ROLE med_tracker_app; SET LOCAL search_path=pg_catalog,public,pg_temp; SET LOCAL lock_timeout='5s'; SET LOCAL statement_timeout='30s'; SELECT set_config('med_tracker.current_household_id','',true),set_config('med_tracker.current_membership_id','',true),set_config('med_tracker.current_invitation_token_digest','',true)").await.map_err(account_database_error)?;
+            transaction.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+                "SELECT set_config('med_tracker.current_account_id',$1,true)",
+                [self.account_id.to_string().into()],
+            )).await.map_err(account_database_error)?;
+            let lock = if write {
+                sea_orm::sea_query::LockType::NoKeyUpdate
+            } else {
+                sea_orm::sea_query::LockType::Share
+            };
+            account::Entity::find_by_id(self.account_id)
+                .lock(lock)
+                .one(&transaction).await.map_err(account_database_error)?
+                .ok_or(AuthenticationError::Unauthenticated)?;
+            access::verify_account(&transaction, self.account_id)
+                .await.map_err(operation_error)?;
+            match &self.credential {
+                Credential::OAuth { authorization, grant_id } => {
+                    let row = validate(&transaction, authorization, true, settings).await?;
+                    if row.id != *grant_id || row.account_id != self.account_id {
+                        return Err(AuthenticationError::Unauthenticated);
+                    }
+                }
+                Credential::Stored(principal) => {
+                    let actor = principal.revalidate_locked(&transaction, settings).await?;
+                    if actor.account_id != self.account_id {
+                        return Err(AuthenticationError::Unauthenticated);
+                    }
+                }
+                Credential::PersonalKey(_) => return Err(AuthenticationError::Forbidden),
+            }
+            Ok::<_, AuthenticationError>(())
+        }.await;
+        if let Err(error) = checked {
+            transaction
+                .rollback()
+                .await
+                .map_err(account_database_error)?;
+            return Err(error);
+        }
+        Ok(transaction)
+    }
+
     pub fn account_id(&self) -> i64 {
         self.account_id
     }
@@ -266,6 +320,10 @@ pub(super) async fn authenticate_oauth(
             Err(error)
         }
     }
+}
+
+fn account_database_error(error: sea_orm::DbErr) -> AuthenticationError {
+    operation_error(error.into())
 }
 
 pub(super) fn operation_error(error: OperationError) -> AuthenticationError {
