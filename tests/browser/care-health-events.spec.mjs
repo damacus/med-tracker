@@ -8,7 +8,7 @@ test('person health event journey preserves invalid draft and records ongoing il
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
+  await page.getByRole('button', { name: 'Open Synthetic household', exact: true }).click();
   await openCareSection(page, 'People');
   await page.getByRole('link', { name: 'Synthetic adult', exact: true }).click();
   await expect(page.getByRole('link', { name: 'Health events', exact: true })).toBeVisible();
@@ -77,7 +77,7 @@ test('person side effect rejects forged medication links and keeps assigned snap
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
+  await page.getByRole('button', { name: 'Open Synthetic household', exact: true }).click();
   await openCareSection(page, 'People');
   await page.getByRole('link', { name: 'Synthetic adult', exact: true }).click();
   await expect(page.getByRole('link', { name: 'Health events', exact: true })).toBeVisible();
@@ -119,7 +119,7 @@ test('stale health form preserves the draft and cannot overwrite a newer browser
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
+  await page.getByRole('button', { name: 'Open Synthetic household', exact: true }).click();
   await openCareSection(page, 'People');
   await page.getByRole('link', { name: 'Synthetic adult', exact: true }).click();
   await page.getByRole('link', { name: 'Health events', exact: true }).click();

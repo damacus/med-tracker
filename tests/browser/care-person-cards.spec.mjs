@@ -8,7 +8,7 @@ async function openPerson(page) {
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
+  await page.getByRole('button', { name: 'Open Synthetic household', exact: true }).click();
   await openCareSection(page, 'People');
   await page.getByRole('link', { name: 'Synthetic adult', exact: true }).click();
 }
@@ -109,7 +109,7 @@ test('a view-only carer can read source cards without record or management actio
   await page.getByLabel('Email address', { exact: true }).fill('administration-member@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
+  await page.getByRole('button', { name: 'Open Synthetic household', exact: true }).click();
   await openCareSection(page, 'People');
   await page.getByRole('link', { name: 'Synthetic adult', exact: true }).click();
   const schedule = page.getByRole('article', { name: 'Synthetic tablets scheduled treatment', exact: true });

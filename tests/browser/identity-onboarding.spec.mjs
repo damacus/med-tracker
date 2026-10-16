@@ -236,7 +236,7 @@ test('existing seeded password remains usable through framework authentication',
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await expect(page.getByRole('link', { name: 'Synthetic household', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open Synthetic household', exact: true })).toBeVisible();
 });
 
 test('security settings lists the current session and logout revokes its cookie', async ({ page, context, browser, careFixture }) => {
@@ -519,7 +519,7 @@ test('historical TOTP remains required after a legacy password is verified', asy
   await page.getByLabel('Authentication code', { exact: true }).fill(generator.generate());
   await page.getByRole('button', { name: 'Verify', exact: true }).click();
   await page.waitForURL('/');
-  await expect(page.getByRole('link', { name: 'Synthetic household', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open Synthetic household', exact: true })).toBeVisible();
   expect((await pending.request.post('/api/auth/security/totp/login', { headers, data: { code: generator.generate() } })).status()).toBe(401);
   await pending.close();
 });
@@ -606,7 +606,7 @@ test('retained authenticator can be explicitly disabled without resurrecting rol
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.waitForURL('/');
-  await expect(page.getByRole('link', { name: 'Synthetic household', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open Synthetic household', exact: true })).toBeVisible();
 });
 
 test('a passkey account adds a password with fresh operation-bound passkey proof', async ({ page, context, careFixture }) => {
@@ -977,7 +977,7 @@ test('password change requires fresh proof for the chosen operation', async ({ p
   await page.getByLabel('Password', { exact: true }).fill('orchard comet lantern meadow violet');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.waitForURL('/');
-  await expect(page.getByRole('link', { name: 'Synthetic household', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open Synthetic household', exact: true })).toBeVisible();
 });
 
 test('optional TOTP requires fresh password proof and protects password login', async ({ page, context, careFixture }) => {
@@ -1015,7 +1015,7 @@ test('optional TOTP requires fresh password proof and protects password login', 
   await page.getByLabel('Authentication code', { exact: true }).fill(generator.generate());
   await page.getByRole('button', { name: 'Verify', exact: true }).click();
   await page.waitForURL('/');
-  await expect(page.getByRole('link', { name: 'Synthetic household', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open Synthetic household', exact: true })).toBeVisible();
   await context.clearCookies();
   await page.goto('/login');
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');

@@ -8,7 +8,7 @@ async function openProfile(page) {
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
+  await page.getByRole('button', { name: 'Open Synthetic household', exact: true }).click();
   await openCareSection(page, 'Profile');
 }
 

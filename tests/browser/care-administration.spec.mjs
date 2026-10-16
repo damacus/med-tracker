@@ -12,7 +12,7 @@ async function signIn(page, email = 'persistence@example.test') {
 
 async function openAdministration(page) {
   await signIn(page);
-  await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
+  await page.getByRole('button', { name: 'Open Synthetic household', exact: true }).click();
   await openCareSection(page, 'Administration');
 }
 
@@ -32,7 +32,7 @@ test('household naming retains invalid drafts and immediately updates household 
   await expect(page.getByLabel('Household name', { exact: true })).toHaveValue('Synthetic renamed household');
   await page.screenshot({ path: info.outputPath(`loco-household-settings-${info.project.name}.png`), fullPage: true });
   await page.goto('/');
-  await expect(page.getByRole('link', { name: 'Synthetic renamed household', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open Synthetic renamed household', exact: true })).toBeVisible();
   expect([403, 404]).toContain((await page.request.get('/households/foreign-fixture/admin/household/edit', { maxRedirects: 0 })).status());
 });
 
@@ -77,7 +77,7 @@ test('carer relationships grant, revoke and restore access through the retained 
   const member = await memberContext.newPage();
   try {
     await signIn(member, 'administration-member@example.test');
-    await member.getByRole('link', { name: 'Synthetic household', exact: true }).click();
+    await member.getByRole('button', { name: 'Open Synthetic household', exact: true }).click();
     await openCareSection(member, 'People');
     await member.getByRole('link', { name: 'Synthetic minor', exact: true }).click();
     const patientUrl = member.url();

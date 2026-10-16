@@ -9,7 +9,7 @@ async function openMedication(page) {
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
+  await page.getByRole('button', { name: 'Open Synthetic household', exact: true }).click();
   await page.getByRole('link', { name: 'Synthetic tablets', exact: true }).click();
 }
 
@@ -46,7 +46,7 @@ test('first recordable treatment receives focus when an earlier source is view o
   await page.getByLabel('Email address', { exact: true }).fill('administration-member@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
+  await page.getByRole('button', { name: 'Open Synthetic household', exact: true }).click();
   await page.getByRole('link', { name: 'Synthetic tablets', exact: true }).click();
   await page.getByRole('button', { name: 'Record dose', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Record dose', exact: true });
@@ -352,7 +352,7 @@ test('review: view-only stock adjustment denial shows a page-level alert', async
   await page.getByLabel('Email address', { exact: true }).fill('administration-member@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
+  await page.getByRole('button', { name: 'Open Synthetic household', exact: true }).click();
   await page.getByRole('link', { name: 'Synthetic tablets', exact: true }).click();
   const refill = page.locator('#refill-inventory-dialog form');
   const fields = await refill.evaluate(element => Object.fromEntries(new FormData(element)));
@@ -857,7 +857,7 @@ test('visible view-only carer may refill but loses that access when the grant en
   await page.getByLabel('Email address', { exact: true }).fill('administration-member@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
+  await page.getByRole('button', { name: 'Open Synthetic household', exact: true }).click();
   await page.getByRole('link', { name: 'Synthetic tablets', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Adjust stock', exact: true })).toHaveCount(0);
   const forbiddenDestroy = await page.request.post('/households/persistence-fixture/medications/80001/destroy', {

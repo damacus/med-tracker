@@ -9,7 +9,7 @@ test('medication dose options can be created, edited and removed with correct st
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
+  await page.getByRole('button', { name: 'Open Synthetic household', exact: true }).click();
   await page.getByRole('link', { name: 'Synthetic tablets', exact: true }).click();
   const medicationUrl = page.url();
   await page.getByRole('link', { name: 'Edit Medication', exact: true }).click();

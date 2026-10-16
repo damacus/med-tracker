@@ -9,7 +9,7 @@ test('each permitted person has an independent dose form and submitted draft', a
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
+  await page.getByRole('button', { name: 'Open Synthetic household', exact: true }).click();
   await page.getByRole('link', { name: 'Synthetic tablets', exact: true }).click();
   await page.getByRole('button', { name: 'Record dose', exact: true }).click();
   const adult = page.getByRole('form', { name: /Synthetic adult.*Synthetic tablets.*2 tablets.*Ongoing medication/ });

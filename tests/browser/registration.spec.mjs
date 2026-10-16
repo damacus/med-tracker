@@ -26,7 +26,7 @@ async function createAndVerify(page, fixture, info) {
   expect(clinical.status()).toBe(303);
   expect(clinical.headers().location).toBe('/login');
   await page.goto('/');
-  await expect(page.getByRole('link', { name: 'Synthetic registration Household', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Open Synthetic registration Household', exact: true })).toHaveCount(0);
   const messages = async () => {
     const response = await fetch(`${fixture.mailpitUrl}/api/v1/messages?limit=50`);
     expect(response.ok).toBe(true);
@@ -48,7 +48,7 @@ async function createAndVerify(page, fixture, info) {
   await page.getByLabel('I have saved my recovery codes', { exact: true }).check();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await page.waitForURL('/');
-  await page.getByRole('link', { name: 'Synthetic registration Household', exact: true }).click();
+  await page.getByRole('button', { name: 'Open Synthetic registration Household', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Medications', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Add Medication', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'My Account', exact: true }).click();

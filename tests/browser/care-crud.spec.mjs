@@ -9,7 +9,7 @@ test('medication creation, stale editing and guarded deletion work through real 
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
+  await page.getByRole('button', { name: 'Open Synthetic household', exact: true }).click();
   await expect(page.getByRole('link', { name: 'Add Medication', exact: true })).toBeVisible({ timeout: 5000 });
   await page.getByRole('link', { name: 'Add Medication', exact: true }).click();
   await page.getByLabel('Name', { exact: true }).fill('Synthetic browser medicine');

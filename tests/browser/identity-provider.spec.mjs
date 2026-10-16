@@ -41,7 +41,7 @@ test('verified ZITADEL login links an existing local account and preserves local
   await page.goto('/login');
   await page.getByRole('button', { name: 'Sign in with ZITADEL', exact: true }).click();
   await page.waitForURL('/');
-  await expect(page.getByRole('link', { name: 'Synthetic household', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open Synthetic household', exact: true })).toBeVisible();
   expect(careFixture.provider.observations).toMatchObject({ pkce: true, nonce: true, codeFlow: true });
   await page.goto('/account/security');
   await expect(page.getByText('ZITADEL: linked', { exact: true })).toBeVisible();
@@ -55,7 +55,7 @@ test('verified ZITADEL login links an existing local account and preserves local
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.waitForURL('/');
-  await expect(page.getByRole('link', { name: 'Synthetic household', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open Synthetic household', exact: true })).toBeVisible();
 });
 
 test('new ZITADEL passkey choice cannot issue codes before a verified local ceremony', async ({ page, context, careFixture }) => {
