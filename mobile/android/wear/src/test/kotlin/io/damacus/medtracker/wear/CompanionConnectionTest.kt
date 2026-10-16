@@ -82,4 +82,27 @@ class CompanionConnectionTest {
         connection.discovery(emptySet(), emptySet())
         assertEquals(ConnectionState.PHONE_APP_MISSING, connection.state)
     }
+
+    @Test fun `schedule converges with active node and WearUiSpec enforces centered round display metrics`() {
+        val connection = CompanionConnection()
+        val schedule = CompanionSchedule(
+            people = listOf(PersonData("p-maya", "Maya (Child)", 1)),
+            medications = listOf(MedicationData("m-amox", "p-maya", "Amoxicillin", "250mg • 1 capsule", "due_now", "10:00 AM")),
+            publishedAt = 100L
+        )
+        connection.replaceStatuses(mapOf("phone" to payload(true)))
+        connection.replaceSchedules(mapOf("phone" to ScheduleProtocol.encode(schedule)))
+        connection.discovery(phone, phone)
+        assertEquals("phone", connection.activeNode)
+        assertEquals(schedule, connection.currentSchedule)
+
+        assertEquals(android.view.Gravity.CENTER, WearUiSpec.ACTION_BUTTON_GRAVITY)
+        assertEquals(3, WearUiSpec.CHIP_MAX_LINES)
+        assertEquals(20, WearUiSpec.CONTAINER_HORIZONTAL_PAD_DP)
+        assertEquals(36, WearUiSpec.CONTAINER_VERTICAL_PAD_DP)
+        assertEquals(
+            "250mg • 1 capsule\nDue now",
+            formatMedicationSubtitle(schedule.medications.first(), "Due now", "As needed")
+        )
+    }
 }

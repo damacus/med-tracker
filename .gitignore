@@ -77,6 +77,8 @@ vendor/**/*
 /mobile/android/**/build/
 /mobile/android/local.properties
 /mobile/android/.idea/
+/.idea/
+/.serena/
 /mobile/android/*.iml
 /rust/api/target/
 /docs/plans/axum-leptos-port/next-slices/evidence/
