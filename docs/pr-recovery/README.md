@@ -63,3 +63,22 @@ must follow the current repository's skill-source policy.
 Reconcile each departure against current code, retain unresolved items in the
 existing Loco audit issue, and build the resulting documentation. Do not mark the
 audit complete merely because the obsolete documentation PR is closed.
+
+## PR 2733: client quality gates carried forward
+
+Source head: `8e84c685a130afe3daefaa854220e4289f0cd3a8`.
+Destination: [active PR 2735](https://github.com/damacus/med-tracker/pull/2735),
+published checkpoint `b2a9bb34b850becde4092c7c962d20f7f9e5214f`.
+
+A direct Git tree comparison found no differences in the entire `client-tools/`
+tree, `deny.toml`, `scripts/ci/policy.json` or
+`scripts/ci/tests/client_tools_gate.test.mjs`. The Mise differences are older
+OpenSpec/root runtime configuration, not additional client quality behaviour.
+Keep the newer root configuration and installer correction in the active PR.
+
+The commit histories differ, so ancestry alone did not prove duplication.
+The content comparison establishes that the client implementation has already
+moved to the active delivery. Its full client-tools gate also passed in the
+isolated household repair checkout. This does not make the entire household PR
+accepted. Retain the original branch and commit for provenance; do not merge the
+older shared configuration back over the active work.
