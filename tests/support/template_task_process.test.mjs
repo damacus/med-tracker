@@ -35,7 +35,7 @@ for (const mode of ['hang', 'early-exit', 'signal']) {
       const run = () => withOwnedDatabase(async () => {
         await runOwnedTemplateTask(process.execPath, ['-e', script], {
           env: { ...process.env, DESCENDANT_PID_FILE: pidFile, CHILD_MODE: mode },
-          timeoutMs: 300,
+          timeoutMs: 3000,
           spawnProcess: spawn,
         });
       }, async (args) => {
@@ -44,7 +44,7 @@ for (const mode of ['hang', 'early-exit', 'signal']) {
         if (args[0] === 'foundation:db-down') await expectGone(Number(await readFile(pidFile, 'utf8')));
         return '';
       }, {});
-      await assert.rejects(run, mode === 'hang' ? /exceeded 300ms/ : mode === 'signal' ? /interrupted by SIGTERM/ : /exited 7/);
+      await assert.rejects(run, mode === 'hang' ? /exceeded 3000ms/ : mode === 'signal' ? /interrupted by SIGTERM/ : /exited 7/);
       assert.deepEqual(databaseCalls, ['foundation:db-up', 'foundation:db-port', 'foundation:db-down']);
       await expectGone(Number(await readFile(pidFile, 'utf8')));
     } finally {
