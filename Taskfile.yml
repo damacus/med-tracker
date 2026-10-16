@@ -174,9 +174,17 @@ tasks:
   check:
     desc: Check Loco targets
     cmds: [cargo check --locked --all-targets]
+  machete:
+    desc: Check direct dependencies of every active Rust workspace member
+    cmds: [node scripts/migration/check-unused-deps.mjs]
+  machete:test:
+    desc: Test the workspace unused-dependency gate
+    cmds: [node --test scripts/migration/check-unused-deps.test.mjs]
   lint:
     desc: Lint Loco
-    cmds: [cargo clippy --locked --all-targets -- -D warnings]
+    cmds:
+      - cargo clippy --locked --all-targets -- -D warnings
+      - task: machete
   lint:fix:
     desc: Apply safe Loco Clippy suggestions
     cmds: [cargo clippy --locked --all-targets --fix --allow-dirty --allow-staged -- -D warnings]
@@ -198,6 +206,7 @@ tasks:
     desc: Run Rust library, JavaScript, test-runner and owned PostgreSQL template tests
     cmds:
       - task: ci:test
+      - task: machete:test
       - task: frontend:test
       - task: slice:test-runner
       - task: foundation:test-cleanup
