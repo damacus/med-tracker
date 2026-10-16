@@ -12,11 +12,17 @@ if (version !== 'cargo-llvm-cov 0.9.1') {
   process.stderr.write('cargo-llvm-cov 0.9.1 is required; run task coverage:install explicitly.\n');
   process.exitCode = 1;
 } else {
-  const components = output('rustup', ['component', 'list', '--installed']);
-  if (!components?.split('\n').some(line => line.startsWith('llvm-tools-'))) {
-    process.stderr.write('The active Rust toolchain needs llvm-tools-preview; run task coverage:install explicitly.\n');
+  const nextest = output('cargo', ['nextest', '--version']);
+  if (!/^cargo-nextest 0\.9\.148(?:\s|$)/.test(nextest ?? '')) {
+    process.stderr.write('cargo-nextest 0.9.148 is required for Rust coverage.\n');
     process.exitCode = 1;
   } else {
-    process.stdout.write(`${version}\n${components.split('\n').find(line => line.startsWith('llvm-tools-'))}\n`);
+    const components = output('rustup', ['component', 'list', '--installed']);
+    if (!components?.split('\n').some(line => line.startsWith('llvm-tools-'))) {
+      process.stderr.write('The active Rust toolchain needs llvm-tools-preview; run task coverage:install explicitly.\n');
+      process.exitCode = 1;
+    } else {
+      process.stdout.write(`${version}\n${nextest}\n${components.split('\n').find(line => line.startsWith('llvm-tools-'))}\n`);
+    }
   }
 }

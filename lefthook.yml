@@ -1,54 +1,52 @@
 ---
-pre-push:
-  parallel: true
-  jobs:
-    - name: protect-main
-      run: |
-        current_branch=$(git rev-parse --abbrev-ref HEAD)
-        if [ "$current_branch" = "main" ]; then
-          echo "❌ Direct pushes to main are not allowed. Use a feature branch and PR."
-          exit 1
-        fi
-
-    - name: gems audit
-      tags:
-        - backend
-        - security
-      run: task rails:gems:audit
-
-    - name: rubocop
-      tags:
-        - backend
-        - linting
-      glob: "rails/**/*.rb"
-      run: task rails:rubocop
-
-    - name: rspec
-      tags:
-        - backend
-        - testing
-      glob: "rails/**/*.rb"
-      run: |
-        echo "🧪 Running RSpec tests..."
-        if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
-          task rails:test
-        else
-          echo "⚠️  Docker not available, skipping RSpec tests"
-          echo "Please start Docker daemon to run full test suite"
-        fi
+glob_matcher: doublestar
 
 pre-commit:
-  parallel: true
   jobs:
-    - name: translator
+    - name: rust-format
       glob:
-        - "rails/config/locales/**/*.yml"
-        - "rails/app/components/ruby_ui/typography/**/*.rb"
-      run: task translator:hook
+        - "{src,tests,migration}/**/*.rs"
+        - "client-tools/**/*.rs"
+        - "Cargo.{toml,lock}"
+        - "client-tools/**/Cargo.{toml,lock}"
+        - "build.rs"
+      run: task fmt client-tools:fmt:check
 
-    - name: rubocop
-      glob: "rails/**/*.rb"
+pre-push:
+  piped: true
+  jobs:
+    - name: protect-main
+      run: >-
+        fish --no-config -c 'if test (git branch --show-current) = main;
+        echo "Direct pushes to main are not allowed. Use a feature branch and PR." >&2;
+        exit 1; end'
+    - name: loco-quality
+      glob:
+        - "{src,tests,migration,assets,config}/**"
+        - "scripts/{migration,ci,frontend}/**"
+        - "Taskfiles/{ci,frontend,browser-care}.yml"
+        - "Cargo.{toml,lock}"
+        - "build.rs"
+        - "package{,-lock}.json"
+        - "playwright.config.mjs"
+        - "scripts/build-scanner.mjs"
+        - ".cargo/**"
+        - "rust-toolchain{,.toml}"
+        - ".github/workflows/ci.yml"
+        - "docs/api/openapi.v1.yaml"
+        - "Taskfile.yml"
+        - "{mise,deny}.toml"
+        - "lefthook.yml"
       exclude:
-        - rails/config/application.rb
-        - rails/config/routes.rb
-      run: task rails:rubocop
+        - "**/*.md"
+      run: task ci
+    - name: client-tools-quality
+      glob:
+        - "client-tools/**"
+        - "{mise,deny}.toml"
+        - "lefthook.yml"
+        - ".github/workflows/{ci,client-tools-release}.yml"
+        - "docs/api/openapi.v1.yaml"
+      exclude:
+        - "**/*.md"
+      run: task client-tools:ci

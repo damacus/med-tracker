@@ -225,6 +225,10 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes fish uuid-runtime ripgrep
+      - name: Install pinned nextest for coverage
+        uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8
+        with:
+          tool: cargo-nextest@0.9.148
       - run: task coverage:install
       - name: Measure Rust unit and API coverage
         run: task test:coverage
