@@ -13,7 +13,12 @@
     <ul class="flex flex-col gap-4 mt-4">
     {% for household in households %}
       <li class="card shell-card"><div class="card-body">
-        <h3 class="card-title"><a class="link" href="/households/{{ household.slug }}/medications">{{ household.name }}</a></h3>
+        <h3 class="card-title">{{ household.name }}</h3>
+        <form method="post" action="/households/select">
+          <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+          <input type="hidden" name="household_id" value="{{ household.id }}">
+          <button class="btn btn-neutral" type="submit" aria-label="Open {{ household.name }}">Open household</button>
+        </form>
       </div></li>
     {% else %}<li>You do not have an active household membership.</li>{% endfor %}
     </ul>

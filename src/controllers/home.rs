@@ -1,11 +1,15 @@
 use crate::models::identity::{browser, resource::AuthenticationError};
+use crate::models::ids::HouseholdId;
 use axum::{
-    extract::FromRequestParts,
+    Extension,
+    extract::{Form as AxumForm, FromRequestParts},
     http::{StatusCode, header},
     response::IntoResponse,
 };
+use axum_csrf::CsrfToken;
 use axum_session::Session;
 use axum_session_sqlx::SessionPgPool;
+use better_auth_core::store::SessionStore;
 use loco_rs::prelude::*;
 
 pub async fn index(
@@ -14,6 +18,7 @@ pub async fn index(
         Session<SessionPgPool>,
         <Session<SessionPgPool> as FromRequestParts<AppContext>>::Rejection,
     >,
+    token: std::result::Result<CsrfToken, <CsrfToken as FromRequestParts<AppContext>>::Rejection>,
     ViewEngine(view): ViewEngine<TeraView>,
 ) -> Response {
     let mut households = Vec::new();
@@ -43,6 +48,18 @@ pub async fn index(
             }
         }
     }
+    let authenticity_token = if signed_in {
+        match token
+            .as_ref()
+            .ok()
+            .and_then(|token| token.authenticity_token().ok())
+        {
+            Some(value) => value,
+            None => return unavailable(),
+        }
+    } else {
+        String::new()
+    };
     match format::render().view(
         &view,
         "home/index.html",
@@ -52,6 +69,7 @@ pub async fn index(
             "signed_in": signed_in,
             "auth_notice": auth_notice,
             "households": households,
+            "authenticity_token": authenticity_token,
             "appearances": [
                 {"id": "light", "label": "Light"},
                 {"id": "dark", "label": "Dark"},
@@ -71,7 +89,100 @@ pub async fn index(
             ]
         }),
     ) {
-        Ok(response) => ([(header::CACHE_CONTROL, "no-store")], response).into_response(),
+        Ok(response) => match token {
+            Ok(token) => (token, [(header::CACHE_CONTROL, "no-store")], response).into_response(),
+            Err(_) => ([(header::CACHE_CONTROL, "no-store")], response).into_response(),
+        },
         Err(error) => error.into_response(),
     }
+}
+
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Selection {
+    household_id: String,
+    authenticity_token: String,
+}
+
+pub async fn select(
+    State(ctx): State<AppContext>,
+    Extension(service): Extension<crate::models::identity::better_auth::IdentityService>,
+    session: Session<SessionPgPool>,
+    token: CsrfToken,
+    form: std::result::Result<AxumForm<Selection>, axum::extract::rejection::FormRejection>,
+) -> Response {
+    let AxumForm(form) = match form {
+        Ok(form) => form,
+        Err(error) => return ([(header::CACHE_CONTROL, "no-store")], error).into_response(),
+    };
+    if token.verify(&form.authenticity_token).is_err() {
+        return forbidden();
+    }
+    let principal =
+        match browser::authenticate(&ctx.db, &session, ctx.config.settings.as_ref()).await {
+            Ok(principal) => principal,
+            Err(error) => return authentication_error(error),
+        };
+    let households = match principal.households(&ctx.db).await {
+        Ok(households) => households,
+        Err(error) => return authentication_error(error),
+    };
+    let Ok(household_id) = form.household_id.parse::<HouseholdId>() else {
+        return (StatusCode::NOT_FOUND, [(header::CACHE_CONTROL, "no-store")]).into_response();
+    };
+    let Some(household) = households
+        .iter()
+        .find(|household| household.id == household_id.get())
+    else {
+        return (StatusCode::NOT_FOUND, [(header::CACHE_CONTROL, "no-store")]).into_response();
+    };
+    let selected = service
+        .store
+        .update_session_active_organization(
+            principal.session_token(),
+            Some(&household_id.to_string()),
+        )
+        .await;
+    match selected {
+        Ok(_) => (
+            StatusCode::SEE_OTHER,
+            [
+                (
+                    header::LOCATION,
+                    format!("/households/{}/medications", household.slug),
+                ),
+                (header::CACHE_CONTROL, "no-store".to_owned()),
+            ],
+        )
+            .into_response(),
+        Err(error) => (
+            StatusCode::from_u16(error.status_code()).unwrap_or(StatusCode::SERVICE_UNAVAILABLE),
+            [(header::CACHE_CONTROL, "no-store")],
+        )
+            .into_response(),
+    }
+}
+
+fn forbidden() -> Response {
+    (StatusCode::FORBIDDEN, [(header::CACHE_CONTROL, "no-store")]).into_response()
+}
+
+fn unavailable() -> Response {
+    (
+        StatusCode::SERVICE_UNAVAILABLE,
+        [(header::CACHE_CONTROL, "no-store")],
+    )
+        .into_response()
+}
+
+fn authentication_error(error: AuthenticationError) -> Response {
+    let status = match error {
+        AuthenticationError::Unauthenticated => StatusCode::UNAUTHORIZED,
+        AuthenticationError::Forbidden | AuthenticationError::InsufficientScope { .. } => {
+            StatusCode::FORBIDDEN
+        }
+        AuthenticationError::NotFound => StatusCode::NOT_FOUND,
+        AuthenticationError::Unavailable => StatusCode::SERVICE_UNAVAILABLE,
+    };
+    (status, [(header::CACHE_CONTROL, "no-store")]).into_response()
 }

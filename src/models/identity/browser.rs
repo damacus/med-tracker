@@ -114,6 +114,9 @@ impl BrowserPrincipal {
     pub fn account_id(&self) -> i64 {
         self.identity.account_id
     }
+    pub(crate) fn session_token(&self) -> &str {
+        &self.identity.registry_key
+    }
     pub fn provenance(&self) -> &CredentialProvenance {
         &self.provenance
     }
@@ -413,7 +416,16 @@ pub fn route_layers(
         Some(layers) => routes
             .layer(axum_session::SessionLayer::new(layers.store))
             .layer(axum_csrf::CsrfLayer::new(layers.csrf))
-            .layer(tower_http::csrf::CsrfLayer::new()),
+            .layer(
+                tower_http::csrf::CsrfLayer::new().with_rejection_response(|_| {
+                    use axum::response::IntoResponse;
+                    (
+                        axum::http::StatusCode::FORBIDDEN,
+                        [(axum::http::header::CACHE_CONTROL, "no-store")],
+                    )
+                        .into_response()
+                }),
+            ),
         None => routes,
     }
 }
