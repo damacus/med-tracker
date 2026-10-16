@@ -5,7 +5,7 @@ tasks:
     desc: Compile application and integration binaries once and prepare frontend assets
     run: once
     status:
-      - 'test "$LOCO_CI_ARTIFACT" = "1" && test -x target/ci/med-tracker && test -f target/ci/tests.json && test -f assets/static/css/compiled.css && test -f assets/static/js/html5-qrcode.min.js'
+      - 'test "$LOCO_CI_ARTIFACT" = "1" && test -x target/ci/med-tracker && test -f target/ci/loco-tests.tar.zst && test -f target/ci/tests.json && test -f assets/static/css/compiled.css && test -f assets/static/js/html5-qrcode.min.js'
     cmds:
       - task: :frontend:prepare
       - node scripts/ci/loco-build.mjs
@@ -47,6 +47,7 @@ tasks:
   test:
     desc: Test CI scripts with Node, without Rails or Docker
     cmds:
+      - task: :frontend:install
       - node --test "scripts/ci/tests/*.test.mjs"
 
   coverage:test:
