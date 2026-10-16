@@ -23,7 +23,12 @@ pub(crate) fn extract(
             .by_index(index)
             .map_err(|error| format!("ZIP extraction failed: {error}"))?;
         if let Some(pattern) = pattern {
-            if !wildcard_match(pattern, entry.name()) {
+            if !wildcard_match(
+                pattern,
+                &entry
+                    .name()
+                    .map_err(|error| format!("ZIP extraction failed: {error}"))?,
+            ) {
                 continue;
             }
         }
@@ -44,7 +49,12 @@ pub(crate) fn extract(
         let mut entry = archive
             .by_index(index)
             .map_err(|error| format!("ZIP extraction failed: {error}"))?;
-        let target = destination.join(entry.name());
+        let target = destination.join(
+            entry
+                .name()
+                .map_err(|error| format!("ZIP extraction failed: {error}"))?
+                .as_ref(),
+        );
         if entry.is_dir() {
             std::fs::create_dir_all(&target)
                 .map_err(|error| format!("ZIP extraction failed: {error}"))?;
@@ -64,8 +74,10 @@ pub(crate) fn extract(
 }
 
 fn validate_entry(entry: &zip::read::ZipFile<File>) -> Result<(), String> {
-    let name = entry.name();
-    if unsafe_name(name)
+    let name = entry
+        .name()
+        .map_err(|error| format!("ZIP extraction failed: {error}"))?;
+    if unsafe_name(&name)
         || entry
             .unix_mode()
             .is_some_and(|mode| mode & MODE_MASK == SYMLINK_MODE)
