@@ -14,9 +14,14 @@ pub(in crate::models::identity) async fn record(
         ))
         .await
         .map_err(unavailable)?;
-    let actor = transaction.query_one_raw(sql("SELECT p.household_id,u.id AS user_id FROM people p LEFT JOIN users u ON u.person_id=p.id WHERE p.account_id=$1 ORDER BY p.id LIMIT 1", [account_id.into()])).await.map_err(unavailable)?.ok_or(AuthenticationError::Unauthenticated)?;
-    let user_id: Option<i64> = actor.try_get("", "user_id").map_err(unavailable)?;
-    let household_id: Option<i64> = actor.try_get("", "household_id").map_err(unavailable)?;
+    let actor = transaction.query_one_raw(sql("SELECT p.household_id,u.id AS user_id FROM people p LEFT JOIN users u ON u.person_id=p.id WHERE p.account_id=$1 ORDER BY p.id LIMIT 1", [account_id.into()])).await.map_err(unavailable)?;
+    let (user_id, household_id): (Option<i64>, Option<i64>) = match actor {
+        Some(actor) => (
+            actor.try_get("", "user_id").map_err(unavailable)?,
+            actor.try_get("", "household_id").map_err(unavailable)?,
+        ),
+        None => (None, None),
+    };
     let event = format!("auth_token/{token_type}/{action}");
     let mut metadata =
         serde_json::json!({"account_id":account_id,"token_type":token_type,"action":action});

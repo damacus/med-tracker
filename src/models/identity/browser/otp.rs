@@ -54,7 +54,7 @@ pub(super) async fn pending(
         .get::<PasswordVerified>("otp_pending")
         .ok_or(AuthenticationError::Unauthenticated)?;
     let transaction = transaction(db).await?;
-    access::verify_account_actor(&transaction, pending.account_id)
+    access::verify_account(&transaction, pending.account_id)
         .await
         .map_err(super::super::resource::operation_error)?;
     let row = transaction

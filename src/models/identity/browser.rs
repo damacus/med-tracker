@@ -217,7 +217,7 @@ async fn validate(
     if valid.is_none() {
         return Err(AuthenticationError::Unauthenticated);
     }
-    access::verify_account_actor(transaction, identity.account_id)
+    access::verify_account(transaction, identity.account_id)
         .await
         .map_err(super::resource::operation_error)?;
     account::Entity::find_by_id(identity.account_id)
@@ -293,7 +293,7 @@ pub(super) async fn complete_primary_authentication(
     session: &Session<SessionPgPool>,
     account_id: i64,
 ) -> Result<SignInOutcome, AuthenticationError> {
-    access::verify_account_actor(&transaction, account_id)
+    access::verify_account(&transaction, account_id)
         .await
         .map_err(super::resource::operation_error)?;
     let factor = transaction.query_one_raw(sql("SELECT EXISTS (SELECT 1 FROM account_otp_keys WHERE id=$1) AS otp, EXISTS (SELECT 1 FROM account_webauthn_keys WHERE account_id=$1) AS passkey, timezone('UTC',clock_timestamp()) AS authenticated_at", [account_id.into()])).await.map_err(unavailable)?.ok_or(AuthenticationError::Unavailable)?;

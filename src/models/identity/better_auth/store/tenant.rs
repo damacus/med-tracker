@@ -44,7 +44,7 @@ impl ClinicalStore {
         if account.is_none() {
             return Err(AuthError::Unauthenticated);
         }
-        access::verify_account_actor(&transaction, request.account_id)
+        access::verify_account(&transaction, request.account_id)
             .await
             .map_err(operation_error)?;
         let session = transaction.query_one_raw(statement("SELECT s.id FROM public.identity_sessions s JOIN public.accounts a ON a.id=s.account_id WHERE s.account_id=$1 AND s.token=$2 AND s.active AND s.purpose='authenticated' AND s.expires_at>CURRENT_TIMESTAMP AND a.status=2 FOR SHARE OF s", [request.account_id.into(), token_digest(&request.session_token).into()])).await.map_err(database_error)?;

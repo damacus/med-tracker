@@ -115,6 +115,9 @@ impl ClinicalStore {
                 &row.account_id.to_string(),
             )
             .await?;
+            crate::models::access::verify_account(&transaction, row.account_id)
+                .await
+                .map_err(super::tenant::operation_error)?;
         }
         Ok((transaction, row))
     }
@@ -143,7 +146,7 @@ impl ClinicalStore {
         if account.is_none() {
             return Err(AuthError::Unauthenticated);
         }
-        crate::models::access::verify_account_actor(transaction, account_id)
+        crate::models::access::verify_account(transaction, account_id)
             .await
             .map_err(super::tenant::operation_error)?;
         transaction.execute_raw(statement("INSERT INTO public.identity_onboarding(account_id) VALUES($1) ON CONFLICT(account_id) DO NOTHING", [account_id.into()])).await.map_err(database_error)?;

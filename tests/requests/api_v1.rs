@@ -1,3 +1,5 @@
+#[path = "account_authentication.rs"]
+mod account_authentication;
 #[path = "account_preferences.rs"]
 mod account_preferences;
 #[path = "account_profile.rs"]

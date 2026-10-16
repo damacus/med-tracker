@@ -37,18 +37,27 @@ async fn account_creation_initialises_timezone_for_password_and_passkey_signup()
     .await
     .unwrap();
     transaction.commit().await.unwrap();
-    for email in ["password-owner@example.test", "passkey-owner@example.test"] {
+    for (email, name) in [
+        ("password-owner@example.test", "New household owner"),
+        ("passkey-owner@example.test", "Passkey household owner"),
+    ] {
         let row = fixture
             .admin
             .query_one_raw(Statement::from_sql_and_values(
                 DbBackend::Postgres,
-                "SELECT preferences->>'time_zone' AS zone FROM accounts WHERE email=$1",
+                "SELECT name,preferences->>'time_zone' AS zone FROM accounts WHERE email=$1",
                 [email.into()],
             ))
             .await
             .unwrap()
             .unwrap();
         let stored = row.try_get::<String>("", "zone").unwrap();
+        assert_eq!(
+            row.try_get::<Option<String>>("", "name")
+                .unwrap()
+                .as_deref(),
+            Some(name)
+        );
         let expected = std::env::var("TZ").unwrap_or_else(|_| "UTC".into());
         assert_eq!(stored.trim_start_matches("Etc/"), expected, "{email}");
     }
