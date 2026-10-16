@@ -250,7 +250,7 @@ export async function runSlice({ all = false, target, filter = '', includeIgnore
       const needsScannerStorage = all || (target === 'care_api' && (!filter || filter.includes('nhs_dmd')));
       const scannerEnvironment = needsScannerStorage ? await ownership.storage() : {};
       return await runCargo(args, url, { ...inheritedEnvironment, ...ownership.storageEnvironment, ...scannerEnvironment }, controller.signal, undefined, { executionProof, controlledCapture });
-    }, undefined, inheritedEnvironment, { storage: all || target === 'care_api' });
+    }, undefined, inheritedEnvironment, { storage: all || target === 'care_api' || target === 'requests' });
   } finally {
     process.off('SIGTERM', onTerm);
     process.off('SIGINT', onInt);

@@ -228,6 +228,7 @@ did not merge it. Its 1,499-line candidate and historical failures remain below.
 | [#2637](https://github.com/damacus/med-tracker/pull/2637): request IDs on rate-limit responses | `codex/s05-i01-account-sessions` | `adfe373fa79bd575d53db6b25f17e76f7600352a` | 399 | Reviewed; local CI and exact-head hosted checks pass |
 | [#2639](https://github.com/damacus/med-tracker/pull/2639): capability discovery | `codex/s05-i01-rate-request-ids` | `022854c80a921d2601970b5bad03ec8e950d6fd9` | 1,101 | Reviewed; local CI and exact-head hosted checks pass |
 | [#2640](https://github.com/damacus/med-tracker/pull/2640): household errors and UI privacy | `codex/s05-i01-capabilities` | `012e8cfe9b2e2555fedd3001213a877795aac4a4` | 990 | Reviewed; local CI and all 45 exact-head hosted checks completed successfully or skipped |
+| [#2641](https://github.com/damacus/med-tracker/pull/2641): People collection and writes | `codex/s05-i01-me-ui` | `4229289bdf729defa3b21bf5589a296c14c6924d` | 1,551 | Reviewed; local CI and all 45 exact-head hosted checks pass or skip |
 
 Stack `2634` is published; no layer is merged or deployed. Full local
 CI `61813` passed 111 units, 20 request cases, 508 care cases and all 744 browser
@@ -712,6 +713,104 @@ against the working diff, then reverse-applied only that patch. HEAD stayed
 `164129cf` and the checkout returned clean. This final progress update changes
 documentation only. Publication and exact-head hosted acceptance remain required;
 no merge, deployment or additional complete-operation credit is claimed.
+
+People PR #2641 is published in stack `2634`, clean and pushed. Exact-head hosted
+run `38642987849` completed with 31 successful and 14 skipped checks. CI Success
+`116128762620`, strict lint, generated-client, Swift, Kotlin, Android and coverage
+checks passed. Hosted Devin Review passed; its pagination comment was clarified
+against the exact schema-only proof and the separately executed care pagination
+test, then its exact thread was verified resolved. No code or acceptance credit
+changed. Artifact attachment again failed because the app tool could not load.
+Coverage artifact `11930924743` has verified SHA-256
+`aefda01a051137142c7d105dbebb677e2a13ff37885b3bbbbdc7eafac639e37c`.
+Its clean merge revision `ab979092` has the same tree as published `4229289b`.
+The combined suite now covers 7/7 instrumented lines of `resource::operation_error`;
+this is not all critical application logic. Retained me/UI additions remain 5/7,
+with two defensive adapters uncovered. Raw API coverage is 92.41%, models 73.53%
+and general source 63.65%, including inline tests; remaining targets are explicit.
+
+The next isolated `codex/s05-i01-profile` branch follows published `4229289b`.
+Its single API writer owned profile/avatar tests and their narrow implementation,
+then explicitly transferred the frozen files to the coordinator for evidence and
+integration. The verifier owns the serial build lane and disposable resources.
+The six-operation profile/avatar journey fits one bounded PR; it retains existing
+socket-level storage/retirement tests and adds full-boot TestServer acceptance.
+
+Runner RED `92059` passed 47 cases and failed the new storage-provisioning case:
+requests started PostgreSQL without the existing owned RustFS service. The narrow
+correction selects existing storage for requests. Intermediate `79393` proved
+that regression fixed but exposed two old cleanup-sequence expectations; updating
+those expectations preserved unrelated-resource and cleanup assertions. Final
+runner `61210` passed all 48 cases, including success and failing-Cargo cleanup.
+No new application runner or database credential path was introduced.
+
+Profile `85092` compiled ten cases: seven aborted on a test-only nonexistent
+`api_idempotency_keys.path` column, so those are not behavioural RED. The fixture
+now uses preserved `request_path`. Source-backed test corrections account for
+recorded denial audits and required DOB; missing-DOB 422 remains an explicit case.
+Avatar `8111` passed five and failed two raw-upload-byte assumptions: production
+intentionally normalises PNG encoding. Independent format, dimensions and RGBA
+checks now verify image preservation without deriving expectations from production.
+Avatar `13691` passed all seven actual owned-storage request cases.
+
+Accurate profile RED `98547` passed two and failed eight on missing private headers
+and replay/internal-error metadata. The correction applies the existing no-store
+response layer to the profile MethodRouter, covering authentication/permission
+errors as well as successes. It adds existing idempotency-key/409 definitions to
+PATCH/PUT and existing 500 ErrorEnvelope definitions to GET/PATCH/PUT, preserving
+runtime statuses, permissions and audit behaviour. No shared header promise changed.
+Final profile `81908` passed all ten cases; inventory `97568` passed 98 with final
+completion ignored; strict all-target lint `81559` passed. Generated-client verify
+`19154`, Swift `63166` and Kotlin `39832` passed, with native pins unchanged.
+Logs remain under `/private/tmp/s05-i01-evidence/profile-*` and `avatar-*`.
+Source commit `4bd788c1592a29b505217a4e92e4e2a6116bf0d8` pins the tested behaviour
+before evidence promotion. On that committed source, fresh existing care-profile
+job `37711` passed all 16 selected tests and care-avatar job `20183` passed all 15.
+Both owned fixtures cleaned up. The source diff is 1,253 lines against published
+People `4229289b`; no native pins changed. The API writer transferred source,
+evidence and runner ownership to the coordinator after their frozen corrections.
+Evidence guard RED `23814` compiled and executed its one selected test, rejecting
+the proposed profile proof before inventory promotion. This was an assertion
+failure, not a compiler or fixture failure. The guard pins the six operation rows
+to source `4bd788c`; model-only Gravatar coverage is excluded from route credit.
+Guard GREEN `20748` passed its one selected test. Full inventory `23533` passed
+99 tests with one ignored and one filtered; runner fixtures `55614` passed 48/48.
+The six new partial rows require 17 exact request and 30 route-relevant care test
+identities. Their gaps retain malformed household-ID handling, profile write
+foreign/absent targets, PUT malformed JSON and overlap, and JPEG/WebP acceptance.
+The ledger is now five complete, 13 partial and 104 unverified; 117 operations
+still fail final completion. Runtime and request cases remain identical to `4bd788c`.
+Strict lint `79296` rejected only the new guard's complex tuple annotation and
+unnecessary borrow. The test-only correction names the proof slice type and
+passes the existing document reference directly; formatting passes. No runtime,
+contract, proof assertions or inventory values changed for this correction.
+Corrected all-target lint `90937` passes; the final focused guard `25342` passes
+its one test. Dispatcher `44888` executed 99 passing request checks and 524 passing
+care tests with two ignored. Its final selection passed 99 and failed only
+`api_v1::acceptance`, correctly rejecting all 117 incomplete operations.
+
+Frozen candidate `f4feb6224ccf9b0d9d029f52c219a23b2c9403f5` has 1,748 changed lines
+against published People `4229289b`. Independent Devin job `42687`, session
+`florentine-trunk`, model SWE-2 Max, accepted it in nine steps without required
+corrections. Review packet SHA-256:
+`bee743c38990850aac33b933879a039d3b4ce1ebb3417697aa650ad069656e77`.
+Full `task ci` job `6669` passed on that exact candidate: policy 138, runner 48,
+Rust units 115, requests 99 with two ignored, care 508 with two ignored and 16
+filtered, all other integration binaries and 744 desktop/mobile browser cases
+(19.3 minutes). Owned fixtures cleaned up and no Task job remains live.
+The 40 generated screenshot changes were preserved as
+`/private/tmp/s05-i01-evidence/profile-avatar-ci-f4feb622-screenshots.patch`, SHA-256
+`c75a429ffab53e3b3be7ad5bed9b0f506bd28c954957775c16961f50d74648d6`.
+The coordinator verified the exact paths, current hashes and binary patch before
+reversing only that patch; all 1,141 pre-CI screenshot hashes match again.
+
+The coordinator owns integration/publication, Sol owns implementation/tests, and
+the verifier owns disposable fixtures and the serial build lane. Publication and
+exact-head hosted acceptance remain required. All seven published layers remain
+unmerged and undeployed. Whole-API acceptance still rejects 117 incomplete operations.
+The next three-operation settings draft is isolated on
+`codex/s05-i01-household-settings`: 13 request cases, no production or contract
+changes, awaiting its first executed RED after the verification lane is released.
 
 Entries below retain historical revisions, failed attempts and publication states.
 

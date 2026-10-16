@@ -38,6 +38,7 @@ if (command === 'docker') {
   state.owned_endpoint_used = process.env.DATABASE_URL === 'postgres://medtracker:medtracker_password@127.0.0.1:54321/medtracker_loco';
   state.owned_storage_used = process.env.S3_ENDPOINT === 'http://127.0.0.1:54322' && process.env.S3_BUCKET === 'scanner-fixture' && process.env.AWS_ACCESS_KEY_ID === 'storage-smoke-access' && process.env.MEDTRACKER_OWNED_STORAGE === '1';
   state.owned_storage_endpoint_used = process.env.ACTIVE_STORAGE_S3_ENDPOINT === 'http://127.0.0.1:54322';
+  state.owned_avatar_storage_used = state.owned_storage_endpoint_used && process.env.ACTIVE_STORAGE_SERVICE === 's3' && process.env.ACTIVE_STORAGE_S3_BUCKET === 'medtracker-fixture' && process.env.ACTIVE_STORAGE_S3_REGION === 'us-east-1' && process.env.ACTIVE_STORAGE_S3_ACCESS_KEY_ID === 'storage-smoke-access' && process.env.ACTIVE_STORAGE_S3_SECRET_ACCESS_KEY === 'storage-smoke-secret' && process.env.ACTIVE_STORAGE_S3_FORCE_PATH_STYLE === 'true';
   state.child_identity_key_synthetic = process.env.MEDTRACKER_SESSION_KEY === Buffer.alloc(64, 7).toString('base64');
   state.child_verification_key_synthetic = process.env.RAILS_SECRET_KEY_BASE === 'synthetic-slice-rails-verification-secret';
   state.child_compose_environment_removed = ['COMPOSE_FILE', 'COMPOSE_PROJECT_NAME', 'COMPOSE_PROFILES'].every(name => process.env[name] === undefined);
@@ -163,6 +164,20 @@ test('scanner import tests provision owned object storage and clean it on failur
   },'slice:test',['TARGET=care_api','FILTER=nhs_dmd']);
 });
 
+test('request acceptance provisions owned avatar storage and removes it on success or failure', async () => {
+  for (const exitCode of [0, 42]) {
+    await withProcessFixture(exitCode, (result, state) => {
+      assert.equal(result.status === 0, exitCode === 0, result.stderr);
+      assert.equal(state.owned_avatar_storage_used, true, `requests need owned avatar storage: ${JSON.stringify(state.calls)}`);
+      const docker = state.calls.filter(call => call.command === 'docker');
+      assert.ok(docker.some(call => call.operation === 'up' && call.args.includes('rustfs')));
+      assert.ok(docker.some(call => call.operation === 'down' && call.args.includes('--profile') && call.args.includes('fixture-storage') && call.args.includes('--volumes')));
+      assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
+      assert.equal(state.foreign_resources_touched, 0);
+    }, 'slice:contracts', ['GROUP=api-v1-inventory', 'FILTER=api_v1::avatar'], 0);
+  }
+});
+
 test('fixture and Cargo subprocesses remove ambient Docker endpoint and credential settings', async () => {
   await withProcessFixture(0, (result, state) => {
     assert.equal(result.status, 0, result.stderr);
@@ -249,6 +264,23 @@ test('API v1 contract task selects the native request binary and focused filter'
 });
 
 const creditedRequestTests = [
+  'api_v1::avatar::avatar_malformed_multipart_does_not_replace_current_image',
+  'api_v1::avatar::avatar_methods_recheck_stale_permissions_and_membership',
+  'api_v1::avatar::avatar_methods_reject_wrong_namespace_scope_and_revoked_credentials',
+  'api_v1::avatar::avatar_methods_separate_own_foreign_absent_and_invalid_credentials',
+  'api_v1::avatar::avatar_methods_share_fixed_general_limit_without_storage_effects',
+  'api_v1::avatar::avatar_missing_owned_bucket_returns_declared_unavailable_without_attachment',
+  'api_v1::avatar::avatar_upload_download_delete_use_real_owned_storage_and_private_wire',
+  'api_v1::profile::patch_profile_replays_exact_key_and_rejects_changed_body',
+  'api_v1::profile::profile_audit_failure_hides_read_and_rolls_back_writes',
+  'api_v1::profile::profile_invalid_and_revoked_credentials_do_not_reveal_household',
+  'api_v1::profile::profile_permissions_and_membership_recheck_before_mutation',
+  'api_v1::profile::profile_rate_limit_rejects_without_mutation',
+  'api_v1::profile::profile_reads_scope_real_credentials_and_serialize_private_response',
+  'api_v1::profile::profile_rejects_smart_namespace_and_insufficient_mobile_scope',
+  'api_v1::profile::profile_write_methods_document_existing_keyed_conflict',
+  'api_v1::profile::profile_writes_save_allowed_fields_and_reject_security_fields_atomically',
+  'api_v1::profile::put_profile_replays_exact_key_and_rejects_changed_body',
   'api_v1::people::people_methods_reject_invalid_and_wrong_namespace_credentials_before_writes',
   'api_v1::people::revoked_credentials_and_withdrawn_membership_block_every_people_method',
   'api_v1::people::all_four_people_methods_share_fixed_general_limit_without_write_effects',
@@ -295,6 +327,36 @@ const creditedRequestTests = [
 ];
 
 const creditedCareTests = [
+  'avatar::avatar_failed_reply_cleanup_preserves_a_committed_attachment',
+  'avatar::avatar_failed_reply_cleanup_waits_for_pending_attachment_commit',
+  'avatar::avatar_read_prevents_content_sniffing',
+  'avatar::avatar_read_rejects_active_legacy_content_types_without_removing_attachment',
+  'avatar::avatar_read_rejects_legacy_non_image_bytes_without_deleting_attachment',
+  'avatar::avatar_retirement_enqueue_failure_preserves_current_attachment',
+  'avatar::avatar_retirement_worker_preserves_active_key_and_retries_removed_key_idempotently',
+  'avatar::concurrent_avatar_replace_and_remove_leave_one_consistent_attachment_after_retirement',
+  'avatar::profile_avatar_api_audit_failure_rolls_back_metadata_and_cleans_new_object',
+  'avatar::profile_avatar_api_rejects_bad_images_without_replacing_existing',
+  'avatar::profile_avatar_api_replacement_and_removal_queue_retired_objects_atomically',
+  'avatar::profile_avatar_api_storage_failure_keeps_existing_attachment',
+  'avatar::profile_avatar_api_updates_s3_primary_mirror_without_purging_unmigrated_services',
+  'avatar::profile_avatar_api_upload_read_replace_remove_and_recheck_access',
+  'profile::age_validation_ignores_existing_and_submitted_account_timezones',
+  'profile::current_person_profile_api_saves_nonsecurity_fields_and_preserves_omitted_values',
+  'profile::keyed_profile_update_replays_without_a_second_account_version',
+  'profile::membership_change_during_read_reports_forbidden_not_missing_profile',
+  'profile::overlapping_keyed_profile_and_notification_requests_replay_once_and_conflict',
+  'profile::personal_key_profile_and_preferences_overlap_and_revoked_keys_cannot_replay',
+  'profile::profile_and_notification_apis_reject_malformed_requests_without_writes',
+  'profile::profile_and_notification_apis_require_the_account_linked_membership_person',
+  'profile::profile_and_notification_apis_roll_back_mutations_when_request_audit_fails',
+  'profile::profile_and_notification_keyed_replays_reject_revoked_oauth_credentials',
+  'profile::profile_api_clears_stored_timezone_and_reads_legacy_gravatar_without_cache',
+  'profile::profile_api_rejects_invalid_and_security_fields_atomically_and_rechecks_grants',
+  'profile::profile_get_matches_documented_contract',
+  'profile::profile_requires_a_date_of_birth_and_rejects_incomplete_records_without_writes',
+  'profile::profile_write_does_not_deadlock_a_household_writer_recording_actor_audit',
+  'profile::simultaneous_profile_preferences_updates_preserve_both_supplied_fields',
   'account_sessions::audit_failure_rolls_back_revocation_and_logout_instead_of_returning_no_content',
   'account_sessions::logout_is_idempotent_and_revokes_each_presented_credential_kind',
   'account_sessions::revocation_audit_identifies_the_target_credential_and_actor_without_secrets',
@@ -413,7 +475,7 @@ test('closed contract output stops Cargo and cleans the owned database', async (
   await withProcessFixture(0, (result, state) => {
     assert.notEqual(result.status, 0, result.stderr);
     assert.match(result.stderr, /EPIPE|broken pipe/i);
-    assert.deepEqual(state.calls.filter(call => call.command === 'docker').map(call => call.operation), ['up', 'port', 'exec', 'down']);
+    assert.deepEqual(state.calls.filter(call => call.command === 'docker').map(call => call.operation), ['up', 'port', 'up', 'port', 'exec', 'down']);
     assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
     assert.equal(state.calls.filter(call => call.command === 'cargo').length, 1);
     assert.equal(state.calls.some(call => call.command === 'cargo' && call.args.includes('--include-ignored')), false);
@@ -426,7 +488,7 @@ test('readable Cargo output error cleans the owned database', async () => {
   await withProcessFixture(0, (result, state) => {
     assert.notEqual(result.status, 0, result.stderr);
     assert.match(result.stderr, /synthetic EIO/);
-    assert.deepEqual(state.calls.filter(call => call.command === 'docker').map(call => call.operation), ['up', 'port', 'exec', 'down']);
+    assert.deepEqual(state.calls.filter(call => call.command === 'docker').map(call => call.operation), ['up', 'port', 'up', 'port', 'exec', 'down']);
     assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
     assert.equal(state.calls.filter(call => call.command === 'cargo').length, 1);
     assert.equal(state.calls.some(call => call.command === 'cargo' && call.args.includes('--include-ignored')), false);
