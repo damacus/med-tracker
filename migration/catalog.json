@@ -1169,7 +1169,7 @@
     "storage": "p",
     "type": "bigint"
   },
-  "column:public.accounts.password_hash": {
+  "column:public.accounts.name": {
     "acl": null,
     "collation": "pg_catalog.default",
     "compression": "",
@@ -1182,6 +1182,19 @@
     "storage": "x",
     "type": "character varying"
   },
+  "column:public.accounts.password_hash": {
+    "acl": null,
+    "collation": "pg_catalog.default",
+    "compression": "",
+    "default": null,
+    "generated": "",
+    "identity": "",
+    "not_null": false,
+    "options": null,
+    "position": 5,
+    "storage": "x",
+    "type": "character varying"
+  },
   "column:public.accounts.preferences": {
     "acl": null,
     "collation": null,
@@ -1191,7 +1204,7 @@
     "identity": "",
     "not_null": true,
     "options": null,
-    "position": 5,
+    "position": 6,
     "storage": "x",
     "type": "jsonb"
   },
@@ -1204,7 +1217,7 @@
     "identity": "",
     "not_null": true,
     "options": null,
-    "position": 6,
+    "position": 7,
     "storage": "p",
     "type": "integer"
   },
@@ -1217,7 +1230,7 @@
     "identity": "",
     "not_null": true,
     "options": null,
-    "position": 7,
+    "position": 8,
     "storage": "p",
     "type": "timestamp(6) without time zone"
   },

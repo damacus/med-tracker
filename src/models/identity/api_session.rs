@@ -2,7 +2,7 @@ use axum::http::{HeaderMap, header};
 use headers::{Authorization, HeaderMapExt, authorization::Bearer};
 use sea_orm::{
     ColumnTrait, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, EntityTrait,
-    QueryFilter, QueryOrder, Statement, TransactionTrait,
+    QueryFilter, QueryOrder, QuerySelect, Statement, TransactionTrait,
     sea_query::{Expr, ExprTrait},
 };
 use sha2::{Digest, Sha256};
@@ -11,7 +11,7 @@ use super::resource::{self, AuthenticationError};
 use crate::models::{
     access::{self, Actor, HouseholdScope},
     care::doses::{CredentialMethod, CredentialProvenance},
-    entities::{account, api_app_token, api_session, membership, person},
+    entities::{account, api_app_token, api_session, household, membership, person},
     errors::OperationError,
 };
 
@@ -134,6 +134,51 @@ impl ApiSessionPrincipal {
 }
 
 impl StoredPrincipal {
+    pub(super) async fn revalidate_locked(
+        &self,
+        transaction: &DatabaseTransaction,
+        settings: Option<&serde_json::Value>,
+    ) -> Result<StoredAuthority, AuthenticationError> {
+        let initial = self.revalidate(transaction, settings).await?;
+        household::Entity::find_by_id(initial.household_id)
+            .lock_shared()
+            .one(transaction)
+            .await
+            .map_err(unavailable)?
+            .ok_or(AuthenticationError::Unauthenticated)?;
+        membership::Entity::find()
+            .filter(membership::Column::AccountId.eq(self.account_id))
+            .filter(membership::Column::HouseholdId.eq(initial.household_id))
+            .lock_shared()
+            .one(transaction)
+            .await
+            .map_err(unavailable)?
+            .ok_or(AuthenticationError::Unauthenticated)?;
+        match self.kind {
+            Kind::Session => {
+                api_session::Entity::find_by_id(self.id)
+                    .lock_shared()
+                    .one(transaction)
+                    .await
+                    .map_err(unavailable)?
+                    .ok_or(AuthenticationError::Unauthenticated)?;
+            }
+            Kind::App => {
+                api_app_token::Entity::find_by_id(self.id)
+                    .lock_shared()
+                    .one(transaction)
+                    .await
+                    .map_err(unavailable)?
+                    .ok_or(AuthenticationError::Unauthenticated)?;
+            }
+        }
+        let current = self.revalidate(transaction, settings).await?;
+        if current.household_id != initial.household_id {
+            return Err(AuthenticationError::Unauthenticated);
+        }
+        Ok(current)
+    }
+
     pub(super) fn provenance(&self) -> CredentialProvenance {
         CredentialProvenance {
             method: match self.kind {
@@ -287,6 +332,6 @@ async fn authority(
     })
 }
 
-fn unavailable(_: sea_orm::DbErr) -> AuthenticationError {
-    AuthenticationError::Unavailable
+fn unavailable(error: sea_orm::DbErr) -> AuthenticationError {
+    resource::operation_error(error.into())
 }

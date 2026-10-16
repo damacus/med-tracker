@@ -2,6 +2,251 @@ use super::*;
 
 type TestResult = std::result::Result<(), Box<dyn std::error::Error>>;
 
+async fn stored_session(fixture: &Fixture, token: &str) -> Result<i64, Box<dyn std::error::Error>> {
+    let digest = hex::encode(Sha256::digest(token.as_bytes()));
+    Ok(fixture.admin.query_one_raw(Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        "INSERT INTO api_sessions(account_id,household_membership_id,access_token_digest,refresh_token_digest,permissions_version,access_expires_at,refresh_expires_at,last_used_at,created_at,updated_at) VALUES(71001,74001,$1,$2,1,now()+interval '15 minutes',now()+interval '1 day',now(),now(),now()) RETURNING id",
+        [digest.into(),format!("{token}-refresh").into()],
+    )).await?.ok_or("session insertion must return its id")?.try_get("", "id")?)
+}
+
+async fn query_waits_for_lock(
+    fixture: &Fixture,
+    pattern: &str,
+) -> Result<bool, Box<dyn std::error::Error>> {
+    let observed = tokio::time::timeout(std::time::Duration::from_secs(2), async {
+        loop {
+            let row = fixture.admin.query_one_raw(Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                "SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query ILIKE $1 AND cardinality(pg_blocking_pids(pid))>0) AS waiting",
+                [pattern.into()],
+            )).await?.ok_or("lock observation must return one row")?;
+            if row.try_get::<bool>("", "waiting")? {
+                return Ok::<_,Box<dyn std::error::Error>>(());
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+    }).await;
+    match observed {
+        Ok(result) => result.map(|()| true),
+        Err(_) => Ok(false),
+    }
+}
+
+async fn hold_profile_audit(
+    fixture: &Fixture,
+) -> Result<sea_orm::DatabaseTransaction, Box<dyn std::error::Error>> {
+    fixture.admin.execute_unprepared("CREATE FUNCTION block_profile_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.item_type='Account' AND NEW.event='update' THEN PERFORM pg_advisory_xact_lock(714208); END IF; RETURN NEW; END $$; CREATE TRIGGER block_profile_audit BEFORE INSERT ON versions FOR EACH ROW EXECUTE FUNCTION block_profile_audit()").await?;
+    let blocker = fixture.admin.begin().await?;
+    blocker
+        .execute_unprepared("SELECT pg_advisory_xact_lock(714208)")
+        .await?;
+    Ok(blocker)
+}
+
+#[tokio::test]
+async fn stored_session_revocation_cannot_overtake_a_profile_write() -> TestResult {
+    let (fixture, boot) = boot_fixture().await;
+    fixture
+        .admin
+        .execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001")
+        .await?;
+    let session_id = stored_session(&fixture, "profile-inflight").await?;
+    stored_session(&fixture, "profile-revoker").await?;
+    let blocker = hold_profile_audit(&fixture).await?;
+    let request = server(&boot);
+    let revoker = server(&boot);
+    let write = async {
+        request
+            .patch("/api/v1/auth/profile")
+            .add_header("authorization", "Bearer profile-inflight")
+            .json(&json!({"profile":{"name":"Authorised before revocation"}}))
+            .await
+    };
+    let revoke = async {
+        let reached_audit = query_waits_for_lock(&fixture, "%INSERT%versions%").await?;
+        let revocation = async {
+            revoker
+                .delete(&format!("/api/v1/auth/sessions/{session_id}"))
+                .add_header("authorization", "Bearer profile-revoker")
+                .await
+        };
+        tokio::pin!(revocation);
+        let (serialised, completed) = tokio::select! {
+            response = &mut revocation => (false, Some(response)),
+            observed = query_waits_for_lock(&fixture, "%UPDATE%api_sessions%") => (observed?, None),
+        };
+        blocker.commit().await?;
+        let revoked = match completed {
+            Some(response) => response,
+            None => revocation.await,
+        };
+        Ok::<_, Box<dyn std::error::Error>>((reached_audit, serialised, revoked))
+    };
+    let (updated, ordering) = tokio::join!(write, revoke);
+    let (reached_audit, serialised, revoked) = ordering?;
+    let denied = request
+        .patch("/api/v1/auth/profile")
+        .add_header("authorization", "Bearer profile-inflight")
+        .json(&json!({"profile":{"name":"Must never persist"}}))
+        .await;
+    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT name,(SELECT count(*) FROM versions WHERE item_type='Account' AND item_id=71001 AND event='update') AS audits FROM accounts WHERE id=71001"
+    )).await?.ok_or("profile account must remain present")?;
+    drop(request);
+    drop(revoker);
+    close(fixture, boot).await;
+    assert!(
+        reached_audit,
+        "profile write must reach the held audit boundary"
+    );
+    assert!(
+        serialised,
+        "revocation must wait for the authorised profile transaction"
+    );
+    assert_eq!(updated.status_code(), 200);
+    assert_eq!(revoked.status_code(), 204);
+    assert_eq!(denied.status_code(), 401);
+    assert_eq!(
+        row.try_get::<String>("", "name")?,
+        "Authorised before revocation"
+    );
+    assert_eq!(row.try_get::<i64>("", "audits")?, 1);
+    Ok(())
+}
+
+#[tokio::test]
+async fn stored_credential_authority_revocation_waits_for_profile_commit() -> TestResult {
+    for (table, revoke_sql) in [
+        (
+            "api_app_tokens",
+            "UPDATE api_app_tokens SET revoked_at=now(),updated_at=now() WHERE account_id=71001",
+        ),
+        (
+            "household_memberships",
+            "UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1,updated_at=now() WHERE id=74001",
+        ),
+    ] {
+        let (fixture, boot) = boot_fixture().await;
+        let token = "profile-authority-race";
+        if table == "api_app_tokens" {
+            let digest = hex::encode(Sha256::digest(token.as_bytes()));
+            fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+                "INSERT INTO api_app_tokens(account_id,household_membership_id,token_digest,name,permissions_version,expires_at,last_used_at,created_at,updated_at) VALUES(71001,74001,$1,'Synthetic profile authority',1,now()+interval '30 days',now(),now(),now())",
+                [digest.into()],
+            )).await?;
+        } else {
+            stored_session(&fixture, token).await?;
+        }
+        let blocker = hold_profile_audit(&fixture).await?;
+        let request = server(&boot);
+        let write = async {
+            request
+                .patch("/api/v1/auth/profile")
+                .add_header("authorization", format!("Bearer {token}"))
+                .json(&json!({"profile":{"name":"Before authority revocation"}}))
+                .await
+        };
+        let revoke = async {
+            let reached_audit = query_waits_for_lock(&fixture, "%INSERT%versions%").await?;
+            let revocation = fixture.admin.execute_unprepared(revoke_sql);
+            tokio::pin!(revocation);
+            let pattern = format!("%UPDATE%{table}%");
+            let (serialised, completed) = tokio::select! {
+                result = &mut revocation => (false, Some(result)),
+                observed = query_waits_for_lock(&fixture, &pattern) => (observed?, None),
+            };
+            blocker.commit().await?;
+            match completed {
+                Some(result) => {
+                    result?;
+                }
+                None => {
+                    revocation.await?;
+                }
+            }
+            Ok::<_, Box<dyn std::error::Error>>((reached_audit, serialised))
+        };
+        let (updated, ordering) = tokio::join!(write, revoke);
+        let (reached_audit, serialised) = ordering?;
+        let denied = request
+            .patch("/api/v1/auth/profile")
+            .add_header("authorization", format!("Bearer {token}"))
+            .json(&json!({"profile":{"name":"Must never persist"}}))
+            .await;
+        let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+            "SELECT name,(SELECT count(*) FROM versions WHERE item_type='Account' AND item_id=71001 AND event='update') AS audits FROM accounts WHERE id=71001"
+        )).await?.ok_or("profile account must remain present")?;
+        drop(request);
+        close(fixture, boot).await;
+        assert!(
+            reached_audit,
+            "{table}: profile must reach the held audit boundary"
+        );
+        assert!(
+            serialised,
+            "{table}: revocation must wait for profile commit"
+        );
+        assert_eq!(updated.status_code(), 200, "{table}");
+        assert_eq!(denied.status_code(), 401, "{table}");
+        assert_eq!(
+            row.try_get::<String>("", "name")?,
+            "Before authority revocation"
+        );
+        assert_eq!(row.try_get::<i64>("", "audits")?, 1);
+    }
+    Ok(())
+}
+
+#[tokio::test]
+async fn stored_session_revoked_while_waiting_for_account_lock_cannot_update_profile() -> TestResult
+{
+    let (fixture, boot) = boot_fixture().await;
+    let session_id = stored_session(&fixture, "profile-waiting").await?;
+    stored_session(&fixture, "profile-revoker").await?;
+    let blocker = fixture.admin.begin().await?;
+    blocker
+        .execute_unprepared("SELECT id FROM accounts WHERE id=71001 FOR NO KEY UPDATE")
+        .await?;
+    let request = server(&boot);
+    let revoker = server(&boot);
+    let write = async {
+        request
+            .patch("/api/v1/auth/profile")
+            .add_header("authorization", "Bearer profile-waiting")
+            .json(&json!({"profile":{"name":"Must never persist"}}))
+            .await
+    };
+    let revoke = async {
+        let reached_account =
+            query_waits_for_lock(&fixture, "%accounts%FOR NO KEY UPDATE%").await?;
+        let revoked = revoker
+            .delete(&format!("/api/v1/auth/sessions/{session_id}"))
+            .add_header("authorization", "Bearer profile-revoker")
+            .await;
+        blocker.commit().await?;
+        Ok::<_, Box<dyn std::error::Error>>((reached_account, revoked))
+    };
+    let (denied, ordering) = tokio::join!(write, revoke);
+    let (reached_account, revoked) = ordering?;
+    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT name,(SELECT count(*) FROM versions WHERE item_type='Account' AND item_id=71001 AND event='update') AS audits FROM accounts WHERE id=71001"
+    )).await?.ok_or("profile account must remain present")?;
+    drop(request);
+    drop(revoker);
+    close(fixture, boot).await;
+    assert!(
+        reached_account,
+        "profile authentication must precede the held account lock"
+    );
+    assert_eq!(revoked.status_code(), 204);
+    assert_eq!(denied.status_code(), 401);
+    assert_eq!(row.try_get::<Option<String>>("", "name")?, None);
+    assert_eq!(row.try_get::<i64>("", "audits")?, 0);
+    Ok(())
+}
+
 fn assert_profile_schema(method: &str, status: u16, body: &Value) {
     let document = contract::contract();
     let raw = &document["paths"]["/auth/profile"][method]["responses"][status.to_string()];

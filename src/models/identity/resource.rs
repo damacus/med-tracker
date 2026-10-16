@@ -85,7 +85,7 @@ impl ValidatedPrincipal {
                     }
                 }
                 Credential::Stored(principal) => {
-                    let actor = principal.revalidate(&transaction, settings).await?;
+                    let actor = principal.revalidate_locked(&transaction, settings).await?;
                     if actor.account_id != self.account_id {
                         return Err(AuthenticationError::Unauthenticated);
                     }
