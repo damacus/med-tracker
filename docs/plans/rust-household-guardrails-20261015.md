@@ -1,185 +1,63 @@
-# Rust household architecture and guardrails delivery
+# Rust household delivery plan: ten outcome stacks
 
-## Objective and authority
+**Status:** Approved delivery plan; code acceptance remains pending. The ten rows are outcome groups, not ten mandatory GitHub branches. Use native ghstack only for real dependencies. Ship independent outcomes against main when they can be reviewed and verified independently.
 
-Deliver the user's four-step cleanup/tooling/skills/PR request, including the
-subsequently approved application-wide refactor. The latest owner decisions
-below supersede earlier Rails-parity plans and the initial proposal. Record
-architectural decisions as ADRs, not a new OpenSpec change.
+## Authority, scope and completion
 
-## Global Constraints
+The accepted decisions in ADRs 0012–0017 and the owner refinements recorded here govern implementation; choices marked Proposed remain open. In particular, ADR 0015 does not approve wholesale removal or restriction of the Better Auth organisation plugin. Account identity, household authority, care continuity, stock and exact dose behavior are product decisions; this plan does not claim they already work. Preserve current Rust-native restore and sync contracts while adapting them to the accepted model.
 
-- Delivery update: use Sol for implementation and reserve Astra for security
-  reviews. Publish completed, independently verified slices as separate PRs
-  against main. Guidance and client quality gates can land independently;
-  identity schema changes must stay with their functioning runtime callers.
-  The task numbers below describe remaining scope, not mandatory PR boundaries.
-- Branch: `chore/codex-skills-and-rust-guardrails`; worktree:
-  `/private/tmp/medtracker-rust-guardrails`. One implementation writer at a time.
-- Include all initial local changes, including deletions and untracked files.
-  The original checkout remains untouched. Inspect and fix invalid resulting
-  configuration or command examples rather than publishing known breakage.
-- Loco 1.2 is primary; Tera/DaisyUI views; PostgreSQL 18. Rails is read-only
-  reference code. No legacy data import, credentials migration, database parity,
-  reverse migration or production deployment. Fresh-schema changes must never
-  reset or silently adopt an existing populated database.
-- Account holds authentication, profile information and preferences, and has
-  exactly one person. A person optionally has an account. No separate user or
-  profile table. People may belong to multiple households and exist without
-  accounts. Minors do not have logins. Preserve existing capacity rules.
-- A household owns medication inventory and stock. Membership permits viewing
-  and recording household care; managers additionally administer membership.
-  Remove the old per-person view/record/manage gate within a household.
-- A person can create a household, or accept a manager's invitation to join.
-  Adult person or authorised guardian approves sharing an existing person's
-  care with another household. Do not infer guardianship from management alone.
-- Active household is per session/device, restricted to current memberships.
-  Every form/write remains bound to its original household after switching.
-  Reject revoked membership at every request and mutation boundary.
-- Locations are optional physical storage labels within a household, with no
-  membership or permissions. Household inventory works without creating a label.
-- Personal care follows the person. Current households receive current
-  treatments, schedules, active pauses and latest administration status, not
-  automatically the detailed history or narrative notes of another household.
-  The person keeps access to full personal history and controls additional
-  disclosure. On leaving, the old household keeps events recorded there and
-  immutable attribution, but receives no future updates.
-- Explicit stock transfer is initiated by the moving person or authorised
-  guardian and limited to stock allocated to that person. Communal stock stays
-  put. Transfer exact selected quantities atomically and idempotently; source
-  and destination must be valid household participations. Never auto-move stock.
-- Reuse maintained security/protocol libraries. Preserve live permission checks,
-  RLS, audit attribution, replay protection, atomic stock deduction and mail
-  outbox. Better Auth has not been proved faulty; its organisation adapters must
-  not create a second source of membership truth. Retain atomic domain operation
-  boundaries wherever the pinned plugin cannot supply them.
-- Typed DTO -> validated command -> operation -> typed result -> DTO boundaries
-  throughout root src. Distinct entity ID newtypes, enum dose sources, typed
-  conflict codes, parsed timezone-aware timestamps and exact Decimal math.
-  JSON remains legitimate at transport/configuration/template/document-storage
-  boundaries; no internal struct -> Value -> struct command passing.
-- TDD for executable changes. Use Task commands and Fish/RTK. Do not alter code
-  comments unless needed for requested guardrails/documentation or lint fixes.
-  No broad lint suppressions, including in tests or generated entities. Fix every
-  violation of the requested policy while retaining meaningful assertions.
-- Preserve API/MCP contracts except explicitly superseded access/location
-  semantics; document deliberate changes in OpenAPI, clients and ADRs together.
-- No merge/deploy/live data actions. Commits and feature-branch push/PR are
-  authorised. Verify author, committer and signing identity before every commit;
-  use commit-local signing fallback only if 1Password is unavailable.
+A fresh Rust database is the target. Do not import Rails data or credentials, adopt a populated database, add an adoption guard, require Rails parity, or deploy. Preserve legacy Rust crates while they have active consumers. Do not add Android or iOS code, builds, generation or validation; new export/download products or export expiry; canary work; deployment; or legacy import. PR #2381, the open release item, is outside this plan.
 
-## Task 1: Record ADRs and install Rust-specific agent guidance
+Useful work from checkpoint PR #2735 still needs exact hunk accounting even though that PR has since been closed externally. The supplied audit snapshot covered 487 paths: 66 delivered, 14 explicit drops and 407 pending review. Those counts are historical, not current delivery state. Revalidate each path against current main. Every useful hunk needs a replacement or follow-up PR, or an explicit approved drop. A partial replacement never accounts for the rest of a mixed file. Keep the per-hunk evidence in the existing checkpoint ledger; do not infer delivery from filenames or issue closure.
 
-Create sequential ADRs after existing 0012, following docs/adrs conventions:
-accounts/people/households; household inventory and personal care continuity;
-authentication/membership/tenancy responsibilities; fresh Rust without legacy
-compatibility. Record the exact global constraints, alternatives, consequences,
-superseded old assumptions and accepted decision versus implementation status.
-Keep unresolved organisation-plugin replacement details Proposed, with the
-known pinned invitation-acceptance separate-write limitation and current secure
-adapter. Do not claim new application behaviour already works. Link the ADRs
-from design documentation and documentation navigation.
+Previously merged API, UI, profile, worker-expiry and Nextest #2770 work must not be recreated. Verify the exact current head and PR state before planning an overlapping change. Current-state decisions in the accepted ADRs are not evidence of application acceptance.
 
-Remove obsolete CLAUDE.md, .claude and .jules; consolidate root AGENTS.md and
-delete agents.md. Move Ruby/Rails-specific rules to rails/AGENTS.md, marking
-Rails read-only. Root guidance must be Rust-only and require the three local
-skills. Create .agents/skills/rust-loco-architecture/SKILL.md,
-rust-migration-and-tooling/SKILL.md and rust-drift-audit/SKILL.md with the user's
-requested names/descriptions and complete actionable rules, corrected for the
-latest decisions: no legacy import/parity requirement, no duplicate profile
-table, household membership replaces intra-household per-person grants. Retain
-Rust-native portability side-effect invariants and property-test requirements.
-Preserve and review all initial local changes, correcting invalid mise TOML and
-README executable names. Retain legacy rust crates; document actual consumers
-and superseded application status. Update narrowly affected tests/references
-that require duplicate guides or removed files, first proving relevant failures.
-Run documentation build, focused tooling checks and diff whitespace checks.
-Commit all Task 1 changes only; leave lefthook recreation for Task 4 explicitly.
+## Approved product contract
 
-## Task 2: Implement accounts, household participation and active tenancy
+- An Account has exactly one Person; a Person may have no Account and may participate in multiple Households. Minors do not log in. Preserve existing Person type and capacity rules. Household membership grants household care access; manager authority administers membership only.
+- When an adult creates a new accountless dependent, that adult declares themselves the initial guardian. Record a declaration, not verified legal status. A successor guardian must be authorised by an existing guardian. Disputed guardian recovery is deferred and fails closed. Household management never implies guardianship.
+- A person or authorised guardian must explicitly approve sharing that person's care with another household. Only the person or an explicitly authorised guardian may change their shared plan.
+- Households own medication inventory. Locations are optional storage labels, never permission boundaries. Care follows the person; detailed history and narrative notes do not automatically follow into another household. Preserve local events and immutable attribution after departure, with no future updates to the old household.
+- Medicine matching requires the exact medicine, formulation, strength and stock unit. Do not infer equivalence from names or convert units. A stock transfer moves only an exact selected quantity, atomically and idempotently; communal stock stays put.
+- Keep automatic notifications for dependants with explicit guardian authority and retain each account's self-preferences. Notifications about another non-dependent person require an explicit per-person opt-in by the receiving account. Household manager status alone never authorises notifications.
+- Preserve replay protection, RLS, audit attribution, atomic stock deduction, mail outbox and privacy-safe error responses. Do not introduce temporary caches or trigger-based workarounds for these workflows.
 
-Read the accepted ADRs and current Loco boot/router/test harness. Replace the
-fresh identity/tenancy schema without retaining the users/profile chain.
-Accounts have one unique person reference; people have optional reverse account
-association and many household participations. Preserve account-level profile
-settings. Make login registration/onboarding, household creation, invitation
-acceptance, membership removal, household list/selection and actual browser/API
-journeys work on this model. Keep an authoritative membership store and reuse
-Better Auth for the standard capabilities it provides. Do not bypass atomic
-domain operations for invitation acceptance or duplicate role rules. Expose
-whole-household member care access and manager-only member administration.
-Represent guardian authority separately from household role; fail closed until
-an adult/guardian has approved sharing. Remove obsolete person grants only
-after all callers, RLS and tests are migrated. Session/device selection must not
-retarget open forms. Update fixtures and model mappings with schema changes.
-Write red real-router/PostgreSQL acceptance for accountless minors, unique
-account/person, multi-household membership, authorised invitations, invalid and
-revoked selections, cross-tenant denial, manager/member roles, and transactional
-failure. Exercise desktop/mobile UI with retained styling and save screenshots
-for visible changes. Verify focused gates and commit. Do not claim care-summary
-or stock-transfer support until Task 3 integrates it.
+## Ten outcome groups
 
-## Task 3: Implement personal care continuity, stock ownership and typed operations
+| # | Outcome and ordered PR boundaries | Dependencies and acceptance |
+| --- | --- | --- |
+| 1 | **Browser identity and household selection.** Preserve split browser Cookie headers; add a per-session active-household selector; then bind OAuth consent to the selected household, account, session and permissions version. | Cookie handling is the first useful slice. Selection revalidates active membership and household lifecycle on every request; switching affects only that session and never retargets an open form. OAuth is a later dependent boundary. Test malformed/multiple Cookie headers, foreign/revoked selections, session isolation and consent expiry/replay. |
+| 2 | **Canonical identity and household authority.** Keep the four identity PRs ordered: (a) household query/access-context preparation; (b) care and report household-context preparation; (c) canonical Account.person_id with global Person, removing redundant Person household/account and membership account fields together; (d) remove User actors only after real IDs flow end to end. | One-way schema and caller dependency: do not land generated entities or schema alone. Add the platform support/recovery SQL and actual caller UI, role and race fixes as an identity follow-up after the canonical schema, not as unused SQL or a schema-PR sidecar. Test account/person cardinality, accountless minors, cross-household access, revocation and transaction rollback. |
+| 3 | **Optional location labels and retirement.** Make inventory work with no location label; then retire labels without location permissions or membership. Retiring a label detaches its medication association, preserves stock and historical references, and audits atomically. | Independent of a person's household membership. Update API/OpenAPI and current consumers together. No stock transfer or deletion is implied. Test no-location inventory, retired-label reads, name reuse, audit rollback and preservation of stock/history. |
+| 4 | **Guardian declaration and succession.** Record a creating adult's declaration that they are the initial guardian of a new accountless dependent; support succession authorised by an existing guardian. Disputed recovery remains deferred and fails closed. | Depends on canonical identity. Guardian rights are separate from household role. Test declaration provenance, successor approval, manager-without-guardian denial and disputed recovery fail-closed behavior. |
+| 5 | **Typed dose and person-care operations.** First add the exact-number Tera bridge with arbitrary-precision JSON and every affected renderer; then typed dose request/command/result; person-owned treatment plans; approved cross-household sharing with projection and departure behavior in the same boundary; and exact explicit stock matching. | Depends on identity and guardian authority. Keep request parsing, source provenance, replay conflict precedence, timing, persistence and stock writes within coherent boundaries. Use ID newtypes, a dose-source enum, Decimal amounts, timezone-aware times and typed conflicts; JSON stays at transport/configuration/template/document boundaries only. Do not infer stock matches or convert formulation, strength or unit. Test explicit approval and revocation boundaries. |
+| 6 | **Person allocation and explicit stock transfer.** Represent person-allocated stock separately from communal stock; then allow a person or authorised guardian to transfer exact selected quantities between valid participating households. | Depends on identity, guardian authority and typed dose/stock operations. Writes and audits are atomic, concurrency-safe and idempotent. Never move stock on join/departure or transfer communal stock. Prove concurrent cross-household doses, rollback and no double deduction. |
+| 7 | **Personal history and report denial audit.** Preserve the person's own history after departure from every household while keeping each household's local events and original attribution immutable. Add denied-report auditing with verified credential provenance and an append path that remains observable after the denied request rolls back. | Depends on identity, care history and credential context. Keep report route/payload adaptations with the model and audit contract. Test history after all departures, foreign narrative isolation, revocation boundaries, allowed/denied attribution and audit rollback. Do not add new download products. |
+| 8 | **Notification preferences and worker rechecks.** First adapt account preferences while preserving automatic notifications for explicitly authorised dependants and requiring other participants' opt-in; then update worker recipient paging, revocation/lockout rechecks, stale-claim cleanup and audit behavior. | Depends on identity and guardian authority. Keep preference API/UI/RLS together, followed by restricted worker SQL/scheduler/cleanup and its tests. Worker queries expose only eligible recipient identifiers, not broad clinical/profile data. Test consent defaults, revoked membership, disabled/locked accounts, stale sending claims and atomic cleanup/audit. |
+| 9 | **Existing Rust-native restore and sync.** Preserve current typed restore/sync behavior while adapting identity and operation references. Successful historical restore preserves original provenance and causes no stock deduction, live reminder or mail; invalid restore and sync validation also have zero side effects. | This is preservation and contract adaptation, not a new export product. Keep the client API contract already delivered by #2746. Retain existing Rust callers. Do not reject legacy portable links or dose provenance until an explicit compatibility policy covers the data and an alternative workflow. |
+| 10 | **Dependency, runtime and strict quality gates.** First remove verified unused dependencies; then fix privacy-safe request tracing and DbErr classification, runtime/test lint findings and required generator reproducibility checks; finally unify strict local and hosted gates. | Add UUID/span/header correlation without clinical values. Keep app-owned resources within AppContext. Preserve meaningful tests and generated-code behavior. Use one Rust compiler at a time. Forbid unsafe_code; warn on pedantic at priority -1; deny dbg_macro, todo, unimplemented, float_cmp, mem_forget, cast_precision_loss, cast_possible_truncation, cast_sign_loss and lossy_float_literal; warn on unwrap_used, expect_used, indexing_slicing, needless_pass_by_value and implicit_clone. Do not configure the invalid lossy_float_conversions lint. Run `cargo clippy --locked --workspace --all-targets --all-features -- -D warnings`, `cargo machete`, `cargo deny --workspace --locked --all-features check advisories bans sources`, `cargo nextest run --locked --workspace --all-features --no-tests=fail` and `cargo test --locked --workspace --all-features --doc`; keep documentation, browser and Rust-native consumers in their owning gates. |
 
-Implement approved care-summary visibility and person-controlled historical
-disclosure. Separate person-owned treatment definitions/history from
-household-owned inventory, preserving original event household and acting
-person plus account credential attribution. Leaving revokes future access,
-retains local historical events, and preserves the person's own full history.
-Make locations optional stock labels and remove location membership/access
-logic, updating API/client contracts for changed semantics.
-Implement explicit assigned-stock transfers by the person/guardian with exact
-amounts, atomic dual-sided inventory/audit writes, concurrency protection and
-idempotency. No communal stock appropriation, negative inventory or automatic
-transfer when joining/leaving. Preserve dose replay, latest shared dose status,
-atomic outbox and actor provenance across households.
-Apply typed command/result boundaries and entity ID wrappers throughout root
-application domains and callers, not just dose writing. Remove internal JSON
-round-trips and stringly domain codes/timestamps/amounts. Centralise privacy-safe
-DbErr classification/tracing with generic responses and correlated request IDs.
-Move SQL-worthy filtering to query boundaries. Bound CPU-heavy blocking work
-using app-owned semaphores and keep transports/operators scoped to AppContext
-lifecycles. Keep Rust-native export/restore safe; do not add old-system import.
-Write failing acceptance/property tests for data-sharing and revocation,
-double-dose replay/stock, restore without side effects, DST transitions, transfer
-atomicity/concurrency, cross-household isolation and privacy-safe diagnostics.
-Verify real API/browser journeys and commit integrated functionality.
+A row may contain several pull requests only when each boundary leaves a working behavior or useful, verified preparation and the next boundary has a real dependency. Do not split API, UI, migration, or tests into layers that cannot run together. Keep fixes with the owning contract; do not add upstack workarounds.
 
-## Task 4: Enforce strict Rust linting and nextest across local and hosted gates
+## Mixed checkpoint hunks and ownership
 
-Add inherited workspace rust/clippy lints for root, migration and all client
-tools packages. Forbid unsafe_code. pedantic warn priority -1; deny dbg_macro,
-todo, unimplemented, float_cmp, mem_forget and valid loss/precision conversion
-lints (the requested lossy_float_conversions is not an existing lint; use
-cast_precision_loss, cast_possible_truncation, cast_sign_loss and
-lossy_float_literal). Warn unwrap_used, expect_used, indexing_slicing,
-needless_pass_by_value and lowercase implicit_clone. Fix all resulting warnings
-including test/generated code; do not suppress them or neuter tests.
-Install pinned cargo-nextest, cargo-machete and cargo-deny through Mise. Add
-minimal deny.toml covering advisories, duplicate-version warnings and sources;
-allow only actually required pinned Git sources. Dependency security fixes must
-be proven, not ignored. Keep formatting non-mutating in gates.
-Update root/client Taskfiles, CI workflows and recreated lefthook.yml to run
-fmt check, clippy --workspace --all-targets --all-features -- -D warnings,
-machete, deny advisory/bans/sources checks, nextest --no-tests=fail and separate
-cargo test --doc. Adapt current owned-database/storage preparation, sharding and
-compiled-artifact reuse rather than bypassing them or running tests twice.
-Cutover rehearsal remains explicit and tests fresh Rust save/restore, with no
-Rails compatibility requirement. Fail zero-test selections; preserve browser
-acceptance and cheap-first stage order. Add failing runner/CI regression tests,
-run focused gates then complete relevant suites, and commit.
+The checkpoint report is path-oriented and many changed files mix behaviors. Assign and review hunks as follows:
 
-## Task 5: Integrated review, acceptance and publication
+- Identity/access preparation owns only household/account context changes in shared callers. In particular, account identity changes inside report controllers/models precede the report-specific changes in outcome 7.
+- Outcome 3 owns optional-label and retirement hunks in location models/controllers, location foreign keys, fixtures and browser/API tests. It does not own guardian, membership or stock-transfer hunks in the same files.
+- Outcome 5 owns the number-to-Tera adapter and renderers, dose command path and person-plan/current-status consumers. The dm+d importer delta is style-only; its controller template bridge belongs to the exact-number preparation. There is no new dm+d feature.
+- Outcome 6 owns only explicit allocation and transfer behavior. It does not own dose recording or location labels merely because they share inventory files.
+- Outcome 7 owns the report denial snapshot, SQL append capability, report handlers and audit-isolation regressions. History schema/writer invariants remain with the immutable-history boundary; report projection adaptations remain with identity where they only replace household/person context.
+- Outcome 8 owns preference/subscription rows, browser/API behavior and scheduler/cleanup functions. Account and household foreign keys remain with canonical identity; do not mark the whole notification SQL file delivered from one hunk.
+- Outcome 9 owns portable import/sync adaptations and zero-side-effect properties. Existing Rust restore code remains active. Dedicated exports, downloads and export expiry are deferred; do not turn the checkpoint's candidate import rejections into an unapproved compatibility break.
+- Outcome 10 owns unused-dependency work, error/request tracing preparation, lint fixes and generator reproducibility tooling. Generated entities belong with the schema or behavior that consumes them. Fresh-schema wiring remains with its owning feature; the rejected populated-database adoption guard and its regression stay dropped.
+- Attach notification-delivery and record-lifecycle operational documentation to the behavior it describes. Keep proposed medication/person retirement and unsupported location reactivation documented as proposals. Screenshots support the matching UI outcome and never count as behavior on their own.
+- Preserve the seven historical reports, Serena configuration, Docker pointer guide and product spelling decisions recorded in the checkpoint dispositions. Do not edit repository skill definitions; use the maintained global skills.
 
-Resolve cross-task findings, update docs/contracts and confirm accepted ADRs
-match code. Run task ci plus client tools gates and docs build on a frozen
-candidate. Run explicit fresh Rust backup/restore rehearsal against disposable
-owned data. Compare visible desktop/mobile journeys, not just screenshots.
-Obtain broad independent review with complete branch diff, ADRs and evidence;
-fix verified findings and re-review changed boundaries. Review all initial local
-edits are included without invalid config/executable examples. Commit remaining
-in-scope fixes and publish coherent, independently verified PRs against main.
-PR description explains behavioural changes and retained legacy rust consumers;
-omit routine CI test sections. Report published/hosted/merged/deployed states
-accurately and identify any unfinished required acceptance rather than marking
-partial work complete.
+For every mixed file, compare the exact hunk to current main and record the owning outcome plus replacement, follow-up or explicit-drop evidence in the existing #2735 accounting ledger. This plan does not change that ledger or manufacture new drop decisions.
+
+## Shared acceptance and release control
+
+Every PR must prove its own behavior or useful preparation. Required evidence includes replay without duplicate writes, concurrent cross-household dose safety, audit rollback, membership/guardian revocation boundaries, personal history after all departures, restore with zero side effects, DST boundaries and desktop/mobile web screenshot comparison for visible journeys. Use real PostgreSQL/RLS and actual account, guardian, member and manager roles; do not substitute administrator credentials for runtime paths.
+
+Strict quality gates must run against the exact reviewed head. A cancelled, skipped or empty test selection is not a green result. The root delivery controller alone authorises merges, after review and required green checks on that exact head. Publish focused PRs only through the authorised delivery workflow. Deployment, canary activation and destructive cutover remain separately unauthorised.
