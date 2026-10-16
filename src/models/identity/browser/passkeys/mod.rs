@@ -99,7 +99,7 @@ async fn confirm_password(
         .await
         .map_err(unavailable)?
         .ok_or(AuthenticationError::Unauthenticated)?;
-    access::verify_account_actor(transaction, account_id)
+    access::verify_account(transaction, account_id)
         .await
         .map_err(super::super::resource::operation_error)?;
     let hash = account

@@ -78,7 +78,7 @@ pub async fn verify(
         session.remove("otp_pending");
         return Err(AuthenticationError::Unauthenticated);
     }
-    access::verify_account_actor(&transaction, pending.account_id)
+    access::verify_account(&transaction, pending.account_id)
         .await
         .map_err(super::super::resource::operation_error)?;
     let (otp, passkey) = enrolled_factors(&transaction, pending.account_id).await?;

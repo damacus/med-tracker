@@ -93,7 +93,7 @@ impl ClinicalStore {
         if account.is_none() {
             return Err(AuthError::Unauthenticated);
         }
-        crate::models::access::verify_account_actor(&transaction, account_id)
+        crate::models::access::verify_account(&transaction, account_id)
             .await
             .map_err(super::tenant::operation_error)?;
         let row = KeyRow::find_by_statement(statement(

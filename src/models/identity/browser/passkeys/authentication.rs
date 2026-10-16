@@ -162,7 +162,7 @@ async fn complete(
         .await
         .map_err(unavailable)?
         .ok_or(AuthenticationError::Unauthenticated)?;
-    access::verify_account_actor(&transaction, key.account_id)
+    access::verify_account(&transaction, key.account_id)
         .await
         .map_err(super::super::super::resource::operation_error)?;
     issued
