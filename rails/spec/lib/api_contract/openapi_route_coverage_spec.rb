@@ -1641,13 +1641,16 @@ RSpec.describe OpenapiRouteCoverage, type: :request do
       )
     end
 
-    it 'does not advertise unsupported person update preconditions' do
+    it 'documents idempotent person updates without version preconditions' do
       update_person = described_class.operation('/households/{household_id}/people/{id}', 'patch')
 
       expect(update_person.fetch('parameters')).not_to include(
         { '$ref' => '#/components/parameters/if_match' }
       )
-      expect(update_person.fetch('responses')).not_to include('409')
+      expect(update_person.fetch('parameters')).to include(
+        { '$ref' => '#/components/parameters/idempotency_key' }
+      )
+      expect(update_person.dig('responses', '409', '$ref')).to eq('#/components/responses/Conflict')
       expect(update_person.dig('responses', '422', '$ref')).to eq('#/components/responses/ValidationFailed')
     end
 
