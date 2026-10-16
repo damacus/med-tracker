@@ -8,7 +8,10 @@ use crate::models::{
     profile,
 };
 use chrono::{Timelike, Utc};
-use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter, QueryOrder};
+use sea_orm::{
+    ColumnTrait, Condition, ConnectionTrait, DbBackend, EntityTrait, QueryFilter, QueryOrder,
+    Statement,
+};
 use serde_json::{Value, json};
 use std::collections::{HashMap, HashSet};
 
@@ -36,19 +39,30 @@ pub async fn read(
         .filter(|person| selected.is_none_or(|id| person.id == id))
         .map(|person| person.id)
         .collect();
-    let attachments: HashSet<i64> = active_storage_attachment::Entity::find()
+    let mut attachments: HashSet<i64> = active_storage_attachment::Entity::find()
         .filter(active_storage_attachment::Column::HouseholdId.eq(household))
         .filter(active_storage_attachment::Column::RecordType.eq("Person"))
         .filter(active_storage_attachment::Column::Name.eq("avatar"))
         .filter(
-            active_storage_attachment::Column::RecordId
-                .is_in(people.iter().map(|person| person.id).collect::<Vec<_>>()),
+            active_storage_attachment::Column::RecordId.is_in(
+                people
+                    .iter()
+                    .filter(|person| person.account_id.is_none())
+                    .map(|person| person.id)
+                    .collect::<Vec<_>>(),
+            ),
         )
         .all(db)
         .await?
         .into_iter()
         .map(|row| row.record_id)
         .collect();
+    for row in db.query_all_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+        "SELECT p.id FROM people p JOIN account_avatars a ON a.account_id=p.account_id WHERE p.id=ANY($1::bigint[])",
+        [people.iter().map(|person| person.id).collect::<Vec<_>>().into()]
+    )).await? {
+        attachments.insert(row.try_get("", "id")?);
+    }
     let gravatars = profile::gravatar::for_visible_people(tenant, &people, &attachments).await?;
     let schedules = schedule::Entity::find()
         .filter(schedule::Column::HouseholdId.eq(household))

@@ -136,8 +136,8 @@ fn assert_private(reply: &Reply) {
 }
 
 async fn avatar_state(fixture: &Fixture) -> Value {
-    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM active_storage_attachments WHERE record_type='Person' AND record_id=73001 AND name='avatar') AS attachments,(SELECT count(*) FROM active_storage_blobs) AS blobs,(SELECT count(*) FROM versions WHERE item_type='Person') AS versions,(SELECT count(*) FROM api_change_events WHERE record_type='Person') AS changes")).await.unwrap().unwrap();
-    json!({"attachments":row.try_get::<i64>("","attachments").unwrap(),"blobs":row.try_get::<i64>("","blobs").unwrap(),"versions":row.try_get::<i64>("","versions").unwrap(),"changes":row.try_get::<i64>("","changes").unwrap()})
+    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM account_avatars WHERE account_id=71001) AS attachments,(SELECT count(*) FROM active_storage_attachments WHERE record_type='Person' AND record_id=73001 AND name='avatar') AS legacy_attachments,(SELECT count(*) FROM active_storage_blobs)+(SELECT count(*) FROM account_avatars) AS blobs,(SELECT count(*) FROM versions WHERE item_type IN ('Person','Account')) AS versions,(SELECT count(*) FROM api_change_events WHERE record_type IN ('Person','Account')) AS changes")).await.unwrap().unwrap();
+    json!({"legacy_attachments":row.try_get::<i64>("","legacy_attachments").unwrap(),"attachments":row.try_get::<i64>("","attachments").unwrap(),"blobs":row.try_get::<i64>("","blobs").unwrap(),"versions":row.try_get::<i64>("","versions").unwrap(),"changes":row.try_get::<i64>("","changes").unwrap()})
 }
 
 async fn owned_avatar_fixture() -> (Fixture, BootResult) {
@@ -200,6 +200,7 @@ async fn avatar_upload_download_delete_use_real_owned_storage_and_private_wire()
         assert_json("put", &uploaded);
         assert_eq!(json_body(&uploaded)["data"]["avatar_attached"], true);
         assert_eq!(after_upload["attachments"], 1, "{name} upload");
+        assert_eq!(after_upload["legacy_attachments"], 0, "{name} upload");
         assert_eq!(download.status, 200, "{name} download");
         assert_eq!(download.content_type.as_deref(), Some("image/png"));
         assert_same_png_pixels(&png, &download.bytes);
@@ -207,6 +208,7 @@ async fn avatar_upload_download_delete_use_real_owned_storage_and_private_wire()
         assert!(deleted.bytes.is_empty());
         assert!(deleted.content_type.is_none());
         assert_eq!(after_delete["attachments"], 0, "{name} delete");
+        assert_eq!(after_delete["legacy_attachments"], 0, "{name} delete");
         for reply in [&uploaded, &download, &deleted] {
             assert_private(reply);
         }

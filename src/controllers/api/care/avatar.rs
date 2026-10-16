@@ -27,29 +27,31 @@ fn storage_error(request_id: &str) -> Response {
     ))
 }
 
-async fn uploaded(mut form: Multipart) -> std::result::Result<avatar::Image, response::Failure> {
+pub(crate) async fn uploaded(
+    mut form: Multipart,
+) -> std::result::Result<avatar::Image, OperationError> {
     let field = form
         .next_field()
         .await
-        .map_err(|_| response::Failure::field("avatar", "is invalid"))?
-        .ok_or_else(|| response::Failure::field("avatar", "is required"))?;
+        .map_err(|_| profile::validation("avatar", "is invalid"))?
+        .ok_or_else(|| profile::validation("avatar", "is required"))?;
     if field.name() != Some("avatar") {
-        return Err(response::Failure::field("avatar", "is invalid"));
+        return Err(profile::validation("avatar", "is invalid"));
     }
     let content_type = field.content_type().unwrap_or_default().to_owned();
     let bytes = field
         .bytes()
         .await
-        .map_err(|_| response::Failure::field("avatar", "is invalid"))?;
+        .map_err(|_| profile::validation("avatar", "is invalid"))?;
     if form
         .next_field()
         .await
-        .map_err(|_| response::Failure::field("avatar", "is invalid"))?
+        .map_err(|_| profile::validation("avatar", "is invalid"))?
         .is_some()
     {
-        return Err(response::Failure::field("avatar", "is invalid"));
+        return Err(profile::validation("avatar", "is invalid"));
     }
-    avatar::decode(&bytes, &content_type).map_err(response::operation)
+    avatar::decode(&bytes, &content_type)
 }
 
 pub(super) async fn show(
@@ -212,7 +214,7 @@ pub(super) async fn upload(
         return storage_error(&request_id);
     }
     let image = match form {
-        Ok(form) => uploaded(form).await,
+        Ok(form) => uploaded(form).await.map_err(response::operation),
         Err(_) => Err(response::Failure::field("avatar", "is invalid")),
     };
     let image = match image {

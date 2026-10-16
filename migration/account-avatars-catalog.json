@@ -1,0 +1,329 @@
+{
+  "relation:public.account_avatars": {
+    "acl": [
+      "med_tracker_app=arwd/med_tracker_owner",
+      "med_tracker_owner=arwdDxtm/med_tracker_owner"
+    ],
+    "rls": true,
+    "kind": "r",
+    "owner": "med_tracker_owner",
+    "options": null,
+    "force_rls": true,
+    "partition": false,
+    "tablespace": null,
+    "persistence": "p",
+    "access_method": "heap",
+    "partition_key": null,
+    "partition_bound": null,
+    "replica_identity": "d"
+  },
+  "column:public.account_avatars.key": {
+    "acl": null,
+    "type": "text",
+    "default": null,
+    "options": null,
+    "storage": "x",
+    "identity": "",
+    "not_null": true,
+    "position": 2,
+    "collation": "pg_catalog.default",
+    "generated": "",
+    "compression": ""
+  },
+  "index:public.account_avatars_pkey": {
+    "live": true,
+    "owner": "med_tracker_owner",
+    "ready": true,
+    "valid": true,
+    "options": null,
+    "clustered": false,
+    "definition": "CREATE UNIQUE INDEX account_avatars_pkey ON public.account_avatars USING btree (account_id)",
+    "tablespace": null,
+    "replica_identity": false
+  },
+  "index:public.account_avatars_key_key": {
+    "live": true,
+    "owner": "med_tracker_owner",
+    "ready": true,
+    "valid": true,
+    "options": null,
+    "clustered": false,
+    "definition": "CREATE UNIQUE INDEX account_avatars_key_key ON public.account_avatars USING btree (key)",
+    "tablespace": null,
+    "replica_identity": false
+  },
+  "column:public.account_avatars.checksum": {
+    "acl": null,
+    "type": "text",
+    "default": null,
+    "options": null,
+    "storage": "x",
+    "identity": "",
+    "not_null": true,
+    "position": 6,
+    "collation": "pg_catalog.default",
+    "generated": "",
+    "compression": ""
+  },
+  "column:public.account_avatars.byte_size": {
+    "acl": null,
+    "type": "bigint",
+    "default": null,
+    "options": null,
+    "storage": "p",
+    "identity": "",
+    "not_null": true,
+    "position": 5,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "column:public.account_avatars.account_id": {
+    "acl": null,
+    "type": "bigint",
+    "default": null,
+    "options": null,
+    "storage": "p",
+    "identity": "",
+    "not_null": true,
+    "position": 1,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "column:public.account_avatars.created_at": {
+    "acl": null,
+    "type": "timestamp without time zone",
+    "default": "CURRENT_TIMESTAMP",
+    "options": null,
+    "storage": "p",
+    "identity": "",
+    "not_null": true,
+    "position": 7,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "column:public.account_avatars.updated_at": {
+    "acl": null,
+    "type": "timestamp without time zone",
+    "default": "CURRENT_TIMESTAMP",
+    "options": null,
+    "storage": "p",
+    "identity": "",
+    "not_null": true,
+    "position": 8,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "column:public.account_avatars.content_type": {
+    "acl": null,
+    "type": "text",
+    "default": null,
+    "options": null,
+    "storage": "x",
+    "identity": "",
+    "not_null": true,
+    "position": 3,
+    "collation": "pg_catalog.default",
+    "generated": "",
+    "compression": ""
+  },
+  "column:public.account_avatars.service_name": {
+    "acl": null,
+    "type": "text",
+    "default": null,
+    "options": null,
+    "storage": "x",
+    "identity": "",
+    "not_null": true,
+    "position": 4,
+    "collation": "pg_catalog.default",
+    "generated": "",
+    "compression": ""
+  },
+  "policy:public.account_avatars.account_avatar_self": {
+    "check": "((account_id = med_tracker.current_account_id()) AND (EXISTS ( SELECT 1\n   FROM accounts a\n  WHERE ((a.id = account_avatars.account_id) AND (a.status = 2)))) AND (NOT (EXISTS ( SELECT 1\n   FROM account_lockouts l\n  WHERE ((l.account_id = account_avatars.account_id) AND (l.deadline > CURRENT_TIMESTAMP))))))",
+    "roles": [
+      "med_tracker_app"
+    ],
+    "using": "((account_id = med_tracker.current_account_id()) AND (EXISTS ( SELECT 1\n   FROM accounts a\n  WHERE ((a.id = account_avatars.account_id) AND (a.status = 2)))) AND (NOT (EXISTS ( SELECT 1\n   FROM account_lockouts l\n  WHERE ((l.account_id = account_avatars.account_id) AND (l.deadline > CURRENT_TIMESTAMP))))))",
+    "command": "*",
+    "permissive": true
+  },
+  "policy:public.account_avatars.account_avatar_owner": {
+    "check": "true",
+    "roles": [
+      "med_tracker_owner"
+    ],
+    "using": "true",
+    "command": "*",
+    "permissive": true
+  },
+  "function:public.avatar_key_retained(target_key text)": {
+    "acl": [
+      "med_tracker_app=X/med_tracker_owner",
+      "med_tracker_owner=X/med_tracker_owner"
+    ],
+    "owner": "med_tracker_owner",
+    "definition": "CREATE OR REPLACE FUNCTION public.avatar_key_retained(target_key text)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog'\nAS $function$ SELECT EXISTS (SELECT 1 FROM public.active_storage_blobs WHERE key = target_key)\n  OR EXISTS (SELECT 1 FROM public.account_avatars WHERE key = target_key) $function$\n"
+  },
+  "constraint:public.account_avatars.account_avatars_pkey": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "PRIMARY KEY (account_id)",
+    "no_inherit": true,
+    "inherit_count": 0
+  },
+  "constraint:public.account_avatars.account_avatars_key_key": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "UNIQUE (key)",
+    "no_inherit": true,
+    "inherit_count": 0
+  },
+  "policy:public.account_avatars.account_avatar_depicted_person": {
+    "check": null,
+    "roles": [
+      "med_tracker_app"
+    ],
+    "using": "(EXISTS ( SELECT 1\n   FROM (((people p\n     JOIN person_access_grants g ON (((g.person_id = p.id) AND (g.household_id = p.household_id))))\n     JOIN household_memberships m ON (((m.id = g.household_membership_id) AND (m.household_id = p.household_id))))\n     JOIN accounts actor ON ((actor.id = m.account_id)))\n  WHERE ((p.account_id = account_avatars.account_id) AND (p.household_id = med_tracker.current_household_id()) AND (m.id = med_tracker.current_membership_id()) AND (m.account_id = med_tracker.current_account_id()) AND ((m.status)::text = 'active'::text) AND (m.revoked_at IS NULL) AND (g.revoked_at IS NULL) AND ((g.expires_at IS NULL) OR (g.expires_at > timezone('UTC'::text, clock_timestamp()))) AND ((g.access_level)::text = ANY ((ARRAY['view'::character varying, 'record'::character varying, 'manage'::character varying])::text[])) AND (actor.status = 2) AND (NOT (EXISTS ( SELECT 1\n           FROM account_lockouts l\n          WHERE ((l.account_id = actor.id) AND (l.deadline > CURRENT_TIMESTAMP))))))))",
+    "command": "r",
+    "permissive": true
+  },
+  "constraint:public.account_avatars.account_avatars_key_not_null": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "NOT NULL key",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
+  "constraint:public.account_avatars.account_avatars_account_id_fkey": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "FOREIGN KEY (account_id) REFERENCES accounts(id)",
+    "no_inherit": true,
+    "inherit_count": 0
+  },
+  "constraint:public.account_avatars.account_avatars_byte_size_check": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "CHECK ((byte_size > 0))",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
+  "constraint:public.account_avatars.account_avatars_checksum_not_null": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "NOT NULL checksum",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
+  "constraint:public.account_avatars.account_avatars_byte_size_not_null": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "NOT NULL byte_size",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
+  "constraint:public.account_avatars.account_avatars_account_id_not_null": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "NOT NULL account_id",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
+  "constraint:public.account_avatars.account_avatars_created_at_not_null": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "NOT NULL created_at",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
+  "constraint:public.account_avatars.account_avatars_updated_at_not_null": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "NOT NULL updated_at",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
+  "constraint:public.account_avatars.account_avatars_content_type_not_null": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "NOT NULL content_type",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
+  "constraint:public.account_avatars.account_avatars_service_name_not_null": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "NOT NULL service_name",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
+  "internal_trigger:public.accounts:public.account_avatars.account_avatars_account_id_fkey:9": {
+    "type": 9,
+    "enabled": "O",
+    "deferred": false,
+    "function": "\"RI_FKey_noaction_del\"()",
+    "deferrable": false
+  },
+  "internal_trigger:public.accounts:public.account_avatars.account_avatars_account_id_fkey:17": {
+    "type": 17,
+    "enabled": "O",
+    "deferred": false,
+    "function": "\"RI_FKey_noaction_upd\"()",
+    "deferrable": false
+  },
+  "internal_trigger:public.account_avatars:public.account_avatars.account_avatars_account_id_fkey:5": {
+    "type": 5,
+    "enabled": "O",
+    "deferred": false,
+    "function": "\"RI_FKey_check_ins\"()",
+    "deferrable": false
+  },
+  "internal_trigger:public.account_avatars:public.account_avatars.account_avatars_account_id_fkey:17": {
+    "type": 17,
+    "enabled": "O",
+    "deferred": false,
+    "function": "\"RI_FKey_check_upd\"()",
+    "deferrable": false
+  }
+}

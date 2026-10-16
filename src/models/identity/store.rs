@@ -167,7 +167,7 @@ impl Store<'_> {
         {
             return Ok(false);
         }
-        match access::verify_account_actor(self.transaction, row.account_id).await {
+        match access::verify_account(self.transaction, row.account_id).await {
             Ok(_) => (),
             Err(OperationError::Unavailable) => return Err(()),
             Err(_) => return Ok(false),

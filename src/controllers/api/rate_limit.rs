@@ -58,5 +58,9 @@ fn json_error(status: StatusCode, body: RateLimitResponse) -> Response {
     response
         .headers_mut()
         .insert("cache-control", HeaderValue::from_static("no-store"));
+    response.headers_mut().insert(
+        "x-content-type-options",
+        HeaderValue::from_static("nosniff"),
+    );
     response
 }
