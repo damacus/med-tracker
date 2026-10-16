@@ -11,7 +11,7 @@ test('client quality gate installs only its pinned tools and runs the Task CI co
   assert.ok(clientJob, 'client_tools job was not found');
   assert.match(clientJob, /arduino\/setup-task@[a-f0-9]{40}/);
   assert.match(clientJob, /apt-get install[^\n]*\bfish\b/);
-  assert.match(clientJob, /taiki-e\/install-action@[a-f0-9]{40}/);
+  assert.match(clientJob, /taiki-e\/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8/);
   for (const tool of ['cargo-nextest', 'cargo-machete', 'cargo-deny']) {
     const version = mise.match(new RegExp(`^"cargo:${tool}" = "([^"]+)"$`, 'm'))?.[1];
     assert.ok(version, `${tool} version missing from mise.toml`);
