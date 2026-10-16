@@ -132,6 +132,7 @@ async fn portable_export_selects_the_requested_portable_format() {
 #[tokio::test]
 async fn portable_export_rejects_invalid_options_and_foreign_households() {
     let app = Application::new().await;
+    app.fixture.seed_foreign_household(99999).await;
     let token = app.token().await;
     let mut statuses = Vec::new();
     let mut messages = Vec::new();

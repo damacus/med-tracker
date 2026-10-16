@@ -212,6 +212,7 @@ async fn assignment_create_defaults_duplicate_and_retired_reassignment() {
 #[tokio::test]
 async fn assignment_reads_obey_current_person_grants_and_foreign_household() {
     let app = Application::new().await;
+    app.fixture.seed_foreign_household(72002).await;
     let token = app.token().await;
     let endpoint = format!("{}/api/v1/households/72001/person_medications", app.origin);
     let list = app
@@ -409,6 +410,7 @@ async fn assignment_invalid_option_and_audit_failure_preserve_all_writes() {
 async fn person_medication_get_matches_documented_contract() {
     use super::contract::{assert_value, contract, resolve};
     let app = Application::new().await;
+    app.fixture.seed_foreign_household(72002).await;
     let token = app.token().await;
     let endpoint = format!(
         "{}/api/v1/households/72001/person_medications/81001",
@@ -589,6 +591,7 @@ async fn person_medication_get_matches_documented_contract() {
 async fn person_medication_list_matches_documented_contract() {
     use super::contract::{assert_value, contract, resolve};
     let app = Application::new().await;
+    app.fixture.seed_foreign_household(72002).await;
     let token = app.token().await;
     let collection = format!("{}/api/v1/households/72001/person_medications", app.origin);
     let contract = contract();

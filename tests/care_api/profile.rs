@@ -126,6 +126,7 @@ async fn current_person_profile_api_saves_nonsecurity_fields_and_preserves_omitt
 #[tokio::test]
 async fn profile_api_rejects_invalid_and_security_fields_atomically_and_rechecks_grants() {
     let app = profile_application().await;
+    app.fixture.seed_foreign_household(72002).await;
     let token = app.token().await;
     let endpoint = format!("{}/api/v1/households/72001/profile", app.origin);
     let initial = app

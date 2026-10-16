@@ -689,7 +689,9 @@ pub(super) fn authentication_error(error: AuthenticationError) -> Response {
             ],
         )
             .into_response(),
-        AuthenticationError::Forbidden | AuthenticationError::InsufficientScope { .. } => {
+        AuthenticationError::Forbidden
+        | AuthenticationError::NotFound
+        | AuthenticationError::InsufficientScope { .. } => {
             operation_error(OperationError::Forbidden)
         }
         AuthenticationError::Unavailable => unavailable(),

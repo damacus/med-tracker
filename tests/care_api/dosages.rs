@@ -372,6 +372,7 @@ async fn dosage_api_invalid_and_duplicate_defaults_have_no_partial_effect() {
 #[tokio::test]
 async fn dosage_api_member_write_denial_precedes_validation_and_foreign_reads_are_hidden() {
     let app = Application::new().await;
+    app.fixture.seed_foreign_household(72002).await;
     let token = app.token().await;
     app.fixture
         .admin
@@ -408,6 +409,7 @@ async fn dosage_api_member_write_denial_precedes_validation_and_foreign_reads_ar
 async fn dosage_option_get_matches_documented_contract() {
     use super::contract::{assert_value, contract, resolve};
     let app = Application::new().await;
+    app.fixture.seed_foreign_household(72002).await;
     let token = app.token().await;
     let collection = format!("{}/api/v1/households/72001/dosage_options", app.origin);
     let contract = contract();
@@ -587,6 +589,7 @@ async fn dosage_option_get_matches_documented_contract() {
 async fn dosage_option_list_matches_documented_contract() {
     use super::contract::{assert_value, contract, resolve};
     let app = Application::new().await;
+    app.fixture.seed_foreign_household(72002).await;
     let token = app.token().await;
     let collection = format!("{}/api/v1/households/72001/dosage_options", app.origin);
     let contract = contract();

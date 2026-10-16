@@ -348,6 +348,7 @@ async fn medication_get_matches_documented_contract() {
 #[tokio::test]
 async fn medication_list_matches_documented_contract() {
     let app = Application::new().await;
+    app.fixture.seed_foreign_household(72002).await;
     let token = app.token().await;
     let collection = format!("{}/api/v1/households/72001/medications", app.origin);
     let contract = contract();
@@ -440,6 +441,7 @@ async fn medication_list_matches_documented_contract() {
 #[tokio::test]
 async fn stock_removal_list_matches_documented_contract() {
     let app = Application::new().await;
+    app.fixture.seed_foreign_household(72002).await;
     let token = app.token().await;
     let endpoint = format!(
         "{}/api/v1/households/72001/medications/80001/stock_removals",

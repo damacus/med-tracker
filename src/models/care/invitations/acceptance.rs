@@ -272,9 +272,9 @@ fn authentication(error: crate::models::identity::resource::AuthenticationError)
     use crate::models::identity::resource::AuthenticationError;
     match error {
         AuthenticationError::Unauthenticated => OperationError::Unauthenticated,
-        AuthenticationError::Forbidden | AuthenticationError::InsufficientScope { .. } => {
-            OperationError::Forbidden
-        }
+        AuthenticationError::Forbidden
+        | AuthenticationError::NotFound
+        | AuthenticationError::InsufficientScope { .. } => OperationError::Forbidden,
         AuthenticationError::Unavailable => OperationError::Unavailable,
     }
 }

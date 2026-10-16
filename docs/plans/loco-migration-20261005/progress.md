@@ -215,7 +215,7 @@ until lower corrections are published and propagated. Older entries below retain
 their original revisions and results as history.
 
 The API coordinator owns integration, contracts and evidence; one API writer
-owns account implementation/tests and one verifier owns the serial heavy lane.
+owns each active area's implementation/tests and one verifier owns the serial heavy lane.
 Rate-limit [PR #2623](https://github.com/damacus/med-tracker/pull/2623) was merged
 externally as main `1800d858ef99e71edcf5e00cf5a0530616673dc6`; this coordinator
 did not merge it. Its 1,499-line candidate and historical failures remain below.
@@ -226,6 +226,7 @@ did not merge it. Its 1,499-line candidate and historical failures remain below.
 | [#2633](https://github.com/damacus/med-tracker/pull/2633): executed acceptance proof | `codex/s05-i01-dmd-storage` | `630a7f016d364becfb682b855a7da0c57c0b7f7c` | 498 | Reviewed; local and exact-head hosted gates pass |
 | [#2636](https://github.com/damacus/med-tracker/pull/2636): account session contracts | `codex/s05-i01-contract-execution` | `451c357c4f71539bf62056c5ac0459d235528a63` | 1,711 | Reviewed; local and exact-head hosted gates pass |
 | [#2637](https://github.com/damacus/med-tracker/pull/2637): request IDs on rate-limit responses | `codex/s05-i01-account-sessions` | `adfe373fa79bd575d53db6b25f17e76f7600352a` | 399 | Reviewed; local CI and exact-head hosted checks pass |
+| [#2639](https://github.com/damacus/med-tracker/pull/2639): capability discovery | `codex/s05-i01-rate-request-ids` | `022854c80a921d2601970b5bad03ec8e950d6fd9` | 1,101 | Reviewed; local CI and exact-head hosted checks pass |
 
 Stack `2634` is published; no layer is merged or deployed. Full local
 CI `61813` passed 111 units, 20 request cases, 508 care cases and all 744 browser
@@ -498,6 +499,133 @@ insufficient-scope 403, and checks private caching, revocation, audits and rates
 The malformed household-path 400 is an executed existing behaviour omitted from
 me/UI contracts; its proposal, capability 503 and getPerson 304 await owner
 decisions. Independent work continues while those contract edits remain held.
+
+Capability PR #2639 is now published at the table's exact head in stack `2634`.
+Final documentation gate `59941` passed; its 38-line documentation-only commit
+preserves all reviewed and CI-tested runtime/test files from `ccf0`. Pull/rebase
+and push confirmed upstream synchronisation. Hosted run `38619565391`, coverage
+job `116043331721` and unit compilation `116043332248` are active without a
+reported failure; published-head Devin Review has passed. Root Taskfile changes
+trigger the repository's broader hosted suite policy, including native clients.
+Codex artifact attachment remains unavailable; no attachment is claimed.
+
+The next test-only branch fast-forwarded to that published head with both owned
+test hashes unchanged. First run `59408` stopped at four unsupported test-header
+API calls before executing tests; it is not behavioural RED. The writer corrected
+only those calls. Genuine RED `83825` then executed seven full-boot request cases:
+one rate case passed, six failed. Own 200 and seeded foreign 403 were correct for
+API sessions, app tokens and mobile OAuth; absent household 99999 incorrectly
+returned 403 for both me/UI. Five other cases stopped at missing UI no-store
+headers, so their later assertions were not reached. Owned fixtures cleaned
+normally. The writer is correcting only typed household NotFound propagation
+and route-level private caching; malformed-path behaviour and contract decisions
+remain held. No new operation credit is claimed before GREEN and exact evidence.
+
+Me/UI request GREEN `64282` passed all seven cases. Existing care me/UI
+regressions passed 6/6 and 3/3 (`7934`, `18176`). Identity-resource initially
+passed 6/7 because its unseeded household 72002 expected Forbidden; fixture
+inspection confirmed absence. The corrected missing-household assertion passed
+7/7 in `68673`, without changing production. Formatting check `52750` initially
+failed; the writer applied only the six reported Rust files through
+`task fmt:apply`. Strict lint `51161`, check `56312` and formatted request rerun
+`10614` all passed. The two production changes preserve typed NotFound through
+the household API's existing 404 renderer and reuse route-level no-store for UI.
+Non-household exhaustive error matches preserve their previous behaviour.
+
+The global contract already promises 404 for absent households, but eight
+operations omitted it from their response lists. Initial metadata RED `12342`
+also rejected AI's valid inline 404; the corrected semantic test in `50739`
+reported exactly eight genuine omissions. Sixteen YAML lines add existing
+NotFound references, eight inventory rows and the full-schema guard refresh;
+AI's description/envelope and native pins remain intact. Full request inventory
+`25083` passed 63 with one intentional completion ignore. Generated-client
+verification `8732`, Swift `2192` and Kotlin `84603` all passed; outputs remained
+ignored temporary SDKs. New source review and full CI still precede publication.
+Final metadata lint `7664` passed. Format check `13539` reported two test-line
+wraps only; the writer applied them with the project formatter and verified
+`task fmt` plus diff check. Runtime and contract semantics remain unchanged from
+the successful inventory/client runs. Immutable partial evidence follows the
+source commit; neither me/UI operation is claimed complete while its additional
+malformed-path/audit-failure contract gaps remain unreconciled.
+
+Capability coverage artifact `11922576872` matches digest
+`09a71fb52f838199432289e393100ee9f1f59a0f9637d3de8cf82946b3525938`.
+Its clean merge `702eeb8c` has parents `adfe`/`022854` and exactly the published
+tree. Added runtime lines are 182/183, lifetime parser 26/26, typed view 153/153.
+The capability handler is 15/17: invalid-configuration and serialization-error
+fallbacks remain uncovered; the handler alone is below the 90% target. Raw
+application coverage is 63.16%, API controllers 91.29%. General coverage remains
+below target; coverage does not replace the 117 incomplete operation records.
+All 61 capability hosted checks have now passed on exact published `022854`;
+roll-up job `116060644770` in run `38619565391` is green. Hosted generated Swift
+`116043761157`, Kotlin `116043761698`, Android `116043332516` and coverage
+`116043331721` passed, as did published-head Devin Review. Actual inline review
+threads are empty. The latest Codex artifact attachment retry still failed to
+load the tool; no successful attachment is claimed. No merge or deployment occurred.
+
+Me/UI immutable source `e9b6475c6c30c2a9bdce77f082ece454995b2b13` now has
+proposed partial evidence for both operations. Guard RED `49932` rejected the
+new evidence before registration; GREEN `15873` rejects changed source pins,
+proof lists, gaps and promotion to complete. Runner fixture `5939` passed 47/47.
+Full dispatcher `53961` then stopped before final completeness acceptance:
+64 request tests passed (one ignored), while care had 491 passes, 33 failures
+and two ignores. All seven new request proofs and nine me/UI care cases passed.
+The 33 failures expect foreign-household 403 but use absent households: 23 use
+72002 and ten use 99999. Neither row exists in the loaded care fixture.
+The global contract explicitly requires missing-household 404, so the writer
+owns scoped foreign-household fixture corrections in those tests and the shared
+fixture helper, without changing the common template or runtime policy.
+Classification is retained in `me-ui-care-household-classification.md` beside
+the dispatcher log. Review, full CI and publication remain held until the
+dispatcher passes its actual suites. The existing Sol API writer retains
+ownership: this is a bounded fixture correction with objective database and
+HTTP assertions, not a change to the agreed permission rules.
+The frozen correction adds one helper and exactly 33 scoped setup calls, without
+changing expectations, comments or production. `task fmt:apply`, `task fmt` and
+diff checks pass. Dispatcher rerun `26127` passed 64 request tests (one ignored)
+and all 524 care tests (two ignored), including every previously failing case.
+The final request phase passed 64 and failed only `api_v1::acceptance`, correctly
+rejecting the 117 incomplete operations; Task exit 201 is that intentional
+completion rejection, not an ordinary-suite failure. Owned resources cleaned
+normally. Both partial-evidence and global-404 guards executed and passed.
+Local evidence now records five complete, three partial and 114 unverified
+operations. No new complete credit, merge or deployment is implied.
+Candidate `efa9d167dc039caa1910df020877addd7ca2e405` is committed, 952 changed
+lines against published capability `022854`. Inline independent SWE-2 Max review
+`49067` is running on that source. Full CI `72794` passed 115 units but failed
+strict lint: the shared fixture helper is unused when `oauth_server` imports
+the fixture module. The correction moves the exact helper into the care test
+binary, without changing SQL, assertions or runtime policy. Only owned downstream
+integration/browser runners were interrupted through their normal handlers;
+all owned processes exited. No full-CI success is claimed. Three generated PNGs
+were preserved in `me-ui-ci-efa9d167-generated-screenshots.patch`, SHA-256
+`f2e8889ee82a583ac7b90140f39dbc32716fd56f9c1b253a47a68d6fd0798501`.
+Root verified the three exact paths and reverse-applied only that patch.
+People test drafting in its separate branch remains paused until this required
+failure is corrected. Publication remains held for lint, full CI and review.
+The unchanged helper now lives in an inherent `impl Fixture` within
+`tests/care_api.rs`, so the OAuth binary no longer compiles an unused method.
+Formatting and diff checks pass; strict all-target lint `13425` passed in
+18.14 seconds. Full CI will rerun on the committed correction; the existing
+independent review will receive that exact placement delta in the same session.
+Corrected candidate `9eb99ed02cfee6d63f20ae218a6d649b36a6d8f1` is now accepted
+locally. Same Devin session `giddy-protocol` exported `SWE-2 Max`: initial review
+`49067` identified only the helper placement; correction review `24809` exited
+zero with ACCEPT after 11 cumulative steps. Full CI `53209` exited zero on the
+clean candidate: 115 units, 64 requests (one completion ignore), 508 care cases
+(two ignored, 16 helpers filtered), OAuth 17, identity 7, all other applicable
+integration suites and all 744 browser cases in 19.4 minutes. Owned processes
+exited normally. Forty generated PNGs were preserved in an 8,170,202-byte patch,
+`me-ui-full-ci-9eb99ed0-generated-screenshots.patch`, SHA-256
+`df6547e5244d56b4d4eabdabd7f5231cb0e7d8d535309499a683f69f2e84e8a4`.
+Root verified all 40 current file hashes and the exact path list, then reverse-
+applied only that patch; source and HEAD remained unchanged and clean.
+The candidate has 972 changed lines against published capability `022854`.
+This final evidence update is documentation only. Publication and exact-head
+hosted acceptance remain required; no merge or deployment occurred. Whole-API
+acceptance still rejects 117 incomplete operations. The separate People draft
+will next demonstrate its own RED, including the missing replay metadata;
+neither draft nor source inspection earns additional complete operation credit.
 
 Entries below retain historical revisions, failed attempts and publication states.
 

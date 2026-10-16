@@ -122,7 +122,7 @@ fn authentication(error: AuthenticationError, request_id: &str) -> Response {
             "Authentication required",
             request_id,
         ),
-        AuthenticationError::Forbidden => failure(
+        AuthenticationError::Forbidden | AuthenticationError::NotFound => failure(
             StatusCode::FORBIDDEN,
             "forbidden",
             "You are not authorized to perform this action.",

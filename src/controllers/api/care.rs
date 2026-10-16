@@ -101,7 +101,9 @@ pub fn routes() -> Routes {
         )
         .add(
             "/{household_id}/ui_capabilities",
-            get(ui_capabilities::show),
+            get(ui_capabilities::show).layer(axum::middleware::map_response(|response| async {
+                profile::no_store(response)
+            })),
         )
         .add(
             "/{household_id}/medication_lookup",

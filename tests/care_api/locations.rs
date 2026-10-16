@@ -219,6 +219,7 @@ fn location_etag_retains_published_sorted_json_encoding() {
 #[tokio::test]
 async fn location_collection_api_is_scoped_paginated_and_validates_query() {
     let app = Application::new().await;
+    app.fixture.seed_foreign_household(99999).await;
     let token = app.token().await;
     let endpoint = format!("{}/api/v1/households/72001/locations", app.origin);
     app.fixture.admin.execute_unprepared("UPDATE locations SET updated_at='2026-10-05 00:00:00' WHERE id=79001; INSERT INTO locations(id,household_id,name,created_at,updated_at) VALUES(79002,72001,'Synthetic newer cabinet','2026-10-06 00:00:00','2026-10-06 00:00:00')").await.unwrap();
@@ -721,6 +722,7 @@ async fn location_get_matches_documented_contract() {
 #[tokio::test]
 async fn location_list_matches_documented_contract() {
     let app = Application::new().await;
+    app.fixture.seed_foreign_household(72002).await;
     let token = app.token().await;
     let collection = format!("{}/api/v1/households/72001/locations", app.origin);
     let contract = contract();

@@ -28,6 +28,7 @@ use crate::models::{
 pub enum AuthenticationError {
     Unauthenticated,
     Forbidden,
+    NotFound,
     InsufficientScope { authenticate: String },
     Unavailable,
 }
@@ -270,6 +271,7 @@ pub(super) async fn authenticate_oauth(
 pub(super) fn operation_error(error: OperationError) -> AuthenticationError {
     match error {
         OperationError::Unauthenticated => AuthenticationError::Unauthenticated,
+        OperationError::NotFound => AuthenticationError::NotFound,
         OperationError::Unavailable => AuthenticationError::Unavailable,
         _ => AuthenticationError::Forbidden,
     }

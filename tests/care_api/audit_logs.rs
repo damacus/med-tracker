@@ -80,6 +80,7 @@ async fn audit_logs_require_household_administration() {
 #[tokio::test]
 async fn audit_logs_reject_unauthenticated_and_foreign_household_reads() {
     let app = Application::new().await;
+    app.fixture.seed_foreign_household(99999).await;
     let anonymous = app
         .client
         .get(format!(

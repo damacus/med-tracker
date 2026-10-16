@@ -145,6 +145,7 @@ async fn native_device_token_registration_returns_201_and_updates_existing_claim
 #[tokio::test]
 async fn native_device_token_validates_envelope_and_attributes() {
     let app = Application::new().await;
+    app.fixture.seed_foreign_household(99999).await;
     let token = app.token().await;
     let mut statuses = Vec::new();
     let mut last_body = Value::Null;

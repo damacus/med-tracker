@@ -89,7 +89,7 @@ async fn me_returns_own_person_when_membership_lives_in_another_household() {
 }
 
 #[tokio::test]
-async fn me_rejects_unauthenticated_and_foreign_household_reads() {
+async fn me_rejects_unauthenticated_and_missing_household_reads() {
     let app = Application::new().await;
     let anonymous = app
         .client
@@ -105,15 +105,15 @@ async fn me_rejects_unauthenticated_and_foreign_household_reads() {
         .and_then(|value| value.to_str().ok())
         .map(str::to_owned);
     let token = app.token().await;
-    let foreign = app
+    let missing = app
         .client
         .get(format!("{}/api/v1/households/99999/me", app.origin))
         .bearer_auth(&token)
         .send()
         .await
         .unwrap();
-    let foreign_status = foreign.status().as_u16();
-    let foreign_cache = foreign.headers().get("cache-control").cloned();
+    let missing_status = missing.status().as_u16();
+    let missing_cache = missing.headers().get("cache-control").cloned();
     let audits = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
         "SELECT count(*) AS count FROM security_audit_events WHERE event_type='api.request' AND metadata->>'controller'='api/v1/me'"
     )).await.unwrap().unwrap();
@@ -121,14 +121,14 @@ async fn me_rejects_unauthenticated_and_foreign_household_reads() {
     app.close().await;
     assert_eq!(anonymous_status, 401);
     assert_eq!(challenge.as_deref(), Some("Bearer"));
-    assert_eq!(foreign_status, 403);
+    assert_eq!(missing_status, 404);
     assert_eq!(attempts, 0);
     assert_eq!(
         anonymous_cache.as_ref().map(|value| value.as_bytes()),
         Some(b"no-store".as_slice())
     );
     assert_eq!(
-        foreign_cache.as_ref().map(|value| value.as_bytes()),
+        missing_cache.as_ref().map(|value| value.as_bytes()),
         Some(b"no-store".as_slice())
     );
 }
