@@ -188,4 +188,5 @@
   dialog?.querySelector('[data-dialog-close]')?.addEventListener('click', closeScanner);
   window.addEventListener('pagehide', () => { request?.abort(); stopCamera(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden) stopCamera(); });
+  for (const control of root.querySelectorAll('[type="submit"], [data-camera-start]')) control.disabled = false;
 })();
