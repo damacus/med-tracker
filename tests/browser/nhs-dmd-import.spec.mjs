@@ -55,7 +55,8 @@ test('administrator sees failed and completed imports and can use the imported b
   await page.screenshot({ path: testInfo.outputPath('nhs-dmd-import-completed.png'), fullPage: true });
 
   await page.goto('/');
-  await openCareSection(page, 'Medication Finder');
+  await page.getByRole('button', { name: 'Open Synthetic household', exact: true }).click();
+  await openCareSection(page, 'Medicine Finder');
   await page.getByLabel('Barcode', { exact: true }).fill('5016298210989');
   await page.getByRole('button', { name: 'Find barcode', exact: true }).click();
   await expect(page.getByText('Scanner imported tablets', { exact: true })).toBeVisible();
