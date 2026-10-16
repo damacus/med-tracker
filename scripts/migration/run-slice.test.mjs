@@ -45,6 +45,33 @@ test('ordinary Rust entry points load without the optional proof parser', async 
   }
 });
 
+test('coverage Task installs its JUnit parser before invoking the owned runner', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'medtracker-coverage-missing-parser-'));
+  try {
+    const loader = join(directory, 'block-saxes.mjs');
+    await writeFile(loader, `export async function resolve(specifier, context, nextResolve) {
+  if (specifier === 'saxes') throw new Error('isolated checkout has no saxes');
+  return nextResolve(specifier, context);
+}\n`);
+    const missing = spawnSync(process.execPath, ['--input-type=module', '-e', 'await import("./scripts/migration/nextest-proof.mjs")'], { cwd: root, env: { ...process.env, NODE_OPTIONS: `--experimental-loader=${loader}` }, encoding: 'utf8' });
+    assert.notEqual(missing.status, 0);
+    assert.match(missing.stderr, /isolated checkout has no saxes/);
+    const planned = spawnSync('task', ['--force', '--dry', '--verbose', 'test:coverage'], { cwd: root, encoding: 'utf8' });
+    assert.equal(planned.status, 0, planned.stderr);
+    const commands = `${planned.stdout}${planned.stderr}`;
+    const install = commands.indexOf('npm ci');
+    const runner = commands.indexOf('node scripts/migration/run-slice.mjs --coverage');
+    assert.ok(install >= 0 && runner > install, `Coverage parser must install before fixture provisioning: ${commands}`);
+    const focused = spawnSync('task', ['--force', '--dry', '--verbose', 'test:coverage-prerequisite'], { cwd: root, encoding: 'utf8' });
+    assert.equal(focused.status, 0, focused.stderr);
+    const focusedCommands = `${focused.stdout}${focused.stderr}`;
+    const testCommand = focusedCommands.indexOf('node --test --test-name-pattern=');
+    assert.ok(focusedCommands.indexOf('npm ci') >= 0 && testCommand > focusedCommands.indexOf('npm ci'), `Focused prerequisite test must install before importing parser: ${focusedCommands}`);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 async function withProcessFixture(exitCode, callback, taskName = 'slice:test', assignments = ['TARGET=persistence'], provisionExit = 0, extraEnvironment = {}, { closeOutputBeforeCargo = false, injectReadableError = false } = {}) {
   const directory = await mkdtemp(join(tmpdir(), 'medtracker-slice-runner-'));
   const statePath = join(directory, 'state.json');
@@ -81,7 +108,14 @@ if (command === 'docker') {
   fs.writeFileSync(statePath, JSON.stringify(state));
   if (command === 'cargo' && args.includes('--version')) {
     if (process.env.SLICE_FIXTURE_MISSING_COVERAGE === '1') process.exit(101);
-    process.stdout.write('cargo-llvm-cov ' + (process.env.SLICE_FIXTURE_COV_VERSION || '0.9.1') + '\\n');
+    process.stdout.write(args.includes('nextest') ? 'cargo-nextest ' + (process.env.SLICE_FIXTURE_NEXTEST_VERSION || '0.9.148') + '\\n' : 'cargo-llvm-cov ' + (process.env.SLICE_FIXTURE_COV_VERSION || '0.9.1') + '\\n');
+  }
+  if (command === 'cargo' && args[0] === 'nextest' && args[1] === 'list') {
+    const binary = args.includes('--lib') ? 'med-tracker' : 'med-tracker::' + args[args.indexOf('--test') + 1];
+    const names = binary === 'med-tracker' ? ['unit_case', 'held_case'] : binary.endsWith('::requests') ? ['api_v1::baseline::anonymous_access', 'other_case', 'held_case'] : ['care_case'];
+    const testcases = Object.fromEntries(names.map(name => [name, { ignored: name === 'held_case' }]));
+    process.stdout.write(JSON.stringify(process.env.SLICE_FIXTURE_COVERAGE_EMPTY_LIST === '1' ? { 'test-count': 0, 'rust-suites': {} } : { 'test-count': names.length, 'rust-suites': { [binary]: { 'binary-id': binary, status: 'listed', testcases } } }));
+    process.exit(0);
   }
   if (command === 'cargo' && args.includes('--no-report') && args.includes('--no-clean')) {
     process.stderr.write('error: --no-report may not be used together with --no-clean\\n');
@@ -95,6 +129,18 @@ if (command === 'docker') {
     if (process.env.SLICE_FIXTURE_EXTRA_REPORT_PATH) fs.writeFileSync(process.env.SLICE_FIXTURE_EXTRA_REPORT_PATH, 'unrelated source change\\n');
   }
   const complete = () => {
+    if (command === 'cargo' && args[0] === 'llvm-cov' && args[1] === 'nextest' && args.includes('--config-file')) {
+      const binary = args.includes('--lib') ? 'med-tracker' : 'med-tracker::' + args[args.indexOf('--test') + 1];
+      const names = binary === 'med-tracker' ? ['unit_case', 'held_case'] : binary.endsWith('::requests') ? ['api_v1::baseline::anonymous_access', 'held_case'] : ['care_case'];
+      const mode = process.env.SLICE_FIXTURE_COVERAGE_PROOF_MODE;
+      const reported = mode === 'wrong-name' && binary.endsWith('::care_api') ? ['wrong_case'] : names;
+      const config = fs.readFileSync(args[args.indexOf('--config-file') + 1], 'utf8');
+      const reportName = /path = "([^"]+)"/.exec(config)?.[1];
+      const reportPath = path.join(process.cwd(), 'target', 'nextest', 'contract-proof', reportName);
+      const testcase = reported.map(name => '<testcase name="' + name + '" classname="' + binary + '">' + (name === 'held_case' || mode === 'skipped' && binary.endsWith('::care_api') ? '<skipped/>' : '') + '</testcase>').join('');
+      fs.mkdirSync(path.dirname(reportPath), { recursive: true });
+      if (mode !== 'missing' || !binary.endsWith('::care_api')) fs.writeFileSync(reportPath, '<testsuites tests="' + reported.length + '" failures="0" errors="0"><testsuite name="' + binary + '" tests="' + reported.length + '" failures="0" errors="0">' + testcase + '</testsuite></testsuites>');
+    }
     const transcript = args.includes('--run-ignored') && process.env.SLICE_FIXTURE_COMPLETION_TRANSCRIPT
       ? process.env.SLICE_FIXTURE_COMPLETION_TRANSCRIPT : args.includes('care_api') && process.env.SLICE_FIXTURE_CARE_TRANSCRIPT
         ? process.env.SLICE_FIXTURE_CARE_TRANSCRIPT : process.env.SLICE_FIXTURE_CARGO_TRANSCRIPT;
@@ -751,16 +797,18 @@ test('coverage report collects root units, API inventory and care API through on
     const coverageCalls = state.calls.filter(call => call.command === 'cargo' && call.args[0] === 'llvm-cov' && !call.args.includes('--version'));
     assert.deepEqual(coverageCalls.map(call => call.args.slice(1, 3)), [
       ['clean', '--workspace'],
-      ['test', '--no-report'],
-      ['test', '--no-report'],
-      ['test', '--no-report'],
+      ['nextest', '--no-report'],
+      ['nextest', '--no-report'],
+      ['nextest', '--no-report'],
       ['report', '--lcov'],
     ]);
     assert.ok(coverageCalls[1].args.includes('--lib'));
     assert.ok(coverageCalls[2].args.includes('api_v1'));
     assert.ok(coverageCalls[2].args.includes('requests'));
     assert.ok(coverageCalls[3].args.includes('care_api'));
-    assert.ok(coverageCalls[3].args.includes('--test-threads=2'));
+    assert.ok(coverageCalls[3].args.includes('--test-threads'));
+    assert.ok(coverageCalls.slice(1, 4).every(call => call.args.includes('--no-tests=fail') && call.args.includes('--config-file')));
+    assert.equal(state.calls.filter(call => call.command === 'cargo' && call.args[0] === 'nextest' && call.args[1] === 'list').length, 3);
     assert.ok(coverageCalls.every(call => call.coverage_target_dir?.startsWith(join(root, 'target/coverage/'))));
     assert.ok(coverageCalls.every(call => call.coverage_build_dir?.startsWith(join(root, 'target/coverage/'))));
     assert.ok(coverageCalls.every(call => call.coverage_profile_override === undefined));
@@ -784,7 +832,13 @@ test('coverage report collects root units, API inventory and care API through on
     assert.match(await readFile(reportPath, 'utf8'), /SF:src\/lib.rs/);
     const manifest = JSON.parse(await readFile(join(completedDirectory, 'manifest.json'), 'utf8'));
     assert.deepEqual(manifest.selectors, ['lib', 'requests:api_v1', 'care_api']);
+    assert.deepEqual(manifest.execution.map(item => [item.binary, item.passed, item.ignored]), [
+      ['med-tracker', ['unit_case'], ['held_case']],
+      ['med-tracker::requests', ['api_v1::baseline::anonymous_access'], ['held_case']],
+      ['med-tracker::care_api', ['care_case'], []],
+    ]);
     assert.equal(manifest.status, 'complete');
+    assert.equal(manifest.cargo_nextest, 'cargo-nextest 0.9.148');
     assert.match(manifest.source_state.sha256, /^[a-f0-9]{64}$/);
     assert.equal(typeof manifest.source_state.dirty, 'boolean');
   }, 'test:coverage', directory => [`OUTPUT_DIR=${join(directory, 'coverage')}`], 0, { SLICE_FIXTURE_FAIL_MATCH: 'never' });
@@ -892,12 +946,32 @@ test('failed coverage selection stops before report and cleans its owned resourc
   }, 'test:coverage', directory => [`OUTPUT_DIR=${join(directory, 'coverage')}`], 0, { SLICE_FIXTURE_FAIL_MATCH: '--test care_api' });
 });
 
+for (const mode of ['missing', 'wrong-name', 'skipped']) {
+  test(`coverage rejects ${mode} nextest proof before LCOV or complete manifest`, async () => {
+    await withProcessFixture(0, async (result, state, directory) => {
+      assert.notEqual(result.status, 0);
+      assert.equal(state.calls.some(call => call.command === 'cargo' && call.args.includes('report')), false);
+      assert.deepEqual(await readdir(join(directory, 'coverage')), []);
+      assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
+    }, 'test:coverage', directory => [`OUTPUT_DIR=${join(directory, 'coverage')}`], 0, { SLICE_FIXTURE_FAIL_MATCH: 'never', SLICE_FIXTURE_COVERAGE_PROOF_MODE: mode });
+  });
+}
+
+test('coverage rejects zero selected tests before an instrumented run', async () => {
+  await withProcessFixture(0, async (result, state, directory) => {
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /inventory|selected no tests/i);
+    assert.equal(state.calls.some(call => call.command === 'cargo' && call.args[0] === 'llvm-cov' && call.args[1] === 'nextest'), false);
+    assert.deepEqual(await readdir(join(directory, 'coverage')), []);
+  }, 'test:coverage', directory => [`OUTPUT_DIR=${join(directory, 'coverage')}`], 0, { SLICE_FIXTURE_FAIL_MATCH: 'never', SLICE_FIXTURE_COVERAGE_EMPTY_LIST: '1' });
+});
+
 test('separate coverage invocations never reuse instrumented Cargo directories', async () => {
   const targets = [];
   for (let index = 0; index < 2; index += 1) {
     await withProcessFixture(0, (result, state) => {
       assert.equal(result.status, 0, result.stderr);
-      const coverageCalls = state.calls.filter(call => call.command === 'cargo' && call.args[0] === 'llvm-cov' && call.args.includes('test'));
+      const coverageCalls = state.calls.filter(call => call.command === 'cargo' && call.args[0] === 'llvm-cov' && call.args.includes('nextest'));
       assert.equal(new Set(coverageCalls.map(call => call.coverage_target_dir)).size, 1);
       assert.equal(new Set(coverageCalls.map(call => call.coverage_build_dir)).size, 1);
       targets.push(coverageCalls[0].coverage_target_dir);
@@ -920,6 +994,14 @@ test('coverage prerequisite rejects a near-prefix tool version before provisioni
     assert.match(result.stderr, /cargo-llvm-cov 0\.9\.1/);
     assert.equal(state.calls.some(call => call.command === 'docker'), false);
   }, 'test:coverage', [], 0, { SLICE_FIXTURE_COV_VERSION: '0.9.10' });
+});
+
+test('coverage prerequisite rejects a different nextest version before provisioning', async () => {
+  await withProcessFixture(0, (result, state) => {
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /cargo-nextest 0\.9\.148/);
+    assert.equal(state.calls.some(call => call.command === 'docker'), false);
+  }, 'test:coverage', [], 0, { SLICE_FIXTURE_NEXTEST_VERSION: '0.9.149' });
 });
 
 test('coverage rejects a flag-shaped output directory before provisioning', async () => {
