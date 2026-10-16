@@ -60,6 +60,7 @@ pub struct ToolCapability {
 }
 
 impl Capabilities {
+    #[must_use]
     pub fn supports_path(&self, path: &[&str]) -> bool {
         let mut value = match path.first().copied() {
             Some("backups") => &self.backups,
@@ -67,7 +68,7 @@ impl Capabilities {
             _ => return false,
         };
 
-        for segment in &path[1..] {
+        for segment in path.iter().skip(1) {
             value = match value.get(*segment) {
                 Some(next) => next,
                 None => return false,
