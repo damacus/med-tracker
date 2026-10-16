@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
-import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -10,6 +10,21 @@ test('hosted relocation checks run after their tools are installed', () => {
   const install = workflow.indexOf('sudo apt-get install --yes fish uuid-runtime ripgrep');
   assert.ok(install >= 0, 'Install every relocation and runner prerequisite');
   assert.ok(install < workflow.indexOf('run: task ci:paths foundation:test-relocation fmt'));
+});
+
+test('hosted archive workers install the pinned runner before Task and lint installs machete', () => {
+  const workflow = readFileSync('.github/workflows/ci.yml', 'utf8');
+  const pinned = readFileSync('mise.toml', 'utf8');
+  const nextest = pinned.match(/"cargo:cargo-nextest" = "([^"]+)"/)?.[1];
+  const machete = pinned.match(/"cargo:cargo-machete" = "([^"]+)"/)?.[1];
+  for (const [jobName, nextJob] of [['loco_foundation', 'loco_lint'], ['loco_integration', 'loco_browser']]) {
+    const job = workflow.split(`  ${jobName}:`)[1].split(`  ${nextJob}:`)[0];
+    assert.ok(job.indexOf(`cargo-nextest@${nextest}`) >= 0);
+    assert.ok(job.indexOf(`cargo-nextest@${nextest}`) < job.indexOf(jobName === 'loco_foundation' ? 'run: task test:unit' : 'run: task test:integration'));
+    assert.match(job, /taiki-e\/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8/);
+  }
+  const lint = workflow.split('  loco_lint:')[1].split('  loco_coverage:')[0];
+  assert.ok(lint.includes(`cargo-machete@${machete}`));
 });
 
 test('legacy household shards wait for Loco browsers without skipping legacy-only changes', () => {
@@ -35,7 +50,7 @@ test('CI runs cheap contracts and units before preparation and integration or br
   const result = spawnSync('task', ['--dry', '--force', '--verbose', 'ci'], { encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
   const output = result.stdout + result.stderr;
-  const unit = output.indexOf('cargo test --locked --lib');
+  const unit = output.indexOf('cargo nextest run --locked --workspace --lib --no-tests=fail');
   const prepare = output.indexOf('loco-build.mjs');
   assert.ok(unit >= 0, 'Library tests must be an explicit first stage');
   assert.ok(prepare > unit, 'Compile integration targets only after units');
@@ -57,8 +72,9 @@ if (process.argv.includes('--lib')) process.exit(42);
     for (const name of ['node', 'cargo']) writeFileSync(join(directory, name), stub, { mode: 0o755 });
     const result = spawnSync('task', ['--force', 'test'], { encoding: 'utf8', env: { ...process.env, PATH: `${directory}:${process.env.PATH}`, LOCO_STAGE_LOG: log } });
     assert.notEqual(result.status, 0);
+    assert.ok(existsSync(log), result.stdout + result.stderr);
     const calls = readFileSync(log, 'utf8');
-    assert.match(calls, /cargo test --locked --lib/);
+    assert.match(calls, /cargo nextest run --locked --workspace --lib --no-tests=fail/);
     assert.doesNotMatch(calls, /loco-build|loco-integration|loco-browser/);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });

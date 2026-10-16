@@ -21,6 +21,12 @@ export async function createNextestProofReport(targetDirectory) {
       const xml = await readFile(reportPath, 'utf8').catch(() => { throw new Error('Missing fresh nextest JUnit report'); });
       return parseNextestJUnit(xml, binaryId);
     },
+    async readSuites(binaryIds) {
+      const details = await stat(reportPath).catch(() => { throw new Error('Missing fresh nextest JUnit report'); });
+      if (details.size > MAX_REPORT_BYTES) throw new Error('Nextest JUnit report exceeds size limit');
+      const xml = await readFile(reportPath, 'utf8').catch(() => { throw new Error('Missing fresh nextest JUnit report'); });
+      return parseNextestJUnitSuites(xml, binaryIds);
+    },
     async cleanup() {
       await rm(reportPath, { force: true });
       await rm(directory, { recursive: true, force: true });
@@ -35,15 +41,21 @@ function count(attributes, name) {
 }
 
 export function parseNextestJUnit(xml, binaryId) {
+  return parseNextestJUnitSuites(xml, [binaryId]).get(binaryId);
+}
+
+export function parseNextestJUnitSuites(xml, binaryIds) {
   if (typeof xml !== 'string' || !xml || Buffer.byteLength(xml) > MAX_REPORT_BYTES) throw new Error('Missing or oversized nextest JUnit report');
   if (/<!DOCTYPE/i.test(xml)) throw new Error('JUnit DTD is forbidden');
+  if (!Array.isArray(binaryIds) || !binaryIds.length || new Set(binaryIds).size !== binaryIds.length || binaryIds.some(binary => typeof binary !== 'string' || !/^[A-Za-z0-9_-]+(?:::[A-Za-z0-9_-]+)*$/.test(binary))) throw new Error('Invalid expected JUnit binaries');
+  const expected = new Set(binaryIds);
   const parser = new SaxesParser();
   const stack = [];
-  const passed = new Set();
-  const ignored = new Set();
+  const suites = new Map();
   let rootCounts;
   let suiteCounts;
-  let suiteCount = 0;
+  let activeSuite;
+  let suiteCases = 0;
   let cases = 0;
   let activeCase;
   parser.on('doctype', () => { throw new Error('JUnit DTD is forbidden'); });
@@ -54,21 +66,24 @@ export function parseNextestJUnit(xml, binaryId) {
       if (name !== 'testsuites' || rootCounts) throw new Error('Unexpected JUnit document root');
       rootCounts = { tests: count(attributes, 'tests'), failures: count(attributes, 'failures'), errors: count(attributes, 'errors') };
     } else if (parent === 'testsuites') {
-      if (name !== 'testsuite' || suiteCount++) throw new Error('JUnit must contain exactly one binary suite');
-      if (attributes.name !== binaryId) throw new Error(`Unexpected JUnit binary: ${attributes.name}`);
+      if (name !== 'testsuite' || !expected.has(attributes.name) || suites.has(attributes.name)) throw new Error(`Unexpected JUnit binary: ${attributes.name}`);
+      activeSuite = attributes.name;
+      suites.set(activeSuite, { passed: new Set(), ignored: new Set() });
       suiteCounts = { tests: count(attributes, 'tests'), failures: count(attributes, 'failures'), errors: count(attributes, 'errors') };
+      suiteCases = 0;
     } else if (parent === 'testsuite') {
       if (name !== 'testcase') throw new Error(`Unexpected JUnit suite child: ${name}`);
-      if (attributes.classname !== binaryId || !/^[A-Za-z0-9_]+(?:::[A-Za-z0-9_]+)*$/.test(attributes.name ?? '')) throw new Error('Unexpected JUnit test identity');
-      if (passed.has(attributes.name) || ignored.has(attributes.name)) throw new Error(`Duplicate JUnit test: ${attributes.name}`);
+      if (attributes.classname !== activeSuite || !/^[A-Za-z0-9_]+(?:::[A-Za-z0-9_]+)*$/.test(attributes.name ?? '')) throw new Error('Unexpected JUnit test identity');
+      if (suites.get(activeSuite).passed.has(attributes.name) || suites.get(activeSuite).ignored.has(attributes.name)) throw new Error(`Duplicate JUnit test: ${attributes.name}`);
       activeCase = attributes.name;
-      passed.add(attributes.name);
+      suites.get(activeSuite).passed.add(attributes.name);
       cases += 1;
+      suiteCases += 1;
     } else if (parent === 'testcase') {
       if (name === 'skipped') {
-        if (!passed.has(activeCase)) throw new Error('Duplicate JUnit skipped status');
-        passed.delete(activeCase);
-        ignored.add(activeCase);
+        if (!suites.get(activeSuite).passed.has(activeCase)) throw new Error('Duplicate JUnit skipped status');
+        suites.get(activeSuite).passed.delete(activeCase);
+        suites.get(activeSuite).ignored.add(activeCase);
       } else if (['failure', 'error', 'rerunFailure', 'rerunError', 'flakyFailure', 'flakyError'].includes(name)) {
         throw new Error(`JUnit case did not pass: ${name}`);
       } else throw new Error(`Unexpected JUnit case child: ${name}`);
@@ -76,11 +91,16 @@ export function parseNextestJUnit(xml, binaryId) {
     stack.push(name);
   });
   parser.on('closetag', () => {
-    if (stack.pop() === 'testcase') activeCase = undefined;
+    const closed = stack.pop();
+    if (closed === 'testcase') activeCase = undefined;
+    if (closed === 'testsuite') {
+      if (suiteCounts.failures || suiteCounts.errors || suiteCounts.tests !== suiteCases) throw new Error('Nextest JUnit suite counts do not match cases');
+      activeSuite = undefined;
+    }
   });
   parser.write(xml).close();
-  if (!rootCounts || !suiteCounts || suiteCount !== 1 || stack.length || cases === 0) throw new Error('Incomplete or empty nextest JUnit report');
-  if (rootCounts.failures || rootCounts.errors || suiteCounts.failures || suiteCounts.errors || rootCounts.tests !== cases || suiteCounts.tests !== cases) throw new Error('Nextest JUnit counts do not match executed cases');
-  if (passed.size === 0) throw new Error('Nextest JUnit selected no executed tests');
-  return { passed, ignored };
+  if (!rootCounts || suites.size !== expected.size || stack.length || cases === 0) throw new Error('Incomplete or empty nextest JUnit report');
+  if (rootCounts.failures || rootCounts.errors || rootCounts.tests !== cases) throw new Error('Nextest JUnit counts do not match executed cases');
+  if (![...suites.values()].some(suite => suite.passed.size)) throw new Error('Nextest JUnit selected no executed tests');
+  return suites;
 }
