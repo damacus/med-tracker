@@ -113,44 +113,16 @@ async fn db_now(
         .and_then(|row| get::<chrono::NaiveDateTime>(&row, "now"))
 }
 
-async fn expire_row(
-    transaction: &DatabaseTransaction,
-    support_id: i64,
-    household_id: i64,
-    audit: &AuditContext,
-) -> Result<(), OperationError> {
-    let changed = transaction
-        .execute_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "UPDATE public.support_access_sessions SET expired_at=clock_timestamp(),updated_at=clock_timestamp() WHERE id=$1 AND expired_at IS NULL AND ended_at IS NULL AND expires_at <= clock_timestamp()",
-            [support_id.into()],
-        ))
-        .await?;
-    if changed.rows_affected() == 0 {
-        return Ok(());
-    }
-    record(
-        transaction,
-        "SupportAccessSession",
-        support_id,
-        "platform/support/expired",
-        json!({"household_id":household_id}),
-        audit,
-    )
-    .await
-}
-
 async fn expire(
     transaction: &DatabaseTransaction,
     support_id: i64,
     session: &SessionRow,
-    audit: &AuditContext,
 ) -> Result<bool, OperationError> {
     if session.expires_at > db_now(transaction).await? {
         return Ok(false);
     }
     if session.expired_at.is_none() {
-        expire_row(transaction, support_id, session.household_id, audit).await?;
+        super::expiry::expire_in(transaction, support_id).await?;
     }
     Ok(true)
 }
@@ -338,10 +310,9 @@ async fn approval_current(
 pub async fn page(
     transaction: &DatabaseTransaction,
     actor_account_id: i64,
-    meta: &RequestMeta,
     requested_page: i64,
 ) -> Result<SupportPage, OperationError> {
-    let actor = authorize(transaction, actor_account_id, "support_request").await?;
+    authorize(transaction, actor_account_id, "support_request").await?;
     let total: i64 = transaction
         .query_one_raw(Statement::from_string(
             DbBackend::Postgres,
@@ -364,11 +335,7 @@ pub async fn page(
         if get::<bool>(row, "past")?
             && get::<Option<chrono::NaiveDateTime>>(row, "expired_at")?.is_none()
         {
-            let household_id: i64 = get(row, "household_id")?;
-            let audit = meta
-                .administrator(actor_account_id, actor.user_id)
-                .for_household(household_id);
-            expire_row(transaction, get(row, "id")?, household_id, &audit).await?;
+            super::expiry::expire_in(transaction, get(row, "id")?).await?;
         }
         sessions.push(entry(row)?);
     }
@@ -425,9 +392,8 @@ pub async fn support_link(
 pub async fn owner_page(
     transaction: &DatabaseTransaction,
     actor_account_id: i64,
-    meta: &RequestMeta,
 ) -> Result<Vec<SupportEntry>, OperationError> {
-    let user_id = access::verify_account_actor(transaction, actor_account_id).await?;
+    access::verify_account_actor(transaction, actor_account_id).await?;
     account_scope(transaction, actor_account_id).await?;
     let ids = owned_households(transaction, actor_account_id).await?;
     if ids.is_empty() {
@@ -442,12 +408,10 @@ pub async fn owner_page(
         .await?;
     let mut sessions = Vec::with_capacity(rows.len());
     for row in &rows {
-        let household_id: i64 = get(row, "household_id")?;
         if get::<bool>(row, "past")?
             && get::<Option<chrono::NaiveDateTime>>(row, "expired_at")?.is_none()
         {
-            let audit = meta.owner(actor_account_id, user_id, household_id);
-            expire_row(transaction, get(row, "id")?, household_id, &audit).await?;
+            super::expiry::expire_in(transaction, get(row, "id")?).await?;
         }
         sessions.push(entry(row)?);
     }
@@ -563,8 +527,7 @@ pub async fn approve(
     if !household_open(transaction, session.household_id).await? {
         return Err(invalid("The household is not open."));
     }
-    let expiry_audit = meta.owner(actor_account_id, user_id, session.household_id);
-    if expire(transaction, support_id, &session, &expiry_audit).await? {
+    if expire(transaction, support_id, &session).await? {
         return Ok(SupportDecision::Expired);
     }
     let now = db_now(transaction).await?;
@@ -634,10 +597,7 @@ pub async fn activate(
     if !household_open(transaction, session.household_id).await? || !approved {
         return Err(OperationError::Forbidden);
     }
-    let expiry_audit = meta
-        .administrator(actor_account_id, actor.user_id)
-        .for_household(session.household_id);
-    if expire(transaction, support_id, &session, &expiry_audit).await? {
+    if expire(transaction, support_id, &session).await? {
         return Ok(SupportDecision::Expired);
     }
     let now = db_now(transaction).await?;
@@ -697,7 +657,7 @@ pub async fn end(
     }
     .for_household(session.household_id);
     if session.ended_at.is_none() {
-        if expire(transaction, support_id, &session, &audit).await? {
+        if expire(transaction, support_id, &session).await? {
             return Err(OperationError::Forbidden);
         }
         let now = db_now(transaction).await?;
@@ -729,9 +689,8 @@ pub async fn read(
     transaction: &DatabaseTransaction,
     actor_account_id: i64,
     support_id: i64,
-    meta: &RequestMeta,
 ) -> Result<SupportRead, OperationError> {
-    let user_id = access::verify_account_actor(transaction, actor_account_id).await?;
+    access::verify_account_actor(transaction, actor_account_id).await?;
     let session = session_row(transaction, support_id, true).await?;
     let Some(_) = admin_record(transaction, actor_account_id)
         .await?
@@ -746,14 +705,11 @@ pub async fn read(
     {
         return Err(OperationError::Forbidden);
     }
-    let audit = meta
-        .administrator(actor_account_id, user_id)
-        .for_household(session.household_id);
-    if expire(transaction, support_id, &session, &audit).await? {
+    if expire(transaction, support_id, &session).await? {
         return Err(OperationError::Forbidden);
     }
     let approved = approval_current(transaction, &session).await?;
-    let user_id = access::verify_account_actor(transaction, actor_account_id).await?;
+    access::verify_account_actor(transaction, actor_account_id).await?;
     let account = target_account(transaction, actor_account_id).await?;
     let Some(admin) = admin_record(transaction, actor_account_id)
         .await?
@@ -764,10 +720,7 @@ pub async fn read(
     if !household_open(transaction, session.household_id).await? {
         return Err(OperationError::Forbidden);
     }
-    let audit = meta
-        .administrator(actor_account_id, user_id)
-        .for_household(session.household_id);
-    if expire(transaction, support_id, &session, &audit).await? || !approved {
+    if expire(transaction, support_id, &session).await? || !approved {
         return Err(OperationError::Forbidden);
     }
     let now = db_now(transaction).await?;

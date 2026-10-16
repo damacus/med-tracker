@@ -122,22 +122,18 @@ pub(super) async fn index(
     Query(params): Query<UsersQuery>,
     Extension(service): Extension<IdentityService>,
     headers: HeaderMap,
-    request_id: Option<Extension<LocoRequestId>>,
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
 ) -> Response {
-    let (account_id, session) = match platform_account(&service, &headers).await {
+    let (account_id, _) = match platform_account(&service, &headers).await {
         Ok(account) => account,
         Err(response) => return *response,
     };
     let Ok(transaction) = platform::begin(&ctx.db).await else {
         return unavailable();
     };
-    let meta = browser_meta(&session, request_id, &headers);
     let page =
-        match platform::support::page(&transaction, account_id, &meta, params.page.unwrap_or(1))
-            .await
-        {
+        match platform::support::page(&transaction, account_id, params.page.unwrap_or(1)).await {
             Ok(page) => page,
             Err(error) => {
                 let unauthenticated = matches!(error, OperationError::Unauthenticated);
@@ -246,20 +242,18 @@ pub(super) async fn read(
     State(ctx): State<AppContext>,
     Extension(service): Extension<IdentityService>,
     headers: HeaderMap,
-    request_id: Option<Extension<LocoRequestId>>,
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
     Path(support_id): Path<i64>,
 ) -> Response {
-    let (account_id, session) = match platform_account(&service, &headers).await {
+    let (account_id, _) = match platform_account(&service, &headers).await {
         Ok(account) => account,
         Err(response) => return *response,
     };
     let Ok(transaction) = platform::begin(&ctx.db).await else {
         return unavailable();
     };
-    let meta = browser_meta(&session, request_id, &headers);
-    match platform::support::read(&transaction, account_id, support_id, &meta).await {
+    match platform::support::read(&transaction, account_id, support_id).await {
         Ok(read) => {
             let response = render_read(&view, &token, &read);
             if transaction.commit().await.is_err() {

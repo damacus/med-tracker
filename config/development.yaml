@@ -72,6 +72,9 @@ workers:
   mode: BackgroundQueue
 scheduler:
   jobs:
+    support_access_expiry:
+      run: support-access-expire
+      schedule: "0 * * * * *"
     nhs_dmd_reconcile:
       run: nhs_dmd_reconcile
       schedule: "0 */5 * * * *"

@@ -102,6 +102,8 @@ mod signup;
 mod signup_timezone;
 #[path = "care_api/stock_orders.rs"]
 mod stock_orders;
+#[path = "care_api/support_expiry.rs"]
+mod support_expiry;
 #[path = "care_api/sync.rs"]
 mod sync;
 #[path = "support/template.rs"]

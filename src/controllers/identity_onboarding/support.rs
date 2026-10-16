@@ -21,7 +21,6 @@ pub(super) async fn page(
     State(ctx): State<AppContext>,
     Extension(service): Extension<IdentityService>,
     headers: HeaderMap,
-    request_id: Option<Extension<LocoRequestId>>,
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
 ) -> Response {
@@ -29,7 +28,7 @@ pub(super) async fn page(
         Ok(identity) => identity,
         Err(_) => return rendering::unavailable(),
     };
-    let BrowserIdentity::Authenticated { user, session } = identity else {
+    let BrowserIdentity::Authenticated { user, .. } = identity else {
         return rendering::redirect("/login");
     };
     let Ok(account_id) = clinical_id(&user.id) else {
@@ -38,17 +37,7 @@ pub(super) async fn page(
     let Ok(transaction) = platform::begin(&ctx.db).await else {
         return rendering::unavailable();
     };
-    let meta = platform::RequestMeta {
-        session_reference: Some(crate::models::identity::better_auth::session_digest(
-            &session.token,
-        )),
-        request_id: Some(crate::controllers::medications::request_id(request_id)),
-        ip: headers
-            .get("x-forwarded-for")
-            .and_then(|value| value.to_str().ok())
-            .map(str::to_owned),
-    };
-    let sessions = match platform::support::owner_page(&transaction, account_id, &meta).await {
+    let sessions = match platform::support::owner_page(&transaction, account_id).await {
         Ok(sessions) => sessions,
         Err(error) => {
             let unauthenticated = matches!(error, OperationError::Unauthenticated);
