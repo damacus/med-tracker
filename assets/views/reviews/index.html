@@ -27,9 +27,9 @@
     <form method="get" class="flex flex-col items-start gap-2 md:items-end" data-review-hidden-form>
       <input type="hidden" name="review_status" value="{{ reviews.meta.active_status }}">
       <input type="hidden" name="priority" value="{{ reviews.meta.active_priority }}">
-      <div class="flex items-center gap-3"><label for="show-hidden" class="text-sm font-bold">{{ labels.medication_reviews.filters.include_filtered }}</label><input id="show-hidden" type="checkbox" role="switch" class="toggle toggle-primary" name="show_hidden" value="1"{% if reviews.meta.show_hidden %} checked{% endif %} data-review-hidden-toggle></div>
+      <div class="flex items-center gap-3" data-review-hidden-control><label for="show-hidden" class="text-sm font-bold">{{ labels.medication_reviews.filters.include_filtered }}</label><input id="show-hidden" type="checkbox" role="switch" class="toggle toggle-primary" name="show_hidden" value="1"{% if reviews.meta.show_hidden %} checked{% endif %} disabled data-review-hidden-toggle></div>
       <p class="text-sm text-base-content/70">{{ reviews.meta.hidden_count }} {{ labels.medication_reviews.browser.filtered_items }}</p>
-      <noscript><button type="submit" class="btn btn-outline">{{ labels.medication_reviews.filters.apply }}</button></noscript>
+      <noscript><style>[data-review-hidden-control] { display: none; }</style><div class="flex items-center gap-3"><label for="show-hidden-native" class="text-sm font-bold">{{ labels.medication_reviews.filters.include_filtered }}</label><input id="show-hidden-native" type="checkbox" role="switch" class="toggle toggle-primary" name="show_hidden" value="1"{% if reviews.meta.show_hidden %} checked{% endif %}></div><button type="submit" class="btn btn-outline">{{ labels.medication_reviews.filters.apply }}</button></noscript>
     </form>
   </div>
   {% for group in groups %}

@@ -1,4 +1,6 @@
 (() => {
   const toggle = document.querySelector('[data-review-hidden-toggle]');
-  toggle?.addEventListener('change', () => toggle.form.requestSubmit());
+  if (!toggle) return;
+  toggle.addEventListener('change', () => toggle.form.requestSubmit());
+  toggle.disabled = false;
 })();
