@@ -68,7 +68,7 @@ RSpec.describe 'Record dose dialog accessibility', :browser do
       expect(dialog).to have_css("##{dialog['aria-labelledby']}", text: 'Record dose')
       expect(dialog).to have_css("##{dialog['aria-describedby']}")
 
-      find("input[name='medication_take[taken_at]'][type='time']").click
+      find_field('medication_take[taken_at]', type: 'time').click
       find('body').send_keys(:escape)
 
       expect(page).to have_no_css('[role="dialog"]')

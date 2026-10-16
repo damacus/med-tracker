@@ -136,7 +136,8 @@ RSpec.describe 'MedicationNewLayout', :browser do
       fill_in 'End date', with: 1.month.from_now.to_date.to_s
       click_button 'Review medication plan'
       expect(page).to have_field('medication_schedule_review_complete', with: 'reviewed', visible: :all)
-      schedule_config = JSON.parse(find("input[name='onboarding_schedule[schedule_config]']", visible: :all).value)
+      schedule_config_field = find_field('onboarding_schedule[schedule_config]', type: 'hidden', visible: :all)
+      schedule_config = JSON.parse(schedule_config_field.value)
       expect(schedule_config).to include('times' => %w[08:00 14:00 20:00])
       click_button 'Continue'
 
@@ -172,7 +173,8 @@ RSpec.describe 'MedicationNewLayout', :browser do
       fill_in 'End date', with: 1.month.from_now.to_date.to_s
       click_button 'Review medication plan'
       expect(page).to have_field('medication_schedule_review_complete', with: 'reviewed', visible: :all)
-      schedule_config = JSON.parse(find("input[name='onboarding_schedule[schedule_config]']", visible: :all).value)
+      schedule_config_field = find_field('onboarding_schedule[schedule_config]', type: 'hidden', visible: :all)
+      schedule_config = JSON.parse(schedule_config_field.value)
       expect(schedule_config).to include('dates' => [Time.zone.today.to_s, 2.days.from_now.to_date.to_s])
       click_button 'Continue'
 

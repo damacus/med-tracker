@@ -45,9 +45,9 @@ RSpec.describe 'Schedule dosage selection', :browser do
     medication_trigger = find_by_id('medication_trigger')
     medication_trigger.click
 
-    medication_list = find('[role="listbox"]', visible: true, wait: 10)
+    medication_list = find('[role="listbox"]', visible: :visible, wait: 10)
     within(medication_list) do
-      find('[role="option"]', text: 'Dose-less medication', visible: true).click
+      find('[role="option"]', text: 'Dose-less medication', visible: :visible).click
     end
 
     expect(page).to have_text('No dose options are available for this medication.', wait: 10)

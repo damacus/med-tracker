@@ -27,7 +27,7 @@ RSpec.describe 'Historical dose recording', :browser do
       dialog = find('dialog[open][role="dialog"]', text: 'Record a past dose', wait: 10)
       expect(dialog).to have_text('Record a dose taken earlier today or on a previous day.')
 
-      field = dialog.find("input[name='medication_take[taken_at]'][type='datetime-local']", visible: :all)
+      field = dialog.find_field('medication_take[taken_at]', type: 'datetime-local', visible: :all)
       expect(field[:value]).to eq('2026-04-28T14:45')
       expect(field[:max]).to eq('2026-04-28T14:45')
 
@@ -50,7 +50,7 @@ RSpec.describe 'Historical dose recording', :browser do
     visit person_path(person)
     trigger = find(
       "[data-testid='log-past-dose-schedule-#{schedule.id}']",
-      visible: true,
+      visible: :visible,
       wait: 10
     )
     dialog_container = trigger.find(
