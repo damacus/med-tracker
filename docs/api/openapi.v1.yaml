@@ -46,6 +46,8 @@ tags:
     description: Ordinary operations within a selected household, including portability and synchronization.
   - name: Household administration
     description: Administrative operations scoped to a selected household.
+  - name: Account profiles
+    description: Account-owned profile information, preferences and avatars outside a selected household.
   - name: Capabilities
     description: API capability discovery.
   - name: Authentication
@@ -161,6 +163,7 @@ paths:
       operationId: getAccountProfile
       tags:
         - Account
+        - Account profiles
       summary: Read the authenticated account's profile and preferences.
       description: |
         Account data is independent of the selected household. A valid mobile OAuth
@@ -191,6 +194,7 @@ paths:
       operationId: updateAccountProfile
       tags:
         - Account
+        - Account profiles
       summary: Update the authenticated account's profile and preferences.
       description: |
         Trims leading and trailing whitespace. The resulting name must contain between
@@ -253,7 +257,7 @@ paths:
   /auth/profile/avatar:
     get:
       operationId: getAccountAvatar
-      tags: [Account]
+      tags: [Account, Account profiles]
       summary: Read the authenticated account avatar without a household.
       description: Every response has Cache-Control no-store and X-Content-Type-Options nosniff. Credentials and the attachment are rechecked after storage reads.
       responses:
@@ -286,7 +290,7 @@ paths:
                 $ref: "#/components/schemas/ErrorEnvelope"
     put:
       operationId: updateAccountAvatar
-      tags: [Account]
+      tags: [Account, Account profiles]
       summary: Replace the authenticated account avatar without a household.
       description: Accepts exactly one avatar field, PNG, JPEG or WebP up to 5 MiB. Images are decoded with bounded dimensions and re-encoded as PNG. Metadata, audit and retirement commit together. Mobile OAuth credentials do not require household membership; stored credentials retain their existing validity rules. Every response has Cache-Control no-store and X-Content-Type-Options nosniff.
       requestBody:
@@ -330,7 +334,7 @@ paths:
                 $ref: "#/components/schemas/ErrorEnvelope"
     delete:
       operationId: deleteAccountAvatar
-      tags: [Account]
+      tags: [Account, Account profiles]
       summary: Remove the authenticated account avatar without a household.
       description: Metadata, audit and retirement commit together. Repeated removal returns 204 without an additional audit. Every response has Cache-Control no-store and X-Content-Type-Options nosniff.
       responses:
