@@ -17,12 +17,11 @@ pub(crate) fn preferred(
         .and_then(serde_json::Value::as_str)
         .filter(|value| !value.is_empty())
         .unwrap_or(fallback);
-    RAILS_NAMES
-        .get(name)
-        .copied()
-        .unwrap_or(name)
-        .parse()
-        .map_err(|_| AuthenticationError::Unavailable)
+    parse(name).map_err(|_| AuthenticationError::Unavailable)
+}
+
+pub(crate) fn parse(name: &str) -> Result<chrono_tz::Tz, chrono_tz::ParseError> {
+    RAILS_NAMES.get(name).copied().unwrap_or(name).parse()
 }
 
 #[cfg(test)]

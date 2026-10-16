@@ -161,7 +161,7 @@ paths:
       operationId: getAccountProfile
       tags:
         - Account
-      summary: Read the authenticated account's name and email.
+      summary: Read the authenticated account's profile and preferences.
       description: |
         Account data is independent of the selected household. A valid mobile OAuth
         credential remains usable after household membership is revoked. Household-bound
@@ -191,12 +191,16 @@ paths:
       operationId: updateAccountProfile
       tags:
         - Account
-      summary: Update the authenticated account's display name.
+      summary: Update the authenticated account's profile and preferences.
       description: |
         Trims leading and trailing whitespace. The resulting name must contain between
         1 and 100 Unicode characters. Account identity and email cannot be supplied.
-        The name and attributable account audit commit together; an audit failure rolls
-        back the name. Every response has Cache-Control: no-store.
+        Supply at least one supported field. Omitted fields remain unchanged; null
+        values are rejected. Timezones accept IANA identifiers or retained friendly
+        labels and return IANA identifiers. An empty timezone restores the application
+        default. Shortcuts contain one to three distinct supported destinations.
+        All edits and one attributable account audit commit together; an audit failure
+        rolls back every edit. Every response has Cache-Control: no-store.
       requestBody:
         required: true
         content:
@@ -209,10 +213,16 @@ paths:
                 profile:
                   type: object
                   additionalProperties: false
-                  required: [name]
+                  minProperties: 1
                   properties:
                     name:
                       type: string
+                    time_zone:
+                      type: string
+                    gravatar_enabled:
+                      type: boolean
+                    mobile_shortcuts:
+                      $ref: "#/components/schemas/AccountMobileShortcuts"
       responses:
         "200":
           description: Updated account profile.
@@ -5839,6 +5849,14 @@ components:
         title:
           type: string
           minLength: 1
+    AccountMobileShortcuts:
+      type: array
+      minItems: 1
+      maxItems: 3
+      uniqueItems: true
+      items:
+        type: string
+        enum: [dashboard, inventory, locations, people, finder, medicine_reviews, reports, profile, administration]
     AccountProfileResponse:
       type: object
       additionalProperties: false
@@ -5847,7 +5865,7 @@ components:
         data:
           type: object
           additionalProperties: false
-          required: [account_id, name, email]
+          required: [account_id, name, email, time_zone, gravatar_enabled, mobile_shortcuts]
           properties:
             account_id:
               type: string
@@ -5860,6 +5878,14 @@ components:
             email:
               type: string
               format: email
+            time_zone:
+              type: string
+              minLength: 1
+              example: Europe/London
+            gravatar_enabled:
+              type: boolean
+            mobile_shortcuts:
+              $ref: "#/components/schemas/AccountMobileShortcuts"
     AuthHousehold:
       type: object
       nullable: true
