@@ -227,6 +227,7 @@ did not merge it. Its 1,499-line candidate and historical failures remain below.
 | [#2636](https://github.com/damacus/med-tracker/pull/2636): account session contracts | `codex/s05-i01-contract-execution` | `451c357c4f71539bf62056c5ac0459d235528a63` | 1,711 | Reviewed; local and exact-head hosted gates pass |
 | [#2637](https://github.com/damacus/med-tracker/pull/2637): request IDs on rate-limit responses | `codex/s05-i01-account-sessions` | `adfe373fa79bd575d53db6b25f17e76f7600352a` | 399 | Reviewed; local CI and exact-head hosted checks pass |
 | [#2639](https://github.com/damacus/med-tracker/pull/2639): capability discovery | `codex/s05-i01-rate-request-ids` | `022854c80a921d2601970b5bad03ec8e950d6fd9` | 1,101 | Reviewed; local CI and exact-head hosted checks pass |
+| [#2640](https://github.com/damacus/med-tracker/pull/2640): household errors and UI privacy | `codex/s05-i01-capabilities` | `012e8cfe9b2e2555fedd3001213a877795aac4a4` | 990 | Reviewed; local CI and all 45 exact-head hosted checks completed successfully or skipped |
 
 Stack `2634` is published; no layer is merged or deployed. Full local
 CI `61813` passed 111 units, 20 request cases, 508 care cases and all 744 browser
@@ -626,6 +627,91 @@ hosted acceptance remain required; no merge or deployment occurred. Whole-API
 acceptance still rejects 117 incomplete operations. The separate People draft
 will next demonstrate its own RED, including the missing replay metadata;
 neither draft nor source inspection earns additional complete operation credit.
+
+PR #2640 is now published and hosted-accepted: run `38632805964` completed with
+31 successful and 14 skipped checks; Devin Review passed with no review threads.
+Coverage artifact `11926499279` has verified SHA-256
+`0d47cac978fcf7d0556942c44aafd4836f5e56d50bb29ce272fe34f8abffb6d0`.
+Its merge revision has the same tree as the published head. Added runtime
+coverage is 5/7, and critical `operation_error` coverage is 5/7, below targets.
+Raw general source coverage is 63.63%; API source coverage is 92.37%.
+These measurements do not replace operation acceptance. No merge or deployment
+occurred; Codex artifact attachment failed because its tool could not load.
+
+The coordinator owns the next isolated `codex/s05-i01-people-write` branch,
+based on published `012e8cfe`. The API writer transferred its frozen tests,
+four scoped OpenAPI operations and matching inventory metadata to the coordinator;
+the verifier owns builds and disposable fixtures. This boundary covers People
+list, create, PATCH and PUT. The person-detail operation remains held for its
+304 contract decision. No People runtime code or native pins changed.
+
+The initial draft jobs `1075` and `62069` failed compilation and executed zero
+tests; neither is behavioural RED. Actual RED `14358` executed ten cases, with
+three failures demonstrating missing idempotency-key and 409 metadata on all
+three writes. Metadata-only corrections passed ten cases in GREEN `98150`.
+Concurrency and audit-failure additions initially exposed overclaimed test
+expectations: People does not promise no-store on every response, and an
+overlapping create can invalidate the permission snapshot of its competitor.
+Those expectations were corrected without changing runtime security. The POST
+case requires exactly one creation, allows the competitor's existing 403 or
+replay response, then requires successful same-key replay through a fresh
+request. PATCH and PUT each require two successful replies and one replay.
+Job `28202` then demonstrated the actual four 500 ErrorEnvelope replies and
+atomic rollback before failing their missing OpenAPI responses. Adding the
+shared response metadata produced GREEN `14361`, fourteen passing cases.
+Inventory `16932` passed 78 cases with only final completion ignored.
+
+Two further real-boundary tests passed in job `3023`: restricted-role household
+read failure returns 500 without domain/audit writes; account closure during
+the real mobile OAuth touch returns 401 before household access. The latter
+uses a clone-local, account-scoped trigger with fixed search path, verifies its
+execution and persisted account status, and retains restricted runtime access.
+All sixteen People cases passed, followed by strict lint `69105`. Earlier
+generated-client verification `82539`, Swift `11452` and Kotlin `67388` passed;
+their inputs are unchanged by the two additional test-only cases. Logs are
+retained under `/private/tmp/s05-i01-evidence/people-*`.
+Malformed household-ID extraction remains an unresolved contract gap. This
+candidate still needs immutable partial evidence, independent SWE-2 Max review,
+full CI, publication and exact-head hosted acceptance. No new complete-operation
+credit is claimed; whole-API acceptance still rejects 117 incomplete operations.
+Immutable People evidence is now pinned to tested source
+`7ba79ac8cbfdffa365c0e15646ea13075a1e6918`. Guard RED `35467` compiled and
+executed one test, failing on unverified versus partial coverage; GREEN `23940`
+passed after the four exact proof arrays, source revision and gaps were recorded.
+Tampering with any of those fields is rejected. Evidence describes actual denial
+audits, domain versions and pagination schemas without claiming untested effects.
+Inventory `44715` passed 81 cases with completion intentionally ignored; runner
+fixtures `46909` passed 47 cases. Full dispatcher `14472` executed requests
+81/1 ignored, care 524/2 ignored, then requests 81 passed/one failed solely at
+the final acceptance guard for 117 incomplete operations. Every credited People
+test executed. The ledger is five complete, seven partial and 110 unverified;
+this is partial verification, not whole-API acceptance. Independent review and
+cumulative CI will run on the next frozen commit before publication.
+Candidate `cdfa408bf1582b84d4def703ede2b7d251f48b90` has 1,525 changed lines.
+Full CI `44296` stopped at the early CI policy suite: 137 cases passed and
+the module-reachability case failed. Rust had compiled and executed the evidence
+guard, but the repository scanner requires an explicit `#[path]` declaration
+for this module, matching its siblings. The correction adds that declaration;
+no application code changes. No database/browser jobs or screenshots started.
+Publication and independent review remain held for the corrected candidate.
+The corrected registration passed all 138 policy cases in `44749`, formatting
+in `50670` and diff checks. Full CI must rerun on the committed correction.
+Corrected candidate `164129cf0b6d0316701427c2236de455cd393f83` is locally accepted,
+with 1,535 changed lines against published me/UI `012e8cfe`. Independent Devin
+review `73581` exited zero with ACCEPT and no findings; its export verifies
+session `bright-glove`, model `SWE-2 Max` and nine steps. The inline packet has
+SHA-256 `26ead56a9d4868aa05f5ba90681af4b8db587339e9871e36d9d7bb4832b2b524`.
+Full CI `91429` exited zero on that exact candidate: policy 138, runner 47,
+Rust units 115, requests 81/one ignored, care 508/two ignored/16 helpers filtered,
+all other applicable integrations, and all 744 browser cases in 19.4 minutes.
+No live verification process remains. Thirty-nine generated PNGs were preserved
+in `people-ci-164129cf-screenshots.patch`, SHA-256
+`4329b2f85c1ca0b9a9d60f4db4d4060c56422d6ac9d65f8b6ce450ca7212d0d3`.
+Root verified every current image hash, the exact path list and binary patch
+against the working diff, then reverse-applied only that patch. HEAD stayed
+`164129cf` and the checkout returned clean. This final progress update changes
+documentation only. Publication and exact-head hosted acceptance remain required;
+no merge, deployment or additional complete-operation credit is claimed.
 
 Entries below retain historical revisions, failed attempts and publication states.
 
