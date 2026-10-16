@@ -228,6 +228,79 @@ test('priority and include-filtered controls apply directly', async ({ page, car
   await expect(page).toHaveURL(/show_hidden=1/);
 });
 
+test('include-filtered control waits for its delayed script before keyboard filtering', async ({ page, careFixture }, info) => {
+  test.setTimeout(180000);
+  await careFixture.seedReviewReport();
+  await page.goto('/login');
+  await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
+  await page.getByLabel('Password', { exact: true }).fill('password');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  let requested;
+  let release;
+  const scriptRequested = new Promise(resolve => { requested = resolve; });
+  const scriptReleased = new Promise(resolve => { release = resolve; });
+  await page.route('**/static/js/review-filters.js', async route => {
+    requested();
+    await scriptReleased;
+    await route.continue();
+  });
+  try {
+    await page.goto('/households/persistence-fixture/medicine-reviews?priority=ask_when_convenient', { waitUntil: 'commit' });
+    await scriptRequested;
+    const toggle = page.getByRole('switch', { name: 'Include filtered items' });
+    await expect(toggle).toBeDisabled();
+    release();
+    await expect(toggle).toBeEnabled();
+    await toggle.focus();
+    const filtered = page.waitForRequest(request => request.isNavigationRequest() && request.method() === 'GET' && new URL(request.url()).searchParams.get('show_hidden') === '1');
+    await page.keyboard.press('Space');
+    await filtered;
+    await expect(page).toHaveURL(/priority=ask_when_convenient/);
+    await expect(page).toHaveURL(/show_hidden=1/);
+    await page.getByRole('button', { name: /^(Discuss soon|Soon)$/ }).click();
+    await expect(page).toHaveURL(/priority=discuss_soon/);
+    await expect(page).toHaveURL(/show_hidden=1/);
+    await page.getByRole('link', { name: 'Reviewed 0' }).click();
+    await expect(page).toHaveURL(/review_status=reviewed/);
+    await expect(page).toHaveURL(/priority=discuss_soon/);
+    await expect(page).toHaveURL(/show_hidden=1/);
+    await expect(toggle).toBeEnabled();
+    await expect(toggle).toBeChecked();
+    await page.screenshot({ path: info.outputPath(`review-filter-ready-${info.project.name}.png`), fullPage: false });
+  } finally {
+    release();
+  }
+});
+
+test('include-filtered control retains the native Apply journey without JavaScript', async ({ page, browser, careFixture }, info) => {
+  test.setTimeout(180000);
+  await careFixture.seedReviewReport();
+  await page.goto('/login');
+  await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
+  await page.getByLabel('Password', { exact: true }).fill('password');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  const context = await browser.newContext({ javaScriptEnabled: false, storageState: await page.context().storageState(), viewport: page.viewportSize(), isMobile: info.project.name === 'mobile', hasTouch: info.project.name === 'mobile' });
+  try {
+    const native = await context.newPage();
+    await native.goto(new URL('/households/persistence-fixture/medicine-reviews', page.url()).href);
+    await native.getByRole('button', { name: /^(Ask when convenient|Convenient)$/ }).click();
+    await expect(native).toHaveURL(/priority=ask_when_convenient/);
+    const toggle = native.getByRole('switch', { name: 'Include filtered items' });
+    await expect(toggle).toBeEnabled();
+    await toggle.check();
+    await native.getByRole('button', { name: 'Apply filters', exact: true }).click();
+    await expect(native).toHaveURL(/priority=ask_when_convenient/);
+    await expect(native).toHaveURL(/show_hidden=1/);
+    await expect(toggle).toBeChecked();
+    await native.getByRole('link', { name: 'Reviewed 0' }).click();
+    await expect(native).toHaveURL(/review_status=reviewed/);
+    await expect(native).toHaveURL(/priority=ask_when_convenient/);
+    await expect(native).toHaveURL(/show_hidden=1/);
+  } finally {
+    await context.close();
+  }
+});
+
 test('review editing warns before expiry, renews on demand and releases on Cancel', async ({ page, careFixture }) => {
   test.setTimeout(180000);
   await careFixture.seedReviewReport();
