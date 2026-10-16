@@ -101,7 +101,7 @@ RSpec.describe 'BarcodeScanner' do
     it 'renders the scanner region as hidden initially' do
       visit medication_finder_path
 
-      scanner_region = find_by_id('barcode-scanner-region', visible: false)
+      scanner_region = find_by_id('barcode-scanner-region', visible: :hidden)
       expect(scanner_region).not_to be_visible
     end
 

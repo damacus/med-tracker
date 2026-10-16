@@ -217,7 +217,7 @@ RSpec.describe 'Profile Editing' do
       initial_path = page.current_url
       open_profile_section('security')
 
-      expect(page.current_url).to eq(initial_path)
+      expect(page).to have_current_path(initial_path, url: true)
       expect(page).to have_css('[data-profile-section="security"][aria-selected="true"]')
       expect(page).to have_css('[data-profile-section="profile"][aria-selected="false"]')
       expect(page).to have_css(

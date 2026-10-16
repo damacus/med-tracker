@@ -240,7 +240,7 @@ RSpec.describe 'Dashboard', :browser do
       find("[data-testid='take-dose-personmedication_#{person_medication.id}']").click
       take_form = find(
         "dialog[open] form[action='#{take_medication_person_person_medication_path(person, person_medication)}']",
-        visible: true,
+        visible: :visible,
         wait: 10
       )
       within(take_form) do
@@ -260,7 +260,7 @@ RSpec.describe 'Dashboard', :browser do
       )
       other_person_take_form = find(
         "dialog[open] form[action='#{other_person_take_path}']",
-        visible: true,
+        visible: :visible,
         wait: 10
       )
       within(other_person_take_form) do

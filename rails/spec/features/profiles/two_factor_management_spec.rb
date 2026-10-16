@@ -82,7 +82,7 @@ RSpec.describe 'Two-Factor Authentication Management', type: :system do
       JS
       expect(button_geometry).to include('radius' => 8, 'textFits' => true)
 
-      secret = find("input[name='otp_secret']", visible: false).value
+      secret = find_field('otp_secret', type: 'hidden', visible: :hidden).value
       totp = ROTP::TOTP.new(secret, issuer: 'MedTracker')
 
       fill_in 'Current Password', with: 'password'
@@ -164,7 +164,7 @@ RSpec.describe 'Two-Factor Authentication Management', type: :system do
   def setup_totp
     visit '/otp-setup'
 
-    secret = find("input[name='otp_secret']", visible: false).value
+    secret = find_field('otp_secret', type: 'hidden', visible: :hidden).value
     totp = ROTP::TOTP.new(secret, issuer: 'MedTracker')
 
     fill_in 'Current Password', with: 'password'

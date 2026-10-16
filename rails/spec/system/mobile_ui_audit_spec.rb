@@ -489,7 +489,7 @@ RSpec.describe 'Mobile UI audit' do
   end
 
   def heading_order_failures
-    levels = page.all('main h1, main h2, main h3, main h4, main h5, main h6', visible: true)
+    levels = page.all('main h1, main h2, main h3, main h4, main h5, main h6', visible: :visible)
                  .map { |heading| heading.tag_name.delete('h').to_i }
     failures = []
     if levels.any? && levels.first != 1

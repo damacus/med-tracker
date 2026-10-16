@@ -37,7 +37,7 @@ RSpec.describe 'Household stock check', :browser do
     end
     expect(page).to have_button('Apply 2 amendments', disabled: false)
 
-    visible_batch_ids = all("[data-stock-check-target='batchRow']", visible: true).pluck('data-medication-id')
+    visible_batch_ids = all("[data-stock-check-target='batchRow']", visible: :visible).pluck('data-medication-id')
     expect(visible_batch_ids).to eq([paracetamol.id.to_s, aspirin.id.to_s])
     expect(page).to have_text('2 medicines · total net change -31 units')
     click_button 'Apply 2 amendments'

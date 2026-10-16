@@ -137,9 +137,9 @@ RSpec.describe 'AdminManagesUsers' do
     role_trigger = find_by_id('role_trigger')
     role_trigger.click
 
-    role_list = find('[role="listbox"]', visible: true, wait: 10)
+    role_list = find('[role="listbox"]', visible: :visible, wait: 10)
     within(role_list) do
-      find('[role="option"]', text: 'Member', visible: true).click
+      find('[role="option"]', text: 'Member', visible: :visible).click
     end
 
     within '[data-testid="admin-users"]' do
