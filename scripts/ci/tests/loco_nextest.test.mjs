@@ -100,6 +100,7 @@ test('integration archive run credits exactly the selected cases across both bin
   const directory = await mkdtemp(join(tmpdir(), 'medtracker-archive-run-'));
   const ci = join(directory, 'ci');
   const target = join(directory, 'target');
+  const externalTarget = join(directory, 'external-cargo-target');
   const source = { revision: randomUUID(), sha256: randomUUID() };
   const hash = value => createHash('sha256').update(value).digest('hex');
   const archive = 'archive';
@@ -127,18 +128,19 @@ test('integration archive run credits exactly the selected cases across both bin
       if (failRun) throw new Error('nextest failed');
       const config = await readFile(args[args.indexOf('--config-file') + 1], 'utf8');
       const report = join(target, 'nextest', 'contract-proof', config.match(/path = "([^"]+)"/)[1]);
+      await mkdir(join(target, 'nextest', 'contract-proof'), { recursive: true });
       await writeFile(report, reportXml);
     };
-    await runArchiveStage({ stage: 'integration', shard: '1/1', directory: ci, root: directory, run, own, identity: async () => source, environment: { CARGO_TARGET_DIR: target } });
+    await runArchiveStage({ stage: 'integration', shard: '1/1', directory: ci, root: directory, run, own, identity: async () => source, environment: { CARGO_TARGET_DIR: externalTarget } });
     assert.deepEqual(calls.filter(call => typeof call === 'string'), ['provision', 'storage']);
     assert.equal(calls.filter(call => Array.isArray(call) && call[1][1] === 'run').length, 1);
     assert.match(calls.find(call => Array.isArray(call) && call[1][1] === 'run')[1].join(' '), /migration::identity_schema/);
     const selections = JSON.parse(await readFile(join(directory, 'test-results', 'integration-selection-1.json'), 'utf8'));
     assert.deepEqual(selections.sort(), ['med-tracker::care_api/profile::reads_profile', 'migration::identity_schema/structural_identity']);
     reportXml = reportXml.replace('name="structural_identity"', 'name="unselected_case"');
-    await assert.rejects(runArchiveStage({ stage: 'integration', shard: '1/1', directory: ci, root: directory, run, own, identity: async () => source, environment: { CARGO_TARGET_DIR: target } }), /exact selection/);
+    await assert.rejects(runArchiveStage({ stage: 'integration', shard: '1/1', directory: ci, root: directory, run, own, identity: async () => source, environment: { CARGO_TARGET_DIR: externalTarget } }), /exact selection/);
     failRun = true;
-    await assert.rejects(runArchiveStage({ stage: 'integration', shard: '1/1', directory: ci, root: directory, run, own, identity: async () => source, environment: { CARGO_TARGET_DIR: target } }), /nextest failed/);
+    await assert.rejects(runArchiveStage({ stage: 'integration', shard: '1/1', directory: ci, root: directory, run, own, identity: async () => source, environment: { CARGO_TARGET_DIR: externalTarget } }), /nextest failed/);
     failRun = false;
     for (const mutate of [
       inventory => inventory.filter(item => item.name !== 'structural_identity'),
@@ -148,12 +150,12 @@ test('integration archive run credits exactly the selected cases across both bin
     ]) {
       const before = calls.length;
       await writeFile(join(ci, 'tests.json'), JSON.stringify({ ...manifest, inventory: mutate(manifest.inventory) }));
-      await assert.rejects(runArchiveStage({ stage: 'integration', shard: '1/1', directory: ci, root: directory, run, own, identity: async () => source, environment: { CARGO_TARGET_DIR: target } }), /inventory.*archive|archive.*inventory/i);
+      await assert.rejects(runArchiveStage({ stage: 'integration', shard: '1/1', directory: ci, root: directory, run, own, identity: async () => source, environment: { CARGO_TARGET_DIR: externalTarget } }), /inventory.*archive|archive.*inventory/i);
       assert.equal(calls.slice(before).filter(call => call === 'provision' || call === 'storage' || (Array.isArray(call) && call[1][1] === 'run')).length, 0);
     }
     await writeFile(join(ci, 'tests.json'), JSON.stringify(manifest));
     let cleanups = 0;
-    await assert.rejects(runArchiveStage({ stage: 'integration', shard: '1/1', directory: ci, root: directory, run, own: async () => { throw new Error('provisioning failed'); }, identity: async () => source, environment: { CARGO_TARGET_DIR: target }, proofFactory: async () => ({ cleanup: async () => { cleanups += 1; } }) }), /provisioning failed/);
+    await assert.rejects(runArchiveStage({ stage: 'integration', shard: '1/1', directory: ci, root: directory, run, own: async () => { throw new Error('provisioning failed'); }, identity: async () => source, environment: { CARGO_TARGET_DIR: externalTarget }, proofFactory: async () => ({ cleanup: async () => { cleanups += 1; } }) }), /provisioning failed/);
     assert.equal(cleanups, 1, 'A failed owned fixture must release its unused proof report');
   } finally {
     await rm(directory, { recursive: true, force: true });

@@ -118,7 +118,7 @@ export async function runArchiveStage({ stage, shard = '1/1', directory = 'targe
   const filters = binaries.map(binary => filterForSelection(binary, selected.filter(item => item.binary === binary).map(item => item.name)));
   const filter = filters.map(expression => `(${expression})`).join(' | ');
   const createProof = proofFactory ?? (await import('../migration/nextest-proof.mjs')).createNextestProofReport;
-  const proofReport = await createProof(resolve(root, environment.CARGO_TARGET_DIR ?? 'target'));
+  const proofReport = await createProof(resolve(root, 'target'));
   const runSelected = async env => {
     await run('cargo', ['nextest', 'run', '--archive-file', archive, '--workspace-remap', resolve(root), '--no-tests=fail', '--test-threads', '2', '--retries', '0', '--config-file', proofReport.configPath, '--profile', 'contract-proof', '-E', filter], { env });
     const results = await proofReport.readSuites(binaries);
