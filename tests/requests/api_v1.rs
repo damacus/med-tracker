@@ -1,3 +1,5 @@
+#[path = "account_preferences.rs"]
+mod account_preferences;
 #[path = "account_profile.rs"]
 mod account_profile;
 #[path = "capabilities.rs"]
@@ -82,7 +84,7 @@ fn operations() -> BTreeMap<(String, String), Value> {
     let source = include_str!("../../docs/api/openapi.v1.yaml");
     assert_eq!(
         hex::encode(Sha256::digest(source.as_bytes())),
-        "0b6da9cc631356f78643960bebaa8333ae6c1bd6d108e92cc8178b9f49901856",
+        "ea8ecac1b24c389b89eb6a3ec64f45fdbbe598ac3a9c26b612fc38ec9e586c77",
         "The full API schema or headers changed; refresh the operation inventory and its evidence"
     );
     let document: Value = serde_yaml_ng::from_str(source).unwrap();

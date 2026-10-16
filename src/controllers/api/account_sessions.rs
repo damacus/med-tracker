@@ -18,7 +18,7 @@ use crate::models::{
         resource::{self, AuthenticationError},
     },
     ids::AccountId,
-    profile::account_name,
+    profile::self_account,
 };
 
 pub fn routes() -> Routes {
@@ -40,7 +40,31 @@ struct ProfileInput {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct ProfilePatch {
-    name: String,
+    #[serde(default, deserialize_with = "present")]
+    name: Option<String>,
+    #[serde(default, deserialize_with = "present")]
+    time_zone: Option<String>,
+    #[serde(default, deserialize_with = "present")]
+    gravatar_enabled: Option<bool>,
+    #[serde(default, deserialize_with = "present")]
+    mobile_shortcuts: Option<Vec<String>>,
+}
+
+impl ProfilePatch {
+    fn is_empty(&self) -> bool {
+        self.name.is_none()
+            && self.time_zone.is_none()
+            && self.gravatar_enabled.is_none()
+            && self.mobile_shortcuts.is_none()
+    }
+}
+
+fn present<'de, D, T>(deserializer: D) -> std::result::Result<Option<T>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: Deserialize<'de>,
+{
+    T::deserialize(deserializer).map(Some)
 }
 
 async fn profile(
@@ -73,9 +97,14 @@ async fn profile_action(
             Err(error) => return authentication(error, &request_id),
         };
     let write = body.is_some();
-    let name = match body {
-        Some(Ok(Json(input))) => match account_name::Name::parse(&input.profile.name) {
-            Ok(name) => Some(name),
+    let changes = match body {
+        Some(Ok(Json(input))) if !input.profile.is_empty() => match self_account::Changes::parse(
+            input.profile.name.as_deref(),
+            input.profile.time_zone.as_deref(),
+            input.profile.gravatar_enabled,
+            input.profile.mobile_shortcuts.as_deref(),
+        ) {
+            Ok(changes) => Some(changes),
             Err(_) => {
                 return failure(
                     StatusCode::UNPROCESSABLE_ENTITY,
@@ -85,7 +114,7 @@ async fn profile_action(
                 );
             }
         },
-        Some(Err(_)) => {
+        Some(_) => {
             return failure(
                 StatusCode::BAD_REQUEST,
                 "invalid_request",
@@ -104,10 +133,10 @@ async fn profile_action(
     };
     let account_id = AccountId::from_database(principal.account_id());
     let result = async {
-        if let Some(name) = name {
-            account_name::update(&transaction, account_id, &request_id, name).await?;
+        if let Some(changes) = changes {
+            self_account::update(&transaction, account_id, &request_id, changes).await?;
         }
-        account_name::read(&transaction, account_id).await
+        self_account::read(&transaction, account_id, ctx.config.settings.as_ref()).await
     }
     .await;
     match result {
@@ -115,7 +144,8 @@ async fn profile_action(
             Ok(()) => reply(
                 StatusCode::OK,
                 Some(
-                    json!({"data":{"account_id":snapshot.account_id.to_string(),"name":snapshot.name,"email":snapshot.email}}),
+                    json!({"data":{"account_id":snapshot.account_id.to_string(),"name":snapshot.name,"email":snapshot.email,
+                        "time_zone":snapshot.time_zone.name(),"gravatar_enabled":snapshot.gravatar_enabled,"mobile_shortcuts":snapshot.mobile_shortcuts}}),
                 ),
                 &request_id,
             ),

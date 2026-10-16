@@ -424,7 +424,7 @@ async fn account_profile_audit_failure_rolls_back_the_name_change() -> TestResul
     let failed = request
         .patch("/api/v1/auth/profile")
         .add_header("authorization", format!("Bearer {token}"))
-        .json(&json!({"profile":{"name":"Uncommitted name"}}))
+        .json(&json!({"profile":{"name":"Uncommitted name","time_zone":"Europe/Paris","gravatar_enabled":true}}))
         .await;
     let refreshed = request
         .get("/api/v1/auth/profile")
@@ -449,6 +449,8 @@ async fn account_profile_audit_failure_rolls_back_the_name_change() -> TestResul
     assert_eq!(refreshed.status_code(), 200);
     let refreshed: Value = refreshed.json();
     assert_eq!(refreshed["data"]["name"], Value::Null);
+    assert_eq!(refreshed["data"]["time_zone"], "Etc/UTC");
+    assert_eq!(refreshed["data"]["gravatar_enabled"], false);
     assert_eq!(audits, 0);
     Ok(())
 }
