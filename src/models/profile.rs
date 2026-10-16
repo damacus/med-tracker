@@ -129,8 +129,8 @@ pub(crate) async fn linked_person_scoped(
         .membership()
         .person_id
         .ok_or_else(|| out_of_scope.clone())?;
-    let current = person::Entity::find_by_id(person_id)
-        .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
+    let current = access::person_queries::household_people(tenant.scope())
+        .filter(person::Column::Id.eq(person_id))
         .filter(person::Column::AccountId.eq(account_id))
         .one(tenant.transaction())
         .await?

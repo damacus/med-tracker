@@ -148,8 +148,8 @@ impl Store<'_> {
         let Some(person_id) = row.person_id else {
             return Ok(false);
         };
-        Ok(person::Entity::find_by_id(person_id)
-            .filter(person::Column::HouseholdId.eq(member.household_id))
+        Ok(access::person_queries::household_people(&scope)
+            .filter(person::Column::Id.eq(person_id))
             .one(self.transaction)
             .await
             .map_err(|_| ())?

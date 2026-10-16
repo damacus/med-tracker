@@ -4,7 +4,7 @@ use axum_session_sqlx::SessionPgPool;
 use base64::{Engine, engine::general_purpose::STANDARD};
 use sea_orm::{
     ColumnTrait, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, EntityTrait,
-    QueryFilter, QueryOrder, QuerySelect, Statement, TransactionTrait,
+    QueryFilter, QuerySelect, Statement, TransactionTrait,
 };
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -19,7 +19,7 @@ use super::{resource::AuthenticationError, store::Lifetime};
 use crate::models::{
     access::{self, Actor, HouseholdScope, TenantTransaction},
     care::doses::{CredentialMethod, CredentialProvenance},
-    entities::{account, household, person, user},
+    entities::{account, household, user},
     settings,
 };
 
@@ -67,13 +67,13 @@ impl BrowserPrincipal {
         transaction: &DatabaseTransaction,
     ) -> Result<BrowserInvitationActor, AuthenticationError> {
         let account = validate(transaction, &self.identity, false).await?;
-        let person = person::Entity::find()
-            .filter(person::Column::AccountId.eq(account.id))
-            .order_by_asc(person::Column::Id)
-            .one(transaction)
-            .await
-            .map_err(unavailable)?
-            .ok_or(AuthenticationError::Unauthenticated)?;
+        let person = access::person_queries::account_person(Actor {
+            account_id: account.id,
+        })
+        .one(transaction)
+        .await
+        .map_err(unavailable)?
+        .ok_or(AuthenticationError::Unauthenticated)?;
         let user = user::Entity::find()
             .filter(user::Column::PersonId.eq(person.id))
             .filter(user::Column::Active.eq(true))

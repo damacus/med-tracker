@@ -1,3 +1,5 @@
+pub(crate) mod person_queries;
+
 use loco_rs::model::TenantQueryExt;
 use sea_orm::{
     ColumnTrait, Condition, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend,
@@ -147,8 +149,8 @@ pub(crate) async fn can_access_person(
 ) -> Result<bool, OperationError> {
     recheck(transaction).await?;
     let membership = transaction.membership();
-    let Some(subject) = person::Entity::find_by_id(person_id)
-        .in_tenant(transaction.scope.household_id)
+    let Some(subject) = person_queries::household_people(transaction.scope())
+        .filter(person::Column::Id.eq(person_id))
         .one(transaction.transaction())
         .await?
     else {
@@ -178,8 +180,7 @@ pub(crate) async fn has_person_access(
         .filter(grant::Column::RevokedAt.is_null())
         .all(transaction.transaction())
         .await?;
-    let people = person::Entity::find()
-        .in_tenant(transaction.scope().household_id)
+    let people = person_queries::household_people(transaction.scope())
         .filter(
             person::Column::Id.is_in(
                 grants
@@ -212,8 +213,7 @@ pub(crate) async fn people_with_access(
         .filter(grant::Column::RevokedAt.is_null())
         .all(transaction.transaction())
         .await?;
-    let mut people = person::Entity::find()
-        .in_tenant(transaction.scope().household_id)
+    let mut people = person_queries::household_people(transaction.scope())
         .filter(
             person::Column::Id.is_in(grants.iter().map(|row| row.person_id).collect::<Vec<_>>()),
         )
@@ -400,9 +400,7 @@ async fn account_user(
     transaction: &DatabaseTransaction,
     account_id: i64,
 ) -> Result<i64, OperationError> {
-    let person = person::Entity::find()
-        .filter(person::Column::AccountId.eq(account_id))
-        .order_by_asc(person::Column::Id)
+    let person = person_queries::account_person(Actor { account_id })
         .one(transaction)
         .await?
         .ok_or(OperationError::Unauthenticated)?;
