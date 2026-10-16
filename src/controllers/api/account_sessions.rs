@@ -21,11 +21,20 @@ use crate::models::{
     profile::self_account,
 };
 
+mod avatar;
+
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("/api/v1/auth")
         .add("/households", get(households))
         .add("/profile", get(profile).patch(update_profile))
+        .add(
+            "/profile/avatar",
+            get(avatar::show)
+                .put(avatar::upload)
+                .delete(avatar::remove)
+                .layer(axum::extract::DefaultBodyLimit::max(6 * 1024 * 1024)),
+        )
         .add("/sessions", get(sessions))
         .add("/sessions/{id}", delete(revoke))
         .add("/logout", delete(logout))
@@ -141,14 +150,7 @@ async fn profile_action(
     .await;
     match result {
         Ok(snapshot) => match transaction.commit().await {
-            Ok(()) => reply(
-                StatusCode::OK,
-                Some(
-                    json!({"data":{"account_id":snapshot.account_id.to_string(),"name":snapshot.name,"email":snapshot.email,
-                        "time_zone":snapshot.time_zone.name(),"gravatar_enabled":snapshot.gravatar_enabled,"mobile_shortcuts":snapshot.mobile_shortcuts}}),
-                ),
-                &request_id,
-            ),
+            Ok(()) => reply(StatusCode::OK, Some(representation(snapshot)), &request_id),
             Err(error) => operation(error.into(), &request_id),
         },
         Err(error) => {
@@ -166,6 +168,11 @@ async fn profile_action(
             }
         }
     }
+}
+
+fn representation(snapshot: self_account::Snapshot) -> Value {
+    json!({"data":{"account_id":snapshot.account_id.to_string(),"name":snapshot.name,"email":snapshot.email,
+        "time_zone":snapshot.time_zone.name(),"gravatar_enabled":snapshot.gravatar_enabled,"avatar_attached":snapshot.avatar_attached,"mobile_shortcuts":snapshot.mobile_shortcuts}})
 }
 
 async fn households(

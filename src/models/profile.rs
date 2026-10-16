@@ -148,12 +148,7 @@ async fn snapshot(
     account: &account::Model,
 ) -> Result<Snapshot, OperationError> {
     let preferences = &account.preferences;
-    let avatar_attached = active_storage_attachment::Entity::find()
-        .filter(active_storage_attachment::Column::HouseholdId.eq(current.household_id))
-        .filter(active_storage_attachment::Column::RecordType.eq("Person"))
-        .filter(active_storage_attachment::Column::RecordId.eq(current.id))
-        .filter(active_storage_attachment::Column::Name.eq("avatar"))
-        .one(tenant.transaction())
+    let avatar_attached = avatar::attachment(tenant, account.id, PersonAccess::View)
         .await?
         .is_some();
     let time_zone = preferences["time_zone"]

@@ -114,6 +114,8 @@ mod treatments;
 mod ui_capabilities;
 
 use axum::{body::Body, http::Request};
+#[path = "care_api/account_avatar.rs"]
+mod account_avatar;
 use fixture::Fixture;
 use loco_rs::{
     app::{AppContext, Hooks},

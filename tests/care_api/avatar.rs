@@ -4,6 +4,67 @@ use base64::{Engine, engine::general_purpose::STANDARD};
 const AVATAR: &str = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABAQMAAAAl21bKAAAAA1BMVEX/AAAZ4gk3AAAACklEQVQI12NgAAAAAgAB4iG8MwAAAABJRU5ErkJggg==";
 
 #[tokio::test]
+async fn avatar_cleanup_preserves_legacy_blobs_even_with_unknown_storage_service() {
+    use med_tracker::models::profile::avatar::{self, Storage};
+    crate::avatar_storage::ensure_owned_bucket().await;
+    let app = avatar_application().await;
+    let storage = Storage::configured(&app.context).unwrap();
+    let key = format!("legacy-retained/{}", uuid::Uuid::new_v4());
+    let image = avatar::decode(&STANDARD.decode(AVATAR).unwrap(), "image/png").unwrap();
+    storage.put(&key, &image).await.unwrap();
+    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+        "INSERT INTO active_storage_blobs(key,filename,byte_size,service_name,created_at) VALUES($1,'legacy.png',1,'persistent_with_s3_mirror',now())",[key.clone().into()]
+    )).await.unwrap();
+    avatar::discard_upload(&app.context, &storage, &key).await;
+    assert!(storage.get(&key).await.is_ok());
+    app.close().await;
+}
+
+#[tokio::test]
+async fn accountless_person_avatar_keeps_legacy_read_and_unknown_service_safeguards() {
+    use med_tracker::models::{
+        access::{self, Actor, HouseholdScope},
+        profile::avatar,
+    };
+    let app = avatar_application().await;
+    app.fixture.admin.execute_unprepared("UPDATE people SET account_id=NULL WHERE id=73002; INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,created_at,updated_at) VALUES(78002,72001,74001,73002,'view','clinician',now(),now()); INSERT INTO active_storage_blobs(id,key,filename,content_type,byte_size,service_name,created_at) VALUES(79001,'legacy-accountless-avatar','legacy.png','image/png',1,'s3_with_persistent_mirror',now()); INSERT INTO active_storage_attachments(name,record_type,record_id,blob_id,household_id,created_at) VALUES('avatar','Person',73002,79001,72001,now())").await.unwrap();
+    let scope = HouseholdScope {
+        actor: Actor { account_id: 71001 },
+        household_id: 72001,
+        request_id: uuid::Uuid::new_v4().to_string(),
+    };
+    let tenant = access::begin(&app.fixture.runtime, &scope, None)
+        .await
+        .unwrap();
+    assert_eq!(
+        avatar::person_attachment(&tenant, 73002)
+            .await
+            .unwrap()
+            .unwrap()
+            .key,
+        "legacy-accountless-avatar"
+    );
+    tenant.commit().await.unwrap();
+    app.fixture.admin.execute_unprepared("UPDATE active_storage_blobs SET service_name='persistent_with_s3_mirror' WHERE id=79001").await.unwrap();
+    let tenant = access::begin(&app.fixture.runtime, &scope, None)
+        .await
+        .unwrap();
+    assert!(avatar::person_attachment(&tenant, 73002).await.is_err());
+    tenant.rollback().await.unwrap();
+    let blob = app
+        .fixture
+        .admin
+        .query_all_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT id FROM active_storage_blobs WHERE id=79001",
+        ))
+        .await
+        .unwrap();
+    assert_eq!(blob.len(), 1);
+    app.close().await;
+}
+
+#[tokio::test]
 async fn gravatar_uses_depicted_person_consent_and_rechecks_access() {
     use med_tracker::models::{
         access::{self, Actor, HouseholdScope},
@@ -175,7 +236,7 @@ async fn profile_avatar_api_upload_read_replace_remove_and_recheck_access() {
         .admin
         .query_one_raw(Statement::from_string(
             DbBackend::Postgres,
-            "SELECT key FROM active_storage_blobs ORDER BY id DESC LIMIT 1",
+            "SELECT key FROM account_avatars WHERE account_id=71001",
         ))
         .await
         .unwrap()
@@ -204,9 +265,16 @@ async fn profile_avatar_api_upload_read_replace_remove_and_recheck_access() {
         .await
         .unwrap();
     assert_eq!(replaced.status().as_u16(), 200);
-    let attachment_count = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT count(*) AS n FROM active_storage_attachments WHERE record_type='Person' AND record_id=73001 AND name='avatar'"
-    )).await.unwrap().unwrap();
+    let attachment_count = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT count(*) AS n FROM account_avatars WHERE account_id=71001",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(attachment_count.try_get::<i64>("", "n").unwrap(), 1);
 
     let removed = app
@@ -420,7 +488,7 @@ async fn profile_avatar_api_audit_failure_rolls_back_metadata_and_cleans_new_obj
         .unwrap();
     assert_eq!(objects.key_count(), Some(1));
     app.fixture.admin.execute_unprepared("CREATE FUNCTION public.fail_profile_avatar_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic avatar audit failure'; END $$").await.unwrap();
-    app.fixture.admin.execute_unprepared("CREATE TRIGGER fail_profile_avatar_audit BEFORE INSERT ON security_audit_events FOR EACH ROW WHEN (NEW.event_type = 'profile.avatar.updated') EXECUTE FUNCTION public.fail_profile_avatar_audit()").await.unwrap();
+    app.fixture.admin.execute_unprepared("CREATE TRIGGER fail_profile_avatar_audit BEFORE INSERT ON versions FOR EACH ROW WHEN (NEW.item_type = 'Account' AND NEW.audit_context->>'policy_query' = 'update_own_account_avatar') EXECUTE FUNCTION public.fail_profile_avatar_audit()").await.unwrap();
     let failed = app
         .client
         .put(&endpoint)
@@ -442,7 +510,7 @@ async fn profile_avatar_api_audit_failure_rolls_back_metadata_and_cleans_new_obj
         .unwrap();
     assert_eq!(objects.key_count(), Some(1));
     let rows = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT (SELECT count(*) FROM active_storage_attachments WHERE record_type='Person' AND record_id=73001 AND name='avatar') AS attachments,(SELECT count(*) FROM active_storage_blobs) AS blobs"
+        "SELECT (SELECT count(*) FROM account_avatars WHERE account_id=71001) AS attachments,(SELECT count(*) FROM account_avatars) AS blobs"
     )).await.unwrap().unwrap();
     assert_eq!(rows.try_get::<i64>("", "attachments").unwrap(), 1);
     assert_eq!(rows.try_get::<i64>("", "blobs").unwrap(), 1);
@@ -545,7 +613,7 @@ async fn avatar_retirement_worker_preserves_active_key_and_retries_removed_key_i
         .admin
         .query_one_raw(Statement::from_string(
             DbBackend::Postgres,
-            "SELECT key FROM active_storage_blobs ORDER BY id DESC LIMIT 1",
+            "SELECT key FROM account_avatars WHERE account_id=71001",
         ))
         .await
         .unwrap()
@@ -654,7 +722,7 @@ async fn avatar_retirement_enqueue_failure_preserves_current_attachment() {
         .unwrap();
     assert_eq!(retained.status().as_u16(), 200);
     let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT (SELECT count(*) FROM active_storage_attachments WHERE record_type='Person' AND record_id=73001 AND name='avatar') AS attachments,(SELECT count(*) FROM active_storage_blobs) AS blobs"
+        "SELECT (SELECT count(*) FROM account_avatars WHERE account_id=71001) AS attachments,(SELECT count(*) FROM account_avatars) AS blobs"
     )).await.unwrap().unwrap();
     assert_eq!(row.try_get::<i64>("", "attachments").unwrap(), 1);
     assert_eq!(row.try_get::<i64>("", "blobs").unwrap(), 1);
@@ -683,9 +751,7 @@ async fn profile_avatar_api_updates_s3_primary_mirror_without_purging_unmigrated
     assert_eq!(uploaded.status().as_u16(), 200);
     app.fixture
         .admin
-        .execute_unprepared(
-            "UPDATE active_storage_blobs SET service_name='s3_with_persistent_mirror'",
-        )
+        .execute_unprepared("UPDATE account_avatars SET service_name='s3_with_persistent_mirror'")
         .await
         .unwrap();
     assert_eq!(
@@ -714,9 +780,7 @@ async fn profile_avatar_api_updates_s3_primary_mirror_without_purging_unmigrated
     assert_eq!(replaced.status().as_u16(), 200);
     app.fixture
         .admin
-        .execute_unprepared(
-            "UPDATE active_storage_blobs SET service_name='s3_with_persistent_mirror'",
-        )
+        .execute_unprepared("UPDATE account_avatars SET service_name='s3_with_persistent_mirror'")
         .await
         .unwrap();
     assert_eq!(
@@ -745,9 +809,7 @@ async fn profile_avatar_api_updates_s3_primary_mirror_without_purging_unmigrated
     assert_eq!(uploaded.status().as_u16(), 200);
     app.fixture
         .admin
-        .execute_unprepared(
-            "UPDATE active_storage_blobs SET service_name='persistent_with_s3_mirror'",
-        )
+        .execute_unprepared("UPDATE account_avatars SET service_name='persistent_with_s3_mirror'")
         .await
         .unwrap();
     assert!(matches!(
@@ -786,7 +848,7 @@ async fn profile_avatar_api_updates_s3_primary_mirror_without_purging_unmigrated
         500
     );
     let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT count(*) AS count FROM active_storage_attachments a JOIN active_storage_blobs b ON b.id=a.blob_id WHERE a.record_id=73001 AND b.service_name='persistent_with_s3_mirror'")).await.unwrap().unwrap();
+        "SELECT count(*) AS count FROM account_avatars WHERE account_id=71001 AND service_name='persistent_with_s3_mirror'")).await.unwrap().unwrap();
     assert_eq!(row.try_get::<i64>("", "count").unwrap(), 1);
     app.close().await;
 }
@@ -817,7 +879,7 @@ async fn avatar_failed_reply_cleanup_preserves_a_committed_attachment() {
         .admin
         .query_one_raw(Statement::from_string(
             DbBackend::Postgres,
-            "SELECT key FROM active_storage_blobs ORDER BY id DESC LIMIT 1",
+            "SELECT key FROM account_avatars WHERE account_id=71001",
         ))
         .await
         .unwrap()
@@ -882,9 +944,16 @@ async fn concurrent_avatar_replace_and_remove_leave_one_consistent_attachment_af
     );
     assert_eq!(replaced.unwrap().status().as_u16(), 200);
     assert_eq!(removed.unwrap().status().as_u16(), 204);
-    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT count(*) AS n FROM active_storage_attachments WHERE record_type='Person' AND record_id=73001 AND name='avatar'"
-    )).await.unwrap().unwrap();
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT count(*) AS n FROM account_avatars WHERE account_id=71001",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
     let attached: i64 = row.try_get("", "n").unwrap();
     assert!(attached == 0 || attached == 1);
     let jobs = app
@@ -998,7 +1067,7 @@ async fn avatar_read_rejects_active_legacy_content_types_without_removing_attach
             .admin
             .execute_raw(Statement::from_sql_and_values(
                 DbBackend::Postgres,
-                "UPDATE active_storage_blobs SET content_type=$1",
+                "UPDATE account_avatars SET content_type=$1",
                 [content_type.into()],
             ))
             .await
@@ -1015,7 +1084,7 @@ async fn avatar_read_rejects_active_legacy_content_types_without_removing_attach
     }
     app.fixture
         .admin
-        .execute_unprepared("UPDATE active_storage_blobs SET content_type='image/png'")
+        .execute_unprepared("UPDATE account_avatars SET content_type='image/png'")
         .await
         .unwrap();
     let retained = app
@@ -1103,7 +1172,7 @@ async fn avatar_read_rejects_legacy_non_image_bytes_without_deleting_attachment(
         .admin
         .query_one_raw(Statement::from_string(
             DbBackend::Postgres,
-            "SELECT key FROM active_storage_blobs WHERE key LIKE 'avatars/%'",
+            "SELECT key FROM account_avatars WHERE key LIKE 'avatars/%'",
         ))
         .await
         .unwrap()

@@ -12,6 +12,7 @@ pub mod m20261006_000007_better_auth_identity;
 pub mod m20261008_000008_support_access;
 pub mod m20261012_000009_notification_deliveries;
 pub mod m20261013_000010_review_edit;
+pub mod m20261016_000011_account_avatars;
 pub use m20261006_000003_canonical_take_identity::CANONICAL_CLIENT_UUID_SQL;
 
 pub struct Migrator;
@@ -31,6 +32,7 @@ impl MigratorTrait for StandardMigrator {
             Box::new(m20261008_000008_support_access::Migration),
             Box::new(m20261012_000009_notification_deliveries::Migration),
             Box::new(m20261013_000010_review_edit::Migration),
+            Box::new(m20261016_000011_account_avatars::Migration),
         ]
     }
 }

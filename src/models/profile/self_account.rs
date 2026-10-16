@@ -5,7 +5,9 @@ use crate::models::{
     ids::AccountId,
 };
 use chrono::Utc;
-use sea_orm::{ActiveModelTrait, DatabaseTransaction, EntityTrait, Set};
+use sea_orm::{
+    ActiveModelTrait, ConnectionTrait, DatabaseTransaction, DbBackend, EntityTrait, Set, Statement,
+};
 use serde::Serialize;
 use serde_json::json;
 
@@ -15,6 +17,7 @@ pub(crate) struct Snapshot {
     pub email: String,
     pub time_zone: chrono_tz::Tz,
     pub gravatar_enabled: bool,
+    pub avatar_attached: bool,
     pub mobile_shortcuts: Vec<Shortcut>,
 }
 
@@ -158,6 +161,15 @@ pub(crate) async fn read(
         account_id,
         time_zone,
         gravatar_enabled: super::gravatar::enabled(&account.preferences),
+        avatar_attached: transaction
+            .query_one_raw(Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                "SELECT EXISTS(SELECT 1 FROM account_avatars WHERE account_id=$1) AS attached",
+                [account_id.get().into()],
+            ))
+            .await?
+            .ok_or(OperationError::Unavailable)?
+            .try_get("", "attached")?,
         mobile_shortcuts,
         name: account.name,
         email: account.email,
