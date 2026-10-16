@@ -68,7 +68,7 @@
       <label for="warnings">{{ labels.forms.medications.warnings }}</label><textarea id="warnings" name="warnings" class="textarea w-full" {% if invalid_warnings %}aria-invalid="true" aria-describedby="form-error-warnings"{% endif %}>{{ draft.warnings }}</textarea>
       <p>{{ labels.forms.medications.wizard.browser.pack_warning }}</p>
     </div>
-    <div class="flex flex-wrap gap-3 mt-6"><button type="button" class="btn btn-outline" data-back hidden>{{ labels.forms.medications.back }}</button><button type="button" class="btn btn-neutral" data-continue>{{ labels.forms.medications.wizard.continue }}</button><button type="submit" class="btn btn-neutral" data-save hidden>{{ labels.forms.medications.save_medication }}</button></div>
+    <div class="flex flex-wrap gap-3 mt-6"><button type="button" class="btn btn-outline" data-back hidden>{{ labels.forms.medications.back }}</button><button type="button" class="btn btn-neutral" data-continue disabled>{{ labels.forms.medications.wizard.continue }}</button><button type="submit" class="btn btn-neutral" data-save hidden>{{ labels.forms.medications.save_medication }}</button></div>
   </form>
 </section>
 {% if wizard_variant != "fullpage" %}</div></dialog>{% endif %}
