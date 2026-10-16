@@ -32,6 +32,7 @@ fn expected_catalog_without_review() -> serde_json::Map<String, serde_json::Valu
         include_str!("../migration/identity-catalog.json"),
         include_str!("../migration/support-access-catalog.json"),
         include_str!("../migration/notification-deliveries-catalog.json"),
+        include_str!("../migration/support-expiry-catalog.json"),
     ] {
         expected.extend(
             serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(source).unwrap(),
@@ -189,8 +190,12 @@ async fn fresh_database_is_created_by_loco_migrations() {
         differences.join("\n")
     );
     let ledger = ledger_rows(&db).await;
-    assert_eq!(ledger.len(), 11);
+    assert_eq!(ledger.len(), 12);
     assert_eq!(ledger[10].0, "m20261016_000011_account_avatars");
+    assert_eq!(
+        ledger.last().map(|row| row.0.as_str()),
+        Some("m20261016_000012_support_expiry")
+    );
     migration::Migrator::up(&db, None).await.unwrap();
     assert_eq!(catalog(&db).await, before);
     assert_eq!(ledger_rows(&db).await, ledger);

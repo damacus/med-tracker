@@ -54,7 +54,7 @@ async fn session(app: &Application) -> String {
     sign_in(app, 71001, "persistence@example.test").await
 }
 
-async fn admin_session(app: &Application) -> String {
+pub(super) async fn admin_session(app: &Application) -> String {
     app.fixture.admin.execute_unprepared("INSERT INTO platform_admins(account_id,status,created_at,updated_at) VALUES(71001,'active',now(),now()) ON CONFLICT(account_id) DO UPDATE SET status='active',updated_at=now()").await.unwrap();
     session(app).await
 }
@@ -1929,7 +1929,7 @@ async fn activate_support(
     .await
 }
 
-async fn active_support(app: &Application, admin_cookie: &str) -> i64 {
+pub(super) async fn active_support(app: &Application, admin_cookie: &str) -> i64 {
     supported_household(app).await;
     let owner = sign_in(app, 71605, "support-owner@example.test").await;
     let (cookies, operation_id, confirm_token) = request_support(
@@ -3515,8 +3515,40 @@ async fn platform_support_read_waiting_on_row_lock_denies_after_deadline() {
     assert_eq!(audits_after, 1, "a repeat read must not audit expiry again");
 }
 
+async fn expiry_source_counts(
+    app: &Application,
+    id: i64,
+) -> Result<(i64, i64, i64), sea_orm::DbErr> {
+    let row = app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+        "SELECT (SELECT count(*) FROM public.versions WHERE item_type='SupportAccessSession' AND event='platform/support/expired' AND item_id=$1) AS versions,(SELECT count(*) FROM public.security_audit_events WHERE event_type='support_access_session.expired' AND metadata->>'support_access_session_id'=$1::text) AS security,(SELECT count(*) FROM public.audit_ledger_entries WHERE (source_table='versions' AND source_payload->>'item_type'='SupportAccessSession' AND source_payload->>'event'='platform/support/expired' AND source_payload->>'item_id'=$1::text) OR (source_table='security_audit_events' AND source_payload->>'event_type'='support_access_session.expired' AND source_payload->'metadata'->>'support_access_session_id'=$1::text)) AS ledger",[id.into()]))
+        .await?.ok_or_else(||sea_orm::DbErr::Custom("Synthetic expiry counts missing".into()))?;
+    Ok((
+        row.try_get("", "versions")?,
+        row.try_get("", "security")?,
+        row.try_get("", "ledger")?,
+    ))
+}
+
+async fn reject_expiry_audit(app: &Application) -> Result<(), sea_orm::DbErr> {
+    app.fixture.admin.execute_unprepared("CREATE SEQUENCE public.synthetic_expiry_audit_reached; ALTER SEQUENCE public.synthetic_expiry_audit_reached OWNER TO med_tracker_owner; CREATE FUNCTION public.synthetic_reject_expiry_audit() RETURNS trigger LANGUAGE plpgsql SET search_path=pg_catalog AS $$ BEGIN IF NEW.item_type='SupportAccessSession' AND NEW.event='platform/support/expired' THEN PERFORM pg_catalog.nextval('public.synthetic_expiry_audit_reached'::regclass); RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='Synthetic expiry audit rejection'; END IF; RETURN NEW; END $$; ALTER FUNCTION public.synthetic_reject_expiry_audit() OWNER TO med_tracker_owner; REVOKE ALL ON FUNCTION public.synthetic_reject_expiry_audit() FROM PUBLIC; CREATE TRIGGER synthetic_reject_expiry_audit BEFORE INSERT ON public.versions FOR EACH ROW EXECUTE FUNCTION public.synthetic_reject_expiry_audit()").await?;
+    Ok(())
+}
+
+async fn expiry_rejection_reached(app: &Application) -> Result<bool, sea_orm::DbErr> {
+    app.fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT is_called FROM public.synthetic_expiry_audit_reached",
+        ))
+        .await?
+        .ok_or_else(|| sea_orm::DbErr::Custom("Synthetic expiry marker missing".into()))?
+        .try_get("", "is_called")
+}
+
 #[tokio::test]
-async fn platform_support_expiry_audit_failure_rolls_back() {
+async fn platform_support_expiry_audit_failure_rolls_back() -> Result<(), Box<dyn std::error::Error>>
+{
     let app = Application::new().await;
     let cookie = admin_session(&app).await;
     let support_id = active_support(&app, &cookie).await;
@@ -3527,11 +3559,7 @@ async fn platform_support_expiry_audit_failure_rolls_back() {
         ))
         .await
         .unwrap();
-    app.fixture
-        .admin
-        .execute_unprepared("REVOKE INSERT ON public.versions FROM med_tracker_app")
-        .await
-        .unwrap();
+    reject_expiry_audit(&app).await?;
     let failed = app
         .client
         .get(format!("{}/platform/support/{support_id}", app.origin))
@@ -3540,11 +3568,12 @@ async fn platform_support_expiry_audit_failure_rolls_back() {
         .await
         .unwrap()
         .status();
+    let reached = expiry_rejection_reached(&app).await?;
+    let failed_counts = expiry_source_counts(&app, support_id).await?;
     app.fixture
         .admin
-        .execute_unprepared("GRANT INSERT ON public.versions TO med_tracker_app")
-        .await
-        .unwrap();
+        .execute_unprepared("DROP TRIGGER synthetic_reject_expiry_audit ON public.versions")
+        .await?;
     let (_, _, _, expired) = support_session(&app, 72602).await.unwrap();
     let audits = support_audit_count(&app, "platform/support/expired", support_id).await;
     let retry = app
@@ -3557,6 +3586,7 @@ async fn platform_support_expiry_audit_failure_rolls_back() {
         .status();
     let (_, _, _, expired_after) = support_session(&app, 72602).await.unwrap();
     let audits_after = support_audit_count(&app, "platform/support/expired", support_id).await;
+    let retried_counts = expiry_source_counts(&app, support_id).await?;
     app.close().await;
     assert!(!failed.is_success());
     assert!(
@@ -3567,6 +3597,10 @@ async fn platform_support_expiry_audit_failure_rolls_back() {
     assert!(!retry.is_success());
     assert!(expired_after.is_some());
     assert_eq!(audits_after, 1);
+    assert!(reached);
+    assert_eq!(failed_counts, (0, 0, 0));
+    assert_eq!(retried_counts, (1, 1, 2));
+    Ok(())
 }
 
 #[tokio::test]
@@ -4302,7 +4336,8 @@ async fn platform_support_expired_request_denies_approval_and_records_expiry() {
 }
 
 #[tokio::test]
-async fn platform_support_pending_expiry_audit_failure_rolls_back() {
+async fn platform_support_pending_expiry_audit_failure_rolls_back()
+-> Result<(), Box<dyn std::error::Error>> {
     let app = Application::new().await;
     let cookie = admin_session(&app).await;
     supported_household(&app).await;
@@ -4329,24 +4364,22 @@ async fn platform_support_pending_expiry_audit_failure_rolls_back() {
         ))
         .await
         .unwrap();
-    app.fixture
-        .admin
-        .execute_unprepared("REVOKE INSERT ON public.versions FROM med_tracker_app")
-        .await
-        .unwrap();
+    reject_expiry_audit(&app).await?;
     let (denied, denied_body) =
         browser_confirm(&app, &owner_cookies, &approval_id, &approval_token).await;
+    let reached = expiry_rejection_reached(&app).await?;
+    let failed_counts = expiry_source_counts(&app, support_id).await?;
     app.fixture
         .admin
-        .execute_unprepared("GRANT INSERT ON public.versions TO med_tracker_app")
-        .await
-        .unwrap();
+        .execute_unprepared("DROP TRIGGER synthetic_reject_expiry_audit ON public.versions")
+        .await?;
     let (_, _, _, expired) = support_session(&app, 72602).await.unwrap();
     let audits = support_audit_count(&app, "platform/support/expired", support_id).await;
     let (retried, retry_body) =
         browser_confirm(&app, &owner_cookies, &approval_id, &approval_token).await;
     let (_, _, _, expired_after) = support_session(&app, 72602).await.unwrap();
     let audits_after = support_audit_count(&app, "platform/support/expired", support_id).await;
+    let retried_counts = expiry_source_counts(&app, support_id).await?;
     app.close().await;
     assert!(!denied.is_success());
     assert!(
@@ -4360,6 +4393,10 @@ async fn platform_support_pending_expiry_audit_failure_rolls_back() {
         "a recovered audit must persist the expiry; first {denied}: {denied_body}; retry {retried}: {retry_body}"
     );
     assert_eq!(audits_after, 1);
+    assert!(reached);
+    assert_eq!(failed_counts, (0, 0, 0));
+    assert_eq!(retried_counts, (1, 1, 2));
+    Ok(())
 }
 
 #[tokio::test]
@@ -4514,7 +4551,8 @@ async fn platform_audit_does_not_trust_spoofed_forwarded_for() {
 }
 
 #[tokio::test]
-async fn platform_support_listing_expiry_audit_is_race_safe() {
+async fn platform_support_listing_expiry_audit_is_race_safe()
+-> Result<(), Box<dyn std::error::Error>> {
     let app = Application::new().await;
     let cookie = admin_session(&app).await;
     let support_id = active_support(&app, &cookie).await;
@@ -4522,46 +4560,73 @@ async fn platform_support_listing_expiry_audit_is_race_safe() {
         "UPDATE public.support_access_sessions SET expires_at=clock_timestamp()-interval '1 second' WHERE id={support_id}"
     )).await.unwrap();
     let (lock, _) = session_lock(&app, support_id).await;
-    let mut requests = Vec::new();
-    for _ in 0..2 {
-        let client = app.client.clone();
-        let origin = app.origin.clone();
-        let cookie = cookie.clone();
-        requests.push(tokio::spawn(async move {
-            client
-                .get(format!("{origin}/platform/support"))
-                .header("cookie", cookie)
-                .timeout(std::time::Duration::from_secs(30))
-                .send()
-                .await
-                .unwrap()
-                .status()
-        }));
-    }
-    let mut waiting = 0_i64;
-    for _ in 0..60 {
-        waiting = app.fixture.admin.query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT count(*) AS waiting FROM pg_stat_activity WHERE datname=current_database() AND state='active' AND cardinality(pg_blocking_pids(pid)) > 0".to_owned(),
-        )).await.unwrap().unwrap().try_get("","waiting").unwrap();
-        if waiting == 2 {
-            break;
-        }
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-    }
-    lock.commit().await.unwrap();
-    for request in requests {
-        assert_eq!(request.await.unwrap(), reqwest::StatusCode::OK);
-    }
+    let listing = || {
+        app.client
+            .get(format!("{}/platform/support", app.origin))
+            .header("cookie", &cookie)
+            .timeout(std::time::Duration::from_secs(5))
+            .send()
+    };
+    let (first, second) = tokio::join!(listing(), listing());
+    let first = first?.status();
+    let second = second?.status();
+    let busy_expired = support_session(&app, 72602)
+        .await
+        .ok_or_else(|| std::io::Error::other("Synthetic support row missing"))?
+        .3;
+    let busy_audits = support_audit_count(&app, "platform/support/expired", support_id).await;
+    let busy_security = expiry_source_counts(&app, support_id).await?;
+    lock.commit().await?;
+    let (retry_first, retry_second) = tokio::join!(listing(), listing());
+    let retry_first = retry_first?.status();
+    let retry_second = retry_second?.status();
     let audits = support_audit_count(&app, "platform/support/expired", support_id).await;
     let expired = support_session(&app, 72602).await.unwrap().3;
+    let mut tasks = loco_rs::task::Tasks::default();
+    <med_tracker::app::App as loco_rs::app::Hooks>::register_tasks(&mut tasks);
+    tasks
+        .run(
+            &app.context,
+            "support-access-expire",
+            &loco_rs::task::Vars::default(),
+        )
+        .await?;
+    let after_worker = support_audit_count(&app, "platform/support/expired", support_id).await;
+    let security = app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+        "SELECT count(*) AS count,bool_and(actor_account_id=71001 AND household_id=72602 AND audit_context->>'active_role'='support_expiry_task' AND audit_context->>'authentication_method'='system') AS attributed FROM public.security_audit_events WHERE event_type='support_access_session.expired' AND metadata->>'support_access_session_id'=$1::text",
+        [support_id.into()])).await?.ok_or_else(|| std::io::Error::other("Synthetic expiry audit row missing"))?;
+    let security_count = security.try_get::<i64>("", "count")?;
+    let attributed = security.try_get::<Option<bool>>("", "attributed")?;
     app.close().await;
-    assert_eq!(waiting, 2, "both listings must reach the database wait");
+    assert_eq!(
+        (first, second),
+        (reqwest::StatusCode::OK, reqwest::StatusCode::OK)
+    );
+    assert!(
+        busy_expired.is_none(),
+        "A locked source must remain retryable"
+    );
+    assert_eq!(busy_audits, 0);
+    assert_eq!(busy_security, (0, 0, 0));
+    assert_eq!(
+        (retry_first, retry_second),
+        (reqwest::StatusCode::OK, reqwest::StatusCode::OK)
+    );
     assert!(expired.is_some());
     assert_eq!(
         audits, 1,
         "concurrent listings must persist one expiry audit"
     );
+    assert_eq!(
+        after_worker, 1,
+        "Worker retry must not duplicate listing expiry"
+    );
+    assert_eq!(
+        security_count, 1,
+        "Listing-first expiry must retain the security audit after worker retry"
+    );
+    assert_eq!(attributed, Some(true));
+    Ok(())
 }
 
 #[tokio::test]
