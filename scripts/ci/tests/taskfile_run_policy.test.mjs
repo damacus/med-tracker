@@ -49,6 +49,13 @@ test('test:exec transports CMD through container env instead of the command line
   assert.ok(!output.includes('skipping execution'), output);
 });
 
+test('test:build builds both migration and web test images', () => {
+  const output = dryRun('rails:test:build');
+  assert.match(output, /--profile test build\s+migrate-test web-test/);
+  assert.match(dryRun('rails:dev:build'), /--profile dev build\s+web-dev/);
+  assert.match(dryRun('rails:prod:build'), /--profile prod build\s+web-prod/);
+});
+
 test('internal:run declares env passthroughs for vars-transported values', () => {
   const env = taskSection(taskBlock(internalTaskfile, 'run'), 'env');
   for (const name of ['DESTINATION', 'REASON', 'CMD']) {
