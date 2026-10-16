@@ -5,3 +5,7 @@ export function isDatabaseFree(binary, name) {
     || (binary === 'persistence' && name === 'development_has_a_stable_session_key')
     || (binary === 'identity_compatibility' && name === 'authentication_lifetime_requires_positive_inactivity_and_nonnegative_maximum_age');
 }
+export function isDedicatedTemplateTest(binary, name) {
+  return binary === 'template_concurrency'
+    && ['worker', 'competing_processes_prepare_once'].includes(name);
+}
