@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { withOwnedDatabase } from '../migration/foundation-database.mjs';
 import { execute } from './loco-process.mjs';
 import { parseShard, partition } from './loco-shards.mjs';
-import { isDatabaseFree } from './loco-inventory.mjs';
+import { isDatabaseFree, isDedicatedTemplateTest } from './loco-inventory.mjs';
 
 const { index, total } = parseShard(process.argv[2]);
 const manifest = JSON.parse(await readFile('target/ci/tests.json', 'utf8'));
@@ -12,7 +12,7 @@ for (const binary of manifest) {
   const listing = await execute(binary.path, ['--list', '--format=terse'], { capture: true });
   names.set(binary.name, listing.split('\n').filter(line => line.endsWith(': test')).map(line => line.slice(0, -6)));
 }
-const identities = [...names].flatMap(([binary, tests]) => tests.filter(name => !isDatabaseFree(binary, name)).map(name => `${binary}/${name}`));
+const identities = [...names].flatMap(([binary, tests]) => tests.filter(name => !isDatabaseFree(binary, name) && !isDedicatedTemplateTest(binary, name)).map(name => `${binary}/${name}`));
 const selected = new Set(partition(identities, total)[index]);
 if (!selected.size) throw new Error('Integration shard selected no tests');
 await writeFile(`test-results/integration-selection-${index + 1}.json`, JSON.stringify([...selected]));

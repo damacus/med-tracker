@@ -137,7 +137,10 @@ jobs:
           sudo apt-get install --yes fish uuid-runtime ripgrep
       - name: Check path ownership and relocation before compilation
         run: task ci:paths foundation:test-relocation fmt
-      - name: Run database-free unit and orchestration tests
+      - uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8
+        with:
+          tool: cargo-nextest@0.9.148
+      - name: Run unit, orchestration and owned PostgreSQL template tests
         run: task test:unit
       - name: Compile application and integration tests once
         run: task ci:prepare
