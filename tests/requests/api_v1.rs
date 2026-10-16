@@ -12,6 +12,8 @@ mod capabilities;
 mod contract;
 #[path = "../care_api/fixture.rs"]
 mod fixture;
+#[path = "household_selection.rs"]
+mod household_selection;
 #[path = "household_settings.rs"]
 mod household_settings;
 #[path = "household_settings_evidence.rs"]

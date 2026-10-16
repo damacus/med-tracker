@@ -49,5 +49,7 @@ async fn profile_worker() -> impl axum::response::IntoResponse {
 }
 
 pub fn browser_routes() -> Routes {
-    Routes::new().add("/", get(home::index))
+    Routes::new()
+        .add("/", get(home::index))
+        .add("/households/select", post(home::select))
 }
