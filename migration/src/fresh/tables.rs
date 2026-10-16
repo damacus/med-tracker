@@ -403,6 +403,7 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                     .custom(Alias::new("citext"))
                     .not_null(),
             )
+            .col(ColumnDef::new(Alias::new("name")).string())
             .col(ColumnDef::new(Alias::new("password_hash")).string())
             .col(
                 ColumnDef::new(Alias::new("preferences"))

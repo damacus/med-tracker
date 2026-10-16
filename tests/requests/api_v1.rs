@@ -1,3 +1,5 @@
+#[path = "account_profile.rs"]
+mod account_profile;
 #[path = "capabilities.rs"]
 mod capabilities;
 #[path = "../care_api/contract.rs"]
@@ -80,7 +82,7 @@ fn operations() -> BTreeMap<(String, String), Value> {
     let source = include_str!("../../docs/api/openapi.v1.yaml");
     assert_eq!(
         hex::encode(Sha256::digest(source.as_bytes())),
-        "2e974738ac88e583452ac342690814e651226c93cf85571bf89908cd0a200758",
+        "0b6da9cc631356f78643960bebaa8333ae6c1bd6d108e92cc8178b9f49901856",
         "The full API schema or headers changed; refresh the operation inventory and its evidence"
     );
     let document: Value = serde_yaml_ng::from_str(source).unwrap();
@@ -527,7 +529,7 @@ pub mod baseline {
         let recorded = inventory();
         let document: Value =
             serde_yaml_ng::from_str(include_str!("../../docs/api/openapi.v1.yaml")).unwrap();
-        assert_eq!(expected.len(), 122);
+        assert_eq!(expected.len(), 124);
         assert_eq!(recorded.len(), expected.len());
         assert_eq!(
             recorded.keys().collect::<Vec<_>>(),
@@ -1193,7 +1195,7 @@ pub mod account {
         );
     }
 
-    async fn mobile_token(fixture: &Fixture) -> String {
+    pub(super) async fn mobile_token(fixture: &Fixture) -> String {
         let token_request = axum::http::Request::builder()
             .method("POST")
             .uri("/token")
