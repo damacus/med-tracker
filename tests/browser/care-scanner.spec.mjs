@@ -43,6 +43,7 @@ async function signIn(page) {
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.getByRole('button', { name: 'Open Synthetic household', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Open menu', exact: true })).toBeVisible();
 }
 
 test('scanner manual miss continues into the complete staged medication wizard', async ({ page }) => {
