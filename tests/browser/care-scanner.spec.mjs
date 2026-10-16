@@ -164,6 +164,41 @@ test('inventory Scan stock opens a closeable scanner and resolves an existing me
   await expect(page.getByRole('dialog', { name: 'Refill inventory' })).toBeVisible();
 });
 
+test('inventory scanner readiness preserves entered barcodes until handlers are installed', async ({ page, careFixture }) => {
+  await signIn(page);
+  await careFixture.seedBarcodeMetadata();
+  let releaseScript;
+  const scriptReady = new Promise(resolve => { releaseScript = resolve; });
+  let scriptRequested;
+  const scriptRequest = new Promise(resolve => { scriptRequested = resolve; });
+  await page.route('**/static/js/medication-finder.js', async route => {
+    scriptRequested();
+    await scriptReady;
+    await route.continue();
+  });
+  await page.reload({ waitUntil: 'commit' });
+  await scriptRequest;
+  await page.getByRole('button', { name: 'Scan stock', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Scan stock' });
+  const barcode = dialog.getByLabel('Barcode', { exact: true });
+  try {
+    await expect(dialog.getByRole('button', { name: 'Start Scanner', exact: true })).toBeDisabled();
+    await expect(dialog.getByRole('button', { name: 'Find barcode', exact: true })).toBeDisabled();
+    await barcode.fill('1234567890123');
+    await barcode.press('Enter');
+    await expect(dialog).toBeVisible();
+    await expect(barcode).toHaveValue('1234567890123');
+  } finally {
+    releaseScript();
+  }
+  await expect(dialog.getByRole('button', { name: 'Start Scanner', exact: true })).toBeEnabled();
+  await expect(dialog.getByRole('button', { name: 'Find barcode', exact: true })).toBeEnabled();
+  await barcode.press('Enter');
+  await expect(dialog.getByText('Medicine found in your household.')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Close scanner', exact: true }).click();
+  await expect(dialog).toBeHidden();
+});
+
 test('inventory filters show located medication cards and distinguish zero from untracked stock', async ({ page, careFixture }) => {
   await careFixture.inventoryPresentation();
   await signIn(page);
@@ -478,16 +513,58 @@ test('Stock Check batch controls show selected counts, differences and a unit-sa
   if (test.info().project.name === 'mobile') await expect(page.locator('[data-stock-check-summary]')).toHaveCSS('position', 'fixed');
 });
 
-test('catalogue selection retains NHS and custom source metadata in the wizard', async ({ page }) => {
+test('finder readiness preserves keyboard searches and catalogue source metadata', async ({ page }) => {
   await signIn(page);
+  let releaseScript;
+  const scriptReady = new Promise(resolve => { releaseScript = resolve; });
+  let scriptRequested;
+  const scriptRequest = new Promise(resolve => { scriptRequested = resolve; });
+  await page.route('**/static/js/medication-finder.js', async route => {
+    scriptRequested();
+    await scriptReady;
+    await route.continue();
+  });
   await page.route('**/medications/lookup?**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
     matches: [], permissions: { can_create: true }, results: [{ display: 'Synthetic custom tablets', barcode: '5016298210989', code: 'CUSTOM-1', concept_class: 'AMPP', system: 'Local catalogue', source_label: 'Imported custom' }]
   }) }));
-  await openCareSection(page, 'Medication Finder');
-  await page.getByLabel('Barcode', { exact: true }).fill('5016298210989');
-  await page.getByRole('button', { name: 'Find barcode', exact: true }).click();
+  await page.getByRole('button', { name: 'Open menu', exact: true }).click();
+  const finderUrl = await page.getByRole('dialog', { name: 'Navigation menu', exact: true })
+    .getByRole('link', { name: 'Medication Finder', exact: true }).getAttribute('href');
+  await page.goto(finderUrl, { waitUntil: 'commit' });
+  await scriptRequest;
+  const barcode = page.getByLabel('Barcode', { exact: true });
+  const findBarcode = page.getByRole('button', { name: 'Find barcode', exact: true });
+  try {
+    await barcode.fill('5016298210989');
+    const nativeSubmission = await findBarcode.isEnabled()
+      ? page.waitForRequest(request => request.isNavigationRequest() && new URL(request.url()).searchParams.get('q') === '5016298210989')
+      : undefined;
+    await barcode.press('Enter');
+    const premature = nativeSubmission ? (await nativeSubmission).url() : null;
+    expect(premature, 'Enter must not submit the native form before finder handlers are installed').toBeNull();
+    await expect(findBarcode).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Search medicines', exact: true })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Start Scanner', exact: true })).toBeDisabled();
+    await page.screenshot({ path: `docs/screenshots/loco-finder-loading-${test.info().project.name}.png` });
+  } finally {
+    releaseScript();
+  }
+  await expect(findBarcode).toBeEnabled();
+  await expect(barcode).toHaveValue('5016298210989');
+  await barcode.press('Enter');
   await expect(page.getByRole('link', { name: 'Add this medication', exact: true })).toHaveClass(/btn-primary/);
   await expect(page.getByRole('button', { name: 'Find barcode', exact: true })).toHaveClass(/btn-outline/);
+  await page.getByLabel('Medicine name', { exact: true }).fill('Synthetic custom tablets');
+  await page.getByLabel('Form', { exact: true }).selectOption('tablet');
+  await page.getByLabel('Strength', { exact: true }).fill('10 mg');
+  const catalogueRequest = page.waitForRequest('**/medications/lookup?**');
+  await page.getByLabel('Medicine name', { exact: true }).press('Enter');
+  const catalogueUrl = new URL((await catalogueRequest).url());
+  expect(catalogueUrl.searchParams.get('q')).toBe('Synthetic custom tablets');
+  expect(catalogueUrl.searchParams.get('form')).toBe('tablet');
+  expect(catalogueUrl.searchParams.get('strength')).toBe('10 mg');
+  await expect(page.getByRole('link', { name: 'Add this medication', exact: true })).toBeVisible();
+  await page.screenshot({ path: `docs/screenshots/loco-finder-ready-${test.info().project.name}.png` });
   await page.getByRole('link', { name: 'Add this medication', exact: true }).click();
   await expect(page.locator('[name="dmd_code"]')).toHaveValue('CUSTOM-1');
   await expect(page.locator('[name="dmd_concept_class"]')).toHaveValue('AMPP');
