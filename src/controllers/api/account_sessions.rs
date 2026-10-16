@@ -1,10 +1,14 @@
 use axum::{
     Json,
-    extract::{Path, State, rejection::PathRejection},
+    extract::{
+        Path, State,
+        rejection::{JsonRejection, PathRejection},
+    },
     http::{HeaderMap, HeaderValue, StatusCode, header},
     response::IntoResponse,
 };
 use loco_rs::{controller::middleware::request_id::LocoRequestId, prelude::*};
+use serde::Deserialize;
 use serde_json::{Value, json};
 
 use crate::models::{
@@ -13,15 +17,125 @@ use crate::models::{
         account_sessions,
         resource::{self, AuthenticationError},
     },
+    ids::AccountId,
+    profile::account_name,
 };
 
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("/api/v1/auth")
         .add("/households", get(households))
+        .add("/profile", get(profile).patch(update_profile))
         .add("/sessions", get(sessions))
         .add("/sessions/{id}", delete(revoke))
         .add("/logout", delete(logout))
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ProfileInput {
+    profile: ProfilePatch,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ProfilePatch {
+    name: String,
+}
+
+async fn profile(
+    State(ctx): State<AppContext>,
+    headers: HeaderMap,
+    request: Option<axum::Extension<LocoRequestId>>,
+) -> Response {
+    profile_action(ctx, headers, request, None).await
+}
+
+async fn update_profile(
+    State(ctx): State<AppContext>,
+    headers: HeaderMap,
+    request: Option<axum::Extension<LocoRequestId>>,
+    body: std::result::Result<Json<ProfileInput>, JsonRejection>,
+) -> Response {
+    profile_action(ctx, headers, request, Some(body)).await
+}
+
+async fn profile_action(
+    ctx: AppContext,
+    headers: HeaderMap,
+    request: Option<axum::Extension<LocoRequestId>>,
+    body: Option<std::result::Result<Json<ProfileInput>, JsonRejection>>,
+) -> Response {
+    let request_id = request_id(request);
+    let principal =
+        match resource::authenticate(&ctx.db, &headers, ctx.config.settings.as_ref()).await {
+            Ok(principal) => principal,
+            Err(error) => return authentication(error, &request_id),
+        };
+    let write = body.is_some();
+    let name = match body {
+        Some(Ok(Json(input))) => match account_name::Name::parse(&input.profile.name) {
+            Ok(name) => Some(name),
+            Err(_) => {
+                return failure(
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    "unprocessable_content",
+                    "Profile contains an invalid field",
+                    &request_id,
+                );
+            }
+        },
+        Some(Err(_)) => {
+            return failure(
+                StatusCode::BAD_REQUEST,
+                "invalid_request",
+                "Invalid profile body",
+                &request_id,
+            );
+        }
+        None => None,
+    };
+    let transaction = match principal
+        .account_transaction(&ctx.db, ctx.config.settings.as_ref(), write)
+        .await
+    {
+        Ok(transaction) => transaction,
+        Err(error) => return authentication(error, &request_id),
+    };
+    let account_id = AccountId::from_database(principal.account_id());
+    let result = async {
+        if let Some(name) = name {
+            account_name::update(&transaction, account_id, &request_id, name).await?;
+        }
+        account_name::read(&transaction, account_id).await
+    }
+    .await;
+    match result {
+        Ok(snapshot) => match transaction.commit().await {
+            Ok(()) => reply(
+                StatusCode::OK,
+                Some(
+                    json!({"data":{"account_id":snapshot.account_id.to_string(),"name":snapshot.name,"email":snapshot.email}}),
+                ),
+                &request_id,
+            ),
+            Err(error) => operation(error.into(), &request_id),
+        },
+        Err(error) => {
+            if let Err(error) = transaction.rollback().await {
+                return operation(error.into(), &request_id);
+            }
+            match error {
+                OperationError::Validation { .. } => failure(
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    "unprocessable_content",
+                    "Profile contains an invalid field",
+                    &request_id,
+                ),
+                other => operation(other, &request_id),
+            }
+        }
+    }
 }
 
 async fn households(

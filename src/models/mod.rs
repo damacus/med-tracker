@@ -7,6 +7,7 @@ pub mod entities;
 pub mod errors;
 mod household_tenancy;
 pub mod identity;
+pub(crate) mod ids;
 pub mod nhs_dmd;
 pub mod notification_preferences;
 pub mod platform;

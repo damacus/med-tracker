@@ -156,6 +156,90 @@ paths:
                 $ref: "#/components/schemas/CapabilitiesResponse"
         "429":
           $ref: "#/components/responses/RateLimited"
+  /auth/profile:
+    get:
+      operationId: getAccountProfile
+      tags:
+        - Account
+      summary: Read the authenticated account's name and email.
+      description: |
+        Account data is independent of the selected household. A valid mobile OAuth
+        credential remains usable after household membership is revoked. Household-bound
+        sessions and app tokens retain their existing membership validity requirements.
+        Name is null until explicitly set. Email is read-only here; use the verified
+        authentication email-change flow. Every response has Cache-Control: no-store.
+      responses:
+        "200":
+          description: Current account profile.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountProfileResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/AccountForbidden"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          description: Account data could not be read.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    patch:
+      operationId: updateAccountProfile
+      tags:
+        - Account
+      summary: Update the authenticated account's display name.
+      description: |
+        Trims leading and trailing whitespace. The resulting name must contain between
+        1 and 100 Unicode characters. Account identity and email cannot be supplied.
+        The name and attributable account audit commit together; an audit failure rolls
+        back the name. Every response has Cache-Control: no-store.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [profile]
+              properties:
+                profile:
+                  type: object
+                  additionalProperties: false
+                  required: [name]
+                  properties:
+                    name:
+                      type: string
+      responses:
+        "200":
+          description: Updated account profile.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountProfileResponse"
+        "400":
+          description: Malformed profile body or unsupported fields.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/AccountForbidden"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          description: The profile and its audit could not be committed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
   /auth/households:
     get:
       operationId: listHouseholds
@@ -5755,6 +5839,27 @@ components:
         title:
           type: string
           minLength: 1
+    AccountProfileResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required: [account_id, name, email]
+          properties:
+            account_id:
+              type: string
+              pattern: '^[1-9][0-9]*$'
+            name:
+              type: string
+              nullable: true
+              minLength: 1
+              maxLength: 100
+            email:
+              type: string
+              format: email
     AuthHousehold:
       type: object
       nullable: true
