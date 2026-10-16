@@ -33,9 +33,11 @@ together without handing control of it to a hosted service.
 ## Migration checkout
 
 This branch makes Loco 1.2 the root Rust application and retains Rails under
-`rails/` as the reference and rollback runtime. The foundation currently exposes
+`rails/` as read-only reference code. The foundation currently exposes
 `/up`, framework database readiness at `/_health`, and a Tera landing page.
-Product workflows remain migration work; use Rails for the existing application.
+The accepted fresh Rust architecture is recorded in
+[ADRs 0013–0016](docs/design.md#accepted-rust-direction). These decisions do not
+certify implementation acceptance.
 
 Use `task deps` once to resolve dependencies, `task build` to compile and `task ci`
 to verify Loco. Set `DATABASE_URL` to a dedicated PostgreSQL 18 database and run
