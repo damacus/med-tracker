@@ -19,7 +19,7 @@ loco-rs = { version = "=1.2.0", default-features = false, features = [
     "storage_aws_s3",
 ] }
 async-trait = "0.1"
-opendal = { version = "=0.58.2", default-features = false, features = [
+opendal = { version = "=0.59.4", default-features = false, features = [
     "http-transport-reqwest",
     "services-s3",
 ] }
