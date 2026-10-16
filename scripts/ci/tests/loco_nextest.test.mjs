@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { archiveArguments, buildArchiveArtifact, filterForSelection, parseNextestInventory, runArchiveStage, selectedTests, validateArchiveArtifact } from '../loco-nextest.mjs';
+import { sourceIdentity } from '../../migration/run-slice.mjs';
 
 const listing = {
   'test-count': 5,
@@ -153,6 +155,56 @@ test('integration archive run credits exactly the selected cases across both bin
     let cleanups = 0;
     await assert.rejects(runArchiveStage({ stage: 'integration', shard: '1/1', directory: ci, root: directory, run, own: async () => { throw new Error('provisioning failed'); }, identity: async () => source, environment: { CARGO_TARGET_DIR: target }, proofFactory: async () => ({ cleanup: async () => { cleanups += 1; } }) }), /provisioning failed/);
     assert.equal(cleanups, 1, 'A failed owned fixture must release its unused proof report');
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('hosted archive downloads preserve producer identity in clean consumers and reject new source', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'medtracker-hosted-archive-'));
+  const producer = join(directory, 'producer');
+  const workflow = await readFile('.github/workflows/ci.yml', 'utf8');
+  try {
+    await mkdir(join(producer, 'Taskfiles'), { recursive: true });
+    await copyFile('.gitignore', join(producer, '.gitignore'));
+    await copyFile('Taskfiles/ci.yml', join(producer, 'Taskfiles', 'ci.yml'));
+    await writeFile(join(producer, 'Taskfile.yml'), 'version: "3"\nincludes:\n  ci:\n    taskfile: Taskfiles/ci.yml\n    dir: .\n');
+    await writeFile(join(producer, 'source.rs'), 'verified application source');
+    const git = args => execFileSync('git', args, { cwd: producer, stdio: 'pipe' });
+    git(['init', '--quiet']);
+    git(['add', '.']);
+    git(['-c', 'user.name=Archive Fixture', '-c', 'user.email=archive@example.test', '-c', 'commit.gpgsign=false', 'commit', '--quiet', '-m', 'archive fixture']);
+    await mkdir(join(producer, 'target'), { recursive: true });
+    await writeFile(join(producer, 'target', 'built-app'), 'application');
+    for (const path of ['assets/static/css/compiled.css', 'assets/static/js/html5-qrcode.min.js']) {
+      await mkdir(join(producer, path, '..'), { recursive: true });
+      await writeFile(join(producer, path), 'generated asset');
+    }
+    const identity = () => sourceIdentity(process.env, undefined, producer);
+    await buildArchiveArtifact({ directory: join(producer, 'target', 'ci'), root: producer, identity, run: async (command, args) => {
+      if (args[1] === 'archive') return writeFile(args[args.indexOf('--archive-file') + 1], 'nextest archive');
+      if (args[0] === 'build') return JSON.stringify({ reason: 'compiler-artifact', target: { name: 'med-tracker', kind: ['bin'] }, profile: { test: false }, executable: join(producer, 'target', 'built-app') });
+      if (args[1] === 'list') return JSON.stringify(listing);
+      throw new Error(`Unexpected command: ${command} ${args.join(' ')}`);
+    } });
+    execFileSync('task', ['ci:package'], { cwd: producer, stdio: 'pipe' });
+    for (const [jobName, nextJob] of [['loco_integration', 'loco_browser'], ['loco_browser', 'rust_dashboard_browser']]) {
+      const job = workflow.split(`  ${jobName}:`)[1].split(`  ${nextJob}:`)[0];
+      const download = job.match(/uses: actions\/download-artifact@[^\n]+\n        with:\n          name: loco-tests(?:\n          path: ([^\n]+))?/);
+      assert.ok(download, `${jobName} must download the prepared archive`);
+      const extract = job.match(/- run: (tar -xzf [^\n]+)/)?.[1];
+      assert.ok(extract, `${jobName} must extract the downloaded archive`);
+      const consumer = join(directory, jobName);
+      execFileSync('git', ['clone', '--quiet', '--local', producer, consumer], { stdio: 'pipe' });
+      const destination = join(consumer, download[1] ?? '.');
+      await mkdir(destination, { recursive: true });
+      await copyFile(join(producer, 'target', 'loco-tests.tar.gz'), join(destination, 'loco-tests.tar.gz'));
+      execFileSync('tar', extract.split(' ').slice(1), { cwd: consumer, stdio: 'pipe' });
+      const current = () => sourceIdentity(process.env, undefined, consumer);
+      await validateArchiveArtifact(join(consumer, 'target', 'ci'), await current(), consumer);
+      await writeFile(join(consumer, 'unexpected.rs'), 'unverified source');
+      await assert.rejects(validateArchiveArtifact(join(consumer, 'target', 'ci'), await current(), consumer), /source identity/);
+    }
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
