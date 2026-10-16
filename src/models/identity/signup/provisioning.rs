@@ -57,8 +57,8 @@ pub(super) async fn provision_with_password_in(
     };
     let preferences = initial_preferences(settings)?;
     let account = transaction.query_one_raw(sql(
-        "INSERT INTO accounts(email,password_hash,status,preferences,created_at,updated_at) VALUES($1,$2,1,$3,now(),now()) ON CONFLICT(email) WHERE status = ANY(ARRAY[1,2]) DO NOTHING RETURNING id",
-        [email.clone().into(),password_hash.map(str::to_owned).into(),preferences.into()])).await.map_err(unavailable)?
+        "INSERT INTO accounts(email,password_hash,status,preferences,name,created_at,updated_at) VALUES($1,$2,1,$3,$4,now(),now()) ON CONFLICT(email) WHERE status = ANY(ARRAY[1,2]) DO NOTHING RETURNING id",
+        [email.clone().into(),password_hash.map(str::to_owned).into(),preferences.into(),profile.name.trim().to_owned().into()])).await.map_err(unavailable)?
         .ok_or_else(|| invalid("email", "is already registered"))?;
     let account_id: i64 = account.try_get("", "id").map_err(unavailable)?;
     transaction

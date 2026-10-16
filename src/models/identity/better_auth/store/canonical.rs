@@ -103,7 +103,7 @@ impl ClinicalStore {
         administration::authorize(&tenant)
             .await
             .map_err(operation_error)?;
-        let rows = UserRow::find_by_statement(statement("SELECT a.id,a.email::text,a.status,a.created_at AT TIME ZONE 'UTC' AS created_at,a.updated_at AT TIME ZONE 'UTC' AS updated_at,p.name,false AS two_factor_enabled,NULL::text AS passkey_user_handle FROM public.accounts a JOIN public.household_memberships m ON m.account_id=a.id LEFT JOIN public.people p ON p.id=m.person_id AND p.household_id=m.household_id WHERE m.household_id=$1 AND a.id=ANY($2::bigint[]) AND m.status='active' AND m.revoked_at IS NULL ORDER BY a.id", [household_id.into(), ids.into()])).all(tenant.transaction()).await.map_err(database_error)?;
+        let rows = UserRow::find_by_statement(statement("SELECT a.id,a.email::text,a.status,a.created_at AT TIME ZONE 'UTC' AS created_at,a.updated_at AT TIME ZONE 'UTC' AS updated_at,a.name,false AS two_factor_enabled,NULL::text AS passkey_user_handle FROM public.accounts a JOIN public.household_memberships m ON m.account_id=a.id WHERE m.household_id=$1 AND a.id=ANY($2::bigint[]) AND m.status='active' AND m.revoked_at IS NULL ORDER BY a.id", [household_id.into(), ids.into()])).all(tenant.transaction()).await.map_err(database_error)?;
         tenant.commit().await.map_err(operation_error)?;
         Ok(rows.into_iter().map(Into::into).collect())
     }
@@ -190,7 +190,7 @@ impl ClinicalStore {
     ) -> AuthResult<Option<UserView>> {
         let account_id = clinical_id(id)?;
         context(transaction, "med_tracker.current_account_id", id).await?;
-        let row=UserRow::find_by_statement(statement("SELECT a.id,a.email::text,a.status,a.created_at AT TIME ZONE 'UTC' AS created_at,a.updated_at AT TIME ZONE 'UTC' AS updated_at,(SELECT p.name FROM public.people p WHERE p.account_id=a.id ORDER BY p.id LIMIT 1) AS name,EXISTS(SELECT 1 FROM public.identity_two_factors o WHERE o.account_id=a.id AND o.verified) AS two_factor_enabled,(SELECT passkey_user_handle::text FROM public.identity_onboarding WHERE account_id=a.id) AS passkey_user_handle FROM public.accounts a WHERE a.id=$1",[account_id.into()])).one(transaction).await.map_err(database_error)?;
+        let row=UserRow::find_by_statement(statement("SELECT a.id,a.email::text,a.status,a.created_at AT TIME ZONE 'UTC' AS created_at,a.updated_at AT TIME ZONE 'UTC' AS updated_at,a.name,EXISTS(SELECT 1 FROM public.identity_two_factors o WHERE o.account_id=a.id AND o.verified) AS two_factor_enabled,(SELECT passkey_user_handle::text FROM public.identity_onboarding WHERE account_id=a.id) AS passkey_user_handle FROM public.accounts a WHERE a.id=$1",[account_id.into()])).one(transaction).await.map_err(database_error)?;
         Ok(row.map(Into::into))
     }
 
