@@ -39,123 +39,25 @@ export async function sourceIdentity(environment, ownedReportDirectory, checkout
   return { revision, dirty: status.length > 0, sha256: hash.digest('hex') };
 }
 
-export class LibtestProof {
-  constructor() {
-    this.bytes = 0;
-    this.pending = '';
-    this.running = undefined;
-    this.summary = undefined;
-    this.passed = new Set();
-    this.ignored = new Set();
-    this.failed = new Set();
-  }
-
-  write(chunk) {
-    this.bytes += chunk.length;
-    if (this.bytes > 1024 * 1024) throw new Error('Libtest transcript exceeded the 1 MiB size limit');
-    this.pending += chunk.toString('utf8');
-    if (this.pending.length > 1024 * 1024) throw new Error('Libtest transcript line exceeded the size limit');
-    let end;
-    while ((end = this.pending.indexOf('\n')) !== -1) {
-      const line = this.pending.slice(0, end).replace(/\r$/, '');
-      this.pending = this.pending.slice(end + 1);
-      this.line(line);
-    }
-  }
-
-  line(line) {
-    const running = /^running (\d+) tests?$/.exec(line);
-    if (running) {
-      if (this.running !== undefined || this.summary) throw new Error('Ambiguous libtest transcript run count');
-      this.running = Number(running[1]);
-      return;
-    }
-    const result = /^test ([A-Za-z0-9_:]+)(?: - should panic(?: - expected)?)? \.\.\. (ok|ignored(?:, .+)?|FAILED)$/.exec(line);
-    if (result) {
-      if (this.running === undefined || this.summary) throw new Error('Libtest case outside the run transcript');
-      const name = result[1];
-      if (this.passed.has(name) || this.ignored.has(name) || this.failed.has(name)) throw new Error(`Duplicate libtest case: ${name}`);
-      const status = result[2].startsWith('ignored') ? 'ignored' : result[2];
-      const destination = { ok: this.passed, ignored: this.ignored, FAILED: this.failed }[status];
-      destination.add(name);
-      return;
-    }
-    const summary = /^test result: (ok|FAILED)\. (\d+) passed; (\d+) failed; (\d+) ignored; (\d+) measured; (\d+) filtered out; finished in \d+(?:\.\d+)?s$/.exec(line);
-    if (summary) {
-      if (this.running === undefined || this.summary) throw new Error('Ambiguous libtest transcript summary');
-      this.summary = { status: summary[1], passed: Number(summary[2]), failed: Number(summary[3]), ignored: Number(summary[4]), measured: Number(summary[5]) };
-    }
-  }
-
-  finish() {
-    if (this.pending.trim()) throw new Error('Incomplete libtest transcript line');
-    if (this.running === undefined || !this.summary) throw new Error('Missing libtest transcript summary');
-    if (this.summary.status !== 'ok' || this.summary.failed !== 0 || this.failed.size !== 0 || this.summary.measured !== 0 || this.passed.size !== this.summary.passed || this.ignored.size !== this.summary.ignored || this.running !== this.summary.passed + this.summary.failed + this.summary.ignored) throw new Error('Libtest transcript summary does not match executed cases');
-    return { passed: this.passed, ignored: this.ignored };
-  }
-}
-
-async function runCargo(args, databaseUrl, inheritedEnvironment, signal, coverageEnvironment, { executionProof = false, controlledCapture = false } = {}) {
+async function runCargo(args, databaseUrl, inheritedEnvironment, signal, coverageEnvironment, { controlledCapture = false } = {}) {
   signal.throwIfAborted();
   const environment = { ...(coverageEnvironment ? withoutCoverageOverrides(inheritedEnvironment) : inheritedEnvironment), ...coverageEnvironment, DATABASE_URL: databaseUrl, MEDTRACKER_OWNED_DATABASE: '1', MEDTRACKER_SESSION_KEY: Buffer.alloc(64, 7).toString('base64'), RAILS_SECRET_KEY_BASE: 'synthetic-slice-rails-verification-secret' };
-  if (controlledCapture || executionProof) delete environment.RUST_TEST_NOCAPTURE;
+  if (controlledCapture) delete environment.RUST_TEST_NOCAPTURE;
   for (const name of ['COMPOSE_FILE', 'COMPOSE_PROJECT_NAME', 'COMPOSE_PROFILES', 'DOCKER_HOST', 'DOCKER_CONTEXT', 'DOCKER_CONFIG', 'DOCKER_TLS_VERIFY', 'DOCKER_CERT_PATH']) delete environment[name];
-  const child = spawn('cargo', args, { cwd: root, env: environment, detached: true, stdio: executionProof ? ['inherit', 'pipe', 'inherit'] : 'inherit' });
-  const proof = executionProof ? new LibtestProof() : undefined;
+  const child = spawn('cargo', args, { cwd: root, env: environment, detached: true, stdio: 'inherit' });
   let timer;
   let interrupt;
-  let stdoutError;
-  let stdoutDrain;
-  let readableError;
   let failed = false;
   try {
     return await new Promise((resolve, reject) => {
-      let pendingWrites = 0;
-      let closeCode;
-      const complete = () => {
-        if (closeCode === undefined || pendingWrites !== 0) return;
-        if (closeCode !== 0) return reject(new Error(`Slice Cargo execution exited ${closeCode}`));
-        try { resolve(proof?.finish()); } catch (error) { reject(error); }
-      };
       interrupt = () => reject(signal.reason);
       signal.addEventListener('abort', interrupt, { once: true });
       timer = setTimeout(() => reject(new Error('Slice Cargo execution exceeded 30 minutes')), 1800000);
       child.once('error', reject);
-      if (proof) {
-        stdoutError = reject;
-        process.stdout.on('error', stdoutError);
-        readableError = reject;
-        child.stdout.on('error', readableError);
-      }
-      if (proof) child.stdout.on('data', chunk => {
-        try {
-          proof.write(chunk);
-          pendingWrites++;
-          const accepted = process.stdout.write(chunk, error => {
-            pendingWrites--;
-            if (error) reject(error);
-            else complete();
-          });
-          if (!accepted && !stdoutDrain) {
-            child.stdout.pause();
-            stdoutDrain = () => {
-              stdoutDrain = undefined;
-              child.stdout.resume();
-            };
-            process.stdout.once('drain', stdoutDrain);
-          }
-        } catch (error) {
-          reject(error);
-        }
-      });
-      child.once('close', code => {
-        closeCode = code;
-        complete();
-      });
+      child.once('close', code => code === 0 ? resolve() : reject(new Error(`Slice Cargo execution exited ${code}`)));
     });
   } catch (error) {
     failed = true;
-    if (proof) child.stdout.destroy();
     throw error;
   } finally {
     clearTimeout(timer);
@@ -163,10 +65,6 @@ async function runCargo(args, databaseUrl, inheritedEnvironment, signal, coverag
     try { await stopOwnedProcess(child); } catch (error) {
       if (!failed) throw error;
       process.stderr.write(`Slice child cleanup failed: ${error.message}\n`);
-    } finally {
-      if (stdoutError) process.stdout.off('error', stdoutError);
-      if (stdoutDrain) process.stdout.off('drain', stdoutDrain);
-      if (readableError) child.stdout.off('error', readableError);
     }
   }
 }
@@ -231,13 +129,20 @@ export async function runCoverage({ outputDir = 'target/coverage/reports' } = {}
   }
 }
 
-export async function runSlice({ all = false, target, filter = '', includeIgnored = false, noCapture = false, executionProof = false, controlledCapture = false }, inheritedEnvironment = process.env) {
+export async function runSlice({ all = false, target, filter = '', includeIgnored = false, noCapture = false, noFailFast = false, executionProof = false, controlledCapture = false }, inheritedEnvironment = process.env) {
   if (!all && !/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(target ?? '')) throw new Error('TARGET must name a root Rust test binary');
   if (filter && !/^[A-Za-z0-9_:]+$/.test(filter)) throw new Error('FILTER must name a Rust test');
-  const args = ['test', '--locked'];
-  if (!all) args.push('--test', target);
+  if (executionProof && all) throw new Error('Execution proof requires one Rust test binary');
+  const args = ['nextest', 'run', '--locked', '--no-tests=fail'];
+  if (all) args.push('--workspace');
+  else args.push('-p', 'med-tracker', '--test', target);
+  if (all || target === 'care_api') args.push('--test-threads', all ? '4' : '2');
+  if (includeIgnored) args.push('--run-ignored', 'all');
+  if (noCapture) args.push('--no-capture');
+  if (noFailFast) args.push('--no-fail-fast');
   if (filter) args.push(filter);
-  if (includeIgnored || noCapture || executionProof) args.push('--', ...(includeIgnored ? ['--include-ignored'] : []), ...(noCapture ? ['--nocapture'] : []), ...(executionProof ? ['--format=pretty', '--color=never'] : []));
+  const proofReport = executionProof ? await (await import('./nextest-proof.mjs')).createNextestProofReport(resolve(root, inheritedEnvironment.CARGO_TARGET_DIR ?? 'target')) : undefined;
+  if (proofReport) args.push('--config-file', proofReport.configPath, '--profile', 'contract-proof', '--retries', '0');
   const controller = new AbortController();
   const interrupted = signal => controller.abort(new Error(`Slice execution interrupted by ${signal}`));
   const onTerm = () => interrupted('SIGTERM');
@@ -249,9 +154,11 @@ export async function runSlice({ all = false, target, filter = '', includeIgnore
       if (all || ['persistence', 'tenant_access', 'care_doses', 'care_medications', 'care_api', 'identity_compatibility', 'identity_resource', 'oauth_server', 'queue_runtime', 'requests'].includes(target)) await provision();
       const needsScannerStorage = all || (target === 'care_api' && (!filter || filter.includes('nhs_dmd')));
       const scannerEnvironment = needsScannerStorage ? await ownership.storage() : {};
-      return await runCargo(args, url, { ...inheritedEnvironment, ...ownership.storageEnvironment, ...scannerEnvironment }, controller.signal, undefined, { executionProof, controlledCapture });
+      await runCargo(args, url, { ...inheritedEnvironment, ...ownership.storageEnvironment, ...scannerEnvironment }, controller.signal, undefined, { controlledCapture: controlledCapture || executionProof });
+      return proofReport?.read(`med-tracker::${target}`);
     }, undefined, inheritedEnvironment, { storage: all || target === 'care_api' });
   } finally {
+    await proofReport?.cleanup();
     process.off('SIGTERM', onTerm);
     process.off('SIGINT', onInt);
   }
@@ -260,17 +167,17 @@ export async function runSlice({ all = false, target, filter = '', includeIgnore
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     const arguments_ = process.argv.slice(2);
-    if (arguments_.some((argument, index) => !['--all', '--target', '--filter', '--coverage', '--output-dir'].includes(argument) && !['--target', '--filter', '--output-dir'].includes(arguments_[index - 1]))) throw new Error('Unsupported slice runner argument');
+    if (arguments_.some((argument, index) => !['--all', '--target', '--filter', '--coverage', '--output-dir', '--no-fail-fast'].includes(argument) && !['--target', '--filter', '--output-dir'].includes(arguments_[index - 1]))) throw new Error('Unsupported slice runner argument');
     const all = process.argv.includes('--all');
     const coverage = process.argv.includes('--coverage');
     const target = arguments_[arguments_.indexOf('--target') + 1];
     const filter = arguments_[arguments_.indexOf('--filter') + 1];
     const outputDir = arguments_.includes('--output-dir') ? arguments_[arguments_.indexOf('--output-dir') + 1] : undefined;
     if ((arguments_.includes('--target') && target === undefined) || (arguments_.includes('--filter') && filter === undefined) || (arguments_.includes('--output-dir') && outputDir === undefined)) throw new Error('Missing slice runner argument value');
-    if (coverage && (all || arguments_.includes('--target') || arguments_.includes('--filter'))) throw new Error('Coverage cannot select slice test arguments');
+    if (coverage && (all || arguments_.includes('--target') || arguments_.includes('--filter') || arguments_.includes('--no-fail-fast'))) throw new Error('Coverage cannot select slice test arguments');
     if (coverage) await runCoverage({ outputDir });
     else if (arguments_.includes('--output-dir')) throw new Error('Output directory requires coverage mode');
-    else await runSlice({ all, target, filter: all ? '' : filter });
+    else await runSlice({ all, target, filter: all ? '' : filter, noFailFast: arguments_.includes('--no-fail-fast') });
   } catch (error) {
     process.stderr.write(`${error.message}\n`);
     process.exitCode = 1;
