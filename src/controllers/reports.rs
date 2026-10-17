@@ -19,7 +19,7 @@ use axum_session::Session;
 use axum_session_sqlx::SessionPgPool;
 use chrono::{Duration, Months, NaiveDate, Utc};
 use loco_rs::{controller::middleware::request_id::LocoRequestId, prelude::*};
-use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
+use sea_orm::{ColumnTrait, QueryFilter};
 use serde::Deserialize;
 use serde_json::{Value, json};
 
@@ -151,8 +151,8 @@ async fn selection(
     let Some(id) = id.parse::<i64>().ok().filter(|id| *id > 0) else {
         return Err(OperationError::NotFound);
     };
-    let person = person::Entity::find_by_id(id)
-        .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
+    let person = access::person_queries::household_people(tenant.scope())
+        .filter(person::Column::Id.eq(id))
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::NotFound)?;
