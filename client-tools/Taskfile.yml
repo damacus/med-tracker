@@ -51,6 +51,12 @@ tasks:
       - cargo nextest run --manifest-path Cargo.toml --locked --workspace --all-features --no-tests=fail
       - cargo test --manifest-path Cargo.toml --locked --workspace --all-features --doc
 
+  test:secret-service:
+    dir: "{{.TASKFILE_DIR}}"
+    desc: Verify Linux credential compatibility in a private Secret Service session
+    cmds:
+      - fish scripts/test-secret-service.fish
+
   lint:
     dir: "{{.TASKFILE_DIR}}"
     desc: Check formatting, Clippy and dependencies

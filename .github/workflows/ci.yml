@@ -424,8 +424,8 @@ jobs:
           version: 3.52.0
           repo-token: ${{ github.token }}
 
-      - name: Install Fish
-        run: sudo apt-get update && sudo apt-get install --yes fish
+      - name: Install Fish and private Secret Service test tools
+        run: sudo apt-get update && sudo apt-get install --yes fish dbus gnome-keyring libsecret-tools
 
       - name: Install Rust client verification tools
         uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8
@@ -438,6 +438,9 @@ jobs:
 
       - name: Check client tools
         run: task client-tools:ci
+
+      - name: Verify Linux credential compatibility in a private session
+        run: task client-tools:test:secret-service
 
   rust_port:
     needs: changes
