@@ -17,7 +17,7 @@ anyhow.workspace = true
 clap.workspace = true
 comfy-table.workspace = true
 directories.workspace = true
-keyring.workspace = true
+keyring-core.workspace = true
 medtracker-api-client = { path = "../medtracker-api-client" }
 serde.workspace = true
 serde_json.workspace = true
@@ -28,3 +28,12 @@ tracing-subscriber.workspace = true
 assert_cmd.workspace = true
 predicates.workspace = true
 wiremock.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+apple-native-keyring-store = { version = "1.0.2", features = ["keychain"] }
+
+[target.'cfg(all(unix, not(any(target_os = "macos", target_os = "ios", target_os = "android"))))'.dependencies]
+dbus-secret-service-keyring-store = { version = "1.0.1", features = ["crypto-rust", "vendored"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-native-keyring-store = "1.1.0"

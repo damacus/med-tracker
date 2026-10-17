@@ -24,6 +24,12 @@ test('client quality gate installs only its pinned tools and runs the Task CI co
   assert.ok(clientJob.indexOf('taiki-e/install-action') < clientJob.indexOf('run: task client-tools:ci'));
 });
 
+test('Linux client credential compatibility runs against an isolated Secret Service', () => {
+  assert.match(clientJob, /apt-get install --yes fish dbus gnome-keyring libsecret-tools/);
+  assert.match(clientJob, /run: task client-tools:test:secret-service/);
+  assert.ok(clientJob.indexOf('run: task client-tools:ci') < clientJob.indexOf('run: task client-tools:test:secret-service'));
+});
+
 test('shared guardrail policy changes select both application and client checks', () => {
   for (const path of ['deny.toml', 'lefthook.yml']) {
     const { selected } = classify([path]);

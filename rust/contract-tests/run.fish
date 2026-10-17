@@ -293,7 +293,7 @@ function run_contract
             rtk proxy task api:contract-household-web-test CONTRACT_PROJECT=$contract_project
             or return $status
         end
-        rtk task api:contract-browser-rust CONTRACT_PROJECT=$contract_project
+        rtk proxy task api:contract-browser-rust CONTRACT_PROJECT=$contract_project
         return $status
     end
 

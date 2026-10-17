@@ -38,7 +38,7 @@ clap = { version = "4", features = ["derive", "env"] }
 comfy-table = "8"
 directories = "6"
 insta = { version = "1", features = ["json"] }
-keyring = "4"
+keyring-core = "1.0.1"
 predicates = "3"
 reqwest = { version = "0.13", default-features = false, features = ["json", "rustls"] }
 schemars = "1"

@@ -515,21 +515,21 @@ test('Stock Check batch controls show selected counts, differences and a unit-sa
 
 test('finder readiness preserves keyboard searches and catalogue source metadata', async ({ page }) => {
   await signIn(page);
+  await page.getByRole('button', { name: 'Open menu', exact: true }).click();
+  const finderUrl = await page.getByRole('dialog', { name: 'Navigation menu', exact: true })
+    .getByRole('link', { name: 'Medication Finder', exact: true }).getAttribute('href');
   let releaseScript;
   const scriptReady = new Promise(resolve => { releaseScript = resolve; });
   let scriptRequested;
   const scriptRequest = new Promise(resolve => { scriptRequested = resolve; });
+  await page.route('**/medications/lookup?**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+    matches: [], permissions: { can_create: true }, results: [{ display: 'Synthetic custom tablets', barcode: '5016298210989', code: 'CUSTOM-1', concept_class: 'AMPP', system: 'Local catalogue', source_label: 'Imported custom' }]
+  }) }));
   await page.route('**/static/js/medication-finder.js', async route => {
     scriptRequested();
     await scriptReady;
     await route.continue();
   });
-  await page.route('**/medications/lookup?**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
-    matches: [], permissions: { can_create: true }, results: [{ display: 'Synthetic custom tablets', barcode: '5016298210989', code: 'CUSTOM-1', concept_class: 'AMPP', system: 'Local catalogue', source_label: 'Imported custom' }]
-  }) }));
-  await page.getByRole('button', { name: 'Open menu', exact: true }).click();
-  const finderUrl = await page.getByRole('dialog', { name: 'Navigation menu', exact: true })
-    .getByRole('link', { name: 'Medication Finder', exact: true }).getAttribute('href');
   await page.goto(finderUrl, { waitUntil: 'commit' });
   await scriptRequest;
   const barcode = page.getByLabel('Barcode', { exact: true });
