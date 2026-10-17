@@ -2215,6 +2215,8 @@ ga:
       administration: Riarachán
       logout: Logáil amach
       account: Cuntas
+      households: Teaghlaigh
+      switch_to: Athraigh go
     mobile_menu:
       brand: MedTracker
       open_menu: Oscail roghchlár

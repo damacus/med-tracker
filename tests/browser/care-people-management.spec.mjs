@@ -10,7 +10,7 @@ test('people creation and editing preserve dependent care and existing medicatio
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
+  await page.getByRole('button', { name: 'Open Synthetic household', exact: true }).click();
   await openCareSection(page, 'People');
   await expect(page.getByRole('heading', { name: 'People', exact: true })).toBeVisible();
   const peopleUrl = page.url();

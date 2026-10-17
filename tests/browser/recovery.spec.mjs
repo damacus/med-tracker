@@ -9,7 +9,7 @@ async function signIn(page) {
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
 }
 
 async function generateCodes(page, origin) {
@@ -66,7 +66,7 @@ test('generated recovery codes stay locked until acknowledged, then sign in code
   await page.screenshot({ path: info.outputPath(`loco-recovery-${info.project.name}.png`), fullPage: true });
   await page.getByLabel('Recovery code', { exact: true }).fill(`  ${recoveryCodes[0]}  `);
   await page.getByRole('button', { name: 'Sign in with recovery code', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto(detail);
   await expect(page.getByRole('heading', { name: 'Synthetic tablets', exact: true })).toBeVisible();
   expect((await careFixture.recoveryProbe()).count).toBe(9);

@@ -9,7 +9,7 @@ async function invite(page, careFixture, email) {
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
+  await page.getByRole('button', { name: 'Open Synthetic household', exact: true }).click();
   await openCareSection(page, 'Administration');
   await page.getByRole('link', { name: 'Invitations', exact: true }).click();
   await page.getByLabel('Email', { exact: true }).fill(email);
@@ -81,9 +81,10 @@ test('invitation signup retains invalid drafts and verifies the server-bound acc
     await expect(signup.getByRole('list', { name: 'Recovery codes', exact: true }).getByRole('listitem')).toHaveCount(10);
     await signup.getByLabel('I have saved my recovery codes', { exact: true }).check();
     await signup.getByRole('button', { name: 'Continue', exact: true }).click();
-    await signup.waitForURL('/');
+    await signup.waitForURL('/households/choose');
     expect(await careFixture.invitationSignupProbe(email)).toEqual({ accounts: 1, status: 2, people: 1, memberships: 1, accepted: 1 });
-    await signup.getByRole('link', { name: 'Synthetic household', exact: true }).click();
+    await signup.getByRole('button', { name: 'Open Synthetic household', exact: true }).click();
+    await openCareSection(signup, 'Inventory');
     await expect(signup.getByRole('heading', { name: 'Medications', exact: true })).toBeVisible();
     const anonymous = await browser.newContext({ baseURL: careFixture.origin });
     try {

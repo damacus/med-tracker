@@ -24,7 +24,7 @@ test('new ZITADEL account requires a local credential and saved recovery codes b
   expect((await page.request.get(clinical, { maxRedirects: 0 })).status()).toBe(303);
   await page.getByLabel('I have saved my recovery codes', { exact: true }).check();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto(clinical);
   await expect(page.getByRole('heading', { name: 'Medications', exact: true })).toBeVisible();
   await page.context().clearCookies();
@@ -32,7 +32,7 @@ test('new ZITADEL account requires a local credential and saved recovery codes b
   await page.getByLabel('Email address', { exact: true }).fill(email);
   await page.getByLabel('Password', { exact: true }).fill('A local provider fallback passphrase');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto(clinical);
   await expect(page.getByRole('heading', { name: 'Medications', exact: true })).toBeVisible();
 });
@@ -40,8 +40,8 @@ test('new ZITADEL account requires a local credential and saved recovery codes b
 test('verified ZITADEL login links an existing local account and preserves local fallback', async ({ page, careFixture }) => {
   await page.goto('/login');
   await page.getByRole('button', { name: 'Sign in with ZITADEL', exact: true }).click();
-  await page.waitForURL('/');
-  await expect(page.getByRole('link', { name: 'Synthetic household', exact: true })).toBeVisible();
+  await page.waitForURL('/households/choose');
+  await expect(page.getByRole('button', { name: 'Open Synthetic household', exact: true })).toBeVisible();
   expect(careFixture.provider.observations).toMatchObject({ pkce: true, nonce: true, codeFlow: true });
   await page.goto('/account/security');
   await expect(page.getByText('ZITADEL: linked', { exact: true })).toBeVisible();
@@ -54,8 +54,8 @@ test('verified ZITADEL login links an existing local account and preserves local
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.waitForURL('/');
-  await expect(page.getByRole('link', { name: 'Synthetic household', exact: true })).toBeVisible();
+  await page.waitForURL('/households/choose');
+  await expect(page.getByRole('button', { name: 'Open Synthetic household', exact: true })).toBeVisible();
 });
 
 test('new ZITADEL passkey choice cannot issue codes before a verified local ceremony', async ({ page, context, careFixture }) => {
@@ -91,7 +91,7 @@ test('new ZITADEL passkey choice cannot issue codes before a verified local cere
   expect((await page.request.get(clinical, { maxRedirects: 0 })).status()).toBe(303);
   await page.getByLabel('I have saved my recovery codes', { exact: true }).check();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto(clinical);
   await expect(page.getByRole('heading', { name: 'Medications', exact: true })).toBeVisible();
 });
@@ -117,7 +117,7 @@ test('ZITADEL rejects invalid state nonce issuer audience signature and expiry',
 test('fresh ZITADEL proof requires verified auth_time and the linked subject for one operation', async ({ page, request: anonymous, careFixture }) => {
   await page.goto('/login');
   await page.getByRole('button', { name: 'Sign in with ZITADEL', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto('/account/security/password');
   await page.getByLabel('New password', { exact: true }).fill('A fresh provider verified password');
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
@@ -153,7 +153,7 @@ test('provider link and unlink require a bound fresh operation while retaining l
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto('/account/security');
   await page.getByRole('button', { name: 'Link ZITADEL', exact: true }).click();
   await page.getByLabel('Current password', { exact: true }).fill('password');
@@ -193,7 +193,7 @@ test('provider link and unlink require a bound fresh operation while retaining l
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto('/account/security');
   await page.getByRole('button', { name: 'Link ZITADEL', exact: true }).click();
   await page.getByLabel('Current password', { exact: true }).fill('password');
@@ -206,7 +206,7 @@ test('provider link and unlink require a bound fresh operation while retaining l
 test('provider fresh-proof requests share durable account and actual-source limits', async ({ page, careFixture }) => {
   await page.goto('/login');
   await page.getByRole('button', { name: 'Sign in with ZITADEL', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto('/account/security/password');
   await page.getByLabel('New password', { exact: true }).fill('A throttled provider operation password');
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
@@ -231,7 +231,7 @@ test('ZITADEL refuses unverified email and a closed linked account', async ({ pa
   careFixture.provider.setClaims({ email_verified: true });
   await page.goto('/login');
   await page.getByRole('button', { name: 'Sign in with ZITADEL', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   expect(await careFixture.providerLinkProbe()).toEqual({ retained: 1, enabled: 1 });
   await page.context().clearCookies();
   await careFixture.closeOtpAccount();
@@ -253,7 +253,7 @@ test('ZITADEL callback is bound to its browser and cannot be replayed', async ({
   expect((await anonymous.get(callback, { maxRedirects: 0 })).status()).toBe(401);
   expect(await careFixture.providerLinkProbe()).toEqual({ retained: 0, enabled: 0 });
   await page.goto(callback);
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   expect(await careFixture.providerLinkProbe()).toEqual({ retained: 1, enabled: 1 });
   expect((await page.request.get(callback, { maxRedirects: 0 })).status()).toBe(401);
   expect(await careFixture.providerLinkProbe()).toEqual({ retained: 1, enabled: 1 });

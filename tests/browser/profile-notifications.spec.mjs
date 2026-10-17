@@ -81,7 +81,7 @@ test('baseline worker upgrades with controlled tabs before authentication cleanu
     await page.locator('form[action="/login"]').evaluate(form => form.requestSubmit());
     await expect.poll(() => loginSubmits).toBe(1);
     await signedIn;
-    await page.waitForURL('/', { timeout: 20000 });
+    await page.waitForURL('/households/choose', { timeout: 20000 });
     expect(dialogs).toEqual([]);
     await retained.close();
   } finally {
@@ -97,7 +97,7 @@ async function openNotifications(page) {
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.waitForURL('/', { timeout: 20000 });
+  await page.waitForURL('/households/choose', { timeout: 20000 });
   await page.goto('/households/persistence-fixture/profile#notifications');
 }
 
@@ -175,7 +175,7 @@ test('signing in closes notifications retained from a previous account', async (
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   expect(closed).toBe(1);
 });
 

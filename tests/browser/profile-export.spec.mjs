@@ -8,7 +8,7 @@ test('profile health export requires CSRF and returns an audited private downloa
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto('/households/persistence-fixture/profile#advanced');
   const authenticity_token = await page.locator('input[name="authenticity_token"]').first().inputValue();
   const endpoint = '/households/persistence-fixture/profile/export';

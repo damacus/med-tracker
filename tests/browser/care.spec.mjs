@@ -30,10 +30,11 @@ test('real signin, dose replay, permission withdrawal and stale stock preserve c
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await expect(page.getByRole('link', { name: 'Synthetic household', exact: true })).toBeVisible({ timeout: 5000 });
+  await expect(page.getByRole('button', { name: 'Open Synthetic household', exact: true })).toBeVisible({ timeout: 5000 });
   await expect(page.getByText('Synthetic foreign household', { exact: true })).not.toBeVisible();
   await page.screenshot({ path: testInfo.outputPath(`loco-households-${testInfo.project.name}.png`), fullPage: true });
-  await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
+  await page.getByRole('button', { name: 'Open Synthetic household', exact: true }).click();
+  await page.getByRole('link', { name: 'Inventory', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Medications', exact: true })).toBeVisible();
   await expect(page.getByText('Synthetic foreign medicine', { exact: true })).not.toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -124,7 +125,7 @@ test('real signin, dose replay, permission withdrawal and stale stock preserve c
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
+  await page.getByRole('button', { name: 'Open Synthetic household', exact: true }).click();
   await page.getByRole('link', { name: 'Synthetic tablets', exact: true }).click();
   const signedInAgain = await page.locator('form[data-dose-form]').evaluate(form => Object.fromEntries(new FormData(form)));
   await careFixture.expireSession();

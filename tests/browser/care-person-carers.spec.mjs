@@ -7,7 +7,7 @@ async function signIn(page) {
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
+  await page.getByRole('button', { name: 'Open Synthetic household', exact: true }).click();
 }
 
 test('dependent care page assigns removes and restores the last carer without blocking person editing', async ({ page, careFixture }, info) => {
@@ -134,7 +134,7 @@ test.describe('person-scoped parent invitations', () => {
       await signup.getByRole('button', { name: 'Show recovery codes', exact: true }).click();
       await signup.getByLabel('I have saved my recovery codes', { exact: true }).check();
       await signup.getByRole('button', { name: 'Continue', exact: true }).click();
-      await signup.getByRole('link', { name: 'Synthetic household', exact: true }).click();
+      await signup.getByRole('button', { name: 'Open Synthetic household', exact: true }).click();
       await openCareSection(signup, 'People');
       await signup.getByRole('link', { name: 'Synthetic minor', exact: true }).click();
       await expect(signup.getByRole('link', { name: 'Edit Person', exact: true })).toBeVisible();

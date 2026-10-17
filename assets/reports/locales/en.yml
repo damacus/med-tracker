@@ -2554,6 +2554,8 @@ en:
       administration: Administration
       logout: Logout
       account: Account
+      households: Households
+      switch_to: Switch to
     mobile_menu:
       brand: MedTracker
       open_menu: Open menu

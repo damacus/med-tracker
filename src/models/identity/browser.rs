@@ -114,6 +114,9 @@ impl BrowserPrincipal {
     pub fn account_id(&self) -> i64 {
         self.identity.account_id
     }
+    pub(crate) fn session_token(&self) -> &str {
+        &self.identity.registry_key
+    }
     pub fn provenance(&self) -> &CredentialProvenance {
         &self.provenance
     }
@@ -143,6 +146,29 @@ impl BrowserPrincipal {
             .collect::<Result<Vec<_>, AuthenticationError>>()?;
         transaction.commit().await.map_err(unavailable)?;
         Ok(households)
+    }
+
+    pub async fn active_household(
+        &self,
+        db: &DatabaseConnection,
+    ) -> Result<Option<BrowserHousehold>, AuthenticationError> {
+        let transaction = transaction(db).await?;
+        validate(&transaction, &self.identity, false).await?;
+        let row = transaction.query_one_raw(sql(
+            "SELECT h.id,h.name,h.slug FROM public.identity_sessions s JOIN public.households h ON h.id=s.active_household_id JOIN public.household_memberships m ON m.household_id=h.id AND m.account_id=s.account_id WHERE s.account_id=$1 AND s.token=$2 AND s.active AND s.purpose='authenticated' AND s.expires_at>clock_timestamp() AND s.created_at>clock_timestamp()-interval '30 days' AND h.status='active' AND h.lifecycle_state='active' AND m.status='active' AND m.revoked_at IS NULL",
+            [self.account_id().into(), token_digest(self.session_token()).into()],
+        )).await.map_err(unavailable)?;
+        let household = row
+            .map(|row| {
+                Ok(BrowserHousehold {
+                    id: row.try_get("", "id").map_err(unavailable)?,
+                    name: row.try_get("", "name").map_err(unavailable)?,
+                    slug: row.try_get("", "slug").map_err(unavailable)?,
+                })
+            })
+            .transpose()?;
+        transaction.commit().await.map_err(unavailable)?;
+        Ok(household)
     }
 
     pub async fn begin_household_slug(
@@ -413,7 +439,16 @@ pub fn route_layers(
         Some(layers) => routes
             .layer(axum_session::SessionLayer::new(layers.store))
             .layer(axum_csrf::CsrfLayer::new(layers.csrf))
-            .layer(tower_http::csrf::CsrfLayer::new()),
+            .layer(
+                tower_http::csrf::CsrfLayer::new().with_rejection_response(|_| {
+                    use axum::response::IntoResponse;
+                    (
+                        axum::http::StatusCode::FORBIDDEN,
+                        [(axum::http::header::CACHE_CONTROL, "no-store")],
+                    )
+                        .into_response()
+                }),
+            ),
         None => routes,
     }
 }

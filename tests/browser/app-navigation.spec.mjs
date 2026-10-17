@@ -5,7 +5,8 @@ test('household navigation uses a drawer, account avatar and icon shortcuts', as
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.getByRole('link', { name: 'Synthetic household', exact: true }).click();
+  await page.getByRole('button', { name: 'Open Synthetic household', exact: true }).click();
+  await page.goto('/households/persistence-fixture/profile');
   const opener = page.getByRole('button', { name: 'Open menu', exact: true });
   await opener.click();
   const drawer = page.getByRole('dialog', { name: 'Navigation menu', exact: true });
@@ -41,7 +42,7 @@ test('profile setting accordions show current values and keep saved edits inline
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto('/households/persistence-fixture/profile');
   const timezone = page.locator('details#profile-timezone');
   await expect(timezone.locator('summary')).toContainText('UTC');
@@ -67,7 +68,7 @@ test('account menus omit administration for ordinary members and reject expired 
   await page.getByLabel('Email address', { exact: true }).fill('jane.doe@example.com');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto('/households/persistence-fixture/profile');
   await page.getByRole('button', { name: 'My Account', exact: true }).click();
   await expect(page.locator('#app-account').getByRole('link', { name: 'Administration', exact: true })).toHaveCount(0);

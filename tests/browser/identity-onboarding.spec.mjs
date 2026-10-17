@@ -54,7 +54,7 @@ async function enabledTotp(page) {
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   return enableCurrentTotp(page, 'password');
 }
 
@@ -93,7 +93,7 @@ test('verified email permits enrolment only until a native passkey and independe
   await deniesClinical(page, pending.clinicalPath);
   await page.getByLabel('I have saved my recovery codes', { exact: true }).check();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto('/account/security');
   await expect(page.getByRole('heading', { name: 'Account security', exact: true })).toBeVisible();
   await page.screenshot({ path: `docs/screenshots/auth-security-${info.project.name}.png`, fullPage: true });
@@ -106,7 +106,7 @@ test('verified email permits enrolment only until a native passkey and independe
   await expect(page.getByRole('button', { name: 'Register Passkey', exact: true })).toHaveCount(0);
   await page.goto('/login');
   await page.getByRole('button', { name: 'Sign in with a passkey', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto(pending.clinicalPath);
   await expect(page.getByRole('heading', { name: 'Medications', exact: true })).toBeVisible();
 });
@@ -133,7 +133,7 @@ test('concurrent native enrolment submissions create one authenticated completio
   await deniesClinical(page, pending.clinicalPath);
   await page.getByLabel('I have saved my recovery codes', { exact: true }).check();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto(pending.clinicalPath);
   await expect(page.getByRole('heading', { name: 'Medications', exact: true })).toBeVisible();
 });
@@ -161,7 +161,7 @@ test('password signup saves recovery codes without requiring a passkey', async (
   await expect(page.getByRole('list', { name: 'Recovery codes', exact: true }).getByRole('listitem')).toHaveCount(10);
   await page.getByLabel('I have saved my recovery codes', { exact: true }).check();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto(pending.clinicalPath);
   await expect(page.getByRole('heading', { name: 'Medications', exact: true })).toBeVisible();
   await context.clearCookies();
@@ -169,7 +169,7 @@ test('password signup saves recovery codes without requiring a passkey', async (
   await page.getByLabel('Email address', { exact: true }).fill('password-choice@example.test');
   await page.getByLabel('Password', { exact: true }).fill('river lantern orchard violet afternoon');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto(pending.clinicalPath);
   await expect(page.getByRole('heading', { name: 'Medications', exact: true })).toBeVisible();
 });
@@ -197,7 +197,7 @@ test('recovery login consumes one code, revokes prior sessions and keeps unused 
   expect(premature.status()).toBe(401);
   await page.getByLabel('I have saved my recovery codes', { exact: true }).check();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   const previous = await browser.newContext({ storageState: await context.storageState() });
   await careFixture.failRecoveryAudit();
   const failedRecovery = await page.request.post('/api/auth/recovery/login', { headers: { Origin: new URL(page.url()).origin }, data: { code: codes[0] } });
@@ -210,7 +210,7 @@ test('recovery login consumes one code, revokes prior sessions and keeps unused 
   await page.getByRole('link', { name: 'Use a recovery code', exact: true }).click();
   await page.getByLabel('Recovery code', { exact: true }).fill(codes[0]);
   await page.getByRole('button', { name: 'Sign in with recovery code', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto(pending.clinicalPath);
   await expect(page.getByRole('heading', { name: 'Medications', exact: true })).toBeVisible();
   const revoked = await previous.request.get(new URL(pending.clinicalPath, page.url()).href, { maxRedirects: 0 });
@@ -226,7 +226,7 @@ test('recovery login consumes one code, revokes prior sessions and keeps unused 
   await deniesClinical(page, pending.clinicalPath);
   await page.getByLabel('Recovery code', { exact: true }).fill(codes[1]);
   await page.getByRole('button', { name: 'Sign in with recovery code', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto(pending.clinicalPath);
   await expect(page.getByRole('heading', { name: 'Medications', exact: true })).toBeVisible();
 });
@@ -236,7 +236,7 @@ test('existing seeded password remains usable through framework authentication',
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await expect(page.getByRole('link', { name: 'Synthetic household', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open Synthetic household', exact: true })).toBeVisible();
 });
 
 test('security settings lists the current session and logout revokes its cookie', async ({ page, context, browser, careFixture }) => {
@@ -246,7 +246,7 @@ test('security settings lists the current session and logout revokes its cookie'
   await expect(page.getByRole('list', { name: 'Recovery codes', exact: true }).getByRole('listitem')).toHaveCount(10);
   await page.getByLabel('I have saved my recovery codes', { exact: true }).check();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto('/account/security');
   await expect(page.getByRole('heading', { name: 'Account security', exact: true })).toBeVisible();
   await expect(page.getByText('Current session', { exact: true })).toBeVisible();
@@ -270,7 +270,7 @@ test('account sessions revoke another device without granting cross-account auth
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   const other = await browser.newContext({ baseURL: careFixture.origin });
   try {
     expect((await other.request.post('/api/auth/sign-in/email', { headers, data: { email: 'persistence@example.test', password: 'password' } })).status()).toBe(200);
@@ -290,7 +290,7 @@ test('framework browser sessions renew idle cookies but retain absolute and expi
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await careFixture.ageFrameworkIdle();
   const renewed = await page.goto('/households/persistence-fixture/medications');
   await expect(page.getByRole('heading', { name: 'Medications', exact: true })).toBeVisible();
@@ -325,7 +325,7 @@ test('email change binds fresh proof and verifies the new address before activat
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto('/account/security');
   await page.getByRole('link', { name: 'Change email', exact: true }).click();
   await page.getByLabel('New email address', { exact: true }).fill(email);
@@ -375,7 +375,7 @@ test('account closure requires fresh proof and ownership transfer while preservi
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   const stale = await browser.newContext({ baseURL: careFixture.origin, storageState: await page.context().storageState() });
   const stalePage = await stale.newPage();
   await page.goto('/account/security');
@@ -447,7 +447,7 @@ test('unacknowledged recovery codes can be replaced and stale acknowledgement is
   await deniesClinical(page, pending.clinicalPath);
   await page.getByLabel('I have saved my recovery codes', { exact: true }).check();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto(pending.clinicalPath);
   await expect(page.getByRole('heading', { name: 'Medications', exact: true })).toBeVisible();
 });
@@ -518,8 +518,8 @@ test('historical TOTP remains required after a legacy password is verified', asy
   expect((await page.request.post('/api/auth/security/totp/login', { headers, data: { code: invalid } })).status()).toBe(401);
   await page.getByLabel('Authentication code', { exact: true }).fill(generator.generate());
   await page.getByRole('button', { name: 'Verify', exact: true }).click();
-  await page.waitForURL('/');
-  await expect(page.getByRole('link', { name: 'Synthetic household', exact: true })).toBeVisible();
+  await page.waitForURL('/households/choose');
+  await expect(page.getByRole('button', { name: 'Open Synthetic household', exact: true })).toBeVisible();
   expect((await pending.request.post('/api/auth/security/totp/login', { headers, data: { code: generator.generate() } })).status()).toBe(401);
   await pending.close();
 });
@@ -534,7 +534,7 @@ test('retained authenticator proof is required for password and factor replaceme
   const generator = new TOTP({ algorithm: 'SHA1', digits: 6, period: 30, secret: Secret.fromBase32('4TLXACQRZVPP3ASC') });
   await page.getByLabel('Authentication code', { exact: true }).fill(generator.generate());
   await page.getByRole('button', { name: 'Verify', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   const headers = { Origin: careFixture.origin };
   const operation = await page.request.post('/api/auth/security/password/start', { headers, data: { new_password: 'orchard comet lantern meadow violet' } });
   expect(operation.status()).toBe(200);
@@ -590,7 +590,7 @@ test('retained authenticator can be explicitly disabled without resurrecting rol
   const generator = new TOTP({ algorithm: 'SHA1', digits: 6, period: 30, secret: Secret.fromBase32('4TLXACQRZVPP3ASC') });
   await page.getByLabel('Authentication code', { exact: true }).fill(generator.generate());
   await page.getByRole('button', { name: 'Verify', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto('/account/security');
   await page.getByRole('button', { name: 'Disable authenticator app', exact: true }).click();
   await careFixture.ageRetainedFactorUse();
@@ -605,8 +605,8 @@ test('retained authenticator can be explicitly disabled without resurrecting rol
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.waitForURL('/');
-  await expect(page.getByRole('link', { name: 'Synthetic household', exact: true })).toBeVisible();
+  await page.waitForURL('/households/choose');
+  await expect(page.getByRole('button', { name: 'Open Synthetic household', exact: true })).toBeVisible();
 });
 
 test('a passkey account adds a password with fresh operation-bound passkey proof', async ({ page, context, careFixture }) => {
@@ -619,7 +619,7 @@ test('a passkey account adds a password with fresh operation-bound passkey proof
   await expect(page.getByRole('list', { name: 'Recovery codes', exact: true }).getByRole('listitem')).toHaveCount(10);
   await page.getByLabel('I have saved my recovery codes', { exact: true }).check();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto('/account/security');
   await page.getByRole('link', { name: 'Add password', exact: true }).click();
   await page.getByLabel('New password', { exact: true }).fill('orchard comet lantern meadow violet');
@@ -662,7 +662,7 @@ test('a passkey account adds a password with fresh operation-bound passkey proof
   await page.getByLabel('Email address', { exact: true }).fill(email);
   await page.getByLabel('Password', { exact: true }).fill('newer signed assertion retains the correct password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto(pending.clinicalPath);
   await expect(page.getByRole('heading', { name: 'Medications', exact: true })).toBeVisible();
 });
@@ -694,7 +694,7 @@ test('credential removal preserves a local method and does not restore the adopt
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   const headers = { Origin: careFixture.origin };
   expect((await page.request.post('/api/auth/security/operation/start', { headers, data: { action: 'remove_password' } })).status()).toBe(400);
   await authenticator(page, context);
@@ -785,7 +785,7 @@ test('recovery code regeneration requires fresh proof and invalidates the previo
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   const sets = [];
   for (let index = 0; index < 2; index += 1) {
     await page.goto('/account/security');
@@ -817,13 +817,13 @@ test('recovery password replacement requires bound email confirmation and preser
   const code = await page.getByRole('list', { name: 'Recovery codes', exact: true }).getByRole('listitem').first().textContent();
   await page.getByLabel('I have saved my recovery codes', { exact: true }).check();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   const generator = await enableCurrentTotp(page, oldPassword);
   await context.clearCookies();
   await page.goto('/recovery-login');
   await page.getByLabel('Recovery code', { exact: true }).fill(code);
   await page.getByRole('button', { name: 'Sign in with recovery code', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto('/account/security/password');
   await page.getByLabel('New password', { exact: true }).fill(newPassword);
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
@@ -851,7 +851,7 @@ test('recovery password replacement requires bound email confirmation and preser
   await page.waitForURL('**/auth/totp');
   await page.getByLabel('Authentication code', { exact: true }).fill(generator.generate());
   await page.getByRole('button', { name: 'Verify', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto(pending.clinicalPath);
   await expect(page.getByRole('heading', { name: 'Medications', exact: true })).toBeVisible();
 });
@@ -867,13 +867,13 @@ test('recovery passkey replacement needs bound email and finishes with a usable 
   const code = await page.getByRole('list', { name: 'Recovery codes', exact: true }).getByRole('listitem').first().textContent();
   await page.getByLabel('I have saved my recovery codes', { exact: true }).check();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await original.client.send('WebAuthn.removeVirtualAuthenticator', { authenticatorId: original.authenticatorId });
   await context.clearCookies();
   await page.goto('/recovery-login');
   await page.getByLabel('Recovery code', { exact: true }).fill(code);
   await page.getByRole('button', { name: 'Sign in with recovery code', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto('/account/security');
   await page.getByRole('button', { name: 'Add passkey', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Check your email', exact: true })).toBeVisible();
@@ -896,7 +896,7 @@ test('recovery passkey replacement needs bound email and finishes with a usable 
   await context.clearCookies();
   await page.goto('/login');
   await page.getByRole('button', { name: 'Sign in with a passkey', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto(pending.clinicalPath);
   await expect(page.getByRole('heading', { name: 'Medications', exact: true })).toBeVisible();
 });
@@ -914,7 +914,7 @@ test('adopted password accounts save recovery codes before clinical access', asy
   await expect(page.getByRole('list', { name: 'Recovery codes', exact: true }).getByRole('listitem')).toHaveCount(10);
   await page.getByLabel('I have saved my recovery codes', { exact: true }).check();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto('/households/persistence-fixture/medications');
   await expect(page.getByRole('heading', { name: 'Medications', exact: true })).toBeVisible();
 });
@@ -924,7 +924,7 @@ test('security operation rejects a session revoked while waiting for the account
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   const revocation = careFixture.securityRevocationRace().then(() => ({ ok: true }), error => ({ ok: false, message: error.message }));
   await expect.poll(() => careFixture.securityRevocationRaceReady(), { timeout: 5000 }).toBe(true);
   const response = await page.request.post('/api/auth/security/password/start', { headers: { Origin: careFixture.origin }, data: { new_password: 'orchard comet lantern meadow violet' } });
@@ -937,7 +937,7 @@ test('password change requires fresh proof for the chosen operation', async ({ p
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto('/account/security');
   await page.getByRole('link', { name: 'Change password', exact: true }).click();
   await page.getByLabel('New password', { exact: true }).fill('orchard comet lantern meadow violet');
@@ -955,7 +955,7 @@ test('password change requires fresh proof for the chosen operation', async ({ p
   await otherPage.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await otherPage.getByLabel('Password', { exact: true }).fill('password');
   await otherPage.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await otherPage.waitForURL('/');
+  await otherPage.waitForURL('/households/choose');
   const crossSession = await other.request.post('/api/auth/security/password/confirm', { headers, data: { operation_id: operationId, password: 'password' } });
   expect(crossSession.status()).toBe(401);
   await other.close();
@@ -976,8 +976,8 @@ test('password change requires fresh proof for the chosen operation', async ({ p
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('orchard comet lantern meadow violet');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.waitForURL('/');
-  await expect(page.getByRole('link', { name: 'Synthetic household', exact: true })).toBeVisible();
+  await page.waitForURL('/households/choose');
+  await expect(page.getByRole('button', { name: 'Open Synthetic household', exact: true })).toBeVisible();
 });
 
 test('optional TOTP requires fresh password proof and protects password login', async ({ page, context, careFixture }) => {
@@ -985,7 +985,7 @@ test('optional TOTP requires fresh password proof and protects password login', 
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   await page.goto('/account/security');
   await page.getByRole('link', { name: 'Enable authenticator app', exact: true }).click();
   await page.getByLabel('Current password', { exact: true }).fill('password');
@@ -1014,8 +1014,8 @@ test('optional TOTP requires fresh password proof and protects password login', 
   await expect(page.getByRole('alert')).toContainText('Invalid authentication code');
   await page.getByLabel('Authentication code', { exact: true }).fill(generator.generate());
   await page.getByRole('button', { name: 'Verify', exact: true }).click();
-  await page.waitForURL('/');
-  await expect(page.getByRole('link', { name: 'Synthetic household', exact: true })).toBeVisible();
+  await page.waitForURL('/households/choose');
+  await expect(page.getByRole('button', { name: 'Open Synthetic household', exact: true })).toBeVisible();
   await context.clearCookies();
   await page.goto('/login');
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
@@ -1053,7 +1053,7 @@ test('password changes require the enabled authenticator code as well as the pas
   await page.waitForURL('/auth/totp');
   await page.getByLabel('Authentication code', { exact: true }).fill(generator.generate());
   await page.getByRole('button', { name: 'Verify', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
 });
 
 test('disabling TOTP requires an explicit operation with password and current code', async ({ page, context }) => {
@@ -1072,7 +1072,7 @@ test('disabling TOTP requires an explicit operation with password and current co
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
 });
 
 test('fresh passkey proof disables TOTP without requiring the lost authenticator code', async ({ page, context }) => {
@@ -1094,7 +1094,7 @@ test('fresh passkey proof disables TOTP without requiring the lost authenticator
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
 });
 
 test('retired authentication routes cannot bypass the framework account security contract', async ({ page, careFixture }) => {
@@ -1102,7 +1102,7 @@ test('retired authentication routes cannot bypass the framework account security
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
   for (const path of ['/multifactor-manage', '/webauthn-setup', '/webauthn-remove', '/webauthn-login/options', '/webauthn-auth', '/otp-auth', '/recovery-auth']) {
     expect((await page.request.get(path, { maxRedirects: 0 })).status(), path).toBe(410);
   }

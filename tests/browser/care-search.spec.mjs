@@ -7,7 +7,7 @@ async function signIn(page) {
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await page.waitForURL('/');
+  await page.waitForURL('/households/choose');
 }
 
 test('household search has a usable page and scoped JSON results', async ({ page }) => {

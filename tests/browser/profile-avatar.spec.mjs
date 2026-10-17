@@ -52,7 +52,7 @@ test('Gravatar opt-in persists, uploaded photos take priority and withdrawal res
   await expect(personImage).toHaveAttribute('src', gravatarSource);
   await expect(personImage).toHaveJSProperty('naturalWidth', 1);
   await page.goto('/households/persistence-fixture/dashboard');
-  await expect(page.locator('[data-dashboard-avatar] img')).toHaveAttribute('src', gravatarSource);
+  await expect(page.locator('[data-dashboard-avatar] img').first()).toHaveAttribute('src', gravatarSource);
   const selector = page.getByTestId('dashboard-person-selector-summary');
   await expect(selector.locator('img')).toHaveAttribute('src', gravatarSource);
   await selector.click();
@@ -63,7 +63,7 @@ test('Gravatar opt-in persists, uploaded photos take priority and withdrawal res
   await upload(page);
   await expect(page.locator('.profile-hero img')).toHaveAttribute('src', avatar);
   await page.goto('/households/persistence-fixture/dashboard');
-  await expect(page.locator('[data-dashboard-avatar] img')).toHaveAttribute('src', avatar);
+  await expect(page.locator('[data-dashboard-avatar] img').first()).toHaveAttribute('src', avatar);
   await expect(page.getByTestId('dashboard-person-selector-summary').locator('img')).toHaveAttribute('src', '/households/persistence-fixture/people/73001/avatar');
   await page.goto('/households/persistence-fixture/profile');
   await page.locator('#profile-avatar summary').click();

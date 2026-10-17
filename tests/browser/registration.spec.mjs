@@ -26,7 +26,7 @@ async function createAndVerify(page, fixture, info) {
   expect(clinical.status()).toBe(303);
   expect(clinical.headers().location).toBe('/login');
   await page.goto('/');
-  await expect(page.getByRole('link', { name: 'Synthetic registration Household', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Open Synthetic registration Household', exact: true })).toHaveCount(0);
   const messages = async () => {
     const response = await fetch(`${fixture.mailpitUrl}/api/v1/messages?limit=50`);
     expect(response.ok).toBe(true);
@@ -47,8 +47,11 @@ async function createAndVerify(page, fixture, info) {
   await expect(page.getByRole('list', { name: 'Recovery codes', exact: true }).getByRole('listitem')).toHaveCount(10);
   await page.getByLabel('I have saved my recovery codes', { exact: true }).check();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await page.waitForURL('/');
-  await page.getByRole('link', { name: 'Synthetic registration Household', exact: true }).click();
+  await page.waitForURL('/households/choose');
+  await page.getByRole('button', { name: 'Open Synthetic registration Household', exact: true }).click();
+  await page.waitForURL(`/households/${effects.household_slug}/dashboard`);
+  await expect(page.getByRole('heading', { name: "Today's Schedule", exact: true })).toBeVisible();
+  await page.goto(`/households/${effects.household_slug}/medications`);
   await expect(page.getByRole('heading', { name: 'Medications', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Add Medication', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'My Account', exact: true }).click();

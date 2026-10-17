@@ -302,14 +302,26 @@ impl SessionStore<ClinicalAuthSchema> for ClinicalStore {
         if session.purpose != "authenticated" {
             return Err(AuthError::Unauthenticated);
         }
+        transaction
+            .query_one_raw(statement(
+                "SELECT id FROM public.accounts WHERE id=$1 AND status=2 FOR SHARE",
+                [session.account_id.into()],
+            ))
+            .await
+            .map_err(database_error)?
+            .ok_or(AuthError::Unauthenticated)?;
+        crate::models::access::verify_account(&transaction, session.account_id)
+            .await
+            .map_err(super::tenant::operation_error)?;
         let household = organization_id.map(clinical_id).transpose()?;
         if let Some(id) = household {
-            let membership = transaction.query_one_raw(statement("SELECT id FROM public.household_memberships WHERE account_id=$1 AND household_id=$2 AND status='active' AND revoked_at IS NULL",[session.account_id.into(),id.into()])).await.map_err(database_error)?;
+            transaction.query_one_raw(statement("SELECT id FROM public.households WHERE id=$1 AND status='active' AND lifecycle_state='active' FOR SHARE",[id.into()])).await.map_err(database_error)?.ok_or_else(|| AuthError::forbidden("Household unavailable"))?;
+            let membership = transaction.query_one_raw(statement("SELECT id FROM public.household_memberships WHERE account_id=$1 AND household_id=$2 AND status='active' AND revoked_at IS NULL FOR SHARE",[session.account_id.into(),id.into()])).await.map_err(database_error)?;
             if membership.is_none() {
                 return Err(AuthError::forbidden("Household membership unavailable"));
             }
         }
-        let mut row = SessionRow::find_by_statement(statement("UPDATE public.identity_sessions SET active_household_id=$2,updated_at=CURRENT_TIMESTAMP WHERE token=$1 RETURNING *",[token_digest(token).into(),household.into()])).one(&*transaction).await.map_err(database_error)?.ok_or(AuthError::Unauthenticated)?;
+        let mut row = SessionRow::find_by_statement(statement("UPDATE public.identity_sessions SET active_household_id=$2,updated_at=CURRENT_TIMESTAMP WHERE token=$1 AND account_id=$3 AND active AND purpose='authenticated' AND expires_at>clock_timestamp() AND created_at>clock_timestamp()-interval '30 days' RETURNING *",[token_digest(token).into(),household.into(),session.account_id.into()])).one(&*transaction).await.map_err(database_error)?.ok_or(AuthError::Unauthenticated)?;
         row.token = token.to_owned();
         let session = row.try_into()?;
         transaction.commit().await.map_err(database_error)?;

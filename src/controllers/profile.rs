@@ -331,10 +331,21 @@ async fn navigation(
             link
         })
         .collect::<Vec<_>>();
-    let shell = json!({"name":name,"initials":initials,"avatar_attached":avatar_attached,"gravatar_url":gravatar_url,"authenticity_token":authenticity_token,"sidebar":sidebar,"choices":choices,"labels":labels["layouts"],"navigation_label":labels["ruby_ui"]["common"]["navigation_menu"]});
     if tenant.commit().await.is_err() {
         return unavailable();
     }
+    let households = match principal.households(&ctx.db).await {
+        Ok(households) => households,
+        Err(error) => return authentication_error(error),
+    };
+    if !households.iter().any(|household| household.slug == slug) {
+        return operation_error(OperationError::Forbidden);
+    }
+    let active_household_id = match principal.active_household(&ctx.db).await {
+        Ok(active) => active.map(|household| household.id.to_string()),
+        Err(error) => return authentication_error(error),
+    };
+    let shell = json!({"name":name,"initials":initials,"avatar_attached":avatar_attached,"gravatar_url":gravatar_url,"authenticity_token":authenticity_token,"sidebar":sidebar,"choices":choices,"households":households,"active_household_id":active_household_id,"labels":labels["layouts"],"navigation_label":labels["ruby_ui"]["common"]["navigation_menu"]});
     (
         StatusCode::OK,
         token,

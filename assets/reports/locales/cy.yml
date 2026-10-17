@@ -2241,6 +2241,8 @@ cy:
       administration: Gweinyddu
       logout: Allgofnodi
       account: Cyfrif
+      households: Aelwydydd
+      switch_to: Newid i
     mobile_menu:
       brand: MedTracker
       open_menu: Agor y ddewislen
