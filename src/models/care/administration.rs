@@ -3,6 +3,7 @@ pub mod audit_logs;
 pub mod delegation;
 pub mod grants;
 pub mod memberships;
+pub mod overview;
 pub(crate) mod persistence;
 pub mod settings;
 
@@ -10,8 +11,8 @@ use crate::models::{
     access::{self, TenantTransaction},
     care::{doses::CredentialProvenance, locations},
     entities::{
-        account, carer_relationship, grant, household, membership, person, security_audit_event,
-        user, version,
+        account, carer_relationship, grant, household, household_invitation, membership, person,
+        security_audit_event, user, version,
     },
     errors::OperationError,
 };

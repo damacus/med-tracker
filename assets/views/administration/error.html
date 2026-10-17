@@ -1,0 +1,10 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-2xl mx-auto">
+  <div class="card bg-base-100 border border-base-300"><div class="card-body">
+    <h1 class="card-title">{{ title }}</h1>
+    <p>{{ error_labels.guidance }}</p>
+    <a class="btn btn-neutral mt-4" href="/">{{ error_labels.back }}</a>
+  </div></div>
+</section>
+{% endblock content %}

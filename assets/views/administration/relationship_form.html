@@ -1,12 +1,14 @@
 {% extends "layouts/base.html" %}
 {% block content %}
 <section class="max-w-3xl mx-auto">
-  <a class="link" href="/households/{{ slug }}/admin/carer_relationships">Carer Relationships</a>
+  <a class="link" href="/households/{{ slug }}/admin/carer_relationships{{ language_suffix }}">Carer Relationships</a>
+  {% include "administration/context.html" %}
   <h1 class="text-3xl font-semibold mt-4">New Relationship</h1>
+  {% include "administration/navigation.html" %}
   <div class="mt-6">{% include "components/form_errors.html" %}</div>
   <div class="card bg-base-100 border border-base-300 mt-6"><div class="card-body">
     <form id="administration-form" action="/households/{{ slug }}/admin/carer_relationships" method="post" class="flex flex-col gap-4">
-      <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+      {% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}<input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
       <label for="carer_id" class="font-semibold">Carer</label>
       <select id="carer_id" name="carer_id" class="select w-full" required {% if carer_id_invalid %}aria-invalid="true" aria-describedby="form-error-carer_id"{% endif %}>
         <option value="">Choose a carer</option>
@@ -22,7 +24,7 @@
         <option value="" {% if draft.relationship_type == "" %}selected{% endif %}>Choose a relationship type</option>
         {% for kind in relationship_types %}<option value="{{ kind }}" {% if draft.relationship_type == kind %}selected{% endif %}>{{ kind | replace(from="_", to=" ") | capitalize }}</option>{% endfor %}
       </select>
-      <div class="flex flex-col sm:flex-row gap-3 mt-4"><button class="btn btn-neutral" type="submit">Create Relationship</button><a class="btn btn-ghost" href="/households/{{ slug }}/admin/carer_relationships">Cancel</a></div>
+      <div class="flex flex-col sm:flex-row gap-3 mt-4"><button class="btn btn-neutral" type="submit">Create Relationship</button><a class="btn btn-ghost" href="/households/{{ slug }}/admin/carer_relationships{{ language_suffix }}">Cancel</a></div>
     </form>
   </div></div>
 </section>

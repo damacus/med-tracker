@@ -2,14 +2,17 @@ use super::*;
 
 pub(super) fn data(
     slug: &str,
+    household_name: &str,
     records: &Value,
     options: &Value,
     submitted: Option<&[(String, String)]>,
     error: Option<&OperationError>,
 ) -> Value {
     let mut data = super::super::medications::rendering::appearance_context();
-    data["title"] = json!("Invitations");
+    data["title"] = json!(format!("{household_name} · Invitations"));
     data["slug"] = json!(slug);
+    data["household_name"] = json!(household_name);
+    data["admin_section"] = json!("invitations");
     let defaults = vec![
         ("email".into(), String::new()),
         ("membership_role".into(), "member".into()),

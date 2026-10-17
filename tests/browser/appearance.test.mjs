@@ -6,6 +6,28 @@ import test from 'node:test';
 const source = () => readFileSync('assets/static/js/appearance.js', 'utf8');
 const classes = new Set();
 
+test('shared navigation follows the selected page language and otherwise keeps browser negotiation', async () => {
+  for (const language of ['es', 'en', '', undefined]) {
+    const listeners = {};
+    let request;
+    const document = {
+      documentElement: { lang: language },
+      addEventListener(name, listener) { listeners[name] = listener; },
+    };
+    runInNewContext(readFileSync('assets/static/js/mobile-shortcuts.js', 'utf8'), {
+      document,
+      location: { pathname: '/households/persistence-fixture/admin', origin: 'http://localhost' },
+      navigator: { language: 'cy' },
+      async fetch(url, options) { request = { url, options }; return { ok: false }; },
+    });
+    await listeners.DOMContentLoaded();
+    assert.equal(request.url, '/households/persistence-fixture/profile/navigation');
+    assert.equal(request.options.headers.Accept, 'application/json');
+    assert.equal(request.options.cache, 'no-store');
+    assert.equal(request.options.headers['Accept-Language'], language || undefined);
+  }
+});
+
 test('dashboard reuses shared symbols without duplicating the profile sprite', () => {
   const symbols = file => [...readFileSync(file, 'utf8').matchAll(/<symbol id="([^"]+)"/g)].map(match => match[1]);
   const shared = new Set(symbols('assets/static/profile-icons.svg'));

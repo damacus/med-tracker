@@ -1,9 +1,42 @@
 use super::*;
 
+pub(super) fn error_page(view: &TeraView, language: &str, error: &OperationError) -> Response {
+    let key = match error {
+        OperationError::Forbidden => "forbidden",
+        OperationError::NotFound => "not_found",
+        _ => "unavailable",
+    };
+    render_error_page(view, language, key, forms::status(error))
+}
+
+pub(super) fn invalid_link(view: &TeraView, language: &str) -> Response {
+    render_error_page(
+        view,
+        language,
+        "invalid_link",
+        StatusCode::UNPROCESSABLE_ENTITY,
+    )
+}
+
+fn render_error_page(view: &TeraView, language: &str, key: &str, status: StatusCode) -> Response {
+    let Ok(labels) = crate::models::care::report_pdf::translations(language) else {
+        return unavailable();
+    };
+    let mut data = super::super::medications::rendering::appearance_context();
+    data["lang"] = json!(language);
+    data["labels"] = labels.clone();
+    data["error_labels"] = labels["administration"]["errors"].clone();
+    data["title"] = labels["administration"]["errors"][key].clone();
+    let response = match format::render().view(view, "administration/error.html", data) {
+        Ok(response) => response,
+        Err(_) => return unavailable(),
+    };
+    (status, [(header::CACHE_CONTROL, "no-store")], response).into_response()
+}
+
 pub(super) fn context(slug: &str, error: Option<&OperationError>) -> Value {
     let mut data = super::super::medications::rendering::appearance_context();
     data["slug"] = json!(slug);
-    data["title"] = json!("Administration");
     let errors = field_errors(error);
     for field in [
         "name",
