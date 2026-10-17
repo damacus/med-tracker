@@ -191,6 +191,7 @@
       const item = data.choices.find(item => item.id === id);
       if (item) account.append(link({ ...item, label: labels.profile_menu[id] }));
     }
+    if (data.platform_url === '/platform/users') account.append(link({ id: 'administration', label: 'Platform administration', href: '/platform/users' }));
     if (Array.isArray(data.households) && data.households.length) {
       const section = element('section', null, 'border-t border-base-300 mt-2 pt-3');
       section.append(element('h3', labels.profile_menu.households, 'text-sm font-semibold px-4'));

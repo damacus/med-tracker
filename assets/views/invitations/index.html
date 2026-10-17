@@ -1,13 +1,15 @@
 {% extends "layouts/base.html" %}
 {% block content %}
 <section class="max-w-3xl mx-auto">
-  <a class="link" href="/households/{{ slug }}/admin">Administration</a>
+  <a class="link" href="/households/{{ slug }}/admin{{ language_suffix }}">Administration</a>
+  {% include "administration/context.html" %}
   <h1 class="text-3xl font-semibold mt-4">Invitations</h1>
+  {% include "administration/navigation.html" %}
   <p class="mt-2">Invite new users to join MedTracker.</p>
   <div class="mt-6">{% include "components/form_errors.html" %}</div>
   <div class="card bg-base-100 border border-base-300 mt-6"><div class="card-body">
     <form id="invitation-form" action="/households/{{ slug }}/admin/invitations" method="post" class="flex flex-col gap-4">
-      <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+      {% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}<input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
       <label for="email" class="font-semibold">Email</label>
       <input id="email" name="email" type="email" class="input w-full" value="{{ draft.email }}" required {% if email_invalid %}aria-invalid="true" aria-describedby="form-error-email"{% endif %}>
       <label for="membership_role" class="font-semibold">Household role</label>
@@ -43,8 +45,8 @@
       <p>{{ invitation.membership_role | capitalize }} · {{ invitation.status }}</p>
       <p class="break-words">Expires: <time datetime="{{ invitation.expires_at }}">{{ invitation.expires_at }}</time></p>
       {% if invitation.actionable %}<div class="flex flex-col sm:flex-row gap-3">
-        <form action="/households/{{ slug }}/admin/invitations/{{ invitation.id }}/resend" method="post"><input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><button class="btn btn-outline" type="submit">Resend</button></form>
-        <form action="/households/{{ slug }}/admin/invitations/{{ invitation.id }}/cancel" method="post"><input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><button class="btn btn-outline" type="submit">Cancel</button></form>
+        <form action="/households/{{ slug }}/admin/invitations/{{ invitation.id }}/resend" method="post">{% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}<input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><button class="btn btn-outline" type="submit">Resend</button></form>
+        <form action="/households/{{ slug }}/admin/invitations/{{ invitation.id }}/cancel" method="post">{% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}<input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><button class="btn btn-outline" type="submit">Cancel</button></form>
       </div>{% endif %}
     </div></li>
     {% else %}<li>No invitations are available.</li>{% endfor %}
