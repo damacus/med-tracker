@@ -53,6 +53,7 @@ function cleanup_secret_service_daemon --on-event fish_exit
 end
 
 mkdir -p $XDG_RUNTIME_DIR/keyring
+chmod 700 $XDG_RUNTIME_DIR/keyring
 printf 'synthetic-unlock' | gnome-keyring-daemon --foreground --unlock --components=secrets --control-directory=$XDG_RUNTIME_DIR/keyring > /dev/null 2>&1 &
 set secret_service_daemon_pid $last_pid
 
@@ -61,7 +62,8 @@ for attempt in (seq 1 40)
     if not kill -0 $secret_service_daemon_pid 2>/dev/null
         break
     end
-    if dbus-send --session --print-reply --reply-timeout=1000 --dest=org.freedesktop.secrets /org/freedesktop/secrets org.freedesktop.DBus.Peer.Ping > /dev/null 2>&1
+    set -l owner (dbus-send --session --print-reply --reply-timeout=1000 --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.NameHasOwner string:org.freedesktop.secrets 2>/dev/null)
+    if test $status -eq 0; and string match -rq 'boolean true' -- (string join ' ' $owner)
         set ready 1
         break
     end
