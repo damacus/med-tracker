@@ -1,0 +1,36 @@
+name: Content request
+description: Propose a new checklist item, example, or perf/pattern note
+title: "[Content]: "
+labels: ["enhancement", "documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this to suggest new checklist items, examples, performance notes, or pattern docs.
+  - type: dropdown
+    id: type
+    attributes:
+      label: Type of content
+      options:
+        - Checklist item
+        - Example (feature request or review comment)
+        - Performance / battery note
+        - Pattern doc (timers, state, haptics, Room, etc.)
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: Describe the new content and why it would help Wear OS developers.
+      placeholder: e.g. "Add a checklist item: 'Complications refresh when data changes' because..."
+    validations:
+      required: true
+  - type: textarea
+    id: draft
+    attributes:
+      label: Draft (optional)
+      description: If you have a draft of the exact text or markdown, paste it here.
+    validations:
+      required: false

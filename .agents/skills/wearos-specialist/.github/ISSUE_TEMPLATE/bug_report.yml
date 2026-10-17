@@ -1,0 +1,30 @@
+name: Bug report
+description: Report an error, broken link, or incorrect guidance in the docs
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for broken links, wrong information, or mistakes in the checklist/examples/patterns.
+  - type: textarea
+    id: description
+    attributes:
+      label: What's wrong?
+      description: Describe the bug or incorrect content.
+      placeholder: e.g. "The link to X is 404" or "The checklist says Y but for Wear OS we should Z"
+    validations:
+      required: true
+  - type: input
+    id: location
+    attributes:
+      label: Where?
+      description: File path or section (e.g. docs/perf-battery.md, "Timers section")
+      placeholder: docs/review-checklist.md
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested fix (optional)
+      description: How you would correct it, if you have an idea.
+    validations:
+      required: false

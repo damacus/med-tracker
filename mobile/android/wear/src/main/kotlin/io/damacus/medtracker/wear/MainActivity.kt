@@ -10,6 +10,7 @@ import android.text.Spanned
 import android.text.style.AbsoluteSizeSpan
 import android.text.style.ForegroundColorSpan
 import android.view.Gravity
+import android.view.HapticFeedbackConstants
 import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
@@ -24,6 +25,7 @@ import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -32,6 +34,7 @@ internal object WearUiSpec {
     const val CHIP_MAX_LINES = 3
     const val CONTAINER_HORIZONTAL_PAD_DP = 20
     const val CONTAINER_VERTICAL_PAD_DP = 36
+    const val CONFIRMATION_HAPTIC = HapticFeedbackConstants.CONFIRM
 }
 
 internal fun formatMedicationSubtitle(
@@ -54,6 +57,9 @@ sealed interface Screen {
 }
 
 class MainActivity : Activity() {
+    private val activityJob = SupervisorJob()
+    private val activityScope = CoroutineScope(Dispatchers.Main + activityJob)
+
     private lateinit var dataLayer: WearDataLayer
     private lateinit var scrollView: ScrollView
     private lateinit var container: LinearLayout
@@ -105,7 +111,7 @@ class MainActivity : Activity() {
 
     override fun onStart() {
         super.onStart()
-        observation = CoroutineScope(Dispatchers.Main).launch {
+        observation = activityScope.launch {
             dataLayer.observeSnapshot { snapshot ->
                 val prevSnapshot = latestSnapshot
                 latestSnapshot = snapshot
@@ -129,6 +135,11 @@ class MainActivity : Activity() {
         dismissJob?.cancel()
         dismissJob = null
         super.onStop()
+    }
+
+    override fun onDestroy() {
+        activityJob.cancel()
+        super.onDestroy()
     }
 
     @Deprecated("Deprecated in Java")
@@ -377,6 +388,7 @@ class MainActivity : Activity() {
         container.addView(info)
 
         val takeButton = createActionButton(getString(R.string.take_now), getColor(R.color.wear_green)) {
+            container.performHapticFeedback(WearUiSpec.CONFIRMATION_HAPTIC)
             val isReachable = latestSnapshot?.isPhoneReachable == true
             val record = TakenDoseRecord(
                 eventId = UUID.randomUUID().toString(),
@@ -385,7 +397,7 @@ class MainActivity : Activity() {
                 takenAt = System.currentTimeMillis(),
                 dosage = med.dose
             )
-            CoroutineScope(Dispatchers.Main).launch {
+            activityScope.launch {
                 try {
                     dataLayer.recordDose(record)
                 } catch (_: Exception) {}
@@ -451,7 +463,7 @@ class MainActivity : Activity() {
         }
         container.addView(syncStatus)
 
-        dismissJob = CoroutineScope(Dispatchers.Main).launch {
+        dismissJob = activityScope.launch {
             delay(2500)
             navigateHome()
         }
