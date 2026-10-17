@@ -104,6 +104,7 @@ class CompanionConnectionTest {
         assertEquals(26, WearUiSpec.CHIP_CORNER_RADIUS_DP)
         assertEquals(24, WearUiSpec.BUTTON_CORNER_RADIUS_DP)
         assertEquals(26, WearUiSpec.CARD_CORNER_RADIUS_DP)
+        assertEquals(1000L, WearUiSpec.HOLD_TO_TAKE_DURATION_MS)
         assertEquals(
             "250mg • 1 capsule\nDue now",
             formatMedicationSubtitle(schedule.medications.first(), "Due now", "As needed")

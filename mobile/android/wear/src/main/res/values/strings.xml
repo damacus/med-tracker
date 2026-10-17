@@ -17,4 +17,6 @@
     <string name="as_needed">As needed</string>
     <string name="cancel">Cancel</string>
     <string name="no_medications">No active medications</string>
+    <string name="hold_to_take">Hold to Take</string>
+    <string name="holding_to_take">Hold to Take…</string>
 </resources>

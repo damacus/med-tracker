@@ -1,9 +1,14 @@
 package io.damacus.medtracker.wear
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
+import android.animation.ValueAnimator
 import android.app.Activity
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.ClipDrawable
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.LayerDrawable
 import android.os.Bundle
 import android.text.SpannableStringBuilder
 import android.text.Spanned
@@ -11,7 +16,9 @@ import android.text.style.AbsoluteSizeSpan
 import android.text.style.ForegroundColorSpan
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
+import android.view.MotionEvent
 import android.view.View
+import android.view.animation.LinearInterpolator
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -38,6 +45,7 @@ internal object WearUiSpec {
     const val CHIP_CORNER_RADIUS_DP = 26
     const val BUTTON_CORNER_RADIUS_DP = 24
     const val CARD_CORNER_RADIUS_DP = 26
+    const val HOLD_TO_TAKE_DURATION_MS = 1000L
 }
 
 internal fun formatMedicationSubtitle(
@@ -302,12 +310,8 @@ class MainActivity : Activity() {
                 }
                 addView(details)
 
-                val takeNowBtn = createActionButton(
-                    text = getString(R.string.take_now),
-                    bgColor = getColor(R.color.wear_green),
-                    textColor = getColor(R.color.wear_on_green)
-                ) {
-                    navigateTo(Screen.TakeNow(assignedPerson, nextDueMed))
+                val takeNowBtn = createHoldToTakeButton {
+                    recordDoseAndConfirm(assignedPerson, nextDueMed)
                 }.apply {
                     minHeight = dp(44)
                     layoutParams = LinearLayout.LayoutParams(
@@ -431,26 +435,8 @@ class MainActivity : Activity() {
         }
         container.addView(info)
 
-        val takeButton = createActionButton(
-            text = getString(R.string.take_now),
-            bgColor = getColor(R.color.wear_green),
-            textColor = getColor(R.color.wear_on_green)
-        ) {
-            container.performHapticFeedback(WearUiSpec.CONFIRMATION_HAPTIC)
-            val isReachable = latestSnapshot?.isPhoneReachable == true
-            val record = TakenDoseRecord(
-                eventId = UUID.randomUUID().toString(),
-                personId = person.id,
-                medicationId = med.id,
-                takenAt = System.currentTimeMillis(),
-                dosage = med.dose
-            )
-            activityScope.launch {
-                try {
-                    dataLayer.recordDose(record)
-                } catch (_: Exception) {}
-            }
-            navigateTo(Screen.DoseRecorded(med, isReachable))
+        val takeButton = createHoldToTakeButton {
+            recordDoseAndConfirm(person, med)
         }
         container.addView(takeButton)
 
@@ -649,4 +635,114 @@ class MainActivity : Activity() {
                 setMargins(0, 0, 0, dp(8))
             }
         }
+
+    private fun recordDoseAndConfirm(person: PersonData, med: MedicationData) {
+        container.performHapticFeedback(WearUiSpec.CONFIRMATION_HAPTIC)
+        val isReachable = latestSnapshot?.isPhoneReachable == true
+        val record = TakenDoseRecord(
+            eventId = UUID.randomUUID().toString(),
+            personId = person.id,
+            medicationId = med.id,
+            takenAt = System.currentTimeMillis(),
+            dosage = med.dose
+        )
+        activityScope.launch {
+            try {
+                dataLayer.recordDose(record)
+            } catch (_: Exception) {}
+        }
+        navigateTo(Screen.DoseRecorded(med, isReachable))
+    }
+
+    @android.annotation.SuppressLint("ClickableViewAccessibility")
+    private fun createHoldToTakeButton(onConfirmed: () -> Unit): Button {
+        val button = Button(this).apply {
+            text = getString(R.string.hold_to_take)
+            textSize = 14f
+            setTextColor(getColor(R.color.wear_text_primary))
+            typeface = Typeface.DEFAULT_BOLD
+            transformationMethod = null
+            gravity = WearUiSpec.ACTION_BUTTON_GRAVITY
+            minHeight = dp(48)
+            val padH = dp(16)
+            val padV = dp(10)
+            setPadding(padH, padV, padH, padV)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                setMargins(0, 0, 0, dp(8))
+            }
+        }
+
+        val bgDrawable = createPillBackground(
+            bgColor = getColor(R.color.wear_chip_bg),
+            cornerRadiusDp = WearUiSpec.BUTTON_CORNER_RADIUS_DP
+        )
+        val fgDrawable = createPillBackground(
+            bgColor = getColor(R.color.wear_green),
+            cornerRadiusDp = WearUiSpec.BUTTON_CORNER_RADIUS_DP
+        )
+        val clipDrawable = ClipDrawable(fgDrawable, Gravity.START, ClipDrawable.HORIZONTAL).apply {
+            level = 0
+        }
+        button.background = LayerDrawable(arrayOf(bgDrawable, clipDrawable))
+
+        var animator: ValueAnimator? = null
+        var isCompleted = false
+
+        button.setOnTouchListener { v, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    if (isCompleted) return@setOnTouchListener false
+                    v.parent?.requestDisallowInterceptTouchEvent(true)
+                    button.text = getString(R.string.holding_to_take)
+                    button.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+
+                    animator?.cancel()
+                    animator = ValueAnimator.ofInt(clipDrawable.level, 10000).apply {
+                        duration = WearUiSpec.HOLD_TO_TAKE_DURATION_MS
+                        interpolator = LinearInterpolator()
+                        addUpdateListener { anim ->
+                            val currentLevel = anim.animatedValue as Int
+                            clipDrawable.level = currentLevel
+                            if (currentLevel > 5000) {
+                                button.setTextColor(getColor(R.color.wear_on_green))
+                            }
+                        }
+                        addListener(object : AnimatorListenerAdapter() {
+                            override fun onAnimationEnd(animation: Animator) {
+                                if (clipDrawable.level >= 10000 && !isCompleted) {
+                                    isCompleted = true
+                                    v.parent?.requestDisallowInterceptTouchEvent(false)
+                                    onConfirmed()
+                                }
+                            }
+                        })
+                        start()
+                    }
+                    true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    v.parent?.requestDisallowInterceptTouchEvent(false)
+                    if (!isCompleted) {
+                        animator?.cancel()
+                        animator = ValueAnimator.ofInt(clipDrawable.level, 0).apply {
+                            duration = 150L
+                            addUpdateListener { anim ->
+                                clipDrawable.level = anim.animatedValue as Int
+                            }
+                            start()
+                        }
+                        button.text = getString(R.string.hold_to_take)
+                        button.setTextColor(getColor(R.color.wear_text_primary))
+                    }
+                    true
+                }
+                else -> false
+            }
+        }
+
+        return button
+    }
 }
