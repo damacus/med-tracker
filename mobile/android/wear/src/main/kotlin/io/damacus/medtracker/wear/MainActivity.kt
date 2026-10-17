@@ -35,6 +35,9 @@ internal object WearUiSpec {
     const val CONTAINER_HORIZONTAL_PAD_DP = 20
     const val CONTAINER_VERTICAL_PAD_DP = 36
     const val CONFIRMATION_HAPTIC = HapticFeedbackConstants.CONFIRM
+    const val CHIP_CORNER_RADIUS_DP = 26
+    const val BUTTON_CORNER_RADIUS_DP = 24
+    const val CARD_CORNER_RADIUS_DP = 26
 }
 
 internal fun formatMedicationSubtitle(
@@ -243,9 +246,13 @@ class MainActivity : Activity() {
             val assignedPerson = people.firstOrNull { it.id == nextDueMed.personId } ?: people.first()
             val nextDoseCard = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
-                val pad = dp(10)
-                setPadding(pad, pad, pad, pad)
-                background = createPillBackground(getColor(R.color.wear_card_bg), getColor(R.color.wear_cyan), dp(2))
+                val padH = dp(14)
+                val padV = dp(12)
+                setPadding(padH, padV, padH, padV)
+                background = createPillBackground(
+                    bgColor = getColor(R.color.wear_card_bg),
+                    cornerRadiusDp = WearUiSpec.CARD_CORNER_RADIUS_DP
+                )
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT
@@ -255,16 +262,30 @@ class MainActivity : Activity() {
 
                 val tag = TextView(this@MainActivity).apply {
                     text = getString(R.string.next_dose)
-                    textSize = 11f
+                    textSize = 10f
                     setTextColor(getColor(R.color.wear_cyan))
                     typeface = Typeface.DEFAULT_BOLD
                     gravity = Gravity.CENTER
+                    val tagPadH = dp(8)
+                    val tagPadV = dp(2)
+                    setPadding(tagPadH, tagPadV, tagPadH, tagPadV)
+                    background = createPillBackground(
+                        Color.argb(35, 124, 212, 253),
+                        cornerRadiusDp = 8
+                    )
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    ).apply {
+                        gravity = Gravity.CENTER_HORIZONTAL
+                        setMargins(0, 0, 0, dp(4))
+                    }
                 }
                 addView(tag)
 
                 val medName = TextView(this@MainActivity).apply {
                     text = nextDueMed.name
-                    textSize = 15f
+                    textSize = 16f
                     setTextColor(getColor(R.color.wear_text_primary))
                     typeface = Typeface.DEFAULT_BOLD
                     gravity = Gravity.CENTER
@@ -277,39 +298,62 @@ class MainActivity : Activity() {
                     textSize = 12f
                     setTextColor(getColor(R.color.wear_text_secondary))
                     gravity = Gravity.CENTER
-                    setPadding(0, dp(2), 0, dp(6))
+                    setPadding(0, dp(2), 0, dp(8))
                 }
                 addView(details)
 
-                val takeNowBtn = createActionButton(getString(R.string.take_now), getColor(R.color.wear_green)) {
+                val takeNowBtn = createActionButton(
+                    text = getString(R.string.take_now),
+                    bgColor = getColor(R.color.wear_green),
+                    textColor = getColor(R.color.wear_on_green)
+                ) {
                     navigateTo(Screen.TakeNow(assignedPerson, nextDueMed))
                 }.apply {
-                    minHeight = dp(40)
+                    minHeight = dp(44)
                     layoutParams = LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,
                         LinearLayout.LayoutParams.WRAP_CONTENT
-                    )
+                    ).apply {
+                        setMargins(0, 0, 0, 0)
+                    }
                 }
                 addView(takeNowBtn)
             }
             container.addView(nextDoseCard)
         }
 
-        val personMenuButton = createActionButton(getString(R.string.select_person), getColor(R.color.wear_card_bg)) {
+        val personMenuButton = createActionButton(
+            text = getString(R.string.select_person),
+            bgColor = getColor(R.color.wear_chip_bg)
+        ) {
             navigateTo(Screen.PersonChooser)
         }
         container.addView(personMenuButton)
 
         val statusText = TextView(this).apply {
             val isReady = latestSnapshot?.state == ConnectionState.READY
-            text = if (isReady) "Connected" else "Offline"
+            text = if (isReady) "● Connected" else "○ Offline"
             textSize = 11f
-            setTextColor(if (isReady) getColor(R.color.wear_green) else getColor(R.color.wear_amber))
+            val textColor = if (isReady) getColor(R.color.wear_green) else getColor(R.color.wear_amber)
+            setTextColor(textColor)
             gravity = Gravity.CENTER
-            setPadding(0, dp(6), 0, 0)
+            val padH = dp(10)
+            val padV = dp(3)
+            setPadding(padH, padV, padH, padV)
+            background = createPillBackground(
+                Color.argb(30, Color.red(textColor), Color.green(textColor), Color.blue(textColor)),
+                cornerRadiusDp = 12
+            )
             isClickable = true
             setOnClickListener {
                 navigateTo(Screen.Status(latestSnapshot?.state ?: ConnectionState.DISCONNECTED))
+            }
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                gravity = Gravity.CENTER_HORIZONTAL
+                setMargins(0, dp(4), 0, 0)
             }
         }
         container.addView(statusText)
@@ -387,7 +431,11 @@ class MainActivity : Activity() {
         }
         container.addView(info)
 
-        val takeButton = createActionButton(getString(R.string.take_now), getColor(R.color.wear_green)) {
+        val takeButton = createActionButton(
+            text = getString(R.string.take_now),
+            bgColor = getColor(R.color.wear_green),
+            textColor = getColor(R.color.wear_on_green)
+        ) {
             container.performHapticFeedback(WearUiSpec.CONFIRMATION_HAPTIC)
             val isReachable = latestSnapshot?.isPhoneReachable == true
             val record = TakenDoseRecord(
@@ -406,7 +454,10 @@ class MainActivity : Activity() {
         }
         container.addView(takeButton)
 
-        val cancelButton = createActionButton(getString(R.string.cancel), getColor(R.color.wear_cancel_bg)) {
+        val cancelButton = createActionButton(
+            text = getString(R.string.cancel),
+            bgColor = getColor(R.color.wear_cancel_bg)
+        ) {
             handleBack()
         }
         container.addView(cancelButton)
@@ -415,18 +466,18 @@ class MainActivity : Activity() {
     private fun renderDoseRecorded(med: MedicationData, isReachable: Boolean) {
         val icon = TextView(this).apply {
             text = "✓"
-            textSize = 36f
+            textSize = 32f
             gravity = Gravity.CENTER
             val badgeColor = if (isReachable) getColor(R.color.wear_green) else getColor(R.color.wear_amber)
             setTextColor(badgeColor)
-            val size = dp(56)
+            val size = dp(52)
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(Color.argb(40, Color.red(badgeColor), Color.green(badgeColor), Color.blue(badgeColor)))
+                setColor(Color.argb(35, Color.red(badgeColor), Color.green(badgeColor), Color.blue(badgeColor)))
             }
             layoutParams = LinearLayout.LayoutParams(size, size).apply {
                 gravity = Gravity.CENTER
-                setMargins(0, dp(8), 0, dp(8))
+                setMargins(0, dp(6), 0, dp(8))
             }
         }
         container.addView(icon)
@@ -437,7 +488,7 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER
             setTextColor(getColor(R.color.wear_text_primary))
             typeface = Typeface.DEFAULT_BOLD
-            setPadding(0, dp(4), 0, 0)
+            setPadding(0, dp(2), 0, 0)
         }
         container.addView(title)
 
@@ -451,15 +502,18 @@ class MainActivity : Activity() {
         container.addView(medText)
 
         val syncStatus = TextView(this).apply {
-            text = if (isReachable) getString(R.string.synced_to_phone) else getString(R.string.saved_offline)
+            text = if (isReachable) "● ${getString(R.string.synced_to_phone)}" else "○ ${getString(R.string.saved_offline)}"
             textSize = 11f
             gravity = Gravity.CENTER
             val color = if (isReachable) getColor(R.color.wear_green) else getColor(R.color.wear_amber)
             setTextColor(color)
-            val padH = dp(12)
-            val padV = dp(4)
+            val padH = dp(14)
+            val padV = dp(5)
             setPadding(padH, padV, padH, padV)
-            background = createPillBackground(Color.argb(35, Color.red(color), Color.green(color), Color.blue(color)))
+            background = createPillBackground(
+                Color.argb(35, Color.red(color), Color.green(color), Color.blue(color)),
+                cornerRadiusDp = 14
+            )
         }
         container.addView(syncStatus)
 
@@ -496,17 +550,27 @@ class MainActivity : Activity() {
         )
     }
 
-    private fun createPillBackground(bgColor: Int, strokeColor: Int? = null, strokeWidth: Int = 0): GradientDrawable =
+    private fun createPillBackground(
+        bgColor: Int,
+        strokeColor: Int? = null,
+        strokeWidth: Int = 0,
+        cornerRadiusDp: Int = WearUiSpec.BUTTON_CORNER_RADIUS_DP
+    ): GradientDrawable =
         GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            cornerRadius = dp(20).toFloat()
+            cornerRadius = dp(cornerRadiusDp).toFloat()
             setColor(bgColor)
             if (strokeColor != null && strokeWidth > 0) {
                 setStroke(strokeWidth, strokeColor)
             }
         }
 
-    private fun createChip(title: String, subtitle: String? = null, highlight: Boolean = false, onClick: () -> Unit): Button =
+    private fun createChip(
+        title: String,
+        subtitle: String? = null,
+        highlight: Boolean = false,
+        onClick: () -> Unit
+    ): Button =
         Button(this).apply {
             val content = if (subtitle != null) {
                 val ssb = SpannableStringBuilder(title).append("\n").append(subtitle)
@@ -535,32 +599,48 @@ class MainActivity : Activity() {
             transformationMethod = null
             gravity = Gravity.CENTER
             maxLines = WearUiSpec.CHIP_MAX_LINES
-            val padH = dp(14)
-            val padV = dp(10)
+            val padH = dp(16)
+            val padV = dp(8)
             setPadding(padH, padV, padH, padV)
-            val bgColor = getColor(R.color.wear_card_bg)
+            val bgColor = if (highlight) getColor(R.color.wear_chip_highlight_bg) else getColor(R.color.wear_chip_bg)
             val strokeColor = if (highlight) getColor(R.color.wear_cyan) else null
-            background = createPillBackground(bgColor, strokeColor, if (highlight) dp(2) else 0)
+            background = createPillBackground(
+                bgColor = bgColor,
+                strokeColor = strokeColor,
+                strokeWidth = if (highlight) dp(1) else 0,
+                cornerRadiusDp = WearUiSpec.CHIP_CORNER_RADIUS_DP
+            )
             minHeight = dp(52)
             setOnClickListener { onClick() }
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                setMargins(0, 0, 0, dp(8))
+                setMargins(0, 0, 0, dp(6))
             }
         }
 
-    private fun createActionButton(text: String, bgColor: Int, onClick: () -> Unit): Button =
+    private fun createActionButton(
+        text: String,
+        bgColor: Int,
+        textColor: Int = getColor(R.color.wear_text_primary),
+        onClick: () -> Unit
+    ): Button =
         Button(this).apply {
             this.text = text
             textSize = 14f
-            setTextColor(getColor(R.color.wear_text_primary))
+            setTextColor(textColor)
             typeface = Typeface.DEFAULT_BOLD
             transformationMethod = null
             gravity = WearUiSpec.ACTION_BUTTON_GRAVITY
-            background = createPillBackground(bgColor)
-            minHeight = dp(44)
+            background = createPillBackground(
+                bgColor = bgColor,
+                cornerRadiusDp = WearUiSpec.BUTTON_CORNER_RADIUS_DP
+            )
+            minHeight = dp(48)
+            val padH = dp(16)
+            val padV = dp(10)
+            setPadding(padH, padV, padH, padV)
             setOnClickListener { onClick() }
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,

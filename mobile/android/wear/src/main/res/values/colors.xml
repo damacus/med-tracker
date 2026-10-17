@@ -1,11 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="wear_black">#000000</color>
-    <color name="wear_card_bg">#1E222D</color>
-    <color name="wear_green">#10B981</color>
-    <color name="wear_amber">#F59E0B</color>
-    <color name="wear_cyan">#0EA5E9</color>
+    <color name="wear_card_bg">#202124</color>
+    <color name="wear_chip_bg">#2A2B2E</color>
+    <color name="wear_chip_highlight_bg">#1A303D</color>
+    <color name="wear_green">#6DD58C</color>
+    <color name="wear_on_green">#003919</color>
+    <color name="wear_amber">#FFD97D</color>
+    <color name="wear_on_amber">#3F2E00</color>
+    <color name="wear_cyan">#7CD4FD</color>
     <color name="wear_text_primary">#FFFFFF</color>
-    <color name="wear_text_secondary">#94A3B8</color>
-    <color name="wear_cancel_bg">#334155</color>
+    <color name="wear_text_secondary">#C4C7C5</color>
+    <color name="wear_cancel_bg">#35373B</color>
 </resources>

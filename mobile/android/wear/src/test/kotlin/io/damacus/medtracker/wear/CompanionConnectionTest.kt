@@ -101,6 +101,9 @@ class CompanionConnectionTest {
         assertEquals(20, WearUiSpec.CONTAINER_HORIZONTAL_PAD_DP)
         assertEquals(36, WearUiSpec.CONTAINER_VERTICAL_PAD_DP)
         assertEquals(android.view.HapticFeedbackConstants.CONFIRM, WearUiSpec.CONFIRMATION_HAPTIC)
+        assertEquals(26, WearUiSpec.CHIP_CORNER_RADIUS_DP)
+        assertEquals(24, WearUiSpec.BUTTON_CORNER_RADIUS_DP)
+        assertEquals(26, WearUiSpec.CARD_CORNER_RADIUS_DP)
         assertEquals(
             "250mg • 1 capsule\nDue now",
             formatMedicationSubtitle(schedule.medications.first(), "Due now", "As needed")
