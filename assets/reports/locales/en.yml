@@ -268,8 +268,24 @@ en:
         record: Record
         manage: Manage
     invitations:
-      created: Invitation sent
-      resent: Invitation resent
+      acceptance:
+        title: Accept invitation
+        account_title: Complete Your Account
+        invited_to_join: You have been invited to join
+        as_role: as a
+        invitation_for: Invitation for
+        existing_account: Already have an account?
+        sign_in: Sign in
+        to_accept: to accept this invitation.
+        invalid_title: Invitation link unavailable
+        invalid_guidance: This invitation link is invalid or has expired. Ask a household manager for a new invitation.
+        recovery_title: Household joined
+        recovery_guidance: Your invitation was accepted, but this session could not switch households. You can try switching again without joining twice.
+        retry: Try switching again
+        choose_household: Choose a household
+        back: Return to dashboard
+      created: Invitation email queued for delivery.
+      resent: Invitation email queued for delivery again.
       cancelled: Invitation cancelled
       cannot_resend_accepted: Accepted invitations cannot be resent
       cannot_cancel_accepted: Accepted invitations cannot be cancelled
@@ -281,6 +297,24 @@ en:
         recent: Recent invitations
         resend: Resend
         cancel: Cancel
+        expires: 'Expires:'
+        empty: No invitations are available.
+        next: Next page
+        role_guidance: Members can view and record care for people in this household. Administrators also manage members, invitations and settings. Managing another person's care plan needs separate authority. Household membership does not make someone a guardian.
+        confirm_cancel:
+          title: Cancel invitation
+          guidance: Cancelling will disable the invitation link. The recipient will need a new invitation to join.
+          keep: Keep invitation
+          confirm: Cancel invitation
+        validation:
+          heading: Check the invitation details
+          email_invalid: Email is invalid
+          email_taken: An invitation already exists for this email address.
+          role_invalid: Choose a valid household role.
+          care_authority: Household invitations cannot assign care authority.
+          cannot_cancel: This invitation cannot be cancelled.
+          cannot_resend: This invitation cannot be resent.
+          unavailable: The invitation could not be changed. Check its status and try again.
         form:
           email: Email
           role: Household role
@@ -295,6 +329,7 @@ en:
           accepted: Accepted
           expired: Expired
           pending: Pending
+          revoked: Revoked
         metadata:
           accepted: Accepted %{time} ago
           expired: Expired %{time} ago

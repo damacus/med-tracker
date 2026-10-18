@@ -533,8 +533,24 @@ cy:
         record: Cofnodi
         manage: Rheoli
     invitations:
-      created: Anfonwyd y gwahoddiad
-      resent: Ailanfonwyd y gwahoddiad
+      acceptance:
+        title: Derbyn gwahoddiad
+        account_title: Cwblhau eich cyfrif
+        invited_to_join: Rydych wedi cael gwahoddiad i ymuno â
+        as_role: fel
+        invitation_for: Gwahoddiad ar gyfer
+        existing_account: Oes gennych gyfrif eisoes?
+        sign_in: Mewngofnodwch
+        to_accept: i dderbyn y gwahoddiad hwn.
+        invalid_title: Nid yw dolen y gwahoddiad ar gael
+        invalid_guidance: Mae dolen y gwahoddiad yn annilys neu wedi dod i ben. Gofynnwch i reolwr y cartref am wahoddiad newydd.
+        recovery_title: Wedi ymuno â'r cartref
+        recovery_guidance: Derbyniwyd eich gwahoddiad, ond ni allai'r sesiwn hon newid cartref. Gallwch roi cynnig arall ar newid heb ymuno ddwywaith.
+        retry: Rhowch gynnig arall ar newid
+        choose_household: Dewis cartref
+        back: Dychwelyd i'r dangosfwrdd
+      created: Mae e-bost y gwahoddiad wedi'i roi yn y ciw i'w anfon.
+      resent: Mae e-bost y gwahoddiad wedi'i roi yn y ciw i'w ail-anfon.
       cancelled: Gwahoddiad wedi'i ganslo
       cannot_resend_accepted: Ni ellir ailanfon gwahoddiadau sydd wedi'u derbyn
       cannot_cancel_accepted: Ni ellir canslo gwahoddiadau sydd wedi'u derbyn
@@ -546,6 +562,24 @@ cy:
         recent: Gwahoddiadau diweddar
         resend: Ail-anfon
         cancel: Canslo
+        expires: 'Yn dod i ben:'
+        empty: Nid oes gwahoddiadau ar gael.
+        next: Tudalen nesaf
+        role_guidance: Gall aelodau weld a chofnodi gofal i bobl yn y cartref hwn. Gall gweinyddwyr hefyd reoli aelodau, gwahoddiadau a gosodiadau. Mae angen awdurdod ar wahân i reoli cynllun gofal person arall. Nid yw aelodaeth cartref yn gwneud rhywun yn warcheidwad.
+        confirm_cancel:
+          title: Canslo gwahoddiad
+          guidance: Bydd canslo yn analluogi dolen y gwahoddiad. Bydd angen gwahoddiad newydd ar y derbynnydd i ymuno.
+          keep: Cadw'r gwahoddiad
+          confirm: Canslo gwahoddiad
+        validation:
+          heading: Gwiriwch fanylion y gwahoddiad
+          email_invalid: Rhowch gyfeiriad e-bost dilys.
+          email_taken: Mae gwahoddiad ar gyfer y cyfeiriad e-bost hwn eisoes.
+          role_invalid: Dewiswch rôl cartref ddilys.
+          care_authority: Ni all gwahoddiadau cartref roi awdurdod gofal.
+          cannot_cancel: Ni ellir canslo'r gwahoddiad hwn.
+          cannot_resend: Ni ellir ail-anfon y gwahoddiad hwn.
+          unavailable: Ni ellid newid y gwahoddiad. Gwiriwch ei statws a rhowch gynnig arall arni.
         form:
           email: E-bost
           role: Rôl aelwyd
@@ -561,6 +595,7 @@ cy:
           accepted: Wedi'i dderbyn
           expired: Wedi dod i ben
           pending: Yn aros
+          revoked: Wedi'i ddirymu
         metadata:
           accepted: Wedi'i dderbyn %{time} yn ôl
           expired: Daeth i ben %{time} yn ôl

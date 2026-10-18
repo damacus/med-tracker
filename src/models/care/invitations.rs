@@ -1,6 +1,7 @@
 mod acceptance;
 mod acceptance_effects;
 mod authority;
+pub mod browser;
 mod delivery;
 mod input;
 pub(crate) use input::validated_email;

@@ -1,0 +1,112 @@
+{
+  "images": [
+    {
+      "file": "loco-invitations-en-list-desktop.png",
+      "sha256": "823d52e6622e8c69e8bb0fb1a8def95eb1bf2811b481de7a58933ac474753468",
+      "sourceSha256": "bcc1bca8f0fb3f898b948dc0dcdb9ad6021797a5b1f431b4e1f35fce77a918d9",
+      "testRun": "browser-86796-dialog4"
+    },
+    {
+      "file": "loco-invitations-en-validation-desktop.png",
+      "sha256": "5cb45712e88ea54e6b21d12c6ea62781ec5c3570dd5d98521ef56cfbb20f472b",
+      "sourceSha256": "bcc1bca8f0fb3f898b948dc0dcdb9ad6021797a5b1f431b4e1f35fce77a918d9",
+      "testRun": "browser-86796-dialog4"
+    },
+    {
+      "file": "loco-invitations-en-dialog-desktop.png",
+      "sha256": "4758e073c7e7222d7545a8f4a47e9caf11781bc23c12606870acc0a08f8a0729",
+      "sourceSha256": "bcc1bca8f0fb3f898b948dc0dcdb9ad6021797a5b1f431b4e1f35fce77a918d9",
+      "testRun": "browser-86796-dialog4"
+    },
+    {
+      "file": "loco-invitations-en-acceptance-desktop.png",
+      "sha256": "8eb67784d8264dbc843d116ff9a609b74b827fc0d5d9ee02191bc34cfdb0d1ca",
+      "sourceSha256": "d081326689555dd1c1c2e0a64711de9c011d6daca1b651468a7444f67b3e3333",
+      "testRun": "browser-49788-full12"
+    },
+    {
+      "file": "loco-invitations-es-list-desktop.png",
+      "sha256": "1fe722027dd7ee4c6e63b02cd5cf5a5515d2e2fced06ca7d4541f97aced538f0",
+      "sourceSha256": "e3314b4735ca2f7a921ceae550413318ef1b279d8445f5108949093d522bd0ff",
+      "testRun": "browser-91732-focused6"
+    },
+    {
+      "file": "loco-invitations-es-validation-desktop.png",
+      "sha256": "6ab66b6d666311b48f0509f97df36bc7dae15558a194e769ca374a4f1c17db36",
+      "sourceSha256": "e3314b4735ca2f7a921ceae550413318ef1b279d8445f5108949093d522bd0ff",
+      "testRun": "browser-91732-focused6"
+    },
+    {
+      "file": "loco-invitations-es-dialog-desktop.png",
+      "sha256": "2470c5d9623d47fe5e31d35d0ae83d57f80b933de034593ae673f0e699cd0eca",
+      "sourceSha256": "bcc1bca8f0fb3f898b948dc0dcdb9ad6021797a5b1f431b4e1f35fce77a918d9",
+      "testRun": "browser-86796-dialog4"
+    },
+    {
+      "file": "loco-invitations-es-acceptance-desktop.png",
+      "sha256": "52efa7ea6a57c71b3b1ea55a551d479a3ae998217eddebe787d0118c2aa66d97",
+      "sourceSha256": "d081326689555dd1c1c2e0a64711de9c011d6daca1b651468a7444f67b3e3333",
+      "testRun": "browser-49788-full12"
+    },
+    {
+      "file": "loco-invitations-en-list-mobile.png",
+      "sha256": "011adaebcb09fd545ccfee12a6d5ac7e018b0571e294f01ee584c3c333c9051a",
+      "sourceSha256": "bcc1bca8f0fb3f898b948dc0dcdb9ad6021797a5b1f431b4e1f35fce77a918d9",
+      "testRun": "browser-86796-dialog4"
+    },
+    {
+      "file": "loco-invitations-en-validation-mobile.png",
+      "sha256": "95b0ae82c1f0b976d975afad955ac6e82fdd1d7bde3c457aea49b9766e239680",
+      "sourceSha256": "bcc1bca8f0fb3f898b948dc0dcdb9ad6021797a5b1f431b4e1f35fce77a918d9",
+      "testRun": "browser-86796-dialog4"
+    },
+    {
+      "file": "loco-invitations-en-dialog-mobile.png",
+      "sha256": "25c07a97f09a41c4c0205b5691c8169ed24ab0ea439a6154b293e0db96f6bb9e",
+      "sourceSha256": "bcc1bca8f0fb3f898b948dc0dcdb9ad6021797a5b1f431b4e1f35fce77a918d9",
+      "testRun": "browser-86796-dialog4"
+    },
+    {
+      "file": "loco-invitations-en-acceptance-mobile.png",
+      "sha256": "126fbd4f59aeb5e0507a3281b0703f248264553b30f048a788ccfd145cf2d4ff",
+      "sourceSha256": "d081326689555dd1c1c2e0a64711de9c011d6daca1b651468a7444f67b3e3333",
+      "testRun": "browser-49788-full12"
+    },
+    {
+      "file": "loco-invitations-es-list-mobile.png",
+      "sha256": "51a8a3afb783de8393035e6eae6b4d998f8dbc0304b9c229e1201c8d31a9a516",
+      "sourceSha256": "e3314b4735ca2f7a921ceae550413318ef1b279d8445f5108949093d522bd0ff",
+      "testRun": "browser-91732-focused6"
+    },
+    {
+      "file": "loco-invitations-es-validation-mobile.png",
+      "sha256": "1d677b0a83e8f2ef9dbdd9ce1a2d042d71c7544e7ddff92c95ba155061f8223d",
+      "sourceSha256": "e3314b4735ca2f7a921ceae550413318ef1b279d8445f5108949093d522bd0ff",
+      "testRun": "browser-91732-focused6"
+    },
+    {
+      "file": "loco-invitations-es-dialog-mobile.png",
+      "sha256": "185ecd8efb38f3ced7769a10ac20959a57600315cf9c63172059cdf1de0944cc",
+      "sourceSha256": "bcc1bca8f0fb3f898b948dc0dcdb9ad6021797a5b1f431b4e1f35fce77a918d9",
+      "testRun": "browser-86796-dialog4"
+    },
+    {
+      "file": "loco-invitations-es-acceptance-mobile.png",
+      "sha256": "87a752dbdf2feb827f3e11ac257af6b46178fe4f14b7e7b61b7a067da36f8054",
+      "sourceSha256": "d081326689555dd1c1c2e0a64711de9c011d6daca1b651468a7444f67b3e3333",
+      "testRun": "browser-49788-full12"
+    },
+    {
+      "file": "loco-invitations-send-mobile-viewport.png",
+      "sha256": "2402017b88d04f1b2aef7e11f4cce0e5bfad2e846a281c58c889056b56504065",
+      "sourceSha256": "bcc1bca8f0fb3f898b948dc0dcdb9ad6021797a5b1f431b4e1f35fce77a918d9",
+      "testRun": "browser-86796-dialog4"
+    },
+    {
+      "file": "loco-invitations-row-mobile-viewport.png",
+      "sha256": "4544a805c4c7ac68a7385dfcce1a42afbe9bee18ef867d454cdd309174d514d6",
+      "sourceSha256": "bcc1bca8f0fb3f898b948dc0dcdb9ad6021797a5b1f431b4e1f35fce77a918d9",
+      "testRun": "browser-86796-dialog4"
+    }
+  ]
+}

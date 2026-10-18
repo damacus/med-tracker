@@ -115,7 +115,12 @@ for (const state of ['expired', 'revoked', 'cancelled', 'existing account']) {
       const fields = await signup.locator('form[action="/create-account"]').evaluate(form => Object.fromEntries(new FormData(form)));
       if (state === 'expired') await careFixture.expireInvitation(email);
       if (state === 'revoked') await careFixture.revokeInvitation(email);
-      if (state === 'cancelled') await page.getByRole('listitem').filter({ hasText: email }).getByRole('button', { name: 'Cancel', exact: true }).click();
+      if (state === 'cancelled') {
+        await page.getByRole('listitem').filter({ hasText: email }).getByRole('button', { name: 'Cancel', exact: true }).click();
+        const dialog = page.getByRole('dialog', { name: 'Cancel invitation' });
+        await expect(dialog).toBeVisible();
+        await dialog.getByRole('button', { name: 'Cancel invitation', exact: true }).click();
+      }
       const before = await careFixture.invitationSignupProbe(email);
       const denied = await signup.request.post('/create-account', { form: { ...fields, name: 'Synthetic refused account', date_of_birth: '1992-05-18', credential: 'password', password: 'Synthetic-password-12!' }, headers: { Origin: careFixture.origin }, maxRedirects: 0 });
       expect(state === 'existing account' ? [200] : [404, 422]).toContain(denied.status());

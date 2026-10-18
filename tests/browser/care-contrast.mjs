@@ -1,8 +1,8 @@
-export async function measureCareContrast(page) {
+export async function measureCareContrast(page, extraSelectors = []) {
   await page.waitForFunction(() => !document.getAnimations().some(animation =>
     animation instanceof CSSTransition && animation.playState === 'running'
   ), undefined, { timeout: 5000 });
-  return page.evaluate(() => {
+  return page.evaluate(extraSelectors => {
     const canvas = document.createElement('canvas');
     canvas.width = canvas.height = 1;
     const context = canvas.getContext('2d');
@@ -16,7 +16,7 @@ export async function measureCareContrast(page) {
       const channel = value / 255;
       return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
     }).reduce((sum, channel, index) => sum + channel * [0.2126, 0.7152, 0.0722][index], 0);
-    return ['main h1', 'main section > p', '.card p', '.card label', '.card input', '.card select', '.card textarea', '.btn-neutral', '.card .btn-ghost', '.badge-warning', '.badge-error', '[role="alert"]', '.shell-muted', '#record-dose-dialog h2', '#record-dose-dialog h3', '#record-dose-dialog [id^="dose-classification"]', '#record-dose-dialog label', '#record-dose-dialog .btn-primary', '#record-dose-dialog .btn-ghost'].flatMap(selector => {
+    return ['main h1', 'main section > p', '.card p', '.card label', '.card input', '.card select', '.card textarea', '.btn-neutral', '.card .btn-ghost', '.badge-warning', '.badge-error', '[role="alert"]', '.shell-muted', '#record-dose-dialog h2', '#record-dose-dialog h3', '#record-dose-dialog [id^="dose-classification"]', '#record-dose-dialog label', '#record-dose-dialog .btn-primary', '#record-dose-dialog .btn-ghost'].concat(extraSelectors).flatMap(selector => {
       const element = document.querySelector(selector);
       if (!element) return [];
       const foreground = channels(getComputedStyle(element).color);
@@ -33,5 +33,5 @@ export async function measureCareContrast(page) {
       const second = luminance(background);
       return [{ selector, foreground: painted, background, ratio: (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05) }];
     });
-  });
+  }, extraSelectors);
 }

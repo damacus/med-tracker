@@ -1,5 +1,7 @@
 use super::*;
 
+#[path = "invitations/browser_administration.rs"]
+mod browser_administration;
 #[path = "invitations/global_person.rs"]
 mod global_person;
 

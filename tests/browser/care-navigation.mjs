@@ -1,10 +1,10 @@
-export async function openCareSection(page, name) {
+export async function openCareSection(page, name, mobileMenuName = 'Open menu') {
   const dashboard = page.locator('.dashboard-sidebar');
   if (await dashboard.count()) {
     if (await dashboard.isVisible()) {
       await dashboard.getByRole('link', { name, exact: true }).click();
     } else {
-      await page.getByRole('button', { name: 'Open menu', exact: true }).click();
+      await page.getByRole('button', { name: mobileMenuName, exact: true }).click();
       await page.locator('#dashboard-menu').getByRole('link', { name, exact: true }).click();
     }
     return;

@@ -2,9 +2,7 @@ mod acceptance;
 mod page;
 mod rendering;
 
-use super::medications::{
-    authentication_error, begin, forms, operation_error, request_id, unavailable,
-};
+use super::medications::{begin, forms, request_id, unavailable};
 use crate::models::{care::invitations, errors::OperationError};
 use axum::{
     Extension,
@@ -42,18 +40,17 @@ async fn index(
     ViewEngine(view): ViewEngine<TeraView>,
     incoming: Request,
 ) -> Response {
-    let language = match super::administration::presentation_language(
-        incoming.uri().query(),
-        incoming.headers(),
-    ) {
-        Ok(language) => language,
+    let query = match index_query(incoming.uri().query(), incoming.headers()) {
+        Ok(value) => value,
         Err(_) => {
             return super::administration::presentation_invalid_link(&view, incoming.headers());
         }
     };
     page::Page::new(&ctx, &session, &token, &view, &slug, request)
-        .with_language(language)
-        .with_explicit_language(incoming.uri().query().is_some())
+        .with_language(query.language)
+        .with_explicit_language(query.explicit_language)
+        .with_cursor(query.cursor)
+        .with_notice(query.notice)
         .index(None, None)
         .await
 }
@@ -108,4 +105,48 @@ fn field<'a>(draft: &'a [(String, String)], name: &str) -> &'a str {
         .iter()
         .find(|(key, _)| key == name)
         .map_or("", |(_, value)| value)
+}
+
+struct IndexQuery {
+    language: &'static str,
+    explicit_language: bool,
+    cursor: Option<invitations::browser::BrowseCursor>,
+    notice: Option<page::Notice>,
+}
+
+fn index_query(
+    raw: Option<&str>,
+    headers: &axum::http::HeaderMap,
+) -> Result<IndexQuery, OperationError> {
+    let mut language = None;
+    let mut cursor = None;
+    let mut notice = None;
+    for (key, value) in url::form_urlencoded::parse(raw.unwrap_or_default().as_bytes()) {
+        if value.len() > 128 {
+            return Err(OperationError::NotFound);
+        }
+        match key.as_ref() {
+            "lang"
+                if language.is_none()
+                    && matches!(value.as_ref(), "en" | "cy" | "ga" | "pt" | "es") =>
+            {
+                language = Some(crate::models::care::report_pdf::locale(&value));
+            }
+            "cursor" if cursor.is_none() => {
+                cursor = Some(invitations::browser::BrowseCursor::parse(&value)?)
+            }
+            "notice" if notice.is_none() => {
+                notice = Some(page::Notice::parse(&value).ok_or(OperationError::NotFound)?);
+            }
+            _ => return Err(OperationError::NotFound),
+        }
+    }
+    let explicit = language.is_some();
+    let language = language.unwrap_or(super::administration::presentation_language(None, headers)?);
+    Ok(IndexQuery {
+        language,
+        explicit_language: explicit,
+        cursor,
+        notice,
+    })
 }

@@ -316,8 +316,24 @@ ga:
         record: Taifead
         manage: Bainistigh
     invitations:
-      created: Cuireadh seolta
-      resent: Cuireadh athsheolta
+      acceptance:
+        title: Glac le cuireadh
+        account_title: Críochnaigh do chuntas
+        invited_to_join: Tugadh cuireadh duit dul isteach i
+        as_role: mar
+        invitation_for: Cuireadh do
+        existing_account: An bhfuil cuntas agat cheana?
+        sign_in: Sínigh isteach
+        to_accept: chun glacadh leis an gcuireadh seo.
+        invalid_title: Níl nasc an chuiridh ar fáil
+        invalid_guidance: Tá nasc an chuiridh neamhbhailí nó imithe in éag. Iarr cuireadh nua ar bhainisteoir an teaghlaigh.
+        recovery_title: Glacadh leat sa teaghlach
+        recovery_guidance: Glacadh le do chuireadh, ach níorbh fhéidir leis an seisiún seo teaghlach a athrú. Is féidir triail eile a bhaint as gan dul isteach arís.
+        retry: Bain triail eile as athrú
+        choose_household: Roghnaigh teaghlach
+        back: Fill ar an deais
+      created: Tá ríomhphost an chuiridh sa scuaine lena sheachadadh.
+      resent: Tá ríomhphost an chuiridh sa scuaine lena athsheachadadh.
       cancelled: Cuireadh cealaithe
       cannot_resend_accepted: Ní féidir cuirí a nglactar leo a athsheoladh
       cannot_cancel_accepted: Ní féidir cuirí a nglactar leo a chealú
@@ -329,6 +345,24 @@ ga:
         recent: Cuirí le déanaí
         resend: Athsheol
         cancel: Cealaigh
+        expires: 'In éag:'
+        empty: Níl aon chuirí ar fáil.
+        next: An chéad leathanach eile
+        role_guidance: Is féidir le baill cúram do dhaoine sa teaghlach seo a fheiceáil agus a thaifeadadh. Bainistíonn riarthóirí baill, cuirí agus socruithe freisin. Tá údarás ar leith ag teastáil chun plean cúraim duine eile a bhainistiú. Ní dhéanann ballraíocht teaghlaigh caomhnóir de dhuine.
+        confirm_cancel:
+          title: Cealaigh cuireadh
+          guidance: Díchumasóidh cealú nasc an chuiridh. Beidh cuireadh nua ag teastáil ón bhfaighteoir chun dul isteach.
+          keep: Coinnigh an cuireadh
+          confirm: Cealaigh cuireadh
+        validation:
+          heading: Seiceáil sonraí an chuiridh
+          email_invalid: Cuir isteach seoladh ríomhphoist bailí.
+          email_taken: Tá cuireadh ann cheana don seoladh ríomhphoist seo.
+          role_invalid: Roghnaigh ról teaghlaigh bailí.
+          care_authority: Ní féidir le cuirí teaghlaigh údarás cúraim a shannadh.
+          cannot_cancel: Ní féidir an cuireadh seo a chealú.
+          cannot_resend: Ní féidir an cuireadh seo a athsheoladh.
+          unavailable: Níorbh fhéidir an cuireadh a athrú. Seiceáil a stádas agus bain triail eile as.
         form:
           email: Ríomhphost
           role: Ról teaghlaigh
@@ -344,6 +378,7 @@ ga:
           accepted: Glactha
           expired: Imithe in éag
           pending: Ar feitheamh
+          revoked: Cúlghairthe
         metadata:
           accepted: Glactha %{time} ó shin
           expired: D'imigh sé in éag %{time} ó shin

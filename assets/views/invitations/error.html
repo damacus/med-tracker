@@ -1,0 +1,8 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-xl mx-auto card bg-base-100 border border-base-300"><div class="card-body">
+  <h1 class="text-3xl font-semibold">{{ invitation_labels.invalid_title }}</h1>
+  <p role="alert">{{ invitation_labels.invalid_guidance }}</p>
+  <a class="btn btn-neutral" href="/">{{ invitation_labels.back }}</a>
+</div></section>
+{% endblock content %}

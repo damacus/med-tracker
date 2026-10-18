@@ -7,7 +7,7 @@ use axum_csrf::CsrfToken;
 use axum_session::Session;
 use axum_session_sqlx::SessionPgPool;
 use loco_rs::prelude::*;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::models::identity::{browser, resource::AuthenticationError};
 
@@ -21,6 +21,46 @@ struct Login {
 #[derive(Deserialize)]
 struct Logout {
     authenticity_token: String,
+}
+
+#[derive(Clone, Copy, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+enum InvitationLanguage {
+    En,
+    Cy,
+    Ga,
+    Pt,
+    Es,
+}
+
+impl InvitationLanguage {
+    fn parse(value: &str) -> Option<Self> {
+        match value {
+            "en" => Some(Self::En),
+            "cy" => Some(Self::Cy),
+            "ga" => Some(Self::Ga),
+            "pt" => Some(Self::Pt),
+            "es" => Some(Self::Es),
+            _ => None,
+        }
+    }
+
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::En => "en",
+            Self::Cy => "cy",
+            Self::Ga => "ga",
+            Self::Pt => "pt",
+            Self::Es => "es",
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize)]
+struct InvitationContinuation {
+    token: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    lang: Option<InvitationLanguage>,
 }
 
 pub fn routes() -> Routes {
@@ -244,8 +284,16 @@ fn redirect(destination: &str) -> Response {
         .into_response()
 }
 
-pub(crate) fn store_invitation_continuation(session: &Session<SessionPgPool>, token: &str) {
-    session.set("invitation_pending", token.to_owned());
+pub(crate) fn store_invitation_continuation(
+    session: &Session<SessionPgPool>,
+    token: &str,
+    language: Option<&str>,
+) {
+    let continuation = InvitationContinuation {
+        token: token.to_owned(),
+        lang: language.and_then(InvitationLanguage::parse),
+    };
+    session.set("invitation_pending", continuation);
     session.set_store(true);
 }
 
@@ -256,11 +304,21 @@ pub(crate) fn authenticated_redirect(session: &Session<SessionPgPool>) -> Respon
     {
         return redirect(&format!("/authorize?{query}"));
     }
-    if let Some(token) = session.get::<String>("invitation_pending") {
+    let invitation = session
+        .get::<InvitationContinuation>("invitation_pending")
+        .or_else(|| {
+            session
+                .get::<String>("invitation_pending")
+                .map(|token| InvitationContinuation { token, lang: None })
+        });
+    if let Some(invitation) = invitation {
         session.remove("invitation_pending");
-        if let Ok(query) = serde_urlencoded::to_string([("token", token)]) {
-            return redirect(&format!("/invitations/accept?{query}"));
+        let mut query = url::form_urlencoded::Serializer::new(String::new());
+        query.append_pair("token", &invitation.token);
+        if let Some(language) = invitation.lang {
+            query.append_pair("lang", language.as_str());
         }
+        return redirect(&format!("/invitations/accept?{}", query.finish()));
     }
     redirect("/")
 }

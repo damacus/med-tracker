@@ -7,6 +7,42 @@ pub(super) enum Change {
     Cancel(i64),
 }
 
+#[derive(Clone, Copy)]
+pub(super) enum Notice {
+    Created,
+    Resent,
+    Cancelled,
+}
+
+impl Notice {
+    pub(super) fn parse(value: &str) -> Option<Self> {
+        match value {
+            "created" => Some(Self::Created),
+            "resent" => Some(Self::Resent),
+            "cancelled" => Some(Self::Cancelled),
+            _ => None,
+        }
+    }
+
+    fn key(self) -> &'static str {
+        match self {
+            Self::Created => "created",
+            Self::Resent => "resent",
+            Self::Cancelled => "cancelled",
+        }
+    }
+}
+
+impl Change {
+    fn notice(self) -> Notice {
+        match self {
+            Self::Create => Notice::Created,
+            Self::Resend(_) => Notice::Resent,
+            Self::Cancel(_) => Notice::Cancelled,
+        }
+    }
+}
+
 pub(super) struct Page<'a> {
     ctx: &'a AppContext,
     session: &'a Session<SessionPgPool>,
@@ -16,6 +52,8 @@ pub(super) struct Page<'a> {
     request_id: String,
     language: &'static str,
     explicit_language: bool,
+    cursor: Option<invitations::browser::BrowseCursor>,
+    notice: Option<Notice>,
 }
 
 impl<'a> Page<'a> {
@@ -36,6 +74,8 @@ impl<'a> Page<'a> {
             request_id: request_id(request),
             language: "en",
             explicit_language: false,
+            cursor: None,
+            notice: None,
         }
     }
 
@@ -49,6 +89,19 @@ impl<'a> Page<'a> {
         self
     }
 
+    pub(super) fn with_cursor(
+        mut self,
+        cursor: Option<invitations::browser::BrowseCursor>,
+    ) -> Self {
+        self.cursor = cursor;
+        self
+    }
+
+    pub(super) fn with_notice(mut self, notice: Option<Notice>) -> Self {
+        self.notice = notice;
+        self
+    }
+
     pub(super) async fn index(
         &self,
         submitted: Option<&[(String, String)]>,
@@ -56,38 +109,82 @@ impl<'a> Page<'a> {
     ) -> Response {
         let (_, tenant) = match begin(self.ctx, self.session, self.slug, &self.request_id).await {
             Ok(value) => value,
-            Err(error) => return authentication_error(error),
+            Err(error) => {
+                return super::super::administration::presentation_authentication_error(
+                    self.view,
+                    self.language,
+                    error,
+                );
+            }
+        };
+        let labels = match crate::models::care::report_pdf::translations(self.language) {
+            Ok(labels) => labels,
+            Err(_) => {
+                return super::super::administration::presentation_error(
+                    self.view,
+                    self.language,
+                    OperationError::Unavailable,
+                );
+            }
         };
         let result = async {
-            let records = invitations::list(&tenant).await?;
+            let records = invitations::browser::browse(&tenant, self.cursor).await?;
             let household_name =
                 crate::models::care::administration::overview::household_name(&tenant).await?;
-            Ok::<_, OperationError>(rendering::data(
+            let mut data = rendering::data(
                 self.slug,
                 &household_name,
                 &records,
                 submitted,
                 error,
-            ))
+                &labels,
+            );
+            data["notice"] = json!(self.notice.map(|notice| {
+                labels["admin"]["invitations"][notice.key()]
+                    .as_str()
+                    .unwrap_or_default()
+            }));
+            data["next_url"] = json!(records.next_cursor.as_deref().map(|cursor| {
+                let mut query = url::form_urlencoded::Serializer::new(String::new());
+                query.append_pair("cursor", cursor);
+                if self.explicit_language || self.language != "en" {
+                    query.append_pair("lang", self.language);
+                }
+                format!(
+                    "/households/{}/admin/invitations?{}",
+                    self.slug,
+                    query.finish()
+                )
+            }));
+            Ok::<_, OperationError>(data)
         }
         .await;
         let mut data = match result {
             Ok(value) => value,
-            Err(error) => return operation_error(error),
-        };
-        let labels = match crate::models::care::report_pdf::translations(self.language) {
-            Ok(labels) => labels,
-            Err(_) => return unavailable(),
+            Err(error) => {
+                return super::super::administration::presentation_error(
+                    self.view,
+                    self.language,
+                    error,
+                );
+            }
         };
         data["lang"] = json!(self.language);
         data["language_suffix"] = json!(super::super::administration::language_suffix(
             self.language,
             self.explicit_language
         ));
+        data["labels"] = labels.clone();
         data["admin_labels"] = labels["administration"].clone();
+        data["invite_labels"] = labels["admin"]["invitations"].clone();
+        data["role_labels"] = labels["admin"]["labels"]["membership_roles"].clone();
         let response = rendering::render(self.view, self.token, data, error);
         if tenant.commit().await.is_err() {
-            return unavailable();
+            return super::super::administration::presentation_error(
+                self.view,
+                self.language,
+                OperationError::Unavailable,
+            );
         }
         response
     }
@@ -98,18 +195,34 @@ impl<'a> Page<'a> {
             .verify(field(&draft, "authenticity_token"))
             .is_err()
         {
-            return operation_error(OperationError::Forbidden);
+            return super::super::administration::presentation_error(
+                self.view,
+                self.language,
+                OperationError::Forbidden,
+            );
         }
         let (principal, tenant) =
             match begin(self.ctx, self.session, self.slug, &self.request_id).await {
                 Ok(value) => value,
-                Err(error) => return authentication_error(error),
+                Err(error) => {
+                    return super::super::administration::presentation_authentication_error(
+                        self.view,
+                        self.language,
+                        error,
+                    );
+                }
             };
         let target = match url::Url::parse(&self.ctx.config.server.full_url())
             .and_then(|url| url.join("/invitations/accept"))
         {
             Ok(url) => url,
-            Err(_) => return unavailable(),
+            Err(_) => {
+                return super::super::administration::presentation_error(
+                    self.view,
+                    self.language,
+                    OperationError::Unavailable,
+                );
+            }
         };
         let result = match change {
             Change::Create => invitations::create(
@@ -138,7 +251,11 @@ impl<'a> Page<'a> {
         match result {
             Ok(()) => {
                 if tenant.commit().await.is_err() {
-                    return unavailable();
+                    return super::super::administration::presentation_error(
+                        self.view,
+                        self.language,
+                        OperationError::Unavailable,
+                    );
                 }
                 (
                     StatusCode::SEE_OTHER,
@@ -146,12 +263,14 @@ impl<'a> Page<'a> {
                         (
                             header::LOCATION,
                             format!(
-                                "/households/{}/admin/invitations{}",
+                                "/households/{}/admin/invitations{}notice={}",
                                 self.slug,
-                                super::super::administration::language_suffix(
-                                    self.language,
-                                    self.explicit_language
-                                )
+                                if self.explicit_language || self.language != "en" {
+                                    format!("?lang={}&", self.language)
+                                } else {
+                                    "?".into()
+                                },
+                                change.notice().key(),
                             ),
                         ),
                         (header::CACHE_CONTROL, "no-store".into()),
@@ -161,7 +280,11 @@ impl<'a> Page<'a> {
             }
             Err(error) => {
                 if tenant.rollback().await.is_err() {
-                    return unavailable();
+                    return super::super::administration::presentation_error(
+                        self.view,
+                        self.language,
+                        OperationError::Unavailable,
+                    );
                 }
                 if matches!(
                     error,
@@ -169,7 +292,11 @@ impl<'a> Page<'a> {
                         | OperationError::NotFound
                         | OperationError::Unavailable
                 ) {
-                    return operation_error(error);
+                    return super::super::administration::presentation_error(
+                        self.view,
+                        self.language,
+                        error,
+                    );
                 }
                 self.index(
                     matches!(change, Change::Create).then_some(draft.as_slice()),
