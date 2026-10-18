@@ -86,9 +86,10 @@ tags:
       Active household members can read all locations in their selected household. Only
       household owners and administrators can create, update or delete locations and
       location memberships. A bearer API credential does not convey browser support-session
-      authority. A membership change additionally needs a manage grant for the selected
+      authority. A membership change additionally needs canonical self authority or
+      an existing valid Manage authority for the selected
       person. A person outside the caller's view scope is not found (404); a visible person
-      without a manage grant is forbidden (403). Missing or invalid credentials return 401,
+      without Manage authority is forbidden (403). Missing or invalid credentials return 401,
       a denied household returns 403, and a resource outside the authorized household scope
       returns 404.
   - name: Medications
@@ -254,6 +255,100 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /auth/guardian-declarations:
+    get:
+      operationId: listOwnGuardianDeclarations
+      tags: [Account]
+      summary: List the authenticated guardian's personal declarations.
+      description: |
+        Requires an account-bound first-party mobile OAuth credential with medtracker
+        scope. Household sessions, app tokens, personal keys and integration grants
+        cannot use this route. No current household participation is required.
+        Returns captured declaration names, not the subject's current foreign profile.
+        Results use descending declaration ID order and a bounded keyset cursor.
+        Every response is no-store. Browser sessions use the separate profile page.
+      parameters:
+        - name: limit
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 100, default: 25}
+        - name: before_id
+          in: query
+          description: Exclusive positive declaration ID cursor.
+          schema: {type: integer, format: int64, minimum: 1}
+      responses:
+        "200":
+          description: Own captured declarations, including withdrawn records.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/no_store"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuardianDeclarationCollectionResponse"
+        "401":
+          $ref: "#/components/responses/GuardianDeclarationUnauthorized"
+        "403":
+          $ref: "#/components/responses/GuardianDeclarationForbidden"
+        "422":
+          $ref: "#/components/responses/GuardianDeclarationInvalid"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/GuardianDeclarationUnavailable"
+  /auth/guardian-declarations/{id}:
+    patch:
+      operationId: withdrawOwnGuardianDeclaration
+      tags: [Account]
+      summary: Permanently withdraw the authenticated guardian's own declaration.
+      description: |
+        Uses the same account-bound first-party credential restriction as the own
+        declaration list, with fresh credential and account checks on every request.
+        Withdrawal remains available after the guardian leaves every household.
+        Only the recorded guardian can withdraw; household management is insufficient.
+        Requires exact true withdrawal and the original Recorded string revision "1".
+        Other revisions return 409. A terminal replay resubmits "1" and returns the
+        existing withdrawn revision "2" without another audit event, after live
+        authentication. A foreign or missing
+        record returns 404. Withdrawal and its attributable version, ledger and delivery
+        commit together; an audit failure rolls everything back. Withdrawal cannot be
+        restored and creates no memberships, credentials or grants. Local care-link
+        removal is separate. Every response is no-store.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/GuardianDeclarationIdentifier"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GuardianDeclarationWithdrawalRequest"
+      responses:
+        "200":
+          description: The guardian's terminal withdrawn declaration.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/no_store"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuardianDeclarationResponse"
+        "401":
+          $ref: "#/components/responses/GuardianDeclarationUnauthorized"
+        "403":
+          $ref: "#/components/responses/GuardianDeclarationForbidden"
+        "404":
+          $ref: "#/components/responses/GuardianDeclarationNotFound"
+        "409":
+          $ref: "#/components/responses/GuardianDeclarationConflict"
+        "422":
+          $ref: "#/components/responses/GuardianDeclarationInvalid"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/GuardianDeclarationUnavailable"
   /auth/profile/avatar:
     get:
       operationId: getAccountAvatar
@@ -509,17 +604,21 @@ paths:
       summary: Create a person in the household.
       description: |
         Requires an active household owner or administrator, or a member with an
-        active manage grant for a person in this household. Name and date of birth
-        are required; email is trimmed, lowercased and unique when present.
-        person_type defaults to adult and has_capacity defaults to true. A minor
-        or dependent adult always has has_capacity false. Creation without an
-        active carer is allowed. When the actor's membership is linked to a person,
-        creating a minor or dependent adult delegates family-member manage access
-        to that carer. Missing active carers produce a non-blocking browser warning.
-        A successful create assigns the household Home location, creates the
-        actor's manage grant, increments the affected membership permissions
-        version, and records person audit and sync changes in one transaction.
-        Age and person_type must agree. Invalid or duplicate email returns 422.
+        existing Manage authority in this household. The actor must be an eligible
+        adult with capacity. Creation is only for a new accountless minor or
+        dependent adult, with exact true initial_guardian_declaration. Capable adults
+        must use their own accounts. The guardian is derived from the authenticated
+        account's canonical Person; no submitted guardian/Account/Person identity
+        can attach an existing person. The server records its versioned statement,
+        captured name and actual actor; this is a declaration, not independent legal
+        verification. No Account, User, credentials or independent Manage grant is
+        created for the dependent. Person, household participation, declaration,
+        local care link, Home location, initial participation revision and attributable audit
+        and sync changes commit atomically. An audit failure rolls everything back.
+        Name and date of birth are required; email remains trimmed, lowercased and
+        unique when present. Age, kind and capacity must agree. A minor must be
+        younger than eighteen; a dependent adult must be eighteen or older and
+        lack capacity. Invalid or duplicate email returns 422.
         Malformed JSON or a missing person wrapper returns 400; a present wrapper
         with invalid attributes returns 422.
       parameters:
@@ -592,7 +691,8 @@ paths:
         - People
       summary: Update a person.
       description: |
-        Requires an active manage grant for the selected person. A person outside
+        Requires canonical self authority or existing valid Manage authority for an
+        active household participant. A person outside
         the actor's visible scope returns 404; a visible person without manage
         access returns 403. Supplied attributes are merged with the existing
         record; omitted attributes are retained. Email is normalized and must
@@ -1495,7 +1595,8 @@ paths:
       summary: Read permissions for household management controls.
       description: |
         Rust browser capability discovery. Returned permissions use the same current
-        membership and person grants as mutations. These hints never replace mutation
+        membership, canonical self and existing valid Manage authority as mutations.
+        These hints never replace mutation
         authorization. This additive operation is currently implemented by Rust.
       parameters:
         - $ref: "#/components/parameters/household_id"
@@ -1745,7 +1846,8 @@ paths:
       summary: Assign a managed person to a location or replay the existing assignment.
       description: |
         Only an active household owner or administrator can assign a person to an in-scope
-        location. The person must be visible to the caller and have a current manage grant;
+        location. The person must be an active household participant visible to the caller,
+        with canonical self authority or existing valid Manage authority;
         a person outside view scope returns 404, while a visible person without manage
         access returns 403. Replaying the same assignment returns the existing resource.
       parameters:
@@ -1789,8 +1891,9 @@ paths:
       summary: Remove a managed person from the selected location.
       description: |
         Only an active household owner or administrator can remove an assignment from an
-        in-scope location. The assigned person must be visible to the caller and have a
-        current manage grant; out-of-scope person or assignment returns 404, and a visible
+        in-scope location. The assigned person must be an active household participant
+        visible to the caller, with canonical self authority or existing valid Manage
+        authority; out-of-scope person or assignment returns 404, and a visible
         person without manage access returns 403.
       parameters:
         - $ref: "#/components/parameters/household_id"
@@ -2166,7 +2269,7 @@ paths:
         - Household
         - Dosage options
       summary: List medication dosage options.
-      description: Active household members receive options only for medications they can read. Owners and administrators can read every medication in their household. Other members can read a medication linked to a person with an active view grant, or an unlinked medication they created. Options for medications outside that scope are omitted from the collection and its total count.
+      description: Active household members receive options only for medications they can read. Owners and administrators can read every medication in their household. Other members can read a medication linked to an active household participant, or an unlinked medication they created. Options for medications outside that scope are omitted from the collection and its total count.
       parameters:
         - $ref: "#/components/parameters/household_id"
         - $ref: "#/components/parameters/page"
@@ -2233,7 +2336,7 @@ paths:
         - Household
         - Dosage options
       summary: Read a medication dosage option.
-      description: Active household members may read an option only if they can read its parent medication. Owners and administrators can read every medication in their household. Other members require an active person view grant linked to the medication or must have created an unlinked medication. An option outside this visibility scope returns 404.
+      description: Active household members may read an option only if they can read its parent medication. Owners and administrators can read every medication in their household. Other members require an active household participant linked to the medication or must have created an unlinked medication. An option outside this visibility scope returns 404.
       parameters:
         - $ref: "#/components/parameters/household_id"
         - $ref: "#/components/parameters/resource_id"
@@ -4543,6 +4646,12 @@ paths:
         - Household administration
         - Access grants
       summary: Create a person access grant.
+      deprecated: true
+      description: >-
+        New per-person grant creation is deferred and returns an audited 403.
+        Current household participation provides View and Record access;
+        household management does not establish guardian or shared-plan authority.
+        Existing recorded authority remains available through list and revoke operations.
       parameters:
         - $ref: "#/components/parameters/household_id"
       requestBody:
@@ -4552,12 +4661,6 @@ paths:
             schema:
               $ref: "#/components/schemas/PersonAccessGrantCreateRequest"
       responses:
-        "201":
-          description: Access grant created.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/PersonAccessGrantResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -4832,6 +4935,65 @@ components:
         type: integer
         minimum: 1
   responses:
+    GuardianDeclarationUnauthorized:
+      description: The credential is missing, invalid, revoked, expired or outside the accepted namespace.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/no_store"
+        WWW-Authenticate:
+          schema: {type: string}
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    GuardianDeclarationForbidden:
+      description: A household-bound credential or insufficient OAuth scope cannot manage personal declarations.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/no_store"
+        WWW-Authenticate:
+          description: Present for an insufficient OAuth scope challenge.
+          schema: {type: string}
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    GuardianDeclarationNotFound:
+      description: No own declaration exists for this identifier.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/no_store"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    GuardianDeclarationConflict:
+      description: The supplied revision is stale or ahead of the current record.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/no_store"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    GuardianDeclarationInvalid:
+      description: Invalid or unknown fields, malformed JSON, query, identifier, revision or non-true withdrawal.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/no_store"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    GuardianDeclarationUnavailable:
+      description: Declaration storage or its atomic audit is unavailable; no withdrawal is committed.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/no_store"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
     InvitationDeliveryUnavailable:
       description: Invitation delivery could not be queued; token rotation is rolled back.
       content:
@@ -4942,6 +5104,77 @@ components:
           schema:
             $ref: "#/components/schemas/RateLimitErrorEnvelope"
   schemas:
+    GuardianDeclarationIdentifier:
+      type: string
+      pattern: '^[1-9][0-9]*$'
+      maxLength: 19
+      description: Positive PostgreSQL bigint, encoded as a decimal string.
+    GuardianDeclaration:
+      type: object
+      additionalProperties: false
+      required: [id, subject_person_id, subject_name_at_declaration, statement_version, declared_at, withdrawn_at, revision]
+      properties:
+        id:
+          $ref: "#/components/schemas/GuardianDeclarationIdentifier"
+        subject_person_id:
+          $ref: "#/components/schemas/GuardianDeclarationIdentifier"
+        subject_name_at_declaration:
+          type: string
+          minLength: 1
+        statement_version:
+          type: integer
+          enum: [1]
+        declared_at:
+          $ref: "#/components/schemas/Timestamp"
+        withdrawn_at:
+          $ref: "#/components/schemas/NullableTimestamp"
+        revision:
+          type: string
+          enum: ["1", "2"]
+    GuardianDeclarationResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/GuardianDeclaration"
+    GuardianDeclarationCollectionResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/GuardianDeclaration"
+        meta:
+          type: object
+          additionalProperties: false
+          required: [next_before_id]
+          properties:
+            next_before_id:
+              type: string
+              nullable: true
+              pattern: '^[1-9][0-9]*$'
+    GuardianDeclarationWithdrawalRequest:
+      type: object
+      additionalProperties: false
+      required: [guardian_declaration]
+      properties:
+        guardian_declaration:
+          type: object
+          additionalProperties: false
+          required: [withdrawn, revision]
+          properties:
+            withdrawn:
+              type: boolean
+              enum: [true]
+            revision:
+              type: string
+              pattern: '^[0-9]+$'
+              maxLength: 19
+              description: Original Recorded revision "1", including terminal replay; other bigint revisions return 409.
     NumericId:
       type: integer
       minimum: 1
@@ -5098,12 +5331,13 @@ components:
         id:
           $ref: "#/components/schemas/NumericId"
         account_id:
-          $ref: "#/components/schemas/NumericId"
+          $ref: "#/components/schemas/NullableNumericId"
         email:
           type: string
           format: email
+          nullable: true
         person_id:
-          $ref: "#/components/schemas/NullableNumericId"
+          $ref: "#/components/schemas/NumericId"
         person_name:
           type: string
           minLength: 1
@@ -5163,7 +5397,9 @@ components:
             - suspended
             - revoked
         person_id:
-          $ref: "#/components/schemas/NullableNumericId"
+          allOf:
+            - $ref: "#/components/schemas/NumericId"
+          description: Immutable participation identity. When supplied, must equal the existing Person ID; null and relinking are rejected.
     HouseholdMembershipUpdateRequest:
       type: object
       additionalProperties: false
@@ -5222,6 +5458,7 @@ components:
             $ref: "#/components/schemas/HouseholdInvitation"
     HouseholdInvitationAttributes:
       type: object
+      description: Household membership only. Dependent IDs, relationship_type and access_level are rejected with 422; invitations do not assign guardianship or treatment-editing authority.
       additionalProperties: false
       required:
         - email
@@ -5265,6 +5502,7 @@ components:
         person_name:
           type: string
           minLength: 1
+          nullable: true
         access_level:
           type: string
           enum:
@@ -8629,6 +8867,8 @@ components:
           required:
             - name
             - date_of_birth
+            - person_type
+            - initial_guardian_declaration
           properties:
             name:
               type: string
@@ -8642,11 +8882,16 @@ components:
             person_type:
               type: string
               enum:
-                - adult
                 - minor
                 - dependent_adult
             has_capacity:
               type: boolean
+              enum: [false]
+              nullable: true
+              description: Omitted or null means false; true is invalid for a dependent.
+            initial_guardian_declaration:
+              type: boolean
+              enum: [true]
     PersonUpdateRequest:
       type: object
       additionalProperties: false

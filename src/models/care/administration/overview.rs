@@ -25,8 +25,7 @@ pub async fn read(tenant: &TenantTransaction) -> Result<Overview, OperationError
         .filter(membership::Column::RevokedAt.is_null())
         .count(tenant.transaction())
         .await?;
-    let people = person::Entity::find()
-        .in_tenant(tenant.scope().household_id)
+    let people = access::person_queries::household_people(tenant.scope())
         .count(tenant.transaction())
         .await?;
     let pending_invitations = household_invitation::Entity::find()

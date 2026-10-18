@@ -140,7 +140,7 @@ async fn accept_validated(
         if invitation.accepted_at.is_some() {
             membership::Entity::find()
                 .in_tenant(invitation.household_id)
-                .filter(membership::Column::AccountId.eq(actor.account_id))
+                .filter(membership::Column::PersonId.eq(actor.person_id))
                 .filter(membership::Column::Status.eq("active"))
                 .filter(membership::Column::RevokedAt.is_null())
                 .one(&transaction)
@@ -156,7 +156,7 @@ async fn accept_validated(
             super::authority::authorize(&transaction, &inviter, &invitation).await?;
             if membership::Entity::find()
                 .in_tenant(invitation.household_id)
-                .filter(membership::Column::AccountId.eq(actor.account_id))
+                .filter(membership::Column::PersonId.eq(actor.person_id))
                 .one(&transaction)
                 .await?
                 .is_some()
@@ -164,7 +164,6 @@ async fn accept_validated(
                 return Err(unavailable());
             }
             let source = person::Entity::find_by_id(actor.person_id)
-                .filter(person::Column::AccountId.eq(actor.account_id))
                 .one(&transaction)
                 .await?
                 .ok_or_else(unavailable)?;
@@ -185,7 +184,7 @@ async fn accept_validated(
     };
     transaction.commit().await?;
     Ok(
-        json!({"data":{"household_id":member.household_id.to_string(),"membership_id":member.id.to_string(),"person_id":member.person_id.map(|id|id.to_string()),"role":member.role}}),
+        json!({"data":{"household_id":member.household_id.to_string(),"membership_id":member.id.to_string(),"person_id":member.person_id.to_string(),"role":member.role}}),
     )
 }
 
@@ -225,7 +224,7 @@ async fn retry(
     settings: Option<&serde_json::Value>,
 ) -> Result<Option<membership::Model>, OperationError> {
     let members = membership::Entity::find()
-        .filter(membership::Column::AccountId.eq(actor.account_id))
+        .filter(membership::Column::PersonId.eq(actor.person_id))
         .filter(membership::Column::Status.eq("active"))
         .filter(membership::Column::RevokedAt.is_null())
         .order_by_asc(membership::Column::HouseholdId)
@@ -245,7 +244,7 @@ async fn retry(
             return Err(unavailable());
         }
         let current = membership::Entity::find_by_id(member.id)
-            .filter(membership::Column::AccountId.eq(actor.account_id))
+            .filter(membership::Column::PersonId.eq(actor.person_id))
             .filter(membership::Column::Status.eq("active"))
             .filter(membership::Column::RevokedAt.is_null())
             .lock_exclusive()

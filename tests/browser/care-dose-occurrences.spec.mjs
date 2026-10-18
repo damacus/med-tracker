@@ -372,7 +372,7 @@ test('dose recording and reopening enforce CSRF, current rights and household sc
   const { etag, ...missingVersion } = reopen;
   expect((await page.request.post(reopenPath, { form: missingVersion, headers: { Origin: careFixture.origin }, maxRedirects: 0 })).status()).toBe(428);
   const missed = await careFixture.occurrenceProbe();
-  await careFixture.revoke();
+  await careFixture.withdrawMembership();
   expect([403, 404]).toContain((await page.request.post(reopenPath, { form: reopen, headers: { Origin: careFixture.origin }, maxRedirects: 0 })).status());
   expect([403, 404]).toContain((await page.request.post(path, { form: fields, headers: { Origin: careFixture.origin }, maxRedirects: 0 })).status());
   expect(await careFixture.occurrenceProbe()).toEqual(missed);

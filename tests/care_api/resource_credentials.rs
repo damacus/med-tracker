@@ -16,7 +16,7 @@ async fn care_resources_accept_current_user_sessions_and_app_tokens() {
         "INSERT INTO api_app_tokens(id,account_id,household_membership_id,name,token_digest,permissions_version,expires_at,last_used_at,created_at,updated_at) VALUES(98002,71001,74001,'Synthetic care app',$1,1,now()+interval '1 month',now(),now(),now())",
         [hex::encode(Sha256::digest(app_token.as_bytes())).into()],
     )).await.unwrap();
-    app.fixture.admin.execute_unprepared("INSERT INTO households(id,name,slug,timezone,created_at,updated_at) VALUES(72002,'Other permitted household','other-permitted-household','UTC',now(),now()); INSERT INTO people(id,household_id,account_id,name,person_type,has_capacity,created_at,updated_at) VALUES(73103,72002,71001,'Other household person',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,account_id,person_id,role,status,permissions_version,joined_at,created_at,updated_at) VALUES(74002,72002,71001,73103,'owner','active',1,now(),now(),now())").await.unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO households(id,name,slug,timezone,created_at,updated_at) VALUES(72002,'Other permitted household','other-permitted-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,permissions_version,joined_at,created_at,updated_at) VALUES(74002,72002,73001,'owner','active',1,now(),now(),now())").await.unwrap();
     let mut statuses = Vec::new();
     for token in [session, app_token] {
         for resource in ["people", "admin/invitations"] {

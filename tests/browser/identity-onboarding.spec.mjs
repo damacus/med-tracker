@@ -16,7 +16,7 @@ async function pendingAccount(page, fixture, email, password) {
   await page.getByLabel('Email', { exact: true }).fill(email);
   await page.getByRole('button', { name: 'Create Account', exact: true }).click();
   const account = await fixture.registrationProbe(email);
-  expect(account).toMatchObject({ accounts: 1, status: 1, people: 1, users: 1, households: 1, owners: 1, self_grants: 1 });
+  expect(account).toMatchObject({ accounts: 1, status: 1, people: 1, users: 1, households: 1, owners: 1, self_grants: 0 });
   const messages = async () => {
     const response = await fetch(`${fixture.mailpitUrl}/api/v1/messages?limit=50`);
     expect(response.ok).toBe(true);

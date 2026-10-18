@@ -45,9 +45,9 @@ test('medication ordering and receipt preserve stock, validate drafts and enforc
   await expect(page.getByText('Receiving an order does not change stock. Use Adjust stock to record the delivered quantity.', { exact: true })).toBeVisible();
   expect(await careFixture.orderProbe()).toMatchObject({ status: 2, supply: '10.00', supplier: 'Synthetic pharmacy', quantity: '20.00', received_audits: 1 });
   const current = await page.locator('form[action$="/order"]').evaluate(form => Object.fromEntries(new FormData(form)));
-  await careFixture.revoke();
-  expect((await page.request.post(`${detail}/order`, { form: current, headers: { Origin: careFixture.origin }, maxRedirects: 0 })).status()).toBe(404);
-  expect((await page.request.post(`${detail}/received`, { form: current, headers: { Origin: careFixture.origin }, maxRedirects: 0 })).status()).toBe(404);
+  await careFixture.withdrawMembership();
+  expect((await page.request.post(`${detail}/order`, { form: current, headers: { Origin: careFixture.origin }, maxRedirects: 0 })).status()).toBe(403);
+  expect((await page.request.post(`${detail}/received`, { form: current, headers: { Origin: careFixture.origin }, maxRedirects: 0 })).status()).toBe(403);
   expect(await careFixture.orderProbe()).toMatchObject({ status: 2, supply: '10.00', ordered_audits: 1, received_audits: 1 });
 });
 

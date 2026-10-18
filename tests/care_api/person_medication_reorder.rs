@@ -174,25 +174,11 @@ async fn person_medication_reorder_validates_direction_and_body() {
 }
 
 #[tokio::test]
-async fn person_medication_reorder_requires_manage_access() {
+async fn person_medication_reorder_requires_current_membership() {
     let app = Application::new().await;
     app.fixture.seed_foreign_household(72002).await;
     let token = app.token().await;
     seed_second_assignment(&app).await;
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE person_access_grants SET access_level='view' WHERE id=78001")
-        .await
-        .unwrap();
-    let denied = app
-        .client
-        .patch(reorder_url(&app, "81002"))
-        .bearer_auth(&token)
-        .json(&json!({"direction":"up"}))
-        .send()
-        .await
-        .unwrap();
-    let denied_status = denied.status().as_u16();
     let foreign = app
         .client
         .patch(format!(
@@ -214,6 +200,20 @@ async fn person_medication_reorder_requires_manage_access() {
         .await
         .unwrap();
     let missing_status = missing_row.status().as_u16();
+    app.fixture
+        .admin
+        .execute_unprepared("UPDATE person_access_grants SET access_level='view' WHERE id=78001; UPDATE household_memberships SET revoked_at=now() WHERE id=74001")
+        .await
+        .unwrap();
+    let denied = app
+        .client
+        .patch(reorder_url(&app, "81002"))
+        .bearer_auth(&token)
+        .json(&json!({"direction":"up"}))
+        .send()
+        .await
+        .unwrap();
+    let denied_status = denied.status().as_u16();
     let anonymous = app
         .client
         .patch(reorder_url(&app, "81002"))

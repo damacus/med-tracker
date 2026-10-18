@@ -101,7 +101,10 @@ async fn handle(
         )
         .await;
     };
-    if object.len() != 1 {
+    if object
+        .keys()
+        .any(|key| !matches!(key.as_str(), "bundle" | "initial_guardian_declarations"))
+    {
         return finish(
             tenant,
             principal.provenance(),
@@ -113,6 +116,21 @@ async fn handle(
         )
         .await;
     }
+    let initial_declarations = match care::portable_imports::InitialDeclarations::parse(
+        object.get("initial_guardian_declarations"),
+    ) {
+        Ok(value) => value,
+        Err(error) => {
+            return finish(
+                tenant,
+                principal.provenance(),
+                audit(),
+                Err(response::operation(error)),
+                &request_id,
+            )
+            .await;
+        }
+    };
     let Some(passphrase) = passphrase(&headers) else {
         return finish(
             tenant,
@@ -172,7 +190,12 @@ async fn handle(
         Ok(value) => value,
         Err(error) => return response::error(error, &request_id),
     };
-    if let Err(error) = care::sync::lock(&tenant).await {
+    let locked = async {
+        care::guardian_declarations::lock_creator_account(&tenant).await?;
+        care::sync::lock(&tenant).await
+    }
+    .await;
+    if let Err(error) = locked {
         return finish(
             tenant,
             principal.provenance(),
@@ -197,7 +220,34 @@ async fn handle(
                 .await;
             }
         };
-    let allowed = match care::portable_imports::authorized(&tenant, &plan, &index).await {
+    let today = chrono::Utc::now()
+        .with_timezone(&principal.time_zone())
+        .date_naive();
+    let mut declarations = match initial_declarations
+        .prepare(&tenant, &plan, &index, today)
+        .await
+    {
+        Ok(value) => value,
+        Err(error) => {
+            return finish(
+                tenant,
+                principal.provenance(),
+                audit(),
+                Err(response::operation(error)),
+                &request_id,
+            )
+            .await;
+        }
+    };
+    let allowed = match care::portable_imports::authorized(
+        &tenant,
+        &plan,
+        &index,
+        &declarations,
+        today,
+    )
+    .await
+    {
         Ok(allowed) => allowed,
         Err(error) => {
             return finish(
@@ -257,6 +307,7 @@ async fn handle(
         &plan,
         &mut index,
         &request_id,
+        &mut declarations,
     )
     .await
     {

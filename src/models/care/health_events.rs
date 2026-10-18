@@ -14,7 +14,8 @@ fn scope(tenant: &TenantTransaction) -> sea_orm::Select<health_event::Entity> {
     health_event::Entity::find()
         .in_tenant(tenant.scope().household_id)
         .filter(
-            health_event::Column::PersonId.in_subquery(access::granted_people(tenant.membership())),
+            health_event::Column::PersonId
+                .in_subquery(access::participating_people(tenant.membership())),
         )
 }
 

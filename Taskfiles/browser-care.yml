@@ -370,11 +370,11 @@ tasks:
         psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction
         -c "UPDATE public.household_memberships SET role='owner' WHERE id=74001;
         UPDATE public.people SET date_of_birth=current_date-interval '10 years' WHERE id=73002;
-        INSERT INTO public.accounts(id,email,status,password_hash,created_at,updated_at) VALUES(71003,'administration-member@example.test',2,crypt('password',gen_salt('bf',4)),now(),now());
-        INSERT INTO public.people(id,account_id,household_id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73004,71003,72001,'Synthetic administration member',current_date-interval '30 years',0,true,now(),now());
+        INSERT INTO public.people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73004,'Synthetic administration member',current_date-interval '30 years',0,true,now(),now());
+        INSERT INTO public.accounts(id,person_id,name,email,status,password_hash,created_at,updated_at) VALUES(71003,73004,'Synthetic administration member','administration-member@example.test',2,crypt('password',gen_salt('bf',4)),now(),now());
         INSERT INTO public.users(id,person_id,email_address,password_digest,created_at,updated_at) VALUES(77002,73004,'administration-member@example.test',crypt('password',gen_salt('bf',4)),now(),now());
         INSERT INTO public.identity_onboarding(account_id,recovery_saved_at) VALUES(71003,now());
-        INSERT INTO public.household_memberships(id,account_id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74002,71003,72001,73004,'member',now(),now(),now());
+        INSERT INTO public.household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74002,72001,73004,'member',now(),now(),now());
         INSERT INTO public.person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,created_at,updated_at) VALUES(78004,72001,74002,73004,'manage','self',now(),now()),(78005,72001,74001,73002,'view','parent',now(),now()),(78006,72001,74001,73004,'view','family_member',now(),now());"
   seed-platform:
     requires:
@@ -391,7 +391,7 @@ tasks:
         'admin_target',EXISTS(SELECT 1 FROM public.platform_admins WHERE account_id=71004 AND status='active'),
         'target_active',(SELECT active FROM public.users WHERE id=77006),
         'recovery_member_role',(SELECT role FROM public.household_memberships WHERE id=74601),
-        'admin_membership_fabricated',EXISTS(SELECT 1 FROM public.household_memberships WHERE account_id=71001 AND household_id IN (72601,72602)),
+        'admin_membership_fabricated',EXISTS(SELECT 1 FROM public.household_memberships WHERE person_id=(SELECT person_id FROM public.accounts WHERE id=71001) AND household_id IN (72601,72602)),
         'invite_only',(SELECT COALESCE(bool_or(invite_only),false) FROM public.app_settings),
         'support_state',(SELECT CASE WHEN ended_at IS NOT NULL THEN 'ended' WHEN activated_at IS NOT NULL THEN 'active' WHEN approved_at IS NOT NULL THEN 'approved' ELSE 'requested' END FROM public.support_access_sessions WHERE household_id=72602 ORDER BY id DESC LIMIT 1),
         'support_id',(SELECT id FROM public.support_access_sessions WHERE household_id=72602 ORDER BY id DESC LIMIT 1))"
@@ -477,13 +477,28 @@ tasks:
     cmds:
       - >-
         psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align
-        -c "WITH created AS (SELECT id,person_type,has_capacity FROM public.people WHERE household_id=72001 AND email='synthetic-browser-minor@example.test') SELECT json_build_object(
+        -c "WITH created AS (SELECT id,person_type,has_capacity FROM public.people WHERE EXISTS(SELECT 1 FROM public.household_memberships m WHERE m.person_id=people.id AND m.household_id=72001) AND email='synthetic-browser-minor@example.test') SELECT json_build_object(
         'person_type',(SELECT person_type FROM created),
         'has_capacity',(SELECT has_capacity FROM created),
         'manage_grant',EXISTS(SELECT 1 FROM public.person_access_grants WHERE person_id IN(SELECT id FROM created) AND household_membership_id=74001 AND access_level='manage' AND revoked_at IS NULL),
         'carer',EXISTS(SELECT 1 FROM public.carer_relationships WHERE patient_id IN(SELECT id FROM created) AND carer_id=73001 AND active=true),
         'home',EXISTS(SELECT 1 FROM public.location_memberships lm JOIN public.locations l ON l.id=lm.location_id WHERE lm.person_id IN(SELECT id FROM created) AND l.household_id=72001 AND l.name='Home'),
-        'permissions_version',(SELECT permissions_version FROM public.household_memberships WHERE id=74001))"
+        'permissions_version',(SELECT permissions_version FROM public.household_memberships WHERE id=74001),
+        'created_count',(SELECT count(*) FROM created),
+        'foreign_supply',(SELECT current_supply::text FROM public.medications WHERE id=80002 AND household_id=72002),
+        'account_count',(SELECT count(*) FROM public.accounts),
+        'user_count',(SELECT count(*) FROM public.users),
+        'subject_accounts',(SELECT count(*) FROM public.accounts WHERE person_id IN(SELECT id FROM created)),
+        'subject_users',(SELECT count(*) FROM public.users WHERE person_id IN(SELECT id FROM created)),
+        'participation_count',(SELECT count(*) FROM public.household_memberships WHERE person_id IN(SELECT id FROM created) AND household_id=72001 AND status='active' AND revoked_at IS NULL),
+        'declaration_count',(SELECT count(*) FROM public.guardian_declarations WHERE subject_person_id IN(SELECT id FROM created)),
+        'recorded_count',(SELECT count(*) FROM public.guardian_declarations WHERE subject_person_id IN(SELECT id FROM created) AND withdrawn_at IS NULL),
+        'withdrawn_count',(SELECT count(*) FROM public.guardian_declarations WHERE subject_person_id IN(SELECT id FROM created) AND withdrawn_at IS NOT NULL),
+        'declaration_revision',(SELECT revision::text FROM public.guardian_declarations WHERE subject_person_id IN(SELECT id FROM created)),
+        'captured_name',(SELECT subject_name_at_declaration FROM public.guardian_declarations WHERE subject_person_id IN(SELECT id FROM created)),
+        'linked_carer_count',(SELECT count(*) FROM public.carer_relationships c JOIN public.guardian_declarations d ON d.id=c.guardian_declaration_id WHERE c.patient_id IN(SELECT id FROM created) AND c.household_id=72001 AND c.carer_id=73001 AND c.active AND d.subject_person_id=c.patient_id AND d.guardian_person_id=c.carer_id),
+        'creation_provenance',EXISTS(SELECT 1 FROM public.guardian_declarations d JOIN public.versions v ON v.item_type='GuardianDeclaration' AND v.item_id=d.id AND v.event='create' JOIN public.users u ON u.person_id=73001 JOIN public.security_audit_events a ON a.event_type='guardian_declaration.created' AND a.metadata->>'id'=d.id::text WHERE d.subject_person_id IN(SELECT id FROM created) AND d.guardian_person_id=73001 AND d.declared_by_account_id=71001 AND d.origin_household_id=72001 AND d.statement_version=1 AND v.whodunnit=u.id::text AND v.household_id=72001 AND v.actor_membership_id=74001 AND a.actor_account_id=71001 AND a.actor_membership_id=74001 AND a.household_id=72001 AND v.request_id IS NOT NULL AND a.request_id=v.request_id),
+        'withdrawal_provenance',EXISTS(SELECT 1 FROM public.guardian_declarations d JOIN public.versions v ON v.item_type='GuardianDeclaration' AND v.item_id=d.id AND v.event='withdraw' JOIN public.users u ON u.person_id=73001 WHERE d.subject_person_id IN(SELECT id FROM created) AND d.withdrawn_at IS NOT NULL AND d.revision=2 AND v.whodunnit=u.id::text AND v.household_id IS NULL AND v.actor_membership_id IS NULL AND v.audit_context->>'actor_account_id'='71001' AND v.audit_context->>'actor_person_id'='73001' AND v.request_id IS NOT NULL))"
   seed-recovery:
     requires:
       vars: [CARE_DATABASE_URL]
@@ -747,7 +762,28 @@ tasks:
     cmds:
       - >-
         psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1
-        -c "UPDATE public.household_memberships SET revoked_at=clock_timestamp() WHERE id=74001 AND account_id=71001 AND household_id=72001;"
+        -c "UPDATE public.household_memberships SET status='revoked',revoked_at=clock_timestamp(),permissions_version=permissions_version+1,updated_at=clock_timestamp() WHERE id=74001 AND person_id=(SELECT person_id FROM public.accounts WHERE id=71001) AND household_id=72001 AND status='active' AND revoked_at IS NULL;"
+  restore-care-membership:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1
+        -c "UPDATE public.household_memberships SET status='active',revoked_at=NULL,permissions_version=permissions_version+1,updated_at=clock_timestamp() WHERE id=74001 AND person_id=(SELECT person_id FROM public.accounts WHERE id=71001) AND household_id=72001 AND status='revoked' AND revoked_at IS NOT NULL;"
+  care-membership-probe:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align
+        -c "SELECT json_build_object('status',m.status,'revoked',m.revoked_at IS NOT NULL,'permissions_version',m.permissions_version,'account_status',a.status,'sessions',(SELECT count(*) FROM public.identity_sessions WHERE account_id=a.id AND active),'legacy_grant_revoked',(SELECT revoked_at IS NOT NULL FROM public.person_access_grants WHERE id=78001)) FROM public.household_memberships m JOIN public.accounts a ON a.person_id=m.person_id WHERE m.id={{.CARE_MEMBERSHIP_ID | default "74001"}} AND m.household_id=72001 AND a.id={{.CARE_ACCOUNT_ID | default "71001"}};"
+  withdraw-administration-membership:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - >-
+        psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1
+        -c "UPDATE public.household_memberships SET status='revoked',revoked_at=clock_timestamp(),permissions_version=permissions_version+1,updated_at=clock_timestamp() WHERE id=74002 AND person_id=(SELECT person_id FROM public.accounts WHERE id=71003) AND household_id=72001 AND status='active' AND revoked_at IS NULL;"
   expire-personal-keys:
     requires:
       vars: [CARE_DATABASE_URL]
@@ -782,7 +818,7 @@ tasks:
     cmds:
       - >-
         psql "{{.CARE_DATABASE_URL}}" -XAt -v ON_ERROR_STOP=1
-        -c "SELECT json_build_object('closed',(SELECT status=3 FROM public.accounts WHERE id=71001),'memberships_ended',NOT EXISTS(SELECT 1 FROM public.household_memberships WHERE account_id=71001 AND revoked_at IS NULL),'credentials_preserved',EXISTS(SELECT 1 FROM public.identity_provider_accounts WHERE account_id=71001),'sessions_revoked',NOT EXISTS(SELECT 1 FROM public.identity_sessions WHERE account_id=71001 AND active),'care_preserved',EXISTS(SELECT 1 FROM public.medications WHERE id=80001) AND EXISTS(SELECT 1 FROM public.people WHERE id=73001),'rollback_preserved',(SELECT password_hash IS NOT NULL FROM public.accounts WHERE id=71001));"
+        -c "SELECT json_build_object('closed',(SELECT status=3 FROM public.accounts WHERE id=71001),'memberships_ended',NOT EXISTS(SELECT 1 FROM public.household_memberships WHERE person_id=(SELECT person_id FROM public.accounts WHERE id=71001) AND revoked_at IS NULL),'credentials_preserved',EXISTS(SELECT 1 FROM public.identity_provider_accounts WHERE account_id=71001),'sessions_revoked',NOT EXISTS(SELECT 1 FROM public.identity_sessions WHERE account_id=71001 AND active),'care_preserved',EXISTS(SELECT 1 FROM public.medications WHERE id=80001) AND EXISTS(SELECT 1 FROM public.people WHERE id=73001),'rollback_preserved',(SELECT password_hash IS NOT NULL FROM public.accounts WHERE id=71001));"
   fail-closure-audit:
     requires:
       vars: [CARE_DATABASE_URL]
@@ -803,7 +839,7 @@ tasks:
     cmds:
       - >-
         psql "{{.CARE_DATABASE_URL}}" -XAt -v ON_ERROR_STOP=1
-        -c "SELECT json_build_object('canonical_user_email_aligned',EXISTS(SELECT 1 FROM public.accounts a JOIN public.people p ON p.account_id=a.id JOIN public.users u ON u.person_id=p.id WHERE a.id=71001 AND u.email_address=a.email::text));"
+        -c "SELECT json_build_object('canonical_user_email_aligned',EXISTS(SELECT 1 FROM public.accounts a JOIN public.people p ON p.id=a.person_id JOIN public.users u ON u.person_id=p.id WHERE a.id=71001 AND u.email_address=a.email::text));"
   fail-email-audit:
     requires:
       vars: [CARE_DATABASE_URL]
@@ -958,7 +994,7 @@ tasks:
     requires:
       vars: [CARE_DATABASE_URL]
     cmds:
-      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -c "UPDATE public.person_access_grants SET access_level=''manage'' WHERE id=78005"'
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction -f tests/fixtures/browser-person-carer-existing.sql'
   person-carer-probe:
     requires:
       vars: [CARE_DATABASE_URL]

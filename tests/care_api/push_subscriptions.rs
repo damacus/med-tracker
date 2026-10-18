@@ -162,7 +162,8 @@ async fn push_subscription_rejects_unsafe_endpoints_and_ambiguous_revocation() {
 async fn push_subscription_cannot_transfer_or_revoke_another_accounts_device() {
     let app = Application::new().await;
     app.fixture.admin.execute_unprepared(
-        "INSERT INTO accounts(id,email,created_at,updated_at) VALUES(71333,'synthetic-push-owner@example.test',now(),now());
+        "INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73333,'Synthetic foreign push subscription owner',0,true,now(),now());
+         INSERT INTO accounts(id,person_id,email,created_at,updated_at) VALUES(71333,73333,'synthetic-push-owner@example.test',now(),now());
          INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at)
          VALUES(71333,'https://fcm.googleapis.com/fcm/send/synthetic-foreign','synthetic-marker','synthetic-marker',now(),now())"
     ).await.unwrap();

@@ -65,7 +65,7 @@ async fn better_auth_expired_challenge_is_deleted_without_authentication() {
 #[tokio::test]
 async fn better_auth_storage_hides_other_accounts_and_rolls_back_writes() {
     let fixture = Fixture::new().await;
-    fixture.admin.execute_unprepared("INSERT INTO public.accounts(id,email,password_hash,status,created_at,updated_at) VALUES(71002,'isolation-other@example.test',crypt('password',gen_salt('bf',4)),2,now(),now())").await.unwrap();
+    fixture.admin.execute_unprepared("INSERT INTO public.people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73004,'Synthetic isolated account owner',0,true,now(),now()); INSERT INTO public.accounts(id,person_id,email,password_hash,status,created_at,updated_at) VALUES(71002,73004,'isolation-other@example.test',crypt('password',gen_salt('bf',4)),2,now(),now())").await.unwrap();
     fixture.admin.execute_unprepared("INSERT INTO identity_sessions(id,account_id,token,expires_at) VALUES('synthetic-owner-session',71001,'synthetic-owner-token',CURRENT_TIMESTAMP+interval '1 day')").await.unwrap();
     let transaction = fixture.runtime.begin().await.unwrap();
     transaction.execute_unprepared("SET LOCAL ROLE med_tracker_app; SELECT set_config('med_tracker.current_account_id','71002',true)").await.unwrap();

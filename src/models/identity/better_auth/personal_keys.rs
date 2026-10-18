@@ -90,7 +90,7 @@ pub(super) async fn validate(
         )
         .await?;
         transaction.query_one_raw(statement("SELECT id FROM public.households WHERE id=$1 AND status='active' AND lifecycle_state='active' FOR SHARE", [household.into()])).await.map_err(database_error)?.ok_or(AuthError::InvalidCredentials)?;
-        transaction.query_one_raw(statement("SELECT id FROM public.household_memberships WHERE account_id=$1 AND household_id=$2 AND status='active' AND revoked_at IS NULL FOR SHARE", [clinical_id(&user.id)?.into(), household.into()])).await.map_err(database_error)?.ok_or(AuthError::InvalidCredentials)?;
+        transaction.query_one_raw(statement("SELECT id FROM public.household_memberships WHERE person_id=(SELECT person_id FROM public.accounts WHERE id=$1) AND household_id=$2 AND status='active' AND revoked_at IS NULL FOR SHARE", [clinical_id(&user.id)?.into(), household.into()])).await.map_err(database_error)?.ok_or(AuthError::InvalidCredentials)?;
         let (membership, _) = access::verify_membership(
             &transaction,
             &HouseholdScope {
@@ -319,7 +319,7 @@ impl Principal {
             .await
             .map_err(|_| AuthenticationError::Unavailable)?
             .ok_or(AuthenticationError::Unauthenticated)?;
-        transaction.query_one_raw(statement("SELECT id FROM public.household_memberships WHERE account_id=$1 AND household_id=$2 AND status='active' AND revoked_at IS NULL FOR SHARE", [self.account_id.into(), scope.household_id.into()])).await.map_err(|_| AuthenticationError::Unavailable)?.ok_or(AuthenticationError::Forbidden)?;
+        transaction.query_one_raw(statement("SELECT id FROM public.household_memberships WHERE person_id=(SELECT person_id FROM public.accounts WHERE id=$1) AND household_id=$2 AND status='active' AND revoked_at IS NULL FOR SHARE", [self.account_id.into(), scope.household_id.into()])).await.map_err(|_| AuthenticationError::Unavailable)?.ok_or(AuthenticationError::Forbidden)?;
         let row = transaction.query_one_raw(statement("SELECT payload FROM public.identity_api_keys WHERE id=$1 AND account_id=$2 AND expires_at>clock_timestamp() AND payload->>'configId'=$3 AND payload->>'enabled'='true' FOR SHARE", [self.id.clone().into(), self.account_id.into(), CONFIG.into()])).await.map_err(|_| AuthenticationError::Unavailable)?.ok_or(AuthenticationError::Unauthenticated)?;
         let payload: Value = row
             .try_get("", "payload")

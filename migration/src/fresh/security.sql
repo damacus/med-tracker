@@ -135,7 +135,15 @@ CREATE POLICY household_tenant_isolation ON public.household_invitation_grants U
 
 CREATE POLICY household_tenant_isolation ON public.household_invitations USING (((household_id = med_tracker.current_household_id()) OR (((token_digest)::text = med_tracker.current_invitation_token_digest()) AND (accepted_at IS NULL) AND (revoked_at IS NULL) AND (expires_at > CURRENT_TIMESTAMP)))) WITH CHECK ((household_id = med_tracker.current_household_id()));
 
-CREATE POLICY household_tenant_isolation ON public.household_memberships USING (((household_id = med_tracker.current_household_id()) OR (account_id = med_tracker.current_account_id()))) WITH CHECK ((household_id = med_tracker.current_household_id()));
+CREATE POLICY household_tenant_isolation ON public.household_memberships
+USING (
+  household_id = med_tracker.current_household_id()
+  OR person_id = (
+    SELECT a.person_id FROM public.accounts a
+    WHERE a.id = med_tracker.current_account_id()
+  )
+)
+WITH CHECK (household_id = med_tracker.current_household_id());
 
 CREATE POLICY household_tenant_isolation ON public.household_retention_holds USING ((household_id = med_tracker.current_household_id())) WITH CHECK ((household_id = med_tracker.current_household_id()));
 
@@ -157,7 +165,112 @@ CREATE POLICY household_tenant_isolation ON public.notification_events USING ((h
 
 CREATE POLICY household_tenant_isolation ON public.notification_preferences USING ((household_id = med_tracker.current_household_id())) WITH CHECK ((household_id = med_tracker.current_household_id()));
 
-CREATE POLICY household_tenant_isolation ON public.people USING ((household_id = med_tracker.current_household_id())) WITH CHECK ((household_id = med_tracker.current_household_id()));
+CREATE POLICY people_own_identity_select ON public.people FOR SELECT
+USING (id = (SELECT a.person_id FROM public.accounts a
+             WHERE a.id = med_tracker.current_account_id()));
+
+CREATE POLICY people_household_participant_select ON public.people FOR SELECT
+USING (
+  EXISTS (
+    SELECT 1 FROM public.household_memberships subject
+    WHERE subject.person_id = people.id
+      AND subject.household_id = med_tracker.current_household_id()
+      AND subject.status = 'active' AND subject.revoked_at IS NULL
+  )
+  AND EXISTS (
+    SELECT 1 FROM public.household_memberships actor
+    JOIN public.accounts a ON a.person_id = actor.person_id
+    JOIN public.households h ON h.id = actor.household_id
+    WHERE actor.id = med_tracker.current_membership_id()
+      AND a.id = med_tracker.current_account_id() AND a.status = 2
+      AND actor.household_id = med_tracker.current_household_id()
+      AND actor.status = 'active' AND actor.revoked_at IS NULL
+      AND h.status = 'active' AND h.lifecycle_state = 'active'
+      AND NOT EXISTS (SELECT 1 FROM public.account_lockouts l
+                      WHERE l.account_id = a.id
+                        AND l.deadline > pg_catalog.timezone('UTC',pg_catalog.clock_timestamp()))
+  )
+);
+
+
+CREATE POLICY people_own_identity_insert ON public.people FOR INSERT TO med_tracker_app
+WITH CHECK (id = (SELECT a.person_id FROM public.accounts a WHERE a.id = med_tracker.current_account_id()));
+
+CREATE POLICY people_household_insert ON public.people FOR INSERT TO med_tracker_app
+WITH CHECK (EXISTS (
+    SELECT 1 FROM public.household_memberships actor
+    JOIN public.accounts a ON a.person_id = actor.person_id
+    JOIN public.households h ON h.id = actor.household_id
+    WHERE actor.id = med_tracker.current_membership_id()
+      AND a.id = med_tracker.current_account_id() AND a.status = 2
+      AND actor.household_id = med_tracker.current_household_id()
+      AND actor.status = 'active' AND actor.revoked_at IS NULL
+      AND h.status = 'active' AND h.lifecycle_state = 'active'
+      AND NOT EXISTS (SELECT 1 FROM public.account_lockouts l
+                      WHERE l.account_id = a.id
+                        AND l.deadline > pg_catalog.timezone('UTC',pg_catalog.clock_timestamp()))
+  ));
+
+CREATE POLICY people_context_update ON public.people FOR UPDATE TO med_tracker_app
+USING ((id = (SELECT a.person_id FROM public.accounts a WHERE a.id = med_tracker.current_account_id())) OR (  EXISTS (
+    SELECT 1 FROM public.household_memberships subject
+    WHERE subject.person_id = people.id
+      AND subject.household_id = med_tracker.current_household_id()
+      AND subject.status = 'active' AND subject.revoked_at IS NULL
+  )
+  AND EXISTS (
+    SELECT 1 FROM public.household_memberships actor
+    JOIN public.accounts a ON a.person_id = actor.person_id
+    JOIN public.households h ON h.id = actor.household_id
+    WHERE actor.id = med_tracker.current_membership_id()
+      AND a.id = med_tracker.current_account_id() AND a.status = 2
+      AND actor.household_id = med_tracker.current_household_id()
+      AND actor.status = 'active' AND actor.revoked_at IS NULL
+      AND h.status = 'active' AND h.lifecycle_state = 'active'
+      AND NOT EXISTS (SELECT 1 FROM public.account_lockouts l
+                      WHERE l.account_id = a.id
+                        AND l.deadline > pg_catalog.timezone('UTC',pg_catalog.clock_timestamp()))
+  )))
+WITH CHECK ((id = (SELECT a.person_id FROM public.accounts a WHERE a.id = med_tracker.current_account_id())) OR (  EXISTS (
+    SELECT 1 FROM public.household_memberships subject
+    WHERE subject.person_id = people.id
+      AND subject.household_id = med_tracker.current_household_id()
+      AND subject.status = 'active' AND subject.revoked_at IS NULL
+  )
+  AND EXISTS (
+    SELECT 1 FROM public.household_memberships actor
+    JOIN public.accounts a ON a.person_id = actor.person_id
+    JOIN public.households h ON h.id = actor.household_id
+    WHERE actor.id = med_tracker.current_membership_id()
+      AND a.id = med_tracker.current_account_id() AND a.status = 2
+      AND actor.household_id = med_tracker.current_household_id()
+      AND actor.status = 'active' AND actor.revoked_at IS NULL
+      AND h.status = 'active' AND h.lifecycle_state = 'active'
+      AND NOT EXISTS (SELECT 1 FROM public.account_lockouts l
+                      WHERE l.account_id = a.id
+                        AND l.deadline > pg_catalog.timezone('UTC',pg_catalog.clock_timestamp()))
+  )));
+
+CREATE POLICY people_household_delete ON public.people FOR DELETE TO med_tracker_app
+USING (  EXISTS (
+    SELECT 1 FROM public.household_memberships subject
+    WHERE subject.person_id = people.id
+      AND subject.household_id = med_tracker.current_household_id()
+      AND subject.status = 'active' AND subject.revoked_at IS NULL
+  )
+  AND EXISTS (
+    SELECT 1 FROM public.household_memberships actor
+    JOIN public.accounts a ON a.person_id = actor.person_id
+    JOIN public.households h ON h.id = actor.household_id
+    WHERE actor.id = med_tracker.current_membership_id()
+      AND a.id = med_tracker.current_account_id() AND a.status = 2
+      AND actor.household_id = med_tracker.current_household_id()
+      AND actor.status = 'active' AND actor.revoked_at IS NULL
+      AND h.status = 'active' AND h.lifecycle_state = 'active'
+      AND NOT EXISTS (SELECT 1 FROM public.account_lockouts l
+                      WHERE l.account_id = a.id
+                        AND l.deadline > pg_catalog.timezone('UTC',pg_catalog.clock_timestamp()))
+  ));
 
 CREATE POLICY household_tenant_isolation ON public.person_access_grants USING ((household_id = med_tracker.current_household_id())) WITH CHECK ((household_id = med_tracker.current_household_id()));
 
@@ -167,7 +280,6 @@ CREATE POLICY household_tenant_isolation ON public.schedules USING ((household_i
 
 CREATE POLICY household_tenant_isolation ON public.security_audit_events USING ((household_id = med_tracker.current_household_id())) WITH CHECK ((household_id = med_tracker.current_household_id()));
 
-CREATE POLICY people_account_login_lookup ON public.people FOR SELECT TO med_tracker_app USING ((account_id IS NOT NULL));
 
 GRANT USAGE ON SCHEMA med_tracker TO med_tracker_owner;
 GRANT USAGE ON SCHEMA med_tracker TO med_tracker_app;

@@ -19,6 +19,20 @@ pub(crate) fn validated_email(value: &str) -> Result<String, OperationError> {
 }
 
 pub(super) fn attributes(value: &Value) -> Result<(String, String), OperationError> {
+    if [
+        "dependent_ids",
+        "dependent_ids[]",
+        "relationship_type",
+        "access_level",
+    ]
+    .iter()
+    .any(|field| value.get(*field).is_some())
+    {
+        return Err(invalid(
+            "base",
+            "Household invitations cannot assign care authority.",
+        ));
+    }
     let email = validated_email(value.get("email").and_then(Value::as_str).unwrap_or(""))?;
     let role = value
         .get("membership_role")

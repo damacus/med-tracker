@@ -10,149 +10,139 @@ async function signIn(page) {
   await page.getByRole('button', { name: 'Open Synthetic household', exact: true }).click();
 }
 
-test('dependent care page assigns removes and restores the last carer without blocking person editing', async ({ page, careFixture }, info) => {
+async function minorPage(page) {
+  await openCareSection(page, 'People');
+  await page.getByRole('link', { name: 'Synthetic minor', exact: true }).click();
+  return page.url();
+}
+
+async function carePage(page, personUrl) {
+  await page.locator(`a[href="${new URL(personUrl).pathname}/carer_relationships"]`).click();
+  await expect(page.getByRole('heading', { name: 'Parents and carers', level: 1, exact: true })).toBeVisible();
+  await expect(page.getByLabel('Parent or carer', { exact: true })).toHaveCount(0);
+  await expect(page.getByLabel('Parent email', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Save assignment', exact: true })).toHaveCount(0);
+  return new URL(page.url()).pathname;
+}
+
+async function existingCsrf(page, personUrl, returnPath) {
+  const selfPath = new URL(personUrl).pathname.replace(/\/people\/\d+$/, '/people/73001/edit');
+  await page.goto(selfPath);
+  const token = await page.locator('input[name="authenticity_token"]').first().inputValue();
+  expect(token).not.toBe('');
+  await page.goto(returnPath);
+  return token;
+}
+
+function relationshipVersion(value) {
+  return value.replace(/\.(\d{1,6})$/, (_, fraction) => `.${fraction.padEnd(fraction.length <= 3 ? 3 : 6, '0')}`);
+}
+
+test('existing dependent care remains readable and removable without offering new authority', async ({ page, careFixture }, info) => {
   test.setTimeout(180000);
+  for (const [input, expected] of [
+    ['2026-10-17 12:00:00', '2026-10-17 12:00:00'],
+    ['2026-10-17 12:00:00.1', '2026-10-17 12:00:00.100'],
+    ['2026-10-17 12:00:00.1234', '2026-10-17 12:00:00.123400'],
+    ['2026-10-17 12:00:00.123456', '2026-10-17 12:00:00.123456'],
+  ]) expect(relationshipVersion(input)).toBe(expected);
   await careFixture.seedAdministration();
   await careFixture.personCarerManager();
   await signIn(page);
-  await openCareSection(page, 'People');
-  await page.getByRole('link', { name: 'Synthetic minor', exact: true }).click();
-  const personUrl = page.url();
-  await expect(page.getByText('No active carer is assigned.', { exact: true })).toBeVisible();
-  await page.getByRole('link', { name: 'Assign or invite a carer', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Manage parents', exact: true })).toBeVisible();
+  const personUrl = await minorPage(page);
+  const path = await carePage(page, personUrl);
+  await expect(page.getByText('Synthetic administration member', { exact: true })).toBeVisible();
+  expect(await careFixture.personCarerProbe()).toMatchObject({ active_carers: 1, delegated_access: true, independent_manage: true });
   for (const colorScheme of ['light', 'dark']) {
     await page.emulateMedia({ colorScheme });
     await expect(page.locator('html')).toHaveAttribute('data-theme', `default-${colorScheme}`);
-    const contrast = await measureCareContrast(page);
-    for (const sample of contrast) expect(sample.ratio, sample.selector).toBeGreaterThanOrEqual(4.5);
+    for (const sample of await measureCareContrast(page)) expect(sample.ratio, sample.selector).toBeGreaterThanOrEqual(4.5);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-    await page.screenshot({ path: info.outputPath(`person-carers-form-${info.project.name}-${colorScheme}.png`), fullPage: true });
+    await page.screenshot({ path: info.outputPath(`person-carers-recorded-${info.project.name}-${colorScheme}.png`), fullPage: true });
   }
   const originalViewport = page.viewportSize();
   await page.setViewportSize({ width: 320, height: 900 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.setViewportSize(originalViewport);
-  await page.getByLabel('Parent or carer', { exact: true }).focus();
-  await page.keyboard.press('Tab');
-  await expect(page.getByLabel('Relationship type', { exact: true })).toBeFocused();
-  const formFields = await page.getByRole('main').locator('form[method="post"]').first().evaluate(form => Object.fromEntries(new FormData(form)));
-  const formAction = await page.getByRole('main').locator('form[method="post"]').first().getAttribute('action');
-  const beforeForged = await careFixture.personCarerProbe();
+  const remove = page.getByRole('button', { name: 'Remove carer', exact: true });
+  await remove.focus();
+  await expect(remove).toBeFocused();
+  const form = remove.locator('..');
+  const fields = await form.evaluate(element => Object.fromEntries(new FormData(element)));
+  const action = await form.getAttribute('action');
+  const before = await careFixture.personCarerProbe();
   for (const authenticity_token of ['', 'wrong']) {
-    const denied = await page.request.post(formAction, { form: { ...formFields, authenticity_token }, headers: { Origin: careFixture.origin }, maxRedirects: 0 });
+    const denied = await page.request.post(action, { form: { ...fields, authenticity_token }, headers: { Origin: careFixture.origin }, maxRedirects: 0 });
     expect(denied.status()).toBe(403);
-    expect(await careFixture.personCarerProbe()).toEqual(beforeForged);
+    expect(await careFixture.personCarerProbe()).toEqual(before);
   }
-  await page.getByLabel('Parent or carer', { exact: true }).selectOption({ label: 'Synthetic administration member' });
-  await page.getByLabel('Relationship type', { exact: true }).selectOption('parent');
-  await page.getByRole('button', { name: 'Save assignment', exact: true }).click();
-  await expect(page).toHaveURL(personUrl);
-  expect(await careFixture.personCarerProbe()).toMatchObject({ person_type: 1, has_capacity: false, active_carers: 1, delegated_access: true, independent_manage: true });
-  await expect(page.getByText('No active carer is assigned.', { exact: true })).toHaveCount(0);
-  await page.getByRole('link', { name: 'Manage parents', exact: true }).click();
-  await page.getByRole('button', { name: 'Remove carer', exact: true }).click();
+  const assigned = await page.request.post(path, { form: { authenticity_token: fields.authenticity_token, carer_id: '73004', relationship_type: 'parent' }, headers: { Origin: careFixture.origin }, maxRedirects: 0 });
+  expect(assigned.status()).toBe(403);
+  expect(await careFixture.personCarerProbe()).toEqual(before);
+  await remove.click();
   await expect(page.getByText('No active carer is assigned.', { exact: true })).toBeVisible();
-  expect(await careFixture.personCarerProbe()).toMatchObject({ person_type: 1, has_capacity: false, active_carers: 0, delegated_access: false, independent_manage: true });
+  expect(await careFixture.personCarerProbe()).toMatchObject({ person_type: 1, has_capacity: false, active_carers: 0, delegated_access: false, independent_manage: true, relationship_audits: 1 });
+  await expect(page.getByRole('button', { name: 'Restore carer', exact: true })).toHaveCount(0);
+  const removed = await careFixture.personCarerProbe();
+  const restorePath = action.replace(/\/remove$/, '/restore');
+  const staleRestore = await page.request.post(restorePath, { form: fields, headers: { Origin: careFixture.origin }, maxRedirects: 0 });
+  expect(staleRestore.status()).toBe(409);
+  expect(await careFixture.personCarerProbe()).toEqual(removed);
+  expect(removed.relationship_version).toBeTruthy();
+  const restore = await page.request.post(restorePath, { form: { ...fields, version: relationshipVersion(removed.relationship_version) }, headers: { Origin: careFixture.origin }, maxRedirects: 0 });
+  expect(restore.status()).toBe(403);
+  expect(await careFixture.personCarerProbe()).toEqual(removed);
   await page.goto(personUrl);
   await page.getByRole('link', { name: 'Edit Person', exact: true }).click();
   await page.getByLabel('Name', { exact: true }).fill('Synthetic edited minor without carer');
   await page.getByRole('button', { name: 'Update Person', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Synthetic edited minor without carer', exact: true })).toBeVisible();
   await expect(page.getByText('No active carer is assigned.', { exact: true })).toBeVisible();
-  await page.getByRole('link', { name: 'Manage parents', exact: true }).click();
-  await page.getByRole('button', { name: 'Restore carer', exact: true }).click();
-  await expect(page.getByText('No active carer is assigned.', { exact: true })).toHaveCount(0);
 });
 
-test('person manager assigns an eligible parent by email without household administration powers', async ({ page, careFixture }) => {
+test('ordinary member can read existing care but cannot assign or remove another carer', async ({ page, careFixture }) => {
   await careFixture.seedAdministration();
+  await careFixture.personCarerManager();
   await careFixture.personCarerNonmanager();
   await signIn(page);
-  await openCareSection(page, 'People');
-  await page.getByRole('link', { name: 'Synthetic minor', exact: true }).click();
-  const personUrl = page.url();
-  await page.getByRole('link', { name: 'Assign or invite a carer', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Manage parents', exact: true })).toBeVisible({ timeout: 5000 });
-  await expect(page.getByLabel('Relationship type', { exact: true })).toHaveCount(0);
-  await expect(page.getByLabel('Parent or carer', { exact: true })).toHaveCount(0);
-  await page.getByLabel('Parent email', { exact: true }).fill('administration-member@example.test');
-  await page.getByRole('button', { name: 'Save assignment', exact: true }).click();
-  await expect(page).toHaveURL(personUrl);
-  expect(await careFixture.personCarerProbe()).toMatchObject({ person_type: 1, has_capacity: false, active_carers: 1, delegated_access: true, independent_manage: true });
-  await page.getByRole('link', { name: 'Manage parents', exact: true }).click();
+  const personUrl = await minorPage(page);
+  const path = await carePage(page, personUrl);
+  await expect(page.getByText('Synthetic administration member', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Remove carer', exact: true })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Restore carer', exact: true })).toHaveCount(0);
+  const csrf = await existingCsrf(page, personUrl, path);
+  const before = await careFixture.personCarerProbe();
+  const denied = await page.request.post(path, { form: { authenticity_token: csrf, email: 'administration-member@example.test' }, headers: { Origin: careFixture.origin }, maxRedirects: 0 });
+  expect(denied.status()).toBe(403);
+  expect(await careFixture.personCarerProbe()).toEqual(before);
 });
 
-test.describe('person-scoped parent invitations', () => {
+test.describe('unsupported person-scoped parent invitations', () => {
   test.use({ captureMail: true });
 
-  test('nonmanager parent invitation delivers once and reuses the compatible pending grant', async ({ browser, page, careFixture }) => {
-    test.setTimeout(180000);
+  test('parent label cannot issue a dependent authority invitation or enqueue mail', async ({ page, careFixture }) => {
     await careFixture.seedAdministration();
     await careFixture.personCarerNonmanager();
     await signIn(page);
-    await openCareSection(page, 'People');
-    await page.getByRole('link', { name: 'Synthetic minor', exact: true }).click();
-    const personUrl = page.url();
+    const personUrl = await minorPage(page);
+    const path = await carePage(page, personUrl);
+    const csrf = await existingCsrf(page, personUrl, path);
     const email = 'person-parent-invitation@example.test';
-    const messages = async () => {
-      const response = await fetch(`${careFixture.mailpitUrl}/api/v1/messages?limit=50`);
-      expect(response.ok).toBe(true);
-      return (await response.json()).messages.filter(message => message.To.some(recipient => recipient.Address === email));
-    };
+    const before = await careFixture.personCarerProbe();
     for (const attempt of [1, 2]) {
-      await page.goto(personUrl);
-      await page.getByRole('link', { name: 'Assign or invite a carer', exact: true }).click();
-      await expect(page.getByRole('heading', { name: 'Manage parents', exact: true })).toBeVisible({ timeout: 5000 });
-      await page.getByLabel('Parent email', { exact: true }).fill(email);
-      await page.getByRole('button', { name: 'Save assignment', exact: true }).click();
-      await expect(page).toHaveURL(personUrl);
-      await expect(page.getByText('No active carer is assigned.', { exact: true })).toBeVisible();
-      expect(await careFixture.invitationProbe(email)).toMatchObject({ count: 1, grants: 1, expired: false, membership_role: 'member', parent_manage_grants: 1 });
-      await expect.poll(async () => (await messages()).length, { timeout: 10000 }).toBe(1);
-      expect((await careFixture.personCarerProbe()).active_carers).toBe(0);
+      const denied = await page.request.post(path, { form: { authenticity_token: csrf, email, relationship_type: 'parent' }, headers: { Origin: careFixture.origin }, maxRedirects: 0 });
+      expect(denied.status(), `attempt ${attempt}`).toBe(403);
+      expect(await careFixture.invitationProbe(email)).toMatchObject({ count: 0, grants: 0, parent_manage_grants: 0 });
+      expect(await careFixture.personCarerProbe()).toEqual(before);
     }
-    const invitation = await (await fetch(`${careFixture.mailpitUrl}/api/v1/message/${(await messages())[0].ID}`)).json();
-    const destination = invitation.Text.match(/http:\/\/localhost:\d+\/invitations\/accept\?token=[A-Za-z0-9_-]+/)[0];
-    const guest = await browser.newContext({ baseURL: careFixture.origin });
-    try {
-      const signup = await guest.newPage();
-      await signup.goto(destination);
-      await expect(signup.getByRole('heading', { name: 'Complete Your Account', exact: true })).toBeVisible();
-      await signup.getByLabel('Name', { exact: true }).fill('Synthetic invited parent');
-      await signup.getByLabel('Date of birth', { exact: true }).fill('1992-05-18');
-      await signup.locator('input[type="password"]').fill('Synthetic-password-12!');
-      await signup.getByRole('button', { name: 'Create Account', exact: true }).click();
-      await expect(signup.getByText('An email has been sent to you with a link to verify your account', { exact: true })).toBeVisible();
-      await expect.poll(async () => (await messages()).length, { timeout: 10000 }).toBe(2);
-      const verification = await (await fetch(`${careFixture.mailpitUrl}/api/v1/message/${(await messages())[0].ID}`)).json();
-      await signup.goto(verification.Text.match(/https?:\S+/)[0]);
-      await signup.getByRole('button', { name: 'Verify and continue', exact: true }).click();
-      await expect(signup.getByRole('heading', { name: 'Save your recovery codes', exact: true })).toBeVisible();
-      await signup.getByRole('button', { name: 'Show recovery codes', exact: true }).click();
-      await signup.getByLabel('I have saved my recovery codes', { exact: true }).check();
-      await signup.getByRole('button', { name: 'Continue', exact: true }).click();
-      await signup.getByRole('button', { name: 'Open Synthetic household', exact: true }).click();
-      await openCareSection(signup, 'People');
-      await signup.getByRole('link', { name: 'Synthetic minor', exact: true }).click();
-      await expect(signup.getByRole('link', { name: 'Edit Person', exact: true })).toBeVisible();
-      await expect(signup.getByText('No active carer is assigned.', { exact: true })).toHaveCount(0);
-      await signup.getByRole('link', { name: 'Manage parents', exact: true }).click();
-      await expect(signup.getByRole('heading', { name: 'Manage parents', exact: true })).toBeVisible();
-      await expect(signup.getByRole('button', { name: 'Remove carer', exact: true })).toHaveCount(0);
-      expect(await careFixture.invitationSignupProbe(email)).toEqual({ accounts: 1, status: 2, people: 1, memberships: 1, accepted: 1 });
-    } finally {
-      await guest.close();
-    }
+    const inbox = await fetch(`${careFixture.mailpitUrl}/api/v1/messages?limit=50`);
+    expect(inbox.ok).toBe(true);
+    expect((await inbox.json()).messages.filter(message => message.To.some(recipient => recipient.Address === email))).toHaveLength(0);
   });
-  test('parent assignment rejects an incompatible pending administrator invitation without widening it', async ({ page, careFixture }) => {
-    test.setTimeout(180000);
+
+  test('parent assignment cannot repurpose an existing household administrator invitation', async ({ page, careFixture }) => {
     await careFixture.seedAdministration();
     await signIn(page);
-    await openCareSection(page, 'People');
-    const peopleUrl = page.url();
+    const personUrl = await minorPage(page);
     await openCareSection(page, 'Administration');
     await page.getByRole('link', { name: 'Invitations', exact: true }).click();
     const email = 'incompatible-person-parent@example.test';
@@ -161,19 +151,15 @@ test.describe('person-scoped parent invitations', () => {
     await page.getByRole('button', { name: 'Send invitation', exact: true }).click();
     await expect(page.getByRole('listitem').filter({ hasText: email })).toContainText('Pending');
     await careFixture.personCarerNonmanager();
-    await page.goto(peopleUrl);
-    await page.getByRole('link', { name: 'Synthetic minor', exact: true }).click();
-    await page.getByRole('link', { name: 'Assign or invite a carer', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'Manage parents', exact: true })).toBeVisible({ timeout: 5000 });
-    await page.getByLabel('Parent email', { exact: true }).fill(email);
-    const invalid = page.waitForResponse(response => response.request().method() === 'POST');
-    await page.getByRole('button', { name: 'Save assignment', exact: true }).click();
-    expect((await invalid).status()).toBe(422);
-    await expect(page.getByLabel('Parent email', { exact: true })).toHaveValue(email);
-    await expect(page.getByRole('alert')).toHaveText('This address has an expired or incompatible invitation. Ask a household manager to review it.');
-    await expect(page.getByLabel('Parent email', { exact: true })).toHaveAccessibleDescription('This address has an expired or incompatible invitation. Ask a household manager to review it.');
-    expect(await careFixture.invitationProbe(email)).toMatchObject({ count: 1, grants: 0, membership_role: 'administrator', parent_manage_grants: 0 });
-    expect((await careFixture.personCarerProbe()).active_carers).toBe(0);
+    await page.goto(personUrl);
+    const path = await carePage(page, personUrl);
+    const csrf = await existingCsrf(page, personUrl, path);
+    const invitation = await careFixture.invitationProbe(email);
+    const care = await careFixture.personCarerProbe();
+    const denied = await page.request.post(path, { form: { authenticity_token: csrf, email, relationship_type: 'parent' }, headers: { Origin: careFixture.origin }, maxRedirects: 0 });
+    expect(denied.status()).toBe(403);
+    expect(await careFixture.invitationProbe(email)).toEqual(invitation);
+    expect(invitation).toMatchObject({ count: 1, grants: 0, membership_role: 'administrator', parent_manage_grants: 0 });
+    expect(await careFixture.personCarerProbe()).toEqual(care);
   });
-
 });

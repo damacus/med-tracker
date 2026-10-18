@@ -1,3 +1,5 @@
+#[path = "tenant_access/global_person.rs"]
+mod global_person;
 #[path = "support/template.rs"]
 mod template;
 use loco_rs::model::{TenantActiveModelExt, TenantQueryExt};
@@ -116,14 +118,14 @@ admin
              VALUES (77001, 73001, 'persistence@example.test', crypt('password', gen_salt('bf', 4)), now(), now());
              INSERT INTO public.person_access_grants(id, household_id, household_membership_id, person_id, access_level, relationship_type, created_at, updated_at)
              VALUES (78001, 72001, 74001, 73001, 'manage', 'self', now(), now());
-             INSERT INTO public.accounts(id, email, status, password_hash, created_at, updated_at)
-             VALUES (71002, 'other@example.test', 2, crypt('password', gen_salt('bf', 4)), now(), now());
+             INSERT INTO public.people(id, name, created_at, updated_at)
+             VALUES (73004, 'Other adult', now(), now());
+             INSERT INTO public.accounts(id, person_id, email, status, password_hash, created_at, updated_at)
+             VALUES (71002, 73004, 'other@example.test', 2, crypt('password', gen_salt('bf', 4)), now(), now());
              INSERT INTO public.households(id, name, slug, timezone, created_at, updated_at)
              VALUES (72002, 'Other household', 'other-fixture', 'Europe/London', now(), now());
-             INSERT INTO public.people(id, account_id, household_id, name, created_at, updated_at)
-             VALUES (73004, 71002, 72002, 'Other adult', now(), now());
-             INSERT INTO public.household_memberships(id, account_id, household_id, person_id, joined_at, created_at, updated_at)
-             VALUES (74002, 71002, 72002, 73004, now(), now(), now());
+             INSERT INTO public.household_memberships(id, household_id, person_id, joined_at, created_at, updated_at)
+             VALUES (74002, 72002, 73004, now(), now(), now());
              INSERT INTO public.users(id, person_id, email_address, password_digest, created_at, updated_at)
              VALUES (77002, 73004, 'other@example.test', crypt('password', gen_salt('bf', 4)), now(), now());
              INSERT INTO public.person_access_grants(id, household_id, household_membership_id, person_id, access_level, relationship_type, created_at, updated_at)
@@ -197,12 +199,11 @@ async fn fixture_uses_canonical_administrator_role() {
 }
 
 #[tokio::test]
-async fn actor_identity_is_independent_of_household_linked_subject() {
+async fn actor_identity_is_independent_of_another_clinical_subject() {
     let fixture = Fixture::new().await;
     fixture.admin.execute_unprepared(
-        "UPDATE public.household_memberships SET person_id = NULL WHERE id = 74002;
-         INSERT INTO public.household_memberships(id, account_id, household_id, person_id, joined_at, created_at, updated_at)
-         VALUES (74003, 71001, 72002, 73004, now(), now(), now());
+        "INSERT INTO public.household_memberships(id, household_id, person_id, joined_at, created_at, updated_at)
+         VALUES (74003, 72002, 73001, now(), now(), now());
          INSERT INTO public.person_access_grants(id, household_id, household_membership_id, person_id, access_level, relationship_type, created_at, updated_at)
          VALUES (78003, 72002, 74003, 73004, 'view', 'carer', now(), now());"
     ).await.unwrap();
@@ -210,15 +211,14 @@ async fn actor_identity_is_independent_of_household_linked_subject() {
         .await
         .unwrap();
     assert_eq!(transaction.user_id(), 77001);
-    assert_eq!(transaction.membership().person_id, Some(73004));
+    assert_eq!(transaction.membership().person_id, 73001);
     assert_eq!(transaction.membership().household_id, 72002);
     access::require_person_access(&transaction, 73004, PersonAccess::View)
         .await
         .unwrap();
-    assert_eq!(
-        access::require_person_access(&transaction, 73001, PersonAccess::View).await,
-        Err(OperationError::Forbidden)
-    );
+    access::require_person_access(&transaction, 73001, PersonAccess::View)
+        .await
+        .unwrap();
     transaction.rollback().await.unwrap();
     assert!(visible_granted_people(&fixture.runtime).await.is_empty());
     fixture.close().await;
@@ -292,30 +292,88 @@ async fn actor_does_not_authorize_another_household() {
     fixture.close().await;
 }
 
-#[tokio::test]
-async fn person_access_rechecks_live_grants() {
-    let fixture = Fixture::new().await;
-    let transaction = access::begin(&fixture.runtime, &scope(71001, 72001), None)
-        .await
-        .unwrap();
-    access::require_person_access(&transaction, 73001, PersonAccess::Manage)
-        .await
-        .unwrap();
-    assert_eq!(
-        access::require_person_access(&transaction, 73004, PersonAccess::View).await,
-        Err(OperationError::Forbidden)
-    );
+async fn seed_accountless_manage_grant(fixture: &Fixture) {
     fixture
         .admin
         .execute_unprepared(
-            "UPDATE public.person_access_grants SET revoked_at = now() WHERE id = 78001",
+            "INSERT INTO public.household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at)
+             VALUES(74501,72001,73003,'member',now(),now(),now());
+             INSERT INTO public.person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,created_at,updated_at)
+             VALUES(78003,72001,74001,73003,'manage','carer',now(),now())",
         )
         .await
         .unwrap();
-    assert_eq!(
-        access::require_person_access(&transaction, 73001, PersonAccess::View).await,
-        Err(OperationError::Forbidden)
-    );
+    let accountless = fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT NOT EXISTS(SELECT 1 FROM public.accounts WHERE person_id=73003) AND NOT EXISTS(SELECT 1 FROM public.users WHERE person_id=73003) AS accountless",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(accountless.try_get::<bool>("", "accountless").unwrap());
+}
+
+async fn assert_person_access_controls(
+    transaction: &access::TenantTransaction,
+    other_manage: bool,
+) {
+    use med_tracker::models::care::people;
+    for request in [
+        PersonAccess::View,
+        PersonAccess::Record,
+        PersonAccess::Manage,
+    ] {
+        assert_eq!(
+            access::require_person_access(transaction, 73001, request).await,
+            Ok(()),
+            "canonical self {request:?}",
+        );
+        assert_eq!(
+            access::require_person_access(transaction, 73003, request).await,
+            if request == PersonAccess::Manage && !other_manage {
+                Err(OperationError::Forbidden)
+            } else {
+                Ok(())
+            },
+            "accountless participant {request:?}, other Manage allowed: {other_manage}",
+        );
+        assert_eq!(
+            access::require_person_access(transaction, 73004, request).await,
+            Err(OperationError::Forbidden),
+            "foreign household subject {request:?}",
+        );
+    }
+    let visible = people::list(transaction, people::Pagination::default(), chrono_tz::UTC)
+        .await
+        .unwrap();
+    assert_eq!(visible["meta"]["total_count"], 2);
+    let ids: Vec<_> = visible["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|person| person["id"].as_i64().unwrap())
+        .collect();
+    assert_eq!(ids, vec![73001, 73003]);
+}
+
+#[tokio::test]
+async fn person_access_rechecks_live_grants() {
+    let fixture = Fixture::new().await;
+    seed_accountless_manage_grant(&fixture).await;
+    let transaction = access::begin(&fixture.runtime, &scope(71001, 72001), None)
+        .await
+        .unwrap();
+    assert_person_access_controls(&transaction, true).await;
+    fixture
+        .admin
+        .execute_unprepared(
+            "UPDATE public.person_access_grants SET revoked_at = now() WHERE id IN (78001,78003)",
+        )
+        .await
+        .unwrap();
+    assert_person_access_controls(&transaction, false).await;
     transaction.rollback().await.unwrap();
     fixture.close().await;
 }
@@ -336,67 +394,28 @@ async fn runtime_role_cannot_alter_schema_or_migration_history() {
 
 #[tokio::test]
 async fn cedar_person_access_uses_current_grant_level_and_database_expiry() {
-    use med_tracker::models::care::people;
     let fixture = Fixture::new().await;
+    seed_accountless_manage_grant(&fixture).await;
     let transaction = access::begin(&fixture.runtime, &scope(71001, 72001), None)
         .await
         .unwrap();
-    for (level, expected) in [
-        ("view", [true, false, false]),
-        ("record", [true, true, false]),
-        ("manage", [true, true, true]),
-    ] {
+    assert_person_access_controls(&transaction, true).await;
+    for (level, other_manage) in [("view", false), ("record", false), ("manage", true)] {
         fixture
             .admin
             .execute_raw(Statement::from_sql_and_values(
                 DbBackend::Postgres,
-                "UPDATE person_access_grants SET access_level=$1 WHERE id=78001",
+                "UPDATE person_access_grants SET access_level=$1 WHERE id IN (78001,78003)",
                 [level.into()],
             ))
             .await
             .unwrap();
-        for (request, allowed) in [
-            PersonAccess::View,
-            PersonAccess::Record,
-            PersonAccess::Manage,
-        ]
-        .into_iter()
-        .zip(expected)
-        {
-            assert_eq!(
-                access::require_person_access(&transaction, 73001, request).await,
-                if allowed {
-                    Ok(())
-                } else {
-                    Err(OperationError::Forbidden)
-                }
-            );
-        }
-        let visible = people::list(&transaction, people::Pagination::default(), chrono_tz::UTC)
-            .await
-            .unwrap();
-        assert_eq!(visible["meta"]["total_count"], 1);
-        assert_eq!(visible["data"][0]["id"], 73001);
+        assert_person_access_controls(&transaction, other_manage).await;
     }
-    fixture.admin.execute_unprepared("UPDATE person_access_grants SET expires_at=timezone('UTC',clock_timestamp())-interval '1 second' WHERE id=78001").await.unwrap();
-    assert_eq!(
-        access::require_person_access(&transaction, 73001, PersonAccess::View).await,
-        Err(OperationError::Forbidden)
-    );
-    let expired = people::list(&transaction, people::Pagination::default(), chrono_tz::UTC)
-        .await
-        .unwrap();
-    assert_eq!(expired["meta"]["total_count"], 0);
-    assert_eq!(expired["data"], serde_json::json!([]));
-    fixture.admin.execute_unprepared("UPDATE person_access_grants SET expires_at=timezone('UTC',clock_timestamp())+interval '1 day' WHERE id=78001").await.unwrap();
-    access::require_person_access(&transaction, 73001, PersonAccess::Manage)
-        .await
-        .unwrap();
-    let restored = people::list(&transaction, people::Pagination::default(), chrono_tz::UTC)
-        .await
-        .unwrap();
-    assert_eq!(restored["meta"]["total_count"], 1);
-    assert_eq!(restored["data"][0]["id"], 73001);
+    fixture.admin.execute_unprepared("UPDATE person_access_grants SET expires_at=timezone('UTC',clock_timestamp())-interval '1 second' WHERE id IN (78001,78003)").await.unwrap();
+    assert_person_access_controls(&transaction, false).await;
+    fixture.admin.execute_unprepared("UPDATE person_access_grants SET expires_at=timezone('UTC',clock_timestamp())+interval '1 day' WHERE id IN (78001,78003)").await.unwrap();
+    assert_person_access_controls(&transaction, true).await;
     transaction.rollback().await.unwrap();
     fixture.close().await;
 }

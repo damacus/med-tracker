@@ -124,7 +124,7 @@ async fn current_person_profile_api_saves_nonsecurity_fields_and_preserves_omitt
 }
 
 #[tokio::test]
-async fn profile_api_rejects_invalid_and_security_fields_atomically_and_rechecks_grants() {
+async fn profile_api_rejects_invalid_and_security_fields_atomically_and_rechecks_membership() {
     let app = profile_application().await;
     app.fixture.seed_foreign_household(72002).await;
     let token = app.token().await;
@@ -180,6 +180,15 @@ async fn profile_api_rejects_invalid_and_security_fields_atomically_and_rechecks
         .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78001")
         .await
         .unwrap();
+    let canonical_self = app
+        .client
+        .get(&endpoint)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(canonical_self.status().as_u16(), 200);
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001").await.unwrap();
     let revoked = app
         .client
         .get(&endpoint)
@@ -187,7 +196,7 @@ async fn profile_api_rejects_invalid_and_security_fields_atomically_and_rechecks
         .send()
         .await
         .unwrap();
-    assert!(matches!(revoked.status().as_u16(), 403 | 404));
+    assert_eq!(revoked.status().as_u16(), 403);
     app.close().await;
 }
 
@@ -200,13 +209,13 @@ async fn profile_get_matches_documented_contract() {
     let operation = &contract["paths"]["/households/{household_id}/profile"]["get"];
     assert_eq!(operation["operationId"], "getHouseholdProfile");
     assert_eq!(
-        operation["responses"]["404"]["$ref"],
-        "#/components/responses/NotFound"
+        operation["responses"]["403"]["$ref"],
+        "#/components/responses/Forbidden"
     );
-    let not_found = resolve(contract, &operation["responses"]["404"]);
-    let not_found_schema = resolve(
+    let forbidden = resolve(contract, &operation["responses"]["403"]);
+    let forbidden_schema = resolve(
         contract,
-        &not_found["content"]["application/json"]["schema"],
+        &forbidden["content"]["application/json"]["schema"],
     );
 
     let read = app
@@ -256,6 +265,15 @@ async fn profile_get_matches_documented_contract() {
         .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78001")
         .await
         .unwrap();
+    let canonical_self = app
+        .client
+        .get(&endpoint)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(canonical_self.status().as_u16(), 200);
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001").await.unwrap();
     let denied = app
         .client
         .get(&endpoint)
@@ -269,19 +287,19 @@ async fn profile_get_matches_documented_contract() {
         .unwrap()
         .to_owned();
     let denied_body: Value = denied.json().await.unwrap();
-    assert_eq!(denied_status, 404);
+    assert_eq!(denied_status, 403);
     assert_value(
         contract,
-        not_found_schema,
+        forbidden_schema,
         &denied_body,
-        "outside view scope",
+        "revoked household membership",
     );
-    assert_eq!(denied_body["error"]["code"], "not_found");
+    assert_eq!(denied_body["error"]["code"], "forbidden");
     assert_eq!(denied_body["error"]["request_id"], denied_request_id);
 
     app.fixture
         .admin
-        .execute_unprepared("UPDATE person_access_grants SET revoked_at=NULL WHERE id=78001")
+        .execute_unprepared("UPDATE household_memberships SET status='active',revoked_at=NULL,permissions_version=permissions_version+1 WHERE id=74001")
         .await
         .unwrap();
     let restored = app
@@ -430,6 +448,15 @@ async fn keyed_profile_update_replays_without_a_second_account_version() {
         .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78001")
         .await
         .unwrap();
+    let canonical_self = app
+        .client
+        .get(&endpoint)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(canonical_self.status().as_u16(), 200);
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001").await.unwrap();
     let denied_replay = app
         .client
         .patch(&endpoint)
@@ -439,7 +466,7 @@ async fn keyed_profile_update_replays_without_a_second_account_version() {
         .send()
         .await
         .unwrap();
-    assert!(matches!(denied_replay.status().as_u16(), 403 | 404));
+    assert_eq!(denied_replay.status().as_u16(), 403);
     assert!(
         denied_replay
             .headers()
@@ -499,11 +526,11 @@ async fn profile_and_notification_apis_require_the_account_linked_membership_per
     let token = app.token().await;
     app.fixture
         .admin
-        .execute_unprepared("UPDATE household_memberships SET person_id=73002 WHERE id=74001")
+        .execute_unprepared("INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72004,71001,'Canonical participation boundary','canonical-participation-boundary','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74404,72004,73002,'member','active',now(),now(),now())")
         .await
         .unwrap();
     for resource in ["profile", "notification_preference"] {
-        let endpoint = format!("{}/api/v1/households/72001/{resource}", app.origin);
+        let endpoint = format!("{}/api/v1/households/72004/{resource}", app.origin);
         for method in [
             reqwest::Method::GET,
             reqwest::Method::PATCH,
@@ -521,10 +548,16 @@ async fn profile_and_notification_apis_require_the_account_linked_membership_per
                 .send()
                 .await
                 .unwrap();
-            assert!(matches!(response.status().as_u16(), 403 | 404));
+            assert_eq!(response.status().as_u16(), 403);
         }
     }
+    let state=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT (SELECT person_id FROM accounts WHERE id=71001) AS canonical,(SELECT person_id FROM household_memberships WHERE id=74001) AS original,(SELECT person_id FROM household_memberships WHERE id=74404) AS other,(SELECT count(*) FROM versions WHERE item_type IN ('Account','Person','NotificationPreference')) AS versions")).await.unwrap().unwrap();
     app.close().await;
+    assert_eq!(state.try_get::<i64>("", "canonical").unwrap(), 73001);
+    assert_eq!(state.try_get::<i64>("", "original").unwrap(), 73001);
+    assert_eq!(state.try_get::<i64>("", "other").unwrap(), 73002);
+    assert_eq!(state.try_get::<i64>("", "versions").unwrap(), 0);
 }
 
 #[tokio::test]
@@ -762,7 +795,7 @@ async fn overlapping_keyed_profile_and_notification_requests_replay_once_and_con
     app.close().await;
 }
 
-async fn issue_profile_personal_key(app: &Application, name: &str) -> String {
+pub(super) async fn issue_profile_personal_key(app: &Application, name: &str) -> String {
     use better_auth_core::{AuthRequest, HttpMethod};
     use med_tracker::models::identity::better_auth::{IdentityService, dispatch};
     app.fixture.admin.execute_unprepared(
@@ -1044,6 +1077,19 @@ async fn membership_change_during_read_reports_forbidden_not_missing_profile() {
         notification_preferences, profile,
     };
     let app = profile_application().await;
+    let token = app.token().await;
+    let initial = app
+        .client
+        .put(format!(
+            "{}/api/v1/households/72001/notification_preference",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .json(&json!({"notification_preference":{"enabled":true}}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(initial.status().as_u16(), 200);
     let scope = HouseholdScope {
         actor: Actor { account_id: 71001 },
         household_id: 72001,
@@ -1067,13 +1113,23 @@ async fn membership_change_during_read_reports_forbidden_not_missing_profile() {
         .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78001")
         .await
         .unwrap();
-    let unscoped_tenant = access::begin(&app.fixture.runtime, &scope, None)
+    let current = access::begin(&app.fixture.runtime, &scope, None)
         .await
         .unwrap();
-    let unscoped = profile::read(&unscoped_tenant, 71001).await;
-    unscoped_tenant.rollback().await.unwrap();
+    let current_profile = profile::read(&current, 71001).await;
+    let current_preferences = notification_preferences::read(&current, 71001).await;
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001").await.unwrap();
+    let revoked_profile = profile::read(&current, 71001).await;
+    let revoked_preferences = notification_preferences::read(&current, 71001).await;
+    current.rollback().await.unwrap();
+    let fresh = access::begin(&app.fixture.runtime, &scope, None).await;
+    let fresh_denied = matches!(fresh, Err(OperationError::Forbidden));
     app.close().await;
     assert_eq!(snapshot.err(), Some(OperationError::Forbidden));
     assert_eq!(preferences.err(), Some(OperationError::Forbidden));
-    assert_eq!(unscoped.err(), Some(OperationError::NotFound));
+    assert!(current_profile.is_ok());
+    assert!(current_preferences.is_ok());
+    assert_eq!(revoked_profile.err(), Some(OperationError::Forbidden));
+    assert_eq!(revoked_preferences.err(), Some(OperationError::Forbidden));
+    assert!(fresh_denied);
 }

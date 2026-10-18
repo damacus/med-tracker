@@ -18,7 +18,7 @@ use crate::models::{
 pub async fn households(db: &DatabaseConnection, account_id: i64) -> Result<Value, OperationError> {
     let transaction = begin(db, Some(account_id)).await?;
     let rows = transaction.query_all_raw(statement(
-        "SELECT h.id,h.slug,h.name,m.role,m.id AS membership_id FROM household_memberships m JOIN households h ON h.id=m.household_id WHERE m.account_id=$1 AND m.status='active' AND m.revoked_at IS NULL AND h.status='active' AND h.lifecycle_state='active' ORDER BY m.id",
+        "SELECT h.id,h.slug,h.name,m.role,m.id AS membership_id FROM household_memberships m JOIN households h ON h.id=m.household_id JOIN accounts a ON a.person_id=m.person_id WHERE a.id=$1 AND m.status='active' AND m.revoked_at IS NULL AND h.status='active' AND h.lifecycle_state='active' ORDER BY m.id",
         [account_id.into()],
     )).await.map_err(unavailable)?;
     let data = rows
@@ -62,7 +62,7 @@ async fn api_sessions(
     account_id: i64,
 ) -> Result<Vec<Value>, OperationError> {
     let rows = transaction.query_all_raw(statement(
-        "SELECT s.id,s.device_name,m.household_id,s.last_used_at,s.access_expires_at,s.refresh_expires_at,s.created_at FROM api_sessions s LEFT JOIN household_memberships m ON m.id=s.household_membership_id AND m.account_id=s.account_id WHERE s.account_id=$1 AND s.revoked_at IS NULL ORDER BY s.created_at DESC,s.id DESC",
+        "SELECT s.id,s.device_name,m.household_id,s.last_used_at,s.access_expires_at,s.refresh_expires_at,s.created_at FROM api_sessions s LEFT JOIN household_memberships m ON m.id=s.household_membership_id AND m.person_id=(SELECT a.person_id FROM accounts a WHERE a.id=s.account_id) WHERE s.account_id=$1 AND s.revoked_at IS NULL ORDER BY s.created_at DESC,s.id DESC",
         [account_id.into()],
     )).await.map_err(unavailable)?;
     rows.into_iter().map(|row| -> Result<Value, OperationError> {
@@ -319,7 +319,7 @@ async fn audit_token(
     let event = format!("auth_token/{kind}/revoked");
     let metadata = json!({"account_id":account_id,"credential_id":credential_id,"token_type":kind,"action":"revoked"});
     let actor = transaction.query_one_raw(statement(
-        "SELECT u.id AS user_id FROM people p LEFT JOIN users u ON u.person_id=p.id WHERE p.account_id=$1 ORDER BY p.id LIMIT 1",
+        "SELECT u.id AS user_id FROM accounts a JOIN people p ON p.id=a.person_id LEFT JOIN users u ON u.person_id=p.id WHERE a.id=$1",
         [account_id.into()],
     )).await.map_err(unavailable)?;
     let user_id: Option<i64> = match actor {
@@ -335,7 +335,7 @@ async fn audit_token(
     if let Some(member_id) = member_id {
         let row = transaction
             .query_one_raw(statement(
-                "SELECT household_id FROM household_memberships WHERE id=$1 AND account_id=$2",
+                "SELECT household_id FROM household_memberships WHERE id=$1 AND person_id=(SELECT person_id FROM accounts WHERE id=$2)",
                 [member_id.into(), account_id.into()],
             ))
             .await

@@ -424,10 +424,12 @@ pub(super) fn mapped_row(
         }
         _ => return Err("Unsupported portable record type".to_owned()),
     };
-    fields.insert(
-        "household_id".to_owned(),
-        json!(tenant.scope().household_id),
-    );
+    if kind != "people" {
+        fields.insert(
+            "household_id".to_owned(),
+            json!(tenant.scope().household_id),
+        );
+    }
     fields.insert("portable_id".to_owned(), row["portable_id"].clone());
     Ok(fields)
 }

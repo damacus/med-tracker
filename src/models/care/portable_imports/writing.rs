@@ -51,16 +51,58 @@ async fn upsert(
         .transpose()
 }
 
+async fn update_person(
+    db: &DatabaseTransaction,
+    tenant: &TenantTransaction,
+    fields: &Map<String, Value>,
+) -> Result<Option<i64>, String> {
+    let columns: Vec<&str> = fields
+        .keys()
+        .map(String::as_str)
+        .filter(|column| !matches!(*column, "portable_id" | "created_at"))
+        .collect();
+    let updates = columns
+        .iter()
+        .map(|column| format!("{column}=incoming.{column}"))
+        .collect::<Vec<_>>()
+        .join(",");
+    let changed = columns
+        .iter()
+        .map(|column| format!("record.{column} IS DISTINCT FROM incoming.{column}"))
+        .collect::<Vec<_>>()
+        .join(" OR ");
+    let portable_id = fields
+        .get("portable_id")
+        .and_then(Value::as_str)
+        .ok_or("Imported Person portable ID is unavailable")?;
+    let row = db.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+        format!("UPDATE public.people record SET {updates},updated_at=NOW() FROM jsonb_populate_record(NULL::public.people,$1::jsonb) incoming WHERE record.portable_id=$2 AND EXISTS(SELECT 1 FROM public.household_memberships m WHERE m.person_id=record.id AND m.household_id=$3 AND m.status='active' AND m.revoked_at IS NULL) AND ({changed}) RETURNING record.id"),
+        [Value::Object(fields.clone()).to_string().into(),portable_id.into(),tenant.scope().household_id.into()],
+    )).await.map_err(|error| {
+        let _: OperationError = error.into();
+        "Existing Person could not be imported".to_owned()
+    })?;
+    row.map(|row| {
+        row.try_get("", "id")
+            .map_err(|_| "Existing Person result is unavailable".to_owned())
+    })
+    .transpose()
+}
+
 async fn snapshot(
     db: &DatabaseTransaction,
     kind: &str,
     household_id: i64,
     portable_id: &str,
 ) -> Result<Option<Value>, String> {
-    let sql = format!(
-        "SELECT to_jsonb(record) AS value FROM {} AS record WHERE household_id = $1 AND portable_id = $2",
-        table(kind)
-    );
+    let sql = if kind == "people" {
+        "SELECT to_jsonb(record) AS value FROM public.people record JOIN public.household_memberships m ON m.person_id=record.id WHERE m.household_id=$1 AND m.status='active' AND m.revoked_at IS NULL AND record.portable_id=$2".to_owned()
+    } else {
+        format!(
+            "SELECT to_jsonb(record) AS value FROM {} AS record WHERE household_id = $1 AND portable_id = $2",
+            table(kind)
+        )
+    };
     db.query_one_raw(Statement::from_sql_and_values(
         DbBackend::Postgres,
         sql,
@@ -82,6 +124,7 @@ pub(crate) async fn write_records(
     plan: &ImportPlan,
     index: &mut ExistingIndex,
     request_id: &str,
+    declarations: &mut PreparedDeclarations,
 ) -> Result<(), String> {
     for kind in [
         "locations",
@@ -113,7 +156,17 @@ pub(crate) async fn write_records(
                 verify_immutable(db, kind, &fields).await?;
                 continue;
             }
-            let id = if existed && kind == "medication_pause_periods" {
+            let id = if !existed && kind == "people" {
+                declarations
+                    .create(tenant, &portable_id, provenance)
+                    .await
+                    .map_err(|_| "New dependent could not be imported".to_owned())?
+            } else if kind == "people" {
+                update_person(db, tenant, &fields)
+                    .await?
+                    .or_else(|| index.get(kind, &portable_id))
+                    .ok_or("Existing Person is unavailable")?
+            } else if existed && kind == "medication_pause_periods" {
                 if verify_pause(db, tenant, &portable_id, &fields).await? {
                     resume_pause(db, tenant, &portable_id, &fields["ended_at"]).await?;
                 }
@@ -128,7 +181,6 @@ pub(crate) async fn write_records(
             };
             index.put(kind, portable_id.clone(), id);
             if kind == "people" {
-                grant_importer_access(db, tenant, id).await?;
                 write_location_memberships(db, tenant, row, index, id).await?;
             }
             if kind == "health_events" {

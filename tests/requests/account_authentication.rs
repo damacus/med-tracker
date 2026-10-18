@@ -71,7 +71,7 @@ async fn account_authentication_accepts_split_cookie_headers() {
 #[tokio::test]
 async fn account_authentication_without_clinical_records_can_login_and_refresh() {
     let (fixture, boot) = boot_fixture().await;
-    fixture.admin.execute_unprepared("INSERT INTO accounts(id,email,name,password_hash,status,created_at,updated_at) VALUES(71002,'account-auth-only@example.test','Canonical account name',crypt('password',gen_salt('bf',4)),2,now(),now()); INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71002,now())").await.unwrap();
+    fixture.admin.execute_unprepared("INSERT INTO people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73992,'Synthetic account identity','1990-01-01',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,name,password_hash,status,created_at,updated_at) VALUES(71002,73992,'account-auth-only@example.test','Canonical account name',crypt('password',gen_salt('bf',4)),2,now(),now()); INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71002,now())").await.unwrap();
     let request = server(&boot);
     let signed_in = request
         .post("/api/auth/sign-in/email")
@@ -199,7 +199,7 @@ async fn account_authentication_get_session_rejects_lockout_before_refresh() {
 #[tokio::test]
 async fn account_authentication_audit_failure_rolls_back_session() {
     let (fixture, boot) = boot_fixture().await;
-    fixture.admin.execute_unprepared("INSERT INTO accounts(id,email,password_hash,status,created_at,updated_at) VALUES(71002,'account-auth-only@example.test',crypt('password',gen_salt('bf',4)),2,now(),now()); CREATE FUNCTION reject_account_auth_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.item_type='AuthenticationToken' AND NEW.item_id=71002 THEN RAISE EXCEPTION 'synthetic authentication audit failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_account_auth_audit BEFORE INSERT ON versions FOR EACH ROW EXECUTE FUNCTION reject_account_auth_audit()").await.unwrap();
+    fixture.admin.execute_unprepared("INSERT INTO people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73992,'Synthetic account identity','1990-01-01',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,password_hash,status,created_at,updated_at) VALUES(71002,73992,'account-auth-only@example.test',crypt('password',gen_salt('bf',4)),2,now(),now()); CREATE FUNCTION reject_account_auth_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.item_type='AuthenticationToken' AND NEW.item_id=71002 THEN RAISE EXCEPTION 'synthetic authentication audit failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_account_auth_audit BEFORE INSERT ON versions FOR EACH ROW EXECUTE FUNCTION reject_account_auth_audit()").await.unwrap();
     let request = server(&boot);
     let rejected = request
         .post("/api/auth/sign-in/email")
@@ -217,7 +217,7 @@ async fn account_authentication_audit_failure_rolls_back_session() {
 #[tokio::test]
 async fn account_authentication_account_status_and_session_lifetime_remain_required() {
     let (fixture, boot) = boot_fixture().await;
-    fixture.admin.execute_unprepared("INSERT INTO accounts(id,email,password_hash,status,created_at,updated_at) VALUES(71002,'account-auth-only@example.test',crypt('password',gen_salt('bf',4)),1,now(),now()); INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71002,now())").await.unwrap();
+    fixture.admin.execute_unprepared("INSERT INTO people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73992,'Synthetic account identity','1990-01-01',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,password_hash,status,created_at,updated_at) VALUES(71002,73992,'account-auth-only@example.test',crypt('password',gen_salt('bf',4)),1,now(),now()); INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71002,now())").await.unwrap();
     let request = server(&boot);
     for status in [1, 3] {
         fixture
@@ -284,7 +284,7 @@ async fn account_authentication_retained_factor_promotes_without_clinical_actor(
             json!({"secret_key_base":"synthetic-auth-factor-secret"});
     })
     .await;
-    fixture.admin.execute_unprepared("INSERT INTO accounts(id,email,password_hash,status,created_at,updated_at) VALUES(71002,'account-auth-only@example.test',crypt('password',gen_salt('bf',4)),2,now(),now()); INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71002,now()); INSERT INTO account_otp_keys(id,key,last_use,num_failures) VALUES(71002,'abcdefghijklmnop',now()-interval '1 day',0)").await.unwrap();
+    fixture.admin.execute_unprepared("INSERT INTO people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73992,'Synthetic account identity','1990-01-01',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,password_hash,status,created_at,updated_at) VALUES(71002,73992,'account-auth-only@example.test',crypt('password',gen_salt('bf',4)),2,now(),now()); INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71002,now()); INSERT INTO account_otp_keys(id,key,last_use,num_failures) VALUES(71002,'abcdefghijklmnop',now()-interval '1 day',0)").await.unwrap();
     let request = server(&boot);
     let signed_in = request
         .post("/api/auth/sign-in/email")

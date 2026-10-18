@@ -181,7 +181,7 @@ async fn owner_context(
         return Ok(serde_json::json!({"household_name":null,"person_name":null}));
     }
     let row = transaction.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "SELECT m.id, m.person_id, m.permissions_version, h.name AS household_name, p.name AS person_name FROM household_memberships m JOIN households h ON h.id=m.household_id LEFT JOIN people p ON p.id=m.person_id WHERE m.account_id=$1 AND m.status='active' AND m.revoked_at IS NULL AND h.status='active' AND h.lifecycle_state='active' ORDER BY m.id LIMIT 1 FOR SHARE OF m,h", [account_id.into()])).await.map_err(|_| ExchangeError::Unavailable)?.ok_or(ExchangeError::InvalidGrant)?;
+        "SELECT m.id, m.person_id, m.permissions_version, h.name AS household_name, p.name AS person_name FROM household_memberships m JOIN households h ON h.id=m.household_id JOIN accounts a ON a.person_id=m.person_id LEFT JOIN people p ON p.id=m.person_id WHERE a.id=$1 AND m.status='active' AND m.revoked_at IS NULL AND h.status='active' AND h.lifecycle_state='active' ORDER BY m.id LIMIT 1 FOR SHARE OF m,h", [account_id.into()])).await.map_err(|_| ExchangeError::Unavailable)?.ok_or(ExchangeError::InvalidGrant)?;
     Ok(
         serde_json::json!({"membership_id":row.try_get::<i64>("","id").map_err(|_| ExchangeError::Unavailable)?,"person_id":row.try_get::<Option<i64>>("","person_id").map_err(|_| ExchangeError::Unavailable)?,"permissions_version":row.try_get::<i32>("","permissions_version").map_err(|_| ExchangeError::Unavailable)?,"household_name":row.try_get::<String>("","household_name").map_err(|_| ExchangeError::Unavailable)?,"person_name":row.try_get::<Option<String>>("","person_name").map_err(|_| ExchangeError::Unavailable)?}),
     )

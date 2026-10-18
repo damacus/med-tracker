@@ -721,7 +721,7 @@ async fn changed_evidence_blocks_an_edit_started_before_refresh() {
 }
 
 #[tokio::test]
-async fn expired_or_revoked_review_lease_cannot_be_used_by_api_or_sync() {
+async fn expired_review_lease_or_revoked_membership_cannot_be_used_by_api_or_sync() {
     let app = Application::new().await;
     let token = app.token().await;
     seed_prompt(&app, 91103, "needs_review").await;
@@ -757,7 +757,7 @@ async fn expired_or_revoked_review_lease_cannot_be_used_by_api_or_sync() {
         .send().await.unwrap();
     app.fixture
         .admin
-        .execute_unprepared("UPDATE person_access_grants SET access_level='view' WHERE id=78001")
+        .execute_unprepared("UPDATE person_access_grants SET access_level='view' WHERE id=78001; UPDATE household_memberships SET revoked_at=now() WHERE id=74001")
         .await
         .unwrap();
     let revoked = app
@@ -1114,7 +1114,7 @@ async fn review_prompt_index_paginates_beyond_the_first_page() {
 }
 
 #[tokio::test]
-async fn review_prompts_require_adult_actor_and_manage_access() {
+async fn review_prompts_require_adult_actor_and_other_person_manage_access() {
     let app = Application::new().await;
     let token = app.token().await;
     seed_prompt(&app, 91001, "needs_review").await;
@@ -1152,6 +1152,20 @@ async fn review_prompts_require_adult_actor_and_manage_access() {
     let denied_status = denied.status().as_u16();
     app.fixture
         .admin
+        .execute_unprepared("UPDATE medication_review_prompts SET person_id=73002 WHERE id=91001")
+        .await
+        .unwrap();
+    let other_person_lease = app
+        .client
+        .post(prompts(&app, "/91001/lease"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap()
+        .status()
+        .as_u16();
+    app.fixture
+        .admin
         .execute_unprepared("UPDATE people SET person_type=1,has_capacity=false WHERE id=73001")
         .await
         .unwrap();
@@ -1167,7 +1181,8 @@ async fn review_prompts_require_adult_actor_and_manage_access() {
     assert_eq!(listed_status, 200);
     assert_eq!(listed_body["data"].as_array().unwrap().len(), 1);
     assert_eq!(shown_status, 200);
-    assert_eq!(denied_status, 403);
+    assert_eq!(denied_status, 409);
+    assert_eq!(other_person_lease, 403);
     assert_eq!(minor_status, 403);
 }
 

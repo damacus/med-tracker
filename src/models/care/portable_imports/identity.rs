@@ -20,7 +20,9 @@ impl ExistingIndex {
         let mut names = HashMap::new();
         for kind in BASE_TYPES.iter().chain(V2_TYPES) {
             let table = table(kind);
-            let sql = if matches!(*kind, "locations" | "medications" | "people") {
+            let sql = if *kind == "people" {
+                "SELECT p.id,p.portable_id,lower(p.email) AS match_name FROM public.people p JOIN public.household_memberships m ON m.person_id=p.id WHERE m.household_id=$1 AND m.status='active' AND m.revoked_at IS NULL".to_owned()
+            } else if matches!(*kind, "locations" | "medications") {
                 format!(
                     "SELECT id, portable_id, {} AS match_name FROM {table} WHERE household_id = $1",
                     if *kind == "people" {
@@ -70,11 +72,11 @@ impl ExistingIndex {
                 "schedules" | "person_medications" | "notification_preferences" | "health_events"
             ) {
                 format!(
-                    "SELECT record.portable_id, person.portable_id AS person_portable_id FROM {table} record JOIN people person ON person.id = record.person_id AND person.household_id = record.household_id WHERE record.household_id = $1"
+                    "SELECT record.portable_id, person.portable_id AS person_portable_id FROM {table} record JOIN people person ON person.id = record.person_id WHERE record.household_id = $1"
                 )
             } else {
                 format!(
-                    "SELECT record.portable_id, person.portable_id AS person_portable_id FROM {table} record LEFT JOIN schedules schedule ON schedule.id = record.schedule_id AND schedule.household_id = record.household_id LEFT JOIN person_medications assignment ON assignment.id = record.person_medication_id AND assignment.household_id = record.household_id JOIN people person ON person.id = COALESCE(schedule.person_id, assignment.person_id) AND person.household_id = record.household_id WHERE record.household_id = $1"
+                    "SELECT record.portable_id, person.portable_id AS person_portable_id FROM {table} record LEFT JOIN schedules schedule ON schedule.id = record.schedule_id AND schedule.household_id = record.household_id LEFT JOIN person_medications assignment ON assignment.id = record.person_medication_id AND assignment.household_id = record.household_id JOIN people person ON person.id = COALESCE(schedule.person_id, assignment.person_id) WHERE record.household_id = $1"
                 )
             };
             let rows = db

@@ -111,9 +111,15 @@ async fn legacy_pause_routes_validate_empty_body_and_current_manage_authority() 
         .unwrap()
         .status()
         .as_u16();
+    app.fixture.admin.execute_unprepared("INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(81002,72001,73002,80001,2,'tablet',0,now(),now()); INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83997,72001,73002,80001,true,'2020-01-01','2099-12-31',2,'tablet',6,'{}',now(),now())").await.unwrap();
+    let other_schedule = format!("{}/api/v1/households/72001/schedules/83997", app.origin);
+    let other_assignment = format!(
+        "{}/api/v1/households/72001/person_medications/81002",
+        app.origin
+    );
     app.fixture.admin.execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001; UPDATE person_access_grants SET access_level='record' WHERE id=78001").await.unwrap();
     let mut denied = Vec::new();
-    for endpoint in [&schedule, &assignment] {
+    for endpoint in [&other_schedule, &other_assignment] {
         for action in ["pause", "resume"] {
             denied.push(
                 app.client
@@ -129,7 +135,7 @@ async fn legacy_pause_routes_validate_empty_body_and_current_manage_authority() 
     }
     app.fixture
         .admin
-        .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78001")
+        .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78001; UPDATE household_memberships SET revoked_at=now() WHERE id=74001")
         .await
         .unwrap();
     let withdrawn = app
@@ -141,12 +147,12 @@ async fn legacy_pause_routes_validate_empty_body_and_current_manage_authority() 
         .unwrap()
         .status()
         .as_u16();
-    let row=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT active FROM schedules WHERE id=83998) AS schedule_active,(SELECT active FROM person_medications WHERE id=81001) AS assignment_active,(SELECT count(*) FROM medication_pause_periods) AS periods")).await.unwrap().unwrap();
+    let row=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT bool_and(active) FROM schedules WHERE id IN (83998,83997)) AS schedule_active,(SELECT bool_and(active) FROM person_medications WHERE id IN (81001,81002)) AS assignment_active,(SELECT count(*) FROM medication_pause_periods) AS periods")).await.unwrap().unwrap();
     let schedule_active: bool = row.try_get("", "schedule_active").unwrap();
     let assignment_active: bool = row.try_get("", "assignment_active").unwrap();
     let periods: i64 = row.try_get("", "periods").unwrap();
     app.close().await;
-    assert_eq!((invalid, foreign, withdrawn), (422, 403, 404));
+    assert_eq!((invalid, foreign, withdrawn), (422, 403, 403));
     assert_eq!(denied, vec![403; 4]);
     assert!(schedule_active && assignment_active);
     assert_eq!(periods, 0);

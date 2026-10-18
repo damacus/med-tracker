@@ -79,7 +79,7 @@ test('real signin, dose replay, permission withdrawal and stale stock preserve c
   const foreign = await page.request.post('/households/foreign-fixture/medications/80002/doses', { form: original, headers: { Origin: careFixture.origin }, maxRedirects: 0 });
   expect([403, 404]).toContain(foreign.status());
   expect(await foreign.text()).not.toContain('Synthetic foreign medicine');
-  await careFixture.revoke();
+  await careFixture.withdrawMembership();
   const revoked = await page.request.post(`${detail}/doses`, { form: { ...original, client_uuid: crypto.randomUUID() }, headers: { Origin: careFixture.origin }, maxRedirects: 0 });
   expect([403, 404]).toContain(revoked.status());
   const afterDenials = await careFixture.probe();
@@ -87,7 +87,7 @@ test('real signin, dose replay, permission withdrawal and stale stock preserve c
   expect(afterDenials.supply).toBe('8.00');
   expect(afterDenials.foreign_takes).toBe(0);
   expect(afterDenials.foreign_supply).toBe('10.00');
-  await careFixture.reactivate();
+  await careFixture.restoreMembership();
   const second = await page.context().newPage();
   await page.goto(stock);
   await second.goto(stock);

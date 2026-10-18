@@ -69,7 +69,7 @@ pub(super) fn assign(
     Ok(())
 }
 
-fn email_valid(value: &str) -> bool {
+pub(super) fn email_valid(value: &str) -> bool {
     let Some((local, domain)) = value.split_once('@') else {
         return false;
     };

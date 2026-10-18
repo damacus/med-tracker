@@ -24,7 +24,11 @@ test('dashboard preserves the collapsed person selector, metrics and access boun
   await page.getByRole('radio', { name: 'All Family', exact: true }).click();
   await expect(page).toHaveURL(/dashboard_person_id=all/);
   await expect(selector).not.toHaveAttribute('open');
-  const denied = await page.goto(dashboard + '?dashboard_person_id=73002');
+  const participating = await page.goto(dashboard + '?dashboard_person_id=73002');
+  expect(participating.status()).toBe(200);
+  await expect(page.getByTestId('dashboard-person-selector-summary')).toContainText('Synthetic minor');
+  await expect(selector).not.toHaveAttribute('open');
+  const denied = await page.goto(dashboard + '?dashboard_person_id=73005');
   expect(denied.status()).toBe(404);
   await expect(page.getByText('Synthetic tablets', { exact: true })).toHaveCount(0);
 });
@@ -66,7 +70,7 @@ for (const variant of ['current', 'time_first', 'family_lanes', 'calm_focus']) {
 }
 
 
-test('dashboard dose errors keep the dialog and cannot record without CSRF or person permission', async ({ page, careFixture }) => {
+test('dashboard dose errors keep the dialog and reject missing CSRF or forged sources', async ({ page, careFixture }) => {
   await careFixture.dashboardVariant('calm_focus');
   await signIn(page);
   await page.goto(dashboard + '?dashboard_person_id=all&dashboard_grouping=time');
@@ -80,8 +84,8 @@ test('dashboard dose errors keep the dialog and cannot record without CSRF or pe
   expect(await invalid.text()).toContain('invalid');
   const deniedCsrf = await page.request.post(path, { form: { ...draft, authenticity_token: '' } });
   expect(deniedCsrf.status()).toBe(403);
-  const deniedPerson = await page.request.post(path, { form: { ...draft, source_id: '81002' } });
-  expect(deniedPerson.status()).toBe(403);
+  const deniedSource = await page.request.post(path, { form: { ...draft, source_id: '81002' } });
+  expect(deniedSource.status()).toBe(403);
   expect((await careFixture.probe()).takes).toBe(0);
 });
 

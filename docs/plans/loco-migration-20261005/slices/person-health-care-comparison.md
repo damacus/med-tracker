@@ -44,9 +44,11 @@ All runs used owned synthetic databases and the coordinated local verification l
 | --- | --- | --- |
 | `health_events_documented_routes_create_read_update_and_revoke` | Initial RED: four 404 responses | Added documented route adapters over existing sync mutations |
 | `health_events::` | Three cases passed; missing request wrapper returned 422 instead of 400 | Request-envelope mapping corrected; subsequent focused run passed all four cases |
-| `people_without_carer_can_be_created_and_edited_without_capacity_change` | Creation returned 422; subsequent edit lacked a created person | Creation and edit vetoes removed after independent RED; both dependent types now pass |
+| `people_without_carer_can_be_created_and_edited_without_capacity_change` | Creation returned 422; subsequent edit lacked a created person | Creation and edit vetoes removed after independent RED; both dependent types passed at that time; this creation contract is now superseded |
 | `household_relationship_removal_preserves_unrelated_grant_without_veto` | Removal rejected while unrelated manual grant existed | Veto removed, owned-grant revocation retained; focused rerun passed |
 | `people_existing_dependents_without_carer_can_be_edited` | Independent RED: 422/422; GREEN after correction: 200/200 | Two persisted edits and audits; capacity false and zero carers retained |
+
+This historical creation result is superseded by the accepted initial guardian declaration contract. Its replacement, `people_new_dependents_require_declaration_without_fabricating_actor_identity`, checks missing declarations, invalid capacity and capable-adult rejection without nulling the canonical actor identity. New dependents require fresh explicit declarations; the separate existing-dependent edit evidence remains valid. The replacement is proposed, not yet runtime-verified.
 
 Reference source confirms separate manager and nonmanager forms. Parent email assignment uses an active account, capable adult person, no professional title, and no active self relationship. Unknown addresses use a member invitation with the selected person's parent/manage grant. The Loco adapter must validate pending invitation compatibility without silently widening an incompatible grant and preserve established token expiry and delivery.
 

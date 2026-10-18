@@ -40,6 +40,15 @@ async fn health_events_documented_routes_create_read_update_and_revoke() {
         .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78001")
         .await
         .unwrap();
+    let retained = app
+        .client
+        .get(format!("{endpoint}/{id}"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let retained_status = retained.status().as_u16();
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001").await.unwrap();
     let denied = app
         .client
         .get(format!("{endpoint}/{id}"))
@@ -51,8 +60,9 @@ async fn health_events_documented_routes_create_read_update_and_revoke() {
     app.close().await;
     assert_eq!(
         (status, read_status, update_status, denied_status),
-        (201, 200, 200, 404)
+        (201, 200, 200, 403)
     );
+    assert_eq!(retained_status, 200);
     assert_eq!(body["data"]["ended_on"], Value::Null);
 }
 
@@ -118,16 +128,24 @@ async fn health_events_invalid_dates_hidden_links_and_audit_failure_are_atomic()
 async fn health_events_record_grant_creates_but_cannot_manage_or_public_delete() {
     let app = Application::new().await;
     let token = app.token().await;
-    app.fixture.admin.execute_unprepared("UPDATE person_access_grants SET access_level='record' WHERE id=78001; UPDATE household_memberships SET role='member' WHERE id=74001").await.unwrap();
+    app.fixture.admin.execute_unprepared("UPDATE person_access_grants SET access_level='record',person_id=73002 WHERE id=78001; UPDATE household_memberships SET role='member' WHERE id=74001").await.unwrap();
     let endpoint = format!("{}/api/v1/households/72001/health_events", app.origin);
-    let created = app.client.post(&endpoint).bearer_auth(&token).json(&json!({"health_event":{"person_id":"73001","event_kind":"illness","title":"Synthetic recorded illness","started_on":"2026-10-01"}})).send().await.unwrap();
+    let created = app.client.post(&endpoint).bearer_auth(&token).json(&json!({"health_event":{"person_id":"73002","event_kind":"illness","title":"Synthetic recorded illness","started_on":"2026-10-01"}})).send().await.unwrap();
     let status = created.status().as_u16();
+    let etag = created
+        .headers()
+        .get("etag")
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_owned();
     let body: Value = created.json().await.unwrap_or(Value::Null);
     let id = body["data"]["id"].as_i64().unwrap_or(-1);
     let update = app
         .client
         .patch(format!("{endpoint}/{id}"))
         .bearer_auth(&token)
+        .header("if-match", etag)
         .json(&json!({"health_event":{"title":"Forbidden"}}))
         .send()
         .await
@@ -141,8 +159,14 @@ async fn health_events_record_grant_creates_but_cannot_manage_or_public_delete()
         .await
         .unwrap();
     let delete_status = delete.status().as_u16();
+    let state=app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,"SELECT title,(SELECT count(*) FROM versions WHERE item_type='HealthEvent' AND item_id=$1) AS versions,(SELECT count(*) FROM api_change_events WHERE record_type='HealthEvent' AND record_id=$1) AS changes FROM health_events WHERE id=$1",[id.into()])).await.unwrap().unwrap();
+    let title: String = state.try_get("", "title").unwrap();
+    let versions: i64 = state.try_get("", "versions").unwrap();
+    let changes: i64 = state.try_get("", "changes").unwrap();
     app.close().await;
     assert_eq!((status, update_status, delete_status), (201, 403, 405));
+    assert_eq!(title, "Synthetic recorded illness");
+    assert_eq!((versions, changes), (1, 1));
 }
 
 #[tokio::test]
@@ -288,7 +312,7 @@ async fn health_events_put_and_stale_preconditions_preserve_links_and_audits() {
 }
 
 #[tokio::test]
-async fn health_events_visibility_is_person_scoped_and_view_access_cannot_write() {
+async fn health_events_participation_allows_record_and_departure_hides_subject() {
     let app = Application::new().await;
     let token = app.token().await;
     app.fixture.admin.execute_unprepared("INSERT INTO health_events(id,household_id,person_id,event_kind,title,started_on,created_at,updated_at) VALUES(87001,72001,73002,0,'Hidden synthetic event','2026-10-01',now(),now()); UPDATE person_access_grants SET access_level='view' WHERE id=78001").await.unwrap();
@@ -312,18 +336,42 @@ async fn health_events_visibility_is_person_scoped_and_view_access_cannot_write(
         .await
         .unwrap();
     let create = app.client.post(&endpoint).bearer_auth(&token).json(&json!({"health_event":{
-        "person_id":"73001","event_kind":"illness","title":"Forbidden view-only event","started_on":"2026-10-01"
+        "person_id":"73001","event_kind":"illness","title":"Recorded participant event","started_on":"2026-10-01"
     }})).send().await.unwrap();
     let create_status = create.status().as_u16();
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE household_id=72001 AND person_id=73002").await.unwrap();
+    let departed = app
+        .client
+        .get(format!("{endpoint}/87001"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let departed_status = departed.status().as_u16();
+    let remaining: Value = app
+        .client
+        .get(&endpoint)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
     let rows = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
         "SELECT (SELECT count(*) FROM health_events) AS events,(SELECT count(*) FROM versions WHERE item_type='HealthEvent') AS audits")).await.unwrap().unwrap();
     let events: i64 = rows.try_get("", "events").unwrap();
     let audits: i64 = rows.try_get("", "audits").unwrap();
     app.close().await;
-    assert_eq!((hidden_status, create_status), (404, 403));
-    assert_eq!(collection["data"], json!([]));
-    assert_eq!(collection["meta"]["total_count"], 0);
-    assert_eq!((events, audits), (1, 0));
+    assert_eq!((hidden_status, create_status), (200, 201));
+    assert_eq!(departed_status, 404);
+    assert_eq!(collection["data"].as_array().unwrap().len(), 1);
+    assert_eq!(collection["data"][0]["id"], 87001);
+    assert_eq!(remaining["data"].as_array().unwrap().len(), 1);
+    assert_eq!(remaining["meta"]["total_count"], 1);
+    assert_ne!(remaining["data"][0]["id"], 87001);
+    assert_eq!(collection["meta"]["total_count"], 1);
+    assert_eq!((events, audits), (2, 1));
 }
 
 #[tokio::test]
@@ -366,12 +414,12 @@ async fn health_events_browser_role_matrix_preserves_view_record_manage_boundari
         ),
         ("parent", "member", "parent", "manage", 73002, true, true),
         (
-            "unauthorised",
+            "participant_without_manage",
             "member",
             "parent",
             "view",
             73002,
-            false,
+            true,
             false,
         ),
     ] {
@@ -456,17 +504,46 @@ async fn health_events_browser_role_matrix_preserves_view_record_manage_boundari
         let tenant = access::begin(&app.fixture.runtime, &scope, None)
             .await
             .unwrap();
-        assert!(
-            browser::collection(&tenant, person_id).await.is_err(),
-            "{label}: revoked view"
+        assert_eq!(
+            browser::collection(&tenant, person_id).await.unwrap().len(),
+            1,
+            "{label}: grant-free participant view"
         );
         assert!(
             browser::save(&tenant, person_id, None, &draft, &provenance)
                 .await
-                .is_err(),
-            "{label}: revoked create"
+                .is_ok(),
+            "{label}: grant-free participant record"
+        );
+        assert_eq!(
+            access::require_person_access(&tenant, person_id, access::PersonAccess::Manage)
+                .await
+                .is_ok(),
+            person_id == 73001,
+            "{label}: only canonical self Manage remains after grant revocation"
         );
         tenant.rollback().await.unwrap();
+        app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE household_id=72001 AND person_id=$1",[person_id.into()])).await.unwrap();
+        let departed = access::begin(&app.fixture.runtime, &scope, None).await;
+        if person_id == 73001 {
+            assert!(
+                departed.is_err(),
+                "{label}: departed actor must not start a household transaction"
+            );
+        } else {
+            let tenant = departed.unwrap();
+            assert!(
+                browser::collection(&tenant, person_id).await.is_err(),
+                "{label}: departed subject view"
+            );
+            assert!(
+                browser::save(&tenant, person_id, None, &draft, &provenance)
+                    .await
+                    .is_err(),
+                "{label}: departed subject record"
+            );
+            tenant.rollback().await.unwrap();
+        }
         app.close().await;
     }
 }

@@ -54,11 +54,26 @@ async fn stock_order_visible_member_can_order_and_receive_without_adding_stock()
 }
 
 #[tokio::test]
-async fn stock_order_foreign_household_and_revoked_view_grant_cannot_mutate() {
+async fn stock_order_foreign_household_and_revoked_membership_cannot_mutate() {
     let app = Application::new().await;
     app.fixture.seed_foreign_household(72002).await;
     let token = app.token().await;
     app.fixture.admin.execute_unprepared("UPDATE medications SET reorder_status=0 WHERE id=80001; UPDATE household_memberships SET role='member' WHERE id=74001; UPDATE person_access_grants SET access_level='view',revoked_at=now() WHERE id=78001").await.unwrap();
+    let foreign = app
+        .client
+        .patch(format!(
+            "{}/api/v1/households/72002/medications/80001/mark_as_received",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared("UPDATE household_memberships SET revoked_at=now() WHERE id=74001")
+        .await
+        .unwrap();
     let denied = app
         .client
         .patch(format!(
@@ -67,16 +82,6 @@ async fn stock_order_foreign_household_and_revoked_view_grant_cannot_mutate() {
         ))
         .bearer_auth(&token)
         .json(&order_body())
-        .send()
-        .await
-        .unwrap();
-    let foreign = app
-        .client
-        .patch(format!(
-            "{}/api/v1/households/72002/medications/80001/mark_as_received",
-            app.origin
-        ))
-        .bearer_auth(&token)
         .send()
         .await
         .unwrap();
@@ -94,7 +99,7 @@ async fn stock_order_foreign_household_and_revoked_view_grant_cannot_mutate() {
     let state: Option<i32> = row.try_get("", "reorder_status").unwrap();
     let supply: String = row.try_get("", "supply").unwrap();
     app.close().await;
-    assert_eq!(statuses, (404, 403));
+    assert_eq!(statuses, (403, 403));
     assert_eq!((state, supply.as_str()), (Some(0), "10.00"));
 }
 

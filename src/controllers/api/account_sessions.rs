@@ -22,12 +22,18 @@ use crate::models::{
 };
 
 mod avatar;
+mod guardian_declarations;
 
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("/api/v1/auth")
         .add("/households", get(households))
         .add("/profile", get(profile).patch(update_profile))
+        .add("/guardian-declarations", get(guardian_declarations::index))
+        .add(
+            "/guardian-declarations/{id}",
+            patch(guardian_declarations::withdraw),
+        )
         .add(
             "/profile/avatar",
             get(avatar::show)

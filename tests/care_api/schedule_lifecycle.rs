@@ -120,7 +120,7 @@ async fn schedule_lifecycle_partial_update_stale_and_immutable_person() {
     let app = Application::new().await;
     let token = app.token().await;
     let id = create_schedule(&app, &token).await;
-    app.fixture.admin.execute_unprepared("INSERT INTO people(id,household_id,name,person_type,has_capacity,created_at,updated_at) VALUES(73999,72001,'Synthetic visible lifecycle person',0,true,now(),now()); INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,created_at,updated_at) VALUES(78999,72001,74001,73999,'view','family_member',now(),now())").await.unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73999,'Synthetic visible lifecycle person',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74999,72001,73999,'member','active',now(),now(),now()); INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,created_at,updated_at) VALUES(78999,72001,74001,73999,'view','family_member',now(),now())").await.unwrap();
     let endpoint = format!("{}/api/v1/households/72001/schedules/{id}", app.origin);
     let changed=app.client.patch(&endpoint).bearer_auth(&token).json(&json!({"schedule":{"dose_amount":"3","end_date":"2027-02-01","schedule_config":{"as_needed":true}}})).send().await.unwrap();
     let changed_status = changed.status().as_u16();
@@ -203,10 +203,22 @@ async fn schedule_lifecycle_replay_current_manage_and_audit_rollback() {
         .status()
         .as_u16();
     app.fixture.admin.execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001; UPDATE person_access_grants SET access_level='record' WHERE id=78001").await.unwrap();
+    let self_replay = app
+        .client
+        .patch(&endpoint)
+        .bearer_auth(&token)
+        .header("idempotency-key", "synthetic-schedule-update")
+        .json(&body)
+        .send()
+        .await
+        .unwrap();
+    let self_replay_status = self_replay.status().as_u16();
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001").await.unwrap();
     let denied = app
         .client
         .patch(&endpoint)
         .bearer_auth(&token)
+        .header("idempotency-key", "synthetic-schedule-update")
         .json(&body)
         .send()
         .await
@@ -219,7 +231,10 @@ async fn schedule_lifecycle_replay_current_manage_and_audit_rollback() {
     let versions: i64 = row.try_get("", "versions").unwrap();
     let changes: i64 = row.try_get("", "changes").unwrap();
     app.close().await;
-    assert_eq!((first, replay_status, failed, denied), (200, 200, 500, 403));
+    assert_eq!(
+        (first, replay_status, failed, self_replay_status, denied),
+        (200, 200, 500, 200, 403)
+    );
     assert!(replayed && reached);
     assert_eq!(notes.as_deref(), Some("Synthetic lifecycle"));
     assert_eq!((versions, changes), (1, 1));
@@ -328,6 +343,18 @@ async fn schedule_get_matches_documented_contract() {
     assert_eq!(missing_body["error"]["request_id"], missing_request_id);
 
     app.fixture.admin.execute_unprepared("INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(84998,72001,73002,80001,true,'2026-01-01','2027-01-01',2,'tablet',4,'{}',now(),now())").await.unwrap();
+    let participant = app
+        .client
+        .get(format!(
+            "{}/api/v1/households/72001/schedules/84998",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(participant.status().as_u16(), 200);
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74980").await.unwrap();
     let outside_scope = app
         .client
         .get(format!(

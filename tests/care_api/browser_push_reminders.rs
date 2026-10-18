@@ -23,7 +23,7 @@ async fn browser_reminder_terminal_cleanup_audit_failure_is_atomic() {
     browser_push::reminders::deliver_account(&app.context, &scope, now)
         .await
         .unwrap();
-    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET revoked_at=now() WHERE account_id=71001; CREATE FUNCTION public.reject_browser_cleanup_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.event_type='browser_push.reminder.invalid' THEN RAISE EXCEPTION 'synthetic cleanup audit failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_browser_cleanup_audit BEFORE INSERT ON security_audit_events FOR EACH ROW EXECUTE FUNCTION public.reject_browser_cleanup_audit()").await.unwrap();
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships AS membership SET revoked_at=now() FROM accounts AS account WHERE account.id=71001 AND membership.person_id=account.person_id; CREATE FUNCTION public.reject_browser_cleanup_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.event_type='browser_push.reminder.invalid' THEN RAISE EXCEPTION 'synthetic cleanup audit failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_browser_cleanup_audit BEFORE INSERT ON security_audit_events FOR EACH ROW EXECUTE FUNCTION public.reject_browser_cleanup_audit()").await.unwrap();
     assert!(
         browser_push::scheduler::recipients(&app.context, Utc::now())
             .await
@@ -115,7 +115,7 @@ async fn browser_reminder_profile_update_uses_same_lock_order() {
 #[tokio::test]
 async fn browser_reminder_lifecycle_revocation_recovers_without_resend() {
     for mutation in [
-        "UPDATE household_memberships SET revoked_at=now() WHERE account_id=71001",
+        "UPDATE household_memberships AS membership SET revoked_at=now() FROM accounts AS account WHERE account.id=71001 AND membership.person_id=account.person_id",
         "UPDATE accounts SET status=3 WHERE id=71001",
         "UPDATE households SET status='archived',lifecycle_state='offboarded' WHERE id=72001",
     ] {
@@ -165,7 +165,7 @@ async fn browser_reminder_lifecycle_revocation_recovers_without_resend() {
             .unwrap();
         assert_eq!(row.try_get::<String>("", "status").unwrap(), "uncertain");
         assert_eq!(row.try_get::<i32>("", "attempt_count").unwrap(), 1);
-        app.fixture.admin.execute_unprepared("UPDATE household_memberships SET revoked_at=NULL WHERE account_id=71001; UPDATE accounts SET status=2 WHERE id=71001; UPDATE households SET status='active',lifecycle_state='active' WHERE id=72001").await.unwrap();
+        app.fixture.admin.execute_unprepared("UPDATE household_memberships AS membership SET revoked_at=NULL FROM accounts AS account WHERE account.id=71001 AND membership.person_id=account.person_id; UPDATE accounts SET status=2 WHERE id=71001; UPDATE households SET status='active',lifecycle_state='active' WHERE id=72001").await.unwrap();
         assert_eq!(
             browser_push::reminders::drain_pending(&app.context, &scope, Utc::now())
                 .await
@@ -179,7 +179,7 @@ async fn browser_reminder_lifecycle_revocation_recovers_without_resend() {
 #[tokio::test]
 async fn browser_reminder_lifecycle_revocation_invalidates_pending() {
     for mutation in [
-        "UPDATE household_memberships SET revoked_at=now() WHERE account_id=71001",
+        "UPDATE household_memberships AS membership SET revoked_at=now() FROM accounts AS account WHERE account.id=71001 AND membership.person_id=account.person_id",
         "UPDATE accounts SET status=3 WHERE id=71001",
         "UPDATE households SET status='archived',lifecycle_state='offboarded' WHERE id=72001",
     ] {
@@ -238,7 +238,7 @@ async fn browser_reminder_lifecycle_revocation_invalidates_pending() {
             .unwrap()
             .unwrap();
         assert_eq!(row.try_get::<String>("", "status").unwrap(), "invalid");
-        app.fixture.admin.execute_unprepared("UPDATE household_memberships SET revoked_at=NULL WHERE account_id=71001; UPDATE accounts SET status=2 WHERE id=71001; UPDATE households SET status='active',lifecycle_state='active' WHERE id=72001").await.unwrap();
+        app.fixture.admin.execute_unprepared("UPDATE household_memberships AS membership SET revoked_at=NULL FROM accounts AS account WHERE account.id=71001 AND membership.person_id=account.person_id; UPDATE accounts SET status=2 WHERE id=71001; UPDATE households SET status='active',lifecycle_state='active' WHERE id=72001").await.unwrap();
         browser_push::reminders::deliver_account(&app.context, &scope, now)
             .await
             .unwrap();
@@ -1701,7 +1701,7 @@ async fn browser_missed_reminders_respect_grace_managed_opt_in_and_private_conte
     let scheduled = (now - chrono::Duration::minutes(30))
         .format("%H:%M")
         .to_string();
-    app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences=jsonb_build_object('time_zone','UTC') WHERE id=71001; INSERT INTO people(id,household_id,name,person_type,has_capacity,created_at,updated_at) VALUES(73004,72001,'Managed adult',0,true,now(),now()),(73005,72001,'View-only adult',0,true,now(),now()); INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,missed_dose_notifications_enabled,created_at,updated_at) VALUES(78002,72001,74001,73002,'manage','parent',false,now(),now()),(78004,72001,74001,73004,'manage','carer',false,now(),now()),(78005,72001,74001,73005,'view','carer',true,now(),now()); INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,created_at,updated_at) VALUES(72001,73001,true,false,true,false,false,now(),now()); INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/managed-reminder','synthetic','synthetic',now(),now())").await.unwrap();
+    app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences=jsonb_build_object('time_zone','UTC') WHERE id=71001; INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73004,'Managed adult',0,true,now(),now()),(73005,'View-only adult',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74984,72001,73004,'member','active',now(),now(),now()),(74985,72001,73005,'member','active',now(),now(),now()); INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,missed_dose_notifications_enabled,created_at,updated_at) VALUES(78002,72001,74001,73002,'manage','parent',false,now(),now()),(78004,72001,74001,73004,'manage','carer',false,now(),now()),(78005,72001,74001,73005,'view','carer',true,now(),now()); INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,created_at,updated_at) VALUES(72001,73001,true,false,true,false,false,now(),now()); INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/managed-reminder','synthetic','synthetic',now(),now())").await.unwrap();
     app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
         "INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) SELECT 83000+id-73000,72001,id,80001,true,$1,$2,2,'tablet',0,jsonb_build_object('times',jsonb_build_array($3::text)),now(),now() FROM people WHERE id IN(73002,73004,73005)", [(now.date_naive()-chrono::Duration::days(1)).into(),(now.date_naive()+chrono::Duration::days(2)).into(),scheduled.into()]
     )).await.unwrap();

@@ -210,7 +210,7 @@ async fn assignment_create_defaults_duplicate_and_retired_reassignment() {
 }
 
 #[tokio::test]
-async fn assignment_reads_obey_current_person_grants_and_foreign_household() {
+async fn assignment_reads_follow_membership_after_grant_withdrawal_and_reject_foreign_household() {
     let app = Application::new().await;
     app.fixture.seed_foreign_household(72002).await;
     let token = app.token().await;
@@ -270,17 +270,31 @@ async fn assignment_reads_obey_current_person_grants_and_foreign_household() {
         .unwrap()
         .status()
         .as_u16();
+    app.fixture
+        .admin
+        .execute_unprepared("UPDATE household_memberships SET revoked_at=now() WHERE id=74001")
+        .await
+        .unwrap();
+    let revoked_member = app
+        .client
+        .get(format!("{endpoint}/81001"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap()
+        .status()
+        .as_u16();
     app.close().await;
     assert_eq!(
-        (listed, read, unchanged, foreign, withdrawn),
-        (200, 200, 304, 403, 404)
+        (listed, read, unchanged, foreign, withdrawn, revoked_member),
+        (200, 200, 304, 403, 200, 403)
     );
     assert_eq!(list["meta"]["total_count"], 1);
     assert_eq!(list["data"][0]["id"], 81001);
 }
 
 #[tokio::test]
-async fn assignment_update_replay_stale_and_record_only_permission() {
+async fn assignment_update_replay_stale_and_revoked_membership() {
     let app = Application::new().await;
     let token = app.token().await;
     let endpoint = format!(
@@ -336,7 +350,21 @@ async fn assignment_update_replay_stale_and_record_only_permission() {
         .unwrap()
         .status()
         .as_u16();
-    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001; UPDATE person_access_grants SET access_level='record' WHERE id=78001").await.unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(92010,72001,73002,80001,2,'tablet',0,now(),now())").await.unwrap();
+    let other_person = app
+        .client
+        .patch(format!(
+            "{}/api/v1/households/72001/person_medications/92010",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .json(&body)
+        .send()
+        .await
+        .unwrap()
+        .status()
+        .as_u16();
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET revoked_at=now() WHERE id=74001; UPDATE person_access_grants SET access_level='record' WHERE id=78001").await.unwrap();
     let denied = app
         .client
         .patch(&endpoint)
@@ -352,15 +380,34 @@ async fn assignment_update_replay_stale_and_record_only_permission() {
     let notes: Option<String> = row.try_get("", "notes").unwrap();
     let versions: i64 = row.try_get("", "versions").unwrap();
     let changes: i64 = row.try_get("", "changes").unwrap();
+    let other_row = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT notes FROM person_medications WHERE id=92010",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    let other_notes: Option<String> = other_row.try_get("", "notes").unwrap();
     app.close().await;
     assert_eq!(
-        (changed, replay_status, stale, conflict, denied),
-        (200, 200, 409, 409, 403)
+        (
+            changed,
+            replay_status,
+            stale,
+            conflict,
+            other_person,
+            denied
+        ),
+        (200, 200, 409, 409, 403, 403)
     );
     assert!(replayed);
     assert_eq!(amount.as_deref(), Some("3.00"));
     assert_eq!(notes.as_deref(), Some("Synthetic assignment update"));
     assert_eq!((versions, changes), (1, 1));
+    assert_eq!(other_notes, None);
 }
 
 #[tokio::test]
@@ -551,13 +598,17 @@ async fn person_medication_get_matches_documented_contract() {
         .unwrap();
     let ungranted_status = ungranted.status().as_u16();
     let ungranted_body: Value = ungranted.json().await.unwrap();
-    assert_eq!(ungranted_status, 404);
+    assert_eq!(ungranted_status, 200);
     assert_value(
         contract,
-        not_found_schema,
+        resolve(
+            contract,
+            &operation["responses"]["200"]["content"]["application/json"]["schema"],
+        ),
         &ungranted_body,
-        "ungranted person assignment",
+        "participating person's assignment",
     );
+    assert_eq!(ungranted_body["data"]["id"], 92010);
 
     let foreign = app
         .client
@@ -648,7 +699,7 @@ async fn person_medication_list_matches_documented_contract() {
         .await
         .unwrap();
 
-    for (page, expected_id) in [(1, 81001), (2, 92010)] {
+    for (page, expected_id) in [(1, 81001), (2, 92010), (3, 92011)] {
         let paginated = app
             .client
             .get(format!("{collection}?page={page}&per_page=1"))
@@ -669,7 +720,7 @@ async fn person_medication_list_matches_documented_contract() {
             "paginated person medication collection",
         );
         assert_eq!(paginated_body["meta"]["per_page"], 1);
-        assert_eq!(paginated_body["meta"]["total_count"], 2);
+        assert_eq!(paginated_body["meta"]["total_count"], 3);
         assert_eq!(paginated_body["data"][0]["id"], expected_id);
     }
 
@@ -716,10 +767,11 @@ async fn person_medication_list_matches_documented_contract() {
         &scoped_body,
         "grant scoped collection",
     );
-    assert_eq!(scoped_body["meta"]["total_count"], 2);
-    assert_eq!(scoped_body["data"].as_array().unwrap().len(), 2);
+    assert_eq!(scoped_body["meta"]["total_count"], 3);
+    assert_eq!(scoped_body["data"].as_array().unwrap().len(), 3);
     assert_eq!(scoped_body["data"][0]["id"], 81001);
     assert_eq!(scoped_body["data"][1]["id"], 92010);
+    assert_eq!(scoped_body["data"][2]["id"], 92011);
 
     let foreign = app
         .client

@@ -21,11 +21,6 @@ async fn seed(fixture: &Fixture) -> HeaderMap {
 async fn api_session_retained_principal_preserves_target_context_and_canonical_actor() {
     let fixture = Fixture::new().await;
     let headers = seed(&fixture).await;
-    fixture
-        .admin
-        .execute_unprepared("UPDATE household_memberships SET person_id=73003 WHERE id=74001")
-        .await
-        .unwrap();
     let principal = api_session::authenticate(&fixture.runtime, &headers, None).await;
     assert!(
         principal.is_ok(),
@@ -52,6 +47,38 @@ async fn api_session_retained_principal_preserves_target_context_and_canonical_a
     let touched=fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT last_used_at > timezone('UTC',clock_timestamp())-interval '1 minute' AS touched FROM api_sessions WHERE id=88001")).await.unwrap().unwrap();
     assert!(touched.try_get::<bool>("", "touched").unwrap());
     fixture.close().await;
+}
+
+#[tokio::test]
+async fn api_session_rejects_retargeting_to_an_existing_different_person_membership()
+-> Result<(), Box<dyn std::error::Error>> {
+    let fixture = Fixture::new().await;
+    let headers = seed(&fixture).await;
+    let principal = api_session::authenticate(&fixture.runtime, &headers, None)
+        .await
+        .unwrap();
+    let changed = fixture
+        .admin
+        .execute_unprepared(
+            "UPDATE api_sessions SET household_membership_id=74981
+         WHERE id=88001 AND account_id=71001 AND household_membership_id=74001
+           AND EXISTS(SELECT 1 FROM household_memberships target
+             WHERE target.id=74981 AND target.household_id=72001 AND target.person_id=73003
+               AND target.status='active' AND target.revoked_at IS NULL)",
+        )
+        .await?;
+    let transaction = fixture.runtime.begin().await?;
+    let retained = principal.revalidate(&transaction, None).await;
+    transaction.rollback().await?;
+    let fresh = api_session::authenticate(&fixture.runtime, &headers, None).await;
+    fixture.close().await;
+    assert_eq!(changed.rows_affected(), 1);
+    assert!(matches!(
+        retained,
+        Err(AuthenticationError::Unauthenticated)
+    ));
+    assert!(matches!(fresh, Err(AuthenticationError::Unauthenticated)));
+    Ok(())
 }
 
 #[tokio::test]

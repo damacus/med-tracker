@@ -42,7 +42,15 @@ async fn administration_overview_shows_only_current_household_status() -> TestRe
             json!({"key":key,"secure":false});
     })
     .await;
-    fixture.admin.execute_unprepared("INSERT INTO household_invitations(id,household_id,email,membership_role,token_digest,invited_by_membership_id,expires_at,created_at,updated_at) VALUES(87001,72001,'pending-admin@example.test','member','overview-pending',74001,now()+interval '7 days',now(),now()),(87002,72001,'expired-admin@example.test','member','overview-expired',74001,now()-interval '1 day',now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71001,'Other household','other-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,account_id,role,joined_at,created_at,updated_at) VALUES(74002,72002,71001,'owner',now(),now(),now()); INSERT INTO people(id,household_id,name,person_type,has_capacity,created_at,updated_at) VALUES(73004,72002,'Other person',0,true,now(),now()); INSERT INTO household_invitations(id,household_id,email,membership_role,token_digest,invited_by_membership_id,expires_at,created_at,updated_at) VALUES(87003,72002,'other-admin@example.test','member','overview-other',74002,now()+interval '7 days',now(),now()); INSERT INTO accounts(id,email,password_hash,status,created_at,updated_at) VALUES(71002,'foreign-admin@example.test',crypt('password',gen_salt('bf',4)),2,now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72003,71002,'Foreign household','foreign-admin-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,account_id,role,joined_at,created_at,updated_at) VALUES(74003,72003,71002,'owner',now(),now(),now())").await?;
+    fixture.admin.execute_unprepared(
+        "INSERT INTO household_invitations(id,household_id,email,membership_role,token_digest,invited_by_membership_id,expires_at,created_at,updated_at) VALUES(87001,72001,'pending-admin@example.test','member','overview-pending',74001,now()+interval '7 days',now(),now()),(87002,72001,'expired-admin@example.test','member','overview-expired',74001,now()-interval '1 day',now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71001,'Other household','other-household','UTC',now(),now()); INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73004,'Other person',0,true,now(),now()),(73005,'Foreign account person',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74002,72002,73001,'owner',now(),now(),now()),(74004,72002,73004,'member',now(),now(),now()); INSERT INTO household_invitations(id,household_id,email,membership_role,token_digest,invited_by_membership_id,expires_at,created_at,updated_at) VALUES(87003,72002,'other-admin@example.test','member','overview-other',74002,now()+interval '7 days',now(),now()); INSERT INTO accounts(id,person_id,email,password_hash,status,created_at,updated_at) VALUES(71002,73005,'foreign-admin@example.test',crypt('password',gen_salt('bf',4)),2,now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72003,71002,'Foreign household','foreign-admin-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74003,72003,73005,'owner',now(),now(),now())"
+    ).await?;
+    let identity = fixture.admin.query_one_raw(Statement::from_string(
+        DbBackend::Postgres,
+        "SELECT a.person_id,count(m.id) AS households FROM accounts a JOIN household_memberships m ON m.person_id=a.person_id WHERE a.id=71001 AND m.household_id IN(72001,72002) GROUP BY a.person_id",
+    )).await?.ok_or("shared canonical Person fixture missing")?;
+    let shared_person = identity.try_get::<i64>("", "person_id")?;
+    let shared_households = identity.try_get::<i64>("", "households")?;
     let mut request = server(&boot);
     request.save_cookies();
     select_household(&request, &fixture, &boot).await?;
@@ -71,17 +79,19 @@ async fn administration_overview_shows_only_current_household_status() -> TestRe
     assert_eq!(overview_status, 200, "{html}");
     assert_eq!(overview_cache, "no-store");
     assert!(html.contains("Synthetic household administration"));
-    assert!(html.contains("1 active member"));
+    assert!(html.contains("3 active members"));
     assert!(html.contains("3 people"));
     assert!(html.contains("1 pending invitation"));
     assert!(!html.contains("Other household"));
     assert!(!html.contains("other-admin@example.test"));
     assert_eq!(other_status, 200, "{other_html}");
     assert!(other_html.contains("Other household administration"));
-    assert!(other_html.contains("1 active member"));
-    assert!(other_html.contains("1 person"));
+    assert!(other_html.contains("2 active members"));
+    assert!(other_html.contains("2 people"));
     assert!(other_html.contains("1 pending invitation"));
     assert!(!other_html.contains("Synthetic household"));
+    assert_eq!(shared_person, 73001);
+    assert_eq!(shared_households, 2);
     assert!([403, 404].contains(&foreign_status));
     assert_eq!(denied_status, 403);
     assert!([403, 404].contains(&revoked_status));

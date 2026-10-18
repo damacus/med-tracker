@@ -62,7 +62,8 @@ impl Page<'_> {
                 .or_insert_with(|| "parent".into());
             data["slug"] = json!(self.slug);
             data["lang"] = json!(language);
-            data["title"] = labels["people"]["carer_relationships"]["new_title"].clone();
+            data["title"] =
+                labels["people"]["carer_relationships"]["browser"]["relationships"].clone();
             data["carer_labels"] = labels["people"]["carer_relationships"].clone();
             data["labels"] = labels.clone();
             data["back_label"] = labels["people"]["show"]["back"].clone();

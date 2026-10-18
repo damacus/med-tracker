@@ -241,7 +241,8 @@ async fn native_device_token_claims_are_globally_unique_but_deletes_are_account_
     app.fixture
         .admin
         .execute_unprepared(
-            "INSERT INTO accounts(id,email,password_hash,created_at,updated_at) VALUES (71333,'foreign-device@example.test',crypt('password', gen_salt('bf', 4)),now(),now());
+            "INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES (73333,'Synthetic foreign device owner',0,true,now(),now());
+             INSERT INTO accounts(id,person_id,email,password_hash,created_at,updated_at) VALUES (71333,73333,'foreign-device@example.test',crypt('password', gen_salt('bf', 4)),now(),now());
              INSERT INTO native_device_tokens(account_id,device_token,platform,created_at,updated_at) VALUES (71333,'held-device-token','ios',now(),now())",
         )
         .await

@@ -191,13 +191,15 @@ test('withdrawn membership rejects an open photo sheet and preserves the stored 
   await upload(page);
   const original = await (await page.request.get(avatar)).body();
   if (!(await page.locator('#profile-avatar').evaluate(element => element.open))) await page.locator('#profile-avatar summary').click();
-  await careFixture.revoke();
+  const beforeWithdrawal = await careFixture.probe();
+  await careFixture.withdrawMembership();
   const sheet = page.locator('#profile-avatar');
   await sheet.getByLabel('Upload a custom avatar', { exact: true }).setInputFiles({ name: 'denied.png', mimeType: 'image/png', buffer: png });
   await sheet.getByRole('button', { name: 'Upload avatar', exact: true }).click();
   await expect(page.locator('.profile-hero img')).toHaveCount(0);
-  expect([403, 404]).toContain((await page.request.get(avatar)).status());
-  await careFixture.reactivate();
+  expect((await page.request.get(avatar, { maxRedirects: 0 })).status()).toBe(403);
+  expect(await careFixture.probe()).toMatchObject({ supply: beforeWithdrawal.supply, takes: beforeWithdrawal.takes });
+  await careFixture.restoreMembership();
   expect(await (await page.request.get(avatar)).body()).toEqual(original);
 });
 
@@ -209,7 +211,13 @@ test('the uploaded profile photo appears on its person page and respects revoked
   const image = page.getByRole('img', { name: 'Synthetic adult avatar', exact: true }).locator('img');
   await expect(image).toHaveJSProperty('naturalWidth', 1);
   const source = await image.getAttribute('src');
-  expect((await page.request.get(source)).status()).toBe(200);
-  await careFixture.revoke();
-  expect([403, 404]).toContain((await page.request.get(source)).status());
+  const beforeImage = await page.request.get(source);
+  expect(beforeImage.status()).toBe(200);
+  const original = await beforeImage.body();
+  const beforeWithdrawal = await careFixture.probe();
+  await careFixture.withdrawMembership();
+  expect((await page.request.get(source, { maxRedirects: 0 })).status()).toBe(403);
+  expect(await careFixture.probe()).toMatchObject({ supply: beforeWithdrawal.supply, takes: beforeWithdrawal.takes });
+  await careFixture.restoreMembership();
+  expect(await (await page.request.get(source)).body()).toEqual(original);
 });

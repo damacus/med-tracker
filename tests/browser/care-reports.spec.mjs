@@ -50,9 +50,12 @@ test('reports show the current daily history and serve protected GP and review P
   expect(audit.outcome).toBe('success');
   const forbidden = await page.request.get(`${path}/health-history?person_id=73002&start_date=2026-01-01&end_date=2026-01-31`);
   expect(forbidden.status()).toBe(404);
-  await careFixture.revoke();
+  const beforeWithdrawal = await careFixture.probe();
+  await careFixture.withdrawMembership();
   const revoked = await page.request.get(`${path}/health-history?person_id=73001&start_date=2026-01-01&end_date=2026-01-31`);
-  expect(revoked.status()).toBe(404);
+  expect(revoked.status()).toBe(403);
+  expect(await careFixture.reportAuditProbe()).toEqual(audit);
+  expect(await careFixture.probe()).toMatchObject({ supply: beforeWithdrawal.supply, takes: beforeWithdrawal.takes, foreign_supply: beforeWithdrawal.foreign_supply, foreign_takes: beforeWithdrawal.foreign_takes });
 });
 
 test('report index uses logged medicine and stock to explain compliance and inventory risk', async ({ page, careFixture }, info) => {
@@ -94,7 +97,7 @@ test('review PDF filters to the selected visible person and accepts an unknown s
   expect(pages(await unknownStatus.body())).toBe(1);
 });
 
-test('review PDF is denied when a selected person grant is revoked during the snapshot', async ({ page, careFixture }) => {
+test('review PDF is denied when household membership is withdrawn during the snapshot', async ({ page, careFixture }) => {
   test.setTimeout(180000);
   await careFixture.seedReviewReport();
   await careFixture.seedRefreshTrap();
@@ -103,9 +106,23 @@ test('review PDF is denied when a selected person grant is revoked during the sn
   await page.getByLabel('Email address', { exact: true }).fill('persistence@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  const response = await page.request.get('/households/persistence-fixture/medicine-reviews/report');
+  const householdPath = '/households/persistence-fixture/people';
+  expect((await page.request.get(householdPath, { maxRedirects: 0 })).status()).toBe(200);
+  const before = await careFixture.probe();
+  const response = await page.request.get('/households/persistence-fixture/medicine-reviews/report?person_id=73001', { maxRedirects: 0 });
   expect(response.status()).toBe(403);
-  expect(response.headers()['content-type']).not.toContain('application/pdf');
+  expect(response.headers()['content-type'] ?? '').not.toContain('application/pdf');
+  expect((await response.body()).subarray(0, 5).toString()).not.toBe('%PDF-');
+  expect((await page.request.get(householdPath, { maxRedirects: 0 })).status()).toBe(403);
+  const security = await page.request.get('/account/security', { maxRedirects: 0 });
+  expect(security.status()).toBe(200);
+  expect(security.headers()['content-type'] ?? '').toContain('text/html');
+  expect(security.headers().location).toBeUndefined();
+  const accountBody = await security.text();
+  expect(accountBody).toContain('>Account security</h1>');
+  expect(accountBody).toContain('<p>persistence@example.test</p>');
+  expect(accountBody).toContain('Current session');
+  expect(await careFixture.probe()).toEqual(before);
 });
 
 test('review PDF re-authenticates the browser session after rendering', async ({ page, careFixture }) => {

@@ -250,7 +250,7 @@ async fn admin_record(
         .map_err(|_| OperationError::Unavailable)
 }
 
-const OWNER_MEMBER: &str = "SELECT m.id,m.permissions_version FROM public.household_memberships m JOIN public.accounts a ON a.id=m.account_id JOIN public.people p ON p.id=m.person_id AND p.account_id=m.account_id JOIN public.users u ON u.person_id=p.id WHERE m.account_id=$1 AND m.household_id=$2 AND m.role='owner' AND m.status='active' AND m.revoked_at IS NULL AND a.status=2 AND p.person_type=0 AND p.has_capacity AND u.active ORDER BY m.id LIMIT 1";
+const OWNER_MEMBER: &str = "SELECT m.id,m.permissions_version FROM public.household_memberships m JOIN public.accounts a ON a.person_id=m.person_id JOIN public.people p ON p.id=m.person_id JOIN public.users u ON u.person_id=p.id WHERE a.id=$1 AND m.household_id=$2 AND m.role='owner' AND m.status='active' AND m.revoked_at IS NULL AND a.status=2 AND p.person_type=0 AND p.has_capacity AND u.active ORDER BY m.id LIMIT 1";
 
 async fn owner_membership(
     transaction: &DatabaseTransaction,
@@ -294,7 +294,7 @@ async fn approval_current(
     transaction
         .query_one_raw(Statement::from_sql_and_values(
             DbBackend::Postgres,
-            "SELECT EXISTS(SELECT 1 FROM public.household_memberships m JOIN public.accounts a ON a.id=m.account_id JOIN public.people p ON p.id=m.person_id AND p.account_id=m.account_id JOIN public.users u ON u.person_id=p.id WHERE m.id=$1 AND m.household_id=$2 AND m.account_id=$3 AND m.role='owner' AND m.status='active' AND m.revoked_at IS NULL AND m.permissions_version=$4 AND a.status=2 AND p.person_type=0 AND p.has_capacity AND u.active) AS present",
+            "SELECT EXISTS(SELECT 1 FROM public.household_memberships m JOIN public.accounts a ON a.person_id=m.person_id JOIN public.people p ON p.id=m.person_id JOIN public.users u ON u.person_id=p.id WHERE m.id=$1 AND m.household_id=$2 AND a.id=$3 AND m.role='owner' AND m.status='active' AND m.revoked_at IS NULL AND m.permissions_version=$4 AND a.status=2 AND p.person_type=0 AND p.has_capacity AND u.active) AS present",
             [
                 membership_id.into(),
                 session.household_id.into(),
@@ -369,7 +369,7 @@ async fn owned_households(
     transaction
         .query_all_raw(Statement::from_sql_and_values(
             DbBackend::Postgres,
-            "SELECT m.household_id FROM public.household_memberships m JOIN public.accounts a ON a.id=m.account_id JOIN public.people p ON p.id=m.person_id AND p.account_id=m.account_id JOIN public.users u ON u.person_id=p.id WHERE m.account_id=$1 AND m.role='owner' AND m.status='active' AND m.revoked_at IS NULL AND a.status=2 AND p.person_type=0 AND p.has_capacity AND u.active ORDER BY m.household_id",
+            "SELECT m.household_id FROM public.household_memberships m JOIN public.accounts a ON a.person_id=m.person_id JOIN public.people p ON p.id=m.person_id JOIN public.users u ON u.person_id=p.id WHERE a.id=$1 AND m.role='owner' AND m.status='active' AND m.revoked_at IS NULL AND a.status=2 AND p.person_type=0 AND p.has_capacity AND u.active ORDER BY m.household_id",
             [actor_account_id.into()],
         ))
         .await?
@@ -382,8 +382,8 @@ pub async fn support_link(
     transaction: &DatabaseTransaction,
     actor_account_id: i64,
 ) -> Result<bool, OperationError> {
-    access::verify_account_actor(transaction, actor_account_id).await?;
     account_scope(transaction, actor_account_id).await?;
+    access::verify_account_actor(transaction, actor_account_id).await?;
     Ok(!owned_households(transaction, actor_account_id)
         .await?
         .is_empty())
@@ -393,8 +393,8 @@ pub async fn owner_page(
     transaction: &DatabaseTransaction,
     actor_account_id: i64,
 ) -> Result<Vec<SupportEntry>, OperationError> {
-    access::verify_account_actor(transaction, actor_account_id).await?;
     account_scope(transaction, actor_account_id).await?;
+    access::verify_account_actor(transaction, actor_account_id).await?;
     let ids = owned_households(transaction, actor_account_id).await?;
     if ids.is_empty() {
         return Err(OperationError::Forbidden);
@@ -495,6 +495,7 @@ pub async fn check_approve(
     actor_account_id: i64,
     support_id: i64,
 ) -> Result<(), OperationError> {
+    account_scope(transaction, actor_account_id).await?;
     access::verify_account_actor(transaction, actor_account_id).await?;
     let session = session_row(transaction, support_id, false).await?;
     approve_allowed(transaction, actor_account_id, session.household_id, false).await?;
@@ -507,6 +508,7 @@ pub async fn approve(
     support_id: i64,
     meta: &RequestMeta,
 ) -> Result<SupportDecision, OperationError> {
+    account_scope(transaction, actor_account_id).await?;
     access::verify_account_actor(transaction, actor_account_id).await?;
     let session = session_row(transaction, support_id, true).await?;
     if session.approved_at.is_some() || session.activated_at.is_some() {
@@ -628,6 +630,7 @@ pub async fn end(
     support_id: i64,
     meta: &RequestMeta,
 ) -> Result<EndedBy, OperationError> {
+    account_scope(transaction, actor_account_id).await?;
     access::verify_account_actor(transaction, actor_account_id).await?;
     let session = session_row(transaction, support_id, true).await?;
     let user_id = access::verify_account_actor(transaction, actor_account_id).await?;
@@ -690,6 +693,7 @@ pub async fn read(
     actor_account_id: i64,
     support_id: i64,
 ) -> Result<SupportRead, OperationError> {
+    account_scope(transaction, actor_account_id).await?;
     access::verify_account_actor(transaction, actor_account_id).await?;
     let session = session_row(transaction, support_id, true).await?;
     let Some(_) = admin_record(transaction, actor_account_id)
@@ -749,7 +753,7 @@ pub async fn read(
             .collect::<Result<Vec<String>, OperationError>>()
     };
     let members = names("SELECT p.name AS name FROM public.household_memberships m JOIN public.people p ON p.id=m.person_id WHERE m.household_id=$1 AND m.status='active' AND m.revoked_at IS NULL ORDER BY m.id").await?;
-    let people = names("SELECT name FROM public.people WHERE household_id=$1 ORDER BY id").await?;
+    let people = names("SELECT p.name FROM public.people p JOIN public.household_memberships m ON m.person_id=p.id WHERE m.household_id=$1 AND m.status='active' AND m.revoked_at IS NULL ORDER BY p.id").await?;
     let medications =
         names("SELECT name FROM public.medications WHERE household_id=$1 ORDER BY id").await?;
     let allocations = transaction

@@ -13,7 +13,7 @@ pub(super) async fn record(
     transaction.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
         "SELECT set_config('med_tracker.current_account_id',$1,true),set_config('med_tracker.current_household_id','',true),set_config('med_tracker.current_membership_id','',true)", [grant.account_id.to_string().into()])).await.map_err(|_| ExchangeError::Unavailable)?;
     let actor = transaction.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "SELECT u.id FROM people p LEFT JOIN users u ON u.person_id=p.id WHERE p.account_id=$1 ORDER BY p.id LIMIT 1", [grant.account_id.into()])).await.map_err(|_| ExchangeError::Unavailable)?;
+        "SELECT u.id FROM accounts a JOIN people p ON p.id=a.person_id LEFT JOIN users u ON u.person_id=p.id WHERE a.id=$1", [grant.account_id.into()])).await.map_err(|_| ExchangeError::Unavailable)?;
     let user_id = match actor {
         Some(row) => row
             .try_get::<Option<i64>>("", "id")
@@ -42,7 +42,7 @@ pub(super) async fn record(
         return Ok(());
     }
     let member = transaction.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "SELECT id,household_id,role,permissions_version FROM household_memberships WHERE id=$1 AND account_id=$2", [grant.household_membership_id.into(),grant.account_id.into()])).await.map_err(|_| ExchangeError::Unavailable)?.ok_or(ExchangeError::Unavailable)?;
+        "SELECT id,household_id,role,permissions_version FROM household_memberships WHERE id=$1 AND person_id=(SELECT person_id FROM accounts WHERE id=$2)", [grant.household_membership_id.into(),grant.account_id.into()])).await.map_err(|_| ExchangeError::Unavailable)?.ok_or(ExchangeError::Unavailable)?;
     let membership_id: i64 = member
         .try_get("", "id")
         .map_err(|_| ExchangeError::Unavailable)?;

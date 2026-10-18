@@ -36,10 +36,39 @@ async fn suggestion_audit(app: &Application) -> Option<Value> {
     }))
 }
 
+async fn suggestion_access_state(app: &Application) -> Value {
+    app.fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT jsonb_build_object(
+              'clinical',jsonb_build_object(
+                'medications',(SELECT jsonb_agg(to_jsonb(m) ORDER BY m.id) FROM medications m),
+                'assignments',(SELECT jsonb_agg(to_jsonb(m) ORDER BY m.id) FROM person_medications m),
+                'schedules',(SELECT jsonb_agg(to_jsonb(s) ORDER BY s.id) FROM schedules s),
+                'takes',(SELECT jsonb_agg(to_jsonb(t) ORDER BY t.id) FROM medication_takes t),
+                'versions',(SELECT jsonb_agg(to_jsonb(v) ORDER BY v.id) FROM versions v WHERE item_type IN ('Medication','PersonMedication','Schedule','MedicationTake')),
+                'changes',(SELECT jsonb_agg(to_jsonb(c) ORDER BY c.id) FROM api_change_events c)),
+              'suggestions',COALESCE((SELECT jsonb_agg(to_jsonb(v) ORDER BY v.id) FROM versions v WHERE item_type='AiMedicationSuggestion'),'[]'::jsonb),
+              'requests',COALESCE((SELECT jsonb_agg(to_jsonb(a) ORDER BY a.id) FROM security_audit_events a WHERE event_type='api.request' AND metadata->>'controller'='api/v1/ai_medication_suggestions'),'[]'::jsonb)
+            ) AS state",
+        ))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("", "state")
+        .unwrap()
+}
+
 #[tokio::test]
 async fn ai_medication_suggestions_require_authentication_and_access() {
     let app = Application::new_with_ai_help(true).await;
     upgrade_plan(&app).await;
+    assert_eq!(
+        app.context.config.settings.as_ref().unwrap()["ai_medication_help"],
+        json!({"enabled": true})
+    );
+    let initial = suggestion_access_state(&app).await;
     let unauthenticated = app
         .client
         .post(suggestions_url(&app))
@@ -48,6 +77,9 @@ async fn ai_medication_suggestions_require_authentication_and_access() {
         .await
         .unwrap();
     Application::assert_status(unauthenticated, 401).await;
+    let unauthenticated_state = suggestion_access_state(&app).await;
+    assert_eq!(unauthenticated_state["clinical"], initial["clinical"]);
+    assert_eq!(unauthenticated_state["suggestions"], json!([]));
 
     app.fixture
         .admin
@@ -58,6 +90,48 @@ async fn ai_medication_suggestions_require_authentication_and_access() {
         .await
         .unwrap();
     let token = app.token().await;
+    let participating = app
+        .client
+        .post(suggestions_url(&app))
+        .bearer_auth(&token)
+        .json(&json!({"medication": {"name": "Synthetic medicine"}}))
+        .send()
+        .await
+        .unwrap();
+    let payload = Application::assert_status(participating, 200).await;
+    assert_eq!(
+        payload,
+        json!({"data":{"medication":{},"doses":[],"sources":[],"errors":["ruby_llm_unconfigured"]}})
+    );
+    let accepted = suggestion_access_state(&app).await;
+    assert_eq!(accepted["clinical"], initial["clinical"]);
+    let suggestions = accepted["suggestions"].as_array().unwrap();
+    assert_eq!(suggestions.len(), 1);
+    assert_eq!(suggestions[0]["event"], "ai_medication/suggestion");
+    assert_eq!(suggestions[0]["whodunnit"], "77001");
+    assert_eq!(suggestions[0]["actor_membership_id"], 74001);
+    assert_eq!(suggestions[0]["household_id"], 72001);
+    let audit = suggestion_audit(&app).await.unwrap();
+    assert_eq!(audit["object"]["source_count"], 0);
+    assert_eq!(audit["object"]["dose_count"], 0);
+    assert_eq!(audit["object"]["error_count"], 1);
+    assert_eq!(audit["object"]["result_status"], "error");
+    let requests = accepted["requests"].as_array().unwrap();
+    assert_eq!(requests.len(), 1);
+    assert_eq!(requests[0]["actor_account_id"], 71001);
+    assert_eq!(requests[0]["actor_membership_id"], 74001);
+    assert_eq!(requests[0]["metadata"]["status"], 200);
+    assert_eq!(requests[0]["metadata"]["outcome"], "success");
+    assert_eq!(requests[0]["request_id"], suggestions[0]["request_id"]);
+
+    app.fixture
+        .admin
+        .execute_unprepared(
+            "UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1
+             WHERE id=74001 AND household_id=72001 AND person_id=(SELECT person_id FROM accounts WHERE id=71001)",
+        )
+        .await
+        .unwrap();
     let denied = app
         .client
         .post(suggestions_url(&app))
@@ -68,6 +142,19 @@ async fn ai_medication_suggestions_require_authentication_and_access() {
         .unwrap();
     let payload = Application::assert_status(denied, 403).await;
     assert_eq!(payload["error"]["code"], "forbidden");
+    let revoked = suggestion_access_state(&app).await;
+    assert_eq!(revoked["clinical"], accepted["clinical"]);
+    assert_eq!(revoked["suggestions"], accepted["suggestions"]);
+    assert_eq!(
+        revoked["requests"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|request| request["metadata"]["status"] == 200)
+            .count(),
+        1
+    );
+    app.close().await;
 }
 
 #[tokio::test]

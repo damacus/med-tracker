@@ -8,10 +8,20 @@ pub struct DataEnvelope<T> {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct PortableImportRequest {
+    #[serde(rename = "bundle")]
     pub data: Value,
+    #[serde(skip_serializing)]
     pub mode: PortableImportMode,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing)]
     pub passphrase: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub initial_guardian_declarations: Vec<InitialGuardianDeclaration>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct InitialGuardianDeclaration {
+    pub person_portable_id: String,
+    pub accepted: bool,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

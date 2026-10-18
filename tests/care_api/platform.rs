@@ -14,7 +14,7 @@ async fn platform_owner_recovery_cannot_be_bypassed_through_membership_updates()
             2,
         )
         .await;
-        app.fixture.admin.execute_unprepared("INSERT INTO household_memberships(id,account_id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74002,71002,72001,73004,'member','active',now(),now(),now())").await.unwrap();
+        app.fixture.admin.execute_unprepared("INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74002,72001,73004,'member','active',now(),now(),now())").await.unwrap();
         admin_session(&app).await;
         let bearer = app.token().await;
         let response = app
@@ -59,7 +59,7 @@ pub(super) async fn admin_session(app: &Application) -> String {
     session(app).await
 }
 
-async fn sign_in(app: &Application, account_id: i64, email: &str) -> String {
+pub(super) async fn sign_in(app: &Application, account_id: i64, email: &str) -> String {
     app.fixture.admin.execute_unprepared(&format!("INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES({account_id},now()) ON CONFLICT(account_id) DO UPDATE SET recovery_saved_at=now()")).await.unwrap();
     let service = app
         .context
@@ -101,12 +101,12 @@ async fn synthetic_account(
     email: &str,
     status: i32,
 ) {
-    app.fixture.admin.execute_unprepared(&format!("INSERT INTO accounts(id,email,password_hash,status,created_at,updated_at) VALUES({account_id},'{email}',crypt('password',gen_salt('bf',4)),{status},now(),now())")).await.unwrap();
-    app.fixture.admin.execute_unprepared(&format!("INSERT INTO people(id,account_id,household_id,name,person_type,has_capacity,created_at,updated_at) VALUES({person_id},{account_id},72001,'Synthetic platform member',0,true,now(),now())")).await.unwrap();
+    app.fixture.admin.execute_unprepared(&format!("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES({person_id},'Synthetic platform member',0,true,now(),now())")).await.unwrap();
+    app.fixture.admin.execute_unprepared(&format!("INSERT INTO accounts(id,person_id,name,email,password_hash,status,created_at,updated_at) VALUES({account_id},{person_id},'Synthetic platform member','{email}',crypt('password',gen_salt('bf',4)),{status},now(),now())")).await.unwrap();
     app.fixture.admin.execute_unprepared(&format!("INSERT INTO users(id,person_id,email_address,password_digest,active,created_at,updated_at) VALUES({user_id},{person_id},'{email}',crypt('password',gen_salt('bf',4)),true,now(),now())")).await.unwrap();
 }
 
-async fn operation_start(
+pub(super) async fn operation_start(
     app: &Application,
     cookie: &str,
     action: Value,
@@ -125,7 +125,7 @@ async fn operation_start(
     (status, body)
 }
 
-async fn operation_confirm(
+pub(super) async fn operation_confirm(
     app: &Application,
     cookie: &str,
     operation_id: &str,
@@ -180,7 +180,7 @@ async fn user_active(app: &Application, user_id: i64) -> Option<bool> {
         .and_then(|row| row.try_get::<bool>("", "active").ok())
 }
 
-fn hidden_field(body: &str, name: &str) -> String {
+pub(super) fn hidden_field(body: &str, name: &str) -> String {
     body.split(&format!("name=\"{name}\" value=\""))
         .nth(1)
         .and_then(|rest| rest.split('"').next())
@@ -188,7 +188,7 @@ fn hidden_field(body: &str, name: &str) -> String {
         .to_owned()
 }
 
-fn response_cookies(base: &str, response: &reqwest::Response) -> String {
+pub(super) fn response_cookies(base: &str, response: &reqwest::Response) -> String {
     let mut cookie = base.to_owned();
     for value in response.headers().get_all("set-cookie") {
         if let Some(pair) = value
@@ -204,7 +204,7 @@ fn response_cookies(base: &str, response: &reqwest::Response) -> String {
     cookie
 }
 
-async fn form_page(app: &Application, cookie: &str, path: &str) -> (String, String) {
+pub(super) async fn form_page(app: &Application, cookie: &str, path: &str) -> (String, String) {
     let response = app
         .client
         .get(format!("{}{}", app.origin, path))
@@ -217,7 +217,7 @@ async fn form_page(app: &Application, cookie: &str, path: &str) -> (String, Stri
     (cookies, response.text().await.unwrap())
 }
 
-async fn post_form(
+pub(super) async fn post_form(
     app: &Application,
     cookie: &str,
     path: &str,
@@ -875,7 +875,7 @@ async fn platform_inactive_user_administrator_is_not_viable_remaining_admin() {
         .execute_unprepared("UPDATE users SET active=false WHERE id=77002")
         .await
         .unwrap();
-    app.fixture.admin.execute_unprepared("INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71002,'Second profile household','second-profile-household','Europe/London',now(),now()); INSERT INTO people(id,account_id,household_id,name,person_type,has_capacity,created_at,updated_at) VALUES(73005,71002,72002,'Later active profile',0,true,now(),now()); INSERT INTO users(id,person_id,email_address,password_digest,active,created_at,updated_at) VALUES(77003,73005,'later-profile@example.test',crypt('password',gen_salt('bf',4)),true,now(),now())").await.unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71002,'Second profile household','second-profile-household','Europe/London',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74003,72002,73004,'member','active',now(),now(),now())").await.unwrap();
     let cookie = admin_session(&app).await;
     let (status, body) = operation_start(
         &app,
@@ -906,7 +906,7 @@ async fn platform_administrator_grant_refuses_ineligible_accounts() {
     )
     .await;
     synthetic_account(&app, 71005, 73007, 77005, "platform-mixed@example.test", 2).await;
-    app.fixture.admin.execute_unprepared("INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71005,'Second grant household','second-grant-household','Europe/London',now(),now()); UPDATE users SET active=false WHERE id=77005; INSERT INTO people(id,account_id,household_id,name,person_type,has_capacity,created_at,updated_at) VALUES(73008,71005,72002,'Later active profile',0,true,now(),now()); INSERT INTO users(id,person_id,email_address,password_digest,active,created_at,updated_at) VALUES(77006,73008,'later-grant@example.test',crypt('password',gen_salt('bf',4)),true,now(),now())").await.unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71005,'Second grant household','second-grant-household','Europe/London',now(),now()); UPDATE users SET active=false WHERE id=77005; INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74006,72002,73007,'member','active',now(),now(),now())").await.unwrap();
     let cookie = admin_session(&app).await;
     for target in [71003, 71004, 71005, 79999] {
         let (status, body) = operation_start(
@@ -1158,7 +1158,7 @@ async fn platform_users_page_shows_user_state_and_action_forms() {
 #[tokio::test]
 async fn platform_users_page_links_are_bounded() {
     let app = Application::new().await;
-    app.fixture.admin.execute_unprepared("INSERT INTO accounts(id,email,password_hash,status,created_at,updated_at) SELECT 80000+i,format('bulk-%s@example.test',i),crypt('password',gen_salt('bf',4)),2,now(),now() FROM generate_series(1,300) i").await.unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) SELECT 90000+i,format('Synthetic bulk person %s',i),0,true,now(),now() FROM generate_series(1,300) i; INSERT INTO accounts(id,person_id,name,email,password_hash,status,created_at,updated_at) SELECT 80000+i,90000+i,format('Synthetic bulk person %s',i),format('bulk-%s@example.test',i),crypt('password',gen_salt('bf',4)),2,now(),now() FROM generate_series(1,300) i").await.unwrap();
     let cookie = admin_session(&app).await;
     let (_cookies, body) =
         form_page(&app, &cookie, "/platform/users?page=9223372036854775807").await;
@@ -1699,10 +1699,10 @@ async fn household_member(
     role: &str,
 ) {
     let (account_id, person_id, user_id, membership_id, household_id) = ids;
-    app.fixture.admin.execute_unprepared(&format!("INSERT INTO accounts(id,email,password_hash,status,created_at,updated_at) VALUES({account_id},'{email}',crypt('password',gen_salt('bf',4)),2,now(),now())")).await.unwrap();
-    app.fixture.admin.execute_unprepared(&format!("INSERT INTO people(id,account_id,household_id,name,person_type,has_capacity,created_at,updated_at) VALUES({person_id},{account_id},{household_id},'{name}',0,true,now(),now())")).await.unwrap();
+    app.fixture.admin.execute_unprepared(&format!("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES({person_id},'{name}',0,true,now(),now())")).await.unwrap();
+    app.fixture.admin.execute_unprepared(&format!("INSERT INTO accounts(id,person_id,name,email,password_hash,status,created_at,updated_at) VALUES({account_id},{person_id},'{name}','{email}',crypt('password',gen_salt('bf',4)),2,now(),now())")).await.unwrap();
     app.fixture.admin.execute_unprepared(&format!("INSERT INTO users(id,person_id,email_address,password_digest,active,created_at,updated_at) VALUES({user_id},{person_id},'{email}',crypt('password',gen_salt('bf',4)),true,now(),now())")).await.unwrap();
-    app.fixture.admin.execute_unprepared(&format!("INSERT INTO household_memberships(id,account_id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES({membership_id},{account_id},{household_id},{person_id},'{role}','active',now(),now(),now())")).await.unwrap();
+    app.fixture.admin.execute_unprepared(&format!("INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES({membership_id},{household_id},{person_id},'{role}','active',now(),now(),now())")).await.unwrap();
 }
 
 async fn recovery_household(app: &Application) {
@@ -2875,7 +2875,7 @@ async fn platform_support_read_is_a_read_only_projection() {
         .admin
         .query_one_raw(Statement::from_sql_and_values(
             DbBackend::Postgres,
-            "SELECT count(*) AS count FROM household_memberships WHERE household_id=72602 AND account_id=71001",
+            "SELECT count(*) AS count FROM household_memberships WHERE household_id=72602 AND person_id=(SELECT person_id FROM public.accounts WHERE id=71001)",
             [],
         ))
         .await
@@ -3301,9 +3301,7 @@ async fn support_audit_count(app: &Application, event: &str, support_id: i64) ->
 async fn platform_owner_recovery_page_omits_the_administrator_membership() {
     let app = Application::new().await;
     recovery_household(&app).await;
-    app.fixture.admin.execute_unprepared("INSERT INTO people(id,account_id,household_id,name,person_type,has_capacity,created_at,updated_at) VALUES(73005,71001,72601,'Administrator recovery person',0,true,now(),now())").await.unwrap();
-    app.fixture.admin.execute_unprepared("INSERT INTO users(id,person_id,email_address,password_digest,active,created_at,updated_at) VALUES(77005,73005,'administrator-member@example.test',crypt('password',gen_salt('bf',4)),true,now(),now())").await.unwrap();
-    app.fixture.admin.execute_unprepared("INSERT INTO household_memberships(id,account_id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74003,71001,72601,73005,'member','active',now(),now(),now())").await.unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74003,72601,73001,'member','active',now(),now(),now())").await.unwrap();
     let cookie = admin_session(&app).await;
     let (status, detail) = {
         let response = app
@@ -3325,14 +3323,10 @@ async fn platform_owner_recovery_page_omits_the_administrator_membership() {
 }
 
 #[tokio::test]
-async fn platform_owner_recovery_excludes_mismatched_person_ownership() {
+async fn platform_owner_recovery_excludes_accountless_participants() {
     let app = Application::new().await;
     recovery_household(&app).await;
-    app.fixture.admin.execute_unprepared("INSERT INTO accounts(id,email,password_hash,status,created_at,updated_at) VALUES(71613,'mismatched-holder@example.test',crypt('password',gen_salt('bf',4)),2,now(),now())").await.unwrap();
-    app.fixture.admin.execute_unprepared("INSERT INTO people(id,account_id,household_id,name,person_type,has_capacity,created_at,updated_at) VALUES(73615,71613,72601,'Mismatched person',0,true,now(),now())").await.unwrap();
-    app.fixture.admin.execute_unprepared("INSERT INTO accounts(id,email,password_hash,status,created_at,updated_at) VALUES(71614,'mismatched-member@example.test',crypt('password',gen_salt('bf',4)),2,now(),now())").await.unwrap();
-    app.fixture.admin.execute_unprepared("INSERT INTO users(id,person_id,email_address,password_digest,active,created_at,updated_at) VALUES(77614,73615,'mismatched-member@example.test',crypt('password',gen_salt('bf',4)),true,now(),now())").await.unwrap();
-    app.fixture.admin.execute_unprepared("INSERT INTO household_memberships(id,account_id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74615,71614,72601,73615,'member','active',now(),now(),now())").await.unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73615,'Accountless participant',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74615,72601,73615,'member','active',now(),now(),now())").await.unwrap();
     let cookie = admin_session(&app).await;
     let (cookies, detail) =
         form_page(&app, &cookie, "/platform/owner-recovery?household=72601").await;
@@ -3346,7 +3340,10 @@ async fn platform_owner_recovery_excludes_mismatched_person_ownership() {
         &[
             ("household_id", "72601"),
             ("membership_id", "74615"),
-            ("reason", "mismatched account person ownership"),
+            (
+                "reason",
+                "accountless participant cannot become an account owner",
+            ),
             ("authenticity_token", &token),
         ],
     )
@@ -3359,26 +3356,28 @@ async fn platform_owner_recovery_excludes_mismatched_person_ownership() {
 }
 
 #[tokio::test]
-async fn platform_owner_recovery_treats_mismatched_owner_as_ownerless() {
+async fn platform_owner_recovery_treats_accountless_owner_as_unusable() {
     let app = Application::new().await;
-    household(&app, 72603, "mismatched-fixture", "Mismatched household").await;
-    app.fixture.admin.execute_unprepared("INSERT INTO accounts(id,email,password_hash,status,created_at,updated_at) VALUES(71602,'mismatched-owner-account@example.test',crypt('password',gen_salt('bf',4)),2,now(),now())").await.unwrap();
-    app.fixture.admin.execute_unprepared("INSERT INTO accounts(id,email,password_hash,status,created_at,updated_at) VALUES(71603,'mismatched-person-account@example.test',crypt('password',gen_salt('bf',4)),2,now(),now())").await.unwrap();
-    app.fixture.admin.execute_unprepared("INSERT INTO people(id,account_id,household_id,name,person_type,has_capacity,created_at,updated_at) VALUES(73603,71603,72603,'Mismatched owner person',0,true,now(),now())").await.unwrap();
-    app.fixture.admin.execute_unprepared("INSERT INTO users(id,person_id,email_address,password_digest,active,created_at,updated_at) VALUES(77616,73603,'mismatched-owner-user@example.test',crypt('password',gen_salt('bf',4)),true,now(),now())").await.unwrap();
-    app.fixture.admin.execute_unprepared("INSERT INTO household_memberships(id,account_id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74604,71602,72603,73603,'owner','active',now(),now(),now())").await.unwrap();
+    household(
+        &app,
+        72603,
+        "accountless-owner-fixture",
+        "Accountless owner household",
+    )
+    .await;
+    app.fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73603,'Accountless owner',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74604,72603,73603,'owner','active',now(),now(),now())").await.unwrap();
     household_member(
         &app,
         (71614, 73614, 77614, 74614, 72603),
-        "mismatched-member@example.test",
-        "Mismatched member",
+        "eligible-member@example.test",
+        "Eligible member",
         "member",
     )
     .await;
     let cookie = admin_session(&app).await;
     let (cookies, detail) =
         form_page(&app, &cookie, "/platform/owner-recovery?household=72603").await;
-    assert!(detail.contains("Mismatched member"), "{detail}");
+    assert!(detail.contains("Eligible member"), "{detail}");
     let token = hidden_field(&detail, "authenticity_token");
     let response = post_form(
         &app,

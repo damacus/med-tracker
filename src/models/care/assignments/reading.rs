@@ -14,7 +14,7 @@ fn scope(tenant: &TenantTransaction) -> sea_orm::Select<person_medication::Entit
         .filter(person_medication::Column::RetiredAt.is_null())
         .filter(
             person_medication::Column::PersonId
-                .in_subquery(access::granted_people(tenant.membership())),
+                .in_subquery(access::participating_people(tenant.membership())),
         )
 }
 pub async fn list(tenant: &TenantTransaction, page: Pagination) -> Result<Value, OperationError> {

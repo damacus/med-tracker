@@ -194,15 +194,14 @@ pub async fn apply(
         "person" => {
             let mut previous_etag = None;
             let row = if operation.action == "create" {
-                people::create(
-                    tenant,
-                    Value::Object(operation.attributes.clone()),
-                    chrono::Utc::now()
-                        .with_timezone(&doses::app_zone(tenant.settings()))
-                        .date_naive(),
-                    attribution,
-                )
-                .await?
+                let today = chrono::Utc::now()
+                    .with_timezone(&doses::app_zone(tenant.settings()))
+                    .date_naive();
+                let command = people::CreateDependent::parse(
+                    &Value::Object(operation.attributes.clone()),
+                    today,
+                )?;
+                people::create(tenant, command, today, attribution).await?
             } else {
                 people::authorize_update(tenant, id(operation)?).await?;
                 let (_, etag) = people::read(tenant, id(operation)?, zone).await?;

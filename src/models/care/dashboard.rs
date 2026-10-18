@@ -2,7 +2,8 @@ use crate::models::{
     access::{self, TenantTransaction},
     care::{dose_occurrences, doses, treatments},
     entities::{
-        active_storage_attachment, medication, medication_take, person, person_medication, schedule,
+        account, active_storage_attachment, medication, medication_take, person, person_medication,
+        schedule,
     },
     errors::OperationError,
     profile,
@@ -25,9 +26,8 @@ pub async fn read(
     access::recheck(tenant).await?;
     let db = tenant.transaction();
     let household = tenant.scope().household_id;
-    let people = person::Entity::find()
-        .filter(person::Column::HouseholdId.eq(household))
-        .filter(person::Column::Id.in_subquery(access::granted_people(tenant.membership())))
+    let people = access::person_queries::household_people(tenant.scope())
+        .filter(person::Column::Id.in_subquery(access::participating_people(tenant.membership())))
         .order_by_asc(person::Column::Name)
         .all(db)
         .await?;
@@ -39,6 +39,13 @@ pub async fn read(
         .filter(|person| selected.is_none_or(|id| person.id == id))
         .map(|person| person.id)
         .collect();
+    let linked_people = account::Entity::find()
+        .filter(account::Column::PersonId.is_in(people.iter().map(|person| person.id)))
+        .all(db)
+        .await?
+        .into_iter()
+        .map(|account| account.person_id)
+        .collect::<HashSet<_>>();
     let mut attachments: HashSet<i64> = active_storage_attachment::Entity::find()
         .filter(active_storage_attachment::Column::HouseholdId.eq(household))
         .filter(active_storage_attachment::Column::RecordType.eq("Person"))
@@ -47,7 +54,7 @@ pub async fn read(
             active_storage_attachment::Column::RecordId.is_in(
                 people
                     .iter()
-                    .filter(|person| person.account_id.is_none())
+                    .filter(|person| !linked_people.contains(&person.id))
                     .map(|person| person.id)
                     .collect::<Vec<_>>(),
             ),
@@ -58,7 +65,7 @@ pub async fn read(
         .map(|row| row.record_id)
         .collect();
     for row in db.query_all_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "SELECT p.id FROM people p JOIN account_avatars a ON a.account_id=p.account_id WHERE p.id=ANY($1::bigint[])",
+        "SELECT p.id FROM people p JOIN accounts owner ON owner.person_id=p.id JOIN account_avatars a ON a.account_id=owner.id WHERE p.id=ANY($1::bigint[])",
         [people.iter().map(|person| person.id).collect::<Vec<_>>().into()]
     )).await? {
         attachments.insert(row.try_get("", "id")?);
@@ -238,7 +245,7 @@ pub async fn read(
                 12..=17 => "afternoon",
                 _ => "evening",
             });
-            rows.push(json!({"person_id":person_id,"person_name":person.name,"avatar":attachments.contains(&person_id),"initials":person.name.split_whitespace().filter_map(|word| word.chars().next()).take(2).flat_map(char::to_uppercase).collect::<String>(),"medication":name,"icon":match medicine.dose_unit.as_deref().unwrap_or("").to_ascii_lowercase().as_str() { "tablet"|"capsule"|"gummy"|"pill"=>"pill", "ml"|"drop"|"spray"=>"droplet", "iu"=>"syringe", _=>"medication" },"dose":format!("{} {}",amount, dose_unit(unit,&amount)),"source_id":source_id,"source_type":kind,"medication_id":medicine.id,"stock_ids":card["eligible_stock_medication_ids"],"as_needed":as_needed,"can_record_outcome":!as_needed && card["can_record"] == true && outcome == "open" && scheduled.is_none_or(|time|time.with_timezone(&Utc) <= now),"outcome":outcome,"status":status,"status_label":match status { "available" => &labels["dashboard"]["stats"]["now"], "paused" => &labels["person_medications"]["card"]["paused"], "not_taken" => &labels["dashboard"]["outcomes"]["not_taken"], _ => &labels["dashboard"]["statuses"][status] },"period":period,"time":scheduled.map(|time| time.format("%H:%M").to_string()).unwrap_or_else(|| labels["dashboard"]["routine"]["anytime"].as_str().unwrap_or("").to_owned()),"order":scheduled.map(|time| time.timestamp()).unwrap_or(i64::MAX),"action_label":labels["person_medications"]["card"][if person.account_id == Some(tenant.scope().actor.account_id) { "take" } else { "give" }],"can_record":card["can_record"] == true && matches!(status,"available"|"upcoming"),"record_url":format!("/households/{slug}/dashboard?record_medication_id={}&record_source_type={kind}&record_source_id={source_id}&record_person_id={person_id}",medicine.id),"person_url":format!("/households/{slug}/people/{person_id}"),"history_url":format!("/households/{slug}/people/{person_id}/treatments/{}/{source_id}/doses",if kind == "schedule" { "schedules" } else { "assignments" })}));
+            rows.push(json!({"person_id":person_id,"person_name":person.name,"avatar":attachments.contains(&person_id),"initials":person.name.split_whitespace().filter_map(|word| word.chars().next()).take(2).flat_map(char::to_uppercase).collect::<String>(),"medication":name,"icon":match medicine.dose_unit.as_deref().unwrap_or("").to_ascii_lowercase().as_str() { "tablet"|"capsule"|"gummy"|"pill"=>"pill", "ml"|"drop"|"spray"=>"droplet", "iu"=>"syringe", _=>"medication" },"dose":format!("{} {}",amount, dose_unit(unit,&amount)),"source_id":source_id,"source_type":kind,"medication_id":medicine.id,"stock_ids":card["eligible_stock_medication_ids"],"as_needed":as_needed,"can_record_outcome":!as_needed && card["can_record"] == true && outcome == "open" && scheduled.is_none_or(|time|time.with_timezone(&Utc) <= now),"outcome":outcome,"status":status,"status_label":match status { "available" => &labels["dashboard"]["stats"]["now"], "paused" => &labels["person_medications"]["card"]["paused"], "not_taken" => &labels["dashboard"]["outcomes"]["not_taken"], _ => &labels["dashboard"]["statuses"][status] },"period":period,"time":scheduled.map(|time| time.format("%H:%M").to_string()).unwrap_or_else(|| labels["dashboard"]["routine"]["anytime"].as_str().unwrap_or("").to_owned()),"order":scheduled.map(|time| time.timestamp()).unwrap_or(i64::MAX),"action_label":labels["person_medications"]["card"][if person.id == tenant.membership().person_id { "take" } else { "give" }],"can_record":card["can_record"] == true && matches!(status,"available"|"upcoming"),"record_url":format!("/households/{slug}/dashboard?record_medication_id={}&record_source_type={kind}&record_source_id={source_id}&record_person_id={person_id}",medicine.id),"person_url":format!("/households/{slug}/people/{person_id}"),"history_url":format!("/households/{slug}/people/{person_id}/treatments/{}/{source_id}/doses",if kind == "schedule" { "schedules" } else { "assignments" })}));
         }
     }
     for row in &mut rows {

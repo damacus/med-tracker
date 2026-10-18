@@ -106,7 +106,7 @@ fn operations() -> BTreeMap<(String, String), Value> {
     let source = include_str!("../../docs/api/openapi.v1.yaml");
     assert_eq!(
         hex::encode(Sha256::digest(source.as_bytes())),
-        "f8192e0e5a5bc37173e249cb8a2e89ba57e5c7ae216dd57ba8fa20e2244d94ff",
+        "5fcdefd3f09673b67a3b5e31c048f4f045a3809a89ab06ef5b665b995f1d7c77",
         "The full API schema or headers changed; refresh the operation inventory and its evidence"
     );
     let document: Value = serde_yaml_ng::from_str(source).unwrap();
@@ -556,7 +556,7 @@ fn validate_metadata(document: &Value, entry: &Value) {
                 profile_avatar_evidence::expected(entry["operation_id"].as_str().unwrap()).unwrap();
             Some((profile_avatar_evidence::REVISION, expected["gaps"].clone()))
         }
-        Some("listPeople" | "createPerson" | "updatePerson" | "updatePersonWithPut") => {
+        Some("listPeople" | "updatePerson" | "updatePersonWithPut") => {
             Some((people_evidence::REVISION, json!([people_evidence::GAP])))
         }
         Some("listHouseholds" | "listSessions" | "deleteSession" | "logoutSession") => {
@@ -629,7 +629,7 @@ pub mod baseline {
         let recorded = inventory();
         let document: Value =
             serde_yaml_ng::from_str(include_str!("../../docs/api/openapi.v1.yaml")).unwrap();
-        assert_eq!(expected.len(), 127);
+        assert_eq!(expected.len(), 129);
         assert_eq!(recorded.len(), expected.len());
         assert_eq!(
             recorded.keys().collect::<Vec<_>>(),
@@ -1598,10 +1598,10 @@ pub mod account {
         let (fixture, boot) = boot_fixture().await;
         stored_credentials(&fixture).await;
         fixture.admin.execute_unprepared(
-            "INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71001,'Second household','second-household','UTC',now(),now()); INSERT INTO people(id,household_id,account_id,name,person_type,has_capacity,created_at,updated_at) VALUES(73004,72002,71001,'Second household person',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,account_id,person_id,role,joined_at,created_at,updated_at) VALUES(74002,72002,71001,73004,'member',now(),now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,status,lifecycle_state,created_at,updated_at) VALUES(72003,71001,'Held household','held-household','UTC','active','held',now(),now()); INSERT INTO household_memberships(id,household_id,account_id,role,joined_at,created_at,updated_at) VALUES(74003,72003,71001,'member',now(),now(),now())"
+            "INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71001,'Second household','second-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74002,72002,73001,'member',now(),now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,status,lifecycle_state,created_at,updated_at) VALUES(72003,71001,'Held household','held-household','UTC','active','held',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74003,72003,73001,'member',now(),now(),now())"
         ).await.unwrap();
         fixture.admin.execute_unprepared(
-            "INSERT INTO accounts(id,email,password_hash,created_at,updated_at) VALUES(71002,'foreign-collection-account@example.test',crypt('password',gen_salt('bf',4)),now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72004,71002,'Foreign active household','foreign-active-household','UTC',now(),now()); INSERT INTO people(id,household_id,account_id,name,person_type,has_capacity,created_at,updated_at) VALUES(73005,72004,71002,'Foreign member',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,account_id,person_id,role,joined_at,created_at,updated_at) VALUES(74004,72004,71002,73005,'owner',now(),now(),now()); INSERT INTO api_sessions(id,account_id,household_membership_id,access_token_digest,refresh_token_digest,permissions_version,access_expires_at,refresh_expires_at,last_used_at,device_name,created_at,updated_at) VALUES(88004,71002,74004,'foreign-collection-digest','foreign-collection-refresh',1,now()+interval '15 minutes',now()+interval '1 day',now(),'Foreign device',now(),now())"
+            "INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73005,'Foreign member',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,password_hash,created_at,updated_at) VALUES(71002,73005,'foreign-collection-account@example.test',crypt('password',gen_salt('bf',4)),now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72004,71002,'Foreign active household','foreign-active-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74004,72004,73005,'owner',now(),now(),now()); INSERT INTO api_sessions(id,account_id,household_membership_id,access_token_digest,refresh_token_digest,permissions_version,access_expires_at,refresh_expires_at,last_used_at,device_name,created_at,updated_at) VALUES(88004,71002,74004,'foreign-collection-digest','foreign-collection-refresh',1,now()+interval '15 minutes',now()+interval '1 day',now(),'Foreign device',now(),now())"
         ).await.unwrap();
         let mobile = mobile_token(&fixture).await;
         let aged_maximum = "synthetic-mobile-over-maximum";
@@ -1823,7 +1823,7 @@ pub mod account {
         let (fixture, boot) = boot_fixture().await;
         let mobile = mobile_token(&fixture).await;
         fixture.admin.execute_unprepared(
-            "INSERT INTO accounts(id,email,password_hash,created_at,updated_at) VALUES(71002,'foreign-mobile-account@example.test',crypt('password',gen_salt('bf',4)),now(),now()); INSERT INTO oauth_applications(id,account_id,client_id,client_kind,name,redirect_uri,scopes,token_endpoint_auth_method,created_at,updated_at) VALUES(75002,71002,'foreign-native','mobile','Foreign native','io.damacus.medtracker:/oauth2redirect','medtracker offline_access','none',now(),now())"
+            "INSERT INTO people(id,name,created_at,updated_at) VALUES(73998,'Foreign mobile account',now(),now()); INSERT INTO accounts(id,person_id,email,password_hash,created_at,updated_at) VALUES(71002,73998,'foreign-mobile-account@example.test',crypt('password',gen_salt('bf',4)),now(),now()); INSERT INTO oauth_applications(id,account_id,client_id,client_kind,name,redirect_uri,scopes,token_endpoint_auth_method,created_at,updated_at) VALUES(75002,71002,'foreign-native','mobile','Foreign native','io.damacus.medtracker:/oauth2redirect','medtracker offline_access','none',now(),now())"
         ).await.unwrap();
         let foreign_digest = base64::engine::general_purpose::URL_SAFE
             .encode(Sha256::digest(b"synthetic-foreign-mobile"));
@@ -2151,7 +2151,7 @@ pub mod account {
         stored_credentials(&fixture).await;
         let mobile = mobile_token(&fixture).await;
         fixture.admin.execute_unprepared(
-            "INSERT INTO accounts(id,email,password_hash,created_at,updated_at) VALUES(71002,'other-session-account@example.test',crypt('password',gen_salt('bf',4)),now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71002,'Foreign household','foreign-session-household','UTC',now(),now()); INSERT INTO people(id,household_id,account_id,name,person_type,has_capacity,created_at,updated_at) VALUES(73004,72002,71002,'Foreign person',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,account_id,person_id,role,joined_at,created_at,updated_at) VALUES(74002,72002,71002,73004,'owner',now(),now(),now()); INSERT INTO api_sessions(id,account_id,household_membership_id,access_token_digest,refresh_token_digest,permissions_version,access_expires_at,refresh_expires_at,last_used_at,created_at,updated_at) VALUES(88004,71002,74002,'foreign-digest','foreign-refresh',1,now()+interval '15 minutes',now()+interval '1 day',now(),now(),now())"
+            "INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73004,'Foreign person',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,password_hash,created_at,updated_at) VALUES(71002,73004,'other-session-account@example.test',crypt('password',gen_salt('bf',4)),now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71002,'Foreign household','foreign-session-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74002,72002,73004,'owner',now(),now(),now()); INSERT INTO api_sessions(id,account_id,household_membership_id,access_token_digest,refresh_token_digest,permissions_version,access_expires_at,refresh_expires_at,last_used_at,created_at,updated_at) VALUES(88004,71002,74002,'foreign-digest','foreign-refresh',1,now()+interval '15 minutes',now()+interval '1 day',now(),now(),now())"
         ).await.unwrap();
         let request = server(&boot);
         let mut not_found = Vec::new();

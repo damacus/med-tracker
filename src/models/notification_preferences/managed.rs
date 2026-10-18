@@ -15,7 +15,7 @@ async fn grants(
     tenant: &TenantTransaction,
     lock: bool,
 ) -> Result<Vec<QueryResult>, OperationError> {
-    let mut sql = "SELECT g.id AS grant_id,p.id,p.name,p.person_type,g.missed_dose_notifications_enabled AS enabled FROM person_access_grants g JOIN people p ON p.id=g.person_id AND p.household_id=g.household_id WHERE g.household_id=$1 AND g.household_membership_id=$2 AND g.person_id<>$3 AND g.access_level='manage' AND g.revoked_at IS NULL AND (g.expires_at IS NULL OR g.expires_at>timezone('UTC',clock_timestamp())) ORDER BY p.name,p.id,g.id".to_owned();
+    let mut sql = "SELECT g.id AS grant_id,p.id,p.name,p.person_type,g.missed_dose_notifications_enabled AS enabled FROM person_access_grants g JOIN people p ON p.id=g.person_id JOIN household_memberships subject ON subject.person_id=p.id AND subject.household_id=g.household_id AND subject.status='active' AND subject.revoked_at IS NULL WHERE g.household_id=$1 AND g.household_membership_id=$2 AND g.person_id<>$3 AND g.access_level='manage' AND g.revoked_at IS NULL AND (g.expires_at IS NULL OR g.expires_at>timezone('UTC',clock_timestamp())) ORDER BY p.name,p.id,g.id".to_owned();
     if lock {
         sql.push_str(" FOR UPDATE OF g");
     }
@@ -27,7 +27,7 @@ async fn grants(
             [
                 tenant.scope().household_id.into(),
                 tenant.membership().id.into(),
-                tenant.membership().person_id.unwrap_or(0).into(),
+                tenant.membership().person_id.into(),
             ],
         ))
         .await?)

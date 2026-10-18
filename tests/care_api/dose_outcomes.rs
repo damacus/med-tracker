@@ -183,7 +183,7 @@ async fn dose_outcomes_version_failure_rolls_back_decision_and_records_attempt()
 }
 
 #[tokio::test]
-async fn dose_outcomes_concurrent_misses_converge_and_withdrawn_grant_denies() {
+async fn dose_outcomes_concurrent_misses_converge_and_revoked_member_denies() {
     let app = Application::new().await;
     let token = app.token().await;
     outcome_sources(&app).await;
@@ -210,7 +210,7 @@ async fn dose_outcomes_concurrent_misses_converge_and_withdrawn_grant_denies() {
         first.unwrap().status().as_u16(),
         second.unwrap().status().as_u16(),
     );
-    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001; UPDATE person_access_grants SET revoked_at=now() WHERE id=78001").await.unwrap();
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET revoked_at=now() WHERE id=74001; UPDATE person_access_grants SET revoked_at=now() WHERE id=78001").await.unwrap();
     let denied = app
         .client
         .post(format!("{endpoint}/not_taken"))
@@ -227,7 +227,7 @@ async fn dose_outcomes_concurrent_misses_converge_and_withdrawn_grant_denies() {
     let stock: String = row.try_get("", "stock").unwrap();
     app.close().await;
     assert_eq!(statuses, (200, 200));
-    assert_eq!(denied, 404);
+    assert_eq!(denied, 403);
     assert_eq!((records, takes), (1, 0));
     assert_eq!(stock, "10.00");
 }
@@ -254,7 +254,7 @@ async fn dose_outcomes_read_does_not_wait_for_exclusive_source_write_lock() {
 }
 
 #[tokio::test]
-async fn dose_outcomes_future_decisions_and_current_action_grants_fail_without_take() {
+async fn dose_outcomes_future_decisions_and_revoked_membership_fail_without_take() {
     let app = Application::new().await;
     outcome_sources(&app).await;
     app.fixture.admin.execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001; UPDATE person_access_grants SET access_level='record' WHERE id=78001").await.unwrap();
@@ -328,7 +328,7 @@ async fn dose_outcomes_future_decisions_and_current_action_grants_fail_without_t
         .as_u16();
     app.fixture
         .admin
-        .execute_unprepared("UPDATE person_access_grants SET access_level='view' WHERE id=78001")
+        .execute_unprepared("UPDATE person_access_grants SET access_level='view' WHERE id=78001; UPDATE household_memberships SET revoked_at=now() WHERE id=74001")
         .await
         .unwrap();
     let denied = app
@@ -356,7 +356,7 @@ async fn dose_outcomes_future_decisions_and_current_action_grants_fail_without_t
             denied,
             take
         ),
-        (422, 422, 200, 403, 403, 403)
+        (422, 422, 200, 200, 403, 403)
     );
     assert_eq!(cached_marker.as_deref(), Some("true"));
     assert_eq!((stock, takes, outcomes), ("10.00".into(), 0, 1));

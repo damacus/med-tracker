@@ -231,7 +231,7 @@ async fn treatment_schedule_invalid_date_and_dose_have_no_effect() {
 }
 
 #[tokio::test]
-async fn treatment_schedule_requires_current_manage_grant() {
+async fn treatment_schedule_requires_other_person_manage_authority() {
     let app = Application::new().await;
     app.fixture
         .admin
@@ -244,16 +244,31 @@ async fn treatment_schedule_requires_current_manage_grant() {
         .execute_unprepared("UPDATE person_access_grants SET access_level='record' WHERE id=78001")
         .await
         .unwrap();
+    let mut body = schedule_body();
+    body["schedule"]["person_id"] = json!("73002");
     let status = app
         .client
         .post(format!("{}/api/v1/households/72001/schedules", app.origin))
         .bearer_auth(&token)
-        .json(&schedule_body())
+        .json(&body)
         .send()
         .await
         .unwrap()
         .status()
         .as_u16();
+    let schedules: i64 = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT count(*) AS count FROM schedules WHERE household_id=72001",
+        ))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("", "count")
+        .unwrap();
     app.close().await;
     assert_eq!(status, 403);
+    assert_eq!(schedules, 0);
 }

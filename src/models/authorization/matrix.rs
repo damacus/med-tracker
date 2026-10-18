@@ -55,24 +55,43 @@ fn household_management_requires_current_same_household_manager() {
 }
 
 #[test]
-fn person_permissions_follow_the_grant_hierarchy_without_role_bypass() {
+fn person_participation_self_and_legacy_manage_preserve_separate_authorities() {
     for role in ["owner", "administrator", "member"] {
-        for (level, expected) in [
-            ("view", [true, false, false]),
-            ("record", [true, true, false]),
-            ("manage", [true, true, true]),
-            ("unknown", [false, false, false]),
+        for (action, facts) in [
+            ("view_person", json!({"participating":true})),
+            ("record_person", json!({"participating":true})),
+            ("manage_self", json!({"own":true})),
+            ("manage_person", grant("manage")),
         ] {
-            for (action, allowed) in ["view_person", "record_person", "manage_person"]
-                .into_iter()
-                .zip(expected)
-            {
-                assert_eq!(
-                    evaluate(member(role), subject(), action, grant(level)),
-                    allowed,
-                    "{role}/{level}/{action}"
-                );
+            assert!(evaluate(member(role), subject(), action, facts.clone()));
+            assert!(!evaluate(member(role), subject(), action, json!({})));
+            let mut foreign = subject();
+            foreign["household_id"] = json!(22);
+            assert!(!evaluate(member(role), foreign, action, facts.clone()));
+            for (field, value) in [
+                ("household_id", json!(22)),
+                ("status", json!("inactive")),
+                ("revoked", json!(true)),
+            ] {
+                let mut principal = member(role);
+                principal[field] = value;
+                assert!(!evaluate(principal, subject(), action, facts.clone()));
             }
+        }
+        for (action, facts) in [
+            ("view_person", json!({"participating":false})),
+            ("record_person", json!({"participating":false})),
+            ("manage_self", json!({"own":false})),
+        ] {
+            assert!(!evaluate(member(role), subject(), action, facts));
+        }
+        for level in ["view", "record", "unknown"] {
+            assert!(!evaluate(
+                member(role),
+                subject(),
+                "manage_person",
+                grant(level)
+            ));
         }
     }
 }
@@ -87,7 +106,12 @@ fn grants_are_bound_to_household_membership_person_and_live_expiry() {
     ] {
         let mut facts = grant("manage");
         facts[field] = value;
-        assert!(!evaluate(member("member"), subject(), "view_person", facts));
+        assert!(!evaluate(
+            member("member"),
+            subject(),
+            "manage_person",
+            facts
+        ));
     }
     for (deadline, expected) in [(99, false), (100, false), (101, true)] {
         let mut facts = grant("manage");
@@ -103,25 +127,24 @@ fn grants_are_bound_to_household_membership_person_and_live_expiry() {
     assert!(!evaluate(
         member("owner"),
         foreign,
-        "view_person",
+        "manage_person",
         grant("manage")
     ));
 }
 
 #[test]
-fn delegated_person_management_preserves_capacity_and_owner_rules() {
+fn new_person_delegation_stays_closed_while_owner_change_rules_remain() {
     for role in ["member", "administrator", "owner"] {
         for kind in [0, 1, 2] {
             for capacity in [true, false] {
-                let expected = role != "member" || (kind != 0 && !capacity);
-                assert_eq!(
-                    evaluate(
+                assert!(
+                    !evaluate(
                         member(role),
                         subject(),
                         "delegate_person",
                         json!({"person_type":kind,"has_capacity":capacity})
                     ),
-                    expected
+                    "{role}/{kind}/{capacity}"
                 );
             }
         }
@@ -275,11 +298,17 @@ fn malformed_or_unknown_requests_fail_closed() {
     missing.as_object_mut().unwrap().remove("status");
     assert!(!evaluate(missing, subject(), "manage_household", json!({})));
     let mut invalid = grant("manage");
+    assert!(evaluate(
+        member("owner"),
+        subject(),
+        "manage_person",
+        invalid.clone()
+    ));
     invalid["now"] = json!("100");
     assert!(!evaluate(
         member("owner"),
         subject(),
-        "view_person",
+        "manage_person",
         invalid
     ));
 }

@@ -92,18 +92,38 @@ test('search excludes hidden household people and finds a source linked to the t
   expect((await wildcard.json()).results).toEqual([]);
 });
 
-test('search commands hide management actions after permission withdrawal', async ({ page, careFixture }) => {
+test('search keeps participation and own management after legacy grants end', async ({ page, careFixture }) => {
+  await careFixture.seedAdministration();
+  await careFixture.mixedRecordability();
   await careFixture.searchRestricted();
   await signIn(page);
+  const before = await careFixture.probe();
   const commands = (await (await page.request.get(`${household}/search.json?q=medication`)).json()).results;
-  expect(commands.map(result => result.title)).not.toContain('Add medication');
-  expect(commands.map(result => result.title)).not.toContain('Medication Finder');
+  expect(commands).toEqual(expect.arrayContaining([
+    expect.objectContaining({ type: 'command', title: 'Add medication', path: `${household}/medications/workflow` }),
+    expect.objectContaining({ type: 'command', title: 'Medication Finder', path: `${household}/medications/finder` })
+  ]));
   const records = (await (await page.request.get(`${household}/search.json?q=Synthetic`)).json()).results;
-  expect(records.filter(result => ['person', 'medication', 'schedule', 'person_medication'].includes(result.type))).toEqual([]);
-  expect(records).toEqual(expect.arrayContaining([expect.objectContaining({ type: 'location', path: `${household}/locations/79001` })]));
-  await careFixture.searchMinor();
+  expect(records).toEqual(expect.arrayContaining([
+    expect.objectContaining({ type: 'person', path: `${household}/people/73001` }),
+    expect.objectContaining({ type: 'person', path: `${household}/people/73004` }),
+    expect.objectContaining({ type: 'medication', path: `${household}/medications/80001` }),
+    expect.objectContaining({ type: 'location', path: `${household}/locations/79001` })
+  ]));
+  expect(records.map(result => result.title)).not.toContain('Synthetic foreign medicine');
+  expect((await page.request.get(`${household}/people/73001/edit`)).status()).toBe(200);
+  expect((await page.request.get(`${household}/people/73004`)).status()).toBe(200);
+  expect((await page.request.get(`${household}/people/73004/edit`)).status()).toBe(403);
+  const preview = new URLSearchParams({ source_type: 'person_medication', source_id: '81003', taken_at: new Date().toISOString().slice(0, 16) });
+  expect((await page.request.get(`${household}/medications/80001/doses/preview?${preview}`)).status()).toBe(200);
+  expect([403, 404]).toContain((await page.request.get('/households/foreign-fixture/search.json?q=Synthetic')).status());
   const reports = (await (await page.request.get(`${household}/search.json?q=Reports`)).json()).results;
-  expect(reports.map(result => result.title)).not.toContain('Reports');
+  expect(reports).toEqual(expect.arrayContaining([expect.objectContaining({ type: 'command', title: 'Reports', path: `${household}/reports` })]));
+  await careFixture.searchMinor();
+  const ineligibleReports = await page.request.get(`${household}/search.json?q=Reports`);
+  expect(ineligibleReports.status()).toBe(200);
+  expect((await ineligibleReports.json()).results.map(result => result.title)).not.toContain('Reports');
+  expect(await careFixture.probe()).toEqual(before);
 });
 
 test('schedule command reaches a person-specific schedule form', async ({ page }) => {
@@ -131,9 +151,14 @@ test('public finder and add-medication paths preserve scoped launcher context', 
 
   await careFixture.searchRestricted();
   for (const path of ['medication-finder', 'medications/finder']) {
-    const denied = await page.request.get(`${household}/${path}`);
-    expect(denied.status()).toBe(403);
+    const participating = await page.request.get(`${household}/${path}`);
+    expect(participating.status()).toBe(200);
   }
+  await page.goto(`${household}/add-medication?person_id=73002&intent=assign_medication&medication_id=80001`);
+  await expect(page.getByRole('heading', { name: 'Choose a person' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Assign medication to Synthetic adult', exact: true })).toHaveAttribute('href', `${household}/people/73001/treatments/assignments/new?source=workflow&medication_id=80001`);
+  await expect(page.getByRole('link', { name: 'Assign medication to Synthetic minor', exact: true })).toHaveCount(0);
+  expect((await page.request.get(`${household}/people/73002/edit`)).status()).toBe(403);
 });
 
 test.describe('Welsh browser locale', () => {

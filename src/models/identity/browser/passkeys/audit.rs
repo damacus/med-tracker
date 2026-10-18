@@ -14,7 +14,7 @@ pub(in crate::models::identity) async fn record(
         ))
         .await
         .map_err(unavailable)?;
-    let actor = transaction.query_one_raw(sql("SELECT p.household_id,u.id AS user_id FROM people p LEFT JOIN users u ON u.person_id=p.id WHERE p.account_id=$1 ORDER BY p.id LIMIT 1", [account_id.into()])).await.map_err(unavailable)?;
+    let actor = transaction.query_one_raw(sql("SELECT (SELECT m.household_id FROM household_memberships m WHERE m.id=med_tracker.current_membership_id() AND m.household_id=med_tracker.current_household_id() AND m.person_id=a.person_id AND m.status='active' AND m.revoked_at IS NULL) AS household_id,u.id AS user_id FROM accounts a JOIN people p ON p.id=a.person_id LEFT JOIN users u ON u.person_id=p.id WHERE a.id=$1", [account_id.into()])).await.map_err(unavailable)?;
     let (user_id, household_id): (Option<i64>, Option<i64>) = match actor {
         Some(actor) => (
             actor.try_get("", "user_id").map_err(unavailable)?,

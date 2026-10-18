@@ -1,12 +1,13 @@
 use super::*;
 
 #[tokio::test]
-async fn household_relationship_repeat_preserves_timestamp_records_and_permissions() {
+async fn household_relationship_deactivation_repeat_preserves_timestamp_records_and_permissions() {
     use med_tracker::models::{
         access::{self, Actor, HouseholdScope},
         care::administration::delegation,
     };
     let app = Application::new().await;
+    app.fixture.admin.execute_unprepared("INSERT INTO carer_relationships(id,household_id,carer_id,patient_id,relationship_type,active,created_at,updated_at) VALUES(86001,72001,73001,73001,'self',true,now(),now())").await.unwrap();
     let scope = HouseholdScope {
         actor: Actor { account_id: 71001 },
         household_id: 72001,
@@ -15,16 +16,12 @@ async fn household_relationship_repeat_preserves_timestamp_records_and_permissio
     let tenant = access::begin(&app.fixture.runtime, &scope, None)
         .await
         .unwrap();
-    let first = delegation::assign(&tenant, 73001, 73001, "self", None)
-        .await
-        .unwrap();
+    let first = delegation::deactivate(&tenant, 86001, None).await.unwrap();
     tenant.commit().await.unwrap();
     let tenant = access::begin(&app.fixture.runtime, &scope, None)
         .await
         .unwrap();
-    let repeated = delegation::assign(&tenant, 73001, 73001, "self", None)
-        .await
-        .unwrap();
+    let repeated = delegation::deactivate(&tenant, 86001, None).await.unwrap();
     tenant.commit().await.unwrap();
     let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM carer_relationships WHERE carer_id=73001 AND patient_id=73001) AS relationships,(SELECT count(*) FROM versions WHERE item_type='CarerRelationship') AS versions,(SELECT permissions_version::bigint FROM household_memberships WHERE id=74001) AS permissions")).await.unwrap().unwrap();
     let counts: Vec<i64> = ["relationships", "versions", "permissions"]
@@ -114,7 +111,7 @@ async fn household_settings_partial_update_replay_and_permission_order() {
 async fn household_membership_transitions_preserve_last_owner_and_increment_permissions() {
     let app = Application::new().await;
     let token = app.token().await;
-    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET role='owner' WHERE id=74001; INSERT INTO accounts(id,email,status,created_at,updated_at) VALUES(71002,'synthetic-target@example.test',2,now(),now()); INSERT INTO household_memberships(id,account_id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74002,71002,72001,73002,'member','active',now(),now(),now())").await.unwrap();
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET role='owner' WHERE id=74001; INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73004,'Synthetic administration member',0,true,now(),now()); INSERT INTO accounts(id,person_id,name,email,status,created_at,updated_at) VALUES(71002,73004,'Synthetic administration member','synthetic-target@example.test',2,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74002,72001,73004,'member','active',now(),now(),now())").await.unwrap();
     let endpoint = format!("{}/api/v1/households/72001/admin/memberships", app.origin);
     let listed = app
         .client
@@ -168,14 +165,15 @@ async fn household_membership_transitions_preserve_last_owner_and_increment_perm
 }
 
 #[tokio::test]
-async fn household_grant_create_revoke_replay_preserves_live_permission_version() {
+async fn household_grant_rejection_and_existing_revoke_replay_preserve_live_permission_version() {
     let app = Application::new().await;
     let token = app.token().await;
-    app.fixture.admin.execute_unprepared("INSERT INTO accounts(id,email,status,created_at,updated_at) VALUES(71002,'synthetic-grant-target@example.test',2,now(),now()); INSERT INTO household_memberships(id,account_id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74002,71002,72001,73002,'member','active',now(),now(),now())").await.unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73004,'Synthetic administration member',0,true,now(),now()); INSERT INTO accounts(id,person_id,name,email,status,created_at,updated_at) VALUES(71002,73004,'Synthetic administration member','synthetic-grant-target@example.test',2,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74002,72001,73004,'member','active',now(),now(),now())").await.unwrap();
     let endpoint = format!(
         "{}/api/v1/households/72001/admin/person_access_grants",
         app.origin
     );
+    app.fixture.admin.execute_unprepared("INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,created_at,updated_at) VALUES(78002,72001,74002,73002,'manage','parent',now(),now())").await.unwrap();
     let body = json!({"person_access_grant":{"household_membership_id":74002,"person_id":73002,"access_level":"manage","relationship_type":"parent"}});
     let created = app
         .client
@@ -188,7 +186,7 @@ async fn household_grant_create_revoke_replay_preserves_live_permission_version(
         .unwrap();
     let create_status = created.status().as_u16();
     let created: Value = created.json().await.unwrap_or(Value::Null);
-    let id = created["data"]["id"].as_i64().unwrap_or(-1);
+    assert_eq!(created["error"]["code"], "forbidden");
     let replay = app
         .client
         .post(&endpoint)
@@ -202,30 +200,50 @@ async fn household_grant_create_revoke_replay_preserves_live_permission_version(
     let marker = replay.headers().get("idempotency-replayed").is_some();
     let revoked = app
         .client
-        .delete(format!("{endpoint}/{id}"))
+        .delete(format!("{endpoint}/78002"))
         .bearer_auth(&token)
+        .header("idempotency-key", "synthetic-existing-grant-revoke")
         .send()
         .await
         .unwrap();
     let revoke_status = revoked.status().as_u16();
+    let revoke_replay = app
+        .client
+        .delete(format!("{endpoint}/78002"))
+        .bearer_auth(&token)
+        .header("idempotency-key", "synthetic-existing-grant-revoke")
+        .send()
+        .await
+        .unwrap();
+    let revoke_replay_status = revoke_replay.status().as_u16();
+    let revoke_marker = revoke_replay
+        .headers()
+        .get("idempotency-replayed")
+        .is_some();
     let row=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT permissions_version,(SELECT count(*) FROM person_access_grants WHERE household_membership_id=74002 AND person_id=73002 AND revoked_at IS NULL) AS active,(SELECT count(*) FROM person_access_grants WHERE household_membership_id=74002 AND person_id=73002) AS total FROM household_memberships WHERE id=74002")).await.unwrap().unwrap();
     let version: i32 = row.try_get("", "permissions_version").unwrap();
     let active: i64 = row.try_get("", "active").unwrap();
     let total: i64 = row.try_get("", "total").unwrap();
     app.close().await;
     assert_eq!(
-        (create_status, replay_status, revoke_status),
-        (201, 201, 204)
+        (
+            create_status,
+            replay_status,
+            revoke_status,
+            revoke_replay_status
+        ),
+        (403, 403, 204, 204)
     );
-    assert!(marker);
-    assert_eq!((version, active, total), (3, 0, 1));
+    assert!(!marker);
+    assert!(revoke_marker);
+    assert_eq!((version, active, total), (2, 0, 1));
 }
 
 #[tokio::test]
 async fn household_membership_status_and_person_link_transitions_are_scoped() {
     let app = Application::new().await;
     let token = app.token().await;
-    app.fixture.admin.execute_unprepared("INSERT INTO accounts(id,email,status,created_at,updated_at) VALUES(71002,'synthetic-transition@example.test',2,now(),now()); INSERT INTO household_memberships(id,account_id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74002,71002,72001,73002,'member','active',now(),now(),now())").await.unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73004,'Synthetic administration member',0,true,now(),now()); INSERT INTO accounts(id,person_id,name,email,status,created_at,updated_at) VALUES(71002,73004,'Synthetic administration member','synthetic-transition@example.test',2,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74002,72001,73004,'member','active',now(),now(),now())").await.unwrap();
     let endpoint = format!(
         "{}/api/v1/households/72001/admin/memberships/74002",
         app.origin
@@ -234,7 +252,7 @@ async fn household_membership_status_and_person_link_transitions_are_scoped() {
         .client
         .patch(&endpoint)
         .bearer_auth(&token)
-        .json(&json!({"household_membership":{"status":"suspended","person_id":null}}))
+        .json(&json!({"household_membership":{"status":"suspended"}}))
         .send()
         .await
         .unwrap();
@@ -242,7 +260,7 @@ async fn household_membership_status_and_person_link_transitions_are_scoped() {
         .client
         .patch(&endpoint)
         .bearer_auth(&token)
-        .json(&json!({"household_membership":{"status":"active","person_id":73002}}))
+        .json(&json!({"household_membership":{"status":"active","person_id":73004}}))
         .send()
         .await
         .unwrap();
@@ -274,7 +292,7 @@ async fn household_membership_status_and_person_link_transitions_are_scoped() {
     );
     app.close().await;
     assert_eq!(statuses, (200, 200, 422));
-    assert_eq!((status, person, version), ("active".into(), Some(73002), 3));
+    assert_eq!((status, person, version), ("active".into(), Some(73004), 3));
 }
 
 #[tokio::test]
@@ -328,7 +346,7 @@ async fn household_grant_validation_permission_and_relationship_ownership_preven
         denied.status().as_u16(),
     );
     app.close().await;
-    assert_eq!(statuses, (422, 422, 422, 403));
+    assert_eq!(statuses, (403, 403, 422, 403));
     assert_eq!(n, 1);
     assert_eq!(rejected, 3);
 }
@@ -425,7 +443,8 @@ async fn household_settings_concurrent_key_retries_apply_once_and_conflict_on_ch
 async fn household_administration_saved_rails_retries_preserve_effects() {
     let app = Application::new().await;
     let token = app.token().await;
-    app.fixture.admin.execute_unprepared("INSERT INTO accounts(id,email,status,created_at,updated_at) VALUES(71002,'synthetic-rails-admin@example.test',2,now(),now()); INSERT INTO household_memberships(id,account_id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74002,71002,72001,73002,'member','active',now(),now(),now()); SELECT setval(pg_get_serial_sequence('person_access_grants','id'),78001,true)").await.unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73004,'Synthetic administration member',0,true,now(),now()); INSERT INTO accounts(id,person_id,name,email,status,created_at,updated_at) VALUES(71002,73004,'Synthetic administration member','synthetic-rails-admin@example.test',2,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74002,72001,73004,'member','active',now(),now(),now()); SELECT setval(pg_get_serial_sequence('person_access_grants','id'),78001,true)").await.unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,created_at,updated_at) VALUES(78002,72001,74002,73002,'manage','parent',now(),now())").await.unwrap();
     let cases = [
         (
             "PATCH",
@@ -446,7 +465,7 @@ async fn household_administration_saved_rails_retries_preserve_effects() {
             "/api/v1/households/72001/admin/person_access_grants",
             r#"{"person_access_grant":{"household_membership_id":74002,"person_id":73002,"access_level":"manage","relationship_type":"parent"}}"#,
             "7428980add9962a5c2bef49f2fddfc6c5bbed72a378781a7126d7f86692a2f3d",
-            201,
+            403,
         ),
         (
             "DELETE",
@@ -479,31 +498,118 @@ async fn household_administration_saved_rails_retries_preserve_effects() {
             .await
             .unwrap();
         statuses.push(original.status().as_u16());
-        let original: Value = if status == 204 {
+        let original_request_id = original
+            .headers()
+            .get("x-request-id")
+            .and_then(|value| value.to_str().ok())
+            .map(str::to_owned);
+        let mut original: Value = if status == 204 {
             json!({})
         } else {
             original.json().await.unwrap()
         };
         let key = format!("synthetic-rails-admin-{status}-{path}");
         app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"INSERT INTO api_idempotency_keys(household_id,account_id,key,request_method,request_path,request_digest,response_status,response_body,response_headers,expires_at,created_at,updated_at) VALUES(72001,71001,$1,$2,$3,$4,$5,$6,'{}',now()+interval '24 hours',now(),now())",[key.clone().into(),method.as_str().into(),path.into(),digest.into(),status.into(),original.clone().into()])).await.unwrap();
+        if status == 403 {
+            use med_tracker::models::{
+                access::{self, Actor, HouseholdScope},
+                care::locations::{self, KeyedResponse},
+            };
+            let tenant = access::begin(
+                &app.fixture.runtime,
+                &HouseholdScope {
+                    actor: Actor { account_id: 71001 },
+                    household_id: 72001,
+                    request_id: "synthetic-cached-denial-diagnostic".into(),
+                },
+                None,
+            )
+            .await
+            .unwrap();
+            let input: Value = serde_json::from_str(body).unwrap();
+            let cached = locations::lookup(&tenant, &key, method.as_str(), path, &input)
+                .await
+                .unwrap();
+            assert!(
+                matches!(cached, KeyedResponse::Replay(_)),
+                "Exact denied-response fixture must reach maintained restricted cache lookup"
+            );
+            tenant.rollback().await.unwrap();
+        }
         let replay = app
             .client
-            .request(method, format!("{}{path}", app.origin))
+            .request(method.clone(), format!("{}{path}", app.origin))
             .bearer_auth(&token)
             .header("content-type", "application/json")
-            .header("idempotency-key", key)
+            .header("idempotency-key", key.clone())
+            .header("x-request-id", uuid::Uuid::new_v4().to_string())
             .body(body)
             .send()
             .await
             .unwrap();
         statuses.push(replay.status().as_u16());
+        let replay_request_id = replay
+            .headers()
+            .get("x-request-id")
+            .and_then(|value| value.to_str().ok())
+            .map(str::to_owned);
         markers.push(replay.headers().get("idempotency-replayed").is_some());
-        let replay: Value = if status == 204 {
+        let mut replay: Value = if status == 204 {
             empty_delete_bodies.push(replay.bytes().await.unwrap().is_empty());
             json!({})
         } else {
             replay.json().await.unwrap()
         };
+        if status == 403 {
+            let row=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT count(*) AS rejected FROM security_audit_events WHERE event_type='household_access.person_grant_changed' AND metadata->>'outcome'='rejected'")).await.unwrap().unwrap();
+            assert_eq!(row.try_get::<i64>("", "rejected").unwrap(), 1);
+            assert_eq!(original["error"]["code"], "forbidden");
+            assert_eq!(replay["error"]["code"], "forbidden");
+            assert_eq!(
+                original["error"]["request_id"].as_str(),
+                original_request_id.as_deref()
+            );
+            assert_eq!(
+                replay["error"]["request_id"].as_str(),
+                replay_request_id.as_deref()
+            );
+            let audit=app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,"SELECT count(*) AS attempts FROM security_audit_events WHERE event_type='api.request' AND request_id=$1 AND metadata->>'status'='403'",[replay_request_id.clone().unwrap().into()])).await.unwrap().unwrap();
+            assert_eq!(audit.try_get::<i64>("", "attempts").unwrap(), 1);
+            original["error"]["request_id"] = Value::Null;
+            replay["error"]["request_id"] = Value::Null;
+            let default_id = app
+                .client
+                .request(method, format!("{}{path}", app.origin))
+                .bearer_auth(&token)
+                .header("content-type", "application/json")
+                .header("idempotency-key", key)
+                .body(body)
+                .send()
+                .await
+                .unwrap();
+            assert_eq!(default_id.status().as_u16(), 403);
+            assert!(
+                default_id.headers().get("idempotency-replayed").is_some(),
+                "Default server request IDs must preserve cached denial replay metadata"
+            );
+            let default_request_id = default_id
+                .headers()
+                .get("x-request-id")
+                .and_then(|value| value.to_str().ok())
+                .map(str::to_owned);
+            assert!(default_request_id.is_some());
+            let mut default_body: Value = default_id.json().await.unwrap();
+            assert_eq!(
+                default_body["error"]["request_id"].as_str(),
+                default_request_id.as_deref()
+            );
+            assert_eq!(default_body["error"]["code"], "forbidden");
+            default_body["error"]["request_id"] = Value::Null;
+            assert_eq!(default_body, original);
+            let audit=app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,"SELECT (SELECT count(*) FROM security_audit_events WHERE event_type='api.request' AND request_id=$1 AND metadata->>'status'='403') AS attempts,(SELECT count(*) FROM security_audit_events WHERE event_type='household_access.person_grant_changed' AND metadata->>'outcome'='rejected') AS rejected",[default_request_id.unwrap().into()])).await.unwrap().unwrap();
+            assert_eq!(audit.try_get::<i64>("", "attempts").unwrap(), 1);
+            assert_eq!(audit.try_get::<i64>("", "rejected").unwrap(), 1);
+        }
         equal.push(replay == original);
     }
     let row=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM versions WHERE item_type='Household' AND event='update') AS settings,(SELECT permissions_version FROM household_memberships WHERE id=74002) AS version,(SELECT count(*) FROM person_access_grants WHERE household_membership_id=74002 AND person_id=73002) AS grants")).await.unwrap().unwrap();
@@ -513,19 +619,19 @@ async fn household_administration_saved_rails_retries_preserve_effects() {
     app.close().await;
     assert_eq!(
         statuses,
-        vec![200, 200, 200, 200, 201, 201, 204, 204, 204, 204]
+        vec![200, 200, 200, 200, 403, 403, 204, 204, 204, 204]
     );
     assert_eq!(markers, vec![true; 5]);
     assert_eq!(empty_delete_bodies, vec![true; 2]);
     assert_eq!(equal, vec![true; 5]);
-    assert_eq!((settings, version, grants), (1, 5, 1));
+    assert_eq!((settings, version, grants), (1, 4, 1));
 }
 
 #[tokio::test]
 async fn household_administration_strong_parameters_filter_protected_fields_and_reject_empty() {
     let app = Application::new().await;
     let token = app.token().await;
-    app.fixture.admin.execute_unprepared("INSERT INTO accounts(id,email,status,created_at,updated_at) VALUES(71002,'synthetic-filter-admin@example.test',2,now(),now()); INSERT INTO household_memberships(id,account_id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74002,71002,72001,73002,'member','active',now(),now(),now())").await.unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73004,'Synthetic administration member',0,true,now(),now()); INSERT INTO accounts(id,person_id,name,email,status,created_at,updated_at) VALUES(71002,73004,'Synthetic administration member','synthetic-filter-admin@example.test',2,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74002,72001,73004,'member','active',now(),now(),now())").await.unwrap();
     let settings = format!("{}/api/v1/households/72001/admin/settings", app.origin);
     let memberships = format!(
         "{}/api/v1/households/72001/admin/memberships/74002",
@@ -577,8 +683,8 @@ async fn household_administration_strong_parameters_filter_protected_fields_and_
     let version: i32 = row.try_get("", "version").unwrap();
     let n: i64 = row.try_get("", "grants").unwrap();
     app.close().await;
-    assert_eq!(statuses, vec![200, 200, 201, 400, 400, 400, 409]);
-    assert_eq!((status, version, n), ("active".into(), 3, 1));
+    assert_eq!(statuses, vec![200, 200, 403, 400, 400, 400, 409]);
+    assert_eq!((status, version, n), ("active".into(), 2, 0));
 }
 
 #[tokio::test]
@@ -737,7 +843,7 @@ async fn household_membership_list_matches_documented_contract() {
         "membership collection",
     );
     let members = body["data"].as_array().unwrap();
-    assert_eq!(members.len(), 1);
+    assert_eq!(members.len(), 3);
     assert_eq!(members[0]["id"], 74001);
     assert_eq!(members[0]["account_id"], 71001);
     assert_eq!(members[0]["email"], "persistence@example.test");

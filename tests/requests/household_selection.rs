@@ -64,7 +64,7 @@ async fn signed_in_without_active_household_reaches_initial_selection() -> TestR
         "/households/persistence-fixture/dashboard"
     );
     assert_eq!(chosen_again.header("cache-control"), "no-store");
-    fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now() WHERE household_id=72001 AND account_id=71001").await?;
+    fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now() WHERE household_id=72001 AND person_id=(SELECT person_id FROM accounts WHERE id=71001)").await?;
     let revoked_home = request.get("/").await;
     assert_eq!(revoked_home.status_code(), 303, "{}", revoked_home.text());
     assert_eq!(revoked_home.header("location"), "/households/choose");
@@ -176,7 +176,7 @@ async fn household_selection_requires_current_account_and_session() -> TestResul
 #[tokio::test]
 async fn household_selection_is_independent_for_two_browser_sessions() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
-    fixture.admin.execute_unprepared("INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET recovery_saved_at=now(); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71001,'Second household','second-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,account_id,role,joined_at,created_at,updated_at) VALUES(74002,72002,71001,'member',now(),now(),now())").await?;
+    fixture.admin.execute_unprepared("INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET recovery_saved_at=now(); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71001,'Second household','second-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74002,72002,(SELECT person_id FROM accounts WHERE id=71001),'member',now(),now(),now())").await?;
     let mut first = server(&boot);
     first.save_cookies();
     let mut second = server(&boot);
@@ -311,7 +311,7 @@ async fn household_selection_is_independent_for_two_browser_sessions() -> TestRe
 #[tokio::test]
 async fn household_selection_rechecks_membership_and_household_state() -> TestResult {
     let (fixture, boot) = boot_browser_fixture().await;
-    fixture.admin.execute_unprepared("INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET recovery_saved_at=now(); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71001,'Another household','another-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,account_id,role,joined_at,created_at,updated_at) VALUES(74002,72002,71001,'member',now(),now(),now()); INSERT INTO accounts(id,email,password_hash,status,created_at,updated_at) VALUES(71002,'foreign-selector@example.test',crypt('password',gen_salt('bf',4)),2,now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72003,71002,'Foreign household','foreign-selector-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,account_id,role,joined_at,created_at,updated_at) VALUES(74003,72003,71002,'owner',now(),now(),now())").await?;
+    fixture.admin.execute_unprepared("INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET recovery_saved_at=now(); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71001,'Another household','another-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74002,72002,(SELECT person_id FROM accounts WHERE id=71001),'member',now(),now(),now()); INSERT INTO people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73992,'Foreign household selector','1990-01-01',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,password_hash,status,created_at,updated_at) VALUES(71002,73992,'foreign-selector@example.test',crypt('password',gen_salt('bf',4)),2,now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72003,71002,'Foreign household','foreign-selector-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74003,72003,(SELECT person_id FROM accounts WHERE id=71002),'owner',now(),now(),now())").await?;
     let mut request = server(&boot);
     request.save_cookies();
     sign_in(&request, &boot).await;

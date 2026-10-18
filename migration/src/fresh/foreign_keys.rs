@@ -1,21 +1,75 @@
 use sea_orm_migration::prelude::*;
 
 pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
-    manager
-        .create_foreign_key(
-            ForeignKey::create()
-                .name("fk_carer_relationships_carer_household")
-                .from(
-                    Alias::new("carer_relationships"),
-                    (Alias::new("carer_id"), Alias::new("household_id")),
-                )
-                .to(
-                    Alias::new("people"),
-                    (Alias::new("id"), Alias::new("household_id")),
-                )
-                .to_owned(),
-        )
-        .await?;
+    for (name, table, person_column) in [
+        (
+            "fk_carer_relationships_carer_household",
+            "carer_relationships",
+            "carer_id",
+        ),
+        (
+            "fk_carer_relationships_patient_household",
+            "carer_relationships",
+            "patient_id",
+        ),
+        (
+            "fk_health_events_person_id_household",
+            "health_events",
+            "person_id",
+        ),
+        (
+            "fk_household_invitation_grants_person_household",
+            "household_invitation_grants",
+            "person_id",
+        ),
+        (
+            "fk_location_memberships_person_id_household",
+            "location_memberships",
+            "person_id",
+        ),
+        (
+            "fk_notification_events_person_id_household",
+            "notification_events",
+            "person_id",
+        ),
+        (
+            "fk_notification_preferences_person_id_household",
+            "notification_preferences",
+            "person_id",
+        ),
+        (
+            "fk_person_access_grants_person_id_household",
+            "person_access_grants",
+            "person_id",
+        ),
+        (
+            "fk_person_medications_person_id_household",
+            "person_medications",
+            "person_id",
+        ),
+        ("fk_schedules_person_id_household", "schedules", "person_id"),
+        (
+            "fk_review_prompts_person_household",
+            "medication_review_prompts",
+            "person_id",
+        ),
+    ] {
+        manager
+            .create_foreign_key(
+                ForeignKey::create()
+                    .name(name)
+                    .from(
+                        Alias::new(table),
+                        (Alias::new(person_column), Alias::new("household_id")),
+                    )
+                    .to(
+                        Alias::new("household_memberships"),
+                        (Alias::new("person_id"), Alias::new("household_id")),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+    }
     manager
         .create_foreign_key(
             ForeignKey::create()
@@ -25,21 +79,6 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                     Alias::new("household_id"),
                 )
                 .to(Alias::new("households"), Alias::new("id"))
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_foreign_key(
-            ForeignKey::create()
-                .name("fk_carer_relationships_patient_household")
-                .from(
-                    Alias::new("carer_relationships"),
-                    (Alias::new("patient_id"), Alias::new("household_id")),
-                )
-                .to(
-                    Alias::new("people"),
-                    (Alias::new("id"), Alias::new("household_id")),
-                )
                 .to_owned(),
         )
         .await?;
@@ -157,21 +196,6 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_foreign_key(
             ForeignKey::create()
-                .name("fk_health_events_person_id_household")
-                .from(
-                    Alias::new("health_events"),
-                    (Alias::new("person_id"), Alias::new("household_id")),
-                )
-                .to(
-                    Alias::new("people"),
-                    (Alias::new("id"), Alias::new("household_id")),
-                )
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_foreign_key(
-            ForeignKey::create()
                 .name("fk_household_invitation_grants_invitation_household")
                 .from(
                     Alias::new("household_invitation_grants"),
@@ -190,36 +214,6 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_foreign_key(
             ForeignKey::create()
-                .name("fk_household_invitation_grants_person_household")
-                .from(
-                    Alias::new("household_invitation_grants"),
-                    (Alias::new("person_id"), Alias::new("household_id")),
-                )
-                .to(
-                    Alias::new("people"),
-                    (Alias::new("id"), Alias::new("household_id")),
-                )
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_foreign_key(
-            ForeignKey::create()
-                .name("fk_household_memberships_person_id_household")
-                .from(
-                    Alias::new("household_memberships"),
-                    (Alias::new("person_id"), Alias::new("household_id")),
-                )
-                .to(
-                    Alias::new("people"),
-                    (Alias::new("id"), Alias::new("household_id")),
-                )
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_foreign_key(
-            ForeignKey::create()
                 .name("fk_location_memberships_location_id_household")
                 .from(
                     Alias::new("location_memberships"),
@@ -227,21 +221,6 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 )
                 .to(
                     Alias::new("locations"),
-                    (Alias::new("id"), Alias::new("household_id")),
-                )
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_foreign_key(
-            ForeignKey::create()
-                .name("fk_location_memberships_person_id_household")
-                .from(
-                    Alias::new("location_memberships"),
-                    (Alias::new("person_id"), Alias::new("household_id")),
-                )
-                .to(
-                    Alias::new("people"),
                     (Alias::new("id"), Alias::new("household_id")),
                 )
                 .to_owned(),
@@ -352,36 +331,6 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_foreign_key(
             ForeignKey::create()
-                .name("fk_notification_events_person_id_household")
-                .from(
-                    Alias::new("notification_events"),
-                    (Alias::new("person_id"), Alias::new("household_id")),
-                )
-                .to(
-                    Alias::new("people"),
-                    (Alias::new("id"), Alias::new("household_id")),
-                )
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_foreign_key(
-            ForeignKey::create()
-                .name("fk_notification_preferences_person_id_household")
-                .from(
-                    Alias::new("notification_preferences"),
-                    (Alias::new("person_id"), Alias::new("household_id")),
-                )
-                .to(
-                    Alias::new("people"),
-                    (Alias::new("id"), Alias::new("household_id")),
-                )
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_foreign_key(
-            ForeignKey::create()
                 .name("fk_person_access_grants_carer_relationship_household")
                 .from(
                     Alias::new("person_access_grants"),
@@ -436,21 +385,6 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_foreign_key(
             ForeignKey::create()
-                .name("fk_person_access_grants_person_id_household")
-                .from(
-                    Alias::new("person_access_grants"),
-                    (Alias::new("person_id"), Alias::new("household_id")),
-                )
-                .to(
-                    Alias::new("people"),
-                    (Alias::new("id"), Alias::new("household_id")),
-                )
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_foreign_key(
-            ForeignKey::create()
                 .name("fk_person_medications_medication_id_household")
                 .from(
                     Alias::new("person_medications"),
@@ -458,21 +392,6 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 )
                 .to(
                     Alias::new("medications"),
-                    (Alias::new("id"), Alias::new("household_id")),
-                )
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_foreign_key(
-            ForeignKey::create()
-                .name("fk_person_medications_person_id_household")
-                .from(
-                    Alias::new("person_medications"),
-                    (Alias::new("person_id"), Alias::new("household_id")),
-                )
-                .to(
-                    Alias::new("people"),
                     (Alias::new("id"), Alias::new("household_id")),
                 )
                 .to_owned(),
@@ -927,15 +846,6 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 .name("fk_rails_823f8d7a81")
                 .from(Alias::new("account_otp_keys"), Alias::new("id"))
                 .to(Alias::new("accounts"), Alias::new("id"))
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_foreign_key(
-            ForeignKey::create()
-                .name("fk_rails_829e856eff")
-                .from(Alias::new("people"), Alias::new("household_id"))
-                .to(Alias::new("households"), Alias::new("id"))
                 .to_owned(),
         )
         .await?;
@@ -1474,18 +1384,6 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_foreign_key(
             ForeignKey::create()
-                .name("fk_rails_e7dc011d7c")
-                .from(
-                    Alias::new("household_memberships"),
-                    Alias::new("account_id"),
-                )
-                .to(Alias::new("accounts"), Alias::new("id"))
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_foreign_key(
-            ForeignKey::create()
                 .name("fk_rails_eb691e7e17")
                 .from(
                     Alias::new("account_verification_keys"),
@@ -1571,21 +1469,6 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 )
                 .to(
                     Alias::new("medications"),
-                    (Alias::new("id"), Alias::new("household_id")),
-                )
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_foreign_key(
-            ForeignKey::create()
-                .name("fk_schedules_person_id_household")
-                .from(
-                    Alias::new("schedules"),
-                    (Alias::new("person_id"), Alias::new("household_id")),
-                )
-                .to(
-                    Alias::new("people"),
                     (Alias::new("id"), Alias::new("household_id")),
                 )
                 .to_owned(),

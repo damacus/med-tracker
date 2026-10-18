@@ -323,6 +323,28 @@ async fn medication_get_matches_documented_contract() {
         .send()
         .await
         .unwrap();
+    assert_eq!(ungranted.status().as_u16(), 200);
+    let participating_body: Value = ungranted.json().await.unwrap();
+    assert_value(
+        &contract,
+        resolve(
+            &contract,
+            &operation["responses"]["200"]["content"]["application/json"]["schema"],
+        ),
+        &participating_body,
+        "medication linked to active participant without grant",
+    );
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE household_id=72001 AND person_id=73002").await.unwrap();
+    let ungranted = app
+        .client
+        .get(format!(
+            "{}/api/v1/households/72001/medications/92005",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
     let ungranted_status = ungranted.status().as_u16();
     let ungranted_body: Value = ungranted.json().await.unwrap();
     assert_eq!(ungranted_status, 404);
@@ -330,7 +352,7 @@ async fn medication_get_matches_documented_contract() {
         &contract,
         not_found_schema,
         &ungranted_body,
-        "medication outside grant scope",
+        "medication linked only to departed participant",
     );
     assert_eq!(ungranted_body["error"]["code"], "not_found");
 

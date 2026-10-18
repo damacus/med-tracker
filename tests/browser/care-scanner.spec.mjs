@@ -829,7 +829,8 @@ test('context-aware Add for person launcher selects an authorised person and ope
 test.describe('Welsh medication chooser', () => {
   test.use({ locale: 'cy-GB' });
 
-  test('translates person selection, actions and the empty state without changing destinations', async ({ page, careFixture }, info) => {
+  test('translates own-person selection and retains other-person restrictions after old grants end', async ({ page, careFixture }, info) => {
+    await careFixture.seedAdministration();
     await signIn(page);
     const chooser = '/households/persistence-fixture/medications/workflow';
     await page.goto(`${chooser}?intent=assign_medication&medication_id=80001`);
@@ -844,9 +845,22 @@ test.describe('Welsh medication chooser', () => {
     await page.goto(`${chooser}?intent=schedule`);
     await expect(page.getByRole('link', { name: 'Amserlennu ar gyfer Synthetic adult', exact: true })).toBeVisible();
     await careFixture.searchRestricted();
-    await page.goto(chooser);
-    await expect(page.getByText('Nid oes pobl ar gael i reoli meddyginiaeth.', { exact: true })).toBeVisible();
-    await page.screenshot({ path: info.outputPath(`care-medication-chooser-empty-welsh-${info.project.name}.png`), fullPage: true, animations: 'disabled' });
+    await page.goto(`${chooser}?intent=assign_medication&medication_id=80001`);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'cy');
+    await expect(page).toHaveTitle('Dewiswch berson | MedTracker');
+    await expect(page.getByRole('heading', { name: 'Dewiswch berson', exact: true })).toBeVisible();
+    await expect(page.getByText('Nid oes pobl ar gael i reoli meddyginiaeth.', { exact: true })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Neilltuo meddyginiaeth i Synthetic adult', exact: true })).toHaveAttribute('href', '/households/persistence-fixture/people/73001/treatments/assignments/new?source=workflow&medication_id=80001');
+    await expect(page.getByRole('link', { name: 'Creu meddyginiaeth i Synthetic adult', exact: true })).toHaveAttribute('href', '/households/persistence-fixture/medications/new?person_id=73001');
+    await expect(page.getByRole('link', { name: 'Neilltuo meddyginiaeth i Synthetic administration member', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Neilltuo meddyginiaeth i Synthetic minor', exact: true })).toHaveCount(0);
+    expect((await page.request.get('/households/persistence-fixture/people/73004')).status()).toBe(200);
+    expect((await page.request.get('/households/persistence-fixture/people/73004/edit')).status()).toBe(403);
+    await page.getByRole('link', { name: 'Neilltuo meddyginiaeth i Synthetic adult', exact: true }).focus();
+    await expect(page.getByRole('link', { name: 'Neilltuo meddyginiaeth i Synthetic adult', exact: true })).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(page.locator(':focus-visible')).toBeVisible();
+    await page.screenshot({ path: info.outputPath(`care-medication-chooser-own-person-welsh-${info.project.name}.png`), fullPage: true, animations: 'disabled' });
   });
 });
 

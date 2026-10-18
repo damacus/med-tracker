@@ -38,7 +38,7 @@ test('record dialog presents each treatment as a clear dose confirmation', async
   }
 });
 
-test('first recordable treatment receives focus when an earlier source is view only', async ({ page, careFixture }) => {
+test('active household participants can record shared and own treatments and focus the first source', async ({ page, careFixture }) => {
   await careFixture.seedAdministration();
   await careFixture.personViewOnly();
   await careFixture.mixedRecordability();
@@ -50,8 +50,9 @@ test('first recordable treatment receives focus when an earlier source is view o
   await page.getByRole('link', { name: 'Synthetic tablets', exact: true }).click();
   await page.getByRole('button', { name: 'Record dose', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Record dose', exact: true });
-  await expect(dialog.getByText(/Synthetic adult.*view only/i)).toBeVisible();
-  await expect(dialog.getByRole('form', { name: /Synthetic administration member.*Synthetic tablets.*1 tablet/ }).getByLabel('Taken at', { exact: true })).toBeFocused();
+  await expect(dialog.getByRole('form', { name: /Synthetic adult.*Synthetic tablets.*2 tablets/ })).toBeVisible();
+  await expect(dialog.getByRole('form', { name: /Synthetic administration member.*Synthetic tablets.*1 tablet/ })).toBeVisible();
+  await expect(dialog.locator('form[data-dose-form]').first().getByLabel('Taken at', { exact: true })).toBeFocused();
 });
 
 test('invalid dose time marks only its field and restores focus after rerender', async ({ page }) => {
@@ -600,7 +601,7 @@ test('review: a person card record action opens its own medication source', asyn
   await expect(dialog.locator('form[data-dose-form]:has(input[name="source_type"][value="schedule"])').getByLabel('Taken at', { exact: true })).toBeFocused();
 });
 
-test('review: dose preview denies foreign sources and view-only carers', async ({ page, careFixture }) => {
+test('review: dose preview permits participants but denies foreign sources and withdrawn membership', async ({ page, careFixture }) => {
   await openMedication(page);
   const query = new URLSearchParams({ source_type: 'person_medication', source_id: '81001', taken_at: new Date().toISOString().slice(0, 16) });
   const missing = await page.request.get(`/households/persistence-fixture/medications/80001/doses/preview?${new URLSearchParams({ source_type: 'schedule', source_id: '999999', taken_at: new Date().toISOString().slice(0, 16) })}`);
@@ -614,8 +615,14 @@ test('review: dose preview denies foreign sources and view-only carers', async (
   await page.getByLabel('Email address', { exact: true }).fill('administration-member@example.test');
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  const viewOnly = await page.request.get(`/households/persistence-fixture/medications/80001/doses/preview?${query}`);
-  expect([403, 404]).toContain(viewOnly.status());
+  const beforePreview = await careFixture.probe();
+  const preview = await page.request.get(`/households/persistence-fixture/medications/80001/doses/preview?${query}`);
+  expect(preview.status()).toBe(200);
+  expect(await careFixture.probe()).toMatchObject({ supply: beforePreview.supply, takes: beforePreview.takes, foreign_supply: beforePreview.foreign_supply, foreign_takes: beforePreview.foreign_takes });
+  await careFixture.withdrawMembership('administration');
+  const withdrawn = await page.request.get(`/households/persistence-fixture/medications/80001/doses/preview?${query}`, { maxRedirects: 0 });
+  expect(withdrawn.status()).toBe(403);
+  expect(await careFixture.probe()).toMatchObject({ supply: beforePreview.supply, takes: beforePreview.takes });
 });
 
 test('review: dose preview rejects nonexistent and ambiguous local times', async ({ page, careFixture }) => {
@@ -851,7 +858,7 @@ test('refill audit failure rolls back delivered stock and its order-state change
   expect(await careFixture.restockProbe()).toMatchObject({ supply: '10.00', restock_audits: 0 });
 });
 
-test('visible view-only carer may refill but loses that access when the grant ends', async ({ page, careFixture }) => {
+test('participant refill preserves stale-version rejection and ends when membership is withdrawn', async ({ page, careFixture }) => {
   await careFixture.seedAdministration();
   await careFixture.personViewOnly();
   await page.goto('/login');
@@ -875,10 +882,19 @@ test('visible view-only carer may refill but loses that access when the grant en
   const path = await dialog.locator('form').getAttribute('action');
   await dialog.getByRole('button', { name: 'Add stock', exact: true }).click();
   await expect(page.getByTestId('current-supply')).toHaveText('12 tablets');
+  const stale = await page.request.post(path, { form: fields, headers: { Origin: careFixture.origin }, maxRedirects: 0 });
+  expect(stale.status()).toBe(409);
+  const beforeWithdrawal = await careFixture.restockProbe();
+  expect(beforeWithdrawal.supply).toBe('12.00');
   await careFixture.revokePersonViewOnly();
-  const denied = await page.request.post(path, { form: fields, headers: { Origin: careFixture.origin }, maxRedirects: 0 });
-  expect([403, 404]).toContain(denied.status());
-  expect((await careFixture.restockProbe()).supply).toBe('12.00');
+  const stillParticipating = await page.goto('/households/persistence-fixture/medications/80001');
+  expect(stillParticipating.status()).toBe(200);
+  const latest = await page.locator('#refill-inventory-dialog form').evaluate(element => Object.fromEntries(new FormData(element)));
+  expect(latest.etag).not.toBe(fields.etag);
+  await careFixture.withdrawMembership('administration');
+  const denied = await page.request.post(path, { form: { ...latest, quantity: '2' }, headers: { Origin: careFixture.origin }, maxRedirects: 0 });
+  expect(denied.status()).toBe(403);
+  expect(await careFixture.restockProbe()).toEqual(beforeWithdrawal);
 });
 
 test('forged dose source and stock remain rejected without a take', async ({ page, careFixture }) => {

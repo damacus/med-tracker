@@ -1,7 +1,7 @@
 use super::*;
 use sha2::{Digest, Sha256};
 
-async fn stored_credentials(app: &Application) {
+pub(super) async fn stored_credentials(app: &Application) {
     let current = hex::encode(Sha256::digest(b"synthetic-current-session"));
     let app_token = hex::encode(Sha256::digest(b"synthetic-app-token"));
     app.fixture.admin.execute_raw(Statement::from_sql_and_values(
@@ -25,7 +25,7 @@ async fn stored_credentials(app: &Application) {
 async fn account_households_and_sessions_are_scoped_and_never_expose_tokens() {
     let app = Application::new().await;
     stored_credentials(&app).await;
-    app.fixture.admin.execute_unprepared("INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71001,'Second household','second-household','UTC',now(),now()); INSERT INTO people(id,household_id,account_id,name,person_type,has_capacity,created_at,updated_at) VALUES(73004,72002,71001,'Second household person',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,account_id,person_id,role,joined_at,created_at,updated_at) VALUES(74002,72002,71001,73004,'member',now(),now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,status,lifecycle_state,created_at,updated_at) VALUES(72003,71001,'Archived household','archived-household','UTC','active','held',now(),now()); INSERT INTO household_memberships(id,household_id,account_id,role,joined_at,created_at,updated_at) VALUES(74003,72003,71001,'member',now(),now(),now())").await.unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71001,'Second household','second-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74002,72002,73001,'member',now(),now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,status,lifecycle_state,created_at,updated_at) VALUES(72003,71001,'Archived household','archived-household','UTC','active','held',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74003,72003,73001,'member',now(),now(),now())").await.unwrap();
     for bearer in ["synthetic-current-session", "synthetic-app-token"] {
         let households = app
             .client
@@ -68,7 +68,7 @@ async fn account_households_and_sessions_are_scoped_and_never_expose_tokens() {
 async fn stored_session_revoke_is_account_scoped_and_invalidates_the_credential() {
     let app = Application::new().await;
     stored_credentials(&app).await;
-    app.fixture.admin.execute_unprepared("INSERT INTO accounts(id,email,password_hash,created_at,updated_at) VALUES(71002,'other-session-account@example.test',crypt('password',gen_salt('bf',4)),now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71002,'Foreign household','foreign-session-household','UTC',now(),now()); INSERT INTO people(id,household_id,account_id,name,person_type,has_capacity,created_at,updated_at) VALUES(73004,72002,71002,'Foreign person',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,account_id,person_id,role,joined_at,created_at,updated_at) VALUES(74002,72002,71002,73004,'owner',now(),now(),now()); INSERT INTO api_sessions(id,account_id,household_membership_id,access_token_digest,refresh_token_digest,permissions_version,access_expires_at,refresh_expires_at,last_used_at,created_at,updated_at) VALUES(88004,71002,74002,'foreign-digest','foreign-refresh',1,now()+interval '15 minutes',now()+interval '1 day',now(),now(),now())").await.unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73004,'Foreign person',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,password_hash,created_at,updated_at) VALUES(71002,73004,'other-session-account@example.test',crypt('password',gen_salt('bf',4)),now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71002,'Foreign household','foreign-session-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74002,72002,73004,'owner',now(),now(),now()); INSERT INTO api_sessions(id,account_id,household_membership_id,access_token_digest,refresh_token_digest,permissions_version,access_expires_at,refresh_expires_at,last_used_at,created_at,updated_at) VALUES(88004,71002,74002,'foreign-digest','foreign-refresh',1,now()+interval '15 minutes',now()+interval '1 day',now(),now(),now())").await.unwrap();
     let path = format!("{}/api/v1/auth/sessions", app.origin);
     for id in [99999, 88003, 88004, 76001] {
         let response = app

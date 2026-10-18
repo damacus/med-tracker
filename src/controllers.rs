@@ -9,6 +9,7 @@ pub mod auth;
 pub mod dashboard;
 pub mod dosage_options;
 pub mod dose_occurrences;
+pub mod guardian_declarations;
 pub mod home;
 pub mod identity_onboarding;
 pub mod invitations;

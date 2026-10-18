@@ -69,9 +69,11 @@ async fn show(
         .unwrap_or("current");
     let selected = match query.dashboard_person_id.as_deref() {
         None if variant != "family_lanes" => {
-            let candidates = match person::Entity::find()
-                .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
-                .filter(person::Column::Id.in_subquery(access::granted_people(tenant.membership())))
+            let candidates = match access::person_queries::household_people(tenant.scope())
+                .filter(
+                    person::Column::Id
+                        .in_subquery(access::participating_people(tenant.membership())),
+                )
                 .order_by_asc(person::Column::Name)
                 .order_by_asc(person::Column::Id)
                 .all(tenant.transaction())
@@ -82,7 +84,7 @@ async fn show(
             };
             candidates
                 .iter()
-                .find(|person| person.account_id == Some(principal.account_id()))
+                .find(|person| person.id == tenant.membership().person_id)
                 .or(candidates.first())
                 .map(|person| person.id)
         }
@@ -107,14 +109,13 @@ async fn show(
             Ok(value) => value,
             Err(error) => return operation_error(error),
         };
-    let own_person =
-        match person::Entity::find_by_id(tenant.membership().person_id.unwrap_or_default())
-            .one(tenant.transaction())
-            .await
-        {
-            Ok(value) => value,
-            Err(_) => return unavailable(),
-        };
+    let own_person = match person::Entity::find_by_id(tenant.membership().person_id)
+        .one(tenant.transaction())
+        .await
+    {
+        Ok(value) => value,
+        Err(_) => return unavailable(),
+    };
     let name = own_person
         .as_ref()
         .map_or(owner.email.as_str(), |person| person.name.as_str());
