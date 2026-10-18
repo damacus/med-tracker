@@ -223,6 +223,7 @@ tasks:
   test:coverage-runner:
     cmds:
       - task: frontend:install
+      - node --test scripts/migration/coverage-lock.test.mjs
       - node --test --test-name-pattern=coverage scripts/migration/run-slice.test.mjs
   test:coverage-prerequisite:
     cmds:

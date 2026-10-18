@@ -6,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { withoutCoverageOverrides } from './coverage-environment.mjs';
 import { withOwnedDatabase } from './foundation-database.mjs';
 import { stopOwnedProcess } from './process-cleanup.mjs';
+import { acquireCoverageLock } from './coverage-lock.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 
@@ -96,7 +97,7 @@ export async function runCoverage({ outputDir = 'target/coverage/reports' } = {}
   const reportPath = join(reportDirectory, 'lcov.info');
   const manifestPath = join(reportDirectory, 'manifest.json');
   const instrumentedDirectory = join(root, 'target/coverage/instrumented');
-  const lockDirectory = join(instrumentedDirectory, 'run.lock');
+  const lockPath = join(instrumentedDirectory, 'run.flock');
   const coverageEnvironment = {
     CARGO_TARGET_DIR: join(instrumentedDirectory, 'target'),
     CARGO_BUILD_BUILD_DIR: join(instrumentedDirectory, 'intermediates'),
@@ -110,17 +111,11 @@ export async function runCoverage({ outputDir = 'target/coverage/reports' } = {}
   process.on('SIGTERM', onTerm);
   process.on('SIGINT', onInt);
   let complete = false;
-  let locked = false;
+  let releaseLock;
   const execution = [];
   try {
     await mkdir(instrumentedDirectory, { recursive: true });
-    try {
-      await mkdir(lockDirectory);
-      locked = true;
-    } catch (error) {
-      if (error.code === 'EEXIST') throw new Error(`Coverage build directory is already in use: ${lockDirectory}`, { cause: error });
-      throw error;
-    }
+    releaseLock = await acquireCoverageLock(lockPath, { onLost: error => controller.abort(error) });
     const sourceAtStart = await sourceIdentity(metadataEnvironment);
     const rustc = execFileSync('rustc', ['--version'], { cwd: root, env: metadataEnvironment, encoding: 'utf8' }).trim();
     const cargoLlvmCov = execFileSync('cargo', ['llvm-cov', '--version'], { cwd: root, env: metadataEnvironment, encoding: 'utf8' }).trim();
@@ -171,10 +166,16 @@ export async function runCoverage({ outputDir = 'target/coverage/reports' } = {}
     complete = true;
     process.stdout.write(`Rust coverage LCOV: ${reportPath}\n`);
   } finally {
-    if (!complete) await rm(reportDirectory, { recursive: true, force: true });
-    if (locked) await rm(lockDirectory, { recursive: true, force: true });
-    process.off('SIGTERM', onTerm);
-    process.off('SIGINT', onInt);
+    try {
+      if (!complete) await rm(reportDirectory, { recursive: true, force: true });
+    } finally {
+      try {
+        if (releaseLock) await releaseLock();
+      } finally {
+        process.off('SIGTERM', onTerm);
+        process.off('SIGINT', onInt);
+      }
+    }
   }
 }
 

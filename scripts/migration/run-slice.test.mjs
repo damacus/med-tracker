@@ -9,6 +9,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { sourceIdentity } from './run-slice.mjs';
+import { acquireCoverageLock } from './coverage-lock.mjs';
 import { parseNextestJUnit } from './nextest-proof.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
@@ -854,7 +855,8 @@ test('coverage preserves cached dependencies after successful and failed runs', 
       await withProcessFixture(exitCode, async (result, state) => {
         assert.equal(result.status === 0, exitCode === 0, result.stderr);
         assert.equal(await readFile(cachedDependency, 'utf8'), 'compiled dependency');
-        assert.ok(!(await readdir(join(root, 'target/coverage/instrumented'))).includes('run.lock'));
+        const release = await acquireCoverageLock(join(root, 'target/coverage/instrumented/run.flock'));
+        await release();
         const clean = state.calls.find(call => call.command === 'cargo' && call.args[1] === 'clean');
         assert.deepEqual(clean.args, ['llvm-cov', 'clean', '--workspace']);
       }, 'test:coverage', directory => [`OUTPUT_DIR=${join(directory, 'coverage')}`], 0, { SLICE_FIXTURE_FAIL_MATCH: exitCode === 0 ? 'never' : '--test care_api' });
@@ -1005,17 +1007,17 @@ test('separate coverage invocations reuse build directories but keep reports sep
 });
 
 test('coverage refuses to clean or run tests while another invocation owns its build directory', async () => {
-  const lockDirectory = join(root, 'target/coverage/instrumented/run.lock');
+  const lockDirectory = join(root, 'target/coverage/instrumented');
   await mkdir(lockDirectory, { recursive: true });
+  const release = await acquireCoverageLock(join(lockDirectory, 'run.flock'));
   try {
     await withProcessFixture(0, async (result, state) => {
       assert.notEqual(result.status, 0);
       assert.match(result.stderr, /Coverage build directory is already in use/);
       assert.ok(!state.calls.some(call => call.command === 'docker' || call.args.includes('clean') || call.args.includes('--no-report')));
-      assert.deepEqual(await readdir(lockDirectory), []);
     }, 'test:coverage', [], 0, { SLICE_FIXTURE_FAIL_MATCH: 'never' });
   } finally {
-    await rm(lockDirectory, { recursive: true, force: true });
+    await release();
   }
 });
 
