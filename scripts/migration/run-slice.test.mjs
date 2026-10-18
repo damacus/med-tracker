@@ -809,8 +809,8 @@ test('coverage report collects root units, API inventory and care API through on
     assert.ok(coverageCalls[3].args.includes('--test-threads'));
     assert.ok(coverageCalls.slice(1, 4).every(call => call.args.includes('--no-tests=fail') && call.args.includes('--config-file')));
     assert.equal(state.calls.filter(call => call.command === 'cargo' && call.args[0] === 'nextest' && call.args[1] === 'list').length, 3);
-    assert.ok(coverageCalls.every(call => call.coverage_target_dir?.startsWith(join(root, 'target/coverage/'))));
-    assert.ok(coverageCalls.every(call => call.coverage_build_dir?.startsWith(join(root, 'target/coverage/'))));
+    assert.ok(coverageCalls.every(call => call.coverage_target_dir === join(root, 'target/coverage/instrumented/target')));
+    assert.ok(coverageCalls.every(call => call.coverage_build_dir === join(root, 'target/coverage/instrumented/intermediates')));
     assert.ok(coverageCalls.every(call => call.coverage_profile_override === undefined));
     for (const call of state.calls.filter(call => call.command === 'cargo' && call.args[0] === 'llvm-cov')) {
       for (const name of ['llvm_cov_target_override', 'llvm_cov_build_override', 'llvm_cov_setup_override', 'llvm_cov_deprecated_flags_override', 'llvm_profdata_deprecated_flags_override', 'llvm_cov_tool_override', 'llvm_profdata_tool_override', 'llvm_cov_flags_override', 'llvm_profdata_flags_override', 'llvm_profile_name_override']) {
@@ -842,6 +842,26 @@ test('coverage report collects root units, API inventory and care API through on
     assert.match(manifest.source_state.sha256, /^[a-f0-9]{64}$/);
     assert.equal(typeof manifest.source_state.dirty, 'boolean');
   }, 'test:coverage', directory => [`OUTPUT_DIR=${join(directory, 'coverage')}`], 0, { SLICE_FIXTURE_FAIL_MATCH: 'never' });
+});
+
+test('coverage preserves cached dependencies after successful and failed runs', async () => {
+  const cachedDirectory = join(root, 'target/coverage/instrumented/intermediates/llvm-cov-target');
+  const cachedDependency = join(cachedDirectory, `cached-dependency-${randomUUID()}.rlib`);
+  await mkdir(cachedDirectory, { recursive: true });
+  await writeFile(cachedDependency, 'compiled dependency');
+  try {
+    for (const exitCode of [0, 42]) {
+      await withProcessFixture(exitCode, async (result, state) => {
+        assert.equal(result.status === 0, exitCode === 0, result.stderr);
+        assert.equal(await readFile(cachedDependency, 'utf8'), 'compiled dependency');
+        assert.ok(!(await readdir(join(root, 'target/coverage/instrumented'))).includes('run.lock'));
+        const clean = state.calls.find(call => call.command === 'cargo' && call.args[1] === 'clean');
+        assert.deepEqual(clean.args, ['llvm-cov', 'clean', '--workspace']);
+      }, 'test:coverage', directory => [`OUTPUT_DIR=${join(directory, 'coverage')}`], 0, { SLICE_FIXTURE_FAIL_MATCH: exitCode === 0 ? 'never' : '--test care_api' });
+    }
+  } finally {
+    await rm(cachedDependency, { force: true });
+  }
 });
 
 test('coverage report under an unignored checkout directory does not change its own source identity', async () => {
@@ -966,8 +986,9 @@ test('coverage rejects zero selected tests before an instrumented run', async ()
   }, 'test:coverage', directory => [`OUTPUT_DIR=${join(directory, 'coverage')}`], 0, { SLICE_FIXTURE_FAIL_MATCH: 'never', SLICE_FIXTURE_COVERAGE_EMPTY_LIST: '1' });
 });
 
-test('separate coverage invocations never reuse instrumented Cargo directories', async () => {
+test('separate coverage invocations reuse build directories but keep reports separate', async () => {
   const targets = [];
+  const reports = [];
   for (let index = 0; index < 2; index += 1) {
     await withProcessFixture(0, (result, state) => {
       assert.equal(result.status, 0, result.stderr);
@@ -975,9 +996,27 @@ test('separate coverage invocations never reuse instrumented Cargo directories',
       assert.equal(new Set(coverageCalls.map(call => call.coverage_target_dir)).size, 1);
       assert.equal(new Set(coverageCalls.map(call => call.coverage_build_dir)).size, 1);
       targets.push(coverageCalls[0].coverage_target_dir);
+      const report = state.calls.find(call => call.command === 'cargo' && call.args.includes('--output-path'));
+      reports.push(report.args[report.args.indexOf('--output-path') + 1]);
     }, 'test:coverage', [], 0, { SLICE_FIXTURE_FAIL_MATCH: 'never' });
   }
-  assert.notEqual(targets[0], targets[1]);
+  assert.equal(targets[0], targets[1]);
+  assert.notEqual(reports[0], reports[1]);
+});
+
+test('coverage refuses to clean or run tests while another invocation owns its build directory', async () => {
+  const lockDirectory = join(root, 'target/coverage/instrumented/run.lock');
+  await mkdir(lockDirectory, { recursive: true });
+  try {
+    await withProcessFixture(0, async (result, state) => {
+      assert.notEqual(result.status, 0);
+      assert.match(result.stderr, /Coverage build directory is already in use/);
+      assert.ok(!state.calls.some(call => call.command === 'docker' || call.args.includes('clean') || call.args.includes('--no-report')));
+      assert.deepEqual(await readdir(lockDirectory), []);
+    }, 'test:coverage', [], 0, { SLICE_FIXTURE_FAIL_MATCH: 'never' });
+  } finally {
+    await rm(lockDirectory, { recursive: true, force: true });
+  }
 });
 
 test('coverage prerequisite failure exits before owned fixture provisioning', async () => {

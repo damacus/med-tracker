@@ -28,6 +28,15 @@ test('hosted archive workers install the pinned runner before Task and lint inst
   assert.ok(lint.includes(`cargo-machete@${machete}`));
 });
 
+test('coverage caches its stable build directories separately from ordinary builds', () => {
+  const workflow = readFileSync('.github/workflows/ci.yml', 'utf8');
+  const coverage = workflow.split('  loco_coverage:')[1].split('  loco_integration:')[0];
+  assert.match(coverage, /shared-key: loco-coverage-v2/);
+  assert.match(coverage, /cache-targets: false/);
+  assert.match(coverage, /cache-directories:\s*\|\s*target\/coverage\/instrumented\/target\s*target\/coverage\/instrumented\/intermediates/);
+  assert.ok(!coverage.includes('shared-key: loco-tests-v1'));
+});
+
 test('legacy household shards wait for Loco browsers without skipping legacy-only changes', () => {
   const workflow = readFileSync('.github/workflows/ci.yml', 'utf8');
   const job = workflow.match(/\n  rust_household_browser:\n([\s\S]*?)(?=\n  [a-z_]+:\n)/)?.[1];

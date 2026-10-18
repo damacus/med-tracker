@@ -220,7 +220,11 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
         if: ${{ !inputs.cold_cache }}
         with:
-          shared-key: loco-coverage-v1
+          shared-key: loco-coverage-v2
+          cache-targets: false
+          cache-directories: |
+            target/coverage/instrumented/target
+            target/coverage/instrumented/intermediates
       - name: Install owned-runner prerequisites
         run: |
           sudo apt-get update
