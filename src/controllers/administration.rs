@@ -1,3 +1,4 @@
+mod audit_logs;
 mod page;
 mod rendering;
 
@@ -93,6 +94,8 @@ pub fn routes() -> Routes {
         .add("/{slug}/admin/users", get(users))
         .add("/{slug}/admin/users/{id}/edit", get(role))
         .add("/{slug}/admin/users/{id}/membership_role", post(save_role))
+        .add("/{slug}/admin/audit_logs", get(audit_logs::index))
+        .add("/{slug}/admin/audit_logs/{id}", get(audit_logs::detail))
         .add(
             "/{slug}/admin/carer_relationships",
             get(relationships).post(create_relationship),

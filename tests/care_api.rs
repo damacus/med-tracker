@@ -12,6 +12,8 @@ mod app_tokens;
 mod assignments;
 #[path = "care_api/audit_logs.rs"]
 mod audit_logs;
+#[path = "care_api/audit_logs_browser.rs"]
+mod audit_logs_browser;
 #[path = "care_api/avatar.rs"]
 mod avatar;
 #[path = "care_api/avatar_storage.rs"]

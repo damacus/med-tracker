@@ -1,0 +1,62 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-5xl mx-auto">
+  <a class="link" href="/households/{{ slug }}/admin{{ language_suffix }}">{% if lang == "en" %}Administration{% else %}{{ admin_labels.nav.label }}{% endif %}</a>
+  {% include "administration/context.html" %}
+  <h1 class="text-3xl font-semibold mt-4">{{ admin_labels.audit.title }}</h1>
+  <p class="mt-2">{{ admin_labels.audit.description }}</p>
+  {% include "administration/navigation.html" %}
+
+  <div class="mt-6">{% include "components/form_errors.html" %}</div>
+  <form id="audit-filter-form" action="/households/{{ slug }}/admin/audit_logs" method="get" class="grid gap-4 sm:grid-cols-3 mt-6">
+    {% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}
+    <div>
+      <label class="label" for="audit-event-type">{{ admin_labels.audit.event_type }}</label>
+      <input class="input input-bordered w-full" id="audit-event-type" name="event_type" value="{{ filters.event_type }}" placeholder="{{ admin_labels.audit.event_type_placeholder }}" {% if invalid_field == 'audit-event-type' %}aria-invalid="true" aria-describedby="form-error-audit-event-type"{% endif %}>
+    </div>
+    <div>
+      <label class="label" for="audit-from">{{ admin_labels.audit.from }}</label>
+      <input class="input input-bordered w-full" id="audit-from" name="from" type="text" placeholder="YYYY-MM-DD" value="{{ filters.from_utc }}" {% if invalid_field == 'audit-from' %}aria-invalid="true" aria-describedby="form-error-audit-from"{% endif %}>
+    </div>
+    <div>
+      <label class="label" for="audit-to">{{ admin_labels.audit.to }}</label>
+      <input class="input input-bordered w-full" id="audit-to" name="to" type="text" placeholder="YYYY-MM-DD" value="{{ filters.through_utc }}" {% if invalid_field == 'audit-to' %}aria-invalid="true" aria-describedby="form-error-audit-to"{% endif %}>
+    </div>
+    <div class="sm:col-span-3"><button class="btn btn-neutral" type="submit">{{ admin_labels.audit.filter }}</button></div>
+  </form>
+
+  <ul class="md:hidden flex flex-col gap-3 mt-6" aria-label="{{ admin_labels.audit.events_label }}">
+    {% for event in page.rows %}
+      <li class="card bg-base-100 border border-base-300"><div class="card-body p-4">
+        <h2 class="font-semibold">{{ event.event_label }}</h2>
+        {% if event.event_label != event.event_type %}<p class="text-sm text-base-content/70 break-all">{{ event.event_type }}</p>{% endif %}
+        <p class="text-sm">{{ event.occurred_at_utc }}</p>
+        <p class="text-sm break-words">{{ event.actor }}</p>
+        <a class="link w-fit" href="/households/{{ slug }}/admin/audit_logs/{{ event.id }}{{ language_suffix }}">{{ admin_labels.audit.view_event }} {{ event.id }}</a>
+      </div></li>
+    {% else %}
+      <li>{{ admin_labels.audit.empty }}</li>
+    {% endfor %}
+  </ul>
+
+  <div class="hidden md:block overflow-x-auto mt-6">
+    <table class="table table-zebra">
+      <caption class="sr-only">{{ admin_labels.audit.caption }}</caption>
+      <thead><tr><th scope="col">{{ admin_labels.audit.when }}</th><th scope="col">{{ admin_labels.audit.event }}</th><th scope="col">{{ admin_labels.audit.actor }}</th><th scope="col">{{ admin_labels.audit.details }}</th></tr></thead>
+      <tbody>
+      {% for event in page.rows %}
+        <tr>
+          <td>{{ event.occurred_at_utc }}</td>
+          <td>{{ event.event_label }}{% if event.event_label != event.event_type %}<span class="block text-sm text-base-content/70">{{ event.event_type }}</span>{% endif %}</td>
+          <td>{{ event.actor }}</td>
+          <td><a class="link" href="/households/{{ slug }}/admin/audit_logs/{{ event.id }}{{ language_suffix }}">{{ admin_labels.audit.view_event }} {{ event.id }}</a></td>
+        </tr>
+      {% else %}
+        <tr><td colspan="4">{{ admin_labels.audit.empty }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if next_url %}<a class="btn btn-outline mt-6" rel="next" href="{{ next_url }}">{{ admin_labels.audit.next }}</a>{% endif %}
+</section>
+{% endblock content %}

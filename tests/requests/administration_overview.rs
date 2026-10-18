@@ -89,6 +89,55 @@ async fn administration_overview_shows_only_current_household_status() -> TestRe
 }
 
 #[tokio::test]
+async fn administration_overview_shows_five_recent_scoped_safe_events() -> TestResult {
+    let (fixture, boot) = boot_fixture_with(|config| {
+        let key = base64::engine::general_purpose::STANDARD.encode([7_u8; 64]);
+        config.settings.get_or_insert_with(|| json!({}))["browser_session"] =
+            json!({"key":key,"secure":false});
+    })
+    .await;
+    let mut request = server(&boot);
+    request.save_cookies();
+    let result = async {
+        select_household(&request, &fixture, &boot).await?;
+        fixture
+            .admin
+            .execute_unprepared("DELETE FROM security_audit_events WHERE household_id=72001")
+            .await?;
+        let empty = request.get("/households/persistence-fixture/admin").await;
+        let empty_status = empty.status_code();
+        let empty_html = empty.text();
+        fixture.admin.execute_unprepared(
+            "INSERT INTO security_audit_events(id,household_id,actor_account_id,actor_membership_id,event_type,request_id,metadata,audit_context,created_at,updated_at) SELECT 953000+number,72001,71001,74001,'household_membership.role_updated','recent-primary-' || number,'{\"target_membership_id\":74001,\"new_role\":\"administrator\",\"secret\":\"private-clinical-note\"}'::jsonb,'{\"session_reference\":\"private-session\"}'::jsonb,'2030-01-15 12:00:00','2030-01-15 12:00:00' FROM generate_series(1,6) AS number; INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71001,'Other household','other-household','UTC',now(),now()); INSERT INTO security_audit_events(id,household_id,event_type,request_id,metadata,audit_context,created_at,updated_at) VALUES(953007,72002,'household_membership.role_updated','recent-foreign','{\"secret\":\"foreign-clinical-note\"}'::jsonb,'{}'::jsonb,'2030-01-16 12:00:00','2030-01-16 12:00:00')"
+        ).await?;
+        let populated = request.get("/households/persistence-fixture/admin").await;
+        let populated_status = populated.status_code();
+        let populated_cache = populated.header("cache-control").to_owned();
+        let populated_html = populated.text();
+        Ok::<_, Box<dyn std::error::Error>>((empty_status, empty_html, populated_status, populated_cache, populated_html))
+    }.await;
+    drop(request);
+    close(fixture, boot).await;
+    let (empty_status, empty_html, populated_status, populated_cache, populated_html) = result?;
+    assert_eq!(empty_status, 200, "{empty_html}");
+    assert!(empty_html.contains("Recent activity"));
+    assert!(empty_html.contains("No recent administrative activity"));
+    assert_eq!(populated_status, 200, "{populated_html}");
+    assert_eq!(populated_cache, "no-store");
+    assert!(populated_html.contains("Recent activity"));
+    assert_eq!(populated_html.matches("View audit event").count(), 5);
+    assert!(populated_html.contains("/admin/audit_logs/953006"));
+    assert!(!populated_html.contains("/admin/audit_logs/953001"));
+    assert!(!populated_html.contains("/admin/audit_logs/953007"));
+    assert!(populated_html.contains("Account #71001, membership #74001"));
+    assert!(populated_html.contains("Household role changed"));
+    assert!(!populated_html.contains("private-clinical-note"));
+    assert!(!populated_html.contains("private-session"));
+    assert!(!populated_html.contains("foreign-clinical-note"));
+    Ok(())
+}
+
+#[tokio::test]
 async fn navigation_exposes_platform_tools_only_while_platform_authority_is_active() -> TestResult {
     let (fixture, boot) = boot_fixture_with(|config| {
         let key = base64::engine::general_purpose::STANDARD.encode([7_u8; 64]);
@@ -174,8 +223,8 @@ async fn administration_overview_locales_preserve_language_and_household_navigat
         );
         assert!(html.contains("Synthetic household"));
         assert!(
-            !html.contains("/admin/audit_logs"),
-            "audit link must wait for its own delivery"
+            html.contains("/admin/audit_logs"),
+            "audit navigation is available in this delivery"
         );
     }
     assert!(header.contains("<html lang=\"es\""));
