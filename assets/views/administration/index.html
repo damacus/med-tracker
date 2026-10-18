@@ -20,5 +20,24 @@
     <h2 id="care-attention-heading" class="text-xl font-semibold">{{ overview_labels.attention }}</h2>
     {% if care_warning_count > 0 %}<div class="space-y-4 mt-4">{% for care_warning in care_warnings %}{% include "components/care_warning.html" %}{% endfor %}</div>{% else %}<p class="mt-3 text-base-content/70">{{ overview_labels.no_care_issues }}</p>{% endif %}
   </section>
+  <section class="mt-8" aria-labelledby="recent-activity-heading">
+    <div class="flex flex-wrap items-baseline justify-between gap-3">
+      <h2 id="recent-activity-heading" class="text-xl font-semibold">{{ overview_labels.recent }}</h2>
+      <a class="link" href="/households/{{ slug }}/admin/audit_logs{{ language_suffix }}">{{ overview_labels.view_audit }}</a>
+    </div>
+    {% if recent_activity | length > 0 %}
+      <ol class="mt-4 space-y-3">
+        {% for event in recent_activity %}
+          <li class="card bg-base-100 border border-base-300"><div class="card-body p-4">
+            <p class="font-semibold">{{ event.event_label }}</p>
+            <p class="text-sm text-base-content/70">{{ event.actor }} · {{ event.occurred_at_utc }}</p>
+            <a class="link w-fit" href="/households/{{ slug }}/admin/audit_logs/{{ event.id }}{{ language_suffix }}">{{ overview_labels.view_event }}</a>
+          </div></li>
+        {% endfor %}
+      </ol>
+    {% else %}
+      <p class="mt-3 text-base-content/70">{{ overview_labels.no_recent }}</p>
+    {% endif %}
+  </section>
 </section>
 {% endblock content %}
