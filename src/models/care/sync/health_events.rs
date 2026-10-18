@@ -474,7 +474,7 @@ async fn visible_person(
     if !valid_identifier(id) {
         return Ok(None);
     }
-    let mut query = person::Entity::find().in_tenant(context.tenant.scope().household_id);
+    let mut query = crate::models::access::person_queries::household_people(context.tenant.scope());
     query = if let Ok(id) = id.parse::<i64>() {
         query.filter(person::Column::Id.eq(id))
     } else {
@@ -969,14 +969,15 @@ async fn authorize_sync_replay(
             .get("person_portable_id")
             .and_then(Value::as_str)
             .ok_or(OperationError::Forbidden)?;
-        person::Entity::find()
-            .in_tenant(context.tenant.scope().household_id)
-            .filter(person::Column::PortableId.eq(person_portable_id))
-            .one(db)
-            .await
-            .map_err(database_error)?
-            .ok_or(OperationError::Forbidden)?
-            .id
+        crate::models::access::person_queries::household_participants(
+            context.tenant.scope().household_id,
+        )
+        .filter(person::Column::PortableId.eq(person_portable_id))
+        .one(db)
+        .await
+        .map_err(database_error)?
+        .ok_or(OperationError::Forbidden)?
+        .id
     } else {
         return Err(OperationError::Forbidden);
     };

@@ -44,6 +44,7 @@ async fn reports_conformance_real_pdf_downloads_have_protected_headers_and_embed
 #[tokio::test]
 async fn reports_json_requires_current_person_access_and_valid_dates() {
     let app = Application::new().await;
+    app.fixture.seed_foreign_household(72002).await;
     let token = app.token().await;
     let base = format!(
         "{}/api/v1/households/72001/reports/health_history",
@@ -62,7 +63,8 @@ async fn reports_json_requires_current_person_access_and_valid_dates() {
     assert_eq!(visible.headers()["cache-control"], "no-store");
     let body: Value = visible.json().await.unwrap();
     assert_eq!(body["data"]["person"]["id"], "73001");
-    let foreign = app
+    let take_stock_before = app.fixture.effect().await;
+    let unmanaged = app
         .client
         .get(format!(
             "{base}?person_id=73002&start_date=2026-01-01&end_date=2026-01-31"
@@ -71,7 +73,50 @@ async fn reports_json_requires_current_person_access_and_valid_dates() {
         .send()
         .await
         .unwrap();
-    assert_eq!(foreign.status().as_u16(), 404);
+    let unmanaged_status = unmanaged.status().as_u16();
+    let unmanaged_body: Value = unmanaged.json().await.unwrap();
+    assert_eq!(unmanaged_status, 404, "{unmanaged_body}");
+    assert_eq!(unmanaged_body["error"]["code"], "not_found");
+    assert_eq!(unmanaged_body["error"]["message"], "Record not found");
+    assert_eq!(app.fixture.effect().await, take_stock_before);
+    let grant = app.fixture.admin.execute_unprepared("INSERT INTO public.person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,expires_at,created_at,updated_at) VALUES(78002,72001,74001,73002,'manage','parent',now()+interval '1 hour',now(),now())").await.unwrap();
+    assert_eq!(grant.rows_affected(), 1);
+    let managed = app
+        .client
+        .get(format!(
+            "{base}?person_id=73002&start_date=2026-01-01&end_date=2026-01-31"
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(managed.status().as_u16(), 200);
+    let managed_body: Value = managed.json().await.unwrap();
+    assert_eq!(managed_body["data"]["person"]["id"], "73002");
+    assert_eq!(app.fixture.effect().await, take_stock_before);
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE household_id=72001 AND person_id=73002").await.unwrap();
+    let departed = app
+        .client
+        .get(format!(
+            "{base}?person_id=73002&start_date=2026-01-01&end_date=2026-01-31"
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(departed.status().as_u16(), 404);
+    let foreign_household=app.client.get(format!("{}/api/v1/households/72002/reports/health_history?person_id=73999&start_date=2026-01-01&end_date=2026-01-31",app.origin)).bearer_auth(&token).send().await.unwrap();
+    assert_eq!(foreign_household.status().as_u16(), 403);
+    let foreign_subject = app
+        .client
+        .get(format!(
+            "{base}?person_id=73999&start_date=2026-01-01&end_date=2026-01-31"
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(foreign_subject.status().as_u16(), 404);
     let invalid = app
         .client
         .get(format!(
@@ -96,7 +141,18 @@ async fn reports_json_requires_current_person_access_and_valid_dates() {
         .send()
         .await
         .unwrap();
-    assert_eq!(revoked.status().as_u16(), 404);
+    assert_eq!(revoked.status().as_u16(), 200);
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001").await.unwrap();
+    let actor_departed = app
+        .client
+        .get(format!(
+            "{base}?person_id=73001&start_date=2026-01-01&end_date=2026-01-31"
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(actor_departed.status().as_u16(), 403);
     app.close().await;
 }
 
@@ -116,7 +172,10 @@ async fn medication_review_summary_counts_only_people_with_visible_prompts() {
     let people = reports::accessible_people(&tenant, PersonAccess::View)
         .await
         .unwrap();
-    assert_eq!(people.len(), 1);
+    assert_eq!(people.len(), 3);
+    let mut participant_ids = people.iter().map(|person| person.id).collect::<Vec<_>>();
+    participant_ids.sort_unstable();
+    assert_eq!(participant_ids, vec![73001, 73002, 73003]);
     let report = reports::household_medication_reviews(
         &tenant,
         &people,
@@ -128,6 +187,14 @@ async fn medication_review_summary_counts_only_people_with_visible_prompts() {
     .unwrap();
     assert_eq!(report["prompts"].as_array().unwrap().len(), 0);
     assert_eq!(report["people_count"], 0);
+    tenant.rollback().await.unwrap();
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE household_id=72001 AND person_id=73002").await.unwrap();
+    let tenant = begin(&app.fixture.runtime, &scope, None).await.unwrap();
+    let remaining = reports::accessible_people(&tenant, PersonAccess::View)
+        .await
+        .unwrap();
+    assert_eq!(remaining.len(), 2);
+    assert!(!remaining.iter().any(|person| person.id == 73002));
     tenant.rollback().await.unwrap();
     app.close().await;
 }
@@ -729,11 +796,11 @@ async fn health_pdf_response_carries_no_bytes_or_audit_when_the_download_audit_f
 async fn medication_review_pdf_rechecks_person_access_after_rendering() {
     let app = Application::new().await;
     let token = app.token().await;
-    app.fixture.admin.execute_unprepared("INSERT INTO medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at) VALUES(80003,72001,79001,'Synthetic capsules',10,1,'capsule',now(),now()); INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(81003,72001,73001,80003,1,'capsule',1,now(),now()); INSERT INTO medication_review_evidence_records(id,source_name,source_record_id,source_url,product_name,label_section,evidence_text,retrieved_on,risk_level,match_confidence,match_status,candidate_terms,interacting_terms,created_at,updated_at) VALUES(90002,'Synthetic reference','report-2','https://example.test/evidence/2','Synthetic capsules','Warnings','Synthetic capsules increase exposure to synthetic compounds.',date '2026-01-01','moderate','high','reviewed_pair','{synthetic tablets}','{synthetic capsules}',now(),now()); CREATE FUNCTION synthetic_revoke_grant_on_prompt() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN UPDATE person_access_grants SET revoked_at=now() WHERE id=78001; RETURN NEW; END $$; CREATE TRIGGER synthetic_revoke_grant_on_prompt BEFORE INSERT ON medication_review_prompts FOR EACH ROW EXECUTE FUNCTION synthetic_revoke_grant_on_prompt()").await.unwrap();
+    app.fixture.admin.execute_unprepared("CREATE SEQUENCE synthetic_report_subject_revocation_reached; GRANT USAGE,SELECT ON SEQUENCE synthetic_report_subject_revocation_reached TO med_tracker_app; UPDATE person_medications SET person_id=73002 WHERE id=81001; INSERT INTO medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at) VALUES(80003,72001,79001,'Synthetic capsules',10,1,'capsule',now(),now()); INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(81003,72001,73002,80003,1,'capsule',1,now(),now()); INSERT INTO medication_review_evidence_records(id,source_name,source_record_id,source_url,product_name,label_section,evidence_text,retrieved_on,risk_level,match_confidence,match_status,candidate_terms,interacting_terms,created_at,updated_at) VALUES(90002,'Synthetic reference','report-2','https://example.test/evidence/2','Synthetic capsules','Warnings','Synthetic capsules increase exposure to synthetic compounds.',date '2026-01-01','moderate','high','reviewed_pair','{synthetic tablets}','{synthetic capsules}',now(),now()); CREATE FUNCTION synthetic_revoke_subject_on_prompt() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM nextval('synthetic_report_subject_revocation_reached'); UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE household_id=72001 AND person_id=73002; RETURN NEW; END $$; CREATE TRIGGER synthetic_revoke_subject_on_prompt BEFORE INSERT ON medication_review_prompts FOR EACH ROW EXECUTE FUNCTION synthetic_revoke_subject_on_prompt()").await.unwrap();
     let response = app
         .client
         .get(format!(
-            "{}/api/v1/households/72001/reports/medication_reviews.pdf?person_id=73001",
+            "{}/api/v1/households/72001/reports/medication_reviews.pdf?person_id=73002",
             app.origin
         ))
         .bearer_auth(&token)
@@ -752,10 +819,26 @@ async fn medication_review_pdf_rechecks_person_access_after_rendering() {
     let row = app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres, "SELECT count(*) AS events, count(*) FILTER (WHERE event_type='medication_review_report.downloaded') AS downloads FROM security_audit_events WHERE request_id=$1", [request_id.into()])).await.unwrap().unwrap();
     let events: i64 = row.try_get("", "events").unwrap();
     let downloads: i64 = row.try_get("", "downloads").unwrap();
+    let reached: bool = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT is_called AS reached FROM synthetic_report_subject_revocation_reached",
+        ))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("", "reached")
+        .unwrap();
     app.close().await;
+    assert!(
+        reached,
+        "The subject-participation revocation trigger must be reached during rendering"
+    );
     assert_eq!(
         status, 404,
-        "a grant revoked during the snapshot must deny the download"
+        "a subject participation revoked during the snapshot must deny the download"
     );
     assert!(
         !bytes.starts_with(b"%PDF-"),

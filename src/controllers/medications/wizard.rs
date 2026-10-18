@@ -95,9 +95,8 @@ pub(super) async fn open(
     } else {
         Vec::new()
     };
-    let people = match person::Entity::find()
-        .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
-        .filter(person::Column::Id.in_subquery(access::granted_people(tenant.membership())))
+    let people = match access::person_queries::household_people(tenant.scope())
+        .filter(person::Column::Id.in_subquery(access::participating_people(tenant.membership())))
         .order_by_asc(person::Column::Name)
         .all(tenant.transaction())
         .await

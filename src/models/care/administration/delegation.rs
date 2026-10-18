@@ -8,13 +8,13 @@ fn snapshot(row: &carer_relationship::Model) -> Value {
 }
 pub async fn list(tenant: &TenantTransaction) -> Result<Value, OperationError> {
     authorize(tenant).await?;
-    let people: HashMap<i64, person::Model> = person::Entity::find()
-        .in_tenant(tenant.scope().household_id)
-        .all(tenant.transaction())
-        .await?
-        .into_iter()
-        .map(|row| (row.id, row))
-        .collect();
+    let people: HashMap<i64, person::Model> =
+        crate::models::access::person_queries::household_participants(tenant.scope().household_id)
+            .all(tenant.transaction())
+            .await?
+            .into_iter()
+            .map(|row| (row.id, row))
+            .collect();
     let rows = carer_relationship::Entity::find()
         .in_tenant(tenant.scope().household_id)
         .order_by_asc(carer_relationship::Column::Id)
@@ -51,14 +51,15 @@ pub async fn options(tenant: &TenantTransaction) -> Result<Value, OperationError
         )
         .all(tenant.transaction())
         .await?;
-    let rows = person::Entity::find()
-        .in_tenant(tenant.scope().household_id)
-        .filter(
-            person::Column::Id.is_in(grants.iter().map(|row| row.person_id).collect::<Vec<_>>()),
-        )
-        .order_by_asc(person::Column::Name)
-        .all(tenant.transaction())
-        .await?;
+    let rows =
+        crate::models::access::person_queries::household_participants(tenant.scope().household_id)
+            .filter(
+                person::Column::Id
+                    .is_in(grants.iter().map(|row| row.person_id).collect::<Vec<_>>()),
+            )
+            .order_by_asc(person::Column::Name)
+            .all(tenant.transaction())
+            .await?;
     let patients: Vec<Value> = rows
         .iter()
         .map(|row| json!({"id":row.id,"name":row.name}))
@@ -83,16 +84,18 @@ pub async fn assign(
         .await?
         .ok_or(OperationError::NotFound)?;
     access::recheck(tenant).await?;
-    let carer = person::Entity::find_by_id(carer_id)
-        .in_tenant(tenant.scope().household_id)
-        .one(tenant.transaction())
-        .await?
-        .ok_or_else(|| invalid("carer", "must belong to the relationship household"))?;
-    let patient = person::Entity::find_by_id(patient_id)
-        .in_tenant(tenant.scope().household_id)
-        .one(tenant.transaction())
-        .await?
-        .ok_or_else(|| invalid("patient", "must belong to the relationship household"))?;
+    let carer =
+        crate::models::access::person_queries::household_participants(tenant.scope().household_id)
+            .filter(crate::models::entities::person::Column::Id.eq(carer_id))
+            .one(tenant.transaction())
+            .await?
+            .ok_or_else(|| invalid("carer", "must belong to the relationship household"))?;
+    let patient =
+        crate::models::access::person_queries::household_participants(tenant.scope().household_id)
+            .filter(crate::models::entities::person::Column::Id.eq(patient_id))
+            .one(tenant.transaction())
+            .await?
+            .ok_or_else(|| invalid("patient", "must belong to the relationship household"))?;
     if !crate::models::authorization::may_delegate(tenant.membership(), &patient) {
         return Err(OperationError::Forbidden);
     }
@@ -152,10 +155,14 @@ pub async fn assign(
         )
         .await?;
     }
-    if let Some(account_id) = carer.account_id {
+    if let Some(owner) = account::Entity::find()
+        .filter(account::Column::PersonId.eq(carer.id))
+        .one(tenant.transaction())
+        .await?
+    {
         let member = membership::Entity::find()
             .in_tenant(tenant.scope().household_id)
-            .filter(membership::Column::AccountId.eq(account_id))
+            .filter(membership::Column::PersonId.eq(owner.person_id))
             .lock_exclusive()
             .one(tenant.transaction())
             .await?;
@@ -167,9 +174,8 @@ pub async fn assign(
                 .ok_or(OperationError::Unavailable)?
         } else {
             let member = membership::ActiveModel {
-                account_id: Set(account_id),
                 household_id: Set(tenant.scope().household_id),
-                person_id: Set(Some(carer_id)),
+                person_id: Set(carer_id),
                 role: Set("member".into()),
                 status: Set("active".into()),
                 permissions_version: Set(1),
@@ -181,7 +187,7 @@ pub async fn assign(
             }
             .insert(tenant.transaction())
             .await?;
-            persistence::event(tenant,"household_access.membership_created",json!({"target_account_id":member.account_id,"target_membership_id":member.id,"previous_state":null,"new_state":{"role":member.role,"status":member.status,"person_id":member.person_id},"outcome":"success"}),provenance).await?;
+            persistence::event(tenant,"household_access.membership_created",json!({"target_account_id":owner.id,"target_membership_id":member.id,"previous_state":null,"new_state":{"role":member.role,"status":member.status,"person_id":member.person_id},"outcome":"success"}),provenance).await?;
             member
         };
         upsert(

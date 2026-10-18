@@ -125,9 +125,12 @@ async fn process(
     headers: &HeaderMap,
     body: std::result::Result<AxumJson<Value>, JsonRejection>,
 ) -> std::result::Result<(StatusCode, Value, Option<String>, bool), response::Failure> {
-    sync::lock(tenant).await.map_err(response::operation)?;
     let AxumJson(body) =
         body.map_err(|_| response::Failure::bad_request("Invalid JSON request body"))?;
+    if let Err(error) = sync::lock_batch(tenant, &body).await {
+        let (status, reply, etag) = error_reply(error, &tenant.scope().request_id);
+        return Ok((status, reply, etag, false));
+    }
     let path = format!(
         "/api/v1/households/{}/sync/batches",
         tenant.scope().household_id

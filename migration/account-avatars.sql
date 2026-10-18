@@ -23,15 +23,16 @@ WITH CHECK (account_id = med_tracker.current_account_id()
 
 CREATE POLICY account_avatar_depicted_person ON public.account_avatars FOR SELECT TO med_tracker_app
 USING (EXISTS (
-  SELECT 1 FROM public.people p
-  JOIN public.person_access_grants g ON g.person_id = p.id AND g.household_id = p.household_id
-  JOIN public.household_memberships m ON m.id = g.household_membership_id AND m.household_id = p.household_id
-  JOIN public.accounts actor ON actor.id = m.account_id
-  WHERE p.account_id = account_avatars.account_id AND p.household_id = med_tracker.current_household_id()
-    AND m.id = med_tracker.current_membership_id() AND m.account_id = med_tracker.current_account_id()
+  SELECT 1 FROM public.accounts depicted
+  JOIN public.household_memberships subject ON subject.person_id = depicted.person_id
+  JOIN public.household_memberships m ON m.household_id = subject.household_id
+  JOIN public.accounts actor ON actor.person_id = m.person_id
+  JOIN public.households h ON h.id = subject.household_id
+  WHERE depicted.id = account_avatars.account_id AND subject.household_id = med_tracker.current_household_id()
+    AND subject.status = 'active' AND subject.revoked_at IS NULL
+    AND m.id = med_tracker.current_membership_id() AND actor.id = med_tracker.current_account_id()
     AND m.status = 'active' AND m.revoked_at IS NULL
-    AND g.revoked_at IS NULL AND (g.expires_at IS NULL OR g.expires_at > timezone('UTC', clock_timestamp()))
-    AND g.access_level IN ('view', 'record', 'manage') AND actor.status = 2
+    AND h.status = 'active' AND h.lifecycle_state = 'active' AND actor.status = 2
     AND NOT EXISTS (SELECT 1 FROM public.account_lockouts l WHERE l.account_id = actor.id AND l.deadline > CURRENT_TIMESTAMP)
 ));
 

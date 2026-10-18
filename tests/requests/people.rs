@@ -139,13 +139,13 @@ async fn mobile_token(fixture: &Fixture) -> String {
 }
 
 async fn seed_credentials_and_foreign_household(fixture: &Fixture) {
-    fixture.admin.execute_unprepared("INSERT INTO accounts(id,email,password_hash,created_at,updated_at) VALUES(71002,'foreign-people@example.test',crypt('password',gen_salt('bf',4)),now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,status,lifecycle_state,created_at,updated_at) VALUES(72004,71002,'Foreign operational household','foreign-people','UTC','active','active',now(),now()); INSERT INTO people(id,household_id,account_id,name,person_type,has_capacity,created_at,updated_at) VALUES(73005,72004,71002,'Foreign member',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,account_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74004,72004,71002,73005,'owner','active',now(),now(),now())").await.unwrap();
+    fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73005,'Foreign member',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,password_hash,created_at,updated_at) VALUES(71002,73005,'foreign-people@example.test',crypt('password',gen_salt('bf',4)),now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,status,lifecycle_state,created_at,updated_at) VALUES(72004,71002,'Foreign operational household','foreign-people','UTC','active','active',now(),now());  INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74004,72004,73005,'owner','active',now(),now(),now())").await.unwrap();
     fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"INSERT INTO api_sessions(id,account_id,household_membership_id,access_token_digest,refresh_token_digest,permissions_version,access_expires_at,refresh_expires_at,last_used_at,created_at,updated_at) VALUES(88021,71001,74001,$1,'people-refresh',1,now()+interval '15 minutes',now()+interval '1 day',now(),now(),now())",[hex::encode(Sha256::digest(b"people-session")).into()])).await.unwrap();
     fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"INSERT INTO api_app_tokens(id,account_id,household_membership_id,name,token_digest,permissions_version,expires_at,last_used_at,created_at,updated_at) VALUES(88022,71001,74001,'People app',$1,1,now()+interval '1 month',now(),now(),now())",[hex::encode(Sha256::digest(b"people-app")).into()])).await.unwrap();
 }
 
 async fn people_effect(fixture: &Fixture) -> (i64, i64, i64) {
-    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM people WHERE household_id=72001) AS people, (SELECT count(*) FROM versions WHERE item_type='Person') AS versions, (SELECT count(*) FROM api_change_events WHERE record_type='Person') AS changes")).await.unwrap().unwrap();
+    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM people WHERE id IN (SELECT person_id FROM household_memberships WHERE household_id=72001)) AS people, (SELECT count(*) FROM versions WHERE item_type='Person') AS versions, (SELECT count(*) FROM api_change_events WHERE record_type='Person') AS changes")).await.unwrap().unwrap();
     (
         row.try_get("", "people").unwrap(),
         row.try_get("", "versions").unwrap(),
@@ -158,7 +158,7 @@ async fn request_audits(fixture: &Fixture) -> i64 {
 }
 
 async fn people_state(fixture: &Fixture) -> Value {
-    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM people WHERE household_id=72001) AS people,(SELECT count(*) FROM person_access_grants) AS grants,(SELECT count(*) FROM location_memberships) AS links,(SELECT count(*) FROM versions WHERE item_type='Person') AS versions,(SELECT count(*) FROM api_change_events WHERE record_type='Person') AS changes,(SELECT count(*) FROM security_audit_events WHERE metadata->>'controller'='api/v1/people') AS audits,(SELECT permissions_version FROM household_memberships WHERE id=74001) AS permissions,(SELECT name FROM people WHERE id=73001) AS name")).await.unwrap().unwrap();
+    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM people WHERE id IN (SELECT person_id FROM household_memberships WHERE household_id=72001)) AS people,(SELECT count(*) FROM person_access_grants) AS grants,(SELECT count(*) FROM location_memberships) AS links,(SELECT count(*) FROM versions WHERE item_type='Person') AS versions,(SELECT count(*) FROM api_change_events WHERE record_type='Person') AS changes,(SELECT count(*) FROM security_audit_events WHERE metadata->>'controller'='api/v1/people') AS audits,(SELECT permissions_version FROM household_memberships WHERE id=74001) AS permissions,(SELECT name FROM people WHERE id=73001) AS name")).await.unwrap().unwrap();
     json!({
         "people": row.try_get::<i64>("", "people").unwrap(),
         "grants": row.try_get::<i64>("", "grants").unwrap(),
@@ -169,6 +169,52 @@ async fn people_state(fixture: &Fixture) -> Value {
         "permissions": row.try_get::<i32>("", "permissions").unwrap(),
         "name": row.try_get::<String>("", "name").unwrap(),
     })
+}
+
+async fn dependent_effect(fixture: &Fixture) -> (i64, i64, i64, i64, i64, i64) {
+    let row=fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM household_memberships WHERE household_id=72001) AS memberships,(SELECT count(*) FROM guardian_declarations WHERE guardian_person_id=73001 AND declared_by_account_id=71001 AND origin_household_id=72001) AS declarations,(SELECT count(*) FROM carer_relationships WHERE household_id=72001 AND carer_id=73001 AND guardian_declaration_id IS NOT NULL AND active) AS carers,(SELECT count(*) FROM person_access_grants) AS grants,(SELECT count(*) FROM accounts) AS accounts,(SELECT count(*) FROM users) AS users")).await.unwrap().unwrap();
+    (
+        row.try_get("", "memberships").unwrap(),
+        row.try_get("", "declarations").unwrap(),
+        row.try_get("", "carers").unwrap(),
+        row.try_get("", "grants").unwrap(),
+        row.try_get("", "accounts").unwrap(),
+        row.try_get("", "users").unwrap(),
+    )
+}
+
+async fn assert_created_dependent(fixture: &Fixture, body: &Value) {
+    let subject = body["data"]["id"]
+        .as_i64()
+        .or_else(|| {
+            body["data"]["id"]
+                .as_str()
+                .and_then(|id| id.parse::<i64>().ok())
+        })
+        .expect("Successful dependent response must identify its Person");
+    let row=fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,"SELECT count(*) AS linked FROM guardian_declarations d JOIN accounts a ON a.id=d.declared_by_account_id AND a.person_id=d.guardian_person_id JOIN household_memberships m ON m.person_id=d.subject_person_id AND m.household_id=d.origin_household_id JOIN carer_relationships c ON c.guardian_declaration_id=d.id AND c.patient_id=d.subject_person_id AND c.carer_id=d.guardian_person_id AND c.household_id=d.origin_household_id WHERE d.subject_person_id=$1 AND d.guardian_person_id=73001 AND a.id=71001 AND d.origin_household_id=72001 AND d.statement_version=1 AND d.revision=1 AND d.withdrawn_at IS NULL AND m.status='active' AND m.revoked_at IS NULL AND c.active",[subject.into()])).await.unwrap().unwrap();
+    assert_eq!(
+        row.try_get::<i64>("", "linked").unwrap(),
+        1,
+        "Returned Person must own the active participation and declaration-linked care relationship"
+    );
+}
+
+fn assert_dependent_effect(
+    before: (i64, i64, i64, i64, i64, i64),
+    after: (i64, i64, i64, i64, i64, i64),
+) {
+    assert_eq!(
+        after,
+        (
+            before.0 + 1,
+            before.1 + 1,
+            before.2 + 1,
+            before.3,
+            before.4,
+            before.5
+        )
+    );
 }
 
 #[test]
@@ -280,7 +326,7 @@ async fn create_person_preserves_atomic_links_and_rejects_denied_writes() {
     let server = server(&boot);
     let path = "/api/v1/households/72001/people";
     let document = contract::contract();
-    let payload = json!({"person":{"name":"People TestServer child","date_of_birth":"2020-01-01","person_type":"minor"}});
+    let payload = json!({"person":{"name":"People TestServer child","date_of_birth":"2020-01-01","person_type":"minor","has_capacity":false,"initial_guardian_declaration":true}});
     contract::assert_value(
         document,
         &document["paths"]["/households/{household_id}/people"]["post"]["requestBody"]["content"]["application/json"]
@@ -288,6 +334,7 @@ async fn create_person_preserves_atomic_links_and_rejects_denied_writes() {
         &payload,
         "create person request",
     );
+    let dependent_before = dependent_effect(&fixture).await;
     let before_denial = people_effect(&fixture).await;
     let audits_before_denial = request_audits(&fixture).await;
     let denied = send(
@@ -318,7 +365,8 @@ async fn create_person_preserves_atomic_links_and_rejects_denied_writes() {
     )
     .await;
     let malformed = send_malformed(&server, Method::POST, path).await;
-    let invalid = send(&server, Method::POST, path, Some("people-session"), Some(&json!({"person":{"name":"Wrong age","date_of_birth":"2020-01-01","person_type":"dependent_adult"}})), None).await;
+    let invalid = send(&server, Method::POST, path, Some("people-session"), Some(&json!({"person":{"name":"Wrong age","date_of_birth":"2020-01-01","person_type":"dependent_adult","has_capacity":false,"initial_guardian_declaration":true}})), None).await;
+    let dependent_after_denial = dependent_effect(&fixture).await;
     let after_denial = people_effect(&fixture).await;
     let audits_after_denial = request_audits(&fixture).await;
     let created = send(
@@ -336,6 +384,10 @@ async fn create_person_preserves_atomic_links_and_rejects_denied_writes() {
         links.try_get::<i64>("", "grants").unwrap(),
         links.try_get::<i64>("", "locations").unwrap(),
     );
+    let dependent_after = dependent_effect(&fixture).await;
+    if created.status == 201 {
+        assert_created_dependent(&fixture, &created.body).await;
+    }
     drop(server);
     close(fixture, boot).await;
     assert_eq!(created.status, 201);
@@ -343,7 +395,13 @@ async fn create_person_preserves_atomic_links_and_rejects_denied_writes() {
     assert!(created.etag.as_ref().is_some_and(|etag| !etag.is_empty()));
     assert_schema("post", "/households/{household_id}/people", &created);
     assert_wire(&created);
-    assert_eq!(effects, (1, 1, 1));
+    assert_eq!(effects, (1, 0, 1));
+    assert_eq!(dependent_after_denial, dependent_before);
+    assert_dependent_effect(dependent_before, dependent_after);
+    assert_eq!(
+        invalid.body["error"]["errors"]["person_type"],
+        json!(["does not match age"])
+    );
     assert_eq!(
         (
             denied.status,
@@ -451,10 +509,26 @@ async fn people_methods_reject_invalid_and_wrong_namespace_credentials_before_wr
 async fn people_write_methods_recheck_current_manage_permission() {
     let (fixture, boot) = boot_fixture().await;
     seed_credentials_and_foreign_household(&fixture).await;
-    fixture.admin.execute_unprepared("UPDATE person_access_grants SET access_level='view' WHERE id=78001; UPDATE household_memberships SET role='member' WHERE id=74001").await.unwrap();
+    fixture.admin.execute_unprepared("UPDATE person_access_grants SET access_level='view' WHERE id=78001; UPDATE household_memberships SET role='member' WHERE id=74001; UPDATE people SET date_of_birth='1990-01-01' WHERE id=73001").await.unwrap();
+    let server = server(&boot);
+    for method in [Method::PATCH, Method::PUT] {
+        let verb = method.as_str().to_lowercase();
+        let own = send(
+            &server,
+            method,
+            "/api/v1/households/72001/people/73001",
+            Some("people-session"),
+            Some(&json!({"person":{"name":"Canonical self remains writable"}})),
+            None,
+        )
+        .await;
+        assert_eq!(own.status, 200);
+        assert_schema(&verb, "/households/{household_id}/people/{id}", &own);
+        assert_wire(&own);
+    }
+    let dependent_before = dependent_effect(&fixture).await;
     let before = people_effect(&fixture).await;
     let audits_before = request_audits(&fixture).await;
-    let server = server(&boot);
     let body = json!({"person":{"name":"Must not write"}});
     let cases = [
         (
@@ -465,13 +539,13 @@ async fn people_write_methods_recheck_current_manage_permission() {
         ),
         (
             Method::PATCH,
-            "/api/v1/households/72001/people/73001",
+            "/api/v1/households/72001/people/73002",
             "/households/{household_id}/people/{id}",
             "patch",
         ),
         (
             Method::PUT,
-            "/api/v1/households/72001/people/73001",
+            "/api/v1/households/72001/people/73002",
             "/households/{household_id}/people/{id}",
             "put",
         ),
@@ -492,11 +566,13 @@ async fn people_write_methods_recheck_current_manage_permission() {
             .await,
         ));
     }
+    let dependent_after = dependent_effect(&fixture).await;
     let after = people_effect(&fixture).await;
     let audits_after = request_audits(&fixture).await;
     drop(server);
     close(fixture, boot).await;
     assert_eq!(before, after);
+    assert_eq!(dependent_before, dependent_after);
     assert_eq!(audits_after, audits_before + 3);
     for (path, verb, reply) in replies {
         assert_eq!(reply.status, 403, "{verb}");
@@ -538,10 +614,11 @@ async fn app_and_mobile_credentials_can_each_write_all_people_methods() {
             };
             let name = format!("{credential} {method} person");
             let body = if method == Method::POST {
-                json!({"person":{"name":name.clone(),"date_of_birth":"1990-01-01"}})
+                json!({"person":{"name":name.clone(),"date_of_birth":"2020-01-01","person_type":"minor","has_capacity":false,"initial_guardian_declaration":true}})
             } else {
                 json!({"person":{"name":name.clone()}})
             };
+            let dependent_before = dependent_effect(&fixture).await;
             let before = people_effect(&fixture).await;
             let audits_before = request_audits(&fixture).await;
             let server = server(&boot);
@@ -554,19 +631,23 @@ async fn app_and_mobile_credentials_can_each_write_all_people_methods() {
                 None,
             )
             .await;
+            let dependent_after = dependent_effect(&fixture).await;
             let after = people_effect(&fixture).await;
             let audits_after = request_audits(&fixture).await;
             let row = fixture
                 .admin
                 .query_one_raw(Statement::from_sql_and_values(
                     DbBackend::Postgres,
-                    "SELECT count(*) AS total FROM people WHERE household_id=72001 AND name=$1",
+                    "SELECT count(*) AS total FROM people WHERE id IN (SELECT person_id FROM household_memberships WHERE household_id=72001) AND name=$1",
                     [name.clone().into()],
                 ))
                 .await
                 .unwrap()
                 .unwrap();
             let persisted: i64 = row.try_get("", "total").unwrap();
+            if method == Method::POST && reply.status == 201 {
+                assert_created_dependent(&fixture, &reply.body).await;
+            }
             drop(server);
             close(fixture, boot).await;
             assert_eq!(
@@ -578,6 +659,11 @@ async fn app_and_mobile_credentials_can_each_write_all_people_methods() {
             assert_wire(&reply);
             assert!(reply.etag.as_ref().is_some_and(|etag| !etag.is_empty()));
             assert_eq!(persisted, 1);
+            if method == Method::POST {
+                assert_dependent_effect(dependent_before, dependent_after);
+            } else {
+                assert_eq!(dependent_before, dependent_after);
+            }
             assert_eq!(
                 after.0,
                 before.0 + if method == Method::POST { 1 } else { 0 }
@@ -938,16 +1024,21 @@ async fn concurrent_person_key_replays_one_write(method: Method) {
         "/api/v1/households/72001/people/73001"
     };
     let body = if method == Method::POST {
-        json!({"person":{"name":"Concurrent People child","date_of_birth":"2020-01-01"}})
+        json!({"person":{"name":"Concurrent People child","date_of_birth":"2020-01-01","person_type":"minor","has_capacity":false,"initial_guardian_declaration":true}})
     } else {
         json!({"person":{"name":"Concurrent People update"}})
     };
     let changed = if method == Method::POST {
-        json!({"person":{"name":"Conflicting People child","date_of_birth":"2020-01-01"}})
+        json!({"person":{"name":"Conflicting People child","date_of_birth":"2020-01-01","person_type":"minor","has_capacity":false,"initial_guardian_declaration":true}})
     } else {
         json!({"person":{"name":"Conflicting People update"}})
     };
     let key = format!("people-overlap-{}", method.as_str().to_lowercase());
+    let dependent_before = if method == Method::POST {
+        Some(dependent_effect(&fixture).await)
+    } else {
+        None
+    };
     let before = people_effect(&fixture).await;
     let start = std::sync::Arc::new(tokio::sync::Barrier::new(3));
     let (first, second, _) = tokio::join!(
@@ -977,6 +1068,11 @@ async fn concurrent_person_key_replays_one_write(method: Method) {
         },
         async { start.wait().await }
     );
+    let dependent_after_overlap = if method == Method::POST {
+        Some(dependent_effect(&fixture).await)
+    } else {
+        None
+    };
     let after_overlap = people_effect(&fixture).await;
     let replay = if method == Method::POST {
         Some(
@@ -993,6 +1089,11 @@ async fn concurrent_person_key_replays_one_write(method: Method) {
     } else {
         None
     };
+    let dependent_after_replay = if method == Method::POST {
+        Some(dependent_effect(&fixture).await)
+    } else {
+        None
+    };
     let after_replay = people_effect(&fixture).await;
     let conflict = send(
         &server,
@@ -1003,7 +1104,25 @@ async fn concurrent_person_key_replays_one_write(method: Method) {
         Some(&key),
     )
     .await;
+    let dependent_after_conflict = if method == Method::POST {
+        Some(dependent_effect(&fixture).await)
+    } else {
+        None
+    };
     let after_conflict = people_effect(&fixture).await;
+    if method == Method::POST {
+        if first.status == 201 {
+            assert_created_dependent(&fixture, &first.body).await;
+        }
+        if second.status == 201 {
+            assert_created_dependent(&fixture, &second.body).await;
+        }
+        if let Some(reply) = &replay
+            && reply.status == 201
+        {
+            assert_created_dependent(&fixture, &reply.body).await;
+        }
+    }
     drop(server);
     close(fixture, boot).await;
     let expected_status = if method == Method::POST { 201 } else { 200 };
@@ -1048,6 +1167,11 @@ async fn concurrent_person_key_replays_one_write(method: Method) {
             1,
             "{method}"
         );
+    }
+    if let (Some(before), Some(after)) = (dependent_before, dependent_after_overlap) {
+        assert_dependent_effect(before, after);
+        assert_eq!(dependent_after_replay, Some(after));
+        assert_eq!(dependent_after_conflict, Some(after));
     }
     assert_eq!(conflict.status, 409, "{method}");
     assert_eq!(

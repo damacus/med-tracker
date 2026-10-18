@@ -125,13 +125,17 @@ pub(crate) async fn linked_person_scoped(
     access_level: PersonAccess,
     out_of_scope: OperationError,
 ) -> Result<person::Model, OperationError> {
-    let person_id = tenant
-        .membership()
-        .person_id
+    access::recheck(tenant).await?;
+    let linked_account = account::Entity::find_by_id(account_id)
+        .one(tenant.transaction())
+        .await?
         .ok_or_else(|| out_of_scope.clone())?;
+    let person_id = tenant.membership().person_id;
+    if linked_account.person_id != person_id {
+        return Err(out_of_scope);
+    }
     let current = access::person_queries::household_people(tenant.scope())
         .filter(person::Column::Id.eq(person_id))
-        .filter(person::Column::AccountId.eq(account_id))
         .one(tenant.transaction())
         .await?
         .ok_or_else(|| out_of_scope.clone())?;

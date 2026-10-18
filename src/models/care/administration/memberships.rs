@@ -19,22 +19,26 @@ async fn values(
 ) -> Result<Vec<Value>, OperationError> {
     let accounts: HashMap<i64, account::Model> = account::Entity::find()
         .filter(
-            account::Column::Id.is_in(rows.iter().map(|row| row.account_id).collect::<Vec<_>>()),
+            account::Column::PersonId.is_in(
+                rows.iter()
+                    .filter(|row| row.status == "active" && row.revoked_at.is_none())
+                    .map(|row| row.person_id),
+            ),
         )
         .all(tenant.transaction())
         .await?
         .into_iter()
-        .map(|row| (row.id, row))
+        .map(|row| (row.person_id, row))
         .collect();
-    let ids: Vec<i64> = rows.iter().filter_map(|row| row.person_id).collect();
-    let people: HashMap<i64, person::Model> = person::Entity::find()
-        .in_tenant(tenant.scope().household_id)
-        .filter(person::Column::Id.is_in(ids.clone()))
-        .all(tenant.transaction())
-        .await?
-        .into_iter()
-        .map(|row| (row.id, row))
-        .collect();
+    let ids: Vec<i64> = rows.iter().map(|row| row.person_id).collect();
+    let people: HashMap<i64, person::Model> =
+        crate::models::access::person_queries::household_participants(tenant.scope().household_id)
+            .filter(person::Column::Id.is_in(ids.clone()))
+            .all(tenant.transaction())
+            .await?
+            .into_iter()
+            .map(|row| (row.id, row))
+            .collect();
     let users: HashMap<i64, i64> = user::Entity::find()
         .filter(user::Column::PersonId.is_in(ids))
         .all(tenant.transaction())
@@ -42,7 +46,7 @@ async fn values(
         .into_iter()
         .map(|row| (row.person_id, row.id))
         .collect();
-    rows.iter().map(|row|Ok(json!({"id":row.id,"account_id":row.account_id,"email":accounts.get(&row.account_id).ok_or(OperationError::Unavailable)?.email,"person_id":row.person_id,"person_name":row.person_id.and_then(|id|people.get(&id).map(|row|&row.name)),"user_id":row.person_id.and_then(|id|users.get(&id).copied()),"role":row.role,"status":row.status,"permissions_version":row.permissions_version,"joined_at":row.joined_at.and_utc().to_rfc3339()}))).collect()
+    Ok(rows.iter().map(|row|json!({"id":row.id,"account_id":accounts.get(&row.person_id).map(|account|account.id),"email":accounts.get(&row.person_id).map(|account|&account.email),"person_id":row.person_id,"person_name":people.get(&row.person_id).map(|person|&person.name),"user_id":users.get(&row.person_id),"role":row.role,"status":row.status,"permissions_version":row.permissions_version,"joined_at":row.joined_at.and_utc().to_rfc3339()})).collect())
 }
 pub async fn change(
     tenant: &TenantTransaction,
@@ -113,51 +117,21 @@ async fn change_record(
             }
         }
         if let Some(person) = fields.get("person_id") {
-            next.person_id = if person.is_null() {
-                None
-            } else {
-                Some(
-                    person
-                        .as_i64()
-                        .filter(|id| *id > 0)
-                        .ok_or_else(|| invalid("person_id", "is invalid"))?,
+            let person_id = person
+                .as_i64()
+                .filter(|id| *id > 0)
+                .ok_or_else(|| invalid("person_id", "is invalid"))?;
+            if person_id != current.person_id {
+                return rejected(
+                    tenant,
+                    &current,
+                    &next,
+                    "Membership identity cannot be changed",
+                    provenance,
                 )
-            };
+                .await;
+            }
         }
-    }
-    if let Some(person_id) = next.person_id
-        && person::Entity::find_by_id(person_id)
-            .in_tenant(tenant.scope().household_id)
-            .one(tenant.transaction())
-            .await?
-            .is_none()
-    {
-        return rejected(
-            tenant,
-            &current,
-            &next,
-            "Person must belong to the same household",
-            provenance,
-        )
-        .await;
-    }
-    if let Some(person_id) = next.person_id
-        && membership::Entity::find()
-            .in_tenant(tenant.scope().household_id)
-            .filter(membership::Column::PersonId.eq(person_id))
-            .filter(membership::Column::Id.ne(id))
-            .one(tenant.transaction())
-            .await?
-            .is_some()
-    {
-        return rejected(
-            tenant,
-            &current,
-            &next,
-            "Person has already been linked to a membership",
-            provenance,
-        )
-        .await;
     }
     let previous_owner = current.role == "owner" && current.status == "active";
     let next_owner = next.role == "owner" && next.status == "active";
@@ -230,7 +204,11 @@ async fn event(
     outcome: &str,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<(), OperationError> {
-    persistence::event(tenant,if previous.role!=next.role{"household_membership.role_updated"}else{"household_access.membership_changed"},json!({"target_account_id":previous.account_id,"target_membership_id":previous.id,"previous_role":previous.role,"new_role":next.role,"previous_state":state(previous),"new_state":state(next),"outcome":outcome}),provenance).await
+    let target = account::Entity::find()
+        .filter(account::Column::PersonId.eq(previous.person_id))
+        .one(tenant.transaction())
+        .await?;
+    persistence::event(tenant,if previous.role!=next.role{"household_membership.role_updated"}else{"household_access.membership_changed"},json!({"target_account_id":target.map(|account|account.id),"target_membership_id":previous.id,"previous_role":previous.role,"new_role":next.role,"previous_state":state(previous),"new_state":state(next),"outcome":outcome}),provenance).await
 }
 async fn rejected(
     tenant: &TenantTransaction,

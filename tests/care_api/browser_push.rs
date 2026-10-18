@@ -25,7 +25,7 @@ impl Transport for TestTransport {
 #[tokio::test]
 async fn browser_push_test_delivery_is_scoped_audited_and_cleans_only_expired_owned_endpoints() {
     let app = Application::new().await;
-    app.fixture.admin.execute_unprepared("INSERT INTO accounts(id,email,created_at,updated_at) VALUES(71002,'synthetic-push-other@example.test',now(),now()); INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/owned','synthetic','synthetic',now(),now()),(71002,'https://fcm.googleapis.com/fcm/send/foreign','synthetic','synthetic',now(),now())").await.unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73004,'Synthetic other push account owner',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,created_at,updated_at) VALUES(71002,73004,'synthetic-push-other@example.test',now(),now()); INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/owned','synthetic','synthetic',now(),now()),(71002,'https://fcm.googleapis.com/fcm/send/foreign','synthetic','synthetic',now(),now())").await.unwrap();
     let scope = HouseholdScope {
         actor: Actor { account_id: 71001 },
         household_id: 72001,

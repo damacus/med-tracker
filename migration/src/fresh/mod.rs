@@ -30,6 +30,8 @@ impl MigrationTrait for Migration {
         db.execute_unprepared("SET LOCAL ROLE NONE").await?;
         db.execute_unprepared(include_str!("functions.sql")).await?;
         db.execute_unprepared(include_str!("security.sql")).await?;
+        db.execute_unprepared(include_str!("recovery_eligibility.sql"))
+            .await?;
         db.execute_unprepared("SET LOCAL ROLE med_tracker_owner")
             .await?;
         Ok(())

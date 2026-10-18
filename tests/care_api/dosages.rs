@@ -549,13 +549,17 @@ async fn dosage_option_get_matches_documented_contract() {
         .unwrap();
     let ungranted_status = ungranted.status().as_u16();
     let ungranted_body: Value = ungranted.json().await.unwrap();
-    assert_eq!(ungranted_status, 404);
+    assert_eq!(ungranted_status, 200);
     assert_value(
         contract,
-        not_found_schema,
+        resolve(
+            contract,
+            &operation["responses"]["200"]["content"]["application/json"]["schema"],
+        ),
         &ungranted_body,
-        "ungranted medication dosage option",
+        "participating person's dosage option",
     );
+    assert_eq!(ungranted_body["data"]["id"], 92007);
 
     let foreign = app
         .client
@@ -679,8 +683,9 @@ async fn dosage_option_list_matches_documented_contract() {
     let scoped_status = scoped.status().as_u16();
     let scoped_body: Value = scoped.json().await.unwrap();
     assert_eq!(scoped_status, 200);
-    assert_eq!(scoped_body["meta"]["total_count"], 1);
+    assert_eq!(scoped_body["meta"]["total_count"], 2);
     assert_eq!(scoped_body["data"][0]["id"], id);
+    assert_eq!(scoped_body["data"][1]["id"], 92012);
 
     let foreign = app
         .client

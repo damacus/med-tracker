@@ -32,10 +32,8 @@ pub async fn for_person(
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::NotFound)?;
-    let Some(account_id) = person.account_id else {
-        return Ok(None);
-    };
-    let Some(account) = account::Entity::find_by_id(account_id)
+    let Some(account) = account::Entity::find()
+        .filter(account::Column::PersonId.eq(person.id))
         .one(tenant.transaction())
         .await?
         .filter(|account| enabled(&account.preferences))
@@ -68,18 +66,18 @@ pub async fn for_visible_people(
 ) -> Result<HashMap<i64, String>, OperationError> {
     let eligible: Vec<_> = people
         .iter()
-        .filter(|person| !uploaded.contains(&person.id) && person.account_id.is_some())
+        .filter(|person| !uploaded.contains(&person.id))
         .collect();
     if eligible.is_empty() {
         return Ok(HashMap::new());
     }
     let accounts: HashMap<_, _> = account::Entity::find()
-        .filter(account::Column::Id.is_in(eligible.iter().filter_map(|person| person.account_id)))
+        .filter(account::Column::PersonId.is_in(eligible.iter().map(|person| person.id)))
         .all(tenant.transaction())
         .await?
         .into_iter()
         .filter(|account| enabled(&account.preferences))
-        .map(|account| (account.id, account))
+        .map(|account| (account.person_id, account))
         .collect();
     let users: HashMap<_, _> = user::Entity::find()
         .filter(user::Column::PersonId.is_in(eligible.iter().map(|person| person.id)))
@@ -94,7 +92,7 @@ pub async fn for_visible_people(
     Ok(eligible
         .into_iter()
         .filter_map(|person| {
-            let account = accounts.get(&person.account_id?)?;
+            let account = accounts.get(&person.id)?;
             let email = person
                 .email
                 .as_deref()

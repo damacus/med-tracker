@@ -42,10 +42,10 @@ async fn me_returns_current_account_person_and_selected_membership() {
 }
 
 #[tokio::test]
-async fn me_returns_own_person_when_membership_lives_in_another_household() {
+async fn me_reuses_own_person_without_disclosing_another_households_local_fields() {
     let app = Application::new().await;
     app.fixture.admin.execute_unprepared(
-        "INSERT INTO households(id,created_by_account_id,name,slug,timezone,status,lifecycle_state,created_at,updated_at) VALUES(92001,71001,'Second synthetic household','me-foreign-household','UTC','active','active',now(),now()); INSERT INTO household_memberships(id,account_id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(94001,71001,92001,NULL,'member','active',now(),now(),now()); INSERT INTO location_memberships(household_id,location_id,person_id,created_at,updated_at) VALUES(72001,79001,73001,now(),now()); INSERT INTO notification_preferences(id,household_id,person_id,portable_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,morning_time,afternoon_time,evening_time,night_time,created_at,updated_at) VALUES(95001,72001,73001,'00000000-0000-4000-8000-000000009501',true,true,false,true,false,'08:30:00',NULL,NULL,NULL,now(),now())"
+        "INSERT INTO households(id,created_by_account_id,name,slug,timezone,status,lifecycle_state,created_at,updated_at) VALUES(92001,71001,'Second synthetic household','me-foreign-household','UTC','active','active',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(94001,92001,73001,'member','active',now(),now(),now()); INSERT INTO location_memberships(household_id,location_id,person_id,created_at,updated_at) VALUES(72001,79001,73001,now(),now()); INSERT INTO notification_preferences(id,household_id,person_id,portable_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,morning_time,afternoon_time,evening_time,night_time,created_at,updated_at) VALUES(95001,72001,73001,'00000000-0000-4000-8000-000000009501',true,true,false,true,false,'08:30:00',NULL,NULL,NULL,now(),now())"
     ).await.unwrap();
     let portable = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
         "SELECT (SELECT portable_id FROM people WHERE id=73001) AS person_pid,(SELECT portable_id FROM locations WHERE id=79001) AS location_pid"
@@ -67,6 +67,15 @@ async fn me_returns_own_person_when_membership_lives_in_another_household() {
     )).await.unwrap().unwrap();
     let audit_household: i64 = audit.try_get("", "household_id").unwrap();
     let audit_membership: i64 = audit.try_get("", "actor_membership_id").unwrap();
+    let original = app
+        .client
+        .get(format!("{}/api/v1/households/72001/me", app.origin))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let original_status = original.status().as_u16();
+    let original: Value = original.json().await.unwrap();
     app.close().await;
     assert_eq!(status, 200);
     assert_eq!(audit_household, 92001);
@@ -75,14 +84,23 @@ async fn me_returns_own_person_when_membership_lives_in_another_household() {
     assert_eq!(body["data"]["person"]["id"], 73001);
     assert_eq!(body["data"]["person"]["portable_id"], person_pid);
     assert_eq!(body["data"]["person"]["name"], "Synthetic adult");
-    assert_eq!(body["data"]["person"]["location_ids"], json!([79001]));
+    assert_eq!(body["data"]["person"]["location_ids"], json!([]));
+    assert_eq!(body["data"]["person"]["location_portable_ids"], json!([]));
+    assert!(body["data"]["person"]["notification_preference_id"].is_null());
+    assert!(body["data"]["person"]["notification_preference_portable_id"].is_null());
+    assert_eq!(original_status, 200);
+    assert_eq!(original["data"]["person"]["id"], 73001);
+    assert_eq!(original["data"]["person"]["location_ids"], json!([79001]));
     assert_eq!(
-        body["data"]["person"]["location_portable_ids"],
+        original["data"]["person"]["location_portable_ids"],
         json!([location_pid])
     );
-    assert_eq!(body["data"]["person"]["notification_preference_id"], 95001);
     assert_eq!(
-        body["data"]["person"]["notification_preference_portable_id"],
+        original["data"]["person"]["notification_preference_id"],
+        95001
+    );
+    assert_eq!(
+        original["data"]["person"]["notification_preference_portable_id"],
         "00000000-0000-4000-8000-000000009501"
     );
     assert_eq!(body["data"]["account"]["status"], "verified");

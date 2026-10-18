@@ -28,7 +28,7 @@ async fn ui_capabilities_reports_full_controls_for_household_administrator() {
 }
 
 #[tokio::test]
-async fn ui_capabilities_reflects_current_membership_and_active_grants() {
+async fn ui_capabilities_keep_self_manage_after_grant_withdrawal_and_recheck_membership() {
     let app = Application::new().await;
     let token = app.token().await;
     app.fixture
@@ -65,6 +65,23 @@ async fn ui_capabilities_reflects_current_membership_and_active_grants() {
         .unwrap();
     let revoked_status = revoked.status().as_u16();
     let revoked_body: Value = revoked.json().await.unwrap();
+    app.fixture
+        .admin
+        .execute_unprepared("UPDATE household_memberships SET revoked_at=now() WHERE id=74001")
+        .await
+        .unwrap();
+    let revoked_member = app
+        .client
+        .get(format!(
+            "{}/api/v1/households/72001/ui_capabilities",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap()
+        .status()
+        .as_u16();
     app.close().await;
     assert_eq!(member_status, 200);
     assert_eq!(member_body["data"]["people"]["create"], true);
@@ -73,9 +90,10 @@ async fn ui_capabilities_reflects_current_membership_and_active_grants() {
     assert_eq!(member_body["data"]["medications"]["update"], false);
     assert_eq!(revoked_status, 200);
     assert_eq!(revoked_body["data"]["people"]["create"], false);
-    assert_eq!(revoked_body["data"]["people"]["manage_ids"], json!([]));
-    assert_eq!(revoked_body["data"]["medications"]["create"], false);
+    assert_eq!(revoked_body["data"]["people"]["manage_ids"], json!([73001]));
+    assert_eq!(revoked_body["data"]["medications"]["create"], true);
     assert_eq!(revoked_body["data"]["medications"]["manage_stock"], false);
+    assert_eq!(revoked_member, 403);
 }
 
 #[tokio::test]

@@ -59,23 +59,42 @@ test('membership role changes preserve the last owner and update only the select
   await page.screenshot({ path: info.outputPath(`loco-membership-role-${info.project.name}.png`), fullPage: true });
 });
 
-test('carer relationships grant, revoke and restore access through the retained relationship controls', async ({ page, browser, careFixture }, info) => {
+test('recorded care relationships remain readable and removable without creating or restoring authority', async ({ page, browser, careFixture }, info) => {
   test.setTimeout(180000);
   await careFixture.seedAdministration();
+  await careFixture.personCarerManager();
+  const seeded = await careFixture.administrationProbe();
+  const care = await careFixture.personCarerProbe();
+  expect(seeded).toMatchObject({ relationship_active: true, patient_grant_active: true, patient_grant_level: 'manage' });
+  expect(care).toMatchObject({ active_carers: 1, delegated_access: true, independent_manage: true });
   await openAdministration(page);
   await page.getByRole('link', { name: 'Care relationships', exact: true }).click();
-  await page.getByRole('link', { name: 'New Relationship', exact: true }).click();
-  await expect(page.getByLabel('Relationship type', { exact: true })).toHaveValue('');
-  await expect(page.getByLabel('Relationship type', { exact: true }).locator('option[value="self"]')).toHaveCount(1);
-  await page.getByLabel('Carer', { exact: true }).selectOption({ label: 'Synthetic administration member' });
-  await page.getByLabel('Patient', { exact: true }).selectOption({ label: 'Synthetic minor' });
-  await page.getByLabel('Relationship type', { exact: true }).selectOption('parent');
-  await page.getByRole('button', { name: 'Create Relationship', exact: true }).click();
-  const active = await careFixture.administrationProbe();
-  expect(active.relationship_active).toBe(true);
-  expect(active.patient_grant_active).toBe(true);
-  expect(active.patient_grant_level).toBe('manage');
-  const memberContext = await browser.newContext({ baseURL: careFixture.origin });
+  await expect(page.getByRole('heading', { name: 'Care relationships', level: 1, exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'New Relationship', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Activate', exact: true })).toHaveCount(0);
+  const relationship = page.getByRole('listitem').filter({ has: page.getByRole('heading', { name: 'Synthetic administration member cares for Synthetic minor', exact: true }) });
+  await expect(relationship).toHaveCount(1);
+  await expect(relationship.getByText('Parent · Active', { exact: true })).toBeVisible();
+  const path = new URL(page.url()).pathname;
+  const dialog = relationship.getByRole('dialog', { name: 'Deactivate Relationship', exact: true, includeHidden: true });
+  const form = dialog.locator('form');
+  const fields = await form.evaluate(element => Object.fromEntries(new FormData(element)));
+  expect(fields.authenticity_token).toBeTruthy();
+  const action = await form.getAttribute('action');
+  expect(action).toBeTruthy();
+  const deniedAssign = await page.request.post(path, { form: { authenticity_token: fields.authenticity_token, carer_id: '73004', patient_id: '73002', relationship_type: 'parent' }, headers: { Origin: careFixture.origin }, maxRedirects: 0 });
+  expect(deniedAssign.status()).toBe(403);
+  expect(await careFixture.administrationProbe()).toEqual(seeded);
+  expect(await careFixture.personCarerProbe()).toEqual(care);
+  expect([403, 404]).toContain((await page.request.get('/households/foreign-fixture/admin/carer_relationships', { maxRedirects: 0 })).status());
+  const foreignRemove = await page.request.post(action.replace('/persistence-fixture/', '/foreign-fixture/'), { form: fields, headers: { Origin: careFixture.origin }, maxRedirects: 0 });
+  expect([403, 404]).toContain(foreignRemove.status());
+  expect(await careFixture.administrationProbe()).toEqual(seeded);
+  expect(await careFixture.personCarerProbe()).toEqual(care);
+  const memberContext = await browser.newContext({
+    baseURL: careFixture.origin, viewport: page.viewportSize(),
+    isMobile: info.project.name === 'mobile', hasTouch: info.project.name === 'mobile',
+  });
   const member = await memberContext.newPage();
   try {
     await signIn(member, 'administration-member@example.test');
@@ -83,14 +102,41 @@ test('carer relationships grant, revoke and restore access through the retained 
     await openCareSection(member, 'People');
     await member.getByRole('link', { name: 'Synthetic minor', exact: true }).click();
     const patientUrl = member.url();
-    await page.getByRole('button', { name: 'Deactivate', exact: true }).click();
+    expect((await member.request.get(patientUrl, { maxRedirects: 0 })).status()).toBe(200);
+    expect((await member.request.get(`${patientUrl}/edit`, { maxRedirects: 0 })).status()).toBe(200);
+    await member.goto(new URL(patientUrl).pathname.replace(/\/73002$/, '/73004/edit'));
+    const memberCsrf = await member.locator('input[name="authenticity_token"]').first().inputValue();
+    expect(memberCsrf).not.toBe('');
+    await member.goto(patientUrl);
+    const memberRemove = await member.request.post(action, { form: { ...fields, authenticity_token: memberCsrf }, headers: { Origin: careFixture.origin }, maxRedirects: 0 });
+    expect(memberRemove.status()).toBe(403);
+    expect(await careFixture.administrationProbe()).toEqual(seeded);
+    expect(await careFixture.personCarerProbe()).toEqual(care);
+    await relationship.getByRole('button', { name: 'Deactivate', exact: true }).click();
+    const removedResponse = page.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname === action);
     await page.getByRole('dialog', { name: 'Deactivate Relationship', exact: true }).getByRole('button', { name: 'Deactivate', exact: true }).click();
+    expect((await removedResponse).status()).toBe(303);
+    await expect(relationship.getByText('Parent · Inactive', { exact: true })).toBeVisible();
     const revoked = await careFixture.administrationProbe();
     expect(revoked.relationship_active).toBe(false);
     expect(revoked.patient_grant_active).toBe(false);
-    expect([403, 404]).toContain((await member.request.get(patientUrl, { maxRedirects: 0 })).status());
-    await page.getByRole('button', { name: 'Activate', exact: true }).click();
+    expect(revoked.member_permissions_version).toBeGreaterThan(seeded.member_permissions_version);
+    expect(await careFixture.personCarerProbe()).toMatchObject({ active_carers: 0, delegated_access: false, independent_manage: true, relationship_audits: 1 });
     expect((await member.request.get(patientUrl, { maxRedirects: 0 })).status()).toBe(200);
+    expect((await member.request.get(`${patientUrl}/edit`, { maxRedirects: 0 })).status()).toBe(403);
+    await member.reload();
+    await expect(member.getByRole('link', { name: 'Edit Person', exact: true })).toHaveCount(0);
+    await page.reload();
+    await expect(relationship.getByText('Parent · Inactive', { exact: true })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'New Relationship', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Activate', exact: true })).toHaveCount(0);
+    await expect(relationship.getByRole('button', { name: 'Deactivate', exact: true })).toHaveCount(0);
+    const removed = await careFixture.personCarerProbe();
+    const deniedRestore = await page.request.post(action.replace(/\/deactivate$/, '/activate'), { form: fields, headers: { Origin: careFixture.origin }, maxRedirects: 0 });
+    expect(deniedRestore.status()).toBe(403);
+    expect(await careFixture.administrationProbe()).toEqual(revoked);
+    expect(await careFixture.personCarerProbe()).toEqual(removed);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: info.outputPath(`loco-carer-relationships-${info.project.name}.png`), fullPage: true });
   } finally {
     await memberContext.close();

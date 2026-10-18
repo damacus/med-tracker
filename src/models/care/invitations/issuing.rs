@@ -48,7 +48,6 @@ async fn create_authorized(
     }
     .insert(tenant.transaction())
     .await?;
-    dependent_grants(tenant, row.id, &attributes, now).await?;
     if let Some(acceptance_url) = acceptance_url {
         let mut target = acceptance_url.clone();
         target.query_pairs_mut().append_pair("token", &token);
@@ -92,75 +91,6 @@ pub(super) async fn record(
         provenance,
     )
     .await
-}
-
-async fn dependent_grants(
-    tenant: &TenantTransaction,
-    invitation_id: i64,
-    attributes: &Value,
-    now: NaiveDateTime,
-) -> Result<(), OperationError> {
-    use crate::models::entities::person;
-    let ids: Vec<i64> = attributes
-        .get("dependent_ids")
-        .and_then(Value::as_array)
-        .into_iter()
-        .flatten()
-        .filter_map(|value| {
-            value.as_i64().or_else(|| {
-                value
-                    .as_str()
-                    .filter(|value| {
-                        !value.is_empty() && value.bytes().all(|byte| byte.is_ascii_digit())
-                    })
-                    .and_then(|value| value.parse().ok())
-            })
-        })
-        .collect();
-    if ids.is_empty() {
-        return Ok(());
-    }
-    let relationship = attributes
-        .get("relationship_type")
-        .and_then(Value::as_str)
-        .filter(|kind| matches!(*kind, "parent" | "family_member" | "carer" | "professional"))
-        .unwrap_or("professional");
-    let level = attributes
-        .get("access_level")
-        .and_then(Value::as_str)
-        .filter(|level| matches!(*level, "view" | "record" | "manage"))
-        .unwrap_or(if relationship == "parent" {
-            "manage"
-        } else {
-            "record"
-        });
-    let dependents = person::Entity::find()
-        .in_tenant(tenant.scope().household_id)
-        .filter(person::Column::Id.is_in(ids))
-        .filter(person::Column::PersonType.is_in([1, 2]))
-        .filter(person::Column::HasCapacity.eq(false))
-        .all(tenant.transaction())
-        .await?;
-    let grants: Vec<_> = dependents
-        .into_iter()
-        .map(|dependent| household_invitation_grant::ActiveModel {
-            household_id: Set(tenant.scope().household_id),
-            household_invitation_id: Set(invitation_id),
-            person_id: Set(dependent.id),
-            access_level: Set(level.into()),
-            relationship_type: Set(relationship.into()),
-            expires_at: Set(None),
-            created_at: Set(now),
-            updated_at: Set(now),
-            ..Default::default()
-        })
-        .collect();
-    if !grants.is_empty() {
-        household_invitation_grant::Entity::insert_many(grants)
-            .exec(tenant.transaction())
-            .await?;
-    }
-    Ok(())
 }
 
 pub(crate) async fn create_for_parent(

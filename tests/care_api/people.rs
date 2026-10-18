@@ -59,7 +59,7 @@ async fn age_validation_rejects_minor_creation_on_eighteenth_birthday() {
         let token = app.token().await;
         let response = app.client.post(format!("{}/api/v1/households/72001/people", app.origin))
             .bearer_auth(&token)
-            .json(&json!({"person":{"name":"Birthday boundary","date_of_birth":"2008-07-01","person_type":"minor"}}))
+            .json(&json!({"person":{"name":"Birthday boundary","date_of_birth":"2008-07-01","person_type":"minor","initial_guardian_declaration":true}}))
             .send().await.unwrap();
         assert_eq!(response.status().as_u16(), expected);
         let body: Value = response.json().await.unwrap();
@@ -76,13 +76,16 @@ async fn age_validation_rejects_minor_creation_on_eighteenth_birthday() {
 }
 
 #[tokio::test]
-async fn people_audit_failure_rolls_back_person_grants_carer_home_and_permissions() {
+async fn people_audit_failure_rolls_back_person_participation_declaration_carer_home_and_permissions()
+ {
     let app = Application::new().await;
     let token = app.token().await;
     app.fixture.admin.execute_unprepared("CREATE SEQUENCE person_audit_reached; GRANT USAGE,SELECT ON SEQUENCE person_audit_reached TO med_tracker_app; CREATE FUNCTION reject_person_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.item_type='Person' THEN PERFORM nextval('person_audit_reached'); RAISE EXCEPTION 'Synthetic person audit rejection'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_person_audit BEFORE INSERT ON versions FOR EACH ROW EXECUTE FUNCTION reject_person_audit()").await.unwrap();
-    let response = app.client.post(format!("{}/api/v1/households/72001/people",app.origin)).bearer_auth(&token).json(&json!({"person":{"name":"Synthetic rollback child","date_of_birth":"2020-01-01","person_type":"minor"}})).send().await.unwrap();
+    let response = app.client.post(format!("{}/api/v1/households/72001/people",app.origin)).bearer_auth(&token).json(&json!({"person":{"name":"Synthetic rollback child","date_of_birth":"2020-01-01","person_type":"minor","has_capacity":false,"initial_guardian_declaration":true}})).send().await.unwrap();
     let status = response.status().as_u16();
-    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT is_called FROM person_audit_reached) AS reached,(SELECT count(*) FROM people WHERE name='Synthetic rollback child') AS people,(SELECT count(*) FROM carer_relationships) AS carers,(SELECT count(*) FROM location_memberships) AS links,(SELECT count(*) FROM locations WHERE name='Home') AS homes,(SELECT count(*) FROM person_access_grants) AS grants,(SELECT permissions_version FROM household_memberships WHERE id=74001) AS permissions")).await.unwrap().unwrap();
+    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT is_called FROM person_audit_reached) AS reached,(SELECT count(*) FROM people WHERE name='Synthetic rollback child') AS people,(SELECT count(*) FROM carer_relationships) AS carers,(SELECT count(*) FROM location_memberships) AS links,(SELECT count(*) FROM locations WHERE name='Home') AS homes,(SELECT count(*) FROM person_access_grants) AS grants,(SELECT permissions_version FROM household_memberships WHERE id=74001) AS permissions,(SELECT count(*) FROM guardian_declarations) AS declarations,(SELECT count(*) FROM household_memberships) AS memberships")).await.unwrap().unwrap();
+    let declarations: i64 = row.try_get("", "declarations").unwrap();
+    let memberships: i64 = row.try_get("", "memberships").unwrap();
     let reached: bool = row.try_get("", "reached").unwrap();
     let counts: Vec<i64> = ["people", "carers", "links", "homes", "grants"]
         .iter()
@@ -92,16 +95,17 @@ async fn people_audit_failure_rolls_back_person_grants_carer_home_and_permission
     app.close().await;
     assert_eq!(status, 500);
     assert!(reached);
+    assert_eq!((declarations, memberships), (0, 3));
     assert_eq!(counts, vec![0, 0, 0, 0, 1]);
     assert_eq!(permissions, 1);
 }
 
 #[tokio::test]
-async fn people_fresh_key_replay_binds_raw_email_and_current_visible_grants() {
+async fn people_fresh_key_replay_binds_raw_email_and_live_membership() {
     let app = Application::new().await;
     let token = app.token().await;
     let endpoint = format!("{}/api/v1/households/72001/people", app.origin);
-    let body = json!({"person":{"name":"Synthetic keyed adult","date_of_birth":"1990-01-01","email":"first@example.test"}});
+    let body = json!({"person":{"name":"Synthetic keyed dependent","date_of_birth":"2020-01-01","email":"first@example.test","person_type":"minor","has_capacity":false,"initial_guardian_declaration":true}});
     let created = app
         .client
         .post(&endpoint)
@@ -160,12 +164,27 @@ async fn people_fresh_key_replay_binds_raw_email_and_current_visible_grants() {
         .await
         .unwrap();
     let revoked_status = revoked.status().as_u16();
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001").await.unwrap();
+    let revoked_replay = app
+        .client
+        .post(&endpoint)
+        .bearer_auth(&token)
+        .header("idempotency-key", "synthetic-person-key")
+        .json(&body)
+        .send()
+        .await
+        .unwrap();
+    let revoked_replay_status = revoked_replay.status().as_u16();
+    let revoked_marker = revoked_replay
+        .headers()
+        .get("idempotency-replayed")
+        .is_some();
     let row = app
         .fixture
         .admin
         .query_one_raw(Statement::from_string(
             DbBackend::Postgres,
-            "SELECT count(*) AS n FROM people WHERE name='Synthetic keyed adult'",
+            "SELECT count(*) AS n FROM people WHERE name='Synthetic keyed dependent'",
         ))
         .await
         .unwrap()
@@ -180,19 +199,21 @@ async fn people_fresh_key_replay_binds_raw_email_and_current_visible_grants() {
             hidden_status,
             revoked_status
         ),
-        (201, 201, 409, 404, 404)
+        (201, 201, 409, 200, 200)
     );
     assert!(marker);
+    assert_eq!(revoked_replay_status, 403);
+    assert!(!revoked_marker);
     assert_eq!(created, replay);
     assert_eq!(n, 1);
 }
 
 #[tokio::test]
-async fn people_saved_rails_create_and_update_replay_exact_filtered_digests() {
+async fn people_saved_create_and_update_replay_current_and_filtered_digests() {
     let app = Application::new().await;
     let token = app.token().await;
     let path = "/api/v1/households/72001/people";
-    let request = r#"{"person":{"name":"Synthetic Rails person","date_of_birth":"1990-01-01","email":"synthetic-person@example.test","person_type":"adult","has_capacity":true}}"#;
+    let request = r#"{"person":{"name":"Synthetic declared replay person","date_of_birth":"2020-01-01","email":"synthetic-person@example.test","person_type":"minor","has_capacity":false,"initial_guardian_declaration":true}}"#;
     let created = app
         .client
         .post(format!("{}{path}", app.origin))
@@ -211,7 +232,7 @@ async fn people_saved_rails_create_and_update_replay_exact_filtered_digests() {
         .unwrap()
         .to_owned();
     let created: Value = created.json().await.unwrap();
-    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"INSERT INTO api_idempotency_keys(household_id,account_id,key,request_method,request_path,request_digest,response_status,response_body,response_headers,expires_at,created_at,updated_at) VALUES(72001,71001,'synthetic-rails-person-create','POST',$1,'77a7280872bf1bec694e784eb54060306e06bfa24ba0b5c29d8b684700a363ae',201,$2,$3,now()+interval '24 hours',now(),now())",[path.into(),created.clone().into(),json!({"ETag":etag}).into()])).await.unwrap();
+    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"INSERT INTO api_idempotency_keys(household_id,account_id,key,request_method,request_path,request_digest,response_status,response_body,response_headers,expires_at,created_at,updated_at) VALUES(72001,71001,'synthetic-rails-person-create','POST',$1,'b49599dee508d0f8589b339a91ba549b5bf3469bad4c9152b30514da2dee1515',201,$2,$3,now()+interval '24 hours',now(),now())",[path.into(),created.clone().into(),json!({"ETag":etag}).into()])).await.unwrap();
     let replay = app
         .client
         .post(format!("{}{path}", app.origin))
@@ -267,7 +288,7 @@ async fn people_saved_rails_create_and_update_replay_exact_filtered_digests() {
         .get("idempotency-replayed")
         .is_some();
     let replayed_update: Value = replayed_update.json().await.unwrap();
-    let row=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM people WHERE name='Synthetic Rails person') AS people,(SELECT count(*) FROM versions WHERE item_type='Person' AND event='create') AS creates,(SELECT count(*) FROM versions WHERE item_type='Person' AND event='update') AS updates")).await.unwrap().unwrap();
+    let row=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM people WHERE name='Synthetic declared replay person') AS people,(SELECT count(*) FROM versions WHERE item_type='Person' AND event='create') AS creates,(SELECT count(*) FROM versions WHERE item_type='Person' AND event='update') AS updates")).await.unwrap().unwrap();
     let counts: (i64, i64, i64) = (
         row.try_get("", "people").unwrap(),
         row.try_get("", "creates").unwrap(),
@@ -288,7 +309,7 @@ async fn people_create_minor_is_immediately_visible_with_atomic_care_links() {
     let app = Application::new().await;
     let token = app.token().await;
     let endpoint = format!("{}/api/v1/households/72001/people", app.origin);
-    let created = app.client.post(&endpoint).bearer_auth(&token).json(&json!({"person":{"name":"Synthetic child","date_of_birth":"2020-01-01","person_type":"minor","has_capacity":true}})).send().await.unwrap();
+    let created = app.client.post(&endpoint).bearer_auth(&token).json(&json!({"person":{"name":"Synthetic child","date_of_birth":"2020-01-01","person_type":"minor","has_capacity":false,"initial_guardian_declaration":true}})).send().await.unwrap();
     let status = created.status().as_u16();
     let body: Value = created.json().await.unwrap_or(Value::Null);
     let id = body["data"]["id"].as_i64().unwrap_or(-1);
@@ -300,16 +321,25 @@ async fn people_create_minor_is_immediately_visible_with_atomic_care_links() {
         .await
         .unwrap();
     let read_status = read.status().as_u16();
-    let row = app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,"SELECT (SELECT count(*) FROM people WHERE id=$1 AND person_type=1 AND NOT has_capacity) AS people,(SELECT count(*) FROM carer_relationships WHERE patient_id=$1 AND carer_id=73001 AND active) AS carers,(SELECT count(*) FROM person_access_grants WHERE person_id=$1 AND household_membership_id=74001 AND access_level='manage' AND revoked_at IS NULL) AS grants,(SELECT count(*) FROM location_memberships lm JOIN locations l ON l.id=lm.location_id WHERE lm.person_id=$1 AND l.name='Home') AS homes,(SELECT count(*) FROM versions WHERE item_type='Person' AND item_id=$1 AND event='create') AS audits,(SELECT count(*) FROM api_change_events WHERE record_type='Person' AND record_id=$1 AND action='create') AS changes",[id.into()])).await.unwrap().unwrap();
-    let counts: Vec<i64> = ["people", "carers", "grants", "homes", "audits", "changes"]
-        .iter()
-        .map(|name| row.try_get("", name).unwrap())
-        .collect();
+    let row = app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,"SELECT (SELECT count(*) FROM people WHERE id=$1 AND person_type=1 AND NOT has_capacity) AS people,(SELECT count(*) FROM carer_relationships WHERE patient_id=$1 AND carer_id=73001 AND active) AS carers,(SELECT count(*) FROM person_access_grants WHERE person_id=$1 AND household_membership_id=74001 AND access_level='manage' AND revoked_at IS NULL) AS grants,(SELECT count(*) FROM location_memberships lm JOIN locations l ON l.id=lm.location_id WHERE lm.person_id=$1 AND l.name='Home') AS homes,(SELECT count(*) FROM versions WHERE item_type='Person' AND item_id=$1 AND event='create') AS audits,(SELECT count(*) FROM api_change_events WHERE record_type='Person' AND record_id=$1 AND action='create') AS changes,(SELECT count(*) FROM guardian_declarations WHERE subject_person_id=$1 AND guardian_person_id=73001 AND declared_by_account_id=71001 AND withdrawn_at IS NULL) AS declarations,(SELECT count(*) FROM household_memberships WHERE person_id=$1 AND household_id=72001 AND status='active' AND revoked_at IS NULL) AS participations",[id.into()])).await.unwrap().unwrap();
+    let counts: Vec<i64> = [
+        "people",
+        "carers",
+        "grants",
+        "homes",
+        "audits",
+        "changes",
+        "declarations",
+        "participations",
+    ]
+    .iter()
+    .map(|name| row.try_get("", name).unwrap())
+    .collect();
     app.close().await;
     assert_eq!(status, 201);
     assert_eq!(body["data"]["has_capacity"], false);
     assert_eq!(read_status, 200);
-    assert_eq!(counts, vec![1; 6]);
+    assert_eq!(counts, vec![1, 1, 0, 1, 1, 1, 1, 1]);
 }
 
 #[tokio::test]
@@ -356,7 +386,7 @@ async fn people_read_collection_and_partial_update_preserve_omitted_fields() {
     let capacity: bool = row.try_get("", "has_capacity").unwrap();
     app.close().await;
     assert_eq!((collection_status, status), (200, 200));
-    assert_eq!(collection["meta"]["total_count"], 1);
+    assert_eq!(collection["meta"]["total_count"], 3);
     assert_eq!(collection["data"][0]["id"], 73001);
     assert_eq!(body["data"]["person_type"], "adult");
     assert!(etag);
@@ -369,7 +399,7 @@ async fn people_validation_and_current_permissions_prevent_mutation() {
     let app = Application::new().await;
     let token = app.token().await;
     let endpoint = format!("{}/api/v1/households/72001/people", app.origin);
-    let invalid = app.client.post(&endpoint).bearer_auth(&token).json(&json!({"person":{"name":"Synthetic invalid adult","date_of_birth":"2020-01-01","person_type":"dependent_adult"}})).send().await.unwrap();
+    let invalid = app.client.post(&endpoint).bearer_auth(&token).json(&json!({"person":{"name":"Synthetic invalid adult","date_of_birth":"2020-01-01","person_type":"dependent_adult","has_capacity":false,"initial_guardian_declaration":true}})).send().await.unwrap();
     let invalid_status = invalid.status().as_u16();
     app.fixture.admin.execute_unprepared("UPDATE person_access_grants SET access_level='view' WHERE id=78001; UPDATE household_memberships SET role='member' WHERE id=74001").await.unwrap();
     let denied_create = app
@@ -383,7 +413,7 @@ async fn people_validation_and_current_permissions_prevent_mutation() {
         .unwrap();
     let denied_update = app
         .client
-        .patch(format!("{endpoint}/73001"))
+        .patch(format!("{endpoint}/73002"))
         .bearer_auth(&token)
         .json(&json!({"person":{"name":"Must not write"}}))
         .send()
@@ -402,19 +432,24 @@ async fn people_validation_and_current_permissions_prevent_mutation() {
 }
 
 #[tokio::test]
-async fn people_creation_preserves_independent_permissions_increment() {
+async fn people_creation_rechecks_mid_insert_actor_permissions_and_rolls_back() {
     let app = Application::new().await;
     let token = app.token().await;
-    app.fixture.admin.execute_unprepared("CREATE FUNCTION increment_person_permissions() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.name='Synthetic concurrent permissions' THEN UPDATE household_memberships SET permissions_version=permissions_version+1 WHERE id=74001; END IF; RETURN NEW; END $$; CREATE TRIGGER increment_person_permissions AFTER INSERT ON people FOR EACH ROW EXECUTE FUNCTION increment_person_permissions()").await.unwrap();
-    let response = app.client.post(format!("{}/api/v1/households/72001/people", app.origin)).bearer_auth(&token).json(&json!({"person":{"name":"Synthetic concurrent permissions","date_of_birth":"1990-01-01"}})).send().await.unwrap();
+    app.fixture.admin.execute_unprepared("CREATE SEQUENCE person_permissions_reached; GRANT USAGE,SELECT ON SEQUENCE person_permissions_reached TO med_tracker_app; CREATE FUNCTION increment_person_permissions() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.name='Synthetic concurrent permissions' THEN PERFORM nextval('person_permissions_reached'); UPDATE household_memberships SET permissions_version=permissions_version+1 WHERE id=74001; END IF; RETURN NEW; END $$; CREATE TRIGGER increment_person_permissions AFTER INSERT ON people FOR EACH ROW EXECUTE FUNCTION increment_person_permissions()").await.unwrap();
+    let response = app.client.post(format!("{}/api/v1/households/72001/people", app.origin)).bearer_auth(&token).json(&json!({"person":{"name":"Synthetic concurrent permissions","date_of_birth":"2020-01-01","person_type":"minor","has_capacity":false,"initial_guardian_declaration":true}})).send().await.unwrap();
     let status = response.status().as_u16();
-    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres, "SELECT permissions_version,role,status,person_id FROM household_memberships WHERE id=74001")).await.unwrap().unwrap();
+    let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres, "SELECT permissions_version,role,status,person_id,(SELECT is_called FROM person_permissions_reached) AS reached,(SELECT count(*) FROM people WHERE name='Synthetic concurrent permissions') AS created,(SELECT count(*) FROM guardian_declarations) AS declarations FROM household_memberships WHERE id=74001")).await.unwrap().unwrap();
     let version: i32 = row.try_get("", "permissions_version").unwrap();
     let role: String = row.try_get("", "role").unwrap();
     let person_id: Option<i64> = row.try_get("", "person_id").unwrap();
+    let reached: bool = row.try_get("", "reached").unwrap();
+    let created: i64 = row.try_get("", "created").unwrap();
+    let declarations: i64 = row.try_get("", "declarations").unwrap();
     app.close().await;
-    assert_eq!(status, 201);
-    assert_eq!(version, 3);
+    assert_eq!(status, 403);
+    assert!(reached);
+    assert_eq!((created, declarations), (0, 0));
+    assert_eq!(version, 1);
     assert_eq!(role, "administrator");
     assert_eq!(person_id, Some(73001));
 }
@@ -463,7 +498,7 @@ async fn people_strong_parameters_preserve_rails_envelope_behaviour() {
         .admin
         .query_one_raw(Statement::from_string(
             DbBackend::Postgres,
-            "SELECT name,account_id FROM people WHERE id=73001",
+            "SELECT p.name,a.id AS account_id FROM people p JOIN accounts a ON a.person_id=p.id WHERE p.id=73001",
         ))
         .await
         .unwrap()
@@ -567,6 +602,18 @@ async fn person_get_matches_documented_contract() {
     assert_eq!(missing_body["error"]["code"], "not_found");
     assert_eq!(missing_body["error"]["request_id"], missing_request_id);
 
+    let participant = app
+        .client
+        .get(format!(
+            "{}/api/v1/households/72001/people/73002",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(participant.status().as_u16(), 200);
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE household_id=72001 AND person_id=73002").await.unwrap();
     let outside_scope = app
         .client
         .get(format!(
@@ -645,14 +692,9 @@ async fn people_list_matches_documented_contract() {
     );
     assert_eq!(body["data"][0]["id"], 73001);
     assert_eq!(body["data"][0]["name"], "Synthetic adult");
-    assert_eq!(body["meta"]["total_count"], 1);
+    assert_eq!(body["meta"]["total_count"], 3);
 
-    app.fixture
-        .admin
-        .execute_unprepared("INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,created_at,updated_at) VALUES(78002,72001,74001,73002,'view','carer',now(),now())")
-        .await
-        .unwrap();
-    for (page, expected_id) in [(1, 73001), (2, 73002)] {
+    for (page, expected_id) in [(1, 73001), (2, 73002), (3, 73003)] {
         let paginated = app
             .client
             .get(format!("{collection}?page={page}&per_page=1"))
@@ -673,7 +715,7 @@ async fn people_list_matches_documented_contract() {
             "paginated people collection",
         );
         assert_eq!(paginated_body["meta"]["per_page"], 1);
-        assert_eq!(paginated_body["meta"]["total_count"], 2);
+        assert_eq!(paginated_body["meta"]["total_count"], 3);
         assert_eq!(paginated_body["data"].as_array().unwrap().len(), 1);
         assert_eq!(paginated_body["data"][0]["id"], expected_id);
     }
@@ -718,46 +760,54 @@ async fn people_list_matches_documented_contract() {
 }
 
 #[tokio::test]
-async fn people_without_carer_can_be_created_and_edited_without_capacity_change() {
+async fn people_new_dependents_require_declaration_without_fabricating_actor_identity() {
     let app = Application::new().await;
     let token = app.token().await;
-    app.fixture
-        .admin
-        .execute_unprepared("UPDATE household_memberships SET person_id=NULL WHERE id=74001")
-        .await
-        .unwrap();
     let endpoint = format!("{}/api/v1/households/72001/people", app.origin);
-    for (kind, birth) in [("minor", "2020-01-01"), ("dependent_adult", "1990-01-01")] {
-        let response = app.client.post(&endpoint).bearer_auth(&token).json(&json!({"person":{"name":format!("Synthetic unsupported {kind}"),"date_of_birth":birth,"person_type":kind,"has_capacity":true}})).send().await.unwrap();
-        let status = response.status().as_u16();
-        let body: Value = response.json().await.unwrap_or(Value::Null);
-        let id = body["data"]["id"].as_i64().unwrap_or(-1);
-        let update = app
-            .client
-            .patch(format!("{endpoint}/{id}"))
-            .bearer_auth(&token)
-            .json(&json!({"person":{"name":format!("Synthetic edited unsupported {kind}")}}))
-            .send()
-            .await
-            .unwrap();
-        let update_status = update.status().as_u16();
-        let updated: Value = update.json().await.unwrap_or(Value::Null);
-        let row = app
-            .fixture
-            .admin
-            .query_one_raw(Statement::from_sql_and_values(
-                DbBackend::Postgres,
-                "SELECT count(*) AS n FROM carer_relationships WHERE patient_id=$1 AND active",
-                [id.into()],
-            ))
-            .await
-            .unwrap()
-            .unwrap();
-        let carers: i64 = row.try_get("", "n").unwrap();
-        assert_eq!((status, update_status), (201, 200));
-        assert_eq!(updated["data"]["has_capacity"], false);
-        assert_eq!(updated["data"]["person_type"], kind);
-        assert_eq!(carers, 0);
+    let state_sql = "SELECT jsonb_build_object('people',(SELECT count(*) FROM people),'memberships',(SELECT jsonb_agg(jsonb_build_array(id,person_id,permissions_version) ORDER BY id) FROM household_memberships),'accounts',(SELECT count(*) FROM accounts),'users',(SELECT count(*) FROM users),'declarations',(SELECT count(*) FROM guardian_declarations),'carers',(SELECT count(*) FROM carer_relationships),'grants',(SELECT count(*) FROM person_access_grants),'versions',(SELECT count(*) FROM versions),'changes',(SELECT count(*) FROM api_change_events)) AS state";
+    let before: Value = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(DbBackend::Postgres, state_sql))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("", "state")
+        .unwrap();
+    for (kind, birth) in [
+        ("minor", "2020-01-01"),
+        ("dependent_adult", "1990-01-01"),
+        ("adult", "1990-01-01"),
+    ] {
+        for (capacity, attestation) in [(false, None), (true, Some(true))] {
+            let mut person = json!({"name":format!("Synthetic unsupported {kind}"),"date_of_birth":birth,"person_type":kind,"has_capacity":capacity});
+            if let Some(accepted) = attestation {
+                person["initial_guardian_declaration"] = json!(accepted);
+            }
+            let response = app
+                .client
+                .post(&endpoint)
+                .bearer_auth(&token)
+                .json(&json!({"person":person}))
+                .send()
+                .await
+                .unwrap();
+            assert_eq!(
+                response.status().as_u16(),
+                422,
+                "{kind}, capacity={capacity}, attestation={attestation:?}"
+            );
+            let after: Value = app
+                .fixture
+                .admin
+                .query_one_raw(Statement::from_string(DbBackend::Postgres, state_sql))
+                .await
+                .unwrap()
+                .unwrap()
+                .try_get("", "state")
+                .unwrap();
+            assert_eq!(after, before);
+        }
     }
     app.close().await;
 }

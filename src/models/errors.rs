@@ -80,7 +80,7 @@ fn sqlstate_category(code: &str) -> Option<&'static str> {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::OperationError;
     use sea_orm::{ConnAcquireErr, DbErr, RuntimeErr, SqlxError};
     use std::{
@@ -97,6 +97,19 @@ mod tests {
 
     #[derive(Clone, Default)]
     struct CapturedEvents(Arc<Mutex<Vec<CapturedEvent>>>);
+
+    pub(crate) fn capture_operation(
+        operation: impl FnOnce() -> OperationError,
+    ) -> Result<(OperationError, Vec<CapturedEvent>), String> {
+        let events = CapturedEvents::default();
+        let result = tracing::subscriber::with_default(events.clone(), operation);
+        let recorded = events
+            .0
+            .lock()
+            .map_err(|_| "Captured database event lock poisoned".to_owned())?
+            .clone();
+        Ok((result, recorded))
+    }
 
     #[derive(Default)]
     struct CapturedFields(CapturedEvent);

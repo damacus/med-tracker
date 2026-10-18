@@ -4,27 +4,25 @@ pub(crate) async fn authorized(
     tenant: &TenantTransaction,
     plan: &ImportPlan,
     index: &ExistingIndex,
+    declarations: &PreparedDeclarations,
+    today: NaiveDate,
 ) -> Result<bool, OperationError> {
-    if crate::models::access::can_manage_household(tenant) {
-        return Ok(true);
-    }
-    if !plan.rows("locations").is_empty() {
+    let manager = crate::models::access::can_manage_household(tenant);
+    if !manager && !plan.rows("locations").is_empty() {
         return Ok(false);
     }
-    let grants = grant::Entity::find()
-        .filter(grant::Column::HouseholdId.eq(tenant.scope().household_id))
-        .filter(grant::Column::HouseholdMembershipId.eq(tenant.membership().id))
-        .filter(grant::Column::RevokedAt.is_null())
-        .all(tenant.transaction())
-        .await?;
-    let now = Utc::now().naive_utc();
-    let manageable_ids: HashSet<i64> = grants
-        .into_iter()
-        .filter(|grant| {
-            grant.access_level == "manage" && grant.expires_at.is_none_or(|expires| expires > now)
-        })
-        .map(|grant| grant.person_id)
-        .collect();
+    let mut manageable_ids: HashSet<i64> = crate::models::access::people_with_access(
+        tenant,
+        crate::models::access::PersonAccess::Manage,
+    )
+    .await?
+    .into_iter()
+    .map(|person| person.id)
+    .collect();
+    manageable_ids.extend(
+        crate::models::care::guardian_declarations::import_manageable_subjects(tenant, today)
+            .await?,
+    );
     let mut referenced_people = HashSet::new();
     for kind in [
         "people",
@@ -83,14 +81,18 @@ pub(crate) async fn authorized(
             }
         }
     }
-    if referenced_people.is_empty()
+    if (!manager && referenced_people.is_empty())
         || referenced_people.iter().any(|portable_id| {
-            index
-                .get("people", portable_id)
-                .is_none_or(|id| !manageable_ids.contains(&id))
+            !declarations.contains(portable_id)
+                && index
+                    .get("people", portable_id)
+                    .is_none_or(|id| !manageable_ids.contains(&id))
         })
     {
         return Ok(false);
+    }
+    if manager {
+        return Ok(true);
     }
     let incoming_linked_medications: HashSet<String> = ["schedules", "person_medications"]
         .iter()

@@ -46,6 +46,16 @@ pub async fn lock(tenant: &TenantTransaction) -> Result<(), OperationError> {
     access::recheck(tenant).await
 }
 
+pub async fn lock_batch(tenant: &TenantTransaction, body: &Value) -> Result<(), OperationError> {
+    if input::parse(body)?
+        .iter()
+        .any(|operation| operation.resource_type == "person" && operation.action == "create")
+    {
+        super::guardian_declarations::lock_creator_account(tenant).await?;
+    }
+    lock(tenant).await
+}
+
 pub struct AppliedBatch {
     pub body: Value,
     pub takes: Vec<medication_take::Model>,

@@ -14,7 +14,7 @@ use crate::models::{
     access::{self, PersonAccess, TenantTransaction},
     care::{administration, doses},
     entities::{
-        api_change_event, dose_occurrence, household, medication_take, pause_period, person,
+        api_change_event, dose_occurrence, household, medication_take, pause_period,
         person_medication, schedule,
     },
     errors::OperationError,

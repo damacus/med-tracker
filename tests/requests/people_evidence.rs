@@ -4,6 +4,16 @@ pub(super) const REVISION: &str = "7ba79ac8cbfdffa365c0e15646ea13075a1e6918";
 pub(super) const GAP: &str = "Malformed household-ID extraction remains undecided; full operation acceptance, including remaining conditional and side-effect boundaries, is not yet established";
 
 pub(super) fn expected(operation: &str) -> Option<Value> {
+    if operation == "createPerson" {
+        return Some(json!({
+            "coverage":"partial", "candidate_revision":null,
+            "gaps":["Previous implicit creator-grant creation evidence is superseded by required initial declaration and adult-own-account rules; complete creation API status, header and credential coverage remains pending"],
+            "evidence":[
+                {"binary":"care_api","test":"guardian_declarations::guardian_declarations_manual_create_requires_explicit_attestation","checks":["POST-422-missing-false-null-invalid-identity-and-capable-adult-no-effects"]},
+                {"binary":"care_api","test":"guardian_declarations::guardian_declarations_manual_create_is_atomic_and_replay_safe","checks":["POST-201-minor-and-dependent-adult-declaration-participation-versions-without-credentials-or-legacy-grants","POST-committed-dependent-readable-after-creation","POST-same-key-replay-and-changed-body-conflict","POST-live-membership-revocation-denies-before-saved-replay"]}
+            ]
+        }));
+    }
     let (verb, specific) = match operation {
         "listPeople" => (
             "GET",
@@ -26,27 +36,6 @@ pub(super) fn expected(operation: &str) -> Option<Value> {
                     vec![
                         "401-account-closure-after-real-OAuth-validation-before-household-access",
                         "trigger-execution-and-closed-account-persisted-no-domain-or-audit-write",
-                    ],
-                ),
-            ],
-        ),
-        "createPerson" => (
-            "POST",
-            vec![
-                (
-                    "create_person_preserves_atomic_links_and_rejects_denied_writes",
-                    vec![
-                        "201-minor-has-capacity-false-ETag-recursive-request-and-response",
-                        "persisted-person-grant-and-location-links",
-                        "403-foreign-404-absent-401-invalid-400-malformed-422-validation-no-domain-write",
-                    ],
-                ),
-                (
-                    "concurrent_create_person_key_replays_one_write",
-                    vec![
-                        "barrier-overlap-one-creation-and-replay-or-current-permission-denial",
-                        "fresh-same-key-retry-201-equal-body-replay-marker-changed-body-409",
-                        "one-person-one-version-and-one-sync-change",
                     ],
                 ),
             ],
@@ -159,7 +148,11 @@ fn people_partial_evidence_is_pinned_and_rejects_tampering() {
         validate_metadata(document, entry);
         for field in ["coverage", "candidate_revision", "gaps", "evidence"] {
             let mut changed = entry.clone();
-            changed[field] = Value::Null;
+            changed[field] = if entry[field].is_null() {
+                json!("unsupported")
+            } else {
+                Value::Null
+            };
             assert!(
                 validate_evidence(&changed).is_err(),
                 "accepted {operation} {field} tampering"

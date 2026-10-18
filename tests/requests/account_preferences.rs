@@ -8,7 +8,7 @@ async fn account_preferences_are_household_independent_and_preserve_other_settin
     let token = super::account::mobile_token(&fixture).await;
     fixture.admin.execute_unprepared(
         "UPDATE accounts SET preferences=preferences || '{\"theme\":\"dark\",\"density\":\"compact\"}'::jsonb WHERE id=71001;
-         UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE account_id=71001"
+         UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE person_id=(SELECT person_id FROM accounts WHERE id=71001)"
     ).await?;
     let request = server(&boot);
     let initial = request

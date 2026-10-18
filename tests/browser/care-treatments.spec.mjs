@@ -9,6 +9,7 @@ async function navigate(page) {
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.getByRole('button', { name: 'Open Synthetic household', exact: true }).click();
+  await expect(page.locator('.dashboard-sidebar')).toBeAttached();
   await openCareSection(page, 'People');
   await page.getByRole('link', { name: 'Synthetic adult', exact: true }).click();
   await page.getByRole('link', { name: 'Manage treatments', exact: true }).click();
@@ -29,6 +30,7 @@ test('person treatment management makes schedules and medication assignments ava
   await page.getByLabel('Password', { exact: true }).fill('password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.getByRole('button', { name: 'Open Synthetic household', exact: true }).click();
+  await expect(page.locator('.dashboard-sidebar')).toBeAttached();
   await openCareSection(page, 'People');
   await page.getByRole('link', { name: 'Synthetic adult', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Synthetic adult', exact: true })).toBeVisible();
@@ -96,7 +98,7 @@ test('schedule creation, editing and recorded pause and resume preserve stock an
   const updateFields = await page.getByRole('main').locator('form[method="post"]').evaluate(form => Object.fromEntries(new FormData(form)));
   const updatePath = await page.getByRole('main').locator('form[method="post"]').getAttribute('action');
   const before = await careFixture.treatmentProbe();
-  await careFixture.revoke();
+  await careFixture.withdrawMembership();
   expect([403, 404]).toContain((await page.request.post(updatePath, { form: { ...updateFields, dose_amount: '4' }, headers: { Origin: careFixture.origin }, maxRedirects: 0 })).status());
   expect(await careFixture.treatmentProbe()).toEqual(before);
 });
@@ -300,7 +302,7 @@ test('retirement rejects forged requests and withdrawn access without clinical c
     expect([403, 404]).toContain((await page.request.post(foreign, { form: { authenticity_token: token }, headers: { Origin: careFixture.origin }, maxRedirects: 0 })).status());
   }
   expect(await careFixture.treatmentProbe()).toEqual(before);
-  await careFixture.revoke();
+  await careFixture.withdrawMembership();
   for (const path of paths) {
     expect([403, 404]).toContain((await page.request.post(path, { form: { authenticity_token: token }, headers: { Origin: careFixture.origin }, maxRedirects: 0 })).status());
   }

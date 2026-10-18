@@ -170,21 +170,48 @@ async fn dose_take_insufficient_stock_has_no_partial_writes() {
 }
 
 #[tokio::test]
-async fn dose_take_rechecks_current_grant_in_open_transaction() {
+async fn dose_take_participant_records_after_legacy_self_grant_revocation()
+-> Result<(), Box<dyn std::error::Error>> {
     let fixture = Fixture::new().await;
-    let tenant = access::begin(&fixture.runtime, &scope(), None)
-        .await
-        .unwrap();
     fixture
         .admin
-        .execute_unprepared("UPDATE person_access_grants SET revoked_at = now() WHERE id = 78001")
-        .await
-        .unwrap();
+        .execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001")
+        .await?;
+    let tenant = access::begin(&fixture.runtime, &scope(), None).await?;
+    let changed = fixture
+        .admin
+        .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78001")
+        .await?;
     let result = doses::execute(&tenant, command()).await;
-    assert_eq!(result.unwrap_err(), OperationError::NotFound);
-    tenant.rollback().await.unwrap();
+    assert!(matches!(result, Ok(Outcome::Created(_))));
+    tenant.commit().await?;
+    assert_eq!(changed.rows_affected(), 1);
+    assert_eq!(fixture.effect().await, (1, "8.00".into(), 1, 1));
+    fixture.close().await;
+    Ok(())
+}
+
+#[tokio::test]
+async fn dose_take_rechecks_revoked_membership_in_open_transaction()
+-> Result<(), Box<dyn std::error::Error>> {
+    let fixture = Fixture::new().await;
+    let tenant = access::begin(&fixture.runtime, &scope(), None).await?;
+    let changed = fixture
+        .admin
+        .execute_unprepared(
+            "UPDATE household_memberships SET status='revoked',revoked_at=clock_timestamp(),
+           permissions_version=permissions_version+1,updated_at=clock_timestamp()
+         WHERE id=74001 AND household_id=72001
+           AND person_id=(SELECT person_id FROM accounts WHERE id=71001)",
+        )
+        .await?;
+    let result = doses::execute(&tenant, command()).await;
+    assert!(matches!(result, Err(OperationError::Forbidden)));
+    tenant.rollback().await?;
+    assert_eq!(changed.rows_affected(), 1);
     assert_eq!(fixture.effect().await, (0, "10.00".into(), 0, 0));
     fixture.close().await;
+    Ok(())
 }
 
 #[tokio::test]
@@ -553,18 +580,22 @@ async fn dose_take_request_timezone_selects_near_midnight_schedule_date() {
 }
 
 #[tokio::test]
-async fn dose_take_grant_expired_after_begin_has_no_effect() {
+async fn dose_take_participant_records_after_legacy_self_grant_expiry()
+-> Result<(), Box<dyn std::error::Error>> {
     let fixture = Fixture::new().await;
-    fixture.admin.execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001; UPDATE person_access_grants SET expires_at=timezone('UTC',clock_timestamp())+interval '100 milliseconds' WHERE id=78001").await.unwrap();
-    let tenant = access::begin(&fixture.runtime, &scope(), None)
-        .await
-        .unwrap();
-    fixture.admin.execute_unprepared("UPDATE person_access_grants SET expires_at=timezone('UTC',clock_timestamp())-interval '1 second' WHERE id=78001").await.unwrap();
+    fixture.admin.execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001; UPDATE person_access_grants SET expires_at=timezone('UTC',clock_timestamp())+interval '1 hour' WHERE id=78001").await?;
+    let tenant = access::begin(&fixture.runtime, &scope(), None).await?;
+    fixture.admin.execute_unprepared("UPDATE person_access_grants SET expires_at=timezone('UTC',clock_timestamp())-interval '1 second' WHERE id=78001").await?;
+    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT expires_at < timezone('UTC',clock_timestamp()) AS expired FROM person_access_grants WHERE id=78001"
+    )).await?.ok_or("Synthetic legacy grant must remain present")?;
+    assert!(row.try_get::<bool>("", "expired")?);
     let result = doses::execute(&tenant, command()).await;
-    assert_eq!(result.unwrap_err(), OperationError::NotFound);
-    tenant.rollback().await.unwrap();
-    assert_eq!(fixture.effect().await, (0, "10.00".into(), 0, 0));
+    assert!(matches!(result, Ok(Outcome::Created(_))));
+    tenant.commit().await?;
+    assert_eq!(fixture.effect().await, (1, "8.00".into(), 1, 1));
     fixture.close().await;
+    Ok(())
 }
 
 async fn take_in_timezone(
@@ -789,7 +820,7 @@ async fn dose_take_uuid_historical_duplicate_is_a_stable_conflict() {
 #[tokio::test]
 async fn dose_take_uuid_foreign_historical_collision_is_hidden_without_new_effect() {
     let fixture = Fixture::new().await;
-    fixture.admin.execute_unprepared("INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(92001,71001,'Other synthetic household','uuid-foreign-household','UTC',now(),now()); INSERT INTO people(id,household_id,name,person_type,has_capacity,created_at,updated_at) VALUES(92002,92001,'Other synthetic adult',0,true,now(),now()); INSERT INTO locations(id,household_id,name,created_at,updated_at) VALUES(92003,92001,'Other synthetic cabinet',now(),now()); INSERT INTO medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at) VALUES(92004,92001,92003,'Other synthetic tablets',10,2,'tablet',now(),now()); INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(92005,92001,92002,92004,2,'tablet',0,now(),now()); INSERT INTO medication_takes(id,household_id,client_uuid,person_medication_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(92006,92001,'006B49D9-1DA2-42F1-800B-8C80867AEE1C',92005,2,'tablet','2026-10-05T10:00:00',now(),now())").await.unwrap();
+    fixture.admin.execute_unprepared("INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(92001,71001,'Other synthetic household','uuid-foreign-household','UTC',now(),now()); INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(92002,'Other synthetic adult',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(94001,92001,92002,'member','active',now(),now(),now()); INSERT INTO locations(id,household_id,name,created_at,updated_at) VALUES(92003,92001,'Other synthetic cabinet',now(),now()); INSERT INTO medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at) VALUES(92004,92001,92003,'Other synthetic tablets',10,2,'tablet',now(),now()); INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(92005,92001,92002,92004,2,'tablet',0,now(),now()); INSERT INTO medication_takes(id,household_id,client_uuid,person_medication_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(92006,92001,'006B49D9-1DA2-42F1-800B-8C80867AEE1C',92005,2,'tablet','2026-10-05T10:00:00',now(),now())").await.unwrap();
     let before = fixture.effect().await;
     let error = take(&fixture, command()).await.unwrap_err();
     assert!(

@@ -101,7 +101,7 @@ test('person with no treatment has a useful empty state and readable overview', 
   await expect(page.getByText('Not recorded', { exact: true })).toBeVisible();
 });
 
-test('a view-only carer can read source cards without record or management actions', async ({ page, careFixture }) => {
+test('a participating carer can read and record care without managing another person', async ({ page, careFixture }) => {
   await careFixture.seedAdministration();
   await careFixture.personViewOnly();
   await careFixture.scheduledMedicine();
@@ -115,7 +115,7 @@ test('a view-only carer can read source cards without record or management actio
   const schedule = page.getByRole('article', { name: 'Synthetic tablets scheduled treatment', exact: true });
   await expect(schedule).toContainText('Every other day');
   await expect(schedule.getByRole('link', { name: 'Dose records', exact: true })).toBeVisible();
-  await expect(schedule.getByRole('link', { name: 'Record dose', exact: true })).toHaveCount(0);
+  await expect(schedule.getByRole('link', { name: 'Record dose', exact: true })).toBeVisible();
   await expect(schedule.getByRole('link', { name: 'Edit treatment', exact: true })).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Edit Person', exact: true })).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Add schedule', exact: true })).toHaveCount(0);

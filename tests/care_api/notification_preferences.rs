@@ -122,7 +122,7 @@ async fn notification_preference_api_rejects_invalid_input_without_partial_write
 }
 
 #[tokio::test]
-async fn notification_preference_api_keyed_replay_conflict_and_current_grant_denial() {
+async fn notification_preference_api_keyed_replay_conflict_and_current_membership_denial() {
     let app = Application::new().await;
     let token = app.token().await;
     let endpoint = format!(
@@ -176,6 +176,25 @@ async fn notification_preference_api_keyed_replay_conflict_and_current_grant_den
         .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78001")
         .await
         .unwrap();
+    let still_self = app
+        .client
+        .patch(&endpoint)
+        .bearer_auth(&token)
+        .header("idempotency-key", "synthetic-notification-key")
+        .json(&body)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(still_self.status().as_u16(), 200);
+    assert_eq!(
+        still_self.headers().get("idempotency-replayed").unwrap(),
+        "true"
+    );
+    app.fixture
+        .admin
+        .execute_unprepared("UPDATE household_memberships SET revoked_at=now() WHERE id=74001")
+        .await
+        .unwrap();
     let denied_replay = app
         .client
         .patch(&endpoint)
@@ -185,7 +204,7 @@ async fn notification_preference_api_keyed_replay_conflict_and_current_grant_den
         .send()
         .await
         .unwrap();
-    assert!(matches!(denied_replay.status().as_u16(), 403 | 404));
+    assert_eq!(denied_replay.status().as_u16(), 403);
     assert!(
         denied_replay
             .headers()
@@ -382,6 +401,21 @@ async fn notification_preference_get_matches_documented_contract() {
         .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78001")
         .await
         .unwrap();
+    let still_self = app
+        .client
+        .get(&endpoint)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(still_self.status().as_u16(), 200);
+    let still_self_body: Value = still_self.json().await.unwrap();
+    assert_eq!(still_self_body["data"]["person_id"], 73001);
+    app.fixture
+        .admin
+        .execute_unprepared("UPDATE household_memberships SET revoked_at=now() WHERE id=74001")
+        .await
+        .unwrap();
     let denied = app
         .client
         .get(&endpoint)
@@ -391,18 +425,18 @@ async fn notification_preference_get_matches_documented_contract() {
         .unwrap();
     let denied_status = denied.status().as_u16();
     let denied_body: Value = denied.json().await.unwrap();
-    assert_eq!(denied_status, 404);
-    assert_value(
+    assert_eq!(denied_status, 403);
+    let forbidden = resolve(contract, &operation["responses"]["403"]);
+    let forbidden_schema = resolve(
         contract,
-        not_found_schema,
-        &denied_body,
-        "outside view scope",
+        &forbidden["content"]["application/json"]["schema"],
     );
-    assert_eq!(denied_body["error"]["code"], "not_found");
+    assert_value(contract, forbidden_schema, &denied_body, "revoked member");
+    assert_eq!(denied_body["error"]["code"], "forbidden");
 
     app.fixture
         .admin
-        .execute_unprepared("UPDATE person_access_grants SET revoked_at=NULL WHERE id=78001")
+        .execute_unprepared("UPDATE person_access_grants SET revoked_at=NULL WHERE id=78001; UPDATE household_memberships SET revoked_at=NULL WHERE id=74001")
         .await
         .unwrap();
     let restored = app

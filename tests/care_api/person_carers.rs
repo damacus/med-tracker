@@ -50,10 +50,10 @@ async fn parent_assignment_fixture(app: &super::Application) {
     app.fixture.admin.execute_unprepared(
         "UPDATE household_memberships SET role='member' WHERE id=74001;
          INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,created_at,updated_at) VALUES(78005,72001,74001,73002,'manage','parent',now(),now());
-         INSERT INTO accounts(id,email,status,created_at,updated_at) VALUES(71003,'parent-candidate@example.test',2,now(),now());
-         INSERT INTO people(id,account_id,household_id,name,person_type,has_capacity,created_at,updated_at) VALUES(73004,71003,72001,'Synthetic candidate',0,true,now(),now());
+         INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73004,'Synthetic candidate',0,true,now(),now());
+         INSERT INTO accounts(id,person_id,name,email,status,created_at,updated_at) VALUES(71003,73004,'Synthetic candidate','parent-candidate@example.test',2,now(),now());
          INSERT INTO users(id,person_id,email_address,password_digest,created_at,updated_at) VALUES(77002,73004,'parent-candidate@example.test',crypt('password',gen_salt('bf',4)),now(),now());
-         INSERT INTO household_memberships(id,account_id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74002,71003,72001,73004,'member','active',now(),now(),now());"
+         INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74002,72001,73004,'member','active',now(),now(),now());"
     ).await.unwrap();
 }
 
@@ -164,27 +164,24 @@ async fn person_carer_nonmanager_ignores_forged_role_and_rejects_unmanaged_or_ad
     let tenant = access::begin(&app.fixture.runtime, &scope, None)
         .await
         .unwrap();
-    assert!(matches!(
+    assert!(
         person_carers::assign(&tenant, 73002, &draft, &target, &provenance)
             .await
-            .unwrap(),
-        person_carers::AssignmentOutcome::Assigned
-    ));
-    tenant.commit().await.unwrap();
-    let row = app.fixture.admin.query_one_raw(sea_orm::Statement::from_string(sea_orm::DbBackend::Postgres,
-        "SELECT carer_id,patient_id,relationship_type FROM carer_relationships WHERE household_id=72001"
-    )).await.unwrap().unwrap();
-    assert_eq!(row.try_get::<i64>("", "carer_id").unwrap(), 73004);
-    assert_eq!(row.try_get::<i64>("", "patient_id").unwrap(), 73002);
-    assert_eq!(
-        row.try_get::<String>("", "relationship_type").unwrap(),
-        "parent"
+            .is_err()
     );
+    tenant.rollback().await.unwrap();
+    let row = app.fixture.admin.query_one_raw(sea_orm::Statement::from_string(sea_orm::DbBackend::Postgres,
+        "SELECT (SELECT count(*) FROM carer_relationships WHERE household_id=72001) AS relationships,(SELECT count(*) FROM person_access_grants WHERE carer_relationship_id IS NOT NULL) AS grants,(SELECT count(*) FROM versions WHERE item_type='CarerRelationship') AS versions"
+    )).await.unwrap().unwrap();
+    assert_eq!(row.try_get::<i64>("", "relationships").unwrap(), 0);
+    assert_eq!(row.try_get::<i64>("", "grants").unwrap(), 0);
+    assert_eq!(row.try_get::<i64>("", "versions").unwrap(), 0);
     app.close().await;
 }
 
 #[tokio::test]
-async fn person_carer_removal_withdraws_real_health_access_without_removing_manual_grants() {
+async fn person_carer_removal_withdraws_linked_manage_but_preserves_member_record_and_manual_grants()
+ {
     use med_tracker::models::{
         access::{self, Actor, HouseholdScope},
         care::{
@@ -196,7 +193,7 @@ async fn person_carer_removal_withdraws_real_health_access_without_removing_manu
     use sea_orm::ConnectionTrait;
     let app = super::Application::new().await;
     parent_assignment_fixture(&app).await;
-    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET role='administrator' WHERE id=74001; INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,created_at,updated_at) VALUES(78006,72001,74001,73004,'view','family_member',now(),now())").await.unwrap();
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET role='administrator' WHERE id=74001; INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,created_at,updated_at) VALUES(78006,72001,74001,73004,'view','family_member',now(),now()); INSERT INTO carer_relationships(id,household_id,carer_id,patient_id,relationship_type,active,created_at,updated_at) VALUES(86001,72001,73004,73002,'parent',true,now(),now()); INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,carer_relationship_id,created_at,updated_at) VALUES(78007,72001,74002,73002,'manage','parent',86001,now(),now())").await.unwrap();
     let manager = HouseholdScope {
         actor: Actor { account_id: 71001 },
         household_id: 72001,
@@ -211,18 +208,6 @@ async fn person_carer_removal_withdraws_real_health_access_without_removing_manu
         method: CredentialMethod::BrowserSession,
         reference: "synthetic-session".into(),
     };
-    let target = url::Url::parse("http://127.0.0.1/invitations/accept").unwrap();
-    let draft = std::collections::HashMap::from([
-        ("carer_id".into(), "73004".into()),
-        ("relationship_type".into(), "parent".into()),
-    ]);
-    let tenant = access::begin(&app.fixture.runtime, &manager, None)
-        .await
-        .unwrap();
-    person_carers::assign(&tenant, 73002, &draft, &target, &provenance)
-        .await
-        .unwrap();
-    tenant.commit().await.unwrap();
     let tenant = access::begin(&app.fixture.runtime, &carer, None)
         .await
         .unwrap();
@@ -247,7 +232,12 @@ async fn person_carer_removal_withdraws_real_health_access_without_removing_manu
     let tenant = access::begin(&app.fixture.runtime, &carer, None)
         .await
         .unwrap();
-    assert!(browser::collection(&tenant, 73002).await.is_err());
+    assert!(browser::collection(&tenant, 73002).await.is_ok());
+    assert!(
+        access::require_person_access(&tenant, 73002, access::PersonAccess::Manage)
+            .await
+            .is_err()
+    );
     assert!(
         browser::save(
             &tenant,
@@ -255,13 +245,13 @@ async fn person_carer_removal_withdraws_real_health_access_without_removing_manu
             None,
             &std::collections::HashMap::from([
                 ("event_kind".into(), "illness".into()),
-                ("title".into(), "Forbidden synthetic event".into()),
+                ("title".into(), "Synthetic member-record event".into()),
                 ("started_on".into(), "2026-10-01".into())
             ]),
             &provenance
         )
         .await
-        .is_err()
+        .is_ok()
     );
     tenant.rollback().await.unwrap();
     let tenant = access::begin(&app.fixture.runtime, &manager, None)
@@ -269,6 +259,15 @@ async fn person_carer_removal_withdraws_real_health_access_without_removing_manu
         .unwrap();
     assert!(browser::collection(&tenant, 73002).await.is_ok());
     tenant.commit().await.unwrap();
+    let row = app.fixture.admin.query_one_raw(sea_orm::Statement::from_string(sea_orm::DbBackend::Postgres,"SELECT (SELECT count(*) FROM person_access_grants WHERE id IN (78005,78006) AND revoked_at IS NULL) AS manual,(SELECT count(*) FROM person_access_grants WHERE id=78007 AND revoked_at IS NOT NULL) AS withdrawn")).await.unwrap().unwrap();
+    assert_eq!(row.try_get::<i64>("", "manual").unwrap(), 2);
+    assert_eq!(row.try_get::<i64>("", "withdrawn").unwrap(), 1);
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74002").await.unwrap();
+    assert!(
+        access::begin(&app.fixture.runtime, &carer, None)
+            .await
+            .is_err()
+    );
     app.close().await;
 }
 

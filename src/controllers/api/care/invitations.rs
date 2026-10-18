@@ -24,9 +24,12 @@ fn attributes(body: &Value) -> std::result::Result<Value, response::Failure> {
     let values: serde_json::Map<_, _> = source
         .iter()
         .filter(|(name, value)| {
-            matches!(name.as_str(), "email" | "membership_role")
+            matches!(
+                name.as_str(),
+                "dependent_ids" | "dependent_ids[]" | "relationship_type" | "access_level"
+            ) || (matches!(name.as_str(), "email" | "membership_role")
                 && !value.is_array()
-                && !value.is_object()
+                && !value.is_object())
         })
         .map(|(name, value)| (name.clone(), value.clone()))
         .collect();

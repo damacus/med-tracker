@@ -107,8 +107,7 @@ pub(super) async fn serialize(
     let people: HashMap<_, _> = if person_ids.is_empty() {
         HashMap::new()
     } else {
-        person::Entity::find()
-            .filter(person::Column::HouseholdId.eq(household_id))
+        crate::models::access::person_queries::household_participants(household_id)
             .filter(person::Column::Id.is_in(person_ids))
             .all(db)
             .await

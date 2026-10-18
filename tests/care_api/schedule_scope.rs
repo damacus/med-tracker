@@ -19,17 +19,17 @@ async fn create(app: &Application, token: &str, date: &str) -> i64 {
 }
 
 #[tokio::test]
-async fn schedule_scope_managers_still_need_person_grants_and_an_adult_index_actor() {
+async fn schedule_scope_requires_live_membership_and_preserves_canonical_self_without_grants() {
     let app = Application::new().await;
     let token = app.token().await;
     let id = create(&app, &token, "2026-10-06").await;
     let collection = format!("{}/api/v1/households/72001/schedules", app.origin);
     app.fixture
         .admin
-        .execute_unprepared("UPDATE household_memberships SET person_id=NULL WHERE id=74001")
+        .execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001")
         .await
         .unwrap();
-    let personless = app
+    let revoked = app
         .client
         .get(&collection)
         .bearer_auth(&token)
@@ -41,7 +41,7 @@ async fn schedule_scope_managers_still_need_person_grants_and_an_adult_index_act
     app.fixture
         .admin
         .execute_unprepared(
-            "UPDATE household_memberships SET person_id=73001 WHERE id=74001;
+            "UPDATE household_memberships SET status='active',revoked_at=NULL,permissions_version=permissions_version+1 WHERE id=74001;
          UPDATE person_access_grants SET revoked_at=now() WHERE household_membership_id=74001",
         )
         .await
@@ -69,7 +69,7 @@ async fn schedule_scope_managers_still_need_person_grants_and_an_adult_index_act
         .client
         .patch(&endpoint)
         .bearer_auth(&token)
-        .json(&json!({"schedule":{"notes":"Forbidden without a person grant"}}))
+        .json(&json!({"schedule":{"notes":"Synthetic canonical self without a person grant"}}))
         .send()
         .await
         .unwrap()
@@ -90,12 +90,16 @@ async fn schedule_scope_managers_still_need_person_grants_and_an_adult_index_act
         .unwrap();
     app.close().await;
     assert_eq!(
-        (personless, index_status, shown, updated),
-        (403, 200, 404, 404)
+        (revoked, index_status, shown, updated),
+        (403, 200, 200, 200)
     );
-    assert_eq!(index_body["meta"]["total_count"], 0);
-    assert_eq!(index_body["data"], json!([]));
-    assert!(notes.is_none());
+    assert_eq!(index_body["meta"]["total_count"], 1);
+    assert_eq!(index_body["data"].as_array().unwrap().len(), 1);
+    assert_eq!(index_body["data"][0]["id"], id);
+    assert_eq!(
+        notes.as_deref(),
+        Some("Synthetic canonical self without a person grant")
+    );
 }
 
 #[tokio::test]

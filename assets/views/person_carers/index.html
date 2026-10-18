@@ -2,10 +2,10 @@
 {% block content %}
 <section class="max-w-3xl mx-auto space-y-6">
   <a class="link" href="/households/{{ slug }}/people/{{ person.id }}">{{ back_label }}: {{ person.name }}</a>
-  <header><h1 class="text-3xl font-semibold">{{ title }}</h1><p class="mt-2">{{ carer_labels.new_subtitle | replace(from="%{name}",to=person.name) }}</p></header>
+  <header><h1 class="text-3xl font-semibold">{{ title }}</h1>{% if can_assign | default(value=false) %}<p class="mt-2">{{ carer_labels.new_subtitle | replace(from="%{name}",to=person.name) }}</p>{% endif %}</header>
   {% include "components/care_warning.html" %}
   {% if error %}<div class="alert alert-error" id="person-carer-error" role="alert">{{ error }}</div>{% endif %}
-  <div class="card bg-base-100 border border-base-300"><div class="card-body">
+  {% if can_assign | default(value=false) %}<div class="card bg-base-100 border border-base-300"><div class="card-body">
     <form action="/households/{{ slug }}/people/{{ person.id }}/carer_relationships" method="post" class="space-y-5" {% if error %}aria-describedby="person-carer-error"{% endif %}>
       <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
       <input type="hidden" name="locale" value="{{ lang }}">
@@ -28,7 +28,7 @@
       {% endif %}
       <div class="flex flex-wrap gap-3"><button class="btn btn-neutral" type="submit">{{ carer_labels.submit }}</button><a class="btn btn-ghost" href="/households/{{ slug }}/people/{{ person.id }}">{{ carer_labels.cancel }}</a></div>
     </form>
-  </div></div>
+  </div></div>{% endif %}
   <section aria-labelledby="person-carer-list-heading" class="space-y-4">
     <h2 id="person-carer-list-heading" class="text-2xl font-semibold">{{ carer_labels.browser.relationships }}</h2>
     {% if records | length == 0 %}<p>{{ carer_labels.browser.empty }}</p>{% endif %}
@@ -38,7 +38,7 @@
         <h3 class="card-title">{{ relation.name }}</h3>
         <p>{{ carer_labels.browser[relation.kind] | default(value=relation.kind) }}</p>
         <p class="badge badge-outline">{% if relation.active %}{{ carer_labels.browser.active }}{% else %}{{ carer_labels.browser.inactive }}{% endif %}</p>
-        {% if manager %}
+        {% if manager and relation.active %}
         <form action="/households/{{ slug }}/people/{{ person.id }}/carer_relationships/{{ relation.id }}/{% if relation.active %}remove{% else %}restore{% endif %}" method="post">
           <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
           <input type="hidden" name="locale" value="{{ lang }}">

@@ -328,7 +328,7 @@ async fn mobile_account_profile_remains_available_after_household_revocation() -
     let (fixture, boot) = boot_fixture().await;
     let token = super::account::mobile_token(&fixture).await;
     fixture.admin.execute_unprepared(
-        "UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE account_id=71001"
+        "UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE person_id=(SELECT person_id FROM accounts WHERE id=71001)"
     ).await?;
     let request = server(&boot);
     let profile = request
@@ -357,7 +357,7 @@ async fn mobile_account_profile_remains_available_after_household_revocation() -
 async fn account_profile_rejects_invalid_protected_and_revoked_writes() -> TestResult {
     let (fixture, boot) = boot_fixture().await;
     let token = super::account::mobile_token(&fixture).await;
-    fixture.admin.execute_unprepared("INSERT INTO accounts(id,email,name,created_at,updated_at) VALUES(71002,'foreign-profile@example.test','Foreign account',now(),now())").await?;
+    fixture.admin.execute_unprepared("INSERT INTO people(id,name,created_at,updated_at) VALUES(73998,'Foreign account',now(),now()); INSERT INTO accounts(id,person_id,email,name,created_at,updated_at) VALUES(71002,73998,'foreign-profile@example.test','Foreign account',now(),now())").await?;
     let request = server(&boot);
     for name in [String::new(), "   ".to_owned(), "a".repeat(101)] {
         let response = request

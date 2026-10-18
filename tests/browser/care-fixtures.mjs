@@ -195,6 +195,22 @@ async function withCareFixture(captureMail, registrationInviteOnly, reportAssets
         failOAuthAudit: () => fixtureTask('fail-oauth-audit'), restoreOAuthAudit: () => fixtureTask('restore-oauth-audit'),
         failRecoveryAudit: () => fixtureTask('fail-recovery-audit'), restoreRecoveryAudit: () => fixtureTask('restore-recovery-audit'),
         failPersonalKeyAudit: () => fixtureTask('fail-personal-key-audit'), restorePersonalKeyAudit: () => fixtureTask('restore-personal-key-audit'), expirePersonalKeys: () => fixtureTask('expire-personal-keys'), withdrawKeyMembership: () => fixtureTask('withdraw-key-membership'),
+        withdrawMembership: async (member = 'primary') => {
+          if (!['primary', 'administration'].includes(member)) throw new Error('Unknown synthetic membership');
+          const variables = member === 'administration' ? ['CARE_MEMBERSHIP_ID=74002', 'CARE_ACCOUNT_ID=71003'] : [];
+          const before = JSON.parse(await fixtureTask('care-membership-probe', variables));
+          await fixtureTask(member === 'administration' ? 'withdraw-administration-membership' : 'withdraw-key-membership');
+          const after = JSON.parse(await fixtureTask('care-membership-probe', variables));
+          expect(after).toMatchObject({ status: 'revoked', revoked: true, permissions_version: before.permissions_version + 1,
+            account_status: before.account_status, sessions: before.sessions, legacy_grant_revoked: before.legacy_grant_revoked });
+        },
+        restoreMembership: async () => {
+          const before = JSON.parse(await fixtureTask('care-membership-probe'));
+          await fixtureTask('restore-care-membership');
+          const after = JSON.parse(await fixtureTask('care-membership-probe'));
+          expect(after).toMatchObject({ status: 'active', revoked: false, permissions_version: before.permissions_version + 1,
+            account_status: before.account_status, sessions: before.sessions, legacy_grant_revoked: before.legacy_grant_revoked });
+        },
         failProviderAudit: () => fixtureTask('fail-provider-audit'), restoreProviderAudit: () => fixtureTask('restore-provider-audit'), providerLinkProbe: async () => JSON.parse(await fixtureTask('provider-link-probe')),
         failTotpAudit: () => fixtureTask('fail-totp-audit'), restoreTotpAudit: () => fixtureTask('restore-totp-audit'),
         failEmailAudit: () => fixtureTask('fail-email-audit'), restoreEmailAudit: () => fixtureTask('restore-email-audit'),

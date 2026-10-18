@@ -49,10 +49,3 @@ fn fields<'a>(
     }
     Ok(fields)
 }
-fn positive_id(attributes: &Value, name: &str) -> Result<i64, OperationError> {
-    attributes
-        .get(name)
-        .and_then(Value::as_i64)
-        .filter(|id| *id > 0)
-        .ok_or_else(|| invalid(name, "is invalid"))
-}

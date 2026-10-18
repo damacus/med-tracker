@@ -1,5 +1,17 @@
 ---
 ga:
+  guardian_declarations:
+    title: "Dearbhuithe caomhnóireachta"
+    statement: "Dearbhaím gur mise caomhnóir an duine seo."
+    statement_hint: "Taifeadann sé seo do dhearbhú don chleithiúnaí nua seo. Ní fhíoraíonn sé caomhnóireacht dhlíthiúil go neamhspleách. Caithfidh daoine fásta a bhfuil cumas acu a gcuntas féin a úsáid."
+    scope: "Is iad seo do dhearbhuithe pearsanta. Bainistítear naisc chúraim an teaghlaigh ar leithligh."
+    captured_name: "An t-ainm a taifeadadh nuair a rinneadh an dearbhú."
+    recorded: "Dearbhú taifeadta"
+    withdrawn: "Tarraingthe siar"
+    withdraw: "Tarraing mo dhearbhú siar"
+    withdraw_hint: "Tá an tarraingt siar críochnaitheach agus cuireann sí deireadh leis an údarás a eascraíonn ón dearbhú seo i ngach teaghlach. Coinnítear an stair chliniciúil."
+    empty: "Níl aon dearbhuithe caomhnóireachta agat."
+    older: "Dearbhuithe níos sine"
   dose_records:
     unavailable: "Níl an dáileog seo ar fáil"
     amount_error: "Cuir isteach méid bailí dáileoige."
@@ -341,6 +353,7 @@ ga:
       deactivated: Díghníomhaíodh an caidreamh cúramóra.
       activated: Gníomhaíodh an caidreamh cúramóra.
       index:
+        unavailable_person: Duine nach bhfuil sa teaghlach seo faoi láthair
         title: Caidrimh Chúramóra
         subtitle: Bainistigh sannadhanna cúramóir-claf.
         new_relationship: Caidreamh Nua

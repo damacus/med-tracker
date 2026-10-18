@@ -189,7 +189,7 @@ async fn pause_periods_require_current_manage_and_reject_foreign_household() {
         .as_u16();
     app.fixture
         .admin
-        .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78001")
+        .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78001; UPDATE household_memberships SET revoked_at=now() WHERE id=74001")
         .await
         .unwrap();
     let withdrawn = app
@@ -209,9 +209,9 @@ async fn pause_periods_require_current_manage_and_reject_foreign_household() {
     let active: bool = row.try_get("", "active").unwrap();
     let periods: i64 = row.try_get("", "periods").unwrap();
     app.close().await;
-    assert_eq!((foreign, record, withdrawn), (403, 403, 404));
-    assert!(active);
-    assert_eq!(periods, 0);
+    assert_eq!((foreign, record, withdrawn), (403, 201, 403));
+    assert!(!active);
+    assert_eq!(periods, 1);
 }
 
 #[tokio::test]

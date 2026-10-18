@@ -7,6 +7,7 @@ use med_tracker::models::{
 #[tokio::test]
 async fn dashboard_respects_shared_dose_limits_and_person_access() {
     let app = Application::new().await;
+    app.fixture.seed_foreign_household(72002).await;
     let scope = HouseholdScope {
         actor: Actor { account_id: 71001 },
         household_id: 72001,
@@ -37,6 +38,42 @@ async fn dashboard_respects_shared_dose_limits_and_person_access() {
     assert_eq!(row["can_record"], false);
     assert_eq!(row["status"], "max_reached");
     assert_eq!(row["status_label"], "Daily max reached");
+    let participant = dashboard::read(
+        &tenant,
+        chrono_tz::UTC,
+        Some(73002),
+        "persistence-fixture",
+        &labels,
+    )
+    .await
+    .unwrap();
+    assert_eq!(participant["selected"], 73002);
+    assert!(participant["rows"].as_array().unwrap().is_empty());
+    assert!(
+        dashboard::read(
+            &tenant,
+            chrono_tz::UTC,
+            Some(99999),
+            "persistence-fixture",
+            &labels
+        )
+        .await
+        .is_err()
+    );
+    assert!(
+        dashboard::read(
+            &tenant,
+            chrono_tz::UTC,
+            Some(73999),
+            "persistence-fixture",
+            &labels
+        )
+        .await
+        .is_err()
+    );
+    tenant.commit().await.unwrap();
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE household_id=72001 AND person_id=73002").await.unwrap();
+    let tenant = access::begin(&app.context.db, &scope, None).await.unwrap();
     assert!(
         dashboard::read(
             &tenant,
@@ -48,7 +85,7 @@ async fn dashboard_respects_shared_dose_limits_and_person_access() {
         .await
         .is_err()
     );
-    tenant.commit().await.unwrap();
+    tenant.rollback().await.unwrap();
     app.fixture.admin.execute_unprepared("UPDATE person_medications SET max_daily_doses=NULL,min_hours_between_doses=4 WHERE id=81001; INSERT INTO medication_takes(id,household_id,person_medication_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(84997,72001,81001,1,'tablet',now(),now(),now())").await.unwrap();
     let tenant = access::begin(&app.context.db, &scope, None).await.unwrap();
     let data = dashboard::read(
@@ -214,7 +251,7 @@ async fn dashboard_preserves_legacy_as_needed_sources_and_excludes_them_from_met
 }
 
 #[tokio::test]
-async fn dashboard_view_only_does_not_mean_out_of_stock() {
+async fn dashboard_participant_recordability_does_not_mean_stock_availability() {
     let app = Application::new().await;
     app.fixture.admin.execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001; UPDATE person_access_grants SET access_level='view' WHERE id=78001").await.unwrap();
     let data = snapshot(&app).await;
@@ -225,9 +262,9 @@ async fn dashboard_view_only_does_not_mean_out_of_stock() {
         .find(|row| row["source_id"] == 81001)
         .unwrap();
     assert_eq!(row["status"], "available");
-    assert_eq!(row["can_record"], false);
-    assert_eq!(row["stock_ids"], json!([]));
-    assert_eq!(data["people"].as_array().unwrap().len(), 1);
+    assert_eq!(row["can_record"], true);
+    assert_eq!(row["stock_ids"], json!([80001]));
+    assert_eq!(data["people"].as_array().unwrap().len(), 3);
     app.fixture
         .admin
         .execute_unprepared("UPDATE medications SET current_supply=0 WHERE id=80001")
@@ -243,6 +280,33 @@ async fn dashboard_view_only_does_not_mean_out_of_stock() {
     assert_eq!(row["status"], "out_of_stock");
     assert_eq!(row["can_record"], false);
     assert_eq!(row["stock_ids"], json!([]));
+    let takes: i64 = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT count(*) AS total FROM medication_takes",
+        ))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("", "total")
+        .unwrap();
+    assert_eq!(takes, 0);
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001").await.unwrap();
+    assert!(
+        access::begin(
+            &app.context.db,
+            &HouseholdScope {
+                actor: Actor { account_id: 71001 },
+                household_id: 72001,
+                request_id: "synthetic-dashboard-departed".into()
+            },
+            None
+        )
+        .await
+        .is_err()
+    );
     app.fixture.close().await;
 }
 

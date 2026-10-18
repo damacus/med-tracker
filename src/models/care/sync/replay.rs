@@ -101,7 +101,7 @@ async fn person_identifier(
     tenant: &TenantTransaction,
     id: &str,
 ) -> Result<person::Model, OperationError> {
-    let query = person::Entity::find().in_tenant(tenant.scope().household_id);
+    let query = crate::models::access::person_queries::household_people(tenant.scope());
     let query = if let Ok(id) = id.parse::<i64>() {
         query.filter(person::Column::Id.eq(id))
     } else {

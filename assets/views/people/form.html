@@ -27,6 +27,17 @@
         </label>
         <p class="text-sm text-base-content/70">{{ capacity_hint }}</p>
       </fieldset>
+      {% if not editing %}
+      <fieldset class="grid gap-3 border-t border-base-300 pt-6">
+        <legend class="font-semibold">{{ guardian_labels.title }}</legend>
+        <label for="initial_guardian_declaration" class="flex items-start gap-3">
+          <input id="initial_guardian_declaration" name="initial_guardian_declaration" type="checkbox" value="true" class="checkbox shrink-0" required {% if draft.initial_guardian_declaration is defined and draft.initial_guardian_declaration == "true" %}checked{% endif %} aria-describedby="guardian-declaration-hint">
+          <span>{{ guardian_labels.statement }}</span>
+        </label>
+        <p id="guardian-declaration-hint" class="text-sm">{{ guardian_labels.statement_hint }}</p>
+        <a class="link w-fit" href="/profile/guardian-declarations">{{ guardian_labels.title }}</a>
+      </fieldset>
+      {% endif %}
       <div class="flex flex-wrap items-center justify-start gap-3 mt-2">
         <button type="submit" class="btn btn-neutral w-fit">{% if editing %}Update Person{% else %}Create Person{% endif %}</button>
         <a class="btn btn-ghost w-fit" href="/households/{{ slug }}/people">Cancel</a>

@@ -35,7 +35,7 @@ async fn signup_create_saves_canonical_account_and_queued_verification_together(
     .await
     .unwrap();
     let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
-        "SELECT a.status, a.password_hash IS NOT NULL AS has_password, u.password_digest IS NOT NULL AS has_digest, p.person_type, p.has_capacity, m.role, g.access_level, (SELECT count(*) FROM account_verification_keys k WHERE k.account_id=a.id) AS keys, (SELECT count(*) FROM pg_loco_queue q WHERE q.task_data->>'to'=a.email AND q.task_data->>'text' LIKE '%/verify-account?key=%') AS messages, (SELECT count(*) FROM identity_sessions s WHERE s.account_id=a.id) AS sessions FROM accounts a JOIN people p ON p.account_id=a.id JOIN users u ON u.person_id=p.id JOIN household_memberships m ON m.account_id=a.id AND m.person_id=p.id JOIN person_access_grants g ON g.household_membership_id=m.id AND g.person_id=p.id WHERE a.email='signup-owner@example.test'"
+        "SELECT a.status, a.password_hash IS NOT NULL AS has_password, u.password_digest IS NOT NULL AS has_digest, p.person_type, p.has_capacity, m.role, (SELECT count(*) FROM person_access_grants g WHERE g.household_membership_id=m.id AND g.person_id=p.id) AS grants, (SELECT count(*) FROM account_verification_keys k WHERE k.account_id=a.id) AS keys, (SELECT count(*) FROM pg_loco_queue q WHERE q.task_data->>'to'=a.email AND q.task_data->>'text' LIKE '%/verify-account?key=%') AS messages, (SELECT count(*) FROM identity_sessions s WHERE s.account_id=a.id) AS sessions FROM accounts a JOIN people p ON p.id=a.person_id JOIN users u ON u.person_id=p.id JOIN household_memberships m ON m.person_id=a.person_id WHERE a.email='signup-owner@example.test'"
     )).await.unwrap().unwrap();
     assert_eq!(row.try_get::<i32>("", "status").unwrap(), 1);
     assert!(row.try_get::<bool>("", "has_password").unwrap());
@@ -43,7 +43,7 @@ async fn signup_create_saves_canonical_account_and_queued_verification_together(
     assert_eq!(row.try_get::<i32>("", "person_type").unwrap(), 0);
     assert!(row.try_get::<bool>("", "has_capacity").unwrap());
     assert_eq!(row.try_get::<String>("", "role").unwrap(), "owner");
-    assert_eq!(row.try_get::<String>("", "access_level").unwrap(), "manage");
+    assert_eq!(row.try_get::<i64>("", "grants").unwrap(), 0);
     assert_eq!(row.try_get::<i64>("", "keys").unwrap(), 1);
     assert_eq!(row.try_get::<i64>("", "messages").unwrap(), 1);
     assert_eq!(row.try_get::<i64>("", "sessions").unwrap(), 0);

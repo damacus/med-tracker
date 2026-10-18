@@ -8,15 +8,17 @@ async fn values(
     tenant: &TenantTransaction,
     rows: &[grant::Model],
 ) -> Result<Vec<Value>, OperationError> {
-    let people: HashMap<i64, person::Model> = person::Entity::find()
-        .in_tenant(tenant.scope().household_id)
-        .filter(person::Column::Id.is_in(rows.iter().map(|row| row.person_id).collect::<Vec<_>>()))
-        .all(tenant.transaction())
-        .await?
-        .into_iter()
-        .map(|row| (row.id, row))
-        .collect();
-    rows.iter().map(|row|Ok(json!({"id":row.id,"household_membership_id":row.household_membership_id,"person_id":row.person_id,"person_name":people.get(&row.person_id).ok_or(OperationError::Unavailable)?.name,"access_level":row.access_level,"relationship_type":row.relationship_type,"expires_at":row.expires_at.map(|time|time.and_utc().to_rfc3339()),"revoked_at":row.revoked_at.map(|time|time.and_utc().to_rfc3339())}))).collect()
+    let people: HashMap<i64, person::Model> =
+        crate::models::access::person_queries::household_participants(tenant.scope().household_id)
+            .filter(
+                person::Column::Id.is_in(rows.iter().map(|row| row.person_id).collect::<Vec<_>>()),
+            )
+            .all(tenant.transaction())
+            .await?
+            .into_iter()
+            .map(|row| (row.id, row))
+            .collect();
+    Ok(rows.iter().map(|row|json!({"id":row.id,"household_membership_id":row.household_membership_id,"person_id":row.person_id,"person_name":people.get(&row.person_id).map(|person| &person.name),"access_level":row.access_level,"relationship_type":row.relationship_type,"expires_at":row.expires_at.map(|time|time.and_utc().to_rfc3339()),"revoked_at":row.revoked_at.map(|time|time.and_utc().to_rfc3339())})).collect())
 }
 pub async fn list(tenant: &TenantTransaction) -> Result<Value, OperationError> {
     authorize(tenant).await?;
@@ -27,106 +29,18 @@ pub async fn list(tenant: &TenantTransaction) -> Result<Value, OperationError> {
         .await?;
     Ok(json!({"data":values(tenant,&rows).await?}))
 }
+pub enum GrantCreation {
+    Rejected,
+}
+
 pub async fn create(
     tenant: &TenantTransaction,
-    attributes: Value,
+    _attributes: Value,
     provenance: Option<&CredentialProvenance>,
-) -> Result<Value, OperationError> {
+) -> Result<GrantCreation, OperationError> {
     authorize(tenant).await?;
-    let parsed = (|| {
-        fields(
-            &attributes,
-            &[
-                "household_membership_id",
-                "person_id",
-                "access_level",
-                "relationship_type",
-                "expires_at",
-            ],
-            "person_access_grant",
-        )?;
-        let member_id = positive_id(&attributes, "household_membership_id")?;
-        let person_id = positive_id(&attributes, "person_id")?;
-        let level = attributes["access_level"]
-            .as_str()
-            .filter(|level| matches!(*level, "view" | "record" | "manage"))
-            .ok_or_else(|| invalid("access_level", "is invalid"))?;
-        let relationship = attributes["relationship_type"]
-            .as_str()
-            .filter(|kind| {
-                matches!(
-                    *kind,
-                    "self" | "parent" | "family_member" | "carer" | "professional"
-                )
-            })
-            .ok_or_else(|| invalid("relationship_type", "is invalid"))?;
-        let expiry = match attributes.get("expires_at") {
-            None | Some(Value::Null) => None,
-            Some(Value::String(value)) => Some(
-                DateTime::parse_from_rfc3339(value)
-                    .map_err(|_| invalid("expires_at", "is invalid"))?
-                    .naive_utc(),
-            ),
-            _ => return Err(invalid("expires_at", "is invalid")),
-        };
-        Ok::<_, OperationError>((member_id, person_id, level, relationship, expiry))
-    })();
-    let (member_id, person_id, level, relationship, expiry) = match parsed {
-        Ok(attributes) => attributes,
-        Err(error) => {
-            rejected(tenant, None, json!({}), provenance).await?;
-            return Err(error);
-        }
-    };
-    let attempted = json!({"household_membership_id":member_id,"person_id":person_id,"access_level":level,"relationship_type":relationship,"expires_at":expiry.map(|time|time.and_utc().to_rfc3339())});
-    let member = membership::Entity::find_by_id(member_id)
-        .in_tenant(tenant.scope().household_id)
-        .lock_exclusive()
-        .one(tenant.transaction())
-        .await?;
-    let person = person::Entity::find_by_id(person_id)
-        .in_tenant(tenant.scope().household_id)
-        .one(tenant.transaction())
-        .await?;
-    if member.is_none() || person.is_none() {
-        rejected(tenant, Some(member_id), attempted, provenance).await?;
-        return Err(invalid(
-            "base",
-            "Grant records must belong to the household",
-        ));
-    }
-    if grant::Entity::find()
-        .in_tenant(tenant.scope().household_id)
-        .filter(grant::Column::HouseholdMembershipId.eq(member_id))
-        .filter(grant::Column::PersonId.eq(person_id))
-        .filter(grant::Column::RevokedAt.is_null())
-        .one(tenant.transaction())
-        .await?
-        .is_some()
-    {
-        rejected(tenant, Some(member_id), attempted, provenance).await?;
-        return Err(invalid("household_membership_id", "has already been taken"));
-    }
-    let now = Utc::now().naive_utc();
-    let row = grant::ActiveModel {
-        household_id: Set(tenant.scope().household_id),
-        household_membership_id: Set(member_id),
-        person_id: Set(person_id),
-        access_level: Set(level.into()),
-        relationship_type: Set(relationship.into()),
-        expires_at: Set(expiry),
-        revoked_at: Set(None),
-        granted_by_membership_id: Set(Some(tenant.membership().id)),
-        carer_relationship_id: Set(None),
-        created_at: Set(now),
-        updated_at: Set(now),
-        ..Default::default()
-    }
-    .insert(tenant.transaction())
-    .await?;
-    persistence::bump(tenant, member_id).await?;
-    record(tenant, &row, None, "success", provenance).await?;
-    Ok(json!({"data":values(tenant,&[row]).await?.remove(0)}))
+    rejected(tenant, None, json!({}), provenance).await?;
+    Ok(GrantCreation::Rejected)
 }
 async fn rejected(
     tenant: &TenantTransaction,

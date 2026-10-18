@@ -1,4 +1,7 @@
 UPDATE public.accounts SET status = 2 WHERE id = 71001;
+INSERT INTO public.household_memberships(id, household_id, person_id, role, joined_at, created_at, updated_at)
+VALUES (74980, 72001, 73002, 'member', now(), now(), now()),
+       (74981, 72001, 73003, 'member', now(), now(), now());
 INSERT INTO public.users(id, person_id, email_address, password_digest, created_at, updated_at)
 VALUES (77001, 73001, 'persistence@example.test', crypt('password', gen_salt('bf', 4)), now(), now());
 INSERT INTO public.person_access_grants(id, household_id, household_membership_id, person_id, access_level, relationship_type, created_at, updated_at)

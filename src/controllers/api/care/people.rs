@@ -188,7 +188,12 @@ async fn process(
         .filter(|(name, _)| {
             matches!(
                 name.as_str(),
-                "name" | "date_of_birth" | "email" | "person_type" | "has_capacity"
+                "name"
+                    | "date_of_birth"
+                    | "email"
+                    | "person_type"
+                    | "has_capacity"
+                    | "initial_guardian_declaration"
             )
         })
         .map(|(name, value)| (name.clone(), value.clone()))
@@ -221,7 +226,12 @@ async fn process(
         Some(id) => {
             people::update(tenant, id, attributes, today, Some(principal.provenance())).await
         }
-        None => people::create(tenant, attributes, today, Some(principal.provenance())).await,
+        None => match people::CreateDependent::parse(&Value::Object(fields.clone()), today) {
+            Ok(command) => {
+                people::create(tenant, command, today, Some(principal.provenance())).await
+            }
+            Err(error) => Err(error),
+        },
     };
     let reply = match result {
         Ok(record) => {

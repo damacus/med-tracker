@@ -48,7 +48,7 @@ async fn sync_snapshot_is_portable_scoped_and_rechecks_withdrawn_visibility() {
             .as_array()
             .unwrap()
             .len(),
-        1
+        3
     );
     assert_eq!(
         visible["data"]["records"]["medications"]
@@ -59,32 +59,26 @@ async fn sync_snapshot_is_portable_scoped_and_rechecks_withdrawn_visibility() {
     );
     let supply_before = sync_counts(&app).await;
     app.fixture.admin.execute_unprepared("UPDATE person_access_grants SET revoked_at=timezone('UTC',clock_timestamp()) WHERE id=78001").await.unwrap();
-    let hidden = app
+    let still_visible = app
         .client
         .get(&endpoint)
         .bearer_auth(&token)
         .send()
         .await
         .unwrap();
-    assert_eq!(hidden.status().as_u16(), 200);
-    let hidden = hidden.json::<Value>().await.unwrap();
-    assert!(
-        hidden["data"]["records"]["people"]
-            .as_array()
-            .unwrap()
-            .is_empty()
+    assert_eq!(still_visible.status().as_u16(), 200);
+    let still_visible = still_visible.json::<Value>().await.unwrap();
+    assert_eq!(
+        still_visible["data"]["records"]["people"],
+        visible["data"]["records"]["people"]
     );
-    assert!(
-        hidden["data"]["records"]["person_medications"]
-            .as_array()
-            .unwrap()
-            .is_empty()
+    assert_eq!(
+        still_visible["data"]["records"]["person_medications"],
+        visible["data"]["records"]["person_medications"]
     );
-    assert!(
-        hidden["data"]["records"]["medication_takes"]
-            .as_array()
-            .unwrap()
-            .is_empty()
+    assert_eq!(
+        still_visible["data"]["records"]["medication_takes"],
+        visible["data"]["records"]["medication_takes"]
     );
     let foreign = app
         .client
@@ -97,6 +91,15 @@ async fn sync_snapshot_is_portable_scoped_and_rechecks_withdrawn_visibility() {
         .await
         .unwrap();
     assert_eq!(foreign.status().as_u16(), 403);
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001").await.unwrap();
+    let withdrawn = app
+        .client
+        .get(&endpoint)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(withdrawn.status().as_u16(), 403);
     assert_eq!(sync_counts(&app).await, supply_before);
     app.close().await;
 }
@@ -289,12 +292,13 @@ async fn sync_batch_replay_rechecks_current_record_grant_and_household() {
         .await
         .unwrap();
     let created_status = created.status().as_u16();
+    let created_body = created.json::<Value>().await.unwrap();
     app.fixture
         .admin
         .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78001")
         .await
         .unwrap();
-    let denied = app
+    let replay = app
         .client
         .post(&endpoint)
         .bearer_auth(&token)
@@ -314,14 +318,36 @@ async fn sync_batch_replay_rechecks_current_record_grant_and_household() {
         .send()
         .await
         .unwrap();
+    let replay_status = replay.status().as_u16();
+    let replay_marker = replay
+        .headers()
+        .get("idempotency-replayed")
+        .and_then(|value| value.to_str().ok())
+        .map(str::to_owned);
+    let replay_body = replay.json::<Value>().await.unwrap();
+    let after_replay = sync_counts(&app).await;
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001").await.unwrap();
+    let withdrawn = app
+        .client
+        .post(&endpoint)
+        .bearer_auth(&token)
+        .header("Idempotency-Key", "synthetic-sync-authority")
+        .json(&body)
+        .send()
+        .await
+        .unwrap();
     let statuses = (
         created_status,
-        denied.status().as_u16(),
+        replay_status,
         foreign.status().as_u16(),
+        withdrawn.status().as_u16(),
     );
     let counts = sync_counts(&app).await;
     app.close().await;
-    assert_eq!(statuses, (201, 403, 403));
+    assert_eq!(statuses, (201, 201, 403, 403));
+    assert_eq!(replay_marker.as_deref(), Some("true"));
+    assert_eq!(replay_body, created_body);
+    assert_eq!(after_replay, ("8.00".into(), vec![1, 1, 1, 1]));
     assert_eq!(counts, ("8.00".into(), vec![1, 1, 1, 1]));
 }
 
@@ -445,8 +471,8 @@ async fn sync_catalogue_creates_updates_and_retires_clinical_resources() {
         ),
         (
             "person",
-            json!({"name":"Synthetic offline adult","date_of_birth":"1980-01-01","person_type":"adult","has_capacity":true}),
-            json!({"name":"Synthetic revised adult"}),
+            json!({"name":"Synthetic offline dependent","date_of_birth":"2020-01-01","person_type":"minor","has_capacity":false,"initial_guardian_declaration":true}),
+            json!({"name":"Synthetic revised dependent"}),
             "Person",
         ),
         (
@@ -504,7 +530,7 @@ async fn sync_catalogue_creates_updates_and_retires_clinical_resources() {
         }
         if kind == "person" {
             let current = updated["data"]["results"][0].clone();
-            let (status, repeated) = sync_operation(&app, &token, json!({"resource_type":kind,"action":"update","id":current["record_id"],"if_match":current["etag"],"attributes":{"name":"Synthetic revised adult"}})).await;
+            let (status, repeated) = sync_operation(&app, &token, json!({"resource_type":kind,"action":"update","id":current["record_id"],"if_match":current["etag"],"attributes":{"name":"Synthetic revised dependent"}})).await;
             assert_eq!(status, 201, "{repeated}");
             flags.push((
                 kind.to_owned(),
@@ -965,11 +991,11 @@ async fn sync_delete_replay_requires_current_retired_state_for_each_source_kind(
 }
 
 #[tokio::test]
-async fn sync_person_create_replay_requires_current_manage_grant() {
+async fn sync_person_create_replay_requires_current_guardian_declaration() {
     let app = Application::new().await;
     let token = app.token().await;
     let endpoint = format!("{}/api/v1/households/72001/sync/batches", app.origin);
-    let body = json!({"batch":{"operations":[{"resource_type":"person","action":"create","attributes":{"name":"Synthetic replay person","date_of_birth":"1980-01-01","person_type":"adult","has_capacity":true}}]}});
+    let body = json!({"batch":{"operations":[{"resource_type":"person","action":"create","attributes":{"name":"Synthetic replay dependent","date_of_birth":"2020-01-01","person_type":"minor","has_capacity":false,"initial_guardian_declaration":true}}]}});
     let created = app
         .client
         .post(&endpoint)
@@ -986,7 +1012,26 @@ async fn sync_person_create_replay_requires_current_manage_grant() {
         .unwrap()
         .parse::<i64>()
         .unwrap();
-    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"UPDATE person_access_grants SET revoked_at=now() WHERE household_membership_id=74001 AND person_id=$1",[id.into()])).await.unwrap();
+    let before = app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+        "SELECT d.id AS declaration_id,(SELECT count(*) FROM people WHERE id=$1) AS people,(SELECT count(*) FROM versions WHERE item_type='Person' AND item_id=$1) AS person_versions,(SELECT count(*) FROM api_change_events WHERE record_type='Person' AND record_id=$1) AS person_changes,(SELECT count(*) FROM api_idempotency_keys WHERE account_id=71001 AND key='synthetic-sync-person-grant') AS batch_keys,(SELECT count(*) FROM guardian_declarations WHERE subject_person_id=$1) AS declarations,(SELECT count(*) FROM guardian_declarations WHERE subject_person_id=$1 AND withdrawn_at IS NULL) AS authority,(SELECT count(*) FROM versions WHERE item_type='GuardianDeclaration' AND item_id=d.id AND event='withdraw') AS withdrawals FROM guardian_declarations d WHERE d.subject_person_id=$1 AND d.guardian_person_id=(SELECT person_id FROM accounts WHERE id=71001) AND d.declared_by_account_id=71001 AND d.origin_household_id=72001 AND EXISTS(SELECT 1 FROM carer_relationships c WHERE c.guardian_declaration_id=d.id AND c.carer_id=d.guardian_person_id AND c.patient_id=d.subject_person_id AND c.household_id=d.origin_household_id AND c.active)",
+        [id.into()])).await.unwrap().unwrap();
+    let declaration_id: i64 = before.try_get("", "declaration_id").unwrap();
+    assert_eq!(before.try_get::<i64>("", "people").unwrap(), 1);
+    assert_eq!(before.try_get::<i64>("", "declarations").unwrap(), 1);
+    assert_eq!(before.try_get::<i64>("", "authority").unwrap(), 1);
+    assert_eq!(before.try_get::<i64>("", "withdrawals").unwrap(), 0);
+    let withdrawal = app
+        .client
+        .patch(format!(
+            "{}/api/v1/auth/guardian-declarations/{declaration_id}",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .json(&json!({"guardian_declaration":{"withdrawn":true,"revision":"1"}}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(withdrawal.status().as_u16(), 200);
     let replay = app
         .client
         .post(&endpoint)
@@ -997,20 +1042,38 @@ async fn sync_person_create_replay_requires_current_manage_grant() {
         .await
         .unwrap();
     let status = replay.status().as_u16();
+    let replay_marker = replay.headers().get("idempotency-replayed").is_some();
     let row = app
         .fixture
         .admin
         .query_one_raw(Statement::from_sql_and_values(
             DbBackend::Postgres,
-            "SELECT count(*) AS count FROM people WHERE id=$1",
-            [id.into()],
+            "SELECT (SELECT count(*) FROM people WHERE id=$1) AS people,(SELECT count(*) FROM versions WHERE item_type='Person' AND item_id=$1) AS person_versions,(SELECT count(*) FROM api_change_events WHERE record_type='Person' AND record_id=$1) AS person_changes,(SELECT count(*) FROM api_idempotency_keys WHERE account_id=71001 AND key='synthetic-sync-person-grant') AS batch_keys,(SELECT count(*) FROM guardian_declarations WHERE subject_person_id=$1) AS declarations,(SELECT count(*) FROM guardian_declarations WHERE subject_person_id=$1 AND withdrawn_at IS NULL) AS authority,(SELECT count(*) FROM versions WHERE item_type='GuardianDeclaration' AND item_id=$2 AND event='withdraw') AS withdrawals,(SELECT count(*) FROM audit_ledger_entries l JOIN versions v ON v.id=l.source_id WHERE l.source_table='versions' AND v.item_type='GuardianDeclaration' AND v.item_id=$2 AND v.event='withdraw') AS audit_entries",
+            [id.into(), declaration_id.into()],
         ))
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(row.try_get::<i64>("", "count").unwrap(), 1);
+    assert_eq!(row.try_get::<i64>("", "people").unwrap(), 1);
+    assert_eq!(
+        row.try_get::<i64>("", "person_versions").unwrap(),
+        before.try_get::<i64>("", "person_versions").unwrap()
+    );
+    assert_eq!(
+        row.try_get::<i64>("", "person_changes").unwrap(),
+        before.try_get::<i64>("", "person_changes").unwrap()
+    );
+    assert_eq!(
+        row.try_get::<i64>("", "batch_keys").unwrap(),
+        before.try_get::<i64>("", "batch_keys").unwrap()
+    );
+    assert_eq!(row.try_get::<i64>("", "declarations").unwrap(), 1);
+    assert_eq!(row.try_get::<i64>("", "authority").unwrap(), 0);
+    assert_eq!(row.try_get::<i64>("", "withdrawals").unwrap(), 1);
+    assert_eq!(row.try_get::<i64>("", "audit_entries").unwrap(), 1);
     app.close().await;
     assert_eq!(status, 403);
+    assert!(!replay_marker);
 }
 #[tokio::test]
 async fn sync_review_retained_precondition_and_validation_responses() {
@@ -1243,13 +1306,9 @@ async fn sync_review_current_authority_precedes_versions_and_occurrence_state() 
         ));
     }
     app.fixture.admin.execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001; UPDATE person_access_grants SET access_level='view' WHERE id=78001").await.unwrap();
-    let mut denied = Vec::new();
-    for kind in [
-        "person",
-        "schedule",
-        "person_medication",
-        "medication_dosage_option",
-    ] {
+    app.fixture.admin.execute_unprepared("INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83996,72001,73002,80001,true,'2020-01-01','2099-12-31',2,'tablet',0,'{}',now(),now()); INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(81996,72001,73002,80001,2,'tablet',0,now(),now()); INSERT INTO medication_dose_occurrences(id,household_id,schedule_id,window_starts_on,window_ends_on,position,outcome,reason,resolved_at,resolved_by_membership_id,created_at,updated_at) VALUES(85996,72001,83996,current_date,current_date,1,'not_taken','refused',now(),74001,now(),now())").await.unwrap();
+    let mut self_manage = Vec::new();
+    for kind in ["person", "schedule", "person_medication"] {
         let id = match kind {
             "person" => "73001",
             "schedule" => "83997",
@@ -1263,6 +1322,29 @@ async fn sync_review_current_authority_precedes_versions_and_occurrence_state() 
                 operation["if_match"] = json!(etag);
             }
             let (status, _) = sync_operation(&app, &token, operation).await;
+            self_manage.push(status);
+        }
+    }
+    let mut denied = Vec::new();
+    for (kind, id) in [
+        ("person", "73002"),
+        ("schedule", "83996"),
+        ("person_medication", "81996"),
+        ("medication_dose_occurrence", "85996"),
+        ("medication_dosage_option", "82997"),
+    ] {
+        for etag in [None, Some("stale")] {
+            let attributes = if kind == "medication_dose_occurrence" {
+                json!({"outcome":"open"})
+            } else {
+                json!({})
+            };
+            let mut operation =
+                json!({"resource_type":kind,"action":"update","id":id,"attributes":attributes});
+            if let Some(etag) = etag {
+                operation["if_match"] = json!(etag);
+            }
+            let (status, _) = sync_operation(&app, &token, operation).await;
             denied.push(status);
         }
     }
@@ -1272,7 +1354,7 @@ async fn sync_review_current_authority_precedes_versions_and_occurrence_state() 
             operation["if_match"] = json!(etag);
         }
         let (status, _) = sync_operation(&app, &token, operation).await;
-        denied.push(status);
+        self_manage.push(status);
     }
     app.fixture
         .admin
@@ -1281,19 +1363,58 @@ async fn sync_review_current_authority_precedes_versions_and_occurrence_state() 
         )
         .await
         .unwrap();
+    let own_occurrence_id = record["record_id"]
+        .as_str()
+        .unwrap()
+        .parse::<i64>()
+        .unwrap();
+    let occurrence_state = Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        "SELECT jsonb_build_object('record',to_jsonb(o),'versions',(SELECT count(*) FROM versions WHERE item_type='MedicationDoseOccurrence' AND item_id=o.id),'changes',(SELECT count(*) FROM api_change_events WHERE record_type='MedicationDoseOccurrence' AND record_id=o.id)) AS state FROM medication_dose_occurrences o WHERE o.id=$1",
+        [own_occurrence_id.into()],
+    );
+    let open_before: Value = app
+        .fixture
+        .admin
+        .query_one_raw(occurrence_state.clone())
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("", "state")
+        .unwrap();
+    let counts_before = sync_counts(&app).await;
+    let (open_status,open_body) = sync_operation(&app,&token,json!({"resource_type":"medication_dose_occurrence","action":"update","id":record["record_id"],"if_match":"stale","attributes":{"outcome":"open"}})).await;
+    assert_eq!(open_status, 422, "{open_body}");
+    assert_eq!(open_body["error"]["code"], "invalid_occurrence");
+    assert_eq!(open_body["error"]["message"], "Occurrence is unavailable");
+    let open_after: Value = app
+        .fixture
+        .admin
+        .query_one_raw(occurrence_state)
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get("", "state")
+        .unwrap();
+    assert_eq!(open_after, open_before);
+    assert_eq!(sync_counts(&app).await, counts_before);
+    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"UPDATE medication_dose_occurrences SET outcome='not_taken',reason='refused',note=NULL,resolved_at=now(),resolved_by_membership_id=74001 WHERE id=$1",[own_occurrence_id.into()])).await.unwrap();
     let (status,_) = sync_operation(&app,&token,json!({"resource_type":"medication_dose_occurrence","action":"update","id":record["record_id"],"if_match":"stale","attributes":{"outcome":"open"}})).await;
-    denied.push(status);
+    self_manage.push(status);
+    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"UPDATE medication_dose_occurrences SET outcome='open',reason=NULL,note=NULL,resolved_at=NULL,resolved_by_membership_id=NULL WHERE id=$1",[own_occurrence_id.into()])).await.unwrap();
     app.fixture
         .admin
         .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78001")
         .await
         .unwrap();
-    let (status, body) = sync_operation(&app, &token, create).await;
+    let (status, body) = sync_operation(&app, &token, create.clone()).await;
     results.push((
         status,
         body["error"]["code"].clone(),
         body["error"]["message"].clone(),
     ));
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001").await.unwrap();
+    let (withdrawn_status, _) = sync_operation(&app, &token, create).await;
     let state=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM versions WHERE item_type IN ('Schedule','PersonMedication','Person','MedicationDosageOption')) AS versions,(SELECT count(*) FROM medication_takes) AS takes,(SELECT current_supply::text FROM medications WHERE id=80001) AS stock")).await.unwrap().unwrap();
     app.close().await;
     assert_eq!(
@@ -1315,14 +1436,15 @@ async fn sync_review_current_authority_precedes_versions_and_occurrence_state() 
                 json!("invalid_occurrence"),
                 json!("Occurrence is unavailable")
             ),
-            (
-                422,
-                json!("invalid_occurrence"),
-                json!("Occurrence is unavailable")
-            )
+            (201, Value::Null, Value::Null)
         ]
     );
-    assert_eq!(denied, vec![403; 11]);
+    assert_eq!(
+        self_manage,
+        vec![428, 409, 428, 409, 428, 409, 428, 409, 409]
+    );
+    assert_eq!(denied, vec![403; 10]);
+    assert_eq!(withdrawn_status, 403);
     assert_eq!(
         (
             state.try_get::<i64>("", "versions").unwrap(),
@@ -1403,7 +1525,7 @@ async fn sync_review_cached_replay_preserves_read_unavailability() {
 async fn sync_core_review_snapshot_and_dosage_feed_follow_parent_visibility() {
     let app = Application::new().await;
     let token = app.token().await;
-    app.fixture.admin.execute_unprepared("INSERT INTO locations(id,household_id,name,created_at,updated_at) VALUES(80996,72001,'Synthetic dependency cupboard',now(),now()); INSERT INTO medications(id,household_id,location_id,name,dose_amount,dose_unit,created_by_membership_id,created_at,updated_at) VALUES(80996,72001,80996,'Synthetic own unlinked',2,'tablet',74001,now(),now()),(80997,72001,80996,'Synthetic other unlinked',2,'tablet',NULL,now(),now()),(80998,72001,80996,'Synthetic hidden linked',2,'tablet',74001,now(),now()); INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(81998,72001,73002,80998,2,'tablet',0,now(),now())").await.unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO locations(id,household_id,name,created_at,updated_at) VALUES(80996,72001,'Synthetic dependency cupboard',now(),now()); INSERT INTO medications(id,household_id,location_id,name,dose_amount,dose_unit,created_by_membership_id,created_at,updated_at) VALUES(80996,72001,80996,'Synthetic own unlinked',2,'tablet',74001,now(),now()),(80997,72001,80996,'Synthetic other unlinked',2,'tablet',NULL,now(),now()),(80998,72001,80996,'Synthetic participant linked',2,'tablet',74001,now(),now()); INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(81998,72001,73002,80998,2,'tablet',0,now(),now())").await.unwrap();
     let mut options = Vec::new();
     for id in [80996, 80997, 80998] {
         let (status,body)=sync_operation(&app,&token,json!({"resource_type":"medication_dosage_option","action":"create","attributes":{"medication_id":id.to_string(),"amount":"2","unit":"tablet","frequency":"daily","default_max_daily_doses":3,"default_min_hours_between_doses":"4","default_dose_cycle":"daily"}})).await;
@@ -1518,16 +1640,25 @@ async fn sync_core_review_snapshot_and_dosage_feed_follow_parent_visibility() {
         .unwrap()["medication_portable_ids"]
         .clone();
     app.close().await;
-    assert_eq!(statuses, vec![200, 404, 404]);
+    assert_eq!(statuses, vec![200, 404, 200]);
     assert!(manager_names.contains(&json!("Synthetic other unlinked")));
     assert!(member_names.contains(&json!("Synthetic own unlinked")));
     assert!(!member_names.contains(&json!("Synthetic other unlinked")));
-    assert!(!member_names.contains(&json!("Synthetic hidden linked")));
+    assert!(member_names.contains(&json!("Synthetic participant linked")));
     assert_eq!(
         member_options,
-        vec![options[0]["record_portable_id"].clone()]
+        vec![
+            options[0]["record_portable_id"].clone(),
+            options[2]["record_portable_id"].clone()
+        ]
     );
-    assert_eq!(feed_options, vec![options[0]["record_portable_id"].clone()]);
+    assert_eq!(
+        feed_options,
+        vec![
+            options[0]["record_portable_id"].clone(),
+            options[2]["record_portable_id"].clone()
+        ]
+    );
     assert!(dependency);
     assert_eq!(health_references, json!([hidden_reference]));
 }
@@ -1563,7 +1694,7 @@ async fn sync_core_review_dosage_cascade_tombstones_preserve_current_scope() {
         let (status,body)=sync_operation(&app,&token,json!({"resource_type":"medication","action":"delete","id":id.to_string(),"if_match":etag,"attributes":{}})).await;
         assert_eq!(status, 201, "{body}");
     }
-    let mut expected_options = vec![options[0].clone()];
+    let mut expected_options = options.clone();
     app.fixture.admin.execute_unprepared("INSERT INTO medications(id,household_id,location_id,name,dose_amount,dose_unit,created_at,updated_at) VALUES(80994,72001,(SELECT location_id FROM medications WHERE id=80001),'Synthetic direct option deletion',2,'tablet',now(),now()),(80995,72001,(SELECT location_id FROM medications WHERE id=80001),'Synthetic mode option deletion',2,'tablet',now(),now()); INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(81994,72001,73001,80994,2,'tablet',0,now(),now()),(81995,72001,73001,80995,2,'tablet',0,now(),now())").await.unwrap();
     for id in [80994, 80995] {
         let(status,body)=sync_operation(&app,&token,json!({"resource_type":"medication_dosage_option","action":"create","attributes":{"medication_id":id.to_string(),"amount":"2","unit":"tablet","frequency":"daily","default_max_daily_doses":3,"default_min_hours_between_doses":"4","default_dose_cycle":"daily"}})).await;
@@ -1660,7 +1791,7 @@ async fn sync_core_review_dosage_cascade_tombstones_preserve_current_scope() {
         .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78001")
         .await
         .unwrap();
-    let withdrawn: Value = app
+    let still_visible: Value = app
         .client
         .get(&endpoint)
         .bearer_auth(&token)
@@ -1680,10 +1811,20 @@ async fn sync_core_review_dosage_cascade_tombstones_preserve_current_scope() {
             .collect::<Vec<_>>()
     };
     let visible_ids = ids(&visible);
-    let withdrawn_ids = ids(&withdrawn);
+    let still_visible_ids = ids(&still_visible);
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001").await.unwrap();
+    let withdrawn = app
+        .client
+        .get(&endpoint)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let withdrawn_status = withdrawn.status().as_u16();
     app.close().await;
     assert_eq!(visible_ids, expected_options);
-    assert!(withdrawn_ids.is_empty());
+    assert_eq!(still_visible_ids, expected_options);
+    assert_eq!(withdrawn_status, 403);
     for row in visible["data"]["tombstones"].as_array().unwrap() {
         assert!(row["metadata"].get("sync_person_portable_ids").is_none());
         assert!(row["metadata"].get("sync_creator_membership_id").is_none());

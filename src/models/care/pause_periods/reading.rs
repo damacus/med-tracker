@@ -26,12 +26,7 @@ async fn names(
         .await?;
     let people: HashMap<i64, String> = person::Entity::find()
         .filter(
-            person::Column::Id.is_in(
-                members
-                    .iter()
-                    .filter_map(|row| row.person_id)
-                    .collect::<Vec<_>>(),
-            ),
+            person::Column::Id.is_in(members.iter().map(|row| row.person_id).collect::<Vec<_>>()),
         )
         .all(db)
         .await?
@@ -41,8 +36,9 @@ async fn names(
     Ok(members
         .into_iter()
         .filter_map(|row| {
-            row.person_id
-                .and_then(|id| people.get(&id).cloned())
+            people
+                .get(&row.person_id)
+                .cloned()
                 .map(|name| (row.id, name))
         })
         .collect())
@@ -119,14 +115,17 @@ pub async fn list(tenant: &TenantTransaction, page: Pagination) -> Result<Value,
     };
     let schedules = schedule::Entity::find()
         .in_tenant(tenant.scope().household_id)
-        .filter(schedule::Column::PersonId.in_subquery(access::granted_people(tenant.membership())))
+        .filter(
+            schedule::Column::PersonId
+                .in_subquery(access::participating_people(tenant.membership())),
+        )
         .all(tenant.transaction())
         .await?;
     let assignments = person_medication::Entity::find()
         .in_tenant(tenant.scope().household_id)
         .filter(
             person_medication::Column::PersonId
-                .in_subquery(access::granted_people(tenant.membership())),
+                .in_subquery(access::participating_people(tenant.membership())),
         )
         .all(tenant.transaction())
         .await?;

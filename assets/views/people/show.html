@@ -53,7 +53,7 @@
         <h2 class="card-title" id="person-actions-heading">{{ labels.people.actions.title }}</h2>
         <div class="flex flex-wrap gap-2">
           <a class="btn btn-ghost w-fit" href="/households/{{ slug }}/people/{{ person.id }}/health_events">{{ health_events_label }}</a>
-          {% if can_manage_carers %}<a class="btn btn-ghost w-fit" href="/households/{{ slug }}/people/{{ person.id }}/carer_relationships">{{ manage_carers_label }}</a>{% endif %}
+          {% if can_read_carers %}<a class="btn btn-ghost w-fit" href="/households/{{ slug }}/people/{{ person.id }}/carer_relationships">{{ manage_carers_label }}</a>{% endif %}
           <a class="btn btn-neutral w-fit" href="/households/{{ slug }}/people/{{ person.id }}/treatments">{% if can_manage %}{{ labels.people.show.browser.manage_treatments }}{% else %}{{ labels.people.show.browser.view_treatments }}{% endif %}</a>
           {% if can_manage %}<a class="btn btn-ghost w-fit" href="/households/{{ slug }}/people/{{ person.id }}/treatments/schedules/new">{{ labels.people.show.browser.add_schedule }}</a><a class="btn btn-ghost w-fit" href="/households/{{ slug }}/people/{{ person.id }}/treatments/assignments/new">{{ labels.people.show.browser.assign_medication }}</a>{% endif %}
           {% if can_manage_household %}<a class="btn btn-ghost w-fit" href="/households/{{ slug }}/admin/carer_relationships">{{ labels.people.show.browser.carer_relationships }}</a>{% endif %}

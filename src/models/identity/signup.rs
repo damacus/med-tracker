@@ -90,72 +90,22 @@ pub async fn create(
         .map_err(unavailable)?
         .map_err(unavailable)?;
     let transaction = browser::transaction(db).await.map_err(unavailable)?;
-    let invitation = if input.invitation_token.is_empty() {
-        if !policy::open(&transaction, settings).await? {
-            return Err(SignupError::RegistrationClosed);
-        }
-        None
-    } else {
-        Some(
-            invitations::signup_invitation(&transaction, &input.invitation_token)
-                .await
-                .map_err(operation_error)?,
-        )
+    let profile = AccountProfile {
+        email: input.email.clone(),
+        name: input.name.clone(),
+        date_of_birth: birth,
+        invitation_token: Some(input.invitation_token.clone()),
     };
-    let email = match &invitation {
-        Some(invitation) => invitation.email.clone(),
-        None => invitations::validated_email(&input.email).map_err(operation_error)?,
-    };
-    let preferences = initial_preferences(settings)?;
-    let account = transaction.query_one_raw(sql(
-        "INSERT INTO accounts(email,password_hash,status,preferences,name,created_at,updated_at) VALUES($1,$2,1,$3,$4,now(),now()) ON CONFLICT(email) WHERE status = ANY(ARRAY[1,2]) DO NOTHING RETURNING id",
-        [email.clone().into(),hash.clone().into(),preferences.into(),input.name.trim().to_owned().into()])).await.map_err(unavailable)?
-        .ok_or_else(|| invalid("email", "is already registered"))?;
-    let account_id: i64 = account.try_get("", "id").map_err(unavailable)?;
-    transaction
-        .execute_raw(sql(
-            "SELECT set_config('med_tracker.current_account_id',$1,true)",
-            [account_id.to_string().into()],
-        ))
-        .await
-        .map_err(unavailable)?;
-    let household_id = match &invitation {
-        Some(invitation) => invitation.household_id,
-        None => bootstrap::household(&transaction, account_id, &input.name, settings).await?,
-    };
-    let person = transaction.query_one_raw(sql(
-        "INSERT INTO people(account_id,household_id,name,email,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES($1,$2,$3,$4,$5,0,true,now(),now()) RETURNING id",
-        [account_id.into(),household_id.into(),input.name.trim().to_owned().into(),email.clone().into(),birth.into()])).await.map_err(unavailable)?.ok_or(SignupError::Unavailable)?;
-    let person_id: i64 = person.try_get("", "id").map_err(unavailable)?;
-    let user = transaction.query_one_raw(sql(
-        "INSERT INTO users(person_id,email_address,password_digest,active,created_at,updated_at) VALUES($1,$2,$3,true,now(),now()) RETURNING id",
-        [person_id.into(),email.clone().into(),hash.into()])).await.map_err(unavailable)?.ok_or(SignupError::Unavailable)?;
-    let user_id = user.try_get("", "id").map_err(unavailable)?;
-    let context = SignupInvitationContext {
-        account_id,
-        person_id,
-        user_id,
-        email: email.clone(),
-    };
-    if invitation.is_some() {
-        invitations::accept_signup(
-            &transaction,
-            &context,
-            &input.invitation_token,
-            request_id.unwrap_or(""),
-        )
-        .await
-        .map_err(operation_error)?;
-    } else {
-        bootstrap::owner(
-            &transaction,
-            &context,
-            household_id,
-            &input.name,
-            request_id,
-        )
-        .await?;
-    }
+    let provisioned = provisioning::provision_with_password_in(
+        &transaction,
+        &profile,
+        Some(&hash),
+        request_id,
+        settings,
+    )
+    .await?;
+    let account_id = provisioned.account_id;
+    let email = provisioned.email;
     let key = tokens::random_key()?;
     transaction.execute_raw(sql("INSERT INTO account_verification_keys(account_id,key,created_at,updated_at) VALUES($1,$2,now(),now())", [account_id.into(),key.clone().into()])).await.map_err(unavailable)?;
     browser::record_auth_token(

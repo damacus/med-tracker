@@ -16,6 +16,21 @@ pub struct ApiClient {
     http: reqwest::Client,
 }
 
+fn optional_header(
+    request: reqwest::RequestBuilder,
+    header: (&str, Option<&str>),
+) -> Result<reqwest::RequestBuilder, ApiError> {
+    match header.1 {
+        Some(value) => {
+            let mut value = reqwest::header::HeaderValue::from_bytes(value.as_bytes())
+                .map_err(|_| ApiError::InvalidRequestHeader)?;
+            value.set_sensitive(true);
+            Ok(request.header(header.0, value))
+        }
+        None => Ok(request),
+    }
+}
+
 impl ApiClient {
     #[doc = "# Errors\nThe base URL is invalid or the HTTP client cannot be built."]
     pub fn new(base_url: impl AsRef<str>, bearer_token: Option<String>) -> Result<Self, ApiError> {
@@ -60,6 +75,24 @@ impl ApiClient {
         T: DeserializeOwned,
     {
         let envelope: DataEnvelope<T> = self.post_json(path, body).await?;
+        Ok(envelope.data)
+    }
+
+    pub(crate) async fn post_data_with_header<B, T>(
+        &self,
+        path: &str,
+        body: &B,
+        header: (&str, Option<&str>),
+    ) -> Result<T, ApiError>
+    where
+        B: Serialize + ?Sized,
+        T: DeserializeOwned,
+    {
+        let request = optional_header(
+            self.authorize(self.http.post(self.url(path)?).json(body)),
+            header,
+        )?;
+        let envelope: DataEnvelope<T> = self.send_json(request).await?;
         Ok(envelope.data)
     }
 
@@ -155,6 +188,50 @@ fn retry_after_header(response: &reqwest::Response) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn guardian_import_passphrase_header_is_sensitive() -> Result<(), Box<dyn std::error::Error>> {
+        let secret = "synthetic-sensitive-portable-password";
+        let request = optional_header(
+            reqwest::Client::new().post("http://localhost/"),
+            ("x-medtracker-portable-passphrase", Some(secret)),
+        )?
+        .build()?;
+        let sensitive = request
+            .headers()
+            .get("x-medtracker-portable-passphrase")
+            .is_some_and(reqwest::header::HeaderValue::is_sensitive);
+        let diagnostics_redacted = !format!("{request:?}").contains(secret);
+        assert!(
+            sensitive && diagnostics_redacted,
+            "Passphrase request safety: sensitive={sensitive}, diagnostics_redacted={diagnostics_redacted}"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn guardian_import_invalid_header_is_safe_without_network()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let server = wiremock::MockServer::start().await;
+        let client = ApiClient::new(server.uri(), None)?;
+        let result = client
+            .portable_import(
+                "72001",
+                serde_json::json!({"format":"synthetic"}),
+                Some("synthetic-sensitive-portable-password\r\ninvalid".to_owned()),
+                crate::models::PortableImportMode::Apply,
+            )
+            .await;
+        let error = result.err().ok_or("Invalid passphrase header must fail")?;
+        assert_eq!(error.to_string(), "invalid request header");
+        assert!(!format!("{error:?}").contains("synthetic-sensitive-portable-password"));
+        let requests = server
+            .received_requests()
+            .await
+            .ok_or("Expected captured requests")?;
+        assert!(requests.is_empty());
+        Ok(())
+    }
     use wiremock::matchers::{header, method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 

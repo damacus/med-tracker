@@ -132,7 +132,7 @@ pub(super) async fn mobile_token(fixture: &Fixture) -> String {
 }
 
 pub(super) async fn seed_credentials(fixture: &Fixture) {
-    fixture.admin.execute_unprepared("INSERT INTO accounts(id,email,password_hash,created_at,updated_at) VALUES(71002,'foreign-profile@example.test',crypt('password',gen_salt('bf',4)),now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,status,lifecycle_state,created_at,updated_at) VALUES(72004,71002,'Foreign profile household','foreign-profile','UTC','active','active',now(),now()); INSERT INTO people(id,household_id,account_id,name,person_type,has_capacity,created_at,updated_at) VALUES(73005,72004,71002,'Foreign profile member',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,account_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74004,72004,71002,73005,'owner','active',now(),now(),now())").await.unwrap();
+    fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73005,'Foreign profile member',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,password_hash,created_at,updated_at) VALUES(71002,73005,'foreign-profile@example.test',crypt('password',gen_salt('bf',4)),now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,status,lifecycle_state,created_at,updated_at) VALUES(72004,71002,'Foreign profile household','foreign-profile','UTC','active','active',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74004,72004,73005,'owner','active',now(),now(),now())").await.unwrap();
     fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"INSERT INTO api_sessions(id,account_id,household_membership_id,access_token_digest,refresh_token_digest,permissions_version,access_expires_at,refresh_expires_at,last_used_at,created_at,updated_at) VALUES(88031,71001,74001,$1,'profile-refresh',1,now()+interval '15 minutes',now()+interval '1 day',now(),now(),now())",[hex::encode(Sha256::digest(b"profile-session")).into()])).await.unwrap();
     fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"INSERT INTO api_app_tokens(id,account_id,household_membership_id,name,token_digest,permissions_version,expires_at,last_used_at,created_at,updated_at) VALUES(88032,71001,74001,'Profile app',$1,1,now()+interval '1 month',now(),now(),now())",[hex::encode(Sha256::digest(b"profile-app")).into()])).await.unwrap();
 }
@@ -460,10 +460,10 @@ async fn profile_permissions_and_membership_recheck_before_mutation() {
     let server = server(&boot);
     let before = state(&fixture).await;
     let body = json!({"profile":{"time_zone":"Europe/London"}});
-    let mut replies = Vec::new();
+    let mut self_replies = Vec::new();
     for method in [Method::PATCH, Method::PUT] {
         for bearer in ["profile-session", "profile-app", mobile.as_str()] {
-            replies.push((
+            self_replies.push((
                 method.as_str().to_lowercase(),
                 send(
                     &server,
@@ -477,25 +477,80 @@ async fn profile_permissions_and_membership_recheck_before_mutation() {
             ));
         }
     }
+    let after_self = state(&fixture).await;
+    let saved_version = fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT jsonb_build_object('item_type',item_type,'item_id',item_id,'event',event,'object',object::jsonb,'object_changes',object_changes::jsonb,'request_id',request_id) AS value FROM versions WHERE item_type IN ('Account','Person') ORDER BY id DESC LIMIT 1",
+        ))
+        .await
+        .unwrap()
+        .unwrap()
+        .try_get::<Value>("", "value")
+        .unwrap();
     fixture
         .admin
         .execute_unprepared("UPDATE household_memberships SET revoked_at=now() WHERE id=74001")
         .await
         .unwrap();
+    let before_revoked = state(&fixture).await;
+    let revoked_body = json!({"profile":{"time_zone":"UTC"}});
+    let mut revoked_replies = Vec::new();
     for method in [Method::PATCH, Method::PUT] {
-        replies.push((
+        revoked_replies.push((
             method.as_str().to_lowercase(),
-            send(&server, method, 72001, Some(&mobile), Some(&body), None).await,
+            send(
+                &server,
+                method,
+                72001,
+                Some(&mobile),
+                Some(&revoked_body),
+                None,
+            )
+            .await,
         ));
     }
-    let after = state(&fixture).await;
+    let after_revoked = state(&fixture).await;
     drop(server);
     close(fixture, boot).await;
+    assert_eq!(self_replies.len(), 6);
+    for (method, response) in &self_replies {
+        assert_eq!(response.status, 200, "{method}: {}", response.body);
+        assert_wire(response);
+        assert_schema(method, response);
+        assert_eq!(response.body["data"]["account_id"], "71001");
+        assert_eq!(response.body["data"]["person_id"], "73001");
+        assert_eq!(response.body["data"]["time_zone"], "Europe/London");
+        assert_eq!(response.body["data"]["date_of_birth"], "1990-01-01");
+    }
+    let before_preferences: Value =
+        serde_json::from_str(before["preferences"].as_str().unwrap()).unwrap();
+    let mut expected_preferences = before_preferences.clone();
+    expected_preferences["time_zone"] = json!("Europe/London");
     let mut expected = before.clone();
+    expected["versions"] = json!(before["versions"].as_i64().unwrap() + 1);
     expected["audits"] = json!(before["audits"].as_i64().unwrap() + 6);
-    assert_eq!(expected, after);
-    for (method, response) in replies {
-        assert_eq!(response.status, 403, "{method}");
+    expected["preferences"] = expected_preferences.clone();
+    let mut actual = after_self.clone();
+    actual["preferences"] = serde_json::from_str(actual["preferences"].as_str().unwrap()).unwrap();
+    assert_eq!(expected, actual);
+    assert_eq!(
+        saved_version,
+        json!({
+            "item_type": "Account",
+            "item_id": 71001,
+            "event": "update",
+            "object": {"preferences": before_preferences.clone()},
+            "object_changes": {"preferences": [before_preferences, expected_preferences]},
+            "request_id": self_replies.first().unwrap().1.request_id,
+        })
+    );
+    assert_eq!(after_self, before_revoked);
+    assert_eq!(before_revoked, after_revoked);
+    assert_eq!(revoked_replies.len(), 2);
+    for (method, response) in revoked_replies {
+        assert_eq!(response.status, 403, "{method}: {}", response.body);
         assert_wire(&response);
         assert_schema(&method, &response);
         assert!(response.body.get("data").is_none());

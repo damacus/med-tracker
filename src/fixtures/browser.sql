@@ -1,5 +1,6 @@
-INSERT INTO public.accounts(id,email,status,password_hash,created_at,updated_at)
-VALUES(71002,'foreign@example.test',2,crypt('password',gen_salt('bf',4)),now(),now());
+INSERT INTO public.people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73005,'Synthetic foreign adult',0,true,now(),now());
+INSERT INTO public.accounts(id,person_id,email,status,password_hash,created_at,updated_at)
+VALUES(71002,73005,'foreign@example.test',2,crypt('password',gen_salt('bf',4)),now(),now());
 INSERT INTO public.identity_onboarding(account_id,recovery_saved_at)
 VALUES(71001,now()),(71002,now());
 INSERT INTO public.households(id,created_by_account_id,name,slug,timezone,created_at,updated_at)

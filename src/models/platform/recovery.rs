@@ -64,7 +64,7 @@ async fn usable_owner(
 ) -> Result<bool, OperationError> {
     exists(
         transaction,
-        "SELECT EXISTS(SELECT 1 FROM public.household_memberships m JOIN public.accounts a ON a.id=m.account_id JOIN public.people p ON p.id=m.person_id AND p.account_id=m.account_id JOIN public.users u ON u.person_id=p.id WHERE m.household_id=$1 AND m.role='owner' AND m.status='active' AND m.revoked_at IS NULL AND a.status=2 AND p.person_type=0 AND p.has_capacity AND u.active) AS present",
+        "SELECT EXISTS(SELECT 1 FROM public.household_memberships m WHERE m.household_id=$1 AND m.role='owner' AND med_tracker.recovery_member_eligible(m.id)) AS present",
         household_id,
     )
     .await
@@ -78,7 +78,7 @@ async fn eligible_members(
     let rows = transaction
         .query_all_raw(Statement::from_sql_and_values(
             DbBackend::Postgres,
-            "SELECT m.id AS id,p.name AS name,COALESCE(u.email_address,'') AS email FROM public.household_memberships m JOIN public.accounts a ON a.id=m.account_id JOIN public.people p ON p.id=m.person_id AND p.account_id=m.account_id JOIN public.users u ON u.person_id=p.id WHERE m.household_id=$1 AND m.account_id<>$2 AND m.role<>'owner' AND m.status='active' AND m.revoked_at IS NULL AND a.status=2 AND p.person_type=0 AND p.has_capacity AND u.active ORDER BY m.id",
+            "SELECT m.id AS id,COALESCE(a.name,'') AS name,a.email::text AS email FROM public.household_memberships m JOIN public.accounts a ON a.person_id=m.person_id WHERE m.household_id=$1 AND a.id<>$2 AND m.role<>'owner' AND med_tracker.recovery_member_eligible(m.id) ORDER BY m.id",
             [household_id.into(), actor_account_id.into()],
         ))
         .await?;
@@ -108,7 +108,7 @@ async fn eligible_target(
     let row = transaction
         .query_one_raw(Statement::from_sql_and_values(
             DbBackend::Postgres,
-            "SELECT m.account_id,m.household_id,m.role,m.status,m.revoked_at FROM public.household_memberships m WHERE m.id=$1",
+            "SELECT a.id AS account_id,m.household_id,m.role,m.status,m.revoked_at FROM public.household_memberships m JOIN public.accounts a ON a.person_id=m.person_id WHERE m.id=$1",
             [membership_id.into()],
         ))
         .await?
@@ -140,7 +140,7 @@ async fn eligible_target(
     let eligible = transaction
         .query_one_raw(Statement::from_sql_and_values(
             DbBackend::Postgres,
-            "SELECT EXISTS(SELECT 1 FROM public.household_memberships m JOIN public.accounts a ON a.id=m.account_id JOIN public.people p ON p.id=m.person_id AND p.account_id=m.account_id JOIN public.users u ON u.person_id=p.id WHERE m.id=$1 AND a.status=2 AND p.person_type=0 AND p.has_capacity AND u.active) AS present",
+            "SELECT med_tracker.recovery_member_eligible($1) AS present",
             [membership_id.into()],
         ))
         .await?

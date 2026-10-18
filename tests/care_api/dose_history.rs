@@ -52,7 +52,7 @@ async fn dose_history_preserves_pagination_filter_and_decimal_representation() {
 }
 
 #[tokio::test]
-async fn dose_history_checks_live_view_grants_expiry_and_invalid_filters() {
+async fn dose_history_keeps_member_view_after_grant_expiry_and_rejects_invalid_filters() {
     let app = Application::new().await;
     app.fixture.seed_foreign_household(99999).await;
     let token = app.token().await;
@@ -124,6 +124,20 @@ async fn dose_history_checks_live_view_grants_expiry_and_invalid_filters() {
         .unwrap();
     let expired_status = expired.status().as_u16();
     let expired_body = expired.json::<Value>().await.unwrap_or(Value::Null);
+    app.fixture
+        .admin
+        .execute_unprepared("UPDATE household_memberships SET revoked_at=now() WHERE id=74001")
+        .await
+        .unwrap();
+    let revoked_member = app
+        .client
+        .get(&endpoint)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap()
+        .status()
+        .as_u16();
     let after = app.fixture.effect().await;
     app.close().await;
     assert_eq!(created_status, 201);
@@ -133,7 +147,8 @@ async fn dose_history_checks_live_view_grants_expiry_and_invalid_filters() {
     );
     assert_eq!(visible_body["meta"]["total_count"], 1);
     assert_eq!(invalid, vec![422; 4]);
-    assert_eq!(expired_body["data"], json!([]));
+    assert_eq!(expired_body["data"], visible_body["data"]);
+    assert_eq!(revoked_member, 403);
     assert_eq!(after.0, 1);
     assert_eq!(after.1, "8.00");
 }
@@ -225,8 +240,9 @@ async fn medication_take_list_matches_documented_contract() {
     let scoped_status = scoped.status().as_u16();
     let scoped_body: Value = scoped.json().await.unwrap();
     assert_eq!(scoped_status, 200);
-    assert_eq!(scoped_body["meta"]["total_count"], 1);
-    assert_eq!(scoped_body["data"][0]["id"], 99990);
+    assert_eq!(scoped_body["meta"]["total_count"], 2);
+    assert_eq!(scoped_body["data"][0]["id"], 92014);
+    assert_eq!(scoped_body["data"][1]["id"], 99990);
 
     let foreign = app
         .client

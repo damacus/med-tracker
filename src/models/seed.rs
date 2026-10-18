@@ -24,11 +24,11 @@ macro_rules! fixture_entity {
     };
 }
 
-fixture_entity!(accounts, "accounts", { email: String, status: i32, });
+fixture_entity!(accounts, "accounts", { person_id: i64, email: String, status: i32, });
 fixture_entity!(households, "households", { created_by_account_id: i64, name: String, slug: String, timezone: String, });
-fixture_entity!(people, "people", { account_id: Option<i64>, household_id: i64, name: String, person_type: i32, has_capacity: bool, });
+fixture_entity!(people, "people", { name: String, person_type: i32, has_capacity: bool, });
 fixture_entity!(users, "users", { person_id: i64, email_address: String, });
-fixture_entity!(household_memberships, "household_memberships", { account_id: i64, household_id: i64, person_id: i64, role: String, joined_at: DateTime, });
+fixture_entity!(household_memberships, "household_memberships", { household_id: i64, person_id: i64, role: String, joined_at: DateTime, });
 fixture_entity!(person_access_grants, "person_access_grants", { household_id: i64, household_membership_id: i64, person_id: i64, access_level: String, relationship_type: String, });
 fixture_entity!(locations, "locations", { household_id: i64, name: String, });
 fixture_entity!(medications, "medications", { household_id: i64, location_id: i64, name: String, current_supply: Decimal, dose_amount: f64, dose_unit: String, });
@@ -89,9 +89,9 @@ pub async fn seed(ctx: &AppContext, base: &Path) -> Result<()> {
             .await?;
         };
     }
+    load!(people);
     load!(accounts);
     load!(households);
-    load!(people);
     load!(users);
     load!(household_memberships);
     load!(person_access_grants);

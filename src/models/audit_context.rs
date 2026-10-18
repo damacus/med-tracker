@@ -71,9 +71,8 @@ mod tests {
             },
             membership::Model {
                 id: 74,
-                account_id: 71,
                 household_id: 72,
-                person_id: Some(73),
+                person_id: 73,
                 permissions_version: 5,
                 role: "administrator".into(),
                 status: "active".into(),

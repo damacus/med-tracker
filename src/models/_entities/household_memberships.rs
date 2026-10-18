@@ -11,14 +11,16 @@ pub struct Model {
         unique_key = "index_household_memberships_on_id_and_household_id"
     )]
     pub id: i64,
-    #[sea_orm(unique_key = "index_household_memberships_on_household_id_and_account_id")]
-    pub account_id: i64,
     pub created_at: DateTime,
-    #[sea_orm(unique_key = "index_household_memberships_on_id_and_household_id")]
+    #[sea_orm(
+        unique_key = "index_household_memberships_on_id_and_household_id",
+        unique_key = "index_household_memberships_on_household_id_and_person_id"
+    )]
     pub household_id: i64,
     pub joined_at: DateTime,
     pub permissions_version: i32,
-    pub person_id: Option<i64>,
+    #[sea_orm(unique_key = "index_household_memberships_on_household_id_and_person_id")]
+    pub person_id: i64,
     pub revoked_at: Option<DateTime>,
     pub role: String,
     pub status: String,
@@ -27,14 +29,20 @@ pub struct Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(
-        belongs_to = "super::accounts::Entity",
-        from = "Column::AccountId",
-        to = "super::accounts::Column::Id",
-        on_update = "NoAction",
-        on_delete = "NoAction"
-    )]
-    Accounts,
+    #[sea_orm(has_many = "super::schedules::Entity")]
+    Schedules,
+    #[sea_orm(has_many = "super::person_medications::Entity")]
+    PersonMedications,
+    #[sea_orm(has_many = "super::notification_preferences::Entity")]
+    NotificationPreferences,
+    #[sea_orm(has_many = "super::notification_events::Entity")]
+    NotificationEvents,
+    #[sea_orm(has_many = "super::location_memberships::Entity")]
+    LocationMemberships,
+    #[sea_orm(has_many = "super::household_invitation_grants::Entity")]
+    HouseholdInvitationGrants,
+    #[sea_orm(has_many = "super::health_events::Entity")]
+    HealthEvents,
     #[sea_orm(has_many = "super::api_app_tokens::Entity")]
     ApiAppTokens,
     #[sea_orm(has_many = "super::api_change_events::Entity")]
@@ -57,26 +65,12 @@ pub enum Relation {
     OauthGrants,
     #[sea_orm(
         belongs_to = "super::people::Entity",
-        from = "(Column::PersonId, Column::HouseholdId)",
-        to = "(super::people::Column::HouseholdId, super::people::Column::Id, super::people::Column::HouseholdId, super::people::Column::Id)",
-        on_update = "NoAction",
-        on_delete = "NoAction"
-    )]
-    People2,
-    #[sea_orm(
-        belongs_to = "super::people::Entity",
         from = "Column::PersonId",
         to = "super::people::Column::Id",
         on_update = "NoAction",
         on_delete = "NoAction"
     )]
-    People1,
-}
-
-impl Related<super::accounts::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Accounts.def()
-    }
+    People,
 }
 
 impl Related<super::api_app_tokens::Entity> for Entity {
@@ -118,6 +112,54 @@ impl Related<super::households::Entity> for Entity {
 impl Related<super::oauth_grants::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::OauthGrants.def()
+    }
+}
+
+impl Related<super::people::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::People.def()
+    }
+}
+
+impl Related<super::health_events::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::HealthEvents.def()
+    }
+}
+
+impl Related<super::household_invitation_grants::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::HouseholdInvitationGrants.def()
+    }
+}
+
+impl Related<super::location_memberships::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::LocationMemberships.def()
+    }
+}
+
+impl Related<super::notification_events::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::NotificationEvents.def()
+    }
+}
+
+impl Related<super::notification_preferences::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::NotificationPreferences.def()
+    }
+}
+
+impl Related<super::person_medications::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::PersonMedications.def()
+    }
+}
+
+impl Related<super::schedules::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Schedules.def()
     }
 }
 
