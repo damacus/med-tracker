@@ -107,6 +107,68 @@ fn field<'a>(draft: &'a [(String, String)], name: &str) -> &'a str {
         .map_or("", |(_, value)| value)
 }
 
+pub(crate) fn supported_language(value: &str) -> Option<&'static str> {
+    match value {
+        "en" => Some("en"),
+        "cy" => Some("cy"),
+        "ga" => Some("ga"),
+        "pt" => Some("pt"),
+        "es" => Some("es"),
+        _ => None,
+    }
+}
+
+pub(crate) fn fallback_language(headers: &axum::http::HeaderMap) -> &'static str {
+    crate::models::care::report_pdf::locale(
+        headers
+            .get(header::ACCEPT_LANGUAGE)
+            .and_then(|value| value.to_str().ok())
+            .unwrap_or("en"),
+    )
+}
+
+pub(crate) fn invalid_link(view: &TeraView, language: &str, status: StatusCode) -> Response {
+    let Ok(labels) = crate::models::care::report_pdf::translations(language) else {
+        return unavailable();
+    };
+    let mut data = crate::controllers::medications::rendering::appearance_context();
+    data["lang"] = json!(language);
+    data["labels"] = labels.clone();
+    data["invitation_labels"] = labels["admin"]["invitations"]["acceptance"].clone();
+    data["title"] = data["invitation_labels"]["invalid_title"].clone();
+    match format::render().view(view, "invitations/error.html", data) {
+        Ok(response) => (status, [(header::CACHE_CONTROL, "no-store")], response).into_response(),
+        Err(_) => unavailable(),
+    }
+}
+
+pub(crate) fn acceptance_data(
+    language: &'static str,
+    explicit_language: bool,
+    invitation_token: &str,
+    details: Value,
+    signed_in: bool,
+    authenticity_token: &str,
+) -> Option<Value> {
+    let Ok(labels) = crate::models::care::report_pdf::translations(language) else {
+        return None;
+    };
+    let mut data = crate::controllers::medications::rendering::appearance_context();
+    data["title"] = labels["admin"]["invitations"]["acceptance"]["title"].clone();
+    data["lang"] = json!(language);
+    data["labels"] = labels.clone();
+    data["invitation_labels"] = labels["admin"]["invitations"]["acceptance"].clone();
+    data["role_label"] = labels["admin"]["labels"]["membership_roles"]
+        [details["membership_role"].as_str().unwrap_or("member")]
+    .clone();
+    data["invitation"] = details;
+    data["invitation_token"] = json!(invitation_token);
+    data["explicit_language"] = json!(explicit_language);
+    data["signed_in"] = json!(signed_in);
+    data["authenticity_token"] = json!(authenticity_token);
+    Some(data)
+}
+
 struct IndexQuery {
     language: &'static str,
     explicit_language: bool,

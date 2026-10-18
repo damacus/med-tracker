@@ -220,6 +220,24 @@ for (const factor of ['password', 'OTP']) {
         await expect(invited.locator('html')).toHaveAttribute('lang', 'cy');
         await openCareSection(invited, 'Pobl', 'Agor y ddewislen');
         await expect(invited.getByRole('link', { name: 'Synthetic minor', exact: true })).toBeVisible();
+        await invited.goto('/households/choose?switch');
+        await expect(invited.getByRole('heading', { name: 'Choose a household', exact: true })).toBeVisible();
+        const choices = invited.locator('form[action="/households/select"]');
+        await expect(choices).toHaveCount(2);
+        await choices.filter({ has: invited.locator('input[name="household_id"][value="72002"]') }).getByRole('button').click();
+        const previousDashboard = invited.url();
+        expect(new URL(previousDashboard).pathname).not.toBe('/households/persistence-fixture/dashboard');
+        await invited.goto('/');
+        await expect(invited).toHaveURL(previousDashboard);
+        await invited.goto('/households/choose?switch');
+        await invited.getByRole('button', { name: 'Open Synthetic household', exact: true }).focus();
+        await expect(invited.getByRole('button', { name: 'Open Synthetic household', exact: true })).toBeFocused();
+        await invited.screenshot({ path: info.outputPath(`loco-invitation-switch-${factor}-${info.project.name}.png`), fullPage: true });
+        await invited.getByRole('button', { name: 'Open Synthetic household', exact: true }).press('Enter');
+        await expect(invited).toHaveURL(/\/households\/persistence-fixture\/dashboard$/);
+        await invited.reload();
+        await expect(invited).toHaveURL(/\/households\/persistence-fixture\/dashboard$/);
+        expect(await careFixture.invitationAcceptanceProbe()).toMatchObject(accepted);
       } finally {
         await guest.close();
       }

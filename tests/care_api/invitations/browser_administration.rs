@@ -568,6 +568,343 @@ async fn acceptance_effect_counts(app: &Application) -> Result<Vec<i64>, DbErr> 
         .collect()
 }
 
+async fn signup_effect_counts(app: &Application, email: &str) -> Result<Vec<i64>, DbErr> {
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            "SELECT (SELECT count(*) FROM accounts WHERE email=$1) AS accounts,(SELECT count(*) FROM people p JOIN accounts a ON a.person_id=p.id WHERE a.email=$1) AS people,(SELECT count(*) FROM household_memberships m JOIN people p ON p.id=m.person_id JOIN accounts a ON a.person_id=p.id WHERE a.email=$1) AS memberships,(SELECT count(*) FROM pg_loco_queue q WHERE q.task_data->>'to'=$1) AS jobs,(SELECT count(*) FROM household_invitations WHERE id=87003 AND accepted_at IS NOT NULL) AS accepted",
+            [email.into()],
+        ))
+        .await?
+        .ok_or_else(|| DbErr::Custom("missing invited-signup state".into()))?;
+    ["accounts", "people", "memberships", "jobs", "accepted"]
+        .iter()
+        .map(|field| row.try_get::<i64>("", field))
+        .collect()
+}
+
+#[tokio::test]
+async fn invitation_signup_invalid_draft_rerenders_localized_form_without_effects()
+-> Result<(), Box<dyn Error>> {
+    use sha2::{Digest, Sha256};
+    let app = Application::new().await;
+    let result = async {
+        super::seed_acceptance(&app).await;
+        app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"INSERT INTO household_invitations(id,household_id,email,membership_role,token_digest,invited_by_membership_id,expires_at,created_at,updated_at) VALUES(87003,72002,'invited-signup@example.test','administrator',$1,74002,now()+interval '7 days',now(),now())",[hex::encode(Sha256::digest("synthetic-signup-invitation".as_bytes())).into()])).await?;
+        let (cookie, preview) = super::super::platform::form_page(
+            &app,
+            "",
+            "/invitations/accept?token=synthetic-signup-invitation&lang=es",
+        )
+        .await;
+        assert!(
+            preview.contains("name=\"lang\" value=\"es\""),
+            "invited signup form must carry the explicit language"
+        );
+        let csrf = super::super::platform::hidden_field(&preview, "authenticity_token");
+        let before = signup_effect_counts(&app, "invited-signup@example.test").await?;
+        assert_eq!(before, vec![0, 0, 0, 0, 0]);
+        let form = [
+            ("authenticity_token", csrf.as_str()),
+            ("credential", "password"),
+            ("invitation_token", "synthetic-signup-invitation"),
+            ("lang", "es"),
+            ("name", ""),
+            ("date_of_birth", "1992-05-18"),
+            ("email", "invited-signup@example.test"),
+            ("password", "short"),
+            ("password-confirm", "short"),
+        ];
+        let invalid = super::super::platform::post_form(&app, &cookie, "/create-account", &form).await;
+        assert_eq!(invalid.status(), reqwest::StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(
+            invalid
+                .headers()
+                .get("cache-control")
+                .and_then(|value| value.to_str().ok()),
+            Some("no-store")
+        );
+        let invalid = invalid.text().await?;
+        assert!(invalid.contains("<html lang=\"es\""), "locale: {invalid}");
+        assert!(
+            invalid.contains("Synthetic invited household"),
+            "invitation context must render: {invalid}"
+        );
+        let document = scraper::Html::parse_document(&invalid);
+        for (selector, reason) in [
+            ("#name[aria-invalid=\"true\"]", "invalid name flag"),
+            ("#name-error", "name error description"),
+            ("form[action=\"/create-account\"] input[name=\"invitation_token\"][value=\"synthetic-signup-invitation\"]", "invitation token draft"),
+            ("form[action=\"/create-account\"] input[name=\"lang\"][value=\"es\"]", "language draft"),
+            ("form[action=\"/create-account\"] input[name=\"authenticity_token\"]", "fresh csrf token"),
+        ] {
+            let selector = scraper::Selector::parse(selector)
+                .map_err(|_| io::Error::other("invalid invalid-signup selector"))?;
+            assert!(
+                document.select(&selector).next().is_some(),
+                "missing {reason}"
+            );
+        }
+        assert!(invalid.contains("must be present"), "field errors shown");
+        assert!(invalid.contains("value=\"1992-05-18\""), "draft date preserved");
+        assert!(
+            !invalid.contains("value=\"short\""),
+            "password is never preserved"
+        );
+        assert_eq!(
+            signup_effect_counts(&app, "invited-signup@example.test").await?,
+            before,
+            "invalid invited signup must not create account, person, membership, outbox or acceptance effects"
+        );
+        let mut corrected = form;
+        corrected[4].1 = "Synthetic invited signup";
+        corrected[7].1 = "Synthetic-password-12!";
+        corrected[8].1 = "Synthetic-password-12!";
+        let created =
+            super::super::platform::post_form(&app, &cookie, "/create-account", &corrected).await;
+        assert_eq!(created.status(), reqwest::StatusCode::OK);
+        assert_eq!(
+            signup_effect_counts(&app, "invited-signup@example.test").await?,
+            vec![1, 1, 1, 1, 1],
+            "corrected retry provisions the invited account once"
+        );
+        Ok::<_, Box<dyn Error>>(())
+    }
+    .await;
+    app.close().await;
+    result
+}
+
+#[tokio::test]
+async fn invitation_signup_dead_or_unsupported_link_recovers_in_the_selected_locale()
+-> Result<(), Box<dyn Error>> {
+    use sha2::{Digest, Sha256};
+    let app = Application::new().await;
+    let result = async {
+        super::seed_acceptance(&app).await;
+        app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"INSERT INTO household_invitations(id,household_id,email,membership_role,token_digest,invited_by_membership_id,expires_at,created_at,updated_at) VALUES(87003,72002,'invited-signup@example.test','member',$1,74002,now()+interval '7 days',now(),now())",[hex::encode(Sha256::digest("synthetic-signup-invitation".as_bytes())).into()])).await?;
+        let (cookie, preview) = super::super::platform::form_page(
+            &app,
+            "",
+            "/invitations/accept?token=synthetic-signup-invitation&lang=es",
+        )
+        .await;
+        let csrf = super::super::platform::hidden_field(&preview, "authenticity_token");
+        let mut form = vec![
+            ("authenticity_token", csrf.clone()),
+            ("credential", "password".to_owned()),
+            ("invitation_token", "synthetic-signup-invitation".to_owned()),
+            ("lang", "es".to_owned()),
+            ("name", "Synthetic invited signup".to_owned()),
+            ("date_of_birth", "1992-05-18".to_owned()),
+            ("email", "invited-signup@example.test".to_owned()),
+            ("password", "short".to_owned()),
+            ("password-confirm", "short".to_owned()),
+        ];
+        form[3].1 = "xx".to_owned();
+        let public = app.context.config.server.full_url();
+        let public_url = url::Url::parse(&public).unwrap();
+        let authority = match public_url.port() {
+            Some(port) => format!("{}:{port}", public_url.host_str().unwrap()),
+            None => public_url.host_str().unwrap().to_owned(),
+        };
+        let unsupported = app
+            .client
+            .post(format!("{}/create-account", app.origin))
+            .header("cookie", &cookie)
+            .header("host", authority)
+            .header("origin", public.trim_end_matches('/'))
+            .header("accept-language", "es")
+            .header("content-type", "application/x-www-form-urlencoded")
+            .body(
+                serde_urlencoded::to_string(
+                    form.iter().map(|(k, v)| (*k, v.as_str())).collect::<Vec<_>>(),
+                )
+                .unwrap(),
+            )
+            .send()
+            .await?;
+        assert_eq!(
+            unsupported.status(),
+            reqwest::StatusCode::UNPROCESSABLE_ENTITY
+        );
+        let unsupported = unsupported.text().await?;
+        assert!(
+            unsupported.contains("<html lang=\"es\""),
+            "fallback Accept-Language locale: {unsupported}"
+        );
+        assert!(unsupported.contains("Enlace de invitación no disponible"));
+        form[3].1 = "es".to_owned();
+        app.fixture
+            .admin
+            .execute_unprepared(
+                "UPDATE household_invitations SET expires_at=now()-interval '1 second' WHERE id=87003",
+            )
+            .await?;
+        let expired = super::super::platform::post_form(
+            &app,
+            &cookie,
+            "/create-account",
+            &form.iter().map(|(k, v)| (*k, v.as_str())).collect::<Vec<_>>(),
+        )
+        .await;
+        assert_eq!(expired.status(), reqwest::StatusCode::NOT_FOUND);
+        let expired = expired.text().await?;
+        assert!(expired.contains("<html lang=\"es\""));
+        assert!(expired.contains("Enlace de invitación no disponible"));
+        assert_eq!(
+            signup_effect_counts(&app, "invited-signup@example.test").await?,
+            vec![0, 0, 0, 0, 0],
+            "dead or invalid links never create effects"
+        );
+        Ok::<_, Box<dyn Error>>(())
+    }
+    .await;
+    app.close().await;
+    result
+}
+
+#[tokio::test]
+async fn invitation_acceptance_recovery_chooser_switches_to_the_joined_household()
+-> Result<(), Box<dyn Error>> {
+    let app = Application::new().await;
+    let result = async {
+        super::seed_acceptance(&app).await;
+        app.fixture.seed_foreign_household(72009).await;
+        app.fixture.admin.execute_unprepared("INSERT INTO households(id,created_by_account_id,name,slug,timezone,status,lifecycle_state,created_at,updated_at) VALUES(72010,71999,'Revoked switch household','revoked-switch-72010','UTC','active','active',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,revoked_at,joined_at,created_at,updated_at) VALUES(74010,72010,73001,'member','revoked',now(),now()-interval '1 day',now(),now())").await?;
+        let cookie = select_first_household(&app).await?;
+        let (cookie, preview) = super::super::platform::form_page(
+            &app,
+            &cookie,
+            "/invitations/accept?token=synthetic-account-invitation&lang=es",
+        )
+        .await;
+        let csrf = super::super::platform::hidden_field(&preview, "authenticity_token");
+        app.fixture.admin.execute_unprepared("CREATE FUNCTION reject_c4_recovery_switch() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.active_household_id=72002 THEN RAISE EXCEPTION 'synthetic session selection failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_c4_recovery_switch BEFORE UPDATE OF active_household_id ON identity_sessions FOR EACH ROW EXECUTE FUNCTION reject_c4_recovery_switch()").await?;
+        let failed = super::super::platform::post_form(
+            &app,
+            &cookie,
+            "/invitations/accept",
+            &[
+                ("token", "synthetic-account-invitation"),
+                ("lang", "es"),
+                ("authenticity_token", &csrf),
+            ],
+        )
+        .await;
+        assert!(
+            !failed.status().is_success(),
+            "selection must fail after join"
+        );
+        let recovery = failed.text().await?;
+        assert!(
+            recovery.contains("Te has unido al hogar"),
+            "honest translated recovery"
+        );
+        assert!(
+            recovery.contains("action=\"/invitations/accept\""),
+            "retry form remains available"
+        );
+        let committed = acceptance_effect_counts(&app).await?;
+        assert_eq!(committed.first(), Some(&1), "committed membership");
+        let document = scraper::Html::parse_document(&recovery);
+        let chooser_link = scraper::Selector::parse("a[href^=\"/households/choose\"]")
+            .map_err(|_| io::Error::other("invalid chooser link selector"))?;
+        let chooser_href = document
+            .select(&chooser_link)
+            .next()
+            .and_then(|link| link.value().attr("href"))
+            .ok_or_else(|| io::Error::other("recovery chooser link missing"))?
+            .to_owned();
+        assert_eq!(
+            chooser_href, "/households/choose?switch",
+            "recovery must link to the explicit chooser mode"
+        );
+        let bounced = app
+            .client
+            .get(format!("{}/households/choose", app.origin))
+            .header("cookie", &cookie)
+            .send()
+            .await?;
+        assert_eq!(
+            bounced.url().path(),
+            "/households/persistence-fixture/dashboard",
+            "plain chooser still forwards to the active household dashboard"
+        );
+        let (cookie, chooser) =
+            super::super::platform::form_page(&app, &cookie, &chooser_href).await;
+        assert!(
+            chooser.contains("Synthetic invited household")
+                && chooser.contains("action=\"/households/select\""),
+            "chooser lists the newly joined household: {chooser}"
+        );
+        let chooser_csrf = super::super::platform::hidden_field(&chooser, "authenticity_token");
+        for denied_id in ["72009", "72010", "99999"] {
+            let denied = super::super::platform::post_form(
+                &app,
+                &cookie,
+                "/households/select",
+                &[
+                    ("household_id", denied_id),
+                    ("authenticity_token", &chooser_csrf),
+                ],
+            )
+            .await;
+            assert!(
+                denied.status().is_client_error(),
+                "foreign or revoked household {denied_id}: {}",
+                denied.status()
+            );
+        }
+        let still_old = app
+            .client
+            .get(format!("{}/", app.origin))
+            .header("cookie", &cookie)
+            .send()
+            .await?;
+        assert_eq!(
+            still_old.url().path(),
+            "/households/persistence-fixture/dashboard",
+            "denied selections never move the active household"
+        );
+        app.fixture.admin.execute_unprepared("DROP TRIGGER reject_c4_recovery_switch ON identity_sessions; DROP FUNCTION reject_c4_recovery_switch()").await?;
+        let selected = super::super::platform::post_form(
+            &app,
+            &cookie,
+            "/households/select",
+            &[("household_id", "72002"), ("authenticity_token", &chooser_csrf)],
+        )
+        .await;
+        assert_eq!(selected.status(), reqwest::StatusCode::OK);
+        assert_eq!(
+            selected.url().path(),
+            "/households/synthetic-invited-household/dashboard"
+        );
+        let refreshed = app
+            .client
+            .get(format!("{}/", app.origin))
+            .header("cookie", &cookie)
+            .send()
+            .await?;
+        assert_eq!(
+            refreshed.url().path(),
+            "/households/synthetic-invited-household/dashboard",
+            "refresh follows the newly selected household"
+        );
+        assert_eq!(
+            acceptance_effect_counts(&app).await?,
+            committed,
+            "chooser fallback must not repeat acceptance effects"
+        );
+        Ok::<_, Box<dyn Error>>(())
+    }
+    .await;
+    app.close().await;
+    result
+}
+
 #[tokio::test]
 async fn invitation_acceptance_selection_failure_preserves_join_and_recovers()
 -> Result<(), Box<dyn Error>> {

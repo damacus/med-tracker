@@ -107,6 +107,30 @@
       "sha256": "4544a805c4c7ac68a7385dfcce1a42afbe9bee18ef867d454cdd309174d514d6",
       "sourceSha256": "bcc1bca8f0fb3f898b948dc0dcdb9ad6021797a5b1f431b4e1f35fce77a918d9",
       "testRun": "browser-86796-dialog4"
+    },
+    {
+      "file": "loco-invitation-invalid-es-desktop.png",
+      "sha256": "a6f1bb61868e28b425e3652fe732a8abe6944880c519ad6b7f80dc7399ec4873",
+      "sourceSha256": "6d1360f905049eacfc2b123de5dd16fdc71b3ecf0f789ee647cfc654f2cc8430",
+      "testRun": "controller-signup-browser-12"
+    },
+    {
+      "file": "loco-invitation-invalid-es-mobile.png",
+      "sha256": "80de84733fd1a774bb7fc4f530cfe22b8ac729ab3d3a84bb88f02ec5b2f06428",
+      "sourceSha256": "6d1360f905049eacfc2b123de5dd16fdc71b3ecf0f789ee647cfc654f2cc8430",
+      "testRun": "controller-signup-browser-12"
+    },
+    {
+      "file": "loco-invitation-switch-password-desktop.png",
+      "sha256": "bde913a54bd6a6a2dcb00bfef3ba2a36bf0ca3a3332db500df2e791fbed9254b",
+      "sourceSha256": "6d1360f905049eacfc2b123de5dd16fdc71b3ecf0f789ee647cfc654f2cc8430",
+      "testRun": "controller-manager-browser-12"
+    },
+    {
+      "file": "loco-invitation-switch-password-mobile.png",
+      "sha256": "bc6637a8ffc6fd40b27af1ffd0c29236a83bba9563b07419fb097de7398718eb",
+      "sourceSha256": "6d1360f905049eacfc2b123de5dd16fdc71b3ecf0f789ee647cfc654f2cc8430",
+      "testRun": "controller-manager-browser-12"
     }
   ]
 }

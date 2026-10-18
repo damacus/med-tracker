@@ -123,8 +123,20 @@ hashes and historical source identities in
 `docs/screenshots/invitations-20261018-manifest.json`. The existing review site
 and its database were untouched.
 
-Three reviewed browser-test corrections for overview counts, report account
-sessions and treatment navigation are aligned in the current C4 candidate but
-have not been rerun there. The final C4 source still needs focused browser and
-full maintained Task CI on the accepted prerequisite. No C4 pull request,
-hosted acceptance, merge or deployment is claimed.
+The published C4 head `fef43808` is PR #2785. Its original final locked Task CI
+passed 878 API, 123 library and 786 browser tests, and its hosted CI passed.
+Those results include the earlier overview, report-session and treatment
+navigation test corrections. Historical captures above retain their original
+source identities.
+
+Review corrections reuse the invitation presentation context in the mounted
+`identity_onboarding` signup handler; `signup::routes()` is not mounted. Invalid
+invited signup preserves its language, role, non-secret draft and field errors.
+The recovery link opens an explicit household chooser even while another
+household is active, retaining the existing selection permission and CSRF checks.
+Focused verification passed 55 invitation request tests and 24 desktop/phone
+browser cases. Four new captures are recorded separately in the screenshot
+manifest on source `6d1360f905049eacfc2b123de5dd16fdc71b3ecf0f789ee647cfc654f2cc8430`.
+Merge requires full Task CI and fresh hosted checks on the repaired source;
+their final results are recorded in the PR review replies. No deployment
+is claimed. Carer reminders remain paused during this repair.

@@ -2,7 +2,7 @@ use crate::models::identity::{browser, resource::AuthenticationError};
 use crate::models::ids::HouseholdId;
 use axum::{
     Extension,
-    extract::{Form as AxumForm, FromRequestParts},
+    extract::{Form as AxumForm, FromRequestParts, Query},
     http::{StatusCode, header},
     response::IntoResponse,
 };
@@ -41,11 +41,18 @@ pub async fn index(
     render_home(view, false, Vec::new(), auth_notice, token.ok())
 }
 
+#[derive(serde::Deserialize)]
+pub struct Choose {
+    #[serde(default)]
+    switch: Option<String>,
+}
+
 pub async fn choose(
     State(ctx): State<AppContext>,
     session: Session<SessionPgPool>,
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
+    Query(query): Query<Choose>,
 ) -> Response {
     let principal =
         match browser::authenticate(&ctx.db, &session, ctx.config.settings.as_ref()).await {
@@ -53,12 +60,14 @@ pub async fn choose(
             Err(AuthenticationError::Unauthenticated) => return redirect("/login"),
             Err(error) => return authentication_error(error),
         };
-    match principal.active_household(&ctx.db).await {
-        Ok(Some(household)) => {
-            return redirect(&format!("/households/{}/dashboard", household.slug));
+    if query.switch.is_none() {
+        match principal.active_household(&ctx.db).await {
+            Ok(Some(household)) => {
+                return redirect(&format!("/households/{}/dashboard", household.slug));
+            }
+            Ok(None) => {}
+            Err(error) => return authentication_error(error),
         }
-        Ok(None) => {}
-        Err(error) => return authentication_error(error),
     }
     let households = match principal.households(&ctx.db).await {
         Ok(households) => households,

@@ -9,7 +9,7 @@
     {% if explicit_language %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}
     <button class="btn btn-neutral" type="submit">{{ invitation_labels.retry }}</button>
   </form>
-  <a class="link" href="/households/choose">{{ invitation_labels.choose_household }}</a>
+  <a class="link" href="/households/choose?switch">{{ invitation_labels.choose_household }}</a>
   <a class="link" href="/">{{ invitation_labels.back }}</a>
 </div></section>
 {% endblock content %}

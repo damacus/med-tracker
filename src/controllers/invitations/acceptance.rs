@@ -72,22 +72,16 @@ pub(super) async fn preview(
             OperationError::Unavailable,
         );
     };
-    let Ok(labels) = crate::models::care::report_pdf::translations(invitation.language) else {
+    let Some(data) = acceptance_data(
+        invitation.language,
+        invitation.explicit_language,
+        &invitation.token,
+        details,
+        signed_in,
+        &authenticity_token,
+    ) else {
         return unavailable();
     };
-    let mut data = crate::controllers::medications::rendering::appearance_context();
-    data["title"] = labels["admin"]["invitations"]["acceptance"]["title"].clone();
-    data["lang"] = json!(invitation.language);
-    data["labels"] = labels.clone();
-    data["invitation_labels"] = labels["admin"]["invitations"]["acceptance"].clone();
-    data["role_label"] = labels["admin"]["labels"]["membership_roles"]
-        [details["membership_role"].as_str().unwrap_or("member")]
-    .clone();
-    data["invitation"] = details;
-    data["invitation_token"] = json!(invitation.token);
-    data["explicit_language"] = json!(invitation.explicit_language);
-    data["signed_in"] = json!(signed_in);
-    data["authenticity_token"] = json!(authenticity_token);
     match format::render().view(&view, "invitations/accept.html", data) {
         Ok(response) => (token, [(header::CACHE_CONTROL, "no-store")], response).into_response(),
         Err(error) => error.into_response(),
@@ -198,21 +192,6 @@ pub(super) async fn accept(
         .into_response()
 }
 
-fn invalid_link(view: &TeraView, language: &str, status: StatusCode) -> Response {
-    let Ok(labels) = crate::models::care::report_pdf::translations(language) else {
-        return unavailable();
-    };
-    let mut data = crate::controllers::medications::rendering::appearance_context();
-    data["lang"] = json!(language);
-    data["labels"] = labels.clone();
-    data["invitation_labels"] = labels["admin"]["invitations"]["acceptance"].clone();
-    data["title"] = data["invitation_labels"]["invalid_title"].clone();
-    match format::render().view(view, "invitations/error.html", data) {
-        Ok(response) => (status, [(header::CACHE_CONTROL, "no-store")], response).into_response(),
-        Err(_) => unavailable(),
-    }
-}
-
 fn selection_recovery(
     view: &TeraView,
     token: &CsrfToken,
@@ -275,24 +254,4 @@ fn parse_query(
         language,
         explicit_language,
     })
-}
-
-fn supported_language(value: &str) -> Option<&'static str> {
-    match value {
-        "en" => Some("en"),
-        "cy" => Some("cy"),
-        "ga" => Some("ga"),
-        "pt" => Some("pt"),
-        "es" => Some("es"),
-        _ => None,
-    }
-}
-
-fn fallback_language(headers: &axum::http::HeaderMap) -> &'static str {
-    crate::models::care::report_pdf::locale(
-        headers
-            .get(header::ACCEPT_LANGUAGE)
-            .and_then(|value| value.to_str().ok())
-            .unwrap_or("en"),
-    )
 }

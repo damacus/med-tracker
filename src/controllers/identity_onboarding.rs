@@ -132,10 +132,24 @@ async fn create_form(
         }
         None
     };
+    let mut form = forms::Create::empty(query.invitation_token);
+    form.lang = query.lang;
+    if invitation.is_some()
+        && form
+            .lang
+            .as_deref()
+            .is_some_and(|language| super::invitations::supported_language(language).is_none())
+    {
+        return super::invitations::invalid_link(
+            &view,
+            super::invitations::fallback_language(&headers),
+            StatusCode::UNPROCESSABLE_ENTITY,
+        );
+    }
     rendering::account(
         &view,
         token,
-        &forms::Create::empty(query.invitation_token),
+        &form,
         invitation,
         &Default::default(),
         StatusCode::OK,
@@ -161,6 +175,19 @@ async fn create(
         Ok(BrowserIdentity::SignedOut) => {}
         Err(_) => return rendering::unavailable(),
     }
+    let invitation_language = match form.lang.as_deref() {
+        Some(language) => match super::invitations::supported_language(language) {
+            Some(language) => language,
+            None => {
+                return super::invitations::invalid_link(
+                    &view,
+                    super::invitations::fallback_language(&headers),
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                );
+            }
+        },
+        None => super::invitations::fallback_language(&headers),
+    };
     let invitation = if let Some(value) = form
         .invitation_token
         .as_deref()
@@ -168,7 +195,17 @@ async fn create(
     {
         match invitations::preview(&ctx.db, value).await {
             Ok(invitation) => Some(invitation),
-            Err(_) => return StatusCode::NOT_FOUND.into_response(),
+            Err(
+                crate::models::errors::OperationError::Validation { .. }
+                | crate::models::errors::OperationError::NotFound,
+            ) => {
+                return super::invitations::invalid_link(
+                    &view,
+                    invitation_language,
+                    StatusCode::NOT_FOUND,
+                );
+            }
+            Err(_) => return rendering::unavailable(),
         }
     } else {
         match signup::registration_open(&ctx.db, ctx.config.settings.as_ref()).await {
