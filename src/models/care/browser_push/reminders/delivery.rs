@@ -199,9 +199,9 @@ async fn presend_authority(
             .one(tenant.transaction())
             .await?;
         let owned = tenant.transaction().query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-            "SELECT status,attempt_count,claimed_at FROM notification_deliveries WHERE id=$1 AND household_id=$2 AND account_id=$3",
-            [id.into(),scope.household_id.into(),scope.actor.account_id.into()]
-        )).await?;
+            "SELECT 1 AS owned FROM notification_deliveries WHERE id=$1 AND household_id=$2 AND account_id=$3 AND status='sending' AND attempt_count=$4 AND claimed_at=$5",
+            [id.into(),scope.household_id.into(),scope.actor.account_id.into(),claim.attempt.into(),claim.claimed_at.into()]
+        )).await?.is_some();
         access::recheck(&tenant).await?;
         Ok::<_, OperationError>((subscription, owned))
     }
@@ -224,16 +224,6 @@ async fn presend_authority(
             return Err(error);
         }
     };
-    let owned = owned.is_some_and(|row| {
-        row.try_get::<String>("", "status")
-            .is_ok_and(|status| status == "sending")
-            && row
-                .try_get::<i32>("", "attempt_count")
-                .is_ok_and(|attempt| attempt == claim.attempt)
-            && row
-                .try_get::<Option<NaiveDateTime>>("", "claimed_at")
-                .is_ok_and(|claimed| claimed == Some(claim.claimed_at))
-    });
     if !owned {
         tenant.commit().await?;
         return Ok(Guard::Stale);

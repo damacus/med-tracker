@@ -1960,6 +1960,41 @@ async fn browser_reminder_authority_revoked_before_send_is_suppressed() {
 }
 
 #[tokio::test]
+async fn browser_reminder_submicrosecond_claim_clock_keeps_send_ownership() {
+    let app = Application::new().await;
+    let (now, scope) = prepare_due_delivery(&app, "synthetic-claim-precision").await;
+    let transport = Arc::new(Reminders(Mutex::new(vec![])));
+    app.context.shared_store.insert(Service {
+        public_key: String::new(),
+        transport: transport.clone(),
+    });
+    let delivery_id = seed_claimable_delivery(&app, &scope, now).await;
+    let future = (Utc::now() + chrono::Duration::seconds(2))
+        .with_nanosecond(123_456_789)
+        .unwrap();
+    assert_eq!(
+        browser_push::reminders::drain_candidates(&app.context, &scope, future, &[delivery_id])
+            .await
+            .unwrap(),
+        1
+    );
+    assert_eq!(transport.0.lock().unwrap().len(), 1);
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            "SELECT status FROM notification_deliveries WHERE id=$1",
+            [delivery_id.into()],
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(row.try_get::<String>("", "status").unwrap(), "accepted");
+    app.close().await;
+}
+
+#[tokio::test]
 async fn browser_reminder_in_flight_send_finishes_before_revocation_lands() {
     let app = Application::new().await;
     let (now, scope) = prepare_due_delivery(&app, "synthetic-presend-order").await;
