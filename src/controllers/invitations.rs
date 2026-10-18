@@ -2,9 +2,7 @@ mod acceptance;
 mod page;
 mod rendering;
 
-use super::medications::{
-    authentication_error, begin, forms, operation_error, request_id, unavailable,
-};
+use super::medications::{begin, forms, request_id, unavailable};
 use crate::models::{care::invitations, errors::OperationError};
 use axum::{
     Extension,
@@ -42,18 +40,17 @@ async fn index(
     ViewEngine(view): ViewEngine<TeraView>,
     incoming: Request,
 ) -> Response {
-    let language = match super::administration::presentation_language(
-        incoming.uri().query(),
-        incoming.headers(),
-    ) {
-        Ok(language) => language,
+    let query = match index_query(incoming.uri().query(), incoming.headers()) {
+        Ok(value) => value,
         Err(_) => {
             return super::administration::presentation_invalid_link(&view, incoming.headers());
         }
     };
     page::Page::new(&ctx, &session, &token, &view, &slug, request)
-        .with_language(language)
-        .with_explicit_language(incoming.uri().query().is_some())
+        .with_language(query.language)
+        .with_explicit_language(query.explicit_language)
+        .with_cursor(query.cursor)
+        .with_notice(query.notice)
         .index(None, None)
         .await
 }
@@ -108,4 +105,110 @@ fn field<'a>(draft: &'a [(String, String)], name: &str) -> &'a str {
         .iter()
         .find(|(key, _)| key == name)
         .map_or("", |(_, value)| value)
+}
+
+pub(crate) fn supported_language(value: &str) -> Option<&'static str> {
+    match value {
+        "en" => Some("en"),
+        "cy" => Some("cy"),
+        "ga" => Some("ga"),
+        "pt" => Some("pt"),
+        "es" => Some("es"),
+        _ => None,
+    }
+}
+
+pub(crate) fn fallback_language(headers: &axum::http::HeaderMap) -> &'static str {
+    crate::models::care::report_pdf::locale(
+        headers
+            .get(header::ACCEPT_LANGUAGE)
+            .and_then(|value| value.to_str().ok())
+            .unwrap_or("en"),
+    )
+}
+
+pub(crate) fn invalid_link(view: &TeraView, language: &str, status: StatusCode) -> Response {
+    let Ok(labels) = crate::models::care::report_pdf::translations(language) else {
+        return unavailable();
+    };
+    let mut data = crate::controllers::medications::rendering::appearance_context();
+    data["lang"] = json!(language);
+    data["labels"] = labels.clone();
+    data["invitation_labels"] = labels["admin"]["invitations"]["acceptance"].clone();
+    data["title"] = data["invitation_labels"]["invalid_title"].clone();
+    match format::render().view(view, "invitations/error.html", data) {
+        Ok(response) => (status, [(header::CACHE_CONTROL, "no-store")], response).into_response(),
+        Err(_) => unavailable(),
+    }
+}
+
+pub(crate) fn acceptance_data(
+    language: &'static str,
+    explicit_language: bool,
+    invitation_token: &str,
+    details: Value,
+    signed_in: bool,
+    authenticity_token: &str,
+) -> Option<Value> {
+    let Ok(labels) = crate::models::care::report_pdf::translations(language) else {
+        return None;
+    };
+    let mut data = crate::controllers::medications::rendering::appearance_context();
+    data["title"] = labels["admin"]["invitations"]["acceptance"]["title"].clone();
+    data["lang"] = json!(language);
+    data["labels"] = labels.clone();
+    data["invitation_labels"] = labels["admin"]["invitations"]["acceptance"].clone();
+    data["role_label"] = labels["admin"]["labels"]["membership_roles"]
+        [details["membership_role"].as_str().unwrap_or("member")]
+    .clone();
+    data["invitation"] = details;
+    data["invitation_token"] = json!(invitation_token);
+    data["explicit_language"] = json!(explicit_language);
+    data["signed_in"] = json!(signed_in);
+    data["authenticity_token"] = json!(authenticity_token);
+    Some(data)
+}
+
+struct IndexQuery {
+    language: &'static str,
+    explicit_language: bool,
+    cursor: Option<invitations::browser::BrowseCursor>,
+    notice: Option<page::Notice>,
+}
+
+fn index_query(
+    raw: Option<&str>,
+    headers: &axum::http::HeaderMap,
+) -> Result<IndexQuery, OperationError> {
+    let mut language = None;
+    let mut cursor = None;
+    let mut notice = None;
+    for (key, value) in url::form_urlencoded::parse(raw.unwrap_or_default().as_bytes()) {
+        if value.len() > 128 {
+            return Err(OperationError::NotFound);
+        }
+        match key.as_ref() {
+            "lang"
+                if language.is_none()
+                    && matches!(value.as_ref(), "en" | "cy" | "ga" | "pt" | "es") =>
+            {
+                language = Some(crate::models::care::report_pdf::locale(&value));
+            }
+            "cursor" if cursor.is_none() => {
+                cursor = Some(invitations::browser::BrowseCursor::parse(&value)?)
+            }
+            "notice" if notice.is_none() => {
+                notice = Some(page::Notice::parse(&value).ok_or(OperationError::NotFound)?);
+            }
+            _ => return Err(OperationError::NotFound),
+        }
+    }
+    let explicit = language.is_some();
+    let language = language.unwrap_or(super::administration::presentation_language(None, headers)?);
+    Ok(IndexQuery {
+        language,
+        explicit_language: explicit,
+        cursor,
+        notice,
+    })
 }

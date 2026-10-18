@@ -22,7 +22,7 @@ pub(super) fn view(
     path: &str,
     mut data: Value,
 ) -> std::result::Result<Response, Box<Error>> {
-    let language = LANGUAGE.try_with(|language| *language).unwrap_or("en");
+    let language = current_language();
     let labels = crate::models::care::report_pdf::translations(language)
         .map_err(|_| Error::string("Security translations unavailable"))?;
     let english = crate::models::care::report_pdf::translations("en")
@@ -50,4 +50,8 @@ pub(super) fn view(
     data["flow_json"] = json!(flow.to_string());
     data["lang"] = json!(language);
     format::render().view(view, path, data).map_err(Box::new)
+}
+
+pub(super) fn current_language() -> &'static str {
+    LANGUAGE.try_with(|language| *language).unwrap_or("en")
 }

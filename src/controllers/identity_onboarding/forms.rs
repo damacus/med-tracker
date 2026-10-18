@@ -11,6 +11,7 @@ pub(super) type Errors = BTreeMap<String, Vec<String>>;
 pub(super) struct InvitationQuery {
     #[serde(default, alias = "token")]
     pub invitation_token: Option<String>,
+    pub lang: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -29,6 +30,7 @@ pub(super) struct Create {
     pub invitation_token: Option<String>,
     #[serde(default)]
     pub authenticity_token: String,
+    pub lang: Option<String>,
 }
 
 impl Create {
@@ -41,6 +43,7 @@ impl Create {
             password: String::new(),
             invitation_token,
             authenticity_token: String::new(),
+            lang: None,
         }
     }
 

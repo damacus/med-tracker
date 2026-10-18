@@ -24,6 +24,35 @@ async function invite(page, careFixture, email) {
   return { destination: mail.Text.match(/http:\/\/localhost:\d+\/invitations\/accept\?token=[A-Za-z0-9_-]+/)[0], messages };
 }
 
+test('invitation signup keeps its Spanish invitation context after invalid details', async ({ browser, page, careFixture }, info) => {
+  const email = 'invitation-spanish@example.test';
+  const { destination } = await invite(page, careFixture, email);
+  const guest = await browser.newContext({ baseURL: careFixture.origin, locale: 'cy', viewport: page.viewportSize() });
+  try {
+    const signup = await guest.newPage();
+    await signup.goto(`${destination}&lang=es`);
+    await expect(signup.getByRole('heading', { name: 'Completa tu cuenta', exact: true })).toBeVisible();
+    await signup.getByLabel('Date of birth', { exact: true }).fill('1992-05-18');
+    await signup.locator('input[type="password"]').fill('short');
+    await signup.locator('form[action="/create-account"]').evaluate(form => { form.noValidate = true; });
+    const invalid = signup.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname === '/create-account');
+    await signup.getByRole('button', { name: 'Create Account', exact: true }).click();
+    expect((await invalid).status()).toBe(422);
+    await expect(signup.locator('html')).toHaveAttribute('lang', 'es');
+    await expect(signup.getByRole('heading', { name: 'Completa tu cuenta', exact: true })).toBeVisible();
+    await expect(signup.getByLabel('Name', { exact: true })).toHaveAccessibleDescription(/must be present/i);
+    await expect(signup.getByLabel('Date of birth', { exact: true })).toHaveValue('1992-05-18');
+    await expect(signup.getByLabel('Email', { exact: true })).toHaveValue(email);
+    await expect(signup.locator('input[type="password"]')).toHaveValue('');
+    expect(await careFixture.invitationSignupProbe(email)).toEqual({ accounts: 0, status: null, people: 0, memberships: 0, accepted: 0 });
+    await signup.getByLabel('Name', { exact: true }).focus();
+    await expect(signup.getByLabel('Name', { exact: true })).toBeFocused();
+    await signup.screenshot({ path: info.outputPath(`loco-invitation-invalid-es-${info.project.name}.png`), fullPage: true });
+  } finally {
+    await guest.close();
+  }
+});
+
 test('invitation signup retains invalid drafts and verifies the server-bound account through actual email', async ({ browser, page, careFixture }, info) => {
   test.setTimeout(180000);
   const email = 'invitation-new@example.test';
@@ -115,7 +144,12 @@ for (const state of ['expired', 'revoked', 'cancelled', 'existing account']) {
       const fields = await signup.locator('form[action="/create-account"]').evaluate(form => Object.fromEntries(new FormData(form)));
       if (state === 'expired') await careFixture.expireInvitation(email);
       if (state === 'revoked') await careFixture.revokeInvitation(email);
-      if (state === 'cancelled') await page.getByRole('listitem').filter({ hasText: email }).getByRole('button', { name: 'Cancel', exact: true }).click();
+      if (state === 'cancelled') {
+        await page.getByRole('listitem').filter({ hasText: email }).getByRole('button', { name: 'Cancel', exact: true }).click();
+        const dialog = page.getByRole('dialog', { name: 'Cancel invitation' });
+        await expect(dialog).toBeVisible();
+        await dialog.getByRole('button', { name: 'Cancel invitation', exact: true }).click();
+      }
       const before = await careFixture.invitationSignupProbe(email);
       const denied = await signup.request.post('/create-account', { form: { ...fields, name: 'Synthetic refused account', date_of_birth: '1992-05-18', credential: 'password', password: 'Synthetic-password-12!' }, headers: { Origin: careFixture.origin }, maxRedirects: 0 });
       expect(state === 'existing account' ? [200] : [404, 422]).toContain(denied.status());

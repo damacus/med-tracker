@@ -19,20 +19,46 @@ pub(super) fn account(
     let Ok(authenticity_token) = token.authenticity_token() else {
         return unavailable();
     };
-    let mut data = crate::controllers::medications::rendering::appearance_context();
-    data["title"] = json!("Create Account");
+    let invited = invitation.is_some();
+    let mut data = if let Some(invitation) = invitation {
+        let language = form
+            .lang
+            .as_deref()
+            .and_then(crate::controllers::invitations::supported_language)
+            .unwrap_or_else(super::security_locale::current_language);
+        let Some(data) = crate::controllers::invitations::acceptance_data(
+            language,
+            form.lang.is_some(),
+            form.invitation_token.as_deref().unwrap_or_default(),
+            invitation,
+            false,
+            &authenticity_token,
+        ) else {
+            return unavailable();
+        };
+        data
+    } else {
+        let mut data = crate::controllers::medications::rendering::appearance_context();
+        data["title"] = json!("Create Account");
+        data
+    };
     data["name"] = json!(form.name);
     data["date_of_birth"] = json!(form.date_of_birth);
     data["email"] = json!(form.email);
     data["errors"] = json!(errors);
     data["authenticity_token"] = json!(authenticity_token);
-    if let Some(invitation) = invitation {
-        data["invitation"] = invitation;
-        data["invitation_token"] = json!(form.invitation_token);
-    }
     (
         token,
-        render(view, "identity_onboarding/create.html", data, status),
+        render(
+            view,
+            if invited {
+                "invitations/accept.html"
+            } else {
+                "identity_onboarding/create.html"
+            },
+            data,
+            status,
+        ),
     )
         .into_response()
 }

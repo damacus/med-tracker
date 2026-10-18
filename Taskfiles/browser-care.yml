@@ -189,6 +189,16 @@ tasks:
       - >-
         psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1
         -c "INSERT INTO public.account_otp_keys(id,key,last_use,num_failures) VALUES(71002,'abcdefghijklmnop',now()-interval '1 day',0);"
+  seed-invitation-states:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction -f tests/fixtures/invitation-browser-states.sql'
+  seed-invitation-pages:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction -f tests/fixtures/invitation-browser-pages.sql'
   invitation-acceptance-probe:
     requires:
       vars: [CARE_DATABASE_URL]

@@ -1,38 +1,58 @@
 {% extends "layouts/base.html" %}
 {% block content %}
+{% set invite = invite_labels.index %}
 <section class="max-w-3xl mx-auto">
-  <a class="link" href="/households/{{ slug }}/admin{{ language_suffix }}">Administration</a>
+  <a class="link" href="/households/{{ slug }}/admin{{ language_suffix }}">{{ admin_labels.nav.overview }}</a>
   {% include "administration/context.html" %}
-  <h1 class="text-3xl font-semibold mt-4">Invitations</h1>
+  <h1 class="text-3xl font-semibold mt-4">{{ invite.title }}</h1>
   {% include "administration/navigation.html" %}
-  <p class="mt-2">Invite new users to join MedTracker.</p>
+  <p class="mt-2">{{ invite.subtitle }}</p>
+  {% if notice %}<p class="alert border border-success bg-success/10 text-base-content mt-6" role="status">{{ notice }}</p>{% endif %}
   <div class="mt-6">{% include "components/form_errors.html" %}</div>
   <div class="card bg-base-100 border border-base-300 mt-6"><div class="card-body">
     <form id="invitation-form" action="/households/{{ slug }}/admin/invitations" method="post" class="flex flex-col gap-4">
-      {% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}<input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
-      <label for="email" class="font-semibold">Email</label>
+      {% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}
+      <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+      <label for="email" class="font-semibold">{{ invite.form.email }}</label>
       <input id="email" name="email" type="email" class="input w-full" value="{{ draft.email }}" required {% if email_invalid %}aria-invalid="true" aria-describedby="form-error-email"{% endif %}>
-      <label for="membership_role" class="font-semibold">Household role</label>
+      <label for="membership_role" class="font-semibold">{{ invite.form.role }}</label>
       <select id="membership_role" name="membership_role" class="select w-full" {% if membership_role_invalid %}aria-invalid="true" aria-describedby="form-error-membership_role"{% endif %}>
-        {% for role in roles %}<option value="{{ role }}" {% if draft.membership_role == role %}selected{% endif %}>{{ role | capitalize }}</option>{% endfor %}
+        {% for role in roles %}<option value="{{ role }}" {% if draft.membership_role == role %}selected{% endif %}>{% if role == "member" %}{{ role_labels.member }}{% else %}{{ role_labels.administrator }}{% endif %}</option>{% endfor %}
       </select>
-      <button class="btn btn-neutral mt-4" type="submit">Send invitation</button>
+      <p class="text-sm opacity-75">{{ invite.role_guidance }}</p>
+      <button class="btn btn-neutral mt-4" type="submit">{{ invite.form.submit }}</button>
     </form>
   </div></div>
-  <h2 class="text-xl font-semibold mt-8">Recent invitations</h2>
+  <h2 class="text-xl font-semibold mt-8">{{ invite.recent }}</h2>
   <ul class="flex flex-col gap-4 mt-4">
     {% for invitation in invitations %}
     <li class="card bg-base-100 border border-base-300"><div class="card-body">
       <h3 class="card-title break-all">{{ invitation.email }}</h3>
-      <p>{{ invitation.membership_role | capitalize }} · {{ invitation.status }}</p>
-      <p class="break-words">Expires: <time datetime="{{ invitation.expires_at }}">{{ invitation.expires_at }}</time></p>
+      <p>{% if invitation.membership_role == "member" %}{{ role_labels.member }}{% else %}{{ role_labels.administrator }}{% endif %} · {{ invitation.status }}</p>
+      <p class="break-words">{{ invite.expires }} <time datetime="{{ invitation.expires_at }}">{{ invitation.expires_at_display }}</time></p>
       {% if invitation.actionable %}<div class="flex flex-col sm:flex-row gap-3">
-        <form action="/households/{{ slug }}/admin/invitations/{{ invitation.id }}/resend" method="post">{% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}<input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><button class="btn btn-outline" type="submit">Resend</button></form>
-        <form action="/households/{{ slug }}/admin/invitations/{{ invitation.id }}/cancel" method="post">{% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}<input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><button class="btn btn-outline" type="submit">Cancel</button></form>
+        <form action="/households/{{ slug }}/admin/invitations/{{ invitation.id }}/resend" method="post">
+          {% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}
+          <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+          <button class="btn btn-outline" type="submit">{{ invite.resend }}</button>
+        </form>
+        <button class="btn btn-outline" type="button" data-dialog-open="cancel-invitation-{{ invitation.id }}">{{ invite.cancel }}</button>
+        <dialog id="cancel-invitation-{{ invitation.id }}" class="modal" lang="{{ lang }}" aria-labelledby="cancel-invitation-title-{{ invitation.id }}">
+          <div class="modal-box">
+            <h4 id="cancel-invitation-title-{{ invitation.id }}" class="text-xl font-semibold">{{ invite.confirm_cancel.title }}</h4>
+            <p class="mt-4">{{ invite.confirm_cancel.guidance }}</p>
+            <form action="/households/{{ slug }}/admin/invitations/{{ invitation.id }}/cancel" method="post" class="modal-action flex-col gap-2 sm:flex-row">
+              {% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}
+              <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+              <button class="btn btn-ghost w-full sm:w-auto" type="button" data-dialog-close>{{ invite.confirm_cancel.keep }}</button>
+              <button class="btn btn-neutral w-full sm:w-auto" type="submit">{{ invite.confirm_cancel.confirm }}</button>
+            </form>
+          </div>
+        </dialog>
       </div>{% endif %}
     </div></li>
-    {% else %}<li>No invitations are available.</li>{% endfor %}
+    {% else %}<li>{{ invite.empty }}</li>{% endfor %}
   </ul>
+  {% if next_url %}<a class="btn btn-outline mt-6" rel="next" href="{{ next_url }}">{{ invite.next }}</a>{% endif %}
 </section>
-<script src="/static/js/invitations.js" defer></script>
 {% endblock content %}

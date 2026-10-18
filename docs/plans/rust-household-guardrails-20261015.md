@@ -96,3 +96,47 @@ For every mixed file, compare the exact hunk to current main and record the owni
 Every PR must prove its own behavior or useful preparation. Required evidence includes replay without duplicate writes, concurrent cross-household dose safety, audit rollback, membership/guardian revocation boundaries, personal history after all departures, restore with zero side effects, DST boundaries and desktop/mobile web screenshot comparison for visible journeys. Use real PostgreSQL/RLS and actual account, guardian, member and manager roles; do not substitute administrator credentials for runtime paths.
 
 Strict quality gates must run against the exact reviewed head. A cancelled, skipped or empty test selection is not a green result. The root delivery controller alone authorises merges, after review and required green checks on that exact head. Publish focused PRs only through the authorised delivery workflow. Deployment, canary activation and destructive cutover remain separately unauthorised.
+
+### Household invitation administration checkpoint (2026-10-18)
+
+The isolated C4 candidate gives household managers a stable SQL 50+1 invitation
+list, create/resend/cancel actions through the existing queued-mail outbox, and
+localised status, validation, recovery and permission pages in English, Welsh,
+Irish, Portuguese and Spanish. Acceptance reuses an existing account's Person
+and creates one household participation without a care or guardian grant. It
+selects the accepted household only in the current session; a failed switch
+after the join has a safe, idempotent recovery path. Password and OTP sign-in
+retain the typed invitation token and optional supported language. Live
+authorisation, CSRF/Origin, token rotation, replay and outbox checks remain in
+the tested journey. Accountless identity claims and dependent-grant controls
+remain outside C4.
+
+Earlier local evidence includes strict workspace/all-targets/all-features
+Clippy with denied warnings and seven invitation request tests (7/7, Nextest
+`028c5ad9-49b5-4a0b-85ba-2267c04fd4a3`) on source `6d655e0b770b5b7818f323775e152fe61fcc7869dad07a261a5dfdad38c8d48d`.
+The six invitation journeys passed on desktop and phone (12/12) on source
+`d081326689555dd1c1c2e0a64711de9c011d6daca1b651468a7444f67b3e3333`;
+the corrected responsive native dialog passed four affected cases on source
+`bcc1bca8f0fb3f898b948dc0dcdb9ad6021797a5b1f431b4e1f35fce77a918d9`.
+Eighteen accepted English/Spanish desktop and phone captures have per-image
+hashes and historical source identities in
+`docs/screenshots/invitations-20261018-manifest.json`. The existing review site
+and its database were untouched.
+
+The published C4 head `fef43808` is PR #2785. Its original final locked Task CI
+passed 878 API, 123 library and 786 browser tests, and its hosted CI passed.
+Those results include the earlier overview, report-session and treatment
+navigation test corrections. Historical captures above retain their original
+source identities.
+
+Review corrections reuse the invitation presentation context in the mounted
+`identity_onboarding` signup handler; `signup::routes()` is not mounted. Invalid
+invited signup preserves its language, role, non-secret draft and field errors.
+The recovery link opens an explicit household chooser even while another
+household is active, retaining the existing selection permission and CSRF checks.
+Focused verification passed 55 invitation request tests and 24 desktop/phone
+browser cases. Four new captures are recorded separately in the screenshot
+manifest on source `6d1360f905049eacfc2b123de5dd16fdc71b3ecf0f789ee647cfc654f2cc8430`.
+Merge requires full Task CI and fresh hosted checks on the repaired source;
+their final results are recorded in the PR review replies. No deployment
+is claimed. Carer reminders remain paused during this repair.

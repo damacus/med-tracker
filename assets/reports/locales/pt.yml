@@ -540,8 +540,24 @@ pt:
         record: Registar
         manage: Gerir
     invitations:
-      created: Convite enviado
-      resent: Convite reenviado
+      acceptance:
+        title: Aceitar convite
+        account_title: Conclua a sua conta
+        invited_to_join: Foi convidado a juntar-se a
+        as_role: como
+        invitation_for: Convite para
+        existing_account: Já tem uma conta?
+        sign_in: Inicie sessão
+        to_accept: para aceitar este convite.
+        invalid_title: Ligação do convite indisponível
+        invalid_guidance: Esta ligação do convite é inválida ou expirou. Peça um novo convite a um gestor do agregado.
+        recovery_title: Juntou-se ao agregado
+        recovery_guidance: O seu convite foi aceite, mas esta sessão não conseguiu mudar de agregado. Pode tentar mudar novamente sem voltar a aderir.
+        retry: Tentar mudar novamente
+        choose_household: Escolher um agregado
+        back: Voltar ao painel
+      created: Email do convite em fila para entrega.
+      resent: Email do convite novamente em fila para entrega.
       cancelled: Convite cancelado
       cannot_resend_accepted: Convites aceitos não podem ser reenviados
       cannot_cancel_accepted: Convites aceitos não podem ser cancelados
@@ -553,6 +569,24 @@ pt:
         recent: Convites recentes
         resend: Reenviar
         cancel: Cancelar
+        expires: 'Expira em:'
+        empty: Não há convites disponíveis.
+        next: Página seguinte
+        role_guidance: Os membros podem ver e registar cuidados para pessoas deste agregado. Os administradores também gerem membros, convites e definições. Gerir o plano de cuidados de outra pessoa exige autoridade separada. A pertença ao agregado não torna ninguém tutor legal.
+        confirm_cancel:
+          title: Cancelar convite
+          guidance: O cancelamento desativa a ligação do convite. O destinatário precisará de um novo convite para aderir.
+          keep: Manter convite
+          confirm: Cancelar convite
+        validation:
+          heading: Verifique os dados do convite
+          email_invalid: Introduza um endereço de email válido.
+          email_taken: Já existe um convite para este endereço de email.
+          role_invalid: Escolha uma função válida no agregado.
+          care_authority: Os convites do agregado não podem atribuir autoridade de cuidados.
+          cannot_cancel: Este convite não pode ser cancelado.
+          cannot_resend: Este convite não pode ser reenviado.
+          unavailable: Não foi possível alterar o convite. Verifique o estado e tente novamente.
         form:
           email: Email
           role: Função do agregado
@@ -568,6 +602,7 @@ pt:
           accepted: Aceite
           expired: Expirado
           pending: Pendente
+          revoked: Revogado
         metadata:
           accepted: Aceite há %{time}
           expired: Expirou há %{time}

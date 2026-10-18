@@ -538,8 +538,24 @@ es:
         record: Registrar
         manage: Gestionar
     invitations:
-      created: Invitación enviada
-      resent: Invitación reenviada
+      acceptance:
+        title: Aceptar invitación
+        account_title: Completa tu cuenta
+        invited_to_join: Te han invitado a unirte a
+        as_role: como
+        invitation_for: Invitación para
+        existing_account: ¿Ya tienes una cuenta?
+        sign_in: Inicia sesión
+        to_accept: para aceptar esta invitación.
+        invalid_title: Enlace de invitación no disponible
+        invalid_guidance: Este enlace de invitación no es válido o ha caducado. Solicita una nueva invitación a un administrador del hogar.
+        recovery_title: Te has unido al hogar
+        recovery_guidance: Se aceptó tu invitación, pero esta sesión no pudo cambiar de hogar. Puedes intentarlo de nuevo sin unirte por segunda vez.
+        retry: Intentar cambiar de nuevo
+        choose_household: Elegir un hogar
+        back: Volver al panel
+      created: Correo de invitación en cola para su entrega.
+      resent: Correo de invitación en cola para volver a entregarse.
       cancelled: Invitación cancelada
       cannot_resend_accepted: Las invitaciones aceptadas no se pueden reenviar
       cannot_cancel_accepted: Las invitaciones aceptadas no se pueden cancelar
@@ -551,6 +567,24 @@ es:
         recent: Invitaciones recientes
         resend: Reenviar
         cancel: Cancelar
+        expires: 'Caduca:'
+        empty: No hay invitaciones disponibles.
+        next: Página siguiente
+        role_guidance: Los miembros pueden ver y registrar cuidados de las personas de este hogar. Los administradores también gestionan miembros, invitaciones y ajustes. Gestionar el plan de cuidados de otra persona requiere una autorización aparte. Pertenecer al hogar no convierte a nadie en tutor legal.
+        confirm_cancel:
+          title: Cancelar invitación
+          guidance: La cancelación desactiva el enlace de invitación. La persona necesitará una nueva invitación para unirse.
+          keep: Conservar invitación
+          confirm: Cancelar invitación
+        validation:
+          heading: Revisa los datos de la invitación
+          email_invalid: Introduce un correo electrónico válido.
+          email_taken: Ya existe una invitación para este correo electrónico.
+          role_invalid: Selecciona un rol del hogar válido.
+          care_authority: Las invitaciones del hogar no pueden asignar autoridad de cuidado.
+          cannot_cancel: Esta invitación no se puede cancelar.
+          cannot_resend: Esta invitación no se puede reenviar.
+          unavailable: No se pudo cambiar la invitación. Comprueba su estado e inténtalo de nuevo.
         form:
           email: Correo electrónico
           role: Rol del hogar
@@ -566,6 +600,7 @@ es:
           accepted: Aceptada
           expired: Caducada
           pending: Pendiente
+          revoked: Revocada
         metadata:
           accepted: Aceptada hace %{time}
           expired: Caducó hace %{time}

@@ -139,6 +139,7 @@ async function withCareFixture(captureMail, registrationInviteOnly, reportAssets
         seedSupportHistory: () => fixtureTask('seed-support-history'),
         invitationProbe: async email => JSON.parse(await fixtureTask('invitation-probe', [`INVITATION_EMAIL=${email}`])), expireInvitation: email => fixtureTask('expire-invitation', [`INVITATION_EMAIL=${email}`]),
         seedInvitationAccount: () => fixtureTask('seed-invitation-account'), seedInvitationOtp: () => fixtureTask('seed-invitation-otp'),
+        seedInvitationStates: () => fixtureTask('seed-invitation-states'), seedInvitationPages: () => fixtureTask('seed-invitation-pages'),
         invitationAcceptanceProbe: async () => JSON.parse(await fixtureTask('invitation-acceptance-probe')),
         invitationSignupProbe: async email => JSON.parse(await fixtureTask('invitation-signup-probe', [`INVITATION_EMAIL=${email}`])),
         signupDiagnostics: () => output.split('\n').filter(line => line.includes('Account setup operation failed')).join('\n'),
