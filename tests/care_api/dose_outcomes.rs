@@ -1047,3 +1047,279 @@ async fn dose_occurrence_lists_match_documented_contract() {
     }
     app.close().await;
 }
+
+#[tokio::test]
+async fn dose_outcomes_cover_london_lord_howe_santiago_transitions_and_adjacent_queries() {
+    let app = Application::new().await;
+    outcome_sources(&app).await;
+    let token = app.token().await;
+
+    app.fixture
+        .admin
+        .execute_unprepared(
+            "UPDATE accounts SET preferences=jsonb_set(preferences,'{time_zone}','\"Europe/London\"') WHERE id=71001; \
+             UPDATE schedules SET schedule_config='{\"times\":[\"01:30\"]}' WHERE id=83997",
+        )
+        .await
+        .unwrap();
+    let schedule_endpoint = format!(
+        "{}/api/v1/households/72001/schedules/83997/dose_occurrences",
+        app.origin
+    );
+    let spring_london = app
+        .client
+        .get(format!(
+            "{schedule_endpoint}?start_date=2026-03-29&end_date=2026-03-29"
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(spring_london.status().as_u16(), 200);
+    let spring_london: Value = spring_london.json().await.unwrap();
+    let spring_time = chrono::DateTime::parse_from_rfc3339(
+        spring_london["data"][0]["scheduled_at"].as_str().unwrap(),
+    )
+    .unwrap();
+    assert_eq!(spring_time.to_rfc3339(), "2026-03-29T01:30:00+00:00");
+
+    let fall_london = app
+        .client
+        .get(format!(
+            "{schedule_endpoint}?start_date=2026-10-25&end_date=2026-10-25"
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(fall_london.status().as_u16(), 200);
+    let fall_london: Value = fall_london.json().await.unwrap();
+    let fall_time = chrono::DateTime::parse_from_rfc3339(
+        fall_london["data"][0]["scheduled_at"].as_str().unwrap(),
+    )
+    .unwrap();
+    assert_eq!(fall_time.to_rfc3339(), "2026-10-25T00:30:00+00:00");
+
+    app.fixture
+        .admin
+        .execute_unprepared(
+            "UPDATE accounts SET preferences=jsonb_set(preferences,'{time_zone}','\"Australia/Lord_Howe\"') WHERE id=71001; \
+             UPDATE schedules SET schedule_config='{\"times\":[\"02:15\"]}' WHERE id=83997",
+        )
+        .await
+        .unwrap();
+    let spring_lord_howe = app
+        .client
+        .get(format!(
+            "{schedule_endpoint}?start_date=2026-10-04&end_date=2026-10-04"
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(spring_lord_howe.status().as_u16(), 200);
+    let spring_lord_howe: Value = spring_lord_howe.json().await.unwrap();
+    let spring_lh_time = chrono::DateTime::parse_from_rfc3339(
+        spring_lord_howe["data"][0]["scheduled_at"]
+            .as_str()
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(spring_lh_time.to_rfc3339(), "2026-10-03T15:45:00+00:00");
+
+    app.fixture
+        .admin
+        .execute_unprepared(
+            "UPDATE schedules SET schedule_config='{\"times\":[\"01:45\"]}' WHERE id=83997",
+        )
+        .await
+        .unwrap();
+    let fall_lord_howe = app
+        .client
+        .get(format!(
+            "{schedule_endpoint}?start_date=2026-04-05&end_date=2026-04-05"
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(fall_lord_howe.status().as_u16(), 200);
+    let fall_lord_howe: Value = fall_lord_howe.json().await.unwrap();
+    let fall_lh_time = chrono::DateTime::parse_from_rfc3339(
+        fall_lord_howe["data"][0]["scheduled_at"].as_str().unwrap(),
+    )
+    .unwrap();
+    assert_eq!(fall_lh_time.to_rfc3339(), "2026-04-04T14:45:00+00:00");
+
+    app.fixture
+        .admin
+        .execute_unprepared(
+            "UPDATE accounts SET preferences=jsonb_set(preferences,'{time_zone}','\"America/Santiago\"') WHERE id=71001; \
+             UPDATE schedules SET schedule_config='{\"times\":[\"00:30\"]}' WHERE id=83997; \
+             INSERT INTO medication_takes(id, household_id, schedule_id, taken_from_medication_id, dose_amount, dose_unit, taken_at, created_at, updated_at) \
+             VALUES(85001, 72001, 83997, 80001, 2, 'tablet', '2026-09-06 02:30:00', now(), now())",
+        )
+        .await
+        .unwrap();
+
+    app.fixture.seed_foreign_household(92099).await;
+    app.fixture
+        .admin
+        .execute_unprepared(
+            "INSERT INTO locations(id,household_id,name,created_at,updated_at) VALUES(92093,92099,'Foreign cabinet',now(),now()); \
+             INSERT INTO medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at) VALUES(92094,92099,92093,'Foreign tablets',10,2,'tablet',now(),now()); \
+             INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(92095,92099,73999,92094,true,'2020-01-01','2099-12-31',2,'tablet',0,'{\"times\":[\"00:30\"]}',now()-interval '2 days',now()); \
+             INSERT INTO medication_takes(id,household_id,schedule_id,taken_from_medication_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(92096,92099,92095,92094,2,'tablet','2026-09-06 02:30:00',now(),now())",
+        )
+        .await
+        .unwrap();
+
+    let foreign_response = app
+        .client
+        .get(format!(
+            "{}/api/v1/households/92099/schedules/92095/dose_occurrences?start_date=2026-09-05&end_date=2026-09-06",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(foreign_response.status().as_u16(), 403);
+    let cross_tenant_response = app
+        .client
+        .get(format!(
+            "{}/api/v1/households/72001/schedules/92095/dose_occurrences?start_date=2026-09-05&end_date=2026-09-06",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(cross_tenant_response.status().as_u16(), 404);
+
+    let santiago_day1 = app
+        .client
+        .get(format!(
+            "{schedule_endpoint}?start_date=2026-09-05&end_date=2026-09-05"
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(santiago_day1.status().as_u16(), 200);
+    let santiago_day1: Value = santiago_day1.json().await.unwrap();
+
+    let santiago_day2 = app
+        .client
+        .get(format!(
+            "{schedule_endpoint}?start_date=2026-09-06&end_date=2026-09-06"
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(santiago_day2.status().as_u16(), 200);
+    let santiago_day2: Value = santiago_day2.json().await.unwrap();
+
+    let santiago_range = app
+        .client
+        .get(format!(
+            "{schedule_endpoint}?start_date=2026-09-05&end_date=2026-09-06"
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(santiago_range.status().as_u16(), 200);
+    let santiago_range: Value = santiago_range.json().await.unwrap();
+
+    assert_eq!(santiago_day1["data"][0]["outcome"], "taken");
+    assert_eq!(santiago_range["data"][0]["outcome"], "taken");
+
+    let day2_time = chrono::DateTime::parse_from_rfc3339(
+        santiago_day2["data"][0]["scheduled_at"].as_str().unwrap(),
+    )
+    .unwrap();
+    assert_eq!(day2_time.to_rfc3339(), "2026-09-06T04:30:00+00:00");
+    assert_eq!(santiago_day2["data"][0]["outcome"], "open");
+
+    let range_day2_time = chrono::DateTime::parse_from_rfc3339(
+        santiago_range["data"][1]["scheduled_at"].as_str().unwrap(),
+    )
+    .unwrap();
+    assert_eq!(range_day2_time.to_rfc3339(), "2026-09-06T04:30:00+00:00");
+    assert_eq!(santiago_range["data"][1]["outcome"], "open");
+
+    let to_item = |item: &Value| {
+        (
+            item["key"].as_str().unwrap().to_owned(),
+            chrono::DateTime::parse_from_rfc3339(item["scheduled_at"].as_str().unwrap())
+                .unwrap()
+                .to_rfc3339(),
+            item["outcome"].as_str().unwrap().to_owned(),
+        )
+    };
+    let mut concatenated = Vec::new();
+    for item in santiago_day1["data"].as_array().unwrap() {
+        concatenated.push(to_item(item));
+    }
+    for item in santiago_day2["data"].as_array().unwrap() {
+        concatenated.push(to_item(item));
+    }
+    let range_items: Vec<_> = santiago_range["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(to_item)
+        .collect();
+    assert_eq!(concatenated, range_items);
+
+    let take_row = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT id, taken_at::text AS taken_at, dose_amount::text AS dose_amount FROM medication_takes WHERE id=85001",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(take_row.try_get::<i64>("", "id").unwrap(), 85001);
+    assert_eq!(
+        take_row.try_get::<String>("", "taken_at").unwrap(),
+        "2026-09-06 02:30:00"
+    );
+    assert_eq!(
+        take_row.try_get::<String>("", "dose_amount").unwrap(),
+        "2.00"
+    );
+
+    app.fixture
+        .admin
+        .execute_unprepared(
+            "UPDATE accounts SET preferences=jsonb_set(preferences,'{time_zone}','\"America/New_York\"') WHERE id=71001; \
+             UPDATE person_medications SET created_at='2026-10-06 01:00:00' WHERE id=81001",
+        )
+        .await
+        .unwrap();
+    let pm_endpoint = format!(
+        "{}/api/v1/households/72001/person_medications/81001/dose_occurrences",
+        app.origin
+    );
+    let pm_response = app
+        .client
+        .get(format!(
+            "{pm_endpoint}?start_date=2026-10-04&end_date=2026-10-05"
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(pm_response.status().as_u16(), 200);
+    let pm_body: Value = pm_response.json().await.unwrap();
+    let pm_items = pm_body["data"].as_array().unwrap();
+    assert_eq!(pm_items.len(), 1);
+    assert_eq!(pm_items[0]["window_starts_on"], "2026-10-05");
+
+    app.close().await;
+}

@@ -75,9 +75,14 @@ pub(crate) fn expected_schedule_doses_for_report(
     let Some(config) = schedule_config_on(source, day) else {
         return 0;
     };
-    let times = config_times(config, day, settings);
+    let mut times = config_times(config, day, settings);
     if times.is_empty() {
-        effective_count(config, source.max_daily_doses.unwrap_or(1))
+        times = config_times(&source.schedule_config, day, settings);
+    }
+    if times.is_empty() {
+        let fallback =
+            effective_count(&source.schedule_config, source.max_daily_doses.unwrap_or(1));
+        effective_count(config, fallback)
     } else {
         i32::try_from(times.len()).unwrap_or(i32::MAX)
     }
@@ -187,12 +192,18 @@ async fn projected_for_range(
                 && !schedule_as_needed(&source)
                 && let Some(config) = schedule_config_on(&source, start)
                 && config_times(config, start, tenant.settings()).is_empty()
+                && config_times(&source.schedule_config, start, tenant.settings()).is_empty()
                 && let Some(hours) =
-                    doses::config_decimal(config, &["min_hours_between_doses", "min_hours"]).or(
-                        source
+                    doses::config_decimal(config, &["min_hours_between_doses", "min_hours"])
+                        .or_else(|| {
+                            doses::config_decimal(
+                                &source.schedule_config,
+                                &["min_hours_between_doses", "min_hours"],
+                            )
+                        })
+                        .or(source
                             .min_hours_between_doses
-                            .map(sea_orm::prelude::Decimal::from),
-                    )
+                            .map(sea_orm::prelude::Decimal::from))
                 && hours > sea_orm::prelude::Decimal::ZERO
             {
                 use sea_orm::prelude::Decimal;
