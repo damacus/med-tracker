@@ -65,8 +65,7 @@ async fn selected_person(
     id: &str,
     manage: bool,
 ) -> Result<person::Model, OperationError> {
-    let mut query =
-        person::Entity::find().filter(person::Column::HouseholdId.eq(tenant.scope().household_id));
+    let mut query = access::person_queries::household_people(tenant.scope());
     query = if let Ok(id) = id.parse::<i64>() {
         query.filter(person::Column::Id.eq(id))
     } else {

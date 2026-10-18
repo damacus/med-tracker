@@ -27,8 +27,8 @@ pub async fn for_person(
     if uploaded {
         return Ok(None);
     }
-    let person = person::Entity::find_by_id(person_id)
-        .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
+    let person = access::person_queries::household_people(tenant.scope())
+        .filter(person::Column::Id.eq(person_id))
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::NotFound)?;

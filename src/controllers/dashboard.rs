@@ -69,8 +69,7 @@ async fn show(
         .unwrap_or("current");
     let selected = match query.dashboard_person_id.as_deref() {
         None if variant != "family_lanes" => {
-            let candidates = match person::Entity::find()
-                .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
+            let candidates = match access::person_queries::household_people(tenant.scope())
                 .filter(person::Column::Id.in_subquery(access::granted_people(tenant.membership())))
                 .order_by_asc(person::Column::Name)
                 .order_by_asc(person::Column::Id)
