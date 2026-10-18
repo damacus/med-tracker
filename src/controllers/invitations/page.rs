@@ -14,6 +14,8 @@ pub(super) struct Page<'a> {
     view: &'a TeraView,
     slug: &'a str,
     request_id: String,
+    language: &'static str,
+    explicit_language: bool,
 }
 
 impl<'a> Page<'a> {
@@ -32,7 +34,19 @@ impl<'a> Page<'a> {
             view,
             slug,
             request_id: request_id(request),
+            language: "en",
+            explicit_language: false,
         }
+    }
+
+    pub(super) fn with_language(mut self, language: &str) -> Self {
+        self.language = crate::models::care::report_pdf::locale(language);
+        self
+    }
+
+    pub(super) fn with_explicit_language(mut self, explicit: bool) -> Self {
+        self.explicit_language = explicit;
+        self
     }
 
     pub(super) async fn index(
@@ -47,15 +61,32 @@ impl<'a> Page<'a> {
         let result = async {
             let records = invitations::list(&tenant).await?;
             let options = invitations::options(&tenant).await?;
+            let household_name =
+                crate::models::care::administration::overview::household_name(&tenant).await?;
             Ok::<_, OperationError>(rendering::data(
-                self.slug, &records, &options, submitted, error,
+                self.slug,
+                &household_name,
+                &records,
+                &options,
+                submitted,
+                error,
             ))
         }
         .await;
-        let data = match result {
+        let mut data = match result {
             Ok(value) => value,
             Err(error) => return operation_error(error),
         };
+        let labels = match crate::models::care::report_pdf::translations(self.language) {
+            Ok(labels) => labels,
+            Err(_) => return unavailable(),
+        };
+        data["lang"] = json!(self.language);
+        data["language_suffix"] = json!(super::super::administration::language_suffix(
+            self.language,
+            self.explicit_language
+        ));
+        data["admin_labels"] = labels["administration"].clone();
         let response = rendering::render(self.view, self.token, data, error);
         if tenant.commit().await.is_err() {
             return unavailable();
@@ -116,7 +147,14 @@ impl<'a> Page<'a> {
                     [
                         (
                             header::LOCATION,
-                            format!("/households/{}/admin/invitations", self.slug),
+                            format!(
+                                "/households/{}/admin/invitations{}",
+                                self.slug,
+                                super::super::administration::language_suffix(
+                                    self.language,
+                                    self.explicit_language
+                                )
+                            ),
                         ),
                         (header::CACHE_CONTROL, "no-store".into()),
                     ],

@@ -4,6 +4,8 @@ mod account_authentication;
 mod account_preferences;
 #[path = "account_profile.rs"]
 mod account_profile;
+#[path = "administration_overview.rs"]
+mod administration_overview;
 #[path = "avatar.rs"]
 mod avatar;
 #[path = "capabilities.rs"]

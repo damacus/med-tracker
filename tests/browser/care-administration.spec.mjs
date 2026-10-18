@@ -19,7 +19,7 @@ async function openAdministration(page) {
 test('household naming retains invalid drafts and immediately updates household navigation', async ({ page }, info) => {
   test.setTimeout(180000);
   await openAdministration(page);
-  await page.getByRole('link', { name: 'Household Settings', exact: true }).click();
+  await page.getByRole('link', { name: 'Household settings', exact: true }).click();
   await page.getByLabel('Household name', { exact: true }).fill(' ');
   const invalid = page.waitForResponse(response => response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Save household', exact: true }).click();
@@ -43,7 +43,7 @@ test('membership role changes preserve the last owner and update only the select
   await careFixture.seedAdministration();
   const before = await careFixture.administrationProbe();
   await openAdministration(page);
-  await page.getByRole('link', { name: 'Users', exact: true }).click();
+  await page.getByRole('link', { name: 'Members', exact: true }).click();
   await page.locator('a[href$="/admin/users/77002/edit"]').click();
   await page.getByLabel('Household role', { exact: true }).selectOption('administrator');
   await page.getByRole('button', { name: 'Update household role', exact: true }).click();
@@ -63,7 +63,7 @@ test('carer relationships grant, revoke and restore access through the retained 
   test.setTimeout(180000);
   await careFixture.seedAdministration();
   await openAdministration(page);
-  await page.getByRole('link', { name: 'Carer Relationships', exact: true }).click();
+  await page.getByRole('link', { name: 'Care relationships', exact: true }).click();
   await page.getByRole('link', { name: 'New Relationship', exact: true }).click();
   await expect(page.getByLabel('Relationship type', { exact: true })).toHaveValue('');
   await expect(page.getByLabel('Relationship type', { exact: true }).locator('option[value="self"]')).toHaveCount(1);

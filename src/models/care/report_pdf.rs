@@ -113,6 +113,7 @@ mod locale_tests {
         let english = translations("en").unwrap();
         let groups = [
             "reports",
+            "administration",
             "smart_insights",
             "health_events.kinds",
             "health_events.severities",

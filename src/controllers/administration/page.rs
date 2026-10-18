@@ -24,6 +24,8 @@ pub(super) struct Page<'a> {
     view: &'a TeraView,
     slug: &'a str,
     request_id: String,
+    language: &'static str,
+    explicit_language: bool,
 }
 
 impl<'a> Page<'a> {
@@ -42,7 +44,25 @@ impl<'a> Page<'a> {
             view,
             slug,
             request_id: request_id(request),
+            language: "en",
+            explicit_language: false,
         }
+    }
+
+    pub(super) fn with_language(mut self, language: &str) -> Self {
+        self.language = match language {
+            "cy" => "cy",
+            "ga" => "ga",
+            "pt" => "pt",
+            "es" => "es",
+            _ => "en",
+        };
+        self
+    }
+
+    pub(super) fn with_explicit_language(mut self, explicit: bool) -> Self {
+        self.explicit_language = explicit;
+        self
     }
 
     pub(super) async fn show(
@@ -53,16 +73,22 @@ impl<'a> Page<'a> {
     ) -> Response {
         let (_, tenant) = match begin(self.ctx, self.session, self.slug, &self.request_id).await {
             Ok(value) => value,
-            Err(error) => return authentication_error(error),
+            Err(error) => {
+                return super::presentation_authentication_error(self.view, self.language, error);
+            }
         };
         let result = self.data(&tenant, screen, submitted, error).await;
         let (template, data) = match result {
             Ok(value) => value,
-            Err(error) => return operation_error(error),
+            Err(error) => return super::presentation_error(self.view, self.language, error),
         };
         let response = rendering::render(self.view, self.token, template, data, error);
         if tenant.commit().await.is_err() {
-            return unavailable();
+            return super::presentation_error(
+                self.view,
+                self.language,
+                OperationError::Unavailable,
+            );
         }
         response
     }
@@ -76,15 +102,50 @@ impl<'a> Page<'a> {
     ) -> std::result::Result<(&'static str, Value), OperationError> {
         administration::authorize(tenant).await?;
         let mut data = rendering::context(self.slug, error);
+        let labels = crate::models::care::report_pdf::translations(self.language)
+            .map_err(|_| OperationError::Unavailable)?;
+        data["lang"] = json!(self.language);
+        data["language_suffix"] = json!(super::language_suffix(
+            self.language,
+            self.explicit_language
+        ));
+        data["labels"] = labels.clone();
+        data["admin_labels"] = labels["administration"].clone();
+        data["overview_labels"] = labels["administration"]["overview"].clone();
+        let household_name = administration::overview::household_name(tenant).await?;
+        data["household_name"] = json!(household_name);
+        let (title_key, section) = match screen {
+            Screen::Index => ("overview", "overview"),
+            Screen::Settings => ("settings", "settings"),
+            Screen::Users | Screen::Role(_) => ("members", "users"),
+            Screen::Relationships | Screen::NewRelationship => ("relationships", "relationships"),
+        };
+        let section_title = labels["administration"]["nav"][title_key]
+            .as_str()
+            .ok_or(OperationError::Unavailable)?;
+        data["title"] = json!(format!("{household_name} · {section_title}"));
+        data["admin_section"] = json!(section);
         let template = match screen {
             Screen::Index => {
+                let overview = administration::overview::read(tenant).await?;
+                let heading = format!(
+                    "{} {}",
+                    overview.household_name,
+                    labels["administration"]["overview"]["title"]
+                        .as_str()
+                        .ok_or(OperationError::Unavailable)?
+                );
+                data["household_name"] = json!(overview.household_name);
+                data["active_members"] = json!(overview.active_members);
+                data["people_count"] = json!(overview.people);
+                data["pending_invitations"] = json!(overview.pending_invitations);
+                data["title"] = json!(heading);
                 let warnings = crate::models::care::care_warning::project(tenant, None).await?;
                 let mut warnings = warnings.into_values().collect::<Vec<_>>();
                 warnings.sort_by(|a, b| a["person_name"].as_str().cmp(&b["person_name"].as_str()));
+                data["care_warning_count"] = json!(warnings.len());
                 data["care_warnings"] = json!(warnings);
-                data["care_warning_labels"] = crate::models::care::report_pdf::translations("en")
-                    .map_err(|_| OperationError::Unavailable)?["care_warning"]
-                    .clone();
+                data["care_warning_labels"] = labels["care_warning"].clone();
                 "administration/index.html"
             }
             Screen::Settings => {
@@ -103,6 +164,11 @@ impl<'a> Page<'a> {
             }
             Screen::Role(user_id) => {
                 let member = self.member(tenant, user_id).await?;
+                data["title"] = json!(format!(
+                    "{} · Edit household role for {}",
+                    household_name,
+                    member["name"].as_str().unwrap_or("member")
+                ));
                 data["draft"] =
                     submitted.map_or_else(|| json!({"role":member["role"]}), |draft| json!(draft));
                 data["member"] = member;
@@ -114,6 +180,7 @@ impl<'a> Page<'a> {
                 "administration/relationships.html"
             }
             Screen::NewRelationship => {
+                data["title"] = json!(format!("{household_name} · New relationship"));
                 let draft = submitted.cloned().unwrap_or_else(|| {
                     HashMap::from([
                         ("carer_id".into(), String::new()),
@@ -149,13 +216,16 @@ impl<'a> Page<'a> {
             .verify(forms::field(&draft, "authenticity_token"))
             .is_err()
         {
-            return operation_error(OperationError::Forbidden);
+            return super::presentation_error(self.view, self.language, OperationError::Forbidden);
         }
-        let (principal, tenant) =
-            match begin(self.ctx, self.session, self.slug, &self.request_id).await {
-                Ok(value) => value,
-                Err(error) => return authentication_error(error),
-            };
+        let (principal, tenant) = match begin(self.ctx, self.session, self.slug, &self.request_id)
+            .await
+        {
+            Ok(value) => value,
+            Err(error) => {
+                return super::presentation_authentication_error(self.view, self.language, error);
+            }
+        };
         let provenance = Some(principal.provenance());
         let result = async {
             match change {
@@ -208,14 +278,22 @@ impl<'a> Page<'a> {
         match result {
             Ok((path, _)) => {
                 if tenant.commit().await.is_err() {
-                    return unavailable();
+                    return super::presentation_error(
+                        self.view,
+                        self.language,
+                        OperationError::Unavailable,
+                    );
                 }
                 (
                     StatusCode::SEE_OTHER,
                     [
                         (
                             header::LOCATION,
-                            format!("/households/{}/admin/{path}", self.slug),
+                            format!(
+                                "/households/{}/admin/{path}{}",
+                                self.slug,
+                                super::language_suffix(self.language, self.explicit_language)
+                            ),
                         ),
                         (header::CACHE_CONTROL, "no-store".into()),
                     ],
@@ -231,7 +309,11 @@ impl<'a> Page<'a> {
                     tenant.rollback().await
                 };
                 if finish.is_err() {
-                    return unavailable();
+                    return super::presentation_error(
+                        self.view,
+                        self.language,
+                        OperationError::Unavailable,
+                    );
                 }
                 let screen = match change {
                     Change::Settings => Screen::Settings,

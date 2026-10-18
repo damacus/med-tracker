@@ -8,7 +8,7 @@ use super::medications::{
 use crate::models::{care::invitations, errors::OperationError};
 use axum::{
     Extension,
-    extract::Form as AxumForm,
+    extract::{Form as AxumForm, Request},
     http::{StatusCode, header},
     response::IntoResponse,
 };
@@ -40,8 +40,20 @@ async fn index(
     request: Option<Extension<LocoRequestId>>,
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
+    incoming: Request,
 ) -> Response {
+    let language = match super::administration::presentation_language(
+        incoming.uri().query(),
+        incoming.headers(),
+    ) {
+        Ok(language) => language,
+        Err(_) => {
+            return super::administration::presentation_invalid_link(&view, incoming.headers());
+        }
+    };
     page::Page::new(&ctx, &session, &token, &view, &slug, request)
+        .with_language(language)
+        .with_explicit_language(incoming.uri().query().is_some())
         .index(None, None)
         .await
 }
@@ -55,6 +67,8 @@ async fn create(
     AxumForm(draft): AxumForm<Vec<(String, String)>>,
 ) -> Response {
     page::Page::new(&ctx, &session, &token, &view, &slug, request)
+        .with_language(field(&draft, "lang"))
+        .with_explicit_language(draft.iter().any(|(key, _)| key == "lang"))
         .save(page::Change::Create, draft)
         .await
 }
@@ -68,6 +82,8 @@ async fn resend(
     AxumForm(draft): AxumForm<Vec<(String, String)>>,
 ) -> Response {
     page::Page::new(&ctx, &session, &token, &view, &slug, request)
+        .with_language(field(&draft, "lang"))
+        .with_explicit_language(draft.iter().any(|(key, _)| key == "lang"))
         .save(page::Change::Resend(id), draft)
         .await
 }
@@ -81,6 +97,8 @@ async fn cancel(
     AxumForm(draft): AxumForm<Vec<(String, String)>>,
 ) -> Response {
     page::Page::new(&ctx, &session, &token, &view, &slug, request)
+        .with_language(field(&draft, "lang"))
+        .with_explicit_language(draft.iter().any(|(key, _)| key == "lang"))
         .save(page::Change::Cancel(id), draft)
         .await
 }

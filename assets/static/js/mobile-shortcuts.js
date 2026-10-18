@@ -2,7 +2,9 @@ async function refreshMobileShortcuts() {
   const match = location.pathname.match(/^\/households\/([^/]+)\//);
   if (!match) return;
   try {
-    const response = await fetch(`/households/${match[1]}/profile/navigation`, { headers: { Accept: 'application/json' }, cache: 'no-store' });
+    const headers = { Accept: "application/json" };
+    if (document.documentElement.lang) headers["Accept-Language"] = document.documentElement.lang;
+    const response = await fetch(`/households/${match[1]}/profile/navigation`, { headers, cache: 'no-store' });
     if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) return;
     const data = await response.json();
     if (!Array.isArray(data.links) || data.links.length > 3) return;

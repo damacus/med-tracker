@@ -12,7 +12,7 @@ use crate::{
         care::{administration, report_pdf},
         entities::account,
         errors::OperationError,
-        profile,
+        platform, profile,
     },
 };
 use axum::{
@@ -345,7 +345,27 @@ async fn navigation(
         Ok(active) => active.map(|household| household.id.to_string()),
         Err(error) => return authentication_error(error),
     };
-    let shell = json!({"name":name,"initials":initials,"avatar_attached":avatar_attached,"gravatar_url":gravatar_url,"authenticity_token":authenticity_token,"sidebar":sidebar,"choices":choices,"households":households,"active_household_id":active_household_id,"labels":labels["layouts"],"navigation_label":labels["ruby_ui"]["common"]["navigation_menu"]});
+    let platform_transaction = match platform::begin(&ctx.db).await {
+        Ok(transaction) => transaction,
+        Err(error) => return operation_error(error),
+    };
+    let platform_url =
+        match platform::administrator(&platform_transaction, principal.account_id()).await {
+            Ok(_) => {
+                if platform_transaction.commit().await.is_err() {
+                    return unavailable();
+                }
+                Some("/platform/users")
+            }
+            Err(OperationError::Forbidden | OperationError::Unauthenticated) => {
+                if platform_transaction.rollback().await.is_err() {
+                    return unavailable();
+                }
+                None
+            }
+            Err(error) => return operation_error(error),
+        };
+    let shell = json!({"name":name,"initials":initials,"avatar_attached":avatar_attached,"gravatar_url":gravatar_url,"authenticity_token":authenticity_token,"sidebar":sidebar,"choices":choices,"households":households,"active_household_id":active_household_id,"platform_url":platform_url,"labels":labels["layouts"],"navigation_label":labels["ruby_ui"]["common"]["navigation_menu"]});
     (
         StatusCode::OK,
         token,
