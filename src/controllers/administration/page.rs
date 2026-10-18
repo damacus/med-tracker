@@ -146,6 +146,12 @@ impl<'a> Page<'a> {
                 data["care_warning_count"] = json!(warnings.len());
                 data["care_warnings"] = json!(warnings);
                 data["care_warning_labels"] = labels["care_warning"].clone();
+                let recent = administration::audit_logs::recent(tenant).await?;
+                data["recent_activity"] = json!(super::audit_logs::summaries(
+                    &recent,
+                    &labels,
+                    self.language
+                )?);
                 "administration/index.html"
             }
             Screen::Settings => {

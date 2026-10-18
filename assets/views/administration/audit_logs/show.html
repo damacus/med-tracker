@@ -1,0 +1,19 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-3xl mx-auto">
+  <a class="link" href="/households/{{ slug }}/admin/audit_logs{{ language_suffix }}">{{ admin_labels.audit.title }}</a>
+  {% include "administration/context.html" %}
+  <h1 class="text-3xl font-semibold mt-4">{{ detail.summary.event_label }}</h1>
+  {% include "administration/navigation.html" %}
+  <div class="card bg-base-100 border border-base-300 mt-6"><div class="card-body">
+    <dl class="grid gap-4 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)]">
+      <dt>{{ admin_labels.audit.event_id }}</dt><dd>{{ detail.summary.id }}</dd>
+      <dt>{{ admin_labels.audit.event_type }}</dt><dd>{{ detail.summary.event_type }}</dd>
+      <dt>{{ admin_labels.audit.when }}</dt><dd>{{ detail.summary.occurred_at_utc }}</dd>
+      <dt>{{ admin_labels.audit.actor }}</dt><dd>{{ detail.summary.actor }}</dd>
+      {% if detail.request_id %}<dt>{{ admin_labels.audit.request_id }}</dt><dd>{{ detail.request_id }}</dd>{% endif %}
+      {% for field in detail.fields %}<dt>{{ field.label }}</dt><dd>{{ field.value }}</dd>{% endfor %}
+    </dl>
+  </div></div>
+</section>
+{% endblock content %}

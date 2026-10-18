@@ -357,6 +357,11 @@ tasks:
         psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction
         -c "INSERT INTO public.identity_passkeys(id,account_id,name,public_key,credential_id,counter,device_type,backed_up,transports,credential,aaguid,created_at,updated_at)
         SELECT gen_random_uuid()::text,71002,'Foreign synthetic device',public_key,'Zm9yZWlnbi1jcmVkZW50aWFs',counter,device_type,backed_up,transports,credential,aaguid,now(),now() FROM public.identity_passkeys WHERE account_id=71001 ORDER BY created_at LIMIT 1;"
+  seed-administration-audit:
+    requires:
+      vars: [CARE_DATABASE_URL]
+    cmds:
+      - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction -f tests/fixtures/browser-administration-audit.sql'
   seed-administration:
     requires:
       vars: [CARE_DATABASE_URL]
