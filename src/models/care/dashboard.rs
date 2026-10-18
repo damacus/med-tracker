@@ -25,8 +25,7 @@ pub async fn read(
     access::recheck(tenant).await?;
     let db = tenant.transaction();
     let household = tenant.scope().household_id;
-    let people = person::Entity::find()
-        .filter(person::Column::HouseholdId.eq(household))
+    let people = access::person_queries::household_people(tenant.scope())
         .filter(person::Column::Id.in_subquery(access::granted_people(tenant.membership())))
         .order_by_asc(person::Column::Name)
         .all(db)
