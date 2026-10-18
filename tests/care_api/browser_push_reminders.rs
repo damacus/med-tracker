@@ -1771,3 +1771,330 @@ async fn browser_missed_reminders_respect_grace_managed_opt_in_and_private_conte
     );
     app.close().await;
 }
+
+async fn create_declared_dependent(
+    app: &Application,
+    token: &str,
+    key: &str,
+    name: &str,
+    kind: &str,
+    birth: &str,
+) -> i64 {
+    let response = app
+        .client
+        .post(format!("{}/api/v1/households/72001/people", app.origin))
+        .bearer_auth(token)
+        .header("idempotency-key", key)
+        .json(&json!({"person":{"name":name,"date_of_birth":birth,"person_type":kind,"has_capacity":false,"initial_guardian_declaration":true}}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status().as_u16(), 201);
+    response.json::<Value>().await.unwrap()["data"]["id"]
+        .as_i64()
+        .unwrap()
+}
+
+async fn seed_daily_schedule(
+    app: &Application,
+    person_id: i64,
+    now: chrono::DateTime<Utc>,
+    time: &str,
+) -> i64 {
+    let row = app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+        "INSERT INTO schedules(household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(72001,$1,80001,true,$2,$3,2,'tablet',0,jsonb_build_object('times',jsonb_build_array($4::text)),now(),now()) RETURNING id",
+        [person_id.into(),(now.date_naive()-chrono::Duration::days(1)).into(),(now.date_naive()+chrono::Duration::days(2)).into(),time.into()])).await.unwrap().unwrap();
+    row.try_get("", "id").unwrap()
+}
+
+async fn declared_reminder_account(app: &Application) -> String {
+    let token = app.token().await;
+    app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences=jsonb_build_object('time_zone','UTC') WHERE id=71001; INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,created_at,updated_at) VALUES(72001,73001,true,false,true,false,false,now(),now()); INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/declared-reminder','synthetic','synthetic',now(),now())").await.unwrap();
+    token
+}
+
+#[tokio::test]
+async fn browser_missed_reminder_reaches_declared_dependents_without_grants() {
+    let app = Application::new().await;
+    let token = declared_reminder_account(&app).await;
+    let now = Utc::now()
+        .with_second(0)
+        .unwrap()
+        .with_nanosecond(0)
+        .unwrap();
+    let scheduled = (now - chrono::Duration::minutes(30))
+        .format("%H:%M")
+        .to_string();
+    let mut declared = Vec::new();
+    for (key, name, kind, birth) in [
+        (
+            "synthetic-declared-minor",
+            "Synthetic declared minor",
+            "minor",
+            "2020-01-01",
+        ),
+        (
+            "synthetic-declared-adult",
+            "Synthetic declared adult",
+            "dependent_adult",
+            "1980-01-01",
+        ),
+    ] {
+        let person_id = create_declared_dependent(&app, &token, key, name, kind, birth).await;
+        declared.push(person_id);
+        seed_daily_schedule(&app, person_id, now, &scheduled).await;
+    }
+    let transport = Arc::new(Reminders(Mutex::new(vec![])));
+    app.context.shared_store.insert(Service {
+        public_key: String::new(),
+        transport: transport.clone(),
+    });
+    let scope = HouseholdScope {
+        actor: Actor { account_id: 71001 },
+        household_id: 72001,
+        request_id: "synthetic-declared-reminder".into(),
+    };
+    assert_eq!(
+        browser_push::reminders::deliver_account(&app.context, &scope, now)
+            .await
+            .unwrap(),
+        2
+    );
+    let mut bodies = transport
+        .0
+        .lock()
+        .unwrap()
+        .iter()
+        .map(|payload| payload["body"].as_str().unwrap().to_owned())
+        .collect::<Vec<_>>();
+    bodies.sort();
+    assert_eq!(
+        bodies,
+        [
+            "Synthetic declared adult may have missed a dose.",
+            "Synthetic declared minor may have missed a dose."
+        ]
+    );
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            "SELECT count(*) AS grants FROM person_access_grants WHERE person_id=ANY($1::bigint[])",
+            [declared.into()],
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(row.try_get::<i64>("", "grants").unwrap(), 0);
+    assert_eq!(
+        browser_push::reminders::deliver_account(&app.context, &scope, now)
+            .await
+            .unwrap(),
+        0
+    );
+    app.close().await;
+}
+
+#[tokio::test]
+async fn browser_missed_reminder_stops_declared_dependents_when_authority_breaks() {
+    let app = Application::new().await;
+    let token = declared_reminder_account(&app).await;
+    let now = Utc::now()
+        .with_second(0)
+        .unwrap()
+        .with_nanosecond(0)
+        .unwrap();
+    let scheduled = (now - chrono::Duration::minutes(30))
+        .format("%H:%M")
+        .to_string();
+    let mut people = Vec::new();
+    for (key, name) in [
+        (
+            "synthetic-withdrawn-declaration",
+            "Synthetic withdrawn child",
+        ),
+        ("synthetic-inactive-link", "Synthetic inactive link child"),
+        ("synthetic-revoked-membership", "Synthetic revoked child"),
+        ("synthetic-current-declaration", "Synthetic current child"),
+    ] {
+        let person_id =
+            create_declared_dependent(&app, &token, key, name, "minor", "2020-01-01").await;
+        people.push(person_id);
+        seed_daily_schedule(&app, person_id, now, &scheduled).await;
+    }
+    let declaration = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            "SELECT id FROM guardian_declarations WHERE subject_person_id=$1",
+            [people[0].into()],
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    let declaration_id: i64 = declaration.try_get("", "id").unwrap();
+    let withdrawn = app
+        .client
+        .patch(format!(
+            "{}/api/v1/auth/guardian-declarations/{declaration_id}",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .json(&json!({"guardian_declaration":{"withdrawn":true,"revision":"1"}}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(withdrawn.status().as_u16(), 200);
+    app.fixture
+        .admin
+        .execute_raw(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            "UPDATE carer_relationships SET active=false,updated_at=now() WHERE household_id=72001 AND patient_id=$1",
+            [people[1].into()],
+        ))
+        .await
+        .unwrap();
+    app.fixture
+        .admin
+        .execute_raw(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            "UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1,updated_at=now() WHERE household_id=72001 AND person_id=$1",
+            [people[2].into()],
+        ))
+        .await
+        .unwrap();
+    let transport = Arc::new(Reminders(Mutex::new(vec![])));
+    app.context.shared_store.insert(Service {
+        public_key: String::new(),
+        transport: transport.clone(),
+    });
+    let scope = HouseholdScope {
+        actor: Actor { account_id: 71001 },
+        household_id: 72001,
+        request_id: "synthetic-declared-revocation".into(),
+    };
+    assert_eq!(
+        browser_push::reminders::deliver_account(&app.context, &scope, now)
+            .await
+            .unwrap(),
+        1
+    );
+    {
+        let bodies = transport.0.lock().unwrap();
+        assert_eq!(bodies.len(), 1);
+        assert_eq!(
+            bodies[0]["body"].as_str().unwrap(),
+            "Synthetic current child may have missed a dose."
+        );
+    }
+    app.close().await;
+}
+
+#[tokio::test]
+async fn browser_missed_reminder_skips_decided_dependent_doses_and_undeclared_managers() {
+    let app = Application::new().await;
+    let token = declared_reminder_account(&app).await;
+    let now = Utc::now()
+        .with_second(0)
+        .unwrap()
+        .with_nanosecond(0)
+        .unwrap();
+    let scheduled = (now - chrono::Duration::minutes(30))
+        .format("%H:%M")
+        .to_string();
+    let decided = create_declared_dependent(
+        &app,
+        &token,
+        "synthetic-decided-dependent",
+        "Synthetic decided child",
+        "minor",
+        "2020-01-01",
+    )
+    .await;
+    let schedule = seed_daily_schedule(&app, decided, now, &scheduled).await;
+    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+        "INSERT INTO medication_dose_occurrences(household_id,schedule_id,window_starts_on,window_ends_on,position,scheduled_at,outcome,resolved_at,resolved_by_membership_id,created_at,updated_at) VALUES(72001,$1,$2,$2,1,$3,'not_taken',now(),74001,now(),now())",
+        [schedule.into(),now.date_naive().into(),(now-chrono::Duration::minutes(30)).naive_utc().into()])).await.unwrap();
+    let transport = Arc::new(Reminders(Mutex::new(vec![])));
+    app.context.shared_store.insert(Service {
+        public_key: String::new(),
+        transport: transport.clone(),
+    });
+    let scope = HouseholdScope {
+        actor: Actor { account_id: 71001 },
+        household_id: 72001,
+        request_id: "synthetic-declared-decided".into(),
+    };
+    assert_eq!(
+        browser_push::reminders::deliver_account(&app.context, &scope, now)
+            .await
+            .unwrap(),
+        0
+    );
+    app.fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73010,'Synthetic unrelated manager',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,password_hash,status,created_at,updated_at) VALUES(71002,73010,'unrelated-manager@example.test',crypt('password',gen_salt('bf',4)),2,now(),now()); INSERT INTO users(id,person_id,email_address,password_digest,created_at,updated_at) VALUES(77002,73010,'unrelated-manager@example.test',crypt('password',gen_salt('bf',4)),now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74010,72001,73010,'administrator','active',now(),now(),now()); INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,created_at,updated_at) VALUES(72001,73010,true,false,true,false,false,now(),now()); INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71002,'https://fcm.googleapis.com/fcm/send/unrelated-manager','synthetic','synthetic',now(),now())").await.unwrap();
+    let unrelated = HouseholdScope {
+        actor: Actor { account_id: 71002 },
+        household_id: 72001,
+        request_id: "synthetic-undeclared-manager".into(),
+    };
+    assert_eq!(
+        browser_push::reminders::deliver_account(&app.context, &unrelated, now)
+            .await
+            .unwrap(),
+        0
+    );
+    assert!(transport.0.lock().unwrap().is_empty());
+    app.close().await;
+}
+
+#[tokio::test]
+async fn browser_missed_reminder_keeps_declared_dependent_names_private() {
+    let app = Application::new().await;
+    let token = app.token().await;
+    app.fixture.admin.execute_unprepared("UPDATE accounts SET preferences=jsonb_build_object('time_zone','UTC') WHERE id=71001; INSERT INTO notification_preferences(household_id,person_id,enabled,dose_due_enabled,missed_dose_enabled,low_stock_enabled,private_text_enabled,created_at,updated_at) VALUES(72001,73001,true,false,true,false,true,now(),now()); INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://fcm.googleapis.com/fcm/send/declared-private','synthetic','synthetic',now(),now())").await.unwrap();
+    let now = Utc::now()
+        .with_second(0)
+        .unwrap()
+        .with_nanosecond(0)
+        .unwrap();
+    let scheduled = (now - chrono::Duration::minutes(30))
+        .format("%H:%M")
+        .to_string();
+    let dependent = create_declared_dependent(
+        &app,
+        &token,
+        "synthetic-private-dependent",
+        "Synthetic private child",
+        "minor",
+        "2020-01-01",
+    )
+    .await;
+    seed_daily_schedule(&app, dependent, now, &scheduled).await;
+    let transport = Arc::new(Reminders(Mutex::new(vec![])));
+    app.context.shared_store.insert(Service {
+        public_key: String::new(),
+        transport: transport.clone(),
+    });
+    let scope = HouseholdScope {
+        actor: Actor { account_id: 71001 },
+        household_id: 72001,
+        request_id: "synthetic-declared-private".into(),
+    };
+    assert_eq!(
+        browser_push::reminders::deliver_account(&app.context, &scope, now)
+            .await
+            .unwrap(),
+        1
+    );
+    {
+        let bodies = transport.0.lock().unwrap();
+        assert_eq!(bodies.len(), 1);
+        assert_eq!(
+            bodies[0]["body"].as_str().unwrap(),
+            "A dose may have been missed."
+        );
+    }
+    app.close().await;
+}
