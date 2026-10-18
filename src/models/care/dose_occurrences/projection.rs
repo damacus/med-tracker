@@ -153,10 +153,11 @@ pub(super) fn projected_loaded(
                     && (source.active() || !pauses.is_empty())
                     && let Some(config) = schedule_config_on(schedule, day)
                 {
-                    let mut times = config_times(config, day, settings);
-                    if times.is_empty() {
-                        times = config_times(&schedule.schedule_config, day, settings);
-                    }
+                    let times = if config.get("times").is_none() {
+                        config_times(&schedule.schedule_config, day, settings)
+                    } else {
+                        config_times(config, day, settings)
+                    };
                     if times.is_empty() {
                         if !fully_paused(source, day, day, pauses, settings) {
                             let fallback = effective_count(
@@ -455,6 +456,37 @@ mod tests {
         assert_eq!(occs[0].position, 1);
         assert_eq!(occs[1].position, 2);
         assert_eq!(occs[2].position, 3);
+        assert_eq!(occs[0].scheduled_at, None);
+    }
+
+    #[test]
+    fn projected_loaded_taper_schedule_explicit_empty_times_generates_untimed_occurrences() {
+        let config = json!({
+            "times": ["08:00", "20:00"],
+            "taper_steps": [
+                {
+                    "start_date": "2026-01-05",
+                    "end_date": "2026-01-07",
+                    "amount": "1",
+                    "times": [],
+                    "max_daily_doses": 1
+                }
+            ]
+        });
+        let sched = make_schedule(5, config, ymd(2026, 1, 1), ymd(2026, 1, 31));
+        let source = Source::Schedule(sched);
+        let occs = projected_loaded(
+            &source,
+            ymd(2026, 1, 5),
+            ymd(2026, 1, 5),
+            &[],
+            &[],
+            &[],
+            None,
+        );
+
+        assert_eq!(occs.len(), 1);
+        assert_eq!(occs[0].position, 1);
         assert_eq!(occs[0].scheduled_at, None);
     }
 

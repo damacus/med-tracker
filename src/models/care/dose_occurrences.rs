@@ -75,10 +75,11 @@ pub(crate) fn expected_schedule_doses_for_report(
     let Some(config) = schedule_config_on(source, day) else {
         return 0;
     };
-    let mut times = config_times(config, day, settings);
-    if times.is_empty() {
-        times = config_times(&source.schedule_config, day, settings);
-    }
+    let times = if config.get("times").is_none() {
+        config_times(&source.schedule_config, day, settings)
+    } else {
+        config_times(config, day, settings)
+    };
     if times.is_empty() {
         let fallback =
             effective_count(&source.schedule_config, source.max_daily_doses.unwrap_or(1));
@@ -191,8 +192,11 @@ async fn projected_for_range(
                 && source.max_daily_doses.is_none()
                 && !schedule_as_needed(&source)
                 && let Some(config) = schedule_config_on(&source, start)
-                && config_times(config, start, tenant.settings()).is_empty()
-                && config_times(&source.schedule_config, start, tenant.settings()).is_empty()
+                && if config.get("times").is_none() {
+                    config_times(&source.schedule_config, start, tenant.settings()).is_empty()
+                } else {
+                    config_times(config, start, tenant.settings()).is_empty()
+                }
                 && let Some(hours) =
                     doses::config_decimal(config, &["min_hours_between_doses", "min_hours"])
                         .or_else(|| {
