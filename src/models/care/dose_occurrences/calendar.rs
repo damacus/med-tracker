@@ -102,11 +102,13 @@ pub(super) fn local_midnight(
     date: NaiveDate,
     settings: Option<&serde_json::Value>,
 ) -> NaiveDateTime {
-    zone(settings)
-        .from_local_datetime(&date.and_hms_opt(0, 0, 0).unwrap())
+    let tz = zone(settings);
+    let midnight = date.and_hms_opt(0, 0, 0).unwrap();
+    tz.from_local_datetime(&midnight)
         .earliest()
+        .or_else(|| chrono_tz::GapInfo::new(&midnight, &tz).and_then(|gap| gap.end))
         .map(|value| value.with_timezone(&Utc).naive_utc())
-        .unwrap_or_else(|| date.and_hms_opt(0, 0, 0).unwrap())
+        .unwrap_or_else(|| scheduled_time_in_zone(date, "00:00", tz).unwrap_or(midnight))
 }
 
 pub(super) fn config_times(
@@ -125,4 +127,184 @@ pub(super) fn config_times(
                 .and_then(|value| scheduled_time(date, value, settings))
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use proptest::prelude::*;
+
+    fn ymd(year: i32, month: u32, day: u32) -> NaiveDate {
+        NaiveDate::from_ymd_opt(year, month, day).unwrap()
+    }
+
+    fn ymd_hms(year: i32, month: u32, day: u32, hour: u32, min: u32, sec: u32) -> NaiveDateTime {
+        ymd(year, month, day).and_hms_opt(hour, min, sec).unwrap()
+    }
+
+    #[test]
+    fn scheduled_time_and_local_midnight_europe_london() {
+        let london = chrono_tz::Europe::London;
+        let settings = json!({ "time_zone": "Europe/London" });
+
+        let spring = scheduled_time_in_zone(ymd(2026, 3, 29), "01:30", london);
+        assert_eq!(spring, Some(ymd_hms(2026, 3, 29, 1, 30, 0)));
+
+        let autumn = scheduled_time_in_zone(ymd(2026, 10, 25), "01:30", london);
+        assert_eq!(autumn, Some(ymd_hms(2026, 10, 25, 0, 30, 0)));
+
+        assert_eq!(
+            local_midnight(ymd(2026, 3, 29), Some(&settings)),
+            ymd_hms(2026, 3, 29, 0, 0, 0)
+        );
+        assert_eq!(
+            local_midnight(ymd(2026, 10, 25), Some(&settings)),
+            ymd_hms(2026, 10, 24, 23, 0, 0)
+        );
+    }
+
+    #[test]
+    fn scheduled_time_and_local_midnight_america_new_york() {
+        let new_york = chrono_tz::America::New_York;
+        let settings = json!({ "time_zone": "America/New_York" });
+
+        let spring = scheduled_time_in_zone(ymd(2026, 3, 8), "02:30", new_york);
+        assert_eq!(spring, Some(ymd_hms(2026, 3, 8, 7, 30, 0)));
+
+        let autumn = scheduled_time_in_zone(ymd(2026, 11, 1), "01:30", new_york);
+        assert_eq!(autumn, Some(ymd_hms(2026, 11, 1, 5, 30, 0)));
+
+        assert_eq!(
+            local_midnight(ymd(2026, 3, 8), Some(&settings)),
+            ymd_hms(2026, 3, 8, 5, 0, 0)
+        );
+        assert_eq!(
+            local_midnight(ymd(2026, 11, 1), Some(&settings)),
+            ymd_hms(2026, 11, 1, 4, 0, 0)
+        );
+    }
+
+    #[test]
+    fn scheduled_time_and_local_midnight_australia_lord_howe() {
+        let lord_howe = chrono_tz::Australia::Lord_Howe;
+        let settings = json!({ "time_zone": "Australia/Lord_Howe" });
+
+        let spring = scheduled_time_in_zone(ymd(2026, 10, 4), "02:15", lord_howe);
+        assert_eq!(spring, Some(ymd_hms(2026, 10, 3, 15, 45, 0)));
+
+        let autumn = scheduled_time_in_zone(ymd(2026, 4, 5), "01:45", lord_howe);
+        assert_eq!(autumn, Some(ymd_hms(2026, 4, 4, 14, 45, 0)));
+
+        assert_eq!(
+            local_midnight(ymd(2026, 10, 4), Some(&settings)),
+            ymd_hms(2026, 10, 3, 13, 30, 0)
+        );
+        assert_eq!(
+            local_midnight(ymd(2026, 4, 5), Some(&settings)),
+            ymd_hms(2026, 4, 4, 13, 0, 0)
+        );
+    }
+
+    #[test]
+    fn scheduled_time_and_local_midnight_america_santiago() {
+        let santiago = chrono_tz::America::Santiago;
+        let settings = json!({ "time_zone": "America/Santiago" });
+
+        let spring = scheduled_time_in_zone(ymd(2026, 9, 6), "00:30", santiago);
+        assert_eq!(spring, Some(ymd_hms(2026, 9, 6, 4, 30, 0)));
+
+        assert_eq!(
+            local_midnight(ymd(2026, 9, 6), Some(&settings)),
+            ymd_hms(2026, 9, 6, 4, 0, 0)
+        );
+
+        let autumn = scheduled_time_in_zone(ymd(2026, 4, 4), "23:30", santiago);
+        assert_eq!(autumn, Some(ymd_hms(2026, 4, 5, 2, 30, 0)));
+
+        assert_eq!(
+            local_midnight(ymd(2026, 4, 5), Some(&settings)),
+            ymd_hms(2026, 4, 5, 4, 0, 0)
+        );
+    }
+
+    #[test]
+    fn cycle_bounds_daily_weekly_and_monthly() {
+        let d = ymd(2026, 6, 15);
+        assert_eq!(cycle_bounds(d, 0), (d, d));
+
+        assert_eq!(
+            cycle_bounds(ymd(2026, 1, 7), 1),
+            (ymd(2026, 1, 5), ymd(2026, 1, 11))
+        );
+        assert_eq!(
+            cycle_bounds(ymd(2026, 1, 5), 1),
+            (ymd(2026, 1, 5), ymd(2026, 1, 11))
+        );
+        assert_eq!(
+            cycle_bounds(ymd(2026, 1, 11), 1),
+            (ymd(2026, 1, 5), ymd(2026, 1, 11))
+        );
+
+        assert_eq!(
+            cycle_bounds(ymd(2026, 12, 31), 1),
+            (ymd(2026, 12, 28), ymd(2027, 1, 3))
+        );
+
+        assert_eq!(
+            cycle_bounds(ymd(2024, 2, 15), 2),
+            (ymd(2024, 2, 1), ymd(2024, 2, 29))
+        );
+
+        assert_eq!(
+            cycle_bounds(ymd(2026, 2, 15), 2),
+            (ymd(2026, 2, 1), ymd(2026, 2, 28))
+        );
+
+        assert_eq!(
+            cycle_bounds(ymd(2026, 12, 31), 2),
+            (ymd(2026, 12, 1), ymd(2026, 12, 31))
+        );
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(64))]
+
+        #[test]
+        fn local_midnight_monotonic_and_roundtrips_local_date(
+            tz_name in prop_oneof![
+                Just("Europe/London"),
+                Just("America/New_York"),
+                Just("Australia/Lord_Howe"),
+                Just("America/Santiago"),
+            ],
+            day_offset in prop_oneof![
+                Just((ymd(2026, 3, 29) - ymd(2024, 1, 1)).num_days()),
+                Just((ymd(2026, 10, 25) - ymd(2024, 1, 1)).num_days()),
+                Just((ymd(2026, 3, 8) - ymd(2024, 1, 1)).num_days()),
+                Just((ymd(2026, 11, 1) - ymd(2024, 1, 1)).num_days()),
+                Just((ymd(2026, 10, 4) - ymd(2024, 1, 1)).num_days()),
+                Just((ymd(2026, 4, 5) - ymd(2024, 1, 1)).num_days()),
+                Just((ymd(2026, 9, 6) - ymd(2024, 1, 1)).num_days()),
+                0..1461i64,
+            ],
+        ) {
+            let base_date = NaiveDate::from_ymd_opt(2024, 1, 1).unwrap();
+            let d = base_date + Duration::days(day_offset);
+            let settings = json!({ "time_zone": tz_name });
+            let midnight = local_midnight(d, Some(&settings));
+            let next_midnight = local_midnight(d + Duration::days(1), Some(&settings));
+            prop_assert!(
+                midnight < next_midnight,
+                "local_midnight({d:?}, {tz_name}) = {midnight:?} not < local_midnight({:?}) = {next_midnight:?}",
+                d + Duration::days(1)
+            );
+            prop_assert_eq!(
+                local_date(midnight, Some(&settings)),
+                d,
+                "local_date mismatch for tz {} on date {:?}",
+                tz_name,
+                d
+            );
+        }
+    }
 }

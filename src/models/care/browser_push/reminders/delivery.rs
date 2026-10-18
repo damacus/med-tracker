@@ -5,20 +5,22 @@ use crate::models::{
         browser_push::{Delivery, Service, audit},
         push_subscriptions,
     },
-    entities::push_subscription,
+    entities::{account, household, push_subscription},
     errors::OperationError,
 };
 use chrono::{DateTime, NaiveDateTime, Utc};
 use loco_rs::app::AppContext;
-use sea_orm::{ColumnTrait, ConnectionTrait, DbBackend, EntityTrait, QueryFilter, Statement};
+use sea_orm::{
+    ColumnTrait, ConnectionTrait, DbBackend, EntityTrait, QueryFilter, QuerySelect, Statement,
+};
 use serde_json::json;
 
 struct Claim {
     event_id: i64,
+    key: String,
     attempt: i32,
     claimed_at: NaiveDateTime,
     subscription: push_subscription::Model,
-    payload: Vec<u8>,
     expires_at: DateTime<Utc>,
 }
 
@@ -26,6 +28,12 @@ struct Claim {
 enum AttemptOutcome {
     Provider(Delivery),
     Deadline,
+}
+
+enum Guard {
+    Attempt(Delivery),
+    Suppressed,
+    Stale,
 }
 
 async fn terminal(
@@ -122,13 +130,12 @@ async fn claim(
         .filter(push_subscription::Column::AccountId.eq(scope.actor.account_id))
         .one(tenant.transaction())
         .await?;
-    let Some((intent, subscription)) = intent.zip(subscription) else {
+    let Some((_intent, subscription)) = intent.zip(subscription) else {
         terminal(&tenant, id, "invalid", "no_longer_eligible").await?;
         audit(&tenant, "reminder.invalid", json!({"delivery_id":id})).await?;
         tenant.commit().await?;
         return Ok(None);
     };
-    let payload = serde_json::to_vec(&intent.payload).map_err(|_| OperationError::Unavailable)?;
     let claimed_at = now.naive_utc();
     tenant.transaction().execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
         "UPDATE notification_deliveries SET status='sending',attempt_count=attempt_count+1,claimed_at=$2,outcome=NULL,updated_at=timezone('UTC',clock_timestamp()) WHERE id=$1 AND status='pending'",
@@ -143,12 +150,100 @@ async fn claim(
     tenant.commit().await?;
     Ok(Some(Claim {
         event_id,
+        key,
         attempt: attempt_count + 1,
         claimed_at,
         subscription,
-        payload,
         expires_at,
     }))
+}
+
+async fn suppress(
+    tenant: &TenantTransaction,
+    id: i64,
+    outcome: &str,
+) -> Result<(), OperationError> {
+    terminal(tenant, id, "invalid", outcome).await?;
+    audit(tenant, "reminder.invalid", json!({"delivery_id":id})).await?;
+    Ok(())
+}
+
+async fn presend_authority(
+    ctx: &AppContext,
+    scope: &HouseholdScope,
+    service: &Service,
+    id: i64,
+    claim: &Claim,
+    ttl: u32,
+    send_at: DateTime<Utc>,
+) -> Result<Guard, OperationError> {
+    let tenant = access::begin(&ctx.db, scope, ctx.config.settings.as_ref()).await?;
+    let checked = async {
+        tenant
+            .transaction()
+            .execute_unprepared("SET LOCAL lock_timeout = '5s'")
+            .await?;
+        account::Entity::find_by_id(scope.actor.account_id)
+            .lock(sea_orm::sea_query::LockType::NoKeyUpdate)
+            .one(tenant.transaction())
+            .await?
+            .ok_or(OperationError::Forbidden)?;
+        household::Entity::find_by_id(scope.household_id)
+            .lock(sea_orm::sea_query::LockType::NoKeyUpdate)
+            .one(tenant.transaction())
+            .await?
+            .ok_or(OperationError::Forbidden)?;
+        let subscription = push_subscription::Entity::find_by_id(claim.subscription.id)
+            .filter(push_subscription::Column::AccountId.eq(scope.actor.account_id))
+            .lock(sea_orm::sea_query::LockType::NoKeyUpdate)
+            .one(tenant.transaction())
+            .await?;
+        let owned = tenant.transaction().query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+            "SELECT 1 AS owned FROM notification_deliveries WHERE id=$1 AND household_id=$2 AND account_id=$3 AND status='sending' AND attempt_count=$4 AND claimed_at=$5",
+            [id.into(),scope.household_id.into(),scope.actor.account_id.into(),claim.attempt.into(),claim.claimed_at.into()]
+        )).await?.is_some();
+        access::recheck(&tenant).await?;
+        Ok::<_, OperationError>((subscription, owned))
+    }
+    .await;
+    let (subscription, owned) = match checked {
+        Ok(values) => values,
+        Err(error) => {
+            let revocable = matches!(
+                error,
+                OperationError::Forbidden
+                    | OperationError::NotFound
+                    | OperationError::Unauthenticated
+            );
+            if revocable
+                && suppress(&tenant, id, "recipient_revoked").await.is_ok()
+                && tenant.commit().await.is_ok()
+            {
+                return Ok(Guard::Suppressed);
+            }
+            return Err(error);
+        }
+    };
+    if !owned {
+        tenant.commit().await?;
+        return Ok(Guard::Stale);
+    }
+    let intent = plans(&tenant, send_at)
+        .await?
+        .into_iter()
+        .find(|intent| intent.key == claim.key);
+    let Some((intent, subscription)) = intent.zip(subscription) else {
+        suppress(&tenant, id, "no_longer_eligible").await?;
+        tenant.commit().await?;
+        return Ok(Guard::Suppressed);
+    };
+    let payload = serde_json::to_vec(&intent.payload).map_err(|_| OperationError::Unavailable)?;
+    let outcome = service
+        .transport
+        .send_with_ttl(&subscription, &payload, ttl)
+        .await;
+    tenant.commit().await?;
+    Ok(Guard::Attempt(outcome))
 }
 
 async fn complete(
@@ -267,12 +362,12 @@ pub async fn drain_candidates(
                 AttemptOutcome::Deadline
             } else {
                 let ttl = (claim.expires_at - send_at).num_seconds().max(0) as u32;
-                AttemptOutcome::Provider(
-                    service
-                        .transport
-                        .send_with_ttl(&claim.subscription, &claim.payload, ttl.min(300))
-                        .await,
-                )
+                match presend_authority(ctx, scope, &service, id, &claim, ttl.min(300), send_at)
+                    .await?
+                {
+                    Guard::Attempt(outcome) => AttemptOutcome::Provider(outcome),
+                    Guard::Suppressed | Guard::Stale => continue,
+                }
             };
             if complete(ctx, scope, id, &claim, result, now.max(Utc::now())).await? {
                 accepted_events.insert(claim.event_id);

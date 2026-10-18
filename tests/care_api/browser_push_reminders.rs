@@ -135,13 +135,50 @@ async fn browser_reminder_lifecycle_revocation_recovers_without_resend() {
             browser_push::reminders::deliver_account(&ctx, &sending_scope, now).await
         });
         transport.started.notified().await;
-        app.fixture
-            .admin
-            .execute_unprepared(mutation)
+        let withdrawal = if mutation.contains("memberships") {
+            app.fixture
+                .admin
+                .execute_unprepared(mutation)
+                .await
+                .unwrap();
+            None
+        } else {
+            let admin = app.fixture.admin.clone();
+            Some(tokio::spawn(async move {
+                admin.execute_unprepared(mutation).await
+            }))
+        };
+        if withdrawal.is_some() {
+            let owner = owner_connection(&app).await;
+            tokio::time::timeout(std::time::Duration::from_secs(10), async {
+                loop {
+                    let row = owner
+                        .query_one_raw(Statement::from_string(
+                            DbBackend::Postgres,
+                            "SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock') AS waiting",
+                        ))
+                        .await
+                        .unwrap()
+                        .unwrap();
+                    if row.try_get::<bool>("", "waiting").unwrap() {
+                        break;
+                    }
+                    tokio::task::yield_now().await;
+                }
+            })
             .await
             .unwrap();
+            owner.close().await.unwrap();
+        }
         transport.release.notify_one();
         let _ = sender.await.unwrap();
+        if let Some(withdrawal) = withdrawal {
+            tokio::time::timeout(std::time::Duration::from_secs(10), withdrawal)
+                .await
+                .unwrap()
+                .unwrap()
+                .unwrap();
+        }
         app.fixture.admin.execute_unprepared("UPDATE notification_deliveries SET claimed_at=now()-interval '121 seconds' WHERE status='sending'").await.unwrap();
         let runs = browser_push::scheduler::recipients(&app.context, Utc::now())
             .await
@@ -1769,6 +1806,283 @@ async fn browser_missed_reminders_respect_grace_managed_opt_in_and_private_conte
         .unwrap(),
         0
     );
+    app.close().await;
+}
+
+async fn owner_connection(app: &Application) -> sea_orm::DatabaseConnection {
+    let mut uri = url::Url::parse(&app.fixture.runtime_uri).unwrap();
+    uri.set_username("medtracker").unwrap();
+    uri.set_password(Some("medtracker_password")).unwrap();
+    sea_orm::Database::connect(uri.to_string()).await.unwrap()
+}
+
+async fn seed_claimable_delivery(
+    app: &Application,
+    scope: &HouseholdScope,
+    now: chrono::DateTime<Utc>,
+) -> i64 {
+    let key = format!(
+        "browser:{}:dose-due:73001:{}",
+        scope.actor.account_id,
+        now.format("%Y-%m-%dT%H:%M:%SZ")
+    );
+    let event = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            "INSERT INTO notification_events(household_id,person_id,event_type,event_key,metadata,intended_at,expires_at,created_at,updated_at) VALUES(72001,73001,'dose_due',$1,jsonb_build_object('account_id',$2,'delivery_status','pending'),$3,$4,now(),now()) RETURNING id",
+            [
+                key.into(),
+                scope.actor.account_id.into(),
+                now.naive_utc().into(),
+                (now + chrono::Duration::hours(1)).naive_utc().into(),
+            ],
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    let event_id: i64 = event.try_get("", "id").unwrap();
+    let delivery = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            "INSERT INTO notification_deliveries(notification_event_id,subscription_id,household_id,account_id,next_attempt_at) SELECT $1,id,72001,$2,$3 FROM push_subscriptions WHERE account_id=$2 LIMIT 1 RETURNING id",
+            [
+                event_id.into(),
+                scope.actor.account_id.into(),
+                now.naive_utc().into(),
+            ],
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    delivery.try_get("", "id").unwrap()
+}
+
+#[tokio::test]
+async fn browser_reminder_authority_revoked_before_send_is_suppressed() {
+    use med_tracker::models::access;
+    for (mutation, expected) in [
+        (
+            "UPDATE notification_preferences SET enabled=false WHERE household_id=72001 AND person_id=73001",
+            "no_longer_eligible",
+        ),
+        (
+            "DELETE FROM push_subscriptions WHERE account_id=71001",
+            "no_longer_eligible",
+        ),
+        (
+            "UPDATE household_memberships AS membership SET revoked_at=now() FROM accounts AS account WHERE account.id=71001 AND membership.person_id=account.person_id",
+            "recipient_revoked",
+        ),
+    ] {
+        let app = Application::new().await;
+        let (now, scope) = prepare_due_delivery(&app, "synthetic-presend-revoke").await;
+        let transport = Arc::new(ScriptedDelivery(
+            Mutex::new(vec![Delivery::Accepted]),
+            Mutex::new(0),
+        ));
+        app.context.shared_store.insert(Service {
+            public_key: String::new(),
+            transport: transport.clone(),
+        });
+        let delivery_id = seed_claimable_delivery(&app, &scope, now).await;
+        let tenant = access::begin(&app.context.db, &scope, None).await.unwrap();
+        tenant
+            .transaction()
+            .execute_unprepared(
+                "SELECT id FROM push_subscriptions WHERE account_id=71001 FOR UPDATE",
+            )
+            .await
+            .unwrap();
+        let ctx = app.context.clone();
+        let sending = scope.clone();
+        let sender = tokio::spawn(async move {
+            browser_push::reminders::drain_candidates(&ctx, &sending, now, &[delivery_id]).await
+        });
+        tokio::time::timeout(std::time::Duration::from_secs(10), async {
+            loop {
+                let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres, "SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE '%push_subscriptions%') AS waiting")).await.unwrap().unwrap();
+                if row.try_get::<bool>("", "waiting").unwrap() {
+                    break;
+                }
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .unwrap();
+        tenant
+            .transaction()
+            .execute_unprepared(mutation)
+            .await
+            .unwrap();
+        tenant.commit().await.unwrap();
+        let sent = tokio::time::timeout(std::time::Duration::from_secs(10), sender)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(sent.unwrap(), 0);
+        let row = app
+            .fixture
+            .admin
+            .query_one_raw(Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                "SELECT status,outcome FROM notification_deliveries WHERE id=$1",
+                [delivery_id.into()],
+            ))
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(row.try_get::<String>("", "status").unwrap(), "invalid");
+        assert_eq!(
+            row.try_get::<Option<String>>("", "outcome")
+                .unwrap()
+                .as_deref(),
+            Some(expected)
+        );
+        let audited = app
+            .fixture
+            .admin
+            .query_one_raw(Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                "SELECT EXISTS(SELECT 1 FROM security_audit_events WHERE event_type='browser_push.reminder.invalid' AND (metadata->>'delivery_id')::bigint=$1) AS audited",
+                [delivery_id.into()],
+            ))
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(audited.try_get::<bool>("", "audited").unwrap());
+        assert_eq!(*transport.1.lock().unwrap(), 0);
+        app.close().await;
+    }
+}
+
+#[tokio::test]
+async fn browser_reminder_submicrosecond_claim_clock_keeps_send_ownership() {
+    let app = Application::new().await;
+    let (now, scope) = prepare_due_delivery(&app, "synthetic-claim-precision").await;
+    let transport = Arc::new(Reminders(Mutex::new(vec![])));
+    app.context.shared_store.insert(Service {
+        public_key: String::new(),
+        transport: transport.clone(),
+    });
+    let delivery_id = seed_claimable_delivery(&app, &scope, now).await;
+    let future = (Utc::now() + chrono::Duration::seconds(2))
+        .with_nanosecond(123_456_789)
+        .unwrap();
+    assert_eq!(
+        browser_push::reminders::drain_candidates(&app.context, &scope, future, &[delivery_id])
+            .await
+            .unwrap(),
+        1
+    );
+    assert_eq!(transport.0.lock().unwrap().len(), 1);
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            "SELECT status FROM notification_deliveries WHERE id=$1",
+            [delivery_id.into()],
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(row.try_get::<String>("", "status").unwrap(), "accepted");
+    app.close().await;
+}
+
+#[tokio::test]
+async fn browser_reminder_in_flight_send_finishes_before_revocation_lands() {
+    let app = Application::new().await;
+    let (now, scope) = prepare_due_delivery(&app, "synthetic-presend-order").await;
+    let transport = Arc::new(FirstBlockedDelivery {
+        started: Notify::new(),
+        release: Notify::new(),
+        calls: Mutex::new(Vec::new()),
+    });
+    app.context.shared_store.insert(Service {
+        public_key: String::new(),
+        transport: transport.clone(),
+    });
+    let delivery_id = seed_claimable_delivery(&app, &scope, now).await;
+    let ctx = app.context.clone();
+    let sending = scope.clone();
+    let sender = tokio::spawn(async move {
+        browser_push::reminders::drain_candidates(&ctx, &sending, now, &[delivery_id]).await
+    });
+    tokio::time::timeout(
+        std::time::Duration::from_secs(10),
+        transport.started.notified(),
+    )
+    .await
+    .unwrap();
+    let owner = owner_connection(&app).await;
+    let withdrawal = {
+        let owner = owner.clone();
+        tokio::spawn(async move {
+            owner
+                .execute_unprepared(
+                    "UPDATE push_subscriptions SET updated_at=timezone('UTC',clock_timestamp()) WHERE account_id=71001",
+                )
+                .await
+        })
+    };
+    tokio::time::timeout(std::time::Duration::from_secs(10), async {
+        loop {
+            let row = app
+                .fixture
+                .admin
+                .query_one_raw(Statement::from_string(
+                    DbBackend::Postgres,
+                    "SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock') AS waiting",
+                ))
+                .await
+                .unwrap()
+                .unwrap();
+            if row.try_get::<bool>("", "waiting").unwrap() {
+                break;
+            }
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .unwrap();
+    transport.release.notify_one();
+    let sent = tokio::time::timeout(std::time::Duration::from_secs(10), sender)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(sent.unwrap(), 1);
+    tokio::time::timeout(std::time::Duration::from_secs(10), withdrawal)
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap();
+    owner.close().await.unwrap();
+    assert_eq!(transport.calls.lock().unwrap().len(), 1);
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            "SELECT d.status,d.outcome,EXISTS(SELECT 1 FROM push_subscriptions s WHERE s.account_id=d.account_id) AS subscribed,EXISTS(SELECT 1 FROM security_audit_events a WHERE a.event_type='browser_push.reminder.completed' AND (a.metadata->>'delivery_id')::bigint=d.id) AS audited FROM notification_deliveries d WHERE d.id=$1",
+            [delivery_id.into()],
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(row.try_get::<String>("", "status").unwrap(), "accepted");
+    assert_eq!(
+        row.try_get::<Option<String>>("", "outcome")
+            .unwrap()
+            .as_deref(),
+        Some("accepted")
+    );
+    assert!(row.try_get::<bool>("", "subscribed").unwrap());
+    assert!(row.try_get::<bool>("", "audited").unwrap());
     app.close().await;
 }
 

@@ -886,3 +886,121 @@ async fn dose_take_review_skipped_midnight_keeps_local_daily_cycles_separate() {
     assert_eq!(fixture.effect().await, (2, "6.00".into(), 2, 2));
     fixture.close().await;
 }
+
+async fn take_in_zone(
+    fixture: &Fixture,
+    command: Command,
+    zone: chrono_tz::Tz,
+) -> Result<Outcome, OperationError> {
+    let tenant = access::begin(&fixture.runtime, &scope(), None).await?;
+    match doses::execute_in_timezone(&tenant, command, zone, None).await {
+        Ok(outcome) => {
+            tenant.commit().await?;
+            Ok(outcome)
+        }
+        Err(error) => {
+            tenant.rollback().await?;
+            Err(error)
+        }
+    }
+}
+
+#[tokio::test]
+async fn dose_take_keeps_elapsed_cooldown_distinct_from_local_calendar_limits_and_taper_steps() {
+    let fixture = Fixture::new().await;
+    fixture
+        .admin
+        .execute_unprepared(
+            "UPDATE person_medications SET max_daily_doses=2, min_hours_between_doses=6, dose_cycle=0 WHERE id=81001",
+        )
+        .await
+        .unwrap();
+
+    let Command::Take(mut input) = command();
+    input.client_uuid = None;
+    input.taken_at = "2026-10-05T21:00:00Z".into();
+    let outcome = take_in_zone(&fixture, Command::Take(input), chrono_tz::Europe::London).await;
+    assert!(matches!(outcome, Ok(Outcome::Created(_))));
+
+    let Command::Take(mut input) = command();
+    input.client_uuid = None;
+    input.taken_at = "2026-10-06T01:00:00Z".into();
+    let outcome = take_in_zone(&fixture, Command::Take(input), chrono_tz::Europe::London).await;
+    assert!(matches!(outcome, Err(OperationError::Validation { .. })));
+
+    let Command::Take(mut input) = command();
+    input.client_uuid = None;
+    input.taken_at = "2026-10-06T03:00:00Z".into();
+    let outcome = take_in_zone(&fixture, Command::Take(input), chrono_tz::Europe::London).await;
+    assert!(matches!(outcome, Ok(Outcome::Created(_))));
+
+    fixture
+        .admin
+        .execute_unprepared(
+            "UPDATE person_medications SET active=false WHERE id=81001; \
+             INSERT INTO schedules(id, household_id, person_id, medication_id, active, start_date, end_date, dose_amount, dose_unit, schedule_type, schedule_config, created_at, updated_at) \
+             VALUES(83998, 72001, 73001, 80001, true, '2026-10-01', '2026-10-31', 1, 'tablet', 5, '{\"max_daily_doses\": 1, \"min_hours_between_doses\": 4, \"unit\": \"tablet\", \"taper_steps\": [{\"start_date\": \"2026-10-07\", \"end_date\": \"2026-10-09\", \"amount\": \"1\"}]}', now(), now())",
+        )
+        .await
+        .unwrap();
+
+    let taper_take1 = Take {
+        client_uuid: None,
+        source_type: "schedule".into(),
+        source_id: "83998".into(),
+        taken_at: "2026-10-07T09:00:00Z".into(),
+        dose_amount: Some("1".into()),
+        dose_unit: Some("tablet".into()),
+        taken_from_medication_id: Some(80001),
+        expected_effective_amount: None,
+        expected_effective_unit: None,
+    };
+    let outcome = take_in_zone(
+        &fixture,
+        Command::Take(taper_take1),
+        chrono_tz::Europe::London,
+    )
+    .await;
+    assert!(matches!(outcome, Ok(Outcome::Created(_))));
+
+    let taper_attempt = Take {
+        client_uuid: None,
+        source_type: "schedule".into(),
+        source_id: "83998".into(),
+        taken_at: "2026-10-07T15:00:00Z".into(),
+        dose_amount: Some("1".into()),
+        dose_unit: Some("tablet".into()),
+        taken_from_medication_id: Some(80001),
+        expected_effective_amount: None,
+        expected_effective_unit: None,
+    };
+    let outcome = take_in_zone(
+        &fixture,
+        Command::Take(taper_attempt),
+        chrono_tz::Europe::London,
+    )
+    .await;
+    assert!(matches!(outcome, Err(OperationError::Validation { .. })));
+
+    let taper_take2 = Take {
+        client_uuid: None,
+        source_type: "schedule".into(),
+        source_id: "83998".into(),
+        taken_at: "2026-10-07T23:30:00Z".into(),
+        dose_amount: Some("1".into()),
+        dose_unit: Some("tablet".into()),
+        taken_from_medication_id: Some(80001),
+        expected_effective_amount: None,
+        expected_effective_unit: None,
+    };
+    let outcome = take_in_zone(
+        &fixture,
+        Command::Take(taper_take2),
+        chrono_tz::Europe::London,
+    )
+    .await;
+    assert!(matches!(outcome, Ok(Outcome::Created(_))));
+
+    assert_eq!(fixture.effect().await, (4, "4.00".into(), 4, 4));
+    fixture.close().await;
+}
