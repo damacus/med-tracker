@@ -18,7 +18,8 @@ rtk proxy go build -o /path/to/mcp-language-server .
 
 Configure the MCP command with `--workspace` set to the MedTracker checkout and
 `--lsp` set to a real rust-analyzer binary. Avoid recursive mise shims. Its PATH
-must include the matching Rust toolchain binaries. Cargo continues using the
+must include the matching Rust toolchain binaries; set `RUSTUP_TOOLCHAIN` to the
+same toolchain so nested rustup commands agree. Cargo continues using the
 normal user configuration and checkout target directory.
 
 Before switching clients, check definition and references for `App`, diagnostics
