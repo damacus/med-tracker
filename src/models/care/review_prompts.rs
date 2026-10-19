@@ -140,9 +140,8 @@ pub async fn index(
     if !sync::review_prompts::actor_adult(tenant.transaction(), &context).await? {
         return Err(OperationError::Forbidden);
     }
-    let people = person::Entity::find()
-        .filter(person::Column::HouseholdId.eq(tenant.scope().household_id))
-        .filter(person::Column::Id.in_subquery(access::granted_people(tenant.membership())))
+    let people = access::person_queries::household_people(tenant.scope())
+        .filter(person::Column::Id.in_subquery(access::participating_people(tenant.membership())))
         .all(tenant.transaction())
         .await?;
     let ids: Vec<i64> = people.iter().map(|row| row.id).collect();
@@ -151,7 +150,7 @@ pub async fn index(
         .filter(review_prompt::Column::HouseholdId.eq(tenant.scope().household_id))
         .filter(
             review_prompt::Column::PersonId
-                .in_subquery(access::granted_people(tenant.membership())),
+                .in_subquery(access::participating_people(tenant.membership())),
         );
     let hidden_count = query
         .clone()

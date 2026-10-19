@@ -321,6 +321,7 @@ en:
       deactivated: Carer relationship has been deactivated.
       activated: Carer relationship has been activated.
       index:
+        unavailable_person: Person not currently in this household
         title: Carer Relationships
         subtitle: Manage carer-patient assignments.
         new_relationship: New Relationship

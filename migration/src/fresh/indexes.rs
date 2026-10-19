@@ -1050,9 +1050,9 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_index(
             Index::create()
-                .name("index_household_memberships_on_account_id")
+                .name("index_household_memberships_on_person_id")
                 .table(Alias::new("household_memberships"))
-                .col(Alias::new("account_id"))
+                .col(Alias::new("person_id"))
                 .to_owned(),
         )
         .await?;
@@ -1062,17 +1062,6 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 .name("index_household_memberships_on_household_id")
                 .table(Alias::new("household_memberships"))
                 .col(Alias::new("household_id"))
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_index(
-            Index::create()
-                .name("index_household_memberships_on_household_id_and_account_id")
-                .table(Alias::new("household_memberships"))
-                .unique()
-                .col(Alias::new("household_id"))
-                .col(Alias::new("account_id"))
                 .to_owned(),
         )
         .await?;
@@ -1977,40 +1966,10 @@ pub async fn create(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     manager
         .create_index(
             Index::create()
-                .name("index_people_on_account_id")
-                .table(Alias::new("people"))
-                .col(Alias::new("account_id"))
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_index(
-            Index::create()
-                .name("index_people_on_household_id")
-                .table(Alias::new("people"))
-                .col(Alias::new("household_id"))
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_index(
-            Index::create()
-                .name("index_people_on_household_id_and_portable_id")
+                .name("index_people_on_portable_id")
                 .table(Alias::new("people"))
                 .unique()
-                .col(Alias::new("household_id"))
                 .col(Alias::new("portable_id"))
-                .to_owned(),
-        )
-        .await?;
-    manager
-        .create_index(
-            Index::create()
-                .name("index_people_on_id_and_household_id")
-                .table(Alias::new("people"))
-                .unique()
-                .col(Alias::new("id"))
-                .col(Alias::new("household_id"))
                 .to_owned(),
         )
         .await?;

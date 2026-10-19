@@ -201,11 +201,12 @@ async fn reorder(
     let Some(adjacent) = query.lock_exclusive().one(tenant.transaction()).await? else {
         return Ok(());
     };
-    let person = person::Entity::find_by_id(source.person_id)
-        .in_tenant(tenant.scope().household_id)
-        .one(tenant.transaction())
-        .await?
-        .ok_or(OperationError::NotFound)?;
+    let person =
+        crate::models::access::person_queries::household_participants(tenant.scope().household_id)
+            .filter(crate::models::entities::person::Column::Id.eq(source.person_id))
+            .one(tenant.transaction())
+            .await?
+            .ok_or(OperationError::NotFound)?;
     for (row, position) in [
         (source.clone(), adjacent.position),
         (adjacent, source.position),

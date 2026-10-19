@@ -90,7 +90,7 @@ pub async fn recipients(
             }
             let transaction = household_transaction(ctx, household.id).await?;
             let rows = transaction.query_all_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-            "SELECT DISTINCT m.account_id FROM household_memberships m JOIN accounts a ON a.id=m.account_id LEFT JOIN notification_preferences p ON p.person_id=m.person_id AND p.household_id=m.household_id WHERE m.household_id=$1 AND m.status='active' AND m.revoked_at IS NULL AND a.status=2 AND (p.enabled OR EXISTS (SELECT 1 FROM notification_deliveries d WHERE d.household_id=m.household_id AND d.account_id=m.account_id AND d.status IN ('pending','sending')))", [household.id.into()])).await?;
+            "SELECT DISTINCT a.id AS account_id FROM household_memberships m JOIN accounts a ON a.person_id=m.person_id LEFT JOIN notification_preferences p ON p.person_id=m.person_id AND p.household_id=m.household_id WHERE m.household_id=$1 AND m.status='active' AND m.revoked_at IS NULL AND a.status=2 AND (p.enabled OR EXISTS (SELECT 1 FROM notification_deliveries d WHERE d.household_id=m.household_id AND d.account_id=a.id AND d.status IN ('pending','sending')))", [household.id.into()])).await?;
             for row in rows {
                 runs.push(ReminderRun {
                     account_id: row.try_get("", "account_id")?,

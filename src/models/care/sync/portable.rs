@@ -101,13 +101,15 @@ fn severity(value: Option<i32>) -> Option<&'static str> {
 pub(super) async fn visible_people(
     tenant: &TenantTransaction,
 ) -> Result<Vec<person::Model>, OperationError> {
-    let query = person::Entity::find()
-        .in_tenant(tenant.scope().household_id)
-        .order_by_asc(person::Column::Id);
+    let query =
+        crate::models::access::person_queries::household_participants(tenant.scope().household_id)
+            .order_by_asc(person::Column::Id);
     let query = if access::can_manage_household(tenant) {
         query
     } else {
-        query.filter(person::Column::Id.in_subquery(access::granted_people(tenant.membership())))
+        query.filter(
+            person::Column::Id.in_subquery(access::participating_people(tenant.membership())),
+        )
     };
     Ok(query.all(tenant.transaction()).await?)
 }
@@ -352,12 +354,9 @@ async fn scoped_payload(
         .all(db)
         .await
         .map_err(database_error)?;
-    let actor_person_ids: HashSet<i64> = actor_memberships
-        .iter()
-        .filter_map(|row| row.person_id)
-        .collect();
-    let actor_people = person::Entity::find()
-        .in_tenant(household_id)
+    let actor_person_ids: HashSet<i64> =
+        actor_memberships.iter().map(|row| row.person_id).collect();
+    let actor_people = crate::models::access::person_queries::household_participants(household_id)
         .filter(person::Column::Id.is_in(actor_person_ids.into_iter().collect::<Vec<_>>()))
         .all(db)
         .await
@@ -368,12 +367,7 @@ async fn scoped_payload(
         .collect();
     let actor_by_membership: HashMap<i64, &str> = actor_memberships
         .iter()
-        .filter_map(|row| {
-            Some((
-                row.id,
-                actor_person_ids_by_id.get(&row.person_id?).copied()?,
-            ))
-        })
+        .filter_map(|row| Some((row.id, actor_person_ids_by_id.get(&row.person_id).copied()?)))
         .collect();
 
     let person_ids_by_id: HashMap<i64, &str> = people

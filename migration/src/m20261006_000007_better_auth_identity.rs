@@ -230,7 +230,7 @@ CREATE POLICY identity_invitation_session_owner ON public.identity_sessions FOR 
 USING (account_id=med_tracker.current_account_id() AND token=NULLIF(current_setting('med_tracker.identity_session_token',true),''));
 CREATE FUNCTION public.identity_invitation_inviter(invitation_id bigint) RETURNS bigint
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog
-AS 'SELECT m.account_id FROM public.household_invitations i JOIN public.household_memberships m ON m.id=i.invited_by_membership_id AND m.household_id=i.household_id WHERE i.id=invitation_id AND i.email=(SELECT a.email FROM public.accounts a WHERE a.id=med_tracker.current_account_id() AND a.status=2)';
+AS 'SELECT inviter.id FROM public.household_invitations i JOIN public.household_memberships m ON m.id=i.invited_by_membership_id AND m.household_id=i.household_id JOIN public.accounts inviter ON inviter.person_id=m.person_id WHERE i.id=invitation_id AND i.email=(SELECT a.email FROM public.accounts a WHERE a.id=med_tracker.current_account_id() AND a.status=2)';
 REVOKE ALL ON FUNCTION public.identity_invitation_inviter(bigint) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.identity_invitation_inviter(bigint) TO med_tracker_app;
 "#).await?;

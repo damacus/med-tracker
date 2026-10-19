@@ -27,7 +27,7 @@ async fn accountless_person_avatar_keeps_legacy_read_and_unknown_service_safegua
         profile::avatar,
     };
     let app = avatar_application().await;
-    app.fixture.admin.execute_unprepared("UPDATE people SET account_id=NULL WHERE id=73002; INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,created_at,updated_at) VALUES(78002,72001,74001,73002,'view','clinician',now(),now()); INSERT INTO active_storage_blobs(id,key,filename,content_type,byte_size,service_name,created_at) VALUES(79001,'legacy-accountless-avatar','legacy.png','image/png',1,'s3_with_persistent_mirror',now()); INSERT INTO active_storage_attachments(name,record_type,record_id,blob_id,household_id,created_at) VALUES('avatar','Person',73002,79001,72001,now())").await.unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,created_at,updated_at) VALUES(78002,72001,74001,73002,'view','clinician',now(),now()); INSERT INTO active_storage_blobs(id,key,filename,content_type,byte_size,service_name,created_at) VALUES(79001,'legacy-accountless-avatar','legacy.png','image/png',1,'s3_with_persistent_mirror',now()); INSERT INTO active_storage_attachments(name,record_type,record_id,blob_id,household_id,created_at) VALUES('avatar','Person',73002,79001,72001,now())").await.unwrap();
     let scope = HouseholdScope {
         actor: Actor { account_id: 71001 },
         household_id: 72001,
@@ -72,7 +72,7 @@ async fn gravatar_uses_depicted_person_consent_and_rechecks_access() {
     };
     use sha2::Digest;
     let app = avatar_application().await;
-    app.fixture.admin.execute_unprepared("INSERT INTO accounts(id,email,created_at,updated_at) VALUES(71002,'other@example.test',now(),now()); UPDATE people SET account_id=71002,email=' MyEmailAddress@example.com ' WHERE id=73002; UPDATE accounts SET preferences='{\"gravatar_enabled\":true}' WHERE id=71001; INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,created_at,updated_at) VALUES(78002,72001,74001,73002,'view','clinician',now(),now())").await.unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO accounts(id,person_id,email,created_at,updated_at) VALUES(71002,73002,'other@example.test',now(),now()); UPDATE people SET email=' MyEmailAddress@example.com ' WHERE id=73002; UPDATE accounts SET preferences='{\"gravatar_enabled\":true}' WHERE id=71001; INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,created_at,updated_at) VALUES(78002,72001,74001,73002,'view','clinician',now(),now())").await.unwrap();
     let scope = HouseholdScope {
         actor: Actor { account_id: 71001 },
         household_id: 72001,
@@ -148,6 +148,14 @@ async fn gravatar_uses_depicted_person_consent_and_rechecks_access() {
     );
     tenant.commit().await.unwrap();
     app.fixture.admin.execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78002; UPDATE household_memberships SET role='member' WHERE id=74001").await.unwrap();
+    let tenant = access::begin(&app.fixture.runtime, &scope, None)
+        .await
+        .unwrap();
+    for uploaded in [false, true] {
+        assert!(gravatar::for_person(&tenant, 73002, uploaded).await.is_ok());
+    }
+    tenant.commit().await.unwrap();
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74980").await.unwrap();
     let tenant = access::begin(&app.fixture.runtime, &scope, None)
         .await
         .unwrap();
@@ -313,6 +321,15 @@ async fn profile_avatar_api_upload_read_replace_remove_and_recheck_access() {
         .execute_unprepared("UPDATE person_access_grants SET revoked_at=now() WHERE id=78001")
         .await
         .unwrap();
+    let self_read = app
+        .client
+        .get(&endpoint)
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(self_read.status().as_u16(), 200);
+    app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001").await.unwrap();
     for response in [
         app.client
             .get(&endpoint)
@@ -338,7 +355,7 @@ async fn profile_avatar_api_upload_read_replace_remove_and_recheck_access() {
             .await
             .unwrap(),
     ] {
-        assert!(matches!(response.status().as_u16(), 403 | 404));
+        assert_eq!(response.status().as_u16(), 403);
     }
     app.close().await;
 }

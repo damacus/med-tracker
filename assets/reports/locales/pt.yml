@@ -565,6 +565,7 @@ pt:
       deactivated: A relação de cuidador foi desativada.
       activated: A relação de cuidador foi ativada.
       index:
+        unavailable_person: Pessoa que não pertence atualmente a este agregado
         title: Relações de Cuidador
         subtitle: Gerir atribuições de cuidador-paciente.
         new_relationship: Nova Relação

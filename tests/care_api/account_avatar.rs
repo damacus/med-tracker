@@ -70,7 +70,7 @@ async fn household_avatar_permissions_are_rechecked_after_waiting_for_old_key_lo
             app.fixture
                 .admin
                 .execute_unprepared(
-                    "UPDATE person_access_grants SET revoked_at=now() WHERE id=78001",
+                    "UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001",
                 )
                 .await
                 .unwrap();
@@ -80,7 +80,7 @@ async fn household_avatar_permissions_are_rechecked_after_waiting_for_old_key_lo
         let (response, waiting) = tokio::join!(mutation, revoke);
         assert!(waiting, "household avatar must reach the held old-key lock");
         assert!(
-            matches!(response.status_code().as_u16(), 401 | 403 | 404),
+            response.status_code().as_u16() == 403,
             "{method}: {} {}",
             response.status_code(),
             response.text()
@@ -112,14 +112,12 @@ async fn household_avatar_permissions_are_rechecked_after_waiting_for_old_key_lo
 #[tokio::test]
 async fn household_avatar_permissions_are_rechecked_after_waiting_for_account_lock() {
     use sea_orm::TransactionTrait;
-    for sql in [
-        "UPDATE person_access_grants SET revoked_at=now() WHERE id=78001",
-        "UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001",
-    ] {
+    {
+        let sql = "UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001";
         let (app, boot, server, token) = boot().await;
         app.fixture
             .admin
-            .execute_unprepared("UPDATE people SET date_of_birth='1986-04-17' WHERE id=73001")
+            .execute_unprepared("UPDATE people SET date_of_birth='1986-04-17' WHERE id=73001; UPDATE person_access_grants SET revoked_at=now() WHERE id=78001")
             .await
             .unwrap();
         let endpoint = "/api/v1/households/72001/profile/avatar";
@@ -150,7 +148,7 @@ async fn household_avatar_permissions_are_rechecked_after_waiting_for_account_lo
             "household avatar mutation must reach the held Account lock"
         );
         assert!(
-            matches!(response.status_code().as_u16(), 401 | 403 | 404),
+            response.status_code().as_u16() == 403,
             "{}: {}",
             response.status_code(),
             response.text()
@@ -408,7 +406,7 @@ fn image() -> Vec<u8> {
 #[tokio::test]
 async fn account_avatar_has_no_household_or_clinical_actor_prerequisite() {
     let (app, boot, server, token) = boot().await;
-    app.fixture.admin.execute_unprepared("INSERT INTO accounts(id,email,status,created_at,updated_at) VALUES(71002,'account-only-avatar@example.test',2,now(),now()); UPDATE oauth_grants SET account_id=71002 WHERE account_id=71001 AND client_kind='mobile'").await.unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73004,'Account-only avatar owner',0,true,now(),now()); INSERT INTO accounts(id,person_id,name,email,status,created_at,updated_at) VALUES(71002,73004,'Account-only avatar owner','account-only-avatar@example.test',2,now(),now()); UPDATE oauth_grants SET account_id=71002 WHERE account_id=71001 AND client_kind='mobile'").await.unwrap();
     let missing = server
         .get(ENDPOINT)
         .add_header("authorization", format!("Bearer {token}"))
@@ -588,22 +586,26 @@ async fn account_avatar_credentials_and_status_are_revalidated() {
 }
 
 #[tokio::test]
-async fn account_avatar_foreign_rls_requires_current_scoped_person_grant() {
+async fn account_avatar_foreign_rls_requires_current_subject_participation() {
     use sea_orm::TransactionTrait;
     let (app, boot, server, _) = boot().await;
-    app.fixture.admin.execute_unprepared("INSERT INTO accounts(id,email,status,created_at,updated_at) VALUES(71002,'foreign-avatar@example.test',2,now(),now()); UPDATE people SET account_id=71002 WHERE id=73002; INSERT INTO account_avatars(account_id,key,content_type,service_name,byte_size,checksum) VALUES(71001,'own-avatar','image/png','s3',1,'synthetic'),(71002,'foreign-avatar','image/png','s3',1,'synthetic')").await.unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO accounts(id,person_id,email,status,created_at,updated_at) VALUES(71002,73002,'foreign-avatar@example.test',2,now(),now()); INSERT INTO account_avatars(account_id,key,content_type,service_name,byte_size,checksum) VALUES(71001,'own-avatar','image/png','s3',1,'synthetic'),(71002,'foreign-avatar','image/png','s3',1,'synthetic')").await.unwrap();
     for (mutation, expected) in [
-        ("SELECT 1", 1),
+        ("SELECT 1", 2),
         (
             "INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,created_at,updated_at) VALUES(78002,72001,74001,73002,'view','clinician',now(),now())",
             2,
         ),
         (
             "UPDATE person_access_grants SET expires_at=now()-interval '1 second' WHERE id=78002",
-            1,
+            2,
         ),
         (
             "UPDATE person_access_grants SET expires_at=NULL,revoked_at=now() WHERE id=78002",
+            2,
+        ),
+        (
+            "UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74980",
             1,
         ),
     ] {

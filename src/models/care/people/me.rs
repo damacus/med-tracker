@@ -1,6 +1,5 @@
 use super::*;
 use crate::models::entities::{account, user};
-use sea_orm::{ConnectionTrait, DbBackend, Statement};
 
 pub(crate) async fn me_read(tenant: &TenantTransaction, zone: Tz) -> Result<Value, OperationError> {
     access::recheck(tenant).await?;
@@ -39,26 +38,5 @@ async fn own_person(
     zone: Tz,
 ) -> Result<Value, OperationError> {
     let records = std::slice::from_ref(record);
-    if record.household_id == tenant.scope().household_id {
-        return Ok(values(tenant, records, zone).await?.remove(0));
-    }
-    set_household(tenant, record.household_id).await?;
-    let result = super::projection::values_in(tenant, record.household_id, records, zone).await;
-    set_household(tenant, tenant.scope().household_id).await?;
-    Ok(result?.remove(0))
-}
-
-async fn set_household(
-    tenant: &TenantTransaction,
-    household_id: i64,
-) -> Result<(), OperationError> {
-    tenant
-        .transaction()
-        .query_one_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "SELECT set_config('med_tracker.current_household_id', $1, true)",
-            [household_id.to_string().into()],
-        ))
-        .await?;
-    Ok(())
+    Ok(values(tenant, records, zone).await?.remove(0))
 }

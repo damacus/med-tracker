@@ -341,6 +341,7 @@ ga:
       deactivated: Díghníomhaíodh an caidreamh cúramóra.
       activated: Gníomhaíodh an caidreamh cúramóra.
       index:
+        unavailable_person: Duine nach bhfuil sa teaghlach seo faoi láthair
         title: Caidrimh Chúramóra
         subtitle: Bainistigh sannadhanna cúramóir-claf.
         new_relationship: Caidreamh Nua

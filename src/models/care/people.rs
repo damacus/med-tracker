@@ -1,4 +1,3 @@
-use loco_rs::model::TenantQueryExt;
 mod creation;
 mod me;
 mod persistence;
@@ -25,8 +24,8 @@ use chrono::{Datelike, NaiveDate, Utc};
 use chrono_tz::Tz;
 use sea_orm::sea_query::{Expr, ExprTrait};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, Condition, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
-    QuerySelect, QueryTrait, Set,
+    ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
+    QuerySelect, Set,
 };
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -52,26 +51,12 @@ pub(crate) fn age(date: NaiveDate, today: NaiveDate) -> i32 {
         - date.year()
         - i32::from((today.month(), today.day()) < (date.month(), date.day()))
 }
-fn active_grants(tenant: &TenantTransaction) -> sea_orm::Select<grant::Entity> {
-    grant::Entity::find()
-        .in_tenant(tenant.scope().household_id)
-        .filter(grant::Column::HouseholdMembershipId.eq(tenant.membership().id))
-        .filter(grant::Column::RevokedAt.is_null())
-        .filter(
-            Condition::any()
-                .add(grant::Column::ExpiresAt.is_null())
-                .add(
-                    Expr::col(grant::Column::ExpiresAt)
-                        .gt(Expr::cust("timezone('UTC', clock_timestamp())")),
-                ),
-        )
-}
 pub async fn can_create(tenant: &TenantTransaction) -> Result<bool, OperationError> {
     access::recheck(tenant).await?;
     if access::can_manage_household(tenant) {
         return Ok(true);
     }
-    access::has_person_access(tenant, PersonAccess::Manage).await
+    access::has_existing_manage_grant(tenant).await
 }
 pub async fn can_manage(tenant: &TenantTransaction, id: i64) -> Result<bool, OperationError> {
     access::can_access_person(tenant, id, PersonAccess::Manage).await

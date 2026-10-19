@@ -128,7 +128,7 @@ impl BrowserPrincipal {
         let transaction = transaction(db).await?;
         validate(&transaction, &self.identity, false).await?;
         let rows = transaction.query_all_raw(sql(
-            "SELECT h.id, h.name, h.slug FROM households h JOIN household_memberships m ON m.household_id = h.id WHERE m.account_id = $1 AND m.status = 'active' AND m.revoked_at IS NULL AND h.status = 'active' AND h.lifecycle_state = 'active' ORDER BY h.name, h.id",
+            "SELECT h.id, h.name, h.slug FROM households h JOIN household_memberships m ON m.household_id = h.id JOIN accounts a ON a.person_id=m.person_id WHERE a.id = $1 AND m.status = 'active' AND m.revoked_at IS NULL AND h.status = 'active' AND h.lifecycle_state = 'active' ORDER BY h.name, h.id",
             [self.account_id().into()],
         )).await.map_err(unavailable)?;
         let households = rows

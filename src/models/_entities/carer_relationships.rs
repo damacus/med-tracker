@@ -26,6 +26,22 @@ pub struct Model {
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
     #[sea_orm(
+        belongs_to = "super::household_memberships::Entity",
+        from = "(Column::PatientId, Column::HouseholdId)",
+        to = "(super::household_memberships::Column::PersonId, super::household_memberships::Column::HouseholdId)",
+        on_update = "NoAction",
+        on_delete = "NoAction"
+    )]
+    PatientParticipation,
+    #[sea_orm(
+        belongs_to = "super::household_memberships::Entity",
+        from = "(Column::CarerId, Column::HouseholdId)",
+        to = "(super::household_memberships::Column::PersonId, super::household_memberships::Column::HouseholdId)",
+        on_update = "NoAction",
+        on_delete = "NoAction"
+    )]
+    CarerParticipation,
+    #[sea_orm(
         belongs_to = "super::households::Entity",
         from = "Column::HouseholdId",
         to = "super::households::Column::Id",
@@ -33,22 +49,6 @@ pub enum Relation {
         on_delete = "NoAction"
     )]
     Households,
-    #[sea_orm(
-        belongs_to = "super::people::Entity",
-        from = "(Column::CarerId, Column::HouseholdId)",
-        to = "(super::people::Column::HouseholdId, super::people::Column::Id, super::people::Column::HouseholdId, super::people::Column::Id)",
-        on_update = "NoAction",
-        on_delete = "NoAction"
-    )]
-    People4,
-    #[sea_orm(
-        belongs_to = "super::people::Entity",
-        from = "(Column::PatientId, Column::HouseholdId)",
-        to = "(super::people::Column::HouseholdId, super::people::Column::Id, super::people::Column::HouseholdId, super::people::Column::Id)",
-        on_update = "NoAction",
-        on_delete = "NoAction"
-    )]
-    People3,
     #[sea_orm(
         belongs_to = "super::people::Entity",
         from = "Column::PatientId",

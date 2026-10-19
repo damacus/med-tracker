@@ -87,8 +87,6 @@ pub enum Relation {
     NotificationEvents,
     #[sea_orm(has_many = "super::notification_preferences::Entity")]
     NotificationPreferences,
-    #[sea_orm(has_many = "super::people::Entity")]
-    People,
     #[sea_orm(has_many = "super::person_access_grants::Entity")]
     PersonAccessGrants,
     #[sea_orm(has_many = "super::person_medications::Entity")]
@@ -274,12 +272,6 @@ impl Related<super::notification_events::Entity> for Entity {
 impl Related<super::notification_preferences::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::NotificationPreferences.def()
-    }
-}
-
-impl Related<super::people::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::People.def()
     }
 }
 

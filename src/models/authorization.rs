@@ -157,15 +157,22 @@ pub(crate) fn person_access(
     access: PersonAccess,
     now: chrono::NaiveDateTime,
 ) -> bool {
-    let action = match access {
-        PersonAccess::View => "view_person",
-        PersonAccess::Record => "record_person",
-        PersonAccess::Manage => "manage_person",
-    };
+    if matches!(access, PersonAccess::View | PersonAccess::Record) {
+        return participating_person_access(member, subject, access);
+    }
+    own_person_manage(member, subject) || granted_person_manage(member, subject, grant, now)
+}
+
+pub(crate) fn granted_person_manage(
+    member: &membership::Model,
+    subject: &person::Model,
+    grant: &grant::Model,
+    now: chrono::NaiveDateTime,
+) -> bool {
     evaluate(
         member_facts(member),
-        json!({"id":subject.id,"household_id":subject.household_id}),
-        action,
+        json!({"id":subject.id,"household_id":member.household_id}),
+        "manage_person",
         json!({
             "household_id":grant.household_id,"membership_id":grant.household_membership_id,
             "person_id":grant.person_id,"level":grant.access_level,"revoked":grant.revoked_at.is_some(),
@@ -175,10 +182,37 @@ pub(crate) fn person_access(
     )
 }
 
+pub(crate) fn participating_person_access(
+    member: &membership::Model,
+    subject: &person::Model,
+    access: PersonAccess,
+) -> bool {
+    let action = match access {
+        PersonAccess::View => "view_person",
+        PersonAccess::Record => "record_person",
+        PersonAccess::Manage => return false,
+    };
+    evaluate(
+        member_facts(member),
+        json!({"id":subject.id,"household_id":member.household_id}),
+        action,
+        json!({"participating":true}),
+    )
+}
+
+pub(crate) fn own_person_manage(member: &membership::Model, subject: &person::Model) -> bool {
+    evaluate(
+        member_facts(member),
+        json!({"id":subject.id,"household_id":member.household_id}),
+        "manage_self",
+        json!({"own":member.person_id == subject.id}),
+    )
+}
+
 pub(crate) fn may_delegate(member: &membership::Model, subject: &person::Model) -> bool {
     evaluate(
         member_facts(member),
-        json!({"id":subject.id,"household_id":subject.household_id}),
+        json!({"id":subject.id,"household_id":member.household_id}),
         "delegate_person",
         json!({"person_type":subject.person_type,"has_capacity":subject.has_capacity}),
     )

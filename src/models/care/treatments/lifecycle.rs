@@ -1,6 +1,5 @@
 use super::*;
 use chrono::Datelike;
-use loco_rs::model::TenantQueryExt;
 use sea_orm::{IntoActiveModel, PaginatorTrait, QueryOrder};
 use serde::Deserialize;
 
@@ -13,15 +12,13 @@ pub struct Pagination {
 
 pub async fn list(tenant: &TenantTransaction, page: Pagination) -> Result<Value, OperationError> {
     access::recheck(tenant).await?;
-    let person_id = tenant
-        .membership()
-        .person_id
-        .ok_or(OperationError::Forbidden)?;
-    let actor = person::Entity::find_by_id(person_id)
-        .in_tenant(tenant.scope().household_id)
-        .one(tenant.transaction())
-        .await?
-        .ok_or(OperationError::Forbidden)?;
+    let person_id = tenant.membership().person_id;
+    let actor =
+        crate::models::access::person_queries::household_participants(tenant.scope().household_id)
+            .filter(crate::models::entities::person::Column::Id.eq(person_id))
+            .one(tenant.transaction())
+            .await?
+            .ok_or(OperationError::Forbidden)?;
     let today = Utc::now()
         .with_timezone(&crate::models::care::doses::app_zone(tenant.settings()))
         .date_naive();

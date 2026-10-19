@@ -56,9 +56,18 @@ pub(super) async fn provision_with_password_in(
         None => invitations::validated_email(&profile.email).map_err(operation_error)?,
     };
     let preferences = initial_preferences(settings)?;
+    let identity = transaction
+        .query_one_raw(sql(
+            "SELECT nextval(pg_get_serial_sequence('public.people','id')) AS id",
+            [],
+        ))
+        .await
+        .map_err(unavailable)?
+        .ok_or(SignupError::Unavailable)?;
+    let person_id: i64 = identity.try_get("", "id").map_err(unavailable)?;
     let account = transaction.query_one_raw(sql(
-        "INSERT INTO accounts(email,password_hash,status,preferences,name,created_at,updated_at) VALUES($1,$2,1,$3,$4,now(),now()) ON CONFLICT(email) WHERE status = ANY(ARRAY[1,2]) DO NOTHING RETURNING id",
-        [email.clone().into(),password_hash.map(str::to_owned).into(),preferences.into(),profile.name.trim().to_owned().into()])).await.map_err(unavailable)?
+        "INSERT INTO accounts(person_id,email,password_hash,status,preferences,name,created_at,updated_at) VALUES($1,$2,$3,1,$4,$5,now(),now()) ON CONFLICT(email) WHERE status = ANY(ARRAY[1,2]) DO NOTHING RETURNING id",
+        [person_id.into(),email.clone().into(),password_hash.map(str::to_owned).into(),preferences.into(),profile.name.trim().to_owned().into()])).await.map_err(unavailable)?
         .ok_or_else(|| invalid("email", "is already registered"))?;
     let account_id: i64 = account.try_get("", "id").map_err(unavailable)?;
     transaction
@@ -72,10 +81,9 @@ pub(super) async fn provision_with_password_in(
         Some(invitation) => invitation.household_id,
         None => bootstrap::household(transaction, account_id, &profile.name, settings).await?,
     };
-    let person = transaction.query_one_raw(sql(
-        "INSERT INTO people(account_id,household_id,name,email,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES($1,$2,$3,$4,$5,0,true,now(),now()) RETURNING id",
-        [account_id.into(),household_id.into(),profile.name.trim().to_owned().into(),email.clone().into(),profile.date_of_birth.into()])).await.map_err(unavailable)?.ok_or(SignupError::Unavailable)?;
-    let person_id: i64 = person.try_get("", "id").map_err(unavailable)?;
+    transaction.execute_raw(sql(
+        "INSERT INTO people(id,name,email,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES($1,$2,$3,$4,0,true,now(),now())",
+        [person_id.into(),profile.name.trim().to_owned().into(),email.clone().into(),profile.date_of_birth.into()])).await.map_err(unavailable)?;
     let user = transaction.query_one_raw(sql(
         "INSERT INTO users(person_id,email_address,password_digest,active,created_at,updated_at) VALUES($1,$2,$3,true,now(),now()) RETURNING id",
         [person_id.into(),email.clone().into(),password_hash.map(str::to_owned).into()])).await.map_err(unavailable)?.ok_or(SignupError::Unavailable)?;

@@ -98,9 +98,10 @@ impl<'a> Page<'a> {
             data["lang"] = json!(locale);
             data["care_warning_labels"] = labels["care_warning"].clone();
             data["health_events_label"] = labels["people"]["show"]["health_events"].clone();
-            data["manage_carers_label"] = labels["people"]["show"]["manage_parents"].clone();
-            data["can_manage_carers"] =
-                json!(crate::models::care::person_carers::can_assign(&tenant, person_id).await?);
+            data["manage_carers_label"] =
+                labels["people"]["carer_relationships"]["browser"]["relationships"].clone();
+            data["can_read_carers"] =
+                json!(crate::models::care::person_carers::can_read(&tenant, person_id).await?);
             data["avatar_attached"] = json!(
                 crate::models::profile::avatar::person_attachment(&tenant, person_id)
                     .await?

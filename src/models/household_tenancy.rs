@@ -144,14 +144,6 @@ impl loco_rs::model::TenantEntity for pause_period::Entity {
     }
 }
 
-impl loco_rs::model::TenantEntity for person::Entity {
-    type TenantId = i64;
-
-    fn tenant_column() -> person::Column {
-        person::Column::HouseholdId
-    }
-}
-
 impl loco_rs::model::TenantEntity for person_medication::Entity {
     type TenantId = i64;
 

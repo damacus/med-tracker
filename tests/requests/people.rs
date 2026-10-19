@@ -139,13 +139,13 @@ async fn mobile_token(fixture: &Fixture) -> String {
 }
 
 async fn seed_credentials_and_foreign_household(fixture: &Fixture) {
-    fixture.admin.execute_unprepared("INSERT INTO accounts(id,email,password_hash,created_at,updated_at) VALUES(71002,'foreign-people@example.test',crypt('password',gen_salt('bf',4)),now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,status,lifecycle_state,created_at,updated_at) VALUES(72004,71002,'Foreign operational household','foreign-people','UTC','active','active',now(),now()); INSERT INTO people(id,household_id,account_id,name,person_type,has_capacity,created_at,updated_at) VALUES(73005,72004,71002,'Foreign member',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,account_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74004,72004,71002,73005,'owner','active',now(),now(),now())").await.unwrap();
+    fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73005,'Foreign member',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,password_hash,created_at,updated_at) VALUES(71002,73005,'foreign-people@example.test',crypt('password',gen_salt('bf',4)),now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,status,lifecycle_state,created_at,updated_at) VALUES(72004,71002,'Foreign operational household','foreign-people','UTC','active','active',now(),now());  INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74004,72004,73005,'owner','active',now(),now(),now())").await.unwrap();
     fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"INSERT INTO api_sessions(id,account_id,household_membership_id,access_token_digest,refresh_token_digest,permissions_version,access_expires_at,refresh_expires_at,last_used_at,created_at,updated_at) VALUES(88021,71001,74001,$1,'people-refresh',1,now()+interval '15 minutes',now()+interval '1 day',now(),now(),now())",[hex::encode(Sha256::digest(b"people-session")).into()])).await.unwrap();
     fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"INSERT INTO api_app_tokens(id,account_id,household_membership_id,name,token_digest,permissions_version,expires_at,last_used_at,created_at,updated_at) VALUES(88022,71001,74001,'People app',$1,1,now()+interval '1 month',now(),now(),now())",[hex::encode(Sha256::digest(b"people-app")).into()])).await.unwrap();
 }
 
 async fn people_effect(fixture: &Fixture) -> (i64, i64, i64) {
-    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM people WHERE household_id=72001) AS people, (SELECT count(*) FROM versions WHERE item_type='Person') AS versions, (SELECT count(*) FROM api_change_events WHERE record_type='Person') AS changes")).await.unwrap().unwrap();
+    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM people WHERE id IN (SELECT person_id FROM household_memberships WHERE household_id=72001)) AS people, (SELECT count(*) FROM versions WHERE item_type='Person') AS versions, (SELECT count(*) FROM api_change_events WHERE record_type='Person') AS changes")).await.unwrap().unwrap();
     (
         row.try_get("", "people").unwrap(),
         row.try_get("", "versions").unwrap(),
@@ -158,7 +158,7 @@ async fn request_audits(fixture: &Fixture) -> i64 {
 }
 
 async fn people_state(fixture: &Fixture) -> Value {
-    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM people WHERE household_id=72001) AS people,(SELECT count(*) FROM person_access_grants) AS grants,(SELECT count(*) FROM location_memberships) AS links,(SELECT count(*) FROM versions WHERE item_type='Person') AS versions,(SELECT count(*) FROM api_change_events WHERE record_type='Person') AS changes,(SELECT count(*) FROM security_audit_events WHERE metadata->>'controller'='api/v1/people') AS audits,(SELECT permissions_version FROM household_memberships WHERE id=74001) AS permissions,(SELECT name FROM people WHERE id=73001) AS name")).await.unwrap().unwrap();
+    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM people WHERE id IN (SELECT person_id FROM household_memberships WHERE household_id=72001)) AS people,(SELECT count(*) FROM person_access_grants) AS grants,(SELECT count(*) FROM location_memberships) AS links,(SELECT count(*) FROM versions WHERE item_type='Person') AS versions,(SELECT count(*) FROM api_change_events WHERE record_type='Person') AS changes,(SELECT count(*) FROM security_audit_events WHERE metadata->>'controller'='api/v1/people') AS audits,(SELECT permissions_version FROM household_memberships WHERE id=74001) AS permissions,(SELECT name FROM people WHERE id=73001) AS name")).await.unwrap().unwrap();
     json!({
         "people": row.try_get::<i64>("", "people").unwrap(),
         "grants": row.try_get::<i64>("", "grants").unwrap(),
@@ -560,7 +560,7 @@ async fn app_and_mobile_credentials_can_each_write_all_people_methods() {
                 .admin
                 .query_one_raw(Statement::from_sql_and_values(
                     DbBackend::Postgres,
-                    "SELECT count(*) AS total FROM people WHERE household_id=72001 AND name=$1",
+                    "SELECT count(*) AS total FROM people WHERE id IN (SELECT person_id FROM household_memberships WHERE household_id=72001) AND name=$1",
                     [name.clone().into()],
                 ))
                 .await

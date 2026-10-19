@@ -26,7 +26,7 @@ async fn find_person(
     context: &TenantTransaction,
     id: &str,
 ) -> Result<Option<person::Model>, OperationError> {
-    let query = person::Entity::find().in_tenant(context.scope().household_id);
+    let query = crate::models::access::person_queries::household_people(context.scope());
     let query = if let Ok(id) = id.parse::<i64>() {
         query.filter(person::Column::Id.eq(id))
     } else {

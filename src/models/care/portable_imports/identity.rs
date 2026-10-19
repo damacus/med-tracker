@@ -70,11 +70,11 @@ impl ExistingIndex {
                 "schedules" | "person_medications" | "notification_preferences" | "health_events"
             ) {
                 format!(
-                    "SELECT record.portable_id, person.portable_id AS person_portable_id FROM {table} record JOIN people person ON person.id = record.person_id AND person.household_id = record.household_id WHERE record.household_id = $1"
+                    "SELECT record.portable_id, person.portable_id AS person_portable_id FROM {table} record JOIN people person ON person.id = record.person_id WHERE record.household_id = $1"
                 )
             } else {
                 format!(
-                    "SELECT record.portable_id, person.portable_id AS person_portable_id FROM {table} record LEFT JOIN schedules schedule ON schedule.id = record.schedule_id AND schedule.household_id = record.household_id LEFT JOIN person_medications assignment ON assignment.id = record.person_medication_id AND assignment.household_id = record.household_id JOIN people person ON person.id = COALESCE(schedule.person_id, assignment.person_id) AND person.household_id = record.household_id WHERE record.household_id = $1"
+                    "SELECT record.portable_id, person.portable_id AS person_portable_id FROM {table} record LEFT JOIN schedules schedule ON schedule.id = record.schedule_id AND schedule.household_id = record.household_id LEFT JOIN person_medications assignment ON assignment.id = record.person_medication_id AND assignment.household_id = record.household_id JOIN people person ON person.id = COALESCE(schedule.person_id, assignment.person_id) WHERE record.household_id = $1"
                 )
             };
             let rows = db

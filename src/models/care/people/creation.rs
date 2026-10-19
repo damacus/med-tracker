@@ -11,8 +11,6 @@ pub async fn create(
     let now = Utc::now().naive_utc();
     let mut record = person::Model {
         id: 0,
-        account_id: None,
-        household_id: tenant.scope().household_id,
         portable_id: uuid::Uuid::new_v4().to_string(),
         name: String::new(),
         email: None,
@@ -25,17 +23,12 @@ pub async fn create(
     };
     validation::assign(&mut record, &attributes, true)?;
     let dependent = validation::capacity(&mut record, today)?;
-    let carer = if let Some(id) = tenant.membership().person_id {
-        person::Entity::find_by_id(id)
-            .in_tenant(tenant.scope().household_id)
+    let carer =
+        crate::models::access::person_queries::household_participants(tenant.scope().household_id)
+            .filter(crate::models::entities::person::Column::Id.eq(tenant.membership().person_id))
             .one(tenant.transaction())
-            .await?
-    } else {
-        None
-    };
+            .await?;
     let saved = person::ActiveModel {
-        account_id: Set(None),
-        household_id: Set(record.household_id),
         portable_id: Set(record.portable_id),
         name: Set(record.name),
         email: Set(record.email),

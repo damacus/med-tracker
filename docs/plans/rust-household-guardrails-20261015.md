@@ -58,6 +58,290 @@ For every mixed file, compare the exact hunk to current main and record the owni
 
 ## Shared acceptance and release control
 
+### Canonical identity implementation checkpoint
+
+The controller has released the coupled canonical identity cut on the accepted
+query preparations: mandatory unique `Account.person_id`, global Person, and
+removal of `Person.account_id`, `Person.household_id` and
+`household_memberships.account_id` together. Participation is unique per household
+and Person and permits accountless people. Signup reserves a new server Person ID
+and inserts the Account and Person atomically under a deferred restrictive FK.
+Existing-account invitation acceptance reuses the canonical Person. No identity
+claim, email matching, temporary cache, compatibility view or fabricated
+Account/User is authorised. Actual User IDs and audit references remain until
+the separate actor-removal slice.
+
+The bounded security review approved own-Person and independently authorised
+household-participant SELECT policies, plus the maintained support exception.
+The reviewed support SQL SHA-256 is
+`75aa1d1f32c4c0777139c384fd278e8d7bc3cd8db87f2a9dcb3b2599a523798d`.
+Only the approving owner's row is visible before activation; the live roster
+requires activation. Keep approval capacity/version, deadline and caller
+rechecks, and retain all support write/export denials. The graph must remain
+acyclic, with no blanket administrator visibility or membership impersonation.
+
+The approved recovery eligibility SQL SHA-256 is
+`5d8efa10815fb07c0b8477aa9326fd8e31935f24662a398dde4fe97d4fcac65b`.
+Its fixed-owner, fixed-search-path function returns only a specified membership's
+eligibility in the current household under live administrator checks. The owner
+policy does not apply to the app role. Existing recovery authorisation, self/role
+restrictions, locks, post-wait rechecks and atomic promotion/audit remain required.
+This minimal caller conversion does not deliver the later recovery-hardening
+follow-up.
+
+Architecture and SQL design approval are not runtime acceptance. Focused local
+restricted-PostgreSQL proofs cover accountless participation in two households,
+foreign denial and live revocation; existing-account joining with unchanged
+Person identity and replay; genuine invited-signup creation provenance and audit
+rollback; and all eleven clinical references to retained participation, including
+executed foreign-subject rejection and departed-history retention. Member
+rosters, dose replay, canonical self plan editing, capability/assignment selection
+and stock creation pass without Person grants, while other-person plan editing
+and new manager-created authority remain denied. The rejected grant write retains
+its domain audit, ledger and delivery atomically. Retained grant and membership
+response schemas pass with unavailable profile fields and actual historical User
+IDs preserved. Null/relinked membership Person IDs are rejected while unchanged
+IDs remain accepted.
+
+The final integrated review found two remaining grant-dependent readers. Actual
+medication-detail and report-selector routes reached focused failures; their
+participation-based corrections pass both focused browser-route regressions.
+The retained relationship label/CSRF removal and immutable membership contract
+regressions also pass (four actual tests across the two focused runs). Detailed
+runs and logs are recorded in `/private/tmp/medtracker-global-person-boundary.md`.
+Maintained support (32 cases) and recovery (18 cases) runtime proofs pass. The
+new recovery helper also passes fixed-owner/search-path/ACL/FORCE-RLS and
+restricted no-roster-access/denied-context checks. Mandatory/unique Account-Person
+and participation constraints, deferred missing-Person commit rejection and atomic
+provisioning/rollback pass. The existing expiry suite has twelve unchanged passes
+and its one corrected canonical revocation fixture passes separately. Fresh
+catalogue equality now passes against an explicit canonical identity delta over
+the retained historical catalogues. SeaORM 2.0.4 generated the affected identity
+mapping; its repeated composite-target-column limitation was corrected only for
+the eleven participation relations against the actual FK order, with a real
+restricted relation JOIN proof. Adjacent signup, invitation acceptance, profile,
+account-session and credential checks pass after canonical fixture corrections.
+Membership-only invitations reject obsolete care-authority fields, including
+array, object and null forms, before any invitation, grant or mail effects. Their
+standard mail worker and reached enqueue-failure rollback proofs pass separately.
+
+The adjacent fixture pass has sixty-one valid distinct cases:
+schedule and location boundaries, avatar ownership and post-wait revocation,
+household-local self metadata, retained carer reads/removal and administration.
+The saved-denial fixture now proves cached 403 replay with both explicit and
+absent client request IDs: the replay marker remains present, each error ID matches
+its own response header, normalising only that ID preserves the envelope, and no
+additional rejected-domain event is written. The earlier ambiguous combined
+assertion remains historical evidence, not a current missing-header claim; no
+production replay correction was needed. A separate real detail-page regression proves the authorised relationship
+read/removal link was hidden by the blocked assignment capability; its narrow
+read-capability correction passes the full existing read/removal/denied-write
+regression (run `acb4ff1c-e3bf-4073-a9e3-0d136188bc3b`). The smallest
+maintained adult Person creation request reaches 500: creation still lacks subject
+participation and produces new Manage authority. Do not add participation merely
+to preserve that authority writer; this and the existing dependent-creation path
+remain isolated pending the owner decision. The existing portable-import request
+also reaches 500 after its test-only ownership query was corrected. Its production
+Person index/upsert/snapshot still assumes household ownership and its importer
+link creates or escalates Manage. That coupled compatibility repair is paused
+pending the same authority decision; no automatic grant has been restored.
+
+Real CSRF care-route negatives pass for ordinary-member removal and person-scoped
+parent invitations, including unchanged authority and zero queued jobs. Maintained
+invitation browser journeys pass six desktop/phone cases. Existing-care browser
+journeys pass all eight case/project combinations across the retained five valid
+results and four corrected focused results (one overlaps). The first attempt
+stopped at an ambiguous H1/H2 locator; later test corrections preserve stale-version
+409 separately from fresh-version restore 403. A synthetic PostgreSQL fraction
+`.4518` versus Chrono `.451800` was normalised without Date conversion. No
+application permission change followed from these test prerequisites.
+
+Desktop/phone light/dark care screenshots and invitation/acceptance screenshots
+are preserved under `docs/screenshots/canonical-identity-20261017/`, with hashed
+originals and runtime reports in the private boundary record. Comparison against
+the existing Rust screenshots confirms the deliberate membership-only and
+read/removal-only controls; old image baselines remain unchanged. Existing
+navigation differences and the invitation full-page fixed-bottom-bar capture
+caveat belong to the separate UI checkpoints. This is not rendered Rails parity.
+The existing contrast samples pass, but do not include the red Remove carer
+button. Its contrast still needs an actual measured C4 acceptance check; these
+screenshots and samples do not prove every control meets the contrast target.
+
+Strict all-target/all-features Clippy passes on the mechanically formatted
+candidate after removing three redundant Expr conversions. Formatting and the
+documentation build pass. The dependency check runs and reports only the two
+inherited unused dependencies, root `csv` and migration `serde_json`; neither
+was copied from another PR or suppressed. These local checks do not resolve
+the known creation/import failures.
+
+Remaining gates are residual adjacent compatibility checks, inherited dependency
+cleanup through its existing slice, creation/import disposition, delta freeze
+and required full CI/browser acceptance. Full CI remains
+incomplete while the two maintained creation/import paths are known failures.
+Earlier all-target compilation is not acceptance of the current complete candidate.
+Manage-producing writers must not infer guardian authority from a household role
+or relationship label. The owner choice for the existing Add dependent flow is
+still pending: no new declaration or claim flow is authorised by this checkpoint.
+
+The user explicitly holds publication. Keep all canonical changes local; no
+commit, push, draft PR, merge or deployment follows from local evidence alone.
+
+### Separate checkpoint brief: initial dependent guardian declaration
+
+The owner approved a separate declaration checkpoint on 2026-10-17. This is a
+plan for a new accountless minor or dependent adult only. It does not activate
+succession, disputes, claims or cross-household sharing from the wider outcome 4.
+No production or executable test change is authorised by this brief alone.
+
+Current writers explain the remaining failures: `people/creation.rs` creates a
+Person without participation and automatically creates creator Manage, including
+for capable adults; dependent creation additionally infers a family relationship
+and synthetic self grant. `portable_imports/identity.rs`, `writing.rs` and
+`links.rs` retain household-owned Person queries and automatically grant or
+escalate importer Manage. Neither writer records an explicit declaration.
+
+**Proposed complete journey.** Retain the existing creation entry permission
+(household manager or existing valid Manage authority), then independently require
+the authenticated canonical actor to be an adult with capacity, with live account,
+credential and household participation. Entry permission is not guardian proof.
+For a NEW minor/dependent adult, the existing Tera form presents an unchecked,
+required attestation: “I declare that I am this new person's initial guardian.”
+Explain that this records a declaration, not verified legal status. Existing
+Person IDs, email matches and manager-selected relationship labels cannot satisfy
+it. Missing/false/null/wrong-type declarations fail validation without writes.
+Validate kind, age and capacity together: `adult` plus `has_capacity:false`
+cannot bypass dependent eligibility. This is a proposed invariant to prove,
+not acceptance of the current validator's classification.
+
+Use one authoritative, versioned declaration record linking the new subject and
+the principal-derived guardian Person, originating household, server-owned
+statement version, declaration time and actual actor/provenance. The exact table
+and restrictive/RLS constraints need the bounded schema review before coding.
+Create Person, its initial participation, declaration and any displayed existing
+carer relationship in one transaction with attributable versions, domain audit,
+ledger and supported change event. Do not create an Account, User, credentials,
+synthetic self grant or independent new Manage grant. For these new records,
+Manage and automatic dependent reminders derive from the same current explicit
+declaration; a relationship label is display data, never an authority source.
+Local clinical actions additionally require current actor and subject participation.
+
+Household suspension/departure denies local actions without rewriting the personal
+declaration or implying that a household role determines guardianship. The
+existing manager-authorised Remove carer action must not automatically withdraw
+personal guardian authority: a household role cannot remove that global authority.
+Its eventual effect on the local care link and notification eligibility must be
+explicit and atomic without falsely rewriting the declaration. The owner has
+confirmed guardian-only personal withdrawal and household-local manager removal.
+This bounded checkpoint includes that guardian's withdrawal, not succession,
+disputes, claims or recovery.
+Existing unrelated valid authority/removal behavior remains intact.
+
+Browser, API and MCP reach the same typed validated command. Proposed create-only
+field is `person.initial_guardian_declaration: true`; the statement version and
+guardian identity are server-owned. Preserve existing update and unrelated
+unknown-field contracts. Update the existing Person POST OpenAPI contract, Tera
+labels/errors and five locale files together. The maintained generic Rust client
+and MCP resource writer must forward the field without a second authority path;
+add adapter contract proof rather than empty source edits. No native work.
+
+**Bounded acceptance and ownership.** Start with real restricted-App REDs for
+unchecked/forged attestation and the current missing-participation create, then
+prove minor/dependent-adult save, refresh, actual guardian plan edit and automatic
+reminder eligibility; manager/non-declarant View/Record but no Manage; minor or
+incapable declarant denial; foreign/current-person injection denial; revoked
+actor/subject and post-wait checks; same-key replay exactly once and changed-body
+conflict; reached declaration/audit/queue failure rolls back every write. Add
+restricted RLS/FK/immutability proofs and desktop/phone light/dark keyboard/error
+screenshots, including actual Remove-button contrast. Owned boundaries are
+`care/people/{creation,validation}.rs`, a purpose-specific declaration model and
+fresh schema/entity mappings, exact access/notification/removal consumers,
+existing people browser/API controllers and form, OpenAPI/client-MCP contracts,
+and existing people/care/browser test modules. No general guardian framework.
+
+**Owner answers, 2026-10-17.** Capable adults join through their own Account;
+manual creation and import must not create a capable accountless adult. Each NEW
+dependent introduced by import requires a fresh current declaration from the
+authenticated actor. Existing records require current authority; file contents,
+uploader status, imported grants and relationship labels cannot supply it.
+An import declaration is a new attributable security event, preserving original
+clinical timestamps/provenance and producing no operational reminder or mail
+side effects. Only the guardian can withdraw their personal declaration;
+household managers can remove only the local care link. These are settled product
+answers; the new schema/RLS and exact commands still need bounded security review.
+
+**Small-stack acceptance proposal, requiring review.** Keep the two accepted
+query preparations, then the canonical identity PR, then this declaration PR as
+its mandatory child. The lower identity PR must reject non-declaring dependent
+creation through a typed validation response with zero effects, rather than
+retain the current 500 or grant authority. Its form must explain that the separate
+declaration workflow is unavailable at that layer. Its tests would deliberately
+prove this safe boundary; they must not claim successful dependent creation.
+The child adds the complete declaration read/write/replay journey and restores
+that capability. Final release must contain both. This is a deliberate temporary
+contract change for owner approval, not permission to rewrite existing success
+tests merely to make the lower PR green.
+
+Imports must implement the settled fresh-declaration/current-authority rules
+before the complete stack can claim acceptance. The smallest safe lower-layer
+option is a typed, zero-effect preflight
+denial for Person creation/authority-changing imports, with an explicit mandatory
+declaration child that restores the approved existing restore workflow. Do not
+delete the importer, relabel that denial as working portability, or indefinitely
+land the lower layer without its child. Unaffected already-authorised import
+operations must retain their existing behavior if separated safely. If the owner
+does not approve the temporary boundary, keep the canonical and declaration work
+stacked locally until the complete import child is accepted. No branch or PR
+topology has been changed; the controller will manage native gh-stack publication
+when the hold is released.
+
+The actual rewrite is dirty local source above prep2 HEAD
+`98c0c4fd9cd0e25dda6b04a50cc012f9a7824393`, not an accepted rewrite commit. Its
+pre-brief tracked binary diff SHA is
+`7cfda2e6a287022cd5979ce687c3a20da01e3959387ce6943b917e44c3e764e5`;
+that hash excludes untracked files and subsequent brief-only edits. The current
+15-file untracked manifest (sorted path/SHA256 JSON) hashes to
+`4eb4f64e8ff32cd4026f531d387440ea9d3a68661d5b1bf8f6e8c2766af6bdde`:
+ten screenshot proofs, the canonical catalogue, recovery eligibility SQL, two
+global-Person test modules and the existing-carer fixture. Existing screenshot
+archives retain the image bytes/hashes. Member management and final canonical
+acceptance remain blocked on the actual creation/import disposition and required
+whole-candidate gates. Publication is held; this brief has no runtime acceptance.
+
+**Read-only consumer map for the eventual reviewed command.**
+
+- `care/person_carers.rs::change` and
+  `controllers/people/carer_relationships.rs` implement actual CSRF/version-bound
+  removal, with household management, live target and stale-version checks.
+  `care/administration/delegation.rs::deactivate` locks the local relationship,
+  revokes only its linked grants, changes `active` and writes its version;
+  `reactivate` calls the currently blocked `assign`. None proves permission to
+  withdraw a personal declaration.
+- `access.rs::{can_access_person,has_person_access,people_with_access}` and
+  `authorization.rs::{own_person_manage,granted_person_manage}` cover direct and
+  aggregate Manage. The separate grant-based `access.rs::managed_people` feeds
+  `care/care_warning.rs`. New explicit authority must reach these consumers
+  consistently while preserving grant-free View/Record and current self authority.
+- `notification_preferences/managed.rs::{read,update}` selects live Manage grants
+  and active subject participation; non-dependent opt-in is stored on those
+  grants. `care/browser_push/reminders.rs` consumes that projection for subject
+  eligibility. `reminders/delivery.rs::claim` opens a fresh access transaction and
+  re-runs `plans` before delivery. The eventual declaration projection must keep
+  automatic authorised-dependent notifications distinct from adult opt-in and
+  household roles, and deny the correct queued delivery after local removal,
+  departure or authorised personal withdrawal without deleting history or
+  unrelated recipient preferences.
+- `care/people/creation.rs` is the manual writer to replace; its
+  `ensure_self_grant` and unconditional creator Manage are not declaration proof.
+  `portable_imports/links.rs::grant_importer_access` is a separate unresolved
+  writer. `care/profile_export.rs` exposes managed-preference data and needs
+  truthful projection alignment if its storage changes. No restore may rewrite
+  original clinical provenance or trigger operational reminders.
+
+This map identifies current coupled consumers only. Guardian-only personal
+withdrawal is included in the approved checkpoint scope; its proposed command
+and new schema/RLS still require review before executable changes. Succession,
+disputes and claims remain out of scope.
+
 Every PR must prove its own behavior or useful preparation. Required evidence includes replay without duplicate writes, concurrent cross-household dose safety, audit rollback, membership/guardian revocation boundaries, personal history after all departures, restore with zero side effects, DST boundaries and desktop/mobile web screenshot comparison for visible journeys. Use real PostgreSQL/RLS and actual account, guardian, member and manager roles; do not substitute administrator credentials for runtime paths.
 
 Strict quality gates must run against the exact reviewed head. A cancelled, skipped or empty test selection is not a green result. The root delivery controller alone authorises merges, after review and required green checks on that exact head. Publish focused PRs only through the authorised delivery workflow. Deployment, canary activation and destructive cutover remain separately unauthorised.

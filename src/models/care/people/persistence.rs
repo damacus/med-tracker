@@ -1,7 +1,7 @@
 use super::*;
 
 pub(super) fn snapshot(record: &person::Model) -> Value {
-    json!({"id":record.id,"account_id":record.account_id,"household_id":record.household_id,"portable_id":record.portable_id,"name":record.name,"email":record.email,"date_of_birth":record.date_of_birth,"person_type":record.person_type,"has_capacity":record.has_capacity,"created_at":record.created_at,"updated_at":record.updated_at})
+    json!({"id":record.id,"portable_id":record.portable_id,"name":record.name,"email":record.email,"date_of_birth":record.date_of_birth,"person_type":record.person_type,"has_capacity":record.has_capacity,"created_at":record.created_at,"updated_at":record.updated_at})
 }
 pub(super) fn grant_state(record: &grant::Model) -> Value {
     json!({"household_membership_id":record.household_membership_id,"person_id":record.person_id,"access_level":record.access_level,"relationship_type":record.relationship_type,"expires_at":record.expires_at,"revoked_at":record.revoked_at,"carer_relationship_id":record.carer_relationship_id})

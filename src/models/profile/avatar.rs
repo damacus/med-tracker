@@ -332,14 +332,18 @@ pub async fn person_attachment(
     person_id: i64,
 ) -> Result<Option<Attachment>, OperationError> {
     crate::models::access::require_person_access(tenant, person_id, PersonAccess::View).await?;
-    let person = person::Entity::find_by_id(person_id)
+    person::Entity::find_by_id(person_id)
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::NotFound)?;
-    if let Some(account_id) = person.account_id {
+    if let Some(owner) = account::Entity::find()
+        .filter(account::Column::PersonId.eq(person_id))
+        .one(tenant.transaction())
+        .await?
+    {
         return account_attachment(
             tenant.transaction(),
-            crate::models::ids::AccountId::from_database(account_id),
+            crate::models::ids::AccountId::from_database(owner.id),
         )
         .await;
     }

@@ -28,29 +28,6 @@ async fn collection(
     Ok(json!({"data":rows.iter().map(|row|summary(row,now)).collect::<Vec<_>>()}))
 }
 
-pub async fn options(tenant: &TenantTransaction) -> Result<Value, OperationError> {
-    use crate::models::entities::person;
-    let scoped = administration::delegation::options(tenant).await?;
-    let ids: Vec<i64> = scoped["patients"]
-        .as_array()
-        .ok_or(OperationError::Unavailable)?
-        .iter()
-        .filter_map(|value| value["id"].as_i64())
-        .collect();
-    let people = person::Entity::find()
-        .in_tenant(tenant.scope().household_id)
-        .filter(person::Column::Id.is_in(ids))
-        .filter(person::Column::PersonType.is_in([1, 2]))
-        .filter(person::Column::HasCapacity.eq(false))
-        .order_by_asc(person::Column::Name)
-        .order_by_asc(person::Column::Id)
-        .all(tenant.transaction())
-        .await?;
-    Ok(
-        json!({"dependents":people.into_iter().map(|person|json!({"id":person.id,"name":person.name})).collect::<Vec<_>>()}),
-    )
-}
-
 pub async fn preview(db: &DatabaseConnection, token: &str) -> Result<Value, OperationError> {
     use crate::models::entities::household;
     if token.trim().is_empty() {

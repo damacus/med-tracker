@@ -154,6 +154,9 @@ pub async fn begin(db: &DatabaseConnection) -> Result<DatabaseTransaction, Opera
         .execute_unprepared("SET LOCAL ROLE med_tracker_app")
         .await
         .map_err(|_| OperationError::Unavailable)?;
+    transaction
+        .execute_unprepared("SELECT set_config('med_tracker.current_account_id','',true),set_config('med_tracker.current_household_id','',true),set_config('med_tracker.current_membership_id','',true),set_config('med_tracker.current_invitation_token_digest','',true)")
+        .await?;
     Ok(transaction)
 }
 
@@ -162,6 +165,7 @@ async fn authorize(
     account_id: i64,
     action: &str,
 ) -> Result<Administrator, OperationError> {
+    account_scope(transaction, account_id).await?;
     let user_id = access::verify_account_actor(transaction, account_id).await?;
     let record = account::Entity::find_by_id(account_id)
         .one(transaction)
@@ -219,7 +223,7 @@ pub async fn users(
     let rows = transaction
         .query_all_raw(Statement::from_sql_and_values(
             DbBackend::Postgres,
-            "SELECT a.id,COALESCE((SELECT p.name FROM public.people p WHERE p.account_id=a.id ORDER BY p.id LIMIT 1),'') AS name,a.email,a.status,EXISTS(SELECT 1 FROM public.users u WHERE u.person_id=(SELECT p.id FROM public.people p WHERE p.account_id=a.id ORDER BY p.id LIMIT 1)) AS user_linked,EXISTS(SELECT 1 FROM public.users u WHERE u.person_id=(SELECT p.id FROM public.people p WHERE p.account_id=a.id ORDER BY p.id LIMIT 1) AND u.active) AS user_active,pa.status AS administrator FROM accounts a LEFT JOIN platform_admins pa ON pa.account_id=a.id WHERE a.email ILIKE $1 ESCAPE '\\' ORDER BY a.id LIMIT $2 OFFSET $3",
+            "SELECT a.id,COALESCE(a.name,'') AS name,a.email,a.status,EXISTS(SELECT 1 FROM public.users u WHERE u.person_id=a.person_id) AS user_linked,EXISTS(SELECT 1 FROM public.users u WHERE u.person_id=a.person_id AND u.active) AS user_active,pa.status AS administrator FROM accounts a LEFT JOIN platform_admins pa ON pa.account_id=a.id WHERE a.email ILIKE $1 ESCAPE '\\' ORDER BY a.id LIMIT $2 OFFSET $3",
             [
                 pattern.into(),
                 PER_PAGE.into(),
@@ -302,7 +306,7 @@ async fn has_active_user(
 ) -> Result<bool, OperationError> {
     exists(
         transaction,
-        "SELECT EXISTS(SELECT 1 FROM public.users u WHERE u.person_id=(SELECT p.id FROM public.people p WHERE p.account_id=$1 ORDER BY p.id LIMIT 1) AND u.active) AS present",
+        "SELECT EXISTS(SELECT 1 FROM public.users u WHERE u.person_id=(SELECT person_id FROM public.accounts WHERE id=$1) AND u.active) AS present",
         account_id,
     )
     .await
@@ -314,7 +318,7 @@ async fn has_user(
 ) -> Result<bool, OperationError> {
     exists(
         transaction,
-        "SELECT EXISTS(SELECT 1 FROM public.users u WHERE u.person_id=(SELECT p.id FROM public.people p WHERE p.account_id=$1 ORDER BY p.id LIMIT 1)) AS present",
+        "SELECT EXISTS(SELECT 1 FROM public.users u WHERE u.person_id=(SELECT person_id FROM public.accounts WHERE id=$1)) AS present",
         account_id,
     )
     .await
@@ -326,7 +330,7 @@ async fn viable_administrator(
 ) -> Result<bool, OperationError> {
     exists(
         transaction,
-        "SELECT EXISTS(SELECT 1 FROM public.platform_admins pa JOIN public.accounts a ON a.id=pa.account_id WHERE pa.account_id=$1 AND pa.status='active' AND a.status=2 AND EXISTS(SELECT 1 FROM public.users u WHERE u.person_id=(SELECT p.id FROM public.people p WHERE p.account_id=a.id ORDER BY p.id LIMIT 1) AND u.active)) AS present",
+        "SELECT EXISTS(SELECT 1 FROM public.platform_admins pa JOIN public.accounts a ON a.id=pa.account_id WHERE pa.account_id=$1 AND pa.status='active' AND a.status=2 AND EXISTS(SELECT 1 FROM public.users u WHERE u.person_id=a.person_id AND u.active)) AS present",
         account_id,
     )
     .await
@@ -336,7 +340,7 @@ async fn viable_administrators(transaction: &DatabaseTransaction) -> Result<i64,
     transaction
         .query_one_raw(Statement::from_sql_and_values(
             DbBackend::Postgres,
-            "SELECT count(*) AS count FROM public.platform_admins pa JOIN public.accounts a ON a.id=pa.account_id WHERE pa.status='active' AND a.status=2 AND EXISTS(SELECT 1 FROM public.users u WHERE u.person_id=(SELECT p.id FROM public.people p WHERE p.account_id=a.id ORDER BY p.id LIMIT 1) AND u.active)",
+            "SELECT count(*) AS count FROM public.platform_admins pa JOIN public.accounts a ON a.id=pa.account_id WHERE pa.status='active' AND a.status=2 AND EXISTS(SELECT 1 FROM public.users u WHERE u.person_id=a.person_id AND u.active)",
             [],
         ))
         .await
@@ -583,7 +587,7 @@ pub async fn change_user(
         transaction
             .execute_raw(Statement::from_sql_and_values(
                 DbBackend::Postgres,
-                "UPDATE public.users SET active=true,updated_at=timezone('UTC',clock_timestamp()) WHERE person_id IN (SELECT id FROM public.people WHERE account_id=$1)",
+                "UPDATE public.users SET active=true,updated_at=timezone('UTC',clock_timestamp()) WHERE person_id IN (SELECT person_id FROM public.accounts WHERE id=$1)",
                 [target_account_id.into()],
             ))
             .await
@@ -608,7 +612,7 @@ pub async fn change_user(
     transaction
         .execute_raw(Statement::from_sql_and_values(
             DbBackend::Postgres,
-            "UPDATE public.users SET active=false,updated_at=timezone('UTC',clock_timestamp()) WHERE person_id IN (SELECT id FROM public.people WHERE account_id=$1)",
+            "UPDATE public.users SET active=false,updated_at=timezone('UTC',clock_timestamp()) WHERE person_id IN (SELECT person_id FROM public.accounts WHERE id=$1)",
             [target_account_id.into()],
         ))
         .await

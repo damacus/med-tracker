@@ -27,8 +27,7 @@ async fn person_for(
     tenant: &TenantTransaction,
     person_id: &str,
 ) -> Result<person::Model, OperationError> {
-    let query =
-        person::Entity::find().filter(person::Column::HouseholdId.eq(tenant.scope().household_id));
+    let query = access::person_queries::household_people(tenant.scope());
     let query = if let Ok(id) = person_id.parse::<i64>() {
         query.filter(person::Column::Id.eq(id))
     } else {

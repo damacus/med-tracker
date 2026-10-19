@@ -54,12 +54,12 @@ async fn source_context(
     }
     let person_ids: Vec<i64> = sources.iter().map(|source| source.person_id).collect();
     let medication_ids: Vec<i64> = sources.iter().map(|source| source.medication_id).collect();
-    let subjects = person::Entity::find()
-        .in_tenant(context.scope().household_id)
-        .filter(person::Column::Id.is_in(person_ids.clone()))
-        .all(db)
-        .await
-        .map_err(database_error)?;
+    let subjects =
+        crate::models::access::person_queries::household_participants(context.scope().household_id)
+            .filter(person::Column::Id.is_in(person_ids.clone()))
+            .all(db)
+            .await
+            .map_err(database_error)?;
     let people = subjects
         .iter()
         .map(|person| (person.id, person.portable_id.clone()))
@@ -77,7 +77,7 @@ async fn source_context(
         .in_tenant(context.scope().household_id)
         .filter(grant::Column::HouseholdMembershipId.eq(context.membership().id))
         .filter(grant::Column::PersonId.is_in(person_ids))
-        .filter(grant::Column::AccessLevel.is_in(["record", "manage"]))
+        .filter(grant::Column::AccessLevel.eq("manage"))
         .filter(grant::Column::RevokedAt.is_null())
         .filter(
             Condition::any()
@@ -98,23 +98,16 @@ async fn source_context(
         .await?
         .ok_or(OperationError::Unavailable)?;
     let now: chrono::NaiveDateTime = clock.try_get("", "now")?;
-    let recordable_people = permission_grants
+    let recordable_people = subjects
         .iter()
-        .filter(|record| {
-            subjects
-                .iter()
-                .find(|subject| subject.id == record.person_id)
-                .is_some_and(|subject| {
-                    authorization::person_access(
-                        context.membership(),
-                        subject,
-                        record,
-                        PersonAccess::Record,
-                        now,
-                    )
-                })
+        .filter(|subject| {
+            authorization::participating_person_access(
+                context.membership(),
+                subject,
+                PersonAccess::Record,
+            )
         })
-        .map(|record| record.person_id)
+        .map(|subject| subject.id)
         .collect();
     let manageable_people = permission_grants
         .iter()
@@ -133,6 +126,12 @@ async fn source_context(
                 })
         })
         .map(|record| record.person_id)
+        .chain(
+            subjects
+                .iter()
+                .filter(|subject| authorization::own_person_manage(context.membership(), subject))
+                .map(|subject| subject.id),
+        )
         .collect();
     let eligible_stock = source_stock(
         db,
@@ -180,13 +179,12 @@ async fn source_context(
     };
     let actor_person_ids: Vec<i64> = actor_memberships
         .iter()
-        .filter_map(|membership| membership.person_id)
+        .map(|membership| membership.person_id)
         .collect();
     let actor_people: HashMap<i64, String> = if actor_person_ids.is_empty() {
         HashMap::new()
     } else {
-        person::Entity::find()
-            .in_tenant(context.scope().household_id)
+        crate::models::access::person_queries::household_participants(context.scope().household_id)
             .filter(person::Column::Id.is_in(actor_person_ids))
             .all(db)
             .await
@@ -198,9 +196,9 @@ async fn source_context(
     let actor_names: HashMap<i64, String> = actor_memberships
         .into_iter()
         .filter_map(|membership| {
-            membership
-                .person_id
-                .and_then(|person_id| actor_people.get(&person_id).cloned())
+            actor_people
+                .get(&membership.person_id)
+                .cloned()
                 .map(|name| (membership.id, name))
         })
         .collect();

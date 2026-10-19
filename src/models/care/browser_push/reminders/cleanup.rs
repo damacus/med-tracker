@@ -16,9 +16,9 @@ pub(crate) async fn terminal_cleanup(
             WHERE d.household_id=$1 AND ($2::bigint IS NULL OR d.account_id=$2)
               AND ((d.status='sending' AND d.claimed_at<=$3)
                 OR (d.status='pending' AND NOT EXISTS (
-                    SELECT 1 FROM household_memberships m JOIN accounts a ON a.id=m.account_id
+                    SELECT 1 FROM household_memberships m JOIN accounts a ON a.person_id=m.person_id
                     JOIN households h ON h.id=m.household_id
-                    WHERE m.household_id=d.household_id AND m.account_id=d.account_id
+                    WHERE m.household_id=d.household_id AND a.id=d.account_id
                       AND m.status='active' AND m.revoked_at IS NULL AND a.status=2
                       AND h.status='active' AND h.lifecycle_state='active')))
             ORDER BY d.id LIMIT 100 FOR UPDATE OF d SKIP LOCKED

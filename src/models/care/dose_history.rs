@@ -30,7 +30,7 @@ pub async fn list(
     let household_id = tenant.scope().household_id;
     let mut query = medication_take::Entity::find().in_tenant(household_id);
     if !access::can_manage_household(tenant) {
-        let people = access::granted_people(tenant.membership());
+        let people = access::participating_people(tenant.membership());
         let schedules = schedule::Entity::find()
             .select_only()
             .column(schedule::Column::Id)

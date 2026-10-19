@@ -270,7 +270,7 @@ async fn location_membership_applies_person_access_rules() {
              INSERT INTO locations(id,household_id,name,created_at,updated_at) VALUES (79002,72001,'Other cabinet',now(),now());
              INSERT INTO location_memberships(id,household_id,location_id,person_id,created_at,updated_at) VALUES (82002,72001,79001,73002,now(),now()),(82003,72001,79002,73001,now(),now());
              INSERT INTO households(id,created_by_account_id,name,slug,timezone,status,lifecycle_state,created_at,updated_at) VALUES (92002,71001,'Foreign household','membership-foreign','UTC','active','active',now(),now());
-             INSERT INTO people(id,account_id,household_id,name,person_type,has_capacity,created_at,updated_at) VALUES (73009,NULL,92002,'Foreign person',0,true,now(),now())",
+             INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES (73009,'Foreign person',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(94009,92002,73009,'member','active',now(),now(),now())",
         )
         .await
         .unwrap();
@@ -322,7 +322,7 @@ async fn location_membership_applies_person_access_rules() {
     app.close().await;
     assert_eq!(view_only_status, 403);
     assert_eq!(view_delete_status, 403);
-    assert_eq!(ungranted_status, 404);
+    assert_eq!(ungranted_status, 403);
     assert_eq!(foreign_status, 404);
     assert_eq!(wrong_location_status, 404);
     assert_eq!(remaining, 2);

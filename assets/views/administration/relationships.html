@@ -4,11 +4,10 @@
   <a class="link" href="/households/{{ slug }}/admin">Administration</a>
   <h1 class="text-3xl font-semibold mt-4">Carer Relationships</h1>
   <div class="mt-6">{% include "components/form_errors.html" %}</div>
-  <a class="btn btn-neutral mt-4" href="/households/{{ slug }}/admin/carer_relationships/new">New Relationship</a>
   <ul class="flex flex-col gap-4 mt-6">
   {% for relationship in relationships %}
     <li class="card bg-base-100 border border-base-300"><div class="card-body">
-      <h2 class="card-title">{{ relationship.carer_name }} cares for {{ relationship.patient_name }}</h2>
+      <h2 class="card-title">{% if relationship.carer_name %}{{ relationship.carer_name }}{% else %}{{ unavailable_person }} #{{ relationship.carer_id }}{% endif %} cares for {% if relationship.patient_name %}{{ relationship.patient_name }}{% else %}{{ unavailable_person }} #{{ relationship.patient_id }}{% endif %}</h2>
       <p>{{ relationship.relationship_type | replace(from="_", to=" ") | capitalize }} · {% if relationship.active %}Active{% else %}Inactive{% endif %}</p>
       {% if relationship.active %}
         <button class="btn btn-outline" type="button" data-dialog-open="deactivate-{{ relationship.id }}">Deactivate</button>
@@ -23,11 +22,6 @@
             </form>
           </div>
         </dialog>
-      {% else %}
-        <form action="/households/{{ slug }}/admin/carer_relationships/{{ relationship.id }}/activate" method="post">
-          <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
-          <button class="btn btn-neutral" type="submit">Activate</button>
-        </form>
       {% endif %}
     </div></li>
   {% else %}<li>No carer relationships are available.</li>{% endfor %}

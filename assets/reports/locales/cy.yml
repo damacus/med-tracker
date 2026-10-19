@@ -558,6 +558,7 @@ cy:
       deactivated: Mae perthynas gofalwr wedi'i ddadactifadu.
       activated: Mae perthynas gofalwr wedi'i hactifadu.
       index:
+        unavailable_person: Unigolyn nad yw yn yr aelwyd hon ar hyn o bryd
         title: Perthnasoedd Gofalwr
         subtitle: Rheoli aseiniadau gofalwr-claf.
         new_relationship: Perthynas Newydd

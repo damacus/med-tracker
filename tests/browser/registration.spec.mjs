@@ -18,7 +18,7 @@ async function createAndVerify(page, fixture, info) {
   await page.locator('#signup-password').fill(signupPassword);
   await page.getByRole('button', { name: 'Create Account', exact: true }).click();
   await expect(page.getByText('An email has been sent to you with a link to verify your account', { exact: true })).toBeVisible();
-  const pending = { accounts: 1, status: 1, people: 1, users: 1, households: 1, owners: 1, self_grants: 1, household_name: 'Synthetic registration Household' };
+  const pending = { accounts: 1, status: 1, people: 1, users: 1, households: 1, owners: 1, self_grants: 0, household_name: 'Synthetic registration Household' };
   const effects = await fixture.registrationProbe(email);
   expect(effects).toMatchObject(pending);
   expect(effects.household_slug).toMatch(/^[a-z0-9-]+$/);

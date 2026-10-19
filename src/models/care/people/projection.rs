@@ -9,15 +9,7 @@ pub struct Pagination {
 }
 
 fn scope(tenant: &TenantTransaction) -> sea_orm::Select<person::Entity> {
-    access::person_queries::household_people(tenant.scope()).filter(
-        person::Column::Id.in_subquery(
-            active_grants(tenant)
-                .filter(grant::Column::AccessLevel.is_in(["view", "record", "manage"]))
-                .select_only()
-                .column(grant::Column::PersonId)
-                .into_query(),
-        ),
-    )
+    access::person_queries::household_people(tenant.scope())
 }
 
 pub(super) async fn selected(

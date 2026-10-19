@@ -3,16 +3,23 @@ use better_auth_core::{
     AuthError, AuthResult, CreateMember, Member,
     store::{ListOrganizationMembersParams, MemberStore},
 };
-use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect};
+use sea_orm::{
+    ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, QueryTrait,
+    sea_query::{Expr, SimpleExpr},
+};
+use std::collections::HashMap;
 
 use super::{ClinicalStore, clinical_id, database_error, tenant::operation_error};
-use crate::models::{care::administration, entities::membership};
+use crate::models::{
+    care::administration,
+    entities::{account, membership},
+};
 
-fn member(row: membership::Model) -> Member {
+fn member(row: membership::Model, account_id: i64) -> Member {
     Member {
         id: row.id.to_string(),
         organization_id: row.household_id.to_string(),
-        user_id: row.account_id.to_string(),
+        user_id: account_id.to_string(),
         role: row.role,
         created_at: row.created_at.and_utc(),
     }
@@ -76,6 +83,14 @@ impl MemberStore for ClinicalStore {
             .await
             .map_err(operation_error)?;
         let mut query = membership::Entity::find()
+            .filter(
+                membership::Column::PersonId.in_subquery(
+                    account::Entity::find()
+                        .select_only()
+                        .column(account::Column::PersonId)
+                        .into_query(),
+                ),
+            )
             .filter(membership::Column::HouseholdId.eq(household_id))
             .filter(membership::Column::Status.eq("active"))
             .filter(membership::Column::RevokedAt.is_null());
@@ -92,12 +107,20 @@ impl MemberStore for ClinicalStore {
             let condition = match (field, equal) {
                 ("id", true) => membership::Column::Id.eq(clinical_id(value)?),
                 ("id", false) => membership::Column::Id.ne(clinical_id(value)?),
-                ("userId" | "user_id", true) => {
-                    membership::Column::AccountId.eq(clinical_id(value)?)
-                }
-                ("userId" | "user_id", false) => {
-                    membership::Column::AccountId.ne(clinical_id(value)?)
-                }
+                ("userId" | "user_id", true) => membership::Column::PersonId.in_subquery(
+                    account::Entity::find()
+                        .select_only()
+                        .column(account::Column::PersonId)
+                        .filter(account::Column::Id.eq(clinical_id(value)?))
+                        .into_query(),
+                ),
+                ("userId" | "user_id", false) => membership::Column::PersonId.not_in_subquery(
+                    account::Entity::find()
+                        .select_only()
+                        .column(account::Column::PersonId)
+                        .filter(account::Column::Id.eq(clinical_id(value)?))
+                        .into_query(),
+                ),
                 ("role", true) => membership::Column::Role.eq(value),
                 ("role", false) => membership::Column::Role.ne(value),
                 _ => return Err(AuthError::validation("Unsupported membership field")),
@@ -109,11 +132,15 @@ impl MemberStore for ClinicalStore {
             .count(tenant.transaction())
             .await
             .map_err(database_error)?;
-        let sort = match input.sort_by.as_deref().unwrap_or("id") {
-            "id" => membership::Column::Id,
-            "userId" | "user_id" => membership::Column::AccountId,
-            "role" => membership::Column::Role,
-            "createdAt" | "created_at" => membership::Column::CreatedAt,
+        let sort: SimpleExpr = match input.sort_by.as_deref().unwrap_or("id") {
+            "id" => Expr::col((membership::Entity, membership::Column::Id)),
+            "userId" | "user_id" => Expr::cust(
+                "(SELECT a.id FROM public.accounts a WHERE a.person_id=household_memberships.person_id)",
+            ),
+            "role" => Expr::col((membership::Entity, membership::Column::Role)),
+            "createdAt" | "created_at" => {
+                Expr::col((membership::Entity, membership::Column::CreatedAt))
+            }
             _ => return Err(AuthError::validation("Unsupported membership sort")),
         };
         query = match input.sort_direction.as_deref().unwrap_or("asc") {
@@ -128,9 +155,27 @@ impl MemberStore for ClinicalStore {
             .all(tenant.transaction())
             .await
             .map_err(database_error)?;
+        let accounts = account::Entity::find()
+            .filter(account::Column::PersonId.is_in(rows.iter().map(|row| row.person_id)))
+            .all(tenant.transaction())
+            .await
+            .map_err(database_error)?
+            .into_iter()
+            .map(|row| (row.person_id, row.id))
+            .collect::<HashMap<_, _>>();
+        let members = rows
+            .into_iter()
+            .map(|row| {
+                let account_id = accounts
+                    .get(&row.person_id)
+                    .copied()
+                    .ok_or_else(|| AuthError::internal("Membership account unavailable"))?;
+                Ok(member(row, account_id))
+            })
+            .collect::<AuthResult<Vec<_>>>()?;
         tenant.commit().await.map_err(operation_error)?;
         Ok((
-            rows.into_iter().map(member).collect(),
+            members,
             usize::try_from(total).map_err(|_| AuthError::internal("Membership count overflow"))?,
         ))
     }
@@ -152,6 +197,14 @@ impl ClinicalStore {
             .await
             .map_err(operation_error)?;
         let mut query = membership::Entity::find()
+            .filter(
+                membership::Column::PersonId.in_subquery(
+                    account::Entity::find()
+                        .select_only()
+                        .column(account::Column::PersonId)
+                        .into_query(),
+                ),
+            )
             .filter(membership::Column::HouseholdId.eq(household_id))
             .filter(membership::Column::Status.eq("active"))
             .filter(membership::Column::RevokedAt.is_null());

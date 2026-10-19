@@ -19,13 +19,9 @@ test('household managers issue, resend and cancel invitations through actual SMT
   await expect(page.getByRole('heading', { name: 'Invitations', exact: true })).toBeVisible();
   await expect(page.getByLabel('Email', { exact: true })).toBeVisible();
   await expect(page.getByLabel('Household role', { exact: true })).toHaveValue('member');
-  await expect(page.getByLabel('Dependent relationship', { exact: true })).toHaveValue('');
-  await expect(page.getByLabel('Dependent access', { exact: true })).toHaveValue('record');
-  await expect(page.getByRole('group', { name: 'Existing dependents' })).toBeHidden();
-  await page.getByLabel('Dependent relationship', { exact: true }).selectOption('parent');
-  await expect(page.getByRole('group', { name: 'Existing dependents' })).toBeVisible();
-  await page.getByLabel('Synthetic minor', { exact: true }).check();
-  await page.getByLabel('Dependent access', { exact: true }).selectOption('manage');
+  await expect(page.getByLabel('Dependent relationship', { exact: true })).toHaveCount(0);
+  await expect(page.getByLabel('Dependent access', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('group', { name: 'Existing dependents' })).toHaveCount(0);
   await page.getByLabel('Email', { exact: true }).fill('invalid-email');
   await page.locator('#invitation-form').evaluate(form => { form.noValidate = true; });
   const invalid = page.waitForResponse(response => response.request().method() === 'POST');
@@ -33,14 +29,28 @@ test('household managers issue, resend and cancel invitations through actual SMT
   expect((await invalid).status()).toBe(422);
   await expect(page.getByLabel('Email', { exact: true })).toHaveValue('invalid-email');
   await expect(page.getByLabel('Email', { exact: true })).toHaveAccessibleDescription('Email is invalid');
-  await expect(page.getByLabel('Synthetic minor', { exact: true })).toBeChecked();
-  await expect(page.getByLabel('Dependent relationship', { exact: true })).toHaveValue('parent');
+  await page.getByLabel('Email', { exact: true }).fill('stale-care-authority@example.test');
+  await page.locator('#invitation-form').evaluate(form => {
+    for (const [name, value] of [['dependent_ids[]', '73002'], ['relationship_type', 'parent'], ['access_level', 'manage']]) {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = name;
+      input.value = value;
+      form.append(input);
+    }
+  });
+  const stale = page.waitForResponse(response => response.request().method() === 'POST');
+  await page.getByRole('button', { name: 'Send invitation', exact: true }).click();
+  expect((await stale).status()).toBe(422);
+  await expect(page.getByRole('alert')).toContainText('Household invitations cannot assign care authority.');
+  await expect(page.getByLabel('Email', { exact: true })).toHaveValue('stale-care-authority@example.test');
+  expect(await careFixture.invitationProbe('stale-care-authority@example.test')).toMatchObject({ count: 0, grants: 0 });
   const email = 'invitation-browser@example.test';
   await page.getByLabel('Email', { exact: true }).fill(email);
   await page.getByRole('button', { name: 'Send invitation', exact: true }).click();
   const row = page.getByRole('listitem').filter({ hasText: email });
   await expect(row).toContainText('Pending');
-  expect(await careFixture.invitationProbe(email)).toMatchObject({ count: 1, grants: 1, expired: false });
+  expect(await careFixture.invitationProbe(email)).toMatchObject({ count: 1, grants: 0, expired: false });
   const inbox = async () => {
     const response = await fetch(`${careFixture.mailpitUrl}/api/v1/messages?limit=50`);
     expect(response.ok).toBe(true);
@@ -58,7 +68,7 @@ test('household managers issue, resend and cancel invitations through actual SMT
   const resent = await (await fetch(`${careFixture.mailpitUrl}/api/v1/message/${(await inbox())[0].ID}`)).json();
   const resentLink = resent.Text.match(/http:\/\/localhost:\d+\/invitations\/accept\?token=[A-Za-z0-9_-]+/)[0];
   expect(resentLink).not.toBe(originalLink);
-  expect(await careFixture.invitationProbe(email)).toMatchObject({ count: 1, grants: 1, expired: false });
+  expect(await careFixture.invitationProbe(email)).toMatchObject({ count: 1, grants: 0, expired: false });
   await page.screenshot({ path: info.outputPath(`loco-invitations-${info.project.name}.png`), fullPage: true });
   await row.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(row).toHaveCount(0);
@@ -79,9 +89,6 @@ for (const factor of ['password', 'OTP']) {
     await openCareSection(page, 'Administration');
     await page.getByRole('link', { name: 'Invitations', exact: true }).click();
     await page.getByLabel('Email', { exact: true }).fill('foreign@example.test');
-    await page.getByLabel('Dependent relationship', { exact: true }).selectOption('parent');
-    await page.getByLabel('Dependent access', { exact: true }).selectOption('manage');
-    await page.getByLabel('Synthetic minor', { exact: true }).check();
     await page.getByRole('button', { name: 'Send invitation', exact: true }).click();
     const messages = async () => {
       const response = await fetch(`${careFixture.mailpitUrl}/api/v1/messages?limit=50`);
@@ -122,7 +129,7 @@ for (const factor of ['password', 'OTP']) {
       await invited.screenshot({ path: info.outputPath(`loco-invitation-accept-${factor}-${info.project.name}.png`), fullPage: true });
       await invited.getByRole('button', { name: 'Accept invitation', exact: true }).click();
       const effects = await careFixture.invitationAcceptanceProbe();
-      const accepted = { people: 1, memberships: 1, self_grants: 1, dependent_grants: 1, relationships: 1, source_household: 72002, accepted: 1 };
+      const accepted = { people: 1, memberships: 1, self_grants: 0, dependent_grants: 0, relationships: 0, source_household: 72002, accepted: 1 };
       expect(effects).toMatchObject(accepted);
       await expect(invited.getByRole('heading', { name: 'Medications', exact: true })).toBeVisible();
       const replay = await invited.request.post('/invitations/accept', { form, headers: { Origin: careFixture.origin }, maxRedirects: 0 });
