@@ -128,3 +128,6 @@ playwright-rs = { version = "=0.20.1", default-features = false, features = [
 
 [profile.dev.package.scrypt]
 opt-level = 3
+
+[profile.dev.package."*"]
+opt-level = 1
