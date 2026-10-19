@@ -29,40 +29,6 @@ Do not change comments except for requested documentation/guardrails or lint fix
 Do not introduce broad lint suppressions, including tests and generated entities.
 Use `jq` for JSON inspection. Fixture passwords are `password`.
 
-## Local Rust verification and cache
-
-Keep separate implementation worktrees, but serialise expensive Rust verification.
-On this Mac, use the installed `medtracker-verify` runner from the source checkout:
-
-```fish
-rtk proxy medtracker-verify run --source "$PWD" -- ci SHARD=1/1
-rtk proxy medtracker-verify run --source "$PWD" -- slice:test TARGET=care_api FILTER=example
-rtk proxy medtracker-verify run --source "$PWD" --lane coverage -- test:coverage
-```
-
-The runner invokes Task in a stable copy of the source, holds one verification
-lock, and separates normal and coverage outputs. Do not bypass an occupied lock
-with a raw compiler or another target directory. Keep toolchain and build flags
-consistent; do not create a new cache per agent or worktree. If the runner is
-unavailable on another machine, use the repository Task commands with one build
-owner; do not copy this Mac's absolute paths into repository configuration.
-
-The machine-local cache uses one external root, a 20 GB sccache limit and a
-120 GiB soft budget checked between runs. Use `rtk proxy medtracker-verify status`
-to inspect it, `rtk proxy medtracker-verify prune` to preview cleanup, and append
-`--apply` to prune under the verification lock. Never delete caches used by active
-builds or introduce a conflicting `.cargo/config.toml` override. Raw Task commands
-do not acquire this runner's lock automatically.
-
-Results belong to the recorded source snapshot, not subsequent edits. Inspect
-the lane's `source.json` and `last-run.json` under the external cache's
-`verification/` directory. Screenshots and generated evidence are written in the
-verification checkout; review and copy required artifacts back to the source
-checkout before publication. Preserve the running review website. The runner
-does not replace required checks or establish hosted CI acceptance.
-
-## Application and delivery rules
-
 ## Local Rust builds
 
 Use the repository Task commands directly from the current checkout. Cargo
