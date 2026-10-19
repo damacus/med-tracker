@@ -9,7 +9,7 @@ use axum::{
     http::{HeaderValue, header},
 };
 
-fn no_store(mut reply: Response) -> Response {
+pub(super) fn no_store(mut reply: Response) -> Response {
     reply
         .headers_mut()
         .insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
@@ -56,7 +56,7 @@ pub(crate) async fn uploaded(
 
 pub(super) async fn show(
     State(ctx): State<AppContext>,
-    Path(household_id): Path<i64>,
+    ApiPath(household_id): ApiPath<i64>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
 ) -> Response {
@@ -183,7 +183,7 @@ pub(super) async fn show(
 
 pub(super) async fn upload(
     State(ctx): State<AppContext>,
-    Path(household_id): Path<i64>,
+    ApiPath(household_id): ApiPath<i64>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     form: std::result::Result<Multipart, MultipartRejection>,
@@ -292,7 +292,7 @@ pub(super) async fn upload(
 
 pub(super) async fn remove(
     State(ctx): State<AppContext>,
-    Path(household_id): Path<i64>,
+    ApiPath(household_id): ApiPath<i64>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
 ) -> Response {

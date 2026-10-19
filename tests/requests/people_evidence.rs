@@ -1,7 +1,7 @@
 use super::*;
 
 pub(super) const REVISION: &str = "7ba79ac8cbfdffa365c0e15646ea13075a1e6918";
-pub(super) const GAP: &str = "Malformed household-ID extraction remains undecided; full operation acceptance, including remaining conditional and side-effect boundaries, is not yet established";
+pub(super) const GAP: &str = "Full operation acceptance, including remaining conditional and side-effect boundaries, is not yet established";
 
 pub(super) fn expected(operation: &str) -> Option<Value> {
     if operation == "createPerson" {

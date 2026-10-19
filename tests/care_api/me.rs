@@ -181,20 +181,83 @@ async fn me_audit_failure_does_not_return_or_cache_personal_data() {
 #[tokio::test]
 async fn me_rejects_malformed_household_ids_without_caching() {
     let app = Application::new().await;
-    let response = app
-        .client
-        .get(format!("{}/api/v1/households/not-a-number/me", app.origin))
-        .send()
-        .await
-        .unwrap();
-    let status = response.status().as_u16();
-    let cache_control = response.headers().get("cache-control").cloned();
+    let mut results = Vec::new();
+    for (request, no_store, nosniff) in [
+        (
+            app.client
+                .get(format!("{}/api/v1/households/not-a-number/me", app.origin)),
+            true,
+            false,
+        ),
+        (
+            app.client.get(format!(
+                "{}/api/v1/households/not-a-number/profile",
+                app.origin
+            )),
+            true,
+            false,
+        ),
+        (
+            app.client.delete(format!(
+                "{}/api/v1/households/not-a-number/profile/avatar",
+                app.origin
+            )),
+            true,
+            true,
+        ),
+        (
+            app.client.get(format!(
+                "{}/api/v1/households/not-a-number/people/5",
+                app.origin
+            )),
+            false,
+            false,
+        ),
+    ] {
+        let response = request.send().await.unwrap();
+        let status = response.status().as_u16();
+        let cache_control = response.headers().get("cache-control").cloned();
+        let content_type = response
+            .headers()
+            .get("content-type")
+            .map(|value| value.to_str().unwrap().to_owned());
+        let content_type_options = response.headers().get("x-content-type-options").cloned();
+        let body: Value = response.json().await.unwrap_or_default();
+        results.push((
+            status,
+            cache_control,
+            content_type,
+            content_type_options,
+            body,
+            no_store,
+            nosniff,
+        ));
+    }
     app.close().await;
-    assert_eq!(status, 400);
-    assert_eq!(
-        cache_control.as_ref().map(|value| value.as_bytes()),
-        Some(b"no-store".as_slice())
-    );
+    for (status, cache_control, content_type, content_type_options, body, no_store, nosniff) in
+        results
+    {
+        assert_eq!(status, 400);
+        assert_eq!(content_type.as_deref(), Some("application/json"));
+        assert_eq!(body["error"]["code"], "bad_request");
+        assert!(
+            body["error"]["request_id"]
+                .as_str()
+                .is_some_and(|id| !id.is_empty())
+        );
+        if no_store {
+            assert_eq!(
+                cache_control.as_ref().map(|value| value.as_bytes()),
+                Some(b"no-store".as_slice())
+            );
+        }
+        if nosniff {
+            assert_eq!(
+                content_type_options.as_ref().map(|value| value.as_bytes()),
+                Some(b"nosniff".as_slice())
+            );
+        }
+    }
 }
 
 #[tokio::test]

@@ -4,7 +4,7 @@ use crate::models::care::native_device_tokens;
 
 pub(super) async fn create(
     State(ctx): State<AppContext>,
-    Path(household_id): Path<i64>,
+    ApiPath(household_id): ApiPath<i64>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     body: std::result::Result<AxumJson<Value>, JsonRejection>,
@@ -63,7 +63,7 @@ pub(super) async fn create(
 
 pub(super) async fn destroy(
     State(ctx): State<AppContext>,
-    Path((household_id, id)): Path<(i64, String)>,
+    ApiPath((household_id, id)): ApiPath<(i64, String)>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
 ) -> Response {

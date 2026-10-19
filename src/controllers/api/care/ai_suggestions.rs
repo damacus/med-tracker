@@ -4,7 +4,7 @@ use axum::body::Bytes;
 
 pub(super) async fn create(
     State(ctx): State<AppContext>,
-    Path(household_id): Path<i64>,
+    ApiPath(household_id): ApiPath<i64>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     body: Bytes,

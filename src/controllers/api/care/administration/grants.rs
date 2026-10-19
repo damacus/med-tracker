@@ -2,7 +2,7 @@ use super::*;
 
 pub(in crate::controllers::api::care) async fn index(
     State(ctx): State<AppContext>,
-    Path(household_id): Path<i64>,
+    ApiPath(household_id): ApiPath<i64>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
 ) -> Response {
@@ -26,7 +26,7 @@ pub(in crate::controllers::api::care) async fn index(
 }
 pub(in crate::controllers::api::care) async fn create(
     State(ctx): State<AppContext>,
-    Path(household_id): Path<i64>,
+    ApiPath(household_id): ApiPath<i64>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     body: std::result::Result<AxumJson<Value>, JsonRejection>,
@@ -35,7 +35,7 @@ pub(in crate::controllers::api::care) async fn create(
 }
 pub(in crate::controllers::api::care) async fn destroy(
     State(ctx): State<AppContext>,
-    Path((household_id, id)): Path<(i64, String)>,
+    ApiPath((household_id, id)): ApiPath<(i64, String)>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
 ) -> Response {

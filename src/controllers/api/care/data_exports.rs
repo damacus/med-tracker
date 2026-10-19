@@ -15,7 +15,7 @@ fn portable_passphrase(headers: &HeaderMap) -> Option<String> {
 
 pub(super) async fn show(
     State(ctx): State<AppContext>,
-    Path((household_id, mode)): Path<(i64, String)>,
+    ApiPath((household_id, mode)): ApiPath<(i64, String)>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
 ) -> Response {
@@ -53,7 +53,7 @@ pub(super) async fn show(
 
 pub(super) async fn portable_export(
     State(ctx): State<AppContext>,
-    Path(household_id): Path<i64>,
+    ApiPath(household_id): ApiPath<i64>,
     headers: HeaderMap,
     query: std::result::Result<Query<care::data_exports::ExportQuery>, QueryRejection>,
     request: Option<Extension<LocoRequestId>>,
@@ -88,7 +88,7 @@ pub(super) async fn portable_export(
 
 pub(super) async fn mobile_snapshot(
     State(ctx): State<AppContext>,
-    Path(household_id): Path<i64>,
+    ApiPath(household_id): ApiPath<i64>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
 ) -> Response {

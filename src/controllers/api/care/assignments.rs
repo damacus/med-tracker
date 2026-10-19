@@ -5,7 +5,7 @@ use headers::HeaderMapExt;
 
 pub(super) async fn index(
     State(ctx): State<AppContext>,
-    Path(household_id): Path<i64>,
+    ApiPath(household_id): ApiPath<i64>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     page: std::result::Result<
@@ -36,7 +36,7 @@ pub(super) async fn index(
 }
 pub(super) async fn show(
     State(ctx): State<AppContext>,
-    Path((household_id, id)): Path<(i64, String)>,
+    ApiPath((household_id, id)): ApiPath<(i64, String)>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
 ) -> Response {
@@ -74,7 +74,7 @@ pub(super) async fn show(
 }
 pub(super) async fn create(
     State(ctx): State<AppContext>,
-    Path(household_id): Path<i64>,
+    ApiPath(household_id): ApiPath<i64>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     body: std::result::Result<AxumJson<Value>, JsonRejection>,
@@ -83,7 +83,7 @@ pub(super) async fn create(
 }
 pub(super) async fn update(
     State(ctx): State<AppContext>,
-    Path((household_id, id)): Path<(i64, String)>,
+    ApiPath((household_id, id)): ApiPath<(i64, String)>,
     method: axum::http::Method,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,

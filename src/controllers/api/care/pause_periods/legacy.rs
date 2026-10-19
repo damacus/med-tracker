@@ -2,7 +2,7 @@ use super::*;
 
 pub async fn pause_schedule(
     State(ctx): State<AppContext>,
-    Path((household, id)): Path<(i64, String)>,
+    ApiPath((household, id)): ApiPath<(i64, String)>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     body: axum::body::Bytes,
@@ -11,7 +11,7 @@ pub async fn pause_schedule(
 }
 pub async fn resume_schedule(
     State(ctx): State<AppContext>,
-    Path((household, id)): Path<(i64, String)>,
+    ApiPath((household, id)): ApiPath<(i64, String)>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     body: axum::body::Bytes,
@@ -20,7 +20,7 @@ pub async fn resume_schedule(
 }
 pub async fn pause_assignment(
     State(ctx): State<AppContext>,
-    Path((household, id)): Path<(i64, String)>,
+    ApiPath((household, id)): ApiPath<(i64, String)>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     body: axum::body::Bytes,
@@ -29,7 +29,7 @@ pub async fn pause_assignment(
 }
 pub async fn resume_assignment(
     State(ctx): State<AppContext>,
-    Path((household, id)): Path<(i64, String)>,
+    ApiPath((household, id)): ApiPath<(i64, String)>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     body: axum::body::Bytes,
@@ -38,7 +38,7 @@ pub async fn resume_assignment(
 }
 pub async fn reorder_assignment(
     State(ctx): State<AppContext>,
-    Path((household, id)): Path<(i64, String)>,
+    ApiPath((household, id)): ApiPath<(i64, String)>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     body: std::result::Result<AxumJson<Value>, JsonRejection>,

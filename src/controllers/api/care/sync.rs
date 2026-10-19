@@ -12,7 +12,7 @@ pub(super) struct ChangeQuery {
 }
 pub(super) async fn changes(
     State(ctx): State<AppContext>,
-    Path(household_id): Path<i64>,
+    ApiPath(household_id): ApiPath<i64>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     query: std::result::Result<
@@ -58,7 +58,7 @@ pub(super) async fn changes(
 }
 pub(super) async fn snapshot(
     State(ctx): State<AppContext>,
-    Path(household_id): Path<i64>,
+    ApiPath(household_id): ApiPath<i64>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
 ) -> Response {
@@ -98,7 +98,7 @@ pub(super) async fn snapshot(
 }
 pub(super) async fn create(
     State(ctx): State<AppContext>,
-    Path(household_id): Path<i64>,
+    ApiPath(household_id): ApiPath<i64>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     body: std::result::Result<AxumJson<Value>, JsonRejection>,

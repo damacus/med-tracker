@@ -1,13 +1,14 @@
 use super::*;
 
 pub(super) const REVISION: &str = "4bd788c1592a29b505217a4e92e4e2a6116bf0d8";
-pub(super) const PATH_GAP: &str = "Malformed household-ID wire behavior and authentication ordering remain undecided for these routes";
 pub(super) const FORMAT_GAP: &str = "JPEG and WebP avatar upload and download behavior has not been proved through this full-router acceptance suite";
 pub(super) const PUT_GAP: &str =
     "Concurrent PUT profile idempotency under overlapping requests has not been proved";
 pub(super) const WRITE_SCOPE_GAP: &str = "Seeded foreign and absent household targets have not been exercised through this profile write method";
 pub(super) const PUT_BODY_GAP: &str =
     "Malformed PUT profile JSON has not been exercised through this full-router acceptance suite";
+pub(super) const STATUS_GAP: &str =
+    "Declared 503 and 422 responses lack route-specific executed evidence for this operation";
 
 type Proofs = &'static [(&'static str, &'static str)];
 
@@ -59,7 +60,7 @@ pub(super) fn expected(operation: &str) -> Option<Value> {
                     "account-linked-person-selection",
                 ),
             ],
-            &[PATH_GAP],
+            &[],
         ),
         "updateHouseholdProfile" => (
             "PATCH",
@@ -143,7 +144,7 @@ pub(super) fn expected(operation: &str) -> Option<Value> {
                     "write-and-actor-audit-concurrency",
                 ),
             ],
-            &[PATH_GAP, WRITE_SCOPE_GAP],
+            &[WRITE_SCOPE_GAP],
         ),
         "updateHouseholdProfileWithPut" => (
             "PUT",
@@ -182,7 +183,7 @@ pub(super) fn expected(operation: &str) -> Option<Value> {
                 ),
             ],
             &[],
-            &[PATH_GAP, WRITE_SCOPE_GAP, PUT_BODY_GAP, PUT_GAP],
+            &[WRITE_SCOPE_GAP, PUT_BODY_GAP, PUT_GAP],
         ),
         "downloadCurrentAvatar" => (
             "GET",
@@ -226,7 +227,7 @@ pub(super) fn expected(operation: &str) -> Option<Value> {
                     "200-real-S3-read-and-current-access-recheck",
                 ),
             ],
-            &[PATH_GAP, FORMAT_GAP],
+            &[FORMAT_GAP],
         ),
         "uploadCurrentAvatar" => (
             "PUT",
@@ -286,7 +287,7 @@ pub(super) fn expected(operation: &str) -> Option<Value> {
                     "S3-failure-retains-existing-attachment",
                 ),
             ],
-            &[PATH_GAP, FORMAT_GAP],
+            &[FORMAT_GAP],
         ),
         "deleteCurrentAvatar" => (
             "DELETE",
@@ -330,9 +331,14 @@ pub(super) fn expected(operation: &str) -> Option<Value> {
                     "enqueue-failure-preserves-current-attachment",
                 ),
             ],
-            &[PATH_GAP],
+            &[STATUS_GAP],
         ),
         _ => return None,
+    };
+    let coverage = if operation == "getHouseholdProfile" {
+        "complete"
+    } else {
+        "partial"
     };
     let mut evidence = Vec::new();
     for (test, check) in requests {
@@ -341,13 +347,14 @@ pub(super) fn expected(operation: &str) -> Option<Value> {
     for (test, check) in care {
         evidence.push(json!({"binary":"care_api","test":format!("{}::{test}", if operation.contains("Avatar") { "avatar" } else { "profile" }),"checks":[format!("{verb}-{check}")]}));
     }
-    Some(
-        json!({"coverage":"partial","candidate_revision":REVISION,"gaps":gaps,"evidence":evidence}),
-    )
+    if matches!(operation, "getHouseholdProfile" | "deleteCurrentAvatar") {
+        evidence.push(json!({"binary":"care_api","test":"me::me_rejects_malformed_household_ids_without_caching","checks":[format!("{verb}-400-declared-bad_request-envelope-for-malformed-household-id")]}));
+    }
+    Some(json!({"coverage":coverage,"candidate_revision":REVISION,"gaps":gaps,"evidence":evidence}))
 }
 
 #[test]
-fn six_profile_avatar_partial_rows_require_exact_revision_proofs_and_gaps() {
+fn six_profile_avatar_rows_require_exact_revision_proofs_and_gaps() {
     let entries = inventory();
     let document = contract::contract();
     for operation in [
@@ -381,12 +388,14 @@ fn six_profile_avatar_partial_rows_require_exact_revision_proofs_and_gaps() {
                 "{operation} {field} tampering accepted"
             );
         }
-        let mut promoted = proposed.clone();
-        promoted["coverage"] = json!("complete");
-        promoted["gaps"] = json!([]);
-        assert!(
-            validate_evidence(&promoted).is_err(),
-            "{operation} was promoted to complete"
-        );
+        if expected["coverage"] == "partial" {
+            let mut promoted = proposed.clone();
+            promoted["coverage"] = json!("complete");
+            promoted["gaps"] = json!([]);
+            assert!(
+                validate_evidence(&promoted).is_err(),
+                "{operation} was promoted to complete"
+            );
+        }
     }
 }

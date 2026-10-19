@@ -3,7 +3,7 @@ use crate::models::care::ui_capabilities;
 
 pub(super) async fn show(
     State(ctx): State<AppContext>,
-    Path(household_id): Path<i64>,
+    ApiPath(household_id): ApiPath<i64>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
 ) -> Response {
