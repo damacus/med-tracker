@@ -63,6 +63,16 @@ does not replace required checks or establish hosted CI acceptance.
 
 ## Application and delivery rules
 
+## Local Rust builds
+
+Use the repository Task commands directly from the current checkout. Cargo
+crates and build output on this Mac live on the external NVMe through the
+user Cargo configuration and the checkout target symlink. Keep machine-specific
+paths out of tracked repository configuration. Use Cargo’s normal build locking;
+no custom verification runner or global lock is required.
+
+## Application and delivery rules
+
 Runtime settings come through `ctx.config.settings`, never `std::env` in `src/`.
 Declare variables via `get_env` in `config/*.yaml`; preserve absent/null fallback
 to stored settings. Use full `App::boot` Loco TestServer acceptance with restricted
