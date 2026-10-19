@@ -6,9 +6,9 @@ Read and apply these repository skills before Rust work:
 - [.agents/skills/rust-migration-and-tooling/SKILL.md](.agents/skills/rust-migration-and-tooling/SKILL.md)
 - [.agents/skills/rust-drift-audit/SKILL.md](.agents/skills/rust-drift-audit/SKILL.md)
 
-Read the global `start` skill before new work. Discover and call Serena initial
-instructions before broad exploration; if unavailable, state that and use direct
-repository tools. Use Context7 for current dependency/API details when available.
+Read the global `start` skill before new work. Use the configured language-server
+MCP for definitions, references and diagnostics; if unavailable, state that and
+use direct repository tools. Use Context7 for current dependency/API details.
 
 Loco 1.2 is the root application (`src/`, `migration/`, `config/`, `assets/`).
 Views use Tera and DaisyUI; PostgreSQL is version 18. Rails under `rails/` is
