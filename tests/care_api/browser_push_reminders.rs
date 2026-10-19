@@ -1929,7 +1929,15 @@ async fn browser_dose_due_skips_decided_and_unmanaged_dependents() {
     app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
         "INSERT INTO medication_dose_occurrences(household_id,schedule_id,window_starts_on,window_ends_on,position,scheduled_at,outcome,resolved_at,resolved_by_membership_id,created_at,updated_at) VALUES(72001,83002,$1,$1,1,$2,'not_taken',now(),74001,now(),now())",
         [now.date_naive().into(),now.naive_utc().into()])).await.unwrap();
-    app.fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73004,'Synthetic unmanaged adult',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74984,72001,73004,'member','active',now(),now(),now()); INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,missed_dose_notifications_enabled,created_at,updated_at) VALUES(78004,72001,74001,73004,'manage','carer',false,now(),now()); INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83004,72001,73004,80001,true,now()-interval '1 day',now()+interval '2 days',2,'tablet',0,jsonb_build_object('times',jsonb_build_array('08:00')),now(),now())").await.unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73004,'Synthetic unmanaged adult',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74984,72001,73004,'member','active',now(),now(),now()); INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,missed_dose_notifications_enabled,created_at,updated_at) VALUES(78004,72001,74001,73004,'manage','carer',false,now(),now())").await.unwrap();
+    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+        "INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83004,72001,73004,80001,true,$1,$2,2,'tablet',0,jsonb_build_object('times',jsonb_build_array($3::text)),now(),now())",
+        [
+            (now.date_naive() - chrono::Duration::days(1)).into(),
+            (now.date_naive() + chrono::Duration::days(2)).into(),
+            now.format("%H:%M").to_string().into(),
+        ],
+    )).await.unwrap();
     let transport = Arc::new(Reminders(Mutex::new(vec![])));
     app.context.shared_store.insert(Service {
         public_key: String::new(),
