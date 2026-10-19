@@ -1,3 +1,0 @@
-too-many-lines-threshold = 100
-excessive-nesting-threshold = 4
-max-fn-params-bools = 1

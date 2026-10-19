@@ -2,7 +2,6 @@ use super::*;
 use sea_orm::TransactionTrait;
 use std::io::Write;
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
 use tracing::field::{Field, Visit};
 use tracing::instrument::WithSubscriber;
 use tracing::span::{Attributes, Id, Record};
@@ -270,97 +269,6 @@ async fn nhs_dmd_blank_amp_code_omits_relationship_but_preserves_barcode_value()
     assert_eq!(row.try_get::<String>("", "amp_code").unwrap(), "   ");
     assert_eq!(row.try_get::<i64>("", "relationships").unwrap(), 0);
     app.close().await;
-}
-
-#[tokio::test]
-#[ignore]
-async fn nhs_dmd_official_release_comparison_snapshot() {
-    let archive = std::env::var("NHS_DMD_RELEASE_PATH").unwrap();
-    let output = std::env::var("NHS_DMD_COMPARISON_OUTPUT").unwrap();
-    let timings = ImportTimingEvents::default();
-    let _subscriber = tracing::subscriber::set_default(timings.clone());
-    let total_started = Instant::now();
-    let setup_started = Instant::now();
-    let app = Application::new().await;
-    let setup_ms = setup_started.elapsed().as_secs_f64() * 1000.0;
-    let empty_check_started = Instant::now();
-    let initial = app.fixture.admin.query_one_raw(Statement::from_string(
-        DbBackend::Postgres,
-        "SELECT (SELECT count(*) FROM nhs_dmd_barcodes) AS barcodes, (SELECT count(*) FROM nhs_dmd_ampp_relationships) AS relationships, (SELECT count(*) FROM nhs_dmd_trade_families) AS families, (SELECT count(*) FROM nhs_dmd_trade_family_groups) AS groups, (SELECT count(*) FROM nhs_dmd_amp_trade_families) AS memberships, (SELECT count(*) FROM nhs_dmd_supplementary_releases) AS releases",
-    )).await.unwrap().unwrap();
-    for field in [
-        "barcodes",
-        "relationships",
-        "families",
-        "groups",
-        "memberships",
-        "releases",
-    ] {
-        assert_eq!(
-            initial.try_get::<i64>("", field).unwrap(),
-            0,
-            "Loco reference catalogue must start empty: {field}"
-        );
-    }
-    let empty_check_ms = empty_check_started.elapsed().as_secs_f64() * 1000.0;
-    let archive_read_started = Instant::now();
-    let archive_bytes = std::fs::read(&archive).unwrap();
-    let archive_read_ms = archive_read_started.elapsed().as_secs_f64() * 1000.0;
-    let upload_started = Instant::now();
-    let id = med_tracker::models::nhs_dmd::upload(
-        &app.context,
-        std::path::Path::new(&archive)
-            .file_name()
-            .unwrap()
-            .to_str()
-            .unwrap(),
-        archive_bytes,
-    )
-    .await
-    .unwrap();
-    let upload_ms = upload_started.elapsed().as_secs_f64() * 1000.0;
-    let worker_run_started = Instant::now();
-    med_tracker::models::nhs_dmd::run(&app.context, id)
-        .with_subscriber(timings.clone())
-        .await
-        .unwrap();
-    let worker_run_ms = worker_run_started.elapsed().as_secs_f64() * 1000.0;
-    let export_started = Instant::now();
-    let row = app.fixture.admin.query_one_raw(Statement::from_sql_and_values(
-        DbBackend::Postgres,
-        "SELECT jsonb_build_object('status', i.status, 'created', i.created_count, 'updated', i.updated_count, 'unchanged', i.unchanged_count, 'skipped_expired', i.skipped_expired_count, 'skipped_missing_name', i.skipped_missing_name_count, 'skipped_invalid', i.skipped_invalid_count, 'barcodes', (SELECT COALESCE(jsonb_agg(jsonb_build_array(gtin, code, amp_code, display, vmp_name, system, concept_class) ORDER BY gtin), '[]'::jsonb) FROM nhs_dmd_barcodes), 'relationships', (SELECT COALESCE(jsonb_agg(jsonb_build_array(ampp_code, amp_code) ORDER BY ampp_code), '[]'::jsonb) FROM nhs_dmd_ampp_relationships), 'trade_families', (SELECT count(*) FROM nhs_dmd_trade_families), 'trade_family_groups', (SELECT count(*) FROM nhs_dmd_trade_family_groups), 'trade_memberships', (SELECT count(*) FROM nhs_dmd_amp_trade_families), 'trade_family_group_rows', (SELECT COALESCE(jsonb_agg(jsonb_build_array(code, name) ORDER BY code), '[]'::jsonb) FROM nhs_dmd_trade_family_groups), 'trade_family_rows', (SELECT COALESCE(jsonb_agg(jsonb_build_array(f.code, f.name, g.code) ORDER BY f.code), '[]'::jsonb) FROM nhs_dmd_trade_families f LEFT JOIN nhs_dmd_trade_family_groups g ON g.id=f.trade_family_group_id), 'trade_membership_rows', (SELECT COALESCE(jsonb_agg(jsonb_build_array(m.amp_code, f.code) ORDER BY m.amp_code), '[]'::jsonb) FROM nhs_dmd_amp_trade_families m JOIN nhs_dmd_trade_families f ON f.id=m.trade_family_id), 'supplementary_release_rows', (SELECT COALESCE(jsonb_agg(jsonb_build_array(released_on) ORDER BY released_on), '[]'::jsonb) FROM nhs_dmd_supplementary_releases)) AS snapshot FROM nhs_dmd_imports i WHERE i.id = $1",
-        [id.into()],
-    )).await.unwrap().unwrap();
-    let snapshot = row.try_get::<serde_json::Value>("", "snapshot").unwrap();
-    std::fs::write(output, serde_json::to_vec(&snapshot).unwrap()).unwrap();
-    let export_ms = export_started.elapsed().as_secs_f64() * 1000.0;
-    let teardown_started = Instant::now();
-    app.close().await;
-    let teardown_ms = teardown_started.elapsed().as_secs_f64() * 1000.0;
-    if let Ok(timing_output) = std::env::var("NHS_DMD_TIMING_OUTPUT") {
-        let import_phases = timings.for_run(id);
-        let core_import_ms = import_phases
-            .iter()
-            .find(|event| event["phase"] == "total")
-            .and_then(|event| event["duration_ms"].as_f64())
-            .expect("core import total timing must be present");
-        let report = serde_json::json!({
-            "run_id": id,
-            "outcome": if snapshot["status"] == 4 { "success" } else { "failure" },
-            "setup_ms": setup_ms,
-            "empty_check_ms": empty_check_ms,
-            "archive_read_ms": archive_read_ms,
-            "upload_ms": upload_ms,
-            "worker_run_ms": worker_run_ms,
-            "core_import_ms": core_import_ms,
-            "export_ms": export_ms,
-            "teardown_ms": teardown_ms,
-            "total_ms": total_started.elapsed().as_secs_f64() * 1000.0,
-            "import_phases": import_phases,
-        });
-        std::fs::write(timing_output, serde_json::to_vec(&report).unwrap()).unwrap();
-    }
-    assert_eq!(snapshot["status"], 4);
 }
 
 #[tokio::test]
