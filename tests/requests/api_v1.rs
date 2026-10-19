@@ -100,6 +100,7 @@ fn operations() -> BTreeMap<(String, String), Value> {
     let source = include_str!("../../docs/api/openapi.v1.yaml");
     let document: Value = serde_yaml_ng::from_str(source).unwrap();
     let mut operations = BTreeMap::new();
+    let mut operation_ids = BTreeSet::new();
     for (path, item) in document["paths"].as_object().unwrap() {
         for (method, operation) in item.as_object().unwrap() {
             if ![
@@ -142,6 +143,10 @@ fn operations() -> BTreeMap<(String, String), Value> {
                     .insert((method.to_uppercase(), path.clone()), requirements)
                     .is_none(),
                 "Duplicate OpenAPI method and path"
+            );
+            assert!(
+                operation_ids.insert(operation["operationId"].as_str().unwrap().to_owned()),
+                "Duplicate OpenAPI operation ID"
             );
         }
     }

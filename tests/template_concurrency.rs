@@ -47,6 +47,7 @@ async fn worker() -> TestResult {
 }
 
 #[test]
+#[ignore = "requires a provisioned owned DATABASE_URL and medtracker_reference"]
 fn competing_processes_prepare_once() -> TestResult {
     let uri = template::owned_database_url();
     let tempdir = tempfile::tempdir()?;

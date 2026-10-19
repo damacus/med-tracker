@@ -113,9 +113,15 @@ tasks:
   check:
     desc: Check Loco targets
     cmds: [cargo check --locked --all-targets]
+  machete:
+    desc: Check direct dependencies of every active Rust workspace member
+    cmds:
+      - cargo machete --with-metadata --skip-target-dir Cargo.toml migration/Cargo.toml
   lint:
     desc: Lint Loco
-    cmds: [cargo clippy --locked --all-targets -- -D warnings]
+    cmds:
+      - cargo clippy --locked --all-targets -- -D warnings
+      - task: machete
   lint:fix:
     desc: Apply safe Loco Clippy suggestions
     cmds:
@@ -153,7 +159,7 @@ tasks:
   test:integration:direct:
     internal: true
     cmds:
-      - 'cargo test --locked {{if .TARGET}}--test {{.TARGET}}{{else}}--tests{{end}} {{.FILTER | default ""}} -- --test-threads=2'
+      - 'cargo test --locked {{if .TARGET}}--test {{.TARGET}}{{else}}--tests{{end}} {{.FILTER | default ""}} -- --test-threads=2{{if and (not .TARGET) (not (.FILTER | default ""))}} && cargo test --locked --test template_concurrency competing_processes_prepare_once -- --ignored --exact{{end}}'
   test:integration:owned:
     internal: true
     requires:
@@ -205,7 +211,10 @@ tasks:
         if [ -n "$filter" ]; then
           set -- "$@" "$filter";
         fi;
-        exec cargo test --locked "$@" -- --test-threads=2
+        cargo test --locked "$@" -- --test-threads=2;
+        if [ -z "$target" ] && [ -z "$filter" ]; then
+          cargo test --locked --test template_concurrency competing_processes_prepare_once -- --ignored --exact;
+        fi
         ' sh {{.FOUNDATION_PROJECT | shellQuote}} {{.TARGET | default "" | shellQuote}} {{.FILTER | default "" | shellQuote}}
   test:browser:
     desc: Run desktop and mobile browser journeys against the prepared application

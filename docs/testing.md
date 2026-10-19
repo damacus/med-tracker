@@ -19,6 +19,11 @@ containers through `compose.yaml` and ignore an ambient `DATABASE_URL`. In CI,
 Playwright browser suites use native sharding (`SHARD=1/12` passes `--shard=1/12`
 to Playwright).
 
+Running `cargo test --tests` directly requires an owned `DATABASE_URL` plus a
+provisioned `medtracker_reference` template database; `task test:integration`
+provides both. The ignored `template_concurrency` guardrail runs automatically
+on an unfiltered `task test:integration`.
+
 Integration fixtures clone a migrated and seeded template for each fixture
 family into private databases. Short-lived OAuth fixture credentials are created
 for each clone so they cannot expire while waiting in a shared template.
