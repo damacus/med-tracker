@@ -1991,6 +1991,9 @@ async fn browser_dose_due_dependents_dedupe_across_reruns() {
         .unwrap();
     assert_eq!(row.try_get::<i64>("", "total").unwrap(), 2);
     assert_eq!(row.try_get::<i64>("", "keys").unwrap(), 2);
+    app.close().await;
+}
+
 async fn owner_connection(app: &Application) -> sea_orm::DatabaseConnection {
     let mut uri = url::Url::parse(&app.fixture.runtime_uri).unwrap();
     uri.set_username("medtracker").unwrap();
