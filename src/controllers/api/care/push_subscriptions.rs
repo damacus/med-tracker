@@ -5,7 +5,7 @@ use axum::extract::RawQuery;
 
 pub(super) async fn create(
     State(ctx): State<AppContext>,
-    Path(household_id): Path<i64>,
+    ApiPath(household_id): ApiPath<i64>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     body: std::result::Result<AxumJson<Value>, JsonRejection>,
@@ -59,7 +59,7 @@ pub(super) async fn create(
 
 pub(super) async fn destroy(
     State(ctx): State<AppContext>,
-    Path(household_id): Path<i64>,
+    ApiPath(household_id): ApiPath<i64>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     RawQuery(query): RawQuery,

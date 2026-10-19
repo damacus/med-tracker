@@ -21,7 +21,7 @@ fn crypto_message(error: PortableCryptoError) -> &'static str {
 
 pub(super) async fn dry_run(
     ctx: State<AppContext>,
-    household: Path<i64>,
+    household: ApiPath<i64>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     body: std::result::Result<AxumJson<Value>, JsonRejection>,
@@ -31,7 +31,7 @@ pub(super) async fn dry_run(
 
 pub(super) async fn apply(
     ctx: State<AppContext>,
-    household: Path<i64>,
+    household: ApiPath<i64>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     body: std::result::Result<AxumJson<Value>, JsonRejection>,
@@ -41,7 +41,7 @@ pub(super) async fn apply(
 
 async fn handle(
     State(ctx): State<AppContext>,
-    Path(household_id): Path<i64>,
+    ApiPath(household_id): ApiPath<i64>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     body: std::result::Result<AxumJson<Value>, JsonRejection>,

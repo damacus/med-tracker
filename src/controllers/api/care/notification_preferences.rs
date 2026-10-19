@@ -5,7 +5,7 @@ use axum::http::HeaderValue;
 
 pub(super) async fn show(
     State(ctx): State<AppContext>,
-    Path(household_id): Path<i64>,
+    ApiPath(household_id): ApiPath<i64>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
 ) -> Response {
@@ -36,7 +36,7 @@ pub(super) async fn show(
 
 pub(super) async fn update(
     State(ctx): State<AppContext>,
-    Path(household_id): Path<i64>,
+    ApiPath(household_id): ApiPath<i64>,
     method: axum::http::Method,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,

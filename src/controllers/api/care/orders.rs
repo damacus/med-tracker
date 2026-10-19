@@ -4,7 +4,7 @@ use crate::models::care::{locations::SavedResponse, medications, orders};
 
 pub(super) async fn ordered(
     State(ctx): State<AppContext>,
-    Path((household_id, id)): Path<(i64, String)>,
+    ApiPath((household_id, id)): ApiPath<(i64, String)>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     body: axum::body::Bytes,
@@ -13,7 +13,7 @@ pub(super) async fn ordered(
 }
 pub(super) async fn received(
     State(ctx): State<AppContext>,
-    Path((household_id, id)): Path<(i64, String)>,
+    ApiPath((household_id, id)): ApiPath<(i64, String)>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     body: axum::body::Bytes,

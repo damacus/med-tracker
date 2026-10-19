@@ -1,7 +1,6 @@
 use super::*;
 
 pub(super) const REVISION: &str = "441bf461a3ebe3d6a2097e251bf5d2946645d3ae";
-pub(super) const PATH_GAP: &str = "Malformed household-ID wire behavior and authentication ordering remain undecided for settings routes";
 pub(super) const AUTH_GAP: &str = "Account lockout and expired credential denial have not been exercised on these exact settings routes";
 pub(super) const WRITE_GAP: &str =
     "Membership withdrawal during an in-flight keyed settings write has not been exercised";
@@ -28,7 +27,7 @@ pub(super) fn expected(operation: &str) -> Option<Value> {
                     "200-recursive-settings-schema-403-demoted-and-seeded-foreign-Forbidden-schema-request-id",
                 ),
             ],
-            &[PATH_GAP, AUTH_GAP],
+            &[AUTH_GAP],
         ),
         "updateHouseholdAdminSettings" => (
             "PATCH",
@@ -76,7 +75,7 @@ pub(super) fn expected(operation: &str) -> Option<Value> {
                     "PATCH-filters-protected-status-400-protected-only-409-changed-key",
                 ),
             ],
-            &[PATH_GAP, AUTH_GAP, WRITE_GAP],
+            &[AUTH_GAP, WRITE_GAP],
         ),
         "replaceHouseholdAdminSettings" => (
             "PUT",
@@ -103,7 +102,7 @@ pub(super) fn expected(operation: &str) -> Option<Value> {
                 ),
             ],
             &[],
-            &[PATH_GAP, AUTH_GAP, WRITE_GAP, PUT_GAP],
+            &[AUTH_GAP, WRITE_GAP, PUT_GAP],
         ),
         _ => return None,
     };

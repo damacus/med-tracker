@@ -59,6 +59,36 @@ use sea_orm::{
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 
+pub(super) struct ApiPath<T>(pub T);
+
+impl<T, S> axum::extract::FromRequestParts<S> for ApiPath<T>
+where
+    T: serde::de::DeserializeOwned + Send,
+    S: Send + Sync,
+{
+    type Rejection = Response;
+
+    async fn from_request_parts(
+        parts: &mut axum::http::request::Parts,
+        state: &S,
+    ) -> std::result::Result<Self, Self::Rejection> {
+        match Path::<T>::from_request_parts(parts, state).await {
+            Ok(Path(value)) => Ok(Self(value)),
+            Err(_) => Err(response::error(
+                response::Failure::bad_request("Invalid path parameter"),
+                &path_rejection_request_id(parts),
+            )),
+        }
+    }
+}
+
+fn path_rejection_request_id(parts: &axum::http::request::Parts) -> String {
+    parts.extensions.get::<LocoRequestId>().map_or_else(
+        || uuid::Uuid::new_v4().to_string(),
+        |id| id.get().to_owned(),
+    )
+}
+
 #[derive(Clone)]
 pub struct AgeValidationClock {
     instant: chrono::DateTime<Utc>,
@@ -455,7 +485,7 @@ async fn begin_profile_write(
 
 async fn take(
     State(ctx): State<AppContext>,
-    Path(household_id): Path<i64>,
+    ApiPath(household_id): ApiPath<i64>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     body: std::result::Result<AxumJson<Value>, JsonRejection>,
@@ -530,7 +560,7 @@ async fn take(
 
 async fn adjust_stock(
     State(ctx): State<AppContext>,
-    Path((household_id, id)): Path<(i64, String)>,
+    ApiPath((household_id, id)): ApiPath<(i64, String)>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     body: std::result::Result<AxumJson<Value>, JsonRejection>,

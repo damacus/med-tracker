@@ -240,7 +240,7 @@ async fn process(
 
 pub(super) async fn list_schedule(
     State(ctx): State<AppContext>,
-    Path(path): Path<(i64, String)>,
+    ApiPath(path): ApiPath<(i64, String)>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     query: Range,
@@ -249,7 +249,7 @@ pub(super) async fn list_schedule(
 }
 pub(super) async fn not_taken_schedule(
     State(ctx): State<AppContext>,
-    Path(path): Path<(i64, String)>,
+    ApiPath(path): ApiPath<(i64, String)>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     body: std::result::Result<AxumJson<Value>, JsonRejection>,
@@ -258,7 +258,7 @@ pub(super) async fn not_taken_schedule(
 }
 pub(super) async fn reopen_schedule(
     State(ctx): State<AppContext>,
-    Path(path): Path<(i64, String)>,
+    ApiPath(path): ApiPath<(i64, String)>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     body: std::result::Result<AxumJson<Value>, JsonRejection>,
@@ -267,7 +267,7 @@ pub(super) async fn reopen_schedule(
 }
 pub(super) async fn take_schedule(
     State(ctx): State<AppContext>,
-    Path(path): Path<(i64, String)>,
+    ApiPath(path): ApiPath<(i64, String)>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     body: std::result::Result<AxumJson<Value>, JsonRejection>,
@@ -277,7 +277,7 @@ pub(super) async fn take_schedule(
 
 pub(super) async fn list_assignment(
     State(ctx): State<AppContext>,
-    Path(path): Path<(i64, String)>,
+    ApiPath(path): ApiPath<(i64, String)>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     query: Range,
@@ -286,7 +286,7 @@ pub(super) async fn list_assignment(
 }
 pub(super) async fn not_taken_assignment(
     State(ctx): State<AppContext>,
-    Path(path): Path<(i64, String)>,
+    ApiPath(path): ApiPath<(i64, String)>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     body: std::result::Result<AxumJson<Value>, JsonRejection>,
@@ -303,7 +303,7 @@ pub(super) async fn not_taken_assignment(
 }
 pub(super) async fn reopen_assignment(
     State(ctx): State<AppContext>,
-    Path(path): Path<(i64, String)>,
+    ApiPath(path): ApiPath<(i64, String)>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     body: std::result::Result<AxumJson<Value>, JsonRejection>,
@@ -320,7 +320,7 @@ pub(super) async fn reopen_assignment(
 }
 pub(super) async fn take_assignment(
     State(ctx): State<AppContext>,
-    Path(path): Path<(i64, String)>,
+    ApiPath(path): ApiPath<(i64, String)>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     body: std::result::Result<AxumJson<Value>, JsonRejection>,

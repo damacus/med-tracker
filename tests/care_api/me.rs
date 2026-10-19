@@ -189,11 +189,23 @@ async fn me_rejects_malformed_household_ids_without_caching() {
         .unwrap();
     let status = response.status().as_u16();
     let cache_control = response.headers().get("cache-control").cloned();
+    let content_type = response
+        .headers()
+        .get("content-type")
+        .map(|value| value.to_str().unwrap().to_owned());
+    let body: Value = response.json().await.unwrap_or_default();
     app.close().await;
     assert_eq!(status, 400);
     assert_eq!(
         cache_control.as_ref().map(|value| value.as_bytes()),
         Some(b"no-store".as_slice())
+    );
+    assert_eq!(content_type.as_deref(), Some("application/json"));
+    assert_eq!(body["error"]["code"], "bad_request");
+    assert!(
+        body["error"]["request_id"]
+            .as_str()
+            .is_some_and(|id| !id.is_empty())
     );
 }
 

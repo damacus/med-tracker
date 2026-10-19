@@ -13,7 +13,7 @@ pub(super) struct Pagination {
 
 pub(super) async fn index(
     State(ctx): State<AppContext>,
-    Path(household_id): Path<i64>,
+    ApiPath(household_id): ApiPath<i64>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     pagination: std::result::Result<Query<Pagination>, QueryRejection>,
@@ -44,7 +44,7 @@ pub(super) async fn index(
 
 pub(super) async fn show(
     State(ctx): State<AppContext>,
-    Path((household_id, id)): Path<(i64, String)>,
+    ApiPath((household_id, id)): ApiPath<(i64, String)>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
 ) -> Response {

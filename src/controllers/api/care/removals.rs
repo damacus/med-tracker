@@ -11,7 +11,7 @@ pub(super) struct Pagination {
 
 pub(super) async fn create(
     State(ctx): State<AppContext>,
-    Path((household_id, id)): Path<(i64, String)>,
+    ApiPath((household_id, id)): ApiPath<(i64, String)>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     body: std::result::Result<AxumJson<Value>, JsonRejection>,
@@ -62,7 +62,7 @@ pub(super) async fn create(
 
 pub(super) async fn history(
     State(ctx): State<AppContext>,
-    Path((household_id, id)): Path<(i64, String)>,
+    ApiPath((household_id, id)): ApiPath<(i64, String)>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     pagination: std::result::Result<Query<Pagination>, QueryRejection>,

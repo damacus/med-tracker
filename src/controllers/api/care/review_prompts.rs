@@ -16,7 +16,7 @@ fn no_store(mut response: Response) -> Response {
 
 pub(super) async fn acquire(
     State(ctx): State<AppContext>,
-    Path((household_id, id)): Path<(i64, String)>,
+    ApiPath((household_id, id)): ApiPath<(i64, String)>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
 ) -> Response {
@@ -25,7 +25,7 @@ pub(super) async fn acquire(
 
 pub(super) async fn renew(
     State(ctx): State<AppContext>,
-    Path((household_id, id)): Path<(i64, String)>,
+    ApiPath((household_id, id)): ApiPath<(i64, String)>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
 ) -> Response {
@@ -34,7 +34,7 @@ pub(super) async fn renew(
 
 pub(super) async fn release(
     State(ctx): State<AppContext>,
-    Path((household_id, id)): Path<(i64, String)>,
+    ApiPath((household_id, id)): ApiPath<(i64, String)>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
 ) -> Response {
@@ -91,7 +91,7 @@ async fn lease_action(
 
 pub(super) async fn index(
     State(ctx): State<AppContext>,
-    Path(household_id): Path<i64>,
+    ApiPath(household_id): ApiPath<i64>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     query: std::result::Result<axum::extract::Query<review_prompts::ListQuery>, QueryRejection>,
@@ -120,7 +120,7 @@ pub(super) async fn index(
 
 pub(super) async fn show(
     State(ctx): State<AppContext>,
-    Path((household_id, id)): Path<(i64, String)>,
+    ApiPath((household_id, id)): ApiPath<(i64, String)>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
 ) -> Response {
@@ -147,7 +147,7 @@ pub(super) async fn show(
 
 pub(super) async fn update(
     State(ctx): State<AppContext>,
-    Path((household_id, id)): Path<(i64, String)>,
+    ApiPath((household_id, id)): ApiPath<(i64, String)>,
     method: axum::http::Method,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,

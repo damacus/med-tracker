@@ -2,7 +2,7 @@ use super::*;
 
 pub(in crate::controllers::api::care) async fn destroy(
     State(ctx): State<AppContext>,
-    Path((household_id, id)): Path<(i64, String)>,
+    ApiPath((household_id, id)): ApiPath<(i64, String)>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
 ) -> Response {
@@ -71,7 +71,7 @@ async fn destroy_record(
 
 pub(in crate::controllers::api::care) async fn resend(
     State(ctx): State<AppContext>,
-    Path((household_id, id)): Path<(i64, String)>,
+    ApiPath((household_id, id)): ApiPath<(i64, String)>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     body: axum::body::Bytes,

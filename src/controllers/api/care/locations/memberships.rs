@@ -11,7 +11,7 @@ fn numeric(value: &str) -> bool {
 
 pub(crate) async fn create_membership(
     State(ctx): State<AppContext>,
-    Path((household_id, location_id)): Path<(i64, String)>,
+    ApiPath((household_id, location_id)): ApiPath<(i64, String)>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     body: std::result::Result<AxumJson<Value>, JsonRejection>,
@@ -143,7 +143,7 @@ async fn creation(
 
 pub(crate) async fn destroy_membership(
     State(ctx): State<AppContext>,
-    Path((household_id, location_id, id)): Path<(i64, String, String)>,
+    ApiPath((household_id, location_id, id)): ApiPath<(i64, String, String)>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
 ) -> Response {

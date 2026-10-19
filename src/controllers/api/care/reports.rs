@@ -403,7 +403,7 @@ async fn execute(
 
 pub(super) async fn health_json(
     State(ctx): State<AppContext>,
-    Path(household_id): Path<i64>,
+    ApiPath(household_id): ApiPath<i64>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     query: std::result::Result<Query<ReportQuery>, QueryRejection>,
@@ -425,7 +425,7 @@ pub(super) async fn health_json(
 }
 pub(super) async fn health_pdf(
     State(ctx): State<AppContext>,
-    Path(household_id): Path<i64>,
+    ApiPath(household_id): ApiPath<i64>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     query: std::result::Result<Query<ReportQuery>, QueryRejection>,
@@ -447,7 +447,7 @@ pub(super) async fn health_pdf(
 }
 pub(super) async fn reviews_json(
     State(ctx): State<AppContext>,
-    Path(household_id): Path<i64>,
+    ApiPath(household_id): ApiPath<i64>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     query: std::result::Result<Query<ReportQuery>, QueryRejection>,
@@ -469,7 +469,7 @@ pub(super) async fn reviews_json(
 }
 pub(super) async fn reviews_pdf(
     State(ctx): State<AppContext>,
-    Path(household_id): Path<i64>,
+    ApiPath(household_id): ApiPath<i64>,
     headers: HeaderMap,
     request: Option<Extension<LocoRequestId>>,
     query: std::result::Result<Query<ReportQuery>, QueryRejection>,

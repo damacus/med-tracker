@@ -557,6 +557,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MeResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -584,6 +586,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PersonCollectionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -676,6 +680,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PersonResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -803,6 +809,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/InvitationResendResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -981,6 +989,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HouseholdProfileResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -1507,6 +1517,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MedicationReviewLeaseResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -1546,6 +1558,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MedicationReviewLeaseReleaseResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -1578,6 +1592,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MedicationReviewLeaseRenewResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -1607,6 +1623,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HouseholdUiCapabilitiesResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -1635,6 +1653,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/LocationCollectionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -1703,6 +1723,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/LocationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -1944,6 +1966,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MedicationCollectionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -2016,6 +2040,8 @@ paths:
           headers:
             ETag:
               $ref: "#/components/headers/etag"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -2127,6 +2153,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/StockRemovalCollectionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -2227,6 +2255,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MedicationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -2254,6 +2284,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MedicationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -2282,6 +2314,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DosageOptionCollectionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -2356,6 +2390,8 @@ paths:
           headers:
             ETag:
               $ref: "#/components/headers/etag"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -2465,6 +2501,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthEventCollectionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -2531,6 +2569,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthEventResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -2645,6 +2685,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MedicationPausePeriodCollectionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -2718,6 +2760,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MedicationPausePeriodResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -2762,6 +2806,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DoseOccurrenceCollectionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -2964,6 +3010,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DoseOccurrenceCollectionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -3153,6 +3201,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ScheduleCollectionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -3219,6 +3269,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ScheduleResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -3326,6 +3378,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ScheduleResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -3355,6 +3409,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ScheduleResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -3384,6 +3440,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PersonMedicationCollectionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -3456,6 +3514,8 @@ paths:
           headers:
             ETag:
               $ref: "#/components/headers/etag"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -3563,6 +3623,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PersonMedicationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -3592,6 +3654,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PersonMedicationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -3657,6 +3721,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MedicationTakeCollectionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -3732,6 +3798,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/NotificationPreferenceResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -3859,6 +3927,8 @@ paths:
       responses:
         "204":
           description: Device token revoked.
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -3933,6 +4003,8 @@ paths:
       responses:
         "204":
           description: Test notification queued.
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -3981,6 +4053,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MedicationLookupResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -4017,6 +4091,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AiMedicationSuggestionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -4061,6 +4137,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PortableEnvelopeResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -4087,6 +4165,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PortableSnapshotResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -4202,6 +4282,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DataExportResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -4228,6 +4310,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SyncSnapshotResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -4325,6 +4409,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HouseholdAdminSettingsResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -4429,6 +4515,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HouseholdMembershipCollectionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -4522,6 +4610,8 @@ paths:
       responses:
         "204":
           description: Membership revoked.
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -4550,6 +4640,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HouseholdInvitationCollectionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -4606,6 +4698,8 @@ paths:
       responses:
         "204":
           description: Invitation revoked.
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -4632,6 +4726,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PersonAccessGrantCollectionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -4688,6 +4784,8 @@ paths:
       responses:
         "204":
           description: Access grant revoked.
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -4716,6 +4814,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiAppTokenCollectionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -4775,6 +4875,8 @@ paths:
       responses:
         "204":
           description: API app token revoked.
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -4801,6 +4903,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SecurityAuditEventCollectionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
