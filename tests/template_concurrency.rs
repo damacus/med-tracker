@@ -47,14 +47,31 @@ async fn worker() -> TestResult {
 }
 
 #[test]
-#[ignore]
 fn competing_processes_prepare_once() -> TestResult {
     let uri = template::owned_database_url();
-    let name = std::env::var("TEMPLATE_REGRESSION_NAME")?;
-    let marker = std::env::var("TEMPLATE_REGRESSION_MARKER")?;
+    let tempdir = tempfile::tempdir()?;
+    let suffix: String = uuid::Uuid::new_v4()
+        .simple()
+        .to_string()
+        .bytes()
+        .map(|byte| {
+            let digit = match byte {
+                b'0'..=b'9' => byte - b'0',
+                b'a'..=b'f' => byte - b'a' + 10,
+                _ => unreachable!(),
+            };
+            char::from(b'a' + digit)
+        })
+        .collect();
+    let name = std::env::var("TEMPLATE_REGRESSION_NAME")
+        .unwrap_or_else(|_| format!("template_guard_{suffix}"));
+    let marker = std::env::var("TEMPLATE_REGRESSION_MARKER")
+        .unwrap_or_else(|_| tempdir.path().join("seeded").to_string_lossy().into_owned());
     let executable = std::env::current_exe()?;
     let mut first = Command::new(&executable)
         .args(["--ignored", "--exact", "worker", "--nocapture"])
+        .env("TEMPLATE_REGRESSION_NAME", &name)
+        .env("TEMPLATE_REGRESSION_MARKER", &marker)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()?;
@@ -79,6 +96,8 @@ fn competing_processes_prepare_once() -> TestResult {
     }
     let second = Command::new(&executable)
         .args(["--ignored", "--exact", "worker", "--nocapture"])
+        .env("TEMPLATE_REGRESSION_NAME", &name)
+        .env("TEMPLATE_REGRESSION_MARKER", &marker)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()?;

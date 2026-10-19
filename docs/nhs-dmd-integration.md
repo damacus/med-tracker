@@ -14,13 +14,13 @@ below apply to the Rails reference application.
 Platform administrators upload releases at `/admin/nhs-dmd`. Configure the same
 private object store for the web process and worker:
 
-| Variable | Purpose |
-| --- | --- |
-| `S3_ENDPOINT` | S3-compatible endpoint, including a RustFS endpoint |
-| `S3_BUCKET` | Existing private bucket for uploaded archives |
-| `AWS_ACCESS_KEY_ID` | Storage credential with object read, write and delete access |
-| `AWS_SECRET_ACCESS_KEY` | Matching storage secret |
-| `AWS_REGION` | Storage region; defaults to `us-east-1` |
+| Variable                | Purpose                                                      |
+|-------------------------|--------------------------------------------------------------|
+| `S3_ENDPOINT`           | S3-compatible endpoint, including a RustFS endpoint          |
+| `S3_BUCKET`             | Existing private bucket for uploaded archives                |
+| `AWS_ACCESS_KEY_ID`     | Storage credential with object read, write and delete access |
+| `AWS_SECRET_ACCESS_KEY` | Matching storage secret                                      |
+| `AWS_REGION`            | Storage region; defaults to `us-east-1`                      |
 
 Keep credentials outside the repository. Run `task worker` with the same database
 and storage configuration as the web application. This starts the PostgreSQL
@@ -86,10 +86,10 @@ Terminology Server. This is separate from the NHS API Platform.
 
 Configure both values:
 
-| Variable | Purpose |
-| --- | --- |
-| `NHS_DMD_CLIENT_ID` | OAuth client ID from NHS England |
-| `NHS_DMD_CLIENT_SECRET` | OAuth client secret |
+| Variable                | Purpose                          |
+|-------------------------|----------------------------------|
+| `NHS_DMD_CLIENT_ID`     | OAuth client ID from NHS England |
+| `NHS_DMD_CLIENT_SECRET` | OAuth client secret              |
 
 Set Fish shell variables before starting local development:
 
@@ -142,34 +142,6 @@ AMPP, supplementary and GTIN parsing, persistence and commit. `total` measures
 the core import from archive extraction through commit and temporary-directory
 cleanup. It excludes queue delay, upload, archive retrieval and worker cleanup.
 Early returns emit a failure outcome for the active phase and core total.
-
-The macOS comparison harness can measure both runtimes sequentially against the
-same checksum-pinned release, using separate empty catalogues. Prepare the
-current binaries first with `task ci:prepare`, recording its elapsed time
-separately. Then set `NHS_DMD_RELEASE_PATH` and an immutable
-`RAILS_ROLLBACK_IMAGE` digest and run:
-
-```fish
-task --taskfile scripts/migration/nhs-dmd-compare.Taskfile.yml benchmark
-```
-
-Before each import the harness requires a sampled quiet minute: at least 80%
-CPU idle, one-minute load no greater than the logical CPU count, normal memory
-pressure, no new swap-outs and no detected competing compiler or test process.
-It waits at most 15 minutes for each gate. It does not stop other workloads.
-Review the recorded samples during each import before accepting the conditions.
-
-The printed evidence directory contains catalogue snapshots and row comparison,
-runtime timing JSON, command durations, host resource samples, binary hashes and
-source identity. Loco timings separate setup, upload, core import, outer worker,
-export and teardown; Rails separates script setup, core import and export.
-Command wall time additionally includes process startup. Foundation task timings
-are partial setup detail; they exclude storage initialisation and final cleanup.
-
-This harness uses native, unoptimised Loco test binaries and Rails in the pinned
-Docker image, in fixed Loco-then-Rails order. Empty databases do not imply cold
-filesystem caches. Report those conditions with the measured results; a single
-run does not establish production performance.
 
 ## Product guidance and interactions
 

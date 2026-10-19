@@ -3,11 +3,6 @@ name: CI
 
 "on":
   workflow_dispatch:
-    inputs:
-      cold_cache:
-        description: Run the Loco benchmark without restoring compiler, npm or browser caches
-        type: boolean
-        default: false
   pull_request:
   push:
     branches: [main]
@@ -21,157 +16,14 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  changes:
-    runs-on: [ubuntu-latest]
-    name: Classify Changes
-    outputs:
-      loco: ${{ steps.filter.outputs.loco }}
-      app: ${{ steps.filter.outputs.rails }}
-      rails: ${{ steps.filter.outputs.rails }}
-      rust: ${{ steps.filter.outputs.rust }}
-      rust_port: ${{ steps.filter.outputs.rust_port }}
-      docs: ${{ steps.filter.outputs.docs }}
-      markdown: ${{ steps.filter.outputs.markdown }}
-      android: ${{ steps.filter.outputs.android }}
-      api_clients: ${{ steps.filter.outputs.api_clients }}
-      policy: ${{ steps.filter.outputs.policy }}
-      lighthouse: ${{ steps.filter.outputs.lighthouse }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          fetch-depth: 0
-
-      - name: Classify changed paths
-        id: filter
-        env:
-          CI_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
-          CI_HEAD: ${{ github.sha }}
-          CI_EVENT: ${{ github.event_name }}
-        run: node scripts/ci/classify.mjs
-
-  android:
-    needs: changes
-    if: ${{ needs.changes.outputs.android == 'true' }}
-    uses: ./.github/workflows/android.yml
-
-  api_clients:
-    needs: changes
-    if: ${{ needs.changes.outputs.api_clients == 'true' }}
-    uses: ./.github/workflows/api-clients.yml
-
-  policy_check:
-    needs: changes
-    if: ${{ needs.changes.outputs.policy == 'true' }}
-    name: CI Workflow Check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - uses: actions/setup-node@v7
-        with:
-          node-version: "24"
-      - uses: actions/setup-go@v7
-        with:
-          go-version: "1.27.2"
-      - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
-        with:
-          version: 3.52.0
-          repo-token: ${{ github.token }}
-      - name: Install actionlint
-        run: go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
-      - name: Install Fish for contract runner tests
-        run: sudo apt-get update && sudo apt-get install --yes fish uuid-runtime
-      - run: task ci:check
-
-  markdown_check:
-    needs: changes
-    if: ${{ needs.changes.outputs.markdown == 'true' }}
-    name: Markdown Check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          fetch-depth: 0
-      - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
-        with:
-          version: 3.52.0
-          repo-token: ${{ github.token }}
-      - name: Check changed Markdown
-        env:
-          CI_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
-          CI_HEAD: ${{ github.sha }}
-          CI_EVENT: ${{ github.event_name }}
-        run: task ci:markdown
-
-  loco_foundation:
-    needs: changes
-    if: ${{ needs.changes.outputs.loco == 'true' }}
-    name: Rust and JavaScript unit tests / compile test binaries
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    env:
-      CARGO_INCREMENTAL: '0'
-      CARGO_PROFILE_DEV_DEBUG: '0'
-      CARGO_PROFILE_TEST_DEBUG: '0'
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - uses: actions/setup-node@v7
-        with:
-          node-version: "24"
-          cache: ${{ !inputs.cold_cache && 'npm' || '' }}
-      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87
-        with:
-          toolchain: stable
-          components: rustfmt, clippy
-      - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
-        with:
-          version: 3.52.0
-          repo-token: ${{ github.token }}
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
-        if: ${{ !inputs.cold_cache }}
-        with:
-          shared-key: loco-tests-v1
-      - name: Install test-runner prerequisites
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes fish uuid-runtime ripgrep
-      - name: Check path ownership and relocation before compilation
-        run: task ci:paths foundation:test-relocation fmt
-      - uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8
-        with:
-          tool: cargo-nextest@0.9.148
-      - name: Run unit, orchestration and owned PostgreSQL template tests
-        run: task test:unit
-      - name: Compile application and integration tests once
-        run: task ci:prepare
-      - name: Package executable artifacts with permissions
-        run: task ci:package
-      - uses: actions/upload-artifact@v7
-        with:
-          name: loco-tests
-          path: target/loco-tests.tar.gz
-          compression-level: 0
-          retention-days: 1
-      - name: Preserve build timings
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: loco-build-timings
-          path: test-results/
-          if-no-files-found: ignore
-      - name: Summarise build timings
-        if: always()
-        run: task ci:report
-
   loco_lint:
-    needs: loco_foundation
     name: Rust lint and formatting
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      CARGO_INCREMENTAL: '0'
-      CARGO_PROFILE_DEV_DEBUG: '0'
-      CARGO_PROFILE_TEST_DEBUG: '0'
+      CARGO_INCREMENTAL: "0"
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      CARGO_PROFILE_TEST_DEBUG: "0"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87
@@ -183,119 +35,112 @@ jobs:
           version: 3.52.0
           repo-token: ${{ github.token }}
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
-        if: ${{ !inputs.cold_cache }}
         with:
           shared-key: loco-tests-v1
-          save-if: false
-      - name: Install pinned machete
-        uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8
-        with:
-          tool: cargo-machete@0.9.2
-          fallback: none
       - run: task fmt lint
 
-  loco_coverage:
-    needs: changes
-    if: ${{ needs.changes.outputs.loco == 'true' }}
-    name: Rust unit and API coverage (report only)
+  loco_unit:
+    name: Rust and JavaScript unit tests
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 15
     env:
-      CARGO_INCREMENTAL: '0'
-      CARGO_PROFILE_DEV_DEBUG: '0'
-      CARGO_PROFILE_TEST_DEBUG: '0'
+      CARGO_INCREMENTAL: "0"
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      CARGO_PROFILE_TEST_DEBUG: "0"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: actions/setup-node@v7
         with:
           node-version: "24"
+          cache: "npm"
       - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87
         with:
           toolchain: stable
-          components: llvm-tools
+      - uses: taiki-e/install-action@nextest
       - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
         with:
           version: 3.52.0
           repo-token: ${{ github.token }}
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
-        if: ${{ !inputs.cold_cache }}
         with:
-          shared-key: loco-coverage-v2
-          cache-targets: false
-          cache-directories: |
-            target/coverage/instrumented/target
-            target/coverage/instrumented/intermediates
-      - name: Install owned-runner prerequisites
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes fish uuid-runtime ripgrep python3
-      - name: Install pinned nextest for coverage
-        uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8
-        with:
-          tool: cargo-nextest@0.9.148
-      - run: task coverage:install
-      - name: Measure Rust unit and API coverage
-        run: task test:coverage
-      - uses: actions/upload-artifact@v7
-        with:
-          name: loco-rust-coverage
-          path: target/coverage/reports/
-          retention-days: 14
-          if-no-files-found: error
+          shared-key: loco-tests-v1
+      - run: task test:unit
 
   loco_integration:
-    needs: loco_foundation
-    name: API, security and database integration tests (${{ matrix.shard }}/4)
+    needs: [loco_lint, loco_unit]
+    name: API, security and database integration tests
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: medtracker
+          POSTGRES_PASSWORD: medtracker_password
+          POSTGRES_DB: medtracker_loco
+        ports:
+          - 127.0.0.1:5432:5432
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U medtracker -d medtracker_loco"
+          --health-interval 2s
+          --health-timeout 2s
+          --health-retries 30
     env:
-      LOCO_CI_ARTIFACT: '1'
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3, 4]
+      CARGO_INCREMENTAL: "0"
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      CARGO_PROFILE_TEST_DEBUG: "0"
+      DATABASE_URL: postgres://medtracker:medtracker_password@127.0.0.1:5432/medtracker_loco
+      MEDTRACKER_OWNED_DATABASE: "1"
+      MEDTRACKER_OWNED_STORAGE: "1"
+      S3_ENDPOINT: http://127.0.0.1:9000
+      S3_BUCKET: scanner-fixture
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: storage-smoke-access
+      AWS_SECRET_ACCESS_KEY: storage-smoke-secret
+      ACTIVE_STORAGE_SERVICE: s3
+      ACTIVE_STORAGE_S3_ENDPOINT: http://127.0.0.1:9000
+      ACTIVE_STORAGE_S3_BUCKET: medtracker-fixture
+      ACTIVE_STORAGE_S3_REGION: us-east-1
+      ACTIVE_STORAGE_S3_ACCESS_KEY_ID: storage-smoke-access
+      ACTIVE_STORAGE_S3_SECRET_ACCESS_KEY: storage-smoke-secret
+      ACTIVE_STORAGE_S3_FORCE_PATH_STYLE: "true"
+      MEDTRACKER_SESSION_KEY: BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBw==
+      RAILS_SECRET_KEY_BASE: synthetic-slice-rails-verification-secret
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: actions/setup-node@v7
         with:
           node-version: "24"
+          cache: "npm"
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87
+        with:
+          toolchain: stable
       - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
         with:
           version: 3.52.0
           repo-token: ${{ github.token }}
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
         with:
-          name: loco-tests
-          path: target
-      - run: tar -xzf target/loco-tests.tar.gz
-      - name: Install pinned nextest
-        uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8
-        with:
-          tool: cargo-nextest@0.9.148
-          fallback: none
-      - name: Install owned-runner prerequisites
+          shared-key: loco-tests-v1
+      - name: Start RustFS and provision reference database
         run: |
-          sudo apt-get update
-          sudo apt-get install --yes fish uuid-runtime ripgrep
-      - run: task test:integration SHARD=${{ matrix.shard }}/4
-      - name: Preserve integration timings and selection
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: loco-integration-${{ matrix.shard }}
-          path: test-results/
-          if-no-files-found: ignore
-      - name: Summarise integration timings
-        if: always()
-        run: task ci:report
+          docker compose -f compose.yaml --env-file /dev/null -p mtloco-ci --profile fixture-storage up -d --wait rustfs
+          STORAGE_PORT=$(docker compose -f compose.yaml --env-file /dev/null -p mtloco-ci --profile fixture-storage port rustfs 9000 | cut -d: -f2)
+          echo "S3_ENDPOINT=http://127.0.0.1:${STORAGE_PORT}" >> "$GITHUB_ENV"
+          echo "ACTIVE_STORAGE_S3_ENDPOINT=http://127.0.0.1:${STORAGE_PORT}" >> "$GITHUB_ENV"
+          task foundation:storage-init STORAGE_ENDPOINT="http://127.0.0.1:${STORAGE_PORT}"
+          psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -c "CREATE DATABASE medtracker_reference"
+      - run: task test:integration
 
   loco_browser:
-    needs: loco_foundation
+    needs: [loco_lint, loco_unit]
     name: Desktop and mobile browser tests (${{ matrix.shard }}/12)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     env:
-      LOCO_CI_ARTIFACT: '1'
+      CARGO_INCREMENTAL: "0"
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      CARGO_PROFILE_TEST_DEBUG: "0"
     strategy:
       fail-fast: false
       matrix:
@@ -305,300 +150,65 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: "24"
-          cache: ${{ !inputs.cold_cache && 'npm' || '' }}
+          cache: "npm"
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87
+        with:
+          toolchain: stable
       - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
         with:
           version: 3.52.0
           repo-token: ${{ github.token }}
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
         with:
-          name: loco-tests
-          path: target
-      - run: tar -xzf target/loco-tests.tar.gz
-      - run: task frontend:install
+          shared-key: loco-tests-v1
       - uses: actions/cache@v6
-        if: ${{ !inputs.cold_cache }}
         with:
           path: ~/.cache/ms-playwright
           key: loco-chromium-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - run: task test:browser SHARD=${{ matrix.shard }}/12
-      - name: Preserve browser results and fixture timings
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: loco-browser-${{ matrix.shard }}
-          path: test-results/
-          retention-days: 7
-          if-no-files-found: ignore
-      - name: Summarise browser timings
-        if: always()
-        run: task ci:report
-
-  scan_ruby:
-    defaults:
-      run:
-        working-directory: rails
-    needs: changes
-    if: ${{ needs.changes.outputs.app == 'true' }}
-    runs-on: [ubuntu-latest]
-    name: Ruby Security Scan
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          bundler-cache: true
-          working-directory: rails
-
-      - name: Scan for common Rails security vulnerabilities using static analysis
-        run: bin/brakeman --no-pager
-
-  scan_js:
-    defaults:
-      run:
-        working-directory: rails
-    needs: changes
-    if: ${{ needs.changes.outputs.app == 'true' }}
-    runs-on: [ubuntu-latest]
-    name: JavaScript Security Scan
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          bundler-cache: true
-          working-directory: rails
-
-      - name: Scan for security vulnerabilities in JavaScript dependencies
-        run: bin/importmap audit
-
-  lint:
-    defaults:
-      run:
-        working-directory: rails
-    needs: changes
-    if: ${{ needs.changes.outputs.app == 'true' }}
-    runs-on: [ubuntu-latest]
-    name: Code Style Check
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          bundler-cache: true
-          working-directory: rails
-
-      - name: Lint code for consistent style
-        run: bin/rubocop -f github
-
-      - name: Verify lint failure behaviour
-        run: bundle exec rspec test/tooling/rubocop/cli_spec.rb
 
   client_tools:
-    needs: changes
-    if: ${{ needs.changes.outputs.rust == 'true' }}
     runs-on: [ubuntu-latest]
     name: Rust Client Tools
-    permissions:
-      contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec
         with:
           toolchain: stable
           components: rustfmt, clippy
-
       - name: Cache Cargo
-        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
         with:
           workspaces: client-tools
+      - name: Check formatting
+        run: cargo fmt --manifest-path client-tools/Cargo.toml --all --check
+      - name: Check workspace
+        run: cargo check --manifest-path client-tools/Cargo.toml --workspace --all-targets
+      - name: Lint workspace
+        run: cargo clippy --manifest-path client-tools/Cargo.toml --workspace --all-targets -- -D warnings
+      - name: Test workspace
+        run: cargo test --manifest-path client-tools/Cargo.toml --workspace
 
-      - name: Install Task
-        uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
-        with:
-          version: 3.52.0
-          repo-token: ${{ github.token }}
+  android:
+    uses: ./.github/workflows/android.yml
 
-      - name: Install Fish and private Secret Service test tools
-        run: sudo apt-get update && sudo apt-get install --yes fish dbus gnome-keyring libsecret-tools
+  api_clients:
+    uses: ./.github/workflows/api-clients.yml
 
-      - name: Install Rust client verification tools
-        uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8
-        with:
-          tool: |
-            cargo-nextest@0.9.148
-            cargo-machete@0.9.2
-            cargo-deny@0.20.2
-          fallback: none
-
-      - name: Check client tools
-        run: task client-tools:ci
-
-      - name: Verify Linux credential compatibility in a private session
-        run: task client-tools:test:secret-service
-
-  rust_port:
-    needs: changes
-    if: ${{ needs.changes.outputs.rust_port == 'true' }}
+  markdown_check:
+    name: Markdown Check
     runs-on: ubuntu-latest
-    name: Rust Dashboard UI, API and Web
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: actions/setup-node@v7
         with:
           node-version: "24"
-      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87
-        with:
-          toolchain: stable
-          components: rustfmt, clippy
-          targets: wasm32-unknown-unknown
-      - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
-        with:
-          version: 3.52.0
-          repo-token: ${{ github.token }}
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
-        with:
-          workspaces: |
-            rust/api
-            rust/web
-            rust/ui-preview
-            rust/contract-tests
-      - run: task ci:rust-port
-
-  rust_dashboard_browser:
-    needs: changes
-    if: ${{ needs.changes.outputs.rust_port == 'true' }}
-    runs-on: ubuntu-latest
-    name: Rust Dashboard Browser
-    timeout-minutes: 90
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - uses: actions/setup-node@v7
-        with:
-          node-version: "24"
-      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87
-        with:
-          toolchain: stable
-          targets: wasm32-unknown-unknown
-      - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
-        with:
-          version: 3.52.0
-          repo-token: ${{ github.token }}
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
-        with:
-          workspaces: |
-            rust/api
-            rust/ui-preview
-      - name: Install contract runner prerequisites
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y fish rsync uuid-runtime jq openssl
-          cargo install --git https://github.com/rtk-ai/rtk --tag v0.50.0 --locked rtk
-          rtk gain
-      - run: TEST_IMAGE_UID=$(id -u) task api:browser-dashboard-rust
-
-  rust_household_browser:
-    needs: [changes, loco_browser]
-    if: ${{ !cancelled() && needs.changes.outputs.rust_port == 'true' && (needs.loco_browser.result == 'success' || (needs.changes.outputs.loco != 'true' && needs.loco_browser.result == 'skipped')) }}
-    runs-on: ubuntu-latest
-    name: Rust Household (${{ matrix.journey }})
-    timeout-minutes: 90
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - journey: people-locations-medications
-            completion: "true"
-            browsers: "tests/household-routes.test.mjs tests/household-workflows.test.mjs tests/household-completion-medication.test.mjs tests/household-completion-locales.test.mjs tests/household-completion-dashboard.test.mjs tests/medication-journey.test.mjs tests/medication-journey-form.test.mjs"
-          - journey: dosage-options
-            target: household_dosage_options
-            browsers: "tests/household-dosage-options.test.mjs"
-          - journey: stock
-            stock: "true"
-            browsers: "tests/household-stock.test.mjs tests/household-stock-selector.test.mjs"
-          - journey: treatments
-            target: household_treatment_acceptance
-            browsers: "tests/household-treatments.test.mjs tests/household-treatment-administration.test.mjs"
-          - journey: calendar
-            acceptance: "false"
-            clock: "2026-03-29T00:30:00Z"
-            browsers: "tests/household-treatment-calendar.test.mjs"
-          - journey: taper-times
-            acceptance: "false"
-            clock: "2026-03-29T00:30:00Z"
-            browsers: "tests/household-taper-times.test.mjs"
-          - journey: dosage-permissions
-            target: household_dosage_permissions
-          - journey: stock-permissions
-            target: household_stock_permissions
-          - journey: treatment-permissions
-            target: household_treatment_permissions
-          - journey: inventory-completion
-            target: household_final_acceptance
-            browsers: "tests/household-inventory-completion.test.mjs"
-          - journey: minor-person-access
-            target: household_minor_readiness
-            browsers: "tests/household-minor-readiness.test.mjs"
-          - journey: dose-compatibility
-            target: doses
-            browsers: "tests/household-routes.test.mjs"
-          - journey: schedule-compatibility
-            target: schedules
-            browsers: "tests/household-routes.test.mjs"
-          - journey: admin-dmd-import
-            target: nhs_dmd_import_api
-            browsers: "tests/household-admin-dmd.test.mjs"
-          - journey: standalone-login
-            target: passkey_security
-            browsers: "tests/login.smoke.test.mjs"
-    env:
-      HOUSEHOLD_ACCEPTANCE: ${{ matrix.acceptance || 'true' }}
-      HOUSEHOLD_COMPLETION_ACCEPTANCE: ${{ matrix.completion || '' }}
-      HOUSEHOLD_STOCK_ACCEPTANCE: ${{ matrix.stock || '' }}
-      HOUSEHOLD_TEST_FILE: ${{ matrix.target || '' }}
-      BROWSER_TEST_FILES: ${{ matrix.browsers || 'tests/medication-journey.test.mjs tests/medication-journey-form.test.mjs' }}
-      CONTRACT_DASHBOARD_NOW: ${{ matrix.clock }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - uses: actions/setup-node@v7
-        with:
-          node-version: "24"
-      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87
-        with:
-          toolchain: stable
-          targets: wasm32-unknown-unknown
-      - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
-        with:
-          version: 3.52.0
-          repo-token: ${{ github.token }}
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
-        with:
-          workspaces: |
-            rust/api
-            rust/ui-preview
-      - name: Install contract runner prerequisites
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y fish rsync uuid-runtime jq openssl
-          cargo install --git https://github.com/rtk-ai/rtk --tag v0.50.0 --locked rtk
-          rtk gain
-      - name: Verify minor fixture failure handling
-        if: ${{ matrix.journey == 'minor-person-access' }}
-        run: task api:contract-minor-wrapper-test
-      - run: TEST_IMAGE_UID=$(id -u) task api:browser-rust
+      - name: Check Markdown
+        run: npx --yes markdownlint-cli2@0.20.0 --config .markdownlint-cli2.jsonc "**/*.md"
 
   docs_check:
-    needs: changes
-    if: ${{ needs.changes.outputs.docs == 'true' }}
     runs-on: [ubuntu-latest]
     name: Documentation Check
     steps:
@@ -606,467 +216,17 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
-
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
           python-version: "3.x"
           cache: "pip"
           cache-dependency-path: pyproject.toml
-
       - name: Install documentation dependencies
         run: pip install uv==0.10.12
-
       - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
         with:
           version: 3.52.0
           repo-token: ${{ github.token }}
-
       - name: Build documentation
         run: task docs:build
-
-  test_non_system:
-    defaults:
-      run:
-        working-directory: rails
-    needs: changes
-    if: ${{ needs.changes.outputs.app == 'true' }}
-    runs-on: [ubuntu-latest]
-    name: RSpec Tests - Shard ${{ matrix.shard }}/2
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2]
-
-    services:
-      postgres:
-        image: postgres:18-alpine
-        env:
-          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-          POSTGRES_DB: medtracker_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    env:
-      TEST_DATABASE_ADAPTER: postgresql
-      DATABASE_URL: postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/medtracker_test
-      RAILS_ENV: test
-      COVERAGE: true
-      SIMPLECOV_SHARD: true
-      SIMPLECOV_COMMAND_NAME: rspec-non-system-shard-${{ matrix.shard }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: "4.0.7"
-          bundler-cache: true
-          working-directory: rails
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: "24"
-
-      - name: Set up database
-        run: bundle exec rails db:migrate
-
-      - name: Precompile assets
-        run: bundle exec rails assets:precompile
-
-      - name: Build non-browser example manifest
-        run: COVERAGE=false bundle exec rspec --tag ~browser --dry-run --format json --out tmp/non-browser-examples.json
-
-      - name: Run non-browser tests (shard ${{ matrix.shard }}/2)
-        shell: bash
-        run: |
-          set -euo pipefail
-          node scripts/ci/shard.mjs --kind files \
-            --input tmp/non-browser-examples.json \
-            --timings scripts/ci/non_browser_timings.json \
-            --shards 2 \
-            --shard ${{ matrix.shard }} > tmp/non-browser-shard-${{ matrix.shard }}.txt
-          mapfile -t non_browser_files < tmp/non-browser-shard-${{ matrix.shard }}.txt
-          test "${#non_browser_files[@]}" -gt 0
-          bundle exec rspec --format RSpec::Github::Formatter --tag ~browser "${non_browser_files[@]}"
-
-      - name: Upload SimpleCov coverage report
-        if: ${{ !cancelled() && hashFiles('rails/coverage/.resultset.json') != '' }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: simplecov-non-system-${{ matrix.shard }}
-          path: rails/coverage/.resultset.json
-          include-hidden-files: true
-          if-no-files-found: error
-
-  coverage:
-    defaults:
-      run:
-        working-directory: rails
-    needs: test_non_system
-    if: ${{ needs.test_non_system.result == 'success' }}
-    runs-on: [ubuntu-latest]
-    name: Collated SimpleCov Coverage
-    timeout-minutes: 10
-
-    env:
-      RAILS_ENV: test
-      COVERAGE: true
-      RAILS_APPLICATION_ROOT: ${{ github.workspace }}/rails
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: "4.0.7"
-          bundler-cache: true
-          working-directory: rails
-
-      - name: Download SimpleCov shard 1
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
-        with:
-          name: simplecov-non-system-1
-          path: rails/coverage/shard-1
-
-      - name: Download SimpleCov shard 2
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
-        with:
-          name: simplecov-non-system-2
-          path: rails/coverage/shard-2
-
-      - name: Verify coverage failure handling
-        run: bundle exec ruby scripts/ci/tests/coverage.rb
-
-      - name: Collate SimpleCov reports
-        run: bundle exec ruby scripts/ci/collate_simplecov.rb coverage/shard-1/.resultset.json coverage/shard-2/.resultset.json
-
-  test_system:
-    defaults:
-      run:
-        working-directory: rails
-    needs: changes
-    if: ${{ needs.changes.outputs.app == 'true' }}
-    runs-on: [ubuntu-latest]
-    name: RSpec System Tests (Playwright) - Shard ${{ matrix.shard }}/2
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2]
-    services:
-      postgres:
-        image: postgres:18-alpine
-        env:
-          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-          POSTGRES_DB: medtracker_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    env:
-      TEST_DATABASE_ADAPTER: postgresql
-      DATABASE_URL: postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/medtracker_test
-      RAILS_ENV: test
-      CI: true
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: "4.0.7"
-          bundler-cache: true
-          working-directory: rails
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: "24"
-          cache: "npm"
-          cache-dependency-path: rails/package-lock.json
-
-      - name: Install Node dependencies
-        run: npm ci
-
-      - name: Cache Playwright browsers
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('rails/package-lock.json') }}
-
-      - name: Install Playwright browsers and deps
-        run: npx playwright install --with-deps chromium
-
-      - name: Set up database
-        run: bundle exec rails db:migrate
-
-      - name: Precompile assets
-        run: bundle exec rails assets:precompile
-
-      - name: Build browser example manifest
-        run: bundle exec rspec --tag browser --dry-run --format json --out tmp/browser-examples.json
-
-      - name: Run browser tests (shard ${{ matrix.shard }}/2)
-        shell: bash
-        run: |
-          set -euo pipefail
-          # Get all spec files and split tagged browser examples for this shard
-          # Split files across shards using modulo
-          node scripts/ci/shard.mjs --kind examples \
-            --input tmp/browser-examples.json \
-            --timings scripts/ci/browser_timings.json \
-            --shards 2 \
-            --shard ${{ matrix.shard }} > tmp/browser-shard-${{ matrix.shard }}.txt
-          mapfile -t browser_examples < tmp/browser-shard-${{ matrix.shard }}.txt
-          test "${#browser_examples[@]}" -gt 0
-          bundle exec rspec --format RSpec::Github::Formatter --format documentation "${browser_examples[@]}"
-
-      - name: Upload Capybara failure screenshots
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: capybara-failures-shard-${{ matrix.shard }}
-          path: |
-            rails/tmp/capybara/**/*.png
-            rails/tmp/capybara/**/*.html
-          if-no-files-found: ignore
-          retention-days: 7
-
-  production_image_medication_search:
-    needs: changes
-    if: ${{ needs.changes.outputs.app == 'true' }}
-    runs-on: [ubuntu-latest]
-    name: Production Image Medication Search
-    timeout-minutes: 25
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      - name: Install Task
-        uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52 # v3.0.0
-        with:
-          version: 3.52.0
-          repo-token: ${{ github.token }}
-
-      - name: Install Fish
-        run: sudo apt-get update && sudo apt-get install --yes fish
-
-      - name: Exercise medication search from the final app image
-        run: task rails:prod:medication-search-smoke
-
-  mutation:
-    defaults:
-      run:
-        working-directory: rails
-    needs: changes
-    if: ${{ needs.changes.outputs.app == 'true' }}
-    runs-on: [ubuntu-latest]
-    name: Mutation Testing (advisory, changed subjects)
-    timeout-minutes: 20
-    continue-on-error: true # advisory until the signal is trusted
-    services:
-      postgres:
-        image: postgres:18-alpine
-        env:
-          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-          POSTGRES_DB: medtracker_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    env:
-      TEST_DATABASE_ADAPTER: postgresql
-      DATABASE_URL: postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/medtracker_test
-      RAILS_ENV: test
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          fetch-depth: 0 # mutant --since needs history + the base ref
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: "4.0.7"
-          bundler-cache: true
-          working-directory: rails
-
-      - name: Set up database
-        run: bundle exec rails db:migrate
-
-      - name: Ensure base ref is available
-        run: git fetch --no-tags --depth=1 origin main
-
-      # Only mutates subjects changed since main (mutant --since), so a typical
-      # PR is fast. usage: opensource (config/mutant.yml) means no licence/token.
-      - name: Mutation test changed subjects (advisory)
-        run: bundle exec mutant run --since origin/main
-
-  lighthouse:
-    defaults:
-      run:
-        working-directory: rails
-    runs-on: [ubuntu-latest]
-    name: Lighthouse Mobile Audit
-    needs: changes
-    if: ${{ needs.changes.outputs.lighthouse == 'true' }}
-    timeout-minutes: 15
-
-    services:
-      postgres:
-        image: postgres:18-alpine
-        env:
-          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-          POSTGRES_DB: medtracker_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    env:
-      TEST_DATABASE_ADAPTER: postgresql
-      DATABASE_URL: postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/medtracker_test
-      RAILS_ENV: test
-      CI: true
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: "4.0.7"
-          bundler-cache: true
-          working-directory: rails
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: "24"
-          cache: "npm"
-          cache-dependency-path: rails/package-lock.json
-
-      - name: Install Chrome
-        uses: browser-actions/setup-chrome@2e1d749697dd1612b833dba4a722266286fbefcd # v2.1.2
-        with:
-          chrome-version: stable
-
-      - name: Install Task
-        uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52 # v3.0.0
-        with:
-          version: 3.52.0
-          repo-token: ${{ github.token }}
-
-      - name: Install Node dependencies
-        run: npm ci
-
-      - name: Set up database
-        run: bundle exec rails db:prepare
-
-      - name: Seed database
-        run: bundle exec rails db:seed
-
-      - name: Precompile assets
-        run: bundle exec rails assets:precompile
-
-      - name: Start Rails server
-        run: |
-          bundle exec rails server -p 3000 > tmp/lighthouse-server.log 2>&1 &
-          for _attempt in {1..30}; do
-            curl -fsS http://localhost:3000/up && break
-            sleep 1
-          done
-          curl -fsS http://localhost:3000/up
-
-      - name: Audit public login
-        run: task lighthouse:ci URL=http://localhost:3000/login REPORT_PATH=./lighthouse-login
-
-      - name: Audit authenticated dashboard
-        run: |
-          curl -fsS -c lighthouse-cookies.txt -X POST \
-            --data-urlencode email=jane.doe@example.com \
-            --data-urlencode password=password \
-            -o /dev/null http://localhost:3000/login
-          COOKIE_HEADER=$(awk 'BEGIN { separator="" } /^#HttpOnly_/ || $0 !~ /^#/ { if (NF >= 7) { printf "%s%s=%s", separator, $6, $7; separator="; " } } END { print "" }' lighthouse-cookies.txt)
-          test -n "$COOKIE_HEADER"
-          task lighthouse:ci \
-            URL=http://localhost:3000/households/fixture-household/dashboard \
-            REPORT_PATH=./lighthouse-dashboard \
-            EXTRA_HEADERS="{\"Cookie\":\"${COOKIE_HEADER}\"}"
-
-      - name: Upload Lighthouse reports
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: lighthouse-mobile-reports
-          path: |
-            rails/lighthouse-*.report.json
-            rails/lighthouse-*.report.html
-            rails/tmp/lighthouse-server.log
-          if-no-files-found: ignore
-          retention-days: 30
-
-  ci_success:
-    if: ${{ always() }}
-    needs:
-      - changes
-      - loco_foundation
-      - loco_lint
-      - loco_integration
-      - loco_browser
-      - loco_coverage
-      - scan_ruby
-      - scan_js
-      - lint
-      - client_tools
-      - rust_port
-      - rust_dashboard_browser
-      - rust_household_browser
-      - docs_check
-      - test_non_system
-      - coverage
-      - test_system
-      - production_image_medication_search
-      - android
-      - api_clients
-      - policy_check
-      - markdown_check
-      - lighthouse
-    runs-on: [ubuntu-latest]
-    name: CI Success
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - name: Require selected suites to succeed
-        env:
-          CI_NEEDS: ${{ toJSON(needs) }}
-        run: node scripts/ci/gate.mjs

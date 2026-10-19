@@ -1,5 +1,26 @@
+import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { execute } from './loco-process.mjs';
+import { stopOwnedProcess } from './process-cleanup.mjs';
+
+export async function execute(command, args, { env = process.env, capture = false } = {}) {
+  const child = spawn(command, args, { env, detached: true, stdio: ['ignore', capture ? 'pipe' : 'inherit', 'inherit'] });
+  let output = '';
+  child.stdout?.on('data', chunk => { output += chunk; });
+  const interrupt = () => stopOwnedProcess(child).catch(error => process.stderr.write(`${error.message}\n`));
+  process.on('SIGINT', interrupt);
+  process.on('SIGTERM', interrupt);
+  try {
+    await new Promise((resolve, reject) => {
+      child.once('error', reject);
+      child.once('close', code => code === 0 ? resolve() : reject(new Error(`${command} exited ${code}`)));
+    });
+    return output;
+  } finally {
+    process.off('SIGINT', interrupt);
+    process.off('SIGTERM', interrupt);
+    await stopOwnedProcess(child);
+  }
+}
 
 export async function browserDatabasePool(url, provision, ownership, run = (name, variables) => execute('task', [name, ...variables], { capture: true })) {
   const template = new URL(url);
