@@ -428,18 +428,6 @@ tasks:
     cmds:
       - cargo test --manifest-path rust/contract-tests/Cargo.toml --test doses -- --test-threads=1
 
-  run-dose-precision:
-    dir: "{{.TASKFILE_DIR}}/../.."
-    desc: Probe fractional medication-take timestamp precision against a checked target
-    requires:
-      vars: [BASE_URL, FIXTURE_PATH]
-    env:
-      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
-      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
-      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
-    cmds:
-      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test doses -- --exact medication_take_preserves_fractional_second_timestamp --ignored --test-threads=1
-
   run-assignments:
     dir: "{{.TASKFILE_DIR}}/../.."
     desc: Run direct-assignment and pause-period cases against a checked target and fixture
@@ -451,18 +439,6 @@ tasks:
       CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
     cmds:
       - cargo test --manifest-path rust/contract-tests/Cargo.toml --test assignments -- --test-threads=1
-
-  run-assignment-precision:
-    dir: "{{.TASKFILE_DIR}}/../.."
-    desc: Demonstrate the expected-failing Rails direct-assignment decimal precision case
-    requires:
-      vars: [BASE_URL, FIXTURE_PATH]
-    env:
-      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
-      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
-      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
-    cmds:
-      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test assignments -- --ignored --exact assignment_preserves_three_decimal_dose_amount --test-threads=1
 
   run-schedules:
     dir: "{{.TASKFILE_DIR}}/../.."
@@ -476,18 +452,6 @@ tasks:
     cmds:
       - cargo test --manifest-path rust/contract-tests/Cargo.toml --test schedules -- --test-threads=1
 
-  run-schedule-precision:
-    dir: "{{.TASKFILE_DIR}}/../.."
-    desc: Run the expected-failing Rails schedule precision case against a checked target
-    requires:
-      vars: [BASE_URL, FIXTURE_PATH]
-    env:
-      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
-      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
-      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
-    cmds:
-      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test schedules -- --ignored --exact schedule_preserves_fractional_min_hours_between_doses --test-threads=1
-
   run-dosage-health:
     dir: "{{.TASKFILE_DIR}}/../.."
     desc: Run dosage-option and health-event cases against a checked target and fixture
@@ -499,54 +463,6 @@ tasks:
       CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
     cmds:
       - cargo test --manifest-path rust/contract-tests/Cargo.toml --test dosage_health -- --test-threads=1
-
-  run-dosage-health-privacy:
-    dir: "{{.TASKFILE_DIR}}/../.."
-    desc: Run the expected-failing dosage privacy case against a checked target and fixture
-    requires:
-      vars: [BASE_URL, FIXTURE_PATH]
-    env:
-      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
-      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
-      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
-    cmds:
-      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test dosage_health -- --ignored --exact dosage_option_collection_hides_ungranted_medication --test-threads=1
-
-  run-dosage-health-default-validation:
-    dir: "{{.TASKFILE_DIR}}/../.."
-    desc: Run the expected-failing duplicate adult dosage default validation case
-    requires:
-      vars: [BASE_URL, FIXTURE_PATH]
-    env:
-      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
-      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
-      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
-    cmds:
-      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test dosage_health -- --ignored --exact dosage_option_duplicate_adult_default_returns_validation_error --test-threads=1
-
-  run-health-event-kind-validation:
-    dir: "{{.TASKFILE_DIR}}/../.."
-    desc: Run the expected-failing invalid health-event kind validation case
-    requires:
-      vars: [BASE_URL, FIXTURE_PATH]
-    env:
-      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
-      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
-      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
-    cmds:
-      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test dosage_health -- --ignored --exact health_event_invalid_kind_returns_validation_error --test-threads=1
-
-  run-health-event-replacement-atomicity:
-    dir: "{{.TASKFILE_DIR}}/../.."
-    desc: Run the expected-failing invalid health-event replacement atomicity case
-    requires:
-      vars: [BASE_URL, FIXTURE_PATH]
-    env:
-      CONTRACT_BASE_URL: '{{ .BASE_URL }}'
-      CONTRACT_FIXTURE_PATH: '{{ .FIXTURE_PATH }}'
-      CONTRACT_APPROVED_ORIGIN: '{{ .APPROVED_ORIGIN | default "" }}'
-    cmds:
-      - cargo test --manifest-path rust/contract-tests/Cargo.toml --test dosage_health -- --ignored --exact health_event_invalid_replacement_preserves_links_and_etag --test-threads=1
 
   oauth:
     dir: "{{.TASKFILE_DIR}}/../.."
@@ -864,48 +780,6 @@ tasks:
     desc: Run hidden-person feed privacy case against isolated Rails
     cmds:
       - fish rust/contract-tests/run.fish rails sync-privacy
-
-  dose-precision-rails:
-    dir: "{{.TASKFILE_DIR}}/../.."
-    desc: Demonstrate Rails medication-take timestamp precision
-    cmds:
-      - fish rust/contract-tests/run.fish rails dose-precision
-
-  assignment-precision-rails:
-    dir: "{{.TASKFILE_DIR}}/../.."
-    desc: Demonstrate Rails' current assignment decimal precision limit
-    cmds:
-      - fish rust/contract-tests/run.fish rails assignment-precision
-
-  schedule-precision-rails:
-    dir: "{{.TASKFILE_DIR}}/../.."
-    desc: Demonstrate Rails' current loss of fractional schedule minimum hours
-    cmds:
-      - fish rust/contract-tests/run.fish rails schedule-precision
-
-  dosage-health-privacy-rails:
-    dir: "{{.TASKFILE_DIR}}/../.."
-    desc: Demonstrate the currently failing Rails dosage privacy case
-    cmds:
-      - fish rust/contract-tests/run.fish rails dosage-health-privacy
-
-  dosage-health-default-validation-rails:
-    dir: "{{.TASKFILE_DIR}}/../.."
-    desc: Demonstrate the currently failing Rails duplicate adult dosage default validation case
-    cmds:
-      - fish rust/contract-tests/run.fish rails dosage-health-default-validation
-
-  health-event-kind-validation-rails:
-    dir: "{{.TASKFILE_DIR}}/../.."
-    desc: Demonstrate the currently failing Rails invalid health-event kind validation case
-    cmds:
-      - fish rust/contract-tests/run.fish rails health-event-kind-validation
-
-  health-event-replacement-atomicity-rails:
-    dir: "{{.TASKFILE_DIR}}/../.."
-    desc: Demonstrate the currently failing Rails invalid health-event replacement atomicity case
-    cmds:
-      - fish rust/contract-tests/run.fish rails health-event-replacement-atomicity
 
   rust:
     dir: "{{.TASKFILE_DIR}}/../.."

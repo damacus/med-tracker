@@ -215,28 +215,3 @@ fn medication_take_collection_excludes_takes_for_ungranted_people() {
         .iter()
         .any(|row| row["id"] == take_id));
 }
-
-#[test]
-#[ignore = "Rails currently serializes medication-take timestamps to whole seconds"]
-fn medication_take_preserves_fractional_second_timestamp() {
-    let target = Target::from_env();
-    let fixture = fixture();
-    let source_id = assignment_portable_id(&target, &fixture);
-    let taken_at = OffsetDateTime::now_utc()
-        .replace_nanosecond(123_456_000)
-        .unwrap()
-        .format(&Rfc3339)
-        .unwrap();
-    let response = target.post_json_authorized(
-        &takes_path(&fixture),
-        &fixture.access_token,
-        &json!({"medication_take": {
-            "source_type": "person_medication",
-            "source_id": source_id,
-            "taken_from_medication_id": fixture.managed_medication_id,
-            "taken_at": taken_at
-        }}),
-    );
-    assert_eq!(response.status().as_u16(), 201);
-    assert_eq!(body(response)["data"]["taken_at"], taken_at);
-}

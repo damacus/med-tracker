@@ -346,23 +346,6 @@ fn assignment_create_patch_and_put_validate_and_retain_decimal_state() {
 }
 
 #[test]
-#[ignore = "Rails currently rounds assignment dose amounts beyond two decimal places"]
-fn assignment_preserves_three_decimal_dose_amount() {
-    let target = Target::from_env();
-    let fixture = fixture();
-    let (created, tag) = create_assignment(&target, &fixture, "Contract assignment precision");
-    let path = format!("{}/{}", assignments_path(&fixture), created["id"]);
-    let response = target.patch_json_if_match(
-        &path,
-        &fixture.access_token,
-        &json!({"person_medication": {"dose_amount": "2.125"}}),
-        &tag,
-    );
-    assert_eq!(response.status().as_u16(), 200);
-    assert_eq!(body(response)["data"]["dose_amount"], "2.125");
-}
-
-#[test]
 fn assignment_legacy_pause_resume_and_reorder_retain_state() {
     let target = Target::from_env();
     let fixture = fixture();

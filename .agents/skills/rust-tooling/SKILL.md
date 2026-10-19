@@ -1,10 +1,10 @@
 ---
-name: rust-migration-and-tooling
+name: rust-tooling
 description: >-
   Guides fresh Rust/Loco workflows, Rust-native versioned portability packages, and strict Rust verification gates. Use when implementing features, working on Rust-native import/export, or running test suites.
 ---
 
-# rust-migration-and-tooling
+# rust-tooling
 
 Read root AGENTS.md and ADRs 0013–0016 before applying this skill.
 These are accepted direction, not evidence that pending application work passes.

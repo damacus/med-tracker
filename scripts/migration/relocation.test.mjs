@@ -45,7 +45,7 @@ test('one root agent guide requires local Rust skills and a read-only Rails guid
   assert.ok(guides.includes('AGENTS.md'));
   assert.equal(guides.includes('agents.md'), false);
   assert.equal(existsSync('CLAUDE.md'), false);
-  for (const skill of ['rust-loco-architecture', 'rust-migration-and-tooling', 'rust-drift-audit']) {
+  for (const skill of ['rust-loco-architecture', 'rust-tooling', 'rust-drift-audit']) {
     assert.ok(readFileSync('AGENTS.md', 'utf8').includes(skill));
     assert.ok(existsSync(`.agents/skills/${skill}/SKILL.md`));
   }

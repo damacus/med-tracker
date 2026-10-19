@@ -3,7 +3,7 @@
 Read and apply these repository skills before Rust work:
 
 - [.agents/skills/rust-loco-architecture/SKILL.md](.agents/skills/rust-loco-architecture/SKILL.md)
-- [.agents/skills/rust-migration-and-tooling/SKILL.md](.agents/skills/rust-migration-and-tooling/SKILL.md)
+- [.agents/skills/rust-tooling/SKILL.md](.agents/skills/rust-tooling/SKILL.md)
 - [.agents/skills/rust-drift-audit/SKILL.md](.agents/skills/rust-drift-audit/SKILL.md)
 
 Read the global `start` skill before new work. Discover and call Serena initial
