@@ -22,6 +22,8 @@ mod people;
 mod people_evidence;
 #[path = "person_access_grants.rs"]
 mod person_access_grants;
+#[path = "person_access_grants_evidence.rs"]
+mod person_access_grants_evidence;
 #[path = "profile.rs"]
 mod profile;
 #[path = "profile_avatar_evidence.rs"]
@@ -178,6 +180,18 @@ fn inventory() -> BTreeMap<(String, String), Value> {
 }
 
 fn validate_evidence(entry: &Value) -> Result<(), String> {
+    if let Some(expected) =
+        person_access_grants_evidence::expected(entry["operation_id"].as_str().unwrap_or(""))
+    {
+        for field in ["coverage", "candidate_revision", "gaps", "evidence"] {
+            if entry[field] != expected[field] {
+                return Err(format!(
+                    "Unsupported person access grant evidence field: {field}"
+                ));
+            }
+        }
+        return Ok(());
+    }
     if let Some(expected) =
         household_memberships_evidence::expected(entry["operation_id"].as_str().unwrap_or(""))
     {
@@ -537,6 +551,15 @@ fn validate_metadata(document: &Value, entry: &Value) {
         }
     }
     let candidate_revision = match entry["operation_id"].as_str() {
+        Some("listPersonAccessGrants" | "createPersonAccessGrant" | "deletePersonAccessGrant") => {
+            let expected =
+                person_access_grants_evidence::expected(entry["operation_id"].as_str().unwrap())
+                    .unwrap();
+            Some((
+                person_access_grants_evidence::REVISION,
+                expected["gaps"].clone(),
+            ))
+        }
         Some("listMemberships" | "updateMembership" | "replaceMembership" | "deleteMembership") => {
             let expected =
                 household_memberships_evidence::expected(entry["operation_id"].as_str().unwrap())

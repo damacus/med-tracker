@@ -370,8 +370,8 @@ async fn person_grant_delete_revokes_three_credentials_with_empty_body() {
         .await;
         let after = state(&fixture).await;
         let audits_after = audit_count(&fixture).await;
-        let outcomes = fixture.admin.query_all_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-            "SELECT metadata->>'outcome' AS outcome FROM security_audit_events WHERE household_id=72001 AND event_type='household_access.person_grant_changed' AND request_id IN ($1,$2)",
+        let audit_rows = fixture.admin.query_all_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+            "SELECT event_type,request_id,actor_account_id,actor_membership_id,metadata,audit_context FROM security_audit_events WHERE household_id=72001 AND event_type IN ('household_access.person_grant_changed','api.request') AND request_id IN ($1,$2)",
             [first.request_id.clone().unwrap().into(),second.request_id.clone().unwrap().into()],
         )).await.unwrap();
         let listed = send(&server, Method::GET, 72001, None, Some(bearer), None, None).await;
@@ -398,12 +398,50 @@ async fn person_grant_delete_revokes_three_credentials_with_empty_body() {
             "{bearer_kind} repeated revoke changed the domain"
         );
         assert_eq!(audits_after, audits_before + 4);
-        let values: Vec<String> = outcomes
-            .iter()
-            .map(|row| row.try_get::<String>("", "outcome").unwrap())
-            .collect();
-        assert!(values.contains(&"success".to_owned()));
-        assert!(values.contains(&"no_change".to_owned()));
+        assert_eq!(audit_rows.len(), 4);
+        for (reply, outcome) in [(&first, "success"), (&second, "no_change")] {
+            let rows: Vec<_> = audit_rows
+                .iter()
+                .filter(|row| {
+                    row.try_get::<String>("", "request_id").unwrap()
+                        == reply.request_id.as_deref().unwrap()
+                })
+                .collect();
+            assert_eq!(rows.len(), 2);
+            for row in rows {
+                assert_eq!(row.try_get::<i64>("", "actor_account_id").unwrap(), 71001);
+                assert_eq!(
+                    row.try_get::<i64>("", "actor_membership_id").unwrap(),
+                    74001
+                );
+                let context: Value = row.try_get("", "audit_context").unwrap();
+                assert_eq!(context["request_id"], reply.request_id.as_deref().unwrap());
+                assert_eq!(
+                    context["authentication_method"],
+                    match bearer_kind {
+                        "api" => "api_session",
+                        "app" => "api_app_token",
+                        _ => "oauth",
+                    }
+                );
+                assert_eq!(
+                    context["session_reference"],
+                    match bearer_kind {
+                        "api" => "api_session:88031",
+                        "app" => "api_app_token:88032",
+                        _ => "oauth_grant:76001",
+                    }
+                );
+                if row.try_get::<String>("", "event_type").unwrap()
+                    == "household_access.person_grant_changed"
+                {
+                    let metadata: Value = row.try_get("", "metadata").unwrap();
+                    assert_eq!(metadata["outcome"], outcome);
+                    assert_eq!(metadata["target_membership_id"], 74002);
+                    assert_eq!(metadata["target_grant_id"], id.parse::<i64>().unwrap());
+                }
+            }
+        }
         assert_eq!(listed.status, 200, "{bearer_kind}: {}", listed.body);
         assert!(listed.body["data"].as_array().unwrap().iter().any(|row|row["id"]==id.parse::<i64>().unwrap() && row["revoked_at"].is_string()));
         assert_wire(&listed);
@@ -555,9 +593,23 @@ async fn person_grant_routes_reject_locked_and_expired_credentials() {
 async fn person_grant_routes_recheck_manager_and_target_scope() {
     let (fixture, boot) = boot_fixture().await;
     seed(&fixture).await;
+    fixture.admin.execute_unprepared("INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,created_at,updated_at) VALUES(78004,72004,74004,73005,'view','self',now(),now()); INSERT INTO accounts(id,email,password_hash,status,created_at,updated_at) VALUES(71004,'grant-scope-owner@example.test',crypt('password',gen_salt('bf',4)),2,now(),now()); INSERT INTO people(id,household_id,account_id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73008,72001,71004,'Grant scope owner','1990-01-01',0,true,now(),now()); INSERT INTO users(id,person_id,email_address,password_digest,active,created_at,updated_at) VALUES(77008,73008,'grant-scope-owner@example.test',crypt('password',gen_salt('bf',4)),true,now(),now()); INSERT INTO household_memberships(id,account_id,household_id,person_id,role,status,permissions_version,joined_at,created_at,updated_at) VALUES(74008,71004,72001,73008,'owner','active',1,now(),now(),now())").await.unwrap();
     let mobile = profile::mobile_token(&fixture).await;
     let server = server(&boot);
     let before = state(&fixture).await;
+    let foreign_state = "SELECT m.permissions_version,g.revoked_at IS NOT NULL AS revoked FROM person_access_grants g JOIN household_memberships m ON m.id=g.household_membership_id WHERE g.id=78004";
+    let foreign_before = fixture
+        .admin
+        .query_one_raw(Statement::from_string(DbBackend::Postgres, foreign_state))
+        .await
+        .unwrap()
+        .unwrap();
+    let foreign_before = (
+        foreign_before
+            .try_get::<i32>("", "permissions_version")
+            .unwrap(),
+        foreign_before.try_get::<bool>("", "revoked").unwrap(),
+    );
     let mut replies = Vec::new();
     for method in [Method::GET, Method::POST, Method::DELETE] {
         let target = (method == Method::DELETE).then_some("78001");
@@ -602,51 +654,134 @@ async fn person_grant_routes_recheck_manager_and_target_scope() {
         None,
     )
     .await;
-    let malformed = send(
+    let foreign_grant = send(
         &server,
         Method::DELETE,
         72001,
-        Some("bad"),
+        Some("78004"),
         Some("profile-session"),
         None,
         None,
     )
     .await;
+    let own_list = send(
+        &server,
+        Method::GET,
+        72001,
+        None,
+        Some("profile-session"),
+        None,
+        None,
+    )
+    .await;
+    for invalid in ["bad", "0", "-1", "01", "9223372036854775808"] {
+        replies.push((
+            "delete".to_owned(),
+            404,
+            send(
+                &server,
+                Method::DELETE,
+                72001,
+                Some(invalid),
+                Some("profile-session"),
+                None,
+                None,
+            )
+            .await,
+        ));
+    }
     fixture
         .admin
         .execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001")
         .await
         .unwrap();
     for method in [Method::GET, Method::POST, Method::DELETE] {
-        replies.push((
-            method.as_str().to_lowercase(),
-            403,
-            send(
-                &server,
-                method.clone(),
-                72001,
-                (method == Method::DELETE).then_some("78001"),
-                Some(mobile.as_str()),
-                (method == Method::POST).then_some(&body(73002)),
-                None,
-            )
-            .await,
-        ));
+        for bearer in ["profile-session", "profile-app", mobile.as_str()] {
+            replies.push((
+                method.as_str().to_lowercase(),
+                403,
+                send(
+                    &server,
+                    method.clone(),
+                    72001,
+                    (method == Method::DELETE).then_some("78001"),
+                    Some(bearer),
+                    (method == Method::POST).then_some(&body(73002)),
+                    None,
+                )
+                .await,
+            ));
+        }
+    }
+    fixture
+        .admin
+        .execute_unprepared("UPDATE household_memberships SET revoked_at=now() WHERE id=74001")
+        .await
+        .unwrap();
+    for method in [Method::GET, Method::POST, Method::DELETE] {
+        for (bearer, expected) in [
+            ("profile-session", 401),
+            ("profile-app", 401),
+            (mobile.as_str(), 403),
+        ] {
+            replies.push((
+                method.as_str().to_lowercase(),
+                expected,
+                send(
+                    &server,
+                    method.clone(),
+                    72001,
+                    (method == Method::DELETE).then_some("78001"),
+                    Some(bearer),
+                    (method == Method::POST).then_some(&body(73002)),
+                    None,
+                )
+                .await,
+            ));
+        }
     }
     let after = state(&fixture).await;
+    let foreign_after = fixture
+        .admin
+        .query_one_raw(Statement::from_string(DbBackend::Postgres, foreign_state))
+        .await
+        .unwrap()
+        .unwrap();
+    let foreign_after = (
+        foreign_after
+            .try_get::<i32>("", "permissions_version")
+            .unwrap(),
+        foreign_after.try_get::<bool>("", "revoked").unwrap(),
+    );
     drop(server);
     close(fixture, boot).await;
     assert_eq!(before, after);
+    assert_eq!(foreign_before, foreign_after);
+    assert!(!foreign_after.1);
     for (method, expected, reply) in replies {
         assert_eq!(reply.status, expected, "{method}: {}", reply.body);
+        assert!(reply.body.get("data").is_none());
+        if expected == 401 {
+            assert_eq!(reply.challenge.as_deref(), Some("Bearer"));
+        }
         assert_wire(&reply);
         assert_schema(&method, &reply);
     }
+    assert_eq!(own_list.status, 200, "{}", own_list.body);
+    assert!(
+        !own_list.body["data"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|row| row["id"] == 78004)
+    );
+    assert_wire(&own_list);
+    assert_schema("get", &own_list);
     assert_eq!(
-        (foreign_target.status, missing.status, malformed.status),
+        (foreign_target.status, missing.status, foreign_grant.status),
         (422, 404, 404)
     );
-    for reply in [&foreign_target, &missing, &malformed] {
+    for reply in [&foreign_target, &missing, &foreign_grant] {
         assert_wire(reply);
         assert_schema(
             if reply.status == 422 {
@@ -701,6 +836,7 @@ async fn person_grant_creation_validation_duplicate_and_relationship_owned_revok
         json!({"person_access_grant":{"household_membership_id":74002,"person_id":73002,"access_level":"owner","relationship_type":"parent"}}),
         json!({"person_access_grant":{"household_membership_id":74002,"person_id":73002,"access_level":"manage","relationship_type":"parent","expires_at":"not-rfc3339"}}),
         json!({"person_access_grant":{"household_membership_id":74002,"access_level":"manage","relationship_type":"parent"}}),
+        json!({"person_access_grant":{"household_membership_id":999999,"person_id":73002,"access_level":"manage","relationship_type":"parent"}}),
     ] {
         replies.push(
             send(
@@ -715,6 +851,10 @@ async fn person_grant_creation_validation_duplicate_and_relationship_owned_revok
             .await,
         );
     }
+    let rejected = fixture.admin.query_all_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+        "SELECT request_id,actor_account_id,actor_membership_id,metadata,audit_context FROM security_audit_events WHERE household_id=72001 AND event_type='household_access.person_grant_changed' AND metadata->>'outcome'='rejected' AND request_id IN ($1,$2,$3,$4)",
+        [replies[1].request_id.clone().unwrap().into(),replies[2].request_id.clone().unwrap().into(),replies[3].request_id.clone().unwrap().into(),replies[4].request_id.clone().unwrap().into()]
+    )).await.unwrap();
     let owned = send(
         &server,
         Method::DELETE,
@@ -765,6 +905,26 @@ async fn person_grant_creation_validation_duplicate_and_relationship_owned_revok
     assert_eq!(replies[0].status, 400);
     for reply in replies.iter().skip(1) {
         assert_eq!(reply.status, 422, "{}", reply.body);
+    }
+    assert_eq!(rejected.len(), 4);
+    for reply in replies.iter().skip(1) {
+        let row = rejected
+            .iter()
+            .find(|row| {
+                row.try_get::<String>("", "request_id").unwrap()
+                    == reply.request_id.as_deref().unwrap()
+            })
+            .unwrap();
+        assert_eq!(row.try_get::<i64>("", "actor_account_id").unwrap(), 71001);
+        assert_eq!(
+            row.try_get::<i64>("", "actor_membership_id").unwrap(),
+            74001
+        );
+        let metadata: Value = row.try_get("", "metadata").unwrap();
+        assert_eq!(metadata["outcome"], "rejected");
+        let context: Value = row.try_get("", "audit_context").unwrap();
+        assert_eq!(context["request_id"], reply.request_id.as_deref().unwrap());
+        assert_eq!(context["authentication_method"], "api_session");
     }
     assert_eq!(owned.status, 422, "{}", owned.body);
     assert_eq!(

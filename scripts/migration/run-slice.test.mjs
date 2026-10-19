@@ -264,6 +264,20 @@ test('API v1 contract task selects the native request binary and focused filter'
 });
 
 const creditedRequestTests = [
+  'api_v1::person_access_grants::person_grant_audit_failure_hides_reads_and_rolls_back_writes',
+  'api_v1::person_access_grants::person_grant_collection_scopes_three_credentials_and_validates_schema',
+  'api_v1::person_access_grants::person_grant_create_accepts_three_credentials_and_records_scoped_effects',
+  'api_v1::person_access_grants::person_grant_create_keyed_replay_and_conflict_commit_once',
+  'api_v1::person_access_grants::person_grant_creation_validation_duplicate_and_relationship_owned_revoke',
+  'api_v1::person_access_grants::person_grant_delete_keyed_replay_and_conflict_commit_once',
+  'api_v1::person_access_grants::person_grant_delete_revokes_three_credentials_with_empty_body',
+  'api_v1::person_access_grants::person_grant_keyed_writes_observe_real_household_lock_overlap',
+  'api_v1::person_access_grants::person_grant_keyed_writes_recheck_actor_withdrawn_while_waiting',
+  'api_v1::person_access_grants::person_grant_routes_recheck_manager_and_target_scope',
+  'api_v1::person_access_grants::person_grant_routes_reject_invalid_revoked_smart_and_scope_credentials',
+  'api_v1::person_access_grants::person_grant_routes_reject_locked_and_expired_credentials',
+  'api_v1::person_access_grants::person_grant_routes_share_fixed_general_limit_without_domain_effects',
+  'api_v1::person_access_grants::person_grant_target_credentials_follow_create_expiry_and_revoke',
   'api_v1::household_memberships::membership_audit_failure_hides_reads_and_rolls_back_writes',
   'api_v1::household_memberships::membership_collection_scopes_three_credentials_and_validates_schema',
   'api_v1::household_memberships::membership_delete_revokes_target_with_each_credential',
