@@ -111,6 +111,22 @@ impl BrowserPrincipal {
         let authenticated_at = row.try_get("", "created_at").map_err(unavailable)?;
         Ok((transaction, authenticated_at))
     }
+    pub(super) async fn authorization_household(
+        &self,
+        transaction: &DatabaseTransaction,
+    ) -> Result<Option<crate::models::ids::HouseholdId>, AuthenticationError> {
+        let row = transaction.query_one_raw(sql(
+            "SELECT active_household_id FROM public.identity_sessions WHERE account_id=$1 AND token=$2",
+            [self.account_id().into(), token_digest(&self.identity.registry_key).into()],
+        )).await.map_err(authorization_database_unavailable)?.ok_or(AuthenticationError::Unauthenticated)?;
+        row.try_get::<Option<i64>>("", "active_household_id")
+            .map_err(authorization_database_unavailable)?
+            .map(|id| {
+                crate::models::ids::HouseholdId::from_database(id)
+                    .ok_or(AuthenticationError::Unauthenticated)
+            })
+            .transpose()
+    }
     pub fn account_id(&self) -> i64 {
         self.identity.account_id
     }
@@ -183,6 +199,11 @@ impl BrowserPrincipal {
         }
         Ok(tenant)
     }
+}
+
+fn authorization_database_unavailable(error: sea_orm::DbErr) -> AuthenticationError {
+    let _ = crate::models::errors::OperationError::from(error);
+    AuthenticationError::Unavailable
 }
 
 fn unavailable<T>(_: T) -> AuthenticationError {

@@ -1,5 +1,6 @@
 use super::{ExchangeError, browser::BrowserPrincipal, registrar::RegisteredClient, store};
 use crate::models::entities::{oauth_application, oauth_grant};
+use crate::models::ids::{AccountId, HouseholdId, HouseholdMembershipId, PersonId};
 use async_trait::async_trait;
 use base64::{
     Engine,
@@ -155,42 +156,127 @@ pub async fn prepare<C: ConnectionTrait>(
     })
 }
 
+#[derive(Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct HouseholdConsentAuthority {
+    household_id: HouseholdId,
+    membership_id: HouseholdMembershipId,
+    person_id: PersonId,
+    permissions_version: i32,
+}
+
+pub enum ConsentContext {
+    Mobile,
+    Household {
+        authority: HouseholdConsentAuthority,
+        household_name: String,
+        person_name: String,
+    },
+}
+
+#[derive(Clone, Deserialize, Serialize, PartialEq, Eq)]
+enum ConsentAuthority {
+    Mobile,
+    Household(HouseholdConsentAuthority),
+}
+
+#[derive(Clone, Deserialize, Serialize, PartialEq, Eq)]
+struct ConsentBinding {
+    account_id: AccountId,
+    session_reference: String,
+    authority: ConsentAuthority,
+}
+
+impl ConsentBinding {
+    fn new(principal: &BrowserPrincipal, context: &ConsentContext) -> Self {
+        Self {
+            account_id: AccountId::from_database(principal.account_id()),
+            session_reference: principal.provenance().reference.clone(),
+            authority: match context {
+                ConsentContext::Mobile => ConsentAuthority::Mobile,
+                ConsentContext::Household { authority, .. } => {
+                    ConsentAuthority::Household(authority.clone())
+                }
+            },
+        }
+    }
+}
+
+#[derive(Clone, Deserialize, Serialize)]
+pub struct ConsentApproval {
+    pub id: uuid::Uuid,
+    binding: ConsentBinding,
+}
+
+fn database_unavailable(error: sea_orm::DbErr) -> ExchangeError {
+    let _ = crate::models::errors::OperationError::from(error);
+    ExchangeError::Unavailable
+}
+
 pub async fn context(
     db: &DatabaseConnection,
     principal: &BrowserPrincipal,
     mobile: bool,
-) -> Result<serde_json::Value, ExchangeError> {
+) -> Result<(ConsentContext, ConsentApproval), ExchangeError> {
     let (transaction, _) = principal
         .authorization_transaction(db)
         .await
         .map_err(|_| ExchangeError::Unavailable)?;
-    let context = owner_context(&transaction, principal.account_id(), mobile).await?;
-    transaction
-        .commit()
-        .await
-        .map_err(|_| ExchangeError::Unavailable)?;
-    Ok(context)
+    let context = owner_context(&transaction, principal, mobile).await?;
+    let approval = ConsentApproval {
+        id: uuid::Uuid::new_v4(),
+        binding: ConsentBinding::new(principal, &context),
+    };
+    transaction.commit().await.map_err(database_unavailable)?;
+    Ok((context, approval))
 }
 
 async fn owner_context(
     transaction: &DatabaseTransaction,
-    account_id: i64,
+    principal: &BrowserPrincipal,
     mobile: bool,
-) -> Result<serde_json::Value, ExchangeError> {
+) -> Result<ConsentContext, ExchangeError> {
     if mobile {
-        return Ok(serde_json::json!({"household_name":null,"person_name":null}));
+        return Ok(ConsentContext::Mobile);
     }
+    let household_id = principal
+        .authorization_household(transaction)
+        .await
+        .map_err(|error| match error {
+            super::resource::AuthenticationError::Unavailable => ExchangeError::Unavailable,
+            _ => ExchangeError::InvalidGrant,
+        })?
+        .ok_or(ExchangeError::InvalidGrant)?;
     let row = transaction.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-        "SELECT m.id, m.person_id, m.permissions_version, h.name AS household_name, p.name AS person_name FROM household_memberships m JOIN households h ON h.id=m.household_id LEFT JOIN people p ON p.id=m.person_id WHERE m.account_id=$1 AND m.status='active' AND m.revoked_at IS NULL AND h.status='active' AND h.lifecycle_state='active' ORDER BY m.id LIMIT 1 FOR SHARE OF m,h", [account_id.into()])).await.map_err(|_| ExchangeError::Unavailable)?.ok_or(ExchangeError::InvalidGrant)?;
-    Ok(
-        serde_json::json!({"membership_id":row.try_get::<i64>("","id").map_err(|_| ExchangeError::Unavailable)?,"person_id":row.try_get::<Option<i64>>("","person_id").map_err(|_| ExchangeError::Unavailable)?,"permissions_version":row.try_get::<i32>("","permissions_version").map_err(|_| ExchangeError::Unavailable)?,"household_name":row.try_get::<String>("","household_name").map_err(|_| ExchangeError::Unavailable)?,"person_name":row.try_get::<Option<String>>("","person_name").map_err(|_| ExchangeError::Unavailable)?}),
-    )
+        "SELECT m.id,m.person_id,m.permissions_version,h.name AS household_name,p.name AS person_name FROM household_memberships m JOIN households h ON h.id=m.household_id JOIN people p ON p.id=m.person_id AND p.household_id=m.household_id WHERE m.account_id=$1 AND m.household_id=$2 AND m.status='active' AND m.revoked_at IS NULL AND h.status='active' AND h.lifecycle_state='active' FOR SHARE OF m,h", [principal.account_id().into(),household_id.get().into()])).await.map_err(database_unavailable)?.ok_or(ExchangeError::InvalidGrant)?;
+    Ok(ConsentContext::Household {
+        authority: HouseholdConsentAuthority {
+            household_id,
+            membership_id: HouseholdMembershipId::from_database(
+                row.try_get("", "id").map_err(database_unavailable)?,
+            )
+            .ok_or(ExchangeError::InvalidGrant)?,
+            person_id: PersonId::from_database(
+                row.try_get("", "person_id").map_err(database_unavailable)?,
+            )
+            .ok_or(ExchangeError::InvalidGrant)?,
+            permissions_version: row
+                .try_get("", "permissions_version")
+                .map_err(database_unavailable)?,
+        },
+        household_name: row
+            .try_get("", "household_name")
+            .map_err(database_unavailable)?,
+        person_name: row
+            .try_get("", "person_name")
+            .map_err(database_unavailable)?,
+    })
 }
 
 pub async fn approve(
     db: &DatabaseConnection,
     principal: &BrowserPrincipal,
     input: &AuthorizationInput,
+    approval: &ConsentApproval,
     request_id: Option<&str>,
 ) -> Result<AuthorizationResponse, AuthorizationFailure> {
     let (transaction, authenticated_at) = principal
@@ -201,11 +287,17 @@ pub async fn approve(
     let callback = prepared.pending.pre_grant().redirect_uri.to_url();
     let context = owner_context(
         &transaction,
-        principal.account_id(),
+        principal,
         prepared.application.client_kind == "mobile",
     )
     .await
-    .map_err(|_| Error::Ignore)?;
+    .map_err(|error| match error {
+        ExchangeError::Unavailable => Error::PrimitiveError,
+        _ => Error::Ignore,
+    })?;
+    if ConsentBinding::new(principal, &context) != approval.binding {
+        return Err(Error::Ignore.into());
+    }
     let writer = Writer {
         transaction: &transaction,
         application: prepared.application.clone(),
@@ -257,7 +349,7 @@ struct Writer<'a> {
     input: &'a AuthorizationInput,
     account_id: i64,
     authenticated_at: chrono::NaiveDateTime,
-    context: serde_json::Value,
+    context: ConsentContext,
     request_id: Option<&'a str>,
 }
 
@@ -300,9 +392,17 @@ impl Authorizer for GrantWriter<'_> {
         let mut generator = RandomGenerator::new(32);
         let code =
             URL_SAFE_NO_PAD.encode(STANDARD.decode(generator.tag(0, &grant)?).map_err(|_| ())?);
+        let (membership_id, person_id, permissions_version) = match &writer.context {
+            ConsentContext::Mobile => (None, None, None),
+            ConsentContext::Household { authority, .. } => (
+                Some(authority.membership_id.get()),
+                Some(authority.person_id.get()),
+                Some(authority.permissions_version),
+            ),
+        };
         let inserted = writer.transaction.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
             "INSERT INTO oauth_grants (account_id,oauth_application_id,client_kind,household_membership_id,person_id,permissions_version,code,code_challenge,code_challenge_method,redirect_uri,expires_in,scopes,access_type,authenticated_at,last_used_at,created_at,updated_at,device_name) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,LEAST($11,timezone('UTC',clock_timestamp())+interval '5 minutes'),$12,'offline',$13,timezone('UTC',clock_timestamp()),timezone('UTC',clock_timestamp()),timezone('UTC',clock_timestamp()),$14) RETURNING id",
-            [writer.account_id.into(),writer.application.id.into(),writer.application.client_kind.clone().into(),writer.context["membership_id"].as_i64().into(),writer.context["person_id"].as_i64().into(),writer.context["permissions_version"].as_i64().into(),code.clone().into(),writer.input.value("code_challenge").map(str::to_owned).into(),writer.input.value("code_challenge_method").map(str::to_owned).into(),grant.redirect_uri.to_string().into(),grant.until.naive_utc().into(),grant.scope.to_string().into(),writer.authenticated_at.into(),writer.application.name.clone().into()])).await.map_err(|_| ())?.ok_or(())?;
+            [writer.account_id.into(),writer.application.id.into(),writer.application.client_kind.clone().into(),membership_id.into(),person_id.into(),permissions_version.into(),code.clone().into(),writer.input.value("code_challenge").map(str::to_owned).into(),writer.input.value("code_challenge_method").map(str::to_owned).into(),grant.redirect_uri.to_string().into(),grant.until.naive_utc().into(),grant.scope.to_string().into(),writer.authenticated_at.into(),writer.application.name.clone().into()])).await.map_err(|error| { let _ = crate::models::errors::OperationError::from(error); })?.ok_or(())?;
         let id: i64 = inserted.try_get("", "id").map_err(|_| ())?;
         let stored = oauth_grant::Entity::find_by_id(id)
             .one(writer.transaction)

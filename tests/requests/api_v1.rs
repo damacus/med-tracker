@@ -20,6 +20,8 @@ mod household_settings;
 mod household_settings_evidence;
 #[path = "me_ui.rs"]
 mod me_ui;
+#[path = "oauth_consent.rs"]
+mod oauth_consent;
 #[path = "people.rs"]
 mod people;
 #[path = "people_evidence.rs"]
