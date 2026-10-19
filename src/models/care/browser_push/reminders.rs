@@ -105,7 +105,7 @@ async fn plans(
     let period_times = due_period_instants(zone, earliest_due, now, times);
     let mut due_times = period_times.clone();
     for occurrence in &occurrences {
-        if occurrence.person_id == person.id
+        if subjects.contains(&occurrence.person_id)
             && occurrence.expected
             && occurrence.outcome == "open"
             && let Some(intended) = occurrence.scheduled_at.map(|value| value.and_utc())
@@ -122,62 +122,75 @@ async fn plans(
         }
         let intended_local = intended_at.with_timezone(&zone);
         let period_due = period_times.contains(&intended_at);
-        let due = occurrences
-            .iter()
-            .filter(|occurrence| {
-                occurrence.person_id == person.id
-                    && occurrence.expected
-                    && occurrence.outcome == "open"
-                    && ((period_due
-                        && occurrence.window_end >= intended_local.date_naive()
-                        && occurrence.window_start <= intended_local.date_naive())
-                        || occurrence
-                            .scheduled_at
-                            .is_some_and(|time| time.and_utc() == intended_at))
-            })
-            .collect::<Vec<_>>();
-        if due.is_empty() {
-            continue;
-        }
-        let body = if preference.private_text_enabled {
-            "A dose is due.".into()
-        } else {
-            let ids = due
+        for &subject_id in &subjects {
+            let due = occurrences
                 .iter()
-                .map(|occurrence| occurrence.medication_id)
-                .collect::<Vec<_>>();
-            let mut names = medication::Entity::find()
-                .in_tenant(tenant.scope().household_id)
-                .filter(medication::Column::Id.is_in(ids))
-                .all(tenant.transaction())
-                .await?
-                .into_iter()
-                .filter_map(|medicine| {
-                    medicine
-                        .friendly_name
-                        .filter(|name| !name.is_empty())
-                        .or(medicine.name)
+                .filter(|occurrence| {
+                    occurrence.person_id == subject_id
+                        && occurrence.expected
+                        && occurrence.outcome == "open"
+                        && ((period_due
+                            && occurrence.window_end >= intended_local.date_naive()
+                            && occurrence.window_start <= intended_local.date_naive())
+                            || occurrence
+                                .scheduled_at
+                                .is_some_and(|time| time.and_utc() == intended_at))
                 })
                 .collect::<Vec<_>>();
-            names.sort();
-            names.dedup();
-            format!(
-                "{} medications: {}",
-                intended_local.format("%H:%M"),
-                names.join(", ")
-            )
-        };
-        let stamp = intended_at.format("%Y-%m-%dT%H:%M:%SZ").to_string();
-        let legacy_key = format!("dose-due:{}:{stamp}", person.id);
-        intents.push(Intent {
-        kind: "dose_due",
-        person_id: person.id,
-        key: format!("browser:{}:{legacy_key}", owner.id),
-        legacy_key,
-        payload: json!({"title":"Medication reminder","body":body,"path":format!("/households/{}/dashboard", household.slug),"account_id":owner.id.to_string()}),
-        intended_at,
-        expires_at: intended_at + chrono::Duration::hours(1),
-    });
+            if due.is_empty() {
+                continue;
+            }
+            let body = if preference.private_text_enabled {
+                "A dose is due.".into()
+            } else {
+                let ids = due
+                    .iter()
+                    .map(|occurrence| occurrence.medication_id)
+                    .collect::<Vec<_>>();
+                let mut names = medication::Entity::find()
+                    .in_tenant(tenant.scope().household_id)
+                    .filter(medication::Column::Id.is_in(ids))
+                    .all(tenant.transaction())
+                    .await?
+                    .into_iter()
+                    .filter_map(|medicine| {
+                        medicine
+                            .friendly_name
+                            .filter(|name| !name.is_empty())
+                            .or(medicine.name)
+                    })
+                    .collect::<Vec<_>>();
+                names.sort();
+                names.dedup();
+                let due_at = format!(
+                    "{} medications: {}",
+                    intended_local.format("%H:%M"),
+                    names.join(", ")
+                );
+                if subject_id == person.id {
+                    due_at
+                } else {
+                    let Some(subject) = managed
+                        .iter()
+                        .find(|managed_person| managed_person.id == subject_id)
+                    else {
+                        continue;
+                    };
+                    format!("{}: {due_at}", subject.name)
+                }
+            };
+            let stamp = intended_at.format("%Y-%m-%dT%H:%M:%SZ").to_string();
+            let legacy_key = format!("dose-due:{}:{stamp}", subject_id);
+            intents.push(Intent {
+                kind: "dose_due",
+                person_id: subject_id,
+                key: format!("browser:{}:{legacy_key}", owner.id),
+                legacy_key,
+                payload: json!({"title":"Medication reminder","body":body,"path":format!("/households/{}/dashboard", household.slug),"account_id":owner.id.to_string()}),
+                intended_at,
+                expires_at: intended_at + chrono::Duration::hours(1),
+            });
+        }
     }
     if preference.missed_dose_enabled {
         for occurrence in occurrences
