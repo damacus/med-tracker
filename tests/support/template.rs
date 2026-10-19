@@ -2,6 +2,22 @@ use sea_orm::sqlx::{self, AssertSqlSafe, Connection, PgConnection, Row};
 use sea_orm::{Database, DatabaseConnection};
 use std::future::Future;
 
+/// The empty `medtracker_reference` database is the base template for every
+/// prepared template. Create it lazily so no external psql step is required.
+async fn ensure_reference(control: &mut PgConnection) {
+    let exists = sqlx::query("SELECT 1 AS present FROM pg_database WHERE datname='medtracker_reference'")
+        .fetch_optional(&mut *control)
+        .await
+        .unwrap()
+        .is_some();
+    if !exists {
+        sqlx::query("CREATE DATABASE medtracker_reference")
+            .execute(&mut *control)
+            .await
+            .unwrap();
+    }
+}
+
 pub async fn prepare<F, Fut>(uri: &str, name: &str, seed: F)
 where
     F: FnOnce(DatabaseConnection) -> Fut,
