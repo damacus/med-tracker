@@ -49,6 +49,22 @@ pub async fn read(tenant: &TenantTransaction) -> Result<Vec<Person>, OperationEr
             });
         }
     }
+    let declared = crate::models::care::guardian_declarations::manageable_subjects(tenant).await?;
+    for subject in person::Entity::find()
+        .filter(person::Column::Id.is_in(declared))
+        .all(tenant.transaction())
+        .await?
+    {
+        if people.iter().all(|person| person.id != subject.id) {
+            people.push(Person {
+                id: subject.id,
+                name: subject.name,
+                adult: subject.person_type == 0,
+                enabled: false,
+            });
+        }
+    }
+    people.sort_by(|left, right| left.name.cmp(&right.name).then(left.id.cmp(&right.id)));
     Ok(people)
 }
 
