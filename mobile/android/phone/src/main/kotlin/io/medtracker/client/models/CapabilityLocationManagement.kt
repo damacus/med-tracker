@@ -24,8 +24,6 @@ import com.squareup.moshi.JsonClass
  *
  * @param actions 
  * @param versionRequired 
- * @param personMemberships 
- * @param membershipsOnlineOnly 
  */
 
 
@@ -35,13 +33,7 @@ data class CapabilityLocationManagement (
     val actions: kotlin.collections.List<CapabilityLocationManagement.Actions>,
 
     @Json(name = "version_required")
-    val versionRequired: kotlin.Boolean,
-
-    @Json(name = "person_memberships")
-    val personMemberships: kotlin.collections.List<CapabilityLocationManagement.PersonMemberships>,
-
-    @Json(name = "memberships_online_only")
-    val membershipsOnlineOnly: kotlin.Boolean
+    val versionRequired: kotlin.Boolean
 
 ) {
 
@@ -54,17 +46,6 @@ data class CapabilityLocationManagement (
     enum class Actions(val value: kotlin.String) {
         @Json(name = "create") create("create"),
         @Json(name = "update") update("update"),
-        @Json(name = "destroy") destroy("destroy"),
-        @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
-    }
-    /**
-     * 
-     *
-     * Values: create,destroy,unknown_default_open_api
-     */
-    @JsonClass(generateAdapter = false)
-    enum class PersonMemberships(val value: kotlin.String) {
-        @Json(name = "create") create("create"),
         @Json(name = "destroy") destroy("destroy"),
         @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
     }

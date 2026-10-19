@@ -283,9 +283,9 @@ fun MedTrackerApp(
     val session by mainViewModel.sessionState.collectAsStateWithLifecycle()
     val mainUiState by mainViewModel.uiState.collectAsStateWithLifecycle()
     val collectedDashboardUiState by dashboardViewModel.uiState.collectAsStateWithLifecycle()
-    val medUiState by medicationViewModel.uiState.collectAsStateWithLifecycle()
+    val collectedMedUiState by medicationViewModel.uiState.collectAsStateWithLifecycle()
     val schedUiState by scheduleViewModel.uiState.collectAsStateWithLifecycle()
-    val hhUiState by householdViewModel.uiState.collectAsStateWithLifecycle()
+    val collectedHhUiState by householdViewModel.uiState.collectAsStateWithLifecycle()
     val healthUiState by healthEventsViewModel.uiState.collectAsStateWithLifecycle()
     val lookupUiState by medicationLookupViewModel.uiState.collectAsStateWithLifecycle()
     val adminUiState by administrationViewModel.uiState.collectAsStateWithLifecycle()
@@ -293,13 +293,15 @@ fun MedTrackerApp(
     val isOnline by networkMonitor.isOnline.collectAsStateWithLifecycle(initialValue = true)
     val pendingMutations by offlineQueueRepository.pendingMutations.collectAsStateWithLifecycle()
 
+    val medUiState = collectedMedUiState.forSession(session)
+    val hhUiState = collectedHhUiState.forSession(session)
     val dashboardUiState = collectedDashboardUiState.forSession(session)
     val sessionRevision = session.revision
     var currentDestination by remember(sessionRevision) { mutableStateOf(AppDestination.Dashboard) }
 
-    var showAddMedicationForm by remember { mutableStateOf(false) }
-    var selectedMedication by remember { mutableStateOf<MedicationDto?>(null) }
-    var showStockRemovalDialog by remember { mutableStateOf(false) }
+    var showAddMedicationForm by remember(sessionRevision) { mutableStateOf(false) }
+    var selectedMedication by remember(sessionRevision) { mutableStateOf<MedicationDto?>(null) }
+    var showStockRemovalDialog by remember(sessionRevision) { mutableStateOf(false) }
     var showAddScheduleForm by remember { mutableStateOf(false) }
     var showInviteDialog by remember { mutableStateOf(false) }
     var showHealthEventDialog by remember { mutableStateOf(false) }
@@ -460,17 +462,19 @@ fun MedTrackerApp(
                                     )
                                 }
                                 AppDestination.Medications -> {
+                                    val currentMed = selectedMedication?.id?.let { selectedId -> medUiState.medications.find { it.id == selectedId } }
                                     if (showAddMedicationForm) {
                                         MedicationFormScreen(
+                                            locations = hhUiState.locations,
+                                            sessionRevision = sessionRevision,
                                             onBackClick = { showAddMedicationForm = false },
                                             onSubmit = { payload, locId ->
-                                                medicationViewModel.createMedication(payload, locId) {
+                                                medicationViewModel.createMedication(payload, locId, sessionRevision) {
                                                     showAddMedicationForm = false
                                                 }
                                             }
                                         )
-                                    } else if (selectedMedication != null) {
-                                        val currentMed = medUiState.medications.find { it.id == selectedMedication?.id } ?: selectedMedication!!
+                                    } else if (currentMed != null) {
                                         if (showStockRemovalDialog) {
                                             StockRemovalDialog(
                                                 medicationName = currentMed.name,

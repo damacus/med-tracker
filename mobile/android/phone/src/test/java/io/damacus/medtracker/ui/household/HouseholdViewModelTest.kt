@@ -12,6 +12,7 @@ import io.damacus.medtracker.data.model.LocationDto
 import io.damacus.medtracker.data.model.RecordDosePayload
 import io.damacus.medtracker.data.model.RecordStockRemovalPayload
 import io.damacus.medtracker.data.model.SessionPayload
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -81,6 +82,42 @@ class HouseholdViewModelTest {
         assert(calledBack)
     }
 
+    @Test
+    fun householdSwitchClearsPreviousLabelsBeforeNewLoad() = runTest(testDispatcher) {
+        testDispatcher.scheduler.advanceUntilIdle()
+        val pending = CompletableDeferred<ApiResult<List<LocationDto>>>()
+        mockApi.pendingLocations = pending
+        sessionManager.saveSession(SessionPayload(accessToken = "other-token", refreshToken = "other-refresh", household = HouseholdDto(43L, "Other household")))
+        val immediate = viewModel.uiState.value.locations
+        pending.complete(ApiResult.Success(emptyList()))
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals(emptyList<LocationDto>(), immediate)
+    }
+
+    @Test
+    fun latePreviousHouseholdLabelsCannotBecomeCurrentChoices() = runTest(testDispatcher) {
+        testDispatcher.scheduler.advanceUntilIdle()
+        val pending = CompletableDeferred<ApiResult<List<LocationDto>>>()
+        mockApi.pendingLocations = pending
+        viewModel.loadData()
+        testDispatcher.scheduler.runCurrent()
+        mockApi.pendingLocations = null
+        sessionManager.saveSession(SessionPayload(accessToken = "other-token", refreshToken = "other-refresh", household = HouseholdDto(43L, "Other household")))
+        testDispatcher.scheduler.runCurrent()
+        pending.complete(ApiResult.Success(listOf(LocationDto(id = 99L, name = "Previous household private label"))))
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals(listOf("Other household cabinet"), viewModel.uiState.value.locations.map { it.name })
+    }
+
+    @Test
+    fun authenticatedAccountWithoutHouseholdClearsPreviousHouseholdState() = runTest(testDispatcher) {
+        testDispatcher.scheduler.advanceUntilIdle()
+        sessionManager.saveSession(SessionPayload(accessToken = "account-token", refreshToken = "account-refresh", household = null))
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals(emptyList<LocationDto>(), viewModel.uiState.value.locations)
+        assertEquals(sessionManager.sessionState.value.revision, viewModel.uiState.value.sessionRevision)
+    }
+
     private class FakeCredentialStore : CredentialStore {
         private var stored: String? = null
         override fun read(): String? = stored
@@ -89,11 +126,13 @@ class HouseholdViewModelTest {
     }
 
     private class FakeApi : MedTrackerApi {
+        var pendingLocations: CompletableDeferred<ApiResult<List<LocationDto>>>? = null
         val locationsList = mutableListOf(LocationDto(id = 1L, name = "Cabinet"))
         val invitationsList = mutableListOf(HouseholdInvitationDto(id = 1L, email = "user@example.com", role = "member"))
 
         override suspend fun getLocations(baseUrl: String, accessToken: String, householdId: Long): ApiResult<List<LocationDto>> {
-            return ApiResult.Success(locationsList)
+            pendingLocations?.let { return it.await() }
+            return ApiResult.Success(if (householdId == 42L) locationsList else listOf(LocationDto(id = 43L, name = "Other household cabinet")))
         }
 
         override suspend fun getInvitations(baseUrl: String, accessToken: String, householdId: Long): ApiResult<List<HouseholdInvitationDto>> {
@@ -112,7 +151,7 @@ class HouseholdViewModelTest {
         override suspend fun getSchedules(baseUrl: String, accessToken: String, householdId: Long) = error("Not used")
         override suspend fun getMedicationTakes(baseUrl: String, accessToken: String, householdId: Long) = error("Not used")
         override suspend fun recordDose(baseUrl: String, accessToken: String, householdId: Long, request: RecordDosePayload) = error("Not used")
-        override suspend fun createMedication(baseUrl: String, accessToken: String, householdId: Long, locationId: Int, request: CreateMedicationPayload) = error("Not used")
+        override suspend fun createMedication(baseUrl: String, accessToken: String, householdId: Long, locationId: Int?, request: CreateMedicationPayload) = error("Not used")
         override suspend fun recordStockRemoval(baseUrl: String, accessToken: String, householdId: Long, request: RecordStockRemovalPayload) = error("Not used")
         override suspend fun createSchedule(baseUrl: String, accessToken: String, householdId: Long, request: CreateSchedulePayload) = error("Not used")
         override suspend fun pauseSchedule(baseUrl: String, accessToken: String, householdId: Long, scheduleId: Long) = error("Not used")

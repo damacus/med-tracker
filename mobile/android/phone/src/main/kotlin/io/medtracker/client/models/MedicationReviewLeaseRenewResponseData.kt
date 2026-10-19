@@ -15,7 +15,6 @@
 
 package io.medtracker.client.models
 
-import io.medtracker.client.models.LocationMembership
 
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
@@ -23,14 +22,14 @@ import com.squareup.moshi.JsonClass
 /**
  * 
  *
- * @param `data` 
+ * @param expiresAt 
  */
 
 
-data class LocationMembershipResponse (
+data class MedicationReviewLeaseRenewResponseData (
 
-    @Json(name = "data")
-    val `data`: LocationMembership
+    @Json(name = "expires_at")
+    val expiresAt: java.time.OffsetDateTime
 
 ) {
 

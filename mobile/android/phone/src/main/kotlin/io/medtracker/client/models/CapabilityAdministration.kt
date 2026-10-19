@@ -27,7 +27,6 @@ import com.squareup.moshi.JsonClass
  * @param appTokens Whether API app tokens are supported.
  * @param auditLogs Whether audit logs are supported.
  * @param invitations Whether invitations are supported.
- * @param personAccessGrants Whether person access grants are supported.
  */
 
 
@@ -51,11 +50,7 @@ data class CapabilityAdministration (
 
     /* Whether invitations are supported. */
     @Json(name = "invitations")
-    val invitations: kotlin.Boolean,
-
-    /* Whether person access grants are supported. */
-    @Json(name = "person_access_grants")
-    val personAccessGrants: kotlin.Boolean
+    val invitations: kotlin.Boolean
 
 ) {
 

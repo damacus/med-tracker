@@ -31,6 +31,7 @@ import com.squareup.moshi.JsonClass
  * @param status 
  * @param permissionsVersion 
  * @param joinedAt 
+ * @param userId 
  */
 
 
@@ -61,7 +62,10 @@ data class HouseholdMembership (
     val permissionsVersion: kotlin.Int,
 
     @Json(name = "joined_at")
-    val joinedAt: java.time.OffsetDateTime?
+    val joinedAt: java.time.OffsetDateTime?,
+
+    @Json(name = "user_id")
+    val userId: kotlin.Int? = null
 
 ) {
 

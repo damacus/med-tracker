@@ -20,7 +20,7 @@ import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
 
 /**
- * 
+ * The end date must be on or after the start date.
  *
  * @param startDate 
  * @param endDate 

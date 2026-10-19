@@ -22,8 +22,6 @@ import okhttp3.HttpUrl
 import io.medtracker.client.models.ErrorEnvelope
 import io.medtracker.client.models.LocationCollectionResponse
 import io.medtracker.client.models.LocationCreateRequest
-import io.medtracker.client.models.LocationMembershipRequest
-import io.medtracker.client.models.LocationMembershipResponse
 import io.medtracker.client.models.LocationResponse
 import io.medtracker.client.models.LocationUpdateRequest
 import io.medtracker.client.models.RateLimitErrorEnvelope
@@ -55,7 +53,7 @@ open class LocationsApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * POST /households/{household_id}/locations
      * Create household storage.
-     * 
+     * Only an active household owner or administrator can create a location.
      * @param householdId 
      * @param locationCreateRequest 
      * @return LocationResponse
@@ -88,7 +86,7 @@ open class LocationsApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * POST /households/{household_id}/locations
      * Create household storage.
-     * 
+     * Only an active household owner or administrator can create a location.
      * @param householdId 
      * @param locationCreateRequest 
      * @return ApiResponse<LocationResponse?>
@@ -130,89 +128,9 @@ open class LocationsApi(basePath: kotlin.String = defaultBasePath, client: Call.
     }
 
     /**
-     * POST /households/{household_id}/locations/{location_id}/location_memberships
-     * Assign a managed person to a location or replay the existing assignment.
-     * 
-     * @param householdId 
-     * @param locationId 
-     * @param locationMembershipRequest 
-     * @return LocationMembershipResponse
-     * @throws IllegalStateException If the request is not correctly configured
-     * @throws IOException Rethrows the OkHttp execute method exception
-     * @throws UnsupportedOperationException If the API returns an informational or redirection response
-     * @throws ClientException If the API returns a client error response
-     * @throws ServerException If the API returns a server error response
-     */
-    @Suppress("UNCHECKED_CAST")
-    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun createLocationMembership(householdId: kotlin.Int, locationId: kotlin.String, locationMembershipRequest: LocationMembershipRequest) : LocationMembershipResponse {
-        val localVarResponse = createLocationMembershipWithHttpInfo(householdId = householdId, locationId = locationId, locationMembershipRequest = locationMembershipRequest)
-
-        return when (localVarResponse.responseType) {
-            ResponseType.Success -> (localVarResponse as Success<*>).data as LocationMembershipResponse
-            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
-            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
-            ResponseType.ClientError -> {
-                val localVarError = localVarResponse as ClientError<*>
-                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
-            }
-            ResponseType.ServerError -> {
-                val localVarError = localVarResponse as ServerError<*>
-                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
-            }
-        }
-    }
-
-    /**
-     * POST /households/{household_id}/locations/{location_id}/location_memberships
-     * Assign a managed person to a location or replay the existing assignment.
-     * 
-     * @param householdId 
-     * @param locationId 
-     * @param locationMembershipRequest 
-     * @return ApiResponse<LocationMembershipResponse?>
-     * @throws IllegalStateException If the request is not correctly configured
-     * @throws IOException Rethrows the OkHttp execute method exception
-     */
-    @Suppress("UNCHECKED_CAST")
-    @Throws(IllegalStateException::class, IOException::class)
-    fun createLocationMembershipWithHttpInfo(householdId: kotlin.Int, locationId: kotlin.String, locationMembershipRequest: LocationMembershipRequest) : ApiResponse<LocationMembershipResponse?> {
-        val localVariableConfig = createLocationMembershipRequestConfig(householdId = householdId, locationId = locationId, locationMembershipRequest = locationMembershipRequest)
-
-        return request<LocationMembershipRequest, LocationMembershipResponse>(
-            localVariableConfig
-        )
-    }
-
-    /**
-     * To obtain the request config of the operation createLocationMembership
-     *
-     * @param householdId 
-     * @param locationId 
-     * @param locationMembershipRequest 
-     * @return RequestConfig
-     */
-    fun createLocationMembershipRequestConfig(householdId: kotlin.Int, locationId: kotlin.String, locationMembershipRequest: LocationMembershipRequest) : RequestConfig<LocationMembershipRequest> {
-        val localVariableBody = locationMembershipRequest
-        val localVariableQuery: MultiValueMap = mutableMapOf()
-        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
-        localVariableHeaders["Content-Type"] = "application/json"
-        localVariableHeaders["Accept"] = "application/json"
-
-        return RequestConfig(
-            method = RequestMethod.POST,
-            path = "/households/{household_id}/locations/{location_id}/location_memberships".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"location_id"+"}", encodeURIComponent(locationId.toString())),
-            query = localVariableQuery,
-            headers = localVariableHeaders,
-            requiresAuthentication = true,
-            body = localVariableBody
-        )
-    }
-
-    /**
      * DELETE /households/{household_id}/locations/{id}
      * Delete storage only when retained history permits it.
-     * 
+     * Only an active household owner or administrator can delete an in-scope location, using the current If-Match ETag. Direct or indirect medication takes, saved dose outcomes, or medication pause periods retained through the location&#39;s medications, schedules or person assignments prevent deletion with 422. Otherwise the location, its memberships, medications, dosage options, schedules and person assignments are removed atomically. A failed deletion leaves every related row unchanged. 
      * @param householdId 
      * @param id 
      * @param ifMatch 
@@ -245,7 +163,7 @@ open class LocationsApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * DELETE /households/{household_id}/locations/{id}
      * Delete storage only when retained history permits it.
-     * 
+     * Only an active household owner or administrator can delete an in-scope location, using the current If-Match ETag. Direct or indirect medication takes, saved dose outcomes, or medication pause periods retained through the location&#39;s medications, schedules or person assignments prevent deletion with 422. Otherwise the location, its memberships, medications, dosage options, schedules and person assignments are removed atomically. A failed deletion leaves every related row unchanged. 
      * @param householdId 
      * @param id 
      * @param ifMatch 
@@ -288,86 +206,9 @@ open class LocationsApi(basePath: kotlin.String = defaultBasePath, client: Call.
     }
 
     /**
-     * DELETE /households/{household_id}/locations/{location_id}/location_memberships/{id}
-     * Remove a managed person from the selected location.
-     * 
-     * @param householdId 
-     * @param id 
-     * @param locationId 
-     * @return void
-     * @throws IllegalStateException If the request is not correctly configured
-     * @throws IOException Rethrows the OkHttp execute method exception
-     * @throws UnsupportedOperationException If the API returns an informational or redirection response
-     * @throws ClientException If the API returns a client error response
-     * @throws ServerException If the API returns a server error response
-     */
-    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun deleteLocationMembership(householdId: kotlin.Int, id: kotlin.String, locationId: kotlin.String) : Unit {
-        val localVarResponse = deleteLocationMembershipWithHttpInfo(householdId = householdId, id = id, locationId = locationId)
-
-        return when (localVarResponse.responseType) {
-            ResponseType.Success -> Unit
-            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
-            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
-            ResponseType.ClientError -> {
-                val localVarError = localVarResponse as ClientError<*>
-                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
-            }
-            ResponseType.ServerError -> {
-                val localVarError = localVarResponse as ServerError<*>
-                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
-            }
-        }
-    }
-
-    /**
-     * DELETE /households/{household_id}/locations/{location_id}/location_memberships/{id}
-     * Remove a managed person from the selected location.
-     * 
-     * @param householdId 
-     * @param id 
-     * @param locationId 
-     * @return ApiResponse<Unit?>
-     * @throws IllegalStateException If the request is not correctly configured
-     * @throws IOException Rethrows the OkHttp execute method exception
-     */
-    @Throws(IllegalStateException::class, IOException::class)
-    fun deleteLocationMembershipWithHttpInfo(householdId: kotlin.Int, id: kotlin.String, locationId: kotlin.String) : ApiResponse<Unit?> {
-        val localVariableConfig = deleteLocationMembershipRequestConfig(householdId = householdId, id = id, locationId = locationId)
-
-        return request<Unit, Unit>(
-            localVariableConfig
-        )
-    }
-
-    /**
-     * To obtain the request config of the operation deleteLocationMembership
-     *
-     * @param householdId 
-     * @param id 
-     * @param locationId 
-     * @return RequestConfig
-     */
-    fun deleteLocationMembershipRequestConfig(householdId: kotlin.Int, id: kotlin.String, locationId: kotlin.String) : RequestConfig<Unit> {
-        val localVariableBody = null
-        val localVariableQuery: MultiValueMap = mutableMapOf()
-        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
-        localVariableHeaders["Accept"] = "application/json"
-
-        return RequestConfig(
-            method = RequestMethod.DELETE,
-            path = "/households/{household_id}/locations/{location_id}/location_memberships/{id}".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())).replace("{"+"location_id"+"}", encodeURIComponent(locationId.toString())),
-            query = localVariableQuery,
-            headers = localVariableHeaders,
-            requiresAuthentication = true,
-            body = localVariableBody
-        )
-    }
-
-    /**
      * GET /households/{household_id}/locations/{id}
      * Read a location.
-     * 
+     * Active members can read a location in their selected household.
      * @param householdId 
      * @param id 
      * @return LocationResponse
@@ -400,7 +241,7 @@ open class LocationsApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * GET /households/{household_id}/locations/{id}
      * Read a location.
-     * 
+     * Active members can read a location in their selected household.
      * @param householdId 
      * @param id 
      * @return ApiResponse<LocationResponse?>
@@ -443,7 +284,7 @@ open class LocationsApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * GET /households/{household_id}/locations
      * List visible locations.
-     * 
+     * Active members can list every location in their selected household.
      * @param householdId 
      * @param page  (optional, default to 1)
      * @param perPage  (optional, default to 20)
@@ -478,7 +319,7 @@ open class LocationsApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * GET /households/{household_id}/locations
      * List visible locations.
-     * 
+     * Active members can list every location in their selected household.
      * @param householdId 
      * @param page  (optional, default to 1)
      * @param perPage  (optional, default to 20)
@@ -536,7 +377,7 @@ open class LocationsApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * PATCH /households/{household_id}/locations/{id}
      * Update household storage with its current version.
-     * 
+     * Only an active household owner or administrator can update an in-scope location. If-Match must equal the current location ETag.
      * @param householdId 
      * @param id 
      * @param ifMatch 
@@ -571,7 +412,7 @@ open class LocationsApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * PATCH /households/{household_id}/locations/{id}
      * Update household storage with its current version.
-     * 
+     * Only an active household owner or administrator can update an in-scope location. If-Match must equal the current location ETag.
      * @param householdId 
      * @param id 
      * @param ifMatch 
@@ -620,7 +461,7 @@ open class LocationsApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * PUT /households/{household_id}/locations/{id}
      * Update household storage with its current version.
-     * 
+     * Only an active household owner or administrator can update an in-scope location. If-Match must equal the current location ETag.
      * @param householdId 
      * @param id 
      * @param ifMatch 
@@ -655,7 +496,7 @@ open class LocationsApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * PUT /households/{household_id}/locations/{id}
      * Update household storage with its current version.
-     * 
+     * Only an active household owner or administrator can update an in-scope location. If-Match must equal the current location ETag.
      * @param householdId 
      * @param id 
      * @param ifMatch 

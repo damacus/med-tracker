@@ -15,7 +15,6 @@
 
 package io.medtracker.client.models
 
-import io.medtracker.client.models.PersonAccessGrant
 
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
@@ -23,14 +22,22 @@ import com.squareup.moshi.JsonClass
 /**
  * 
  *
- * @param `data` 
+ * @param needsReview 
+ * @param reviewed 
+ * @param all 
  */
 
 
-data class PersonAccessGrantCollectionResponse (
+data class MedicationReviewPromptCollectionResponseMetaReviewCounts (
 
-    @Json(name = "data")
-    val `data`: kotlin.collections.List<PersonAccessGrant>
+    @Json(name = "needs_review")
+    val needsReview: kotlin.Int,
+
+    @Json(name = "reviewed")
+    val reviewed: kotlin.Int,
+
+    @Json(name = "all")
+    val all: kotlin.Int
 
 ) {
 

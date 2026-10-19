@@ -24,6 +24,21 @@ class MedTrackerApiContractTest {
 
     @After fun tearDown() = server.shutdown()
 
+    @Test fun generatedMedicationCreatePreservesOptionalLabelAndHouseholdPath() = runBlocking {
+        for (label in listOf(null, 7)) {
+            server.enqueue(MockResponse().setResponseCode(401).setBody("{\"error\":{}}"))
+            api.createMedication(server.url("/").toString(), "account-token", 42, label,
+                io.damacus.medtracker.data.model.CreateMedicationPayload(name = "Synthetic medicine"))
+            val request = server.takeRequest()
+            assertEquals("/api/v1/households/42/medications", request.path)
+            assertEquals("Bearer account-token", request.getHeader("Authorization"))
+            val json = com.squareup.moshi.Moshi.Builder().build().adapter(Map::class.java).fromJson(request.body.readUtf8())
+            val attributes = json?.get("medication") as? Map<*, *>
+            assertTrue(attributes != null)
+            assertEquals(label?.toDouble(), attributes?.get("location_id"))
+        }
+    }
+
     @Test fun generatedAdapterListsHouseholdsWithTheAccountToken() = runBlocking {
         server.enqueue(MockResponse().setResponseCode(200).setHeader("Content-Type", "application/json").setBody("""
             {"account_id":7,"data":[{"id":42,"slug":"summer-house","name":"Summer house","role":"member","membership_id":7}]}

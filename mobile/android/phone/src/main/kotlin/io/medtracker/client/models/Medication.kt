@@ -40,6 +40,9 @@ import com.squareup.moshi.JsonClass
  * @param outOfStock 
  * @param daysUntilLowStock 
  * @param daysUntilOutOfStock 
+ * @param friendlyName 
+ * @param barcode 
+ * @param warnings 
  */
 
 
@@ -79,7 +82,7 @@ data class Medication (
     val reorderStatus: Medication.ReorderStatus?,
 
     @Json(name = "location_id")
-    val locationId: kotlin.Int,
+    val locationId: kotlin.Int?,
 
     @Json(name = "location_portable_id")
     val locationPortableId: java.util.UUID?,
@@ -97,7 +100,16 @@ data class Medication (
     val daysUntilLowStock: kotlin.Int?,
 
     @Json(name = "days_until_out_of_stock")
-    val daysUntilOutOfStock: kotlin.Int?
+    val daysUntilOutOfStock: kotlin.Int?,
+
+    @Json(name = "friendly_name")
+    val friendlyName: kotlin.String? = null,
+
+    @Json(name = "barcode")
+    val barcode: kotlin.String? = null,
+
+    @Json(name = "warnings")
+    val warnings: kotlin.String? = null
 
 ) {
 

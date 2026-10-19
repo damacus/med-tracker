@@ -435,7 +435,7 @@ class DashboardSessionTest {
         override suspend fun createInvitation(baseUrl: String, accessToken: String, householdId: Long, email: String, role: String): ApiResult<HouseholdInvitationDto> = ApiResult.Success(
 	        HouseholdInvitationDto(1, email, role)
         )
-        override suspend fun createMedication(baseUrl: String, accessToken: String, householdId: Long, locationId: Int, request: CreateMedicationPayload): ApiResult<MedicationDto> = ApiResult.Success(MedicationDto(1, name = request.name))
+        override suspend fun createMedication(baseUrl: String, accessToken: String, householdId: Long, locationId: Int?, request: CreateMedicationPayload): ApiResult<MedicationDto> = ApiResult.Success(MedicationDto(1, name = request.name))
         override suspend fun recordStockRemoval(baseUrl: String, accessToken: String, householdId: Long, request: RecordStockRemovalPayload): ApiResult<MedicationDto> = ApiResult.Success(MedicationDto(request.medicationId, name = "Med"))
         override suspend fun createSchedule(baseUrl: String, accessToken: String, householdId: Long, request: CreateSchedulePayload): ApiResult<ScheduleDto> = ApiResult.Success(ScheduleDto(1))
         override suspend fun pauseSchedule(baseUrl: String, accessToken: String, householdId: Long, scheduleId: Long): ApiResult<ScheduleDto> = ApiResult.Success(ScheduleDto(scheduleId, paused = true))

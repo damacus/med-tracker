@@ -139,6 +139,7 @@ open class PersonMedicationsApi(basePath: kotlin.String = defaultBasePath, clien
      * 
      * @param householdId 
      * @param id 
+     * @param ifNoneMatch Return an empty 304 response when a visible resource&#39;s serialized representation still matches this ETag. (optional)
      * @return PersonMedicationResponse
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
@@ -148,8 +149,8 @@ open class PersonMedicationsApi(basePath: kotlin.String = defaultBasePath, clien
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun getPersonMedication(householdId: kotlin.Int, id: kotlin.String) : PersonMedicationResponse {
-        val localVarResponse = getPersonMedicationWithHttpInfo(householdId = householdId, id = id)
+    fun getPersonMedication(householdId: kotlin.Int, id: kotlin.String, ifNoneMatch: kotlin.String? = null) : PersonMedicationResponse {
+        val localVarResponse = getPersonMedicationWithHttpInfo(householdId = householdId, id = id, ifNoneMatch = ifNoneMatch)
 
         return when (localVarResponse.responseType) {
             ResponseType.Success -> (localVarResponse as Success<*>).data as PersonMedicationResponse
@@ -172,14 +173,15 @@ open class PersonMedicationsApi(basePath: kotlin.String = defaultBasePath, clien
      * 
      * @param householdId 
      * @param id 
+     * @param ifNoneMatch Return an empty 304 response when a visible resource&#39;s serialized representation still matches this ETag. (optional)
      * @return ApiResponse<PersonMedicationResponse?>
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class)
-    fun getPersonMedicationWithHttpInfo(householdId: kotlin.Int, id: kotlin.String) : ApiResponse<PersonMedicationResponse?> {
-        val localVariableConfig = getPersonMedicationRequestConfig(householdId = householdId, id = id)
+    fun getPersonMedicationWithHttpInfo(householdId: kotlin.Int, id: kotlin.String, ifNoneMatch: kotlin.String?) : ApiResponse<PersonMedicationResponse?> {
+        val localVariableConfig = getPersonMedicationRequestConfig(householdId = householdId, id = id, ifNoneMatch = ifNoneMatch)
 
         return request<Unit, PersonMedicationResponse>(
             localVariableConfig
@@ -191,12 +193,14 @@ open class PersonMedicationsApi(basePath: kotlin.String = defaultBasePath, clien
      *
      * @param householdId 
      * @param id 
+     * @param ifNoneMatch Return an empty 304 response when a visible resource&#39;s serialized representation still matches this ETag. (optional)
      * @return RequestConfig
      */
-    fun getPersonMedicationRequestConfig(householdId: kotlin.Int, id: kotlin.String) : RequestConfig<Unit> {
+    fun getPersonMedicationRequestConfig(householdId: kotlin.Int, id: kotlin.String, ifNoneMatch: kotlin.String?) : RequestConfig<Unit> {
         val localVariableBody = null
         val localVariableQuery: MultiValueMap = mutableMapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        ifNoneMatch?.apply { localVariableHeaders["If-None-Match"] = this.toString() }
         localVariableHeaders["Accept"] = "application/json"
 
         return RequestConfig(
@@ -644,7 +648,7 @@ open class PersonMedicationsApi(basePath: kotlin.String = defaultBasePath, clien
     /**
      * PATCH /households/{household_id}/person_medications/{id}/reorder
      * Reorder a person medication assignment.
-     * 
+     * Direction must be up or down; invalid directions return 422 without changing the order.
      * @param householdId 
      * @param id 
      * @param personMedicationReorderRequest 
@@ -678,7 +682,7 @@ open class PersonMedicationsApi(basePath: kotlin.String = defaultBasePath, clien
     /**
      * PATCH /households/{household_id}/person_medications/{id}/reorder
      * Reorder a person medication assignment.
-     * 
+     * Direction must be up or down; invalid directions return 422 without changing the order.
      * @param householdId 
      * @param id 
      * @param personMedicationReorderRequest 

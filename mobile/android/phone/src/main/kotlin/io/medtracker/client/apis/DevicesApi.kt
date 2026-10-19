@@ -52,7 +52,7 @@ open class DevicesApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
     /**
      * POST /households/{household_id}/native_device_tokens
      * Register a native device token.
-     * 
+     * Registers the token for the authenticated account, or updates that account&#39;s existing token and returns an empty 201 response. A token held by another account fails validation without transferring ownership.
      * @param householdId 
      * @param nativeDeviceTokenCreateRequest 
      * @return void
@@ -84,7 +84,7 @@ open class DevicesApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
     /**
      * POST /households/{household_id}/native_device_tokens
      * Register a native device token.
-     * 
+     * Registers the token for the authenticated account, or updates that account&#39;s existing token and returns an empty 201 response. A token held by another account fails validation without transferring ownership.
      * @param householdId 
      * @param nativeDeviceTokenCreateRequest 
      * @return ApiResponse<Unit?>
@@ -127,7 +127,7 @@ open class DevicesApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
     /**
      * POST /households/{household_id}/push_subscription
      * Register a web push subscription.
-     * 
+     * Registers an endpoint for the authenticated account, or updates that account&#39;s existing endpoint and returns an empty 201 response. An endpoint held by another account fails validation without transferring ownership. The endpoint must use HTTPS, contain no user information or IP address, and use fcm.googleapis.com, updates.push.services.mozilla.com, web.push.apple.com, or a subdomain of notify.windows.com or push.apple.com.
      * @param householdId 
      * @param pushSubscriptionCreateRequest 
      * @return void
@@ -159,7 +159,7 @@ open class DevicesApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
     /**
      * POST /households/{household_id}/push_subscription
      * Register a web push subscription.
-     * 
+     * Registers an endpoint for the authenticated account, or updates that account&#39;s existing endpoint and returns an empty 201 response. An endpoint held by another account fails validation without transferring ownership. The endpoint must use HTTPS, contain no user information or IP address, and use fcm.googleapis.com, updates.push.services.mozilla.com, web.push.apple.com, or a subdomain of notify.windows.com or push.apple.com.
      * @param householdId 
      * @param pushSubscriptionCreateRequest 
      * @return ApiResponse<Unit?>
@@ -202,7 +202,7 @@ open class DevicesApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
     /**
      * DELETE /households/{household_id}/native_device_tokens/{id}
      * Revoke a native device token.
-     * 
+     * Removes the authenticated account&#39;s token when present. Repeating the request returns an empty 204 response, including when another account owns the token.
      * @param householdId 
      * @param id 
      * @return void
@@ -234,7 +234,7 @@ open class DevicesApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
     /**
      * DELETE /households/{household_id}/native_device_tokens/{id}
      * Revoke a native device token.
-     * 
+     * Removes the authenticated account&#39;s token when present. Repeating the request returns an empty 204 response, including when another account owns the token.
      * @param householdId 
      * @param id 
      * @return ApiResponse<Unit?>
@@ -276,9 +276,9 @@ open class DevicesApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
     /**
      * DELETE /households/{household_id}/push_subscription
      * Revoke a web push subscription.
-     * 
+     * Removes the authenticated account&#39;s matching endpoint when present and returns an empty 204 response. Repeating the request or naming another account&#39;s endpoint also returns 204. The endpoint query parameter is required; an existing endpoint can be revoked even if it no longer meets the registration allowlist.
      * @param householdId 
-     * @param endpoint 
+     * @param endpoint Existing endpoint to revoke; provider allowlist validation does not apply to deletion.
      * @return void
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
@@ -287,7 +287,7 @@ open class DevicesApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
      * @throws ServerException If the API returns a server error response
      */
     @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun deletePushSubscription(householdId: kotlin.Int, endpoint: java.net.URI) : Unit {
+    fun deletePushSubscription(householdId: kotlin.Int, endpoint: kotlin.String) : Unit {
         val localVarResponse = deletePushSubscriptionWithHttpInfo(householdId = householdId, endpoint = endpoint)
 
         return when (localVarResponse.responseType) {
@@ -308,15 +308,15 @@ open class DevicesApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
     /**
      * DELETE /households/{household_id}/push_subscription
      * Revoke a web push subscription.
-     * 
+     * Removes the authenticated account&#39;s matching endpoint when present and returns an empty 204 response. Repeating the request or naming another account&#39;s endpoint also returns 204. The endpoint query parameter is required; an existing endpoint can be revoked even if it no longer meets the registration allowlist.
      * @param householdId 
-     * @param endpoint 
+     * @param endpoint Existing endpoint to revoke; provider allowlist validation does not apply to deletion.
      * @return ApiResponse<Unit?>
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
      */
     @Throws(IllegalStateException::class, IOException::class)
-    fun deletePushSubscriptionWithHttpInfo(householdId: kotlin.Int, endpoint: java.net.URI) : ApiResponse<Unit?> {
+    fun deletePushSubscriptionWithHttpInfo(householdId: kotlin.Int, endpoint: kotlin.String) : ApiResponse<Unit?> {
         val localVariableConfig = deletePushSubscriptionRequestConfig(householdId = householdId, endpoint = endpoint)
 
         return request<Unit, Unit>(
@@ -328,10 +328,10 @@ open class DevicesApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
      * To obtain the request config of the operation deletePushSubscription
      *
      * @param householdId 
-     * @param endpoint 
+     * @param endpoint Existing endpoint to revoke; provider allowlist validation does not apply to deletion.
      * @return RequestConfig
      */
-    fun deletePushSubscriptionRequestConfig(householdId: kotlin.Int, endpoint: java.net.URI) : RequestConfig<Unit> {
+    fun deletePushSubscriptionRequestConfig(householdId: kotlin.Int, endpoint: kotlin.String) : RequestConfig<Unit> {
         val localVariableBody = null
         val localVariableQuery: MultiValueMap = mutableMapOf<kotlin.String, kotlin.collections.List<kotlin.String>>()
             .apply {

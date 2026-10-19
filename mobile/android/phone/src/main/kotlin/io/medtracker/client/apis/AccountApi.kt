@@ -127,7 +127,7 @@ open class AccountApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
     /**
      * DELETE /auth/sessions/{id}
      * Revoke an API session.
-     * 
+     * Revoke only a session belonging to the authenticated account and the credential&#39;s session namespace. API-session and app-token credentials address API sessions; mobile OAuth credentials address mobile grants. A missing, revoked, or other-account session returns 404. 
      * @param id 
      * @return void
      * @throws IllegalStateException If the request is not correctly configured
@@ -158,7 +158,7 @@ open class AccountApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
     /**
      * DELETE /auth/sessions/{id}
      * Revoke an API session.
-     * 
+     * Revoke only a session belonging to the authenticated account and the credential&#39;s session namespace. API-session and app-token credentials address API sessions; mobile OAuth credentials address mobile grants. A missing, revoked, or other-account session returns 404. 
      * @param id 
      * @return ApiResponse<Unit?>
      * @throws IllegalStateException If the request is not correctly configured
@@ -268,7 +268,7 @@ open class AccountApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
     /**
      * GET /auth/sessions
      * List active API sessions for the current account.
-     * 
+     * Return only the caller&#39;s nonrevoked sessions in descending creation order. API-session and app-token credentials list API sessions, including devices whose access or refresh token has expired; mobile OAuth credentials list mobile grants within the configured login lifetime. Never expose access or refresh tokens or their digests. 
      * @return AuthSessionCollectionResponse
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
@@ -299,7 +299,7 @@ open class AccountApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
     /**
      * GET /auth/sessions
      * List active API sessions for the current account.
-     * 
+     * Return only the caller&#39;s nonrevoked sessions in descending creation order. API-session and app-token credentials list API sessions, including devices whose access or refresh token has expired; mobile OAuth credentials list mobile grants within the configured login lifetime. Never expose access or refresh tokens or their digests. 
      * @return ApiResponse<AuthSessionCollectionResponse?>
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
@@ -337,8 +337,8 @@ open class AccountApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
 
     /**
      * DELETE /auth/logout
-     * Revoke the current API session or app token.
-     * 
+     * Revoke the current API session, app token or OAuth grant.
+     * Revoke the bearer API session, app token or OAuth grant when it is known. An absent, invalid, or already revoked bearer is an idempotent no-op and returns an empty 204 response. 
      * @return void
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
@@ -367,8 +367,8 @@ open class AccountApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
 
     /**
      * DELETE /auth/logout
-     * Revoke the current API session or app token.
-     * 
+     * Revoke the current API session, app token or OAuth grant.
+     * Revoke the bearer API session, app token or OAuth grant when it is known. An absent, invalid, or already revoked bearer is an idempotent no-op and returns an empty 204 response. 
      * @return ApiResponse<Unit?>
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception

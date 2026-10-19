@@ -24,7 +24,6 @@ import com.squareup.moshi.JsonClass
  *
  * @param name 
  * @param reorderThreshold 
- * @param locationId 
  * @param friendlyName 
  * @param barcode 
  * @param dmdCode 
@@ -36,6 +35,7 @@ import com.squareup.moshi.JsonClass
  * @param doseUnit 
  * @param currentSupply 
  * @param warnings 
+ * @param locationId 
  * @param defaultScheduleType 
  */
 
@@ -47,9 +47,6 @@ data class MedicationCreateAttributes (
 
     @Json(name = "reorder_threshold")
     val reorderThreshold: kotlin.String,
-
-    @Json(name = "location_id")
-    val locationId: kotlin.Int,
 
     @Json(name = "friendly_name")
     val friendlyName: kotlin.String? = null,
@@ -83,6 +80,9 @@ data class MedicationCreateAttributes (
 
     @Json(name = "warnings")
     val warnings: kotlin.String? = null,
+
+    @Json(name = "location_id")
+    val locationId: kotlin.Int? = null,
 
     @Json(name = "default_schedule_type")
     val defaultScheduleType: MedicationCreateAttributes.DefaultScheduleType? = null

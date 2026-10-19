@@ -86,7 +86,7 @@ class HealthEventsViewModelTest {
         override suspend fun getLocations(baseUrl: String, accessToken: String, householdId: Long) = ApiResult.Success(emptyList<LocationDto>())
         override suspend fun getInvitations(baseUrl: String, accessToken: String, householdId: Long) = ApiResult.Success(emptyList<HouseholdInvitationDto>())
         override suspend fun createInvitation(baseUrl: String, accessToken: String, householdId: Long, email: String, role: String) = ApiResult.Error("stub", "stub")
-        override suspend fun createMedication(baseUrl: String, accessToken: String, householdId: Long, locationId: Int, request: CreateMedicationPayload) = ApiResult.Error("stub", "stub")
+        override suspend fun createMedication(baseUrl: String, accessToken: String, householdId: Long, locationId: Int?, request: CreateMedicationPayload) = ApiResult.Error("stub", "stub")
         override suspend fun recordStockRemoval(baseUrl: String, accessToken: String, householdId: Long, request: RecordStockRemovalPayload) = ApiResult.Error("stub", "stub")
         override suspend fun createSchedule(baseUrl: String, accessToken: String, householdId: Long, request: CreateSchedulePayload) = ApiResult.Error("stub", "stub")
         override suspend fun pauseSchedule(baseUrl: String, accessToken: String, householdId: Long, scheduleId: Long) = ApiResult.Error("stub", "stub")

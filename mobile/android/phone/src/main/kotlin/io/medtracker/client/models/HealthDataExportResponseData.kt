@@ -53,11 +53,11 @@ data class HealthDataExportResponseData (
     /**
      * 
      *
-     * Values: medtrackerPeriodHealth_dataPeriodV1,unknown_default_open_api
+     * Values: medtrackerPeriodHealth_dataPeriodV2,unknown_default_open_api
      */
     @JsonClass(generateAdapter = false)
     enum class Format(val value: kotlin.String) {
-        @Json(name = "medtracker.health_data.v1") medtrackerPeriodHealth_dataPeriodV1("medtracker.health_data.v1"),
+        @Json(name = "medtracker.health_data.v2") medtrackerPeriodHealth_dataPeriodV2("medtracker.health_data.v2"),
         @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
     }
     /**

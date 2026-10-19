@@ -15,7 +15,6 @@
 
 package io.medtracker.client.models
 
-import io.medtracker.client.models.LocationMembershipRequestLocationMembership
 
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
@@ -23,14 +22,18 @@ import com.squareup.moshi.JsonClass
 /**
  * 
  *
- * @param locationMembership 
+ * @param create 
+ * @param update 
  */
 
 
-data class LocationMembershipRequest (
+data class HouseholdUiCapabilitiesResponseDataLocations (
 
-    @Json(name = "location_membership")
-    val locationMembership: LocationMembershipRequestLocationMembership
+    @Json(name = "create")
+    val create: kotlin.Boolean,
+
+    @Json(name = "update")
+    val update: kotlin.Boolean
 
 ) {
 

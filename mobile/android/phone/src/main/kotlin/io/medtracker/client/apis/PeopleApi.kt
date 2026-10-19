@@ -56,7 +56,7 @@ open class PeopleApi(basePath: kotlin.String = defaultBasePath, client: Call.Fac
     /**
      * POST /households/{household_id}/people
      * Create a person in the household.
-     * 
+     * Requires an active household owner or administrator, or a member with an active manage grant for a person in this household. Name and date of birth are required; email is trimmed, lowercased and unique when present. person_type defaults to adult and has_capacity defaults to true. A minor or dependent adult always has has_capacity false. Creation without an active carer is allowed. When the actor&#39;s membership is linked to a person, creating a minor or dependent adult delegates family-member manage access to that carer. Missing active carers produce a non-blocking browser warning. A successful create assigns the household Home location, creates the actor&#39;s manage grant, increments the affected membership permissions version, and records person audit and sync changes in one transaction. Age and person_type must agree. Invalid or duplicate email returns 422. Malformed JSON or a missing person wrapper returns 400; a present wrapper with invalid attributes returns 422. 
      * @param householdId 
      * @param personCreateRequest 
      * @return PersonResponse
@@ -89,7 +89,7 @@ open class PeopleApi(basePath: kotlin.String = defaultBasePath, client: Call.Fac
     /**
      * POST /households/{household_id}/people
      * Create a person in the household.
-     * 
+     * Requires an active household owner or administrator, or a member with an active manage grant for a person in this household. Name and date of birth are required; email is trimmed, lowercased and unique when present. person_type defaults to adult and has_capacity defaults to true. A minor or dependent adult always has has_capacity false. Creation without an active carer is allowed. When the actor&#39;s membership is linked to a person, creating a minor or dependent adult delegates family-member manage access to that carer. Missing active carers produce a non-blocking browser warning. A successful create assigns the household Home location, creates the actor&#39;s manage grant, increments the affected membership permissions version, and records person audit and sync changes in one transaction. Age and person_type must agree. Invalid or duplicate email returns 422. Malformed JSON or a missing person wrapper returns 400; a present wrapper with invalid attributes returns 422. 
      * @param householdId 
      * @param personCreateRequest 
      * @return ApiResponse<PersonResponse?>
@@ -277,7 +277,7 @@ open class PeopleApi(basePath: kotlin.String = defaultBasePath, client: Call.Fac
     /**
      * GET /households/{household_id}/me
      * Read the current account and person profile for a household session.
-     * 
+     * The person is the authenticated user&#39;s own profile, even when the selected membership belongs to another household. membership_role is the role of the selected household membership.
      * @param householdId 
      * @return MeResponse
      * @throws IllegalStateException If the request is not correctly configured
@@ -309,7 +309,7 @@ open class PeopleApi(basePath: kotlin.String = defaultBasePath, client: Call.Fac
     /**
      * GET /households/{household_id}/me
      * Read the current account and person profile for a household session.
-     * 
+     * The person is the authenticated user&#39;s own profile, even when the selected membership belongs to another household. membership_role is the role of the selected household membership.
      * @param householdId 
      * @return ApiResponse<MeResponse?>
      * @throws IllegalStateException If the request is not correctly configured
@@ -746,7 +746,7 @@ open class PeopleApi(basePath: kotlin.String = defaultBasePath, client: Call.Fac
     /**
      * PATCH /households/{household_id}/people/{id}
      * Update a person.
-     * 
+     * Requires an active manage grant for the selected person. A person outside the actor&#39;s visible scope returns 404; a visible person without manage access returns 403. Supplied attributes are merged with the existing record; omitted attributes are retained. Email is normalized and must remain unique. A minor or dependent adult always has has_capacity false, and a person without capacity may be edited without an active carer. Age and person_type must agree. A changed update records person audit and sync changes. If-Match is not required. Malformed JSON or a missing person wrapper returns 400; invalid supplied attributes return 422. 
      * @param householdId 
      * @param id 
      * @param personUpdateRequest 
@@ -780,7 +780,7 @@ open class PeopleApi(basePath: kotlin.String = defaultBasePath, client: Call.Fac
     /**
      * PATCH /households/{household_id}/people/{id}
      * Update a person.
-     * 
+     * Requires an active manage grant for the selected person. A person outside the actor&#39;s visible scope returns 404; a visible person without manage access returns 403. Supplied attributes are merged with the existing record; omitted attributes are retained. Email is normalized and must remain unique. A minor or dependent adult always has has_capacity false, and a person without capacity may be edited without an active carer. Age and person_type must agree. A changed update records person audit and sync changes. If-Match is not required. Malformed JSON or a missing person wrapper returns 400; invalid supplied attributes return 422. 
      * @param householdId 
      * @param id 
      * @param personUpdateRequest 
@@ -826,7 +826,7 @@ open class PeopleApi(basePath: kotlin.String = defaultBasePath, client: Call.Fac
     /**
      * PUT /households/{household_id}/people/{id}
      * Update a person using the PUT route.
-     * 
+     * PUT has the same merged-attribute, authorization, validation, audit and sync behaviour as PATCH. Omitted attributes are retained and If-Match is not required. Malformed JSON or a missing person wrapper returns 400; invalid supplied attributes return 422. 
      * @param householdId 
      * @param id 
      * @param personUpdateRequest 
@@ -860,7 +860,7 @@ open class PeopleApi(basePath: kotlin.String = defaultBasePath, client: Call.Fac
     /**
      * PUT /households/{household_id}/people/{id}
      * Update a person using the PUT route.
-     * 
+     * PUT has the same merged-attribute, authorization, validation, audit and sync behaviour as PATCH. Omitted attributes are retained and If-Match is not required. Malformed JSON or a missing person wrapper returns 400; invalid supplied attributes return 422. 
      * @param householdId 
      * @param id 
      * @param personUpdateRequest 

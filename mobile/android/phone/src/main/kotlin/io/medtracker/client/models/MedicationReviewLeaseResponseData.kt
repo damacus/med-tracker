@@ -15,7 +15,6 @@
 
 package io.medtracker.client.models
 
-import io.medtracker.client.models.PersonAccessGrantAttributes
 
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
@@ -23,14 +22,22 @@ import com.squareup.moshi.JsonClass
 /**
  * 
  *
- * @param personAccessGrant 
+ * @param token 
+ * @param etag 
+ * @param expiresAt 
  */
 
 
-data class PersonAccessGrantCreateRequest (
+data class MedicationReviewLeaseResponseData (
 
-    @Json(name = "person_access_grant")
-    val personAccessGrant: PersonAccessGrantAttributes
+    @Json(name = "token")
+    val token: java.util.UUID,
+
+    @Json(name = "etag")
+    val etag: kotlin.String,
+
+    @Json(name = "expires_at")
+    val expiresAt: java.time.OffsetDateTime
 
 ) {
 

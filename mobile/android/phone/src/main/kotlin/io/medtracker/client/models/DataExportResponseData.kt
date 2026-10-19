@@ -93,13 +93,12 @@ data class DataExportResponseData (
     /**
      * 
      *
-     * Values: medtrackerPeriodPortablePeriodV1,medtrackerPeriodPortablePeriodV2,medtrackerPeriodHealth_dataPeriodV1,medtrackerPeriodPortablePeriodEncryptedPeriodV1,unknown_default_open_api
+     * Values: medtrackerPeriodPortablePeriodV3,medtrackerPeriodHealth_dataPeriodV2,medtrackerPeriodPortablePeriodEncryptedPeriodV1,unknown_default_open_api
      */
     @JsonClass(generateAdapter = false)
     enum class Format(val value: kotlin.String) {
-        @Json(name = "medtracker.portable.v1") medtrackerPeriodPortablePeriodV1("medtracker.portable.v1"),
-        @Json(name = "medtracker.portable.v2") medtrackerPeriodPortablePeriodV2("medtracker.portable.v2"),
-        @Json(name = "medtracker.health_data.v1") medtrackerPeriodHealth_dataPeriodV1("medtracker.health_data.v1"),
+        @Json(name = "medtracker.portable.v3") medtrackerPeriodPortablePeriodV3("medtracker.portable.v3"),
+        @Json(name = "medtracker.health_data.v2") medtrackerPeriodHealth_dataPeriodV2("medtracker.health_data.v2"),
         @Json(name = "medtracker.portable.encrypted.v1") medtrackerPeriodPortablePeriodEncryptedPeriodV1("medtracker.portable.encrypted.v1"),
         @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
     }

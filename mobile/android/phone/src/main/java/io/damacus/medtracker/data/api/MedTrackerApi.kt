@@ -92,7 +92,7 @@ interface MedTrackerApi {
     suspend fun getLocations(baseUrl: String, accessToken: String, householdId: Long): ApiResult<List<LocationDto>>
     suspend fun getInvitations(baseUrl: String, accessToken: String, householdId: Long): ApiResult<List<HouseholdInvitationDto>>
     suspend fun createInvitation(baseUrl: String, accessToken: String, householdId: Long, email: String, role: String): ApiResult<HouseholdInvitationDto>
-    suspend fun createMedication(baseUrl: String, accessToken: String, householdId: Long, locationId: Int, request: CreateMedicationPayload): ApiResult<MedicationDto>
+    suspend fun createMedication(baseUrl: String, accessToken: String, householdId: Long, locationId: Int?, request: CreateMedicationPayload): ApiResult<MedicationDto>
     suspend fun recordStockRemoval(baseUrl: String, accessToken: String, householdId: Long, request: RecordStockRemovalPayload): ApiResult<MedicationDto>
     suspend fun createSchedule(baseUrl: String, accessToken: String, householdId: Long, request: CreateSchedulePayload): ApiResult<ScheduleDto>
     suspend fun pauseSchedule(baseUrl: String, accessToken: String, householdId: Long, scheduleId: Long): ApiResult<ScheduleDto>
@@ -189,7 +189,7 @@ class GeneratedMedTrackerApi(
         ).data.toDomain()
     }
 
-    override suspend fun createMedication(baseUrl: String, accessToken: String, householdId: Long, locationId: Int, request: CreateMedicationPayload) = authenticated(accessToken) { requestCalls ->
+    override suspend fun createMedication(baseUrl: String, accessToken: String, householdId: Long, locationId: Int?, request: CreateMedicationPayload) = authenticated(accessToken) { requestCalls ->
         MedicationsApi(apiBaseUrl(baseUrl), requestCalls).createMedication(
             householdId.toInt(),
             MedicationCreateRequest(MedicationCreateAttributes(

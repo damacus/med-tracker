@@ -22,14 +22,22 @@ import com.squareup.moshi.JsonClass
 /**
  * 
  *
- * @param personId 
+ * @param create 
+ * @param update 
+ * @param manageStock 
  */
 
 
-data class LocationMembershipRequestLocationMembership (
+data class HouseholdUiCapabilitiesResponseDataMedications (
 
-    @Json(name = "person_id")
-    val personId: kotlin.String
+    @Json(name = "create")
+    val create: kotlin.Boolean,
+
+    @Json(name = "update")
+    val update: kotlin.Boolean,
+
+    @Json(name = "manage_stock")
+    val manageStock: kotlin.Boolean
 
 ) {
 

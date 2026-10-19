@@ -31,8 +31,6 @@ import com.squareup.moshi.JsonClass
  * @param personType 
  * @param hasCapacity 
  * @param age 
- * @param locationIds 
- * @param locationPortableIds 
  * @param notificationPreferenceId 
  * @param notificationPreferencePortableId 
  */
@@ -66,12 +64,6 @@ data class Person (
 
     @Json(name = "age")
     val age: kotlin.Int?,
-
-    @Json(name = "location_ids")
-    val locationIds: kotlin.collections.List<kotlin.Int>,
-
-    @Json(name = "location_portable_ids")
-    val locationPortableIds: kotlin.collections.List<java.util.UUID>,
 
     @Json(name = "notification_preference_id")
     val notificationPreferenceId: kotlin.Int?,

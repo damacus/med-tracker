@@ -38,10 +38,9 @@ import io.medtracker.client.models.HealthEventResponse
 import io.medtracker.client.models.HealthEventUpdateRequest
 import io.medtracker.client.models.HealthHistoryReportResponse
 import io.medtracker.client.models.HouseholdProfileResponse
+import io.medtracker.client.models.HouseholdUiCapabilitiesResponse
 import io.medtracker.client.models.LocationCollectionResponse
 import io.medtracker.client.models.LocationCreateRequest
-import io.medtracker.client.models.LocationMembershipRequest
-import io.medtracker.client.models.LocationMembershipResponse
 import io.medtracker.client.models.LocationResponse
 import io.medtracker.client.models.LocationUpdateRequest
 import io.medtracker.client.models.MeResponse
@@ -55,7 +54,11 @@ import io.medtracker.client.models.MedicationPausePeriodCollectionResponse
 import io.medtracker.client.models.MedicationPausePeriodCreateRequest
 import io.medtracker.client.models.MedicationPausePeriodResponse
 import io.medtracker.client.models.MedicationResponse
+import io.medtracker.client.models.MedicationReviewLeaseReleaseResponse
+import io.medtracker.client.models.MedicationReviewLeaseRenewResponse
+import io.medtracker.client.models.MedicationReviewLeaseResponse
 import io.medtracker.client.models.MedicationReviewPromptCollectionResponse
+import io.medtracker.client.models.MedicationReviewPromptDetailResponse
 import io.medtracker.client.models.MedicationReviewPromptResponse
 import io.medtracker.client.models.MedicationReviewPromptStatus
 import io.medtracker.client.models.MedicationReviewPromptUpdateRequest
@@ -119,6 +122,82 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
         val defaultBasePath: String by lazy {
             System.getProperties().getProperty(ApiClient.baseUrlKey, "/api/v1")
         }
+    }
+
+    /**
+     * POST /households/{household_id}/medication_review_prompts/{id}/lease
+     * Start an exclusive five-minute review edit.
+     * An active lease excludes every other edit, including a second tab for the same membership. Activity requires renewal before expiry.
+     * @param householdId 
+     * @param id 
+     * @return MedicationReviewLeaseResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun acquireMedicationReviewPromptLease(householdId: kotlin.Int, id: kotlin.String) : MedicationReviewLeaseResponse {
+        val localVarResponse = acquireMedicationReviewPromptLeaseWithHttpInfo(householdId = householdId, id = id)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as MedicationReviewLeaseResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * POST /households/{household_id}/medication_review_prompts/{id}/lease
+     * Start an exclusive five-minute review edit.
+     * An active lease excludes every other edit, including a second tab for the same membership. Activity requires renewal before expiry.
+     * @param householdId 
+     * @param id 
+     * @return ApiResponse<MedicationReviewLeaseResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun acquireMedicationReviewPromptLeaseWithHttpInfo(householdId: kotlin.Int, id: kotlin.String) : ApiResponse<MedicationReviewLeaseResponse?> {
+        val localVariableConfig = acquireMedicationReviewPromptLeaseRequestConfig(householdId = householdId, id = id)
+
+        return request<Unit, MedicationReviewLeaseResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation acquireMedicationReviewPromptLease
+     *
+     * @param householdId 
+     * @param id 
+     * @return RequestConfig
+     */
+    fun acquireMedicationReviewPromptLeaseRequestConfig(householdId: kotlin.Int, id: kotlin.String) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.POST,
+            path = "/households/{household_id}/medication_review_prompts/{id}/lease".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
     }
 
     /**
@@ -204,7 +283,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * POST /households/{household_id}/dosage_options
      * Create a medication dosage option.
-     * 
+     * Household owners and administrators may create options for medications in their household. Amount must be greater than zero; minimum hours, current supply, and reorder threshold must be nonnegative; unit and frequency must contain non-whitespace text. Only one option per medication may be the adult default and only one may be the child default; a duplicate returns 422 without changing either option. Creation clears the parent medication&#39;s single-dose amount and refreshes its sync version. If the option has current supply, the parent inventory is recalculated from all options with current supply, including their reorder thresholds and last-restock baseline. The option and parent changes are atomic.
      * @param householdId 
      * @param dosageOptionCreateRequest 
      * @return DosageOptionResponse
@@ -237,7 +316,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * POST /households/{household_id}/dosage_options
      * Create a medication dosage option.
-     * 
+     * Household owners and administrators may create options for medications in their household. Amount must be greater than zero; minimum hours, current supply, and reorder threshold must be nonnegative; unit and frequency must contain non-whitespace text. Only one option per medication may be the adult default and only one may be the child default; a duplicate returns 422 without changing either option. Creation clears the parent medication&#39;s single-dose amount and refreshes its sync version. If the option has current supply, the parent inventory is recalculated from all options with current supply, including their reorder thresholds and last-restock baseline. The option and parent changes are atomic.
      * @param householdId 
      * @param dosageOptionCreateRequest 
      * @return ApiResponse<DosageOptionResponse?>
@@ -358,7 +437,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * POST /households/{household_id}/locations
      * Create household storage.
-     * 
+     * Only an active household owner or administrator can create a location.
      * @param householdId 
      * @param locationCreateRequest 
      * @return LocationResponse
@@ -391,7 +470,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * POST /households/{household_id}/locations
      * Create household storage.
-     * 
+     * Only an active household owner or administrator can create a location.
      * @param householdId 
      * @param locationCreateRequest 
      * @return ApiResponse<LocationResponse?>
@@ -425,86 +504,6 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
         return RequestConfig(
             method = RequestMethod.POST,
             path = "/households/{household_id}/locations".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
-            query = localVariableQuery,
-            headers = localVariableHeaders,
-            requiresAuthentication = true,
-            body = localVariableBody
-        )
-    }
-
-    /**
-     * POST /households/{household_id}/locations/{location_id}/location_memberships
-     * Assign a managed person to a location or replay the existing assignment.
-     * 
-     * @param householdId 
-     * @param locationId 
-     * @param locationMembershipRequest 
-     * @return LocationMembershipResponse
-     * @throws IllegalStateException If the request is not correctly configured
-     * @throws IOException Rethrows the OkHttp execute method exception
-     * @throws UnsupportedOperationException If the API returns an informational or redirection response
-     * @throws ClientException If the API returns a client error response
-     * @throws ServerException If the API returns a server error response
-     */
-    @Suppress("UNCHECKED_CAST")
-    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun createLocationMembership(householdId: kotlin.Int, locationId: kotlin.String, locationMembershipRequest: LocationMembershipRequest) : LocationMembershipResponse {
-        val localVarResponse = createLocationMembershipWithHttpInfo(householdId = householdId, locationId = locationId, locationMembershipRequest = locationMembershipRequest)
-
-        return when (localVarResponse.responseType) {
-            ResponseType.Success -> (localVarResponse as Success<*>).data as LocationMembershipResponse
-            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
-            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
-            ResponseType.ClientError -> {
-                val localVarError = localVarResponse as ClientError<*>
-                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
-            }
-            ResponseType.ServerError -> {
-                val localVarError = localVarResponse as ServerError<*>
-                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
-            }
-        }
-    }
-
-    /**
-     * POST /households/{household_id}/locations/{location_id}/location_memberships
-     * Assign a managed person to a location or replay the existing assignment.
-     * 
-     * @param householdId 
-     * @param locationId 
-     * @param locationMembershipRequest 
-     * @return ApiResponse<LocationMembershipResponse?>
-     * @throws IllegalStateException If the request is not correctly configured
-     * @throws IOException Rethrows the OkHttp execute method exception
-     */
-    @Suppress("UNCHECKED_CAST")
-    @Throws(IllegalStateException::class, IOException::class)
-    fun createLocationMembershipWithHttpInfo(householdId: kotlin.Int, locationId: kotlin.String, locationMembershipRequest: LocationMembershipRequest) : ApiResponse<LocationMembershipResponse?> {
-        val localVariableConfig = createLocationMembershipRequestConfig(householdId = householdId, locationId = locationId, locationMembershipRequest = locationMembershipRequest)
-
-        return request<LocationMembershipRequest, LocationMembershipResponse>(
-            localVariableConfig
-        )
-    }
-
-    /**
-     * To obtain the request config of the operation createLocationMembership
-     *
-     * @param householdId 
-     * @param locationId 
-     * @param locationMembershipRequest 
-     * @return RequestConfig
-     */
-    fun createLocationMembershipRequestConfig(householdId: kotlin.Int, locationId: kotlin.String, locationMembershipRequest: LocationMembershipRequest) : RequestConfig<LocationMembershipRequest> {
-        val localVariableBody = locationMembershipRequest
-        val localVariableQuery: MultiValueMap = mutableMapOf()
-        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
-        localVariableHeaders["Content-Type"] = "application/json"
-        localVariableHeaders["Accept"] = "application/json"
-
-        return RequestConfig(
-            method = RequestMethod.POST,
-            path = "/households/{household_id}/locations/{location_id}/location_memberships".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"location_id"+"}", encodeURIComponent(locationId.toString())),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
@@ -592,10 +591,10 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * POST /households/{household_id}/medication_pause_periods
      * Pause a medication source with a reason.
-     * Requires manage access. The start is server acceptance time; client timestamps are ignored. An already open period is returned unchanged. No edit or backdating operation is provided.
+     * Requires manage access. The start is server acceptance time; client timestamps are rejected with 422. An already open period is returned unchanged. No edit or backdating operation is provided.
      * @param householdId 
      * @param medicationPausePeriodCreateRequest 
-     * @param idempotencyKey Replays the committed response for a matching request; reuse with different content returns conflict. (optional)
+     * @param idempotencyKey A key is scoped to one household for 24 hours. The same authorized account can replay a matching method, path and request through another current credential; another account or changed request receives 409. Current authentication and operation authorization are checked before replay. A replay does not repeat the domain write or its domain audit. (optional)
      * @return MedicationPausePeriodResponse
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
@@ -626,10 +625,10 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * POST /households/{household_id}/medication_pause_periods
      * Pause a medication source with a reason.
-     * Requires manage access. The start is server acceptance time; client timestamps are ignored. An already open period is returned unchanged. No edit or backdating operation is provided.
+     * Requires manage access. The start is server acceptance time; client timestamps are rejected with 422. An already open period is returned unchanged. No edit or backdating operation is provided.
      * @param householdId 
      * @param medicationPausePeriodCreateRequest 
-     * @param idempotencyKey Replays the committed response for a matching request; reuse with different content returns conflict. (optional)
+     * @param idempotencyKey A key is scoped to one household for 24 hours. The same authorized account can replay a matching method, path and request through another current credential; another account or changed request receives 409. Current authentication and operation authorization are checked before replay. A replay does not repeat the domain write or its domain audit. (optional)
      * @return ApiResponse<MedicationPausePeriodResponse?>
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
@@ -649,7 +648,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      *
      * @param householdId 
      * @param medicationPausePeriodCreateRequest 
-     * @param idempotencyKey Replays the committed response for a matching request; reuse with different content returns conflict. (optional)
+     * @param idempotencyKey A key is scoped to one household for 24 hours. The same authorized account can replay a matching method, path and request through another current credential; another account or changed request receives 409. Current authentication and operation authorization are checked before replay. A replay does not repeat the domain write or its domain audit. (optional)
      * @return RequestConfig
      */
     fun createMedicationPausePeriodRequestConfig(householdId: kotlin.Int, medicationPausePeriodCreateRequest: MedicationPausePeriodCreateRequest, idempotencyKey: kotlin.String?) : RequestConfig<MedicationPausePeriodCreateRequest> {
@@ -830,7 +829,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * POST /households/{household_id}/native_device_tokens
      * Register a native device token.
-     * 
+     * Registers the token for the authenticated account, or updates that account&#39;s existing token and returns an empty 201 response. A token held by another account fails validation without transferring ownership.
      * @param householdId 
      * @param nativeDeviceTokenCreateRequest 
      * @return void
@@ -862,7 +861,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * POST /households/{household_id}/native_device_tokens
      * Register a native device token.
-     * 
+     * Registers the token for the authenticated account, or updates that account&#39;s existing token and returns an empty 201 response. A token held by another account fails validation without transferring ownership.
      * @param householdId 
      * @param nativeDeviceTokenCreateRequest 
      * @return ApiResponse<Unit?>
@@ -905,7 +904,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * POST /households/{household_id}/people
      * Create a person in the household.
-     * 
+     * Requires an active household owner or administrator, or a member with an active manage grant for a person in this household. Name and date of birth are required; email is trimmed, lowercased and unique when present. person_type defaults to adult and has_capacity defaults to true. A minor or dependent adult always has has_capacity false. Creation without an active carer is allowed. When the actor&#39;s membership is linked to a person, creating a minor or dependent adult delegates family-member manage access to that carer. Missing active carers produce a non-blocking browser warning. A successful create assigns the household Home location, creates the actor&#39;s manage grant, increments the affected membership permissions version, and records person audit and sync changes in one transaction. Age and person_type must agree. Invalid or duplicate email returns 422. Malformed JSON or a missing person wrapper returns 400; a present wrapper with invalid attributes returns 422. 
      * @param householdId 
      * @param personCreateRequest 
      * @return PersonResponse
@@ -938,7 +937,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * POST /households/{household_id}/people
      * Create a person in the household.
-     * 
+     * Requires an active household owner or administrator, or a member with an active manage grant for a person in this household. Name and date of birth are required; email is trimmed, lowercased and unique when present. person_type defaults to adult and has_capacity defaults to true. A minor or dependent adult always has has_capacity false. Creation without an active carer is allowed. When the actor&#39;s membership is linked to a person, creating a minor or dependent adult delegates family-member manage access to that carer. Missing active carers produce a non-blocking browser warning. A successful create assigns the household Home location, creates the actor&#39;s manage grant, increments the affected membership permissions version, and records person audit and sync changes in one transaction. Age and person_type must agree. Invalid or duplicate email returns 422. Malformed JSON or a missing person wrapper returns 400; a present wrapper with invalid attributes returns 422. 
      * @param householdId 
      * @param personCreateRequest 
      * @return ApiResponse<PersonResponse?>
@@ -1140,7 +1139,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * POST /households/{household_id}/push_subscription
      * Register a web push subscription.
-     * 
+     * Registers an endpoint for the authenticated account, or updates that account&#39;s existing endpoint and returns an empty 201 response. An endpoint held by another account fails validation without transferring ownership. The endpoint must use HTTPS, contain no user information or IP address, and use fcm.googleapis.com, updates.push.services.mozilla.com, web.push.apple.com, or a subdomain of notify.windows.com or push.apple.com.
      * @param householdId 
      * @param pushSubscriptionCreateRequest 
      * @return void
@@ -1172,7 +1171,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * POST /households/{household_id}/push_subscription
      * Register a web push subscription.
-     * 
+     * Registers an endpoint for the authenticated account, or updates that account&#39;s existing endpoint and returns an empty 201 response. An endpoint held by another account fails validation without transferring ownership. The endpoint must use HTTPS, contain no user information or IP address, and use fcm.googleapis.com, updates.push.services.mozilla.com, web.push.apple.com, or a subdomain of notify.windows.com or push.apple.com.
      * @param householdId 
      * @param pushSubscriptionCreateRequest 
      * @return ApiResponse<Unit?>
@@ -1440,7 +1439,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * DELETE /households/{household_id}/locations/{id}
      * Delete storage only when retained history permits it.
-     * 
+     * Only an active household owner or administrator can delete an in-scope location, using the current If-Match ETag. Direct or indirect medication takes, saved dose outcomes, or medication pause periods retained through the location&#39;s medications, schedules or person assignments prevent deletion with 422. Otherwise the location, its memberships, medications, dosage options, schedules and person assignments are removed atomically. A failed deletion leaves every related row unchanged. 
      * @param householdId 
      * @param id 
      * @param ifMatch 
@@ -1473,7 +1472,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * DELETE /households/{household_id}/locations/{id}
      * Delete storage only when retained history permits it.
-     * 
+     * Only an active household owner or administrator can delete an in-scope location, using the current If-Match ETag. Direct or indirect medication takes, saved dose outcomes, or medication pause periods retained through the location&#39;s medications, schedules or person assignments prevent deletion with 422. Otherwise the location, its memberships, medications, dosage options, schedules and person assignments are removed atomically. A failed deletion leaves every related row unchanged. 
      * @param householdId 
      * @param id 
      * @param ifMatch 
@@ -1516,86 +1515,9 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     }
 
     /**
-     * DELETE /households/{household_id}/locations/{location_id}/location_memberships/{id}
-     * Remove a managed person from the selected location.
-     * 
-     * @param householdId 
-     * @param id 
-     * @param locationId 
-     * @return void
-     * @throws IllegalStateException If the request is not correctly configured
-     * @throws IOException Rethrows the OkHttp execute method exception
-     * @throws UnsupportedOperationException If the API returns an informational or redirection response
-     * @throws ClientException If the API returns a client error response
-     * @throws ServerException If the API returns a server error response
-     */
-    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun deleteLocationMembership(householdId: kotlin.Int, id: kotlin.String, locationId: kotlin.String) : Unit {
-        val localVarResponse = deleteLocationMembershipWithHttpInfo(householdId = householdId, id = id, locationId = locationId)
-
-        return when (localVarResponse.responseType) {
-            ResponseType.Success -> Unit
-            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
-            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
-            ResponseType.ClientError -> {
-                val localVarError = localVarResponse as ClientError<*>
-                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
-            }
-            ResponseType.ServerError -> {
-                val localVarError = localVarResponse as ServerError<*>
-                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
-            }
-        }
-    }
-
-    /**
-     * DELETE /households/{household_id}/locations/{location_id}/location_memberships/{id}
-     * Remove a managed person from the selected location.
-     * 
-     * @param householdId 
-     * @param id 
-     * @param locationId 
-     * @return ApiResponse<Unit?>
-     * @throws IllegalStateException If the request is not correctly configured
-     * @throws IOException Rethrows the OkHttp execute method exception
-     */
-    @Throws(IllegalStateException::class, IOException::class)
-    fun deleteLocationMembershipWithHttpInfo(householdId: kotlin.Int, id: kotlin.String, locationId: kotlin.String) : ApiResponse<Unit?> {
-        val localVariableConfig = deleteLocationMembershipRequestConfig(householdId = householdId, id = id, locationId = locationId)
-
-        return request<Unit, Unit>(
-            localVariableConfig
-        )
-    }
-
-    /**
-     * To obtain the request config of the operation deleteLocationMembership
-     *
-     * @param householdId 
-     * @param id 
-     * @param locationId 
-     * @return RequestConfig
-     */
-    fun deleteLocationMembershipRequestConfig(householdId: kotlin.Int, id: kotlin.String, locationId: kotlin.String) : RequestConfig<Unit> {
-        val localVariableBody = null
-        val localVariableQuery: MultiValueMap = mutableMapOf()
-        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
-        localVariableHeaders["Accept"] = "application/json"
-
-        return RequestConfig(
-            method = RequestMethod.DELETE,
-            path = "/households/{household_id}/locations/{location_id}/location_memberships/{id}".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())).replace("{"+"location_id"+"}", encodeURIComponent(locationId.toString())),
-            query = localVariableQuery,
-            headers = localVariableHeaders,
-            requiresAuthentication = true,
-            body = localVariableBody
-        )
-    }
-
-    /**
      * DELETE /households/{household_id}/native_device_tokens/{id}
      * Revoke a native device token.
-     * 
+     * Removes the authenticated account&#39;s token when present. Repeating the request returns an empty 204 response, including when another account owns the token.
      * @param householdId 
      * @param id 
      * @return void
@@ -1627,7 +1549,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * DELETE /households/{household_id}/native_device_tokens/{id}
      * Revoke a native device token.
-     * 
+     * Removes the authenticated account&#39;s token when present. Repeating the request returns an empty 204 response, including when another account owns the token.
      * @param householdId 
      * @param id 
      * @return ApiResponse<Unit?>
@@ -1669,9 +1591,9 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * DELETE /households/{household_id}/push_subscription
      * Revoke a web push subscription.
-     * 
+     * Removes the authenticated account&#39;s matching endpoint when present and returns an empty 204 response. Repeating the request or naming another account&#39;s endpoint also returns 204. The endpoint query parameter is required; an existing endpoint can be revoked even if it no longer meets the registration allowlist.
      * @param householdId 
-     * @param endpoint 
+     * @param endpoint Existing endpoint to revoke; provider allowlist validation does not apply to deletion.
      * @return void
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
@@ -1680,7 +1602,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      * @throws ServerException If the API returns a server error response
      */
     @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun deletePushSubscription(householdId: kotlin.Int, endpoint: java.net.URI) : Unit {
+    fun deletePushSubscription(householdId: kotlin.Int, endpoint: kotlin.String) : Unit {
         val localVarResponse = deletePushSubscriptionWithHttpInfo(householdId = householdId, endpoint = endpoint)
 
         return when (localVarResponse.responseType) {
@@ -1701,15 +1623,15 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * DELETE /households/{household_id}/push_subscription
      * Revoke a web push subscription.
-     * 
+     * Removes the authenticated account&#39;s matching endpoint when present and returns an empty 204 response. Repeating the request or naming another account&#39;s endpoint also returns 204. The endpoint query parameter is required; an existing endpoint can be revoked even if it no longer meets the registration allowlist.
      * @param householdId 
-     * @param endpoint 
+     * @param endpoint Existing endpoint to revoke; provider allowlist validation does not apply to deletion.
      * @return ApiResponse<Unit?>
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
      */
     @Throws(IllegalStateException::class, IOException::class)
-    fun deletePushSubscriptionWithHttpInfo(householdId: kotlin.Int, endpoint: java.net.URI) : ApiResponse<Unit?> {
+    fun deletePushSubscriptionWithHttpInfo(householdId: kotlin.Int, endpoint: kotlin.String) : ApiResponse<Unit?> {
         val localVariableConfig = deletePushSubscriptionRequestConfig(householdId = householdId, endpoint = endpoint)
 
         return request<Unit, Unit>(
@@ -1721,10 +1643,10 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      * To obtain the request config of the operation deletePushSubscription
      *
      * @param householdId 
-     * @param endpoint 
+     * @param endpoint Existing endpoint to revoke; provider allowlist validation does not apply to deletion.
      * @return RequestConfig
      */
-    fun deletePushSubscriptionRequestConfig(householdId: kotlin.Int, endpoint: java.net.URI) : RequestConfig<Unit> {
+    fun deletePushSubscriptionRequestConfig(householdId: kotlin.Int, endpoint: kotlin.String) : RequestConfig<Unit> {
         val localVariableBody = null
         val localVariableQuery: MultiValueMap = mutableMapOf<kotlin.String, kotlin.collections.List<kotlin.String>>()
             .apply {
@@ -2101,8 +2023,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      * enum for parameter version
      */
      enum class VersionExportPortableHouseholdBundle(val value: kotlin.String) {
-         @Json(name = "1") _1("1"),
-         @Json(name = "2") _2("2"),
+         @Json(name = "3") _3("3"),
          @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
 
         /**
@@ -2119,8 +2040,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      * enum for parameter portableFormat
      */
      enum class PortableFormatExportPortableHouseholdBundle(val value: kotlin.String) {
-         @Json(name = "medtracker.portable.v1") medtrackerPeriodPortablePeriodV1("medtracker.portable.v1"),
-         @Json(name = "medtracker.portable.v2") medtrackerPeriodPortablePeriodV2("medtracker.portable.v2"),
+         @Json(name = "medtracker.portable.v3") medtrackerPeriodPortablePeriodV3("medtracker.portable.v3"),
          @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
 
         /**
@@ -2139,8 +2059,8 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      * 
      * @param householdId 
      * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
-     * @param version Portable export format. Omit or use &#x60;1&#x60; for the original format; use &#x60;2&#x60; to include pause history. (optional, default to Version._1)
-     * @param portableFormat Select v2 to include persisted dose outcomes. Omitted requests retain the v1 collection shape. (optional, default to PortableFormat.medtrackerPeriodPortablePeriodV1)
+     * @param version Current portable export format. Omit or use &#x60;3&#x60;; older output versions are unsupported. (optional, default to Version._3)
+     * @param portableFormat Current format supports optional physical storage labels without person permission edges. (optional, default to PortableFormat.medtrackerPeriodPortablePeriodV3)
      * @return PortableEnvelopeResponse
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
@@ -2150,7 +2070,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun exportPortableHouseholdBundle(householdId: kotlin.Int, xMedTrackerPortablePassphrase: kotlin.String, version: VersionExportPortableHouseholdBundle? = VersionExportPortableHouseholdBundle._1, portableFormat: PortableFormatExportPortableHouseholdBundle? = PortableFormatExportPortableHouseholdBundle.medtrackerPeriodPortablePeriodV1) : PortableEnvelopeResponse {
+    fun exportPortableHouseholdBundle(householdId: kotlin.Int, xMedTrackerPortablePassphrase: kotlin.String, version: VersionExportPortableHouseholdBundle? = VersionExportPortableHouseholdBundle._3, portableFormat: PortableFormatExportPortableHouseholdBundle? = PortableFormatExportPortableHouseholdBundle.medtrackerPeriodPortablePeriodV3) : PortableEnvelopeResponse {
         val localVarResponse = exportPortableHouseholdBundleWithHttpInfo(householdId = householdId, xMedTrackerPortablePassphrase = xMedTrackerPortablePassphrase, version = version, portableFormat = portableFormat)
 
         return when (localVarResponse.responseType) {
@@ -2174,8 +2094,8 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      * 
      * @param householdId 
      * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
-     * @param version Portable export format. Omit or use &#x60;1&#x60; for the original format; use &#x60;2&#x60; to include pause history. (optional, default to Version._1)
-     * @param portableFormat Select v2 to include persisted dose outcomes. Omitted requests retain the v1 collection shape. (optional, default to PortableFormat.medtrackerPeriodPortablePeriodV1)
+     * @param version Current portable export format. Omit or use &#x60;3&#x60;; older output versions are unsupported. (optional, default to Version._3)
+     * @param portableFormat Current format supports optional physical storage labels without person permission edges. (optional, default to PortableFormat.medtrackerPeriodPortablePeriodV3)
      * @return ApiResponse<PortableEnvelopeResponse?>
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
@@ -2195,8 +2115,8 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      *
      * @param householdId 
      * @param xMedTrackerPortablePassphrase Passphrase used to encrypt or decrypt the portable bundle. It is never accepted in the URL.
-     * @param version Portable export format. Omit or use &#x60;1&#x60; for the original format; use &#x60;2&#x60; to include pause history. (optional, default to Version._1)
-     * @param portableFormat Select v2 to include persisted dose outcomes. Omitted requests retain the v1 collection shape. (optional, default to PortableFormat.medtrackerPeriodPortablePeriodV1)
+     * @param version Current portable export format. Omit or use &#x60;3&#x60;; older output versions are unsupported. (optional, default to Version._3)
+     * @param portableFormat Current format supports optional physical storage labels without person permission edges. (optional, default to PortableFormat.medtrackerPeriodPortablePeriodV3)
      * @return RequestConfig
      */
     fun exportPortableHouseholdBundleRequestConfig(householdId: kotlin.Int, xMedTrackerPortablePassphrase: kotlin.String, version: VersionExportPortableHouseholdBundle?, portableFormat: PortableFormatExportPortableHouseholdBundle?) : RequestConfig<Unit> {
@@ -2304,7 +2224,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * GET /households/{household_id}/me
      * Read the current account and person profile for a household session.
-     * 
+     * The person is the authenticated user&#39;s own profile, even when the selected membership belongs to another household. membership_role is the role of the selected household membership.
      * @param householdId 
      * @return MeResponse
      * @throws IllegalStateException If the request is not correctly configured
@@ -2336,7 +2256,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * GET /households/{household_id}/me
      * Read the current account and person profile for a household session.
-     * 
+     * The person is the authenticated user&#39;s own profile, even when the selected membership belongs to another household. membership_role is the role of the selected household membership.
      * @param householdId 
      * @return ApiResponse<MeResponse?>
      * @throws IllegalStateException If the request is not correctly configured
@@ -2476,9 +2396,10 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * GET /households/{household_id}/dosage_options/{id}
      * Read a medication dosage option.
-     * 
+     * Active household members may read an option only if they can read its parent medication. Owners and administrators can read every medication in their household. Other members require an active person view grant linked to the medication or must have created an unlinked medication. An option outside this visibility scope returns 404.
      * @param householdId 
      * @param id 
+     * @param ifNoneMatch Return an empty 304 response when a visible resource&#39;s serialized representation still matches this ETag. (optional)
      * @return DosageOptionResponse
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
@@ -2488,8 +2409,8 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun getDosageOption(householdId: kotlin.Int, id: kotlin.String) : DosageOptionResponse {
-        val localVarResponse = getDosageOptionWithHttpInfo(householdId = householdId, id = id)
+    fun getDosageOption(householdId: kotlin.Int, id: kotlin.String, ifNoneMatch: kotlin.String? = null) : DosageOptionResponse {
+        val localVarResponse = getDosageOptionWithHttpInfo(householdId = householdId, id = id, ifNoneMatch = ifNoneMatch)
 
         return when (localVarResponse.responseType) {
             ResponseType.Success -> (localVarResponse as Success<*>).data as DosageOptionResponse
@@ -2509,17 +2430,18 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * GET /households/{household_id}/dosage_options/{id}
      * Read a medication dosage option.
-     * 
+     * Active household members may read an option only if they can read its parent medication. Owners and administrators can read every medication in their household. Other members require an active person view grant linked to the medication or must have created an unlinked medication. An option outside this visibility scope returns 404.
      * @param householdId 
      * @param id 
+     * @param ifNoneMatch Return an empty 304 response when a visible resource&#39;s serialized representation still matches this ETag. (optional)
      * @return ApiResponse<DosageOptionResponse?>
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class)
-    fun getDosageOptionWithHttpInfo(householdId: kotlin.Int, id: kotlin.String) : ApiResponse<DosageOptionResponse?> {
-        val localVariableConfig = getDosageOptionRequestConfig(householdId = householdId, id = id)
+    fun getDosageOptionWithHttpInfo(householdId: kotlin.Int, id: kotlin.String, ifNoneMatch: kotlin.String?) : ApiResponse<DosageOptionResponse?> {
+        val localVariableConfig = getDosageOptionRequestConfig(householdId = householdId, id = id, ifNoneMatch = ifNoneMatch)
 
         return request<Unit, DosageOptionResponse>(
             localVariableConfig
@@ -2531,12 +2453,14 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      *
      * @param householdId 
      * @param id 
+     * @param ifNoneMatch Return an empty 304 response when a visible resource&#39;s serialized representation still matches this ETag. (optional)
      * @return RequestConfig
      */
-    fun getDosageOptionRequestConfig(householdId: kotlin.Int, id: kotlin.String) : RequestConfig<Unit> {
+    fun getDosageOptionRequestConfig(householdId: kotlin.Int, id: kotlin.String, ifNoneMatch: kotlin.String?) : RequestConfig<Unit> {
         val localVariableBody = null
         val localVariableQuery: MultiValueMap = mutableMapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        ifNoneMatch?.apply { localVariableHeaders["If-None-Match"] = this.toString() }
         localVariableHeaders["Accept"] = "application/json"
 
         return RequestConfig(
@@ -2814,9 +2738,82 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     }
 
     /**
+     * GET /households/{household_id}/ui_capabilities
+     * Read permissions for household management controls.
+     * Rust browser capability discovery. Returned permissions use the same current membership and person grants as mutations. These hints never replace mutation authorization. This additive operation is currently implemented by Rust. 
+     * @param householdId 
+     * @return HouseholdUiCapabilitiesResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun getHouseholdUiCapabilities(householdId: kotlin.Int) : HouseholdUiCapabilitiesResponse {
+        val localVarResponse = getHouseholdUiCapabilitiesWithHttpInfo(householdId = householdId)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as HouseholdUiCapabilitiesResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * GET /households/{household_id}/ui_capabilities
+     * Read permissions for household management controls.
+     * Rust browser capability discovery. Returned permissions use the same current membership and person grants as mutations. These hints never replace mutation authorization. This additive operation is currently implemented by Rust. 
+     * @param householdId 
+     * @return ApiResponse<HouseholdUiCapabilitiesResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun getHouseholdUiCapabilitiesWithHttpInfo(householdId: kotlin.Int) : ApiResponse<HouseholdUiCapabilitiesResponse?> {
+        val localVariableConfig = getHouseholdUiCapabilitiesRequestConfig(householdId = householdId)
+
+        return request<Unit, HouseholdUiCapabilitiesResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation getHouseholdUiCapabilities
+     *
+     * @param householdId 
+     * @return RequestConfig
+     */
+    fun getHouseholdUiCapabilitiesRequestConfig(householdId: kotlin.Int) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.GET,
+            path = "/households/{household_id}/ui_capabilities".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
      * GET /households/{household_id}/locations/{id}
      * Read a location.
-     * 
+     * Active members can read a location in their selected household.
      * @param householdId 
      * @param id 
      * @return LocationResponse
@@ -2849,7 +2846,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * GET /households/{household_id}/locations/{id}
      * Read a location.
-     * 
+     * Active members can read a location in their selected household.
      * @param householdId 
      * @param id 
      * @return ApiResponse<LocationResponse?>
@@ -2895,6 +2892,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      * 
      * @param householdId 
      * @param id 
+     * @param ifNoneMatch Return an empty 304 response when a visible resource&#39;s serialized representation still matches this ETag. (optional)
      * @return MedicationResponse
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
@@ -2904,8 +2902,8 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun getMedication(householdId: kotlin.Int, id: kotlin.String) : MedicationResponse {
-        val localVarResponse = getMedicationWithHttpInfo(householdId = householdId, id = id)
+    fun getMedication(householdId: kotlin.Int, id: kotlin.String, ifNoneMatch: kotlin.String? = null) : MedicationResponse {
+        val localVarResponse = getMedicationWithHttpInfo(householdId = householdId, id = id, ifNoneMatch = ifNoneMatch)
 
         return when (localVarResponse.responseType) {
             ResponseType.Success -> (localVarResponse as Success<*>).data as MedicationResponse
@@ -2928,14 +2926,15 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      * 
      * @param householdId 
      * @param id 
+     * @param ifNoneMatch Return an empty 304 response when a visible resource&#39;s serialized representation still matches this ETag. (optional)
      * @return ApiResponse<MedicationResponse?>
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class)
-    fun getMedicationWithHttpInfo(householdId: kotlin.Int, id: kotlin.String) : ApiResponse<MedicationResponse?> {
-        val localVariableConfig = getMedicationRequestConfig(householdId = householdId, id = id)
+    fun getMedicationWithHttpInfo(householdId: kotlin.Int, id: kotlin.String, ifNoneMatch: kotlin.String?) : ApiResponse<MedicationResponse?> {
+        val localVariableConfig = getMedicationRequestConfig(householdId = householdId, id = id, ifNoneMatch = ifNoneMatch)
 
         return request<Unit, MedicationResponse>(
             localVariableConfig
@@ -2947,12 +2946,14 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      *
      * @param householdId 
      * @param id 
+     * @param ifNoneMatch Return an empty 304 response when a visible resource&#39;s serialized representation still matches this ETag. (optional)
      * @return RequestConfig
      */
-    fun getMedicationRequestConfig(householdId: kotlin.Int, id: kotlin.String) : RequestConfig<Unit> {
+    fun getMedicationRequestConfig(householdId: kotlin.Int, id: kotlin.String, ifNoneMatch: kotlin.String?) : RequestConfig<Unit> {
         val localVariableBody = null
         val localVariableQuery: MultiValueMap = mutableMapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        ifNoneMatch?.apply { localVariableHeaders["If-None-Match"] = this.toString() }
         localVariableHeaders["Accept"] = "application/json"
 
         return RequestConfig(
@@ -2971,7 +2972,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      * 
      * @param householdId 
      * @param id 
-     * @return MedicationReviewPromptResponse
+     * @return MedicationReviewPromptDetailResponse
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
      * @throws UnsupportedOperationException If the API returns an informational or redirection response
@@ -2980,11 +2981,11 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun getMedicationReviewPrompt(householdId: kotlin.Int, id: kotlin.String) : MedicationReviewPromptResponse {
+    fun getMedicationReviewPrompt(householdId: kotlin.Int, id: kotlin.String) : MedicationReviewPromptDetailResponse {
         val localVarResponse = getMedicationReviewPromptWithHttpInfo(householdId = householdId, id = id)
 
         return when (localVarResponse.responseType) {
-            ResponseType.Success -> (localVarResponse as Success<*>).data as MedicationReviewPromptResponse
+            ResponseType.Success -> (localVarResponse as Success<*>).data as MedicationReviewPromptDetailResponse
             ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
             ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
             ResponseType.ClientError -> {
@@ -3004,16 +3005,16 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      * 
      * @param householdId 
      * @param id 
-     * @return ApiResponse<MedicationReviewPromptResponse?>
+     * @return ApiResponse<MedicationReviewPromptDetailResponse?>
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class)
-    fun getMedicationReviewPromptWithHttpInfo(householdId: kotlin.Int, id: kotlin.String) : ApiResponse<MedicationReviewPromptResponse?> {
+    fun getMedicationReviewPromptWithHttpInfo(householdId: kotlin.Int, id: kotlin.String) : ApiResponse<MedicationReviewPromptDetailResponse?> {
         val localVariableConfig = getMedicationReviewPromptRequestConfig(householdId = householdId, id = id)
 
-        return request<Unit, MedicationReviewPromptResponse>(
+        return request<Unit, MedicationReviewPromptDetailResponse>(
             localVariableConfig
         )
     }
@@ -3202,7 +3203,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * GET /households/{household_id}/notification_preference
      * Read the signed-in person&#39;s notification preference.
-     * 
+     * Returns the signed-in person&#39;s preference in its own household. Returns 404 when no preference exists or the person is outside view scope.
      * @param householdId 
      * @return NotificationPreferenceResponse
      * @throws IllegalStateException If the request is not correctly configured
@@ -3234,7 +3235,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * GET /households/{household_id}/notification_preference
      * Read the signed-in person&#39;s notification preference.
-     * 
+     * Returns the signed-in person&#39;s preference in its own household. Returns 404 when no preference exists or the person is outside view scope.
      * @param householdId 
      * @return ApiResponse<NotificationPreferenceResponse?>
      * @throws IllegalStateException If the request is not correctly configured
@@ -3354,6 +3355,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      * 
      * @param householdId 
      * @param id 
+     * @param ifNoneMatch Return an empty 304 response when a visible resource&#39;s serialized representation still matches this ETag. (optional)
      * @return PersonMedicationResponse
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
@@ -3363,8 +3365,8 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun getPersonMedication(householdId: kotlin.Int, id: kotlin.String) : PersonMedicationResponse {
-        val localVarResponse = getPersonMedicationWithHttpInfo(householdId = householdId, id = id)
+    fun getPersonMedication(householdId: kotlin.Int, id: kotlin.String, ifNoneMatch: kotlin.String? = null) : PersonMedicationResponse {
+        val localVarResponse = getPersonMedicationWithHttpInfo(householdId = householdId, id = id, ifNoneMatch = ifNoneMatch)
 
         return when (localVarResponse.responseType) {
             ResponseType.Success -> (localVarResponse as Success<*>).data as PersonMedicationResponse
@@ -3387,14 +3389,15 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      * 
      * @param householdId 
      * @param id 
+     * @param ifNoneMatch Return an empty 304 response when a visible resource&#39;s serialized representation still matches this ETag. (optional)
      * @return ApiResponse<PersonMedicationResponse?>
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class)
-    fun getPersonMedicationWithHttpInfo(householdId: kotlin.Int, id: kotlin.String) : ApiResponse<PersonMedicationResponse?> {
-        val localVariableConfig = getPersonMedicationRequestConfig(householdId = householdId, id = id)
+    fun getPersonMedicationWithHttpInfo(householdId: kotlin.Int, id: kotlin.String, ifNoneMatch: kotlin.String?) : ApiResponse<PersonMedicationResponse?> {
+        val localVariableConfig = getPersonMedicationRequestConfig(householdId = householdId, id = id, ifNoneMatch = ifNoneMatch)
 
         return request<Unit, PersonMedicationResponse>(
             localVariableConfig
@@ -3406,12 +3409,14 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      *
      * @param householdId 
      * @param id 
+     * @param ifNoneMatch Return an empty 304 response when a visible resource&#39;s serialized representation still matches this ETag. (optional)
      * @return RequestConfig
      */
-    fun getPersonMedicationRequestConfig(householdId: kotlin.Int, id: kotlin.String) : RequestConfig<Unit> {
+    fun getPersonMedicationRequestConfig(householdId: kotlin.Int, id: kotlin.String, ifNoneMatch: kotlin.String?) : RequestConfig<Unit> {
         val localVariableBody = null
         val localVariableQuery: MultiValueMap = mutableMapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        ifNoneMatch?.apply { localVariableHeaders["If-None-Match"] = this.toString() }
         localVariableHeaders["Accept"] = "application/json"
 
         return RequestConfig(
@@ -3655,7 +3660,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * GET /households/{household_id}/dosage_options
      * List medication dosage options.
-     * 
+     * Active household members receive options only for medications they can read. Owners and administrators can read every medication in their household. Other members can read a medication linked to a person with an active view grant, or an unlinked medication they created. Options for medications outside that scope are omitted from the collection and its total count.
      * @param householdId 
      * @param page  (optional, default to 1)
      * @param perPage  (optional, default to 20)
@@ -3690,7 +3695,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * GET /households/{household_id}/dosage_options
      * List medication dosage options.
-     * 
+     * Active household members receive options only for medications they can read. Owners and administrators can read every medication in their household. Other members can read a medication linked to a person with an active view grant, or an unlinked medication they created. Options for medications outside that scope are omitted from the collection and its total count.
      * @param householdId 
      * @param page  (optional, default to 1)
      * @param perPage  (optional, default to 20)
@@ -3841,7 +3846,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * GET /households/{household_id}/locations
      * List visible locations.
-     * 
+     * Active members can list every location in their selected household.
      * @param householdId 
      * @param page  (optional, default to 1)
      * @param perPage  (optional, default to 20)
@@ -3876,7 +3881,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * GET /households/{household_id}/locations
      * List visible locations.
-     * 
+     * Active members can list every location in their selected household.
      * @param householdId 
      * @param page  (optional, default to 1)
      * @param perPage  (optional, default to 20)
@@ -5424,6 +5429,166 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     }
 
     /**
+     * DELETE /households/{household_id}/medication_review_prompts/{id}/lease
+     * Cancel an edit and release its lease.
+     * 
+     * @param householdId 
+     * @param id 
+     * @param xReviewLease Opaque token from the active edit lease. Omit only when no lease remains; release is idempotent. (optional)
+     * @return MedicationReviewLeaseReleaseResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun releaseMedicationReviewPromptLease(householdId: kotlin.Int, id: kotlin.String, xReviewLease: java.util.UUID? = null) : MedicationReviewLeaseReleaseResponse {
+        val localVarResponse = releaseMedicationReviewPromptLeaseWithHttpInfo(householdId = householdId, id = id, xReviewLease = xReviewLease)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as MedicationReviewLeaseReleaseResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * DELETE /households/{household_id}/medication_review_prompts/{id}/lease
+     * Cancel an edit and release its lease.
+     * 
+     * @param householdId 
+     * @param id 
+     * @param xReviewLease Opaque token from the active edit lease. Omit only when no lease remains; release is idempotent. (optional)
+     * @return ApiResponse<MedicationReviewLeaseReleaseResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun releaseMedicationReviewPromptLeaseWithHttpInfo(householdId: kotlin.Int, id: kotlin.String, xReviewLease: java.util.UUID?) : ApiResponse<MedicationReviewLeaseReleaseResponse?> {
+        val localVariableConfig = releaseMedicationReviewPromptLeaseRequestConfig(householdId = householdId, id = id, xReviewLease = xReviewLease)
+
+        return request<Unit, MedicationReviewLeaseReleaseResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation releaseMedicationReviewPromptLease
+     *
+     * @param householdId 
+     * @param id 
+     * @param xReviewLease Opaque token from the active edit lease. Omit only when no lease remains; release is idempotent. (optional)
+     * @return RequestConfig
+     */
+    fun releaseMedicationReviewPromptLeaseRequestConfig(householdId: kotlin.Int, id: kotlin.String, xReviewLease: java.util.UUID?) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        xReviewLease?.apply { localVariableHeaders["X-Review-Lease"] = this.toString() }
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.DELETE,
+            path = "/households/{household_id}/medication_review_prompts/{id}/lease".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * POST /households/{household_id}/medication_review_prompts/{id}/lease/renew
+     * Keep editing for five minutes from the latest activity.
+     * 
+     * @param householdId 
+     * @param id 
+     * @param xReviewLease Opaque token from the active medication review edit lease.
+     * @return MedicationReviewLeaseRenewResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun renewMedicationReviewPromptLease(householdId: kotlin.Int, id: kotlin.String, xReviewLease: java.util.UUID) : MedicationReviewLeaseRenewResponse {
+        val localVarResponse = renewMedicationReviewPromptLeaseWithHttpInfo(householdId = householdId, id = id, xReviewLease = xReviewLease)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as MedicationReviewLeaseRenewResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * POST /households/{household_id}/medication_review_prompts/{id}/lease/renew
+     * Keep editing for five minutes from the latest activity.
+     * 
+     * @param householdId 
+     * @param id 
+     * @param xReviewLease Opaque token from the active medication review edit lease.
+     * @return ApiResponse<MedicationReviewLeaseRenewResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun renewMedicationReviewPromptLeaseWithHttpInfo(householdId: kotlin.Int, id: kotlin.String, xReviewLease: java.util.UUID) : ApiResponse<MedicationReviewLeaseRenewResponse?> {
+        val localVariableConfig = renewMedicationReviewPromptLeaseRequestConfig(householdId = householdId, id = id, xReviewLease = xReviewLease)
+
+        return request<Unit, MedicationReviewLeaseRenewResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation renewMedicationReviewPromptLease
+     *
+     * @param householdId 
+     * @param id 
+     * @param xReviewLease Opaque token from the active medication review edit lease.
+     * @return RequestConfig
+     */
+    fun renewMedicationReviewPromptLeaseRequestConfig(householdId: kotlin.Int, id: kotlin.String, xReviewLease: java.util.UUID) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        xReviewLease.apply { localVariableHeaders["X-Review-Lease"] = this.toString() }
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.POST,
+            path = "/households/{household_id}/medication_review_prompts/{id}/lease/renew".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
      * PATCH /households/{household_id}/person_medications/{person_medication_id}/dose_occurrences/reopen
      * Reopen a not-taken dose with manage access and a current version.
      * 
@@ -5602,7 +5767,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * PATCH /households/{household_id}/person_medications/{id}/reorder
      * Reorder a person medication assignment.
-     * 
+     * Direction must be up or down; invalid directions return 422 without changing the order.
      * @param householdId 
      * @param id 
      * @param personMedicationReorderRequest 
@@ -5636,7 +5801,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * PATCH /households/{household_id}/person_medications/{id}/reorder
      * Reorder a person medication assignment.
-     * 
+     * Direction must be up or down; invalid directions return 422 without changing the order.
      * @param householdId 
      * @param id 
      * @param personMedicationReorderRequest 
@@ -5682,7 +5847,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * PUT /households/{household_id}/dosage_options/{id}
      * Replace a medication dosage option.
-     * 
+     * Household owners and administrators may replace option attributes for medications in their household. The same validation, default uniqueness, optional If-Match, and atomic parent inventory synchronization rules as PATCH apply.
      * @param householdId 
      * @param id 
      * @param dosageOptionUpdateRequest 
@@ -5717,7 +5882,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * PUT /households/{household_id}/dosage_options/{id}
      * Replace a medication dosage option.
-     * 
+     * Household owners and administrators may replace option attributes for medications in their household. The same validation, default uniqueness, optional If-Match, and atomic parent inventory synchronization rules as PATCH apply.
      * @param householdId 
      * @param id 
      * @param dosageOptionUpdateRequest 
@@ -5933,8 +6098,8 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
 
     /**
      * PUT /households/{household_id}/notification_preference
-     * Replace the signed-in person&#39;s notification preference.
-     * 
+     * Update the signed-in person&#39;s notification preference with PUT.
+     * Creates the preference with database defaults if absent. Supplied attributes replace their current values; omitted attributes are preserved. A null time clears that time.
      * @param householdId 
      * @param notificationPreferenceUpdateRequest 
      * @return NotificationPreferenceResponse
@@ -5966,8 +6131,8 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
 
     /**
      * PUT /households/{household_id}/notification_preference
-     * Replace the signed-in person&#39;s notification preference.
-     * 
+     * Update the signed-in person&#39;s notification preference with PUT.
+     * Creates the preference with database defaults if absent. Supplied attributes replace their current values; omitted attributes are preserved. A null time clears that time.
      * @param householdId 
      * @param notificationPreferenceUpdateRequest 
      * @return ApiResponse<NotificationPreferenceResponse?>
@@ -6182,7 +6347,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      * Requires manage access. Ends the addressed period at server acceptance time. Retrying a completed period returns it unchanged and cannot close a newer pause. The original reason, note and recording actor remain intact.
      * @param householdId 
      * @param id 
-     * @param idempotencyKey Replays the committed response for a matching request; reuse with different content returns conflict. (optional)
+     * @param idempotencyKey A key is scoped to one household for 24 hours. The same authorized account can replay a matching method, path and request through another current credential; another account or changed request receives 409. Current authentication and operation authorization are checked before replay. A replay does not repeat the domain write or its domain audit. (optional)
      * @param ifMatch  (optional)
      * @return MedicationPausePeriodResponse
      * @throws IllegalStateException If the request is not correctly configured
@@ -6217,7 +6382,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      * Requires manage access. Ends the addressed period at server acceptance time. Retrying a completed period returns it unchanged and cannot close a newer pause. The original reason, note and recording actor remain intact.
      * @param householdId 
      * @param id 
-     * @param idempotencyKey Replays the committed response for a matching request; reuse with different content returns conflict. (optional)
+     * @param idempotencyKey A key is scoped to one household for 24 hours. The same authorized account can replay a matching method, path and request through another current credential; another account or changed request receives 409. Current authentication and operation authorization are checked before replay. A replay does not repeat the domain write or its domain audit. (optional)
      * @param ifMatch  (optional)
      * @return ApiResponse<MedicationPausePeriodResponse?>
      * @throws IllegalStateException If the request is not correctly configured
@@ -6238,7 +6403,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      *
      * @param householdId 
      * @param id 
-     * @param idempotencyKey Replays the committed response for a matching request; reuse with different content returns conflict. (optional)
+     * @param idempotencyKey A key is scoped to one household for 24 hours. The same authorized account can replay a matching method, path and request through another current credential; another account or changed request receives 409. Current authentication and operation authorization are checked before replay. A replay does not repeat the domain write or its domain audit. (optional)
      * @param ifMatch  (optional)
      * @return RequestConfig
      */
@@ -6765,7 +6930,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * PATCH /households/{household_id}/dosage_options/{id}
      * Update a medication dosage option.
-     * 
+     * Household owners and administrators may update options for medications in their household. The resulting full record must have positive amount, nonnegative minimum hours, current supply and reorder threshold, and non-whitespace unit and frequency. An incomplete legacy record returns 422 until the request repairs its missing fields. A duplicate adult or child default returns 422 and rolls back the update. Changing a tracked option&#39;s inventory recalculates parent stock, reorder threshold, and last-restock baseline atomically; when no options retain current supply, parent stock and baseline become null and reorder threshold becomes zero. If-Match is optional; a stale supplied value returns 409.
      * @param householdId 
      * @param id 
      * @param dosageOptionUpdateRequest 
@@ -6800,7 +6965,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * PATCH /households/{household_id}/dosage_options/{id}
      * Update a medication dosage option.
-     * 
+     * Household owners and administrators may update options for medications in their household. The resulting full record must have positive amount, nonnegative minimum hours, current supply and reorder threshold, and non-whitespace unit and frequency. An incomplete legacy record returns 422 until the request repairs its missing fields. A duplicate adult or child default returns 422 and rolls back the update. Changing a tracked option&#39;s inventory recalculates parent stock, reorder threshold, and last-restock baseline atomically; when no options retain current supply, parent stock and baseline become null and reorder threshold becomes zero. If-Match is optional; a stale supplied value returns 409.
      * @param householdId 
      * @param id 
      * @param dosageOptionUpdateRequest 
@@ -7087,7 +7252,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * PATCH /households/{household_id}/locations/{id}
      * Update household storage with its current version.
-     * 
+     * Only an active household owner or administrator can update an in-scope location. If-Match must equal the current location ETag.
      * @param householdId 
      * @param id 
      * @param ifMatch 
@@ -7122,7 +7287,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * PATCH /households/{household_id}/locations/{id}
      * Update household storage with its current version.
-     * 
+     * Only an active household owner or administrator can update an in-scope location. If-Match must equal the current location ETag.
      * @param householdId 
      * @param id 
      * @param ifMatch 
@@ -7171,7 +7336,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * PUT /households/{household_id}/locations/{id}
      * Update household storage with its current version.
-     * 
+     * Only an active household owner or administrator can update an in-scope location. If-Match must equal the current location ETag.
      * @param householdId 
      * @param id 
      * @param ifMatch 
@@ -7206,7 +7371,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * PUT /households/{household_id}/locations/{id}
      * Update household storage with its current version.
-     * 
+     * Only an active household owner or administrator can update an in-scope location. If-Match must equal the current location ETag.
      * @param householdId 
      * @param id 
      * @param ifMatch 
@@ -7343,6 +7508,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      * @param householdId 
      * @param id 
      * @param ifMatch 
+     * @param xReviewLease Token obtained by starting an explicit edit. A successful save releases it.
      * @param medicationReviewPromptUpdateRequest 
      * @return MedicationReviewPromptResponse
      * @throws IllegalStateException If the request is not correctly configured
@@ -7353,8 +7519,8 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun updateMedicationReviewPrompt(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String, medicationReviewPromptUpdateRequest: MedicationReviewPromptUpdateRequest) : MedicationReviewPromptResponse {
-        val localVarResponse = updateMedicationReviewPromptWithHttpInfo(householdId = householdId, id = id, ifMatch = ifMatch, medicationReviewPromptUpdateRequest = medicationReviewPromptUpdateRequest)
+    fun updateMedicationReviewPrompt(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String, xReviewLease: java.util.UUID, medicationReviewPromptUpdateRequest: MedicationReviewPromptUpdateRequest) : MedicationReviewPromptResponse {
+        val localVarResponse = updateMedicationReviewPromptWithHttpInfo(householdId = householdId, id = id, ifMatch = ifMatch, xReviewLease = xReviewLease, medicationReviewPromptUpdateRequest = medicationReviewPromptUpdateRequest)
 
         return when (localVarResponse.responseType) {
             ResponseType.Success -> (localVarResponse as Success<*>).data as MedicationReviewPromptResponse
@@ -7378,6 +7544,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      * @param householdId 
      * @param id 
      * @param ifMatch 
+     * @param xReviewLease Token obtained by starting an explicit edit. A successful save releases it.
      * @param medicationReviewPromptUpdateRequest 
      * @return ApiResponse<MedicationReviewPromptResponse?>
      * @throws IllegalStateException If the request is not correctly configured
@@ -7385,8 +7552,8 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class)
-    fun updateMedicationReviewPromptWithHttpInfo(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String, medicationReviewPromptUpdateRequest: MedicationReviewPromptUpdateRequest) : ApiResponse<MedicationReviewPromptResponse?> {
-        val localVariableConfig = updateMedicationReviewPromptRequestConfig(householdId = householdId, id = id, ifMatch = ifMatch, medicationReviewPromptUpdateRequest = medicationReviewPromptUpdateRequest)
+    fun updateMedicationReviewPromptWithHttpInfo(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String, xReviewLease: java.util.UUID, medicationReviewPromptUpdateRequest: MedicationReviewPromptUpdateRequest) : ApiResponse<MedicationReviewPromptResponse?> {
+        val localVariableConfig = updateMedicationReviewPromptRequestConfig(householdId = householdId, id = id, ifMatch = ifMatch, xReviewLease = xReviewLease, medicationReviewPromptUpdateRequest = medicationReviewPromptUpdateRequest)
 
         return request<MedicationReviewPromptUpdateRequest, MedicationReviewPromptResponse>(
             localVariableConfig
@@ -7399,14 +7566,16 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      * @param householdId 
      * @param id 
      * @param ifMatch 
+     * @param xReviewLease Token obtained by starting an explicit edit. A successful save releases it.
      * @param medicationReviewPromptUpdateRequest 
      * @return RequestConfig
      */
-    fun updateMedicationReviewPromptRequestConfig(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String, medicationReviewPromptUpdateRequest: MedicationReviewPromptUpdateRequest) : RequestConfig<MedicationReviewPromptUpdateRequest> {
+    fun updateMedicationReviewPromptRequestConfig(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String, xReviewLease: java.util.UUID, medicationReviewPromptUpdateRequest: MedicationReviewPromptUpdateRequest) : RequestConfig<MedicationReviewPromptUpdateRequest> {
         val localVariableBody = medicationReviewPromptUpdateRequest
         val localVariableQuery: MultiValueMap = mutableMapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         ifMatch.apply { localVariableHeaders["If-Match"] = this.toString() }
+        xReviewLease.apply { localVariableHeaders["X-Review-Lease"] = this.toString() }
         localVariableHeaders["Content-Type"] = "application/json"
         localVariableHeaders["Accept"] = "application/json"
 
@@ -7427,6 +7596,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      * @param householdId 
      * @param id 
      * @param ifMatch 
+     * @param xReviewLease Token obtained by starting an explicit edit. A successful save releases it.
      * @param medicationReviewPromptUpdateRequest 
      * @return MedicationReviewPromptResponse
      * @throws IllegalStateException If the request is not correctly configured
@@ -7437,8 +7607,8 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun updateMedicationReviewPromptWithPut(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String, medicationReviewPromptUpdateRequest: MedicationReviewPromptUpdateRequest) : MedicationReviewPromptResponse {
-        val localVarResponse = updateMedicationReviewPromptWithPutWithHttpInfo(householdId = householdId, id = id, ifMatch = ifMatch, medicationReviewPromptUpdateRequest = medicationReviewPromptUpdateRequest)
+    fun updateMedicationReviewPromptWithPut(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String, xReviewLease: java.util.UUID, medicationReviewPromptUpdateRequest: MedicationReviewPromptUpdateRequest) : MedicationReviewPromptResponse {
+        val localVarResponse = updateMedicationReviewPromptWithPutWithHttpInfo(householdId = householdId, id = id, ifMatch = ifMatch, xReviewLease = xReviewLease, medicationReviewPromptUpdateRequest = medicationReviewPromptUpdateRequest)
 
         return when (localVarResponse.responseType) {
             ResponseType.Success -> (localVarResponse as Success<*>).data as MedicationReviewPromptResponse
@@ -7462,6 +7632,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      * @param householdId 
      * @param id 
      * @param ifMatch 
+     * @param xReviewLease Token obtained by starting an explicit edit. A successful save releases it.
      * @param medicationReviewPromptUpdateRequest 
      * @return ApiResponse<MedicationReviewPromptResponse?>
      * @throws IllegalStateException If the request is not correctly configured
@@ -7469,8 +7640,8 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class)
-    fun updateMedicationReviewPromptWithPutWithHttpInfo(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String, medicationReviewPromptUpdateRequest: MedicationReviewPromptUpdateRequest) : ApiResponse<MedicationReviewPromptResponse?> {
-        val localVariableConfig = updateMedicationReviewPromptWithPutRequestConfig(householdId = householdId, id = id, ifMatch = ifMatch, medicationReviewPromptUpdateRequest = medicationReviewPromptUpdateRequest)
+    fun updateMedicationReviewPromptWithPutWithHttpInfo(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String, xReviewLease: java.util.UUID, medicationReviewPromptUpdateRequest: MedicationReviewPromptUpdateRequest) : ApiResponse<MedicationReviewPromptResponse?> {
+        val localVariableConfig = updateMedicationReviewPromptWithPutRequestConfig(householdId = householdId, id = id, ifMatch = ifMatch, xReviewLease = xReviewLease, medicationReviewPromptUpdateRequest = medicationReviewPromptUpdateRequest)
 
         return request<MedicationReviewPromptUpdateRequest, MedicationReviewPromptResponse>(
             localVariableConfig
@@ -7483,14 +7654,16 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
      * @param householdId 
      * @param id 
      * @param ifMatch 
+     * @param xReviewLease Token obtained by starting an explicit edit. A successful save releases it.
      * @param medicationReviewPromptUpdateRequest 
      * @return RequestConfig
      */
-    fun updateMedicationReviewPromptWithPutRequestConfig(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String, medicationReviewPromptUpdateRequest: MedicationReviewPromptUpdateRequest) : RequestConfig<MedicationReviewPromptUpdateRequest> {
+    fun updateMedicationReviewPromptWithPutRequestConfig(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String, xReviewLease: java.util.UUID, medicationReviewPromptUpdateRequest: MedicationReviewPromptUpdateRequest) : RequestConfig<MedicationReviewPromptUpdateRequest> {
         val localVariableBody = medicationReviewPromptUpdateRequest
         val localVariableQuery: MultiValueMap = mutableMapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         ifMatch.apply { localVariableHeaders["If-Match"] = this.toString() }
+        xReviewLease.apply { localVariableHeaders["X-Review-Lease"] = this.toString() }
         localVariableHeaders["Content-Type"] = "application/json"
         localVariableHeaders["Accept"] = "application/json"
 
@@ -7507,7 +7680,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * PATCH /households/{household_id}/notification_preference
      * Update the signed-in person&#39;s notification preference.
-     * 
+     * Creates the preference with database defaults if absent. Supplied attributes replace their current values; omitted attributes are preserved. A null time clears that time.
      * @param householdId 
      * @param notificationPreferenceUpdateRequest 
      * @return NotificationPreferenceResponse
@@ -7540,7 +7713,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * PATCH /households/{household_id}/notification_preference
      * Update the signed-in person&#39;s notification preference.
-     * 
+     * Creates the preference with database defaults if absent. Supplied attributes replace their current values; omitted attributes are preserved. A null time clears that time.
      * @param householdId 
      * @param notificationPreferenceUpdateRequest 
      * @return ApiResponse<NotificationPreferenceResponse?>
@@ -7584,7 +7757,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * PATCH /households/{household_id}/people/{id}
      * Update a person.
-     * 
+     * Requires an active manage grant for the selected person. A person outside the actor&#39;s visible scope returns 404; a visible person without manage access returns 403. Supplied attributes are merged with the existing record; omitted attributes are retained. Email is normalized and must remain unique. A minor or dependent adult always has has_capacity false, and a person without capacity may be edited without an active carer. Age and person_type must agree. A changed update records person audit and sync changes. If-Match is not required. Malformed JSON or a missing person wrapper returns 400; invalid supplied attributes return 422. 
      * @param householdId 
      * @param id 
      * @param personUpdateRequest 
@@ -7618,7 +7791,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * PATCH /households/{household_id}/people/{id}
      * Update a person.
-     * 
+     * Requires an active manage grant for the selected person. A person outside the actor&#39;s visible scope returns 404; a visible person without manage access returns 403. Supplied attributes are merged with the existing record; omitted attributes are retained. Email is normalized and must remain unique. A minor or dependent adult always has has_capacity false, and a person without capacity may be edited without an active carer. Age and person_type must agree. A changed update records person audit and sync changes. If-Match is not required. Malformed JSON or a missing person wrapper returns 400; invalid supplied attributes return 422. 
      * @param householdId 
      * @param id 
      * @param personUpdateRequest 
@@ -7748,7 +7921,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * PUT /households/{household_id}/people/{id}
      * Update a person using the PUT route.
-     * 
+     * PUT has the same merged-attribute, authorization, validation, audit and sync behaviour as PATCH. Omitted attributes are retained and If-Match is not required. Malformed JSON or a missing person wrapper returns 400; invalid supplied attributes return 422. 
      * @param householdId 
      * @param id 
      * @param personUpdateRequest 
@@ -7782,7 +7955,7 @@ open class HouseholdApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * PUT /households/{household_id}/people/{id}
      * Update a person using the PUT route.
-     * 
+     * PUT has the same merged-attribute, authorization, validation, audit and sync behaviour as PATCH. Omitted attributes are retained and If-Match is not required. Malformed JSON or a missing person wrapper returns 400; invalid supplied attributes return 422. 
      * @param householdId 
      * @param id 
      * @param personUpdateRequest 

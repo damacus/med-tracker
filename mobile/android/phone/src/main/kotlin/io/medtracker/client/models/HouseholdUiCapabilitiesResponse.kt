@@ -15,7 +15,7 @@
 
 package io.medtracker.client.models
 
-import io.medtracker.client.models.PersonAccessGrant
+import io.medtracker.client.models.HouseholdUiCapabilitiesResponseData
 
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
@@ -27,10 +27,10 @@ import com.squareup.moshi.JsonClass
  */
 
 
-data class PersonAccessGrantResponse (
+data class HouseholdUiCapabilitiesResponse (
 
     @Json(name = "data")
-    val `data`: PersonAccessGrant
+    val `data`: HouseholdUiCapabilitiesResponseData
 
 ) {
 

@@ -20,6 +20,7 @@ import okhttp3.Call
 import okhttp3.HttpUrl
 
 import io.medtracker.client.models.CapabilitiesResponse
+import io.medtracker.client.models.RateLimitErrorEnvelope
 
 import com.squareup.moshi.Json
 

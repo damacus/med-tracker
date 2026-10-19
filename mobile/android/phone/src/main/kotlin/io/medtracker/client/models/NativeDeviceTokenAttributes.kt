@@ -24,7 +24,7 @@ import com.squareup.moshi.JsonClass
  *
  * @param deviceToken 
  * @param platform 
- * @param apnsEnvironment APNs environment from the signed iOS entitlement. Omit for legacy clients.
+ * @param apnsEnvironment APNs environment from the signed iOS entitlement. Omission preserves an existing token's value and is allowed for legacy clients.
  */
 
 
@@ -36,7 +36,7 @@ data class NativeDeviceTokenAttributes (
     @Json(name = "platform")
     val platform: NativeDeviceTokenAttributes.Platform,
 
-    /* APNs environment from the signed iOS entitlement. Omit for legacy clients. */
+    /* APNs environment from the signed iOS entitlement. Omission preserves an existing token's value and is allowed for legacy clients. */
     @Json(name = "apns_environment")
     val apnsEnvironment: NativeDeviceTokenAttributes.ApnsEnvironment? = null
 
@@ -54,7 +54,7 @@ data class NativeDeviceTokenAttributes (
         @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");
     }
     /**
-     * APNs environment from the signed iOS entitlement. Omit for legacy clients.
+     * APNs environment from the signed iOS entitlement. Omission preserves an existing token's value and is allowed for legacy clients.
      *
      * Values: sandbox,production,unknown_default_open_api
      */
