@@ -220,11 +220,15 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
         if: ${{ !inputs.cold_cache }}
         with:
-          shared-key: loco-coverage-v1
+          shared-key: loco-coverage-v2
+          cache-targets: false
+          cache-directories: |
+            target/coverage/instrumented/target
+            target/coverage/instrumented/intermediates
       - name: Install owned-runner prerequisites
         run: |
           sudo apt-get update
-          sudo apt-get install --yes fish uuid-runtime ripgrep
+          sudo apt-get install --yes fish uuid-runtime ripgrep python3
       - name: Install pinned nextest for coverage
         uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8
         with:

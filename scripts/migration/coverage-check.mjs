@@ -8,7 +8,10 @@ function output(command, args) {
 }
 
 const version = output('cargo', ['llvm-cov', '--version']);
-if (version !== 'cargo-llvm-cov 0.9.1') {
+if (output('python3', ['-I', '-c', 'import fcntl']) === null) {
+  process.stderr.write('Python 3 with fcntl is required for the coverage build lock.\n');
+  process.exitCode = 1;
+} else if (version !== 'cargo-llvm-cov 0.9.1') {
   process.stderr.write('cargo-llvm-cov 0.9.1 is required; run task coverage:install explicitly.\n');
   process.exitCode = 1;
 } else {

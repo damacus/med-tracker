@@ -966,20 +966,6 @@ test('coverage rejects zero selected tests before an instrumented run', async ()
   }, 'test:coverage', directory => [`OUTPUT_DIR=${join(directory, 'coverage')}`], 0, { SLICE_FIXTURE_FAIL_MATCH: 'never', SLICE_FIXTURE_COVERAGE_EMPTY_LIST: '1' });
 });
 
-test('separate coverage invocations never reuse instrumented Cargo directories', async () => {
-  const targets = [];
-  for (let index = 0; index < 2; index += 1) {
-    await withProcessFixture(0, (result, state) => {
-      assert.equal(result.status, 0, result.stderr);
-      const coverageCalls = state.calls.filter(call => call.command === 'cargo' && call.args[0] === 'llvm-cov' && call.args.includes('nextest'));
-      assert.equal(new Set(coverageCalls.map(call => call.coverage_target_dir)).size, 1);
-      assert.equal(new Set(coverageCalls.map(call => call.coverage_build_dir)).size, 1);
-      targets.push(coverageCalls[0].coverage_target_dir);
-    }, 'test:coverage', [], 0, { SLICE_FIXTURE_FAIL_MATCH: 'never' });
-  }
-  assert.notEqual(targets[0], targets[1]);
-});
-
 test('coverage prerequisite failure exits before owned fixture provisioning', async () => {
   await withProcessFixture(0, (result, state) => {
     assert.notEqual(result.status, 0);
