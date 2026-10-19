@@ -1809,6 +1809,199 @@ async fn browser_missed_reminders_respect_grace_managed_opt_in_and_private_conte
     app.close().await;
 }
 
+async fn prepare_managed_dependent_dose(
+    app: &Application,
+    request_id: &str,
+) -> (chrono::DateTime<Utc>, HouseholdScope) {
+    let (now, scope) = prepare_due_delivery(app, request_id).await;
+    app.fixture.admin.execute_unprepared("INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,missed_dose_notifications_enabled,created_at,updated_at) VALUES(78002,72001,74001,73002,'manage','parent',false,now(),now())").await.unwrap();
+    app.fixture
+        .admin
+        .execute_raw(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            "INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83002,72001,73002,80001,true,$1,$2,2,'tablet',0,jsonb_build_object('times',jsonb_build_array($3::text)),now(),now())",
+            [
+                (now.date_naive() - chrono::Duration::days(1)).into(),
+                (now.date_naive() + chrono::Duration::days(2)).into(),
+                now.format("%H:%M").to_string().into(),
+            ],
+        ))
+        .await
+        .unwrap();
+    (now, scope)
+}
+
+#[tokio::test]
+async fn browser_dose_due_reaches_managed_dependent_subjects() {
+    let app = Application::new().await;
+    let (now, scope) = prepare_managed_dependent_dose(&app, "synthetic-due-managed").await;
+    app.fixture
+        .admin
+        .execute_unprepared(
+            "UPDATE notification_preferences SET private_text_enabled=false WHERE household_id=72001 AND person_id=73001",
+        )
+        .await
+        .unwrap();
+    let transport = Arc::new(Reminders(Mutex::new(vec![])));
+    app.context.shared_store.insert(Service {
+        public_key: String::new(),
+        transport: transport.clone(),
+    });
+    assert_eq!(
+        browser_push::reminders::deliver_account(&app.context, &scope, now)
+            .await
+            .unwrap(),
+        2
+    );
+    {
+        let bodies = transport.0.lock().unwrap();
+        let bodies = bodies
+            .iter()
+            .map(|value| value["body"].as_str().unwrap().to_string())
+            .collect::<Vec<_>>();
+        let expected_self = format!("{} medications: Synthetic tablets", now.format("%H:%M"));
+        assert!(
+            bodies.contains(&expected_self),
+            "self body missing: {bodies:?}"
+        );
+        assert!(
+            bodies
+                .iter()
+                .any(|body| body.starts_with("Synthetic minor")),
+            "dependent body missing: {bodies:?}"
+        );
+    }
+    let events = app
+        .fixture
+        .admin
+        .query_all_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT person_id,event_key FROM notification_events WHERE event_type='dose_due' ORDER BY person_id",
+        ))
+        .await
+        .unwrap();
+    let person_ids = events
+        .iter()
+        .map(|row| row.try_get::<i64>("", "person_id").unwrap())
+        .collect::<Vec<_>>();
+    assert_eq!(person_ids, vec![73001, 73002]);
+    let keys = events
+        .iter()
+        .map(|row| row.try_get::<String>("", "event_key").unwrap())
+        .collect::<Vec<_>>();
+    assert!(keys[0].contains("dose-due:73001:"));
+    assert!(keys[1].contains("dose-due:73002:"));
+    app.close().await;
+}
+
+#[tokio::test]
+async fn browser_dose_due_keeps_managed_dependent_names_private() {
+    let app = Application::new().await;
+    let (now, scope) = prepare_managed_dependent_dose(&app, "synthetic-due-private").await;
+    let transport = Arc::new(Reminders(Mutex::new(vec![])));
+    app.context.shared_store.insert(Service {
+        public_key: String::new(),
+        transport: transport.clone(),
+    });
+    assert_eq!(
+        browser_push::reminders::deliver_account(&app.context, &scope, now)
+            .await
+            .unwrap(),
+        2
+    );
+    {
+        let bodies = transport.0.lock().unwrap();
+        assert_eq!(bodies.len(), 2);
+        assert!(
+            bodies
+                .iter()
+                .all(|value| value["body"].as_str().unwrap() == "A dose is due."),
+            "private bodies leaked names: {bodies:?}"
+        );
+    }
+    app.close().await;
+}
+
+#[tokio::test]
+async fn browser_dose_due_skips_decided_and_unmanaged_dependents() {
+    let app = Application::new().await;
+    let (now, scope) = prepare_managed_dependent_dose(&app, "synthetic-due-decided").await;
+    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+        "INSERT INTO medication_dose_occurrences(household_id,schedule_id,window_starts_on,window_ends_on,position,scheduled_at,outcome,resolved_at,resolved_by_membership_id,created_at,updated_at) VALUES(72001,83002,$1,$1,1,$2,'not_taken',now(),74001,now(),now())",
+        [now.date_naive().into(),now.naive_utc().into()])).await.unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73004,'Synthetic unmanaged adult',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74984,72001,73004,'member','active',now(),now(),now()); INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,missed_dose_notifications_enabled,created_at,updated_at) VALUES(78004,72001,74001,73004,'manage','carer',false,now(),now())").await.unwrap();
+    app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+        "INSERT INTO schedules(id,household_id,person_id,medication_id,active,start_date,end_date,dose_amount,dose_unit,schedule_type,schedule_config,created_at,updated_at) VALUES(83004,72001,73004,80001,true,$1,$2,2,'tablet',0,jsonb_build_object('times',jsonb_build_array($3::text)),now(),now())",
+        [
+            (now.date_naive() - chrono::Duration::days(1)).into(),
+            (now.date_naive() + chrono::Duration::days(2)).into(),
+            now.format("%H:%M").to_string().into(),
+        ],
+    )).await.unwrap();
+    let transport = Arc::new(Reminders(Mutex::new(vec![])));
+    app.context.shared_store.insert(Service {
+        public_key: String::new(),
+        transport: transport.clone(),
+    });
+    assert_eq!(
+        browser_push::reminders::deliver_account(&app.context, &scope, now)
+            .await
+            .unwrap(),
+        1
+    );
+    let events = app
+        .fixture
+        .admin
+        .query_all_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT person_id FROM notification_events WHERE event_type='dose_due'",
+        ))
+        .await
+        .unwrap();
+    let person_ids = events
+        .iter()
+        .map(|row| row.try_get::<i64>("", "person_id").unwrap())
+        .collect::<Vec<_>>();
+    assert_eq!(person_ids, vec![73001]);
+    app.close().await;
+}
+
+#[tokio::test]
+async fn browser_dose_due_dependents_dedupe_across_reruns() {
+    let app = Application::new().await;
+    let (now, scope) = prepare_managed_dependent_dose(&app, "synthetic-due-dedupe").await;
+    let transport = Arc::new(Reminders(Mutex::new(vec![])));
+    app.context.shared_store.insert(Service {
+        public_key: String::new(),
+        transport: transport.clone(),
+    });
+    assert_eq!(
+        browser_push::reminders::deliver_account(&app.context, &scope, now)
+            .await
+            .unwrap(),
+        2
+    );
+    assert_eq!(
+        browser_push::reminders::deliver_account(&app.context, &scope, now)
+            .await
+            .unwrap(),
+        0
+    );
+    let row = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT count(*) AS total,count(DISTINCT event_key) AS keys FROM notification_events WHERE event_type='dose_due'",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(row.try_get::<i64>("", "total").unwrap(), 2);
+    assert_eq!(row.try_get::<i64>("", "keys").unwrap(), 2);
+    app.close().await;
+}
+
 async fn owner_connection(app: &Application) -> sea_orm::DatabaseConnection {
     let mut uri = url::Url::parse(&app.fixture.runtime_uri).unwrap();
     uri.set_username("medtracker").unwrap();
