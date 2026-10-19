@@ -40,7 +40,7 @@ better-auth = { git = "https://github.com/better-auth-rs/better-auth-rs", rev = 
 ] }
 better-auth-core = { git = "https://github.com/better-auth-rs/better-auth-rs", rev = "9f91cd7fdb8a5f73a9c69d5c56d363468a7dc281" }
 openidconnect = "=4.0.1"
-cedar-policy = { version = "=4.13.0", default-features = false }
+cedar-policy = { version = "=4.14.0", default-features = false }
 headers = "=0.4.2"
 hex = "=0.4.3"
 image = { version = "=0.25.10", default-features = false, features = [
