@@ -506,20 +506,6 @@ function run_contract
             rtk task contract:run-replay BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
         else if test "$argv[2]" = sync-privacy
             rtk task contract:run-sync-privacy BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
-        else if test "$argv[2]" = dose-precision
-            rtk task contract:run-dose-precision BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
-        else if test "$argv[2]" = assignment-precision
-            rtk task contract:run-assignment-precision BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
-        else if test "$argv[2]" = schedule-precision
-            rtk task contract:run-schedule-precision BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
-        else if test "$argv[2]" = dosage-health-privacy
-            rtk task contract:run-dosage-health-privacy BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
-        else if test "$argv[2]" = dosage-health-default-validation
-            rtk task contract:run-dosage-health-default-validation BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
-        else if test "$argv[2]" = health-event-kind-validation
-            rtk task contract:run-health-event-kind-validation BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
-        else if test "$argv[2]" = health-event-replacement-atomicity
-            rtk task contract:run-health-event-replacement-atomicity BASE_URL="http://127.0.0.1:$port" FIXTURE_PATH="$contract_fixture_path"
         else
             run_rails_contract_targets "http://127.0.0.1:$port" "$contract_fixture_path" "$mailpit_url" $contract_project $contract_run_dir
         end

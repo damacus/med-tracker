@@ -1,7 +1,7 @@
 ---
 name: rust-drift-audit
 description: >-
-  Audits pull requests, modules, or migration diffs for drift from accepted fresh Rust decisions, stringly-typed Rust anti-patterns, swallowed database errors, and resource lifecycle bugs. Use when reviewing code, auditing PRs, or planning refactors.
+  Audits pull requests, modules, or diffs against accepted fresh Rust decisions for drift, stringly-typed Rust anti-patterns, swallowed database errors, and resource lifecycle bugs. Use when reviewing code, auditing PRs, or planning refactors.
 ---
 
 # rust-drift-audit
@@ -15,7 +15,7 @@ These are accepted direction, not evidence that pending application work passes.
 - Flag domain String timestamps/decimals/enums/conflict codes or interchangeable
   raw i64 identifiers, not necessary raw persistence columns and wire DTOs.
 - Flag new adapters solely mirroring Rails/Rodauth tables without external need.
-- Flag map_err(|_| ...)/From<DbErr> losing categories without safe tracing.
+- Flag map*err(|*| ...)/From<DbErr> losing categories without safe tracing.
 - Flag unbounded blocking work, process-wide HTTP clients tied to short Tokio
   lifetimes, and full table loads followed by Rust filtering instead of SQL.
 - Output a Markdown table with exact columns: Severity (Blocker / High / Nit),
