@@ -1,5 +1,6 @@
 mod access;
 mod contracts;
+mod declarations;
 mod identity;
 mod links;
 mod mapping;
@@ -9,6 +10,7 @@ mod validation;
 mod writing;
 
 pub(crate) use contracts::ImportPlan;
+pub(crate) use declarations::{InitialDeclarations, PreparedDeclarations};
 
 pub(crate) use access::authorized;
 pub(crate) use identity::ExistingIndex;
@@ -16,18 +18,12 @@ pub(crate) use preflight::preflight;
 pub(crate) use writing::write_records;
 
 use crate::models::{
-    access::TenantTransaction,
-    care::administration,
-    care::doses::CredentialProvenance,
-    entities::{api_change_event, grant},
-    errors::OperationError,
+    access::TenantTransaction, care::administration, care::doses::CredentialProvenance,
+    entities::api_change_event, errors::OperationError,
 };
 use chrono::{DateTime, Datelike, NaiveDate, NaiveTime, Utc};
 use sea_orm::prelude::Decimal;
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseTransaction, DbBackend, EntityTrait,
-    QueryFilter, Set, Statement,
-};
+use sea_orm::{ActiveModelTrait, ConnectionTrait, DatabaseTransaction, DbBackend, Set, Statement};
 use serde_json::{Map, Value, json};
 use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
@@ -69,7 +65,7 @@ pub(super) async fn record_change(
 
 use contracts::{BASE_TYPES, V2_TYPES};
 use identity::table;
-use links::{grant_importer_access, write_health_links, write_location_memberships};
+use links::{write_health_links, write_location_memberships};
 use mapping::{mapped_row, record_person, text};
 use pauses::{reconcile_pauses, resume_pause, verify_pause};
 use validation::{decimal, validate_row};

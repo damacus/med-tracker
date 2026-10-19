@@ -7,6 +7,7 @@ pub(super) struct Page<'a> {
     view: &'a TeraView,
     slug: &'a str,
     request_id: String,
+    form_language: &'static str,
 }
 
 impl<'a> Page<'a> {
@@ -25,7 +26,18 @@ impl<'a> Page<'a> {
             view,
             slug,
             request_id: request_id(request),
+            form_language: "en",
         }
+    }
+
+    pub(super) fn form_language(mut self, headers: &HeaderMap) -> Self {
+        self.form_language = crate::models::care::report_pdf::locale(
+            headers
+                .get(header::ACCEPT_LANGUAGE)
+                .and_then(|value| value.to_str().ok())
+                .unwrap_or("en"),
+        );
+        self
     }
 
     pub(super) async fn index(self, pagination: people::Pagination) -> Response {
@@ -98,9 +110,10 @@ impl<'a> Page<'a> {
             data["lang"] = json!(locale);
             data["care_warning_labels"] = labels["care_warning"].clone();
             data["health_events_label"] = labels["people"]["show"]["health_events"].clone();
-            data["manage_carers_label"] = labels["people"]["show"]["manage_parents"].clone();
-            data["can_manage_carers"] =
-                json!(crate::models::care::person_carers::can_assign(&tenant, person_id).await?);
+            data["manage_carers_label"] =
+                labels["people"]["carer_relationships"]["browser"]["relationships"].clone();
+            data["can_read_carers"] =
+                json!(crate::models::care::person_carers::can_read(&tenant, person_id).await?);
             data["avatar_attached"] = json!(
                 crate::models::profile::avatar::person_attachment(&tenant, person_id)
                     .await?
@@ -170,7 +183,16 @@ impl<'a> Page<'a> {
             let draft = submitted
                 .cloned()
                 .unwrap_or_else(|| rendering::draft(person.as_ref()));
-            Ok::<_, OperationError>(rendering::form(self.slug, person.as_ref(), &draft, error))
+            let labels = crate::models::care::report_pdf::translations(self.form_language)
+                .map_err(|_| OperationError::Unavailable)?;
+            Ok::<_, OperationError>(rendering::form(
+                self.slug,
+                person.as_ref(),
+                &draft,
+                error,
+                self.form_language,
+                &labels,
+            ))
         }
         .await;
         self.finish(tenant, "people/form.html", result, error).await
@@ -228,15 +250,15 @@ impl<'a> Page<'a> {
                 .await
             }
             None => {
-                people::create(
-                    &tenant,
-                    attributes,
-                    chrono::Utc::now()
-                        .with_timezone(&principal.time_zone())
-                        .date_naive(),
-                    Some(principal.provenance()),
-                )
-                .await
+                let today = chrono::Utc::now()
+                    .with_timezone(&principal.time_zone())
+                    .date_naive();
+                match people::CreateDependent::parse(&attributes, today) {
+                    Ok(command) => {
+                        people::create(&tenant, command, today, Some(principal.provenance())).await
+                    }
+                    Err(error) => Err(error),
+                }
             }
         };
         match result {

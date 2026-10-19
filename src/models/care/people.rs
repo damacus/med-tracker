@@ -1,4 +1,3 @@
-use loco_rs::model::TenantQueryExt;
 mod creation;
 mod me;
 mod persistence;
@@ -6,7 +5,8 @@ mod projection;
 mod validation;
 mod writing;
 
-pub use creation::create;
+pub(crate) use creation::create_imported;
+pub use creation::{CreateDependent, create};
 pub(crate) use me::me_read;
 pub(crate) use projection::values;
 pub use projection::{Pagination, list, read, representation};
@@ -16,17 +16,16 @@ use crate::models::{
     access::{self, PersonAccess, TenantTransaction},
     care::doses::CredentialProvenance,
     entities::{
-        api_change_event, carer_relationship, grant, household, location, location_membership,
-        membership, notification_preference, person, security_audit_event, version,
+        api_change_event, carer_relationship, household, location, location_membership, membership,
+        notification_preference, person, version,
     },
     errors::OperationError,
 };
 use chrono::{Datelike, NaiveDate, Utc};
 use chrono_tz::Tz;
-use sea_orm::sea_query::{Expr, ExprTrait};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, Condition, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
-    QuerySelect, QueryTrait, Set,
+    ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
+    QuerySelect, Set,
 };
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -44,39 +43,27 @@ fn write_error(error: sea_orm::DbErr) -> OperationError {
     ) {
         invalid("email", "has already been taken")
     } else {
-        OperationError::Unavailable
+        error.into()
     }
 }
+
 pub(crate) fn age(date: NaiveDate, today: NaiveDate) -> i32 {
     today.year()
         - date.year()
         - i32::from((today.month(), today.day()) < (date.month(), date.day()))
-}
-fn active_grants(tenant: &TenantTransaction) -> sea_orm::Select<grant::Entity> {
-    grant::Entity::find()
-        .in_tenant(tenant.scope().household_id)
-        .filter(grant::Column::HouseholdMembershipId.eq(tenant.membership().id))
-        .filter(grant::Column::RevokedAt.is_null())
-        .filter(
-            Condition::any()
-                .add(grant::Column::ExpiresAt.is_null())
-                .add(
-                    Expr::col(grant::Column::ExpiresAt)
-                        .gt(Expr::cust("timezone('UTC', clock_timestamp())")),
-                ),
-        )
 }
 pub async fn can_create(tenant: &TenantTransaction) -> Result<bool, OperationError> {
     access::recheck(tenant).await?;
     if access::can_manage_household(tenant) {
         return Ok(true);
     }
-    access::has_person_access(tenant, PersonAccess::Manage).await
+    access::has_existing_manage_grant(tenant).await
 }
 pub async fn can_manage(tenant: &TenantTransaction, id: i64) -> Result<bool, OperationError> {
     access::can_access_person(tenant, id, PersonAccess::Manage).await
 }
 pub async fn authorize_create(tenant: &TenantTransaction) -> Result<(), OperationError> {
+    crate::models::care::guardian_declarations::lock_creator_account(tenant).await?;
     lock(tenant).await?;
     if !can_create(tenant).await? {
         return Err(OperationError::Forbidden);
@@ -99,4 +86,36 @@ async fn lock(tenant: &TenantTransaction) -> Result<(), OperationError> {
         .await?
         .ok_or(OperationError::NotFound)?;
     access::recheck(tenant).await
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn creator_write_failure_keeps_safe_database_diagnostics() -> Result<(), String> {
+        let sentinel = "synthetic-clinical-and-secret-database-detail";
+        let (error, events) = crate::models::errors::tests::capture_operation(|| {
+            super::write_error(sea_orm::DbErr::Exec(sea_orm::RuntimeErr::Internal(
+                sentinel.to_owned(),
+            )))
+        })?;
+        assert_eq!(error, crate::models::errors::OperationError::Unavailable);
+        assert_eq!(events.len(), 1);
+        let fields = events
+            .first()
+            .ok_or("Expected creator database diagnostic")?;
+        assert!(
+            fields
+                .iter()
+                .any(|(name, value)| name == "category" && value == "execution")
+        );
+        let trace = fields
+            .iter()
+            .find(|(name, _)| name == "error_trace_id")
+            .map(|(_, value)| value.as_str())
+            .ok_or("Expected creator error trace ID")?;
+        assert!(uuid::Uuid::parse_str(trace).is_ok());
+        assert!(!format!("{fields:?}").contains(sentinel));
+        assert!(!error.to_string().contains(sentinel));
+        Ok(())
+    }
 }

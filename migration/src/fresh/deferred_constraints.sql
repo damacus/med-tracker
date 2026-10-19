@@ -55,8 +55,8 @@ ALTER TABLE ONLY public.medication_review_prompts
 ALTER TABLE ONLY public.notification_preferences
     ADD CONSTRAINT fk_rails_a1af1e497f FOREIGN KEY (person_id) REFERENCES public.people(id) DEFERRABLE INITIALLY DEFERRED;
 
-ALTER TABLE ONLY public.people
-    ADD CONSTRAINT fk_rails_a2afb3d410 FOREIGN KEY (account_id) REFERENCES public.accounts(id) DEFERRABLE INITIALLY DEFERRED;
+ALTER TABLE ONLY public.accounts
+    ADD CONSTRAINT fk_accounts_person_id FOREIGN KEY (person_id) REFERENCES public.people(id) ON DELETE RESTRICT DEFERRABLE INITIALLY DEFERRED;
 
 ALTER TABLE ONLY public.dosages
     ADD CONSTRAINT fk_rails_a34bc544d1 FOREIGN KEY (medication_id) REFERENCES public.medications(id) DEFERRABLE INITIALLY DEFERRED;
@@ -93,9 +93,6 @@ ALTER TABLE ONLY public.users
 
 ALTER TABLE ONLY public.medication_review_prompts
     ADD CONSTRAINT fk_review_prompts_interacting_medication_household FOREIGN KEY (interacting_medication_id, household_id) REFERENCES public.medications(id, household_id) NOT VALID;
-
-ALTER TABLE ONLY public.medication_review_prompts
-    ADD CONSTRAINT fk_review_prompts_person_household FOREIGN KEY (person_id, household_id) REFERENCES public.people(id, household_id) NOT VALID;
 
 ALTER TABLE ONLY public.medication_review_prompts
     ADD CONSTRAINT fk_review_prompts_primary_medication_household FOREIGN KEY (primary_medication_id, household_id) REFERENCES public.medications(id, household_id) NOT VALID;

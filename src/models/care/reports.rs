@@ -1,9 +1,8 @@
 use crate::models::{
     access::{self, PersonAccess, TenantTransaction},
-    authorization,
     care::{dose_occurrences, doses, review_prompts},
     entities::{
-        grant, health_event, health_event_medication, medication, medication_take, person,
+        health_event, health_event_medication, medication, medication_take, person,
         person_medication, review_prompt, schedule, security_audit_event,
     },
     errors::OperationError,
@@ -31,9 +30,7 @@ pub async fn actor_adult(
     tenant: &TenantTransaction,
     today: NaiveDate,
 ) -> Result<bool, OperationError> {
-    let Some(id) = tenant.membership().person_id else {
-        return Ok(false);
-    };
+    let id = tenant.membership().person_id;
     let Some(actor) = access::person_queries::household_people(tenant.scope())
         .filter(person::Column::Id.eq(id))
         .one(tenant.transaction())
@@ -55,32 +52,9 @@ pub async fn accessible_people(
     tenant: &TenantTransaction,
     level: PersonAccess,
 ) -> Result<Vec<person::Model>, OperationError> {
-    access::recheck(tenant).await?;
-    if !authorization::ready() {
-        return Err(OperationError::Unavailable);
-    }
-    let people = access::person_queries::household_people(tenant.scope())
-        .order_by_asc(person::Column::Name)
-        .order_by_asc(person::Column::Id)
-        .all(tenant.transaction())
-        .await?;
-    let grants = grant::Entity::find()
-        .in_tenant(tenant.scope().household_id)
-        .filter(grant::Column::HouseholdMembershipId.eq(tenant.membership().id))
-        .filter(grant::Column::RevokedAt.is_null())
-        .all(tenant.transaction())
-        .await?;
-    let grants: HashMap<i64, grant::Model> =
-        grants.into_iter().map(|row| (row.person_id, row)).collect();
-    let now = Utc::now().naive_utc();
-    Ok(people
-        .into_iter()
-        .filter(|person| {
-            grants.get(&person.id).is_some_and(|grant| {
-                authorization::person_access(tenant.membership(), person, grant, level, now)
-            })
-        })
-        .collect())
+    let mut people = access::people_with_access(tenant, level).await?;
+    people.sort_by(|left, right| left.name.cmp(&right.name).then(left.id.cmp(&right.id)));
+    Ok(people)
 }
 
 pub async fn record_download(

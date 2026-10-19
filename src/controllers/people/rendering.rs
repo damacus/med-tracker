@@ -12,8 +12,10 @@ fn context(slug: &str) -> Value {
     let labels = crate::models::care::report_pdf::translations("en").unwrap_or(Value::Null);
     data["care_warning_labels"] = labels["care_warning"].clone();
     data["health_events_label"] = labels["people"]["show"]["health_events"].clone();
-    data["manage_carers_label"] = labels["people"]["show"]["manage_parents"].clone();
+    data["manage_carers_label"] =
+        labels["people"]["carer_relationships"]["browser"]["relationships"].clone();
     data["capacity_hint"] = labels["people"]["form"]["capacity_hint"].clone();
+    data["guardian_labels"] = labels["guardian_declarations"].clone();
     data
 }
 
@@ -97,13 +99,13 @@ pub(super) fn draft(person: Option<&Value>) -> HashMap<String, String> {
         "person_type".into(),
         person
             .and_then(|person| person["person_type"].as_str())
-            .unwrap_or("adult")
+            .unwrap_or("minor")
             .into(),
     );
     draft.insert(
         "has_capacity".into(),
         person
-            .is_none_or(|person| person["has_capacity"].as_bool().unwrap_or(false))
+            .is_some_and(|person| person["has_capacity"].as_bool().unwrap_or(false))
             .to_string(),
     );
     draft
@@ -115,7 +117,15 @@ pub(super) fn attributes(draft: &HashMap<String, String>) -> Value {
         Some("true") => json!(true),
         Some(value) => json!(value),
     };
-    json!({"name":forms::field(draft,"name"),"email":forms::field(draft,"email"),"date_of_birth":forms::field(draft,"date_of_birth"),"person_type":forms::field(draft,"person_type"),"has_capacity":capacity})
+    let mut attributes = json!({"name":forms::field(draft,"name"),"email":forms::field(draft,"email"),"date_of_birth":forms::field(draft,"date_of_birth"),"person_type":forms::field(draft,"person_type"),"has_capacity":capacity});
+    if let Some(value) = draft.get("initial_guardian_declaration") {
+        attributes["initial_guardian_declaration"] = match value.as_str() {
+            "true" => json!(true),
+            "false" => json!(false),
+            value => json!(value),
+        };
+    }
+    attributes
 }
 
 pub(super) fn form(
@@ -123,8 +133,12 @@ pub(super) fn form(
     person: Option<&Value>,
     draft: &HashMap<String, String>,
     error: Option<&OperationError>,
+    language: &str,
+    labels: &Value,
 ) -> Value {
     let mut data = context(slug);
+    data["lang"] = json!(language);
+    data["guardian_labels"] = labels["guardian_declarations"].clone();
     let errors = errors(error);
     data["title"] = json!(if person.is_some() {
         "Edit Person"
@@ -142,9 +156,16 @@ pub(super) fn form(
         .or_insert_with(|| "false".into());
     data["draft"] = json!(values);
     data["fields"] = json!(FIELDS.iter().map(|(field,label,kind,required)|json!({"name":field,"label":label,"kind":kind,"required":required,"value":forms::field(draft,field),"invalid":errors.iter().any(|error|error["field"]==*field)})).collect::<Vec<_>>());
+    let types: &[&str] = if person.is_some() {
+        &["adult", "minor", "dependent_adult"]
+    } else {
+        &["minor", "dependent_adult"]
+    };
     data["types"] = json!(
-        ["adult", "minor", "dependent_adult"]
+        types
+            .iter()
             .map(|value| json!({"value":value,"label":type_label(value)}))
+            .collect::<Vec<_>>()
     );
     data["type_invalid"] = json!(errors.iter().any(|error| error["field"] == "person_type"));
     data["capacity_invalid"] = json!(errors.iter().any(|error| error["field"] == "has_capacity"));

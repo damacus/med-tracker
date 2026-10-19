@@ -23,7 +23,7 @@ async fn projection(fixture: &Fixture, account: i64, token: &str) -> (i64, Optio
 #[tokio::test]
 async fn better_auth_invitation_projection_reveals_only_verified_recipient_inviter_id() {
     let fixture = Fixture::new().await;
-    fixture.admin.execute_unprepared("INSERT INTO accounts(id,email,status,created_at,updated_at) VALUES(71002,'invitation-recipient@example.test',2,now(),now()); INSERT INTO identity_sessions(id,account_id,token,expires_at,purpose) VALUES('invitation-recipient',71002,'synthetic-recipient-session',now()+interval '1 hour','authenticated'); INSERT INTO household_invitations(id,household_id,email,membership_role,token_digest,invited_by_membership_id,expires_at,created_at,updated_at) SELECT 87090,72001,email,'member','synthetic-invitation-digest',74001,now()+interval '1 day',now(),now() FROM accounts WHERE id=71002").await.unwrap();
+    fixture.admin.execute_unprepared("INSERT INTO people(id,name,created_at,updated_at) VALUES(73995,'Synthetic invitation recipient',now(),now()); INSERT INTO accounts(id,person_id,email,status,created_at,updated_at) VALUES(71002,73995,'invitation-recipient@example.test',2,now(),now()); INSERT INTO identity_sessions(id,account_id,token,expires_at,purpose) VALUES('invitation-recipient',71002,'synthetic-recipient-session',now()+interval '1 hour','authenticated'); INSERT INTO household_invitations(id,household_id,email,membership_role,token_digest,invited_by_membership_id,expires_at,created_at,updated_at) SELECT 87090,72001,email,'member','synthetic-invitation-digest',74001,now()+interval '1 day',now(),now() FROM accounts WHERE id=71002").await.unwrap();
     assert_eq!(
         projection(&fixture, 71002, "synthetic-recipient-session").await,
         (1, Some(71001), 0)
@@ -51,7 +51,7 @@ async fn better_auth_invitation_projection_reveals_only_verified_recipient_invit
 #[tokio::test]
 async fn better_auth_invitation_projection_denies_expiry_revocation_and_account_lockout() {
     let fixture = Fixture::new().await;
-    fixture.admin.execute_unprepared("INSERT INTO accounts(id,email,status,created_at,updated_at) VALUES(71002,'invitation-recipient@example.test',2,now(),now()); INSERT INTO identity_sessions(id,account_id,token,expires_at,purpose) VALUES('invitation-recipient',71002,'synthetic-recipient-session',now()+interval '1 hour','authenticated'); INSERT INTO household_invitations(id,household_id,email,membership_role,token_digest,invited_by_membership_id,expires_at,created_at,updated_at) SELECT 87090,72001,email,'member','synthetic-invitation-digest',74001,now()+interval '1 day',now(),now() FROM accounts WHERE id=71002").await.unwrap();
+    fixture.admin.execute_unprepared("INSERT INTO people(id,name,created_at,updated_at) VALUES(73995,'Synthetic invitation recipient',now(),now()); INSERT INTO accounts(id,person_id,email,status,created_at,updated_at) VALUES(71002,73995,'invitation-recipient@example.test',2,now(),now()); INSERT INTO identity_sessions(id,account_id,token,expires_at,purpose) VALUES('invitation-recipient',71002,'synthetic-recipient-session',now()+interval '1 hour','authenticated'); INSERT INTO household_invitations(id,household_id,email,membership_role,token_digest,invited_by_membership_id,expires_at,created_at,updated_at) SELECT 87090,72001,email,'member','synthetic-invitation-digest',74001,now()+interval '1 day',now(),now() FROM accounts WHERE id=71002").await.unwrap();
     assert_eq!(
         projection(&fixture, 71002, "synthetic-recipient-session").await,
         (1, Some(71001), 0)

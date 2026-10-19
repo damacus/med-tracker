@@ -123,7 +123,17 @@ async fn process(
             .await
             .map(|()| Value::Null)
     } else {
-        administration::grants::create(tenant, attributes, Some(principal.provenance())).await
+        match administration::grants::create(tenant, attributes, Some(principal.provenance())).await
+        {
+            Ok(administration::grants::GrantCreation::Rejected) => {
+                savepoint
+                    .commit()
+                    .await
+                    .map_err(|error| response::operation(error.into()))?;
+                return Err(response::operation(OperationError::Forbidden));
+            }
+            Err(error) => Err(error),
+        }
     };
     let (status, reply) = reply(
         savepoint,

@@ -89,7 +89,7 @@ impl UserStore<ClinicalAuthSchema> for ClinicalStore {
         }
         if let Some(email) = input.email {
             transaction.execute_raw(statement("UPDATE public.accounts SET email=$2,updated_at=clock_timestamp() WHERE id=$1 AND status=2", [account_id.into(), email.clone().into()])).await.map_err(database_error)?;
-            transaction.execute_raw(statement("UPDATE public.users SET email_address=$2,updated_at=clock_timestamp() WHERE person_id IN(SELECT id FROM public.people WHERE account_id=$1)", [account_id.into(), email.into()])).await.map_err(database_error)?;
+            transaction.execute_raw(statement("UPDATE public.users SET email_address=$2,updated_at=clock_timestamp() WHERE person_id IN(SELECT person_id FROM public.accounts WHERE id=$1)", [account_id.into(), email.into()])).await.map_err(database_error)?;
         }
         if let Some(enabled) = input.two_factor_enabled {
             let row = transaction.query_one_raw(statement("SELECT EXISTS(SELECT 1 FROM public.identity_two_factors WHERE account_id=$1 AND verified) AS enabled", [account_id.into()])).await.map_err(database_error)?.ok_or_else(|| AuthError::internal("Factor state unavailable"))?;

@@ -50,6 +50,18 @@ enum Credential {
 }
 
 impl ValidatedPrincipal {
+    pub(crate) async fn guardian_declaration_transaction(
+        &self,
+        db: &DatabaseConnection,
+        settings: Option<&serde_json::Value>,
+        write: bool,
+    ) -> Result<DatabaseTransaction, AuthenticationError> {
+        if !matches!(self.credential, Credential::OAuth { .. }) {
+            return Err(AuthenticationError::Forbidden);
+        }
+        self.account_transaction(db, settings, write).await
+    }
+
     pub(crate) async fn account_transaction(
         &self,
         db: &DatabaseConnection,

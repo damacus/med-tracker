@@ -156,6 +156,20 @@ pub(crate) async fn can_access_person(
     else {
         return Ok(false);
     };
+    if matches!(access, PersonAccess::View | PersonAccess::Record) {
+        return Ok(authorization::participating_person_access(
+            membership, &subject, access,
+        ));
+    }
+    if authorization::own_person_manage(membership, &subject) {
+        return Ok(true);
+    }
+    if super::care::guardian_declarations::manageable_subjects(transaction)
+        .await?
+        .contains(&person_id)
+    {
+        return Ok(true);
+    }
     let record = grant::Entity::find()
         .in_tenant(transaction.scope.household_id)
         .filter(grant::Column::HouseholdMembershipId.eq(membership.id))
@@ -172,6 +186,34 @@ pub(crate) async fn can_access_person(
 pub(crate) async fn has_person_access(
     transaction: &TenantTransaction,
     access: PersonAccess,
+) -> Result<bool, OperationError> {
+    recheck(transaction).await?;
+    if matches!(access, PersonAccess::View | PersonAccess::Record) {
+        return Ok(person_queries::household_people(transaction.scope())
+            .one(transaction.transaction())
+            .await?
+            .is_some());
+    }
+    let own = person_queries::household_people(transaction.scope())
+        .filter(person::Column::Id.eq(transaction.membership().person_id))
+        .one(transaction.transaction())
+        .await?;
+    if own
+        .is_some_and(|subject| authorization::own_person_manage(transaction.membership(), &subject))
+    {
+        return Ok(true);
+    }
+    if !super::care::guardian_declarations::manageable_subjects(transaction)
+        .await?
+        .is_empty()
+    {
+        return Ok(true);
+    }
+    has_existing_manage_grant(transaction).await
+}
+
+pub(crate) async fn has_existing_manage_grant(
+    transaction: &TenantTransaction,
 ) -> Result<bool, OperationError> {
     recheck(transaction).await?;
     let grants = grant::Entity::find()
@@ -197,7 +239,7 @@ pub(crate) async fn has_person_access(
             .iter()
             .find(|subject| subject.id == record.person_id)
             .is_some_and(|subject| {
-                authorization::person_access(transaction.membership(), subject, record, access, now)
+                authorization::granted_person_manage(transaction.membership(), subject, record, now)
             })
     }))
 }
@@ -207,6 +249,13 @@ pub(crate) async fn people_with_access(
     access: PersonAccess,
 ) -> Result<Vec<person::Model>, OperationError> {
     recheck(transaction).await?;
+    if matches!(access, PersonAccess::View | PersonAccess::Record) {
+        return Ok(person_queries::household_people(transaction.scope())
+            .order_by_asc(person::Column::Name)
+            .all(transaction.transaction())
+            .await?);
+    }
+    let declared = super::care::guardian_declarations::manageable_subjects(transaction).await?;
     let grants = grant::Entity::find()
         .in_tenant(transaction.scope().household_id)
         .filter(grant::Column::HouseholdMembershipId.eq(transaction.membership().id))
@@ -215,23 +264,32 @@ pub(crate) async fn people_with_access(
         .await?;
     let mut people = person_queries::household_people(transaction.scope())
         .filter(
-            person::Column::Id.is_in(grants.iter().map(|row| row.person_id).collect::<Vec<_>>()),
+            person::Column::Id.is_in(
+                grants
+                    .iter()
+                    .map(|row| row.person_id)
+                    .chain(std::iter::once(transaction.membership().person_id))
+                    .chain(declared.iter().copied())
+                    .collect::<Vec<_>>(),
+            ),
         )
         .order_by_asc(person::Column::Name)
         .all(transaction.transaction())
         .await?;
     let now = database_time(transaction).await?;
     people.retain(|subject| {
-        grants.iter().any(|grant| {
-            grant.person_id == subject.id
-                && authorization::person_access(
-                    transaction.membership(),
-                    subject,
-                    grant,
-                    access,
-                    now,
-                )
-        })
+        authorization::own_person_manage(transaction.membership(), subject)
+            || declared.contains(&subject.id)
+            || grants.iter().any(|grant| {
+                grant.person_id == subject.id
+                    && authorization::person_access(
+                        transaction.membership(),
+                        subject,
+                        grant,
+                        access,
+                        now,
+                    )
+            })
     });
     Ok(people)
 }
@@ -281,13 +339,13 @@ pub fn medication_scope(transaction: &TenantTransaction) -> sea_orm::Select<medi
         .select_only()
         .column(schedule::Column::MedicationId)
         .in_tenant(household_id)
-        .filter(schedule::Column::PersonId.in_subquery(granted_people(membership)))
+        .filter(schedule::Column::PersonId.in_subquery(participating_people(membership)))
         .into_query();
     let granted_assignments = person_medication::Entity::find()
         .select_only()
         .column(person_medication::Column::MedicationId)
         .in_tenant(household_id)
-        .filter(person_medication::Column::PersonId.in_subquery(granted_people(membership)))
+        .filter(person_medication::Column::PersonId.in_subquery(participating_people(membership)))
         .into_query();
     let linked_schedules = schedule::Entity::find()
         .select_only()
@@ -320,10 +378,21 @@ pub(crate) fn schedule_scope(transaction: &TenantTransaction) -> sea_orm::Select
     if !authorization::ready() {
         return query.filter(Expr::cust("FALSE"));
     }
-    query.filter(schedule::Column::PersonId.in_subquery(granted_people(transaction.membership())))
+    query.filter(
+        schedule::Column::PersonId.in_subquery(participating_people(transaction.membership())),
+    )
 }
 
-pub(crate) fn granted_people(
+pub(crate) fn participating_people(
+    membership: &membership::Model,
+) -> sea_orm::sea_query::SelectStatement {
+    person_queries::household_participants(membership.household_id)
+        .select_only()
+        .column(person::Column::Id)
+        .into_query()
+}
+
+pub(crate) fn managed_people(
     membership: &membership::Model,
 ) -> sea_orm::sea_query::SelectStatement {
     grant::Entity::find()
@@ -332,7 +401,7 @@ pub(crate) fn granted_people(
         .in_tenant(membership.household_id)
         .filter(grant::Column::HouseholdMembershipId.eq(membership.id))
         .filter(grant::Column::RevokedAt.is_null())
-        .filter(grant::Column::AccessLevel.is_in(["view", "record", "manage"]))
+        .filter(grant::Column::AccessLevel.eq("manage"))
         .filter(
             Condition::any()
                 .add(grant::Column::ExpiresAt.is_null())
@@ -357,7 +426,15 @@ pub(crate) async fn verify_membership(
         return Err(OperationError::Forbidden);
     }
     let membership = membership::Entity::find()
-        .filter(membership::Column::AccountId.eq(scope.actor.account_id))
+        .filter(
+            membership::Column::PersonId.in_subquery(
+                account::Entity::find()
+                    .select_only()
+                    .column(account::Column::PersonId)
+                    .filter(account::Column::Id.eq(scope.actor.account_id))
+                    .into_query(),
+            ),
+        )
         .in_tenant(scope.household_id)
         .filter(membership::Column::Status.eq("active"))
         .filter(membership::Column::RevokedAt.is_null())

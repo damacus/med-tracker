@@ -46,10 +46,7 @@ impl<'a> Page<'a> {
         };
         let result = async {
             let records = invitations::list(&tenant).await?;
-            let options = invitations::options(&tenant).await?;
-            Ok::<_, OperationError>(rendering::data(
-                self.slug, &records, &options, submitted, error,
-            ))
+            Ok::<_, OperationError>(rendering::data(self.slug, &records, submitted, error))
         }
         .await;
         let data = match result {
@@ -146,5 +143,15 @@ impl<'a> Page<'a> {
 }
 
 fn attributes(draft: &[(String, String)]) -> Value {
-    json!({"email":field(draft,"email"),"membership_role":field(draft,"membership_role"),"relationship_type":field(draft,"relationship_type"),"access_level":field(draft,"access_level"),"dependent_ids":draft.iter().filter(|(key,_)|key=="dependent_ids[]").map(|(_,value)|value).collect::<Vec<_>>()})
+    let mut attributes =
+        json!({"email":field(draft,"email"),"membership_role":field(draft,"membership_role")});
+    for (name, value) in draft.iter().filter(|(name, _)| {
+        matches!(
+            name.as_str(),
+            "dependent_ids" | "dependent_ids[]" | "relationship_type" | "access_level"
+        )
+    }) {
+        attributes[name] = json!(value);
+    }
+    attributes
 }

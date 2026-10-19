@@ -345,7 +345,7 @@ pub async fn index(
 
 pub async fn options(tenant: &TenantTransaction, person_id: &str) -> Result<Value, OperationError> {
     access::recheck(tenant).await?;
-    let query = person::Entity::find().in_tenant(tenant.scope().household_id);
+    let query = crate::models::access::person_queries::household_people(tenant.scope());
     let query = if let Ok(id) = person_id.parse::<i64>() {
         query.filter(person::Column::Id.eq(id))
     } else {

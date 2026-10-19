@@ -89,7 +89,7 @@ async fn restricted_expiry_records_both_audits_once_after_requester_revocation()
     let fixture = Fixture::new().await;
     let result = async {
         seed(&fixture, 1).await?;
-        fixture.admin.execute_unprepared("UPDATE public.platform_admins SET status='revoked' WHERE account_id=71001; UPDATE public.household_memberships SET status='revoked',revoked_at=clock_timestamp() WHERE account_id=71001").await?;
+        fixture.admin.execute_unprepared("UPDATE public.platform_admins SET status='revoked' WHERE account_id=71001; UPDATE public.household_memberships SET status='revoked',revoked_at=clock_timestamp() WHERE person_id=(SELECT person_id FROM public.accounts WHERE id=71001)").await?;
         let transaction = runtime(&fixture).await?;
         let changed = expire(&transaction, 98001).await?;
         transaction.commit().await?;
@@ -281,7 +281,7 @@ async fn expiry_capabilities_have_fixed_nonlogin_owner_and_no_public_execution()
         assert_eq!(row.try_get::<i64>("", "count")?, 2);
         assert_eq!(row.try_get::<Option<bool>>("", "secured")?, Some(true));
         seed(&fixture, 1).await?;
-        fixture.admin.execute_unprepared("INSERT INTO public.accounts(id,email,created_at,updated_at) VALUES(71002,'synthetic-worker-foreign@example.test',now(),now()); INSERT INTO public.households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71002,'Synthetic foreign worker household','synthetic-worker-foreign','UTC',now(),now()); INSERT INTO public.platform_admins(id,account_id,status,created_at,updated_at) VALUES(98102,71002,'revoked',now(),now()); INSERT INTO public.support_access_sessions(id,household_id,platform_admin_id,reason,starts_at,expires_at,created_at,updated_at) VALUES(98002,72002,98102,'Synthetic foreign worker expiry',now()-interval '2 hours',now()-interval '1 hour',now(),now())").await?;
+        fixture.admin.execute_unprepared("INSERT INTO public.people(id,name,created_at,updated_at) VALUES(73004,'Synthetic foreign worker actor',now(),now()); INSERT INTO public.accounts(id,person_id,email,created_at,updated_at) VALUES(71002,73004,'synthetic-worker-foreign@example.test',now(),now()); INSERT INTO public.households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71002,'Synthetic foreign worker household','synthetic-worker-foreign','UTC',now(),now()); INSERT INTO public.platform_admins(id,account_id,status,created_at,updated_at) VALUES(98102,71002,'revoked',now(),now()); INSERT INTO public.support_access_sessions(id,household_id,platform_admin_id,reason,starts_at,expires_at,created_at,updated_at) VALUES(98002,72002,98102,'Synthetic foreign worker expiry',now()-interval '2 hours',now()-interval '1 hour',now(),now())").await?;
         let transaction = runtime(&fixture).await?;
         transaction.execute_unprepared("SET LOCAL search_path=pg_temp; CREATE TEMP TABLE versions(id bigint); CREATE TEMP TABLE security_audit_events(id bigint); SELECT set_config('med_tracker.current_household_id','999999',true),set_config('med_tracker.current_account_id','999998',true)").await?;
         assert!(expire(&transaction, 98001).await?);

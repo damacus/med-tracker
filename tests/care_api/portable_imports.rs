@@ -279,7 +279,7 @@ async fn portable_import_apply_writes_records_and_audits_the_import() {
         .admin
         .query_one_raw(Statement::from_string(
             DbBackend::Postgres,
-            "SELECT count(*) AS count FROM people WHERE household_id = 72001 AND portable_id = 'imported-person-0001'",
+            "SELECT count(*) AS count FROM people WHERE id IN (SELECT person_id FROM household_memberships WHERE household_id=72001) AND portable_id = 'imported-person-0001'",
         ))
         .await
         .unwrap()
@@ -291,7 +291,7 @@ async fn portable_import_apply_writes_records_and_audits_the_import() {
         .admin
         .query_one_raw(Statement::from_string(
             DbBackend::Postgres,
-            "SELECT count(*) AS count FROM location_memberships membership JOIN people person ON person.id = membership.person_id JOIN locations location ON location.id = membership.location_id WHERE person.household_id = 72001 AND person.portable_id = 'imported-person-0001' AND location.portable_id = 'imported-location-0001'",
+            "SELECT count(*) AS count FROM location_memberships membership JOIN people person ON person.id = membership.person_id JOIN locations location ON location.id = membership.location_id WHERE membership.household_id = 72001 AND location.household_id=72001 AND person.portable_id = 'imported-person-0001' AND location.portable_id = 'imported-location-0001'",
         ))
         .await
         .unwrap()

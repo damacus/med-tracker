@@ -111,6 +111,11 @@ impl<'a> Page<'a> {
             Screen::Relationships => {
                 data["relationships"] =
                     administration::delegation::list(tenant).await?["data"].clone();
+                data["unavailable_person"] =
+                    crate::models::care::report_pdf::translations("en")
+                        .map_err(|_| OperationError::Unavailable)?["admin"]["carer_relationships"]
+                        ["index"]["unavailable_person"]
+                        .clone();
                 "administration/relationships.html"
             }
             Screen::NewRelationship => {

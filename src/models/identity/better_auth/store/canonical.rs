@@ -103,7 +103,7 @@ impl ClinicalStore {
         administration::authorize(&tenant)
             .await
             .map_err(operation_error)?;
-        let rows = UserRow::find_by_statement(statement("SELECT a.id,a.email::text,a.status,a.created_at AT TIME ZONE 'UTC' AS created_at,a.updated_at AT TIME ZONE 'UTC' AS updated_at,a.name,false AS two_factor_enabled,NULL::text AS passkey_user_handle FROM public.accounts a JOIN public.household_memberships m ON m.account_id=a.id WHERE m.household_id=$1 AND a.id=ANY($2::bigint[]) AND m.status='active' AND m.revoked_at IS NULL ORDER BY a.id", [household_id.into(), ids.into()])).all(tenant.transaction()).await.map_err(database_error)?;
+        let rows = UserRow::find_by_statement(statement("SELECT a.id,a.email::text,a.status,a.created_at AT TIME ZONE 'UTC' AS created_at,a.updated_at AT TIME ZONE 'UTC' AS updated_at,a.name,false AS two_factor_enabled,NULL::text AS passkey_user_handle FROM public.accounts a JOIN public.household_memberships m ON m.person_id=a.person_id WHERE m.household_id=$1 AND a.id=ANY($2::bigint[]) AND m.status='active' AND m.revoked_at IS NULL ORDER BY a.id", [household_id.into(), ids.into()])).all(tenant.transaction()).await.map_err(database_error)?;
         tenant.commit().await.map_err(operation_error)?;
         Ok(rows.into_iter().map(Into::into).collect())
     }
@@ -117,7 +117,7 @@ impl ClinicalStore {
             return Err(AuthError::forbidden("Account access denied"));
         }
         let transaction = self.account_transaction().await?;
-        let rows = OrganizationRow::find_by_statement(statement("SELECT h.id,h.name,h.slug,h.created_at AT TIME ZONE 'UTC' AS created_at,h.updated_at AT TIME ZONE 'UTC' AS updated_at FROM public.households h JOIN public.household_memberships m ON m.household_id=h.id WHERE m.account_id=$1 AND m.status='active' AND m.revoked_at IS NULL AND h.status='active' AND h.lifecycle_state='active' ORDER BY h.name,h.id", [account_id.into()])).all(&*transaction).await.map_err(database_error)?;
+        let rows = OrganizationRow::find_by_statement(statement("SELECT h.id,h.name,h.slug,h.created_at AT TIME ZONE 'UTC' AS created_at,h.updated_at AT TIME ZONE 'UTC' AS updated_at FROM public.households h JOIN public.household_memberships m ON m.household_id=h.id JOIN public.accounts a ON a.person_id=m.person_id WHERE a.id=$1 AND m.status='active' AND m.revoked_at IS NULL AND h.status='active' AND h.lifecycle_state='active' ORDER BY h.name,h.id", [account_id.into()])).all(&*transaction).await.map_err(database_error)?;
         transaction.commit().await.map_err(database_error)?;
         Ok(rows.into_iter().map(Into::into).collect())
     }
@@ -135,7 +135,7 @@ impl ClinicalStore {
         }
         let actor = request::authenticated()?;
         let transaction = self.account_transaction().await?;
-        let rows = OrganizationRow::find_by_statement(statement("SELECT h.id,h.name,h.slug,h.created_at AT TIME ZONE 'UTC' AS created_at,h.updated_at AT TIME ZONE 'UTC' AS updated_at FROM public.households h JOIN public.household_memberships m ON m.household_id=h.id WHERE m.account_id=$1 AND h.id=ANY($2::bigint[]) AND m.status='active' AND m.revoked_at IS NULL AND h.status='active' AND h.lifecycle_state='active' ORDER BY h.id", [actor.account_id.into(), ids.into()])).all(&*transaction).await.map_err(database_error)?;
+        let rows = OrganizationRow::find_by_statement(statement("SELECT h.id,h.name,h.slug,h.created_at AT TIME ZONE 'UTC' AS created_at,h.updated_at AT TIME ZONE 'UTC' AS updated_at FROM public.households h JOIN public.household_memberships m ON m.household_id=h.id JOIN public.accounts a ON a.person_id=m.person_id WHERE a.id=$1 AND h.id=ANY($2::bigint[]) AND m.status='active' AND m.revoked_at IS NULL AND h.status='active' AND h.lifecycle_state='active' ORDER BY h.id", [actor.account_id.into(), ids.into()])).all(&*transaction).await.map_err(database_error)?;
         transaction.commit().await.map_err(database_error)?;
         Ok(rows.into_iter().map(Into::into).collect())
     }
@@ -146,7 +146,7 @@ impl ClinicalStore {
     ) -> AuthResult<Option<Organization>> {
         let actor = request::authenticated()?;
         let transaction = self.account_transaction().await?;
-        let row = OrganizationRow::find_by_statement(statement("SELECT h.id,h.name,h.slug,h.created_at AT TIME ZONE 'UTC' AS created_at,h.updated_at AT TIME ZONE 'UTC' AS updated_at FROM public.households h JOIN public.household_memberships m ON m.household_id=h.id WHERE m.account_id=$1 AND h.slug=$2 AND m.status='active' AND m.revoked_at IS NULL AND h.status='active' AND h.lifecycle_state='active'", [actor.account_id.into(), slug.into()])).one(&*transaction).await.map_err(database_error)?;
+        let row = OrganizationRow::find_by_statement(statement("SELECT h.id,h.name,h.slug,h.created_at AT TIME ZONE 'UTC' AS created_at,h.updated_at AT TIME ZONE 'UTC' AS updated_at FROM public.households h JOIN public.household_memberships m ON m.household_id=h.id JOIN public.accounts a ON a.person_id=m.person_id WHERE a.id=$1 AND h.slug=$2 AND m.status='active' AND m.revoked_at IS NULL AND h.status='active' AND h.lifecycle_state='active'", [actor.account_id.into(), slug.into()])).one(&*transaction).await.map_err(database_error)?;
         transaction.commit().await.map_err(database_error)?;
         Ok(row.map(Into::into))
     }
@@ -157,7 +157,7 @@ impl ClinicalStore {
         administration::authorize(&tenant)
             .await
             .map_err(operation_error)?;
-        let rows = MemberRow::find_by_statement(statement("SELECT id,household_id,account_id,role,created_at AT TIME ZONE 'UTC' AS created_at FROM public.household_memberships WHERE household_id=$1 AND status='active' AND revoked_at IS NULL ORDER BY id", [household_id.into()])).all(tenant.transaction()).await.map_err(database_error)?;
+        let rows = MemberRow::find_by_statement(statement("SELECT m.id,m.household_id,a.id AS account_id,m.role,m.created_at AT TIME ZONE 'UTC' AS created_at FROM public.household_memberships m JOIN public.accounts a ON a.person_id=m.person_id WHERE m.household_id=$1 AND m.status='active' AND m.revoked_at IS NULL ORDER BY m.id", [household_id.into()])).all(tenant.transaction()).await.map_err(database_error)?;
         tenant.commit().await.map_err(operation_error)?;
         Ok(rows.into_iter().map(Into::into).collect())
     }
@@ -171,7 +171,7 @@ impl ClinicalStore {
             .active_household_id
             .ok_or_else(|| AuthError::bad_request("Choose a household"))?;
         let tenant = self.tenant(household_id).await?;
-        let row = MemberRow::find_by_statement(statement("SELECT id,household_id,account_id,role,created_at AT TIME ZONE 'UTC' AS created_at FROM public.household_memberships WHERE household_id=$1 AND id=$2 AND status='active' AND revoked_at IS NULL", [household_id.into(), member_id.into()])).one(tenant.transaction()).await.map_err(database_error)?;
+        let row = MemberRow::find_by_statement(statement("SELECT m.id,m.household_id,a.id AS account_id,m.role,m.created_at AT TIME ZONE 'UTC' AS created_at FROM public.household_memberships m JOIN public.accounts a ON a.person_id=m.person_id WHERE m.household_id=$1 AND m.id=$2 AND m.status='active' AND m.revoked_at IS NULL", [household_id.into(), member_id.into()])).one(tenant.transaction()).await.map_err(database_error)?;
         tenant.commit().await.map_err(operation_error)?;
         Ok(row.map(Into::into))
     }
@@ -213,7 +213,7 @@ impl ClinicalStore {
         let household = clinical_id(household_id)?;
         let account = clinical_id(user_id)?;
         let tenant = self.tenant(household).await?;
-        let row=MemberRow::find_by_statement(statement("SELECT id,household_id,account_id,role,created_at AT TIME ZONE 'UTC' AS created_at FROM public.household_memberships WHERE household_id=$1 AND account_id=$2 AND status='active' AND revoked_at IS NULL",[household.into(),account.into()])).one(tenant.transaction()).await.map_err(database_error)?;
+        let row=MemberRow::find_by_statement(statement("SELECT m.id,m.household_id,a.id AS account_id,m.role,m.created_at AT TIME ZONE 'UTC' AS created_at FROM public.household_memberships m JOIN public.accounts a ON a.person_id=m.person_id WHERE m.household_id=$1 AND a.id=$2 AND m.status='active' AND m.revoked_at IS NULL",[household.into(),account.into()])).one(tenant.transaction()).await.map_err(database_error)?;
         tenant.commit().await.map_err(operation_error)?;
         Ok(row.map(Into::into))
     }
@@ -229,7 +229,7 @@ impl ClinicalStore {
         administration::memberships::change(&tenant, member_id, attributes, role.is_none(), None)
             .await
             .map_err(operation_error)?;
-        let member=MemberRow::find_by_statement(statement("SELECT id,household_id,account_id,role,created_at AT TIME ZONE 'UTC' AS created_at FROM public.household_memberships WHERE id=$1 AND household_id=$2 AND status='active' AND revoked_at IS NULL",[member_id.into(),household_id.into()])).one(tenant.transaction()).await.map_err(database_error)?.map(Into::into);
+        let member=MemberRow::find_by_statement(statement("SELECT m.id,m.household_id,a.id AS account_id,m.role,m.created_at AT TIME ZONE 'UTC' AS created_at FROM public.household_memberships m JOIN public.accounts a ON a.person_id=m.person_id WHERE m.id=$1 AND m.household_id=$2 AND m.status='active' AND m.revoked_at IS NULL",[member_id.into(),household_id.into()])).one(tenant.transaction()).await.map_err(database_error)?.map(Into::into);
         tenant.commit().await.map_err(operation_error)?;
         Ok(member)
     }

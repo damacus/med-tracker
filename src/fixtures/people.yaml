@@ -1,6 +1,4 @@
 - id: 73001
-  account_id: 71001
-  household_id: 72001
   name: "Synthetic adult"
   person_type: 0
   has_capacity: true

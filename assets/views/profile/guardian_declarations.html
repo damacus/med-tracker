@@ -1,0 +1,26 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-3xl mx-auto">
+  <h1 class="text-3xl font-semibold">{{ title }}</h1>
+  <p class="mt-4">{{ guardian_labels.scope }}</p>
+  <div class="grid gap-4 mt-6">
+    {% for declaration in declarations %}
+    <article class="card bg-base-100 border border-base-300"><div class="card-body">
+      <h2 class="card-title break-words">{{ declaration.subject_name_at_declaration }}</h2>
+      <p>{{ guardian_labels.captured_name }}</p>
+      <p>{% if declaration.withdrawn_at %}{{ guardian_labels.withdrawn }}{% else %}{{ guardian_labels.recorded }}{% endif %}</p>
+      {% if not declaration.withdrawn_at %}
+      <form method="post" action="/profile/guardian-declarations/{{ declaration.id }}/withdraw" class="grid gap-3">
+        <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+        <input type="hidden" name="revision" value="{{ declaration.revision }}">
+        <input type="hidden" name="withdrawn" value="true">
+        <p>{{ guardian_labels.withdraw_hint }}</p>
+        <button class="btn btn-neutral w-fit" type="submit">{{ guardian_labels.withdraw }}</button>
+      </form>
+      {% endif %}
+    </div></article>
+    {% else %}<p>{{ guardian_labels.empty }}</p>{% endfor %}
+  </div>
+  {% if next_before_id %}<a class="btn btn-ghost mt-6" href="?before_id={{ next_before_id }}">{{ guardian_labels.older }}</a>{% endif %}
+</section>
+{% endblock content %}

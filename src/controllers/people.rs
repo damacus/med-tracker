@@ -105,8 +105,10 @@ async fn new(
     request: Option<Extension<LocoRequestId>>,
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
+    headers: HeaderMap,
 ) -> Response {
     page::Page::new(&ctx, &session, &token, &view, &slug, request)
+        .form_language(&headers)
         .form(None, None, None)
         .await
 }
@@ -118,8 +120,10 @@ async fn edit(
     request: Option<Extension<LocoRequestId>>,
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
+    headers: HeaderMap,
 ) -> Response {
     page::Page::new(&ctx, &session, &token, &view, &slug, request)
+        .form_language(&headers)
         .form(Some(&id), None, None)
         .await
 }
@@ -128,12 +132,13 @@ async fn create(
     State(ctx): State<AppContext>,
     Path(slug): Path<String>,
     session: Session<SessionPgPool>,
-    request: Option<Extension<LocoRequestId>>,
+    (request, headers): (Option<Extension<LocoRequestId>>, HeaderMap),
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
     AxumForm(draft): AxumForm<HashMap<String, String>>,
 ) -> Response {
     page::Page::new(&ctx, &session, &token, &view, &slug, request)
+        .form_language(&headers)
         .save(None, draft)
         .await
 }
@@ -142,12 +147,13 @@ async fn update(
     State(ctx): State<AppContext>,
     Path((slug, id)): Path<(String, String)>,
     session: Session<SessionPgPool>,
-    request: Option<Extension<LocoRequestId>>,
+    (request, headers): (Option<Extension<LocoRequestId>>, HeaderMap),
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
     AxumForm(draft): AxumForm<HashMap<String, String>>,
 ) -> Response {
     page::Page::new(&ctx, &session, &token, &view, &slug, request)
+        .form_language(&headers)
         .save(Some(&id), draft)
         .await
 }

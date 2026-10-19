@@ -10,6 +10,7 @@ pub mod dashboard;
 pub mod dosage_options;
 pub mod dose_occurrences;
 pub mod home;
+pub mod guardian_declarations;
 pub mod identity_onboarding;
 pub mod invitations;
 pub mod locations;

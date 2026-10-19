@@ -52,6 +52,14 @@ pub struct Model {
 pub enum Relation {
     #[sea_orm(
         belongs_to = "super::household_memberships::Entity",
+        from = "(Column::PersonId, Column::HouseholdId)",
+        to = "(super::household_memberships::Column::PersonId, super::household_memberships::Column::HouseholdId)",
+        on_update = "NoAction",
+        on_delete = "NoAction"
+    )]
+    SubjectParticipation,
+    #[sea_orm(
+        belongs_to = "super::household_memberships::Entity",
         from = "Column::ReviewedByMembershipId",
         to = "super::household_memberships::Column::Id",
         on_update = "NoAction",
@@ -121,15 +129,7 @@ pub enum Relation {
         on_update = "NoAction",
         on_delete = "NoAction"
     )]
-    People2,
-    #[sea_orm(
-        belongs_to = "super::people::Entity",
-        from = "(Column::PersonId, Column::HouseholdId)",
-        to = "(super::people::Column::HouseholdId, super::people::Column::Id, super::people::Column::HouseholdId, super::people::Column::Id)",
-        on_update = "NoAction",
-        on_delete = "NoAction"
-    )]
-    People1,
+    People,
 }
 
 impl Related<super::households::Entity> for Entity {
@@ -141,6 +141,12 @@ impl Related<super::households::Entity> for Entity {
 impl Related<super::medication_review_evidence_records::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::MedicationReviewEvidenceRecords.def()
+    }
+}
+
+impl Related<super::people::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::People.def()
     }
 }
 

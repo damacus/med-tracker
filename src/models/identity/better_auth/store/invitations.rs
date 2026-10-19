@@ -3,7 +3,7 @@ use better_auth_core::{
     AuthError, AuthResult, CreateInvitation, Invitation, InvitationStatus, store::InvitationStore,
 };
 use chrono::{DateTime, Utc};
-use sea_orm::{ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter};
+use sea_orm::{ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter, QuerySelect, QueryTrait};
 use serde_json::json;
 
 use super::super::request;
@@ -12,7 +12,7 @@ use super::{
 };
 use crate::models::{
     care::{administration, invitations},
-    entities::{household_invitation, membership},
+    entities::{account, household_invitation, membership},
 };
 
 fn value(row: &household_invitation::Model, inviter: i64) -> Invitation {
@@ -40,7 +40,7 @@ impl ClinicalStore {
         transaction: &sea_orm::DatabaseTransaction,
         row: &household_invitation::Model,
     ) -> AuthResult<Invitation> {
-        let found = transaction.query_one_raw(statement("SELECT COALESCE((SELECT account_id FROM public.household_memberships WHERE id=$1 AND household_id=$2),public.identity_invitation_inviter($3)) AS inviter", [row.invited_by_membership_id.into(),row.household_id.into(),row.id.into()])).await.map_err(database_error)?.ok_or_else(||AuthError::internal("Invitation owner unavailable"))?;
+        let found = transaction.query_one_raw(statement("SELECT COALESCE((SELECT a.id FROM public.household_memberships m JOIN public.accounts a ON a.person_id=m.person_id WHERE m.id=$1 AND m.household_id=$2),public.identity_invitation_inviter($3)) AS inviter", [row.invited_by_membership_id.into(),row.household_id.into(),row.id.into()])).await.map_err(database_error)?.ok_or_else(||AuthError::internal("Invitation owner unavailable"))?;
         let inviter: i64 = found.try_get("", "inviter").map_err(database_error)?;
         Ok(value(row, inviter))
     }
@@ -62,7 +62,15 @@ impl ClinicalStore {
             .await?;
             let member = membership::Entity::find()
                 .filter(membership::Column::HouseholdId.eq(id))
-                .filter(membership::Column::AccountId.eq(actor.account_id))
+                .filter(
+                    membership::Column::PersonId.in_subquery(
+                        account::Entity::find()
+                            .select_only()
+                            .column(account::Column::PersonId)
+                            .filter(account::Column::Id.eq(actor.account_id))
+                            .into_query(),
+                    ),
+                )
                 .one(&*transaction)
                 .await
                 .map_err(database_error)?
@@ -80,7 +88,7 @@ impl ClinicalStore {
                 return Err(AuthError::forbidden("Invitation access denied"));
             }
         }
-        let rows=transaction.query_all_raw(statement("SELECT i.id,i.household_id,i.email,i.membership_role,i.expires_at,i.created_at,i.accepted_at,i.revoked_at,COALESCE(m.account_id,public.identity_invitation_inviter(i.id)) AS inviter FROM public.household_invitations i LEFT JOIN public.household_memberships m ON m.id=i.invited_by_membership_id AND m.household_id=i.household_id WHERE ($1::bigint IS NULL OR i.household_id=$1) AND ($2::text IS NULL OR i.email=$2) AND (NOT $3 OR (i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at>CURRENT_TIMESTAMP)) ORDER BY i.id",[org.into(),email.map(str::to_owned).into(),pending.into()])).await.map_err(database_error)?;
+        let rows=transaction.query_all_raw(statement("SELECT i.id,i.household_id,i.email,i.membership_role,i.expires_at,i.created_at,i.accepted_at,i.revoked_at,COALESCE(a.id,public.identity_invitation_inviter(i.id)) AS inviter FROM public.household_invitations i LEFT JOIN public.household_memberships m ON m.id=i.invited_by_membership_id AND m.household_id=i.household_id LEFT JOIN public.accounts a ON a.person_id=m.person_id WHERE ($1::bigint IS NULL OR i.household_id=$1) AND ($2::text IS NULL OR i.email=$2) AND (NOT $3 OR (i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at>CURRENT_TIMESTAMP)) ORDER BY i.id",[org.into(),email.map(str::to_owned).into(),pending.into()])).await.map_err(database_error)?;
         let result = rows
             .into_iter()
             .map(|row| {

@@ -5,24 +5,26 @@ when {
     ["owner", "administrator"].contains(principal.role)
 };
 
-permit(principal, action in [Action::"view_person", Action::"record_person", Action::"manage_person"], resource)
+permit(principal, action in [Action::"view_person", Action::"record_person"], resource)
+when {
+    principal.household_id == resource.household_id &&
+    principal.status == "active" && !principal.revoked && context.participating
+};
+
+permit(principal, action == Action::"manage_person", resource)
 when {
     principal.household_id == resource.household_id &&
     principal.status == "active" && !principal.revoked &&
     context.household_id == resource.household_id &&
     context.membership_id == principal.id && context.person_id == resource.id &&
     !context.revoked && (!context.expiring || context.expires_at > context.now) &&
-    (context.level == "manage" ||
-        (action == Action::"record_person" && context.level == "record") ||
-        (action == Action::"view_person" && ["view", "record"].contains(context.level)))
+    context.level == "manage"
 };
 
-permit(principal, action == Action::"delegate_person", resource)
+permit(principal, action == Action::"manage_self", resource)
 when {
     principal.household_id == resource.household_id &&
-    principal.status == "active" && !principal.revoked &&
-    (["owner", "administrator"].contains(principal.role) ||
-        ([1, 2].contains(context.person_type) && !context.has_capacity))
+    principal.status == "active" && !principal.revoked && context.own
 };
 
 permit(principal, action == Action::"change_owner", resource)

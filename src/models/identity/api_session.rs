@@ -2,7 +2,7 @@ use axum::http::{HeaderMap, header};
 use headers::{Authorization, HeaderMapExt, authorization::Bearer};
 use sea_orm::{
     ColumnTrait, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, EntityTrait,
-    QueryFilter, QueryOrder, QuerySelect, Statement, TransactionTrait,
+    QueryFilter, QuerySelect, Statement, TransactionTrait,
     sea_query::{Expr, ExprTrait},
 };
 use sha2::{Digest, Sha256};
@@ -147,7 +147,7 @@ impl StoredPrincipal {
             .map_err(unavailable)?
             .ok_or(AuthenticationError::Unauthenticated)?;
         membership::Entity::find()
-            .filter(membership::Column::AccountId.eq(self.account_id))
+            .filter(membership::Column::PersonId.eq(initial.person_id))
             .filter(membership::Column::HouseholdId.eq(initial.household_id))
             .lock_shared()
             .one(transaction)
@@ -288,8 +288,13 @@ async fn authority(
         ))
         .await
         .map_err(unavailable)?;
+    let account = account::Entity::find_by_id(account_id)
+        .one(transaction)
+        .await
+        .map_err(unavailable)?
+        .ok_or(AuthenticationError::Unauthenticated)?;
     let source = membership::Entity::find_by_id(membership_id)
-        .filter(membership::Column::AccountId.eq(account_id))
+        .filter(membership::Column::PersonId.eq(account.person_id))
         .one(transaction)
         .await
         .map_err(unavailable)?
@@ -310,14 +315,7 @@ async fn authority(
     if current.id != membership_id || current.permissions_version != permissions_version {
         return Err(AuthenticationError::Unauthenticated);
     }
-    let person = person::Entity::find()
-        .filter(person::Column::AccountId.eq(account_id))
-        .order_by_asc(person::Column::Id)
-        .one(transaction)
-        .await
-        .map_err(unavailable)?
-        .ok_or(AuthenticationError::Unauthenticated)?;
-    let account = account::Entity::find_by_id(account_id)
+    let person = person::Entity::find_by_id(account.person_id)
         .one(transaction)
         .await
         .map_err(unavailable)?

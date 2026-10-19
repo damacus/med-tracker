@@ -86,8 +86,7 @@ pub async fn accept_signup(
         .await?
         .ok_or_else(super::acceptance::unavailable)?;
     let person = person::Entity::find_by_id(context.person_id())
-        .in_tenant(household_id)
-        .filter(person::Column::AccountId.eq(owner.id))
+        .filter(person::Column::Id.eq(owner.person_id))
         .one(transaction)
         .await?
         .ok_or_else(super::acceptance::unavailable)?;
@@ -101,7 +100,7 @@ pub async fn accept_signup(
     }
     if membership::Entity::find()
         .in_tenant(household_id)
-        .filter(membership::Column::AccountId.eq(owner.id))
+        .filter(membership::Column::PersonId.eq(owner.person_id))
         .one(transaction)
         .await?
         .is_some()
@@ -128,6 +127,9 @@ pub async fn accept_signup(
         &inviter,
         invitation,
         request_id,
+        super::acceptance_effects::PersonOrigin::New {
+            user_id: context.user_id(),
+        },
     )
     .await
 }

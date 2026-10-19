@@ -1,5 +1,17 @@
 ---
 pt:
+  guardian_declarations:
+    title: "Declarações de tutela"
+    statement: "Declaro que sou tutor ou tutora desta pessoa."
+    statement_hint: "Isto regista a sua declaração para esta nova pessoa dependente. Não verifica de forma independente a tutela legal. Os adultos com capacidade devem utilizar a sua própria conta."
+    scope: "Estas são as suas declarações pessoais. As relações de cuidado do agregado são geridas separadamente."
+    captured_name: "Nome registado quando a declaração foi feita."
+    recorded: "Declaração registada"
+    withdrawn: "Retirada"
+    withdraw: "Retirar a minha declaração"
+    withdraw_hint: "A retirada é definitiva e termina a autoridade derivada desta declaração em todos os agregados. O historial clínico é mantido."
+    empty: "Não tem declarações de tutela."
+    older: "Declarações anteriores"
   dose_records:
     unavailable: "Esta dose não está disponível"
     amount_error: "Introduza uma quantidade de dose válida."
@@ -565,6 +577,7 @@ pt:
       deactivated: A relação de cuidador foi desativada.
       activated: A relação de cuidador foi ativada.
       index:
+        unavailable_person: Pessoa que não pertence atualmente a este agregado
         title: Relações de Cuidador
         subtitle: Gerir atribuições de cuidador-paciente.
         new_relationship: Nova Relação

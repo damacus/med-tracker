@@ -1,5 +1,4 @@
 use super::*;
-use loco_rs::model::TenantQueryExt;
 
 pub async fn update(
     tenant: &TenantTransaction,
@@ -9,12 +8,13 @@ pub async fn update(
     provenance: Option<&CredentialProvenance>,
 ) -> Result<person::Model, OperationError> {
     let found = authorize_update(tenant, id).await?;
-    let record = person::Entity::find_by_id(found.id)
-        .in_tenant(tenant.scope().household_id)
-        .lock_exclusive()
-        .one(tenant.transaction())
-        .await?
-        .ok_or(OperationError::NotFound)?;
+    let record =
+        crate::models::access::person_queries::household_participants(tenant.scope().household_id)
+            .filter(crate::models::entities::person::Column::Id.eq(found.id))
+            .lock_exclusive()
+            .one(tenant.transaction())
+            .await?
+            .ok_or(OperationError::NotFound)?;
     let mut proposed = record.clone();
     validation::assign(&mut proposed, &attributes, false)?;
     validation::capacity(&mut proposed, today)?;

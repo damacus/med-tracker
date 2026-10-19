@@ -62,6 +62,28 @@ pub struct BrowserInvitationActor {
 }
 
 impl BrowserPrincipal {
+    pub(crate) async fn guardian_declaration_transaction(
+        &self,
+        db: &DatabaseConnection,
+        write: bool,
+    ) -> Result<DatabaseTransaction, AuthenticationError> {
+        let database_error = |error: sea_orm::DbErr| super::resource::operation_error(error.into());
+        let transaction = db.begin().await.map_err(database_error)?;
+        let checked = async {
+            transaction.execute_unprepared("SET LOCAL ROLE med_tracker_app; SET LOCAL search_path=pg_catalog,public,pg_temp; SET LOCAL lock_timeout='5s'; SET LOCAL statement_timeout='30s'; SELECT set_config('med_tracker.current_account_id','',true),set_config('med_tracker.current_household_id','',true),set_config('med_tracker.current_membership_id','',true),set_config('med_tracker.current_invitation_token_digest','',true)").await.map_err(database_error)?;
+            transaction.execute_raw(sql("SELECT set_config('med_tracker.current_account_id',$1,true)",[self.account_id().to_string().into()])).await.map_err(database_error)?;
+            let lock = if write {sea_orm::sea_query::LockType::NoKeyUpdate} else {sea_orm::sea_query::LockType::Share};
+            account::Entity::find_by_id(self.account_id()).lock(lock).one(&transaction).await.map_err(database_error)?.ok_or(AuthenticationError::Unauthenticated)?;
+            validate(&transaction,&self.identity,false).await?;
+            Ok::<_,AuthenticationError>(())
+        }.await;
+        if let Err(error) = checked {
+            transaction.rollback().await.map_err(database_error)?;
+            return Err(error);
+        }
+        Ok(transaction)
+    }
+
     pub async fn revalidate_invitation(
         &self,
         transaction: &DatabaseTransaction,
@@ -128,7 +150,7 @@ impl BrowserPrincipal {
         let transaction = transaction(db).await?;
         validate(&transaction, &self.identity, false).await?;
         let rows = transaction.query_all_raw(sql(
-            "SELECT h.id, h.name, h.slug FROM households h JOIN household_memberships m ON m.household_id = h.id WHERE m.account_id = $1 AND m.status = 'active' AND m.revoked_at IS NULL AND h.status = 'active' AND h.lifecycle_state = 'active' ORDER BY h.name, h.id",
+            "SELECT h.id, h.name, h.slug FROM households h JOIN household_memberships m ON m.household_id = h.id JOIN accounts a ON a.person_id=m.person_id WHERE a.id = $1 AND m.status = 'active' AND m.revoked_at IS NULL AND h.status = 'active' AND h.lifecycle_state = 'active' ORDER BY h.name, h.id",
             [self.account_id().into()],
         )).await.map_err(unavailable)?;
         let households = rows

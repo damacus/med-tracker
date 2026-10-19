@@ -60,6 +60,8 @@ CREATE UNIQUE INDEX idx_one_active_retention_hold_per_household ON public.househ
 
 CREATE UNIQUE INDEX index_accounts_on_email ON public.accounts USING btree (email) WHERE (status = ANY (ARRAY[1, 2]));
 
+CREATE UNIQUE INDEX index_accounts_on_person_id ON public.accounts USING btree (person_id);
+
 CREATE INDEX index_accounts_on_preferences ON public.accounts USING gin (preferences);
 
 CREATE UNIQUE INDEX index_dosages_one_adult_default ON public.dosages USING btree (medication_id) WHERE (default_for_adults = true);
@@ -70,7 +72,7 @@ CREATE UNIQUE INDEX index_health_event_medications_on_health_event_id_and_med_id
 
 CREATE UNIQUE INDEX index_household_invitations_on_household_id_and_email ON public.household_invitations USING btree (household_id, email) WHERE ((accepted_at IS NULL) AND (revoked_at IS NULL));
 
-CREATE UNIQUE INDEX index_household_memberships_on_person_id ON public.household_memberships USING btree (person_id) WHERE (person_id IS NOT NULL);
+CREATE UNIQUE INDEX index_household_memberships_on_household_id_and_person_id ON public.household_memberships USING btree (household_id, person_id);
 
 CREATE UNIQUE INDEX index_locations_on_household_id_and_lower_name ON public.locations USING btree (household_id, lower((name)::text)) WHERE (household_id IS NOT NULL);
 
@@ -95,8 +97,6 @@ CREATE INDEX index_medications_on_name_trigram ON public.medications USING gin (
 CREATE UNIQUE INDEX index_nhs_dmd_imports_one_active ON public.nhs_dmd_imports USING btree ((1)) WHERE (status = ANY (ARRAY[0, 1, 2, 3]));
 
 CREATE UNIQUE INDEX index_people_on_email_present_unique ON public.people USING btree (email) WHERE ((email IS NOT NULL) AND (btrim((email)::text) <> ''::text));
-
-CREATE UNIQUE INDEX index_people_on_household_id_and_account_id ON public.people USING btree (household_id, account_id) WHERE ((household_id IS NOT NULL) AND (account_id IS NOT NULL));
 
 CREATE INDEX index_people_on_name_trigram ON public.people USING gin (name public.gin_trgm_ops);
 

@@ -1,5 +1,17 @@
 ---
 cy:
+  guardian_declarations:
+    title: "Datganiadau gwarcheidiaeth"
+    statement: "Rwy’n datgan mai fi yw gwarcheidwad y person hwn."
+    statement_hint: "Mae hyn yn cofnodi eich datganiad ar gyfer y dibynnydd newydd hwn. Nid yw’n gwirio gwarcheidiaeth gyfreithiol yn annibynnol. Rhaid i oedolion â gallu ddefnyddio eu cyfrif eu hunain."
+    scope: "Eich datganiadau personol yw’r rhain. Rheolir cysylltiadau gofal yr aelwyd ar wahân."
+    captured_name: "Yr enw a gofnodwyd pan wnaed y datganiad."
+    recorded: "Datganiad wedi’i gofnodi"
+    withdrawn: "Wedi’i dynnu’n ôl"
+    withdraw: "Tynnu fy natganiad yn ôl"
+    withdraw_hint: "Mae tynnu’n ôl yn derfynol ac yn dod â’r awdurdod sy’n deillio o’r datganiad hwn i ben ym mhob aelwyd. Cedwir hanes clinigol."
+    empty: "Nid oes gennych ddatganiadau gwarcheidiaeth."
+    older: "Datganiadau hŷn"
   dose_records:
     unavailable: "Nid yw’r dos hwn ar gael"
     amount_error: "Rhowch swm dos dilys."
@@ -558,6 +570,7 @@ cy:
       deactivated: Mae perthynas gofalwr wedi'i ddadactifadu.
       activated: Mae perthynas gofalwr wedi'i hactifadu.
       index:
+        unavailable_person: Unigolyn nad yw yn yr aelwyd hon ar hyn o bryd
         title: Perthnasoedd Gofalwr
         subtitle: Rheoli aseiniadau gofalwr-claf.
         new_relationship: Perthynas Newydd

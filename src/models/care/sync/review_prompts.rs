@@ -85,13 +85,13 @@ pub(crate) async fn actor_adult(
     db: &DatabaseTransaction,
     context: &AuthContext<'_>,
 ) -> Result<bool, OperationError> {
-    let Some(actor_id) = context.tenant.membership().person_id else {
-        return Ok(false);
-    };
-    let Some(actor) = person::Entity::find_by_id(actor_id)
-        .one(db)
-        .await
-        .map_err(database_error)?
+    let actor_id = context.tenant.membership().person_id;
+    let Some(actor) =
+        crate::models::access::person_queries::household_people(context.tenant.scope())
+            .filter(person::Column::Id.eq(actor_id))
+            .one(db)
+            .await
+            .map_err(database_error)?
     else {
         return Ok(false);
     };
@@ -103,8 +103,7 @@ pub(crate) async fn actor_adult(
         }
         age >= 18
     });
-    Ok(actor.household_id == context.tenant.scope().household_id
-        && (actor.person_type == 0 || adult_by_age))
+    Ok(actor.person_type == 0 || adult_by_age)
 }
 
 pub(crate) async fn visible_prompt(
@@ -123,7 +122,7 @@ pub(crate) async fn visible_prompt(
         .in_tenant(context.tenant.scope().household_id)
         .filter(
             review_prompt::Column::PersonId
-                .in_subquery(access::granted_people(context.tenant.membership())),
+                .in_subquery(access::participating_people(context.tenant.membership())),
         )
         .one(db)
         .await

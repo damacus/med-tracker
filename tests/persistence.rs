@@ -41,6 +41,27 @@ fn expected_catalog_without_review() -> serde_json::Map<String, serde_json::Valu
     expected
 }
 
+#[derive(serde::Deserialize)]
+struct CanonicalIdentityCatalogue {
+    removed: Vec<String>,
+    changed: serde_json::Map<String, serde_json::Value>,
+}
+
+fn apply_canonical_identity_catalogue(
+    expected: &mut serde_json::Map<String, serde_json::Value>,
+) -> Result<(), serde_json::Error> {
+    let canonical: CanonicalIdentityCatalogue =
+        serde_json::from_str(include_str!("../migration/canonical-identity-catalog.json"))?;
+    for key in canonical.removed {
+        assert!(
+            expected.remove(&key).is_some(),
+            "Expected removed canonical key: {key}"
+        );
+    }
+    expected.extend(canonical.changed);
+    Ok(())
+}
+
 #[tokio::test]
 async fn capture_review_edit_catalog_when_requested() {
     let Some(output) = std::env::var_os("REVIEW_CATALOG_CAPTURE") else {
@@ -140,7 +161,7 @@ async fn ledger_rows(db: &loco_rs::prelude::DatabaseConnection) -> Vec<(String, 
 }
 
 #[tokio::test]
-async fn fresh_database_is_created_by_loco_migrations() {
+async fn fresh_database_is_created_by_loco_migrations() -> Result<(), serde_json::Error> {
     let uri = template::owned_database_url();
     let admin = migration::sea_orm::Database::connect(&uri).await.unwrap();
     let name = format!("fresh_{}", uuid::Uuid::new_v4().simple());
@@ -172,6 +193,7 @@ async fn fresh_database_is_created_by_loco_migrations() {
         .unwrap(),
     );
     let actual = before.as_object().unwrap();
+    apply_canonical_identity_catalogue(&mut expected)?;
     let differences: Vec<_> = expected
         .keys()
         .chain(actual.keys())
@@ -205,6 +227,7 @@ async fn fresh_database_is_created_by_loco_migrations() {
         .await
         .unwrap();
     admin.close().await.unwrap();
+    Ok(())
 }
 
 #[tokio::test]

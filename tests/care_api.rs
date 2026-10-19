@@ -40,6 +40,8 @@ mod dose_history;
 mod dose_outcomes;
 #[path = "care_api/fixture.rs"]
 mod fixture;
+#[path = "care_api/guardian_declarations.rs"]
+mod guardian_declarations;
 #[path = "care_api/health_events.rs"]
 mod health_events;
 #[path = "care_api/invitations.rs"]
@@ -131,7 +133,7 @@ use serde_json::{Value, json};
 impl Fixture {
     pub async fn seed_foreign_household(&self, household_id: i64) {
         self.admin
-            .execute_unprepared("INSERT INTO accounts(id,email,password_hash,status,created_at,updated_at) VALUES(71999,'other-care-household@example.test',crypt('password',gen_salt('bf',4)),2,now(),now())")
+            .execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73999,'Other care member',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,password_hash,status,created_at,updated_at) VALUES(71999,73999,'other-care-household@example.test',crypt('password',gen_salt('bf',4)),2,now(),now())")
             .await
             .unwrap();
         self.admin
@@ -145,15 +147,7 @@ impl Fixture {
         self.admin
             .execute_raw(Statement::from_sql_and_values(
                 DbBackend::Postgres,
-                "INSERT INTO people(id,household_id,account_id,name,person_type,has_capacity,created_at,updated_at) VALUES(73999,$1,71999,'Other care member',0,true,now(),now())",
-                [household_id.into()],
-            ))
-            .await
-            .unwrap();
-        self.admin
-            .execute_raw(Statement::from_sql_and_values(
-                DbBackend::Postgres,
-                "INSERT INTO household_memberships(id,household_id,account_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74999,$1,71999,73999,'owner','active',now(),now(),now())",
+                "INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74999,$1,73999,'owner','active',now(),now(),now())",
                 [household_id.into()],
             ))
             .await
@@ -235,6 +229,23 @@ impl Application {
     }
 
     async fn new_configured(signing_key: Option<&str>, configure: impl FnOnce(&mut Value)) -> Self {
+        Self::new_with_pool_size(signing_key, configure, None).await
+    }
+
+    async fn new_single_connection() -> Self {
+        Self::new_with_pool_size(
+            Some("synthetic-dose-occurrence-signing-key"),
+            |_| (),
+            Some(1),
+        )
+        .await
+    }
+
+    async fn new_with_pool_size(
+        signing_key: Option<&str>,
+        configure: impl FnOnce(&mut Value),
+        pool_size: Option<u32>,
+    ) -> Self {
         let fixture = Fixture::new().await;
         let mut config = Config::new(&Environment::Test).unwrap();
         config.settings.get_or_insert_with(|| json!({}))["browser_session"] = json!({
@@ -249,6 +260,10 @@ impl Application {
         }
         configure(settings);
         config.database.uri = fixture.runtime_uri.clone();
+        if let Some(pool_size) = pool_size {
+            config.database.min_connections = pool_size;
+            config.database.max_connections = pool_size;
+        }
         let Some(QueueConfig::Postgres(queue)) = config.queue.as_mut() else {
             panic!("PostgreSQL queue required")
         };
@@ -514,7 +529,7 @@ async fn failed_clinical_audit_rolls_back_effects_but_records_http_attempt() {
 async fn equivalent_hidden_uuid_collision_preserves_private_conflict_contract() {
     let app = Application::new().await;
     let token = app.token().await;
-    app.fixture.admin.execute_unprepared("INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(92001,71001,'Other synthetic household','api-uuid-foreign-household','UTC',now(),now()); INSERT INTO people(id,household_id,name,person_type,has_capacity,created_at,updated_at) VALUES(92002,92001,'Other synthetic adult',0,true,now(),now()); INSERT INTO locations(id,household_id,name,created_at,updated_at) VALUES(92003,92001,'Other synthetic cabinet',now(),now()); INSERT INTO medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at) VALUES(92004,92001,92003,'Other synthetic tablets',10,2,'tablet',now(),now()); INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(92005,92001,92002,92004,2,'tablet',0,now(),now()); INSERT INTO medication_takes(id,household_id,client_uuid,person_medication_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(92006,92001,'006B49D9-1DA2-42F1-800B-8C80867AEE1C',92005,2,'tablet','2026-10-05T10:00:00',now(),now())").await.unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(92001,71001,'Other synthetic household','api-uuid-foreign-household','UTC',now(),now()); INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(92002,'Other synthetic adult',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(94001,92001,92002,'member','active',now(),now(),now()); INSERT INTO locations(id,household_id,name,created_at,updated_at) VALUES(92003,92001,'Other synthetic cabinet',now(),now()); INSERT INTO medications(id,household_id,location_id,name,current_supply,dose_amount,dose_unit,created_at,updated_at) VALUES(92004,92001,92003,'Other synthetic tablets',10,2,'tablet',now(),now()); INSERT INTO person_medications(id,household_id,person_id,medication_id,dose_amount,dose_unit,position,created_at,updated_at) VALUES(92005,92001,92002,92004,2,'tablet',0,now(),now()); INSERT INTO medication_takes(id,household_id,client_uuid,person_medication_id,dose_amount,dose_unit,taken_at,created_at,updated_at) VALUES(92006,92001,'006B49D9-1DA2-42F1-800B-8C80867AEE1C',92005,2,'tablet','2026-10-05T10:00:00',now(),now())").await.unwrap();
     let before = app.fixture.effect().await;
     let response = app
         .client

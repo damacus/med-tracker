@@ -6,14 +6,13 @@ use crate::models::{
         medications::{self, StockSnapshot},
     },
     entities::{
-        dosage, grant, location, medication, medication_take, person, person_medication, schedule,
+        dosage, location, medication, medication_take, person, person_medication, schedule,
     },
     errors::OperationError,
 };
 use loco_rs::model::TenantQueryExt;
 use sea_orm::{
-    ColumnTrait, Condition, ConnectionTrait, DbBackend, EntityTrait, QueryFilter, QueryOrder,
-    QuerySelect, QueryTrait, Statement,
+    ColumnTrait, Condition, EntityTrait, QueryFilter, QueryOrder, QuerySelect, QueryTrait,
 };
 use serde::Serialize;
 use std::collections::HashMap;
@@ -296,7 +295,7 @@ pub async fn detail(
         .order_by_asc(dosage::Column::Id)
         .all(tenant.transaction())
         .await?;
-    let visible_people = access::granted_people(tenant.membership());
+    let visible_people = access::participating_people(tenant.membership());
     let linked_schedules = schedule::Entity::find()
         .select_only()
         .column(schedule::Column::Id)
@@ -342,21 +341,21 @@ pub async fn detail(
         .into_iter()
         .map(|source| (source.id, source.person_id))
         .collect();
-    let history_people: HashMap<i64, String> = person::Entity::find()
-        .in_tenant(household_id)
-        .filter(
-            person::Column::Id.is_in(
-                history_schedules
-                    .values()
-                    .chain(history_assignments.values())
-                    .copied(),
-            ),
-        )
-        .all(tenant.transaction())
-        .await?
-        .into_iter()
-        .map(|person| (person.id, person.name))
-        .collect();
+    let history_people: HashMap<i64, String> =
+        crate::models::access::person_queries::household_participants(household_id)
+            .filter(
+                person::Column::Id.is_in(
+                    history_schedules
+                        .values()
+                        .chain(history_assignments.values())
+                        .copied(),
+                ),
+            )
+            .all(tenant.transaction())
+            .await?
+            .into_iter()
+            .map(|person| (person.id, person.name))
+            .collect();
     let dose_history = takes
         .into_iter()
         .filter_map(|take| {
@@ -393,63 +392,36 @@ pub async fn detail(
         .order_by_asc(schedule::Column::Id)
         .all(tenant.transaction())
         .await?;
-    let people: HashMap<i64, person::Model> = person::Entity::find()
-        .in_tenant(household_id)
-        .filter(
-            person::Column::Id.is_in(
-                records
-                    .iter()
-                    .map(|record| record.person_id)
-                    .chain(schedules.iter().map(|record| record.person_id)),
-            ),
-        )
-        .all(tenant.transaction())
-        .await?
-        .into_iter()
-        .map(|person| (person.id, person))
-        .collect();
+    let people: HashMap<i64, person::Model> =
+        crate::models::access::person_queries::household_participants(household_id)
+            .filter(
+                person::Column::Id.is_in(
+                    records
+                        .iter()
+                        .map(|record| record.person_id)
+                        .chain(schedules.iter().map(|record| record.person_id)),
+                ),
+            )
+            .all(tenant.transaction())
+            .await?
+            .into_iter()
+            .map(|person| (person.id, person))
+            .collect();
     access::recheck(tenant).await?;
-    let permission_grants: HashMap<i64, grant::Model> = grant::Entity::find()
-        .in_tenant(household_id)
-        .filter(grant::Column::HouseholdMembershipId.eq(tenant.membership().id))
-        .filter(grant::Column::PersonId.is_in(people.keys().copied()))
-        .filter(grant::Column::RevokedAt.is_null())
-        .all(tenant.transaction())
-        .await?
-        .into_iter()
-        .map(|record| (record.person_id, record))
-        .collect();
-    let clock = tenant
-        .transaction()
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT timezone('UTC', clock_timestamp()) AS now",
-        ))
-        .await?
-        .ok_or(OperationError::Unavailable)?;
-    let now: chrono::NaiveDateTime = clock.try_get("", "now")?;
     let permissions: HashMap<i64, (bool, bool)> = people
         .iter()
         .map(|(person_id, subject)| {
-            let view = permission_grants.get(person_id).is_some_and(|record| {
-                authorization::person_access(
+            let view = authorization::participating_person_access(
+                tenant.membership(),
+                subject,
+                PersonAccess::View,
+            );
+            let record = view
+                && authorization::participating_person_access(
                     tenant.membership(),
                     subject,
-                    record,
-                    PersonAccess::View,
-                    now,
-                )
-            });
-            let record = view
-                && permission_grants.get(person_id).is_some_and(|record| {
-                    authorization::person_access(
-                        tenant.membership(),
-                        subject,
-                        record,
-                        PersonAccess::Record,
-                        now,
-                    )
-                });
+                    PersonAccess::Record,
+                );
             (*person_id, (view, record))
         })
         .collect();
