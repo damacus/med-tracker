@@ -144,7 +144,10 @@ pub fn routes() -> Routes {
             get(avatar::show)
                 .put(avatar::upload)
                 .delete(avatar::remove)
-                .layer(axum::extract::DefaultBodyLimit::max(6 * 1024 * 1024)),
+                .layer(axum::extract::DefaultBodyLimit::max(6 * 1024 * 1024))
+                .layer(axum::middleware::map_response(|response| async {
+                    avatar::no_store(response)
+                })),
         )
         .add(
             "/{household_id}/health_events",

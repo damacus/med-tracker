@@ -9,7 +9,7 @@ use axum::{
     http::{HeaderValue, header},
 };
 
-fn no_store(mut reply: Response) -> Response {
+pub(super) fn no_store(mut reply: Response) -> Response {
     reply
         .headers_mut()
         .insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
