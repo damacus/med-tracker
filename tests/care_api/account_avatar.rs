@@ -397,10 +397,62 @@ async fn account_avatar_object_io_rechecks_credentials_and_attachment() {
 }
 
 fn image() -> Vec<u8> {
-    let mut body = b"--avatar-boundary\r\nContent-Disposition: form-data; name=\"avatar\"; filename=\"avatar.png\"\r\nContent-Type: image/png\r\n\r\n".to_vec();
-    body.extend(STANDARD.decode(PNG).unwrap());
+    multipart_image(&STANDARD.decode(PNG).unwrap(), "image/png")
+}
+
+fn multipart_image(bytes: &[u8], content_type: &str) -> Vec<u8> {
+    let mut body = format!("--avatar-boundary\r\nContent-Disposition: form-data; name=\"avatar\"; filename=\"avatar.png\"\r\nContent-Type: {content_type}\r\n\r\n").into_bytes();
+    body.extend(bytes);
     body.extend(b"\r\n--avatar-boundary--\r\n");
     body
+}
+
+#[tokio::test]
+async fn account_avatar_rejects_invalid_uploads_without_replacing_the_attachment() {
+    let (app, boot, server, token) = boot().await;
+    let uploaded = server
+        .put(ENDPOINT)
+        .add_header("authorization", format!("Bearer {token}"))
+        .content_type("multipart/form-data; boundary=avatar-boundary")
+        .bytes(image().into())
+        .await;
+    assert_eq!(uploaded.status_code(), 200, "{}", uploaded.text());
+    let png = STANDARD.decode(PNG).unwrap();
+    for (label, body) in [
+        ("non-image bytes", multipart_image(b"not a png", "image/png")),
+        ("declared type mismatch", multipart_image(&png, "image/jpeg")),
+        ("missing avatar field", b"--avatar-boundary\r\nContent-Disposition: form-data; name=\"other\"; filename=\"other.png\"\r\nContent-Type: image/png\r\n\r\nx\r\n--avatar-boundary--\r\n".to_vec()),
+        ("trailing extra field", {
+            let mut body = multipart_image(&png, "image/png");
+            body.truncate(body.len() - b"--avatar-boundary--\r\n".len());
+            body.extend(b"--avatar-boundary\r\nContent-Disposition: form-data; name=\"extra\"\r\n\r\nx\r\n--avatar-boundary--\r\n");
+            body
+        }),
+    ] {
+        let rejected = server
+            .put(ENDPOINT)
+            .add_header("authorization", format!("Bearer {token}"))
+            .content_type("multipart/form-data; boundary=avatar-boundary")
+            .bytes(body.into())
+            .await;
+        assert_eq!(rejected.status_code(), 422, "{label}");
+        assert_eq!(rejected.header("cache-control"), "no-store");
+        assert_eq!(rejected.header("x-content-type-options"), "nosniff");
+        let body: Value = rejected.json();
+        assert_eq!(body["error"]["code"], "unprocessable_content", "{label}");
+        let retained = server
+            .get(ENDPOINT)
+            .add_header("authorization", format!("Bearer {token}"))
+            .await;
+        assert_eq!(retained.status_code(), 200, "{label}");
+        assert_eq!(retained.header("content-type"), "image/png");
+    }
+    drop(server);
+    if let Some(queue) = boot.app_context.queue_provider.as_ref() {
+        queue.shutdown().unwrap();
+    }
+    boot.app_context.db.close().await.unwrap();
+    app.close().await;
 }
 
 #[tokio::test]
