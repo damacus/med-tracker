@@ -107,7 +107,7 @@ pub(super) fn expected(operation: &str) -> Option<Value> {
                     "200-current-person-profile-persistence",
                 ),
                 (
-                    "profile_api_rejects_invalid_and_security_fields_atomically_and_rechecks_grants",
+                    "profile_api_rejects_invalid_and_security_fields_atomically_and_rechecks_membership",
                     "422-invalid-fields-and-current-grant-recheck",
                 ),
                 (

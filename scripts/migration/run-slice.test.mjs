@@ -202,7 +202,7 @@ childProcess.spawn = (...args) => {
 syncBuiltinESMExports();
 `);
     }
-      const options = {
+    const options = {
       cwd: root,
       env: { ...process.env, PATH: `${directory}:${process.env.PATH}`, DATABASE_URL: ambientUrl, MEDTRACKER_SESSION_KEY: 'ambient-identity-fixture-key-must-not-be-used', COMPOSE_FILE: '/unowned/compose.yaml', COMPOSE_PROJECT_NAME: 'unrelated', DOCKER_HOST: 'tcp://unowned.invalid:2376', DOCKER_CONTEXT: 'unrelated', DOCKER_CONFIG: '/unowned/docker-config', DOCKER_TLS_VERIFY: '1', DOCKER_CERT_PATH: '/unowned/certs', SLICE_FILTER: 'unrelated_filter', SLICE_FIXTURE_STATE: statePath, SLICE_FIXTURE_EXIT: String(exitCode), SLICE_FIXTURE_PROVISION_EXIT: String(provisionExit), CARGO_TARGET_DIR: taskName === 'slice:contracts' ? join(directory, 'target') : '/unowned/target', CARGO_BUILD_BUILD_DIR: '/unowned/intermediates', LLVM_PROFILE_FILE: '/unowned/profile.profraw', CARGO_LLVM_COV_TARGET_DIR: '/unowned/llvm-cov-target', CARGO_LLVM_COV_BUILD_DIR: '/unowned/llvm-cov-build', CARGO_LLVM_COV_SETUP: 'skip', CARGO_LLVM_COV_FLAGS: '--unowned', CARGO_LLVM_PROFDATA_FLAGS: '--unowned', LLVM_COV: '/unowned/llvm-cov', LLVM_PROFDATA: '/unowned/llvm-profdata', LLVM_COV_FLAGS: '--unowned', LLVM_PROFDATA_FLAGS: '--unowned', LLVM_PROFILE_FILE_NAME: 'unowned.profraw', ...(taskName === 'slice:contracts' && taskAssignments.includes('GROUP=api-v1') ? { SLICE_FIXTURE_CARE_TRANSCRIPT: requestTranscript(creditedCareTests, []) } : {}), ...extraEnvironment, ...(gatePath ? { SLICE_FIXTURE_CARGO_GATE: gatePath } : {}), ...(preloadPath ? { NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import=${preloadPath}`.trim() } : {}) },
       encoding: 'utf8',
@@ -214,7 +214,7 @@ syncBuiltinESMExports();
       const child = spawn('task', ['--taskfile', join(root, 'Taskfile.yml'), taskName, ...taskAssignments], { ...options, stdio: ['ignore', 'pipe', 'pipe'] });
       let stderr = '';
       child.stderr.on('data', chunk => { stderr += chunk; });
-      if (injectReadableError) child.stdout.on('data', () => {});
+      if (injectReadableError) child.stdout.on('data', () => { });
       const closed = new Promise((resolve, reject) => {
         child.once('error', reject);
         child.once('close', status => resolve({ status, stderr }));
@@ -251,11 +251,11 @@ test('slice_runner_ignores_ambient_database', async () => {
 });
 
 test('scanner import tests provision owned object storage and clean it on failure', async () => {
-  await withProcessFixture(42, (result,state) => {
-    assert.notEqual(result.status,0);
-    assert.equal(state.owned_storage_used,true,`Import tests require real isolated storage, without silent skipping: ${JSON.stringify(state.calls)} ${result.stderr}`);
-    assert.deepEqual(state.resources,{unrelated:['existing-volume']});
-  },'slice:test',['TARGET=care_api','FILTER=nhs_dmd']);
+  await withProcessFixture(42, (result, state) => {
+    assert.notEqual(result.status, 0);
+    assert.equal(state.owned_storage_used, true, `Import tests require real isolated storage, without silent skipping: ${JSON.stringify(state.calls)} ${result.stderr}`);
+    assert.deepEqual(state.resources, { unrelated: ['existing-volume'] });
+  }, 'slice:test', ['TARGET=care_api', 'FILTER=nhs_dmd']);
 });
 
 test('request acceptance provisions owned avatar storage and removes it on success or failure', async () => {
@@ -478,7 +478,7 @@ const creditedCareTests = [
   'profile::profile_and_notification_apis_roll_back_mutations_when_request_audit_fails',
   'profile::profile_and_notification_keyed_replays_reject_revoked_oauth_credentials',
   'profile::profile_api_clears_stored_timezone_and_reads_legacy_gravatar_without_cache',
-  'profile::profile_api_rejects_invalid_and_security_fields_atomically_and_rechecks_grants',
+  'profile::profile_api_rejects_invalid_and_security_fields_atomically_and_rechecks_membership',
   'profile::profile_get_matches_documented_contract',
   'profile::profile_requires_a_date_of_birth_and_rejects_incomplete_records_without_writes',
   'profile::profile_write_does_not_deadlock_a_household_writer_recording_actor_audit',
@@ -492,8 +492,8 @@ const creditedCareTests = [
   'me::me_rejects_revoked_membership_and_credentials',
   'me::me_rejects_unauthenticated_and_missing_household_reads',
   'me::me_returns_current_account_person_and_selected_membership',
-  'me::me_returns_own_person_when_membership_lives_in_another_household',
-  'ui_capabilities::ui_capabilities_reflects_current_membership_and_active_grants',
+  'me::me_reuses_own_person_without_disclosing_another_households_local_fields',
+  'ui_capabilities::ui_capabilities_keep_self_manage_after_grant_withdrawal_and_recheck_membership',
   'ui_capabilities::ui_capabilities_rejects_unauthenticated_and_missing_household_reads',
   'ui_capabilities::ui_capabilities_reports_full_controls_for_household_administrator',
 ];
