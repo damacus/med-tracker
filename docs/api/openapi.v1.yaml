@@ -159,6 +159,8 @@ paths:
                 $ref: "#/components/schemas/CapabilitiesResponse"
         "429":
           $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/CapabilitiesUnavailable"
   /auth/profile:
     get:
       operationId: getAccountProfile
@@ -5039,6 +5041,15 @@ components:
         type: integer
         minimum: 1
   responses:
+    CapabilitiesUnavailable:
+      description: The capability lookup is temporarily unavailable; nothing is stored.
+      headers:
+        Cache-Control:
+          $ref: "#/components/headers/no_store"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/TemporarilyUnavailableErrorEnvelope"
     GuardianDeclarationUnauthorized:
       description: The credential is missing, invalid, revoked, expired or outside the accepted namespace.
       headers:
@@ -9831,6 +9842,16 @@ components:
       properties:
         error:
           $ref: "#/components/schemas/RateLimitError"
+    TemporarilyUnavailableErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          enum:
+            - temporarily_unavailable
     PortableRecord:
       type: object
       description: A format-specific portable record. Every record has a portable identity and version.

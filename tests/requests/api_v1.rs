@@ -106,7 +106,7 @@ fn operations() -> BTreeMap<(String, String), Value> {
     let source = include_str!("../../docs/api/openapi.v1.yaml");
     assert_eq!(
         hex::encode(Sha256::digest(source.as_bytes())),
-        "f9fd098622d04ced1546e7c9368c30fd1279a46e3b3da587efa21bef875d7a81",
+        "f7ac83685a3acafc5c97e533f9249cb5f70bef1a1468690e2d47ae90f4a0e0bc",
         "The full API schema or headers changed; refresh the operation inventory and its evidence"
     );
     let document: Value = serde_yaml_ng::from_str(source).unwrap();
@@ -260,7 +260,7 @@ fn validate_evidence(entry: &Value) -> Result<(), String> {
                 {"binary":"requests","test":"api_v1::capabilities::public_mobile_clients_include_name_and_exclude_secrets","checks":["GET-200-recursive-CapabilitiesResponse-including-RFC-URI-formats","GET-mobile-client-names-redirects-scopes-exclude-integration-clients-and-secrets","GET-default-mobile-login-lifetime-7-30-days","GET-JSON-no-store-no-cache-request-id"]},
                 {"binary":"requests","test":"api_v1::capabilities::configured_mobile_lifetimes_include_disabled_maximum_age","checks":["GET-200-custom-mobile-login-lifetime-3-14-days","GET-200-disabled-absolute-login-deadline-3-0-days-through-booted-app"]},
                 {"binary":"requests","test":"api_v1::capabilities::capability_requests_use_the_fixed_general_limit","checks":["GET-300-successes-then-429-recursive-RateLimitErrorEnvelope","GET-429-Retry-After-200-Limit-300-Remaining-0-Reset-1200","GET-429-JSON-no-store-request-id","GET-success-and-rejection-unchanged-medication-effects-and-credential-counts"]},
-                {"binary":"requests","test":"api_v1::capabilities::capability_database_lookup_failure_uses_existing_unavailable_envelope","checks":["GET-503-existing-unlisted-temporarily_unavailable-envelope-for-controlled-query-failure","GET-503-JSON-no-store-no-cache-request-id","GET-503-unchanged-medication-effects-and-credential-counts"]},
+                {"binary":"requests","test":"api_v1::capabilities::capability_database_lookup_failure_uses_existing_unavailable_envelope","checks":["GET-503-declared-temporarily_unavailable-envelope-for-controlled-query-failure","GET-503-JSON-no-store-no-cache-request-id","GET-503-unchanged-medication-effects-and-credential-counts"]},
             ]
         })
     } else if entry["operation_id"] == "listHouseholds" {
