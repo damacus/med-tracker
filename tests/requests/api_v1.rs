@@ -1357,13 +1357,22 @@ pub mod account {
     use axum::http::Method;
     use base64::Engine;
 
-    fn assert_response_schema(path: &str, status: u16, body: &Value) {
-        let (method, spec_path) = match path {
-            "/api/v1/auth/households" => ("get", "/auth/households"),
-            "/api/v1/auth/sessions" => ("get", "/auth/sessions"),
-            "/api/v1/auth/logout" => ("delete", "/auth/logout"),
-            path if path.starts_with("/api/v1/auth/sessions/") => ("delete", "/auth/sessions/{id}"),
-            _ => panic!("undocumented account request path {path}"),
+    fn assert_response_schema(method: &str, path: &str, status: u16, body: &Value) {
+        let spec_path = match (method, path) {
+            ("get", "/api/v1/auth/households") => "/auth/households",
+            ("get", "/api/v1/auth/sessions") => "/auth/sessions",
+            ("delete", "/api/v1/auth/logout") => "/auth/logout",
+            ("delete", path) if path.starts_with("/api/v1/auth/sessions/") => "/auth/sessions/{id}",
+            ("get", "/api/v1/auth/profile") => "/auth/profile",
+            ("patch", "/api/v1/auth/profile") => "/auth/profile",
+            ("get", "/api/v1/auth/profile/avatar") => "/auth/profile/avatar",
+            ("put", "/api/v1/auth/profile/avatar") => "/auth/profile/avatar",
+            ("delete", "/api/v1/auth/profile/avatar") => "/auth/profile/avatar",
+            ("get", "/api/v1/auth/guardian-declarations") => "/auth/guardian-declarations",
+            ("patch", path) if path.starts_with("/api/v1/auth/guardian-declarations/") => {
+                "/auth/guardian-declarations/{id}"
+            }
+            _ => panic!("undocumented account request {method} {path}"),
         };
         let document = contract::contract();
         let response = &document["paths"][spec_path][method]["responses"][status.to_string()];
@@ -1423,14 +1432,42 @@ pub mod account {
         )).await.unwrap();
     }
 
+    fn account_surface_routes() -> Vec<(Method, &'static str, Option<Value>)> {
+        vec![
+            (Method::GET, "/api/v1/auth/households", None),
+            (Method::GET, "/api/v1/auth/sessions", None),
+            (Method::DELETE, "/api/v1/auth/sessions/76001", None),
+            (Method::GET, "/api/v1/auth/profile", None),
+            (
+                Method::PATCH,
+                "/api/v1/auth/profile",
+                Some(json!({"profile":{"name":"Surface sweep"}})),
+            ),
+            (Method::GET, "/api/v1/auth/profile/avatar", None),
+            (Method::PUT, "/api/v1/auth/profile/avatar", None),
+            (Method::DELETE, "/api/v1/auth/profile/avatar", None),
+            (Method::GET, "/api/v1/auth/guardian-declarations", None),
+            (
+                Method::PATCH,
+                "/api/v1/auth/guardian-declarations/1",
+                Some(json!({"guardian_declaration":{"withdrawn":true,"revision":"1"}})),
+            ),
+        ]
+    }
+
     #[test]
-    fn documented_account_scope_denial_uses_account_forbidden() {
+    fn documented_account_scope_denial_uses_declared_forbidden_components() {
         let document: Value =
             serde_yaml_ng::from_str(include_str!("../../docs/api/openapi.v1.yaml")).unwrap();
         for (method, path) in [
             ("get", "/auth/households"),
             ("get", "/auth/sessions"),
             ("delete", "/auth/sessions/{id}"),
+            ("get", "/auth/profile"),
+            ("patch", "/auth/profile"),
+            ("get", "/auth/profile/avatar"),
+            ("put", "/auth/profile/avatar"),
+            ("delete", "/auth/profile/avatar"),
         ] {
             assert_eq!(
                 document["paths"][path][method]["responses"]["403"]["$ref"],
@@ -1438,18 +1475,36 @@ pub mod account {
                 "{method} {path}"
             );
         }
-        let forbidden = &document["components"]["responses"]["AccountForbidden"];
-        assert_eq!(
-            forbidden["content"]["application/json"]["schema"]["$ref"],
-            "#/components/schemas/ErrorEnvelope"
-        );
-        let challenge = &forbidden["headers"]["WWW-Authenticate"];
+        for (method, path) in [
+            ("get", "/auth/guardian-declarations"),
+            ("patch", "/auth/guardian-declarations/{id}"),
+        ] {
+            assert_eq!(
+                document["paths"][path][method]["responses"]["403"]["$ref"],
+                "#/components/responses/GuardianDeclarationForbidden",
+                "{method} {path}"
+            );
+        }
+        let challenge =
+            &document["components"]["responses"]["AccountForbidden"]["headers"]["WWW-Authenticate"];
         assert_eq!(challenge["required"], true);
         assert_eq!(challenge["schema"]["type"], "string");
         assert_eq!(
             challenge["example"],
             "Bearer error=\"insufficient_scope\" scope=\"medtracker\""
         );
+        for component in ["AccountForbidden", "GuardianDeclarationForbidden"] {
+            let forbidden = &document["components"]["responses"][component];
+            assert_eq!(
+                forbidden["content"]["application/json"]["schema"]["$ref"],
+                "#/components/schemas/ErrorEnvelope",
+                "{component}"
+            );
+            assert_eq!(
+                forbidden["headers"]["WWW-Authenticate"]["schema"]["type"], "string",
+                "{component}"
+            );
+        }
     }
 
     #[tokio::test]
@@ -1507,7 +1562,7 @@ pub mod account {
             let body: Value = anonymous.json();
             assert_eq!(body["error"]["code"], "unauthorized");
             assert_eq!(body["error"]["request_id"], request_id);
-            assert_response_schema("/api/v1/auth/sessions/1", 401, &body);
+            assert_response_schema("delete", "/api/v1/auth/sessions/1", 401, &body);
 
             assert_eq!(authenticated.header("content-type"), "application/json");
             assert_eq!(authenticated.header("cache-control"), "no-store");
@@ -1517,7 +1572,7 @@ pub mod account {
             let body: Value = authenticated.json();
             assert_eq!(body["error"]["code"], "not_found");
             assert_eq!(body["error"]["request_id"], request_id);
-            assert_response_schema("/api/v1/auth/sessions/1", 404, &body);
+            assert_response_schema("delete", "/api/v1/auth/sessions/1", 404, &body);
         }
     }
 
@@ -1526,27 +1581,28 @@ pub mod account {
         let (fixture, boot) = boot_fixture().await;
         let token = mobile_token(&fixture).await;
         let request = server(&boot);
-        let paths = [
-            (Method::GET, "/api/v1/auth/households"),
-            (Method::GET, "/api/v1/auth/sessions"),
-            (Method::DELETE, "/api/v1/auth/sessions/76001"),
-        ];
         let mut anonymous = Vec::new();
-        for (method, path) in paths.iter().cloned() {
-            anonymous.push((path, request.method(method, path).await));
+        for (method, path, body) in account_surface_routes() {
+            let pending = request.method(method.clone(), path);
+            let pending = match &body {
+                Some(body) => pending.json(body),
+                None => pending,
+            };
+            anonymous.push((method.as_str().to_lowercase(), path, pending.await));
         }
         fixture.admin.execute_unprepared(
             "UPDATE oauth_grants SET access_token_scopes='patient/*.read',access_token_scope_hash=token_hash WHERE id=76001"
         ).await.unwrap();
         let mut insufficient = Vec::new();
-        for (method, path) in paths.iter().cloned() {
-            insufficient.push((
-                path,
-                request
-                    .method(method, path)
-                    .add_header("authorization", format!("Bearer {token}"))
-                    .await,
-            ));
+        for (method, path, body) in account_surface_routes() {
+            let pending = request
+                .method(method.clone(), path)
+                .add_header("authorization", format!("Bearer {token}"));
+            let pending = match &body {
+                Some(body) => pending.json(body),
+                None => pending,
+            };
+            insufficient.push((method.as_str().to_lowercase(), path, pending.await));
         }
         let grant = fixture
             .admin
@@ -1562,8 +1618,8 @@ pub mod account {
         close(fixture, boot).await;
 
         assert!(active);
-        for (path, response) in anonymous {
-            assert_eq!(response.status_code(), 401, "{path}");
+        for (method, path, response) in anonymous {
+            assert_eq!(response.status_code(), 401, "{method} {path}");
             assert_eq!(response.header("content-type"), "application/json");
             assert_eq!(response.header("cache-control"), "no-store");
             assert_eq!(response.header("www-authenticate"), "Bearer");
@@ -1572,10 +1628,10 @@ pub mod account {
             let body: Value = response.json();
             assert_eq!(body["error"]["code"], "unauthorized");
             assert_eq!(body["error"]["request_id"], request_id);
-            assert_response_schema(path, 401, &body);
+            assert_response_schema(&method, path, 401, &body);
         }
-        for (path, response) in insufficient {
-            assert_eq!(response.status_code(), 403, "{path}");
+        for (method, path, response) in insufficient {
+            assert_eq!(response.status_code(), 403, "{method} {path}");
             assert_eq!(response.header("content-type"), "application/json");
             assert_eq!(response.header("cache-control"), "no-store");
             assert_eq!(
@@ -1587,7 +1643,7 @@ pub mod account {
             let body: Value = response.json();
             assert_eq!(body["error"]["code"], "forbidden");
             assert_eq!(body["error"]["request_id"], request_id);
-            assert_response_schema(path, 403, &body);
+            assert_response_schema(&method, path, 403, &body);
         }
     }
 
@@ -1690,19 +1746,15 @@ pub mod account {
             ("maximum age", aged_maximum),
             ("inactivity", aged_inactivity),
         ] {
-            for (method, path) in [
-                (Method::GET, "/api/v1/auth/households"),
-                (Method::GET, "/api/v1/auth/sessions"),
-                (Method::DELETE, "/api/v1/auth/sessions/76001"),
-            ] {
-                aged_denials.push((
-                    label,
-                    path,
-                    request
-                        .method(method, path)
-                        .add_header("authorization", format!("Bearer {bearer}"))
-                        .await,
-                ));
+            for (method, path, body) in account_surface_routes() {
+                let pending = request
+                    .method(method.clone(), path)
+                    .add_header("authorization", format!("Bearer {bearer}"));
+                let pending = match &body {
+                    Some(body) => pending.json(body),
+                    None => pending,
+                };
+                aged_denials.push((label, method.as_str().to_lowercase(), path, pending.await));
             }
         }
         let aged_after = fixture
@@ -1734,7 +1786,7 @@ pub mod account {
                 assert!(!response.header("x-request-id").to_str().unwrap().is_empty());
             }
             let households: Value = households.json();
-            assert_response_schema("/api/v1/auth/households", 200, &households);
+            assert_response_schema("get", "/api/v1/auth/households", 200, &households);
             assert_eq!(households["account_id"], 71001);
             assert_eq!(households["data"].as_array().unwrap().len(), 2);
             assert_eq!(households["data"][0]["id"], 72001);
@@ -1748,7 +1800,7 @@ pub mod account {
                     .all(|row| row["id"] != 72004)
             );
             let sessions: Value = sessions.json();
-            assert_response_schema("/api/v1/auth/sessions", 200, &sessions);
+            assert_response_schema("get", "/api/v1/auth/sessions", 200, &sessions);
             assert_eq!(sessions["data"].as_array().unwrap().len(), 2);
             assert_eq!(sessions["data"][0]["id"], 88001);
             assert_eq!(sessions["data"][1]["id"], 88002);
@@ -1770,7 +1822,7 @@ pub mod account {
         assert_eq!(mobile_households.status_code(), 200);
         assert_eq!(mobile_sessions.status_code(), 200);
         let mobile_households: Value = mobile_households.json();
-        assert_response_schema("/api/v1/auth/households", 200, &mobile_households);
+        assert_response_schema("get", "/api/v1/auth/households", 200, &mobile_households);
         assert_eq!(mobile_households["data"].as_array().unwrap().len(), 2);
         assert!(
             mobile_households["data"]
@@ -1780,7 +1832,7 @@ pub mod account {
                 .all(|row| row["id"] != 72004)
         );
         let mobile_sessions: Value = mobile_sessions.json();
-        assert_response_schema("/api/v1/auth/sessions", 200, &mobile_sessions);
+        assert_response_schema("get", "/api/v1/auth/sessions", 200, &mobile_sessions);
         assert_eq!(mobile_sessions["data"].as_array().unwrap().len(), 1);
         assert_eq!(mobile_sessions["data"][0]["id"], 76001);
         assert!(mobile_sessions["data"][0]["household_id"].is_null());
@@ -1805,14 +1857,14 @@ pub mod account {
         );
         assert_eq!(aged_before.len(), 2);
         assert_eq!(aged_after, aged_before);
-        for (label, path, response) in aged_denials {
-            assert_eq!(response.status_code(), 401, "{label}: {path}");
+        for (label, method, path, response) in aged_denials {
+            assert_eq!(response.status_code(), 401, "{label}: {method} {path}");
             assert_eq!(response.header("content-type"), "application/json");
             assert_eq!(response.header("cache-control"), "no-store");
             assert_eq!(response.header("www-authenticate"), "Bearer");
             let body: Value = response.json();
             assert_eq!(body["error"]["code"], "unauthorized");
-            assert_response_schema(path, 401, &body);
+            assert_response_schema(&method, path, 401, &body);
         }
     }
 
@@ -1915,7 +1967,7 @@ pub mod account {
             let body: Value = response.json();
             assert_eq!(body["error"]["code"], "not_found", "{label}");
             assert_eq!(body["error"]["request_id"], request_id, "{label}");
-            assert_response_schema("/api/v1/auth/sessions/1", 404, &body);
+            assert_response_schema("delete", "/api/v1/auth/sessions/1", 404, &body);
         }
         assert_eq!(access_expired.status_code(), 204);
         assert!(access_expired.as_bytes().is_empty());
@@ -1933,25 +1985,20 @@ pub mod account {
         stored_credentials(&fixture).await;
         let mobile = mobile_token(&fixture).await;
         let request = server(&boot);
-        let routes = [
-            (Method::GET, "/api/v1/auth/households"),
-            (Method::GET, "/api/v1/auth/sessions"),
-            (Method::DELETE, "/api/v1/auth/sessions/88001"),
-        ];
         let mut denied = Vec::new();
         for (label, bearer) in [
             ("invalid", "unknown"),
             ("expired", "synthetic-expired-session"),
         ] {
-            for (method, path) in routes.iter().cloned() {
-                denied.push((
-                    label,
-                    path,
-                    request
-                        .method(method, path)
-                        .add_header("authorization", format!("Bearer {bearer}"))
-                        .await,
-                ));
+            for (method, path, body) in account_surface_routes() {
+                let pending = request
+                    .method(method.clone(), path)
+                    .add_header("authorization", format!("Bearer {bearer}"));
+                let pending = match &body {
+                    Some(body) => pending.json(body),
+                    None => pending,
+                };
+                denied.push((label, method.as_str().to_lowercase(), path, pending.await));
             }
         }
         for (label, authorization) in [
@@ -1959,15 +2006,15 @@ pub mod account {
             ("missing bearer value", "Bearer"),
             ("empty bearer value", "Bearer "),
         ] {
-            for (method, path) in routes.iter().cloned() {
-                denied.push((
-                    label,
-                    path,
-                    request
-                        .method(method, path)
-                        .add_header("authorization", authorization)
-                        .await,
-                ));
+            for (method, path, body) in account_surface_routes() {
+                let pending = request
+                    .method(method.clone(), path)
+                    .add_header("authorization", authorization);
+                let pending = match &body {
+                    Some(body) => pending.json(body),
+                    None => pending,
+                };
+                denied.push((label, method.as_str().to_lowercase(), path, pending.await));
             }
         }
         let changes = [
@@ -2035,15 +2082,15 @@ pub mod account {
         let mut mobile_without_membership = Vec::new();
         for (label, bearer, change, restore) in changes {
             fixture.admin.execute_unprepared(change).await.unwrap();
-            for (method, path) in routes.iter().cloned() {
-                denied.push((
-                    label,
-                    path,
-                    request
-                        .method(method, path)
-                        .add_header("authorization", format!("Bearer {bearer}"))
-                        .await,
-                ));
+            for (method, path, body) in account_surface_routes() {
+                let pending = request
+                    .method(method.clone(), path)
+                    .add_header("authorization", format!("Bearer {bearer}"));
+                let pending = match &body {
+                    Some(body) => pending.json(body),
+                    None => pending,
+                };
+                denied.push((label, method.as_str().to_lowercase(), path, pending.await));
             }
             if label == "stale session permissions" || label == "revoked membership" {
                 mobile_without_membership.push((
@@ -2065,14 +2112,19 @@ pub mod account {
             .execute_unprepared("UPDATE oauth_grants SET revoked_at=now() WHERE id=76001")
             .await
             .unwrap();
-        for (method, path) in routes.iter().cloned() {
+        for (method, path, body) in account_surface_routes() {
+            let pending = request
+                .method(method.clone(), path)
+                .add_header("authorization", format!("Bearer {mobile}"));
+            let pending = match &body {
+                Some(body) => pending.json(body),
+                None => pending,
+            };
             denied.push((
                 "revoked mobile",
+                method.as_str().to_lowercase(),
                 path,
-                request
-                    .method(method, path)
-                    .add_header("authorization", format!("Bearer {mobile}"))
-                    .await,
+                pending.await,
             ));
         }
         let row = fixture.admin.query_one_raw(Statement::from_string(
@@ -2086,8 +2138,8 @@ pub mod account {
 
         assert_eq!(revocations, 0);
         assert!(active);
-        for (label, path, response) in denied {
-            assert_eq!(response.status_code(), 401, "{label}: {path}");
+        for (label, method, path, response) in denied {
+            assert_eq!(response.status_code(), 401, "{label}: {method} {path}");
             assert_eq!(response.header("content-type"), "application/json");
             assert_eq!(response.header("cache-control"), "no-store");
             assert_eq!(response.header("www-authenticate"), "Bearer");
@@ -2096,7 +2148,7 @@ pub mod account {
             let body: Value = response.json();
             assert_eq!(body["error"]["code"], "unauthorized");
             assert_eq!(body["error"]["request_id"], request_id);
-            assert_response_schema(path, 401, &body);
+            assert_response_schema(&method, path, 401, &body);
         }
         for (label, households, sessions) in mobile_without_membership {
             assert_eq!(households.status_code(), 200, "{label}: households");
@@ -2119,18 +2171,22 @@ pub mod account {
             assert_eq!(response.status_code(), 200, "request {attempt}");
         }
         let mut denied = Vec::new();
-        for (method, path) in [
-            (Method::GET, "/api/v1/auth/households"),
-            (Method::GET, "/api/v1/auth/sessions"),
-            (Method::DELETE, "/api/v1/auth/sessions/1"),
-            (Method::DELETE, "/api/v1/auth/logout"),
-        ] {
-            denied.push((path, request.method(method, path).await));
+        for (method, path, _) in account_surface_routes() {
+            denied.push((
+                method.as_str().to_lowercase(),
+                path,
+                request.method(method, path).await,
+            ));
         }
+        denied.push((
+            "delete".to_owned(),
+            "/api/v1/auth/logout",
+            request.method(Method::DELETE, "/api/v1/auth/logout").await,
+        ));
         drop(request);
         close(fixture, boot).await;
-        for (path, response) in denied {
-            assert_eq!(response.status_code(), 429, "{path}");
+        for (method, path, response) in denied {
+            assert_eq!(response.status_code(), 429, "{method} {path}");
             assert_eq!(response.header("content-type"), "application/json");
             assert_eq!(response.header("cache-control"), "no-store");
             assert_eq!(response.header("ratelimit-limit"), "300");
@@ -2139,7 +2195,7 @@ pub mod account {
             assert_eq!(response.header("retry-after"), "200");
             let body: Value = response.json();
             assert_eq!(body["error"]["code"], "rate_limited");
-            assert_response_schema(path, 429, &body);
+            assert_response_schema(&method, path, 429, &body);
         }
     }
 
@@ -2238,7 +2294,7 @@ pub mod account {
             let body: Value = response.json();
             assert_eq!(body["error"]["code"], "not_found");
             assert_eq!(body["error"]["request_id"], request_id);
-            assert_response_schema("/api/v1/auth/sessions/1", 404, &body);
+            assert_response_schema("delete", "/api/v1/auth/sessions/1", 404, &body);
         }
         assert_eq!(effects, (2, 1, 1));
     }
@@ -2371,7 +2427,7 @@ pub mod account {
                     assert_eq!(response.header("content-type"), "application/json");
                     let body: Value = response.json();
                     assert_eq!(body["error"]["code"], "not_found");
-                    assert_response_schema("/api/v1/auth/sessions/1", 404, &body);
+                    assert_response_schema("delete", "/api/v1/auth/sessions/1", 404, &body);
                 }
             }
         }
@@ -2400,18 +2456,15 @@ pub mod account {
         )).await.unwrap();
         let request = server(&boot);
         let mut denied = Vec::new();
-        for (method, path) in [
-            (Method::GET, "/api/v1/auth/households"),
-            (Method::GET, "/api/v1/auth/sessions"),
-            (Method::DELETE, "/api/v1/auth/sessions/76003"),
-        ] {
-            denied.push((
-                path,
-                request
-                    .method(method, path)
-                    .add_header("authorization", format!("Bearer {smart}"))
-                    .await,
-            ));
+        for (method, path, body) in account_surface_routes() {
+            let pending = request
+                .method(method.clone(), path)
+                .add_header("authorization", format!("Bearer {smart}"));
+            let pending = match &body {
+                Some(body) => pending.json(body),
+                None => pending,
+            };
+            denied.push((method.as_str().to_lowercase(), path, pending.await));
         }
         let before = fixture.admin.query_one_raw(Statement::from_string(
             DbBackend::Postgres,
@@ -2472,8 +2525,8 @@ pub mod account {
         );
         assert!(!audit_metadata.to_string().contains(smart));
         assert!(!audit_context.to_string().contains(smart));
-        for (path, response) in denied {
-            assert_eq!(response.status_code(), 401, "{path}");
+        for (method, path, response) in denied {
+            assert_eq!(response.status_code(), 401, "{method} {path}");
             assert_eq!(response.header("content-type"), "application/json");
             assert_eq!(response.header("cache-control"), "no-store");
             assert_eq!(response.header("www-authenticate"), "Bearer");
@@ -2481,7 +2534,7 @@ pub mod account {
             let body: Value = response.json();
             assert_eq!(body["error"]["code"], "unauthorized");
             assert_eq!(body["error"]["request_id"], request_id);
-            assert_response_schema(path, 401, &body);
+            assert_response_schema(&method, path, 401, &body);
         }
         for response in [logout, replay] {
             assert_eq!(response.status_code(), 204);
@@ -2490,6 +2543,114 @@ pub mod account {
             assert!(!response.header("x-request-id").to_str().unwrap().is_empty());
         }
         assert_eq!(after.status_code(), 401);
+    }
+
+    #[tokio::test]
+    async fn guardian_declaration_listing_rejects_invalid_windows_before_authentication() {
+        let (fixture, boot) = boot_fixture().await;
+        let token = mobile_token(&fixture).await;
+        let request = server(&boot);
+        let mut responses = Vec::new();
+        for suffix in [
+            "?limit=0",
+            "?limit=101",
+            "?limit=not-a-number",
+            "?before_id=0",
+            "?before_id=-5",
+            "?unknown=1",
+        ] {
+            let path = format!("/api/v1/auth/guardian-declarations{suffix}");
+            responses.push((
+                suffix,
+                request.get(&path).await,
+                request
+                    .get(&path)
+                    .add_header("authorization", format!("Bearer {token}"))
+                    .await,
+            ));
+        }
+        drop(request);
+        close(fixture, boot).await;
+        for (suffix, anonymous, authenticated) in responses {
+            for response in [&anonymous, &authenticated] {
+                assert_eq!(response.status_code(), 422, "{suffix}");
+                assert_eq!(response.header("content-type"), "application/json");
+                assert_eq!(response.header("cache-control"), "no-store");
+                assert!(!response.header("x-request-id").to_str().unwrap().is_empty());
+                let body: Value = response.json();
+                assert_eq!(body["error"]["code"], "unprocessable_content", "{suffix}");
+                assert_response_schema("get", "/api/v1/auth/guardian-declarations", 422, &body);
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn account_surface_lock_timeout_returns_internal_error_envelopes() {
+        let (fixture, boot) = boot_fixture().await;
+        let token = mobile_token(&fixture).await;
+        let blocker = fixture.admin.begin().await.unwrap();
+        blocker
+            .execute_unprepared("SELECT id FROM accounts WHERE id=71001 FOR NO KEY UPDATE")
+            .await
+            .unwrap();
+        let request = server(&boot);
+        let guardian_body = json!({"guardian_declaration":{"withdrawn":true,"revision":"1"}});
+        let profile_body = json!({"profile":{"name":"Lock timeout"}});
+        let (
+            profile,
+            profile_update,
+            avatar,
+            avatar_upload,
+            avatar_delete,
+            declarations,
+            withdrawal,
+        ) = tokio::join!(
+            request
+                .get("/api/v1/auth/profile")
+                .add_header("authorization", format!("Bearer {token}")),
+            request
+                .method(Method::PATCH, "/api/v1/auth/profile")
+                .add_header("authorization", format!("Bearer {token}"))
+                .json(&profile_body),
+            request
+                .get("/api/v1/auth/profile/avatar")
+                .add_header("authorization", format!("Bearer {token}")),
+            request
+                .put("/api/v1/auth/profile/avatar")
+                .add_header("authorization", format!("Bearer {token}")),
+            request
+                .delete("/api/v1/auth/profile/avatar")
+                .add_header("authorization", format!("Bearer {token}")),
+            request
+                .get("/api/v1/auth/guardian-declarations")
+                .add_header("authorization", format!("Bearer {token}")),
+            request
+                .method(Method::PATCH, "/api/v1/auth/guardian-declarations/1")
+                .add_header("authorization", format!("Bearer {token}"))
+                .json(&guardian_body),
+        );
+        blocker.rollback().await.unwrap();
+        drop(request);
+        close(fixture, boot).await;
+        for (method, path, response) in [
+            ("get", "/api/v1/auth/profile", profile),
+            ("patch", "/api/v1/auth/profile", profile_update),
+            ("get", "/api/v1/auth/profile/avatar", avatar),
+            ("put", "/api/v1/auth/profile/avatar", avatar_upload),
+            ("delete", "/api/v1/auth/profile/avatar", avatar_delete),
+            ("get", "/api/v1/auth/guardian-declarations", declarations),
+            ("patch", "/api/v1/auth/guardian-declarations/1", withdrawal),
+        ] {
+            assert_eq!(response.status_code(), 500, "{method} {path}");
+            assert_eq!(response.header("content-type"), "application/json");
+            assert_eq!(response.header("cache-control"), "no-store");
+            let request_id = response.header("x-request-id").to_str().unwrap().to_owned();
+            assert!(!request_id.is_empty());
+            let body: Value = response.json();
+            assert_eq!(body["error"]["code"], "internal_error", "{method} {path}");
+            assert_eq!(body["error"]["request_id"], request_id);
+            assert_response_schema(method, path, 500, &body);
+        }
     }
 }
 
