@@ -4,9 +4,6 @@ silent: true
 run: once
 
 includes:
-  browser-care:
-    taskfile: Taskfiles/browser-care.yml
-    dir: .
   frontend:
     taskfile: Taskfiles/frontend.yml
     dir: .
@@ -290,12 +287,6 @@ tasks:
       [
         'cargo run --locked -- start --worker --scheduler --environment {{.LOCO_ENV | default "development"}}',
       ]
-  browser:
-    desc: Exercise the application through desktop and mobile browsers
-    cmds:
-      - task: frontend:test-browser
-        vars:
-          GROUP: all
   ci:
     desc: Run formatting, lint, unit, integration and browser checks
     cmds:

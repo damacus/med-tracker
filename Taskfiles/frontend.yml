@@ -8,8 +8,6 @@ tasks:
     cmds: [npm install --package-lock-only --ignore-scripts]
   deps:watcher:
     cmds: [npm update @parcel/watcher --package-lock-only --ignore-scripts]
-  browsers:
-    cmds: [npx playwright install chromium]
   audit:
     cmds: [npm audit --json]
   build:
@@ -39,8 +37,3 @@ tasks:
       [
         node --test tests/browser/appearance.test.mjs tests/browser/profile-push-worker.test.mjs,
       ]
-  test-browser:
-    cmds:
-      - task: ":build"
-      - task: browsers
-      - 'node tests/browser/loco-browser.mjs {{if .PROJECT}}--project={{.PROJECT}}{{end}} {{if .GREP}}--grep={{.GREP | shellQuote}}{{end}} {{if ne (.GROUP | default "shell") "all"}}tests/browser/{{.GROUP | default "shell"}}.spec.mjs{{end}}'

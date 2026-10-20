@@ -47,6 +47,32 @@ database with a restricted runtime role, spawns the compiled `med-tracker`
 server on a dynamic port, and drops the database, role and server process on
 completion — including failure paths. Storage runtimes get private buckets.
 
+## Browser journeys
+
+Browser journeys live in `tests/browser/journeys.rs` as ordinary
+`#[tokio::test]`s marked `#[ignore]` so the shared `--tests` lanes skip them.
+Each journey supplies an explicit `Viewport` to `harness::journey(...)`, which clones the seeded
+`browser_template` into a private database, spawns the compiled
+`med-tracker` server, and drops everything on exit.
+
+- Choose `task test:integration` for HTTP-level behaviour and
+  `task test:browser` for a real browser driving the UI.
+- To add a retained journey, write a test in `journeys.rs`, sign in with
+  `harness::sign_in(&journey)`, drive pages with semantic locators
+  (`get_by_role`/`get_by_label`) and `expect` assertions, and mark it
+  `#[ignore]` like the others.
+- Fixture data comes from SeaORM entity seeds in
+  `tests/support/fixtures.rs`; add a seeding helper there rather than raw
+  SQL. Template-level rows go through `harness`'s `prepare` callback;
+  per-journey rows (for example `seed_barcode_metadata`) run inside the
+  journey itself.
+- `playwright-rs` assembles its driver at build time and
+  `install_browsers` fetches Chromium on first run; both land in the user
+  cache and need no separate Node install for Playwright. Application assets
+  still use Node and npm through `frontend:prepare`.
+- On failure the harness prints the tail of the server log; Playwright
+  traces can be enabled per journey when more detail is needed.
+
 ## Loco database setup
 
 Start with an empty PostgreSQL 18 database. The setup connection must be able

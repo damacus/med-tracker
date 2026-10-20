@@ -2,7 +2,7 @@ use std::path::Path;
 
 use loco_rs::{Error, Result, app::AppContext, environment::Environment};
 use migration::MigratorTrait;
-use sea_orm::{ConnectionTrait, DbBackend, Statement, TransactionTrait};
+use sea_orm::{ConnectionTrait, DbBackend, Statement};
 
 macro_rules! fixture_entity {
     ($name:ident, $table:literal, { $($field:ident: $kind:ty,)* }) => {
@@ -60,19 +60,6 @@ pub async fn seed(ctx: &AppContext, base: &Path) -> Result<()> {
         return Err(Error::string(
             "Synthetic seeding requires an empty application database",
         ));
-    }
-    if base == Path::new("tests/fixtures/browser") {
-        let transaction = ctx.db.begin().await?;
-        for source in [
-            include_str!("../../tests/fixtures/persistence-records.sql"),
-            include_str!("../../tests/fixtures/care-doses.sql"),
-            include_str!("../../tests/oauth_server/clients.sql"),
-            include_str!("../fixtures/browser.sql"),
-        ] {
-            transaction.execute_unprepared(source).await?;
-        }
-        transaction.commit().await?;
-        return Ok(());
     }
     let password = tokio::task::spawn_blocking(|| bcrypt::hash("password", 12))
         .await

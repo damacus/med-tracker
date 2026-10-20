@@ -439,37 +439,6 @@ async fn pending_migrations_keep_the_schema_owner() {
 }
 
 #[tokio::test]
-async fn loco_browser_seed_builds_an_empty_database() {
-    use loco_rs::{
-        app::{AppContext, Hooks},
-        config::Config,
-        environment::Environment,
-    };
-    let db = restored_database().await;
-    let ctx = AppContext::builder(
-        Environment::Test,
-        db.clone(),
-        Config::new(&Environment::Test).unwrap(),
-    )
-    .build();
-    med_tracker::app::App::seed(&ctx, std::path::Path::new("tests/fixtures/browser"))
-        .await
-        .unwrap();
-    let count: i64 = db
-        .query_one_raw(migration::sea_orm::Statement::from_string(
-            migration::sea_orm::DbBackend::Postgres,
-            "SELECT count(*)::bigint AS count FROM accounts WHERE status=2",
-        ))
-        .await
-        .unwrap()
-        .unwrap()
-        .try_get("", "count")
-        .unwrap();
-    assert_eq!(count, 2);
-    db.close().await.unwrap();
-}
-
-#[tokio::test]
 async fn fresh_audit_triggers_preserve_concurrent_chain_and_runtime_permissions() {
     use migration::sea_orm::{DbBackend, Statement};
     let db = restored_database().await;
