@@ -2,37 +2,12 @@ use std::path::Path;
 
 use loco_rs::{Error, Result, app::AppContext, environment::Environment};
 use migration::MigratorTrait;
-use sea_orm::{ConnectionTrait, DbBackend, Statement};
+use sea_orm::EntityTrait;
 
-macro_rules! fixture_entity {
-    ($name:ident, $table:literal, { $($field:ident: $kind:ty,)* }) => {
-        mod $name {
-            use sea_orm::entity::prelude::*;
-            #[derive(Clone, Debug, PartialEq, DeriveEntityModel, serde::Serialize, serde::Deserialize)]
-            #[sea_orm(table_name = $table)]
-            pub struct Model {
-                #[sea_orm(primary_key)]
-                pub id: i64,
-                pub created_at: DateTime,
-                pub updated_at: DateTime,
-                $(pub $field: $kind,)*
-            }
-            #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-            pub enum Relation {}
-            impl ActiveModelBehavior for ActiveModel {}
-        }
-    };
-}
-
-fixture_entity!(accounts, "accounts", { person_id: i64, email: String, status: i32, });
-fixture_entity!(households, "households", { created_by_account_id: i64, name: String, slug: String, timezone: String, });
-fixture_entity!(people, "people", { name: String, person_type: i32, has_capacity: bool, });
-fixture_entity!(users, "users", { person_id: i64, email_address: String, });
-fixture_entity!(household_memberships, "household_memberships", { household_id: i64, person_id: i64, role: String, joined_at: DateTime, });
-fixture_entity!(person_access_grants, "person_access_grants", { household_id: i64, household_membership_id: i64, person_id: i64, access_level: String, relationship_type: String, });
-fixture_entity!(locations, "locations", { household_id: i64, name: String, });
-fixture_entity!(medications, "medications", { household_id: i64, location_id: i64, name: String, current_supply: Decimal, dose_amount: f64, dose_unit: String, });
-fixture_entity!(person_medications, "person_medications", { household_id: i64, person_id: i64, medication_id: i64, dose_amount: Decimal, dose_unit: String, position: i32, });
+use super::_entities::{
+    accounts, household_memberships, households, locations, medications, people,
+    person_access_grants, person_medications, users,
+};
 
 #[allow(
     clippy::result_large_err,
@@ -48,23 +23,11 @@ pub async fn seed(ctx: &AppContext, base: &Path) -> Result<()> {
         ));
     }
     migration::Migrator::up(&ctx.db, None).await?;
-    let populated = ctx
-        .db
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT EXISTS (SELECT 1 FROM accounts) AS populated",
-        ))
-        .await?
-        .ok_or_else(|| Error::string("Cannot inspect fixture database"))?;
-    if populated.try_get::<bool>("", "populated")? {
+    if accounts::Entity::find().one(&ctx.db).await?.is_some() {
         return Err(Error::string(
             "Synthetic seeding requires an empty application database",
         ));
     }
-    let password = tokio::task::spawn_blocking(|| bcrypt::hash("password", 12))
-        .await
-        .map_err(|error| Error::string(&error.to_string()))?
-        .map_err(|error| Error::string(&error.to_string()))?;
     macro_rules! load {
         ($entity:ident) => {
             loco_rs::db::seed::<$entity::ActiveModel>(
@@ -85,19 +48,57 @@ pub async fn seed(ctx: &AppContext, base: &Path) -> Result<()> {
     load!(locations);
     load!(medications);
     load!(person_medications);
-    ctx.db
-        .execute_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "UPDATE accounts SET password_hash = $1 WHERE id = 71001",
-            [password.clone().into()],
-        ))
-        .await?;
-    ctx.db
-        .execute_raw(Statement::from_sql_and_values(
-            DbBackend::Postgres,
-            "UPDATE users SET password_digest = $1 WHERE id = 77001",
-            [password.into()],
-        ))
-        .await?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::models::_entities::{
+        accounts, household_memberships, households, locations, medications, people,
+        person_access_grants, person_medications, users,
+    };
+
+    #[test]
+    fn development_fixtures_match_application_entities() {
+        macro_rules! check {
+            ($entity:ident) => {
+                let rows: Vec<$entity::Model> = serde_yaml_ng::from_str(include_str!(concat!(
+                    "../fixtures/",
+                    stringify!($entity),
+                    ".yaml"
+                )))
+                .expect(concat!("valid ", stringify!($entity), " fixtures"));
+                assert!(!rows.is_empty());
+            };
+        }
+        check!(people);
+        check!(accounts);
+        check!(households);
+        check!(users);
+        check!(household_memberships);
+        check!(person_access_grants);
+        check!(locations);
+        check!(medications);
+        check!(person_medications);
+        let accounts: Vec<accounts::Model> =
+            serde_yaml_ng::from_str(include_str!("../fixtures/accounts.yaml")).unwrap();
+        let users: Vec<users::Model> =
+            serde_yaml_ng::from_str(include_str!("../fixtures/users.yaml")).unwrap();
+        let medications: Vec<medications::Model> =
+            serde_yaml_ng::from_str(include_str!("../fixtures/medications.yaml")).unwrap();
+        let treatments: Vec<person_medications::Model> =
+            serde_yaml_ng::from_str(include_str!("../fixtures/person_medications.yaml")).unwrap();
+        for medication in medications {
+            assert_eq!(medication.reorder_threshold.to_string(), "10.00");
+        }
+        for treatment in treatments {
+            assert_eq!(treatment.administration_kind, 1);
+        }
+        for account in accounts {
+            assert!(bcrypt::verify("password", account.password_hash.as_deref().unwrap()).unwrap());
+        }
+        for user in users {
+            assert!(bcrypt::verify("password", user.password_digest.as_deref().unwrap()).unwrap());
+        }
+    }
 }
