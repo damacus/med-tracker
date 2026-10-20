@@ -1,12 +1,15 @@
 use async_trait::async_trait;
 use better_auth_core::{
-    AuthError, AuthResult, CreatePasskey, Passkey, store::PasskeyStore,
-    types::UpdatePasskeyAuthentication,
+    AuthError, AuthRecordFields, AuthResult, CreatePasskey, FieldMap, FieldValue, FromFieldMap,
+    Passkey, PasskeyCredentialState, PasskeyStorage, SchemaValue, UpdatePasskey,
+    store::PasskeyStore, types::UpdatePasskeyAuthentication,
 };
 use chrono::{DateTime, Utc};
 use sea_orm::{ConnectionTrait, FromQueryResult};
 
-use super::{ClinicalStore, clinical_id, context, database_error, statement};
+use super::{
+    ClinicalStore, clinical_field_id, clinical_schema_id, context, database_error, statement,
+};
 
 const COLUMNS: &str = "id,account_id,name,public_key,credential_id,counter::text AS counter,device_type,backed_up,transports,credential,aaguid,created_at,updated_at";
 
@@ -31,22 +34,25 @@ impl TryFrom<PasskeyRow> for Passkey {
     type Error = AuthError;
     fn try_from(row: PasskeyRow) -> AuthResult<Self> {
         Ok(Self {
-            id: row.id,
-            user_id: row.account_id.to_string(),
-            name: row.name,
-            public_key: row.public_key,
-            credential_id: row.credential_id,
+            field_order: Vec::new(),
+            additional_fields: FieldMap::new(),
+            id: row.id.into(),
+            user_id: row.account_id.to_string().into(),
+            name: row.name.into(),
+            public_key: row.public_key.into(),
+            credential_id: row.credential_id.into(),
             counter: row
                 .counter
-                .parse()
-                .map_err(|_| AuthError::internal("Invalid stored passkey counter"))?,
-            device_type: row.device_type,
-            backed_up: row.backed_up,
-            transports: row.transports,
-            credential: row.credential,
-            aaguid: row.aaguid,
-            created_at: row.created_at,
-            updated_at: row.updated_at,
+                .parse::<u64>()
+                .map_err(|_| AuthError::internal("Invalid stored passkey counter"))?
+                .into(),
+            device_type: row.device_type.into(),
+            backed_up: row.backed_up.into(),
+            transports: row.transports.into(),
+            credential: row.credential.into(),
+            aaguid: row.aaguid.into(),
+            created_at: Some(row.created_at.into()).into(),
+            updated_at: row.updated_at.into(),
         })
     }
 }
@@ -57,11 +63,24 @@ impl ClinicalStore {
         transaction: &sea_orm::DatabaseTransaction,
         input: CreatePasskey,
     ) -> AuthResult<Passkey> {
-        let account_id = clinical_id(&input.user_id)?;
+        if !input.additional_fields.is_empty() {
+            return Err(AuthError::config(
+                "Passkey extension fields are not configured",
+            ));
+        }
+        let account_id = clinical_schema_id(&input.user_id)?;
+        let credential = match input.credential {
+            PasskeyCredentialState::Legacy(value) => value,
+            PasskeyCredentialState::Native => {
+                return Err(AuthError::config(
+                    "Native passkey storage is not configured",
+                ));
+            }
+        };
         context(
             transaction,
             "med_tracker.current_account_id",
-            &input.user_id,
+            &account_id.to_string(),
         )
         .await?;
         let account = transaction
@@ -74,7 +93,7 @@ impl ClinicalStore {
         if account.is_none() {
             return Err(AuthError::Unauthenticated);
         }
-        let row = PasskeyRow::find_by_statement(statement(&format!("INSERT INTO public.identity_passkeys(id,account_id,name,public_key,credential_id,counter,device_type,backed_up,transports,credential,aaguid) VALUES($1,$2,$3,$4,$5,$6::text::numeric,$7,$8,$9,$10,$11) RETURNING {COLUMNS}"),[uuid::Uuid::new_v4().to_string().into(),account_id.into(),input.name.into(),input.public_key.into(),input.credential_id.into(),input.counter.to_string().into(),input.device_type.into(),input.backed_up.into(),input.transports.into(),input.credential.into(),input.aaguid.into()])).one(transaction).await.map_err(database_error)?.ok_or_else(||AuthError::internal("Passkey was not stored"))?;
+        let row = PasskeyRow::find_by_statement(statement(&format!("INSERT INTO public.identity_passkeys(id,account_id,name,public_key,credential_id,counter,device_type,backed_up,transports,credential,aaguid) VALUES($1,$2,$3,$4,$5,$6::text::numeric,$7,$8,$9,$10,$11) RETURNING {COLUMNS}"),[uuid::Uuid::new_v4().to_string().into(),account_id.into(),input.name.typed()?.clone().into(),input.public_key.into(),input.credential_id.into(),input.counter.to_string().into(),input.device_type.into(),input.backed_up.into(),input.transports.into(),credential.into(),input.aaguid.typed()?.clone().into()])).one(transaction).await.map_err(database_error)?.ok_or_else(||AuthError::internal("Passkey was not stored"))?;
         let passkey = row.try_into()?;
         self.audit(transaction, account_id, "webauthn_credential", "created")
             .await?;
@@ -108,6 +127,55 @@ impl ClinicalStore {
 
 #[async_trait]
 impl PasskeyStore for ClinicalStore {
+    fn passkey_storage(&self) -> PasskeyStorage {
+        PasskeyStorage::Legacy
+    }
+
+    async fn create_passkey_record(&self, fields: FieldMap) -> AuthResult<Option<FieldMap>> {
+        let record = Passkey::from_field_values(fields)?;
+        let input = CreatePasskey {
+            additional_fields: record.additional_fields,
+            user_id: record.user_id,
+            name: record.name,
+            credential_id: record.credential_id.typed()?.clone(),
+            public_key: record.public_key.typed()?.clone(),
+            counter: *record.counter.typed()?,
+            device_type: record.device_type.typed()?.clone(),
+            backed_up: *record.backed_up.typed()?,
+            transports: record.transports.typed()?.clone(),
+            credential: PasskeyCredentialState::Legacy(record.credential.typed()?.clone()),
+            aaguid: record.aaguid,
+        };
+        self.create_passkey(input).await?.field_values().map(Some)
+    }
+
+    async fn get_passkey_record(&self, id: &SchemaValue<String>) -> AuthResult<Option<FieldMap>> {
+        self.get_passkey_by_id(id.typed()?)
+            .await?
+            .map(|row| row.field_values())
+            .transpose()
+    }
+
+    async fn update_passkey_record(
+        &self,
+        id: &SchemaValue<String>,
+        fields: FieldMap,
+    ) -> AuthResult<Option<FieldMap>> {
+        let record = Passkey::from_field_values(fields)?;
+        self.update_passkey_optional(
+            id,
+            UpdatePasskey {
+                name: record.name,
+                aaguid: record.aaguid,
+                counter: record.counter.typed().ok().copied(),
+                additional_fields: record.additional_fields,
+            },
+        )
+        .await?
+        .map(|row| row.field_values())
+        .transpose()
+    }
+
     async fn create_passkey(&self, input: CreatePasskey) -> AuthResult<Passkey> {
         let transaction = self.transaction().await?;
         let passkey = self.create_passkey_in(&transaction, input).await?;
@@ -122,7 +190,13 @@ impl PasskeyStore for ClinicalStore {
         Ok(passkey)
     }
 
-    async fn get_passkey_by_credential_id(&self, id: &str) -> AuthResult<Option<Passkey>> {
+    async fn get_passkey_by_credential_id_value(
+        &self,
+        value: &FieldValue,
+    ) -> AuthResult<Option<Passkey>> {
+        let id = value
+            .as_str()
+            .ok_or_else(|| AuthError::bad_request("Invalid passkey credential identifier"))?;
         let transaction = self.transaction().await?;
         context(&transaction, "med_tracker.identity_credential_id", id).await?;
         if let Some(owner) = transaction
@@ -160,10 +234,15 @@ impl PasskeyStore for ClinicalStore {
         Ok(passkey)
     }
 
-    async fn list_passkeys_by_user(&self, user_id: &str) -> AuthResult<Vec<Passkey>> {
-        let id = clinical_id(user_id)?;
+    async fn list_passkeys_by_user_value(&self, user_id: &FieldValue) -> AuthResult<Vec<Passkey>> {
+        let id = clinical_field_id(user_id)?;
         let transaction = self.transaction().await?;
-        context(&transaction, "med_tracker.current_account_id", user_id).await?;
+        context(
+            &transaction,
+            "med_tracker.current_account_id",
+            &id.to_string(),
+        )
+        .await?;
         let rows=PasskeyRow::find_by_statement(statement(&format!("SELECT {COLUMNS} FROM public.identity_passkeys WHERE account_id=$1 ORDER BY created_at,id"),[id.into()])).all(&*transaction).await.map_err(database_error)?;
         let keys = rows
             .into_iter()
@@ -173,13 +252,16 @@ impl PasskeyStore for ClinicalStore {
         Ok(keys)
     }
 
-    async fn update_passkey_authentication(
+    async fn update_passkey_authentication_optional(
         &self,
-        id: &str,
+        id: &SchemaValue<String>,
         input: UpdatePasskeyAuthentication,
-    ) -> AuthResult<Passkey> {
+    ) -> AuthResult<Option<Passkey>> {
+        let id = id.typed()?;
         let (transaction, existing) = self.passkey_transaction(id).await?;
-        let existing = existing.ok_or_else(|| AuthError::not_found("Passkey not found"))?;
+        let Some(existing) = existing else {
+            return Ok(None);
+        };
         let account = transaction
             .query_one_raw(statement(
                 "SELECT id FROM public.accounts WHERE id=$1 AND status=2 FOR UPDATE",
@@ -190,17 +272,50 @@ impl PasskeyStore for ClinicalStore {
         if account.is_none() {
             return Err(AuthError::Unauthenticated);
         }
-        let row=PasskeyRow::find_by_statement(statement(&format!("UPDATE public.identity_passkeys SET credential=$2,counter=$3::text::numeric,backed_up=$4,device_type=$5,updated_at=CURRENT_TIMESTAMP WHERE id=$1 RETURNING {COLUMNS}"),[id.into(),input.credential.into(),input.counter.to_string().into(),input.backed_up.into(),input.device_type.into()])).one(&*transaction).await.map_err(database_error)?.ok_or_else(||AuthError::not_found("Passkey not found"))?;
-        let key = row.try_into()?;
+        let row = match input {
+            UpdatePasskeyAuthentication::Legacy { credential, counter, backed_up, device_type } =>
+                PasskeyRow::find_by_statement(statement(&format!("UPDATE public.identity_passkeys SET credential=$2,counter=$3::text::numeric,backed_up=$4,device_type=$5,updated_at=CURRENT_TIMESTAMP WHERE id=$1 AND (counter<$3::text::numeric OR (counter=0 AND $3::text::numeric=0)) RETURNING {COLUMNS}"),[id.into(),credential.into(),counter.to_string().into(),backed_up.into(),device_type.into()])).one(&*transaction).await.map_err(database_error)?,
+            UpdatePasskeyAuthentication::Native { counter } =>
+                PasskeyRow::find_by_statement(statement(&format!("UPDATE public.identity_passkeys SET counter=$2::text::numeric,updated_at=CURRENT_TIMESTAMP WHERE id=$1 AND (counter<$2::text::numeric OR (counter=0 AND $2::text::numeric=0)) RETURNING {COLUMNS}"),[id.into(),counter.to_string().into()])).one(&*transaction).await.map_err(database_error)?,
+        };
+        let key = row.map(TryInto::try_into).transpose()?;
         transaction.commit().await.map_err(database_error)?;
         Ok(key)
     }
 
-    async fn update_passkey_name(&self, id: &str, name: &str) -> AuthResult<Passkey> {
+    async fn update_passkey_optional(
+        &self,
+        id: &SchemaValue<String>,
+        update: UpdatePasskey,
+    ) -> AuthResult<Option<Passkey>> {
+        if !update.additional_fields.is_empty() {
+            return Err(AuthError::config(
+                "Passkey extension fields are not configured",
+            ));
+        }
+        let id = id.typed()?;
         let (transaction, existing) = self.passkey_transaction(id).await?;
-        existing.ok_or_else(|| AuthError::not_found("Passkey not found"))?;
-        let row=PasskeyRow::find_by_statement(statement(&format!("UPDATE public.identity_passkeys SET name=$2,updated_at=CURRENT_TIMESTAMP WHERE id=$1 RETURNING {COLUMNS}"),[id.into(),name.into()])).one(&*transaction).await.map_err(database_error)?.ok_or_else(||AuthError::not_found("Passkey not found"))?;
-        let key = row.try_into()?;
+        let Some(existing) = existing else {
+            return Ok(None);
+        };
+        let name = if update.name.is_undefined() {
+            existing.name
+        } else {
+            update.name.typed()?.clone()
+        };
+        let aaguid = if update.aaguid.is_undefined() {
+            existing.aaguid
+        } else {
+            update.aaguid.typed()?.clone()
+        };
+        let counter = update.counter.unwrap_or(
+            existing
+                .counter
+                .parse::<u64>()
+                .map_err(|_| AuthError::internal("Invalid stored passkey counter"))?,
+        );
+        let row=PasskeyRow::find_by_statement(statement(&format!("UPDATE public.identity_passkeys SET name=$2,aaguid=$3,counter=$4::text::numeric,updated_at=CURRENT_TIMESTAMP WHERE id=$1 AND counter<=$4::text::numeric RETURNING {COLUMNS}"),[id.into(),name.into(),aaguid.into(),counter.to_string().into()])).one(&*transaction).await.map_err(database_error)?;
+        let key = row.map(TryInto::try_into).transpose()?;
         transaction.commit().await.map_err(database_error)?;
         Ok(key)
     }

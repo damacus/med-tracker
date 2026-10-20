@@ -20,6 +20,8 @@ mod avatar;
 mod avatar_storage;
 #[path = "care_api/better_auth_contracts.rs"]
 mod better_auth_contracts;
+#[path = "care_api/better_auth_feature_stores.rs"]
+mod better_auth_feature_stores;
 #[path = "care_api/better_auth_invitations.rs"]
 mod better_auth_invitations;
 #[path = "care_api/better_auth_store.rs"]
