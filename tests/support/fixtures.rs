@@ -12,6 +12,7 @@ fn now() -> chrono::NaiveDateTime {
     Utc::now().naive_utc()
 }
 
+#[allow(dead_code)]
 fn now_tz() -> chrono::DateTime<FixedOffset> {
     Utc::now().fixed_offset()
 }
@@ -141,7 +142,7 @@ pub async fn seed_core(db: &DatabaseConnection) {
         account_id: Set(71001),
         oauth_application_id: Set(75001),
         household_membership_id: Set(Some(74001)),
-        person_id: Set(73001),
+        person_id: Set(Some(73001)),
         permissions_version: Set(Some(1)),
         code: Set(Some("synthetic-code".into())),
         token: Set(Some("synthetic-token".into())),
@@ -231,7 +232,22 @@ pub async fn seed_core(db: &DatabaseConnection) {
     .expect("seed person medication");
 }
 
+/// The care API suite exchanges its authorization code against client id
+/// `native`; repoint application 75001 after `seed_core` created it as
+/// `synthetic-client`.
+pub async fn set_native_client_id(db: &DatabaseConnection) {
+    let application = oauth_applications::Entity::find_by_id(75001)
+        .one(db)
+        .await
+        .expect("find oauth application")
+        .expect("oauth application 75001");
+    let mut active = application.into_active_model();
+    active.client_id = Set("native".into());
+    active.update(db).await.expect("set native client id");
+}
+
 /// Equivalent of tests/oauth_server/clients.sql.
+#[allow(dead_code)]
 pub async fn seed_oauth_clients(db: &DatabaseConnection) {
     oauth_applications::Entity::insert_many([
         oauth_applications::ActiveModel {
@@ -268,6 +284,7 @@ pub async fn seed_oauth_clients(db: &DatabaseConnection) {
 }
 
 /// Equivalent of src/fixtures/browser.sql.
+#[allow(dead_code)]
 pub async fn seed_browser_rows(db: &DatabaseConnection) {
     people::Entity::insert(people::ActiveModel {
         id: Set(73005),
@@ -355,6 +372,66 @@ pub async fn seed_browser_rows(db: &DatabaseConnection) {
     .expect("seed foreign medication");
 }
 
+/// Foreign household used by care_api isolation tests: person 73999,
+/// account 71999, a caller-owned household and an owner membership.
+#[allow(dead_code)]
+pub async fn seed_foreign_household(db: &DatabaseConnection, household_id: i64) {
+    people::Entity::insert(people::ActiveModel {
+        id: Set(73999),
+        name: Set("Other care member".into()),
+        person_type: Set(0),
+        has_capacity: Set(true),
+        created_at: Set(now()),
+        updated_at: Set(now()),
+        ..Default::default()
+    })
+    .exec(db)
+    .await
+    .expect("seed foreign care person");
+
+    accounts::Entity::insert(accounts::ActiveModel {
+        id: Set(71999),
+        person_id: Set(73999),
+        email: Set("other-care-household@example.test".into()),
+        password_hash: Set(Some(password_hash())),
+        status: Set(2),
+        created_at: Set(now()),
+        updated_at: Set(now()),
+        ..Default::default()
+    })
+    .exec(db)
+    .await
+    .expect("seed foreign care account");
+
+    households::Entity::insert(households::ActiveModel {
+        id: Set(household_id),
+        created_by_account_id: Set(Some(71999)),
+        name: Set("Other care household".into()),
+        slug: Set(format!("other-care-{household_id}")),
+        timezone: Set("UTC".into()),
+        created_at: Set(now()),
+        updated_at: Set(now()),
+        ..Default::default()
+    })
+    .exec(db)
+    .await
+    .expect("seed foreign care household");
+
+    household_memberships::Entity::insert(household_memberships::ActiveModel {
+        id: Set(74999),
+        household_id: Set(household_id),
+        person_id: Set(73999),
+        role: Set("owner".into()),
+        joined_at: Set(now()),
+        created_at: Set(now()),
+        updated_at: Set(now()),
+        ..Default::default()
+    })
+    .exec(db)
+    .await
+    .expect("seed foreign care membership");
+}
+
 /// Equivalent of tests/fixtures/identity/mobile.sql: swap the integration
 /// grant for a mobile grant on the same ids.
 pub async fn seed_mobile_grant(db: &DatabaseConnection) {
@@ -363,15 +440,15 @@ pub async fn seed_mobile_grant(db: &DatabaseConnection) {
         .await
         .expect("delete integration grant");
 
-    let mut application = oauth_applications::Entity::find_by_id(75001)
+    let application = oauth_applications::Entity::find_by_id(75001)
         .one(db)
         .await
         .expect("find oauth application")
         .expect("oauth application 75001");
-    application.client_kind = "mobile".into();
-    application.redirect_uri = "io.damacus.medtracker:/oauth2redirect".into();
-    application.scopes = "medtracker offline_access".into();
-    let active: oauth_applications::ActiveModel = application.into();
+    let mut active = application.into_active_model();
+    active.client_kind = Set("mobile".into());
+    active.redirect_uri = Set("io.damacus.medtracker:/oauth2redirect".into());
+    active.scopes = Set("medtracker offline_access".into());
     active.update(db).await.expect("switch client to mobile");
 
     oauth_grants::Entity::insert(oauth_grants::ActiveModel {

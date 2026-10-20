@@ -1,4 +1,4 @@
-use crate::template;
+use crate::{db::OwnedDatabase, fixtures, template};
 use sea_orm::{ConnectionTrait, Database, DatabaseConnection, DbBackend, Statement};
 
 #[tokio::test]
@@ -45,6 +45,7 @@ pub struct Fixture {
     pub admin: DatabaseConnection,
     pub runtime: DatabaseConnection,
     pub runtime_uri: String,
+    inner: OwnedDatabase,
 }
 
 #[tokio::test]
@@ -52,7 +53,6 @@ async fn cloning_an_aged_template_renews_short_lived_credentials() {
     Fixture::new().await.close().await;
     let uri = template::owned_database_url();
     let parsed = url::Url::parse(&uri).unwrap();
-    let port = parsed.port().unwrap().to_string();
     let name = format!("aged_template_{}", uuid::Uuid::new_v4().simple());
     let control = Database::connect(&uri).await.unwrap();
     control
@@ -69,7 +69,7 @@ async fn cloning_an_aged_template_renews_short_lived_credentials() {
         .await
         .unwrap();
     source.close().await.unwrap();
-    let cloned = Fixture::from_template(&uri, &port, &name).await;
+    let cloned = Fixture::from_template(&uri, &name).await;
     let row = cloned.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
         "SELECT expires_in > timezone('UTC',clock_timestamp()) + interval '4 minutes' AS fresh FROM oauth_grants WHERE id=76001"
     )).await.unwrap().unwrap();
@@ -89,86 +89,27 @@ async fn cloning_an_aged_template_renews_short_lived_credentials() {
 impl Fixture {
     pub async fn new() -> Self {
         let uri = template::owned_database_url();
-        let endpoint = uri
-            .strip_prefix("postgres://medtracker:medtracker_password@127.0.0.1:")
-            .unwrap();
-        let (port, _) = endpoint.split_once('/').unwrap();
-        assert!(port.parse::<u16>().unwrap() > 0);
         template::prepare(&uri, "care_api_template", |admin| async move {
-            admin
-                .execute_unprepared(include_str!("../fixtures/persistence-records.sql"))
-                .await
-                .unwrap();
-            admin
-                .execute_unprepared(include_str!("../fixtures/care-doses.sql"))
-                .await
-                .unwrap();
-            admin
-                .execute_unprepared(
-                    "UPDATE oauth_applications SET client_id='native' WHERE id=75001",
-                )
-                .await
-                .unwrap();
+            fixtures::seed_core(&admin).await;
+            fixtures::set_native_client_id(&admin).await;
         })
         .await;
-        Self::from_template(&uri, port, "care_api_template").await
+        Self::from_template(&uri, "care_api_template").await
     }
 
-    async fn from_template(uri: &str, port: &str, template_name: &str) -> Self {
-        let suffix = uuid::Uuid::new_v4().simple();
-        let name = format!("care_api_{suffix}");
-        let role = format!("care_runtime_{suffix}");
-        let control = Database::connect(uri).await.unwrap();
-        control
-            .execute_unprepared(&format!("CREATE DATABASE {name} TEMPLATE {template_name}"))
-            .await
-            .unwrap();
-        control.execute_unprepared(&format!("CREATE ROLE {role} LOGIN PASSWORD 'password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS IN ROLE med_tracker_app")).await.unwrap();
-        control.close().await.unwrap();
-        let admin = Database::connect(format!(
-            "postgres://medtracker:medtracker_password@127.0.0.1:{port}/{name}"
-        ))
-        .await
-        .unwrap();
-        admin
-            .execute_unprepared(include_str!("../fixtures/identity/mobile.sql"))
-            .await
-            .unwrap();
-        let runtime_uri = format!("postgres://{role}:password@127.0.0.1:{port}/{name}");
-        let runtime = Database::connect(&runtime_uri).await.unwrap();
+    async fn from_template(uri: &str, template_name: &str) -> Self {
+        let owned = OwnedDatabase::clone(uri, template_name, "care_api_", "care_runtime_").await;
+        fixtures::seed_mobile_grant(&owned.admin).await;
         Self {
-            admin,
-            runtime,
-            runtime_uri,
+            admin: owned.admin.clone(),
+            runtime: owned.runtime.clone(),
+            runtime_uri: owned.runtime_uri.clone(),
+            inner: owned,
         }
     }
 
     pub async fn close(self) {
-        let uri = url::Url::parse(&self.runtime_uri).unwrap();
-        let name = uri.path().trim_start_matches('/');
-        let role = uri.username();
-        assert!(
-            name.strip_prefix("care_api_")
-                .is_some_and(|suffix| uuid::Uuid::parse_str(suffix).is_ok())
-        );
-        assert!(
-            role.strip_prefix("care_runtime_")
-                .is_some_and(|suffix| uuid::Uuid::parse_str(suffix).is_ok())
-        );
-        self.runtime.close().await.unwrap();
-        self.admin.close().await.unwrap();
-        let control = Database::connect(template::owned_database_url())
-            .await
-            .unwrap();
-        control
-            .execute_unprepared(&format!("DROP DATABASE {name} WITH (FORCE)"))
-            .await
-            .unwrap();
-        control
-            .execute_unprepared(&format!("DROP ROLE {role}"))
-            .await
-            .unwrap();
-        control.close().await.unwrap();
+        self.inner.close().await;
     }
 
     pub async fn effect(&self) -> (i64, String, i64, i64) {

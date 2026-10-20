@@ -19,6 +19,14 @@ impl OwnedDatabase {
         db_prefix: &'static str,
         role_prefix: &'static str,
     ) -> Self {
+        for identifier in [template, db_prefix, role_prefix] {
+            assert!(
+                !identifier.is_empty()
+                    && identifier.bytes().all(|byte| byte.is_ascii_lowercase()
+                        || byte.is_ascii_digit()
+                        || byte == b'_')
+            );
+        }
         let suffix = uuid::Uuid::new_v4().simple();
         let name = format!("{db_prefix}{suffix}");
         let role = format!("{role_prefix}{suffix}");
