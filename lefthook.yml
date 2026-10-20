@@ -24,11 +24,10 @@ pre-push:
       glob:
         - "{src,tests,migration,assets,config}/**"
         - "scripts/{migration,ci,frontend}/**"
-        - "Taskfiles/{ci,frontend,browser-care}.yml"
+        - "Taskfiles/{ci,frontend}.yml"
         - "Cargo.{toml,lock}"
         - "build.rs"
         - "package{,-lock}.json"
-        - "playwright.config.mjs"
         - "scripts/build-scanner.mjs"
         - ".cargo/**"
         - "rust-toolchain{,.toml}"

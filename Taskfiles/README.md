@@ -28,7 +28,6 @@ Existing root commands remain available while callers adopt the explicit namespa
 | `../client-tools/openapi-generator/Taskfile.yml` | Native API generation                              |
 | `../docs/Taskfile.yml`                           | Documentation build and preview                    |
 | `../mobile/android/Taskfile.yml`                 | Android build and checks                           |
-| `browser-care.yml`                               | Browser test database and fixture tasks            |
 | `frontend.yml`                                   | Tailwind CSS, static assets and Playwright runners |
 | `agents.yml`                                     | Translator integration                             |
 | `openspec.yml`                                   | OpenSpec validation and status                     |

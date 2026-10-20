@@ -16,9 +16,10 @@ They are review evidence, not a declaration of accepted Rails parity.
   edge and therefore appears partway down tall full-page images.
 - No real health records, credentials or user accounts are included.
 
-The reproducible capture journey is `tests/browser/profile-visual.spec.mjs`.
-File names identify the tab or dialog, appearance and viewport. The journey
-checks visible panels, horizontal overflow, dialog cancellation and focus return.
+These captures came from the retired Playwright suite's `profile-visual`
+journey (removed with the rest of the JavaScript browser harness). File names
+identify the tab or dialog, appearance and viewport. The journey checked
+visible panels, horizontal overflow, dialog cancellation and focus return.
 Additional interaction tests cover 320px doubled text, keyboard navigation,
 permissions, persistence and failure states; these ordinary captures do not
 replace those tests.
