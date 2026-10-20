@@ -248,3 +248,27 @@ jobs:
           repo-token: ${{ github.token }}
       - name: Build documentation
         run: task docs:build
+
+  ci_success:
+    name: CI Success
+    if: always()
+    needs:
+      - loco_lint
+      - loco_unit
+      - loco_integration
+      - loco_browser
+      - client_tools
+      - android
+      - api_clients
+      - markdown_check
+      - docs_check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every CI job to pass
+        env:
+          JOB_RESULTS: ${{ toJSON(needs) }}
+        run: |
+          if ! jq -e 'all(.[]; .result == "success")' <<< "$JOB_RESULTS"; then
+            echo "$JOB_RESULTS" | jq .
+            exit 1
+          fi
