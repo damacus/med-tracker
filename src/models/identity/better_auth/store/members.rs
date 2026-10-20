@@ -9,7 +9,10 @@ use sea_orm::{
 };
 use std::collections::HashMap;
 
-use super::{ClinicalStore, clinical_id, database_error, tenant::operation_error};
+use super::{
+    ClinicalStore, clinical_field_id, clinical_id, clinical_schema_id, database_error,
+    tenant::operation_error,
+};
 use crate::models::{
     care::administration,
     entities::{account, membership},
@@ -17,11 +20,13 @@ use crate::models::{
 
 fn member(row: membership::Model, account_id: i64) -> Member {
     Member {
-        id: row.id.to_string(),
-        organization_id: row.household_id.to_string(),
-        user_id: account_id.to_string(),
-        role: row.role,
-        created_at: row.created_at.and_utc(),
+        field_order: Vec::new(),
+        additional_fields: Default::default(),
+        id: row.id.to_string().into(),
+        organization_id: row.household_id.to_string().into(),
+        user_id: account_id.to_string().into(),
+        role: row.role.into(),
+        created_at: row.created_at.and_utc().into(),
     }
 }
 
@@ -47,7 +52,7 @@ impl MemberStore for ClinicalStore {
             .await?
             .ok_or_else(|| AuthError::not_found("Membership not found"))?;
         self.change_canonical_member(
-            clinical_id(&current.organization_id)?,
+            clinical_schema_id(&current.organization_id)?,
             clinical_id(member_id)?,
             Some(role),
         )
@@ -61,7 +66,7 @@ impl MemberStore for ClinicalStore {
             .await?
             .ok_or_else(|| AuthError::not_found("Membership not found"))?;
         self.change_canonical_member(
-            clinical_id(&current.organization_id)?,
+            clinical_schema_id(&current.organization_id)?,
             clinical_id(member_id)?,
             None,
         )
@@ -77,7 +82,7 @@ impl MemberStore for ClinicalStore {
         &self,
         input: &ListOrganizationMembersParams,
     ) -> AuthResult<(Vec<Member>, usize)> {
-        let household_id = clinical_id(&input.organization_id)?;
+        let household_id = clinical_schema_id(&input.organization_id)?;
         let tenant = self.tenant(household_id).await?;
         administration::authorize(&tenant)
             .await
@@ -97,7 +102,7 @@ impl MemberStore for ClinicalStore {
         if let Some(field) = input.filter_field.as_deref() {
             let value = input
                 .filter_value
-                .as_deref()
+                .as_ref()
                 .ok_or_else(|| AuthError::validation("Filter value is required"))?;
             let equal = match input.filter_operator.as_deref().unwrap_or("eq") {
                 "eq" => true,
@@ -105,24 +110,28 @@ impl MemberStore for ClinicalStore {
                 _ => return Err(AuthError::validation("Unsupported membership filter")),
             };
             let condition = match (field, equal) {
-                ("id", true) => membership::Column::Id.eq(clinical_id(value)?),
-                ("id", false) => membership::Column::Id.ne(clinical_id(value)?),
+                ("id", true) => membership::Column::Id.eq(clinical_field_id(value)?),
+                ("id", false) => membership::Column::Id.ne(clinical_field_id(value)?),
                 ("userId" | "user_id", true) => membership::Column::PersonId.in_subquery(
                     account::Entity::find()
                         .select_only()
                         .column(account::Column::PersonId)
-                        .filter(account::Column::Id.eq(clinical_id(value)?))
+                        .filter(account::Column::Id.eq(clinical_field_id(value)?))
                         .into_query(),
                 ),
                 ("userId" | "user_id", false) => membership::Column::PersonId.not_in_subquery(
                     account::Entity::find()
                         .select_only()
                         .column(account::Column::PersonId)
-                        .filter(account::Column::Id.eq(clinical_id(value)?))
+                        .filter(account::Column::Id.eq(clinical_field_id(value)?))
                         .into_query(),
                 ),
-                ("role", true) => membership::Column::Role.eq(value),
-                ("role", false) => membership::Column::Role.ne(value),
+                ("role", true) => membership::Column::Role.eq(value
+                    .as_str()
+                    .ok_or_else(|| AuthError::validation("Invalid role filter"))?),
+                ("role", false) => membership::Column::Role.ne(value
+                    .as_str()
+                    .ok_or_else(|| AuthError::validation("Invalid role filter"))?),
                 _ => return Err(AuthError::validation("Unsupported membership field")),
             };
             query = query.filter(condition);
@@ -148,10 +157,15 @@ impl MemberStore for ClinicalStore {
             "desc" => query.order_by_desc(sort),
             _ => return Err(AuthError::validation("Unsupported sort direction")),
         };
+        let offset = input.offset.unwrap_or(0.0);
+        let limit = input.limit.unwrap_or(100.0);
+        if !offset.is_finite() || offset < 0.0 || !limit.is_finite() || limit < 0.0 {
+            return Err(AuthError::validation("Invalid membership page"));
+        }
         let rows = query
             .order_by_asc(membership::Column::Id)
-            .offset(input.offset.unwrap_or(0) as u64)
-            .limit(input.limit.unwrap_or(100).min(100) as u64)
+            .offset(offset.floor() as u64)
+            .limit(limit.floor().min(100.0) as u64)
             .all(tenant.transaction())
             .await
             .map_err(database_error)?;

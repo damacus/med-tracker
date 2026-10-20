@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use better_auth_core::{
-    AuthError, AuthResult, CreateOrganization, Organization, UpdateOrganization,
-    store::OrganizationStore,
+    AuthError, AuthResult, CreateOrganization, FieldMap, Organization, UpdateOrganization,
+    store::{JoinValue, OrganizationStore},
 };
 
 use super::ClinicalStore;
@@ -49,7 +49,20 @@ impl OrganizationStore for ClinicalStore {
         Err(AuthError::forbidden("Household deletion is unavailable"))
     }
 
-    async fn list_user_organizations(&self, user_id: &str) -> AuthResult<Vec<Organization>> {
-        self.canonical_user_organizations(user_id).await
+    async fn list_user_organizations(&self, user_id: &str) -> AuthResult<Vec<JoinValue<FieldMap>>> {
+        self.canonical_user_organizations(user_id)
+            .await?
+            .into_iter()
+            .map(|organization| {
+                Ok(JoinValue::One(Some(FieldMap::from([
+                    ("id".into(), organization.id.field_value()),
+                    ("name".into(), organization.name.field_value()),
+                    ("slug".into(), organization.slug.field_value()),
+                    ("logo".into(), organization.logo.field_value()),
+                    ("metadata".into(), organization.metadata.field_value()),
+                    ("createdAt".into(), organization.created_at.field_value()),
+                ]))))
+            })
+            .collect()
     }
 }

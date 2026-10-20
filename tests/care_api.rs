@@ -22,6 +22,8 @@ mod avatar_storage;
 mod better_auth_invitations;
 #[path = "care_api/better_auth_store.rs"]
 mod better_auth_store;
+#[path = "care_api/better_auth_transactions.rs"]
+mod better_auth_transactions;
 #[path = "care_api/browser_push.rs"]
 mod browser_push;
 #[path = "care_api/browser_push_reminders.rs"]

@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use better_auth_core::{
-    AuthError, AuthResult, CreateInvitation, Invitation, InvitationStatus, store::InvitationStore,
+    AuthError, AuthResult, CreateInvitation, FieldMap, Invitation, InvitationStatus,
+    store::{InvitationOrganization, InvitationStore, JoinValue},
 };
 use chrono::{DateTime, Utc};
 use sea_orm::{ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter, QuerySelect, QueryTrait};
@@ -17,20 +18,24 @@ use crate::models::{
 
 fn value(row: &household_invitation::Model, inviter: i64) -> Invitation {
     Invitation {
-        id: row.id.to_string(),
-        organization_id: row.household_id.to_string(),
-        email: row.email.clone(),
-        role: row.membership_role.clone(),
-        inviter_id: inviter.to_string(),
-        expires_at: row.expires_at.and_utc(),
-        created_at: row.created_at.and_utc(),
+        field_order: Vec::new(),
+        additional_fields: FieldMap::default(),
+        team_id: None.into(),
+        id: row.id.to_string().into(),
+        organization_id: row.household_id.to_string().into(),
+        email: row.email.clone().into(),
+        role: row.membership_role.clone().into(),
+        inviter_id: inviter.to_string().into(),
+        expires_at: row.expires_at.and_utc().into(),
+        created_at: row.created_at.and_utc().into(),
         status: if row.accepted_at.is_some() {
             InvitationStatus::Accepted
         } else if row.revoked_at.is_some() {
             InvitationStatus::Canceled
         } else {
             InvitationStatus::Pending
-        },
+        }
+        .into(),
     }
 }
 
@@ -84,7 +89,7 @@ impl ClinicalStore {
                 .canonical_user_in(&transaction, &actor.account_id.to_string())
                 .await?
                 .ok_or(AuthError::Unauthenticated)?;
-            if current.email.as_deref() != Some(email) {
+            if current.email.typed()?.as_deref() != Some(email) {
                 return Err(AuthError::forbidden("Invitation access denied"));
             }
         }
@@ -97,35 +102,50 @@ impl ClinicalStore {
                 let revoked: Option<chrono::NaiveDateTime> =
                     row.try_get("", "revoked_at").map_err(database_error)?;
                 Ok(Invitation {
+                    field_order: Vec::new(),
+                    additional_fields: FieldMap::default(),
+                    team_id: None.into(),
                     id: row
                         .try_get::<i64>("", "id")
                         .map_err(database_error)?
-                        .to_string(),
+                        .to_string()
+                        .into(),
                     organization_id: row
                         .try_get::<i64>("", "household_id")
                         .map_err(database_error)?
-                        .to_string(),
-                    email: row.try_get("", "email").map_err(database_error)?,
-                    role: row.try_get("", "membership_role").map_err(database_error)?,
+                        .to_string()
+                        .into(),
+                    email: row
+                        .try_get::<String>("", "email")
+                        .map_err(database_error)?
+                        .into(),
+                    role: row
+                        .try_get::<String>("", "membership_role")
+                        .map_err(database_error)?
+                        .into(),
                     inviter_id: row
                         .try_get::<i64>("", "inviter")
                         .map_err(database_error)?
-                        .to_string(),
+                        .to_string()
+                        .into(),
                     expires_at: row
                         .try_get::<chrono::NaiveDateTime>("", "expires_at")
                         .map_err(database_error)?
-                        .and_utc(),
+                        .and_utc()
+                        .into(),
                     created_at: row
                         .try_get::<chrono::NaiveDateTime>("", "created_at")
                         .map_err(database_error)?
-                        .and_utc(),
+                        .and_utc()
+                        .into(),
                     status: if accepted.is_some() {
                         InvitationStatus::Accepted
                     } else if revoked.is_some() {
                         InvitationStatus::Canceled
                     } else {
                         InvitationStatus::Pending
-                    },
+                    }
+                    .into(),
                 })
             })
             .collect::<AuthResult<Vec<_>>>()?;
@@ -138,10 +158,17 @@ impl ClinicalStore {
 impl InvitationStore for ClinicalStore {
     async fn create_invitation(&self, input: CreateInvitation) -> AuthResult<Invitation> {
         let actor = request::authenticated()?;
-        if clinical_id(&input.inviter_id)? != actor.account_id {
+        if clinical_id(input.inviter_id.typed()?)? != actor.account_id {
             return Err(AuthError::forbidden("Inviter does not match session"));
         }
-        let tenant = self.tenant(clinical_id(&input.organization_id)?).await?;
+        if input.team_id.is_some() || !input.additional_fields.is_empty() {
+            return Err(AuthError::forbidden(
+                "Teams and custom invitation fields are unavailable",
+            ));
+        }
+        let tenant = self
+            .tenant(clinical_id(input.organization_id.typed()?)?)
+            .await?;
         let result = invitations::create(
             &tenant,
             json!({"email":input.email,"membership_role":input.role}),
@@ -201,7 +228,7 @@ impl InvitationStore for ClinicalStore {
         &self,
         id: &str,
         status: InvitationStatus,
-    ) -> AuthResult<Invitation> {
+    ) -> AuthResult<Option<Invitation>> {
         let current = self
             .get_invitation_by_id(id)
             .await?
@@ -214,12 +241,17 @@ impl InvitationStore for ClinicalStore {
         if status == InvitationStatus::Pending {
             return Err(AuthError::forbidden("Invitation status cannot be reset"));
         }
-        let tenant = self.tenant(clinical_id(&current.organization_id)?).await?;
+        let tenant = self
+            .tenant(clinical_id(current.organization_id.typed()?)?)
+            .await?;
         invitations::revoke(&tenant, clinical_id(id)?, None)
             .await
             .map_err(operation_error)?;
         tenant.commit().await.map_err(operation_error)?;
-        Ok(Invitation { status, ..current })
+        Ok(Some(Invitation {
+            status: status.into(),
+            ..current
+        }))
     }
 
     async fn update_invitation_expiry(
@@ -231,7 +263,9 @@ impl InvitationStore for ClinicalStore {
             .get_invitation_by_id(id)
             .await?
             .ok_or_else(|| AuthError::not_found("Invitation not found"))?;
-        let tenant = self.tenant(clinical_id(&current.organization_id)?).await?;
+        let tenant = self
+            .tenant(clinical_id(current.organization_id.typed()?)?)
+            .await?;
         administration::authorize(&tenant)
             .await
             .map_err(operation_error)?;
@@ -248,7 +282,7 @@ impl InvitationStore for ClinicalStore {
         .await?;
         tenant.commit().await.map_err(operation_error)?;
         Ok(Invitation {
-            expires_at,
+            expires_at: expires_at.into(),
             ..current
         })
     }
@@ -263,7 +297,50 @@ impl InvitationStore for ClinicalStore {
             .await?
             .len() as i64)
     }
-    async fn list_user_invitations(&self, email: &str) -> AuthResult<Vec<Invitation>> {
-        self.invitation_rows(None, Some(email), false).await
+    async fn list_user_invitations(&self, email: &str) -> AuthResult<Vec<InvitationOrganization>> {
+        let invitations = self.invitation_rows(None, Some(email), false).await?;
+        let transaction = self.account_transaction().await?;
+        let mut result = Vec::with_capacity(invitations.len());
+        for invitation in invitations {
+            let organization_id = clinical_id(invitation.organization_id.typed()?)?;
+            let row = transaction.query_one_raw(statement("SELECT h.id,h.name,h.slug,h.created_at FROM public.households h JOIN public.household_invitations i ON i.household_id=h.id WHERE i.id=$1 AND h.id=$2 AND h.status='active' AND h.lifecycle_state='active'", [clinical_id(invitation.id.typed()?)?.into(), organization_id.into()])).await.map_err(database_error)?;
+            let organization = match row {
+                Some(row) => JoinValue::One(Some(FieldMap::from([
+                    (
+                        "id".into(),
+                        row.try_get::<i64>("", "id")
+                            .map_err(database_error)?
+                            .to_string()
+                            .into(),
+                    ),
+                    (
+                        "name".into(),
+                        row.try_get::<String>("", "name")
+                            .map_err(database_error)?
+                            .into(),
+                    ),
+                    (
+                        "slug".into(),
+                        row.try_get::<String>("", "slug")
+                            .map_err(database_error)?
+                            .into(),
+                    ),
+                    (
+                        "createdAt".into(),
+                        row.try_get::<chrono::NaiveDateTime>("", "created_at")
+                            .map_err(database_error)?
+                            .and_utc()
+                            .into(),
+                    ),
+                ]))),
+                None => JoinValue::One(None),
+            };
+            result.push(InvitationOrganization {
+                invitation,
+                organization,
+            });
+        }
+        transaction.commit().await.map_err(database_error)?;
+        Ok(result)
     }
 }

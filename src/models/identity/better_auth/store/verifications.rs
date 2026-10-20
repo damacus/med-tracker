@@ -1,6 +1,8 @@
 use async_trait::async_trait;
 use better_auth_core::{
-    AuthResult, CreateVerification, store::VerificationStore, wire::VerificationView,
+    AuthError, AuthResult, CreateVerification, SchemaValue,
+    store::{VerificationStore, database_hooks::VerificationUpdate},
+    wire::VerificationView,
 };
 use chrono::{DateTime, Utc};
 use sea_orm::{ConnectionTrait, FromQueryResult};
@@ -21,12 +23,14 @@ struct VerificationRow {
 impl From<VerificationRow> for VerificationView {
     fn from(row: VerificationRow) -> Self {
         Self {
-            id: row.id,
-            identifier: row.identifier,
-            value: row.value,
-            expires_at: row.expires_at,
-            created_at: row.created_at,
-            updated_at: row.updated_at,
+            field_order: Vec::new(),
+            id: row.id.into(),
+            identifier: row.identifier.into(),
+            value: row.value.into(),
+            expires_at: row.expires_at.into(),
+            created_at: row.created_at.into(),
+            updated_at: row.updated_at.into(),
+            additional_fields: Default::default(),
         }
     }
 }
@@ -40,10 +44,19 @@ impl ClinicalStore {
         context(
             transaction,
             "med_tracker.identity_verification_identifier",
-            &verification.identifier,
+            verification.identifier.typed()?,
         )
         .await?;
-        let row = VerificationRow::find_by_statement(statement("INSERT INTO public.identity_verifications (id, identifier, value, expires_at) VALUES ($1, $2, $3, $4) RETURNING *", [uuid::Uuid::new_v4().to_string().into(), verification.identifier.into(), verification.value.into(), verification.expires_at.into()])).one(transaction).await.map_err(database_error)?.ok_or_else(|| better_auth_core::AuthError::internal("Verification was not stored"))?;
+        let id = match verification.id {
+            SchemaValue::Undefined => uuid::Uuid::new_v4().to_string(),
+            value => value.typed()?.clone(),
+        };
+        let expires_at = verification
+            .expires_at
+            .typed()?
+            .to_datetime()?
+            .ok_or_else(|| AuthError::validation("Invalid verification expiry"))?;
+        let row = VerificationRow::find_by_statement(statement("INSERT INTO public.identity_verifications (id, identifier, value, expires_at) VALUES ($1, $2, $3, $4) RETURNING *", [id.into(), verification.identifier.typed()?.clone().into(), verification.value.typed()?.clone().into(), expires_at.into()])).one(transaction).await.map_err(database_error)?.ok_or_else(|| better_auth_core::AuthError::internal("Verification was not stored"))?;
         Ok(row.into())
     }
 
@@ -66,6 +79,126 @@ impl ClinicalStore {
 
 #[async_trait]
 impl VerificationStore<ClinicalAuthSchema> for ClinicalStore {
+    async fn reserve_verification(
+        &self,
+        id: &str,
+        verification: CreateVerification,
+    ) -> AuthResult<bool> {
+        let transaction = self.transaction().await?;
+        let identifier = verification.identifier.typed()?.clone();
+        let value = verification.value.typed()?.clone();
+        let expiry = verification
+            .expires_at
+            .typed()?
+            .to_datetime()?
+            .ok_or_else(|| AuthError::validation("Invalid verification expiry"))?;
+        context(
+            &transaction,
+            "med_tracker.identity_verification_identifier",
+            &identifier,
+        )
+        .await?;
+        let inserted = transaction.execute_raw(statement("INSERT INTO public.identity_verifications(id,identifier,value,expires_at) VALUES($1,$2,$3,$4) ON CONFLICT(id) DO NOTHING", [id.into(), identifier.clone().into(), value.into(), expiry.into()])).await.map_err(database_error)?.rows_affected() == 1;
+        if !inserted
+            && transaction
+                .query_one_raw(statement(
+                    "SELECT id FROM public.identity_verifications WHERE id=$1 AND identifier=$2",
+                    [id.into(), identifier.into()],
+                ))
+                .await
+                .map_err(database_error)?
+                .is_none()
+        {
+            return Err(AuthError::Conflict(
+                "Verification reservation collided with a different identifier".into(),
+            ));
+        }
+        transaction.commit().await.map_err(database_error)?;
+        Ok(inserted)
+    }
+
+    async fn get_verification_including_expired(
+        &self,
+        identifier: &str,
+    ) -> AuthResult<Option<VerificationView>> {
+        self.verification("med_tracker.identity_verification_identifier", identifier, "SELECT * FROM public.identity_verifications WHERE identifier=$1 ORDER BY created_at DESC,id DESC LIMIT 1").await
+    }
+
+    async fn update_verification(
+        &self,
+        identifier: &str,
+        update: VerificationUpdate,
+    ) -> AuthResult<Option<VerificationView>> {
+        if !update.id.is_undefined()
+            || !update.identifier.is_undefined()
+            || !update.created_at.is_undefined()
+            || !update.updated_at.is_undefined()
+            || !update.additional_fields.is_empty()
+        {
+            return Err(AuthError::forbidden(
+                "Verification identity cannot be changed",
+            ));
+        }
+        let transaction = self.transaction().await?;
+        context(
+            &transaction,
+            "med_tracker.identity_verification_identifier",
+            identifier,
+        )
+        .await?;
+        let value = match &update.value {
+            SchemaValue::Undefined => None,
+            other => Some(other.typed()?.clone()),
+        };
+        let expiry = match &update.expires_at {
+            SchemaValue::Undefined => None,
+            other => Some(
+                other
+                    .typed()?
+                    .to_datetime()?
+                    .ok_or_else(|| AuthError::validation("Invalid verification expiry"))?,
+            ),
+        };
+        let row = VerificationRow::find_by_statement(statement("UPDATE public.identity_verifications SET value=COALESCE($2,value),expires_at=COALESCE($3,expires_at),updated_at=clock_timestamp() WHERE id=(SELECT id FROM public.identity_verifications WHERE identifier=$1 ORDER BY created_at DESC,id DESC LIMIT 1 FOR UPDATE) RETURNING *", [identifier.into(), value.into(), expiry.into()])).one(&*transaction).await.map_err(database_error)?;
+        transaction.commit().await.map_err(database_error)?;
+        Ok(row.map(Into::into))
+    }
+
+    async fn update_verification_by_identifier(
+        &self,
+        identifier: &str,
+        value: Option<String>,
+        expires_at: Option<DateTime<Utc>>,
+    ) -> AuthResult<()> {
+        let transaction = self.transaction().await?;
+        context(
+            &transaction,
+            "med_tracker.identity_verification_identifier",
+            identifier,
+        )
+        .await?;
+        transaction.execute_raw(statement("UPDATE public.identity_verifications SET value=COALESCE($2,value),expires_at=COALESCE($3,expires_at),updated_at=clock_timestamp() WHERE identifier=$1", [identifier.into(),value.into(),expires_at.into()])).await.map_err(database_error)?;
+        transaction.commit().await.map_err(database_error)
+    }
+
+    async fn delete_verification_by_identifier(&self, identifier: &str) -> AuthResult<()> {
+        let transaction = self.transaction().await?;
+        context(
+            &transaction,
+            "med_tracker.identity_verification_identifier",
+            identifier,
+        )
+        .await?;
+        transaction
+            .execute_raw(statement(
+                "DELETE FROM public.identity_verifications WHERE identifier=$1",
+                [identifier.into()],
+            ))
+            .await
+            .map_err(database_error)?;
+        transaction.commit().await.map_err(database_error)
+    }
+
     async fn create_verification(
         &self,
         verification: CreateVerification,
@@ -148,6 +281,31 @@ impl VerificationStore<ClinicalAuthSchema> for ClinicalStore {
             .into_iter()
             .max_by(|left, right| (left.created_at, &left.id).cmp(&(right.created_at, &right.id)))
             .filter(|row| row.expires_at > Utc::now())
+            .map(Into::into))
+    }
+
+    async fn consume_verification_including_expired(
+        &self,
+        identifier: &str,
+    ) -> AuthResult<Option<VerificationView>> {
+        let transaction = self.transaction().await?;
+        context(
+            &transaction,
+            "med_tracker.identity_verification_identifier",
+            identifier,
+        )
+        .await?;
+        let rows = VerificationRow::find_by_statement(statement(
+            "DELETE FROM public.identity_verifications WHERE identifier=$1 RETURNING *",
+            [identifier.into()],
+        ))
+        .all(&*transaction)
+        .await
+        .map_err(database_error)?;
+        transaction.commit().await.map_err(database_error)?;
+        Ok(rows
+            .into_iter()
+            .max_by(|left, right| (left.created_at, &left.id).cmp(&(right.created_at, &right.id)))
             .map(Into::into))
     }
 

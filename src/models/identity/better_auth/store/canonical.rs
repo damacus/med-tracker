@@ -1,4 +1,6 @@
-use better_auth_core::{AuthError, AuthResult, Member, Organization, wire::UserView};
+use better_auth_core::{
+    AuthError, AuthResult, FieldMap, FieldValue, Member, Organization, wire::UserView,
+};
 use chrono::{DateTime, Utc};
 use sea_orm::FromQueryResult;
 use serde_json::json;
@@ -23,21 +25,32 @@ struct UserRow {
 impl From<UserRow> for UserView {
     fn from(row: UserRow) -> Self {
         Self {
-            id: row.id.to_string(),
-            name: row.name,
-            email: Some(row.email),
-            email_verified: row.status == 2,
-            image: None,
-            created_at: row.created_at,
-            updated_at: row.updated_at,
-            username: None,
-            display_username: None,
-            two_factor_enabled: row.two_factor_enabled,
-            role: None,
-            banned: row.status != 2,
-            ban_reason: None,
-            ban_expires: None,
-            metadata: json!({"passkey_user_handle":row.passkey_user_handle}),
+            field_order: Vec::new(),
+            additional_fields: FieldMap::default(),
+            visible_fields: None,
+            id: row.id.to_string().into(),
+            name: row.name.into(),
+            email: Some(row.email).into(),
+            email_verified: (row.status == 2).into(),
+            image: None.into(),
+            created_at: row.created_at.into(),
+            updated_at: row.updated_at.into(),
+            is_anonymous: None.into(),
+            phone_number: None.into(),
+            phone_number_verified: None.into(),
+            username: None.into(),
+            display_username: None.into(),
+            two_factor_enabled: Some(row.two_factor_enabled).into(),
+            role: None.into(),
+            banned: (row.status != 2).into(),
+            ban_reason: None.into(),
+            ban_expires: None.into(),
+            metadata: FieldMap::from([(
+                "passkey_user_handle".into(),
+                row.passkey_user_handle
+                    .map_or(FieldValue::Null, FieldValue::from),
+            )])
+            .into(),
         }
     }
 }
@@ -54,13 +67,14 @@ struct OrganizationRow {
 impl From<OrganizationRow> for Organization {
     fn from(row: OrganizationRow) -> Self {
         Self {
-            id: row.id.to_string(),
-            name: row.name,
-            slug: row.slug,
-            logo: None,
-            metadata: None,
-            created_at: row.created_at,
-            updated_at: row.updated_at,
+            field_order: Vec::new(),
+            additional_fields: FieldMap::default(),
+            id: row.id.to_string().into(),
+            name: row.name.into(),
+            slug: row.slug.into(),
+            logo: None.into(),
+            metadata: None.into(),
+            created_at: row.created_at.into(),
         }
     }
 }
@@ -77,11 +91,13 @@ struct MemberRow {
 impl From<MemberRow> for Member {
     fn from(row: MemberRow) -> Self {
         Self {
-            id: row.id.to_string(),
-            organization_id: row.household_id.to_string(),
-            user_id: row.account_id.to_string(),
-            role: row.role,
-            created_at: row.created_at,
+            field_order: Vec::new(),
+            additional_fields: FieldMap::default(),
+            id: row.id.to_string().into(),
+            organization_id: row.household_id.to_string().into(),
+            user_id: row.account_id.to_string().into(),
+            role: row.role.into(),
+            created_at: row.created_at.into(),
         }
     }
 }

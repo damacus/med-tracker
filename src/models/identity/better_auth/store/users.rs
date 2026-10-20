@@ -21,8 +21,12 @@ impl UserStore<ClinicalAuthSchema> for ClinicalStore {
         self.canonical_user(id).await
     }
 
-    async fn list_users_by_ids(&self, ids: &[String]) -> AuthResult<Vec<UserView>> {
-        self.canonical_users_by_ids(ids).await
+    async fn list_users_by_ids(&self, ids: &[String], limit: f64) -> AuthResult<Vec<UserView>> {
+        if !limit.is_finite() || limit < 0.0 {
+            return Err(AuthError::validation("Invalid user list limit"));
+        }
+        let count = (limit.floor() as usize).min(ids.len());
+        self.canonical_users_by_ids(&ids[..count]).await
     }
 
     async fn get_user_by_email(&self, email: &str) -> AuthResult<Option<UserView>> {
@@ -44,13 +48,17 @@ impl UserStore<ClinicalAuthSchema> for ClinicalStore {
         Ok(None)
     }
 
+    async fn get_user_by_phone_number(&self, _phone_number: &str) -> AuthResult<Option<UserView>> {
+        Err(AuthError::forbidden("Phone sign-in is unavailable"))
+    }
+
     async fn update_user(&self, id: &str, input: UpdateUser) -> AuthResult<UserView> {
         if input
             .email
             .as_deref()
             .is_some_and(|email| !request::email_change_allowed(id, email))
-            || input.name.is_some()
-            || input.image.is_some()
+            || !input.name.is_undefined()
+            || !input.image.is_undefined()
             || input.username.is_some()
             || input.display_username.is_some()
             || input.role.is_some()
@@ -112,6 +120,93 @@ impl UserStore<ClinicalAuthSchema> for ClinicalStore {
         Err(AuthError::forbidden(
             "Use the verified account closure operation",
         ))
+    }
+
+    async fn verify_user_and_revoke_unproven_access(
+        &self,
+        user_id: &str,
+    ) -> AuthResult<Option<UserView>> {
+        let account_id = clinical_id(user_id)?;
+        let transaction = self.transaction().await?;
+        context(&transaction, "med_tracker.current_account_id", user_id).await?;
+        let current = transaction
+            .query_one_raw(statement(
+                "SELECT status FROM public.accounts WHERE id=$1 FOR UPDATE",
+                [account_id.into()],
+            ))
+            .await
+            .map_err(database_error)?;
+        let Some(current) = current else {
+            transaction.commit().await.map_err(database_error)?;
+            return Ok(None);
+        };
+        let status: i32 = current.try_get("", "status").map_err(database_error)?;
+        if status == 1 {
+            transaction
+                .execute_raw(statement(
+                    "DELETE FROM public.identity_sessions WHERE account_id=$1",
+                    [account_id.into()],
+                ))
+                .await
+                .map_err(database_error)?;
+            transaction
+                .execute_raw(statement(
+                    "DELETE FROM public.identity_provider_accounts WHERE account_id=$1",
+                    [account_id.into()],
+                ))
+                .await
+                .map_err(database_error)?;
+            transaction.execute_raw(statement("UPDATE public.accounts SET status=2,updated_at=clock_timestamp() WHERE id=$1 AND status=1", [account_id.into()])).await.map_err(database_error)?;
+            self.audit(&transaction, account_id, "email_verification", "verified")
+                .await?;
+        } else if status != 2 {
+            return Err(AuthError::Unauthenticated);
+        }
+        let user = self.canonical_user_in(&transaction, user_id).await?;
+        transaction.commit().await.map_err(database_error)?;
+        Ok(user)
+    }
+
+    async fn create_user_fields_optional(
+        &self,
+        fields: better_auth_core::FieldMap,
+    ) -> AuthResult<Option<UserView>> {
+        for field in fields.keys() {
+            if ![
+                "email",
+                "name",
+                "metadata",
+                "emailVerified",
+                "image",
+                "createdAt",
+                "updatedAt",
+            ]
+            .contains(&field.as_str())
+            {
+                return Err(AuthError::forbidden("Registration field is unavailable"));
+            }
+        }
+        let mut input = CreateUser::new();
+        let email = fields
+            .get("email")
+            .and_then(better_auth_core::FieldValue::as_str)
+            .ok_or_else(|| AuthError::validation("Email is required"))?;
+        input.email = Some(email.to_owned());
+        let name = fields
+            .get("name")
+            .and_then(better_auth_core::FieldValue::as_str)
+            .ok_or_else(|| AuthError::validation("Name is required"))?;
+        input.name = Some(name.to_owned()).into();
+        input.metadata = fields.get("metadata").cloned();
+        if fields
+            .get("emailVerified")
+            .is_some_and(|value| !matches!(value, better_auth_core::FieldValue::Bool(false)))
+        {
+            return Err(AuthError::forbidden(
+                "Registration cannot set email verification",
+            ));
+        }
+        self.create_user(input).await.map(Some)
     }
 
     async fn list_users(&self, _input: ListUsersParams) -> AuthResult<(Vec<UserView>, usize)> {

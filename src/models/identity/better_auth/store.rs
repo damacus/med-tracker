@@ -1,4 +1,5 @@
 use ::better_auth::AuthError;
+use better_auth_core::{FieldValue, SchemaValue};
 use sea_orm::{
     ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbBackend, DbErr, Statement, Value,
 };
@@ -88,6 +89,7 @@ impl ClinicalStore {
         let scope = std::sync::Arc::new(scope::Scope {
             transaction: self.begin_transaction().await?,
             rollback_only: std::sync::atomic::AtomicBool::new(false),
+            after_commit: std::sync::Mutex::new(Vec::new()),
         });
         let result = scope::TRANSACTION.scope(scope.clone(), work).await;
         let scope = std::sync::Arc::try_unwrap(scope)
@@ -99,6 +101,13 @@ impl ClinicalStore {
         let commit = acceptable && !rollback_only;
         if commit {
             scope.transaction.commit().await.map_err(database_error)?;
+            for effect in scope
+                .after_commit
+                .into_inner()
+                .map_err(|_| AuthError::internal("Identity after-commit queue unavailable"))?
+            {
+                effect.await?;
+            }
             result
         } else {
             scope.transaction.rollback().await.map_err(database_error)?;
@@ -143,4 +152,26 @@ pub(crate) fn clinical_id(value: &str) -> Result<i64, AuthError> {
         return Err(AuthError::bad_request("Invalid identity identifier"));
     }
     Ok(id)
+}
+
+pub(super) fn clinical_schema_id(value: &SchemaValue<String>) -> Result<i64, AuthError> {
+    clinical_id(value.typed()?)
+}
+
+pub(super) fn clinical_field_id(value: &FieldValue) -> Result<i64, AuthError> {
+    clinical_schema_id(&SchemaValue::<String>::from_field(value.clone()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn clinical_selector_rejects_noncanonical_and_replacement_ids() {
+        assert_eq!(clinical_schema_id(&"42".into()).unwrap(), 42);
+        for value in ["042", "0", "-1", "not-an-id"] {
+            assert!(clinical_schema_id(&value.into()).is_err());
+        }
+        assert!(clinical_schema_id(&SchemaValue::Dynamic(FieldValue::Null)).is_err());
+    }
 }

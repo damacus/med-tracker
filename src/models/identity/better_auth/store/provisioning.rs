@@ -1,17 +1,9 @@
 use better_auth_core::{AuthError, AuthResult, CreateUser, wire::UserView};
 use chrono::NaiveDate;
 use sea_orm::DatabaseTransaction;
-use serde::Deserialize;
 
 use super::ClinicalStore;
 use crate::models::identity::signup::{self, AccountProfile, SignupError};
-
-#[derive(Deserialize)]
-struct ProfileMetadata {
-    date_of_birth: NaiveDate,
-    #[serde(default)]
-    invitation_token: Option<String>,
-}
 
 impl ClinicalStore {
     pub(super) async fn create_user_in(
@@ -24,17 +16,36 @@ impl ClinicalStore {
                 "Account verification and privileges cannot be supplied during registration",
             ));
         }
-        let metadata: ProfileMetadata = serde_json::from_value(input.metadata.unwrap_or_default())
-            .map_err(|_| AuthError::validation("A valid date of birth is required"))?;
+        let metadata = input
+            .metadata
+            .as_ref()
+            .and_then(better_auth_core::FieldValue::as_object)
+            .ok_or_else(|| AuthError::validation("A valid date of birth is required"))?;
+        let date_of_birth = metadata
+            .get("date_of_birth")?
+            .and_then(|value| value.as_str().map(str::to_owned))
+            .and_then(|value| NaiveDate::parse_from_str(&value, "%Y-%m-%d").ok())
+            .ok_or_else(|| AuthError::validation("A valid date of birth is required"))?;
+        let invitation_token = metadata
+            .get("invitation_token")?
+            .map(|value| {
+                value
+                    .as_str()
+                    .map(str::to_owned)
+                    .ok_or_else(|| AuthError::validation("Invalid invitation token"))
+            })
+            .transpose()?;
         let profile = AccountProfile {
             email: input
                 .email
                 .ok_or_else(|| AuthError::validation("Email is required"))?,
             name: input
                 .name
+                .typed()?
+                .clone()
                 .ok_or_else(|| AuthError::validation("Name is required"))?,
-            date_of_birth: metadata.date_of_birth,
-            invitation_token: metadata.invitation_token,
+            date_of_birth,
+            invitation_token,
         };
         let request_id = super::super::request::request_id()
             .ok_or_else(|| AuthError::internal("Identity request context missing"))?;
