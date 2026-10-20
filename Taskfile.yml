@@ -1,7 +1,7 @@
 ---
 version: "3"
 silent: true
-run: once
+run: when_changed
 
 includes:
   frontend:
