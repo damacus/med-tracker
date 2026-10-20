@@ -174,7 +174,11 @@ fn competing_processes_prepare_once() -> TestResult {
         .stderr(Stdio::piped())
         .spawn()?;
     let failed_output = wait_for_worker(failed)?;
-    assert!(!failed_output.status.success());
+    assert!(
+        !failed_output.status.success(),
+        "panic-injected worker unexpectedly succeeded: {}",
+        String::from_utf8_lossy(&failed_output.stderr)
+    );
     assert!(
         std::path::Path::new(&marker).exists(),
         "panic-injected worker exited before seeding: {}",
@@ -190,7 +194,8 @@ fn competing_processes_prepare_once() -> TestResult {
     let retry_output = wait_for_worker(retry)?;
     assert!(
         !retry_output.status.success(),
-        "incomplete template was accepted"
+        "incomplete template was accepted: {}",
+        String::from_utf8_lossy(&retry_output.stderr)
     );
     assert!(String::from_utf8_lossy(&retry_output.stderr).contains("datallowconn"));
     runtime.block_on(async {

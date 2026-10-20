@@ -2,6 +2,34 @@ use sea_orm::sqlx::{self, AssertSqlSafe, Connection, PgConnection, Row};
 use sea_orm::{Database, DatabaseConnection};
 use std::future::Future;
 
+/// The empty `medtracker_reference` database is the base template for every
+/// prepared template. Create it lazily so no external psql step is required.
+/// The JS browser harness reuses this name for a seeded, frozen template; the
+/// Rust convention keeps it empty — concurrent creators serialise on a
+/// dedicated advisory lock so the check-then-create cannot race.
+async fn ensure_reference(control: &mut PgConnection) {
+    sqlx::query("SELECT pg_advisory_lock(hashtextextended('medtracker_reference', 0))")
+        .execute(&mut *control)
+        .await
+        .unwrap();
+    let exists =
+        sqlx::query("SELECT 1 AS present FROM pg_database WHERE datname='medtracker_reference'")
+            .fetch_optional(&mut *control)
+            .await
+            .unwrap()
+            .is_some();
+    if !exists {
+        sqlx::query("CREATE DATABASE medtracker_reference")
+            .execute(&mut *control)
+            .await
+            .unwrap();
+    }
+    sqlx::query("SELECT pg_advisory_unlock(hashtextextended('medtracker_reference', 0))")
+        .execute(&mut *control)
+        .await
+        .unwrap();
+}
+
 pub async fn prepare<F, Fut>(uri: &str, name: &str, seed: F)
 where
     F: FnOnce(DatabaseConnection) -> Fut,
@@ -19,6 +47,7 @@ where
         .execute(&mut control)
         .await
         .unwrap();
+    ensure_reference(&mut control).await;
     sqlx::query("SELECT pg_advisory_lock(hashtextextended($1, 0))")
         .bind(name)
         .execute(&mut control)

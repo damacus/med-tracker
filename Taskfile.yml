@@ -134,7 +134,7 @@ tasks:
   fmt:apply:
     cmds: [cargo fmt --all]
   test:
-    desc: Run unit tests, then API integration and desktop/mobile browser tests
+    desc: Run unit tests, then API integration and browser journeys
     cmds:
       - task: test:unit
       - task: test:acceptance
@@ -217,13 +217,40 @@ tasks:
         fi
         ' sh {{.FOUNDATION_PROJECT | shellQuote}} {{.TARGET | default "" | shellQuote}} {{.FILTER | default "" | shellQuote}}
   test:browser:
-    desc: Run desktop and mobile browser journeys against the prepared application
-    deps: [build]
-    env:
-      LOCO_BROWSER_SHARD: '{{.SHARD | default "1/1"}}'
+    desc: Run the Rust browser journeys against a private owned database
+    deps: [frontend:prepare]
+    vars:
+      OWNED_PROJECT:
+        sh: 'printf "mtloco-browser-%s" "$(uuidgen | tr "[:upper:]" "[:lower:]")"'
     cmds:
-      - task: frontend:browsers
-      - "node tests/browser/loco-browser.mjs {{if .PROJECT}}--project={{.PROJECT}}{{end}} {{if .GREP}}--grep={{.GREP | shellQuote}}{{end}} {{if .GROUP}}tests/browser/{{.GROUP}}.spec.mjs{{end}}"
+      - task: '{{if eq (.MEDTRACKER_OWNED_DATABASE | default "") "1"}}test:browser:direct{{else}}test:browser:owned{{end}}'
+        vars:
+          FOUNDATION_PROJECT: "{{.OWNED_PROJECT}}"
+          FILTER: '{{.FILTER | default ""}}'
+  test:browser:direct:
+    internal: true
+    cmds:
+      - 'cargo nextest run --locked --test browser --run-ignored only --no-tests=fail --test-threads 2 {{.FILTER | default "" | shellQuote}}'
+  test:browser:owned:
+    internal: true
+    requires:
+      vars: [FOUNDATION_PROJECT]
+    cmds:
+      - defer:
+          task: foundation:db-down
+          vars:
+            FOUNDATION_PROJECT: "{{.FOUNDATION_PROJECT}}"
+      - task: foundation:db-up
+        vars:
+          FOUNDATION_PROJECT: "{{.FOUNDATION_PROJECT}}"
+      - >-
+        sh -eu -c '
+        db_endpoint=$(task foundation:db-port FOUNDATION_PROJECT="$1");
+        unset COMPOSE_FILE COMPOSE_PROJECT_NAME COMPOSE_PROFILES DOCKER_HOST DOCKER_CONTEXT DOCKER_CONFIG DOCKER_TLS_VERIFY DOCKER_CERT_PATH;
+        export DATABASE_URL="postgres://medtracker:medtracker_password@${db_endpoint}/medtracker_loco";
+        export MEDTRACKER_OWNED_DATABASE=1;
+        cargo nextest run --locked --test browser --run-ignored only --no-tests=fail --test-threads 2 "$2";
+        ' sh {{.FOUNDATION_PROJECT | shellQuote}} {{.FILTER | default "" | shellQuote}}
   test:acceptance:
     desc: Run independent integration and browser stages in parallel
     deps: [test:integration, test:browser]
