@@ -1,3 +1,5 @@
+#[path = "support/fixtures.rs"]
+pub mod fixtures;
 #[path = "support/template.rs"]
 mod template;
 use med_tracker::models::{
@@ -26,14 +28,8 @@ impl Fixture {
         let (port, _) = endpoint.split_once('/').unwrap();
         assert!(port.parse::<u16>().unwrap() > 0);
         template::prepare(&uri, "care_medications_template", |admin| async move {
-            admin
-                .execute_unprepared(include_str!("fixtures/persistence-records.sql"))
-                .await
-                .unwrap();
-            admin
-                .execute_unprepared(include_str!("fixtures/care-medications.sql"))
-                .await
-                .unwrap();
+            fixtures::seed_persistence(&admin).await;
+            fixtures::seed_care_medications(&admin).await;
         })
         .await;
         let suffix = uuid::Uuid::new_v4().simple();

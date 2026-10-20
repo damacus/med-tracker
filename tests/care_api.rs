@@ -45,7 +45,7 @@ mod dose_outcomes;
 #[path = "care_api/fixture.rs"]
 mod fixture;
 #[path = "support/fixtures.rs"]
-mod fixtures;
+pub mod fixtures;
 #[path = "care_api/guardian_declarations.rs"]
 mod guardian_declarations;
 #[path = "care_api/health_events.rs"]

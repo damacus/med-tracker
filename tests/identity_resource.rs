@@ -1,3 +1,5 @@
+#[path = "support/fixtures.rs"]
+pub mod fixtures;
 #[path = "support/template.rs"]
 mod template;
 use axum::{
@@ -24,12 +26,8 @@ impl Fixture {
         let (port, _) = endpoint.split_once('/').unwrap();
         assert!(port.parse::<u16>().unwrap() > 0);
         template::prepare(&uri, "identity_resource_template", |admin| async move {
-            for sql in [
-                include_str!("fixtures/persistence-records.sql"),
-                include_str!("fixtures/identity/oauth.sql"),
-            ] {
-                admin.execute_unprepared(sql).await.unwrap();
-            }
+            fixtures::seed_persistence(&admin).await;
+            fixtures::seed_identity_oauth(&admin).await;
         })
         .await;
         let suffix = uuid::Uuid::new_v4().simple();
@@ -49,10 +47,7 @@ impl Fixture {
         ))
         .await
         .unwrap();
-        admin
-            .execute_unprepared(include_str!("fixtures/identity/mobile.sql"))
-            .await
-            .unwrap();
+        fixtures::seed_mobile_grant(&admin).await;
         let runtime = Database::connect(format!(
             "postgres://{role}:password@127.0.0.1:{port}/{name}"
         ))
