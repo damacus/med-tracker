@@ -18,8 +18,10 @@ Local integration runs provision disposable PostgreSQL 18 and RustFS containers
 through `compose.yaml`; browser runs provision PostgreSQL only. Both ignore an
 ambient `DATABASE_URL`. The
 browser lane is a single job: Playwright is driven by the `playwright-rs` crate,
-which downloads its own driver and Chromium into the `playwright-rust` cache
-directory — no Node or npm install is needed.
+which assembles its driver in the `playwright-rust` cache directory and
+Chromium in the usual `ms-playwright` cache — no Node or npm install is needed.
+Journeys are marked `#[ignore]` so the shared `cargo test --tests` lanes skip
+them; `task test:browser` runs them explicitly with `--ignored`.
 
 Running `cargo test --tests` directly requires an owned `DATABASE_URL`; the
 empty `medtracker_reference` base database is created lazily by

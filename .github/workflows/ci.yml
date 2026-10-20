@@ -24,6 +24,7 @@ jobs:
       CARGO_INCREMENTAL: "0"
       CARGO_PROFILE_DEV_DEBUG: "0"
       CARGO_PROFILE_TEST_DEBUG: "0"
+      PLAYWRIGHT_SKIP_DRIVER_DOWNLOAD: "1"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87
@@ -49,6 +50,7 @@ jobs:
       CARGO_INCREMENTAL: "0"
       CARGO_PROFILE_DEV_DEBUG: "0"
       CARGO_PROFILE_TEST_DEBUG: "0"
+      PLAYWRIGHT_SKIP_DRIVER_DOWNLOAD: "1"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
@@ -91,6 +93,7 @@ jobs:
       CARGO_INCREMENTAL: "0"
       CARGO_PROFILE_DEV_DEBUG: "0"
       CARGO_PROFILE_TEST_DEBUG: "0"
+      PLAYWRIGHT_SKIP_DRIVER_DOWNLOAD: "1"
       DATABASE_URL: postgres://medtracker:medtracker_password@127.0.0.1:5432/medtracker_loco
       MEDTRACKER_OWNED_DATABASE: "1"
       MEDTRACKER_OWNED_STORAGE: "1"
@@ -173,8 +176,10 @@ jobs:
           shared-key: loco-tests-v1
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
-          path: ~/.cache/playwright-rust
-          key: loco-playwright-rust-${{ hashFiles('Cargo.lock') }}
+          path: |
+            ~/.cache/playwright-rust
+            ~/.cache/ms-playwright
+          key: loco-playwright-${{ hashFiles('Cargo.lock') }}
       - run: task test:browser
 
   client_tools:

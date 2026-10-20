@@ -229,7 +229,7 @@ tasks:
   test:browser:direct:
     internal: true
     cmds:
-      - 'cargo test --locked --test browser {{.FILTER | default ""}}'
+      - 'cargo test --locked --test browser {{.FILTER | default ""}} -- --ignored'
   test:browser:owned:
     internal: true
     requires:
@@ -248,7 +248,7 @@ tasks:
         unset COMPOSE_FILE COMPOSE_PROJECT_NAME COMPOSE_PROFILES DOCKER_HOST DOCKER_CONTEXT DOCKER_CONFIG DOCKER_TLS_VERIFY DOCKER_CERT_PATH;
         export DATABASE_URL="postgres://medtracker:medtracker_password@${db_endpoint}/medtracker_loco";
         export MEDTRACKER_OWNED_DATABASE=1;
-        cargo test --locked --test browser "$2";
+        cargo test --locked --test browser "$2" -- --ignored;
         ' sh {{.FOUNDATION_PROJECT | shellQuote}} {{.FILTER | default "" | shellQuote}}
   test:acceptance:
     desc: Run independent integration and browser stages in parallel

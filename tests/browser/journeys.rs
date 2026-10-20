@@ -5,6 +5,7 @@ use crate::harness::named;
 use crate::{fixtures, harness};
 
 #[tokio::test]
+#[ignore = "browser journeys run through task test:browser, not the shared --tests lanes"]
 async fn barcode_miss_flows_into_manual_medication_wizard() {
     harness::journey(|journey| {
         Box::pin(async move {
@@ -110,6 +111,7 @@ async fn barcode_miss_flows_into_manual_medication_wizard() {
 }
 
 #[tokio::test]
+#[ignore = "browser journeys run through task test:browser, not the shared --tests lanes"]
 async fn barcode_hit_resolves_existing_medicine_to_refill() {
     harness::journey(|journey| {
         Box::pin(async move {
