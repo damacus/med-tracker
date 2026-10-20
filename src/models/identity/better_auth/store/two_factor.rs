@@ -136,21 +136,49 @@ impl TwoFactorStore for ClinicalStore {
         fields: FieldMap,
     ) -> AuthResult<Option<FieldMap>> {
         let record = TwoFactor::from_field_values(fields)?;
+        if !record.id.is_undefined()
+            || !record.user_id.is_undefined()
+            || !record.failed_verification_count.is_undefined()
+            || !record.locked_until.is_undefined()
+            || !record.created_at.is_undefined()
+            || !record.updated_at.is_undefined()
+        {
+            return Err(AuthError::bad_request(
+                "Authenticator identity or lock fields cannot be patched",
+            ));
+        }
+        if !record.additional_fields.is_empty() {
+            return Err(AuthError::config(
+                "Two-factor extension fields are not configured",
+            ));
+        }
+        let update = UpdateTwoFactor {
+            additional_fields: record.additional_fields,
+            secret: if record.secret.is_undefined() {
+                None
+            } else {
+                Some(record.secret.typed()?.clone())
+            },
+            backup_codes: if record.backup_codes.is_undefined() {
+                None
+            } else {
+                Some(record.backup_codes.typed()?.clone())
+            },
+            verified: if record.verified.is_undefined() {
+                None
+            } else {
+                Some(record.verified.typed()?.ok_or_else(|| {
+                    AuthError::bad_request("Authenticator verification cannot be cleared")
+                })?)
+            },
+        };
         if self.get_two_factor_record(id).await?.is_none() {
             return Ok(None);
         }
-        self.update_two_factor(
-            id,
-            UpdateTwoFactor {
-                additional_fields: record.additional_fields,
-                secret: record.secret.typed().ok().cloned(),
-                backup_codes: record.backup_codes.typed().ok().cloned(),
-                verified: record.verified.typed().ok().copied().flatten(),
-            },
-        )
-        .await?
-        .field_values()
-        .map(Some)
+        self.update_two_factor(id, update)
+            .await?
+            .field_values()
+            .map(Some)
     }
 
     async fn create_two_factor(&self, input: CreateTwoFactor) -> AuthResult<TwoFactor> {

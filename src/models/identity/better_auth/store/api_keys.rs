@@ -61,6 +61,37 @@ fn metadata_text(value: FieldValue) -> AuthResult<Option<String>> {
         .map(Some)
 }
 
+fn patch_number(value: &SchemaValue<Option<f64>>) -> AuthResult<Option<f64>> {
+    if value.is_undefined() {
+        return Ok(None);
+    }
+    value
+        .typed()?
+        .as_ref()
+        .copied()
+        .ok_or_else(|| AuthError::bad_request("Cannot clear numeric API credential field"))
+        .map(Some)
+}
+
+fn patch_string(value: &SchemaValue<Option<String>>) -> AuthResult<Option<String>> {
+    if value.is_undefined() {
+        return Ok(None);
+    }
+    value
+        .typed()?
+        .clone()
+        .ok_or_else(|| AuthError::bad_request("Cannot clear API credential field"))
+        .map(Some)
+}
+
+fn patch_date(value: &SchemaValue<Option<FieldDate>>) -> AuthResult<Option<Option<FieldDate>>> {
+    if value.is_undefined() {
+        Ok(None)
+    } else {
+        Ok(Some(value.typed()?.clone()))
+    }
+}
+
 fn apply(key: ApiKey, update: UpdateApiKey) -> AuthResult<ApiKey> {
     let mut fields = key.field_values()?;
     for (name, value) in update.into_adapter_fields()? {
@@ -190,6 +221,24 @@ impl ApiKeyStore for ClinicalStore {
         fields: FieldMap,
     ) -> AuthResult<Option<FieldMap>> {
         let record = ApiKey::from_field_values(fields)?;
+        if !record.id.is_undefined()
+            || !record.start.is_undefined()
+            || !record.prefix.is_undefined()
+            || !record.key_hash.is_undefined()
+            || !record.reference_id.is_undefined()
+            || !record.config_id.is_undefined()
+            || !record.created_at.is_undefined()
+            || !record.updated_at.is_undefined()
+        {
+            return Err(AuthError::bad_request(
+                "API credential identity fields cannot be updated",
+            ));
+        }
+        if !record.additional_fields.is_empty() {
+            return Err(AuthError::config(
+                "API-key extension fields are not configured",
+            ));
+        }
         self.update_api_key_optional(
             id,
             UpdateApiKey {
@@ -197,25 +246,26 @@ impl ApiKeyStore for ClinicalStore {
                 name: if record.name.is_undefined() {
                     None
                 } else {
+                    let _ = record.name.typed()?;
                     Some(record.name)
                 },
                 enabled: if record.enabled.is_undefined() {
                     None
                 } else {
+                    let _ = record.enabled.typed()?;
                     Some(record.enabled)
                 },
-                remaining: record.remaining.typed().ok().copied().flatten(),
-                rate_limit_enabled: record.rate_limit_enabled.typed().ok().copied(),
-                rate_limit_time_window: record
-                    .rate_limit_time_window
-                    .typed()
-                    .ok()
-                    .copied()
-                    .flatten(),
-                rate_limit_max: record.rate_limit_max.typed().ok().copied().flatten(),
-                refill_interval: record.refill_interval.typed().ok().copied().flatten(),
-                refill_amount: record.refill_amount.typed().ok().copied().flatten(),
-                permissions: record.permissions.typed().ok().cloned().flatten(),
+                remaining: patch_number(&record.remaining)?,
+                rate_limit_enabled: if record.rate_limit_enabled.is_undefined() {
+                    None
+                } else {
+                    Some(*record.rate_limit_enabled.typed()?)
+                },
+                rate_limit_time_window: patch_number(&record.rate_limit_time_window)?,
+                rate_limit_max: patch_number(&record.rate_limit_max)?,
+                refill_interval: patch_number(&record.refill_interval)?,
+                refill_amount: patch_number(&record.refill_amount)?,
+                permissions: patch_string(&record.permissions)?,
                 metadata: if record.metadata.is_undefined() {
                     None
                 } else {
@@ -227,10 +277,10 @@ impl ApiKeyStore for ClinicalStore {
                         })?,
                     )
                 },
-                expires_at: record.expires_at.typed().ok().cloned(),
-                last_request: record.last_request.typed().ok().cloned(),
-                request_count: record.request_count.typed().ok().copied().flatten(),
-                last_refill_at: record.last_refill_at.typed().ok().cloned(),
+                expires_at: patch_date(&record.expires_at)?,
+                last_request: patch_date(&record.last_request)?,
+                request_count: patch_number(&record.request_count)?,
+                last_refill_at: patch_date(&record.last_refill_at)?,
             },
         )
         .await?
@@ -383,6 +433,11 @@ impl ApiKeyStore for ClinicalStore {
         id: &SchemaValue<String>,
         update: UpdateApiKey,
     ) -> AuthResult<ApiKey> {
+        if !update.additional_fields.is_empty() {
+            return Err(AuthError::config(
+                "API-key extension fields are not configured",
+            ));
+        }
         let id = id.typed()?;
         let current = self
             .get_api_key_by_id(id)

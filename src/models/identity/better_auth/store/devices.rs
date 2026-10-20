@@ -159,12 +159,38 @@ impl DeviceCodeStore for ClinicalStore {
         fields: FieldMap,
     ) -> AuthResult<Option<FieldMap>> {
         let record = DeviceCode::from_field_values(fields)?;
+        if !record.id.is_undefined()
+            || !record.device_code.is_undefined()
+            || !record.user_code.is_undefined()
+            || !record.expires_at.is_undefined()
+            || !record.polling_interval.is_undefined()
+            || !record.client_id.is_undefined()
+        {
+            return Err(AuthError::bad_request(
+                "Device-code binding fields cannot be patched",
+            ));
+        }
+        if !record.additional_fields.is_empty() {
+            return Err(AuthError::config(
+                "Device-code extension fields are not configured",
+            ));
+        }
+        if !record.user_id.is_undefined() {
+            let _ = record.user_id.typed()?;
+        }
+        if !record.scope.is_undefined() {
+            let _ = record.scope.typed()?;
+        }
         self.device_update(
             id.typed()?,
             None,
             UpdateDeviceCode {
                 additional_fields: record.additional_fields,
-                status: record.status.typed().ok().cloned(),
+                status: if record.status.is_undefined() {
+                    None
+                } else {
+                    Some(record.status.typed()?.clone())
+                },
                 user_id: if record.user_id.is_undefined() {
                     None
                 } else {
