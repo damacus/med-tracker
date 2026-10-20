@@ -1,23 +1,25 @@
 # Testing
 
 Root `task ci` runs formatting, Clippy linting, database-free unit tests,
-PostgreSQL 18 and RustFS integration tests, and desktop/mobile Playwright
-browser tests against the Loco application.
+PostgreSQL 18 and RustFS integration tests, and Rust Playwright browser
+journeys against the Loco application.
 
 ## Loco test stages
 
-| Command                                                     | Coverage                                                               |
-|-------------------------------------------------------------|------------------------------------------------------------------------|
-| `task test:unit`                                            | Rust library and doc tests, plus JavaScript unit tests; no database    |
-| `task test:integration`                                     | API, access control, persistence, identity and queue integration tests |
-| `task test:integration TARGET=care_api FILTER=fixture`      | Focused Rust integration test binary and filter                        |
-| `task test:browser`                                         | Desktop and mobile browser journeys                                    |
-| `task test:browser GROUP=runtime-isolation PROJECT=desktop` | One browser file and viewport                                          |
+| Command                                                | Coverage                                                               |
+|--------------------------------------------------------|------------------------------------------------------------------------|
+| `task test:unit`                                       | Rust library and doc tests, plus JavaScript unit tests; no database    |
+| `task test:integration`                                | API, access control, persistence, identity and queue integration tests |
+| `task test:integration TARGET=care_api FILTER=fixture` | Focused Rust integration test binary and filter                        |
+| `task test:browser`                                    | Browser journeys (`cargo test --test browser`)                         |
+| `task test:browser FILTER=barcode_miss`                | Run one browser journey by name substring                              |
 
-Local integration and browser runs provision disposable PostgreSQL 18 and RustFS
-containers through `compose.yaml` and ignore an ambient `DATABASE_URL`. In CI,
-Playwright browser suites use native sharding (`SHARD=1/12` passes `--shard=1/12`
-to Playwright).
+Local integration runs provision disposable PostgreSQL 18 and RustFS containers
+through `compose.yaml`; browser runs provision PostgreSQL only. Both ignore an
+ambient `DATABASE_URL`. The
+browser lane is a single job: Playwright is driven by the `playwright-rs` crate,
+which downloads its own driver and Chromium into the `playwright-rust` cache
+directory — no Node or npm install is needed.
 
 Running `cargo test --tests` directly requires an owned `DATABASE_URL`; the
 empty `medtracker_reference` base database is created lazily by
@@ -28,11 +30,10 @@ on an unfiltered `task test:integration`.
 Integration fixtures clone a migrated and seeded template for each fixture
 family into private databases. Short-lived OAuth fixture credentials are created
 for each clone so they cannot expire while waiting in a shared template.
-The browser runner owns one PostgreSQL service and prepares one template for all
-its workers. Each runtime gets a private database and role; storage runtimes get
-private buckets. Between tests, workers restart the compiled application and
-restore their data snapshot to clear both in-memory authentication limits and
-database state.
+Each browser journey clones the seeded `browser_template` into a private
+database with a restricted runtime role, spawns the compiled `med-tracker`
+server on a dynamic port, and drops the database, role and server process on
+completion — including failure paths. Storage runtimes get private buckets.
 
 ## Loco database setup
 
