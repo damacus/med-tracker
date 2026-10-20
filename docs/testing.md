@@ -51,7 +51,7 @@ completion — including failure paths. Storage runtimes get private buckets.
 
 Browser journeys live in `tests/browser/journeys.rs` as ordinary
 `#[tokio::test]`s marked `#[ignore]` so the shared `--tests` lanes skip them.
-Each journey calls `harness::journey(...)`, which clones the seeded
+Each journey supplies an explicit `Viewport` to `harness::journey(...)`, which clones the seeded
 `browser_template` into a private database, spawns the compiled
 `med-tracker` server, and drops everything on exit.
 
@@ -68,7 +68,8 @@ Each journey calls `harness::journey(...)`, which clones the seeded
   journey itself.
 - `playwright-rs` assembles its driver at build time and
   `install_browsers` fetches Chromium on first run; both land in the user
-  cache and need no Node install.
+  cache and need no separate Node install for Playwright. Application assets
+  still use Node and npm through `frontend:prepare`.
 - On failure the harness prints the tail of the server log; Playwright
   traces can be enabled per journey when more detail is needed.
 

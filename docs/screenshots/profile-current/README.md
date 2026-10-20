@@ -20,9 +20,10 @@ These captures came from the retired Playwright suite's `profile-visual`
 journey (removed with the rest of the JavaScript browser harness). File names
 identify the tab or dialog, appearance and viewport. The journey checked
 visible panels, horizontal overflow, dialog cancellation and focus return.
-Additional interaction tests cover 320px doubled text, keyboard navigation,
-permissions, persistence and failure states; these ordinary captures do not
-replace those tests.
+The retired interaction tests also checked 320px doubled text, keyboard
+navigation, permissions, persistence and failure states. Those profile browser
+checks are not part of the reduced Rust journey suite; these historical images
+do not establish current interaction coverage.
 
 ## Comparison limits
 
@@ -33,8 +34,10 @@ the profile uses the shared Loco page shell instead of a separate Rails sidebar,
 switches use accessible native checkbox controls, and sensitive actions retain
 the agreed Loco authentication and shared-history retention semantics.
 
-This ordinary fixture has no managed-person grant, so managed-person controls
-are covered by their separate browser tests rather than these captures.
+This ordinary fixture has no managed-person grant. These captures do not show
+managed-person controls, and the retained browser journeys do not verify them.
+Current Rust API and request tests provide server-side access checks; they do not
+prove JavaScript interaction or visual behaviour.
 Gravatar remains disabled. External Web Push delivery is not demonstrated by
 local screenshots. Independent source review and the Gravatar decision remain
 tracked in issue #2502; publication does not authorize merge or deployment.
