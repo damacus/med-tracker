@@ -9,7 +9,7 @@
     "@playwright/test": "1.63.0",
     "@tailwindcss/cli": "4.3.0",
     "daisyui": "5.7.50",
-    "jose": "6.2.12",
+    "jose": "6.2.13",
     "html5-qrcode": "2.3.8",
     "otpauth": "9.5.2",
     "saxes": "6.0.0",
