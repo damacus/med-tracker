@@ -168,16 +168,22 @@ fn competing_processes_prepare_once() -> TestResult {
     let failed = Command::new(&executable)
         .args(["--ignored", "--exact", "worker", "--nocapture"])
         .env("TEMPLATE_REGRESSION_NAME", &failed_name)
+        .env("TEMPLATE_REGRESSION_MARKER", &marker)
         .env("TEMPLATE_REGRESSION_PANIC", "1")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()?;
     let failed_output = wait_for_worker(failed)?;
     assert!(!failed_output.status.success());
-    assert!(std::path::Path::new(&marker).exists());
+    assert!(
+        std::path::Path::new(&marker).exists(),
+        "panic-injected worker exited before seeding: {}",
+        String::from_utf8_lossy(&failed_output.stderr)
+    );
     let retry = Command::new(&executable)
         .args(["--ignored", "--exact", "worker", "--nocapture"])
         .env("TEMPLATE_REGRESSION_NAME", &failed_name)
+        .env("TEMPLATE_REGRESSION_MARKER", &marker)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()?;
