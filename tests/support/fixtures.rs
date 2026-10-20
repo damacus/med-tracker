@@ -235,6 +235,7 @@ pub async fn seed_core(db: &DatabaseConnection) {
 /// The care API suite exchanges its authorization code against client id
 /// `native`; repoint application 75001 after `seed_core` created it as
 /// `synthetic-client`.
+#[allow(dead_code)]
 pub async fn set_native_client_id(db: &DatabaseConnection) {
     let application = oauth_applications::Entity::find_by_id(75001)
         .one(db)
@@ -432,8 +433,23 @@ pub async fn seed_foreign_household(db: &DatabaseConnection, household_id: i64) 
     .expect("seed foreign care membership");
 }
 
+/// Per-journey barcode metadata for the scanner hit flow (the old
+/// browser-care.yml scanner-barcode task set medications.barcode for 80001).
+#[allow(dead_code)]
+pub async fn seed_barcode_metadata(db: &DatabaseConnection) {
+    let medication = medications::Entity::find_by_id(80001)
+        .one(db)
+        .await
+        .expect("find medication")
+        .expect("medication 80001");
+    let mut active = medication.into_active_model();
+    active.barcode = Set(Some("1234567890123".into()));
+    active.update(db).await.expect("set medication barcode");
+}
+
 /// Equivalent of tests/fixtures/identity/mobile.sql: swap the integration
 /// grant for a mobile grant on the same ids.
+#[allow(dead_code)]
 pub async fn seed_mobile_grant(db: &DatabaseConnection) {
     oauth_grants::Entity::delete_by_id(76001)
         .exec(db)
