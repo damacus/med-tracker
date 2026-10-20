@@ -136,23 +136,31 @@ jobs:
 
   loco_browser:
     needs: [loco_lint, loco_unit]
-    name: Desktop and mobile browser tests (${{ matrix.shard }}/12)
+    name: Browser journeys
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: medtracker
+          POSTGRES_PASSWORD: medtracker_password
+          POSTGRES_DB: medtracker_loco
+        ports:
+          - 127.0.0.1:5432:5432
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U medtracker -d medtracker_loco"
+          --health-interval 2s
+          --health-timeout 2s
+          --health-retries 30
     env:
       CARGO_INCREMENTAL: "0"
       CARGO_PROFILE_DEV_DEBUG: "0"
       CARGO_PROFILE_TEST_DEBUG: "0"
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+      DATABASE_URL: postgres://medtracker:medtracker_password@127.0.0.1:5432/medtracker_loco
+      MEDTRACKER_OWNED_DATABASE: "1"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
-        with:
-          node-version: "24"
-          cache: "npm"
       - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87
         with:
           toolchain: stable
@@ -165,9 +173,9 @@ jobs:
           shared-key: loco-tests-v1
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
-          path: ~/.cache/ms-playwright
-          key: loco-chromium-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-      - run: task test:browser SHARD=${{ matrix.shard }}/12
+          path: ~/.cache/playwright-rust
+          key: loco-playwright-rust-${{ hashFiles('Cargo.lock') }}
+      - run: task test:browser
 
   client_tools:
     runs-on: [ubuntu-latest]
