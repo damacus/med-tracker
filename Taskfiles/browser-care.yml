@@ -1,9 +1,12 @@
-version: '3'
+version: "3"
 tasks:
   freeze-template:
     requires:
       vars: [CARE_DATABASE_URL]
-    cmds: ['psql {{.CARE_DATABASE_URL | shellQuote}} -X -v ON_ERROR_STOP=1 -c "ALTER DATABASE medtracker_reference ALLOW_CONNECTIONS false"']
+    cmds:
+      [
+        'psql {{.CARE_DATABASE_URL | shellQuote}} -X -v ON_ERROR_STOP=1 -c "ALTER DATABASE medtracker_reference ALLOW_CONNECTIONS false"',
+      ]
   clone:
     requires:
       vars: [CARE_DATABASE_URL, CARE_DATABASE_NAME]
@@ -23,7 +26,10 @@ tasks:
   storage-bucket:
     requires:
       vars: [STORAGE_ENDPOINT, STORAGE_BUCKET]
-    cmds: ['curl --fail --silent --show-error --aws-sigv4 aws:amz:us-east-1:s3 --user storage-smoke-access:storage-smoke-secret --request PUT {{printf "%s/%s" .STORAGE_ENDPOINT .STORAGE_BUCKET | shellQuote}}']
+    cmds:
+      [
+        'curl --fail --silent --show-error --aws-sigv4 aws:amz:us-east-1:s3 --user storage-smoke-access:storage-smoke-secret --request PUT {{printf "%s/%s" .STORAGE_ENDPOINT .STORAGE_BUCKET | shellQuote}}',
+      ]
   profile-reference:
     requires:
       vars: [CARE_DATABASE_URL]
@@ -36,11 +42,17 @@ tasks:
   profile-birthday:
     requires:
       vars: [CARE_DATABASE_URL]
-    cmds: ['psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -c "UPDATE public.people SET date_of_birth=''1980-06-15'' WHERE id=73001"']
+    cmds:
+      [
+        'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -c "UPDATE public.people SET date_of_birth=''1980-06-15'' WHERE id=73001"',
+      ]
   profile-newborn:
     requires:
       vars: [CARE_DATABASE_URL]
-    cmds: ['psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -c "UPDATE public.people SET date_of_birth=timezone(''UTC'',clock_timestamp())::date,person_type=1,has_capacity=false WHERE id=73001"']
+    cmds:
+      [
+        'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -c "UPDATE public.people SET date_of_birth=timezone(''UTC'',clock_timestamp())::date,person_type=1,has_capacity=false WHERE id=73001"',
+      ]
   profile-closure-devices:
     requires:
       vars: [CARE_DATABASE_URL]
@@ -59,13 +71,22 @@ tasks:
   profile-notification-fixture:
     requires:
       vars: [CARE_DATABASE_URL]
-    cmds: ['psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction -f tests/fixtures/browser-profile-notifications.sql']
+    cmds:
+      [
+        'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction -f tests/fixtures/browser-profile-notifications.sql',
+      ]
   profile-notification-probe:
     requires:
       vars: [CARE_DATABASE_URL]
-    cmds: ['psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align -c "SELECT json_object_agg(person_id,missed_dose_notifications_enabled) FROM public.person_access_grants WHERE household_membership_id=74001"']
+    cmds:
+      [
+        'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --tuples-only --no-align -c "SELECT json_object_agg(person_id,missed_dose_notifications_enabled) FROM public.person_access_grants WHERE household_membership_id=74001"',
+      ]
   prepare-avatar-storage:
-    cmds: ['{{if .LOCO_PREBUILT}}./target/ci/care_api avatar_storage::prepare_owned_bucket --ignored --exact{{else}}cargo test --locked --test care_api avatar_storage::prepare_owned_bucket -- --ignored --exact{{end}}']
+    cmds:
+      [
+        "cargo test --locked --test care_api avatar_storage::prepare_owned_bucket -- --ignored --exact",
+      ]
   occurrence-probe:
     requires:
       vars: [CARE_DATABASE_URL]
@@ -87,12 +108,18 @@ tasks:
     cmds:
       - 'psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 -f tests/fixtures/browser-treatment-audit-failure.sql'
   binary:
-    cmds: ['{{if .LOCO_PREBUILT}}node -e "console.log(require(''node:path'').resolve(''target/ci/med-tracker''))"{{else}}cargo metadata --locked --no-deps --format-version 1 | jq -r ''.target_directory + "/debug/med-tracker"''{{end}}']
+    cmds:
+      [
+        'cargo metadata --locked --no-deps --format-version 1 | jq -r ''.target_directory + "/debug/med-tracker"''',
+      ]
   serve:
     vars:
       BROWSER_BINARY:
         sh: task browser-care:binary
-    cmds: ['{{.BROWSER_BINARY | shellQuote}} start {{if eq (.SERVER_AND_WORKER | default "false") "true"}}--server-and-worker{{end}} --environment {{.LOCO_ENV | default "test"}}']
+    cmds:
+      [
+        '{{.BROWSER_BINARY | shellQuote}} start {{if eq (.SERVER_AND_WORKER | default "false") "true"}}--server-and-worker{{end}} --environment {{.LOCO_ENV | default "test"}}',
+      ]
   migrate:
     requires:
       vars: [MIGRATION_DATABASE_URL]
@@ -100,17 +127,23 @@ tasks:
       BROWSER_BINARY:
         sh: task browser-care:binary
     env:
-      DATABASE_URL: '{{.MIGRATION_DATABASE_URL}}'
-    cmds: ['env DATABASE_URL={{.MIGRATION_DATABASE_URL | shellQuote}} {{.BROWSER_BINARY | shellQuote}} db migrate --environment {{.LOCO_ENV | default "test"}}']
+      DATABASE_URL: "{{.MIGRATION_DATABASE_URL}}"
+    cmds:
+      [
+        'env DATABASE_URL={{.MIGRATION_DATABASE_URL | shellQuote}} {{.BROWSER_BINARY | shellQuote}} db migrate --environment {{.LOCO_ENV | default "test"}}',
+      ]
   snapshot:
     requires:
       vars: [FOUNDATION_PROJECT, SNAPSHOT_PATH]
-    cmds: ['docker compose -f {{printf "%s/compose.yaml" .ROOT_DIR | shellQuote}} --env-file /dev/null -p {{.FOUNDATION_PROJECT | shellQuote}} exec -T postgres pg_dump -U medtracker -d {{.CARE_DATABASE_NAME | default "medtracker_reference" | shellQuote}} --format=custom --data-only --exclude-table=public.seaql_migrations > {{.SNAPSHOT_PATH | shellQuote}}']
+    cmds:
+      [
+        'docker compose -f {{printf "%s/compose.yaml" .ROOT_DIR | shellQuote}} --env-file /dev/null -p {{.FOUNDATION_PROJECT | shellQuote}} exec -T postgres pg_dump -U medtracker -d {{.CARE_DATABASE_NAME | default "medtracker_reference" | shellQuote}} --format=custom --data-only --exclude-table=public.seaql_migrations > {{.SNAPSHOT_PATH | shellQuote}}',
+      ]
   reset:
     requires:
       vars: [FOUNDATION_PROJECT, CARE_DATABASE_URL, SNAPSHOT_PATH]
     cmds:
-      - 'psql {{.CARE_DATABASE_URL | shellQuote}} -X -v ON_ERROR_STOP=1 --single-transaction -f tests/fixtures/browser-reset.sql'
+      - "psql {{.CARE_DATABASE_URL | shellQuote}} -X -v ON_ERROR_STOP=1 --single-transaction -f tests/fixtures/browser-reset.sql"
       - 'docker compose -f {{printf "%s/compose.yaml" .ROOT_DIR | shellQuote}} --env-file /dev/null -p {{.FOUNDATION_PROJECT | shellQuote}} exec -T postgres pg_restore -U medtracker -d {{.CARE_DATABASE_NAME | default "medtracker_reference" | shellQuote}} --data-only --disable-triggers --single-transaction --exit-on-error < {{.SNAPSHOT_PATH | shellQuote}}'
   order-probe:
     requires:
@@ -237,12 +270,12 @@ tasks:
     requires:
       vars: [MAILPIT_NAME, MAILPIT_PORT]
     cmds:
-      - 'docker port {{.MAILPIT_NAME | shellQuote}} {{.MAILPIT_PORT | shellQuote}}'
+      - "docker port {{.MAILPIT_NAME | shellQuote}} {{.MAILPIT_PORT | shellQuote}}"
   mail-down:
     requires:
       vars: [MAILPIT_NAME]
     cmds:
-      - 'docker rm --force {{.MAILPIT_NAME | shellQuote}}'
+      - "docker rm --force {{.MAILPIT_NAME | shellQuote}}"
   seed-unsupported-passkey:
     requires:
       vars: [CARE_DATABASE_URL, UNSUPPORTED_PUBLIC_KEY]
@@ -253,7 +286,14 @@ tasks:
         -f tests/fixtures/identity/unsupported-passkey-seed.sql
   seed-retained-passkey:
     requires:
-      vars: [CARE_DATABASE_URL, RETAINED_WEBAUTHN_ID, RETAINED_PUBLIC_KEY, RETAINED_SIGN_COUNT, RETAINED_USER_HANDLE]
+      vars:
+        [
+          CARE_DATABASE_URL,
+          RETAINED_WEBAUTHN_ID,
+          RETAINED_PUBLIC_KEY,
+          RETAINED_SIGN_COUNT,
+          RETAINED_USER_HANDLE,
+        ]
     cmds:
       - >-
         psql "{{.CARE_DATABASE_URL}}" -X -v ON_ERROR_STOP=1 --single-transaction
@@ -909,13 +949,13 @@ tasks:
       BROWSER_BINARY:
         sh: task browser-care:binary
     cmds:
-      - 'env DATABASE_URL={{.CARE_DATABASE_URL | shellQuote}} {{.BROWSER_BINARY | shellQuote}} db seed --environment test --from tests/fixtures/browser'
+      - "env DATABASE_URL={{.CARE_DATABASE_URL | shellQuote}} {{.BROWSER_BINARY | shellQuote}} db seed --environment test --from tests/fixtures/browser"
       - 'psql {{.CARE_DATABASE_URL | shellQuote}} -X -v ON_ERROR_STOP=1 -c "CREATE ROLE medtracker_browser_runtime LOGIN PASSWORD ''password'' NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS IN ROLE med_tracker_app"'
   wizard-probe:
     requires:
       vars: [CARE_DATABASE_URL, WIZARD_NAME]
     cmds:
-      - 'psql {{.CARE_DATABASE_URL | shellQuote}} -X -v ON_ERROR_STOP=1 --tuples-only --no-align -v name={{.WIZARD_NAME | shellQuote}} -f tests/fixtures/browser-wizard-probe.sql'
+      - "psql {{.CARE_DATABASE_URL | shellQuote}} -X -v ON_ERROR_STOP=1 --tuples-only --no-align -v name={{.WIZARD_NAME | shellQuote}} -f tests/fixtures/browser-wizard-probe.sql"
   probe:
     requires:
       vars: [CARE_DATABASE_URL]

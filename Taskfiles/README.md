@@ -13,26 +13,26 @@ the workflow.
 commands live beside their owner; this directory holds repository automation.
 Existing root commands remain available while callers adopt the explicit namespaces.
 
-| File             | Scope                                               |
-|------------------|-----------------------------------------------------|
-| `../rails/Taskfile.yml` | Rails commands and environment includes       |
-| `../rails/tasks/internal.yml` | Shared Docker Compose operations         |
-| `../rails/tasks/dev.yml` | Development services and data                  |
-| `../rails/tasks/test.yml` | Docker-backed test services                   |
-| `../rails/tasks/local.yml` | Host tests with a local database             |
-| `../rails/tasks/prod.yml` | Local production-image checks                 |
-| `../rails/tasks/audit.yml` | Audit export and verification                |
-| `../rails/tasks/lighthouse.yml` | Browser quality checks                  |
-| `../rust/Taskfile.yml` | Rust API, web and UI package commands            |
-| `../rust/contract-tests/Taskfile.yml` | Shared API compatibility and client generation |
-| `../client-tools/Taskfile.yml` | CLI and MCP Cargo workspace               |
-| `../client-tools/openapi-generator/Taskfile.yml` | Native API generation  |
-| `../docs/Taskfile.yml` | Documentation build and preview                  |
-| `../mobile/android/Taskfile.yml` | Android build and checks               |
-| `ci.yml`        | CI classification, checks and gate                   |
-| `agents.yml`    | Translator integration                               |
-| `openspec.yml`   | OpenSpec validation and status                      |
-| `worktree.yml`   | Worktree creation and cleanup                       |
+| File                                             | Scope                                              |
+|--------------------------------------------------|----------------------------------------------------|
+| `../rails/Taskfile.yml`                          | Rails commands and environment includes            |
+| `../rails/tasks/internal.yml`                    | Shared Docker Compose operations                   |
+| `../rails/tasks/dev.yml`                         | Development services and data                      |
+| `../rails/tasks/test.yml`                        | Docker-backed test services                        |
+| `../rails/tasks/local.yml`                       | Host tests with a local database                   |
+| `../rails/tasks/prod.yml`                        | Local production-image checks                      |
+| `../rails/tasks/audit.yml`                       | Audit export and verification                      |
+| `../rails/tasks/lighthouse.yml`                  | Browser quality checks                             |
+| `../rust/Taskfile.yml`                           | Rust API, web and UI package commands              |
+| `../client-tools/Taskfile.yml`                   | CLI and MCP Cargo workspace                        |
+| `../client-tools/openapi-generator/Taskfile.yml` | Native API generation                              |
+| `../docs/Taskfile.yml`                           | Documentation build and preview                    |
+| `../mobile/android/Taskfile.yml`                 | Android build and checks                           |
+| `browser-care.yml`                               | Browser test database and fixture tasks            |
+| `frontend.yml`                                   | Tailwind CSS, static assets and Playwright runners |
+| `agents.yml`                                     | Translator integration                             |
+| `openspec.yml`                                   | OpenSpec validation and status                     |
+| `worktree.yml`                                   | Worktree creation and cleanup                      |
 
 Keep user-facing commands in the file that owns their environment. Put shared
 Compose mechanics in `rails/tasks/internal.yml`.
@@ -43,9 +43,9 @@ its Taskfiles have moved under `rails/`; the source relocation is a separate cha
 
 ## Namespaces and working directories
 
-Prefer `rails:*`, `rust:api:*`, `rust:web:*`, `rust:ui:*`, `contracts:*`,
-`contracts:clients:*`, `client-tools:*`, `mobile:android:*` and `docs:*`.
-The old Rails commands, `api:*`, `contract:*`, `api-clients:*` and `android:*`
+Prefer `rails:*`, `rust:api:*`, `rust:web:*`, `rust:ui:*`, `api-clients:*`,
+`client-tools:*`, `mobile:android:*` and `docs:*`.
+The old Rails commands, `api:*`, `api-clients:*` and `android:*`
 remain available. New code should use the explicit namespace.
 
 Root and local invocation use the same commands and working directories:

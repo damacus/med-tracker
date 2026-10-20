@@ -19,10 +19,6 @@ includes:
   api:
     taskfile: rust/api/Taskfile.yml
     dir: .
-  contracts:
-    taskfile: rust/contract-tests/Taskfile.yml
-    dir: .
-    aliases: [contract]
   client-tools:
     taskfile: client-tools/Taskfile.yml
     dir: client-tools
@@ -36,9 +32,6 @@ includes:
   docs:
     taskfile: docs/Taskfile.yml
     dir: .
-  ci:
-    taskfile: Taskfiles/ci.yml
-    dir: .
   worktree:
     taskfile: Taskfiles/worktree.yml
     dir: .
@@ -51,100 +44,44 @@ includes:
     flatten: true
 
 tasks:
-  slice:browser:
-    cmds:
-      - task: frontend:test-browser
-        vars:
-          GROUP: '{{.GROUP | default "shell"}}'
-  slice:test-runner:
-    cmds:
-      - task: slice:result-proof
-      - node --test scripts/migration/run-slice.test.mjs
-  slice:result-proof:
-    cmds:
-      - task: frontend:install
-      - node --test scripts/migration/nextest-proof.test.mjs
-  slice:prerequisite-regression:
-    cmds:
-      - task: frontend:install
-      - node --test --test-name-pattern='ordinary Rust entry points' scripts/migration/run-slice.test.mjs
-  test:template-concurrency:
-    desc: Verify cross-process PostgreSQL template preparation in an owned database
-    cmds: [node tests/support/template_concurrency.mjs]
-  test:template-concurrency:child:
-    cmds:
-      - cargo nextest run --locked --test template_concurrency --run-ignored all --no-tests=fail -E 'test(=competing_processes_prepare_once)'
-  test:template-concurrency:process:
-    cmds: [node --test tests/support/template_task_process.test.mjs]
-  coverage:check:
-    desc: Check pinned Rust coverage prerequisites without installing them
-    cmds: [node scripts/migration/coverage-check.mjs]
-  coverage:install:
-    desc: Explicitly install Rust coverage prerequisites for the active toolchain
-    cmds:
-      - rustup component add llvm-tools-preview
-      - cargo install cargo-llvm-cov --locked --version 0.9.1
-  slice:contracts:
-    desc: Run an API contract inventory or completion group
-    cmds:
-      - task: frontend:install
-      - 'node scripts/migration/run-contracts.mjs --group {{.GROUP | default "" | shellQuote}} --filter {{.FILTER | default "" | shellQuote}}'
-  slice:test:
-    requires:
-      vars: [TARGET]
-    cmds:
-      - node scripts/migration/run-slice.mjs --target '{{.TARGET}}' --filter '{{.FILTER | default ""}}' {{if eq (.NO_FAIL_FAST | default "false") "true"}}--no-fail-fast{{end}}
-  slice:test-all:
-    env:
-      RUST_TEST_THREADS: "4"
-    cmds:
-      - node scripts/migration/run-slice.mjs --all
-      - cargo test --locked --doc
-  inventory:write:
-    desc: Record reconciled migration inputs
-    cmds: [node scripts/migration/inventory.mjs --write]
-  inventory:check:
-    desc: Reject unreconciled source inventory drift
-    cmds: [node scripts/migration/inventory.mjs]
-  preservation:write:
-    desc: Record relocation checksums and preserve source comments
-    cmds: [node scripts/migration/preservation.mjs --write]
-  preservation:check:
-    desc: Check preserved source files and comments
-    cmds: [node scripts/migration/preservation.mjs]
   deps:
     desc: Resolve the root Loco lockfile
     cmds: [cargo generate-lockfile]
-  deps:migration:
-    vars:
-      ONLINE: '{{.ONLINE | default "false"}}'
-    cmds: ['cargo update {{if ne .ONLINE "true"}}--offline{{end}} --package migration']
-  deps:push:
-    cmds: [cargo update --workspace]
-  deps:profile-export:
-    cmds: [cargo update --workspace]
-  deps:contracts:
-    cmds: [cargo update --workspace]
   foundation:db-up:
     requires:
       vars: [FOUNDATION_PROJECT]
-    cmds: ['docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} up -d --wait postgres']
+    cmds:
+      [
+        'docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} up -d --wait postgres',
+      ]
   foundation:storage-init:
     requires:
       vars: [STORAGE_ENDPOINT]
-    cmds: ['curl --fail --silent --show-error --aws-sigv4 aws:amz:us-east-1:s3 --user storage-smoke-access:storage-smoke-secret --request PUT {{printf "%s/scanner-fixture" .STORAGE_ENDPOINT | shellQuote}}']
+    cmds:
+      [
+        'curl --fail --silent --show-error --aws-sigv4 aws:amz:us-east-1:s3 --user storage-smoke-access:storage-smoke-secret --request PUT {{printf "%s/scanner-fixture" .STORAGE_ENDPOINT | shellQuote}}',
+      ]
   foundation:db-port:
     requires:
       vars: [FOUNDATION_PROJECT]
-    cmds: ['docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} port postgres 5432']
+    cmds:
+      [
+        'docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} port postgres 5432',
+      ]
   foundation:storage-up:
     requires:
       vars: [FOUNDATION_PROJECT]
-    cmds: ['docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} --profile fixture-storage up -d --wait rustfs']
+    cmds:
+      [
+        'docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} --profile fixture-storage up -d --wait rustfs',
+      ]
   foundation:storage-port:
     requires:
       vars: [FOUNDATION_PROJECT]
-    cmds: ['docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} --profile fixture-storage port rustfs 9000']
+    cmds:
+      [
+        'docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} --profile fixture-storage port rustfs 9000',
+      ]
   foundation:db-provision:
     requires:
       vars: [FOUNDATION_PROJECT]
@@ -153,11 +90,10 @@ tasks:
   foundation:db-down:
     requires:
       vars: [FOUNDATION_PROJECT]
-    cmds: ['docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} --profile fixture-storage down --volumes']
-  foundation:test-ci-paths:
-    cmds: [node --test scripts/ci/tests/loco_paths.test.mjs]
-  foundation:test-workspaces:
-    cmds: [node --test scripts/migration/workspaces.test.mjs]
+    cmds:
+      [
+        'docker compose -f "{{.ROOT_DIR}}/compose.yaml" --env-file /dev/null -p {{.FOUNDATION_PROJECT}} --profile fixture-storage down --volumes',
+      ]
   dev:
     desc: Start the Loco server
     cmds:
@@ -165,7 +101,10 @@ tasks:
       - 'cargo run --locked -- start {{if eq (.SERVER_AND_WORKER | default "false") "true"}}--server-and-worker{{end}} --environment {{.LOCO_ENV | default "development"}}'
   scheduler:
     desc: Run configured Loco scheduled tasks
-    cmds: ['cargo run --locked -- scheduler --environment {{.LOCO_ENV | default "development"}} {{.CLI_ARGS}}']
+    cmds:
+      [
+        'cargo run --locked -- scheduler --environment {{.LOCO_ENV | default "development"}} {{.CLI_ARGS}}',
+      ]
   build:
     desc: Build Loco
     cmds:
@@ -176,10 +115,8 @@ tasks:
     cmds: [cargo check --locked --all-targets]
   machete:
     desc: Check direct dependencies of every active Rust workspace member
-    cmds: [node scripts/migration/check-unused-deps.mjs]
-  machete:test:
-    desc: Test the workspace unused-dependency gate
-    cmds: [node --test scripts/migration/check-unused-deps.test.mjs]
+    cmds:
+      - cargo machete --with-metadata --skip-target-dir ./Cargo.toml migration/Cargo.toml
   lint:
     desc: Lint Loco
     cmds:
@@ -187,10 +124,10 @@ tasks:
       - task: machete
   lint:fix:
     desc: Apply safe Loco Clippy suggestions
-    cmds: [cargo clippy --locked --all-targets --fix --allow-dirty --allow-staged -- -D warnings]
-  lint:advisory:
-    desc: Report selected additional Clippy findings
-    cmds: [task --taskfile Taskfiles/lint-advisory.yml report]
+    cmds:
+      [
+        cargo clippy --locked --all-targets --fix --allow-dirty --allow-staged -- -D warnings,
+      ]
   fmt:
     desc: Check Loco formatting
     cmds: [cargo fmt --all -- --check]
@@ -200,78 +137,112 @@ tasks:
     desc: Run unit tests, then API integration and desktop/mobile browser tests
     cmds:
       - task: test:unit
-      - task: ci:prepare
       - task: test:acceptance
   test:unit:
-    desc: Run Rust library, JavaScript, test-runner and owned PostgreSQL template tests
+    desc: Run database-free Rust library, doc and JavaScript unit tests
     cmds:
-      - task: ci:test
-      - task: machete:test
       - task: frontend:test
-      - task: slice:test-runner
-      - task: foundation:test-cleanup
-      - task: foundation:test-database
-      - task: release:test-rehearsal
       - 'cargo nextest run --locked --workspace --lib --no-tests=fail --test-threads 2 {{.FILTER | default ""}}'
       - cargo test --locked --workspace --doc
-      - task: test:template-concurrency:process
-      - task: test:template-concurrency
-  test:archive-runner:
-    cmds:
-      - task: frontend:install
-      - node --test scripts/ci/tests/loco_nextest.test.mjs
-  test:coverage-runner:
-    cmds:
-      - task: frontend:install
-      - node --test --test-name-pattern=coverage scripts/migration/run-slice.test.mjs
-  test:coverage-prerequisite:
-    cmds:
-      - task: frontend:install
-      - node --test --test-name-pattern='coverage Task installs' scripts/migration/run-slice.test.mjs
-  test:coverage:
-    desc: Report Rust unit and API integration coverage against owned fixtures
-    cmds:
-      - task: coverage:check
-      - task: frontend:install
-      - 'node scripts/migration/run-slice.mjs --coverage --output-dir {{.OUTPUT_DIR | default "target/coverage/reports" | shellQuote}}'
   test:integration:
     desc: Run compiled API, security and database integration tests
-    deps: [ci:prepare]
+    deps: [frontend:prepare]
+    vars:
+      OWNED_PROJECT:
+        sh: 'printf "mtloco-http-%s" "$(uuidgen | tr "[:upper:]" "[:lower:]")"'
     cmds:
-      - task: frontend:install
-      - 'node scripts/ci/loco-integration.mjs {{.SHARD | default "1/1"}}'
+      - task: '{{if eq (.MEDTRACKER_OWNED_DATABASE | default "") "1"}}test:integration:direct{{else}}test:integration:owned{{end}}'
+        vars:
+          FOUNDATION_PROJECT: "{{.OWNED_PROJECT}}"
+          TARGET: '{{.TARGET | default ""}}'
+          FILTER: '{{.FILTER | default ""}}'
+  test:integration:direct:
+    internal: true
+    cmds:
+      - 'cargo nextest run --locked {{if .TARGET}}--test {{.TARGET}}{{else}}--tests{{end}} --no-tests=fail --test-threads 2 {{.FILTER | default "" | shellQuote}}{{if and (not .TARGET) (not (.FILTER | default ""))}} && cargo test --locked --test template_concurrency competing_processes_prepare_once -- --ignored --exact{{end}}'
+  test:integration:owned:
+    internal: true
+    requires:
+      vars: [FOUNDATION_PROJECT]
+    cmds:
+      - defer:
+          task: foundation:db-down
+          vars:
+            FOUNDATION_PROJECT: "{{.FOUNDATION_PROJECT}}"
+      - task: foundation:db-up
+        vars:
+          FOUNDATION_PROJECT: "{{.FOUNDATION_PROJECT}}"
+      - task: foundation:db-provision
+        vars:
+          FOUNDATION_PROJECT: "{{.FOUNDATION_PROJECT}}"
+      - task: foundation:storage-up
+        vars:
+          FOUNDATION_PROJECT: "{{.FOUNDATION_PROJECT}}"
+      - >-
+        sh -eu -c '
+        db_endpoint=$(task foundation:db-port FOUNDATION_PROJECT="$1");
+        storage_endpoint="http://$(task foundation:storage-port FOUNDATION_PROJECT="$1")";
+        task foundation:storage-init STORAGE_ENDPOINT="$storage_endpoint";
+        unset COMPOSE_FILE COMPOSE_PROJECT_NAME COMPOSE_PROFILES DOCKER_HOST DOCKER_CONTEXT DOCKER_CONFIG DOCKER_TLS_VERIFY DOCKER_CERT_PATH;
+        export DATABASE_URL="postgres://medtracker:medtracker_password@${db_endpoint}/medtracker_loco";
+        export MEDTRACKER_OWNED_DATABASE=1;
+        export MEDTRACKER_OWNED_STORAGE=1;
+        export S3_ENDPOINT="$storage_endpoint";
+        export S3_BUCKET=scanner-fixture;
+        export AWS_REGION=us-east-1;
+        export AWS_ACCESS_KEY_ID=storage-smoke-access;
+        export AWS_SECRET_ACCESS_KEY=storage-smoke-secret;
+        export ACTIVE_STORAGE_SERVICE=s3;
+        export ACTIVE_STORAGE_S3_ENDPOINT="$storage_endpoint";
+        export ACTIVE_STORAGE_S3_BUCKET=medtracker-fixture;
+        export ACTIVE_STORAGE_S3_REGION=us-east-1;
+        export ACTIVE_STORAGE_S3_ACCESS_KEY_ID=storage-smoke-access;
+        export ACTIVE_STORAGE_S3_SECRET_ACCESS_KEY=storage-smoke-secret;
+        export ACTIVE_STORAGE_S3_FORCE_PATH_STYLE=true;
+        export MEDTRACKER_SESSION_KEY="BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBw==";
+        export RAILS_SECRET_KEY_BASE=synthetic-slice-rails-verification-secret;
+        target="$2";
+        filter="$3";
+        if [ -n "$target" ]; then
+          set -- --test "$target";
+        else
+          set -- --tests;
+        fi;
+        if [ -n "$filter" ]; then
+          set -- "$@" "$filter";
+        fi;
+        cargo nextest run --locked --no-tests=fail --test-threads 2 "$@";
+        if [ -z "$target" ] && [ -z "$filter" ]; then
+          cargo test --locked --test template_concurrency competing_processes_prepare_once -- --ignored --exact;
+        fi
+        ' sh {{.FOUNDATION_PROJECT | shellQuote}} {{.TARGET | default "" | shellQuote}} {{.FILTER | default "" | shellQuote}}
   test:browser:
     desc: Run desktop and mobile browser journeys against the prepared application
-    deps: [ci:prepare]
+    deps: [build]
     env:
-      LOCO_PREBUILT: '1'
       LOCO_BROWSER_SHARD: '{{.SHARD | default "1/1"}}'
     cmds:
-      - node scripts/ci/loco-validate.mjs
       - task: frontend:browsers
-      - 'node scripts/ci/loco-browser.mjs {{if .PROJECT}}--project={{.PROJECT}}{{end}} {{if .GREP}}--grep={{.GREP | shellQuote}}{{end}} {{if .GROUP}}tests/browser/{{.GROUP}}.spec.mjs{{end}}'
+      - "node tests/browser/loco-browser.mjs {{if .PROJECT}}--project={{.PROJECT}}{{end}} {{if .GREP}}--grep={{.GREP | shellQuote}}{{end}} {{if .GROUP}}tests/browser/{{.GROUP}}.spec.mjs{{end}}"
   test:acceptance:
     desc: Run independent integration and browser stages in parallel
     deps: [test:integration, test:browser]
-  migration:audit:
-    desc: Audit retained migration inputs explicitly
-    cmds:
-      - task: foundation:test
-      - task: foundation:test-workspaces
-      - task: foundation:test-relocation
-      - task: foundation:test-preservation
-      - task: inventory:check
-      - task: preservation:check
   routes:
     desc: List Loco routes
-    cmds: ['cargo run --locked -- routes --environment {{.LOCO_ENV | default "development"}}']
+    cmds:
+      [
+        'cargo run --locked -- routes --environment {{.LOCO_ENV | default "development"}}',
+      ]
   db:migrate:
     desc: Create the complete application schema through Loco migrations
     requires:
       vars: [MIGRATION_DATABASE_URL]
     env:
-      MEDTRACKER_MIGRATION_DATABASE_URL: '{{.MIGRATION_DATABASE_URL}}'
-    cmds: ['{{if .MIGRATION_EXECUTABLE}}env DATABASE_URL="$MEDTRACKER_MIGRATION_DATABASE_URL" {{.MIGRATION_EXECUTABLE | shellQuote}} db migrate --environment {{.LOCO_ENV | default "development"}}{{else}}env DATABASE_URL="$MEDTRACKER_MIGRATION_DATABASE_URL" cargo run --locked -- db migrate --environment {{.LOCO_ENV | default "development"}}{{end}}']
+      MEDTRACKER_MIGRATION_DATABASE_URL: "{{.MIGRATION_DATABASE_URL}}"
+    cmds:
+      [
+        '{{if .MIGRATION_EXECUTABLE}}env DATABASE_URL="$MEDTRACKER_MIGRATION_DATABASE_URL" {{.MIGRATION_EXECUTABLE | shellQuote}} db migrate --environment {{.LOCO_ENV | default "development"}}{{else}}env DATABASE_URL="$MEDTRACKER_MIGRATION_DATABASE_URL" cargo run --locked -- db migrate --environment {{.LOCO_ENV | default "development"}}{{end}}',
+      ]
   db:prepare:
     desc: Migrate an empty development or test database and load synthetic fixtures
     cmds:
@@ -281,82 +252,32 @@ tasks:
     requires:
       vars: [SEED_DATABASE_URL]
     env:
-      MEDTRACKER_SEED_DATABASE_URL: '{{.SEED_DATABASE_URL}}'
-    cmds: ['{{if .SEED_EXECUTABLE}}env DATABASE_URL="$MEDTRACKER_SEED_DATABASE_URL" {{.SEED_EXECUTABLE | shellQuote}} db seed --environment {{.LOCO_ENV | default "development"}}{{else}}env DATABASE_URL="$MEDTRACKER_SEED_DATABASE_URL" cargo run --locked -- db seed --environment {{.LOCO_ENV | default "development"}}{{end}}']
+      MEDTRACKER_SEED_DATABASE_URL: "{{.SEED_DATABASE_URL}}"
+    cmds:
+      [
+        '{{if .SEED_EXECUTABLE}}env DATABASE_URL="$MEDTRACKER_SEED_DATABASE_URL" {{.SEED_EXECUTABLE | shellQuote}} db seed --environment {{.LOCO_ENV | default "development"}}{{else}}env DATABASE_URL="$MEDTRACKER_SEED_DATABASE_URL" cargo run --locked -- db seed --environment {{.LOCO_ENV | default "development"}}{{end}}',
+      ]
   worker:
     desc: Start the Loco worker process
-    cmds: ['cargo run --locked -- start --worker --scheduler --environment {{.LOCO_ENV | default "development"}}']
+    cmds:
+      [
+        'cargo run --locked -- start --worker --scheduler --environment {{.LOCO_ENV | default "development"}}',
+      ]
   browser:
     desc: Exercise the application through desktop and mobile browsers
     cmds:
       - task: frontend:test-browser
         vars:
           GROUP: all
-  release-image:
-    desc: Release runtime gate (tranche 6)
-    cmds: ['fish -c ''echo "Production Loco image awaits full migration acceptance" >&2; exit 1''']
   ci:
-    desc: Verify tooling and units first, then API integration and browser journeys
+    desc: Run formatting, lint, unit, integration and browser checks
     cmds:
-      - task: ci:paths
-      - task: foundation:test-relocation
       - task: fmt
+      - task: lint
       - task: test:unit
-      - task: ci:prepare
-      - task: ci:acceptance
-  foundation:test:
-    cmds: [node --test scripts/migration/foundation.test.mjs]
-  foundation:test-cleanup:
-    cmds: [node --test scripts/migration/process-cleanup.test.mjs]
-  foundation:test-preservation:
-    cmds: [node --test scripts/migration/preservation.test.mjs]
-  foundation:test-relocation:
-    cmds: [node --test scripts/migration/relocation.test.mjs]
-  foundation:test-database:
-    cmds: [node --test scripts/migration/foundation-database.test.mjs]
+      - task: test:acceptance
   default:
     desc: List all available tasks
     summary: Default task - shows all available commands
     silent: true
     cmds: [task --list]
-
-  release:rehearse:
-    desc: Rehearse Loco writes and saved-state Rails rollback on an owned database
-    cmds:
-      - task: build
-      - task rails:test:build CONTRACT_PROJECT=mtloco-rollback-image
-      - >-
-        fish --no-config -c 'set -l rollback_image (docker image inspect mtloco-rollback-image-web-test | jq -er ".[0].Id");
-        or exit $status;
-        env RAILS_ROLLBACK_IMAGE="$rollback_image" node scripts/migration/cutover-rehearsal.mjs'
-  release:test-rehearsal:
-    desc: Verify saved-state rehearsal orchestration
-    cmds: [node --test scripts/migration/cutover-rehearsal.test.mjs]
-  release:cutover:loco-journey:
-    requires:
-      vars: [CUTOVER_DATABASE_URL, MEDTRACKER_OWNED_DATABASE]
-    env:
-      CUTOVER_DATABASE_URL: '{{.CUTOVER_DATABASE_URL}}'
-      MEDTRACKER_OWNED_DATABASE: '{{.MEDTRACKER_OWNED_DATABASE}}'
-    cmds: [cargo test --locked --features cutover-rehearsal --test cutover]
-  rails:rollback:journey:
-    requires:
-      vars: [FOUNDATION_PROJECT, CARE_DATABASE_URL, RAILS_ROLLBACK_IMAGE]
-    cmds:
-      - >-
-        fish --no-config -c 'set -l project $argv[1]; set -l endpoint $argv[2]; set -l image $argv[3];
-        string match -qr "^sha256:[0-9a-f]{64}\$" -- "$image"; or exit 1;
-        string match -qr "^mtloco-http-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\$" -- "$project"; or exit 1;
-        string match -qr "^postgres://medtracker:medtracker_password@127[.]0[.]0[.]1:[0-9]+/medtracker_reference\$" -- "$endpoint"; or exit 1;
-        docker network inspect "$project"_default |
-        jq -e --arg project "$project" ".[0].Labels[\"com.docker.compose.project\"] == \$project and .[0].Labels[\"com.docker.compose.network\"] == \"default\"" > /dev/null'
-        -- {{.FOUNDATION_PROJECT | shellQuote}} {{.CARE_DATABASE_URL | shellQuote}} {{.RAILS_ROLLBACK_IMAGE | shellQuote}}
-      - >-
-        docker run --rm --pull never
-        --network {{printf "%s_default" .FOUNDATION_PROJECT | shellQuote}}
-        --env RAILS_ENV=test
-        --env MEDTRACKER_OWNED_DATABASE=1
-        --env MEDTRACKER_REHEARSAL_RAILS_ROOT=/app
-        --env DATABASE_URL=postgresql://medtracker:medtracker_password@postgres:5432/medtracker_reference
-        --mount {{printf "type=bind,source=%s/scripts/migration/rails_rollback_spec.rb,target=/tmp/rails_rollback_spec.rb,readonly" .ROOT_DIR | shellQuote}}
-        {{.RAILS_ROLLBACK_IMAGE | shellQuote}} bundle exec rspec /tmp/rails_rollback_spec.rb
