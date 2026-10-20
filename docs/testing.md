@@ -11,7 +11,7 @@ journeys against the Loco application.
 | `task test:unit`                                       | Rust library and doc tests, plus JavaScript unit tests; no database    |
 | `task test:integration`                                | API, access control, persistence, identity and queue integration tests |
 | `task test:integration TARGET=care_api FILTER=fixture` | Focused Rust integration test binary and filter                        |
-| `task test:browser`                                    | Browser journeys (`cargo test --test browser`)                         |
+| `task test:browser`                                    | Browser journeys (`cargo nextest run --test browser`)                         |
 | `task test:browser FILTER=barcode_miss`                | Run one browser journey by name substring                              |
 
 Local integration runs provision disposable PostgreSQL 18 and RustFS containers
@@ -19,9 +19,19 @@ through `compose.yaml`; browser runs provision PostgreSQL only. Both ignore an
 ambient `DATABASE_URL`. The
 browser lane is a single job: Playwright is driven by the `playwright-rs` crate,
 which assembles its driver in the `playwright-rust` cache directory and
-Chromium in the usual `ms-playwright` cache — no Node or npm install is needed.
-Journeys are marked `#[ignore]` so the shared `cargo test --tests` lanes skip
-them; `task test:browser` runs them explicitly with `--ignored`.
+Chromium in the usual `ms-playwright` cache. The driver supplies its own Node
+runtime; `frontend:prepare` still uses Node and npm to build the application
+CSS and scanner assets before the journeys run.
+Journeys are marked `#[ignore]` so the shared integration lanes skip them;
+`task test:browser` selects them with nextest `--run-ignored only`. Both
+integration and browser tasks fail when a filter selects no tests.
+
+Each retained journey chooses its viewport explicitly: the manual medication
+wizard uses desktop 1440 × 1000, and scanner-to-refill uses mobile 390 × 844.
+Both save review captures under `docs/screenshots/browser-journeys/`; CI uploads
+those captures as the `browser-journey-screenshots` artifact. API and rendered-page
+behaviour stays in compiled Rust tests; these captures do not claim coverage
+for retired JavaScript interactions.
 
 Running `cargo test --tests` directly requires an owned `DATABASE_URL`; the
 empty `medtracker_reference` base database is created lazily by

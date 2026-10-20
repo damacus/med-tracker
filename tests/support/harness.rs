@@ -7,8 +7,8 @@ use std::time::{Duration, Instant};
 
 use futures_util::FutureExt;
 use playwright_rs::protocol::{
-    APIRequestContext, AriaRole, Browser, BrowserContext, BrowserContextOptions, GetByRoleOptions,
-    Page, Viewport,
+    APIRequestContext, Animations, AriaRole, Browser, BrowserContext, BrowserContextOptions,
+    GetByRoleOptions, Page, ScreenshotOptions, Viewport,
 };
 use playwright_rs::{Playwright, expect};
 use sea_orm::DatabaseConnection;
@@ -45,7 +45,31 @@ struct KillOnDrop(Child);
 impl Drop for KillOnDrop {
     fn drop(&mut self) {
         let _ = self.0.kill();
+        let _ = self.0.wait();
     }
+}
+
+#[cfg(unix)]
+#[test]
+fn dropping_server_guard_reaps_child() {
+    let child = Command::new("sleep")
+        .arg("60")
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
+    let pid = child.id();
+    drop(KillOnDrop(child));
+    let process = Command::new("ps")
+        .args(["-p", &pid.to_string(), "-o", "stat="])
+        .output()
+        .unwrap();
+    assert!(
+        process.stdout.is_empty(),
+        "server process {pid} remains after dropping its guard: {}",
+        String::from_utf8_lossy(&process.stdout)
+    );
 }
 
 pub struct Journey {
@@ -61,7 +85,7 @@ pub struct Journey {
 }
 
 impl Journey {
-    async fn start() -> Self {
+    async fn start(viewport: Viewport) -> Self {
         let uri = template::owned_database_url();
         template::prepare(&uri, "browser_template", |admin| async move {
             fixtures::seed_core(&admin).await;
@@ -71,7 +95,7 @@ impl Journey {
         .await;
         let db =
             OwnedDatabase::clone(&uri, "browser_template", "browser_", "browser_runtime_").await;
-        let booted = AssertUnwindSafe(Self::boot(&db.runtime_uri))
+        let booted = AssertUnwindSafe(Self::boot(&db.runtime_uri, viewport))
             .catch_unwind()
             .await;
         let (server, log, playwright, context, page, origin) = match booted {
@@ -95,6 +119,7 @@ impl Journey {
 
     async fn boot(
         runtime_uri: &str,
+        viewport: Viewport,
     ) -> (
         KillOnDrop,
         Arc<Mutex<String>>,
@@ -172,10 +197,7 @@ impl Journey {
         let context = browser
             .new_context_with_options(
                 BrowserContextOptions::builder()
-                    .viewport(Viewport {
-                        width: 1440,
-                        height: 1000,
-                    })
+                    .viewport(viewport)
                     .locale("en-GB".to_string())
                     .build(),
             )
@@ -184,6 +206,23 @@ impl Journey {
         let page = context.new_page().await.unwrap();
         let request = context.request().await.unwrap();
         wait_for_server(&request, &origin, &mut server, &log).await;
+        for (asset, content_type) in [
+            ("/static/css/compiled.css", "text/css"),
+            ("/static/js/html5-qrcode.min.js", "javascript"),
+        ] {
+            let response = request
+                .get(&format!("{origin}{asset}"), None)
+                .await
+                .unwrap();
+            assert!(response.ok(), "browser asset unavailable: {asset}");
+            assert!(
+                response
+                    .headers()
+                    .get("content-type")
+                    .is_some_and(|value| value.contains(content_type)),
+                "browser asset returned unexpected content: {asset}"
+            );
+        }
         (server, log, playwright, context, page, origin)
     }
 
@@ -229,11 +268,11 @@ async fn wait_for_server(
     }
 }
 
-pub async fn journey<F>(body: F)
+pub async fn journey<F>(viewport: Viewport, body: F)
 where
     F: FnOnce(&mut Journey) -> std::pin::Pin<Box<dyn Future<Output = ()> + '_>>,
 {
-    let mut journey = Journey::start().await;
+    let mut journey = Journey::start(viewport).await;
     let result = tokio::time::timeout(
         Duration::from_secs(60),
         AssertUnwindSafe(body(&mut journey)).catch_unwind(),
@@ -343,4 +382,17 @@ pub async fn open_care_section(page: &Page, name: &str) {
         .click(None)
         .await
         .unwrap();
+}
+
+pub async fn capture(page: &Page, name: &str) {
+    let directory = std::path::Path::new("docs/screenshots/browser-journeys");
+    std::fs::create_dir_all(directory).unwrap();
+    page.screenshot_to_file(
+        &directory.join(format!("{name}.png")),
+        ScreenshotOptions::builder()
+            .animations(Animations::Disabled)
+            .build(),
+    )
+    .await
+    .unwrap();
 }

@@ -1,5 +1,5 @@
 use playwright_rs::expect;
-use playwright_rs::protocol::AriaRole;
+use playwright_rs::protocol::{AriaRole, Viewport};
 
 use crate::harness::named;
 use crate::{fixtures, harness};
@@ -7,7 +7,11 @@ use crate::{fixtures, harness};
 #[tokio::test]
 #[ignore = "browser journeys run through task test:browser, not the shared --tests lanes"]
 async fn barcode_miss_flows_into_manual_medication_wizard() {
-    harness::journey(|journey| {
+    let viewport = Viewport {
+        width: 1440,
+        height: 1000,
+    };
+    harness::journey(viewport, |journey| {
         Box::pin(async move {
             let page = &journey.page;
             harness::sign_in(journey).await;
@@ -105,6 +109,7 @@ async fn barcode_miss_flows_into_manual_medication_wizard() {
                 .to_be_visible()
                 .await
                 .unwrap();
+            harness::capture(page, "barcode-miss-desktop").await;
         })
     })
     .await;
@@ -113,7 +118,11 @@ async fn barcode_miss_flows_into_manual_medication_wizard() {
 #[tokio::test]
 #[ignore = "browser journeys run through task test:browser, not the shared --tests lanes"]
 async fn barcode_hit_resolves_existing_medicine_to_refill() {
-    harness::journey(|journey| {
+    let viewport = Viewport {
+        width: 390,
+        height: 844,
+    };
+    harness::journey(viewport, |journey| {
         Box::pin(async move {
             let page = &journey.page;
             page.add_init_script(
@@ -200,6 +209,7 @@ window.__barcodeScannerTestLibrary = { Html5Qrcode: class {
                 .to_be_visible()
                 .await
                 .unwrap();
+            harness::capture(page, "barcode-hit-mobile").await;
         })
     })
     .await;
