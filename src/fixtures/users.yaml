@@ -3,3 +3,5 @@
   email_address: "persistence@example.test"
   created_at: "2026-10-06T00:00:00"
   updated_at: "2026-10-06T00:00:00"
+  active: true
+  password_digest: "$2a$04$UuTkLRZZ6QofpDOlMz32MuuxEHA43WOemOYHPz6.SjsVsyO1tDU96"
