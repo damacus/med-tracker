@@ -32,9 +32,10 @@ cover replay without double deduction, side-effect-free restore, revoked authori
 and DST/timezone schedules. Preserve existing API/MCP contracts except the explicit
 access/location changes, documented together in OpenAPI, clients and ADRs.
 
-Retain older `rust/` crates. Root Task includes `rust/Taskfile.yml`,
-`rust/api/Taskfile.yml` and `rust/contract-tests/Taskfile.yml`; CI retains explicit
-legacy API, web, UI-preview and contract-test paths. They remain tooling/test
+Retain older `rust/` crates. Root Task retains `rust/Taskfile.yml` and
+`rust/api/Taskfile.yml` for explicit reference work. The root CI workflow tests
+the active Loco application and client tools; it does not run the superseded
+dashboard or Rails compatibility suites. Older crates remain tooling/test
 consumers and historical inputs; the Axum/Leptos application is superseded by
 root Loco routing. Client tools form their own workspace and use their shared
 API client, not these legacy application crates. Do not delete them as dead code
