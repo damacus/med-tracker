@@ -1,3 +1,5 @@
+use std::future::Future;
+
 use async_trait::async_trait;
 use better_auth_core::{
     AuthError, AuthResult, CreateUser, ListUsersParams, UpdateUser, store::UserStore,
@@ -7,6 +9,18 @@ use sea_orm::ConnectionTrait;
 
 use super::super::{ClinicalAuthSchema, request};
 use super::{ClinicalStore, clinical_id, context, database_error, statement};
+
+async fn limit_available<T>(
+    fetch: impl Future<Output = AuthResult<Vec<T>>>,
+    limit: f64,
+) -> AuthResult<Vec<T>> {
+    if !limit.is_finite() || limit < 0.0 {
+        return Err(AuthError::validation("Invalid user list limit"));
+    }
+    let mut users = fetch.await?;
+    users.truncate(limit.floor() as usize);
+    Ok(users)
+}
 
 #[async_trait]
 impl UserStore<ClinicalAuthSchema> for ClinicalStore {
@@ -22,11 +36,7 @@ impl UserStore<ClinicalAuthSchema> for ClinicalStore {
     }
 
     async fn list_users_by_ids(&self, ids: &[String], limit: f64) -> AuthResult<Vec<UserView>> {
-        if !limit.is_finite() || limit < 0.0 {
-            return Err(AuthError::validation("Invalid user list limit"));
-        }
-        let count = (limit.floor() as usize).min(ids.len());
-        self.canonical_users_by_ids(&ids[..count]).await
+        limit_available(self.canonical_users_by_ids(ids), limit).await
     }
 
     async fn get_user_by_email(&self, email: &str) -> AuthResult<Option<UserView>> {
@@ -213,5 +223,27 @@ impl UserStore<ClinicalAuthSchema> for ClinicalStore {
         Err(AuthError::forbidden(
             "Global account administration is not enabled",
         ))
+    }
+}
+#[cfg(test)]
+mod tests {
+    use super::limit_available;
+
+    #[tokio::test]
+    async fn limit_counts_available_users_after_missing_ids_are_filtered() {
+        let candidates = ["missing", "available"];
+        let found = limit_available(
+            async {
+                Ok(candidates
+                    .iter()
+                    .filter(|id| **id == "available")
+                    .copied()
+                    .collect())
+            },
+            1.0,
+        )
+        .await
+        .unwrap();
+        assert_eq!(found, ["available"]);
     }
 }
