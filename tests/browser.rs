@@ -24,10 +24,7 @@ mod member_details;
 #[path = "browser/invitation_management.rs"]
 mod invitation_management;
 
-<<<<<<< HEAD
 #[path = "browser/bulk_members.rs"]
 mod bulk_members;
-=======
 #[path = "browser/polish_followups.rs"]
 mod polish_followups;
->>>>>>> codex/fix-shared-layout-review

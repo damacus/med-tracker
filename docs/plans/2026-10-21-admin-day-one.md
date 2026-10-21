@@ -66,13 +66,11 @@ Seven synthetic screenshots under docs/screenshots/invitation-management cover14
 
 The cumulative CI browser run exposed an interaction-readiness boundary after resend. A held interaction.js response proved that new HTML can appear before deferred dialog handlers load; after navigation readiness the same keyboard action opens the target dialog and Escape restores its opener. The journey now waits for existing navigation readiness after resend and duplicate-email validation, preserving dialog content, focus assertions and timeouts. The interrupted cumulative run reached1043/1093 integration tests with only that browser failure recorded; complete final acceptance remains controller-owned.
 
-<<<<<<< HEAD
 ## Slice 4 focused evidence
 
 The restricted App::boot preview request first failed404 before implementation. Focused bulk requests now pass11/11: named non-mutating preview, strict selection/confirmation/CSRF bounds, mixed eligible/state-invalid/foreign/missing targets, escaped identities, preserved filter/page/language and failed-only retry. Ordinary/revoked/locked actors and inactive households cannot mutate. Canonical rejected audits commit; audit failures rollback. A deferred commit rejection preserves an earlier committed success, marks only the failed commit unconfirmed and leaves remaining targets untouched. Concurrent batches retain an active owner, and actor-last self removal returns standalone results without directory links or a directory reread.
 
 The keyboard journey verifies select-all chooses25, page/filter changes clear selection, named effect confirmation, partial results and failed-only review. Mobile column headers stay in the accessibility tree with explicit row/header associations. Eight synthetic screens under docs/screenshots/bulk-member-access cover1440/390/320 selection, confirmation, results, dark, empty and validation focus. They retain the shared member frame, rounded panels, compact actions and responsive labels compared against retained shared-layout and private Rails member references. Formatting, lint/dependency checks, frontend tests and all five locale trees pass. Controller owns final cumulative integration, CI/docs, independent review and publication.
-=======
 ## Shared-layout review follow-ups
 
 A separate follow-up fixes stale sidebar avatars after asynchronous profile saves, strict explicit language handling for the main People browser routes/forms/pagination, and the overview expired-invitation link. Real avatar upload/removal updates sidebar, header and profile images without replacing the document/account dialog. Browser Tasks now provision disposable RustFS using the existing integration pattern so that journey uses real storage.
@@ -82,4 +80,3 @@ People card counts now use two grouped typed SQL projections with the same canon
 The current member table already has visible mobile Email/Role/Status labels; its source and retained mobile capture were checked and left unchanged. Cedar still denies delegate_person, so the care-warning assignment action is not exposed and was not fabricated or changed. The visible People detail carer link uses its existing locale parameter and the real read route renders Spanish. No guardian-recovery, membership-policy or public API change is included.
 
 Focused requests passed3/3, final new browser journeys2/2, existing related People/admin browser checks8/8, frontend19/19, strict lint, formatting and five-locale synchronization. Four synthetic desktop/mobile captures live under docs/screenshots/polish-followups/. Independent review, combined CI and publication remain controller-owned.
->>>>>>> codex/fix-shared-layout-review
