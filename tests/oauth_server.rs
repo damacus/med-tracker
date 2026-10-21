@@ -3,6 +3,6 @@ mod contract;
 #[path = "support/db.rs"]
 mod db;
 #[path = "support/fixtures.rs"]
-mod fixtures;
+pub mod fixtures;
 #[path = "support/template.rs"]
 mod template;

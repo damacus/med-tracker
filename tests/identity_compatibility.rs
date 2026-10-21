@@ -1,3 +1,5 @@
+#[path = "support/fixtures.rs"]
+pub mod fixtures;
 #[path = "support/template.rs"]
 mod template;
 use axum::{body::Body, http::Request};
@@ -27,14 +29,8 @@ impl Fixture {
             &uri,
             "identity_compatibility_template",
             |admin| async move {
-                admin
-                    .execute_unprepared(include_str!("fixtures/persistence-records.sql"))
-                    .await
-                    .unwrap();
-                admin
-                    .execute_unprepared(include_str!("fixtures/identity/oauth.sql"))
-                    .await
-                    .unwrap();
+                fixtures::seed_persistence(&admin).await;
+                fixtures::seed_identity_oauth(&admin).await;
             },
         )
         .await;
@@ -441,11 +437,7 @@ async fn expired_revoked_or_stale_authority_rejects_without_consuming_code() {
 #[tokio::test]
 async fn mobile_account_code_does_not_require_an_operational_household() {
     let fixture = Fixture::new().await;
-    fixture
-        .admin
-        .execute_unprepared(include_str!("fixtures/identity/mobile.sql"))
-        .await
-        .unwrap();
+    fixtures::seed_mobile_grant(&fixture.admin).await;
     fixture
         .admin
         .execute_unprepared("UPDATE public.households SET lifecycle_state = 'held'")
@@ -465,11 +457,7 @@ async fn mobile_account_code_does_not_require_an_operational_household() {
 #[tokio::test]
 async fn default_native_sessions_enforce_seven_idle_and_thirty_absolute_days() {
     let fixture = Fixture::new().await;
-    fixture
-        .admin
-        .execute_unprepared(include_str!("fixtures/identity/mobile.sql"))
-        .await
-        .unwrap();
+    fixtures::seed_mobile_grant(&fixture.admin).await;
     fixture.refresh_fixture().await;
     for ageing in [
         "UPDATE public.oauth_grants SET authenticated_at=now()-interval '8 days',last_used_at=now()-interval '8 days' WHERE id=76001",
@@ -496,11 +484,7 @@ async fn default_native_sessions_enforce_seven_idle_and_thirty_absolute_days() {
 #[tokio::test]
 async fn mobile_refresh_preserves_authentication_and_activity_deadlines() {
     let fixture = Fixture::new().await;
-    fixture
-        .admin
-        .execute_unprepared(include_str!("fixtures/identity/mobile.sql"))
-        .await
-        .unwrap();
+    fixtures::seed_mobile_grant(&fixture.admin).await;
     fixture.refresh_fixture().await;
     let original = fixture.row().await;
     let response = identity::exchange(&fixture.runtime, request(refresh_body("hello")), None)
@@ -521,11 +505,7 @@ async fn mobile_refresh_preserves_authentication_and_activity_deadlines() {
 #[tokio::test]
 async fn mobile_inactivity_and_plain_pkce_rejections_preserve_rightful_retry() {
     let fixture = Fixture::new().await;
-    fixture
-        .admin
-        .execute_unprepared(include_str!("fixtures/identity/mobile.sql"))
-        .await
-        .unwrap();
+    fixtures::seed_mobile_grant(&fixture.admin).await;
     for (invalidate, restore) in [
         (
             "UPDATE public.oauth_grants SET last_used_at = now() - interval '31 days' WHERE id = 76001",
@@ -568,11 +548,7 @@ fn authentication_lifetime_requires_positive_inactivity_and_nonnegative_maximum_
 #[tokio::test]
 async fn configured_maximum_age_bounds_mobile_refresh_without_extending_authentication() {
     let fixture = Fixture::new().await;
-    fixture
-        .admin
-        .execute_unprepared(include_str!("fixtures/identity/mobile.sql"))
-        .await
-        .unwrap();
+    fixtures::seed_mobile_grant(&fixture.admin).await;
     fixture.refresh_fixture().await;
     let original = fixture.row().await;
     let policy = identity::AuthenticationLifetime::new(30, 1).unwrap();
@@ -599,11 +575,7 @@ async fn configured_maximum_age_bounds_mobile_refresh_without_extending_authenti
 #[tokio::test]
 async fn configured_inactivity_bounds_mobile_code_and_allows_current_activity() {
     let fixture = Fixture::new().await;
-    fixture
-        .admin
-        .execute_unprepared(include_str!("fixtures/identity/mobile.sql"))
-        .await
-        .unwrap();
+    fixtures::seed_mobile_grant(&fixture.admin).await;
     let original = fixture.row().await;
     let policy = identity::AuthenticationLifetime::new(1, 0).unwrap();
     assert!(
@@ -769,11 +741,7 @@ async fn another_registered_public_client_cannot_refresh_the_grant() {
 #[tokio::test]
 async fn invalid_stored_mobile_pkce_is_a_protocol_rejection() {
     let fixture = Fixture::new().await;
-    fixture
-        .admin
-        .execute_unprepared(include_str!("fixtures/identity/mobile.sql"))
-        .await
-        .unwrap();
+    fixtures::seed_mobile_grant(&fixture.admin).await;
     fixture
         .admin
         .execute_unprepared(

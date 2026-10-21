@@ -1,8 +1,55 @@
+#[path = "support/fixtures.rs"]
+pub mod fixtures;
 #[allow(dead_code)]
 #[path = "support/template.rs"]
 mod template;
 use loco_rs::{config::Database, prelude::ConnectionTrait};
 use migration::MigratorTrait;
+
+#[tokio::test]
+async fn fixture_slices_preserve_baseline_and_care_memberships() {
+    use med_tracker::models::_entities::{accounts, household_memberships, medications, users};
+    use sea_orm::{EntityTrait, PaginatorTrait};
+
+    let db = restored_database().await;
+    migration::Migrator::up(&db, None).await.unwrap();
+    fixtures::seed_persistence(&db).await;
+    let account = accounts::Entity::find_by_id(71001)
+        .one(&db)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(account.status, 1);
+    assert!(bcrypt::verify("password", account.password_hash.as_deref().unwrap()).unwrap());
+    assert_eq!(
+        household_memberships::Entity::find()
+            .count(&db)
+            .await
+            .unwrap(),
+        1
+    );
+    assert_eq!(users::Entity::find().count(&db).await.unwrap(), 0);
+    fixtures::seed_care_doses(&db).await;
+    assert_eq!(
+        accounts::Entity::find_by_id(71001)
+            .one(&db)
+            .await
+            .unwrap()
+            .unwrap()
+            .status,
+        2
+    );
+    assert_eq!(
+        household_memberships::Entity::find()
+            .count(&db)
+            .await
+            .unwrap(),
+        3
+    );
+    assert_eq!(users::Entity::find().count(&db).await.unwrap(), 1);
+    assert_eq!(medications::Entity::find().count(&db).await.unwrap(), 1);
+    db.close().await.unwrap();
+}
 
 async fn catalog(db: &loco_rs::prelude::DatabaseConnection) -> serde_json::Value {
     db.execute_unprepared("SET search_path = pg_catalog, public, pg_temp")
@@ -280,9 +327,7 @@ async fn medication_review_history_is_append_only_for_the_application_role() {
 async fn registration_policy_exposes_only_active_owner_existence() {
     let db = restored_database().await;
     migration::Migrator::up(&db, None).await.unwrap();
-    db.execute_unprepared(include_str!("fixtures/persistence-records.sql"))
-        .await
-        .unwrap();
+    fixtures::seed_persistence(&db).await;
     for (change, expected) in [
         ("", false),
         (
@@ -443,9 +488,7 @@ async fn fresh_audit_triggers_preserve_concurrent_chain_and_runtime_permissions(
     use migration::sea_orm::{DbBackend, Statement};
     let db = restored_database().await;
     migration::Migrator::up(&db, None).await.unwrap();
-    db.execute_unprepared(include_str!("fixtures/persistence-records.sql"))
-        .await
-        .unwrap();
+    fixtures::seed_persistence(&db).await;
     let database: String = db
         .query_one_raw(Statement::from_string(
             DbBackend::Postgres,
