@@ -38,12 +38,15 @@ pub(super) struct RegistrationForm {
 }
 
 fn limited_response(response: better_auth_core::AuthResponse) -> Response {
+    let Ok(body) = response.body.bytes() else {
+        return super::rendering::unavailable();
+    };
     let mut builder = axum::http::Response::builder().status(response.status);
     for (name, value) in response.headers.iter() {
         builder = builder.header(name, value);
     }
     builder
-        .body(axum::body::Body::from(response.body))
+        .body(axum::body::Body::from(body.into_owned()))
         .unwrap_or_else(|_| super::rendering::unavailable())
 }
 
@@ -165,7 +168,7 @@ pub(super) async fn register(
 }
 
 fn successful(response: better_auth_core::AuthResponse, view: &TeraView) -> Response {
-    let body = serde_json::from_slice::<serde_json::Value>(&response.body).unwrap_or_default();
+    let body = response.body.json().ok().flatten().unwrap_or_default();
     if body["apiKey"].is_string() {
         return super::keys::result(view, &body);
     }

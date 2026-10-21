@@ -80,10 +80,10 @@ pub(super) async fn check(
         ) && session
             .additional_fields
             .get("authentication_method")
-            .and_then(serde_json::Value::as_str)
+            .and_then(better_auth_core::FieldValue::as_str)
             == Some("recovery");
         (
-            session.user_id,
+            session.user_id.typed()?.clone(),
             if recovery_email {
                 "recovery-email"
             } else {

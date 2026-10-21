@@ -74,6 +74,9 @@ pub(super) async fn sign_in(app: &Application, account_id: i64, email: &str) -> 
     request
         .headers
         .insert("x-forwarded-for".into(), "127.0.0.1".into());
+    request
+        .headers
+        .insert("content-type".into(), "application/json".into());
     request.body = Some(serde_json::to_vec(&json!({"email":email,"password":"password"})).unwrap());
     let response = med_tracker::models::identity::better_auth::dispatch(
         &service,

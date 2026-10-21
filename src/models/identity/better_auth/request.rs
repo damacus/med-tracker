@@ -141,7 +141,7 @@ pub async fn browser_identity(
             if session
                 .additional_fields
                 .get("legacy_factor_pending")
-                .and_then(serde_json::Value::as_bool)
+                .and_then(better_auth_core::FieldValue::as_bool)
                 == Some(true) =>
         {
             Ok(BrowserIdentity::PendingFactor)
@@ -149,7 +149,7 @@ pub async fn browser_identity(
         Ok((user, session)) => match session
             .additional_fields
             .get("clinical_session_purpose")
-            .and_then(serde_json::Value::as_str)
+            .and_then(better_auth_core::FieldValue::as_str)
         {
             Some("authenticated") => Ok(BrowserIdentity::Authenticated { user, session }),
             Some("enrolment") => Ok(BrowserIdentity::Enrolment { user, session }),
@@ -162,10 +162,10 @@ pub async fn browser_identity(
     }
 }
 
-fn has_clinical_assurance(fields: &serde_json::Map<String, serde_json::Value>) -> bool {
+fn has_clinical_assurance(fields: &better_auth_core::FieldMap) -> bool {
     fields
         .get("clinical_session_purpose")
-        .and_then(serde_json::Value::as_str)
+        .and_then(better_auth_core::FieldValue::as_str)
         == Some("authenticated")
 }
 
@@ -226,10 +226,11 @@ impl AuthPlugin<ClinicalAuthSchema> for ClinicalRequest {
         }
         let principal = match context.require_authoritative_session(request).await {
             Ok((user, session)) if has_clinical_assurance(&session.additional_fields) => Some((
-                clinical_id(&user.id)?,
-                session.token,
+                clinical_id(user.id.typed()?)?,
+                session.token.typed()?.clone(),
                 session
                     .active_organization_id
+                    .typed()?
                     .as_deref()
                     .map(clinical_id)
                     .transpose()?,
@@ -310,9 +311,12 @@ async fn request_context(
             for (name, value) in response.headers.iter() {
                 builder = builder.header(name, value);
             }
-            return builder
-                .body(axum::body::Body::from(response.body))
-                .unwrap_or_else(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR.into_response());
+            return response
+                .body
+                .bytes()
+                .ok()
+                .and_then(|body| builder.body(axum::body::Body::from(body.into_owned())).ok())
+                .unwrap_or_else(|| axum::http::StatusCode::INTERNAL_SERVER_ERROR.into_response());
         }
         Err(error) => return error.into_response(),
         Ok(None) => {}
@@ -436,7 +440,8 @@ pub(super) async fn trusted<T>(
 #[cfg(test)]
 mod tests {
     use super::has_clinical_assurance;
-    use serde_json::{Map, Value};
+    use better_auth_core::{FieldMap, FieldValue};
+    use serde_json::Value;
 
     #[test]
     fn only_explicit_authenticated_sessions_admit_clinical_requests() {
@@ -446,15 +451,15 @@ mod tests {
             Value::String("enrolment".into()),
             Value::String("pending".into()),
         ] {
-            assert!(!has_clinical_assurance(&Map::from_iter([(
+            assert!(!has_clinical_assurance(&FieldMap::from_iter([(
                 "clinical_session_purpose".into(),
-                value
+                FieldValue::from_json(value).unwrap()
             )])));
         }
-        assert!(!has_clinical_assurance(&Map::new()));
-        assert!(has_clinical_assurance(&Map::from_iter([(
+        assert!(!has_clinical_assurance(&FieldMap::new()));
+        assert!(has_clinical_assurance(&FieldMap::from_iter([(
             "clinical_session_purpose".into(),
-            Value::String("authenticated".into())
+            FieldValue::from_json(Value::String("authenticated".into())).unwrap()
         )])));
     }
 }

@@ -54,30 +54,35 @@ impl Recovery {
             )
             .await
             .map_err(|error| match error {
-                ApiKeyVerificationError::Internal(error) => error,
+                ApiKeyVerificationError::Rejected(AuthError::Unauthenticated) => {
+                    tracing::warn!("Recovery key exhausted; upstream cleanup denied without an authenticated owner");
+                    AuthError::InvalidCredentials
+                }
+                ApiKeyVerificationError::Internal(error)
+                | ApiKeyVerificationError::Rejected(error)
+                | ApiKeyVerificationError::Endpoint(error) => error,
                 ApiKeyVerificationError::Validation(_) => AuthError::InvalidCredentials,
             })?;
         if key.config_id != RECOVERY_CONFIG {
             return Err(AuthError::InvalidCredentials);
         }
-        if key
-            .metadata
-            .as_ref()
-            .is_some_and(|metadata| metadata["acknowledged"].as_bool() == Some(false))
+        if !key.metadata.is_null()
+            && !key.metadata.is_undefined()
+            && key.metadata.model_property("acknowledged")?.as_bool() == Some(false)
         {
             return Err(AuthError::InvalidCredentials);
         }
-        let account_id = clinical_id(&key.reference_id)?;
+        let account_id = clinical_id(key.reference_id.typed()?)?;
         let user = ctx
             .database
-            .get_user_by_id(&key.reference_id)
+            .get_user_by_id(key.reference_id.typed()?)
             .await?
             .ok_or(AuthError::InvalidCredentials)?;
         let transaction = self.0.transaction().await?;
         context(
             &transaction,
             "med_tracker.current_account_id",
-            &key.reference_id,
+            key.reference_id.typed()?,
         )
         .await?;
         transaction
@@ -114,16 +119,16 @@ impl Recovery {
             .session_manager()
             .create_session(&user, None, request.headers.get("user-agent").cloned())
             .await?;
-        transaction.execute_raw(statement("UPDATE public.identity_sessions SET additional_fields=additional_fields || jsonb_build_object('authentication_method','recovery') WHERE token=$1 AND account_id=$2", [token_digest(&session.token).into(), account_id.into()])).await.map_err(database_error)?;
+        transaction.execute_raw(statement("UPDATE public.identity_sessions SET additional_fields=additional_fields || jsonb_build_object('authentication_method','recovery') WHERE token=$1 AND account_id=$2", [token_digest(session.token.typed()?).into(), account_id.into()])).await.map_err(database_error)?;
         super::mail::notice(&self.0, &user, "Recovery code used", "A recovery code was used to sign in to your MedTracker account. Your other sessions and personal API keys have been revoked. Unused recovery codes remain valid. If this was not you, secure your account now.").await?;
         transaction.commit().await.map_err(database_error)?;
         Ok(
             AuthResponse::json(200, &json!({"status":true}))?.with_header(
                 "Set-Cookie",
                 better_auth_core::utils::cookie_utils::create_session_cookie(
-                    &session.token,
+                    session.token.typed()?,
                     &ctx.config,
-                ),
+                )?,
             ),
         )
     }

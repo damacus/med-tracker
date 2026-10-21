@@ -802,7 +802,7 @@ pub(super) async fn issue_profile_personal_key(app: &Application, name: &str) ->
         "INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET recovery_saved_at=EXCLUDED.recovery_saved_at",
     ).await.unwrap();
     let service = app.context.shared_store.get::<IdentityService>().unwrap();
-    let origin = url::Url::parse(&service.context().config.base_url)
+    let origin = url::Url::parse(service.context().config.base_url.as_static().unwrap())
         .unwrap()
         .origin()
         .ascii_serialization();
@@ -836,13 +836,13 @@ pub(super) async fn issue_profile_personal_key(app: &Application, name: &str) ->
         .await
         .unwrap();
     if started.status != 200 {
-        let error: Value = serde_json::from_slice(&started.body).unwrap();
+        let error: Value = started.body.json().unwrap().unwrap();
         panic!(
             "Personal key operation setup rejected: status={}, code={}, message={}",
             started.status, error["code"], error["message"]
         );
     }
-    let started: Value = serde_json::from_slice(&started.body).unwrap();
+    let started: Value = started.body.json().unwrap().unwrap();
     let mut confirm = AuthRequest::new(HttpMethod::Post, "/security/password/confirm");
     confirm
         .headers
@@ -861,13 +861,13 @@ pub(super) async fn issue_profile_personal_key(app: &Application, name: &str) ->
     .await
     .unwrap();
     if issued.status != 200 {
-        let error: Value = serde_json::from_slice(&issued.body).unwrap();
+        let error: Value = issued.body.json().unwrap().unwrap();
         panic!(
             "Personal key confirmation setup rejected: status={}, code={}, message={}",
             issued.status, error["code"], error["message"]
         );
     }
-    let issued: Value = serde_json::from_slice(&issued.body).unwrap();
+    let issued: Value = issued.body.json().unwrap().unwrap();
     issued["apiKey"].as_str().unwrap().to_owned()
 }
 

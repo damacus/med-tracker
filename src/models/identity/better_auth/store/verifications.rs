@@ -199,6 +199,13 @@ impl VerificationStore<ClinicalAuthSchema> for ClinicalStore {
         transaction.commit().await.map_err(database_error)
     }
 
+    async fn create_verification_optional(
+        &self,
+        verification: CreateVerification,
+    ) -> AuthResult<Option<VerificationView>> {
+        self.create_verification(verification).await.map(Some)
+    }
+
     async fn create_verification(
         &self,
         verification: CreateVerification,

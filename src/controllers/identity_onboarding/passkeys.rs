@@ -27,12 +27,15 @@ pub(super) async fn setup(
 ) -> Response {
     match browser_identity(&service, &request(&headers)).await {
         Ok(BrowserIdentity::Enrolment { user, .. }) => {
-            match service.context().database.get_user_accounts(&user.id).await {
+            let Ok(user_id) = user.id.typed() else {
+                return super::rendering::unavailable();
+            };
+            match service.context().database.get_user_accounts(user_id).await {
                 Ok(accounts) => {
                     let Ok(passkeys) = service
                         .context()
                         .database
-                        .list_passkeys_by_user(&user.id)
+                        .list_passkeys_by_user(user_id)
                         .await
                     else {
                         return super::rendering::unavailable();
@@ -41,7 +44,8 @@ pub(super) async fn setup(
                         &view,
                         !passkeys.is_empty()
                             || accounts.iter().any(|account| {
-                                account.provider_id == "credential" && account.password.is_some()
+                                account.provider_id.as_str() == Some("credential")
+                                    && account.password.typed().is_ok_and(Option::is_some)
                             }),
                     )
                 }

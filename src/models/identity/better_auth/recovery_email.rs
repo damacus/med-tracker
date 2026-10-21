@@ -4,7 +4,10 @@ use super::{
 };
 use crate::models::identity::store::digest as token_digest;
 use async_trait::async_trait;
-use better_auth::plugins::{PasswordManagementPlugin, password_management::SendResetPassword};
+use better_auth::plugins::{
+    PasswordManagementPlugin,
+    password_management::{PasswordManagementConfig, SendResetPassword},
+};
 use better_auth_core::{
     AuthContext, AuthError, AuthPlugin, AuthRequest, AuthResponse, AuthResult, CreateVerification,
     HttpMethod,
@@ -52,7 +55,7 @@ pub async fn confirmation_label(
     if session
         .additional_fields
         .get("authentication_method")
-        .and_then(serde_json::Value::as_str)
+        .and_then(better_auth_core::FieldValue::as_str)
         != Some("recovery")
     {
         return Err(AuthError::Unauthenticated);
@@ -71,8 +74,15 @@ fn token_hash(token: &str) -> String {
 #[async_trait]
 impl SendResetPassword for Sender {
     async fn send(&self, user: &serde_json::Value, url: &str, token: &str) -> AuthResult<()> {
-        let user: UserView = serde_json::from_value(user.clone())?;
-        if user.id != self.account_id {
+        let user_id = user
+            .get("id")
+            .and_then(serde_json::Value::as_str)
+            .ok_or(AuthError::InvalidCredentials)?;
+        let email = user
+            .get("email")
+            .and_then(serde_json::Value::as_str)
+            .ok_or(AuthError::InvalidCredentials)?;
+        if user_id != self.account_id {
             return Err(AuthError::InvalidCredentials);
         }
         let mut link = url::Url::parse(url)
@@ -84,16 +94,18 @@ impl SendResetPassword for Sender {
             .append_pair("token", token);
         self.store
             .create_verification(CreateVerification {
-                identifier: format!("password-email:{}", self.operation_id),
+                identifier: format!("password-email:{}", self.operation_id).into(),
                 value: serde_json::to_string(&Binding {
                     account_id: self.account_id.clone(),
                     session_id: self.session_id.clone(),
                     token_hash: token_hash(token),
-                })?,
-                expires_at: chrono::Utc::now() + chrono::Duration::minutes(30),
+                })?
+                .into(),
+                expires_at: (chrono::Utc::now() + chrono::Duration::minutes(30)).into(),
+                ..Default::default()
             })
             .await?;
-        super::mail::notice(&self.store, &user, self.label, &format!("{} for your MedTracker account: {link}\nThis link expires in 30 minutes. If you did not request this change, do not confirm it.", self.label)).await
+        super::mail::notice_address(&self.store, email, self.label, &format!("{} for your MedTracker account: {link}\nThis link expires in 30 minutes. If you did not request this change, do not confirm it.", self.label)).await
     }
 }
 
@@ -111,21 +123,26 @@ pub(super) async fn send(
     )?;
     let sender = Arc::new(Sender {
         store: store.clone(),
-        account_id: user.id.clone(),
-        session_id: session.id.clone(),
+        account_id: user.id.typed()?.clone(),
+        session_id: session.id.typed()?.clone(),
         operation_id: operation_id.into(),
         label,
     });
     let mut request = AuthRequest::new(HttpMethod::Post, "/request-password-reset");
+    request
+        .headers
+        .insert("content-type".into(), "application/json".into());
     request.body = Some(serde_json::to_vec(
         &json!({"email":user.email,"redirectTo":"/account/security/password/email"}),
     )?);
-    let response = PasswordManagementPlugin::new()
-        .send_reset_password(sender)
-        .reset_token_expiry_hours(1)
-        .on_request(&request, ctx)
-        .await?
-        .ok_or_else(|| AuthError::internal("Email confirmation unavailable"))?;
+    let response = PasswordManagementPlugin::with_config(PasswordManagementConfig {
+        send_reset_password: Some(sender),
+        reset_password_token_expires_in: Some(3600.0),
+        ..Default::default()
+    })
+    .on_request(&request, ctx)
+    .await?
+    .ok_or_else(|| AuthError::internal("Email confirmation unavailable"))?;
     if response.status >= 400
         || store
             .get_verification_by_identifier(&format!("password-email:{operation_id}"))
@@ -160,7 +177,7 @@ pub(super) async fn confirm(
     if session
         .additional_fields
         .get("authentication_method")
-        .and_then(serde_json::Value::as_str)
+        .and_then(better_auth_core::FieldValue::as_str)
         != Some("recovery")
     {
         return Err(AuthError::forbidden("A recovery session is required"));
@@ -174,22 +191,25 @@ pub(super) async fn confirm(
         .get_verification_by_identifier(&identifier)
         .await?
         .ok_or(AuthError::InvalidCredentials)?;
-    if binding.expires_at <= chrono::Utc::now() {
+    if binding
+        .expires_at
+        .typed()?
+        .to_datetime()?
+        .ok_or(AuthError::InvalidCredentials)?
+        <= chrono::Utc::now()
+    {
         return Err(AuthError::InvalidCredentials);
     }
-    let binding: Binding = serde_json::from_str(&binding.value)?;
-    if binding.account_id != user.id
-        || binding.session_id != session.id
+    let binding: Binding = serde_json::from_str(binding.value.typed()?)?;
+    if binding.account_id != *user.id.typed()?
+        || binding.session_id != *session.id.typed()?
         || binding.token_hash != token_hash(&input.token)
     {
         return Err(AuthError::InvalidCredentials);
     }
     let mut validation =
         AuthRequest::new(HttpMethod::Get, format!("/reset-password/{}", input.token));
-    validation.query.insert(
-        "callbackURL".into(),
-        "/account/security/password/email".into(),
-    );
+    validation.query = Some(json!({"callbackURL":"/account/security/password/email"}));
     let response = PasswordManagementPlugin::new()
         .on_request(&validation, ctx)
         .await?
@@ -244,15 +264,22 @@ pub(super) async fn complete_session(
 ) -> AuthResult<AuthResponse> {
     let transaction = store.transaction().await?;
     store.lock_security_session(&transaction, session).await?;
-    ctx.database.delete_session(&session.token).await?;
+    ctx.database.delete_session(session.token.typed()?).await?;
     let issued = ctx
         .session_manager()
-        .create_session(user, session.ip_address.clone(), session.user_agent.clone())
+        .create_session(
+            user,
+            session.ip_address.typed()?.clone(),
+            session.user_agent.typed()?.clone(),
+        )
         .await?;
-    transaction.execute_raw(statement("UPDATE public.identity_sessions SET additional_fields=additional_fields || jsonb_build_object('authentication_method','credential-replaced') WHERE token=$1 AND account_id=$2", [token_digest(&issued.token).into(), clinical_id(&user.id)?.into()])).await.map_err(database_error)?;
+    transaction.execute_raw(statement("UPDATE public.identity_sessions SET additional_fields=additional_fields || jsonb_build_object('authentication_method','credential-replaced') WHERE token=$1 AND account_id=$2", [token_digest(issued.token.typed()?).into(), clinical_id(user.id.typed()?)?.into()])).await.map_err(database_error)?;
     transaction.commit().await.map_err(database_error)?;
     Ok(response.with_header(
         "Set-Cookie",
-        better_auth_core::utils::cookie_utils::create_session_cookie(&issued.token, &ctx.config),
+        better_auth_core::utils::cookie_utils::create_session_cookie(
+            issued.token.typed()?,
+            &ctx.config,
+        )?,
     ))
 }

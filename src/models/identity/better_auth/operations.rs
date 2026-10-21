@@ -56,17 +56,26 @@ pub(super) async fn pending_password(
         .get_verification_by_identifier(&format!("password-change:{operation_id}"))
         .await?
         .ok_or(AuthError::InvalidCredentials)?;
-    if verification.expires_at <= chrono::Utc::now() {
+    if verification
+        .expires_at
+        .typed()?
+        .to_datetime()?
+        .ok_or(AuthError::InvalidCredentials)?
+        <= chrono::Utc::now()
+    {
         return Err(AuthError::InvalidCredentials);
     }
-    let pending: PendingPassword = serde_json::from_str(&verification.value)?;
-    let accounts = ctx.database.get_user_accounts(&session.user_id).await?;
+    let pending: PendingPassword = serde_json::from_str(verification.value.typed()?)?;
+    let accounts = ctx
+        .database
+        .get_user_accounts(session.user_id.typed()?)
+        .await?;
     let credential = accounts
         .iter()
         .find(|account| account.provider_id == "credential");
-    if pending.account_id != session.user_id
-        || pending.session_id != session.id
-        || pending.credential_id.as_deref() != credential.map(|account| account.id.as_str())
+    if pending.account_id != *session.user_id.typed()?
+        || pending.session_id != *session.id.typed()?
+        || pending.credential_id.as_deref() != credential.and_then(|account| account.id.as_str())
     {
         return Err(AuthError::InvalidCredentials);
     }
@@ -100,13 +109,8 @@ pub(super) async fn complete_password(
             .update_account(
                 &credential_id,
                 UpdateAccount {
-                    password: Some(pending.password_hash),
-                    access_token: None,
-                    refresh_token: None,
-                    id_token: None,
-                    access_token_expires_at: None,
-                    refresh_token_expires_at: None,
-                    scope: None,
+                    password: Some(pending.password_hash).into(),
+                    ..Default::default()
                 },
             )
             .await?;
@@ -116,22 +120,22 @@ pub(super) async fn complete_password(
                 user_id: user.id.clone(),
                 account_id: user.id.clone(),
                 provider_id: "credential".into(),
-                password: Some(pending.password_hash),
-                access_token: None,
-                refresh_token: None,
-                id_token: None,
-                access_token_expires_at: None,
-                refresh_token_expires_at: None,
-                scope: None,
+                password: Some(pending.password_hash).into(),
+                ..Default::default()
             })
             .await?;
     }
     store
-        .audit(&transaction, clinical_id(&user.id)?, "password", "changed")
+        .audit(
+            &transaction,
+            clinical_id(user.id.typed()?)?,
+            "password",
+            "changed",
+        )
         .await?;
     super::mail::notice(store, user, "Password changed", "Your MedTracker password was changed. If this was not you, secure your account immediately.").await?;
     transaction.commit().await.map_err(database_error)?;
-    Ok(AuthResponse::json(200, &json!({"status":true}))?)
+    AuthResponse::json(200, &json!({"status":true}))
 }
 
 impl Operations {
@@ -144,7 +148,7 @@ impl Operations {
         if session
             .additional_fields
             .get("clinical_session_purpose")
-            .and_then(serde_json::Value::as_str)
+            .and_then(better_auth_core::FieldValue::as_str)
             != Some("authenticated")
         {
             return Err(AuthError::Unauthenticated);
@@ -152,7 +156,7 @@ impl Operations {
         let recovery = session
             .additional_fields
             .get("authentication_method")
-            .and_then(serde_json::Value::as_str)
+            .and_then(better_auth_core::FieldValue::as_str)
             == Some("recovery");
         if recovery && request.path != "/security/password/start" {
             return Err(AuthError::forbidden("Fresh email confirmation is required"));
@@ -161,10 +165,10 @@ impl Operations {
         self.0.lock_security_session(&transaction, &session).await?;
         let user = ctx
             .database
-            .get_user_by_id(&user.id)
+            .get_user_by_id(user.id.typed()?)
             .await?
             .ok_or(AuthError::Unauthenticated)?;
-        let accounts = ctx.database.get_user_accounts(&user.id).await?;
+        let accounts = ctx.database.get_user_accounts(user.id.typed()?).await?;
         let credential = accounts
             .iter()
             .find(|account| account.provider_id == "credential");
@@ -175,19 +179,23 @@ impl Operations {
             super::validate_new_password(&input.new_password).map_err(AuthError::validation)?;
             let operation_id = uuid::Uuid::new_v4().to_string();
             let pending = PendingPassword {
-                account_id: user.id.clone(),
-                session_id: session.id.clone(),
-                credential_id: credential.map(|account| account.id.clone()),
+                account_id: user.id.typed()?.clone(),
+                session_id: session.id.typed()?.clone(),
+                credential_id: credential
+                    .map(|account| account.id.typed().cloned())
+                    .transpose()?,
                 password_hash: hash_password(None, &input.new_password).await?,
                 action: super::credentials::Action::Password,
                 factor: None,
             };
             ctx.database
                 .create_verification(CreateVerification {
-                    identifier: format!("password-change:{operation_id}"),
-                    value: serde_json::to_string(&pending)?,
-                    expires_at: chrono::Utc::now()
-                        + chrono::Duration::minutes(if recovery { 30 } else { 5 }),
+                    identifier: format!("password-change:{operation_id}").into(),
+                    value: serde_json::to_string(&pending)?.into(),
+                    expires_at: (chrono::Utc::now()
+                        + chrono::Duration::minutes(if recovery { 30 } else { 5 }))
+                    .into(),
+                    ..Default::default()
                 })
                 .await?;
             if recovery {
@@ -195,18 +203,26 @@ impl Operations {
             }
             AuthResponse::json(
                 200,
-                &json!({"operation_id":operation_id,"email_proof":recovery,"password_proof":!recovery && credential.is_some_and(|account| account.password.is_some()),"passkey_proof":!recovery && !ctx.database.list_passkeys_by_user(&user.id).await?.is_empty(),"oidc_proof":!recovery && accounts.iter().any(|account| account.provider_id=="zitadel")}),
+                &json!({"operation_id":operation_id,"email_proof":recovery,"password_proof":!recovery && credential.is_some_and(|account| matches!(account.password, better_auth_core::SchemaValue::Typed(Some(_)))),"passkey_proof":!recovery && !ctx.database.list_passkeys_by_user(user.id.typed()?).await?.is_empty(),"oidc_proof":!recovery && accounts.iter().any(|account| account.provider_id=="zitadel")}),
             )?
         } else {
             let input: ConfirmPassword = request
                 .body_as_json()
                 .map_err(|_| AuthError::bad_request("Invalid password operation"))?;
-            if credential.is_none_or(|account| account.password.is_none()) {
+            if credential.is_none_or(|account| {
+                !matches!(
+                    account.password,
+                    better_auth_core::SchemaValue::Typed(Some(_))
+                )
+            }) {
                 return Err(AuthError::InvalidCredentials);
             }
             pending_password(ctx, &session, &input.operation_id).await?;
             let mut proof = AuthRequest::new(HttpMethod::Post, "/verify-password");
             proof.headers = request.headers.clone();
+            proof
+                .headers
+                .insert("content-type".into(), "application/json".into());
             proof.body = Some(serde_json::to_vec(&json!({"password":input.password}))?);
             let result = PasswordManagementPlugin::new()
                 .password_hasher(Arc::new(super::passwords::CompatibleHasher))
@@ -216,12 +232,13 @@ impl Operations {
             if result.status >= 400 {
                 return Err(AuthError::InvalidCredentials);
             }
-            if user.two_factor_enabled || super::legacy_totp::enabled(&self.0, &user.id).await? {
+            let factor_enabled = user.two_factor_enabled.typed()?.unwrap_or(false);
+            if factor_enabled || super::legacy_totp::enabled(&self.0, user.id.typed()?).await? {
                 let code = input
                     .totp_code
                     .as_deref()
                     .ok_or(AuthError::InvalidCredentials)?;
-                let rejected = if user.two_factor_enabled {
+                let rejected = if factor_enabled {
                     super::totp::verify_operation_factor(request, ctx, code).await?
                 } else {
                     super::legacy_totp::verify_operation(&self.0, request, ctx, code).await?

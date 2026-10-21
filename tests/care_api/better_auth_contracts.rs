@@ -211,7 +211,7 @@ async fn password_login_marks_legacy_factor_without_removing_existing_session_fi
     config.session.fields_mut().insert(
         "native_marker".into(),
         better_auth_core::config::SessionFieldConfig {
-            default_value: Some(serde_json::json!("preserved")),
+            default_value: Some("preserved".into()),
             input: Some(false),
             returned: Some(true),
             ..Default::default()
@@ -221,10 +221,19 @@ async fn password_login_marks_legacy_factor_without_removing_existing_session_fi
         med_tracker::models::identity::better_auth::build(config, existing_service.store.clone())
             .await
             .unwrap();
+    let joined = better_auth_core::store::UserStore::<ClinicalAuthSchema>::get_user_with_accounts(
+        service.store.as_ref(),
+        "persistence@example.test",
+    )
+    .await;
+    assert!(joined.is_ok(), "{joined:?}");
     let mut request = AuthRequest::new(HttpMethod::Post, "/sign-in/email");
     request
         .headers
         .insert("origin".into(), app.context.config.server.full_url());
+    request
+        .headers
+        .insert("content-type".into(), "application/json".into());
     request
         .headers
         .insert("x-forwarded-for".into(), "127.0.0.1".into());
@@ -241,7 +250,7 @@ async fn password_login_marks_legacy_factor_without_removing_existing_session_fi
     )
     .await
     .unwrap();
-    assert_eq!(response.status, 200);
+    assert_eq!(response.status, 200, "{response:?}");
     let row = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT purpose,additional_fields FROM public.identity_sessions WHERE account_id=71001 ORDER BY created_at DESC,id DESC LIMIT 1")).await.unwrap().unwrap();
     let purpose: String = row.try_get("", "purpose").unwrap();
     let fields: serde_json::Value = row.try_get("", "additional_fields").unwrap();

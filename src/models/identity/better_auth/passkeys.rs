@@ -72,7 +72,7 @@ impl Passkeys {
         if session
             .additional_fields
             .get("authentication_method")
-            .and_then(serde_json::Value::as_str)
+            .and_then(better_auth_core::FieldValue::as_str)
             == Some("recovery")
         {
             return Err(AuthError::forbidden("Fresh email confirmation is required"));
@@ -80,7 +80,7 @@ impl Passkeys {
         let transaction = self.1.transaction().await?;
         self.1.lock_security_session(&transaction, &session).await?;
         super::operations::pending_password(ctx, &session, &input.operation_id).await?;
-        let stored = ctx.database.list_passkeys_by_user(&user.id).await?;
+        let stored = ctx.database.list_passkeys_by_user(user.id.typed()?).await?;
         if stored.is_empty() {
             return Err(AuthError::InvalidCredentials);
         }
@@ -91,24 +91,26 @@ impl Passkeys {
         let challenge_id = uuid::Uuid::new_v4().to_string();
         ctx.database
             .create_verification(CreateVerification {
-                identifier: format!("security-passkey:{challenge_id}"),
+                identifier: format!("security-passkey:{challenge_id}").into(),
                 value: serde_json::to_string(&OperationProof {
-                    account_id: user.id,
-                    session_id: session.id,
+                    account_id: user.id.typed()?.clone(),
+                    session_id: session.id.typed()?.clone(),
                     operation_id: input.operation_id,
                     state,
-                })?,
-                expires_at: Utc::now() + Duration::minutes(5),
+                })?
+                .into(),
+                expires_at: (Utc::now() + Duration::minutes(5)).into(),
+                ..Default::default()
             })
             .await?;
         transaction
             .commit()
             .await
             .map_err(super::store::database_error)?;
-        Ok(AuthResponse::json(
+        AuthResponse::json(
             200,
             &json!({"challenge_id":challenge_id,"publicKey":serde_json::to_value(options)?["publicKey"]}),
-        )?)
+        )
     }
 
     async fn proof_finish(
@@ -123,7 +125,7 @@ impl Passkeys {
         if session
             .additional_fields
             .get("authentication_method")
-            .and_then(serde_json::Value::as_str)
+            .and_then(better_auth_core::FieldValue::as_str)
             == Some("recovery")
         {
             return Err(AuthError::forbidden("Fresh email confirmation is required"));
@@ -136,12 +138,18 @@ impl Passkeys {
             .consume_verification_by_identifier(&format!("security-passkey:{}", input.challenge_id))
             .await?
             .ok_or(AuthError::InvalidCredentials)?;
-        if proof.expires_at <= Utc::now() {
+        if proof
+            .expires_at
+            .typed()?
+            .to_datetime()?
+            .ok_or(AuthError::InvalidCredentials)?
+            <= Utc::now()
+        {
             return Err(AuthError::InvalidCredentials);
         }
-        let proof: OperationProof = serde_json::from_str(&proof.value)?;
-        if proof.account_id != user.id
-            || proof.session_id != session.id
+        let proof: OperationProof = serde_json::from_str(proof.value.typed()?)?;
+        if proof.account_id != *user.id.typed()?
+            || proof.session_id != *session.id.typed()?
             || proof.operation_id != input.operation_id
         {
             return Err(AuthError::InvalidCredentials);
@@ -158,13 +166,13 @@ impl Passkeys {
             .ok_or(AuthError::InvalidCredentials)?;
         if user
             .metadata
-            .get("passkey_user_handle")
-            .and_then(serde_json::Value::as_str)
+            .model_property("passkey_user_handle")?
+            .as_str()
             != Some(handle.to_string().as_str())
         {
             return Err(AuthError::InvalidCredentials);
         }
-        let mut key: Passkey = serde_json::from_str(&stored.credential)?;
+        let mut key: Passkey = serde_json::from_str(stored.credential.typed()?)?;
         let result = self
             .0
             .finish_discoverable_authentication(
@@ -181,11 +189,11 @@ impl Passkeys {
         ctx.database
             .update_passkey_authentication(
                 &stored.id,
-                better_auth_core::types::UpdatePasskeyAuthentication {
+                better_auth_core::types::UpdatePasskeyAuthentication::Legacy {
                     credential: serde_json::to_string(&key)?,
                     counter: u64::from(result.counter()),
                     backed_up: result.backup_state(),
-                    device_type: stored.device_type,
+                    device_type: stored.device_type.typed()?.clone(),
                 },
             )
             .await?;
@@ -215,17 +223,18 @@ impl Passkeys {
         let challenge = uuid::Uuid::new_v4().to_string();
         ctx.database
             .create_verification(CreateVerification {
-                identifier: format!("authentication:{challenge}"),
-                value: serde_json::to_string(&state)?,
-                expires_at: Utc::now() + Duration::minutes(5),
+                identifier: format!("authentication:{challenge}").into(),
+                value: serde_json::to_string(&state)?.into(),
+                expires_at: (Utc::now() + Duration::minutes(5)).into(),
+                ..Default::default()
             })
             .await?;
         let cookie = create_session_like_cookie(
             CHALLENGE_COOKIE,
             &sign_cookie_value(&challenge, &ctx.config.secret),
-            Some(300),
+            Some(300.0),
             &ctx.config,
-        );
+        )?;
         Ok(AuthResponse::json(200, &options)?.with_header("Set-Cookie", cookie))
     }
 
@@ -242,7 +251,7 @@ impl Passkeys {
             .consume_verification_by_identifier(&format!("authentication:{challenge}"))
             .await?
             .ok_or(AuthError::Unauthenticated)?;
-        let state: DiscoverableAuthentication = serde_json::from_str(&verification.value)?;
+        let state: DiscoverableAuthentication = serde_json::from_str(verification.value.typed()?)?;
         let response: PublicKeyCredential = request.body_as_json()?;
         let (handle, credential_id) = self
             .0
@@ -255,19 +264,19 @@ impl Passkeys {
             .ok_or(AuthError::InvalidCredentials)?;
         let user = ctx
             .database
-            .get_user_by_id(&stored.user_id)
+            .get_user_by_id(stored.user_id.typed()?)
             .await?
             .ok_or(AuthError::InvalidCredentials)?;
-        if !user.email_verified
+        if !*user.email_verified.typed()?
             || user
                 .metadata
-                .get("passkey_user_handle")
-                .and_then(serde_json::Value::as_str)
+                .model_property("passkey_user_handle")?
+                .as_str()
                 != Some(handle.to_string().as_str())
         {
             return Err(AuthError::InvalidCredentials);
         }
-        let mut passkey: Passkey = serde_json::from_str(&stored.credential)?;
+        let mut passkey: Passkey = serde_json::from_str(stored.credential.typed()?)?;
         let result = self
             .0
             .finish_discoverable_authentication(
@@ -282,11 +291,11 @@ impl Passkeys {
         ctx.database
             .update_passkey_authentication(
                 &stored.id,
-                better_auth_core::types::UpdatePasskeyAuthentication {
+                better_auth_core::types::UpdatePasskeyAuthentication::Legacy {
                     credential: serde_json::to_string(&passkey)?,
                     counter: u64::from(result.counter()),
                     backed_up: result.backup_state(),
-                    device_type: stored.device_type,
+                    device_type: stored.device_type.typed()?.clone(),
                 },
             )
             .await?;
@@ -298,9 +307,9 @@ impl Passkeys {
             AuthResponse::json(200, &json!({"status":true}))?.with_header(
                 "Set-Cookie",
                 better_auth_core::utils::cookie_utils::create_session_cookie(
-                    &session.token,
+                    session.token.typed()?,
                     &ctx.config,
-                ),
+                )?,
             ),
         )
     }
@@ -329,7 +338,12 @@ impl Passkeys {
         if super::legacy_totp::pending(&session) {
             return Err(AuthError::Unauthenticated);
         }
-        let operation_id = request.query.get("operation_id").cloned();
+        let operation_id = request
+            .query
+            .as_ref()
+            .and_then(|query| query.get("operation_id"))
+            .and_then(serde_json::Value::as_str)
+            .map(str::to_owned);
         let transaction = self.1.transaction().await?;
         if let Some(operation_id) = &operation_id {
             self.1.lock_security_session(&transaction, &session).await?;
@@ -337,25 +351,26 @@ impl Passkeys {
         } else if session
             .additional_fields
             .get("clinical_session_purpose")
-            .and_then(serde_json::Value::as_str)
+            .and_then(better_auth_core::FieldValue::as_str)
             != Some("enrolment")
         {
             return Err(AuthError::forbidden("Fresh authentication is required"));
         }
-        let passkeys = ctx.database.list_passkeys_by_user(&user.id).await?;
+        let passkeys = ctx.database.list_passkeys_by_user(user.id.typed()?).await?;
         if operation_id.is_none() && !passkeys.is_empty() {
             return Err(AuthError::forbidden("A passkey is already enrolled"));
         }
         let excluded = passkeys
             .iter()
             .map(|key| {
-                serde_json::from_str::<Passkey>(&key.credential).map(|key| key.cred_id().clone())
+                serde_json::from_str::<Passkey>(key.credential.typed()?)
+                    .map(|key| key.cred_id().clone())
+                    .map_err(AuthError::from)
             })
-            .collect::<Result<Vec<_>, _>>()?;
-        let handle = user
-            .metadata
-            .get("passkey_user_handle")
-            .and_then(serde_json::Value::as_str)
+            .collect::<AuthResult<Vec<_>>>()?;
+        let handle_field = user.metadata.model_property("passkey_user_handle")?;
+        let handle = handle_field
+            .as_str()
             .ok_or_else(|| AuthError::internal("Passkey account handle unavailable"))?;
         let user_handle = uuid::Uuid::parse_str(handle)
             .map_err(|_| AuthError::internal("Invalid passkey account handle"))?;
@@ -363,31 +378,36 @@ impl Passkeys {
             .0
             .start_passkey_registration(
                 user_handle,
-                user.email.as_deref().unwrap_or_default(),
-                user.name.as_deref().unwrap_or("MedTracker account"),
+                user.email.typed()?.as_deref().unwrap_or_default(),
+                user.name
+                    .typed()?
+                    .as_deref()
+                    .unwrap_or("MedTracker account"),
                 Some(excluded),
             )
             .map_err(|_| AuthError::internal("Passkey registration unavailable"))?;
         let challenge = uuid::Uuid::new_v4().to_string();
         ctx.database
             .create_verification(CreateVerification {
-                identifier: format!("registration:{challenge}"),
+                identifier: format!("registration:{challenge}").into(),
                 value: serde_json::to_string(&Registration {
-                    account_id: user.id,
-                    session_token: token_digest(&session.token),
+                    account_id: user.id.typed()?.clone(),
+                    session_token: token_digest(session.token.typed()?),
                     user_handle,
                     state,
                     operation_id,
-                })?,
-                expires_at: Utc::now() + Duration::minutes(5),
+                })?
+                .into(),
+                expires_at: (Utc::now() + Duration::minutes(5)).into(),
+                ..Default::default()
             })
             .await?;
         let cookie = create_session_like_cookie(
             CHALLENGE_COOKIE,
             &sign_cookie_value(&challenge, &ctx.config.secret),
-            Some(300),
+            Some(300.0),
             &ctx.config,
-        );
+        )?;
         let mut options = serde_json::to_value(options)?;
         options["publicKey"]["authenticatorSelection"]["residentKey"] = json!("required");
         options["publicKey"]["authenticatorSelection"]["requireResidentKey"] = json!(true);
@@ -406,11 +426,16 @@ impl Passkeys {
         let (user, session) = ctx.require_authoritative_session(request).await?;
         use sea_orm::ConnectionTrait;
         let transaction = self.1.transaction().await?;
-        super::store::context(&transaction, "med_tracker.current_account_id", &user.id).await?;
+        super::store::context(
+            &transaction,
+            "med_tracker.current_account_id",
+            user.id.typed()?,
+        )
+        .await?;
         transaction
             .query_one_raw(super::store::statement(
                 "SELECT id FROM public.accounts WHERE id=$1 AND status=2 FOR UPDATE",
-                [super::store::clinical_id(&user.id)?.into()],
+                [super::store::clinical_id(user.id.typed()?)?.into()],
             ))
             .await
             .map_err(super::store::database_error)?
@@ -423,8 +448,10 @@ impl Passkeys {
             .consume_verification_by_identifier(&format!("registration:{challenge}"))
             .await?
             .ok_or(AuthError::Unauthenticated)?;
-        let stored: Registration = serde_json::from_str(&verification.value)?;
-        if stored.account_id != user.id || stored.session_token != token_digest(&session.token) {
+        let stored: Registration = serde_json::from_str(verification.value.typed()?)?;
+        if stored.account_id != *user.id.typed()?
+            || stored.session_token != token_digest(session.token.typed()?)
+        {
             return Err(AuthError::Unauthenticated);
         }
         let mut recovery_replacement = false;
@@ -439,7 +466,7 @@ impl Passkeys {
                 .await?
                 .ok_or(AuthError::InvalidCredentials)?;
         } else {
-            let allowed = transaction.query_one_raw(super::store::statement("SELECT id FROM public.identity_sessions WHERE token=$1 AND account_id=$2 AND purpose='enrolment' AND active AND expires_at>clock_timestamp() AND NOT EXISTS(SELECT 1 FROM public.identity_passkeys WHERE account_id=$2)", [token_digest(&session.token).into(), super::store::clinical_id(&user.id)?.into()])).await.map_err(super::store::database_error)?;
+            let allowed = transaction.query_one_raw(super::store::statement("SELECT id FROM public.identity_sessions WHERE token=$1 AND account_id=$2 AND purpose='enrolment' AND active AND expires_at>clock_timestamp() AND NOT EXISTS(SELECT 1 FROM public.identity_passkeys WHERE account_id=$2)", [token_digest(session.token.typed()?).into(), super::store::clinical_id(user.id.typed()?)?.into()])).await.map_err(super::store::database_error)?;
             if allowed.is_none() || super::legacy_totp::pending(&session) {
                 return Err(AuthError::forbidden("Passkey enrolment is unavailable"));
             }
@@ -454,22 +481,23 @@ impl Passkeys {
         let stored = ctx
             .database
             .create_passkey(CreatePasskey {
-                user_id: user.id.clone(),
-                name: response.name,
+                user_id: user.id.typed()?.clone().into(),
+                name: response.name.into(),
                 credential_id,
                 public_key: String::new(),
                 counter: 0,
                 device_type: "passkey".into(),
                 backed_up: false,
                 transports: None,
-                credential: serde_json::to_string(&passkey)?,
-                aaguid: None,
+                credential: serde_json::to_string(&passkey)?.into(),
+                aaguid: None.into(),
+                additional_fields: Default::default(),
             })
             .await?;
         self.1
             .audit(
                 &transaction,
-                super::store::clinical_id(&user.id)?,
+                super::store::clinical_id(user.id.typed()?)?,
                 "passkey",
                 "created",
             )

@@ -92,8 +92,7 @@ pub(super) async fn create(
     .await
     {
         Ok(response) if response.status == 200 => {
-            let body =
-                serde_json::from_slice::<serde_json::Value>(&response.body).unwrap_or_default();
+            let body = response.body.json().ok().flatten().unwrap_or_default();
             let Some(id) = body["operation_id"].as_str() else {
                 return super::rendering::unavailable();
             };

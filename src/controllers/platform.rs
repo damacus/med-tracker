@@ -121,7 +121,7 @@ async fn users(
     let BrowserIdentity::Authenticated { user, .. } = identity else {
         return Redirect::to("/login").into_response();
     };
-    let Ok(account_id) = clinical_id(&user.id) else {
+    let Ok(account_id) = user.id.typed().and_then(|id| clinical_id(id)) else {
         return unavailable();
     };
     let Ok(transaction) = platform::begin(&ctx.db).await else {
@@ -162,17 +162,17 @@ pub(super) fn browser_meta(
     session: &better_auth_core::wire::SessionView,
     request_id: Option<Extension<LocoRequestId>>,
     headers: &HeaderMap,
-) -> platform::RequestMeta {
-    platform::RequestMeta {
+) -> better_auth_core::AuthResult<platform::RequestMeta> {
+    Ok(platform::RequestMeta {
         session_reference: Some(crate::models::identity::better_auth::session_digest(
-            &session.token,
+            session.token.typed()?,
         )),
         request_id: Some(super::medications::request_id(request_id)),
         ip: headers
             .get("x-forwarded-for")
             .and_then(|value| value.to_str().ok())
             .map(str::to_owned),
-    }
+    })
 }
 
 pub(super) async fn proof(
@@ -204,7 +204,7 @@ pub(super) async fn proof(
     request.body = serde_json::to_vec(&action).ok();
     match dispatch(service, request, super::medications::request_id(request_id)).await {
         Ok(response) if response.status == 200 => {
-            let Ok(body) = serde_json::from_slice::<Value>(&response.body) else {
+            let Ok(Some(body)) = response.body.json() else {
                 return unavailable();
             };
             let Some(id) = body["operation_id"].as_str() else {
@@ -334,7 +334,7 @@ async fn settings(
     let BrowserIdentity::Authenticated { user, .. } = identity else {
         return Redirect::to("/login").into_response();
     };
-    let Ok(account_id) = clinical_id(&user.id) else {
+    let Ok(account_id) = user.id.typed().and_then(|id| clinical_id(id)) else {
         return unavailable();
     };
     let Ok(transaction) = platform::begin(&ctx.db).await else {
@@ -434,13 +434,15 @@ pub(super) async fn end_support(
     let BrowserIdentity::Authenticated { user, session } = identity else {
         return Redirect::to("/login").into_response();
     };
-    let Ok(account_id) = clinical_id(&user.id) else {
+    let Ok(account_id) = user.id.typed().and_then(|id| clinical_id(id)) else {
         return unavailable();
     };
     let Ok(transaction) = platform::begin(&ctx.db).await else {
         return unavailable();
     };
-    let meta = browser_meta(&session, request_id, headers);
+    let Ok(meta) = browser_meta(&session, request_id, headers) else {
+        return unavailable();
+    };
     match platform::support::end(&transaction, account_id, support_id, &meta).await {
         Ok(_) => {
             if transaction.commit().await.is_err() {

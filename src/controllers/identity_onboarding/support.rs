@@ -31,7 +31,7 @@ pub(super) async fn page(
     let BrowserIdentity::Authenticated { user, .. } = identity else {
         return rendering::redirect("/login");
     };
-    let Ok(account_id) = clinical_id(&user.id) else {
+    let Ok(account_id) = user.id.typed().and_then(|id| clinical_id(id)) else {
         return rendering::unavailable();
     };
     let Ok(transaction) = platform::begin(&ctx.db).await else {

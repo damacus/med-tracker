@@ -7,7 +7,10 @@ use better_auth_core::types::UpdatePasskeyAuthentication;
 use better_auth_core::{
     AuthError, CreateDeviceCode, CreateTwoFactor, DeviceCodeOwnership, FieldMap, FieldValue,
     SchemaValue, UpdateDeviceCode,
-    store::{ApiKeyStore, ApiKeyUsageWrite, DeviceCodeStore, PasskeyStore, TwoFactorStore},
+    store::{
+        ApiKeyStore, ApiKeyUsageWrite, DeviceCodeStore, PasskeyStore, RateLimitStore,
+        TwoFactorStore,
+    },
 };
 use chrono::{Duration, Utc};
 use med_tracker::models::{
@@ -21,7 +24,15 @@ use sha2::{Digest, Sha256};
 use super::{Application, fixture::Fixture};
 
 async fn seed_key(fixture: &Fixture, id: &str, expiry: chrono::DateTime<Utc>, remaining: f64) {
-    seed_key_with_hash(fixture, id, &format!("{id}-hash"), expiry, remaining).await;
+    seed_key_with_hash(
+        fixture,
+        id,
+        &format!("{id}-hash"),
+        expiry,
+        remaining,
+        "test",
+    )
+    .await;
 }
 
 async fn seed_key_with_hash(
@@ -30,8 +41,17 @@ async fn seed_key_with_hash(
     hash: &str,
     expiry: chrono::DateTime<Utc>,
     remaining: f64,
+    config_id: &str,
 ) {
     let now = Utc::now();
+    let (permissions, metadata) = if config_id == "medtracker-personal" {
+        (
+            Some(json!({"medtracker":["care:read"]}).to_string()),
+            Some(json!({"households":[72001]}).to_string()),
+        )
+    } else {
+        (None, None)
+    };
     identity_api_keys::ActiveModel {
         id: Set(id.to_owned()),
         account_id: Set(71001),
@@ -39,9 +59,10 @@ async fn seed_key_with_hash(
         expires_at: Set(Some(expiry.fixed_offset())),
         payload: Set(json!({
             "id": id, "key": hash, "referenceId": "71001",
-            "configId": "test", "enabled": true, "rateLimitEnabled": true,
+            "configId": config_id, "enabled": true, "rateLimitEnabled": true,
             "remaining": remaining, "refillAmount": null,
             "requestCount": 0.0, "rateLimitMax": 2.0, "rateLimitTimeWindow": 60_000.0,
+            "permissions": permissions, "metadata": metadata,
             "createdAt": now.to_rfc3339(), "updatedAt": now.to_rfc3339(),
             "expiresAt": expiry.to_rfc3339()
         })),
@@ -53,7 +74,7 @@ async fn seed_key_with_hash(
 
 #[tokio::test]
 async fn malformed_or_unsupported_feature_record_patches_are_rejected() {
-    let store = ClinicalStore::new(DatabaseConnection::Disconnected);
+    let store = ClinicalStore::new(DatabaseConnection::default());
     let id: SchemaValue<String> = "unused".to_owned().into();
     let bad =
         |name: &str| FieldMap::from([(name.to_owned(), FieldValue::String("malformed".into()))]);
@@ -190,6 +211,7 @@ async fn zero_quota_verification_denies_and_preserves_the_key() {
         &hash,
         Utc::now() + Duration::minutes(5),
         0.0,
+        "test",
     )
     .await;
     let service = app
@@ -224,6 +246,134 @@ async fn zero_quota_verification_denies_and_preserves_the_key() {
         ["exhausted-verification".into()])).await.unwrap().unwrap();
     assert_eq!(row.try_get::<i64>("", "count").unwrap(), 1);
     app.close().await;
+}
+
+#[tokio::test]
+async fn zero_quota_recovery_code_public_replay_is_denied_without_deletion() {
+    let app = Application::new().await;
+    let secret = format!("recovery_{}", "b".repeat(64));
+    let hash = URL_SAFE_NO_PAD.encode(Sha256::digest(secret.as_bytes()));
+    seed_key_with_hash(
+        &app.fixture,
+        "exhausted-public-recovery",
+        &hash,
+        Utc::now() + Duration::minutes(5),
+        0.0,
+        "medtracker-recovery",
+    )
+    .await;
+    let endpoint = format!("{}/api/auth/recovery/login", app.origin);
+    let mut first_body = None;
+    for _ in 0..2 {
+        let response = app
+            .client
+            .post(&endpoint)
+            .header("origin", &app.origin)
+            .json(&json!({"code":secret}))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status().as_u16(), 401);
+        let body: serde_json::Value = response.json().await.unwrap();
+        assert_eq!(body["code"], "INVALID_EMAIL_OR_PASSWORD");
+        if let Some(first) = &first_body {
+            assert_eq!(&body, first);
+        }
+        first_body = Some(body);
+    }
+    let row = app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+        "SELECT count(*) AS count FROM public.identity_api_keys WHERE id=$1 AND (payload->>'remaining')::double precision=0",
+        ["exhausted-public-recovery".into()])).await.unwrap().unwrap();
+    assert_eq!(row.try_get::<i64>("", "count").unwrap(), 1);
+    app.close().await;
+}
+
+#[tokio::test]
+async fn zero_quota_personal_key_public_replay_is_denied_without_deletion() {
+    let app = Application::new().await;
+    let secret = format!("medtracker_{}", "c".repeat(64));
+    let hash = URL_SAFE_NO_PAD.encode(Sha256::digest(secret.as_bytes()));
+    seed_key_with_hash(
+        &app.fixture,
+        "exhausted-public-personal",
+        &hash,
+        Utc::now() + Duration::minutes(5),
+        0.0,
+        "medtracker-personal",
+    )
+    .await;
+    let endpoint = format!("{}/api/v1/households/72001/profile", app.origin);
+    let mut first_body = None;
+    let mut first_request_id = None;
+    for _ in 0..2 {
+        let response = app
+            .client
+            .get(&endpoint)
+            .bearer_auth(&secret)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status().as_u16(), 401);
+        let mut body: serde_json::Value = response.json().await.unwrap();
+        assert!(body.is_object());
+        assert!(!body.to_string().contains(&secret));
+        let request_id = body["error"]["request_id"].as_str().unwrap().to_owned();
+        assert!(!request_id.is_empty());
+        if let Some(first) = &first_request_id {
+            assert_ne!(&request_id, first);
+        }
+        first_request_id = Some(request_id);
+        body["error"].as_object_mut().unwrap().remove("request_id");
+        assert_eq!(
+            body,
+            json!({"error":{"code":"unauthorized","message":"Authentication required"}})
+        );
+        if let Some(first) = &first_body {
+            assert_eq!(&body, first);
+        }
+        first_body = Some(body);
+    }
+    let row = app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+        "SELECT count(*) AS count FROM public.identity_api_keys WHERE id=$1 AND (payload->>'remaining')::double precision=0",
+        ["exhausted-public-personal".into()])).await.unwrap().unwrap();
+    assert_eq!(row.try_get::<i64>("", "count").unwrap(), 1);
+    app.close().await;
+}
+
+#[tokio::test]
+async fn runtime_rate_limit_uses_persisted_atomic_counter() {
+    let fixture = Fixture::new().await;
+    let store = ClinicalStore::new(fixture.runtime.clone());
+    let rule = better_auth_core::middleware::EndpointRateLimit {
+        window: 60.0,
+        max_requests: 2.0,
+    };
+    let first = store
+        .consume_rate_limit("synthetic-runtime-rate-gate", rule, 0.0)
+        .await
+        .unwrap();
+    let second = store
+        .consume_rate_limit("synthetic-runtime-rate-gate", rule, 0.0)
+        .await
+        .unwrap();
+    let denied = store
+        .consume_rate_limit("synthetic-runtime-rate-gate", rule, 0.0)
+        .await
+        .unwrap();
+    assert!(first.allowed && second.allowed);
+    assert!(!denied.allowed);
+    assert!(denied.retry_after.is_some_and(|seconds| seconds > 0.0));
+    let row = fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT attempts FROM public.identity_rate_limits WHERE attempts=3",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(row.try_get::<i32>("", "attempts").unwrap(), 3);
+    fixture.close().await;
 }
 
 #[tokio::test]
@@ -315,6 +465,41 @@ async fn api_key_usage_writes_reject_stale_windows_and_exhausted_counters() {
         .unwrap();
     assert_eq!(row.remaining.typed().unwrap(), &Some(0.0));
     assert_eq!(row.request_count.typed().unwrap(), &Some(2.0));
+    let refill = |previous| ApiKeyUsageWrite::Refill {
+        previous,
+        remaining: 1.0,
+        at: now,
+    };
+    assert!(
+        ApiKeyStore::write_api_key_usage(&store, &id, refill(FieldValue::Null))
+            .await
+            .unwrap()
+            .is_none()
+    );
+    assert!(
+        ApiKeyStore::write_api_key_usage(&store, &id, refill(FieldValue::Undefined))
+            .await
+            .unwrap()
+            .is_some()
+    );
+    assert!(
+        ApiKeyStore::write_api_key_usage(&store, &id, refill(FieldValue::Undefined))
+            .await
+            .unwrap()
+            .is_none()
+    );
+    assert!(
+        ApiKeyStore::write_api_key_usage(&store, &id, refill(FieldValue::Null))
+            .await
+            .unwrap()
+            .is_none()
+    );
+    assert!(
+        ApiKeyStore::write_api_key_usage(&store, &id, refill((now - Duration::minutes(1)).into()))
+            .await
+            .unwrap()
+            .is_none()
+    );
     fixture.close().await;
 }
 

@@ -136,6 +136,7 @@ impl ClinicalStore {
         input: CreateSession,
     ) -> AuthResult<SessionView> {
         let mut additional_fields = input.inherited_fields.clone();
+        additional_fields.extend(self.session_defaults()?);
         additional_fields.extend(input.additional_fields.clone());
         if [
             "clinical_session_purpose",
@@ -204,6 +205,13 @@ impl ClinicalStore {
 
 #[async_trait]
 impl SessionStore<ClinicalAuthSchema> for ClinicalStore {
+    async fn create_session_optional(
+        &self,
+        input: CreateSession,
+    ) -> AuthResult<Option<SessionView>> {
+        self.create_session(input).await.map(Some)
+    }
+
     async fn accept_invitation_with_teams(
         &self,
         _invitation_id: &str,

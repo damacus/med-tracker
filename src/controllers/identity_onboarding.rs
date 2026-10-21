@@ -247,6 +247,9 @@ async fn create(
         "/onboarding/signup",
     );
     request.headers = passkeys::request(&headers).headers;
+    request
+        .headers
+        .insert("content-type".into(), "application/json".into());
     request.body = serde_json::to_vec(&serde_json::json!({"name":profile.name,"email":profile.email,"date_of_birth":profile.date_of_birth,"invitation_token":profile.invitation_token,"credential":form.credential,"password":if form.credential=="password" {Some(form.password.clone())}else{None}})).ok();
     match dispatch(&service, request, request_id).await {
         Ok(response) if response.status < 400 => rendering::sent(&view),

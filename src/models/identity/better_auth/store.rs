@@ -14,8 +14,11 @@ mod members;
 mod organizations;
 mod passkeys;
 mod provisioning;
+mod rate_limits;
+mod runtime;
 mod scope;
 mod sessions;
+mod teams;
 mod tenant;
 mod transactions;
 mod two_factor;
@@ -28,11 +31,16 @@ use scope::Transaction;
 pub struct ClinicalStore {
     db: DatabaseConnection,
     settings: Option<std::sync::Arc<serde_json::Value>>,
+    runtime: Option<std::sync::Arc<runtime::RuntimeBindings>>,
 }
 
 impl ClinicalStore {
     pub fn new(db: DatabaseConnection) -> Self {
-        Self { db, settings: None }
+        Self {
+            db,
+            settings: None,
+            runtime: None,
+        }
     }
 
     pub fn with_settings(mut self, settings: Option<serde_json::Value>) -> Self {

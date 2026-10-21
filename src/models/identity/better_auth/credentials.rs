@@ -82,33 +82,37 @@ async fn validate(
     user: &UserView,
     action: &Action,
 ) -> AuthResult<()> {
-    let factor_enabled = ctx
+    let factor = ctx
         .database
-        .get_two_factor_by_user_id(&user.id)
-        .await?
-        .is_some_and(|factor| factor.verified);
-    let accounts = ctx.database.get_user_accounts(&user.id).await?;
-    let password = accounts
-        .iter()
-        .any(|account| account.provider_id == "credential" && account.password.is_some());
-    let keys = ctx.database.list_passkeys_by_user(&user.id).await?;
+        .get_two_factor_by_user_id(user.id.typed()?)
+        .await?;
+    let factor_enabled = match factor {
+        Some(factor) => factor.verified.typed()?.unwrap_or(false),
+        None => false,
+    };
+    let accounts = ctx.database.get_user_accounts(user.id.typed()?).await?;
+    let password = accounts.iter().any(|account| {
+        account.provider_id.as_str() == Some("credential")
+            && account.password.typed().is_ok_and(Option::is_some)
+    });
+    let keys = ctx.database.list_passkeys_by_user(user.id.typed()?).await?;
     match action {
         Action::DisableTotp
-            if !factor_enabled && !super::legacy_totp::enabled(store, &user.id).await? =>
+            if !factor_enabled && !super::legacy_totp::enabled(store, user.id.typed()?).await? =>
         {
             Err(AuthError::InvalidCredentials)
         }
         Action::LinkProvider
             if accounts
                 .iter()
-                .any(|account| account.provider_id == "zitadel") =>
+                .any(|account| account.provider_id.as_str() == Some("zitadel")) =>
         {
             Err(AuthError::bad_request("ZITADEL is already linked"))
         }
         Action::UnlinkProvider
             if !accounts
                 .iter()
-                .any(|account| account.provider_id == "zitadel") =>
+                .any(|account| account.provider_id.as_str() == Some("zitadel")) =>
         {
             Err(AuthError::bad_request("ZITADEL is not linked"))
         }
@@ -120,7 +124,7 @@ async fn validate(
             if new_email.len() > 254
                 || !new_email.contains('@')
                 || new_email.trim() != new_email
-                || user.email.as_deref() == Some(new_email) =>
+                || user.email.typed()?.as_deref() == Some(new_email) =>
         {
             Err(AuthError::bad_request(
                 "Enter a different valid email address",
@@ -130,13 +134,15 @@ async fn validate(
             Err(AuthError::bad_request("Keep a local password or passkey"))
         }
         Action::RemovePassword
-            if factor_enabled || super::legacy_totp::enabled(store, &user.id).await? =>
+            if factor_enabled || super::legacy_totp::enabled(store, user.id.typed()?).await? =>
         {
             Err(AuthError::bad_request(
                 "Disable your authenticator app before removing your password",
             ))
         }
-        Action::RemovePasskey { target } if !keys.iter().any(|key| key.id == *target) => {
+        Action::RemovePasskey { target }
+            if !keys.iter().any(|key| key.id.as_str() == Some(target)) =>
+        {
             Err(AuthError::InvalidCredentials)
         }
         Action::RemovePasskey { .. } if !password && keys.len() < 2 => {
@@ -147,7 +153,7 @@ async fn validate(
             let transaction = store.transaction().await?;
             crate::models::platform::check_rights(
                 &transaction,
-                clinical_id(&user.id)?,
+                clinical_id(user.id.typed()?)?,
                 *account_id,
                 *grant,
             )
@@ -159,7 +165,7 @@ async fn validate(
             let transaction = store.transaction().await?;
             crate::models::platform::check_user(
                 &transaction,
-                clinical_id(&user.id)?,
+                clinical_id(user.id.typed()?)?,
                 *account_id,
                 *active,
             )
@@ -176,7 +182,7 @@ async fn validate(
             let transaction = store.transaction().await?;
             crate::models::platform::check_settings(
                 &transaction,
-                clinical_id(&user.id)?,
+                clinical_id(user.id.typed()?)?,
                 *invite_only,
                 medicine_lookup_base_url,
                 medicine_lookup_token_url,
@@ -195,7 +201,7 @@ async fn validate(
             let transaction = store.transaction().await?;
             crate::models::platform::recovery::check(
                 &transaction,
-                clinical_id(&user.id)?,
+                clinical_id(user.id.typed()?)?,
                 *household_id,
                 *membership_id,
                 reason,
@@ -211,7 +217,7 @@ async fn validate(
             let transaction = store.transaction().await?;
             crate::models::platform::support::check_request(
                 &transaction,
-                clinical_id(&user.id)?,
+                clinical_id(user.id.typed()?)?,
                 *household_id,
                 reason,
             )
@@ -223,7 +229,7 @@ async fn validate(
             let transaction = store.transaction().await?;
             crate::models::platform::support::check_approve(
                 &transaction,
-                clinical_id(&user.id)?,
+                clinical_id(user.id.typed()?)?,
                 *support_id,
             )
             .await
@@ -234,7 +240,7 @@ async fn validate(
             let transaction = store.transaction().await?;
             crate::models::platform::support::check_activate(
                 &transaction,
-                clinical_id(&user.id)?,
+                clinical_id(user.id.typed()?)?,
                 *support_id,
             )
             .await
@@ -248,13 +254,13 @@ async fn validate(
 fn request_meta(
     session: &SessionView,
     request: &AuthRequest,
-) -> crate::models::platform::RequestMeta {
-    let (session_reference, request_id, ip) = platform_audit(session, request);
-    crate::models::platform::RequestMeta {
+) -> AuthResult<crate::models::platform::RequestMeta> {
+    let (session_reference, request_id, ip) = platform_audit(session, request)?;
+    Ok(crate::models::platform::RequestMeta {
         session_reference,
         request_id,
         ip,
-    }
+    })
 }
 
 fn platform_error(error: OperationError) -> AuthError {
@@ -277,15 +283,17 @@ fn platform_error(error: OperationError) -> AuthError {
 fn platform_audit(
     session: &SessionView,
     request: &AuthRequest,
-) -> (Option<String>, Option<String>, Option<String>) {
-    (
-        Some(crate::models::identity::store::digest(&session.token)),
+) -> AuthResult<(Option<String>, Option<String>, Option<String>)> {
+    Ok((
+        Some(crate::models::identity::store::digest(
+            session.token.typed()?,
+        )),
         super::request::request_id(),
         request
             .headers
             .get("x-forwarded-for")
             .map(std::string::ToString::to_string),
-    )
+    ))
 }
 
 impl Credentials {
@@ -301,7 +309,7 @@ impl Credentials {
         let recovery = session
             .additional_fields
             .get("authentication_method")
-            .and_then(serde_json::Value::as_str)
+            .and_then(better_auth_core::FieldValue::as_str)
             == Some("recovery");
         if recovery && action != Action::AddPasskey {
             return Err(AuthError::forbidden("Fresh email confirmation is required"));
@@ -309,30 +317,34 @@ impl Credentials {
         let transaction = self.0.transaction().await?;
         self.0.lock_security_session(&transaction, &session).await?;
         validate(&self.0, ctx, &user, &action).await?;
-        let accounts = ctx.database.get_user_accounts(&user.id).await?;
+        let accounts = ctx.database.get_user_accounts(user.id.typed()?).await?;
         let credential = accounts
             .iter()
-            .find(|account| account.provider_id == "credential");
+            .find(|account| account.provider_id.as_str() == Some("credential"));
         let operation_id = uuid::Uuid::new_v4().to_string();
         let factor = if action == Action::DisableTotp {
-            Some(super::totp::factor_binding(&self.0, ctx, &user.id).await?)
+            Some(super::totp::factor_binding(&self.0, ctx, user.id.typed()?).await?)
         } else {
             None
         };
         let pending = PendingPassword {
-            account_id: user.id.clone(),
-            session_id: session.id.clone(),
-            credential_id: credential.map(|account| account.id.clone()),
+            account_id: user.id.typed()?.clone(),
+            session_id: session.id.typed()?.clone(),
+            credential_id: credential
+                .map(|account| account.id.typed().cloned())
+                .transpose()?,
             password_hash: String::new(),
             action,
             factor,
         };
         ctx.database
             .create_verification(CreateVerification {
-                identifier: format!("password-change:{operation_id}"),
-                value: serde_json::to_string(&pending)?,
-                expires_at: chrono::Utc::now()
-                    + chrono::Duration::minutes(if recovery { 30 } else { 5 }),
+                identifier: format!("password-change:{operation_id}").into(),
+                value: serde_json::to_string(&pending)?.into(),
+                expires_at: (chrono::Utc::now()
+                    + chrono::Duration::minutes(if recovery { 30 } else { 5 }))
+                .into(),
+                ..Default::default()
             })
             .await?;
         if recovery {
@@ -340,7 +352,7 @@ impl Credentials {
         }
         let response = AuthResponse::json(
             200,
-            &json!({"operation_id":operation_id,"email_proof":recovery,"password_proof":!recovery && credential.is_some_and(|account| account.password.is_some()),"passkey_proof":!recovery && !ctx.database.list_passkeys_by_user(&user.id).await?.is_empty(),"oidc_proof":!recovery && accounts.iter().any(|account| account.provider_id=="zitadel")}),
+            &json!({"operation_id":operation_id,"email_proof":recovery,"password_proof":!recovery && credential.is_some_and(|account| account.password.typed().is_ok_and(Option::is_some)),"passkey_proof":!recovery && !ctx.database.list_passkeys_by_user(user.id.typed()?).await?.is_empty(),"oidc_proof":!recovery && accounts.iter().any(|account| account.provider_id.as_str()==Some("zitadel"))}),
         )?;
         transaction.commit().await.map_err(database_error)?;
         Ok(response)
@@ -370,28 +382,30 @@ pub(super) async fn complete(
     if pending.action == Action::LinkProvider {
         ctx.database
             .create_verification(CreateVerification {
-                identifier: format!("provider-link:{operation_id}"),
+                identifier: format!("provider-link:{operation_id}").into(),
                 value: serde_json::to_string(&super::oidc::LinkGrant {
-                    account_id: user.id.clone(),
-                    session_id: session.id.clone(),
-                })?,
-                expires_at: chrono::Utc::now() + chrono::Duration::minutes(5),
+                    account_id: user.id.typed()?.clone(),
+                    session_id: session.id.typed()?.clone(),
+                })?
+                .into(),
+                expires_at: (chrono::Utc::now() + chrono::Duration::minutes(5)).into(),
+                ..Default::default()
             })
             .await?;
-        return Ok(AuthResponse::json(
+        return AuthResponse::json(
             200,
             &json!({"status":true,"redirect":format!("/account/security/provider/link?link_id={operation_id}")}),
-        )?);
+        );
     }
     if let Action::CreateApiKey { key } = &pending.action {
         return super::personal_keys::create(store, ctx, user, key).await;
     }
     if let Action::PlatformAdministrator { account_id, grant } = &pending.action {
         let transaction = store.transaction().await?;
-        let (session_reference, request_id, ip) = platform_audit(session, request);
+        let (session_reference, request_id, ip) = platform_audit(session, request)?;
         crate::models::platform::change_rights(
             &transaction,
-            clinical_id(&user.id)?,
+            clinical_id(user.id.typed()?)?,
             *account_id,
             *grant,
             session_reference.as_deref(),
@@ -401,17 +415,14 @@ pub(super) async fn complete(
         .await
         .map_err(platform_error)?;
         transaction.commit().await.map_err(database_error)?;
-        return Ok(AuthResponse::json(
-            200,
-            &json!({"status":true,"redirect":"/platform/users"}),
-        )?);
+        return AuthResponse::json(200, &json!({"status":true,"redirect":"/platform/users"}));
     }
     if let Action::PlatformUser { account_id, active } = &pending.action {
         let transaction = store.transaction().await?;
-        let (session_reference, request_id, ip) = platform_audit(session, request);
+        let (session_reference, request_id, ip) = platform_audit(session, request)?;
         crate::models::platform::change_user(
             &transaction,
-            clinical_id(&user.id)?,
+            clinical_id(user.id.typed()?)?,
             *account_id,
             *active,
             session_reference.as_deref(),
@@ -421,10 +432,7 @@ pub(super) async fn complete(
         .await
         .map_err(platform_error)?;
         transaction.commit().await.map_err(database_error)?;
-        return Ok(AuthResponse::json(
-            200,
-            &json!({"status":true,"redirect":"/platform/users"}),
-        )?);
+        return AuthResponse::json(200, &json!({"status":true,"redirect":"/platform/users"}));
     }
     if let Action::PlatformSettings {
         invite_only,
@@ -434,10 +442,10 @@ pub(super) async fn complete(
     } = &pending.action
     {
         let transaction = store.transaction().await?;
-        let meta = request_meta(session, request);
+        let meta = request_meta(session, request)?;
         crate::models::platform::change_settings(
             &transaction,
-            clinical_id(&user.id)?,
+            clinical_id(user.id.typed()?)?,
             *invite_only,
             medicine_lookup_base_url,
             medicine_lookup_token_url,
@@ -448,10 +456,7 @@ pub(super) async fn complete(
         .await
         .map_err(platform_error)?;
         transaction.commit().await.map_err(database_error)?;
-        return Ok(AuthResponse::json(
-            200,
-            &json!({"status":true,"redirect":"/platform/settings"}),
-        )?);
+        return AuthResponse::json(200, &json!({"status":true,"redirect":"/platform/settings"}));
     }
     if let Action::PlatformOwnerRecovery {
         household_id,
@@ -462,19 +467,19 @@ pub(super) async fn complete(
         let transaction = store.transaction().await?;
         crate::models::platform::recovery::promote(
             &transaction,
-            clinical_id(&user.id)?,
+            clinical_id(user.id.typed()?)?,
             *household_id,
             *membership_id,
             reason,
-            &request_meta(session, request),
+            &request_meta(session, request)?,
         )
         .await
         .map_err(platform_error)?;
         transaction.commit().await.map_err(database_error)?;
-        return Ok(AuthResponse::json(
+        return AuthResponse::json(
             200,
             &json!({"status":true,"redirect":"/platform/owner-recovery"}),
-        )?);
+        );
     }
     if let Action::SupportRequest {
         household_id,
@@ -484,43 +489,40 @@ pub(super) async fn complete(
         let transaction = store.transaction().await?;
         crate::models::platform::support::request(
             &transaction,
-            clinical_id(&user.id)?,
+            clinical_id(user.id.typed()?)?,
             *household_id,
             reason,
-            &request_meta(session, request),
+            &request_meta(session, request)?,
         )
         .await
         .map_err(platform_error)?;
         transaction.commit().await.map_err(database_error)?;
-        return Ok(AuthResponse::json(
-            200,
-            &json!({"status":true,"redirect":"/platform/support"}),
-        )?);
+        return AuthResponse::json(200, &json!({"status":true,"redirect":"/platform/support"}));
     }
     if let Action::SupportApprove { support_id } = &pending.action {
         let transaction = store.transaction().await?;
         let result = crate::models::platform::support::approve(
             &transaction,
-            clinical_id(&user.id)?,
+            clinical_id(user.id.typed()?)?,
             *support_id,
-            &request_meta(session, request),
+            &request_meta(session, request)?,
         )
         .await;
         match result {
             Ok(crate::models::platform::support::SupportDecision::Applied) => {
                 transaction.commit().await.map_err(database_error)?;
-                return Ok(AuthResponse::json(
+                return AuthResponse::json(
                     200,
                     &json!({"status":true,"redirect":"/account/support"}),
-                )?);
+                );
             }
             Ok(crate::models::platform::support::SupportDecision::Expired) => {
                 transaction.commit().await.map_err(database_error)?;
                 super::request::persist_support_expiry()?;
-                return Ok(AuthResponse::json(
+                return AuthResponse::json(
                     403,
                     &json!({"code":"FORBIDDEN","message":"The requested change is not permitted."}),
-                )?);
+                );
             }
             Err(error) => return Err(platform_error(error)),
         }
@@ -529,44 +531,47 @@ pub(super) async fn complete(
         let transaction = store.transaction().await?;
         let result = crate::models::platform::support::activate(
             &transaction,
-            clinical_id(&user.id)?,
+            clinical_id(user.id.typed()?)?,
             *support_id,
-            &request_meta(session, request),
+            &request_meta(session, request)?,
         )
         .await;
         match result {
             Ok(crate::models::platform::support::SupportDecision::Applied) => {
                 transaction.commit().await.map_err(database_error)?;
-                return Ok(AuthResponse::json(
+                return AuthResponse::json(
                     200,
                     &json!({"status":true,"redirect":"/platform/support"}),
-                )?);
+                );
             }
             Ok(crate::models::platform::support::SupportDecision::Expired) => {
                 transaction.commit().await.map_err(database_error)?;
                 super::request::persist_support_expiry()?;
-                return Ok(AuthResponse::json(
+                return AuthResponse::json(
                     403,
                     &json!({"code":"FORBIDDEN","message":"The requested change is not permitted."}),
-                )?);
+                );
             }
             Err(error) => return Err(platform_error(error)),
         }
     }
     if pending.action == Action::CloseAccount {
         let transaction = store.transaction().await?;
-        crate::models::platform::guard_closure(&transaction, clinical_id(&user.id)?)
+        crate::models::platform::guard_closure(&transaction, clinical_id(user.id.typed()?)?)
             .await
             .map_err(platform_error)?;
         transaction.commit().await.map_err(database_error)?;
-        store.close_account(&user.id).await?;
+        store.close_account(user.id.typed()?).await?;
         return Ok(
             AuthResponse::json(200, &json!({"status":true,"redirect":"/login"}))?.with_header(
                 "Set-Cookie",
                 better_auth_core::utils::cookie_utils::create_clear_cookie(
-                    &ctx.config.session.cookie_name,
+                    &better_auth_core::utils::cookie_utils::related_cookie_name(
+                        &ctx.config,
+                        "session_token",
+                    ),
                     &ctx.config,
-                ),
+                )?,
             ),
         );
     }
@@ -588,33 +593,37 @@ pub(super) async fn complete(
     if pending.action == Action::AddPasskey {
         ctx.database
             .create_verification(CreateVerification {
-                identifier: format!("passkey-add:{operation_id}"),
+                identifier: format!("passkey-add:{operation_id}").into(),
                 value: serde_json::to_string(&RegistrationGrant {
-                    account_id: user.id.clone(),
-                    session_id: session.id.clone(),
+                    account_id: user.id.typed()?.clone(),
+                    session_id: session.id.typed()?.clone(),
                     recovery: session
                         .additional_fields
                         .get("authentication_method")
-                        .and_then(serde_json::Value::as_str)
+                        .and_then(better_auth_core::FieldValue::as_str)
                         == Some("recovery"),
-                })?,
-                expires_at: chrono::Utc::now() + chrono::Duration::minutes(5),
+                })?
+                .into(),
+                expires_at: (chrono::Utc::now() + chrono::Duration::minutes(5)).into(),
+                ..Default::default()
             })
             .await?;
-        return Ok(AuthResponse::json(
+        return AuthResponse::json(
             200,
             &json!({"status":true,"redirect":format!("/account/security/passkey?operation_id={operation_id}")}),
-        )?);
+        );
     }
     let transaction = store.transaction().await?;
     let (kind, message) = match pending.action {
         Action::UnlinkProvider => {
-            let accounts = ctx.database.get_user_accounts(&user.id).await?;
+            let accounts = ctx.database.get_user_accounts(user.id.typed()?).await?;
             for account in accounts
                 .iter()
-                .filter(|account| account.provider_id == "zitadel")
+                .filter(|account| account.provider_id.as_str() == Some("zitadel"))
             {
-                store.set_provider_enabled(&account.id, false).await?;
+                store
+                    .set_provider_enabled(account.id.typed()?, false)
+                    .await?;
             }
             (
                 "provider",
@@ -622,7 +631,7 @@ pub(super) async fn complete(
             )
         }
         Action::RemovePassword => {
-            transaction.execute_raw(statement("UPDATE public.identity_provider_accounts SET password=NULL,updated_at=clock_timestamp() WHERE id=$1 AND account_id=$2 AND provider_id='credential'", [pending.credential_id.ok_or(AuthError::InvalidCredentials)?.into(), clinical_id(&user.id)?.into()])).await.map_err(database_error)?;
+            transaction.execute_raw(statement("UPDATE public.identity_provider_accounts SET password=NULL,updated_at=clock_timestamp() WHERE id=$1 AND account_id=$2 AND provider_id='credential'", [pending.credential_id.ok_or(AuthError::InvalidCredentials)?.into(), clinical_id(user.id.typed()?)?.into()])).await.map_err(database_error)?;
             ("password", "Your MedTracker password was removed.")
         }
         Action::RemovePasskey { target } => {
@@ -635,11 +644,16 @@ pub(super) async fn complete(
         _ => return Err(AuthError::InvalidCredentials),
     };
     store
-        .audit(&transaction, clinical_id(&user.id)?, kind, "removed")
+        .audit(
+            &transaction,
+            clinical_id(user.id.typed()?)?,
+            kind,
+            "removed",
+        )
         .await?;
     super::mail::notice(store, user, "Sign-in method removed", message).await?;
     transaction.commit().await.map_err(database_error)?;
-    Ok(AuthResponse::json(200, &json!({"status":true}))?)
+    AuthResponse::json(200, &json!({"status":true}))
 }
 
 pub(super) async fn registration_grant(
@@ -655,17 +669,22 @@ pub(super) async fn registration_grant(
         .get_verification_by_identifier(&format!("passkey-add:{operation_id}"))
         .await?
         .ok_or(AuthError::InvalidCredentials)?;
-    if record.expires_at <= chrono::Utc::now() {
+    if record
+        .expires_at
+        .typed()?
+        .to_datetime()?
+        .is_none_or(|date| date <= chrono::Utc::now())
+    {
         return Err(AuthError::InvalidCredentials);
     }
-    let grant: RegistrationGrant = serde_json::from_str(&record.value)?;
-    if grant.account_id != session.user_id
-        || grant.session_id != session.id
+    let grant: RegistrationGrant = serde_json::from_str(record.value.typed()?)?;
+    if grant.account_id != *session.user_id.typed()?
+        || grant.session_id != *session.id.typed()?
         || grant.recovery
             != (session
                 .additional_fields
                 .get("authentication_method")
-                .and_then(serde_json::Value::as_str)
+                .and_then(better_auth_core::FieldValue::as_str)
                 == Some("recovery"))
     {
         return Err(AuthError::InvalidCredentials);

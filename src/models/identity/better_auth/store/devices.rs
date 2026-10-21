@@ -44,22 +44,20 @@ impl From<DeviceRow> for DeviceCode {
             ),
             ("status".into(), row.status.clone().into()),
         ]);
-        Self {
-            field_order: Vec::new(),
-            additional_fields: FieldMap::new(),
-            id: row.id.into(),
-            device_code: row.device_code.into(),
-            user_code: row.user_code.into(),
-            user_id: row.account_id.map(|id| id.to_string()).into(),
-            expires_at: row.expires_at.into(),
-            status: row.status.into(),
-            last_polled_at: row.last_polled_at.map(Into::into).into(),
-            polling_interval: row.polling_interval.map(|value| value as f64).into(),
-            client_id: row.client_id.into(),
-            scope: row.scope.into(),
-            ..Self::default()
-        }
-        .with_storage_bindings(bindings)
+        let mut device = Self::default();
+        device.field_order = Vec::new();
+        device.additional_fields = FieldMap::new();
+        device.id = row.id.into();
+        device.device_code = row.device_code.into();
+        device.user_code = row.user_code.into();
+        device.user_id = row.account_id.map(|id| id.to_string()).into();
+        device.expires_at = row.expires_at.into();
+        device.status = row.status.into();
+        device.last_polled_at = row.last_polled_at.map(Into::into).into();
+        device.polling_interval = row.polling_interval.map(|value| value as f64).into();
+        device.client_id = row.client_id.into();
+        device.scope = row.scope.into();
+        device.with_storage_bindings(bindings)
     }
 }
 
@@ -122,7 +120,7 @@ impl DeviceCodeStore for ClinicalStore {
             expires_at: record.expires_at.typed()?.clone(),
             status: record.status.typed()?.clone(),
             last_polled_at: record.last_polled_at.typed()?.clone(),
-            polling_interval: record.polling_interval.typed()?.clone(),
+            polling_interval: *record.polling_interval.typed()?,
             client_id: record.client_id.typed()?.clone(),
             scope: record.scope,
         })

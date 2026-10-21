@@ -152,6 +152,9 @@ async fn sign_in(
                 .map(|value| (name.as_str().to_owned(), value.to_owned()))
         })
         .collect();
+    request
+        .headers
+        .insert("content-type".into(), "application/json".into());
     request.body =
         serde_json::to_vec(&serde_json::json!({"email":form.email,"password":form.password})).ok();
     let result = crate::models::identity::better_auth::dispatch(
@@ -183,7 +186,7 @@ async fn sign_in(
     if let Ok(ref response) = result
         && response.status < 400
     {
-        let Ok(body) = serde_json::from_slice::<serde_json::Value>(&response.body) else {
+        let Ok(Some(body)) = response.body.json() else {
             return StatusCode::SERVICE_UNAVAILABLE.into_response();
         };
         let issued = if let Some(token) = body.get("token").and_then(serde_json::Value::as_str) {
@@ -202,14 +205,14 @@ async fn sign_in(
                 session
                     .additional_fields
                     .get("legacy_factor_pending")
-                    .and_then(serde_json::Value::as_bool)
+                    .and_then(better_auth_core::FieldValue::as_bool)
                     == Some(true)
             });
         let enrolment = issued.as_ref().is_some_and(|session| {
             session
                 .additional_fields
                 .get("clinical_session_purpose")
-                .and_then(serde_json::Value::as_str)
+                .and_then(better_auth_core::FieldValue::as_str)
                 == Some("enrolment")
         });
         let mut redirect = if requires_totp {

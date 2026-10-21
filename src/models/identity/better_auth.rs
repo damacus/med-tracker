@@ -63,35 +63,42 @@ pub async fn build(
     mut config: AuthConfig,
     store: Arc<ClinicalStore>,
 ) -> AuthResult<IdentityService> {
-    let provider = oidc::Provider::configured(&config.base_url, store.settings())?;
-    let mut origin = Url::parse(&config.base_url)
+    let base_url = config
+        .base_url
+        .as_static()
+        .ok_or_else(|| AuthError::internal("Identity URL unavailable"))?;
+    let provider = oidc::Provider::configured(base_url, store.settings())?;
+    let mut origin = Url::parse(base_url)
         .map_err(|_| AuthError::internal("Invalid configured identity origin"))?;
     origin.set_path("/");
     config.session.cookie_cache = None;
     config.session.bearer = None;
-    config.session.expires_in = chrono::Duration::days(7);
-    config.session.additional_fields.insert(
+    config.session.expires_in = Some(chrono::Duration::days(7));
+    config.session.fields_mut().insert(
         "clinical_session_purpose".into(),
         better_auth_core::config::SessionFieldConfig {
             field_name: None,
-            input: false,
-            returned: true,
+            input: Some(false),
+            returned: Some(true),
+            ..Default::default()
         },
     );
-    config.session.additional_fields.insert(
+    config.session.fields_mut().insert(
         "legacy_factor_pending".into(),
         better_auth_core::config::SessionFieldConfig {
             field_name: None,
-            input: false,
-            returned: true,
+            input: Some(false),
+            returned: Some(true),
+            ..Default::default()
         },
     );
-    config.session.additional_fields.insert(
+    config.session.fields_mut().insert(
         "authentication_method".into(),
         better_auth_core::config::SessionFieldConfig {
             field_name: None,
-            input: false,
-            returned: true,
+            input: Some(false),
+            returned: Some(true),
+            ..Default::default()
         },
     );
     let mut organization = OrganizationConfig {
@@ -102,13 +109,14 @@ pub async fn build(
         invitation_limit: None,
         ..OrganizationConfig::default()
     };
-    organization.roles.insert(
+    organization.roles.get_or_insert_default().insert(
         "administrator".into(),
         RolePermissions {
             organization: vec!["update".into()],
             member: vec!["create".into(), "update".into(), "delete".into()],
             invitation: vec!["create".into(), "cancel".into()],
             api_key: Vec::new(),
+            ..Default::default()
         },
     );
     let verification = || {

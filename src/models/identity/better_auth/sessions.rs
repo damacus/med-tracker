@@ -32,18 +32,18 @@ impl Sessions {
         self.0.lock_security_session(&transaction, &session).await?;
         let target = ctx
             .database
-            .get_user_sessions(&session.user_id)
+            .get_user_sessions(session.user_id.typed()?)
             .await?
             .into_iter()
             .find(|target| target.id == input.session_id)
             .ok_or(AuthError::InvalidCredentials)?;
         self.0
-            .delete_user_session_in(&transaction, &session.user_id, &target.id)
+            .delete_user_session_in(&transaction, session.user_id.typed()?, target.id.typed()?)
             .await?;
         self.0
             .audit(
                 &transaction,
-                clinical_id(&session.user_id)?,
+                clinical_id(session.user_id.typed()?)?,
                 "session",
                 "revoked",
             )
@@ -56,9 +56,12 @@ impl Sessions {
             response = response.with_header(
                 "Set-Cookie",
                 better_auth_core::utils::cookie_utils::create_clear_cookie(
-                    &ctx.config.session.cookie_name,
+                    &better_auth_core::utils::cookie_utils::related_cookie_name(
+                        &ctx.config,
+                        "session_token",
+                    ),
                     &ctx.config,
-                ),
+                )?,
             );
         }
         transaction.commit().await.map_err(database_error)?;

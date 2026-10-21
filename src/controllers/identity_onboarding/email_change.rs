@@ -109,7 +109,7 @@ pub(super) async fn start(
     .await
     {
         Ok(response) if response.status == 200 => {
-            let Ok(body) = serde_json::from_slice::<serde_json::Value>(&response.body) else {
+            let Ok(Some(body)) = response.body.json() else {
                 return super::rendering::unavailable();
             };
             let Some(id) = body["operation_id"].as_str() else {

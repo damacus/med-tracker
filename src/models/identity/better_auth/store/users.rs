@@ -2,7 +2,8 @@ use std::future::Future;
 
 use async_trait::async_trait;
 use better_auth_core::{
-    AuthError, AuthResult, CreateUser, ListUsersParams, UpdateUser, store::UserStore,
+    AuthError, AuthResult, CreateUser, ListUsersParams, UpdateUser,
+    store::{AccountStore, JoinValue, UserAccounts, UserStore},
     wire::UserView,
 };
 use sea_orm::ConnectionTrait;
@@ -54,12 +55,34 @@ impl UserStore<ClinicalAuthSchema> for ClinicalStore {
         Ok(user)
     }
 
+    async fn get_user_with_accounts(&self, email: &str) -> AuthResult<Option<UserAccounts>> {
+        self.validate_user_account_join()?;
+        let Some(user) = self.get_user_by_email(email).await? else {
+            return Ok(None);
+        };
+        let accounts =
+            AccountStore::<ClinicalAuthSchema>::get_user_accounts(self, user.id.typed()?).await?;
+        Ok(Some(UserAccounts::new(user, JoinValue::Many(accounts))))
+    }
+
     async fn get_user_by_username(&self, _username: &str) -> AuthResult<Option<UserView>> {
         Ok(None)
     }
 
     async fn get_user_by_phone_number(&self, _phone_number: &str) -> AuthResult<Option<UserView>> {
         Err(AuthError::forbidden("Phone sign-in is unavailable"))
+    }
+
+    async fn update_user_optional(
+        &self,
+        id: &str,
+        input: UpdateUser,
+    ) -> AuthResult<Option<UserView>> {
+        match self.update_user(id, input).await {
+            Ok(user) => Ok(Some(user)),
+            Err(AuthError::UserNotFound) => Ok(None),
+            Err(error) => Err(error),
+        }
     }
 
     async fn update_user(&self, id: &str, input: UpdateUser) -> AuthResult<UserView> {

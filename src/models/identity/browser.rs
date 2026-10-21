@@ -503,14 +503,20 @@ async fn identity_bridge(
             user,
             session: identity,
         }) => {
-            let Ok(account_id) = user.id.parse() else {
+            let Ok(account_id) = user.id.typed().and_then(|id| {
+                id.parse()
+                    .map_err(|_| better_auth_core::AuthError::InvalidCredentials)
+            }) else {
+                return axum::http::StatusCode::UNAUTHORIZED.into_response();
+            };
+            let Ok(registry_key) = identity.token.typed().cloned() else {
                 return axum::http::StatusCode::UNAUTHORIZED.into_response();
             };
             session.set(
                 "identity",
                 Identity {
                     account_id,
-                    registry_key: identity.token,
+                    registry_key,
                     additional_factor_verified: true,
                     better_auth: true,
                 },
@@ -554,7 +560,6 @@ async fn identity_bridge(
         .context()
         .session_manager()
         .finish_response(&auth, &mut finalized)
-        .await
         .is_err()
     {
         return axum::http::StatusCode::SERVICE_UNAVAILABLE.into_response();

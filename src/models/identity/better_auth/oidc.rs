@@ -92,16 +92,21 @@ impl Provider {
             .get_verification_by_identifier(&format!("provider-link:{id}"))
             .await?
             .ok_or_else(denied)?;
-        if record.expires_at <= Utc::now() {
+        if record
+            .expires_at
+            .typed()?
+            .to_datetime()?
+            .is_none_or(|date| date <= Utc::now())
+        {
             return Err(denied());
         }
-        let grant: LinkGrant = serde_json::from_str(&record.value)?;
-        if grant.account_id != user.id
-            || grant.session_id != session.id
+        let grant: LinkGrant = serde_json::from_str(record.value.typed()?)?;
+        if grant.account_id != *user.id.typed()?
+            || grant.session_id != *session.id.typed()?
             || session
                 .additional_fields
                 .get("authentication_method")
-                .and_then(serde_json::Value::as_str)
+                .and_then(better_auth_core::FieldValue::as_str)
                 == Some("recovery")
         {
             return Err(denied());
@@ -133,10 +138,15 @@ impl Provider {
             .get_verification_by_identifier(&format!("oidc-registration:{id}"))
             .await?
             .ok_or_else(denied)?;
-        if record.expires_at <= Utc::now() {
+        if record
+            .expires_at
+            .typed()?
+            .to_datetime()?
+            .is_none_or(|date| date <= Utc::now())
+        {
             return Err(denied());
         }
-        let pending: Registration = serde_json::from_str(&record.value)?;
+        let pending: Registration = serde_json::from_str(record.value.typed()?)?;
         if !verify_browser(&pending.csrf) {
             return Err(denied());
         }
@@ -156,6 +166,9 @@ impl Provider {
         let mut guarded =
             AuthRequest::new(better_auth_core::HttpMethod::Post, "/onboarding/signup");
         guarded.headers = request.headers.clone();
+        guarded
+            .headers
+            .insert("content-type".into(), "application/json".into());
         guarded.body = Some(serde_json::to_vec(&registration)?);
         if let Some(response) = super::limits::check(service, &guarded).await? {
             return Ok(response);
@@ -174,14 +187,14 @@ impl Provider {
         };
         super::request::trusted(service, request, request_id, async {
             let record = service.store.consume_verification_by_identifier(&format!("oidc-registration:{id}")).await?.ok_or_else(denied)?;
-            let pending: Registration = serde_json::from_str(&record.value)?;
+            let pending: Registration = serde_json::from_str(record.value.typed()?)?;
             let ctx = service.context();
             let identity = serde_json::to_string(&(&pending.claims.issuer, &pending.claims.subject))?;
             if service.store.provider_identity("zitadel", &identity).await?.is_some() { return Err(denied()); }
-            let user = ctx.database.create_user(better_auth_core::CreateUser { name: Some(profile.name), email: Some(pending.claims.email.clone()), metadata: Some(json!({"date_of_birth":profile.date_of_birth,"invitation_token":profile.invitation_token})), ..Default::default() }).await?;
-            let user = ctx.database.update_user(&user.id, UpdateUser { email_verified: Some(true), ..Default::default() }).await?;
+            let user = ctx.database.create_user(better_auth_core::CreateUser { name: Some(profile.name).into(), email: Some(pending.claims.email.clone()), metadata: Some(better_auth_core::FieldValue::from_json(json!({"date_of_birth":profile.date_of_birth,"invitation_token":profile.invitation_token}))?), ..Default::default() }).await?;
+            let user = ctx.database.update_user(user.id.typed()?, UpdateUser { email_verified: Some(true), ..Default::default() }).await?;
             if let Some(password) = password {
-                ctx.database.create_account(CreateAccount { user_id: user.id.clone(), account_id: user.id.clone(), provider_id: "credential".into(), password: Some(password), access_token: None, refresh_token: None, id_token: None, access_token_expires_at: None, refresh_token_expires_at: None, scope: None }).await?;
+                ctx.database.create_account(CreateAccount { user_id: user.id.clone(), account_id: user.id.clone(), provider_id: "credential".into(), password: Some(password).into(), ..Default::default() }).await?;
             }
             self.apply(service, request, &Flow { csrf: pending.csrf, nonce: String::new(), verifier: String::new(), operation_id: None, link_id: None, account_id: None, session_id: None }, pending.claims, true).await
         }).await
@@ -263,7 +276,7 @@ impl Provider {
             if session
                 .additional_fields
                 .get("authentication_method")
-                .and_then(serde_json::Value::as_str)
+                .and_then(better_auth_core::FieldValue::as_str)
                 == Some("recovery")
             {
                 return Err(denied());
@@ -275,7 +288,10 @@ impl Provider {
             if let Some(link_id) = link_id.as_deref() {
                 self.link_available(service, request, link_id).await?;
             }
-            (Some(user.id), Some(session.id))
+            (
+                Some(user.id.typed()?.clone()),
+                Some(session.id.typed()?.clone()),
+            )
         } else {
             (None, None)
         };
@@ -302,7 +318,7 @@ impl Provider {
         service
             .store
             .create_verification(CreateVerification {
-                identifier: identifier(state.secret()),
+                identifier: identifier(state.secret()).into(),
                 value: serde_json::to_string(&Flow {
                     csrf,
                     nonce: nonce.secret().clone(),
@@ -311,8 +327,10 @@ impl Provider {
                     link_id,
                     account_id,
                     session_id,
-                })?,
-                expires_at: Utc::now() + chrono::Duration::minutes(5),
+                })?
+                .into(),
+                expires_at: (Utc::now() + chrono::Duration::minutes(5)).into(),
+                ..Default::default()
             })
             .await?;
         Ok(url.to_string())
@@ -335,13 +353,13 @@ impl Provider {
             .get_verification_by_identifier(&identifier(state))
             .await?
             .ok_or_else(denied)?;
-        let flow: Flow = serde_json::from_str(&record.value)?;
+        let flow: Flow = serde_json::from_str(record.value.typed()?)?;
         if !verify_browser(&flow.csrf) {
             return Err(denied());
         }
         service
             .store
-            .consume_verification(&identifier(state), &record.value)
+            .consume_verification(&identifier(state), record.value.typed()?)
             .await?
             .ok_or_else(denied)?;
         let client = CoreClient::from_provider_metadata(
@@ -427,26 +445,26 @@ impl Provider {
             self.link_available(service, request, link_id).await?;
             let user = ctx
                 .database
-                .get_user_by_id(&user.id)
+                .get_user_by_id(user.id.typed()?)
                 .await?
                 .ok_or_else(denied)?;
             let linked = service
                 .store
                 .provider_identity("zitadel", &identity)
                 .await?;
-            if flow.account_id.as_deref() != Some(&user.id)
-                || flow.session_id.as_deref() != Some(&session.id)
-                || user.email.as_deref() != Some(&claims.email)
-                || !user.email_verified
+            if flow.account_id.as_deref() != user.id.as_str()
+                || flow.session_id.as_deref() != session.id.as_str()
+                || user.email.typed()?.as_deref() != Some(&claims.email)
+                || !*user.email_verified.typed()?
                 || linked
                     .as_ref()
-                    .is_some_and(|account| account.user_id != user.id)
+                    .is_some_and(|account| account.user_id.as_str() != user.id.as_str())
                 || ctx
                     .database
-                    .get_user_accounts(&user.id)
+                    .get_user_accounts(user.id.typed()?)
                     .await?
                     .iter()
-                    .any(|account| account.provider_id == "zitadel")
+                    .any(|account| account.provider_id.as_str() == Some("zitadel"))
             {
                 return Err(denied());
             }
@@ -455,36 +473,35 @@ impl Provider {
                 .await?
                 .ok_or_else(denied)?;
             if let Some(linked) = linked {
-                service.store.set_provider_enabled(&linked.id, true).await?;
+                service
+                    .store
+                    .set_provider_enabled(linked.id.typed()?, true)
+                    .await?;
             } else {
                 ctx.database
                     .create_account(CreateAccount {
                         user_id: user.id.clone(),
-                        account_id: identity,
+                        account_id: identity.into(),
                         provider_id: "zitadel".into(),
-                        password: None,
-                        access_token: None,
-                        refresh_token: None,
-                        id_token: None,
-                        access_token_expires_at: None,
-                        refresh_token_expires_at: None,
-                        scope: None,
+                        ..Default::default()
                     })
                     .await?;
             }
             service
                 .store
-                .audit(&transaction, clinical_id(&user.id)?, "provider", "linked")
+                .audit(
+                    &transaction,
+                    clinical_id(user.id.typed()?)?,
+                    "provider",
+                    "linked",
+                )
                 .await?;
             super::mail::notice(&service.store, &user, "ZITADEL linked", "ZITADEL was linked to your MedTracker account. Your local sign-in methods remain available.").await?;
             transaction.commit().await.map_err(database_error)?;
-            return Ok(AuthResponse::json(
-                200,
-                &json!({"status":true,"redirect":"/account/security"}),
-            )?);
+            return AuthResponse::json(200, &json!({"status":true,"redirect":"/account/security"}));
         }
         if let Some(linked) = linked.as_ref()
-            && !service.store.provider_enabled(&linked.id).await?
+            && !service.store.provider_enabled(linked.id.typed()?).await?
         {
             return Err(denied());
         }
@@ -499,17 +516,17 @@ impl Provider {
                 .store
                 .provider_identity("zitadel", &identity)
                 .await?;
-            if flow.account_id.as_deref() != Some(&user.id)
-                || flow.session_id.as_deref() != Some(&session.id)
+            if flow.account_id.as_deref() != user.id.as_str()
+                || flow.session_id.as_deref() != session.id.as_str()
                 || linked
                     .as_ref()
-                    .is_none_or(|account| account.user_id != user.id)
+                    .is_none_or(|account| account.user_id.as_str() != user.id.as_str())
             {
                 return Err(denied());
             }
             if !service
                 .store
-                .provider_enabled(&linked.as_ref().ok_or_else(denied)?.id)
+                .provider_enabled(linked.as_ref().ok_or_else(denied)?.id.typed()?)
                 .await?
             {
                 return Err(denied());
@@ -529,7 +546,7 @@ impl Provider {
         let user = if let Some(account) = linked.as_ref() {
             Some(
                 ctx.database
-                    .get_user_by_id(&account.user_id)
+                    .get_user_by_id(account.user_id.typed()?)
                     .await?
                     .ok_or_else(denied)?,
             )
@@ -544,35 +561,42 @@ impl Provider {
             service
                 .store
                 .create_verification(CreateVerification {
-                    identifier: format!("oidc-registration:{id}"),
+                    identifier: format!("oidc-registration:{id}").into(),
                     value: serde_json::to_string(&Registration {
                         csrf: flow.csrf.clone(),
                         claims,
-                    })?,
-                    expires_at: Utc::now() + chrono::Duration::minutes(5),
+                    })?
+                    .into(),
+                    expires_at: (Utc::now() + chrono::Duration::minutes(5)).into(),
+                    ..Default::default()
                 })
                 .await?;
-            return Ok(AuthResponse::json(
+            return AuthResponse::json(
                 200,
                 &json!({"status":true,"redirect":format!("/auth/zitadel/register?registration_id={id}")}),
-            )?);
+            );
         };
         let transaction = service.store.transaction().await?;
-        context(&transaction, "med_tracker.current_account_id", &user.id).await?;
+        context(
+            &transaction,
+            "med_tracker.current_account_id",
+            user.id.typed()?,
+        )
+        .await?;
         transaction
             .query_one_raw(statement(
                 "SELECT id FROM public.accounts WHERE id=$1 AND status=2 FOR UPDATE",
-                [clinical_id(&user.id)?.into()],
+                [clinical_id(user.id.typed()?)?.into()],
             ))
             .await
             .map_err(database_error)?
             .ok_or_else(denied)?;
         user = ctx
             .database
-            .get_user_by_id(&user.id)
+            .get_user_by_id(user.id.typed()?)
             .await?
             .ok_or_else(denied)?;
-        if !user.email_verified || user.banned {
+        if !*user.email_verified.typed()? || *user.banned.typed()? {
             return Err(denied());
         }
         let linked = service
@@ -581,17 +605,17 @@ impl Provider {
             .await?;
         if linked
             .as_ref()
-            .is_some_and(|account| account.user_id != user.id)
-            || linked.is_none() && user.email.as_deref() != Some(&claims.email)
+            .is_some_and(|account| account.user_id.as_str() != user.id.as_str())
+            || linked.is_none() && user.email.typed()?.as_deref() != Some(&claims.email)
         {
             return Err(denied());
         }
         if let Some(linked) = linked.as_ref()
-            && !service.store.provider_enabled(&linked.id).await?
+            && !service.store.provider_enabled(linked.id.typed()?).await?
         {
             return Err(denied());
         }
-        if user.email.as_deref() != Some(&claims.email) {
+        if user.email.typed()?.as_deref() != Some(&claims.email) {
             if ctx
                 .database
                 .get_user_by_email(&claims.email)
@@ -600,7 +624,7 @@ impl Provider {
             {
                 return Err(denied());
             }
-            super::request::allow_email_change(&user.id, &claims.email)?;
+            super::request::allow_email_change(user.id.typed()?, &claims.email)?;
             super::mail::notice(
                 &service.store,
                 &user,
@@ -611,7 +635,7 @@ impl Provider {
             user = ctx
                 .database
                 .update_user(
-                    &user.id,
+                    user.id.typed()?,
                     UpdateUser {
                         email: Some(claims.email.clone()),
                         email_verified: Some(true),
@@ -623,7 +647,7 @@ impl Provider {
                 .store
                 .audit(
                     &transaction,
-                    clinical_id(&user.id)?,
+                    clinical_id(user.id.typed()?)?,
                     "email",
                     "provider_updated",
                 )
@@ -633,20 +657,19 @@ impl Provider {
             ctx.database
                 .create_account(CreateAccount {
                     user_id: user.id.clone(),
-                    account_id: identity,
+                    account_id: identity.into(),
                     provider_id: "zitadel".into(),
-                    password: None,
-                    access_token: None,
-                    refresh_token: None,
-                    id_token: None,
-                    access_token_expires_at: None,
-                    refresh_token_expires_at: None,
-                    scope: None,
+                    ..Default::default()
                 })
                 .await?;
             service
                 .store
-                .audit(&transaction, clinical_id(&user.id)?, "provider", "linked")
+                .audit(
+                    &transaction,
+                    clinical_id(user.id.typed()?)?,
+                    "provider",
+                    "linked",
+                )
                 .await?;
             super::mail::notice(&service.store, &user, "ZITADEL linked", "ZITADEL was linked to your MedTracker account. Your local sign-in methods remain available.").await?;
         }
@@ -662,15 +685,15 @@ impl Provider {
             && session
                 .additional_fields
                 .get("clinical_session_purpose")
-                .and_then(serde_json::Value::as_str)
+                .and_then(better_auth_core::FieldValue::as_str)
                 != Some("enrolment")
         {
             return Err(AuthError::forbidden(
                 "Local credential and recovery-code acknowledgement are required",
             ));
         }
-        transaction.execute_raw(statement("UPDATE public.identity_sessions SET additional_fields=additional_fields || jsonb_build_object('authentication_method','zitadel') WHERE id=$1", [session.id.clone().into()])).await.map_err(database_error)?;
+        transaction.execute_raw(statement("UPDATE public.identity_sessions SET additional_fields=additional_fields || jsonb_build_object('authentication_method','zitadel') WHERE id=$1", [session.id.typed()?.clone().into()])).await.map_err(database_error)?;
         transaction.commit().await.map_err(database_error)?;
-        Ok(AuthResponse::json(200, &json!({"status":true,"redirect":if session.additional_fields.get("clinical_session_purpose").and_then(serde_json::Value::as_str)==Some("authenticated") {"/"}else{"/auth/passkey/setup"}}))?.with_header("Set-Cookie", better_auth_core::utils::cookie_utils::create_session_cookie(&session.token, &ctx.config)))
+        Ok(AuthResponse::json(200, &json!({"status":true,"redirect":if session.additional_fields.get("clinical_session_purpose").and_then(better_auth_core::FieldValue::as_str)==Some("authenticated") {"/"}else{"/auth/passkey/setup"}}))?.with_header("Set-Cookie", better_auth_core::utils::cookie_utils::create_session_cookie(session.token.typed()?, &ctx.config)?))
     }
 }

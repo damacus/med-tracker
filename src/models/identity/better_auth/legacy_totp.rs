@@ -13,7 +13,7 @@ pub(super) fn pending(session: &SessionView) -> bool {
     session
         .additional_fields
         .get("legacy_factor_pending")
-        .and_then(serde_json::Value::as_bool)
+        .and_then(better_auth_core::FieldValue::as_bool)
         == Some(true)
 }
 
@@ -64,7 +64,7 @@ pub(super) async fn verify_operation(
     store.lock_security_session(&transaction, &session).await?;
     let response = check_code(
         &transaction,
-        clinical_id(&session.user_id)?,
+        clinical_id(session.user_id.typed()?)?,
         code,
         store.settings(),
     )
@@ -86,8 +86,13 @@ pub(super) async fn verify(
         return Ok(None);
     }
     let transaction = store.transaction().await?;
-    let account_id = clinical_id(&user.id)?;
-    context(&transaction, "med_tracker.current_account_id", &user.id).await?;
+    let account_id = clinical_id(user.id.typed()?)?;
+    context(
+        &transaction,
+        "med_tracker.current_account_id",
+        user.id.typed()?,
+    )
+    .await?;
     transaction
         .query_one_raw(statement(
             "SELECT id FROM public.accounts WHERE id=$1 AND status=2 FOR UPDATE",
@@ -96,27 +101,34 @@ pub(super) async fn verify(
         .await
         .map_err(database_error)?
         .ok_or(AuthError::Unauthenticated)?;
-    transaction.query_one_raw(statement("SELECT id FROM public.identity_sessions WHERE token=$1 AND account_id=$2 AND active AND purpose='enrolment' AND expires_at>clock_timestamp() AND additional_fields->>'legacy_factor_pending'='true'", [token_digest(&session.token).into(), account_id.into()])).await.map_err(database_error)?.ok_or(AuthError::Unauthenticated)?;
+    transaction.query_one_raw(statement("SELECT id FROM public.identity_sessions WHERE token=$1 AND account_id=$2 AND active AND purpose='enrolment' AND expires_at>clock_timestamp() AND additional_fields->>'legacy_factor_pending'='true'", [token_digest(session.token.typed()?).into(), account_id.into()])).await.map_err(database_error)?.ok_or(AuthError::Unauthenticated)?;
     if let Some(mut rejected) = check_code(&transaction, account_id, code, store.settings()).await?
     {
         if rejected.status == 429 {
-            ctx.database.delete_session(&session.token).await?;
+            ctx.database.delete_session(session.token.typed()?).await?;
             super::request::persist_totp_failure(429)?;
             rejected = rejected.with_header(
                 "Set-Cookie",
                 better_auth_core::utils::cookie_utils::create_clear_cookie(
-                    &ctx.config.session.cookie_name,
+                    &better_auth_core::utils::cookie_utils::related_cookie_name(
+                        &ctx.config,
+                        "session_token",
+                    ),
                     &ctx.config,
-                ),
+                )?,
             );
         }
         transaction.commit().await.map_err(database_error)?;
         return Ok(Some(rejected));
     }
-    ctx.database.delete_session(&session.token).await?;
+    ctx.database.delete_session(session.token.typed()?).await?;
     let issued = ctx
         .session_manager()
-        .create_session(&user, session.ip_address, session.user_agent)
+        .create_session(
+            &user,
+            session.ip_address.typed()?.clone(),
+            session.user_agent.typed()?.clone(),
+        )
         .await?;
     store
         .audit(&transaction, account_id, "totp", "verified")
@@ -126,9 +138,9 @@ pub(super) async fn verify(
         AuthResponse::json(200, &serde_json::json!({"status":true}))?.with_header(
             "Set-Cookie",
             better_auth_core::utils::cookie_utils::create_session_cookie(
-                &issued.token,
+                issued.token.typed()?,
                 &ctx.config,
-            ),
+            )?,
         ),
     ))
 }
@@ -145,7 +157,7 @@ async fn check_code(
         .legacy_totp_locked_until
         .is_some_and(|until| until > now)
     {
-        return Ok(Some(locked_response()));
+        return Ok(Some(locked_response()?));
     }
     let expired_lock = factor.legacy_totp_locked_until.is_some();
     if expired_lock {
@@ -185,16 +197,16 @@ async fn check_code(
         if (if expired_lock { 0 } else { factor.num_failures }) + 1 >= 5 {
             transaction.execute_raw(statement("UPDATE public.identity_onboarding SET legacy_totp_locked_until=clock_timestamp()+interval '15 minutes' WHERE account_id=$1", [account_id.into()])).await.map_err(database_error)?;
             super::request::persist_totp_failure(429)?;
-            return Ok(Some(locked_response()));
+            return Ok(Some(locked_response()?));
         }
         super::request::persist_totp_failure(401)?;
-        return Ok(Some(AuthError::InvalidCredentials.to_auth_response()));
+        return Ok(Some(AuthError::InvalidCredentials.to_auth_response()?));
     }
     transaction.execute_raw(statement("UPDATE public.account_otp_keys SET num_failures=0,last_use=timezone('UTC',clock_timestamp()) WHERE id=$1", [account_id.into()])).await.map_err(database_error)?;
     Ok(None)
 }
 
-fn locked_response() -> AuthResponse {
+fn locked_response() -> AuthResult<AuthResponse> {
     AuthError::Upstream {
         status: 429,
         code: "ACCOUNT_TEMPORARILY_LOCKED",

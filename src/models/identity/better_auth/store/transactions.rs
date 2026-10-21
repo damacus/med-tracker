@@ -92,6 +92,19 @@ impl AuthTransaction<ClinicalAuthSchema> for ClinicalTransaction {
         .await
     }
 
+    async fn update_user_optional(
+        &self,
+        id: &str,
+        update: UpdateUser,
+    ) -> AuthResult<Option<UserView>> {
+        self.in_scope(UserStore::<ClinicalAuthSchema>::update_user_optional(
+            &self.store,
+            id,
+            update,
+        ))
+        .await
+    }
+
     async fn update_user(&self, id: &str, update: UpdateUser) -> AuthResult<UserView> {
         self.in_scope(UserStore::<ClinicalAuthSchema>::update_user(
             &self.store,
@@ -116,11 +129,32 @@ impl AuthTransaction<ClinicalAuthSchema> for ClinicalTransaction {
             .await
     }
 
+    async fn create_account_optional(
+        &self,
+        input: CreateAccount,
+    ) -> AuthResult<Option<AccountView>> {
+        self.create_account(input).await.map(Some)
+    }
+
     async fn create_session(&self, input: CreateSession) -> AuthResult<SessionView> {
         let scope = self.active_scope()?;
         self.store
             .create_session_in(&scope.transaction, input)
             .await
+    }
+
+    async fn create_session_optional(
+        &self,
+        input: CreateSession,
+    ) -> AuthResult<Option<SessionView>> {
+        self.create_session(input).await.map(Some)
+    }
+
+    async fn create_verification_optional(
+        &self,
+        verification: CreateVerification,
+    ) -> AuthResult<Option<VerificationView>> {
+        self.create_verification(verification).await.map(Some)
     }
 
     async fn create_verification(

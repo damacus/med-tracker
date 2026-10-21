@@ -10,7 +10,7 @@ use better_auth::plugins::{
 };
 use better_auth_core::{
     AuthContext, AuthError, AuthPlugin, AuthRequest, AuthResponse, AuthResult, AuthRoute,
-    CreateVerification, HttpMethod,
+    CreateVerification, FieldValue, HttpMethod,
     store::VerificationStore,
     wire::{SessionView, UserView},
 };
@@ -59,8 +59,10 @@ fn hash(token: &str) -> String {
 }
 #[async_trait]
 impl SendVerificationEmail for Sender {
-    async fn send(&self, user: &UserView, url: &str, token: &str) -> AuthResult<()> {
-        if user.id != self.account_id || user.email.as_deref() != Some(&self.new_email) {
+    async fn send(&self, user: &FieldValue, url: &str, token: &str) -> AuthResult<()> {
+        let user_id: String = user.model_property("id")?.decode()?;
+        let email: String = user.model_property("email")?.decode()?;
+        if user_id != self.account_id || email != self.new_email {
             return Err(AuthError::InvalidCredentials);
         }
         let mut link = url::Url::parse(url)
@@ -72,18 +74,20 @@ impl SendVerificationEmail for Sender {
             .append_pair("token", token);
         self.store
             .create_verification(CreateVerification {
-                identifier: format!("email-change:{}", self.operation_id),
+                identifier: format!("email-change:{}", self.operation_id).into(),
                 value: serde_json::to_string(&Binding {
                     account_id: self.account_id.clone(),
                     session_id: self.session_id.clone(),
                     old_email: self.old_email.clone(),
                     new_email: self.new_email.clone(),
                     token_hash: hash(token),
-                })?,
-                expires_at: chrono::Utc::now() + chrono::Duration::minutes(30),
+                })?
+                .into(),
+                expires_at: (chrono::Utc::now() + chrono::Duration::minutes(30)).into(),
+                ..Default::default()
             })
             .await?;
-        super::mail::notice(&self.store, user, "Verify your new email address", &format!("Verify your new email address: {link}\nUse this link in the browser where you requested the change within 30 minutes.")).await
+        super::mail::notice_address(&self.store, &email, "Verify your new email address", &format!("Verify your new email address: {link}\nUse this link in the browser where you requested the change within 30 minutes.")).await
     }
 }
 pub(super) async fn send(
@@ -98,6 +102,9 @@ pub(super) async fn send(
     let capture = Arc::new(Capture(Mutex::new(None)));
     let mut change = AuthRequest::new(HttpMethod::Post, "/change-email");
     change.headers = request.headers.clone();
+    change
+        .headers
+        .insert("content-type".into(), "application/json".into());
     change.body = Some(serde_json::to_vec(&json!({"newEmail":new_email}))?);
     let response = UserManagementPlugin::new()
         .change_email_enabled(true)
@@ -116,15 +123,19 @@ pub(super) async fn send(
         .ok_or_else(|| AuthError::internal("Email confirmation unavailable"))?;
     let sender = Arc::new(Sender {
         store: store.clone(),
-        account_id: user.id.clone(),
-        session_id: session.id.clone(),
-        old_email: user.email.clone().ok_or(AuthError::InvalidCredentials)?,
+        account_id: user.id.typed()?.clone(),
+        session_id: session.id.typed()?.clone(),
+        old_email: user
+            .email
+            .typed()?
+            .clone()
+            .ok_or(AuthError::InvalidCredentials)?,
         new_email: new_email.to_lowercase(),
         operation_id: operation_id.into(),
     });
     let mut verify = AuthRequest::new(HttpMethod::Get, "/verify-email");
     verify.headers = request.headers.clone();
-    verify.query.insert("token".into(), token);
+    verify.query = Some(json!({"token":token}));
     let result = EmailVerificationPlugin::new()
         .custom_send_verification_email(sender)
         .on_request(&verify, ctx)
@@ -133,10 +144,10 @@ pub(super) async fn send(
     if result.status >= 400 {
         return Err(AuthError::InvalidCredentials);
     }
-    Ok(AuthResponse::json(
+    AuthResponse::json(
         200,
         &json!({"status":true,"redirect":"/account/security/email/pending"}),
-    )?)
+    )
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -165,7 +176,7 @@ impl EmailChange {
         self.0.lock_security_session(&transaction, &session).await?;
         let user = ctx
             .database
-            .get_user_by_id(&user.id)
+            .get_user_by_id(user.id.typed()?)
             .await?
             .ok_or(AuthError::Unauthenticated)?;
         let identifier = format!("email-change:{}", input.operation_id);
@@ -174,13 +185,19 @@ impl EmailChange {
             .get_verification_by_identifier(&identifier)
             .await?
             .ok_or(AuthError::InvalidCredentials)?;
-        if record.expires_at <= chrono::Utc::now() {
+        if record
+            .expires_at
+            .typed()?
+            .to_datetime()?
+            .ok_or(AuthError::InvalidCredentials)?
+            <= chrono::Utc::now()
+        {
             return Err(AuthError::InvalidCredentials);
         }
-        let binding: Binding = serde_json::from_str(&record.value)?;
-        if binding.account_id != user.id
-            || binding.session_id != session.id
-            || user.email.as_deref() != Some(&binding.old_email)
+        let binding: Binding = serde_json::from_str(record.value.typed()?)?;
+        if binding.account_id != *user.id.typed()?
+            || binding.session_id != *session.id.typed()?
+            || user.email.typed()?.as_deref() != Some(&binding.old_email)
             || hash(&input.token) != binding.token_hash
         {
             return Err(AuthError::InvalidCredentials);
@@ -193,10 +210,10 @@ impl EmailChange {
         {
             return Err(AuthError::bad_request("Email change unavailable"));
         }
-        super::request::allow_email_change(&user.id, &binding.new_email)?;
+        super::request::allow_email_change(user.id.typed()?, &binding.new_email)?;
         let mut verify = AuthRequest::new(HttpMethod::Get, "/verify-email");
         verify.headers = request.headers.clone();
-        verify.query.insert("token".into(), input.token);
+        verify.query = Some(json!({"token":input.token}));
         let response = EmailVerificationPlugin::new()
             .on_request(&verify, ctx)
             .await?
@@ -209,11 +226,16 @@ impl EmailChange {
             .await?
             .ok_or(AuthError::InvalidCredentials)?;
         self.0
-            .audit(&transaction, clinical_id(&user.id)?, "email", "changed")
+            .audit(
+                &transaction,
+                clinical_id(user.id.typed()?)?,
+                "email",
+                "changed",
+            )
             .await?;
         super::mail::notice(&self.0, &user, "Email address changed", "Your MedTracker email address was changed. If this was not you, secure your account immediately.").await?;
         transaction.commit().await.map_err(database_error)?;
-        Ok(AuthResponse::json(200, &json!({"status":true}))?)
+        AuthResponse::json(200, &json!({"status":true}))
     }
 }
 #[async_trait]

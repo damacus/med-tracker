@@ -6,6 +6,7 @@ use better_auth_core::{
     store::{UserStore, VerificationStore},
 };
 use serde::Deserialize;
+use serde_json::json;
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
 
@@ -32,10 +33,13 @@ pub async fn confirmation_email(
         .ok_or(AuthError::InvalidCredentials)?;
     let user = service
         .store
-        .get_user_by_id(&verification.value)
+        .get_user_by_id(verification.value.typed()?)
         .await?
         .ok_or(AuthError::InvalidCredentials)?;
-    user.email.ok_or(AuthError::InvalidCredentials)
+    user.email
+        .typed()?
+        .clone()
+        .ok_or(AuthError::InvalidCredentials)
 }
 
 pub(super) struct Confirmation(pub Arc<ClinicalStore>);
@@ -75,10 +79,7 @@ impl AuthPlugin<ClinicalAuthSchema> for Confirmation {
             .ok_or(AuthError::InvalidCredentials)?;
         let mut verification = AuthRequest::new(HttpMethod::Get, "/verify-email");
         verification.headers = request.headers.clone();
-        verification.query.insert("token".into(), input.token);
-        verification
-            .query
-            .insert("callbackURL".into(), "/auth/passkey/setup".into());
+        verification.query = Some(json!({"token":input.token,"callbackURL":"/auth/passkey/setup"}));
         EmailVerificationPlugin::new()
             .auto_sign_in_after_verification(true)
             .require_verification_for_signin(true)

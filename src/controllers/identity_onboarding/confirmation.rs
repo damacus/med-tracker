@@ -95,7 +95,7 @@ pub(super) async fn confirm(
             super::rendering::redirect("/login")
         }
         Err(error) => {
-            tracing::warn!(status = error.status_code(), error = %error, "Account confirmation failed");
+            tracing::warn!(status = ?error.status_code(), error = %error, "Account confirmation failed");
             super::rendering::redirect("/login")
         }
     }

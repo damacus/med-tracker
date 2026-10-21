@@ -86,8 +86,8 @@ impl Onboarding {
             _ => return Err(AuthError::validation("Choose password or passkey")),
         };
         let user = self.0.create_user(better_auth_core::CreateUser {
-            name: Some(input.name), email: Some(input.email),
-            metadata: Some(json!({"date_of_birth": input.date_of_birth, "invitation_token": input.invitation_token})),
+            name: Some(input.name).into(), email: Some(input.email),
+            metadata: Some(better_auth_core::FieldValue::from_json(json!({"date_of_birth": input.date_of_birth, "invitation_token": input.invitation_token}))?),
             ..Default::default()
         }).await?;
         if let Some(password) = password {
@@ -96,17 +96,14 @@ impl Onboarding {
                     user_id: user.id.clone(),
                     account_id: user.id.clone(),
                     provider_id: "credential".into(),
-                    password: Some(password),
-                    access_token: None,
-                    refresh_token: None,
-                    id_token: None,
-                    access_token_expires_at: None,
-                    refresh_token_expires_at: None,
-                    scope: None,
+                    password: Some(password).into(),
+                    ..Default::default()
                 })
                 .await?;
         }
         let mut send = AuthRequest::new(HttpMethod::Post, "/send-verification-email");
+        send.headers
+            .insert("content-type".into(), "application/json".into());
         send.body = Some(serde_json::to_vec(
             &json!({"email":user.email, "callbackURL":"/auth/passkey/setup"}),
         )?);
@@ -115,7 +112,7 @@ impl Onboarding {
             .on_request(&send, ctx)
             .await?
             .ok_or_else(|| AuthError::internal("Verification email unavailable"))?;
-        Ok(AuthResponse::json(200, &json!({"status":true}))?)
+        AuthResponse::json(200, &json!({"status":true}))
     }
 
     async fn codes(
@@ -130,14 +127,19 @@ impl Onboarding {
         if session
             .additional_fields
             .get("clinical_session_purpose")
-            .and_then(serde_json::Value::as_str)
+            .and_then(better_auth_core::FieldValue::as_str)
             != Some("enrolment")
         {
             return Err(AuthError::Unauthenticated);
         }
         let transaction = self.0.transaction().await?;
-        let account_id = clinical_id(&user.id)?;
-        context(&transaction, "med_tracker.current_account_id", &user.id).await?;
+        let account_id = clinical_id(user.id.typed()?)?;
+        context(
+            &transaction,
+            "med_tracker.current_account_id",
+            user.id.typed()?,
+        )
+        .await?;
         transaction
             .query_one_raw(statement(
                 "SELECT id FROM public.accounts WHERE id=$1 AND status=2 FOR UPDATE",
@@ -146,13 +148,13 @@ impl Onboarding {
             .await
             .map_err(database_error)?
             .ok_or(AuthError::Unauthenticated)?;
-        let row = transaction.query_one_raw(statement("SELECT a.id FROM public.accounts a JOIN public.identity_onboarding o ON o.account_id=a.id WHERE a.id=$1 AND o.recovery_saved_at IS NULL AND EXISTS(SELECT 1 FROM public.identity_sessions WHERE token=$2 AND account_id=a.id AND purpose='enrolment') AND (EXISTS(SELECT 1 FROM public.identity_passkeys WHERE account_id=a.id) OR EXISTS(SELECT 1 FROM public.identity_provider_accounts WHERE account_id=a.id AND provider_id='credential' AND password IS NOT NULL))", [account_id.into(), token_digest(&session.token).into()])).await.map_err(database_error)?;
+        let row = transaction.query_one_raw(statement("SELECT a.id FROM public.accounts a JOIN public.identity_onboarding o ON o.account_id=a.id WHERE a.id=$1 AND o.recovery_saved_at IS NULL AND EXISTS(SELECT 1 FROM public.identity_sessions WHERE token=$2 AND account_id=a.id AND purpose='enrolment') AND (EXISTS(SELECT 1 FROM public.identity_passkeys WHERE account_id=a.id) OR EXISTS(SELECT 1 FROM public.identity_provider_accounts WHERE account_id=a.id AND provider_id='credential' AND password IS NOT NULL))", [account_id.into(), token_digest(session.token.typed()?).into()])).await.map_err(database_error)?;
         if row.is_none() {
             return Err(AuthError::forbidden("Recovery codes are unavailable"));
         }
-        let result = issue_codes(&self.0, ctx, &user.id, true).await?;
+        let result = issue_codes(&self.0, ctx, user.id.typed()?, true).await?;
         transaction.commit().await.map_err(database_error)?;
-        Ok(AuthResponse::json(200, &result)?)
+        AuthResponse::json(200, &result)
     }
 
     async fn complete(
@@ -170,7 +172,7 @@ impl Onboarding {
             || session
                 .additional_fields
                 .get("clinical_session_purpose")
-                .and_then(serde_json::Value::as_str)
+                .and_then(better_auth_core::FieldValue::as_str)
                 != Some("enrolment")
         {
             return Err(AuthError::forbidden(
@@ -178,11 +180,16 @@ impl Onboarding {
             ));
         }
         let transaction = self.0.transaction().await?;
-        context(&transaction, "med_tracker.current_account_id", &user.id).await?;
+        context(
+            &transaction,
+            "med_tracker.current_account_id",
+            user.id.typed()?,
+        )
+        .await?;
         transaction
             .query_one_raw(statement(
                 "SELECT id FROM public.accounts WHERE id=$1 FOR UPDATE",
-                [clinical_id(&user.id)?.into()],
+                [clinical_id(user.id.typed()?)?.into()],
             ))
             .await
             .map_err(database_error)?
@@ -193,13 +200,13 @@ impl Onboarding {
             .ok_or_else(|| {
                 AuthError::forbidden("Save the current recovery codes before continuing")
             })?;
-        let changed = transaction.execute_raw(statement("UPDATE public.identity_onboarding SET recovery_saved_at=CURRENT_TIMESTAMP WHERE account_id=$1 AND recovery_saved_at IS NULL AND (SELECT count(*) FROM public.identity_api_keys WHERE account_id=$1 AND payload->>'configId'=$2 AND (payload->>'metadata')::jsonb->>'generation'=$3)=10", [clinical_id(&user.id)?.into(), RECOVERY_CONFIG.into(), generation.into()])).await.map_err(database_error)?.rows_affected();
+        let changed = transaction.execute_raw(statement("UPDATE public.identity_onboarding SET recovery_saved_at=CURRENT_TIMESTAMP WHERE account_id=$1 AND recovery_saved_at IS NULL AND (SELECT count(*) FROM public.identity_api_keys WHERE account_id=$1 AND payload->>'configId'=$2 AND (payload->>'metadata')::jsonb->>'generation'=$3)=10", [clinical_id(user.id.typed()?)?.into(), RECOVERY_CONFIG.into(), generation.into()])).await.map_err(database_error)?.rows_affected();
         if changed != 1 {
             return Err(AuthError::forbidden("Onboarding is unavailable"));
         }
-        transaction.execute_raw(statement("UPDATE public.identity_sessions SET purpose='authenticated' WHERE token=$1 AND account_id=$2 AND purpose='enrolment'", [token_digest(&session.token).into(), clinical_id(&user.id)?.into()])).await.map_err(database_error)?;
+        transaction.execute_raw(statement("UPDATE public.identity_sessions SET purpose='authenticated' WHERE token=$1 AND account_id=$2 AND purpose='enrolment'", [token_digest(session.token.typed()?).into(), clinical_id(user.id.typed()?)?.into()])).await.map_err(database_error)?;
         transaction.commit().await.map_err(database_error)?;
-        Ok(AuthResponse::json(200, &json!({"status":true}))?)
+        AuthResponse::json(200, &json!({"status":true}))
     }
 }
 

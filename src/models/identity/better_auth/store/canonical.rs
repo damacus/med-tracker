@@ -61,7 +61,6 @@ struct OrganizationRow {
     name: String,
     slug: String,
     created_at: DateTime<Utc>,
-    updated_at: DateTime<Utc>,
 }
 
 impl From<OrganizationRow> for Organization {

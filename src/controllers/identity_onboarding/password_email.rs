@@ -71,7 +71,7 @@ pub(super) async fn show(
     if session
         .additional_fields
         .get("authentication_method")
-        .and_then(serde_json::Value::as_str)
+        .and_then(better_auth_core::FieldValue::as_str)
         != Some("recovery")
     {
         return StatusCode::FORBIDDEN.into_response();
@@ -85,12 +85,15 @@ pub(super) async fn show(
     else {
         return StatusCode::UNAUTHORIZED.into_response();
     };
+    let Ok(email) = user.email.typed() else {
+        return super::rendering::unavailable();
+    };
     render(
         &view,
         csrf,
         &link.operation_id,
         Some(&link.token),
-        user.email.as_deref(),
+        email.as_deref(),
         label,
     )
 }
@@ -123,8 +126,7 @@ pub(super) async fn confirm(
     .await
     {
         Ok(response) if response.status == 200 => {
-            let body =
-                serde_json::from_slice::<serde_json::Value>(&response.body).unwrap_or_default();
+            let body = response.body.json().ok().flatten().unwrap_or_default();
             let mut redirect = super::rendering::redirect(
                 body["redirect"].as_str().unwrap_or("/account/security"),
             );

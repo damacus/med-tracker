@@ -92,6 +92,14 @@ fn patch_date(value: &SchemaValue<Option<FieldDate>>) -> AuthResult<Option<Optio
     }
 }
 
+fn stored_optional_date(value: &SchemaValue<Option<FieldDate>>) -> AuthResult<Option<&FieldDate>> {
+    if value.is_undefined() {
+        Ok(None)
+    } else {
+        Ok(value.typed()?.as_ref())
+    }
+}
+
 fn apply(key: ApiKey, update: UpdateApiKey) -> AuthResult<ApiKey> {
     let mut fields = key.field_values()?;
     for (name, value) in update.into_adapter_fields()? {
@@ -193,12 +201,12 @@ impl ApiKeyStore for ClinicalStore {
             key_hash: record.key_hash.typed()?.clone(),
             start: record.start.typed()?.clone(),
             expires_at: record.expires_at.typed()?.clone(),
-            remaining: record.remaining.typed()?.clone(),
+            remaining: *record.remaining.typed()?,
             rate_limit_enabled: *record.rate_limit_enabled.typed()?,
-            rate_limit_time_window: record.rate_limit_time_window.typed()?.clone(),
-            rate_limit_max: record.rate_limit_max.typed()?.clone(),
-            refill_interval: record.refill_interval.typed()?.clone(),
-            refill_amount: record.refill_amount.typed()?.clone(),
+            rate_limit_time_window: *record.rate_limit_time_window.typed()?,
+            rate_limit_max: *record.rate_limit_max.typed()?,
+            refill_interval: *record.refill_interval.typed()?,
+            refill_amount: *record.refill_amount.typed()?,
             permissions: record.permissions,
             metadata: metadata_text(record.metadata.field_value())?,
             enabled: record.enabled,
@@ -337,10 +345,7 @@ impl ApiKeyStore for ClinicalStore {
             created_at: now.into(),
             updated_at: now.into(),
             permissions: input.permissions,
-            metadata: match input.metadata {
-                Some(metadata) => SchemaValue::from_field(FieldValue::parse_json(&metadata)?),
-                None => SchemaValue::Typed(None),
-            },
+            metadata: input.metadata.into(),
         };
         let transaction = if recovery {
             self.transaction().await?
@@ -551,17 +556,18 @@ impl ApiKeyStore for ClinicalStore {
                 remaining,
                 at,
             } => {
-                let expected = if previous.is_null() || previous.is_undefined() {
-                    None
+                let matches = if previous.is_undefined() {
+                    key.last_refill_at.is_undefined()
+                } else if previous.is_null() {
+                    key.last_refill_at.field_value().is_null()
                 } else {
-                    Some(
-                        previous
-                            .as_date()
-                            .ok_or_else(|| AuthError::bad_request("Invalid refill timestamp"))?
-                            .clone(),
-                    )
+                    let expected = previous
+                        .as_date()
+                        .ok_or_else(|| AuthError::bad_request("Invalid refill timestamp"))?;
+                    stored_optional_date(&key.last_refill_at)?
+                        .is_some_and(|last| last.milliseconds() == expected.milliseconds())
                 };
-                if key.last_refill_at.typed()?.as_ref() != expected.as_ref() {
+                if !matches {
                     false
                 } else {
                     update.remaining = Some(remaining);
@@ -585,7 +591,7 @@ impl ApiKeyStore for ClinicalStore {
                 previous_before,
                 at,
             } => {
-                let last = key.last_request.typed()?;
+                let last = stored_optional_date(&key.last_request)?;
                 let matches = match (last, previous_before) {
                     (None, None) => true,
                     (Some(last), Some(cutoff)) => last.milliseconds() < cutoff.milliseconds(),
@@ -605,10 +611,7 @@ impl ApiKeyStore for ClinicalStore {
                 let maximum = maximum
                     .as_f64()
                     .ok_or_else(|| AuthError::bad_request("Invalid rate limit"))?;
-                let matches = key
-                    .last_request
-                    .typed()?
-                    .as_ref()
+                let matches = stored_optional_date(&key.last_request)?
                     .is_some_and(|last| last.milliseconds() >= previous_after.milliseconds())
                     && key.request_count.typed()?.unwrap_or(0.0) < maximum;
                 if matches {

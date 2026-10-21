@@ -13,7 +13,7 @@ use better_auth::plugins::{
 };
 use better_auth_core::{
     AuthContext, AuthError, AuthPlugin, AuthRequest, AuthResponse, AuthResult, AuthRoute,
-    HttpMethod, UpdateApiKey, wire::UserView,
+    HttpMethod, UpdateApiKey, store::JoinValue, wire::UserView,
 };
 use sea_orm::ConnectionTrait;
 use serde::{Deserialize, Serialize};
@@ -90,12 +90,12 @@ pub(super) async fn validate(
         )
         .await?;
         transaction.query_one_raw(statement("SELECT id FROM public.households WHERE id=$1 AND status='active' AND lifecycle_state='active' FOR SHARE", [household.into()])).await.map_err(database_error)?.ok_or(AuthError::InvalidCredentials)?;
-        transaction.query_one_raw(statement("SELECT id FROM public.household_memberships WHERE person_id=(SELECT person_id FROM public.accounts WHERE id=$1) AND household_id=$2 AND status='active' AND revoked_at IS NULL FOR SHARE", [clinical_id(&user.id)?.into(), household.into()])).await.map_err(database_error)?.ok_or(AuthError::InvalidCredentials)?;
+        transaction.query_one_raw(statement("SELECT id FROM public.household_memberships WHERE person_id=(SELECT person_id FROM public.accounts WHERE id=$1) AND household_id=$2 AND status='active' AND revoked_at IS NULL FOR SHARE", [clinical_id(user.id.typed()?)?.into(), household.into()])).await.map_err(database_error)?.ok_or(AuthError::InvalidCredentials)?;
         let (membership, _) = access::verify_membership(
             &transaction,
             &HouseholdScope {
                 actor: Actor {
-                    account_id: clinical_id(&user.id)?,
+                    account_id: clinical_id(user.id.typed()?)?,
                 },
                 household_id: household,
                 request_id: super::request::request_id().unwrap_or_default(),
@@ -129,7 +129,7 @@ pub(super) async fn create(
             ctx,
             &CreateKeyRequest {
                 config_id: Some(CONFIG.into()),
-                user_id: Some(user.id.clone()),
+                user_id: Some(user.id.typed()?.clone()),
                 name: Some(input.name.trim().into()),
                 expires_in: Some(f64::from(input.expires_days) * 86_400.0),
                 permissions: Some(HashMap::from([(
@@ -142,10 +142,10 @@ pub(super) async fn create(
         )
         .await?;
     super::mail::notice(store, user, "API key created", "A personal API key was created for your MedTracker account. Review its access in account security.").await?;
-    Ok(AuthResponse::json(
+    AuthResponse::json(
         200,
         &json!({"status":true,"apiKey":issued.key,"name":input.name,"expiresAt":issued.api_key.expires_at}),
-    )?)
+    )
 }
 
 pub async fn listing(
@@ -157,8 +157,11 @@ pub async fn listing(
         let (user, session) = service.context().require_authoritative_session(request).await?;
         let transaction = service.store.transaction().await?;
         service.store.lock_security_session(&transaction, &session).await?;
-        let keys = service.context().database.list_api_keys_by_reference(&user.id).await?.into_iter().filter(|key| key.config_id == CONFIG && key.enabled).map(|key| json!({"id":key.id,"name":key.name,"expires":key.expires_at,"last_used":key.last_request,"permissions":key.permissions})).collect::<Vec<_>>();
-        let households = service.context().database.list_user_organizations(&user.id).await?;
+        let keys = service.context().database.list_api_keys_by_reference(user.id.typed()?).await?.into_iter().filter(|key| key.config_id == CONFIG && key.enabled == true).map(|key| json!({"id":key.id,"name":key.name,"expires":key.expires_at,"last_used":key.last_request,"permissions":key.permissions})).collect::<Vec<_>>();
+        let households = service.context().database.list_user_organizations(user.id.typed()?).await?.into_iter().map(|relation| match relation {
+            JoinValue::One(Some(fields)) => fields.json().map(Value::Object),
+            _ => Err(AuthError::internal("Organization relationship unavailable")),
+        }).collect::<AuthResult<Vec<_>>>()?;
         transaction.commit().await.map_err(database_error)?;
         Ok(json!({"keys":keys,"households":households}))
     }).await
@@ -208,7 +211,7 @@ impl AuthPlugin<ClinicalAuthSchema> for PersonalKeys {
             .update_api_key(
                 &key.id,
                 UpdateApiKey {
-                    enabled: Some(false),
+                    enabled: Some(false.into()),
                     ..Default::default()
                 },
             )
@@ -266,20 +269,19 @@ pub(crate) async fn authenticate(
             }
             _ => AuthenticationError::Unauthenticated,
         })?;
-    let account_id =
-        clinical_id(&key.reference_id).map_err(|_| AuthenticationError::Unauthenticated)?;
+    let reference_id = key
+        .reference_id
+        .typed()
+        .map_err(|_| AuthenticationError::Unauthenticated)?;
+    let account_id = clinical_id(reference_id).map_err(|_| AuthenticationError::Unauthenticated)?;
     let transaction = service
         .store
         .transaction()
         .await
         .map_err(|_| AuthenticationError::Unavailable)?;
-    context(
-        &transaction,
-        "med_tracker.current_account_id",
-        &key.reference_id,
-    )
-    .await
-    .map_err(|_| AuthenticationError::Unavailable)?;
+    context(&transaction, "med_tracker.current_account_id", reference_id)
+        .await
+        .map_err(|_| AuthenticationError::Unavailable)?;
     let row = transaction
         .query_one_raw(statement(
             "SELECT preferences FROM public.accounts WHERE id=$1 AND status=2",
@@ -297,7 +299,11 @@ pub(crate) async fn authenticate(
         .await
         .map_err(|_| AuthenticationError::Unavailable)?;
     Ok(Principal {
-        id: key.id,
+        id: key
+            .id
+            .typed()
+            .map_err(|_| AuthenticationError::Unauthenticated)?
+            .clone(),
         account_id,
         permission: permission.into(),
         time_zone,
@@ -324,11 +330,10 @@ impl Principal {
         let payload: Value = row
             .try_get("", "payload")
             .map_err(|_| AuthenticationError::Unavailable)?;
-        let key: better_auth_core::ApiKey =
-            serde_json::from_value(payload).map_err(|_| AuthenticationError::Unavailable)?;
         let metadata: Value = serde_json::from_str(
-            key.metadata
-                .as_deref()
+            payload
+                .get("metadata")
+                .and_then(Value::as_str)
                 .ok_or(AuthenticationError::Forbidden)?,
         )
         .map_err(|_| AuthenticationError::Forbidden)?;
@@ -340,8 +345,9 @@ impl Principal {
             return Err(AuthenticationError::Forbidden);
         }
         let permissions: Value = serde_json::from_str(
-            key.permissions
-                .as_deref()
+            payload
+                .get("permissions")
+                .and_then(Value::as_str)
                 .ok_or(AuthenticationError::Forbidden)?,
         )
         .map_err(|_| AuthenticationError::Forbidden)?;

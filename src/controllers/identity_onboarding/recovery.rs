@@ -57,6 +57,9 @@ pub(super) async fn login(
     let mut request = super::passkeys::request(&headers);
     request.method = better_auth_core::HttpMethod::Post;
     request.path = "/recovery/login".into();
+    request
+        .headers
+        .insert("content-type".into(), "application/json".into());
     request.body = serde_json::to_vec(&serde_json::json!({"code":form.code.trim()})).ok();
     match dispatch(
         &service,

@@ -16,7 +16,8 @@ async fn better_auth_challenge_is_consumed_by_exactly_one_concurrent_request() {
         .create_verification(CreateVerification {
             identifier: "synthetic-passkey-challenge".into(),
             value: "synthetic-library-ceremony-state".into(),
-            expires_at: Utc::now() + Duration::minutes(5),
+            expires_at: (Utc::now() + Duration::minutes(5)).into(),
+            ..Default::default()
         })
         .await
         .unwrap();
@@ -46,7 +47,8 @@ async fn better_auth_expired_challenge_is_deleted_without_authentication() {
         .create_verification(CreateVerification {
             identifier: "synthetic-expired-challenge".into(),
             value: "synthetic-expired-state".into(),
-            expires_at: Utc::now() - Duration::seconds(1),
+            expires_at: (Utc::now() - Duration::seconds(1)).into(),
+            ..Default::default()
         })
         .await
         .unwrap();
@@ -95,19 +97,21 @@ async fn better_auth_factor_backup_compare_exchange_rejects_replay_and_account_c
             secret: "synthetic-encrypted-secret".into(),
             backup_codes: "synthetic-encrypted-codes".into(),
             verified: true,
+            additional_fields: Default::default(),
         })
         .await
         .unwrap();
+    let old_codes = better_auth_core::FieldValue::from("synthetic-encrypted-codes");
     let (first, second) = tokio::join!(
         store.compare_exchange_two_factor_backup_codes(
             &factor.id,
-            "synthetic-encrypted-codes",
-            "synthetic-consumed-codes"
+            &old_codes,
+            "synthetic-consumed-codes".into()
         ),
         store.compare_exchange_two_factor_backup_codes(
             &factor.id,
-            "synthetic-encrypted-codes",
-            "synthetic-consumed-codes"
+            &old_codes,
+            "synthetic-consumed-codes".into()
         ),
     );
     assert_eq!(
@@ -123,8 +127,8 @@ async fn better_auth_factor_backup_compare_exchange_rejects_replay_and_account_c
         store
             .compare_exchange_two_factor_backup_codes(
                 &factor.id,
-                "synthetic-consumed-codes",
-                "synthetic-invalid-replacement"
+                &"synthetic-consumed-codes".into(),
+                "synthetic-invalid-replacement".into()
             )
             .await
             .is_err()
@@ -144,15 +148,15 @@ async fn better_auth_enrolment_session_cannot_promote_itself_through_additional_
         .unwrap();
     assert_eq!(
         session.additional_fields["clinical_session_purpose"],
-        "enrolment"
+        "enrolment".into()
     );
     assert!(
         store
             .update_session_fields(
                 "synthetic-enrolment-token",
-                serde_json::Map::from_iter([(
+                better_auth_core::FieldMap::from_iter([(
                     "clinical_session_purpose".into(),
-                    serde_json::Value::String("authenticated".into())
+                    "authenticated".into()
                 )])
             )
             .await
@@ -172,7 +176,10 @@ async fn better_auth_enrolment_session_cannot_promote_itself_through_additional_
             store
                 .update_session_fields(
                     "synthetic-enrolment-token",
-                    serde_json::Map::from_iter([(field.into(), value)])
+                    better_auth_core::FieldMap::from_iter([(
+                        field.into(),
+                        better_auth_core::FieldValue::from_json(value).unwrap()
+                    )])
                 )
                 .await
                 .is_err(),
@@ -186,7 +193,7 @@ async fn better_auth_enrolment_session_cannot_promote_itself_through_additional_
         .unwrap();
     assert_eq!(
         session.additional_fields["clinical_session_purpose"],
-        "enrolment"
+        "enrolment".into()
     );
     fixture.close().await;
 }
@@ -208,11 +215,13 @@ async fn better_auth_sessions_store_only_non_reusable_digests() {
     let issued = store
         .create_session(CreateSession {
             user_id: "71001".into(),
-            expires_at: Utc::now() + Duration::days(1),
+            expires_at: (Utc::now() + Duration::days(1)).into(),
             ip_address: None,
             user_agent: None,
             impersonated_by: None,
             active_organization_id: None,
+            additional_fields: Default::default(),
+            inherited_fields: Default::default(),
         })
         .await
         .unwrap();
@@ -221,23 +230,24 @@ async fn better_auth_sessions_store_only_non_reusable_digests() {
         .query_one_raw(Statement::from_sql_and_values(
             DbBackend::Postgres,
             "SELECT token FROM identity_sessions WHERE id=$1",
-            [issued.id.clone().into()],
+            [issued.id.typed().unwrap().clone().into()],
         ))
         .await
         .unwrap()
         .unwrap();
     let stored: String = row.try_get("", "token").unwrap();
     assert_ne!(
-        stored, issued.token,
+        stored,
+        *issued.token.typed().unwrap(),
         "stored session values must not be bearer credentials"
     );
     assert_eq!(
         stored,
-        URL_SAFE.encode(Sha256::digest(issued.token.as_bytes()))
+        URL_SAFE.encode(Sha256::digest(issued.token.typed().unwrap().as_bytes()))
     );
     assert_eq!(
         store
-            .get_session(&issued.token)
+            .get_session(issued.token.typed().unwrap())
             .await
             .unwrap()
             .unwrap()
@@ -249,30 +259,48 @@ async fn better_auth_sessions_store_only_non_reusable_digests() {
     assert_eq!(listed.len(), 1);
     assert_eq!(listed[0].id, issued.id);
     assert_eq!(listed[0].token, stored);
-    assert!(store.get_session(&listed[0].token).await.unwrap().is_none());
+    assert!(
+        store
+            .get_session(listed[0].token.typed().unwrap())
+            .await
+            .unwrap()
+            .is_none()
+    );
     let updated = store
         .update_session_fields(
-            &issued.token,
-            serde_json::Map::from_iter([("synthetic_display".into(), serde_json::json!(true))]),
+            issued.token.typed().unwrap(),
+            better_auth_core::FieldMap::from_iter([("synthetic_display".into(), true.into())]),
         )
         .await
         .unwrap()
         .unwrap();
     assert_eq!(updated.token, issued.token);
     store
-        .update_session_expiry(&issued.token, Utc::now() + Duration::hours(1))
+        .update_session_expiry(
+            issued.token.typed().unwrap(),
+            Utc::now() + Duration::hours(1),
+        )
         .await
         .unwrap();
     assert_eq!(
         store
-            .update_session_active_organization(&issued.token, Some("72001"))
+            .update_session_active_organization(issued.token.typed().unwrap(), Some("72001"))
             .await
             .unwrap()
             .token,
         issued.token
     );
-    store.delete_session(&issued.token).await.unwrap();
-    assert!(store.get_session(&issued.token).await.unwrap().is_none());
+    store
+        .delete_session(issued.token.typed().unwrap())
+        .await
+        .unwrap();
+    assert!(
+        store
+            .get_session(issued.token.typed().unwrap())
+            .await
+            .unwrap()
+            .is_none()
+    );
     fixture.close().await;
 }
 
@@ -382,6 +410,9 @@ async fn production_identity_cookies_stay_secure_behind_an_http_proxy() {
     request
         .headers
         .insert("origin".into(), context.config.server.full_url());
+    request
+        .headers
+        .insert("content-type".into(), "application/json".into());
     request
         .headers
         .insert("x-forwarded-for".into(), "127.0.0.1".into());

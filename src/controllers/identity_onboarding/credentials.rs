@@ -56,7 +56,7 @@ pub(super) async fn start(
     request.body = serde_json::to_vec(&body).ok();
     match dispatch(&service, request, crate::controllers::medications::request_id(request_id)).await {
         Ok(response) if response.status == 200 => {
-            let Ok(body) = serde_json::from_slice::<serde_json::Value>(&response.body) else { return super::rendering::unavailable(); };
+            let Ok(Some(body)) = response.body.json() else { return super::rendering::unavailable(); };
             let Some(id) = body["operation_id"].as_str() else { return super::rendering::unavailable(); };
             if body["email_proof"].as_bool() == Some(true) { return super::password_email::render(&view, csrf, id, None, None, "Confirm passkey replacement"); }
             super::password::render_named(&view, csrf, Some(id), None, StatusCode::OK, (body["password_proof"].as_bool() == Some(true), body["passkey_proof"].as_bool() == Some(true), body["oidc_proof"].as_bool() == Some(true)), label)

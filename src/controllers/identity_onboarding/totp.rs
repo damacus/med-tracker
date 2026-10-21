@@ -125,7 +125,7 @@ pub(super) async fn start(
     .await
         && result.status == 200
     {
-        let Ok(body) = serde_json::from_slice::<serde_json::Value>(&result.body) else {
+        let Ok(Some(body)) = result.body.json() else {
             return super::rendering::unavailable();
         };
         let Some(id) = body.get("operation_id").and_then(serde_json::Value::as_str) else {
@@ -279,7 +279,7 @@ pub(super) async fn disable_start(
     .await
         && result.status == 200
     {
-        let Ok(body) = serde_json::from_slice::<serde_json::Value>(&result.body) else {
+        let Ok(Some(body)) = result.body.json() else {
             return super::rendering::unavailable();
         };
         let Some(id) = body.get("operation_id").and_then(serde_json::Value::as_str) else {

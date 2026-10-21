@@ -192,7 +192,14 @@ pub async fn select(
         )
             .into_response(),
         Err(error) => (
-            StatusCode::from_u16(error.status_code()).unwrap_or(StatusCode::SERVICE_UNAVAILABLE),
+            StatusCode::from_u16(
+                error
+                    .status_code()
+                    .ok()
+                    .and_then(|value| value.typed().ok().copied())
+                    .unwrap_or(503),
+            )
+            .unwrap_or(StatusCode::SERVICE_UNAVAILABLE),
             [(header::CACHE_CONTROL, "no-store")],
         )
             .into_response(),

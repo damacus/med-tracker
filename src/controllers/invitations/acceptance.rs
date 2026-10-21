@@ -176,7 +176,14 @@ pub(super) async fn accept(
             &form.token,
             language,
             explicit_language,
-            StatusCode::from_u16(error.status_code()).unwrap_or(StatusCode::SERVICE_UNAVAILABLE),
+            StatusCode::from_u16(
+                error
+                    .status_code()
+                    .ok()
+                    .and_then(|value| value.typed().ok().copied())
+                    .unwrap_or(503),
+            )
+            .unwrap_or(StatusCode::SERVICE_UNAVAILABLE),
         );
     }
     (

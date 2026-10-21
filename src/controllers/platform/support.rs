@@ -113,7 +113,11 @@ async fn platform_account(
     let BrowserIdentity::Authenticated { user, session } = identity else {
         return Err(Box::new(Redirect::to("/login").into_response()));
     };
-    let account_id = clinical_id(&user.id).map_err(|_| Box::new(unavailable()))?;
+    let account_id = user
+        .id
+        .typed()
+        .and_then(|id| clinical_id(id))
+        .map_err(|_| Box::new(unavailable()))?;
     Ok((account_id, session))
 }
 

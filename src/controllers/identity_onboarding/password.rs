@@ -152,7 +152,7 @@ pub(super) async fn start(
     .await
     {
         Ok(response) if response.status == 200 => {
-            let Ok(body) = serde_json::from_slice::<serde_json::Value>(&response.body) else {
+            let Ok(Some(body)) = response.body.json() else {
                 return super::rendering::unavailable();
             };
             let Some(id) = body.get("operation_id").and_then(serde_json::Value::as_str) else {
@@ -216,8 +216,7 @@ pub(super) async fn confirm(
     .await
     {
         Ok(response) if response.status == 200 => {
-            let body =
-                serde_json::from_slice::<serde_json::Value>(&response.body).unwrap_or_default();
+            let body = response.body.json().ok().flatten().unwrap_or_default();
             if body["recoveryCodes"].is_array() {
                 return super::credentials::recovery_codes(&view, &body);
             }
