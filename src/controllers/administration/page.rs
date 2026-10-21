@@ -228,10 +228,7 @@ impl<'a> Page<'a> {
                     labels["administration"]["polish"]["edit_role"]
                         .as_str()
                         .ok_or(OperationError::Unavailable)?
-                        .replace(
-                            "%{name}",
-                            &member.name
-                        )
+                        .replace("%{name}", &member.name)
                 ));
                 data["draft"] =
                     submitted.map_or_else(|| json!({"role":member.role}), |draft| json!(draft));
@@ -433,6 +430,9 @@ impl<'a> Page<'a> {
                     Change::CreateRelationship => Screen::NewRelationship,
                     Change::Relationship(_, _) => Screen::Relationships,
                 };
+                if matches!(error, OperationError::Forbidden) {
+                    return super::presentation_error(self.view, self.language, error);
+                }
                 self.show(screen, Some(&draft), Some(&error)).await
             }
         }

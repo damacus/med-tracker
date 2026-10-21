@@ -47,6 +47,130 @@ async fn select_household(
 }
 
 #[tokio::test]
+async fn member_administration_preserves_inactive_accountless_directory_identity() -> TestResult {
+    let (fixture, boot) = boot_fixture_with(|config| {
+        let key = base64::engine::general_purpose::STANDARD.encode([7_u8; 64]);
+        config.settings.get_or_insert_with(|| json!({}))["browser_session"] =
+            json!({"key":key,"secure":false});
+    })
+    .await;
+    fixture.admin.execute_unprepared("INSERT INTO people(id,name,email,person_type,has_capacity,created_at,updated_at) VALUES(73016,'Zulu accountless','zulu@example.test',0,true,now(),now()),(73017,'Alpha accountless','alpha@example.test',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74016,72001,73016,'member','suspended',now(),now(),now()),(74017,72001,73017,'member','revoked',now(),now(),now())").await?;
+    let mut request = server(&boot);
+    request.save_cookies();
+    select_household(&request, &fixture, &boot).await?;
+    for (query, expected) in [
+        ("q=ACCOUNTLESS&sort=name&direction=asc", vec![74017, 74016]),
+        ("q=ACCOUNTLESS&sort=name&direction=desc", vec![74016, 74017]),
+        ("q=example.test&status=revoked&sort=email", vec![74017]),
+        ("q=zulu%40example.test&sort=email", vec![74016]),
+    ] {
+        let response = request
+            .get(&format!(
+                "/households/persistence-fixture/admin/users?{query}"
+            ))
+            .await;
+        assert_eq!(response.status_code(), 200, "{}", response.text());
+        assert_eq!(
+            listed_membership_ids(&response.text()),
+            expected,
+            "{}",
+            response.text()
+        );
+    }
+    let editor = request
+        .get("/households/persistence-fixture/admin/memberships/74016/edit")
+        .await;
+    assert_eq!(editor.status_code(), 200, "{}", editor.text());
+    assert!(
+        editor.text().contains("Zulu accountless"),
+        "{}",
+        editor.text()
+    );
+    let person = request
+        .get("/households/persistence-fixture/people/73016")
+        .await;
+    assert_eq!(person.status_code(), 404, "{}", person.text());
+    drop(request);
+    close(fixture, boot).await;
+    Ok(())
+}
+
+#[tokio::test]
+async fn member_administration_directory_projection_checks_live_scope_and_role() -> TestResult {
+    let (fixture, boot) = boot_fixture().await;
+    fixture.admin.execute_unprepared("INSERT INTO people(id,name,email,person_type,has_capacity,created_at,updated_at) VALUES(73016,'Retained identity','retained@example.test',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74016,72001,73016,'member','revoked',now(),now(),now())").await?;
+    let privileges = fixture.runtime.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT p.prosecdef,p.proconfig::text AS settings,pg_get_function_result(p.oid) AS result,has_function_privilege('med_tracker_app',p.oid,'EXECUTE') AS app_execute,has_function_privilege('med_tracker_app','med_tracker.can_read_member_directory()','EXECUTE') AS helper_execute,EXISTS(SELECT 1 FROM aclexplode(p.proacl) acl WHERE acl.grantee=0 AND acl.privilege_type='EXECUTE') AS public_execute FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='med_tracker' AND p.proname='member_directory_identity'"
+    )).await?.ok_or("projection missing")?;
+    assert!(privileges.try_get::<bool>("", "prosecdef")?);
+    assert_eq!(
+        privileges.try_get::<String>("", "settings")?,
+        "{search_path=pg_catalog}"
+    );
+    assert_eq!(
+        privileges.try_get::<String>("", "result")?,
+        "TABLE(membership_id bigint, name text, email text)"
+    );
+    assert!(privileges.try_get::<bool>("", "app_execute")?);
+    assert!(!privileges.try_get::<bool>("", "helper_execute")?);
+    assert!(!privileges.try_get::<bool>("", "public_execute")?);
+    for (context, permitted) in [
+        (
+            "SELECT set_config('med_tracker.current_account_id','71001',true),set_config('med_tracker.current_membership_id','74001',true),set_config('med_tracker.current_household_id','72001',true)",
+            true,
+        ),
+        (
+            "SELECT set_config('med_tracker.current_account_id','71001',true),set_config('med_tracker.current_membership_id','74001',true),set_config('med_tracker.current_household_id','72002',true)",
+            false,
+        ),
+    ] {
+        let transaction = fixture.runtime.begin().await?;
+        transaction
+            .execute_unprepared("SET LOCAL ROLE med_tracker_app")
+            .await?;
+        transaction.execute_unprepared(context).await?;
+        let hidden = transaction
+            .query_all_raw(Statement::from_string(
+                DbBackend::Postgres,
+                "SELECT name,email FROM people WHERE id=73016",
+            ))
+            .await?;
+        assert!(hidden.is_empty());
+        let directory=transaction.query_all_raw(Statement::from_string(DbBackend::Postgres,"SELECT name,email FROM med_tracker.member_directory_identity() WHERE membership_id=74016")).await;
+        if permitted {
+            let rows = directory?;
+            assert_eq!(rows.len(), 1);
+            assert_eq!(rows[0].try_get::<String>("", "name")?, "Retained identity");
+        } else {
+            assert!(directory.is_err());
+        }
+        transaction.rollback().await?;
+    }
+    for change in [
+        "UPDATE household_memberships SET role='member' WHERE id=74001",
+        "UPDATE household_memberships SET role='owner',status='revoked',revoked_at=now() WHERE id=74001",
+        "UPDATE household_memberships SET status='active',revoked_at=NULL WHERE id=74001; INSERT INTO account_lockouts(account_id,key,deadline) VALUES(71001,'directory-lockout',now()+interval '1 hour')",
+        "DELETE FROM account_lockouts WHERE account_id=71001; UPDATE households SET lifecycle_state='deletion_requested' WHERE id=72001",
+    ] {
+        fixture.admin.execute_unprepared(change).await?;
+        let transaction = fixture.runtime.begin().await?;
+        transaction.execute_unprepared("SET LOCAL ROLE med_tracker_app; SELECT set_config('med_tracker.current_account_id','71001',true),set_config('med_tracker.current_membership_id','74001',true),set_config('med_tracker.current_household_id','72001',true)").await?;
+        assert!(
+            transaction
+                .query_all_raw(Statement::from_string(
+                    DbBackend::Postgres,
+                    "SELECT * FROM med_tracker.member_directory_identity()"
+                ))
+                .await
+                .is_err()
+        );
+        transaction.rollback().await?;
+    }
+    close(fixture, boot).await;
+    Ok(())
+}
+
+#[tokio::test]
 async fn member_administration_lists_inactive_identity_and_changes_membership_state() -> TestResult
 {
     let (fixture, boot) = boot_fixture_with(|config| {
@@ -84,7 +208,7 @@ async fn member_administration_lists_inactive_identity_and_changes_membership_st
     assert!(
         member_editor
             .text()
-            .contains("Edit household role for Inactive member")
+            .contains("Editar el rol de Inactive member en el hogar")
     );
     assert!(member_editor.text().contains("/admin/users?q=&amp;role=all&amp;status=suspended&amp;sort=email&amp;direction=desc&amp;page=1&amp;lang=es"));
     let editor_csrf = authenticity_token(&member_editor.text())
@@ -373,6 +497,14 @@ async fn member_administration_lists_inactive_identity_and_changes_membership_st
         .admin
         .execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001")
         .await?;
+    let before_denial = fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT status,(SELECT count(*) FROM security_audit_events) AS total FROM household_memberships WHERE id=74006",
+        ))
+        .await?
+        .ok_or("audit count missing")?;
     let stale_manager = request
         .post("/households/persistence-fixture/admin/users/74006/suspend")
         .form(&[
@@ -381,6 +513,23 @@ async fn member_administration_lists_inactive_identity_and_changes_membership_st
         ])
         .await;
     assert_eq!(stale_manager.status_code(), 403, "{}", stale_manager.text());
+    assert!(
+        !stale_manager
+            .text()
+            .contains("/admin/memberships/74006/edit")
+    );
+    let unchanged = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT m.status,(SELECT count(*) FROM security_audit_events) AS audit_total FROM household_memberships m WHERE m.id=74006"
+    )).await?.ok_or("target missing")?;
+    assert_eq!(
+        unchanged.try_get::<String>("", "status")?,
+        before_denial.try_get::<String>("", "status")?
+    );
+    assert_eq!(
+        unchanged.try_get::<i64>("", "audit_total")?,
+        before_denial.try_get::<i64>("", "total")?
+    );
+
     drop(request);
     close(fixture, boot).await;
     Ok(())

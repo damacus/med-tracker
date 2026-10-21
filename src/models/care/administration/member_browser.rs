@@ -326,7 +326,7 @@ pub async fn list(
         role.into(),
         status.into(),
     ];
-    let base = " FROM household_memberships m LEFT JOIN accounts a ON a.person_id=m.person_id LEFT JOIN people p ON p.id=m.person_id WHERE m.household_id=$1 AND ($2='%%' OR coalesce(nullif(a.name,''),p.name,a.email,'Member #'||m.id::text) ILIKE $2 ESCAPE '\\' OR coalesce(a.email,p.email,'') ILIKE $2 ESCAPE '\\') AND ($3='' OR m.role=$3) AND ($4='' OR m.status=$4)";
+    let base = " FROM household_memberships m JOIN med_tracker.member_directory_identity() identity ON identity.membership_id=m.id WHERE m.household_id=$1 AND ($2='%%' OR identity.name ILIKE $2 ESCAPE '\\' OR identity.email ILIKE $2 ESCAPE '\\') AND ($3='' OR m.role=$3) AND ($4='' OR m.status=$4)";
     let count_sql = format!("SELECT count(*) AS total{base}");
     let count = tenant
         .transaction()
@@ -340,9 +340,9 @@ pub async fn list(
     let total: i64 = count.try_get("", "total")?;
     let pages = (total.max(1) as u64).div_ceil(25);
     let page = query.page.min(pages);
-    let order = " ORDER BY CASE WHEN $5='name' AND $6='asc' THEN lower(coalesce(nullif(a.name,''),p.name,a.email,'Member #'||m.id::text)) END ASC, CASE WHEN $5='name' AND $6='desc' THEN lower(coalesce(nullif(a.name,''),p.name,a.email,'Member #'||m.id::text)) END DESC, CASE WHEN $5='email' AND $6='asc' THEN lower(coalesce(a.email,p.email,'')) END ASC, CASE WHEN $5='email' AND $6='desc' THEN lower(coalesce(a.email,p.email,'')) END DESC, CASE WHEN $5='role' AND $6='asc' THEN m.role END ASC, CASE WHEN $5='role' AND $6='desc' THEN m.role END DESC, CASE WHEN $5='status' AND $6='asc' THEN m.status END ASC, CASE WHEN $5='status' AND $6='desc' THEN m.status END DESC, m.id ASC LIMIT 25 OFFSET $7";
+    let order = " ORDER BY CASE WHEN $5='name' AND $6='asc' THEN lower(identity.name) END ASC, CASE WHEN $5='name' AND $6='desc' THEN lower(identity.name) END DESC, CASE WHEN $5='email' AND $6='asc' THEN lower(identity.email) END ASC, CASE WHEN $5='email' AND $6='desc' THEN lower(identity.email) END DESC, CASE WHEN $5='role' AND $6='asc' THEN m.role END ASC, CASE WHEN $5='role' AND $6='desc' THEN m.role END DESC, CASE WHEN $5='status' AND $6='asc' THEN m.status END ASC, CASE WHEN $5='status' AND $6='desc' THEN m.status END DESC, m.id ASC LIMIT 25 OFFSET $7";
     let sql = format!(
-        "SELECT m.id,coalesce(nullif(a.name,''),p.name,a.email,'Member #'||m.id::text) AS name,coalesce(a.email,p.email,'') AS email,m.role,m.status{base}{order}"
+        "SELECT m.id,identity.name AS name,identity.email AS email,m.role,m.status{base}{order}"
     );
     let mut page_values = values;
     page_values.extend([
@@ -394,7 +394,7 @@ pub async fn find(
         ),
     };
     let sql = format!(
-        "SELECT m.id,coalesce(nullif(a.name,''),p.name,a.email,'Member #'||m.id::text) AS name,coalesce(a.email,p.email,'') AS email,m.role,m.status FROM household_memberships m LEFT JOIN accounts a ON a.person_id=m.person_id LEFT JOIN people p ON p.id=m.person_id{identity_join} WHERE m.household_id=$1 AND {identity_filter} ORDER BY m.id LIMIT 1"
+        "SELECT m.id,identity.name AS name,identity.email AS email,m.role,m.status FROM household_memberships m JOIN med_tracker.member_directory_identity() identity ON identity.membership_id=m.id{identity_join} WHERE m.household_id=$1 AND {identity_filter} ORDER BY m.id LIMIT 1"
     );
     let row = tenant
         .transaction()
