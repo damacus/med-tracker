@@ -994,6 +994,17 @@ async fn member_detail_scopes_safe_history_and_preserves_navigation() -> TestRes
     assert!(html.contains(r#"data-member-event="960028""#));
     assert!(!html.contains(r#"data-member-event="960099""#));
     assert!(html.contains("Account #71001"));
+    assert!(html.contains("Account #71001, membership #74001"));
+    fixture
+        .admin
+        .execute_unprepared("UPDATE accounts SET name='Renamed synthetic actor' WHERE id=71001")
+        .await?;
+    let renamed = request
+        .get("/households/persistence-fixture/admin/memberships/74016")
+        .await;
+    assert_eq!(renamed.status_code(), 200);
+    assert!(renamed.text().contains("Renamed synthetic actor"));
+    assert!(renamed.text().contains("Account #71001, membership #74001"));
     assert!(!html.contains("<script>alert(1)</script>"));
     assert!(html.contains("&lt;script&gt;alert(1)&lt;/script&gt;"));
     assert!(!html.contains("data-member-event=\"960096\""));
