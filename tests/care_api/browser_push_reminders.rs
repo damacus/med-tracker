@@ -1,10 +1,12 @@
 use super::*;
 use chrono::{Timelike, Utc};
+use med_tracker::models::_entities::notification_deliveries;
 use med_tracker::models::{
     access::{Actor, HouseholdScope},
     care::browser_push::{self, Delivery, Service, Transport},
     entities::push_subscription,
 };
+use sea_orm::{ActiveModelTrait, EntityTrait, IntoActiveModel, Set};
 use std::sync::{Arc, Mutex};
 use tokio::sync::Notify;
 
@@ -1155,6 +1157,18 @@ async fn browser_reminder_deadline_and_revoked_preference_stop_retries() {
             .unwrap(),
         0
     );
+    let delivery = notification_deliveries::Entity::find()
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(delivery.status, "pending");
+    assert_eq!(delivery.attempt_count, 1);
+    let mut delivery = delivery.into_active_model();
+    delivery.next_attempt_at = Set((now + chrono::Duration::seconds(121)).naive_utc());
+    let delivery = delivery.update(&app.fixture.admin).await.unwrap();
+    let retry_due = delivery.next_attempt_at.and_utc();
+    assert!(retry_due > now + chrono::Duration::minutes(2));
     app.fixture
         .admin
         .execute_unprepared(
@@ -1166,10 +1180,24 @@ async fn browser_reminder_deadline_and_revoked_preference_stop_retries() {
         browser_push::reminders::drain_pending(
             &app.context,
             &scope,
-            now + chrono::Duration::minutes(2)
+            retry_due - chrono::Duration::milliseconds(1)
         )
         .await
         .unwrap(),
+        0
+    );
+    let delivery = notification_deliveries::Entity::find_by_id(delivery.id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(delivery.status, "pending");
+    assert_eq!(delivery.attempt_count, 1);
+    assert_eq!(*transport.1.lock().unwrap(), 1);
+    assert_eq!(
+        browser_push::reminders::drain_pending(&app.context, &scope, retry_due)
+            .await
+            .unwrap(),
         0
     );
     let row = app
