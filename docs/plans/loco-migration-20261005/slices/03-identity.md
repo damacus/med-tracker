@@ -23,7 +23,56 @@ The historical I1/I3 SMART checklist is retained as reference for a future
 consumer-specific slice. Use ADR 0018's catalogue and revisit criteria before
 approving that work. Recommend separating the SMART follow-up from OAuth
 acceptance in [#2670](https://github.com/damacus/med-tracker/issues/2670);
-this documentation update leaves the issue unchanged.
+the issue now tracks OAuth migration acceptance with SMART deferred.
+
+## s03-i12 account-closure mail evidence — 21 October 2026
+
+Follow-up for #2674 and #2631, based on `78ec7f281`. One Sol owner retains
+implementation and delivery; independent Astra review covers the transaction
+boundary and regression evidence. All five new tests passed against unchanged
+production code; the reported mail rollback defect did not reproduce.
+
+The existing authentication request boundary calls `ClinicalStore::atomic`.
+Within that scope, `transaction()` returns a shared transaction and nested
+`commit()` calls do not commit PostgreSQL. Consequently, the separate commit
+described in #2631 is not established merely by reading `mail::notice` in
+isolation. This conclusion applies to the maintained request paths, not arbitrary
+unscoped calls to the mail helper.
+
+`tests/care_api/account_closure_mail.rs` exercises password-confirmed closure
+through the booted application with restricted runtime credentials. It covers
+failure after enqueue, deferred commit failure, enqueue failure, a later-household
+ownership denial, success and replay. Failure triggers use non-transactional sequence markers; late and deferred
+failures additionally require the closure notice to be visible before raising.
+Assertions cover the queued notice, closure audit, account, memberships, grants,
+credentials, sessions, device registrations and pending confirmation. Successful
+closure retains shared people and medication records. Bearer probes check usable
+access after rollback and rejection after closure.
+
+PR #2842 review exposed a missing grant-revocation success assertion. The amended
+fixture spans two households: successful closure revokes the actor's active
+grants while preserving another member's grant and a previously revoked grant
+exactly. Each injected database failure is removed and the same confirmation is
+retried successfully. A sequence proves the first household was changed before
+the second household's sole-owner guard rejects closure; the complete snapshot
+must then be restored. Closure audits must name the correct account and actor.
+These cases prove queue insertion atomicity, not mail-worker delivery or every
+authentication scenario; they do not replace existing credential and guard tests.
+
+Validation passed for the strengthened candidate: `rtk task ci`
+passed 147 Rust unit tests, 17 JavaScript tests, 1,070 integration tests (six
+skipped), two browser journeys (one skipped) and the separate template-concurrency
+check. Formatting, Clippy, dependency checks and documentation build passed.
+The macOS linker reported its existing compact-unwind size warning; checks
+completed successfully.
+
+The strengthened five-test focused run and final CI passed. Independent
+Astra review accepted the added grant, retry and denial assertions, and its audit
+attribution suggestion was incorporated. Test content SHA-256:
+`3ff5f98c5470af947995ab9c15c41888e4cb5ca466f80c2f2c44f0374edd048c`.
+The integration base remained `78ec7f281` at final verification. Publication and
+hosted checks remain separate delivery states; keep both issues open until the
+PR is accepted and merged. No deployment or live-data action is authorised.
 
 ## Global constraints
 

@@ -1,3 +1,5 @@
+#[path = "support/fixtures.rs"]
+pub mod fixtures;
 #[path = "tenant_access/global_person.rs"]
 mod global_person;
 #[path = "support/template.rs"]
@@ -108,30 +110,10 @@ impl Fixture {
         let (port, _) = endpoint.split_once('/').unwrap();
         assert!(port.parse::<u16>().unwrap() > 0);
         template::prepare(&uri, "tenant_access_template", |admin| async move {
-admin
-            .execute_unprepared(include_str!("fixtures/persistence-records.sql"))
-            .await
-            .unwrap();
-        admin.execute_unprepared(
-            "UPDATE public.accounts SET status = 2;
-             INSERT INTO public.users(id, person_id, email_address, password_digest, created_at, updated_at)
-             VALUES (77001, 73001, 'persistence@example.test', crypt('password', gen_salt('bf', 4)), now(), now());
-             INSERT INTO public.person_access_grants(id, household_id, household_membership_id, person_id, access_level, relationship_type, created_at, updated_at)
-             VALUES (78001, 72001, 74001, 73001, 'manage', 'self', now(), now());
-             INSERT INTO public.people(id, name, created_at, updated_at)
-             VALUES (73004, 'Other adult', now(), now());
-             INSERT INTO public.accounts(id, person_id, email, status, password_hash, created_at, updated_at)
-             VALUES (71002, 73004, 'other@example.test', 2, crypt('password', gen_salt('bf', 4)), now(), now());
-             INSERT INTO public.households(id, name, slug, timezone, created_at, updated_at)
-             VALUES (72002, 'Other household', 'other-fixture', 'Europe/London', now(), now());
-             INSERT INTO public.household_memberships(id, household_id, person_id, joined_at, created_at, updated_at)
-             VALUES (74002, 72002, 73004, now(), now(), now());
-             INSERT INTO public.users(id, person_id, email_address, password_digest, created_at, updated_at)
-             VALUES (77002, 73004, 'other@example.test', crypt('password', gen_salt('bf', 4)), now(), now());
-             INSERT INTO public.person_access_grants(id, household_id, household_membership_id, person_id, access_level, relationship_type, created_at, updated_at)
-             VALUES (78002, 72002, 74002, 73004, 'view', 'self', now(), now());"
-        ).await.unwrap();
-        }).await;
+            fixtures::seed_persistence(&admin).await;
+            fixtures::seed_tenant_access(&admin).await;
+        })
+        .await;
         let suffix = uuid::Uuid::new_v4().simple();
         let name = format!("tenant_{suffix}");
         let role = format!("runtime_{suffix}");
