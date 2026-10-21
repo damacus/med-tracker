@@ -109,6 +109,80 @@ fn apply_canonical_identity_catalogue(
     Ok(())
 }
 
+fn apply_guardian_recovery_catalogue(
+    expected: &mut serde_json::Map<String, serde_json::Value>,
+) -> Result<(), serde_json::Error> {
+    let recovery: CanonicalIdentityCatalogue =
+        serde_json::from_str(include_str!("../migration/guardian-recovery-catalog.json"))?;
+    for key in recovery.removed {
+        assert!(
+            expected.remove(&key).is_some(),
+            "Expected removed guardian recovery key: {key}"
+        );
+    }
+    expected.extend(recovery.changed);
+    Ok(())
+}
+
+#[tokio::test]
+async fn capture_guardian_recovery_catalog_when_requested() {
+    let Some(output) = std::env::var_os("GUARDIAN_RECOVERY_CATALOG_CAPTURE") else {
+        return;
+    };
+    let output = std::path::PathBuf::from(output);
+    assert!(output.is_absolute() && output.is_dir());
+    let db = restored_database().await;
+    migration::Migrator::up(&db, None).await.unwrap();
+    let actual = catalog(&db).await;
+    let mut baseline = expected_catalog_without_review();
+    baseline.extend(
+        serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(include_str!(
+            "../migration/review-edit-catalog.json"
+        ))
+        .unwrap(),
+    );
+    baseline.extend(
+        serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(include_str!(
+            "../migration/account-avatars-catalog.json"
+        ))
+        .unwrap(),
+    );
+    apply_canonical_identity_catalogue(&mut baseline).unwrap();
+    for (key, value) in serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(
+        include_str!("../migration/guardian-declarations-catalog.json"),
+    )
+    .unwrap()
+    {
+        assert!(
+            baseline.insert(key.clone(), value).is_none(),
+            "Expected additive guardian key: {key}"
+        );
+    }
+    let actual = actual.as_object().unwrap();
+    let removed = baseline
+        .keys()
+        .filter(|key| !actual.contains_key(*key))
+        .cloned()
+        .collect::<Vec<_>>();
+    let changed = actual
+        .iter()
+        .filter(|(key, value)| baseline.get(*key) != Some(*value))
+        .map(|(key, value)| (key.clone(), value.clone()))
+        .collect::<serde_json::Map<_, _>>();
+    assert!(
+        changed
+            .keys()
+            .any(|key| key.starts_with("function:med_tracker.guardian_recovery_command("))
+    );
+    let delta = serde_json::json!({"removed":removed,"changed":changed});
+    std::fs::write(
+        output.join("guardian-recovery-catalog.json"),
+        serde_json::to_string_pretty(&delta).unwrap(),
+    )
+    .unwrap();
+    db.close().await.unwrap();
+}
+
 #[tokio::test]
 async fn capture_review_edit_catalog_when_requested() {
     let Some(output) = std::env::var_os("REVIEW_CATALOG_CAPTURE") else {
@@ -249,6 +323,7 @@ async fn fresh_database_is_created_by_loco_migrations() -> Result<(), serde_json
             "Expected additive guardian key: {key}"
         );
     }
+    apply_guardian_recovery_catalogue(&mut expected)?;
     let differences: Vec<_> = expected
         .keys()
         .chain(actual.keys())
@@ -267,12 +342,13 @@ async fn fresh_database_is_created_by_loco_migrations() -> Result<(), serde_json
         differences.join("\n")
     );
     let ledger = ledger_rows(&db).await;
-    assert_eq!(ledger.len(), 13);
+    assert_eq!(ledger.len(), 14);
     assert_eq!(ledger[10].0, "m20261016_000011_account_avatars");
     assert_eq!(ledger[11].0, "m20261016_000012_support_expiry");
+    assert_eq!(ledger[12].0, "m20261017_000013_guardian_declarations");
     assert_eq!(
         ledger.last().map(|row| row.0.as_str()),
-        Some("m20261017_000013_guardian_declarations")
+        Some("m20261021_000014_guardian_recovery")
     );
     migration::Migrator::up(&db, None).await.unwrap();
     assert_eq!(catalog(&db).await, before);
