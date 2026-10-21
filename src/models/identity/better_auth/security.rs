@@ -33,23 +33,8 @@ pub async fn overview(
         let accounts = service.context().database.get_user_accounts(user_id).await?;
         let passkeys = service.context().database.list_passkeys_by_user(user_id).await?;
         let retained = service.store.retained_factor_enabled(user_id).await?;
-        let keys = service.context().database.list_api_keys_by_reference(user_id).await?;
-        let mut recovery_count = 0;
-        let mut personal_keys = Vec::new();
-        for key in keys {
-            if key.config_id == super::onboarding::RECOVERY_CONFIG
-                && *key.enabled.typed()?
-                && key.remaining.typed()?.is_some_and(|remaining| remaining > 0.0)
-                && key.expires_at.typed()?.as_ref().is_none_or(|expiry| {
-                    expiry.to_datetime().ok().flatten().is_some_and(|date| date > Utc::now())
-                })
-            {
-                recovery_count += 1;
-            }
-            if key.config_id == super::personal_keys::CONFIG && *key.enabled.typed()? {
-                personal_keys.push(json!({"id":key.id,"name":key.name,"expires":key.expires_at,"last_used":key.last_request}));
-            }
-        }
+        let recovery_count = service.store.count_current_recovery_api_keys(user_id).await?;
+        let personal_keys = service.store.list_enabled_personal_api_keys(user_id).await?.into_iter().map(|key| json!({"id":key.id,"name":key.name,"expires":key.expires_at,"last_used":key.last_request})).collect::<Vec<_>>();
         let password = accounts.iter().any(|account| account.provider_id == "credential" && matches!(account.password, SchemaValue::Typed(Some(_))));
         let zitadel = accounts.iter().any(|account| account.provider_id == "zitadel");
         let passkeys = passkeys.into_iter().map(|key| -> AuthResult<Value> {

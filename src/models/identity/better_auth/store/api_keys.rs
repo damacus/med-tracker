@@ -110,6 +110,41 @@ fn apply(key: ApiKey, update: UpdateApiKey) -> AuthResult<ApiKey> {
 }
 
 impl ClinicalStore {
+    pub(crate) async fn list_enabled_personal_api_keys(
+        &self,
+        reference: &str,
+    ) -> AuthResult<Vec<ApiKey>> {
+        self.authorize_key_reference(reference).await?;
+        let account_id = clinical_id(reference)?;
+        let transaction = self.account_transaction().await?;
+        let rows = KeyRow::find_by_statement(statement(
+            "SELECT payload FROM public.identity_api_keys WHERE account_id=$1 AND payload->>'configId'=$2 AND payload->'enabled'='true'::jsonb ORDER BY payload->>'createdAt' ASC,id ASC",
+            [account_id.into(), super::super::personal_keys::CONFIG.into()],
+        ))
+        .all(&*transaction)
+        .await
+        .map_err(database_error)?;
+        transaction.commit().await.map_err(database_error)?;
+        rows.into_iter().map(decoded).collect()
+    }
+
+    pub(crate) async fn count_current_recovery_api_keys(&self, reference: &str) -> AuthResult<u64> {
+        self.authorize_key_reference(reference).await?;
+        let account_id = clinical_id(reference)?;
+        let transaction = self.account_transaction().await?;
+        let row = transaction
+            .query_one_raw(statement(
+                "SELECT count(*) AS count FROM public.identity_api_keys WHERE account_id=$1 AND payload->>'configId'=$2 AND payload->'enabled'='true'::jsonb AND jsonb_typeof(payload->'remaining')='number' AND (payload->>'remaining')::numeric>0 AND (expires_at IS NULL OR expires_at>clock_timestamp())",
+                [account_id.into(), super::super::onboarding::RECOVERY_CONFIG.into()],
+            ))
+            .await
+            .map_err(database_error)?
+            .ok_or_else(|| AuthError::internal("Recovery credential count unavailable"))?;
+        let count: i64 = row.try_get("", "count").map_err(database_error)?;
+        transaction.commit().await.map_err(database_error)?;
+        u64::try_from(count).map_err(|_| AuthError::internal("Invalid recovery credential count"))
+    }
+
     async fn key_transaction(&self, id: &str) -> AuthResult<(super::Transaction, ApiKey)> {
         let transaction = self.transaction().await?;
         context(&transaction, "med_tracker.identity_api_key_id", id).await?;

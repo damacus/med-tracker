@@ -1,4 +1,4 @@
-use better_auth_core::{AuthError, AuthResult, CreateUser, wire::UserView};
+use better_auth_core::{AuthError, AuthResult, CreateUser, FieldValue, wire::UserView};
 use chrono::NaiveDate;
 use sea_orm::DatabaseTransaction;
 
@@ -26,15 +26,7 @@ impl ClinicalStore {
             .and_then(|value| value.as_str().map(str::to_owned))
             .and_then(|value| NaiveDate::parse_from_str(&value, "%Y-%m-%d").ok())
             .ok_or_else(|| AuthError::validation("A valid date of birth is required"))?;
-        let invitation_token = metadata
-            .get("invitation_token")?
-            .map(|value| {
-                value
-                    .as_str()
-                    .map(str::to_owned)
-                    .ok_or_else(|| AuthError::validation("Invalid invitation token"))
-            })
-            .transpose()?;
+        let invitation_token = optional_invitation_token(metadata.get("invitation_token")?)?;
         let profile = AccountProfile {
             email: input
                 .email
@@ -67,6 +59,15 @@ impl ClinicalStore {
     }
 }
 
+fn optional_invitation_token(value: Option<FieldValue>) -> AuthResult<Option<String>> {
+    match value {
+        None => Ok(None),
+        Some(value) if value.is_null() || value.is_undefined() => Ok(None),
+        Some(FieldValue::String(value)) => Ok(Some(value)),
+        Some(_) => Err(AuthError::validation("Invalid invitation token")),
+    }
+}
+
 pub(super) fn provisioning_error(error: SignupError) -> AuthError {
     match error {
         SignupError::Invalid(errors)
@@ -88,5 +89,34 @@ pub(super) fn provisioning_error(error: SignupError) -> AuthError {
         SignupError::RegistrationClosed => AuthError::forbidden("Account registration is closed"),
         SignupError::InvalidKey => AuthError::bad_request("Invitation is unavailable"),
         SignupError::Unavailable => AuthError::internal("Account provisioning unavailable"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::optional_invitation_token;
+    use better_auth_core::FieldValue;
+    use serde_json::json;
+
+    #[test]
+    fn optional_invitation_token_preserves_native_optional_contract() {
+        assert_eq!(optional_invitation_token(None).unwrap(), None);
+        assert_eq!(
+            optional_invitation_token(Some(FieldValue::Null)).unwrap(),
+            None
+        );
+        assert_eq!(
+            optional_invitation_token(Some(FieldValue::Undefined)).unwrap(),
+            None
+        );
+        assert_eq!(
+            optional_invitation_token(Some(FieldValue::String("invite".into()))).unwrap(),
+            Some("invite".into())
+        );
+        for invalid in [json!(1), json!(true), json!([]), json!({})] {
+            assert!(
+                optional_invitation_token(Some(FieldValue::from_json(invalid).unwrap())).is_err()
+            );
+        }
     }
 }

@@ -157,7 +157,7 @@ pub async fn listing(
         let (user, session) = service.context().require_authoritative_session(request).await?;
         let transaction = service.store.transaction().await?;
         service.store.lock_security_session(&transaction, &session).await?;
-        let keys = service.context().database.list_api_keys_by_reference(user.id.typed()?).await?.into_iter().filter(|key| key.config_id == CONFIG && key.enabled == true).map(|key| json!({"id":key.id,"name":key.name,"expires":key.expires_at,"last_used":key.last_request,"permissions":key.permissions})).collect::<Vec<_>>();
+        let keys = service.store.list_enabled_personal_api_keys(user.id.typed()?).await?.into_iter().map(|key| json!({"id":key.id,"name":key.name,"expires":key.expires_at,"last_used":key.last_request,"permissions":key.permissions})).collect::<Vec<_>>();
         let households = service.context().database.list_user_organizations(user.id.typed()?).await?.into_iter().map(|relation| match relation {
             JoinValue::One(Some(fields)) => fields.json().map(Value::Object),
             _ => Err(AuthError::internal("Organization relationship unavailable")),

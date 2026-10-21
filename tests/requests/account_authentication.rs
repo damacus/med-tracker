@@ -1,5 +1,262 @@
 use super::*;
 use base64::Engine as _;
+use chrono::{Duration, Utc};
+use med_tracker::models::_entities::{
+    accounts, app_settings, identity_api_keys, identity_onboarding, people,
+};
+use sea_orm::{ActiveModelTrait, EntityTrait, Set};
+
+async fn enable_completed_onboarding(fixture: &Fixture, account_id: i64) {
+    let active = identity_onboarding::ActiveModel {
+        account_id: Set(account_id),
+        recovery_saved_at: Set(Some(Utc::now().fixed_offset())),
+        ..Default::default()
+    };
+    if identity_onboarding::Entity::find_by_id(account_id)
+        .one(&fixture.admin)
+        .await
+        .unwrap()
+        .is_some()
+    {
+        active.update(&fixture.admin).await.unwrap();
+    } else {
+        active.insert(&fixture.admin).await.unwrap();
+    }
+}
+
+fn inventory_key(
+    id: &str,
+    config_id: &str,
+    created_at: chrono::DateTime<Utc>,
+    expires_at: chrono::DateTime<Utc>,
+    enabled: bool,
+    remaining: f64,
+) -> identity_api_keys::ActiveModel {
+    let hash = format!("{id}-hash");
+    identity_api_keys::ActiveModel {
+        id: Set(id.to_owned()),
+        account_id: Set(71001),
+        key_hash: Set(hash.clone()),
+        expires_at: Set(Some(expires_at.fixed_offset())),
+        payload: Set(json!({
+            "id":id,"key":hash,"referenceId":"71001","configId":config_id,
+            "name":id,"enabled":enabled,"remaining":remaining,
+            "rateLimitEnabled":true,"rateLimitTimeWindow":60_000.0,"rateLimitMax":120.0,
+            "requestCount":0.0,"refillAmount":null,"permissions":null,"metadata":null,
+            "createdAt":created_at.to_rfc3339(),"updatedAt":created_at.to_rfc3339(),
+            "expiresAt":expires_at.to_rfc3339()
+        })),
+    }
+}
+
+#[tokio::test]
+async fn account_authentication_open_signup_without_invitation_persists_identity_and_mail() {
+    let (fixture, boot) = boot_fixture().await;
+    let settings = app_settings::ActiveModel {
+        invite_only: Set(false),
+        created_at: Set(Utc::now().naive_utc()),
+        updated_at: Set(Utc::now().naive_utc()),
+        ..Default::default()
+    }
+    .insert(&fixture.admin)
+    .await
+    .unwrap();
+    let request = server(&boot);
+    let signed_up = request
+        .post("/api/auth/onboarding/signup")
+        .add_header("origin", boot.app_context.config.server.full_url())
+        .json(&json!({"name":"Open registration owner","email":"open-null-invitation@example.test","date_of_birth":"1990-04-12","credential":"passkey"}))
+        .await;
+    assert_eq!(signed_up.status_code(), 200, "{}", signed_up.text());
+    assert_eq!(signed_up.json::<Value>()["status"], true);
+    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT (SELECT count(*) FROM accounts WHERE email='open-null-invitation@example.test' AND status=1) AS accounts,(SELECT count(*) FROM pg_loco_queue WHERE task_data->>'to'='open-null-invitation@example.test') AS messages"
+    )).await.unwrap().unwrap();
+    assert_eq!(row.try_get::<i64>("", "accounts").unwrap(), 1);
+    assert_eq!(row.try_get::<i64>("", "messages").unwrap(), 1);
+    app_settings::ActiveModel {
+        id: Set(settings.id),
+        invite_only: Set(true),
+        ..Default::default()
+    }
+    .update(&fixture.admin)
+    .await
+    .unwrap();
+    let closed = request
+        .post("/api/auth/onboarding/signup")
+        .add_header("origin", boot.app_context.config.server.full_url())
+        .json(&json!({"name":"Closed registration","email":"closed-null-invitation@example.test","date_of_birth":"1990-04-12","credential":"passkey"}))
+        .await;
+    assert_eq!(closed.status_code(), 403, "{}", closed.text());
+    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT count(*) AS accounts FROM accounts WHERE email='closed-null-invitation@example.test'"
+    )).await.unwrap().unwrap();
+    assert_eq!(row.try_get::<i64>("", "accounts").unwrap(), 0);
+    drop(request);
+    close(fixture, boot).await;
+}
+
+#[tokio::test]
+async fn account_authentication_security_inventory_includes_later_credentials() {
+    let (fixture, boot) = boot_fixture().await;
+    people::ActiveModel {
+        id: Set(73992),
+        name: Set("Other account owner".into()),
+        person_type: Set(0),
+        has_capacity: Set(true),
+        created_at: Set(Utc::now().naive_utc()),
+        updated_at: Set(Utc::now().naive_utc()),
+        ..Default::default()
+    }
+    .insert(&fixture.admin)
+    .await
+    .unwrap();
+    let password_hash = accounts::Entity::find_by_id(71001)
+        .one(&fixture.admin)
+        .await
+        .unwrap()
+        .unwrap()
+        .password_hash;
+    accounts::ActiveModel {
+        id: Set(71002),
+        person_id: Set(73992),
+        email: Set("foreign@example.test".into()),
+        password_hash: Set(password_hash),
+        status: Set(2),
+        created_at: Set(Utc::now().naive_utc()),
+        updated_at: Set(Utc::now().naive_utc()),
+        ..Default::default()
+    }
+    .insert(&fixture.admin)
+    .await
+    .unwrap();
+    enable_completed_onboarding(&fixture, 71001).await;
+    enable_completed_onboarding(&fixture, 71002).await;
+    let now = Utc::now();
+    let mut keys = (0..101)
+        .map(|index| {
+            let created = now - Duration::days(2) + Duration::seconds(index);
+            let expired = index % 3 == 0;
+            inventory_key(
+                &format!("earlier-{index:03}"),
+                if index % 2 == 0 {
+                    "medtracker-personal"
+                } else {
+                    "medtracker-recovery"
+                },
+                created,
+                if expired {
+                    now - Duration::hours(1)
+                } else {
+                    now + Duration::days(1)
+                },
+                index % 3 != 1,
+                if index % 3 == 2 { 0.0 } else { 1.0 },
+            )
+        })
+        .collect::<Vec<_>>();
+    keys.push(inventory_key(
+        "later-active-personal",
+        "medtracker-personal",
+        now,
+        now + Duration::days(1),
+        true,
+        1.0,
+    ));
+    for index in 0..10 {
+        keys.push(inventory_key(
+            &format!("later-valid-recovery-{index}"),
+            "medtracker-recovery",
+            now + Duration::seconds(index + 1),
+            now + Duration::days(1),
+            true,
+            1.0,
+        ));
+    }
+    identity_api_keys::Entity::insert_many(keys)
+        .exec(&fixture.admin)
+        .await
+        .unwrap();
+    let request = server(&boot);
+    let signed_in = request
+        .post("/api/auth/sign-in/email")
+        .add_header("origin", boot.app_context.config.server.full_url())
+        .json(&json!({"email":"persistence@example.test","password":"password"}))
+        .await;
+    assert_eq!(signed_in.status_code(), 200, "{}", signed_in.text());
+    let owner_cookie = signed_in
+        .header("set-cookie")
+        .to_str()
+        .unwrap()
+        .split(';')
+        .next()
+        .unwrap()
+        .to_owned();
+    let listing = request
+        .get("/account/security/keys")
+        .add_header("cookie", owner_cookie.clone())
+        .await;
+    assert_eq!(listing.status_code(), 200, "{}", listing.text());
+    assert!(listing.text().contains("later-active-personal"));
+    let profile = request
+        .get("/households/persistence-fixture/profile")
+        .add_header("cookie", owner_cookie.clone())
+        .await;
+    assert_eq!(profile.status_code(), 200, "{}", profile.text());
+    assert!(profile.text().contains("10 recovery codes available"));
+    let foreign_sign_in = request
+        .post("/api/auth/sign-in/email")
+        .add_header("origin", boot.app_context.config.server.full_url())
+        .json(&json!({"email":"foreign@example.test","password":"password"}))
+        .await;
+    assert_eq!(
+        foreign_sign_in.status_code(),
+        200,
+        "{}",
+        foreign_sign_in.text()
+    );
+    let foreign_cookie = foreign_sign_in
+        .header("set-cookie")
+        .to_str()
+        .unwrap()
+        .split(';')
+        .next()
+        .unwrap()
+        .to_owned();
+    let foreign_listing = request
+        .get("/account/security/keys")
+        .add_header("cookie", foreign_cookie.clone())
+        .await;
+    assert_eq!(
+        foreign_listing.status_code(),
+        200,
+        "{}",
+        foreign_listing.text()
+    );
+    assert!(!foreign_listing.text().contains("later-active-personal"));
+    let denied = request
+        .post("/api/auth/security/api-key/revoke")
+        .add_header("origin", boot.app_context.config.server.full_url())
+        .add_header("cookie", foreign_cookie)
+        .json(&json!({"key_id":"later-active-personal"}))
+        .await;
+    assert_eq!(denied.status_code(), 401, "{}", denied.text());
+    let revoked = request
+        .post("/api/auth/security/api-key/revoke")
+        .add_header("origin", boot.app_context.config.server.full_url())
+        .add_header("cookie", owner_cookie.clone())
+        .json(&json!({"key_id":"later-active-personal"}))
+        .await;
+    assert_eq!(revoked.status_code(), 200, "{}", revoked.text());
+    let listing = request
+        .get("/account/security/keys")
+        .add_header("cookie", owner_cookie)
+        .await;
+    assert_eq!(listing.status_code(), 200, "{}", listing.text());
+    assert!(!listing.text().contains("later-active-personal"));
+    drop(request);
+    close(fixture, boot).await;
+}
 
 #[tokio::test]
 async fn account_authentication_accepts_split_cookie_headers() {
