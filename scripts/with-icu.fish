@@ -27,11 +27,12 @@ if not test -d $icu_lib
     exit 1
 end
 
+set -l suffix
 switch (uname -s)
     case Darwin
-        set -l suffix .78.dylib
+        set suffix .78.dylib
     case Linux
-        set -l suffix .so.78
+        set suffix .so.78
 end
 
 for library in icuuc icui18n icudata
