@@ -8,7 +8,7 @@
   {% if expired_invitations > 0 %}
   <section id="expired-invitations" class="admin-attention" aria-labelledby="expired-title">
     <div><h2 id="expired-title">{{ admin_labels.polish.expired_invitations }} <span class="admin-chip">{{ expired_invitations }}</span></h2><p>{{ admin_labels.polish.expired_help }}</p></div>
-    <a class="btn btn-ghost btn-sm" href="/households/{{ slug }}/admin/invitations{{ language_suffix }}">{{ admin_labels.polish.review_invitations }}</a>
+    <a class="btn btn-ghost btn-sm" href="/households/{{ slug }}/admin/invitations?status=expired{% if language_suffix != "" %}&amp;lang={{ lang }}{% endif %}">{{ admin_labels.polish.review_invitations }}</a>
   </section>
   {% endif %}
   <dl class="admin-metrics">
