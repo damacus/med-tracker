@@ -8,6 +8,44 @@ through persistence interfaces. Select the OAuth server implementation from evid
 **Tech Stack:** Loco 1.2.0; maintained bcrypt, session, CSRF, TOTP, WebAuthn and OAuth server capabilities.
 **Spec:** [implementation-spec.md](../implementation-spec.md), [auth-feasibility.md](../auth-feasibility.md).
 
+## s03-i12 account-closure mail evidence — 21 October 2026
+
+Follow-up for #2674 and #2631, based on `78ec7f281`. One Sol owner retains
+implementation and delivery; independent Astra review covers the transaction
+boundary and regression evidence. All four new tests passed against unchanged
+production code; the reported mail rollback defect did not reproduce.
+
+The existing authentication request boundary calls `ClinicalStore::atomic`.
+Within that scope, `transaction()` returns a shared transaction and nested
+`commit()` calls do not commit PostgreSQL. Consequently, the separate commit
+described in #2631 is not established merely by reading `mail::notice` in
+isolation. This conclusion applies to the maintained request paths, not arbitrary
+unscoped calls to the mail helper.
+
+`tests/care_api/account_closure_mail.rs` exercises password-confirmed closure
+through the booted application with restricted runtime credentials. It covers
+failure after enqueue, deferred commit failure, enqueue failure, success and
+replay. Failure triggers use non-transactional sequence markers; late and deferred
+failures additionally require the closure notice to be visible before raising.
+Assertions cover the queued notice, closure audit, account, memberships, grants,
+credentials, sessions, device registrations and pending confirmation. Successful
+closure retains shared people and medication records. Bearer probes check usable
+access after rollback and rejection after closure.
+
+Validation passed: the focused closure run passed four tests; `rtk task ci`
+passed 147 Rust unit tests, 17 JavaScript tests, 1,069 integration tests (six
+skipped), two browser journeys (one skipped) and the separate template-concurrency
+check. Formatting, Clippy, dependency checks and documentation build passed.
+The macOS linker reported its existing compact-unwind size warning; checks
+completed successfully.
+
+Independent Astra security review accepted the final assertions with no
+actionable findings. Reviewed test content SHA-256:
+`9792ca8465e364a9141e375cd4506912b90c408469e10512cb746846dd4444c6`.
+The integration base remained `78ec7f281` at final verification. Publication and
+hosted checks remain separate delivery states; keep both issues open until the
+PR is accepted and merged. No deployment or live-data action is authorised.
+
 ## Global constraints
 
 P3 supplies tenant persistence. No custom grant engine or cryptographic primitive.
