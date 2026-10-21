@@ -1,6 +1,6 @@
 {% extends "layouts/base.html" %}
 {% block content %}
-<section class="max-w-3xl mx-auto">
+<section class="admin-page">
   <a class="link" href="/households/{{ slug }}/admin/audit_logs{{ language_suffix }}">{{ admin_labels.audit.title }}</a>
   {% include "administration/context.html" %}
   <h1 class="text-3xl font-semibold mt-4">{{ detail.summary.event_label }}</h1>

@@ -1462,6 +1462,18 @@ es:
         one: Se actualizó el suministro restante de %{count} medicamento.
         other: Se actualizó el suministro restante de %{count} medicamentos.
   people:
+    index:
+      error_heading: "Compruebe los datos de la persona"
+      eyebrow: "Gestionar personas"
+      empty: "No hay personas que mostrar."
+      pages: "Páginas de personas"
+      previous: "Página anterior"
+      next: "Página siguiente"
+      identity: "Identidad"
+      medication_support: "Apoyo con la medicación"
+      active_medications:
+        one: "%{count} medicamento activo"
+        other: "%{count} medicamentos activos"
     created: Persona creada correctamente.
     updated: Persona actualizada correctamente.
     deleted: Persona eliminada correctamente.
@@ -3170,6 +3182,30 @@ es:
       revoke: "Revocar"
       restored: "Restablecida"
       changed: "Membresía"
+    polish:
+      people_needing_carers: "Personas que necesitan cuidadores"
+      active_schedules: "Horarios activos"
+      schedules_help: "Horarios actuales no retirados dentro de su intervalo de fechas en la zona horaria de cuidados."
+      recent_memberships: "Nuevas incorporaciones (7 días)"
+      memberships_help: "Incorporaciones activas al hogar durante los últimos siete días."
+      recent_audit_events: "Eventos de auditoría (24 horas)"
+      audit_help: "Eventos de auditoría de seguridad del hogar, incluidas las lecturas."
+      expired_invitations: "Invitaciones caducadas"
+      review_invitations: "Revisar invitaciones"
+      expired_help: "Invitaciones caducadas que se pueden reenviar."
+      edit_role: "Editar el rol de %{name} en el hogar"
+      empty_members: "No hay miembros del hogar disponibles."
+      new_relationship: "Nueva relación"
+      carer: "Cuidador"
+      patient: "Paciente"
+      relationship_type: "Tipo de relación"
+      choose_carer: "Elija un cuidador"
+      choose_patient: "Elija un paciente"
+      choose_relationship: "Elija un tipo de relación"
+      create_relationship: "Crear relación"
+      deactivate_guidance: "¿Eliminar el acceso proporcionado por esta relación de cuidados?"
+      professional_carer: "Cuidador profesional"
+      self: "Uno mismo"
     overview:
       recent: "Actividad reciente"
       view_audit: "Ver auditoría de seguridad"
@@ -3266,6 +3302,9 @@ es:
       to_invalid: "La fecha final (UTC) no es válida"
       filters_invalid: "Revisa los filtros de auditoría"
       events:
+        invitation_created: "Invitación creada"
+        invitation_resent: "Invitación reenviada"
+        invitation_revoked: "Invitación cancelada"
         api_request: "Solicitud de API"
         role_updated: "Se cambió el rol del hogar"
         membership_changed: "Se cambió la membresía del hogar"

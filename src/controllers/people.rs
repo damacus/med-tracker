@@ -74,12 +74,13 @@ async fn index(
     State(ctx): State<AppContext>,
     Path(slug): Path<String>,
     session: Session<SessionPgPool>,
-    request: Option<Extension<LocoRequestId>>,
+    (request, headers): (Option<Extension<LocoRequestId>>, HeaderMap),
     token: CsrfToken,
     ViewEngine(view): ViewEngine<TeraView>,
     Query(pagination): Query<people::Pagination>,
 ) -> Response {
     page::Page::new(&ctx, &session, &token, &view, &slug, request)
+        .form_language(&headers)
         .index(pagination)
         .await
 }

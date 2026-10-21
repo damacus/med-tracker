@@ -1,19 +1,19 @@
 {% extends "layouts/base.html" %}
 {% block content %}
-<section class="max-w-3xl mx-auto">
-  <a class="link" href="/households/{{ slug }}/admin{{ language_suffix }}">Administration</a>
+<section class="admin-page">
+  <a class="link" href="/households/{{ slug }}/admin{{ language_suffix }}">{{ admin_labels.nav.overview }}</a>
   {% include "administration/context.html" %}
-  <h1 class="text-3xl font-semibold mt-4">Household settings</h1>
+  <h1 class="text-3xl font-semibold mt-4">{{ admin_labels.nav.settings }}</h1>
   {% include "administration/navigation.html" %}
   <div class="mt-6">{% include "components/form_errors.html" %}</div>
   <div class="card bg-base-100 border border-base-300 mt-6"><div class="card-body">
     <form id="administration-form" action="/households/{{ slug }}/admin/household" method="post" class="flex flex-col gap-4">
       {% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}<input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
-      <label for="name" class="font-semibold">Household name</label>
+      <label for="name" class="font-semibold">{{ labels.admin.households.name }}</label>
       <input id="name" name="name" class="input w-full" value="{{ draft.name }}" required {% if name_invalid %}aria-invalid="true" aria-describedby="form-error-name"{% endif %}>
       <div class="flex flex-col sm:flex-row gap-3 mt-4">
-        <button class="btn btn-neutral" type="submit">Save household</button>
-        <a class="btn btn-ghost" href="/households/{{ slug }}/admin{{ language_suffix }}">Cancel</a>
+        <button class="btn btn-neutral" type="submit">{{ labels.admin.households.save }}</button>
+        <a class="btn btn-ghost" href="/households/{{ slug }}/admin{{ language_suffix }}">{{ labels.admin.users.form.cancel }}</a>
       </div>
     </form>
   </div></div>
