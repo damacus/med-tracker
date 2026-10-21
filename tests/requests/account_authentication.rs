@@ -822,6 +822,241 @@ async fn account_authentication_retained_factor_promotes_without_clinical_actor(
         .await;
     assert_eq!(consumed.status_code(), 200);
     assert!(consumed.json::<Value>().is_null());
+    let pending_login = request
+        .post("/api/auth/sign-in/email")
+        .add_header("origin", boot.app_context.config.server.full_url())
+        .json(&json!({"email":"account-auth-only@example.test","password":"password"}))
+        .await;
+    assert_eq!(pending_login.status_code(), 200, "{}", pending_login.text());
+    let pending_cookie = pending_login
+        .headers()
+        .get_all("set-cookie")
+        .iter()
+        .filter_map(|header| header.to_str().ok())
+        .find(|header| is_auth_session_cookie(header))
+        .unwrap()
+        .split(';')
+        .next()
+        .unwrap()
+        .to_owned();
+    let invalid = request
+        .post("/api/auth/security/totp/login")
+        .add_header("origin", boot.app_context.config.server.full_url())
+        .add_header("cookie", pending_cookie.clone())
+        .json(&json!({"code":"invalid-code"}))
+        .await;
+    assert_eq!(invalid.status_code(), 401, "{}", invalid.text());
+    assert!(
+        !invalid
+            .headers()
+            .get_all("set-cookie")
+            .iter()
+            .filter_map(|header| header.to_str().ok())
+            .any(|header| header.contains("Max-Age=0"))
+    );
+    let still_pending = request
+        .get("/api/auth/get-session")
+        .add_header("cookie", pending_cookie.clone())
+        .await;
+    assert_eq!(
+        still_pending.json::<Value>()["session"]["legacy_factor_pending"],
+        true
+    );
+    fixture
+        .admin
+        .execute_unprepared("UPDATE account_otp_keys SET num_failures=4 WHERE id=71002")
+        .await
+        .unwrap();
+    let locked = request
+        .post("/api/auth/security/totp/login")
+        .add_header("origin", boot.app_context.config.server.full_url())
+        .add_header("cookie", pending_cookie.clone())
+        .json(&json!({"code":"invalid-code"}))
+        .await;
+    assert_eq!(locked.status_code(), 429, "{}", locked.text());
+    assert_eq!(locked.json::<Value>()["code"], "ACCOUNT_TEMPORARILY_LOCKED");
+    for name in ["session_token", "session_data", "dont_remember"] {
+        assert!(
+            locked
+                .headers()
+                .get_all("set-cookie")
+                .iter()
+                .filter_map(|header| header.to_str().ok())
+                .any(|header| header.contains(&format!("better-auth.{name}="))
+                    && header.contains("Max-Age=0")),
+            "missing {name}: {:?}",
+            locked.headers()
+        );
+    }
+    let terminated = request
+        .get("/api/auth/get-session")
+        .add_header("cookie", pending_cookie)
+        .await;
+    assert!(
+        terminated.json::<Value>().is_null(),
+        "{}",
+        terminated.text()
+    );
+    drop(request);
+    close(fixture, boot).await;
+}
+
+#[tokio::test]
+async fn account_authentication_session_revocation_clears_only_current_cookie_family() {
+    let (fixture, boot) = boot_fixture().await;
+    enable_completed_onboarding(&fixture, 71001).await;
+    let request = server(&boot);
+    let mut sessions = Vec::new();
+    for _ in 0..2 {
+        let login = request
+            .post("/api/auth/sign-in/email")
+            .add_header("origin", boot.app_context.config.server.full_url())
+            .json(&json!({"email":"persistence@example.test","password":"password"}))
+            .await;
+        assert_eq!(login.status_code(), 200, "{}", login.text());
+        let cookie = login
+            .headers()
+            .get_all("set-cookie")
+            .iter()
+            .filter_map(|value| value.to_str().ok())
+            .find(|value| is_auth_session_cookie(value))
+            .unwrap()
+            .split(';')
+            .next()
+            .unwrap()
+            .to_owned();
+        let session = request
+            .get("/api/auth/get-session")
+            .add_header("cookie", cookie.clone())
+            .await;
+        assert_eq!(session.status_code(), 200, "{}", session.text());
+        sessions.push((
+            cookie,
+            session.json::<Value>()["session"]["id"]
+                .as_str()
+                .unwrap()
+                .to_owned(),
+        ));
+    }
+    let prefix = sessions[0]
+        .0
+        .split('=')
+        .next()
+        .unwrap()
+        .strip_suffix("session_token")
+        .unwrap();
+    let cookie = format!(
+        "{}; {prefix}session_data.0=stale; {prefix}session_data.1=stale; {prefix}dont_remember=true",
+        sessions[0].0
+    );
+    fixture.admin.execute_unprepared("CREATE FUNCTION reject_cookie_revoke_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.item_type='AuthenticationToken' AND NEW.event='auth_token/session/revoked' THEN RAISE EXCEPTION 'synthetic revoke audit failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_cookie_revoke_audit BEFORE INSERT ON versions FOR EACH ROW EXECUTE FUNCTION reject_cookie_revoke_audit()").await.unwrap();
+    let rejected = request
+        .post("/api/auth/security/session/revoke")
+        .add_header("origin", boot.app_context.config.server.full_url())
+        .add_header("cookie", cookie.clone())
+        .json(&json!({"session_id":sessions[0].1}))
+        .await;
+    assert_eq!(rejected.status_code(), 500, "{}", rejected.text());
+    assert!(
+        !rejected
+            .headers()
+            .get_all("set-cookie")
+            .iter()
+            .any(|value| value.to_str().unwrap().contains("Max-Age=0"))
+    );
+    let active = request
+        .get("/api/auth/get-session")
+        .add_header("cookie", cookie.clone())
+        .await;
+    assert_eq!(active.status_code(), 200, "{}", active.text());
+    fixture.admin.execute_unprepared("DROP TRIGGER reject_cookie_revoke_audit ON versions; DROP FUNCTION reject_cookie_revoke_audit()").await.unwrap();
+    for (target, current) in [(&sessions[1].1, false), (&sessions[0].1, true)] {
+        let operation_cookie = if current { &cookie } else { &sessions[0].0 };
+        let response = request
+            .post("/api/auth/security/session/revoke")
+            .add_header("origin", boot.app_context.config.server.full_url())
+            .add_header("cookie", operation_cookie.clone())
+            .json(&json!({"session_id":target}))
+            .await;
+        assert_eq!(response.status_code(), 200, "{}", response.text());
+        assert_eq!(response.json::<Value>()["current"], current);
+        let cleared: Vec<_> = response
+            .headers()
+            .get_all("set-cookie")
+            .iter()
+            .filter_map(|value| value.to_str().ok())
+            .filter(|value| value.contains("Max-Age=0"))
+            .collect();
+        if current {
+            for name in [
+                "session_token",
+                "session_data",
+                "session_data.0",
+                "session_data.1",
+                "dont_remember",
+            ] {
+                assert!(
+                    cleared
+                        .iter()
+                        .any(|value| value.starts_with(&format!("{prefix}{name}="))),
+                    "missing {name}: {cleared:?}"
+                );
+            }
+        } else {
+            assert!(
+                cleared.is_empty(),
+                "other session revoke cleared current cookies: {cleared:?}"
+            );
+        }
+        let active = request
+            .get("/api/auth/get-session")
+            .add_header("cookie", cookie.clone())
+            .await;
+        assert_eq!(active.status_code(), 200, "{}", active.text());
+        if current {
+            assert!(active.json::<Value>().is_null(), "{}", active.text());
+            let rejected = request
+                .post("/api/auth/security/session/revoke")
+                .add_header("origin", boot.app_context.config.server.full_url())
+                .add_header("cookie", sessions[0].0.clone())
+                .json(&json!({"session_id":target}))
+                .await;
+            assert_eq!(rejected.status_code(), 401, "{}", rejected.text());
+        } else {
+            assert_eq!(active.json::<Value>()["session"]["id"], sessions[0].1);
+        }
+    }
+    drop(request);
+    close(fixture, boot).await;
+}
+
+#[tokio::test]
+async fn account_authentication_throttle_retains_body_and_retry_after() {
+    let (fixture, boot) = boot_fixture().await;
+    let request = server(&boot);
+    for attempt in 0..11 {
+        let response = request
+            .post("/api/auth/sign-in/email")
+            .add_header("origin", boot.app_context.config.server.full_url())
+            .json(&json!({"email":"missing-throttled@example.test","password":"password"}))
+            .await;
+        if attempt < 10 {
+            assert_eq!(response.status_code(), 401, "{}", response.text());
+        } else {
+            assert_eq!(response.status_code(), 429, "{}", response.text());
+            assert_eq!(
+                response.json::<Value>(),
+                json!({"error":"Too many authentication attempts. Try again later."})
+            );
+            let retry_after: u32 = response
+                .header("retry-after")
+                .to_str()
+                .unwrap()
+                .parse()
+                .unwrap();
+            assert!((1..=900).contains(&retry_after));
+        }
+    }
     drop(request);
     close(fixture, boot).await;
 }

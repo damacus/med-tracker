@@ -545,11 +545,10 @@ async fn identity_bridge(
     } else {
         next.run(request).await
     };
-    let Ok(mut finalized) =
-        better_auth_core::AuthResponse::json(response.status().as_u16(), &serde_json::Value::Null)
-    else {
-        return axum::http::StatusCode::SERVICE_UNAVAILABLE.into_response();
-    };
+    let mut finalized = better_auth_core::AuthResponse::native(
+        response.status().as_u16(),
+        better_auth_core::FieldValue::Undefined,
+    );
     for cookie in response.headers().get_all(axum::http::header::SET_COOKIE) {
         let Ok(value) = cookie.to_str() else {
             return axum::http::StatusCode::SERVICE_UNAVAILABLE.into_response();

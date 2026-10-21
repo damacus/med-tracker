@@ -102,21 +102,17 @@ pub(super) async fn verify(
         .map_err(database_error)?
         .ok_or(AuthError::Unauthenticated)?;
     transaction.query_one_raw(statement("SELECT id FROM public.identity_sessions WHERE token=$1 AND account_id=$2 AND active AND purpose='enrolment' AND expires_at>clock_timestamp() AND additional_fields->>'legacy_factor_pending'='true'", [token_digest(session.token.typed()?).into(), account_id.into()])).await.map_err(database_error)?.ok_or(AuthError::Unauthenticated)?;
-    if let Some(mut rejected) = check_code(&transaction, account_id, code, store.settings()).await?
-    {
+    if let Some(rejected) = check_code(&transaction, account_id, code, store.settings()).await? {
+        let mut rejected = rejected.into_http_response()?;
         if rejected.status == 429 {
             ctx.database.delete_session(session.token.typed()?).await?;
             super::request::persist_totp_failure(429)?;
-            rejected = rejected.with_header(
-                "Set-Cookie",
-                better_auth_core::utils::cookie_utils::create_clear_cookie(
-                    &better_auth_core::utils::cookie_utils::related_cookie_name(
-                        &ctx.config,
-                        "session_token",
-                    ),
-                    &ctx.config,
-                )?,
-            );
+            better_auth_core::utils::cookie_utils::delete_session_cookies(
+                request,
+                &ctx.config,
+                false,
+                Some(&mut rejected.headers),
+            )?;
         }
         transaction.commit().await.map_err(database_error)?;
         return Ok(Some(rejected));

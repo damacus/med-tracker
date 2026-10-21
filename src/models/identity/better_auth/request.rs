@@ -307,16 +307,8 @@ async fn request_context(
     preflight.body = Some(body.to_vec());
     match super::limits::check(&service, &preflight).await {
         Ok(Some(response)) => {
-            let mut builder = axum::http::Response::builder().status(response.status);
-            for (name, value) in response.headers.iter() {
-                builder = builder.header(name, value);
-            }
-            return response
-                .body
-                .bytes()
-                .ok()
-                .and_then(|body| builder.body(axum::body::Body::from(body.into_owned())).ok())
-                .unwrap_or_else(|| axum::http::StatusCode::INTERNAL_SERVER_ERROR.into_response());
+            return better_auth_core::error::materialize_axum_response(response)
+                .unwrap_or_else(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR.into_response());
         }
         Err(error) => return error.into_response(),
         Ok(None) => {}

@@ -1,8 +1,8 @@
 use async_trait::async_trait;
 use better_auth_core::{
     AuthError, AuthRecordFields, AuthResult, CreatePasskey, FieldMap, FieldValue, FromFieldMap,
-    Passkey, PasskeyCredentialState, PasskeyStorage, SchemaValue, UpdatePasskey,
-    store::PasskeyStore, types::UpdatePasskeyAuthentication,
+    Passkey, PasskeyCredentialState, SchemaValue, UpdatePasskey, store::PasskeyStore,
+    types::UpdatePasskeyAuthentication,
 };
 use chrono::{DateTime, Utc};
 use sea_orm::{ConnectionTrait, FromQueryResult};
@@ -127,10 +127,6 @@ impl ClinicalStore {
 
 #[async_trait]
 impl PasskeyStore for ClinicalStore {
-    fn passkey_storage(&self) -> PasskeyStorage {
-        PasskeyStorage::Legacy
-    }
-
     async fn create_passkey_record(&self, fields: FieldMap) -> AuthResult<Option<FieldMap>> {
         let record = Passkey::from_field_values(fields)?;
         let input = CreatePasskey {

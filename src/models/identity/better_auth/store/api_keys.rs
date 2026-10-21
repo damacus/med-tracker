@@ -102,9 +102,7 @@ fn stored_optional_date(value: &SchemaValue<Option<FieldDate>>) -> AuthResult<Op
 
 fn apply(key: ApiKey, update: UpdateApiKey) -> AuthResult<ApiKey> {
     let mut fields = key.field_values()?;
-    for (name, value) in update.into_adapter_fields()? {
-        fields.insert(name, value);
-    }
+    fields.extend(update.into_adapter_fields()?);
     fields.insert("updatedAt".into(), Utc::now().into());
     ApiKey::from_field_values(fields)
 }

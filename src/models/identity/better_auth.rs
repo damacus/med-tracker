@@ -73,32 +73,23 @@ pub async fn build(
     config.session.cookie_cache = None;
     config.session.bearer = None;
     config.session.expires_in = Some(chrono::Duration::days(7));
-    config.session.fields_mut().insert(
-        "clinical_session_purpose".into(),
-        better_auth_core::config::SessionFieldConfig {
-            field_name: None,
-            input: Some(false),
-            returned: Some(true),
-            ..Default::default()
-        },
-    );
-    config.session.fields_mut().insert(
-        "legacy_factor_pending".into(),
-        better_auth_core::config::SessionFieldConfig {
-            field_name: None,
-            input: Some(false),
-            returned: Some(true),
-            ..Default::default()
-        },
-    );
-    config.session.fields_mut().insert(
-        "authentication_method".into(),
-        better_auth_core::config::SessionFieldConfig {
-            field_name: None,
-            input: Some(false),
-            returned: Some(true),
-            ..Default::default()
-        },
+    config.session.fields_mut().extend(
+        [
+            "clinical_session_purpose",
+            "legacy_factor_pending",
+            "authentication_method",
+        ]
+        .map(|name| {
+            (
+                name.into(),
+                better_auth_core::config::SessionFieldConfig {
+                    field_name: None,
+                    input: Some(false),
+                    returned: Some(true),
+                    ..Default::default()
+                },
+            )
+        }),
     );
     let mut organization = OrganizationConfig {
         allow_user_to_create_organization: false,

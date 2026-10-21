@@ -37,26 +37,16 @@ pub(super) struct RegistrationForm {
     profile: crate::models::identity::better_auth::oidc::Profile,
 }
 
-fn limited_response(response: better_auth_core::AuthResponse) -> Response {
-    let Ok(body) = response.body.bytes() else {
-        return super::rendering::unavailable();
-    };
-    let mut builder = axum::http::Response::builder().status(response.status);
-    for (name, value) in response.headers.iter() {
-        builder = builder.header(name, value);
-    }
-    builder
-        .body(axum::body::Body::from(body.into_owned()))
-        .unwrap_or_else(|_| super::rendering::unavailable())
-}
-
 async fn preflight(service: &IdentityService, headers: &HeaderMap) -> Option<Response> {
     let provider = service.provider.as_ref()?;
     match provider
         .preflight(service, &super::passkeys::request(headers))
         .await
     {
-        Ok(Some(response)) => Some(limited_response(response)),
+        Ok(Some(response)) => Some(
+            better_auth_core::error::materialize_axum_response(response)
+                .unwrap_or_else(|_| super::rendering::unavailable()),
+        ),
         Ok(None) => None,
         Err(_) => Some(super::rendering::unavailable()),
     }
@@ -162,7 +152,10 @@ pub(super) async fn register(
         .await
     {
         Ok(response) if response.status == 200 => successful(response, &view),
-        Ok(response) if response.status == 429 => limited_response(response),
+        Ok(response) if response.status == 429 => {
+            better_auth_core::error::materialize_axum_response(response)
+                .unwrap_or_else(|_| super::rendering::unavailable())
+        }
         _ => unavailable(&view),
     }
 }

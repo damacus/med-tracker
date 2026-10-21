@@ -562,18 +562,14 @@ pub(super) async fn complete(
             .map_err(platform_error)?;
         transaction.commit().await.map_err(database_error)?;
         store.close_account(user.id.typed()?).await?;
-        return Ok(
-            AuthResponse::json(200, &json!({"status":true,"redirect":"/login"}))?.with_header(
-                "Set-Cookie",
-                better_auth_core::utils::cookie_utils::create_clear_cookie(
-                    &better_auth_core::utils::cookie_utils::related_cookie_name(
-                        &ctx.config,
-                        "session_token",
-                    ),
-                    &ctx.config,
-                )?,
-            ),
-        );
+        let mut response = AuthResponse::json(200, &json!({"status":true,"redirect":"/login"}))?;
+        better_auth_core::utils::cookie_utils::delete_session_cookies(
+            request,
+            &ctx.config,
+            false,
+            Some(&mut response.headers),
+        )?;
+        return Ok(response);
     }
     if let Action::ChangeEmail { new_email } = &pending.action {
         return super::email_change::send(

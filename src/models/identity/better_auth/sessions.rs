@@ -53,16 +53,12 @@ impl Sessions {
             &serde_json::json!({"status":true,"current":target.id == session.id}),
         )?;
         if target.id == session.id {
-            response = response.with_header(
-                "Set-Cookie",
-                better_auth_core::utils::cookie_utils::create_clear_cookie(
-                    &better_auth_core::utils::cookie_utils::related_cookie_name(
-                        &ctx.config,
-                        "session_token",
-                    ),
-                    &ctx.config,
-                )?,
-            );
+            better_auth_core::utils::cookie_utils::delete_session_cookies(
+                request,
+                &ctx.config,
+                false,
+                Some(&mut response.headers),
+            )?;
         }
         transaction.commit().await.map_err(database_error)?;
         Ok(response)

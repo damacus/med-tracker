@@ -35,8 +35,6 @@ jobs:
       - name: Install Fish and ripgrep
         run: sudo apt-get install --yes fish ripgrep
       - name: Verify Android
-        env:
-          GRADLE_OPTS: -Dorg.gradle.logging.level=info -Dorg.gradle.logging.stacktrace=all
         run: task android:ci
       - id: verified
         run: echo "result=success" >> "$GITHUB_OUTPUT"
