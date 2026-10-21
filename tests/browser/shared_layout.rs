@@ -281,3 +281,42 @@ async fn shared_layout_search_and_account_do_not_compete() {
     )
     .await;
 }
+
+#[tokio::test]
+#[ignore = "browser journeys run through task test:browser"]
+async fn shared_layout_search_handles_rapid_escape_and_queued_dialog_close() {
+    harness::journey(Viewport { width:1440,height:1000 },|journey|Box::pin(async move {
+        let page=&journey.page;
+        harness::sign_in(journey).await;
+        expect(page.locator("body[data-navigation-ready]")).to_be_visible().await.unwrap();
+        let observed=page.evaluate::<(),serde_json::Value>(r#"async () => {
+            const panel=document.querySelector('[data-global-search]');
+            const input=panel.querySelector('#global_search_query');
+            const search=document.querySelector('[data-sidebar-search]');
+            const account=document.querySelector('[data-sidebar-account]');
+            const dialog=document.querySelector('#app-account');
+            const focus=[];
+            document.addEventListener('focusin',event=>focus.push(event.target.id || event.target.getAttribute('data-sidebar-search')!==null && 'sidebar-search' || event.target.getAttribute('data-sidebar-account')!==null && 'sidebar-account' || event.target.tagName));
+            search.focus();
+            search.click();
+            const rapidBefore=document.activeElement===input?'input':'opener';
+            document.activeElement.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+            const rapid={closed:panel.hidden,restored:document.activeElement===search,before:rapidBefore};
+            panel.querySelector('[data-global-search-close]').click();
+            account.click();
+            const closed=new Promise(resolve=>dialog.addEventListener('close',resolve,{once:true}));
+            document.activeElement.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true,cancelable:true}));
+            input.focus();
+            await closed;
+            const queued={closed:panel.hidden,inputFocused:document.activeElement===input,dialogClosed:!dialog.open};
+            return {rapid,queued,focus};
+        }"#,None).await.unwrap();
+        assert_eq!(observed["rapid"]["closed"],true,"{observed}");
+        assert_eq!(observed["rapid"]["restored"],true,"{observed}");
+        assert_eq!(observed["queued"]["closed"],false,"{observed}");
+        assert_eq!(observed["queued"]["inputFocused"],true,"{observed}");
+        assert_eq!(observed["queued"]["dialogClosed"],true,"{observed}");
+        page.keyboard().press("Escape",None).await.unwrap();
+        expect(page.locator("[data-sidebar-account]")).to_be_focused().await.unwrap();
+    })).await;
+}

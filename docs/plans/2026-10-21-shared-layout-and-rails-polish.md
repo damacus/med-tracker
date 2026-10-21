@@ -40,3 +40,12 @@ Spec: owner request on 21 October 2026: finish the shared Loco layout across all
 
 ## Delivery
 Perform independent spec/quality task reviews and scoped corrections. Run one whole-branch security/quality review after all three tasks. Refresh main, freeze the candidate, run task ci and docs:build, inspect representative screenshots against the Rails reference, and verify final diff/status/signatures. Publish the completed coherent layout-and-page-polish PR against main, attach it and verify hosted checks. No merge/deploy beyond the already-merged2848 prerequisite. Keep the full requested scope visible until complete; do not stop after Task1.
+
+
+## Shared search focus correction
+
+A deterministic real-browser regression reproduces two event-order failures: Escape in the same JavaScript turn as opening search leaves the panel open before its deferred focus frame; a queued navigation-dialog close handler steals focus from an already focused search input and closes search. The test records actual focusin events, uses the native dialog close event, and does not stub animation frames or inflate timeouts.
+
+Search now focuses the visible input synchronously. Navigation dialogs restore focus only while focus is still within the closing dialog or has fallen to the document body; a new overlay or other deliberately focused control retains ownership. Existing opener and account-to-CtrlK Escape restoration assertions remain strict. No application permissions or visible controls change.
+
+Focused evidence: RED `rtk task test:browser FILTER=shared_layout_search_handles_rapid_escape_and_queued_dialog_close` (session25024, nextest57ffa4c8-7974-4d54-aabc-ed44973bd239) observed rapid Escape leaving search open and queued native close moving focus from search input to account opener. GREEN `rtk task test:browser FILTER=shared_layout_search_` (session16441, nextest91700b9b-08ab-432b-b8d5-77cbbf1fbd98):2passed,13skipped,6.330s. Existing normal opener/account flow remains unchanged and strict. `rtk task frontend:test`:19passed; `rtk task fmt` and `git diff --check` passed. No screenshot files changed. Cumulative CI, independent review and publication remain controller-owned after propagation.

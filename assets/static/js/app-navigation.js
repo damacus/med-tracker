@@ -146,7 +146,10 @@
         trigger.addEventListener('click', () => { activeTrigger = trigger; panel.showModal(); trigger.setAttribute('aria-expanded', 'true'); });
         trigger.hidden = false;
       }
-      panel.addEventListener('close', () => { activeTrigger?.setAttribute('aria-expanded', 'false'); activeTrigger?.focus(); });
+      panel.addEventListener('close', () => {
+        activeTrigger?.setAttribute('aria-expanded', 'false');
+        if (document.activeElement === document.body || panel.contains(document.activeElement)) activeTrigger?.focus();
+      });
       panel.addEventListener('click', event => {
         const bounds = panel.getBoundingClientRect();
         if (event.target === panel && (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom)) panel.close();
