@@ -11,6 +11,17 @@ pub(super) fn authenticity_token(html: &str) -> Option<&str> {
         .next()
 }
 
+fn listed_member_names(html: &str) -> Vec<String> {
+    let document = scraper::Html::parse_document(html);
+    let selector =
+        scraper::Selector::parse(".admin-member-directory tbody th[scope='row'] a[href]")
+            .expect("static member-name selector");
+    document
+        .select(&selector)
+        .map(|link| link.text().collect::<String>().trim().to_owned())
+        .collect()
+}
+
 fn listed_membership_ids(html: &str) -> Vec<i64> {
     html.split("<table")
         .nth(1)
@@ -436,7 +447,13 @@ async fn member_administration_lists_inactive_identity_and_changes_membership_st
     let first_page = request.get("/households/persistence-fixture/admin/users?role=member&status=active&sort=name&direction=asc&page=1&lang=es").await;
     let first_html = first_page.text();
     assert_eq!(first_page.status_code(), 200, "{first_html}");
-    assert_eq!(first_html.matches("Bulk member</a></th>").count(), 25);
+    assert_eq!(
+        listed_member_names(&first_html)
+            .iter()
+            .filter(|name| name.as_str() == "Bulk member")
+            .count(),
+        25
+    );
     assert_eq!(
         listed_membership_ids(&first_html),
         (74101..=74125).collect::<Vec<_>>()
@@ -445,7 +462,10 @@ async fn member_administration_lists_inactive_identity_and_changes_membership_st
     let second_page = request.get("/households/persistence-fixture/admin/users?role=member&status=active&sort=name&direction=asc&page=2&lang=es").await;
     assert_eq!(second_page.status_code(), 200, "{}", second_page.text());
     assert_eq!(
-        second_page.text().matches("Bulk member</a></th>").count(),
+        listed_member_names(&second_page.text())
+            .iter()
+            .filter(|name| name.as_str() == "Bulk member")
+            .count(),
         2
     );
     assert_eq!(
