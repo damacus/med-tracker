@@ -424,3 +424,44 @@ async fn bulk_member_denies_ordinary_revoked_locked_and_inactive_household_actor
     close(fixture, boot).await;
     Ok(())
 }
+
+#[tokio::test]
+async fn bulk_member_anonymous_malformed_post_uses_generic_navigation_without_effects() -> TestResult
+{
+    let (fixture, boot, request) = setup().await;
+    let anonymous = server(&boot);
+    for endpoint in ["preview", ""] {
+        let path = if endpoint.is_empty() {
+            "/households/fabricated-bulk-household/admin/users/bulk".to_string()
+        } else {
+            format!("/households/fabricated-bulk-household/admin/users/bulk/{endpoint}")
+        };
+        let response = anonymous
+            .post(&path)
+            .add_header("sec-fetch-site", "same-origin")
+            .form(&[
+                ("action", "suspend"),
+                ("q", "fabricated-search"),
+                ("lang", "en"),
+            ])
+            .await;
+        assert_eq!(response.status_code(), 422, "{}", response.text());
+        let html = response.text();
+        assert!(
+            !html.contains("fabricated-bulk-household"),
+            "anonymous error must not invent household navigation"
+        );
+        assert!(!html.contains("class=\"app-household\""));
+        assert!(!html.contains("data-sidebar-profile"));
+        assert!(!html.contains("/admin/users?"));
+        assert!(!html.contains("/people"));
+        assert_eq!(status(&fixture, 74061).await, "active");
+        assert_eq!(status(&fixture, 74062).await, "suspended");
+        assert_eq!(audit_count(&fixture, "success").await, 0);
+        assert_eq!(audit_count(&fixture, "rejected").await, 0);
+    }
+    drop(anonymous);
+    drop(request);
+    close(fixture, boot).await;
+    Ok(())
+}

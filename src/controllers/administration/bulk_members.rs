@@ -235,14 +235,9 @@ async fn run(page: BulkPage<'_>, fields: Vec<(String, String)>, confirmed: bool)
         .find(|(key, _)| key == "lang")
         .and_then(|(_, value)| supported_language(value))
         .unwrap_or("en");
-    let error_context: HashMap<_, _> = fields
-        .iter()
-        .filter(|(key, _)| key != "membership_ids")
-        .cloned()
-        .collect();
     let submission = match Submission::parse(fields, confirmed) {
         Ok(value) => value,
-        Err(_) => return invalid_selection(view, token, slug, language, &error_context),
+        Err(_) => return invalid_selection(view, token, language),
     };
     if token
         .verify(forms::field(&submission.context, "authenticity_token"))
@@ -437,27 +432,16 @@ fn render(
     rendering::render(view, token, "administration/bulk_members.html", data, None)
 }
 
-fn invalid_selection(
-    view: &TeraView,
-    token: &CsrfToken,
-    slug: &str,
-    language: &str,
-    context: &HashMap<String, String>,
-) -> Response {
+fn invalid_selection(view: &TeraView, token: &CsrfToken, language: &str) -> Response {
     let Ok(labels) = crate::models::care::report_pdf::translations(language) else {
         return unavailable();
     };
-    let mut data = rendering::context(slug, None);
+    let mut data = super::super::medications::rendering::appearance_context();
     data["labels"] = labels.clone();
     data["lang"] = json!(language);
     data["title"] = labels["administration"]["bulk_members"]["invalid_selection"].clone();
     data["bulk_labels"] = labels["administration"]["bulk_members"].clone();
-    let query =
-        MemberQuery::from_form(context).unwrap_or_else(|_| MemberQuery::default().with_page(1));
-    data["return_url"] = json!(format!(
-        "/households/{slug}/admin/users{}",
-        query.suffix(Some(language))
-    ));
+    data["error_labels"] = labels["administration"]["errors"].clone();
     let response = rendering::render(view, token, "administration/bulk_invalid.html", data, None);
     (StatusCode::UNPROCESSABLE_ENTITY, response).into_response()
 }

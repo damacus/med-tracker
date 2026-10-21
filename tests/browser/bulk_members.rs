@@ -1,7 +1,7 @@
 use crate::harness::{self, named};
 use playwright_rs::expect;
 use playwright_rs::protocol::{Animations, AriaRole, Page, ScreenshotOptions, Viewport};
-use sea_orm::ConnectionTrait;
+use sea_orm::{ConnectionTrait, DbBackend, Statement};
 
 async fn capture(page: &Page, name: &str) {
     expect(page.locator("body[data-navigation-ready]"))
@@ -63,6 +63,20 @@ async fn bulk_member_selection_confirmation_partial_retry_and_responsive_journey
         assert_eq!(page.evaluate::<(),i64>("() => document.querySelectorAll('input[name=membership_ids]:checked').length",None).await.unwrap(),0);
         page.goto(&listing,None).await.unwrap();
         expect(page.locator("body[data-navigation-ready]")).to_be_visible().await.unwrap();
+        page.get_by_label("Select Bulk Alpha",true).press("Space",None).await.unwrap();
+        page.get_by_label("Select Bulk Beta",true).press("Space",None).await.unwrap();
+        let unchanged_sql="SELECT jsonb_build_object('states',(SELECT jsonb_agg(jsonb_build_array(id,status,permissions_version,updated_at) ORDER BY id) FROM household_memberships WHERE id IN (74501,74502)),'audits',(SELECT count(*) FROM security_audit_events WHERE household_id=72001 AND event_type='household_access.membership_changed' AND metadata->>'target_membership_id' IN ('74501','74502'))) AS snapshot";
+        let before_cancel:serde_json::Value=journey.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,unchanged_sql)).await.unwrap().unwrap().try_get("","snapshot").unwrap();
+        page.get_by_role(AriaRole::Button,named("Suspend selected")).press("Enter",None).await.unwrap();
+        expect(page.get_by_role(AriaRole::Button,named("Confirm Suspend"))).to_be_visible().await.unwrap();
+        page.get_by_role(AriaRole::Link,named("Back to members")).press("Enter",None).await.unwrap();
+        expect(page.locator("body[data-navigation-ready]")).to_be_visible().await.unwrap();
+        for context in ["q=Bulk","role=all","status=all","sort=name","direction=asc","page=1","lang=en"] {
+            assert!(page.url().contains(context),"missing returned context {context}: {}",page.url());
+        }
+        assert_eq!(page.evaluate::<(),i64>("() => document.querySelectorAll('input[name=membership_ids]:checked').length",None).await.unwrap(),0);
+        let after_cancel:serde_json::Value=journey.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,unchanged_sql)).await.unwrap().unwrap().try_get("","snapshot").unwrap();
+        assert_eq!(after_cancel,before_cancel,"cancelling preview must not change member state or target audit");
         page.get_by_label("Select Bulk Alpha",true).press("Space",None).await.unwrap();
         page.get_by_label("Select Bulk Beta",true).press("Space",None).await.unwrap();
         page.get_by_role(AriaRole::Button,named("Suspend selected")).press("Enter",None).await.unwrap();
