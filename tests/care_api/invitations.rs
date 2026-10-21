@@ -2,6 +2,8 @@ use super::*;
 
 #[path = "invitations/browser_administration.rs"]
 mod browser_administration;
+#[path = "invitations/delivery_race.rs"]
+mod delivery_race;
 #[path = "invitations/global_person.rs"]
 mod global_person;
 
@@ -785,16 +787,11 @@ async fn invitation_mail_worker_rechecks_authority_tokens_and_replay_without_res
         assert!(!safe.contains("safe-attempt@example.test"));
         assert!(!safe.contains("https://"));
         let expected = match scenario {
-            "sent" => "sent_to_provider",
+            "sent" | "race" => "sent_to_provider",
             "foreign" => "queued",
             _ => "failed",
         };
-        if scenario == "race" {
-            assert!(matches!(state.as_str(), "sent_to_provider" | "failed"));
-            assert!(app.context.mailer.as_ref().unwrap().deliveries().count - mail_before <= 1);
-        } else {
-            assert_eq!(state, expected, "{scenario}");
-        }
+        assert_eq!(state, expected, "{scenario}");
         if matches!(scenario, "uncertain" | "commit_failure") {
             assert_eq!(category.as_deref(), Some("uncertain"));
         }
@@ -807,12 +804,10 @@ async fn invitation_mail_worker_rechecks_authority_tokens_and_replay_without_res
                 None
             );
         }
-        if let Some(mailer) = &app.context.mailer
-            && scenario != "race"
-        {
+        if let Some(mailer) = &app.context.mailer {
             assert_eq!(
                 mailer.deliveries().count - mail_before,
-                usize::from(matches!(scenario, "sent" | "commit_failure")),
+                usize::from(matches!(scenario, "sent" | "race" | "commit_failure")),
                 "{scenario}"
             );
         }

@@ -60,7 +60,7 @@ async fn locked(
         .await?;
     let row = db.query_one_raw(Statement::from_sql_and_values(
         DbBackend::Postgres,
-        "SELECT invitation_id,original_invitation_id,sender_account_id,sender_membership_id,sender_permissions_version,token_digest,status,started_at FROM invitation_mail_attempts WHERE household_id=$1 AND id=$2 FOR UPDATE",
+        "SELECT invitation_id,original_invitation_id,sender_account_id,sender_membership_id,sender_permissions_version,token_digest,status,started_at FROM invitation_mail_attempts WHERE household_id=$1 AND id=$2",
         [mail.household_id.into(),mail.attempt_id.0.into()],
     )).await?.ok_or(OperationError::Unavailable)?;
     let status: String = row.try_get("", "status")?;
@@ -141,7 +141,37 @@ async fn finish(
     Ok(())
 }
 
+#[derive(Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct DeliverySettings {
+    send_timeout_seconds: Option<u64>,
+}
+
+fn send_timeout(value: Option<&serde_json::Value>) -> Result<std::time::Duration, OperationError> {
+    let settings: DeliverySettings = match value {
+        Some(value) if !value.is_null() => {
+            serde_json::from_value(value.clone()).map_err(|_| OperationError::Unavailable)?
+        }
+        _ => DeliverySettings::default(),
+    };
+    let seconds = settings.send_timeout_seconds.unwrap_or(30);
+    if !(1..=300).contains(&seconds) {
+        return Err(OperationError::Unavailable);
+    }
+    Ok(std::time::Duration::from_secs(seconds))
+}
+
 impl InvitationMailWorker {
+    async fn start(&self, mail: &InvitationMail) -> Result<(), OperationError> {
+        let marker = household_transaction(&self.ctx, mail.household_id).await?;
+        marker.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+            "UPDATE invitation_mail_attempts SET started_at=timezone('UTC',clock_timestamp()) WHERE household_id=$1 AND id=$2 AND status='queued' AND started_at IS NULL",
+            [mail.household_id.into(),mail.attempt_id.0.into()],
+        )).await?;
+        marker.commit().await?;
+        Ok(())
+    }
+
     async fn deliver(&self, mail: InvitationMail) -> Result<(), OperationError> {
         let Some(first) = locked(&self.ctx, &mail).await? else {
             return Ok(());
@@ -162,29 +192,50 @@ impl InvitationMailWorker {
             first.db.commit().await?;
             return Ok(());
         }
-        first.db.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-            "UPDATE invitation_mail_attempts SET started_at=timezone('UTC',clock_timestamp()) WHERE household_id=$1 AND id=$2",
-            [mail.household_id.into(),mail.attempt_id.0.into()],
-        )).await?;
-        first.db.commit().await?;
-
-        let Some(second) = locked(&self.ctx, &mail).await? else {
-            return Ok(());
+        let deadline = match send_timeout(
+            self.ctx
+                .config
+                .settings
+                .as_ref()
+                .and_then(|settings| settings.get("invitation_mail")),
+        ) {
+            Ok(deadline) => deadline,
+            Err(error) => {
+                finish(&first.db, &mail, Some(FailureCategory::Unavailable)).await?;
+                first.db.commit().await?;
+                return Err(error);
+            }
         };
-        if second.attempt.status != AttemptStatus::Queued {
-            second.db.commit().await?;
+        if let Err(error) = self.start(&mail).await {
+            finish(&first.db, &mail, Some(FailureCategory::Unavailable)).await?;
+            first.db.commit().await?;
+            return Err(error);
+        }
+        let row = first.db.query_one_raw(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            "SELECT status FROM invitation_mail_attempts WHERE household_id=$1 AND id=$2 FOR UPDATE",
+            [mail.household_id.into(),mail.attempt_id.0.into()],
+        )).await?.ok_or(OperationError::Unavailable)?;
+        if AttemptStatus::parse(&row.try_get::<String>("", "status")?)? != AttemptStatus::Queued {
+            first.db.commit().await?;
             return Ok(());
         }
-        let category = if !allowed(&second, &mail).await? {
+        let category = if !allowed(&first, &mail).await? {
             Some(FailureCategory::Unavailable)
         } else {
             match &self.ctx.mailer {
-                Some(mailer) if mailer.mail(&mail.email).await.is_ok() => None,
-                _ => Some(FailureCategory::ProviderUnavailable),
+                Some(mailer) => {
+                    match tokio::time::timeout(deadline, mailer.mail(&mail.email)).await {
+                        Ok(Ok(())) => None,
+                        Ok(Err(_)) => Some(FailureCategory::ProviderUnavailable),
+                        Err(_) => Some(FailureCategory::Uncertain),
+                    }
+                }
+                None => Some(FailureCategory::ProviderUnavailable),
             }
         };
-        finish(&second.db, &mail, category).await?;
-        second.db.commit().await?;
+        finish(&first.db, &mail, category).await?;
+        first.db.commit().await?;
         Ok(())
     }
 }
@@ -199,5 +250,35 @@ impl BackgroundWorker<InvitationMail> for InvitationMailWorker {
         self.deliver(mail)
             .await
             .map_err(|_| loco_rs::Error::string("Invitation mail attempt unavailable"))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::send_timeout;
+    use serde_json::json;
+    use std::time::Duration;
+
+    #[test]
+    fn invitation_mail_deadline_validates_settings_and_null_fallback() {
+        assert_eq!(send_timeout(None), Ok(Duration::from_secs(30)));
+        for value in [json!(null), json!({}), json!({"send_timeout_seconds":null})] {
+            assert_eq!(send_timeout(Some(&value)), Ok(Duration::from_secs(30)));
+        }
+        for seconds in [1, 30, 300] {
+            assert_eq!(
+                send_timeout(Some(&json!({"send_timeout_seconds":seconds}))),
+                Ok(Duration::from_secs(seconds))
+            );
+        }
+        for value in [
+            json!({"send_timeout_seconds":0}),
+            json!({"send_timeout_seconds":301}),
+            json!({"send_timeout_seconds":-1}),
+            json!({"send_timeout_seconds":"30"}),
+            json!({"unrecognised":30}),
+        ] {
+            assert!(send_timeout(Some(&value)).is_err());
+        }
     }
 }
