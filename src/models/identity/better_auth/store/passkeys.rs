@@ -207,6 +207,17 @@ impl PasskeyStore for ClinicalStore {
         id: &SchemaValue<String>,
         input: UpdatePasskeyAuthentication,
     ) -> AuthResult<Option<Passkey>> {
+        let UpdatePasskeyAuthentication::Legacy {
+            credential,
+            counter,
+            backed_up,
+            device_type,
+        } = input
+        else {
+            return Err(AuthError::config(
+                "Native passkey authentication is not configured",
+            ));
+        };
         let id = id.typed()?;
         let (transaction, existing) = self.passkey_transaction(id).await?;
         let Some(existing) = existing else {
@@ -222,12 +233,7 @@ impl PasskeyStore for ClinicalStore {
         if account.is_none() {
             return Err(AuthError::Unauthenticated);
         }
-        let row = match input {
-            UpdatePasskeyAuthentication::Legacy { credential, counter, backed_up, device_type } =>
-                PasskeyRow::find_by_statement(statement(&format!("UPDATE public.identity_passkeys SET credential=$2,counter=$3::text::numeric,backed_up=$4,device_type=$5,updated_at=CURRENT_TIMESTAMP WHERE id=$1 AND (counter<$3::text::numeric OR (counter=0 AND $3::text::numeric=0)) RETURNING {COLUMNS}"),[id.into(),credential.into(),counter.to_string().into(),backed_up.into(),device_type.into()])).one(&*transaction).await.map_err(database_error)?,
-            UpdatePasskeyAuthentication::Native { counter } =>
-                PasskeyRow::find_by_statement(statement(&format!("UPDATE public.identity_passkeys SET counter=$2::text::numeric,updated_at=CURRENT_TIMESTAMP WHERE id=$1 AND (counter<$2::text::numeric OR (counter=0 AND $2::text::numeric=0)) RETURNING {COLUMNS}"),[id.into(),counter.to_string().into()])).one(&*transaction).await.map_err(database_error)?,
-        };
+        let row = PasskeyRow::find_by_statement(statement(&format!("UPDATE public.identity_passkeys SET credential=$2,counter=$3::text::numeric,backed_up=$4,device_type=$5,updated_at=CURRENT_TIMESTAMP WHERE id=$1 AND (counter<$3::text::numeric OR (counter=0 AND $3::text::numeric=0)) RETURNING {COLUMNS}"),[id.into(),credential.into(),counter.to_string().into(),backed_up.into(),device_type.into()])).one(&*transaction).await.map_err(database_error)?;
         let key = row.map(TryInto::try_into).transpose()?;
         transaction.commit().await.map_err(database_error)?;
         Ok(key)
@@ -235,39 +241,12 @@ impl PasskeyStore for ClinicalStore {
 
     async fn update_passkey_optional(
         &self,
-        id: &SchemaValue<String>,
-        update: UpdatePasskey,
+        _id: &SchemaValue<String>,
+        _update: UpdatePasskey,
     ) -> AuthResult<Option<Passkey>> {
-        if !update.additional_fields.is_empty() {
-            return Err(AuthError::config(
-                "Passkey extension fields are not configured",
-            ));
-        }
-        let id = id.typed()?;
-        let (transaction, existing) = self.passkey_transaction(id).await?;
-        let Some(existing) = existing else {
-            return Ok(None);
-        };
-        let name = if update.name.is_undefined() {
-            existing.name
-        } else {
-            update.name.typed()?.clone()
-        };
-        let aaguid = if update.aaguid.is_undefined() {
-            existing.aaguid
-        } else {
-            update.aaguid.typed()?.clone()
-        };
-        let counter = update.counter.unwrap_or(
-            existing
-                .counter
-                .parse::<u64>()
-                .map_err(|_| AuthError::internal("Invalid stored passkey counter"))?,
-        );
-        let row=PasskeyRow::find_by_statement(statement(&format!("UPDATE public.identity_passkeys SET name=$2,aaguid=$3,counter=$4::text::numeric,updated_at=CURRENT_TIMESTAMP WHERE id=$1 AND counter<=$4::text::numeric RETURNING {COLUMNS}"),[id.into(),name.into(),aaguid.into(),counter.to_string().into()])).one(&*transaction).await.map_err(database_error)?;
-        let key = row.map(TryInto::try_into).transpose()?;
-        transaction.commit().await.map_err(database_error)?;
-        Ok(key)
+        Err(AuthError::config(
+            "Native passkey display updates are not configured",
+        ))
     }
 
     async fn delete_passkey(&self, id: &str) -> AuthResult<()> {

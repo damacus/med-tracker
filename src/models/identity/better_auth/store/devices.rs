@@ -1,98 +1,11 @@
 use async_trait::async_trait;
 use better_auth_core::{
     AuthError, AuthResult, CreateDeviceCode, DeviceCode, DeviceCodeOwnership, FieldMap, FieldValue,
-    SchemaField, SchemaValue, UpdateDeviceCode,
+    SchemaValue, UpdateDeviceCode,
     store::{DeviceCodeStore, JwksStore, WalletStore},
 };
-use chrono::{DateTime, Utc};
-use sea_orm::{ConnectionTrait, FromQueryResult};
 
-use super::{ClinicalStore, clinical_id, clinical_schema_id, context, database_error, statement};
-
-#[derive(FromQueryResult)]
-struct DeviceRow {
-    id: String,
-    device_code: String,
-    user_code: String,
-    account_id: Option<i64>,
-    expires_at: DateTime<Utc>,
-    status: String,
-    last_polled_at: Option<DateTime<Utc>>,
-    polling_interval: Option<i64>,
-    client_id: Option<String>,
-    scope: Option<String>,
-}
-
-impl From<DeviceRow> for DeviceCode {
-    fn from(row: DeviceRow) -> Self {
-        let fields = FieldMap::from([
-            ("id".into(), row.id.into()),
-            ("deviceCode".into(), row.device_code.into()),
-            ("userCode".into(), row.user_code.into()),
-            (
-                "userId".into(),
-                row.account_id.map(|id| id.to_string()).into_field(),
-            ),
-            ("expiresAt".into(), row.expires_at.into()),
-            ("status".into(), row.status.into()),
-            ("lastPolledAt".into(), row.last_polled_at.into_field()),
-            (
-                "pollingInterval".into(),
-                row.polling_interval.map(|value| value as f64).into_field(),
-            ),
-            ("clientId".into(), row.client_id.into_field()),
-            ("scope".into(), row.scope.into_field()),
-        ]);
-        Self::from(fields)
-    }
-}
-
-impl ClinicalStore {
-    async fn device_update(
-        &self,
-        id: &str,
-        expected: Option<&str>,
-        update: UpdateDeviceCode,
-    ) -> AuthResult<Option<DeviceCode>> {
-        let transaction = self.transaction().await?;
-        context(&transaction, "med_tracker.identity_device_id", id).await?;
-        if !update.additional_fields.is_empty() {
-            return Err(AuthError::config(
-                "Device-code extension fields are not configured",
-            ));
-        }
-        let change_user = update.user_id.is_some();
-        let user_id = update
-            .user_id
-            .as_ref()
-            .map(SchemaValue::typed)
-            .transpose()?
-            .cloned()
-            .flatten()
-            .as_deref()
-            .map(clinical_id)
-            .transpose()?;
-        let change_poll = update.last_polled_at.is_some();
-        let poll = update
-            .last_polled_at
-            .flatten()
-            .map(|value| {
-                value.to_datetime().and_then(|value| {
-                    value.ok_or_else(|| AuthError::bad_request("Invalid poll timestamp"))
-                })
-            })
-            .transpose()?;
-        let change_scope = !update.scope.is_undefined();
-        let scope = if change_scope {
-            update.scope.typed()?.clone()
-        } else {
-            None
-        };
-        let row = DeviceRow::find_by_statement(statement("UPDATE public.identity_device_codes SET status=COALESCE($3,status),account_id=CASE WHEN $4 THEN $5 ELSE account_id END,last_polled_at=CASE WHEN $6 THEN $7 ELSE last_polled_at END,scope=CASE WHEN $8 THEN $9 ELSE scope END WHERE id=$1 AND ($2::text IS NULL OR status=$2) AND ($3::text IS NULL OR expires_at>CURRENT_TIMESTAMP) AND (NOT $4 OR account_id IS NOT DISTINCT FROM $5) RETURNING *", [id.into(), expected.into(), update.status.into(), change_user.into(), user_id.into(), change_poll.into(), poll.into(), change_scope.into(), scope.into()])).one(&*transaction).await.map_err(database_error)?;
-        transaction.commit().await.map_err(database_error)?;
-        Ok(row.map(Into::into))
-    }
-}
+use super::ClinicalStore;
 
 #[async_trait]
 impl DeviceCodeStore for ClinicalStore {
@@ -115,125 +28,41 @@ impl DeviceCodeStore for ClinicalStore {
         Err(AuthError::config("Device authorization is not configured"))
     }
 
-    async fn create_device_code(&self, input: CreateDeviceCode) -> AuthResult<DeviceCode> {
-        if !input.additional_fields.is_empty() {
-            return Err(AuthError::config(
-                "Device-code extension fields are not configured",
-            ));
-        }
-        let transaction = self.transaction().await?;
-        context(
-            &transaction,
-            "med_tracker.identity_device_code",
-            &input.device_code,
-        )
-        .await?;
-        let user_id = input.user_id.as_deref().map(clinical_id).transpose()?;
-        let expiry = input
-            .expires_at
-            .to_datetime()?
-            .ok_or_else(|| AuthError::bad_request("Invalid device expiry"))?;
-        let poll = input
-            .last_polled_at
-            .map(|value| {
-                value.to_datetime().and_then(|value| {
-                    value.ok_or_else(|| AuthError::bad_request("Invalid poll timestamp"))
-                })
-            })
-            .transpose()?;
-        let interval = input
-            .polling_interval
-            .map(|value| {
-                if value >= 0.0 && value.fract() == 0.0 {
-                    Ok(value as i64)
-                } else {
-                    Err(AuthError::bad_request("Invalid polling interval"))
-                }
-            })
-            .transpose()?;
-        let row = DeviceRow::find_by_statement(statement("INSERT INTO public.identity_device_codes(id,device_code,user_code,account_id,expires_at,status,last_polled_at,polling_interval,client_id,scope) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *", [uuid::Uuid::new_v4().to_string().into(), input.device_code.into(), input.user_code.into(), user_id.into(), expiry.into(), input.status.into(), poll.into(), interval.into(), input.client_id.into(), input.scope.typed()?.clone().into()])).one(&*transaction).await.map_err(database_error)?.ok_or_else(|| AuthError::internal("Device request was not stored"))?;
-        transaction.commit().await.map_err(database_error)?;
-        Ok(row.into())
+    async fn create_device_code(&self, _input: CreateDeviceCode) -> AuthResult<DeviceCode> {
+        Err(AuthError::config("Device authorization is not configured"))
     }
 
-    async fn get_device_code_by_device_code(&self, code: &str) -> AuthResult<Option<DeviceCode>> {
-        let transaction = self.transaction().await?;
-        context(&transaction, "med_tracker.identity_device_code", code).await?;
-        let row = DeviceRow::find_by_statement(statement(
-            "SELECT * FROM public.identity_device_codes WHERE device_code=$1",
-            [code.into()],
-        ))
-        .one(&*transaction)
-        .await
-        .map_err(database_error)?;
-        transaction.commit().await.map_err(database_error)?;
-        Ok(row.map(Into::into))
+    async fn get_device_code_by_device_code(&self, _code: &str) -> AuthResult<Option<DeviceCode>> {
+        Err(AuthError::config("Device authorization is not configured"))
     }
 
-    async fn get_device_code_by_user_code(&self, code: &str) -> AuthResult<Option<DeviceCode>> {
-        let transaction = self.transaction().await?;
-        context(&transaction, "med_tracker.identity_device_user_code", code).await?;
-        let row = DeviceRow::find_by_statement(statement(
-            "SELECT * FROM public.identity_device_codes WHERE user_code=$1",
-            [code.into()],
-        ))
-        .one(&*transaction)
-        .await
-        .map_err(database_error)?;
-        transaction.commit().await.map_err(database_error)?;
-        Ok(row.map(Into::into))
+    async fn get_device_code_by_user_code(&self, _code: &str) -> AuthResult<Option<DeviceCode>> {
+        Err(AuthError::config("Device authorization is not configured"))
     }
 
     async fn update_device_code(
         &self,
-        id: &SchemaValue<String>,
-        update: UpdateDeviceCode,
+        _id: &SchemaValue<String>,
+        _update: UpdateDeviceCode,
     ) -> AuthResult<DeviceCode> {
-        self.device_update(id.typed()?, None, update)
-            .await?
-            .ok_or_else(|| AuthError::not_found("Device request not found"))
+        Err(AuthError::config("Device authorization is not configured"))
     }
 
     async fn update_device_code_if_status(
         &self,
-        id: &SchemaValue<String>,
-        expected: &str,
-        update: UpdateDeviceCode,
+        _id: &SchemaValue<String>,
+        _expected: &str,
+        _update: UpdateDeviceCode,
     ) -> AuthResult<bool> {
-        Ok(self
-            .device_update(id.typed()?, Some(expected), update)
-            .await?
-            .is_some())
+        Err(AuthError::config("Device authorization is not configured"))
     }
 
     async fn claim_device_code(
         &self,
-        id: &SchemaValue<String>,
-        user_id: &SchemaValue<String>,
+        _id: &SchemaValue<String>,
+        _user_id: &SchemaValue<String>,
     ) -> AuthResult<bool> {
-        let id = id.typed()?;
-        let account_id = clinical_schema_id(user_id)?;
-        let transaction = self.transaction().await?;
-        context(&transaction, "med_tracker.identity_device_id", id).await?;
-        context(
-            &transaction,
-            "med_tracker.current_account_id",
-            &account_id.to_string(),
-        )
-        .await?;
-        let account = transaction
-            .query_one_raw(statement(
-                "SELECT id FROM public.accounts WHERE id=$1 AND status=2 FOR UPDATE",
-                [account_id.into()],
-            ))
-            .await
-            .map_err(database_error)?;
-        if account.is_none() {
-            return Err(AuthError::Unauthenticated);
-        }
-        let changed = transaction.execute_raw(statement("UPDATE public.identity_device_codes SET account_id=$2 WHERE id=$1 AND account_id IS NULL AND status='pending' AND expires_at>CURRENT_TIMESTAMP", [id.into(), account_id.into()])).await.map_err(database_error)?.rows_affected() == 1;
-        transaction.commit().await.map_err(database_error)?;
-        Ok(changed)
+        Err(AuthError::config("Device authorization is not configured"))
     }
 
     async fn consume_device_code(
@@ -244,39 +73,16 @@ impl DeviceCodeStore for ClinicalStore {
         Err(AuthError::config("Device authorization is not configured"))
     }
 
-    async fn delete_device_code(&self, id: &SchemaValue<String>) -> AuthResult<()> {
-        let id = id.typed()?;
-        let transaction = self.transaction().await?;
-        context(&transaction, "med_tracker.identity_device_id", id).await?;
-        transaction
-            .execute_raw(statement(
-                "DELETE FROM public.identity_device_codes WHERE id=$1",
-                [id.into()],
-            ))
-            .await
-            .map_err(database_error)?;
-        transaction.commit().await.map_err(database_error)
+    async fn delete_device_code(&self, _id: &SchemaValue<String>) -> AuthResult<()> {
+        Err(AuthError::config("Device authorization is not configured"))
     }
 
     async fn delete_device_code_if_status(
         &self,
-        id: &SchemaValue<String>,
-        status: &str,
+        _id: &SchemaValue<String>,
+        _status: &str,
     ) -> AuthResult<bool> {
-        let id = id.typed()?;
-        let transaction = self.transaction().await?;
-        context(&transaction, "med_tracker.identity_device_id", id).await?;
-        let removed = transaction
-            .execute_raw(statement(
-                "DELETE FROM public.identity_device_codes WHERE id=$1 AND status=$2",
-                [id.into(), status.into()],
-            ))
-            .await
-            .map_err(database_error)?
-            .rows_affected()
-            == 1;
-        transaction.commit().await.map_err(database_error)?;
-        Ok(removed)
+        Err(AuthError::config("Device authorization is not configured"))
     }
 }
 

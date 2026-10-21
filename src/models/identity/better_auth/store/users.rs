@@ -80,13 +80,10 @@ impl UserStore<ClinicalAuthSchema> for ClinicalStore {
         self.canonical_user(id).await
     }
 
-    async fn list_users_by_ids(&self, ids: &[String], limit: f64) -> AuthResult<Vec<UserView>> {
-        if !limit.is_finite() || limit < 0.0 {
-            return Err(AuthError::validation("Invalid user list limit"));
-        }
-        let mut users = self.canonical_users_by_ids(ids).await?;
-        users.truncate(limit.floor() as usize);
-        Ok(users)
+    async fn list_users_by_ids(&self, _ids: &[String], _limit: f64) -> AuthResult<Vec<UserView>> {
+        Err(AuthError::config(
+            "Native organization user batches are not configured",
+        ))
     }
 
     async fn get_user_by_email(&self, email: &str) -> AuthResult<Option<UserView>> {

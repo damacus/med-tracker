@@ -9,10 +9,7 @@ use sea_orm::{ConnectionTrait, DatabaseTransaction, FromQueryResult};
 use serde_json::Value;
 
 use super::super::request;
-use super::{
-    ClinicalStore, clinical_field_id, clinical_id, clinical_schema_id, context, database_error,
-    statement,
-};
+use super::{ClinicalStore, clinical_id, clinical_schema_id, context, database_error, statement};
 
 #[derive(FromQueryResult)]
 struct KeyRow {
@@ -312,47 +309,18 @@ impl ApiKeyStore for ClinicalStore {
 
     async fn find_api_keys_by_reference_value(
         &self,
-        reference: &FieldValue,
-        sort: Option<(&str, &str)>,
+        _reference: &FieldValue,
+        _sort: Option<(&str, &str)>,
     ) -> AuthResult<Vec<ApiKey>> {
-        let account_id = clinical_field_id(reference)?;
-        self.authorize_key_reference(&account_id.to_string())
-            .await?;
-        let transaction = self.account_transaction().await?;
-        let order = match sort {
-            None | Some(("createdAt", "asc")) => "payload->>'createdAt' ASC, id ASC",
-            Some(("createdAt", "desc")) => "payload->>'createdAt' DESC, id DESC",
-            Some(("name", "asc")) => "payload->>'name' ASC, id ASC",
-            Some(("name", "desc")) => "payload->>'name' DESC, id DESC",
-            _ => return Err(AuthError::bad_request("Unsupported API credential sort")),
-        };
-        let sql = format!(
-            "SELECT payload FROM public.identity_api_keys WHERE account_id=$1 ORDER BY {order} LIMIT 100"
-        );
-        let rows = KeyRow::find_by_statement(statement(&sql, [account_id.into()]))
-            .all(&*transaction)
-            .await
-            .map_err(database_error)?;
-        transaction.commit().await.map_err(database_error)?;
-        rows.into_iter().map(decoded).collect()
+        Err(AuthError::config(
+            "Native API-key listing is not configured",
+        ))
     }
 
-    async fn count_api_keys_by_reference_value(&self, reference: &FieldValue) -> AuthResult<u64> {
-        let account_id = clinical_field_id(reference)?;
-        self.authorize_key_reference(&account_id.to_string())
-            .await?;
-        let transaction = self.account_transaction().await?;
-        let row = transaction
-            .query_one_raw(statement(
-                "SELECT count(*) AS count FROM public.identity_api_keys WHERE account_id=$1",
-                [account_id.into()],
-            ))
-            .await
-            .map_err(database_error)?
-            .ok_or_else(|| AuthError::internal("API credential count unavailable"))?;
-        let count: i64 = row.try_get("", "count").map_err(database_error)?;
-        transaction.commit().await.map_err(database_error)?;
-        u64::try_from(count).map_err(|_| AuthError::internal("Invalid API credential count"))
+    async fn count_api_keys_by_reference_value(&self, _reference: &FieldValue) -> AuthResult<u64> {
+        Err(AuthError::config(
+            "Native API-key listing is not configured",
+        ))
     }
 
     async fn update_api_key(

@@ -15,35 +15,32 @@ impl OrganizationStore for ClinicalStore {
         ))
     }
 
-    async fn get_organization_by_id(&self, id: &str) -> AuthResult<Option<Organization>> {
-        self.canonical_organization(id).await
+    async fn get_organization_by_id(&self, _id: &str) -> AuthResult<Option<Organization>> {
+        Err(AuthError::config(
+            "Native organization lookup and mutation are not configured",
+        ))
     }
 
-    async fn get_organization_by_slug(&self, slug: &str) -> AuthResult<Option<Organization>> {
-        self.canonical_organization_by_slug(slug).await
+    async fn get_organization_by_slug(&self, _slug: &str) -> AuthResult<Option<Organization>> {
+        Err(AuthError::config(
+            "Native organization lookup and mutation are not configured",
+        ))
     }
 
-    async fn list_organizations_by_ids(&self, ids: &[String]) -> AuthResult<Vec<Organization>> {
-        self.canonical_organizations_by_ids(ids).await
+    async fn list_organizations_by_ids(&self, _ids: &[String]) -> AuthResult<Vec<Organization>> {
+        Err(AuthError::config(
+            "Native organization lookup and mutation are not configured",
+        ))
     }
 
     async fn update_organization(
         &self,
-        id: &str,
-        update: UpdateOrganization,
+        _id: &str,
+        _update: UpdateOrganization,
     ) -> AuthResult<Organization> {
-        if update.slug.is_some() || update.logo.is_some() || update.metadata.is_some() {
-            return Err(AuthError::validation(
-                "Only the household name can be changed here",
-            ));
-        }
-        match update.name {
-            Some(name) => self.change_canonical_organization(id, &name).await,
-            None => self
-                .canonical_organization(id)
-                .await?
-                .ok_or_else(|| AuthError::not_found("Household not found")),
-        }
+        Err(AuthError::config(
+            "Native organization lookup and mutation are not configured",
+        ))
     }
 
     async fn delete_organization(&self, _id: &str) -> AuthResult<()> {

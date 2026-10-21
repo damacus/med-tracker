@@ -20,8 +20,6 @@ use super::{ClinicalAuthSchema, IdentityService, store::clinical_id};
 pub(super) struct AuthenticatedRequest {
     pub account_id: i64,
     pub session_token: String,
-    pub request_id: String,
-    pub active_household_id: Option<i64>,
 }
 
 struct RequestContext {
@@ -243,12 +241,10 @@ impl AuthPlugin<ClinicalAuthSchema> for ClinicalRequest {
             .try_with(|state| {
                 let mut state = state.borrow_mut();
                 state.principal =
-                    principal.map(|(account_id, session_token, active_household_id)| {
+                    principal.map(|(account_id, session_token, _active_household_id)| {
                         AuthenticatedRequest {
                             account_id,
                             session_token,
-                            active_household_id,
-                            request_id: state.request_id.clone(),
                         }
                     });
             })

@@ -5,9 +5,8 @@ use better_auth::plugins::{
 };
 use better_auth_core::types::UpdatePasskeyAuthentication;
 use better_auth_core::{
-    AuthError, CreateDeviceCode, CreateTwoFactor, FieldMap, FieldValue, SchemaValue,
-    UpdateDeviceCode,
-    store::{ApiKeyStore, ApiKeyUsageWrite, DeviceCodeStore, PasskeyStore, TwoFactorStore},
+    AuthError, CreateTwoFactor, FieldMap, FieldValue, SchemaValue,
+    store::{ApiKeyStore, ApiKeyUsageWrite, PasskeyStore, TwoFactorStore},
 };
 use chrono::{Duration, Utc};
 use med_tracker::models::{
@@ -990,54 +989,6 @@ async fn positive_passkey_counter_cannot_be_replayed() {
         .unwrap();
     assert_eq!(row.counter.typed().unwrap(), &2);
     assert_eq!(row.credential.typed().unwrap(), "opaque-two");
-    fixture.close().await;
-}
-
-#[tokio::test]
-async fn device_claim_is_single_use() {
-    let fixture = Fixture::new().await;
-    let store = ClinicalStore::new(fixture.runtime.clone());
-    let issued = DeviceCodeStore::create_device_code(
-        &store,
-        CreateDeviceCode {
-            device_code: "task2-device".into(),
-            user_code: "TASK2".into(),
-            user_id: None,
-            expires_at: (Utc::now() + Duration::minutes(5)).into(),
-            status: "pending".into(),
-            last_polled_at: None,
-            polling_interval: Some(5.0),
-            client_id: Some("task2-client".into()),
-            scope: SchemaValue::Typed(None),
-            additional_fields: FieldMap::new(),
-        },
-    )
-    .await
-    .unwrap();
-    let owner = SchemaValue::Typed("71001".to_owned());
-    assert!(
-        DeviceCodeStore::claim_device_code(&store, &issued.id, &owner)
-            .await
-            .unwrap()
-    );
-    assert!(
-        !DeviceCodeStore::claim_device_code(&store, &issued.id, &owner)
-            .await
-            .unwrap()
-    );
-    assert!(
-        DeviceCodeStore::update_device_code_if_status(
-            &store,
-            &issued.id,
-            "pending",
-            UpdateDeviceCode {
-                status: Some("approved".into()),
-                ..Default::default()
-            }
-        )
-        .await
-        .unwrap()
-    );
     fixture.close().await;
 }
 
