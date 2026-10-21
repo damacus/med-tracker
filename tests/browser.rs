@@ -8,3 +8,6 @@ mod harness;
 mod journeys;
 #[path = "support/template.rs"]
 mod template;
+
+#[path = "browser/shared_layout.rs"]
+mod shared_layout;

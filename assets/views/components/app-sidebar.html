@@ -1,0 +1,13 @@
+<aside class="app-sidebar" aria-label="{% if labels %}{{ labels.layouts.mobile_rail.primary_navigation }}{% else %}Primary navigation{% endif %}">
+  <a class="app-sidebar-brand" href="/"><span aria-hidden="true">M</span>{% if labels %}{{ labels.layouts.navigation.brand }}{% else %}MedTracker{% endif %}</a>
+  <a class="app-sidebar-search" href="/households/{{ slug }}/search" data-sidebar-search data-global-search-trigger aria-controls="global_search_panel" aria-expanded="false">{% if labels %}{{ labels.global_search.open_short }}{% else %}Search{% endif %} <kbd>{% if labels %}{{ labels.global_search.shortcut_hint }}{% else %}Ctrl K{% endif %}</kbd></a>
+  <nav class="app-sidebar-navigation" aria-label="{% if labels %}{{ labels.layouts.mobile_rail.primary_navigation }}{% else %}Primary navigation{% endif %}" data-sidebar-navigation>
+    {% if sidebar_links %}{% for link in sidebar_links %}<a class="app-navigation-link" href="{{ link.href }}"><svg aria-hidden="true" width="24" height="24"><use href="/static/profile-icons.svg#{{ link.id }}"/></svg>{{ link.label }}</a>{% endfor %}{% else %}<a class="app-navigation-link" href="/households/{{ slug }}/dashboard"><svg aria-hidden="true" width="24" height="24"><use href="/static/profile-icons.svg#dashboard"/></svg>{% if labels %}{{ labels.layouts.sidebar.dashboard }}{% else %}Dashboard{% endif %}</a>{% endif %}
+  </nav>
+  <div class="app-sidebar-account">
+    <a class="app-navigation-link" href="/households/{{ slug }}/profile" data-sidebar-profile><span class="app-avatar" aria-hidden="true">M</span>{% if labels %}{{ labels.layouts.profile_menu.profile }}{% else %}Profile{% endif %}</a>
+    <button type="button" class="app-navigation-link" data-sidebar-account aria-haspopup="dialog" aria-controls="app-account" aria-expanded="false" hidden><span class="app-avatar" data-sidebar-avatar></span><span data-sidebar-name></span></button>
+    <a class="app-navigation-link" href="/households/choose?switch=1">{% if labels %}{{ labels.layouts.profile_menu.households }}{% else %}Households{% endif %}</a>
+    {% if authenticity_token %}<form method="post" action="/logout"><input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><button class="app-navigation-link" type="submit">{% if labels %}{{ labels.layouts.sidebar.sign_out }}{% else %}Sign Out{% endif %}</button></form>{% endif %}
+  </div>
+</aside>

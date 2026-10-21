@@ -29,7 +29,8 @@ async function refreshMobileShortcuts() {
       const label = document.createElement('span');
       label.textContent = link.label;
       anchor.append(icon, label);
-      if (location.pathname === url.pathname) anchor.setAttribute('aria-current', 'page');
+      const current = data.shell?.choices?.filter(item => location.pathname === item.href || location.pathname.startsWith(`${item.href}/`)).sort((a, b) => b.href.length - a.href.length)[0];
+      if (current?.id === link.id) anchor.setAttribute('aria-current', 'page');
       return [anchor];
     }));
     if (!navigation.isConnected) document.body.append(navigation);

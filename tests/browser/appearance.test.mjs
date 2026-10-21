@@ -88,3 +88,29 @@ test('existing local fonts remain unchanged and carry their family licences', ()
   }
   assert.match(readFileSync('assets/static/fonts/geist/OFL.txt', 'utf8'), /SIL OPEN FONT LICENSE Version 1\.1/);
 });
+
+
+test('browser template families share the application frame and keep document adapters separate', () => {
+  const families = new Set(['administration', 'admin', 'people', 'person_carers', 'locations', 'dashboard', 'medications', 'dosage_options', 'treatments', 'health_events', 'dose_occurrences', 'reviews', 'reports', 'searches', 'profile', 'platform', 'auth', 'identity_onboarding', 'home', 'invitations', 'oauth']);
+  const documents = new Set(['reports/pdf_base.html', 'oauth/form_post.html']);
+  const seen = new Set();
+  function visit(directory, prefix = '') {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const relative = `${prefix}${entry.name}`;
+      if (entry.isDirectory()) { visit(`${directory}/${entry.name}`, `${relative}/`); continue; }
+      const content = readFileSync(`${directory}/${entry.name}`, 'utf8');
+      const parent = content.match(/\{% extends "([^"]+)" %\}/)?.[1];
+      if (parent && !relative.startsWith('layouts/')) {
+        assert.ok(families.has(relative.split('/')[0]), `unclassified browser family: ${relative}`);
+        seen.add(relative.split('/')[0]);
+        if (relative.startsWith('reports/') && relative !== 'reports/index.html') assert.equal(parent, 'reports/pdf_base.html');
+        else assert.ok(['layouts/base.html', 'layouts/dashboard.html'].includes(parent), `screen bypasses shared frame: ${relative}`);
+      }
+      if (/<!doctype/i.test(content) && relative !== 'layouts/base.html') assert.ok(documents.has(relative), `unframed document: ${relative}`);
+    }
+  }
+  visit('assets/views');
+  assert.deepEqual([...seen].sort(), [...families].sort());
+  assert.doesNotMatch(readFileSync('assets/views/reports/pdf_base.html', 'utf8'), /app-sidebar|app-navigation/);
+  assert.doesNotMatch(readFileSync('assets/views/oauth/form_post.html', 'utf8'), /app-sidebar|app-navigation/);
+});

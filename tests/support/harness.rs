@@ -335,7 +335,7 @@ pub async fn sign_in(journey: &Journey) {
     )
     .await
     .unwrap();
-    expect(page.locator("header [data-app-drawer]"))
+    expect(page.locator("[data-sidebar-account]:visible, header [data-app-account]:visible"))
         .to_be_visible()
         .await
         .unwrap();
@@ -345,7 +345,7 @@ pub async fn sign_in(journey: &Journey) {
 /// whichever navigation chrome is present (sidebar, dashboard menu, or the
 /// account/navigation dialogs).
 pub async fn open_care_section(page: &Page, name: &str) {
-    let dashboard = page.locator(".dashboard-sidebar");
+    let dashboard = page.locator(".app-sidebar");
     if dashboard.count().await.unwrap() > 0 {
         if dashboard.is_visible().await.unwrap() {
             dashboard
@@ -358,7 +358,7 @@ pub async fn open_care_section(page: &Page, name: &str) {
                 .click(None)
                 .await
                 .unwrap();
-            page.locator("#dashboard-menu")
+            page.locator("#app-drawer")
                 .get_by_role(AriaRole::Link, named(name))
                 .click(None)
                 .await

@@ -91,17 +91,22 @@
   document.addEventListener('app-navigation', event => {
     const data = event.detail;
     const header = document.querySelector('.shell-header');
-    const dashboardTriggers = [...document.querySelectorAll('[data-dashboard-account]')];
+    const sidebar = document.querySelector('.app-sidebar');
+    const sidebarTrigger = document.querySelector('[data-sidebar-account]');
     const template = document.getElementById('app-navigation-template');
-    if ((!header && !dashboardTriggers.length) || !template || !data?.labels || installed) return;
+    if (!header || !template || !data?.labels || installed) return;
     const labels = data.labels;
     const searchTrigger = header?.querySelector('[data-global-search-trigger]');
     const appearanceTrigger = header?.querySelector('[data-dialog-open="appearance-dialog"]');
     const securityLink = header?.querySelector('a[href="/account/security"]');
+    const current = data.choices.filter(item => location.pathname === item.href || location.pathname.startsWith(`${item.href}/`))
+      .sort((left, right) => right.href.length - left.href.length)[0];
+    const selected = current?.id || (/\/(add-medication|dose-occurrences)(\/|$)/.test(location.pathname) ? 'inventory' : undefined);
     const link = item => {
       const anchor = element('a', item.label, 'app-navigation-link');
       anchor.href = item.href;
-      if (location.pathname === item.href || location.pathname.startsWith(`${item.href}/`)) anchor.setAttribute('aria-current', 'page');
+      anchor.dataset.section = item.id;
+      if (item.id === selected) anchor.setAttribute('aria-current', 'page');
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       svg.setAttribute('width', '24');
       svg.setAttribute('height', '24');
@@ -162,6 +167,7 @@
       data.sidebar.forEach(item => navigation.append(link(item)));
       const profile = data.choices.find(item => item.id === 'profile');
       if (profile) navigation.append(link(profile));
+      if (sidebar) sidebar.querySelector('[data-sidebar-navigation]').replaceChildren(...[...data.sidebar, ...(profile ? [profile] : [])].map(link));
       drawer.append(navigation, logout());
       header.querySelector('[data-account-name]').textContent = data.name;
       const avatar = header.querySelector('[data-profile-avatar]');
@@ -177,7 +183,20 @@
         avatar.append(image);
       }
     }
-    const account = dialog('app-account', labels.profile_menu.my_account, header ? header.querySelector('[data-app-account]') : dashboardTriggers);
+    if (sidebarTrigger) {
+      sidebar.setAttribute("aria-label", labels.mobile_rail.primary_navigation);
+      sidebar.querySelector("[data-sidebar-navigation]").setAttribute("aria-label", labels.mobile_rail.primary_navigation);
+      sidebar.querySelector("a[href=\"/households/choose?switch=1\"]").textContent = labels.profile_menu.households;
+      sidebar.querySelector('[data-sidebar-name]').textContent = data.name;
+      sidebar.querySelector('[data-sidebar-avatar]').replaceChildren(...[...header.querySelector('[data-profile-avatar]').childNodes].map(node => node.cloneNode(true)));
+      sidebar.querySelector('[data-sidebar-profile]').hidden = true;
+      const signOut = sidebar.querySelector('form[action="/logout"]');
+      if (signOut) {
+        signOut.querySelector("button").textContent = labels.sidebar.sign_out;
+        signOut.querySelector('[name="authenticity_token"]').value = data.authenticity_token;
+      } else sidebar.querySelector('.app-sidebar-account').append(logout());
+    }
+    const account = dialog('app-account', labels.profile_menu.my_account, [header.querySelector('[data-app-account]'), ...(sidebarTrigger ? [sidebarTrigger] : [])]);
     if (appearanceTrigger) {
       appearanceTrigger.className = 'app-navigation-link';
       appearanceTrigger.addEventListener('click', () => account.close());
@@ -217,6 +236,7 @@
     }
     account.append(logout());
     document.querySelector('[data-profile-navigation-fallback]')?.remove();
+    document.body.dataset.navigationReady = 'true';
     installed = true;
   });
 })();

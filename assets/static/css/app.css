@@ -4,6 +4,7 @@
 @import "./dashboard.css";
 @import "./profile.css";
 @import "./platform.css";
+@import "./shared-layout.css";
 @source "../../views";
 @plugin "daisyui" { themes: false; }
 
