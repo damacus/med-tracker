@@ -99,9 +99,7 @@
     const searchTrigger = header?.querySelector('[data-global-search-trigger]');
     const appearanceTrigger = header?.querySelector('[data-dialog-open="appearance-dialog"]');
     const securityLink = header?.querySelector('a[href="/account/security"]');
-    const current = data.choices.filter(item => location.pathname === item.href || location.pathname.startsWith(`${item.href}/`))
-      .sort((left, right) => right.href.length - left.href.length)[0];
-    const selected = current?.id || (/\/(add-medication|dose-occurrences)(\/|$)/.test(location.pathname) ? 'inventory' : undefined);
+    const selected = data.selected_section;
     const link = item => {
       const anchor = element('a', item.label, 'app-navigation-link');
       anchor.href = item.href;

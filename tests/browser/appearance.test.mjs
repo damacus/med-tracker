@@ -114,3 +114,27 @@ test('browser template families share the application frame and keep document ad
   assert.doesNotMatch(readFileSync('assets/views/reports/pdf_base.html', 'utf8'), /app-sidebar|app-navigation/);
   assert.doesNotMatch(readFileSync('assets/views/oauth/form_post.html', 'utf8'), /app-sidebar|app-navigation/);
 });
+
+
+test("shared route selection preserves chooser Inventory and the most specific authorised section", () => {
+  const context = { document: { addEventListener() {} } };
+  runInNewContext(readFileSync("assets/static/js/mobile-shortcuts.js", "utf8"), context);
+  const root = "/households/synthetic";
+  const choices = [
+    { id: "dashboard", href: `${root}/dashboard` },
+    { id: "inventory", href: `${root}/medications` },
+    { id: "finder", href: `${root}/medications/finder` },
+    { id: "people", href: `${root}/people` },
+  ];
+  for (const [path, expected] of [
+    ["medications/1/edit", "inventory"],
+    ["medications/finder", "finder"],
+    ["add-medication", "inventory"],
+    ["add-medication/step", "inventory"],
+    ["dose-occurrences/1", "inventory"],
+    ["people/1/treatments", "people"],
+    ["add-medication-other", undefined],
+  ]) assert.equal(context.navigationSection(`${root}/${path}`, choices), expected, path);
+  assert.equal(context.navigationSection("/households/foreign/add-medication", choices), undefined);
+  assert.equal(context.navigationSection(`${root}/add-medication`, choices.filter(item => item.id !== "inventory")), undefined);
+});

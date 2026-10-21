@@ -1,3 +1,16 @@
+function navigationSection(pathname, choices) {
+  const current = choices.filter(item => pathname === item.href || pathname.startsWith(`${item.href}/`))
+    .sort((left, right) => right.href.length - left.href.length)[0];
+  if (current) return current.id;
+  const inventory = choices.find(item => item.id === "inventory");
+  if (!inventory?.href.endsWith("/medications")) return undefined;
+  const household = inventory.href.slice(0, -"/medications".length);
+  return ["add-medication", "dose-occurrences"].some(section => {
+    const path = `${household}/${section}`;
+    return pathname === path || pathname.startsWith(`${path}/`);
+  }) ? "inventory" : undefined;
+}
+
 async function refreshMobileShortcuts() {
   const match = location.pathname.match(/^\/households\/([^/]+)\//);
   if (!match) return;
@@ -8,6 +21,7 @@ async function refreshMobileShortcuts() {
     if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) return;
     const data = await response.json();
     if (!Array.isArray(data.links) || data.links.length > 3) return;
+    const selectedSection = navigationSection(location.pathname, data.shell?.choices || []);
     const navigation = document.querySelector('[data-mobile-shortcuts]') || document.createElement('nav');
     navigation.dataset.mobileShortcuts = '';
     navigation.className = 'profile-mobile-shortcuts';
@@ -29,12 +43,11 @@ async function refreshMobileShortcuts() {
       const label = document.createElement('span');
       label.textContent = link.label;
       anchor.append(icon, label);
-      const current = data.shell?.choices?.filter(item => location.pathname === item.href || location.pathname.startsWith(`${item.href}/`)).sort((a, b) => b.href.length - a.href.length)[0];
-      if (current?.id === link.id) anchor.setAttribute('aria-current', 'page');
+      if (selectedSection === link.id) anchor.setAttribute('aria-current', 'page');
       return [anchor];
     }));
     if (!navigation.isConnected) document.body.append(navigation);
-    document.dispatchEvent(new CustomEvent('app-navigation', { detail: { ...data.shell, slug: match[1] } }));
+    document.dispatchEvent(new CustomEvent('app-navigation', { detail: { ...data.shell, slug: match[1], selected_section: selectedSection } }));
   } catch { }
 }
 document.addEventListener('DOMContentLoaded', refreshMobileShortcuts);

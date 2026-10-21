@@ -99,6 +99,7 @@ async fn shared_layout_mobile_drawer_and_narrow_pages() {
                         ("people", "people"),
                         ("profile", "profile"),
                         ("reports", "reports"),
+                        ("add-medication", "inventory"),
                     ] {
                         page.goto(
                             &format!("{}/households/persistence-fixture/{path}", journey.origin),
@@ -120,7 +121,6 @@ async fn shared_layout_mobile_drawer_and_narrow_pages() {
                         .unwrap();
                         page.keyboard().press("Escape", None).await.unwrap();
                         expect(page.locator("[data-app-drawer]")).to_be_focused().await.unwrap();
-                        capture(page, &format!("{section}-{width}")).await;
                     let overflowing = page.evaluate::<(), serde_json::Value>("() => [...document.querySelectorAll(\"main *\")].filter(e => e.getBoundingClientRect().right > innerWidth).filter(e => !e.closest(\".overflow-x-auto\")).map(e => ({tag:e.tagName,classes:e.className,text:e.textContent.slice(0,80),right:e.getBoundingClientRect().right}))", None).await.unwrap();
                     assert!(!page.evaluate::<(),bool>("() => document.documentElement.scrollWidth > innerWidth",None).await.unwrap(), "{path} at {width}: {overflowing}");
                     assert_eq!(
@@ -137,7 +137,11 @@ async fn shared_layout_mobile_drawer_and_narrow_pages() {
                                 .unwrap(),
                             1
                         );
-                        capture(page, &format!("{section}-{width}")).await;
+                        if path == "add-medication" {
+                            expect(page.locator("[data-mobile-shortcuts] a[href$=\"/medications\"][aria-current=page]")).to_be_visible().await.unwrap();
+                        }
+                        let screenshot = if path == "add-medication" { path } else { section };
+                        capture(page, &format!("{screenshot}-{width}")).await;
                     }
                 }
             })
