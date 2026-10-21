@@ -20,10 +20,11 @@ import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
 
 /**
- * Fields accepted by the selected resource and action. medication_pause_period supports create with source_type (schedule or person_medication), portable source_id, required public reason and optional note; close requires the portable period id, if_match and empty attributes. No timestamps, update or delete are accepted for pause periods. Repeating close for a completed period cannot close a later pause. Dose occurrence creates require source_type schedule, source_id, occurrence_key and outcome not_taken; optional reason and note record the decision. Updates require id, if_match and outcome open to reopen a decision. Dose occurrence deletion is unsupported.
+ * Fields accepted by the selected resource and action. medication_pause_period supports create with source_type (schedule or person_medication), portable source_id, required public reason and optional note; close requires the portable period id, if_match and empty attributes. No timestamps, update or delete are accepted for pause periods. Repeating close for a completed period cannot close a later pause. Dose occurrence creates require source_type schedule, source_id, occurrence_key and outcome not_taken; optional reason and note record the decision. Updates require id, if_match and outcome open to reopen a decision. Dose occurrence deletion is unsupported. Medication review prompt updates require id, if_match and lease_token. Obtain the token through the review lease endpoint when connected, then submit the mutation before expiry; a successful update consumes it.
  *
  * @param occurrenceKey Required on medication_dose_occurrence creates. Optional on medication_take creates to link the dose atomically to that occurrence.
  * @param occurrenceEtag Current outcome version, required when a queued take replaces a not-taken decision.
+ * @param leaseToken Required in medication_review_prompt update attributes for the active edit lease.
  */
 
 
@@ -35,7 +36,11 @@ data class SyncBatchOperationAttributes (
 
     /* Current outcome version, required when a queued take replaces a not-taken decision. */
     @Json(name = "occurrence_etag")
-    val occurrenceEtag: kotlin.String? = null
+    val occurrenceEtag: kotlin.String? = null,
+
+    /* Required in medication_review_prompt update attributes for the active edit lease. */
+    @Json(name = "lease_token")
+    val leaseToken: java.util.UUID? = null
 
 ) : kotlin.collections.HashMap<String, kotlin.Any>() {
 

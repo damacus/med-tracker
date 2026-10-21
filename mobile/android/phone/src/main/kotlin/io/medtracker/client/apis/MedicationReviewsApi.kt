@@ -20,7 +20,11 @@ import okhttp3.Call
 import okhttp3.HttpUrl
 
 import io.medtracker.client.models.ErrorEnvelope
+import io.medtracker.client.models.MedicationReviewLeaseReleaseResponse
+import io.medtracker.client.models.MedicationReviewLeaseRenewResponse
+import io.medtracker.client.models.MedicationReviewLeaseResponse
 import io.medtracker.client.models.MedicationReviewPromptCollectionResponse
+import io.medtracker.client.models.MedicationReviewPromptDetailResponse
 import io.medtracker.client.models.MedicationReviewPromptResponse
 import io.medtracker.client.models.MedicationReviewPromptUpdateRequest
 import io.medtracker.client.models.RateLimitErrorEnvelope
@@ -50,12 +54,12 @@ open class MedicationReviewsApi(basePath: kotlin.String = defaultBasePath, clien
     }
 
     /**
-     * GET /households/{household_id}/medication_review_prompts/{id}
-     * Read a review snapshot and its current version.
-     * 
+     * POST /households/{household_id}/medication_review_prompts/{id}/lease
+     * Start an exclusive five-minute review edit.
+     * An active lease excludes every other edit, including a second tab for the same membership. Activity requires renewal before expiry.
      * @param householdId 
      * @param id 
-     * @return MedicationReviewPromptResponse
+     * @return MedicationReviewLeaseResponse
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
      * @throws UnsupportedOperationException If the API returns an informational or redirection response
@@ -64,11 +68,87 @@ open class MedicationReviewsApi(basePath: kotlin.String = defaultBasePath, clien
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun getMedicationReviewPrompt(householdId: kotlin.Int, id: kotlin.String) : MedicationReviewPromptResponse {
+    fun acquireMedicationReviewPromptLease(householdId: kotlin.Int, id: kotlin.String) : MedicationReviewLeaseResponse {
+        val localVarResponse = acquireMedicationReviewPromptLeaseWithHttpInfo(householdId = householdId, id = id)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as MedicationReviewLeaseResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * POST /households/{household_id}/medication_review_prompts/{id}/lease
+     * Start an exclusive five-minute review edit.
+     * An active lease excludes every other edit, including a second tab for the same membership. Activity requires renewal before expiry.
+     * @param householdId 
+     * @param id 
+     * @return ApiResponse<MedicationReviewLeaseResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun acquireMedicationReviewPromptLeaseWithHttpInfo(householdId: kotlin.Int, id: kotlin.String) : ApiResponse<MedicationReviewLeaseResponse?> {
+        val localVariableConfig = acquireMedicationReviewPromptLeaseRequestConfig(householdId = householdId, id = id)
+
+        return request<Unit, MedicationReviewLeaseResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation acquireMedicationReviewPromptLease
+     *
+     * @param householdId 
+     * @param id 
+     * @return RequestConfig
+     */
+    fun acquireMedicationReviewPromptLeaseRequestConfig(householdId: kotlin.Int, id: kotlin.String) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.POST,
+            path = "/households/{household_id}/medication_review_prompts/{id}/lease".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * GET /households/{household_id}/medication_review_prompts/{id}
+     * Read a review snapshot and its current version.
+     * 
+     * @param householdId 
+     * @param id 
+     * @return MedicationReviewPromptDetailResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun getMedicationReviewPrompt(householdId: kotlin.Int, id: kotlin.String) : MedicationReviewPromptDetailResponse {
         val localVarResponse = getMedicationReviewPromptWithHttpInfo(householdId = householdId, id = id)
 
         return when (localVarResponse.responseType) {
-            ResponseType.Success -> (localVarResponse as Success<*>).data as MedicationReviewPromptResponse
+            ResponseType.Success -> (localVarResponse as Success<*>).data as MedicationReviewPromptDetailResponse
             ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
             ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
             ResponseType.ClientError -> {
@@ -88,16 +168,16 @@ open class MedicationReviewsApi(basePath: kotlin.String = defaultBasePath, clien
      * 
      * @param householdId 
      * @param id 
-     * @return ApiResponse<MedicationReviewPromptResponse?>
+     * @return ApiResponse<MedicationReviewPromptDetailResponse?>
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class)
-    fun getMedicationReviewPromptWithHttpInfo(householdId: kotlin.Int, id: kotlin.String) : ApiResponse<MedicationReviewPromptResponse?> {
+    fun getMedicationReviewPromptWithHttpInfo(householdId: kotlin.Int, id: kotlin.String) : ApiResponse<MedicationReviewPromptDetailResponse?> {
         val localVariableConfig = getMedicationReviewPromptRequestConfig(householdId = householdId, id = id)
 
-        return request<Unit, MedicationReviewPromptResponse>(
+        return request<Unit, MedicationReviewPromptDetailResponse>(
             localVariableConfig
         )
     }
@@ -288,12 +368,173 @@ open class MedicationReviewsApi(basePath: kotlin.String = defaultBasePath, clien
     }
 
     /**
+     * DELETE /households/{household_id}/medication_review_prompts/{id}/lease
+     * Cancel an edit and release its lease.
+     * 
+     * @param householdId 
+     * @param id 
+     * @param xReviewLease Opaque token from the active edit lease. Omit only when no lease remains; release is idempotent. (optional)
+     * @return MedicationReviewLeaseReleaseResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun releaseMedicationReviewPromptLease(householdId: kotlin.Int, id: kotlin.String, xReviewLease: java.util.UUID? = null) : MedicationReviewLeaseReleaseResponse {
+        val localVarResponse = releaseMedicationReviewPromptLeaseWithHttpInfo(householdId = householdId, id = id, xReviewLease = xReviewLease)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as MedicationReviewLeaseReleaseResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * DELETE /households/{household_id}/medication_review_prompts/{id}/lease
+     * Cancel an edit and release its lease.
+     * 
+     * @param householdId 
+     * @param id 
+     * @param xReviewLease Opaque token from the active edit lease. Omit only when no lease remains; release is idempotent. (optional)
+     * @return ApiResponse<MedicationReviewLeaseReleaseResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun releaseMedicationReviewPromptLeaseWithHttpInfo(householdId: kotlin.Int, id: kotlin.String, xReviewLease: java.util.UUID?) : ApiResponse<MedicationReviewLeaseReleaseResponse?> {
+        val localVariableConfig = releaseMedicationReviewPromptLeaseRequestConfig(householdId = householdId, id = id, xReviewLease = xReviewLease)
+
+        return request<Unit, MedicationReviewLeaseReleaseResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation releaseMedicationReviewPromptLease
+     *
+     * @param householdId 
+     * @param id 
+     * @param xReviewLease Opaque token from the active edit lease. Omit only when no lease remains; release is idempotent. (optional)
+     * @return RequestConfig
+     */
+    fun releaseMedicationReviewPromptLeaseRequestConfig(householdId: kotlin.Int, id: kotlin.String, xReviewLease: java.util.UUID?) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        xReviewLease?.apply { localVariableHeaders["X-Review-Lease"] = this.toString() }
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.DELETE,
+            path = "/households/{household_id}/medication_review_prompts/{id}/lease".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * POST /households/{household_id}/medication_review_prompts/{id}/lease/renew
+     * Keep editing for five minutes from the latest activity.
+     * 
+     * @param householdId 
+     * @param id 
+     * @param xReviewLease Opaque token from the active medication review edit lease.
+     * @return MedicationReviewLeaseRenewResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun renewMedicationReviewPromptLease(householdId: kotlin.Int, id: kotlin.String, xReviewLease: java.util.UUID) : MedicationReviewLeaseRenewResponse {
+        val localVarResponse = renewMedicationReviewPromptLeaseWithHttpInfo(householdId = householdId, id = id, xReviewLease = xReviewLease)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as MedicationReviewLeaseRenewResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * POST /households/{household_id}/medication_review_prompts/{id}/lease/renew
+     * Keep editing for five minutes from the latest activity.
+     * 
+     * @param householdId 
+     * @param id 
+     * @param xReviewLease Opaque token from the active medication review edit lease.
+     * @return ApiResponse<MedicationReviewLeaseRenewResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun renewMedicationReviewPromptLeaseWithHttpInfo(householdId: kotlin.Int, id: kotlin.String, xReviewLease: java.util.UUID) : ApiResponse<MedicationReviewLeaseRenewResponse?> {
+        val localVariableConfig = renewMedicationReviewPromptLeaseRequestConfig(householdId = householdId, id = id, xReviewLease = xReviewLease)
+
+        return request<Unit, MedicationReviewLeaseRenewResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation renewMedicationReviewPromptLease
+     *
+     * @param householdId 
+     * @param id 
+     * @param xReviewLease Opaque token from the active medication review edit lease.
+     * @return RequestConfig
+     */
+    fun renewMedicationReviewPromptLeaseRequestConfig(householdId: kotlin.Int, id: kotlin.String, xReviewLease: java.util.UUID) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        xReviewLease.apply { localVariableHeaders["X-Review-Lease"] = this.toString() }
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.POST,
+            path = "/households/{household_id}/medication_review_prompts/{id}/lease/renew".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
      * PATCH /households/{household_id}/medication_review_prompts/{id}
      * Record an audited practitioner review without changing evidence.
      * 
      * @param householdId 
      * @param id 
      * @param ifMatch 
+     * @param xReviewLease Token obtained by starting an explicit edit. A successful save releases it.
      * @param medicationReviewPromptUpdateRequest 
      * @return MedicationReviewPromptResponse
      * @throws IllegalStateException If the request is not correctly configured
@@ -304,8 +545,8 @@ open class MedicationReviewsApi(basePath: kotlin.String = defaultBasePath, clien
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun updateMedicationReviewPrompt(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String, medicationReviewPromptUpdateRequest: MedicationReviewPromptUpdateRequest) : MedicationReviewPromptResponse {
-        val localVarResponse = updateMedicationReviewPromptWithHttpInfo(householdId = householdId, id = id, ifMatch = ifMatch, medicationReviewPromptUpdateRequest = medicationReviewPromptUpdateRequest)
+    fun updateMedicationReviewPrompt(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String, xReviewLease: java.util.UUID, medicationReviewPromptUpdateRequest: MedicationReviewPromptUpdateRequest) : MedicationReviewPromptResponse {
+        val localVarResponse = updateMedicationReviewPromptWithHttpInfo(householdId = householdId, id = id, ifMatch = ifMatch, xReviewLease = xReviewLease, medicationReviewPromptUpdateRequest = medicationReviewPromptUpdateRequest)
 
         return when (localVarResponse.responseType) {
             ResponseType.Success -> (localVarResponse as Success<*>).data as MedicationReviewPromptResponse
@@ -329,6 +570,7 @@ open class MedicationReviewsApi(basePath: kotlin.String = defaultBasePath, clien
      * @param householdId 
      * @param id 
      * @param ifMatch 
+     * @param xReviewLease Token obtained by starting an explicit edit. A successful save releases it.
      * @param medicationReviewPromptUpdateRequest 
      * @return ApiResponse<MedicationReviewPromptResponse?>
      * @throws IllegalStateException If the request is not correctly configured
@@ -336,8 +578,8 @@ open class MedicationReviewsApi(basePath: kotlin.String = defaultBasePath, clien
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class)
-    fun updateMedicationReviewPromptWithHttpInfo(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String, medicationReviewPromptUpdateRequest: MedicationReviewPromptUpdateRequest) : ApiResponse<MedicationReviewPromptResponse?> {
-        val localVariableConfig = updateMedicationReviewPromptRequestConfig(householdId = householdId, id = id, ifMatch = ifMatch, medicationReviewPromptUpdateRequest = medicationReviewPromptUpdateRequest)
+    fun updateMedicationReviewPromptWithHttpInfo(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String, xReviewLease: java.util.UUID, medicationReviewPromptUpdateRequest: MedicationReviewPromptUpdateRequest) : ApiResponse<MedicationReviewPromptResponse?> {
+        val localVariableConfig = updateMedicationReviewPromptRequestConfig(householdId = householdId, id = id, ifMatch = ifMatch, xReviewLease = xReviewLease, medicationReviewPromptUpdateRequest = medicationReviewPromptUpdateRequest)
 
         return request<MedicationReviewPromptUpdateRequest, MedicationReviewPromptResponse>(
             localVariableConfig
@@ -350,14 +592,16 @@ open class MedicationReviewsApi(basePath: kotlin.String = defaultBasePath, clien
      * @param householdId 
      * @param id 
      * @param ifMatch 
+     * @param xReviewLease Token obtained by starting an explicit edit. A successful save releases it.
      * @param medicationReviewPromptUpdateRequest 
      * @return RequestConfig
      */
-    fun updateMedicationReviewPromptRequestConfig(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String, medicationReviewPromptUpdateRequest: MedicationReviewPromptUpdateRequest) : RequestConfig<MedicationReviewPromptUpdateRequest> {
+    fun updateMedicationReviewPromptRequestConfig(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String, xReviewLease: java.util.UUID, medicationReviewPromptUpdateRequest: MedicationReviewPromptUpdateRequest) : RequestConfig<MedicationReviewPromptUpdateRequest> {
         val localVariableBody = medicationReviewPromptUpdateRequest
         val localVariableQuery: MultiValueMap = mutableMapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         ifMatch.apply { localVariableHeaders["If-Match"] = this.toString() }
+        xReviewLease.apply { localVariableHeaders["X-Review-Lease"] = this.toString() }
         localVariableHeaders["Content-Type"] = "application/json"
         localVariableHeaders["Accept"] = "application/json"
 
@@ -378,6 +622,7 @@ open class MedicationReviewsApi(basePath: kotlin.String = defaultBasePath, clien
      * @param householdId 
      * @param id 
      * @param ifMatch 
+     * @param xReviewLease Token obtained by starting an explicit edit. A successful save releases it.
      * @param medicationReviewPromptUpdateRequest 
      * @return MedicationReviewPromptResponse
      * @throws IllegalStateException If the request is not correctly configured
@@ -388,8 +633,8 @@ open class MedicationReviewsApi(basePath: kotlin.String = defaultBasePath, clien
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun updateMedicationReviewPromptWithPut(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String, medicationReviewPromptUpdateRequest: MedicationReviewPromptUpdateRequest) : MedicationReviewPromptResponse {
-        val localVarResponse = updateMedicationReviewPromptWithPutWithHttpInfo(householdId = householdId, id = id, ifMatch = ifMatch, medicationReviewPromptUpdateRequest = medicationReviewPromptUpdateRequest)
+    fun updateMedicationReviewPromptWithPut(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String, xReviewLease: java.util.UUID, medicationReviewPromptUpdateRequest: MedicationReviewPromptUpdateRequest) : MedicationReviewPromptResponse {
+        val localVarResponse = updateMedicationReviewPromptWithPutWithHttpInfo(householdId = householdId, id = id, ifMatch = ifMatch, xReviewLease = xReviewLease, medicationReviewPromptUpdateRequest = medicationReviewPromptUpdateRequest)
 
         return when (localVarResponse.responseType) {
             ResponseType.Success -> (localVarResponse as Success<*>).data as MedicationReviewPromptResponse
@@ -413,6 +658,7 @@ open class MedicationReviewsApi(basePath: kotlin.String = defaultBasePath, clien
      * @param householdId 
      * @param id 
      * @param ifMatch 
+     * @param xReviewLease Token obtained by starting an explicit edit. A successful save releases it.
      * @param medicationReviewPromptUpdateRequest 
      * @return ApiResponse<MedicationReviewPromptResponse?>
      * @throws IllegalStateException If the request is not correctly configured
@@ -420,8 +666,8 @@ open class MedicationReviewsApi(basePath: kotlin.String = defaultBasePath, clien
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class)
-    fun updateMedicationReviewPromptWithPutWithHttpInfo(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String, medicationReviewPromptUpdateRequest: MedicationReviewPromptUpdateRequest) : ApiResponse<MedicationReviewPromptResponse?> {
-        val localVariableConfig = updateMedicationReviewPromptWithPutRequestConfig(householdId = householdId, id = id, ifMatch = ifMatch, medicationReviewPromptUpdateRequest = medicationReviewPromptUpdateRequest)
+    fun updateMedicationReviewPromptWithPutWithHttpInfo(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String, xReviewLease: java.util.UUID, medicationReviewPromptUpdateRequest: MedicationReviewPromptUpdateRequest) : ApiResponse<MedicationReviewPromptResponse?> {
+        val localVariableConfig = updateMedicationReviewPromptWithPutRequestConfig(householdId = householdId, id = id, ifMatch = ifMatch, xReviewLease = xReviewLease, medicationReviewPromptUpdateRequest = medicationReviewPromptUpdateRequest)
 
         return request<MedicationReviewPromptUpdateRequest, MedicationReviewPromptResponse>(
             localVariableConfig
@@ -434,14 +680,16 @@ open class MedicationReviewsApi(basePath: kotlin.String = defaultBasePath, clien
      * @param householdId 
      * @param id 
      * @param ifMatch 
+     * @param xReviewLease Token obtained by starting an explicit edit. A successful save releases it.
      * @param medicationReviewPromptUpdateRequest 
      * @return RequestConfig
      */
-    fun updateMedicationReviewPromptWithPutRequestConfig(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String, medicationReviewPromptUpdateRequest: MedicationReviewPromptUpdateRequest) : RequestConfig<MedicationReviewPromptUpdateRequest> {
+    fun updateMedicationReviewPromptWithPutRequestConfig(householdId: kotlin.Int, id: kotlin.String, ifMatch: kotlin.String, xReviewLease: java.util.UUID, medicationReviewPromptUpdateRequest: MedicationReviewPromptUpdateRequest) : RequestConfig<MedicationReviewPromptUpdateRequest> {
         val localVariableBody = medicationReviewPromptUpdateRequest
         val localVariableQuery: MultiValueMap = mutableMapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
         ifMatch.apply { localVariableHeaders["If-Match"] = this.toString() }
+        xReviewLease.apply { localVariableHeaders["X-Review-Lease"] = this.toString() }
         localVariableHeaders["Content-Type"] = "application/json"
         localVariableHeaders["Accept"] = "application/json"
 

@@ -35,7 +35,6 @@ import io.medtracker.client.models.HouseholdMembershipUpdateRequest
 import io.medtracker.client.models.InvitationResendResponse
 import io.medtracker.client.models.PersonAccessGrantCollectionResponse
 import io.medtracker.client.models.PersonAccessGrantCreateRequest
-import io.medtracker.client.models.PersonAccessGrantResponse
 import io.medtracker.client.models.RateLimitErrorEnvelope
 import io.medtracker.client.models.SecurityAuditEventCollectionResponse
 
@@ -66,9 +65,10 @@ open class HouseholdAdministrationApi(basePath: kotlin.String = defaultBasePath,
     /**
      * POST /households/{household_id}/admin/app_tokens
      * Create an API app token.
-     * 
+     * The secret is returned once. Reusing a successful request&#39;s Idempotency-Key returns a conflict without exposing the secret again; a caller needing a replacement must use a new key.
      * @param householdId 
      * @param apiAppTokenCreateRequest 
+     * @param idempotencyKey A key is scoped to one household for 24 hours. The same authorized account can replay a matching method, path and request through another current credential; another account or changed request receives 409. Current authentication and operation authorization are checked before replay. A replay does not repeat the domain write or its domain audit. (optional)
      * @return ApiAppTokenCreateResponse
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
@@ -78,8 +78,8 @@ open class HouseholdAdministrationApi(basePath: kotlin.String = defaultBasePath,
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun createAppToken(householdId: kotlin.Int, apiAppTokenCreateRequest: ApiAppTokenCreateRequest) : ApiAppTokenCreateResponse {
-        val localVarResponse = createAppTokenWithHttpInfo(householdId = householdId, apiAppTokenCreateRequest = apiAppTokenCreateRequest)
+    fun createAppToken(householdId: kotlin.Int, apiAppTokenCreateRequest: ApiAppTokenCreateRequest, idempotencyKey: kotlin.String? = null) : ApiAppTokenCreateResponse {
+        val localVarResponse = createAppTokenWithHttpInfo(householdId = householdId, apiAppTokenCreateRequest = apiAppTokenCreateRequest, idempotencyKey = idempotencyKey)
 
         return when (localVarResponse.responseType) {
             ResponseType.Success -> (localVarResponse as Success<*>).data as ApiAppTokenCreateResponse
@@ -99,17 +99,18 @@ open class HouseholdAdministrationApi(basePath: kotlin.String = defaultBasePath,
     /**
      * POST /households/{household_id}/admin/app_tokens
      * Create an API app token.
-     * 
+     * The secret is returned once. Reusing a successful request&#39;s Idempotency-Key returns a conflict without exposing the secret again; a caller needing a replacement must use a new key.
      * @param householdId 
      * @param apiAppTokenCreateRequest 
+     * @param idempotencyKey A key is scoped to one household for 24 hours. The same authorized account can replay a matching method, path and request through another current credential; another account or changed request receives 409. Current authentication and operation authorization are checked before replay. A replay does not repeat the domain write or its domain audit. (optional)
      * @return ApiResponse<ApiAppTokenCreateResponse?>
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class)
-    fun createAppTokenWithHttpInfo(householdId: kotlin.Int, apiAppTokenCreateRequest: ApiAppTokenCreateRequest) : ApiResponse<ApiAppTokenCreateResponse?> {
-        val localVariableConfig = createAppTokenRequestConfig(householdId = householdId, apiAppTokenCreateRequest = apiAppTokenCreateRequest)
+    fun createAppTokenWithHttpInfo(householdId: kotlin.Int, apiAppTokenCreateRequest: ApiAppTokenCreateRequest, idempotencyKey: kotlin.String?) : ApiResponse<ApiAppTokenCreateResponse?> {
+        val localVariableConfig = createAppTokenRequestConfig(householdId = householdId, apiAppTokenCreateRequest = apiAppTokenCreateRequest, idempotencyKey = idempotencyKey)
 
         return request<ApiAppTokenCreateRequest, ApiAppTokenCreateResponse>(
             localVariableConfig
@@ -121,12 +122,14 @@ open class HouseholdAdministrationApi(basePath: kotlin.String = defaultBasePath,
      *
      * @param householdId 
      * @param apiAppTokenCreateRequest 
+     * @param idempotencyKey A key is scoped to one household for 24 hours. The same authorized account can replay a matching method, path and request through another current credential; another account or changed request receives 409. Current authentication and operation authorization are checked before replay. A replay does not repeat the domain write or its domain audit. (optional)
      * @return RequestConfig
      */
-    fun createAppTokenRequestConfig(householdId: kotlin.Int, apiAppTokenCreateRequest: ApiAppTokenCreateRequest) : RequestConfig<ApiAppTokenCreateRequest> {
+    fun createAppTokenRequestConfig(householdId: kotlin.Int, apiAppTokenCreateRequest: ApiAppTokenCreateRequest, idempotencyKey: kotlin.String?) : RequestConfig<ApiAppTokenCreateRequest> {
         val localVariableBody = apiAppTokenCreateRequest
         val localVariableQuery: MultiValueMap = mutableMapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        idempotencyKey?.apply { localVariableHeaders["Idempotency-Key"] = this.toString() }
         localVariableHeaders["Content-Type"] = "application/json"
         localVariableHeaders["Accept"] = "application/json"
 
@@ -220,23 +223,24 @@ open class HouseholdAdministrationApi(basePath: kotlin.String = defaultBasePath,
     /**
      * POST /households/{household_id}/admin/person_access_grants
      * Create a person access grant.
-     * 
+     * New per-person grant creation is deferred and returns an audited 403. Current household participation provides View and Record access; household management does not establish guardian or shared-plan authority. Existing recorded authority remains available through list and revoke operations.
      * @param householdId 
      * @param personAccessGrantCreateRequest 
-     * @return PersonAccessGrantResponse
+     * @return void
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
      * @throws UnsupportedOperationException If the API returns an informational or redirection response
      * @throws ClientException If the API returns a client error response
      * @throws ServerException If the API returns a server error response
      */
-    @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun createPersonAccessGrant(householdId: kotlin.Int, personAccessGrantCreateRequest: PersonAccessGrantCreateRequest) : PersonAccessGrantResponse {
+    @Deprecated(message = "This operation is deprecated.")
+    fun createPersonAccessGrant(householdId: kotlin.Int, personAccessGrantCreateRequest: PersonAccessGrantCreateRequest) : Unit {
+        @Suppress("DEPRECATION")
         val localVarResponse = createPersonAccessGrantWithHttpInfo(householdId = householdId, personAccessGrantCreateRequest = personAccessGrantCreateRequest)
 
         return when (localVarResponse.responseType) {
-            ResponseType.Success -> (localVarResponse as Success<*>).data as PersonAccessGrantResponse
+            ResponseType.Success -> Unit
             ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
             ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
             ResponseType.ClientError -> {
@@ -253,19 +257,20 @@ open class HouseholdAdministrationApi(basePath: kotlin.String = defaultBasePath,
     /**
      * POST /households/{household_id}/admin/person_access_grants
      * Create a person access grant.
-     * 
+     * New per-person grant creation is deferred and returns an audited 403. Current household participation provides View and Record access; household management does not establish guardian or shared-plan authority. Existing recorded authority remains available through list and revoke operations.
      * @param householdId 
      * @param personAccessGrantCreateRequest 
-     * @return ApiResponse<PersonAccessGrantResponse?>
+     * @return ApiResponse<Unit?>
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
      */
-    @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class)
-    fun createPersonAccessGrantWithHttpInfo(householdId: kotlin.Int, personAccessGrantCreateRequest: PersonAccessGrantCreateRequest) : ApiResponse<PersonAccessGrantResponse?> {
+    @Deprecated(message = "This operation is deprecated.")
+    fun createPersonAccessGrantWithHttpInfo(householdId: kotlin.Int, personAccessGrantCreateRequest: PersonAccessGrantCreateRequest) : ApiResponse<Unit?> {
+        @Suppress("DEPRECATION")
         val localVariableConfig = createPersonAccessGrantRequestConfig(householdId = householdId, personAccessGrantCreateRequest = personAccessGrantCreateRequest)
 
-        return request<PersonAccessGrantCreateRequest, PersonAccessGrantResponse>(
+        return request<PersonAccessGrantCreateRequest, Unit>(
             localVariableConfig
         )
     }
@@ -277,6 +282,7 @@ open class HouseholdAdministrationApi(basePath: kotlin.String = defaultBasePath,
      * @param personAccessGrantCreateRequest 
      * @return RequestConfig
      */
+    @Deprecated(message = "This operation is deprecated.")
     fun createPersonAccessGrantRequestConfig(householdId: kotlin.Int, personAccessGrantCreateRequest: PersonAccessGrantCreateRequest) : RequestConfig<PersonAccessGrantCreateRequest> {
         val localVariableBody = personAccessGrantCreateRequest
         val localVariableQuery: MultiValueMap = mutableMapOf()
@@ -300,6 +306,7 @@ open class HouseholdAdministrationApi(basePath: kotlin.String = defaultBasePath,
      * 
      * @param householdId 
      * @param id 
+     * @param idempotencyKey A key is scoped to one household for 24 hours. The same authorized account can replay a matching method, path and request through another current credential; another account or changed request receives 409. Current authentication and operation authorization are checked before replay. A replay does not repeat the domain write or its domain audit. (optional)
      * @return void
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
@@ -308,8 +315,8 @@ open class HouseholdAdministrationApi(basePath: kotlin.String = defaultBasePath,
      * @throws ServerException If the API returns a server error response
      */
     @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun deleteAppToken(householdId: kotlin.Int, id: kotlin.Int) : Unit {
-        val localVarResponse = deleteAppTokenWithHttpInfo(householdId = householdId, id = id)
+    fun deleteAppToken(householdId: kotlin.Int, id: kotlin.Int, idempotencyKey: kotlin.String? = null) : Unit {
+        val localVarResponse = deleteAppTokenWithHttpInfo(householdId = householdId, id = id, idempotencyKey = idempotencyKey)
 
         return when (localVarResponse.responseType) {
             ResponseType.Success -> Unit
@@ -332,13 +339,14 @@ open class HouseholdAdministrationApi(basePath: kotlin.String = defaultBasePath,
      * 
      * @param householdId 
      * @param id 
+     * @param idempotencyKey A key is scoped to one household for 24 hours. The same authorized account can replay a matching method, path and request through another current credential; another account or changed request receives 409. Current authentication and operation authorization are checked before replay. A replay does not repeat the domain write or its domain audit. (optional)
      * @return ApiResponse<Unit?>
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
      */
     @Throws(IllegalStateException::class, IOException::class)
-    fun deleteAppTokenWithHttpInfo(householdId: kotlin.Int, id: kotlin.Int) : ApiResponse<Unit?> {
-        val localVariableConfig = deleteAppTokenRequestConfig(householdId = householdId, id = id)
+    fun deleteAppTokenWithHttpInfo(householdId: kotlin.Int, id: kotlin.Int, idempotencyKey: kotlin.String?) : ApiResponse<Unit?> {
+        val localVariableConfig = deleteAppTokenRequestConfig(householdId = householdId, id = id, idempotencyKey = idempotencyKey)
 
         return request<Unit, Unit>(
             localVariableConfig
@@ -350,12 +358,14 @@ open class HouseholdAdministrationApi(basePath: kotlin.String = defaultBasePath,
      *
      * @param householdId 
      * @param id 
+     * @param idempotencyKey A key is scoped to one household for 24 hours. The same authorized account can replay a matching method, path and request through another current credential; another account or changed request receives 409. Current authentication and operation authorization are checked before replay. A replay does not repeat the domain write or its domain audit. (optional)
      * @return RequestConfig
      */
-    fun deleteAppTokenRequestConfig(householdId: kotlin.Int, id: kotlin.Int) : RequestConfig<Unit> {
+    fun deleteAppTokenRequestConfig(householdId: kotlin.Int, id: kotlin.Int, idempotencyKey: kotlin.String?) : RequestConfig<Unit> {
         val localVariableBody = null
         val localVariableQuery: MultiValueMap = mutableMapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        idempotencyKey?.apply { localVariableHeaders["Idempotency-Key"] = this.toString() }
         localVariableHeaders["Accept"] = "application/json"
 
         return RequestConfig(
@@ -593,7 +603,7 @@ open class HouseholdAdministrationApi(basePath: kotlin.String = defaultBasePath,
     /**
      * GET /households/{household_id}/admin/settings
      * Read household administration settings.
-     * 
+     * Only the household owner or an administrator can read these settings.
      * @param householdId 
      * @return HouseholdAdminSettingsResponse
      * @throws IllegalStateException If the request is not correctly configured
@@ -625,7 +635,7 @@ open class HouseholdAdministrationApi(basePath: kotlin.String = defaultBasePath,
     /**
      * GET /households/{household_id}/admin/settings
      * Read household administration settings.
-     * 
+     * Only the household owner or an administrator can read these settings.
      * @param householdId 
      * @return ApiResponse<HouseholdAdminSettingsResponse?>
      * @throws IllegalStateException If the request is not correctly configured
@@ -1031,9 +1041,10 @@ open class HouseholdAdministrationApi(basePath: kotlin.String = defaultBasePath,
     /**
      * PUT /households/{household_id}/admin/settings
      * Replace household administration settings.
-     * 
+     * The owner or an administrator can merge the supplied attributes. Omitted fields and the household slug remain unchanged.
      * @param householdId 
      * @param householdAdminSettingsUpdateRequest 
+     * @param idempotencyKey A key is scoped to one household for 24 hours. The same authorized account can replay a matching method, path and request through another current credential; another account or changed request receives 409. Current authentication and operation authorization are checked before replay. A replay does not repeat the domain write or its domain audit. (optional)
      * @return HouseholdAdminSettingsResponse
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
@@ -1043,8 +1054,8 @@ open class HouseholdAdministrationApi(basePath: kotlin.String = defaultBasePath,
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun replaceHouseholdAdminSettings(householdId: kotlin.Int, householdAdminSettingsUpdateRequest: HouseholdAdminSettingsUpdateRequest) : HouseholdAdminSettingsResponse {
-        val localVarResponse = replaceHouseholdAdminSettingsWithHttpInfo(householdId = householdId, householdAdminSettingsUpdateRequest = householdAdminSettingsUpdateRequest)
+    fun replaceHouseholdAdminSettings(householdId: kotlin.Int, householdAdminSettingsUpdateRequest: HouseholdAdminSettingsUpdateRequest, idempotencyKey: kotlin.String? = null) : HouseholdAdminSettingsResponse {
+        val localVarResponse = replaceHouseholdAdminSettingsWithHttpInfo(householdId = householdId, householdAdminSettingsUpdateRequest = householdAdminSettingsUpdateRequest, idempotencyKey = idempotencyKey)
 
         return when (localVarResponse.responseType) {
             ResponseType.Success -> (localVarResponse as Success<*>).data as HouseholdAdminSettingsResponse
@@ -1064,17 +1075,18 @@ open class HouseholdAdministrationApi(basePath: kotlin.String = defaultBasePath,
     /**
      * PUT /households/{household_id}/admin/settings
      * Replace household administration settings.
-     * 
+     * The owner or an administrator can merge the supplied attributes. Omitted fields and the household slug remain unchanged.
      * @param householdId 
      * @param householdAdminSettingsUpdateRequest 
+     * @param idempotencyKey A key is scoped to one household for 24 hours. The same authorized account can replay a matching method, path and request through another current credential; another account or changed request receives 409. Current authentication and operation authorization are checked before replay. A replay does not repeat the domain write or its domain audit. (optional)
      * @return ApiResponse<HouseholdAdminSettingsResponse?>
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class)
-    fun replaceHouseholdAdminSettingsWithHttpInfo(householdId: kotlin.Int, householdAdminSettingsUpdateRequest: HouseholdAdminSettingsUpdateRequest) : ApiResponse<HouseholdAdminSettingsResponse?> {
-        val localVariableConfig = replaceHouseholdAdminSettingsRequestConfig(householdId = householdId, householdAdminSettingsUpdateRequest = householdAdminSettingsUpdateRequest)
+    fun replaceHouseholdAdminSettingsWithHttpInfo(householdId: kotlin.Int, householdAdminSettingsUpdateRequest: HouseholdAdminSettingsUpdateRequest, idempotencyKey: kotlin.String?) : ApiResponse<HouseholdAdminSettingsResponse?> {
+        val localVariableConfig = replaceHouseholdAdminSettingsRequestConfig(householdId = householdId, householdAdminSettingsUpdateRequest = householdAdminSettingsUpdateRequest, idempotencyKey = idempotencyKey)
 
         return request<HouseholdAdminSettingsUpdateRequest, HouseholdAdminSettingsResponse>(
             localVariableConfig
@@ -1086,12 +1098,14 @@ open class HouseholdAdministrationApi(basePath: kotlin.String = defaultBasePath,
      *
      * @param householdId 
      * @param householdAdminSettingsUpdateRequest 
+     * @param idempotencyKey A key is scoped to one household for 24 hours. The same authorized account can replay a matching method, path and request through another current credential; another account or changed request receives 409. Current authentication and operation authorization are checked before replay. A replay does not repeat the domain write or its domain audit. (optional)
      * @return RequestConfig
      */
-    fun replaceHouseholdAdminSettingsRequestConfig(householdId: kotlin.Int, householdAdminSettingsUpdateRequest: HouseholdAdminSettingsUpdateRequest) : RequestConfig<HouseholdAdminSettingsUpdateRequest> {
+    fun replaceHouseholdAdminSettingsRequestConfig(householdId: kotlin.Int, householdAdminSettingsUpdateRequest: HouseholdAdminSettingsUpdateRequest, idempotencyKey: kotlin.String?) : RequestConfig<HouseholdAdminSettingsUpdateRequest> {
         val localVariableBody = householdAdminSettingsUpdateRequest
         val localVariableQuery: MultiValueMap = mutableMapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        idempotencyKey?.apply { localVariableHeaders["Idempotency-Key"] = this.toString() }
         localVariableHeaders["Content-Type"] = "application/json"
         localVariableHeaders["Accept"] = "application/json"
 
@@ -1264,9 +1278,10 @@ open class HouseholdAdministrationApi(basePath: kotlin.String = defaultBasePath,
     /**
      * PATCH /households/{household_id}/admin/settings
      * Update household administration settings.
-     * 
+     * The owner or an administrator can merge the supplied attributes. Omitted fields and the household slug remain unchanged.
      * @param householdId 
      * @param householdAdminSettingsUpdateRequest 
+     * @param idempotencyKey A key is scoped to one household for 24 hours. The same authorized account can replay a matching method, path and request through another current credential; another account or changed request receives 409. Current authentication and operation authorization are checked before replay. A replay does not repeat the domain write or its domain audit. (optional)
      * @return HouseholdAdminSettingsResponse
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
@@ -1276,8 +1291,8 @@ open class HouseholdAdministrationApi(basePath: kotlin.String = defaultBasePath,
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun updateHouseholdAdminSettings(householdId: kotlin.Int, householdAdminSettingsUpdateRequest: HouseholdAdminSettingsUpdateRequest) : HouseholdAdminSettingsResponse {
-        val localVarResponse = updateHouseholdAdminSettingsWithHttpInfo(householdId = householdId, householdAdminSettingsUpdateRequest = householdAdminSettingsUpdateRequest)
+    fun updateHouseholdAdminSettings(householdId: kotlin.Int, householdAdminSettingsUpdateRequest: HouseholdAdminSettingsUpdateRequest, idempotencyKey: kotlin.String? = null) : HouseholdAdminSettingsResponse {
+        val localVarResponse = updateHouseholdAdminSettingsWithHttpInfo(householdId = householdId, householdAdminSettingsUpdateRequest = householdAdminSettingsUpdateRequest, idempotencyKey = idempotencyKey)
 
         return when (localVarResponse.responseType) {
             ResponseType.Success -> (localVarResponse as Success<*>).data as HouseholdAdminSettingsResponse
@@ -1297,17 +1312,18 @@ open class HouseholdAdministrationApi(basePath: kotlin.String = defaultBasePath,
     /**
      * PATCH /households/{household_id}/admin/settings
      * Update household administration settings.
-     * 
+     * The owner or an administrator can merge the supplied attributes. Omitted fields and the household slug remain unchanged.
      * @param householdId 
      * @param householdAdminSettingsUpdateRequest 
+     * @param idempotencyKey A key is scoped to one household for 24 hours. The same authorized account can replay a matching method, path and request through another current credential; another account or changed request receives 409. Current authentication and operation authorization are checked before replay. A replay does not repeat the domain write or its domain audit. (optional)
      * @return ApiResponse<HouseholdAdminSettingsResponse?>
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class)
-    fun updateHouseholdAdminSettingsWithHttpInfo(householdId: kotlin.Int, householdAdminSettingsUpdateRequest: HouseholdAdminSettingsUpdateRequest) : ApiResponse<HouseholdAdminSettingsResponse?> {
-        val localVariableConfig = updateHouseholdAdminSettingsRequestConfig(householdId = householdId, householdAdminSettingsUpdateRequest = householdAdminSettingsUpdateRequest)
+    fun updateHouseholdAdminSettingsWithHttpInfo(householdId: kotlin.Int, householdAdminSettingsUpdateRequest: HouseholdAdminSettingsUpdateRequest, idempotencyKey: kotlin.String?) : ApiResponse<HouseholdAdminSettingsResponse?> {
+        val localVariableConfig = updateHouseholdAdminSettingsRequestConfig(householdId = householdId, householdAdminSettingsUpdateRequest = householdAdminSettingsUpdateRequest, idempotencyKey = idempotencyKey)
 
         return request<HouseholdAdminSettingsUpdateRequest, HouseholdAdminSettingsResponse>(
             localVariableConfig
@@ -1319,12 +1335,14 @@ open class HouseholdAdministrationApi(basePath: kotlin.String = defaultBasePath,
      *
      * @param householdId 
      * @param householdAdminSettingsUpdateRequest 
+     * @param idempotencyKey A key is scoped to one household for 24 hours. The same authorized account can replay a matching method, path and request through another current credential; another account or changed request receives 409. Current authentication and operation authorization are checked before replay. A replay does not repeat the domain write or its domain audit. (optional)
      * @return RequestConfig
      */
-    fun updateHouseholdAdminSettingsRequestConfig(householdId: kotlin.Int, householdAdminSettingsUpdateRequest: HouseholdAdminSettingsUpdateRequest) : RequestConfig<HouseholdAdminSettingsUpdateRequest> {
+    fun updateHouseholdAdminSettingsRequestConfig(householdId: kotlin.Int, householdAdminSettingsUpdateRequest: HouseholdAdminSettingsUpdateRequest, idempotencyKey: kotlin.String?) : RequestConfig<HouseholdAdminSettingsUpdateRequest> {
         val localVariableBody = householdAdminSettingsUpdateRequest
         val localVariableQuery: MultiValueMap = mutableMapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        idempotencyKey?.apply { localVariableHeaders["Idempotency-Key"] = this.toString() }
         localVariableHeaders["Content-Type"] = "application/json"
         localVariableHeaders["Accept"] = "application/json"
 

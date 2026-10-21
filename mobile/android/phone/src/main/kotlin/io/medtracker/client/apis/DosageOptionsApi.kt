@@ -53,7 +53,7 @@ open class DosageOptionsApi(basePath: kotlin.String = defaultBasePath, client: C
     /**
      * POST /households/{household_id}/dosage_options
      * Create a medication dosage option.
-     * 
+     * Household owners and administrators may create options for medications in their household. Amount must be greater than zero; minimum hours, current supply, and reorder threshold must be nonnegative; unit and frequency must contain non-whitespace text. Only one option per medication may be the adult default and only one may be the child default; a duplicate returns 422 without changing either option. Creation clears the parent medication&#39;s single-dose amount and refreshes its sync version. If the option has current supply, the parent inventory is recalculated from all options with current supply, including their reorder thresholds and last-restock baseline. The option and parent changes are atomic.
      * @param householdId 
      * @param dosageOptionCreateRequest 
      * @return DosageOptionResponse
@@ -86,7 +86,7 @@ open class DosageOptionsApi(basePath: kotlin.String = defaultBasePath, client: C
     /**
      * POST /households/{household_id}/dosage_options
      * Create a medication dosage option.
-     * 
+     * Household owners and administrators may create options for medications in their household. Amount must be greater than zero; minimum hours, current supply, and reorder threshold must be nonnegative; unit and frequency must contain non-whitespace text. Only one option per medication may be the adult default and only one may be the child default; a duplicate returns 422 without changing either option. Creation clears the parent medication&#39;s single-dose amount and refreshes its sync version. If the option has current supply, the parent inventory is recalculated from all options with current supply, including their reorder thresholds and last-restock baseline. The option and parent changes are atomic.
      * @param householdId 
      * @param dosageOptionCreateRequest 
      * @return ApiResponse<DosageOptionResponse?>
@@ -130,9 +130,10 @@ open class DosageOptionsApi(basePath: kotlin.String = defaultBasePath, client: C
     /**
      * GET /households/{household_id}/dosage_options/{id}
      * Read a medication dosage option.
-     * 
+     * Active household members may read an option only if they can read its parent medication. Owners and administrators can read every medication in their household. Other members require an active household participant linked to the medication or must have created an unlinked medication. An option outside this visibility scope returns 404.
      * @param householdId 
      * @param id 
+     * @param ifNoneMatch Return an empty 304 response when a visible resource&#39;s serialized representation still matches this ETag. (optional)
      * @return DosageOptionResponse
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
@@ -142,8 +143,8 @@ open class DosageOptionsApi(basePath: kotlin.String = defaultBasePath, client: C
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun getDosageOption(householdId: kotlin.Int, id: kotlin.String) : DosageOptionResponse {
-        val localVarResponse = getDosageOptionWithHttpInfo(householdId = householdId, id = id)
+    fun getDosageOption(householdId: kotlin.Int, id: kotlin.String, ifNoneMatch: kotlin.String? = null) : DosageOptionResponse {
+        val localVarResponse = getDosageOptionWithHttpInfo(householdId = householdId, id = id, ifNoneMatch = ifNoneMatch)
 
         return when (localVarResponse.responseType) {
             ResponseType.Success -> (localVarResponse as Success<*>).data as DosageOptionResponse
@@ -163,17 +164,18 @@ open class DosageOptionsApi(basePath: kotlin.String = defaultBasePath, client: C
     /**
      * GET /households/{household_id}/dosage_options/{id}
      * Read a medication dosage option.
-     * 
+     * Active household members may read an option only if they can read its parent medication. Owners and administrators can read every medication in their household. Other members require an active household participant linked to the medication or must have created an unlinked medication. An option outside this visibility scope returns 404.
      * @param householdId 
      * @param id 
+     * @param ifNoneMatch Return an empty 304 response when a visible resource&#39;s serialized representation still matches this ETag. (optional)
      * @return ApiResponse<DosageOptionResponse?>
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class)
-    fun getDosageOptionWithHttpInfo(householdId: kotlin.Int, id: kotlin.String) : ApiResponse<DosageOptionResponse?> {
-        val localVariableConfig = getDosageOptionRequestConfig(householdId = householdId, id = id)
+    fun getDosageOptionWithHttpInfo(householdId: kotlin.Int, id: kotlin.String, ifNoneMatch: kotlin.String?) : ApiResponse<DosageOptionResponse?> {
+        val localVariableConfig = getDosageOptionRequestConfig(householdId = householdId, id = id, ifNoneMatch = ifNoneMatch)
 
         return request<Unit, DosageOptionResponse>(
             localVariableConfig
@@ -185,12 +187,14 @@ open class DosageOptionsApi(basePath: kotlin.String = defaultBasePath, client: C
      *
      * @param householdId 
      * @param id 
+     * @param ifNoneMatch Return an empty 304 response when a visible resource&#39;s serialized representation still matches this ETag. (optional)
      * @return RequestConfig
      */
-    fun getDosageOptionRequestConfig(householdId: kotlin.Int, id: kotlin.String) : RequestConfig<Unit> {
+    fun getDosageOptionRequestConfig(householdId: kotlin.Int, id: kotlin.String, ifNoneMatch: kotlin.String?) : RequestConfig<Unit> {
         val localVariableBody = null
         val localVariableQuery: MultiValueMap = mutableMapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        ifNoneMatch?.apply { localVariableHeaders["If-None-Match"] = this.toString() }
         localVariableHeaders["Accept"] = "application/json"
 
         return RequestConfig(
@@ -206,7 +210,7 @@ open class DosageOptionsApi(basePath: kotlin.String = defaultBasePath, client: C
     /**
      * GET /households/{household_id}/dosage_options
      * List medication dosage options.
-     * 
+     * Active household members receive options only for medications they can read. Owners and administrators can read every medication in their household. Other members can read a medication linked to an active household participant, or an unlinked medication they created. Options for medications outside that scope are omitted from the collection and its total count.
      * @param householdId 
      * @param page  (optional, default to 1)
      * @param perPage  (optional, default to 20)
@@ -241,7 +245,7 @@ open class DosageOptionsApi(basePath: kotlin.String = defaultBasePath, client: C
     /**
      * GET /households/{household_id}/dosage_options
      * List medication dosage options.
-     * 
+     * Active household members receive options only for medications they can read. Owners and administrators can read every medication in their household. Other members can read a medication linked to an active household participant, or an unlinked medication they created. Options for medications outside that scope are omitted from the collection and its total count.
      * @param householdId 
      * @param page  (optional, default to 1)
      * @param perPage  (optional, default to 20)
@@ -299,7 +303,7 @@ open class DosageOptionsApi(basePath: kotlin.String = defaultBasePath, client: C
     /**
      * PUT /households/{household_id}/dosage_options/{id}
      * Replace a medication dosage option.
-     * 
+     * Household owners and administrators may replace option attributes for medications in their household. The same validation, default uniqueness, optional If-Match, and atomic parent inventory synchronization rules as PATCH apply.
      * @param householdId 
      * @param id 
      * @param dosageOptionUpdateRequest 
@@ -334,7 +338,7 @@ open class DosageOptionsApi(basePath: kotlin.String = defaultBasePath, client: C
     /**
      * PUT /households/{household_id}/dosage_options/{id}
      * Replace a medication dosage option.
-     * 
+     * Household owners and administrators may replace option attributes for medications in their household. The same validation, default uniqueness, optional If-Match, and atomic parent inventory synchronization rules as PATCH apply.
      * @param householdId 
      * @param id 
      * @param dosageOptionUpdateRequest 
@@ -383,7 +387,7 @@ open class DosageOptionsApi(basePath: kotlin.String = defaultBasePath, client: C
     /**
      * PATCH /households/{household_id}/dosage_options/{id}
      * Update a medication dosage option.
-     * 
+     * Household owners and administrators may update options for medications in their household. The resulting full record must have positive amount, nonnegative minimum hours, current supply and reorder threshold, and non-whitespace unit and frequency. An incomplete legacy record returns 422 until the request repairs its missing fields. A duplicate adult or child default returns 422 and rolls back the update. Changing a tracked option&#39;s inventory recalculates parent stock, reorder threshold, and last-restock baseline atomically; when no options retain current supply, parent stock and baseline become null and reorder threshold becomes zero. If-Match is optional; a stale supplied value returns 409.
      * @param householdId 
      * @param id 
      * @param dosageOptionUpdateRequest 
@@ -418,7 +422,7 @@ open class DosageOptionsApi(basePath: kotlin.String = defaultBasePath, client: C
     /**
      * PATCH /households/{household_id}/dosage_options/{id}
      * Update a medication dosage option.
-     * 
+     * Household owners and administrators may update options for medications in their household. The resulting full record must have positive amount, nonnegative minimum hours, current supply and reorder threshold, and non-whitespace unit and frequency. An incomplete legacy record returns 422 until the request repairs its missing fields. A duplicate adult or child default returns 422 and rolls back the update. Changing a tracked option&#39;s inventory recalculates parent stock, reorder threshold, and last-restock baseline atomically; when no options retain current supply, parent stock and baseline become null and reorder threshold becomes zero. If-Match is optional; a stale supplied value returns 409.
      * @param householdId 
      * @param id 
      * @param dosageOptionUpdateRequest 

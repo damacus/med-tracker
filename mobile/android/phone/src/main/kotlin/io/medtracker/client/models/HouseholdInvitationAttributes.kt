@@ -20,7 +20,7 @@ import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
 
 /**
- * 
+ * Household membership only. Dependent IDs, relationship_type and access_level are rejected with 422; invitations do not assign guardianship or treatment-editing authority.
  *
  * @param email 
  * @param membershipRole 

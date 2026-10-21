@@ -23,13 +23,14 @@ import com.squareup.moshi.JsonClass
 /**
  * 
  *
- * @param endpoint 
+ * @param endpoint HTTPS URL on a supported Web Push provider host, without user information or an IP address.
  * @param propertyKeys 
  */
 
 
 data class PushSubscriptionAttributes (
 
+    /* HTTPS URL on a supported Web Push provider host, without user information or an IP address. */
     @Json(name = "endpoint")
     val endpoint: java.net.URI,
 

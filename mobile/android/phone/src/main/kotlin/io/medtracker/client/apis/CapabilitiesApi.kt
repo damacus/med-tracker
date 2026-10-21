@@ -20,6 +20,10 @@ import okhttp3.Call
 import okhttp3.HttpUrl
 
 import io.medtracker.client.models.CapabilitiesResponse
+import io.medtracker.client.models.ErrorEnvelope
+import io.medtracker.client.models.HouseholdUiCapabilitiesResponse
+import io.medtracker.client.models.RateLimitErrorEnvelope
+import io.medtracker.client.models.TemporarilyUnavailableErrorEnvelope
 
 import com.squareup.moshi.Json
 
@@ -111,6 +115,79 @@ open class CapabilitiesApi(basePath: kotlin.String = defaultBasePath, client: Ca
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = false,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * GET /households/{household_id}/ui_capabilities
+     * Read permissions for household management controls.
+     * Rust browser capability discovery. Returned permissions use the same current membership, canonical self and existing valid Manage authority as mutations. These hints never replace mutation authorization. This additive operation is currently implemented by Rust. 
+     * @param householdId 
+     * @return HouseholdUiCapabilitiesResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun getHouseholdUiCapabilities(householdId: kotlin.Int) : HouseholdUiCapabilitiesResponse {
+        val localVarResponse = getHouseholdUiCapabilitiesWithHttpInfo(householdId = householdId)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as HouseholdUiCapabilitiesResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * GET /households/{household_id}/ui_capabilities
+     * Read permissions for household management controls.
+     * Rust browser capability discovery. Returned permissions use the same current membership, canonical self and existing valid Manage authority as mutations. These hints never replace mutation authorization. This additive operation is currently implemented by Rust. 
+     * @param householdId 
+     * @return ApiResponse<HouseholdUiCapabilitiesResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun getHouseholdUiCapabilitiesWithHttpInfo(householdId: kotlin.Int) : ApiResponse<HouseholdUiCapabilitiesResponse?> {
+        val localVariableConfig = getHouseholdUiCapabilitiesRequestConfig(householdId = householdId)
+
+        return request<Unit, HouseholdUiCapabilitiesResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation getHouseholdUiCapabilities
+     *
+     * @param householdId 
+     * @return RequestConfig
+     */
+    fun getHouseholdUiCapabilitiesRequestConfig(householdId: kotlin.Int) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.GET,
+            path = "/households/{household_id}/ui_capabilities".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
             body = localVariableBody
         )
     }

@@ -16,7 +16,7 @@
 package io.medtracker.client.models
 
 import io.medtracker.client.models.MedicationReviewPrompt
-import io.medtracker.client.models.PaginationMeta
+import io.medtracker.client.models.MedicationReviewPromptCollectionResponseMeta
 
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
@@ -35,7 +35,7 @@ data class MedicationReviewPromptCollectionResponse (
     val `data`: kotlin.collections.List<MedicationReviewPrompt>,
 
     @Json(name = "meta")
-    val meta: PaginationMeta
+    val meta: MedicationReviewPromptCollectionResponseMeta
 
 ) {
 

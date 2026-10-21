@@ -21,7 +21,7 @@ import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
 
 /**
- * 
+ * Updates merge supplied fields. A supplied person_id must identify the current person; a different visible person is rejected. Dose amounts must fit two decimal places. Minimum hours are decimal strings representing a positive whole number because storage uses integer hours.
  *
  * @param personId 
  * @param medicationId 

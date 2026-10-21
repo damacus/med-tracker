@@ -24,9 +24,10 @@ import com.squareup.moshi.JsonClass
  *
  * @param name 
  * @param dateOfBirth 
- * @param email 
  * @param personType 
- * @param hasCapacity 
+ * @param initialGuardianDeclaration 
+ * @param email 
+ * @param hasCapacity Omitted or null means false; true is invalid for a dependent.
  */
 
 
@@ -38,12 +39,16 @@ data class PersonCreateRequestPerson (
     @Json(name = "date_of_birth")
     val dateOfBirth: java.time.LocalDate,
 
+    @Json(name = "person_type")
+    val personType: PersonCreateRequestPerson.PersonType,
+
+    @Json(name = "initial_guardian_declaration")
+    val initialGuardianDeclaration: kotlin.Boolean,
+
     @Json(name = "email")
     val email: kotlin.String? = null,
 
-    @Json(name = "person_type")
-    val personType: PersonCreateRequestPerson.PersonType? = null,
-
+    /* Omitted or null means false; true is invalid for a dependent. */
     @Json(name = "has_capacity")
     val hasCapacity: kotlin.Boolean? = null
 
@@ -52,11 +57,10 @@ data class PersonCreateRequestPerson (
     /**
      * 
      *
-     * Values: adult,minor,dependent_adult,unknown_default_open_api
+     * Values: minor,dependent_adult,unknown_default_open_api
      */
     @JsonClass(generateAdapter = false)
     enum class PersonType(val value: kotlin.String) {
-        @Json(name = "adult") adult("adult"),
         @Json(name = "minor") minor("minor"),
         @Json(name = "dependent_adult") dependent_adult("dependent_adult"),
         @Json(name = "unknown_default_open_api") unknown_default_open_api("unknown_default_open_api");

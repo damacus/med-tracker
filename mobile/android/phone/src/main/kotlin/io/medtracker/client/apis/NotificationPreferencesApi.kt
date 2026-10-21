@@ -51,7 +51,7 @@ open class NotificationPreferencesApi(basePath: kotlin.String = defaultBasePath,
     /**
      * GET /households/{household_id}/notification_preference
      * Read the signed-in person&#39;s notification preference.
-     * 
+     * Returns the signed-in person&#39;s preference in its own household. Returns 404 when no preference exists or the person is outside view scope.
      * @param householdId 
      * @return NotificationPreferenceResponse
      * @throws IllegalStateException If the request is not correctly configured
@@ -83,7 +83,7 @@ open class NotificationPreferencesApi(basePath: kotlin.String = defaultBasePath,
     /**
      * GET /households/{household_id}/notification_preference
      * Read the signed-in person&#39;s notification preference.
-     * 
+     * Returns the signed-in person&#39;s preference in its own household. Returns 404 when no preference exists or the person is outside view scope.
      * @param householdId 
      * @return ApiResponse<NotificationPreferenceResponse?>
      * @throws IllegalStateException If the request is not correctly configured
@@ -123,8 +123,8 @@ open class NotificationPreferencesApi(basePath: kotlin.String = defaultBasePath,
 
     /**
      * PUT /households/{household_id}/notification_preference
-     * Replace the signed-in person&#39;s notification preference.
-     * 
+     * Update the signed-in person&#39;s notification preference with PUT.
+     * Creates the preference with database defaults if absent. Supplied attributes replace their current values; omitted attributes are preserved. A null time clears that time.
      * @param householdId 
      * @param notificationPreferenceUpdateRequest 
      * @return NotificationPreferenceResponse
@@ -156,8 +156,8 @@ open class NotificationPreferencesApi(basePath: kotlin.String = defaultBasePath,
 
     /**
      * PUT /households/{household_id}/notification_preference
-     * Replace the signed-in person&#39;s notification preference.
-     * 
+     * Update the signed-in person&#39;s notification preference with PUT.
+     * Creates the preference with database defaults if absent. Supplied attributes replace their current values; omitted attributes are preserved. A null time clears that time.
      * @param householdId 
      * @param notificationPreferenceUpdateRequest 
      * @return ApiResponse<NotificationPreferenceResponse?>
@@ -201,7 +201,7 @@ open class NotificationPreferencesApi(basePath: kotlin.String = defaultBasePath,
     /**
      * PATCH /households/{household_id}/notification_preference
      * Update the signed-in person&#39;s notification preference.
-     * 
+     * Creates the preference with database defaults if absent. Supplied attributes replace their current values; omitted attributes are preserved. A null time clears that time.
      * @param householdId 
      * @param notificationPreferenceUpdateRequest 
      * @return NotificationPreferenceResponse
@@ -234,7 +234,7 @@ open class NotificationPreferencesApi(basePath: kotlin.String = defaultBasePath,
     /**
      * PATCH /households/{household_id}/notification_preference
      * Update the signed-in person&#39;s notification preference.
-     * 
+     * Creates the preference with database defaults if absent. Supplied attributes replace their current values; omitted attributes are preserved. A null time clears that time.
      * @param householdId 
      * @param notificationPreferenceUpdateRequest 
      * @return ApiResponse<NotificationPreferenceResponse?>

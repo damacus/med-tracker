@@ -46,6 +46,8 @@ import com.squareup.moshi.JsonClass
  * @param scheduleType 
  * @param scheduleConfig 
  * @param currentPausePeriod 
+ * @param canRecord Optional Rust browser projection of the current member's dose-recording permission. Dose submission checks permission again.
+ * @param eligibleStockMedicationIds Optional Rust browser projection of scoped, matching stock sources with untracked or positive supply. Dose submission checks stock again.
  */
 
 
@@ -115,7 +117,15 @@ data class Schedule (
     val scheduleConfig: ScheduleConfig,
 
     @Json(name = "current_pause_period")
-    val currentPausePeriod: NullableMedicationPausePeriod? = null
+    val currentPausePeriod: NullableMedicationPausePeriod? = null,
+
+    /* Optional Rust browser projection of the current member's dose-recording permission. Dose submission checks permission again. */
+    @Json(name = "can_record")
+    val canRecord: kotlin.Boolean? = null,
+
+    /* Optional Rust browser projection of scoped, matching stock sources with untracked or positive supply. Dose submission checks stock again. */
+    @Json(name = "eligible_stock_medication_ids")
+    val eligibleStockMedicationIds: kotlin.collections.List<kotlin.Int>? = null
 
 ) {
 

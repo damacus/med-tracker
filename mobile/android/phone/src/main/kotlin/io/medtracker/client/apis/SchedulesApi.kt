@@ -61,10 +61,10 @@ open class SchedulesApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * POST /households/{household_id}/medication_pause_periods
      * Pause a medication source with a reason.
-     * Requires manage access. The start is server acceptance time; client timestamps are ignored. An already open period is returned unchanged. No edit or backdating operation is provided.
+     * Requires manage access. The start is server acceptance time; client timestamps are rejected with 422. An already open period is returned unchanged. No edit or backdating operation is provided.
      * @param householdId 
      * @param medicationPausePeriodCreateRequest 
-     * @param idempotencyKey Replays the committed response for a matching request; reuse with different content returns conflict. (optional)
+     * @param idempotencyKey A key is scoped to one household for 24 hours. The same authorized account can replay a matching method, path and request through another current credential; another account or changed request receives 409. Current authentication and operation authorization are checked before replay. A replay does not repeat the domain write or its domain audit. (optional)
      * @return MedicationPausePeriodResponse
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
@@ -95,10 +95,10 @@ open class SchedulesApi(basePath: kotlin.String = defaultBasePath, client: Call.
     /**
      * POST /households/{household_id}/medication_pause_periods
      * Pause a medication source with a reason.
-     * Requires manage access. The start is server acceptance time; client timestamps are ignored. An already open period is returned unchanged. No edit or backdating operation is provided.
+     * Requires manage access. The start is server acceptance time; client timestamps are rejected with 422. An already open period is returned unchanged. No edit or backdating operation is provided.
      * @param householdId 
      * @param medicationPausePeriodCreateRequest 
-     * @param idempotencyKey Replays the committed response for a matching request; reuse with different content returns conflict. (optional)
+     * @param idempotencyKey A key is scoped to one household for 24 hours. The same authorized account can replay a matching method, path and request through another current credential; another account or changed request receives 409. Current authentication and operation authorization are checked before replay. A replay does not repeat the domain write or its domain audit. (optional)
      * @return ApiResponse<MedicationPausePeriodResponse?>
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
@@ -118,7 +118,7 @@ open class SchedulesApi(basePath: kotlin.String = defaultBasePath, client: Call.
      *
      * @param householdId 
      * @param medicationPausePeriodCreateRequest 
-     * @param idempotencyKey Replays the committed response for a matching request; reuse with different content returns conflict. (optional)
+     * @param idempotencyKey A key is scoped to one household for 24 hours. The same authorized account can replay a matching method, path and request through another current credential; another account or changed request receives 409. Current authentication and operation authorization are checked before replay. A replay does not repeat the domain write or its domain audit. (optional)
      * @return RequestConfig
      */
     fun createMedicationPausePeriodRequestConfig(householdId: kotlin.Int, medicationPausePeriodCreateRequest: MedicationPausePeriodCreateRequest, idempotencyKey: kotlin.String?) : RequestConfig<MedicationPausePeriodCreateRequest> {
@@ -931,7 +931,7 @@ open class SchedulesApi(basePath: kotlin.String = defaultBasePath, client: Call.
      * Requires manage access. Ends the addressed period at server acceptance time. Retrying a completed period returns it unchanged and cannot close a newer pause. The original reason, note and recording actor remain intact.
      * @param householdId 
      * @param id 
-     * @param idempotencyKey Replays the committed response for a matching request; reuse with different content returns conflict. (optional)
+     * @param idempotencyKey A key is scoped to one household for 24 hours. The same authorized account can replay a matching method, path and request through another current credential; another account or changed request receives 409. Current authentication and operation authorization are checked before replay. A replay does not repeat the domain write or its domain audit. (optional)
      * @param ifMatch  (optional)
      * @return MedicationPausePeriodResponse
      * @throws IllegalStateException If the request is not correctly configured
@@ -966,7 +966,7 @@ open class SchedulesApi(basePath: kotlin.String = defaultBasePath, client: Call.
      * Requires manage access. Ends the addressed period at server acceptance time. Retrying a completed period returns it unchanged and cannot close a newer pause. The original reason, note and recording actor remain intact.
      * @param householdId 
      * @param id 
-     * @param idempotencyKey Replays the committed response for a matching request; reuse with different content returns conflict. (optional)
+     * @param idempotencyKey A key is scoped to one household for 24 hours. The same authorized account can replay a matching method, path and request through another current credential; another account or changed request receives 409. Current authentication and operation authorization are checked before replay. A replay does not repeat the domain write or its domain audit. (optional)
      * @param ifMatch  (optional)
      * @return ApiResponse<MedicationPausePeriodResponse?>
      * @throws IllegalStateException If the request is not correctly configured
@@ -987,7 +987,7 @@ open class SchedulesApi(basePath: kotlin.String = defaultBasePath, client: Call.
      *
      * @param householdId 
      * @param id 
-     * @param idempotencyKey Replays the committed response for a matching request; reuse with different content returns conflict. (optional)
+     * @param idempotencyKey A key is scoped to one household for 24 hours. The same authorized account can replay a matching method, path and request through another current credential; another account or changed request receives 409. Current authentication and operation authorization are checked before replay. A replay does not repeat the domain write or its domain audit. (optional)
      * @param ifMatch  (optional)
      * @return RequestConfig
      */

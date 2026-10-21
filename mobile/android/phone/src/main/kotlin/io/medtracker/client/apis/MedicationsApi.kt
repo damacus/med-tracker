@@ -298,6 +298,7 @@ open class MedicationsApi(basePath: kotlin.String = defaultBasePath, client: Cal
      * 
      * @param householdId 
      * @param id 
+     * @param ifNoneMatch Return an empty 304 response when a visible resource&#39;s serialized representation still matches this ETag. (optional)
      * @return MedicationResponse
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
@@ -307,8 +308,8 @@ open class MedicationsApi(basePath: kotlin.String = defaultBasePath, client: Cal
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun getMedication(householdId: kotlin.Int, id: kotlin.String) : MedicationResponse {
-        val localVarResponse = getMedicationWithHttpInfo(householdId = householdId, id = id)
+    fun getMedication(householdId: kotlin.Int, id: kotlin.String, ifNoneMatch: kotlin.String? = null) : MedicationResponse {
+        val localVarResponse = getMedicationWithHttpInfo(householdId = householdId, id = id, ifNoneMatch = ifNoneMatch)
 
         return when (localVarResponse.responseType) {
             ResponseType.Success -> (localVarResponse as Success<*>).data as MedicationResponse
@@ -331,14 +332,15 @@ open class MedicationsApi(basePath: kotlin.String = defaultBasePath, client: Cal
      * 
      * @param householdId 
      * @param id 
+     * @param ifNoneMatch Return an empty 304 response when a visible resource&#39;s serialized representation still matches this ETag. (optional)
      * @return ApiResponse<MedicationResponse?>
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
      */
     @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class)
-    fun getMedicationWithHttpInfo(householdId: kotlin.Int, id: kotlin.String) : ApiResponse<MedicationResponse?> {
-        val localVariableConfig = getMedicationRequestConfig(householdId = householdId, id = id)
+    fun getMedicationWithHttpInfo(householdId: kotlin.Int, id: kotlin.String, ifNoneMatch: kotlin.String?) : ApiResponse<MedicationResponse?> {
+        val localVariableConfig = getMedicationRequestConfig(householdId = householdId, id = id, ifNoneMatch = ifNoneMatch)
 
         return request<Unit, MedicationResponse>(
             localVariableConfig
@@ -350,12 +352,14 @@ open class MedicationsApi(basePath: kotlin.String = defaultBasePath, client: Cal
      *
      * @param householdId 
      * @param id 
+     * @param ifNoneMatch Return an empty 304 response when a visible resource&#39;s serialized representation still matches this ETag. (optional)
      * @return RequestConfig
      */
-    fun getMedicationRequestConfig(householdId: kotlin.Int, id: kotlin.String) : RequestConfig<Unit> {
+    fun getMedicationRequestConfig(householdId: kotlin.Int, id: kotlin.String, ifNoneMatch: kotlin.String?) : RequestConfig<Unit> {
         val localVariableBody = null
         val localVariableQuery: MultiValueMap = mutableMapOf()
         val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        ifNoneMatch?.apply { localVariableHeaders["If-None-Match"] = this.toString() }
         localVariableHeaders["Accept"] = "application/json"
 
         return RequestConfig(

@@ -45,7 +45,7 @@ data class PersonAccessGrant (
     val personId: kotlin.Int,
 
     @Json(name = "person_name")
-    val personName: kotlin.String,
+    val personName: kotlin.String?,
 
     @Json(name = "access_level")
     val accessLevel: PersonAccessGrant.AccessLevel,

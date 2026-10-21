@@ -23,7 +23,6 @@ import io.medtracker.client.models.AdminWriteForbiddenErrorEnvelope
 import io.medtracker.client.models.ErrorEnvelope
 import io.medtracker.client.models.PersonAccessGrantCollectionResponse
 import io.medtracker.client.models.PersonAccessGrantCreateRequest
-import io.medtracker.client.models.PersonAccessGrantResponse
 import io.medtracker.client.models.RateLimitErrorEnvelope
 
 import com.squareup.moshi.Json
@@ -53,23 +52,24 @@ open class AccessGrantsApi(basePath: kotlin.String = defaultBasePath, client: Ca
     /**
      * POST /households/{household_id}/admin/person_access_grants
      * Create a person access grant.
-     * 
+     * New per-person grant creation is deferred and returns an audited 403. Current household participation provides View and Record access; household management does not establish guardian or shared-plan authority. Existing recorded authority remains available through list and revoke operations.
      * @param householdId 
      * @param personAccessGrantCreateRequest 
-     * @return PersonAccessGrantResponse
+     * @return void
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
      * @throws UnsupportedOperationException If the API returns an informational or redirection response
      * @throws ClientException If the API returns a client error response
      * @throws ServerException If the API returns a server error response
      */
-    @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
-    fun createPersonAccessGrant(householdId: kotlin.Int, personAccessGrantCreateRequest: PersonAccessGrantCreateRequest) : PersonAccessGrantResponse {
+    @Deprecated(message = "This operation is deprecated.")
+    fun createPersonAccessGrant(householdId: kotlin.Int, personAccessGrantCreateRequest: PersonAccessGrantCreateRequest) : Unit {
+        @Suppress("DEPRECATION")
         val localVarResponse = createPersonAccessGrantWithHttpInfo(householdId = householdId, personAccessGrantCreateRequest = personAccessGrantCreateRequest)
 
         return when (localVarResponse.responseType) {
-            ResponseType.Success -> (localVarResponse as Success<*>).data as PersonAccessGrantResponse
+            ResponseType.Success -> Unit
             ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
             ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
             ResponseType.ClientError -> {
@@ -86,19 +86,20 @@ open class AccessGrantsApi(basePath: kotlin.String = defaultBasePath, client: Ca
     /**
      * POST /households/{household_id}/admin/person_access_grants
      * Create a person access grant.
-     * 
+     * New per-person grant creation is deferred and returns an audited 403. Current household participation provides View and Record access; household management does not establish guardian or shared-plan authority. Existing recorded authority remains available through list and revoke operations.
      * @param householdId 
      * @param personAccessGrantCreateRequest 
-     * @return ApiResponse<PersonAccessGrantResponse?>
+     * @return ApiResponse<Unit?>
      * @throws IllegalStateException If the request is not correctly configured
      * @throws IOException Rethrows the OkHttp execute method exception
      */
-    @Suppress("UNCHECKED_CAST")
     @Throws(IllegalStateException::class, IOException::class)
-    fun createPersonAccessGrantWithHttpInfo(householdId: kotlin.Int, personAccessGrantCreateRequest: PersonAccessGrantCreateRequest) : ApiResponse<PersonAccessGrantResponse?> {
+    @Deprecated(message = "This operation is deprecated.")
+    fun createPersonAccessGrantWithHttpInfo(householdId: kotlin.Int, personAccessGrantCreateRequest: PersonAccessGrantCreateRequest) : ApiResponse<Unit?> {
+        @Suppress("DEPRECATION")
         val localVariableConfig = createPersonAccessGrantRequestConfig(householdId = householdId, personAccessGrantCreateRequest = personAccessGrantCreateRequest)
 
-        return request<PersonAccessGrantCreateRequest, PersonAccessGrantResponse>(
+        return request<PersonAccessGrantCreateRequest, Unit>(
             localVariableConfig
         )
     }
@@ -110,6 +111,7 @@ open class AccessGrantsApi(basePath: kotlin.String = defaultBasePath, client: Ca
      * @param personAccessGrantCreateRequest 
      * @return RequestConfig
      */
+    @Deprecated(message = "This operation is deprecated.")
     fun createPersonAccessGrantRequestConfig(householdId: kotlin.Int, personAccessGrantCreateRequest: PersonAccessGrantCreateRequest) : RequestConfig<PersonAccessGrantCreateRequest> {
         val localVariableBody = personAccessGrantCreateRequest
         val localVariableQuery: MultiValueMap = mutableMapOf()
