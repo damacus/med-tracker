@@ -13,6 +13,42 @@ pub(super) struct RuntimeBindings {
     _model_fields: ModelFields,
 }
 
+fn mapped_field(logical: &str, physical: Option<&str>) -> bool {
+    physical.is_some_and(|name| !name.is_empty() && name != logical)
+}
+
+fn validate_schema_mappings(config: &AuthConfig, model_fields: &ModelFields) -> AuthResult<()> {
+    for (role, model) in model_fields.active_models() {
+        if model_fields.storage_model_name(role, model) != model {
+            return Err(AuthError::config(format!(
+                "Physical identity model mapping for {model} is not configured"
+            )));
+        }
+        for (logical, field) in model_fields.fields(role).fields() {
+            if mapped_field(logical, field.field_name.as_deref()) {
+                return Err(AuthError::config(format!(
+                    "Physical identity field mapping for {model}.{logical} is not configured"
+                )));
+            }
+        }
+    }
+    for (model, fields) in [
+        ("user", config.user.fields()),
+        ("session", config.session.fields()),
+        ("account", &config.account.additional_fields),
+        ("verification", &config.verification.additional_fields),
+    ] {
+        for (logical, field) in fields {
+            if mapped_field(logical, field.field_name.as_deref()) {
+                return Err(AuthError::config(format!(
+                    "Physical identity field mapping for {model}.{logical} is not configured"
+                )));
+            }
+        }
+    }
+    Ok(())
+}
+
 impl ClinicalStore {
     pub(super) fn session_defaults(&self) -> AuthResult<FieldMap> {
         self.runtime.as_ref().map_or_else(
@@ -56,6 +92,7 @@ impl ClinicalStore {
                 "Custom identity models are not configured",
             ));
         }
+        validate_schema_mappings(&config, &model_fields)?;
         let mut bound = self.clone();
         bound.runtime = Some(Arc::new(RuntimeBindings {
             _config: config,
@@ -135,6 +172,59 @@ mod tests {
             first.runtime.as_ref().unwrap(),
             second.runtime.as_ref().unwrap()
         ));
+    }
+
+    #[test]
+    fn unsupported_database_rate_limit_mapping_fails_closed() {
+        use better_auth_core::{
+            middleware::{RateLimitConfig, RateLimitStorageKind},
+            store::schema::SchemaConfiguration,
+        };
+
+        let store = ClinicalStore::new(sea_orm::DatabaseConnection::default());
+        for (model_name, mapped_field) in [
+            (Some("alternate_rate_limits"), None),
+            (None, Some("stored_count")),
+        ] {
+            let mut fields = ModelFields::default();
+            let mappings = mapped_field
+                .map(|name| std::iter::once(("count".to_owned(), name.to_owned())).collect());
+            fields.set_schema_configuration(&SchemaConfiguration {
+                config: Arc::new(AuthConfig::default()),
+                plugins: Vec::new(),
+                metadata: Default::default(),
+                secondary_storage: false,
+                rate_limit: RateLimitConfig {
+                    storage: Some(RateLimitStorageKind::Database),
+                    model_name: model_name.map(str::to_owned),
+                    fields: mappings,
+                    ..Default::default()
+                },
+            });
+            assert!(matches!(
+                store.bind_runtime(Arc::new(AuthConfig::default()), Vec::new(), fields),
+                Err(AuthError::Config(_))
+            ));
+            assert!(store.runtime.is_none());
+        }
+    }
+
+    #[test]
+    fn unsupported_custom_model_fails_closed() {
+        let store = ClinicalStore::new(sea_orm::DatabaseConnection::default());
+        let mut fields = ModelFields::default();
+        fields
+            .register_custom_model(
+                "clinicalExtension",
+                Some("custom_table"),
+                Default::default(),
+            )
+            .unwrap();
+        assert!(matches!(
+            store.bind_runtime(Arc::new(AuthConfig::default()), Vec::new(), fields),
+            Err(AuthError::Config(_))
+        ));
+        assert!(store.runtime.is_none());
     }
 
     #[test]
