@@ -67,7 +67,9 @@ pub struct RecoveryGuardian {
 
 pub struct RecoveryOptions {
     pub subjects: Vec<RecoverySubject>,
+    pub subjects_has_more: bool,
     pub guardians: Vec<RecoveryGuardian>,
+    pub guardians_has_more: bool,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -121,7 +123,7 @@ pub async fn options(tenant: &TenantTransaction) -> Result<RecoveryOptions, Oper
              AND p.date_of_birth IS NOT NULL
              AND p.date_of_birth<=med_tracker.guardian_recovery_earliest_date()
              AND p.date_of_birth>(med_tracker.guardian_recovery_latest_date()-interval '18 years')::date
-           ORDER BY p.name,p.id LIMIT 100)
+           ORDER BY p.name,p.id LIMIT 101)
          SELECT c.id,c.name,s.snapshot_token,s.snapshot_revision,s.link_token,s.has_effective_guardian
          FROM candidates c CROSS JOIN LATERAL med_tracker.guardian_recovery_snapshot(c.id) s
          ORDER BY c.name,c.id",
@@ -143,6 +145,8 @@ pub async fn options(tenant: &TenantTransaction) -> Result<RecoveryOptions, Oper
             })
         })
         .collect::<Result<Vec<_>, OperationError>>()?;
+    let subjects_has_more = subjects.len() > 100;
+    subjects.truncate(100);
     let guardian_rows = tenant
         .transaction()
         .query_all_raw(Statement::from_sql_and_values(
@@ -158,11 +162,11 @@ pub async fn options(tenant: &TenantTransaction) -> Result<RecoveryOptions, Oper
            AND a.status=2 AND u.active
            AND NOT EXISTS(SELECT 1 FROM public.account_lockouts l WHERE l.account_id=a.id
              AND l.deadline>pg_catalog.timezone('UTC',pg_catalog.clock_timestamp()))
-         ORDER BY p.name,p.id LIMIT 100",
+         ORDER BY p.name,p.id LIMIT 101",
             [tenant.scope().household_id.into()],
         ))
         .await?;
-    let guardians = guardian_rows
+    let mut guardians = guardian_rows
         .iter()
         .map(|row| {
             Ok(RecoveryGuardian {
@@ -171,6 +175,8 @@ pub async fn options(tenant: &TenantTransaction) -> Result<RecoveryOptions, Oper
             })
         })
         .collect::<Result<Vec<_>, OperationError>>()?;
+    let guardians_has_more = guardians.len() > 100;
+    guardians.truncate(100);
     if !subjects.is_empty() {
         let ids = subjects.iter().map(|row| row.id.get()).collect::<Vec<_>>();
         let restorable = tenant
@@ -215,7 +221,9 @@ pub async fn options(tenant: &TenantTransaction) -> Result<RecoveryOptions, Oper
     }
     Ok(RecoveryOptions {
         subjects,
+        subjects_has_more,
         guardians,
+        guardians_has_more,
     })
 }
 

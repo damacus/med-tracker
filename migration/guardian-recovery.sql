@@ -410,6 +410,7 @@ DECLARE
   latest_revision bigint;
   latest_link_token uuid;
   guarded boolean;
+  candidate_eligible boolean;
   old_declaration bigint;
   old_guardian bigint;
   guardian_membership bigint;
@@ -459,6 +460,10 @@ BEGIN
   ) THEN
     RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'Guardian recovery unavailable';
   END IF;
+  -- Own withdrawal locks its account before its declaration; use that same order.
+  PERFORM a.id FROM public.accounts a
+    WHERE a.id = med_tracker.current_account_id() OR a.person_id = p_guardian
+    ORDER BY a.id FOR SHARE OF a;
   PERFORM 1 FROM public.households h
     WHERE h.id = med_tracker.current_household_id() FOR UPDATE;
   PERFORM pg_catalog.pg_advisory_xact_lock(
@@ -518,9 +523,29 @@ BEGIN
     WHERE d.subject_person_id = p_subject
       AND d.withdrawn_at IS NULL AND d.superseded_at IS NULL
     FOR SHARE OF c;
-  SELECT s.snapshot_token,s.snapshot_revision,s.link_token,s.has_effective_guardian
-    INTO latest_token,latest_revision,latest_link_token,guarded
+  SELECT s.snapshot_token,s.snapshot_revision,s.link_token,s.has_effective_guardian,
+      EXISTS (
+        SELECT 1 FROM public.household_memberships m
+        JOIN public.people p ON p.id = m.person_id
+        JOIN public.accounts a ON a.person_id = p.id
+        JOIN public.users u ON u.person_id = p.id
+        WHERE m.person_id = p_guardian
+          AND m.household_id = med_tracker.current_household_id()
+          AND m.status = 'active' AND m.revoked_at IS NULL
+          AND p.person_type = 0 AND p.has_capacity
+          AND (p.date_of_birth IS NULL OR p.date_of_birth <=
+            (med_tracker.guardian_recovery_earliest_date() - interval '18 years')::date)
+          AND a.status = 2 AND u.active
+          AND NOT EXISTS (SELECT 1 FROM public.account_lockouts l
+            WHERE l.account_id = a.id
+              AND l.deadline > pg_catalog.timezone('UTC',pg_catalog.clock_timestamp()))
+      )
+    INTO latest_token,latest_revision,latest_link_token,guarded,candidate_eligible
     FROM med_tracker.guardian_recovery_snapshot(p_subject) s;
+  IF NOT candidate_eligible THEN
+    RETURN QUERY SELECT 'invalid_guardian'::text,NULL::bigint,NULL::bigint;
+    RETURN;
+  END IF;
   IF p_expected_token <> latest_token OR p_expected_revision <> latest_revision
      OR p_expected_link_token <> latest_link_token THEN
     RETURN QUERY SELECT 'stale'::text,NULL::bigint,NULL::bigint;

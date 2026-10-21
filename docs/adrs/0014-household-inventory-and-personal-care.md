@@ -49,6 +49,10 @@ mismatch from authorising takeover.
 An existing guardian's temporary login lockout does not by itself permit a
 replacement appointment; the acting manager and new appointee must still have
 usable accounts. Ordinary initial declaration birthday rules are unchanged.
+Recovery takes actor and appointee account locks before the declaration lock to
+match personal withdrawal. It retains the declaration barrier before subject
+person locks and freshly checks candidate lockout, local eligibility, the
+confirmation snapshot and global orphanhood after all lock waits.
 
 A person or an explicitly authorised guardian must approve sharing that person's
 care with another household. Household role and manager status do not establish

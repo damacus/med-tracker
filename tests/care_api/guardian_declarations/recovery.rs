@@ -22,6 +22,124 @@ fn scope() -> HouseholdScope {
 }
 
 #[tokio::test]
+async fn guardian_recovery_options_report_bounded_truncation() -> Result<(), DbErr> {
+    let app = Application::new().await;
+    let result=async {
+        app.fixture.admin.execute_unprepared(
+            "INSERT INTO public.people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at)
+               SELECT 85000+g,'Synthetic recovery list minor '||g,'2020-01-01',1,false,now(),now()
+               FROM generate_series(1,101) AS g;
+             INSERT INTO public.household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at)
+               SELECT 86000+g,72001,85000+g,'member','active',now(),now(),now()
+               FROM generate_series(1,101) AS g"
+        ).await?;
+        let tenant=access::begin(&app.fixture.runtime,&scope(),None).await.map_err(db_error)?;
+        let options=recovery::options(&tenant).await.map_err(db_error)?;
+        require(options.subjects.len()==100 && options.subjects_has_more,
+            "Bounded subject list must truthfully report unseen eligible local minors")?;
+        require(!options.guardians_has_more,"Short guardian list must report completion")?;
+        tenant.rollback().await.map_err(db_error)?;
+        Ok(())
+    }.await;
+    app.close().await;
+    result
+}
+
+#[tokio::test]
+async fn guardian_recovery_administrator_appoints_for_minor_without_history() -> Result<(), DbErr> {
+    let app = Application::new().await;
+    let result=async {
+        app.fixture.admin.execute_unprepared(
+            "INSERT INTO public.people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES
+               (73994,'No-history minor','2020-01-01',1,false,now(),now()),
+               (73999,'No-history administrator','1980-01-01',0,true,now(),now());
+             INSERT INTO public.household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES
+               (74994,72001,73994,'member','active',now(),now(),now()),
+               (74999,72001,73999,'administrator','active',now(),now(),now());
+             INSERT INTO public.accounts(id,person_id,email,status,created_at,updated_at) VALUES(71999,73999,'no-history-admin@example.test',2,now(),now());
+             INSERT INTO public.users(id,person_id,email_address,password_digest,active,created_at,updated_at) VALUES(77999,73999,'no-history-admin@example.test',crypt('password',gen_salt('bf',4)),true,now(),now())"
+        ).await?;
+        let manager_scope=HouseholdScope {actor:Actor{account_id:71999},household_id:72001,
+            request_id:"synthetic-no-history-administrator".into()};
+        let tenant=access::begin(&app.fixture.runtime,&manager_scope,None).await.map_err(db_error)?;
+        let selected=recovery::options(&tenant).await.map_err(db_error)?.subjects.into_iter()
+            .find(|item|item.id.get()==73994)
+            .ok_or_else(||DbErr::Custom("No-history minor missing from options".into()))?;
+        require(!selected.has_effective_guardian && selected.restorable.is_none()
+            && selected.snapshot.token.is_nil() && selected.snapshot.revision==0,
+            "No-history minor must have nil history confirmation and no authority")?;
+        let appointed=recovery::execute(&tenant,RecoveryCommand {
+            subject:RecoverySubjectId::parse(73994).map_err(db_error)?,
+            guardian:RecoveryGuardianId::parse(73001).map_err(db_error)?,
+            expected:selected.snapshot,action:RecoveryAction::Appoint,
+            reason:"Administrator confirmed adult guardian for this minor.".into(),
+        }).await.map_err(db_error)?;
+        require(appointed.outcome==RecoveryOutcome::Appointed,
+            "Administrator must be able to appoint for a no-history minor")?;
+        tenant.commit().await.map_err(db_error)?;
+        let state=app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+            "SELECT (SELECT count(*) FROM public.guardian_declarations WHERE id=$1 AND subject_person_id=73994 AND guardian_person_id=73001 AND declared_by_account_id=71999 AND source='manager_appointment') AS declarations,(SELECT count(*) FROM public.security_audit_events WHERE event_type='guardian_recovery.appointed' AND actor_account_id=71999 AND metadata->>'subject_person_id'='73994') AS audits",
+            [appointed.declaration_id.into()])).await?
+            .ok_or_else(||DbErr::Custom("Missing administrator recovery state".into()))?;
+        require(state.try_get::<i64>("","declarations")?==1 && state.try_get::<i64>("","audits")?==1,
+            "No-history appointment must record the actual administrator and audit")?;
+        Ok(())
+    }.await;
+    app.close().await;
+    result
+}
+
+#[tokio::test]
+async fn guardian_recovery_latest_history_uses_declaration_time_not_high_old_id()
+-> Result<(), DbErr> {
+    let app = Application::new().await;
+    let result=async {
+        app.fixture.admin.execute_unprepared(
+            "SELECT setval(pg_get_serial_sequence('public.guardian_declarations','id'),990000,false)"
+        ).await?;
+        let token=app.token().await;
+        let (subject,old_id)=declaration(&app,&token).await?;
+        require(old_id==990000,"Fixture must give old initial declaration a high ID")?;
+        let withdrawn=app.client.patch(format!("{}/api/v1/auth/guardian-declarations/{old_id}",app.origin))
+            .bearer_auth(&token)
+            .json(&json!({"guardian_declaration":{"withdrawn":true,"revision":"1"}}))
+            .send().await.map_err(db_error)?;
+        require(withdrawn.status().as_u16()==200,"High-ID initial declaration withdrawal must succeed")?;
+        app.fixture.admin.execute_unprepared(
+            "SELECT setval(pg_get_serial_sequence('public.guardian_declarations','id'),500000,false)"
+        ).await?;
+        let tenant=access::begin(&app.fixture.runtime,&scope(),None).await.map_err(db_error)?;
+        let selected=recovery::options(&tenant).await.map_err(db_error)?.subjects.into_iter()
+            .find(|item|item.id.get()==subject)
+            .ok_or_else(||DbErr::Custom("Missing high-ID history subject".into()))?;
+        let appointed=recovery::execute(&tenant,RecoveryCommand {
+            subject:RecoverySubjectId::parse(subject).map_err(db_error)?,
+            guardian:RecoveryGuardianId::parse(73001).map_err(db_error)?,
+            expected:selected.snapshot,action:RecoveryAction::Appoint,
+            reason:"Appointed again after retained high-ID withdrawal.".into(),
+        }).await.map_err(db_error)?;
+        require(appointed.declaration_id<old_id,"New appointment must have a lower generated ID")?;
+        tenant.commit().await.map_err(db_error)?;
+        let tenant=access::begin(&app.fixture.runtime,&scope(),None).await.map_err(db_error)?;
+        let latest=recovery::options(&tenant).await.map_err(db_error)?.subjects.into_iter()
+            .find(|item|item.id.get()==subject)
+            .ok_or_else(||DbErr::Custom("Missing post-appointment high-ID subject".into()))?;
+        tenant.rollback().await.map_err(db_error)?;
+        let row=app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+            "SELECT confirmation_token,revision FROM public.guardian_declarations WHERE id=$1",
+            [appointed.declaration_id.into()])).await?
+            .ok_or_else(||DbErr::Custom("Missing lower-ID new appointment".into()))?;
+        require(latest.snapshot.token==row.try_get::<uuid::Uuid>("","confirmation_token")?
+            && latest.snapshot.revision==row.try_get::<i64>("","revision")?
+            && latest.snapshot.token!=selected.snapshot.token,
+            "Latest confirmation must follow declaration time, including terminal high-ID history")?;
+        Ok(())
+    }.await;
+    app.close().await;
+    result
+}
+
+#[tokio::test]
 async fn guardian_recovery_after_personal_withdrawal_creates_fresh_appointment() -> Result<(), DbErr>
 {
     let app = Application::new().await;
@@ -146,6 +264,182 @@ async fn guardian_recovery_competing_households_serialise_by_subject() -> Result
             [subject.into()])).await?.ok_or_else(||DbErr::Custom("Missing concurrent state".into()))?;
         require(state.try_get::<i64>("","appointments")?==1 && state.try_get::<i64>("","open")?==1,
             "Subject serialization must leave one new open authority")?;
+        Ok(())
+    }.await;
+    app.close().await;
+    result
+}
+
+#[tokio::test]
+async fn guardian_recovery_restore_and_personal_withdrawal_serialize_without_deadlock()
+-> Result<(), DbErr> {
+    let app = Application::new().await;
+    let result=async {
+        let token=app.token().await;
+        let (subject,declaration_id)=declaration(&app,&token).await?;
+        app.fixture.admin.execute_unprepared(
+            "INSERT INTO public.people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES(73999,'Restore race administrator','1980-01-01',0,true,now(),now());
+             INSERT INTO public.accounts(id,person_id,email,status,created_at,updated_at) VALUES(71999,73999,'restore-race-admin@example.test',2,now(),now());
+             INSERT INTO public.users(id,person_id,email_address,password_digest,active,created_at,updated_at) VALUES(77999,73999,'restore-race-admin@example.test',crypt('password',gen_salt('bf',4)),true,now(),now());
+             INSERT INTO public.household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74999,72001,73999,'administrator','active',now(),now(),now())"
+        ).await?;
+        app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+            "UPDATE public.carer_relationships SET active=false WHERE guardian_declaration_id=$1",
+            [declaration_id.into()])).await?;
+        let manager_scope=HouseholdScope {actor:Actor{account_id:71999},household_id:72001,
+            request_id:"synthetic-restore-withdrawal-race".into()};
+        let tenant=access::begin(&app.fixture.runtime,&manager_scope,None).await.map_err(db_error)?;
+        let selected=recovery::options(&tenant).await.map_err(db_error)?.subjects.into_iter()
+            .find(|item|item.id.get()==subject)
+            .ok_or_else(||DbErr::Custom("Missing restore-race minor".into()))?;
+        let link=selected.restorable.ok_or_else(||DbErr::Custom("Missing restore-race link".into()))?;
+        tenant.rollback().await.map_err(db_error)?;
+        let blocker=app.fixture.admin.begin().await?;
+        blocker.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+            "SELECT id FROM public.guardian_declarations WHERE id=$1 FOR UPDATE",
+            [declaration_id.into()])).await?
+            .ok_or_else(||DbErr::Custom("Missing declaration lock blocker".into()))?;
+        let runtime=app.fixture.runtime.clone();
+        let restore=tokio::spawn(async move {
+            let tenant=access::begin(&runtime,&manager_scope,None).await.unwrap();
+            let result=recovery::execute(&tenant,RecoveryCommand {
+                subject:RecoverySubjectId::parse(subject).unwrap(),
+                guardian:link.guardian_id,expected:selected.snapshot,
+                action:RecoveryAction::Restore {declaration_id:link.declaration_id,
+                    relationship_id:link.relationship_id},
+                reason:"Confirm existing guardian link before withdrawal.".into(),
+            }).await;
+            if result.is_ok() {tenant.commit().await.unwrap()} else {tenant.rollback().await.unwrap()}
+            result.map(|value|value.outcome).map_err(|error|format!("{error:?}"))
+        });
+        let mut recovery_waiting=false;
+        for _ in 0..40 {
+            let row=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+                "SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE wait_event_type='Lock' AND query LIKE '%guardian_recovery_command%') AS waiting"))
+                .await?.ok_or_else(||DbErr::Custom("Missing recovery wait state".into()))?;
+            recovery_waiting=row.try_get("","waiting")?;
+            if recovery_waiting {break}
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        }
+        if !recovery_waiting {
+            blocker.commit().await?;
+            let _=restore.await;
+            return Err(DbErr::Custom("Restore did not wait on declaration blocker".into()));
+        }
+        let client=app.client.clone();
+        let origin=app.origin.clone();
+        let withdrawal=tokio::spawn(async move {
+            let response=client.patch(format!("{origin}/api/v1/auth/guardian-declarations/{declaration_id}"))
+                .bearer_auth(&token)
+                .json(&json!({"guardian_declaration":{"withdrawn":true,"revision":"1"}}))
+                .send().await.map_err(|error|error.to_string())?;
+            Ok::<u16,String>(response.status().as_u16())
+        });
+        let mut two_waiters=false;
+        for _ in 0..40 {
+            let row=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+                "SELECT count(*) AS waiting FROM pg_stat_activity WHERE wait_event_type='Lock' AND state='active' AND pid<>pg_backend_pid()"))
+                .await?.ok_or_else(||DbErr::Custom("Missing two-waiter state".into()))?;
+            two_waiters=row.try_get::<i64>("","waiting")?>=2;
+            if two_waiters {break}
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        }
+        blocker.commit().await?;
+        let restore_outcome=tokio::time::timeout(std::time::Duration::from_secs(8),restore)
+            .await.map_err(db_error)?.map_err(db_error)?;
+        let withdrawal_status=tokio::time::timeout(std::time::Duration::from_secs(8),withdrawal)
+            .await.map_err(db_error)?.map_err(db_error)?;
+        require(two_waiters,"Both restore and personal withdrawal must enter lock waits")?;
+        require(matches!(restore_outcome,Ok(RecoveryOutcome::Restored))
+            && matches!(withdrawal_status,Ok(200)),
+            &format!("Restore and withdrawal must serialize without lock error: {restore_outcome:?}, {withdrawal_status:?}"))?;
+        let state=app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+            "SELECT (SELECT count(*) FROM public.guardian_declarations WHERE id=$1 AND withdrawn_at IS NOT NULL AND superseded_at IS NULL) AS terminal,(SELECT count(*) FROM public.security_audit_events WHERE event_type='guardian_recovery.restored' AND metadata->>'subject_person_id'=$2) AS restores,(SELECT count(*) FROM public.versions WHERE item_type='GuardianDeclaration' AND item_id=$1 AND event='withdraw') AS withdrawals",
+            [declaration_id.into(),subject.to_string().into()])).await?
+            .ok_or_else(||DbErr::Custom("Missing serialized restore/withdrawal state".into()))?;
+        require(state.try_get::<i64>("","terminal")?==1 && state.try_get::<i64>("","restores")?==1
+            && state.try_get::<i64>("","withdrawals")?==1,
+            "Final authority must be terminal with one restore and one personal withdrawal audit")?;
+        Ok(())
+    }.await;
+    app.close().await;
+    result
+}
+
+#[tokio::test]
+async fn guardian_recovery_candidate_lockout_after_account_wait_rejects_without_effects()
+-> Result<(), DbErr> {
+    let app = Application::new().await;
+    let result=async {
+        let token=app.token().await;
+        let (subject,_)=declaration(&app,&token).await?;
+        app.fixture.admin.execute_unprepared(
+            "INSERT INTO public.people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES
+               (73995,'Lockout race candidate','1980-01-01',0,true,now(),now()),
+               (73999,'Lockout race manager','1980-01-01',0,true,now(),now());
+             INSERT INTO public.accounts(id,person_id,email,status,created_at,updated_at) VALUES
+               (71995,73995,'lockout-race-candidate@example.test',2,now(),now()),
+               (71999,73999,'lockout-race-manager@example.test',2,now(),now());
+             INSERT INTO public.users(id,person_id,email_address,password_digest,active,created_at,updated_at) VALUES
+               (77995,73995,'lockout-race-candidate@example.test',crypt('password',gen_salt('bf',4)),true,now(),now()),
+               (77999,73999,'lockout-race-manager@example.test',crypt('password',gen_salt('bf',4)),true,now(),now());
+             INSERT INTO public.household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES
+               (74995,72001,73995,'member','active',now(),now(),now()),
+               (74999,72001,73999,'administrator','active',now(),now(),now());
+             UPDATE public.accounts SET status=1 WHERE id=71001"
+        ).await?;
+        let manager_scope=HouseholdScope {actor:Actor{account_id:71999},household_id:72001,
+            request_id:"synthetic-candidate-lockout-race".into()};
+        let tenant=access::begin(&app.fixture.runtime,&manager_scope,None).await.map_err(db_error)?;
+        let selected=recovery::options(&tenant).await.map_err(db_error)?.subjects.into_iter()
+            .find(|item|item.id.get()==subject)
+            .ok_or_else(||DbErr::Custom("Missing lockout-race minor".into()))?;
+        require(!selected.has_effective_guardian,"Disabled old guardian must make the minor orphaned")?;
+        tenant.rollback().await.map_err(db_error)?;
+        let blocker=app.fixture.admin.begin().await?;
+        blocker.execute_unprepared("UPDATE public.accounts SET status=2 WHERE id=71995").await?;
+        let runtime=app.fixture.runtime.clone();
+        let snapshot=selected.snapshot;
+        let attempt=tokio::spawn(async move {
+            let tenant=access::begin(&runtime,&manager_scope,None).await.unwrap();
+            let result=recovery::execute(&tenant,RecoveryCommand {
+                subject:RecoverySubjectId::parse(subject).unwrap(),
+                guardian:RecoveryGuardianId::parse(73995).unwrap(),
+                expected:snapshot,action:RecoveryAction::Appoint,
+                reason:"Lockout race must reject appointment.".into(),
+            }).await;
+            if result.is_ok() {tenant.commit().await.unwrap()} else {tenant.rollback().await.unwrap()}
+            result.map(|value|value.outcome).map_err(|error|format!("{error:?}"))
+        });
+        let mut waiting=false;
+        for _ in 0..40 {
+            let row=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+                "SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE wait_event_type='Lock' AND query LIKE '%guardian_recovery_command%') AS waiting"))
+                .await?.ok_or_else(||DbErr::Custom("Missing lockout-race wait state".into()))?;
+            waiting=row.try_get("","waiting")?;
+            if waiting {break}
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        }
+        if !waiting {
+            blocker.commit().await?;
+            let _=attempt.await;
+            return Err(DbErr::Custom("Recovery did not wait on candidate account".into()));
+        }
+        blocker.execute_unprepared(
+            "INSERT INTO public.account_lockouts(account_id,key,deadline) VALUES(71995,'synthetic-recovery-race',now()+interval '1 hour')"
+        ).await?;
+        blocker.commit().await?;
+        let outcome=attempt.await.map_err(db_error)?;
+        require(outcome.as_ref().is_err_and(|error|error.contains("is no longer eligible")),
+            &format!("New candidate lockout must reject after wait: {outcome:?}"))?;
+        let state=app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+            "SELECT (SELECT count(*) FROM public.guardian_declarations WHERE subject_person_id=$1 AND source='manager_appointment') AS appointments,(SELECT count(*) FROM public.carer_relationships WHERE patient_id=$1 AND carer_id=73995) AS links,(SELECT count(*) FROM public.security_audit_events WHERE event_type LIKE 'guardian_recovery.%' AND metadata->>'subject_person_id'=$2) AS audits,(SELECT count(*) FROM public.versions WHERE item_type='GuardianDeclaration' AND event='appointed' AND item_id IN (SELECT id FROM public.guardian_declarations WHERE subject_person_id=$1)) AS versions,(SELECT permissions_version::bigint FROM public.household_memberships WHERE id=74995) AS permissions_version",
+            [subject.into(),subject.to_string().into()])).await?
+            .ok_or_else(||DbErr::Custom("Missing rejected lockout-race state".into()))?;
+        require(state.try_get::<i64>("","appointments")?==0 && state.try_get::<i64>("","links")?==0
+            && state.try_get::<i64>("","audits")?==0 && state.try_get::<i64>("","versions")?==0
+            && state.try_get::<i64>("","permissions_version")?==1,
+            "Rejected lockout-race command must have zero authority, audit and permission side effects")?;
         Ok(())
     }.await;
     app.close().await;
