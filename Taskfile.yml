@@ -141,6 +141,11 @@ tasks:
       - task: frontend:test
       - 'fish scripts/with-icu.fish cargo nextest run --locked --workspace --lib --no-tests=fail --test-threads 2 {{.FILTER | default ""}}'
       - fish scripts/with-icu.fish cargo test --locked --workspace --doc
+  test:tooling:
+    desc: Check prebuilt nextest installation and the ICU environment wrapper
+    cmds:
+      - bash tests/tooling/nextest-prebuilt.sh
+      - fish tests/tooling/icu.fish
   test:integration:
     desc: Run compiled API, security and database integration tests
     deps: [frontend:prepare]

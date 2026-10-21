@@ -1,0 +1,40 @@
+name: Install pinned nextest binary
+description: Restore or install and verify nextest 0.9.149 on Linux X64
+runs:
+  using: composite
+  steps:
+    - name: Resolve supported nextest path
+      id: binary
+      shell: bash
+      run: |
+        if [[ "$RUNNER_OS" != Linux || "$RUNNER_ARCH" != X64 ]]; then
+          echo '::error::Pinned nextest binary supports Linux X64 only'
+          exit 1
+        fi
+        echo "path=${CARGO_HOME:-$HOME/.cargo}/bin/cargo-nextest" >> "$GITHUB_OUTPUT"
+    - name: Restore exact nextest binary
+      id: cache
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      with:
+        path: ${{ steps.binary.outputs.path }}
+        key: nextest-${{ runner.os }}-${{ runner.arch }}-0.9.149-7f557542ea0d9d7218c2d564987a2cebf367de1d0f9eca45f93f270932a3d9ff
+    - name: Bootstrap checksum-verified cargo-binstall 1.25.3
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8
+      with:
+        tool: cargo-binstall
+        fallback: none
+    - name: Verify or install prebuilt nextest
+      shell: bash
+      env:
+        NEXTEST_BINARY: ${{ steps.binary.outputs.path }}
+        NEXTEST_CACHE_HIT: ${{ steps.cache.outputs.cache-hit }}
+        NEXTEST_VERSION: 0.9.149
+        NEXTEST_SHA256: 7f557542ea0d9d7218c2d564987a2cebf367de1d0f9eca45f93f270932a3d9ff
+      run: bash "$GITHUB_ACTION_PATH/install.sh" "$NEXTEST_BINARY"
+    - name: Save verified nextest binary
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      with:
+        path: ${{ steps.binary.outputs.path }}
+        key: ${{ steps.cache.outputs.cache-primary-key }}

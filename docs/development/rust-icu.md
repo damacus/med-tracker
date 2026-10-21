@@ -1,6 +1,8 @@
 # ICU for the root Rust application
 
-The pinned Better Auth revision links against ICU 78.3. Root Rust Task commands
+The pinned Better Auth revision requires ICU 78.3 to build its unconditional
+ICU dependency. Its in-memory sorting path can also need ICU at runtime.
+Root Rust Task commands
 find the ICU libraries and set `RUST_ICU_MAJOR_VERSION_NUMBER=78` and
 `RUST_ICU_LINK_SEARCH_DIR` for Cargo. Run them directly, for example `task ci`;
 do not set these variables by hand. Documentation, frontend, native client
@@ -12,8 +14,10 @@ The Task wrapper uses `brew --prefix icu4c@78` and checks that `icuuc`,
 CI runners, `scripts/install-icu-linux.sh` downloads the official ICU 78.3
 Ubuntu 22.04 archive, verifies its pinned SHA-256 and installs it under
 `/opt/medtracker-icu`. The Task wrapper also sets `LD_LIBRARY_PATH` there so
-test executables can load the same libraries they linked against. CI checks
-their actual runtime linkage after running the Rust tests.
+test executables can load the same libraries when needed. CI runs the actual
+Rust unit, integration and browser suites with this environment. The tested
+application executables currently have no ICU ELF linkage; a new application
+path using ICU needs coverage in its owning application tests.
 
 This setup applies to local development and CI. A root Rust deployment image
 and runtime installation are outside the current delivery scope.
