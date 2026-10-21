@@ -143,6 +143,7 @@ impl<'a> Page<'a> {
         data["admin_labels"] = labels["administration"].clone();
         data["overview_labels"] = labels["administration"]["overview"].clone();
         data["member_labels"] = labels["administration"]["member_list"].clone();
+        data["bulk_labels"] = labels["administration"]["bulk_members"].clone();
         data["detail_labels"] = labels["administration"]["member_detail"].clone();
         let overview = if matches!(screen, Screen::Index) {
             Some(administration::overview::read(tenant).await?)

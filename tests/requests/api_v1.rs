@@ -8,6 +8,8 @@ mod account_profile;
 mod administration_overview;
 #[path = "avatar.rs"]
 mod avatar;
+#[path = "bulk_members.rs"]
+mod bulk_members;
 #[path = "capabilities.rs"]
 mod capabilities;
 #[path = "../care_api/contract.rs"]

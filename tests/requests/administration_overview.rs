@@ -4,7 +4,7 @@ use sea_orm::TransactionTrait;
 
 type TestResult = std::result::Result<(), Box<dyn std::error::Error>>;
 
-fn authenticity_token(html: &str) -> Option<&str> {
+pub(super) fn authenticity_token(html: &str) -> Option<&str> {
     html.split("name=\"authenticity_token\" value=\"")
         .nth(1)?
         .split('"')
@@ -22,7 +22,7 @@ fn listed_membership_ids(html: &str) -> Vec<i64> {
         .collect()
 }
 
-async fn select_household(
+pub(super) async fn select_household(
     request: &TestServer,
     fixture: &Fixture,
     boot: &BootResult,

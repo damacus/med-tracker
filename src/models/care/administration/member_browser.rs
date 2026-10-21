@@ -421,3 +421,33 @@ pub async fn find(
         .ok_or(OperationError::NotFound)?;
     member_row(row)
 }
+
+pub async fn selected(
+    tenant: &TenantTransaction,
+    ids: &[MembershipId],
+) -> Result<Vec<MemberRow>, OperationError> {
+    if ids.is_empty() || ids.len() > 25 {
+        return Err(OperationError::Unavailable);
+    }
+    super::authorize(tenant).await?;
+    let placeholders = (2..ids.len() + 2)
+        .map(|i| format!("${i}"))
+        .collect::<Vec<_>>()
+        .join(",");
+    let sql = format!(
+        "SELECT m.id,identity.name,identity.email,m.role,m.status FROM household_memberships m JOIN med_tracker.member_directory_identity() identity ON identity.membership_id=m.id WHERE m.household_id=$1 AND m.id IN ({placeholders}) ORDER BY m.id LIMIT 25"
+    );
+    let mut values: Vec<sea_orm::Value> = vec![tenant.scope().household_id.into()];
+    values.extend(ids.iter().map(|id| id.get().into()));
+    tenant
+        .transaction()
+        .query_all_raw(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            sql,
+            values,
+        ))
+        .await?
+        .into_iter()
+        .map(member_row)
+        .collect()
+}
