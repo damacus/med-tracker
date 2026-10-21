@@ -9,13 +9,13 @@ use better_auth_core::{
     SchemaValue, UpdateDeviceCode,
     store::{
         ApiKeyStore, ApiKeyUsageWrite, DeviceCodeStore, PasskeyStore, RateLimitStore,
-        TwoFactorStore,
+        TransactionStore, TwoFactorStore,
     },
 };
 use chrono::{Duration, Utc};
 use med_tracker::models::{
     _entities::{identity_api_keys, identity_passkeys},
-    identity::better_auth::ClinicalStore,
+    identity::better_auth::{ClinicalAuthSchema, ClinicalStore},
 };
 use sea_orm::{ActiveModelTrait, ConnectionTrait, DatabaseConnection, DbBackend, Set, Statement};
 use serde_json::json;
@@ -166,6 +166,16 @@ async fn api_key_expiry_cutoff_cannot_delete_live_credentials() {
             .await
             .is_err()
     );
+    assert!(
+        fixture
+            .runtime
+            .query_one_raw(Statement::from_string(
+                DbBackend::Postgres,
+                "SELECT public.identity_delete_expired_api_keys(NULL::timestamptz)",
+            ))
+            .await
+            .is_err()
+    );
     let row = fixture
         .admin
         .query_one_raw(Statement::from_string(
@@ -176,6 +186,62 @@ async fn api_key_expiry_cutoff_cannot_delete_live_credentials() {
         .unwrap()
         .unwrap();
     assert_eq!(row.try_get::<i64>("", "count").unwrap(), 1);
+    fixture.close().await;
+}
+
+#[tokio::test]
+async fn api_key_cleanup_uses_transaction_expiry_boundary_for_current_cutoff() {
+    let fixture = Fixture::new().await;
+    seed_key(
+        &fixture,
+        "before-cleanup-transaction",
+        Utc::now() - Duration::minutes(1),
+        1.0,
+    )
+    .await;
+    seed_key(
+        &fixture,
+        "during-cleanup-transaction",
+        Utc::now() + Duration::milliseconds(500),
+        1.0,
+    )
+    .await;
+    seed_key(
+        &fixture,
+        "after-cleanup-transaction",
+        Utc::now() + Duration::minutes(2),
+        1.0,
+    )
+    .await;
+    let store = ClinicalStore::new(fixture.runtime.clone());
+    let scoped_store = store.clone();
+    TransactionStore::<ClinicalAuthSchema>::transaction_boxed(
+        &store,
+        Box::new(move |_| {
+            Box::pin(async move {
+                tokio::time::sleep(std::time::Duration::from_millis(700)).await;
+                let removed =
+                    ApiKeyStore::delete_expired_api_keys_before(&scoped_store, Utc::now().into())
+                        .await?;
+                assert_eq!(removed, 1);
+                Ok(Box::new(()) as _)
+            })
+        }),
+    )
+    .await
+    .unwrap();
+    let row = fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT count(*) FILTER (WHERE id='before-cleanup-transaction') AS old, count(*) FILTER (WHERE id='during-cleanup-transaction') AS recent, count(*) FILTER (WHERE id='after-cleanup-transaction') AS live FROM public.identity_api_keys",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(row.try_get::<i64>("", "old").unwrap(), 0);
+    assert_eq!(row.try_get::<i64>("", "recent").unwrap(), 1);
+    assert_eq!(row.try_get::<i64>("", "live").unwrap(), 1);
     fixture.close().await;
 }
 

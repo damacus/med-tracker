@@ -554,7 +554,7 @@ impl ApiKeyStore for ClinicalStore {
         let transaction = self.transaction().await?;
         let row = transaction
             .query_one_raw(statement(
-                "SELECT public.identity_delete_expired_api_keys($1) AS count",
+                "SELECT public.identity_delete_expired_api_keys(LEAST($1, CURRENT_TIMESTAMP)) AS count",
                 [cutoff.into()],
             ))
             .await
