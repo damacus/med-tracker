@@ -39,7 +39,7 @@ pub struct TenantTransaction {
     transaction: DatabaseTransaction,
     scope: HouseholdScope,
     membership: membership::Model,
-    user_id: i64,
+    legacy_user_id: Option<i64>,
     settings: Option<serde_json::Value>,
 }
 
@@ -56,8 +56,8 @@ impl TenantTransaction {
         &self.membership
     }
 
-    pub fn user_id(&self) -> i64 {
-        self.user_id
+    pub fn legacy_user_id(&self) -> Option<i64> {
+        self.legacy_user_id
     }
 
     pub fn settings(&self) -> Option<&serde_json::Value> {
@@ -96,7 +96,8 @@ pub async fn begin(
                 [scope.actor.account_id.to_string().into()],
             ))
             .await?;
-        let (membership, user_id) = verify_membership(&transaction, scope).await?;
+        let membership = verify_membership(&transaction, scope).await?;
+        let legacy_user_id = account_user(&transaction, scope.actor.account_id).await?;
         transaction
             .query_one_raw(Statement::from_sql_and_values(
                 DbBackend::Postgres,
@@ -108,15 +109,15 @@ pub async fn begin(
                 ],
             ))
             .await?;
-        Ok::<_, OperationError>((membership, user_id))
+        Ok::<_, OperationError>((membership, legacy_user_id))
     }
     .await;
     match result {
-        Ok((membership, user_id)) => Ok(TenantTransaction {
+        Ok((membership, legacy_user_id)) => Ok(TenantTransaction {
             transaction,
             scope: scope.clone(),
             membership,
-            user_id,
+            legacy_user_id,
             settings: settings.cloned(),
         }),
         Err(error) => {
@@ -313,12 +314,10 @@ pub async fn recheck(transaction: &TenantTransaction) -> Result<(), OperationErr
     if !authorization::ready() {
         return Err(OperationError::Forbidden);
     }
-    let (membership, user_id) =
-        verify_membership(transaction.transaction(), transaction.scope()).await?;
+    let membership = verify_membership(transaction.transaction(), transaction.scope()).await?;
     if membership.id != transaction.membership.id
         || membership.permissions_version != transaction.membership.permissions_version
         || membership.role != transaction.membership.role
-        || user_id != transaction.user_id
     {
         return Err(OperationError::Forbidden);
     }
@@ -416,7 +415,7 @@ pub(crate) fn managed_people(
 pub(crate) async fn verify_membership(
     transaction: &DatabaseTransaction,
     scope: &HouseholdScope,
-) -> Result<(membership::Model, i64), OperationError> {
+) -> Result<membership::Model, OperationError> {
     verify_account(transaction, scope.actor.account_id).await?;
     let household = household::Entity::find_by_id(scope.household_id)
         .one(transaction)
@@ -441,8 +440,7 @@ pub(crate) async fn verify_membership(
         .one(transaction)
         .await?
         .ok_or(OperationError::Forbidden)?;
-    let user_id = account_user(transaction, scope.actor.account_id).await?;
-    Ok((membership, user_id))
+    Ok(membership)
 }
 
 pub(crate) async fn verify_account_actor(
@@ -450,7 +448,9 @@ pub(crate) async fn verify_account_actor(
     account_id: i64,
 ) -> Result<i64, OperationError> {
     verify_account(transaction, account_id).await?;
-    account_user(transaction, account_id).await
+    account_user(transaction, account_id)
+        .await?
+        .ok_or(OperationError::Unauthenticated)
 }
 
 pub(crate) async fn verify_account(
@@ -476,7 +476,7 @@ pub(crate) async fn verify_account(
 async fn account_user(
     transaction: &DatabaseTransaction,
     account_id: i64,
-) -> Result<i64, OperationError> {
+) -> Result<Option<i64>, OperationError> {
     let person = person_queries::account_person(Actor { account_id })
         .one(transaction)
         .await?
@@ -485,7 +485,6 @@ async fn account_user(
         .filter(user::Column::PersonId.eq(person.id))
         .filter(user::Column::Active.eq(true))
         .one(transaction)
-        .await?
-        .ok_or(OperationError::Unauthenticated)?;
-    Ok(user.id)
+        .await?;
+    Ok(user.map(|user| user.id))
 }

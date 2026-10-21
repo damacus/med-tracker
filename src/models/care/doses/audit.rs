@@ -26,7 +26,7 @@ pub(super) async fn stock_version(
         item_type: Set(change.item_type.to_owned()), item_id: Set(change.item_id), event: Set(change.event.to_owned()),
         object: Set(Some(json!({"current_supply": decimal_string(change.previous.to_string())}).to_string())),
         object_changes: Set(Some(json!({"current_supply": [decimal_string(change.previous.to_string()), decimal_string(change.current.to_string())]}).to_string())),
-        whodunnit: Set(Some(context.tenant.user_id().to_string())), request_id: Set(Some(request_id.to_owned())),
+        whodunnit: Set(context.tenant.legacy_user_id().map(|id| id.to_string())), request_id: Set(Some(request_id.to_owned())),
         household_id: Set(Some(context.membership().household_id)), actor_membership_id: Set(Some(context.membership().id)),
         audit_context: Set(domain_audit_context(context, request_id)),
         created_at: Set(Some(Utc::now().naive_utc())), ..Default::default()
@@ -70,7 +70,7 @@ pub(super) async fn record_domain_audit(
         event: Set("create".to_owned()),
         object: Set(Some(snapshot.to_string())),
         object_changes: Set(Some(Value::Object(changes).to_string())),
-        whodunnit: Set(Some(context.tenant.user_id().to_string())),
+        whodunnit: Set(context.tenant.legacy_user_id().map(|id| id.to_string())),
         request_id: Set(Some(request_id.to_owned())),
         household_id: Set(Some(context.membership().household_id)),
         actor_membership_id: Set(Some(context.membership().id)),

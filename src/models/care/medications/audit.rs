@@ -139,7 +139,7 @@ async fn insert_version(
         event: Set(event.to_owned()),
         object: Set(before.as_ref().map(Value::to_string)),
         object_changes: Set(Some(Value::Object(changes).to_string())),
-        whodunnit: Set(Some(context.tenant.user_id().to_string())),
+        whodunnit: Set(context.tenant.legacy_user_id().map(|id| id.to_string())),
         request_id: Set(Some(request_id.to_owned())),
         household_id: Set(Some(context.tenant.membership().household_id)),
         actor_membership_id: Set(Some(context.tenant.membership().id)),
