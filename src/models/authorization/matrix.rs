@@ -55,6 +55,34 @@ fn household_management_requires_current_same_household_manager() {
 }
 
 #[test]
+fn guardian_recovery_requires_current_same_household_manager_and_minor() {
+    for (role, expected) in [("owner", true), ("administrator", true), ("member", false)] {
+        assert_eq!(
+            evaluate(
+                member(role),
+                subject(),
+                "recover_minor_guardian",
+                json!({"person_type": 1, "has_capacity": false, "participating": true}),
+            ),
+            expected,
+        );
+    }
+    for facts in [
+        json!({"person_type": 0, "has_capacity": false, "participating": true}),
+        json!({"person_type": 2, "has_capacity": false, "participating": true}),
+        json!({"person_type": 1, "has_capacity": true, "participating": true}),
+        json!({"person_type": 1, "has_capacity": false, "participating": false}),
+    ] {
+        assert!(!evaluate(
+            member("owner"),
+            subject(),
+            "recover_minor_guardian",
+            facts
+        ));
+    }
+}
+
+#[test]
 fn person_participation_self_and_legacy_manage_preserve_separate_authorities() {
     for role in ["owner", "administrator", "member"] {
         for (action, facts) in [

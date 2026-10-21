@@ -5,6 +5,14 @@ when {
     ["owner", "administrator"].contains(principal.role)
 };
 
+permit(principal, action == Action::"recover_minor_guardian", resource)
+when {
+    principal.household_id == resource.household_id &&
+    principal.status == "active" && !principal.revoked &&
+    ["owner", "administrator"].contains(principal.role) &&
+    context.person_type == 1 && !context.has_capacity && context.participating
+};
+
 permit(principal, action in [Action::"view_person", Action::"record_person"], resource)
 when {
     principal.household_id == resource.household_id &&

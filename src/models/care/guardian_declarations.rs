@@ -16,8 +16,10 @@ pub(crate) struct OwnDeclaration {
     pub subject_person_id: String,
     pub subject_name_at_declaration: String,
     pub statement_version: i16,
+    pub source: String,
     pub declared_at: chrono::DateTime<Utc>,
     pub withdrawn_at: Option<chrono::DateTime<Utc>>,
+    pub superseded_at: Option<chrono::DateTime<Utc>>,
     pub revision: String,
 }
 
@@ -28,8 +30,10 @@ impl OwnDeclaration {
             subject_person_id: row.try_get::<i64>("", "subject_person_id")?.to_string(),
             subject_name_at_declaration: row.try_get("", "subject_name_at_declaration")?,
             statement_version: row.try_get("", "statement_version")?,
+            source: row.try_get("", "source")?,
             declared_at: row.try_get("", "declared_at")?,
             withdrawn_at: row.try_get("", "withdrawn_at")?,
+            superseded_at: row.try_get("", "superseded_at")?,
             revision: row.try_get::<i64>("", "revision")?.to_string(),
         })
     }
@@ -88,6 +92,12 @@ pub(crate) async fn withdraw_own(
     if expected_revision != 1 {
         return Err(OperationError::Conflict {
             code: "stale_guardian_declaration".into(),
+            details: json!({}),
+        });
+    }
+    if current.superseded_at.is_some() {
+        return Err(OperationError::Conflict {
+            code: "guardian_declaration_superseded".into(),
             details: json!({}),
         });
     }
@@ -191,7 +201,7 @@ pub(crate) async fn import_manageable_subjects(
     let guardian = eligible_actor(tenant, today).await?;
     let rows = tenant.transaction().query_all_raw(Statement::from_sql_and_values(
         DbBackend::Postgres,
-        "SELECT d.subject_person_id,p.person_type,p.date_of_birth,p.has_capacity FROM public.guardian_declarations d JOIN public.carer_relationships c ON c.guardian_declaration_id=d.id AND c.carer_id=d.guardian_person_id AND c.patient_id=d.subject_person_id JOIN public.people p ON p.id=d.subject_person_id JOIN public.household_memberships m ON m.person_id=p.id AND m.household_id=c.household_id WHERE d.guardian_person_id=$1 AND d.withdrawn_at IS NULL AND c.household_id=$2 AND c.active AND m.status='active' AND m.revoked_at IS NULL ORDER BY d.id FOR SHARE OF d",
+        "SELECT d.subject_person_id,p.person_type,p.date_of_birth,p.has_capacity FROM public.guardian_declarations d JOIN public.carer_relationships c ON c.guardian_declaration_id=d.id AND c.carer_id=d.guardian_person_id AND c.patient_id=d.subject_person_id JOIN public.people p ON p.id=d.subject_person_id JOIN public.household_memberships m ON m.person_id=p.id AND m.household_id=c.household_id WHERE d.guardian_person_id=$1 AND d.withdrawn_at IS NULL AND d.superseded_at IS NULL AND c.household_id=$2 AND c.active AND m.status='active' AND m.revoked_at IS NULL ORDER BY d.id FOR SHARE OF d",
         [guardian.id.into(),tenant.scope().household_id.into()],
     )).await?;
     let mut ids = Vec::new();
@@ -221,7 +231,7 @@ pub(crate) async fn manageable_subjects(
         .ok_or(OperationError::Unauthenticated)?;
     let locked = tenant.transaction().query_all_raw(Statement::from_sql_and_values(
         DbBackend::Postgres,
-        "SELECT d.id FROM public.guardian_declarations d JOIN public.carer_relationships c ON c.guardian_declaration_id=d.id AND c.carer_id=d.guardian_person_id AND c.patient_id=d.subject_person_id JOIN public.household_memberships m ON m.person_id=d.subject_person_id AND m.household_id=c.household_id WHERE d.guardian_person_id=$1 AND d.withdrawn_at IS NULL AND c.household_id=$2 AND c.active AND m.status='active' AND m.revoked_at IS NULL ORDER BY d.id FOR SHARE OF d",
+        "SELECT d.id FROM public.guardian_declarations d JOIN public.carer_relationships c ON c.guardian_declaration_id=d.id AND c.carer_id=d.guardian_person_id AND c.patient_id=d.subject_person_id JOIN public.household_memberships m ON m.person_id=d.subject_person_id AND m.household_id=c.household_id WHERE d.guardian_person_id=$1 AND d.withdrawn_at IS NULL AND d.superseded_at IS NULL AND c.household_id=$2 AND c.active AND m.status='active' AND m.revoked_at IS NULL ORDER BY d.id FOR SHARE OF d",
         [owner.person_id.into(),tenant.scope().household_id.into()],
     )).await?;
     let ids = locked
@@ -264,7 +274,7 @@ pub(crate) async fn manageable_subjects(
     }
     let rows = tenant.transaction().query_all_raw(Statement::from_sql_and_values(
         DbBackend::Postgres,
-        "SELECT d.subject_person_id,p.person_type,p.date_of_birth,p.has_capacity FROM public.guardian_declarations d JOIN public.carer_relationships c ON c.guardian_declaration_id=d.id AND c.carer_id=d.guardian_person_id AND c.patient_id=d.subject_person_id JOIN public.people p ON p.id=d.subject_person_id JOIN public.household_memberships m ON m.person_id=p.id AND m.household_id=c.household_id WHERE d.guardian_person_id=$1 AND d.withdrawn_at IS NULL AND c.household_id=$2 AND c.active AND m.status='active' AND m.revoked_at IS NULL AND d.id=ANY($3::bigint[]) ORDER BY d.id",
+        "SELECT d.subject_person_id,p.person_type,p.date_of_birth,p.has_capacity FROM public.guardian_declarations d JOIN public.carer_relationships c ON c.guardian_declaration_id=d.id AND c.carer_id=d.guardian_person_id AND c.patient_id=d.subject_person_id JOIN public.people p ON p.id=d.subject_person_id JOIN public.household_memberships m ON m.person_id=p.id AND m.household_id=c.household_id WHERE d.guardian_person_id=$1 AND d.withdrawn_at IS NULL AND d.superseded_at IS NULL AND c.household_id=$2 AND c.active AND m.status='active' AND m.revoked_at IS NULL AND d.id=ANY($3::bigint[]) ORDER BY d.id",
         [guardian.id.into(),tenant.scope().household_id.into(),ids.into()],
     )).await?;
     let mut subjects = Vec::new();
@@ -304,7 +314,8 @@ pub(crate) async fn record_initial(
     context["policy_query"] = json!("create_new_dependent");
     let state = json!({"id":id,"subject_person_id":subject.id,"guardian_person_id":guardian.id,
         "origin_household_id":tenant.scope().household_id,"declared_by_account_id":tenant.scope().actor.account_id,
-        "statement_version":1,"declared_at":declared_at,"withdrawn_at":null,"revision":1});
+        "statement_version":1,"source":"initial_attestation","declared_at":declared_at,
+        "withdrawn_at":null,"superseded_at":null,"revision":1});
     version::ActiveModel {
         item_type: Set("GuardianDeclaration".to_owned()),
         item_id: Set(id),

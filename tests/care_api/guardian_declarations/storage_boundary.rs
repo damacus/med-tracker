@@ -57,7 +57,7 @@ async fn guardian_storage_catalogue_and_restricted_mutations_preserve_provenance
     let app = Application::new().await;
     let result = async {
         let token = app.token().await;
-        let (_, id) = declaration(&app, &token).await?;
+        let (subject, id) = declaration(&app, &token).await?;
         let facts = app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
             "SELECT c.relrowsecurity AND c.relforcerowsecurity AS forced,
               r.rolname='med_tracker_owner' AND NOT r.rolcanlogin AND NOT r.rolbypassrls AS owner,
@@ -68,8 +68,8 @@ async fn guardian_storage_catalogue_and_restricted_mutations_preserve_provenance
                 AND has_column_privilege('med_tracker_app',c.oid,a.attnum,'UPDATE'))=2
                 AND has_column_privilege('med_tracker_app',c.oid,'withdrawn_at','UPDATE')
                 AND has_column_privilege('med_tracker_app',c.oid,'revision','UPDATE') AS exact_update_columns,
-              (SELECT count(*) FROM pg_constraint f WHERE f.conrelid=c.oid AND f.contype='f' AND f.confdeltype='r')=6 AS retained_foreign_keys,
-              (SELECT count(*) FROM pg_policy WHERE polrelid=c.oid)=4 AS policies,
+              (SELECT count(*) FROM pg_constraint f WHERE f.conrelid=c.oid AND f.contype='f' AND f.confdeltype='r')=7 AS retained_foreign_keys,
+              (SELECT count(*) FROM pg_policy WHERE polrelid=c.oid)=7 AS policies,
               EXISTS(SELECT 1 FROM pg_trigger t JOIN pg_proc p ON p.oid=t.tgfoid JOIN pg_roles owner ON owner.oid=p.proowner
                 WHERE t.tgrelid=c.oid AND NOT t.tgisinternal AND t.tgname='guardian_declarations_one_way'
                 AND p.proname='guardian_declaration_one_way' AND owner.rolname='med_tracker_owner'
@@ -98,6 +98,8 @@ async fn guardian_storage_catalogue_and_restricted_mutations_preserve_provenance
         transaction.execute_unprepared("SET LOCAL ROLE med_tracker_app").await?;
         transaction.execute_unprepared("SELECT set_config('med_tracker.current_account_id','71001',true)").await?;
         denied_sql(&transaction,&format!("UPDATE public.guardian_declarations SET withdrawn_at=NULL,revision=1 WHERE id={id}"),"23514").await?;
+        denied_sql(&transaction,&format!("INSERT INTO public.guardian_declarations(subject_person_id,guardian_person_id,origin_household_id,declared_by_account_id,subject_name_at_declaration) VALUES({subject},73001,72001,71001,'Forbidden second initial declaration')"),"23505").await?;
+        denied_sql(&transaction,&format!("UPDATE public.guardian_declarations SET source='manager_appointment' WHERE id={id}"),"42501").await?;
         transaction.rollback().await?;
         Ok(())
     }.await;
@@ -199,7 +201,7 @@ async fn guardian_real_account_closure_retains_declaration_and_restricts_destruc
     result
 }
 
-async fn foreign_token(app: &Application, account: i64) -> Result<String, DbErr> {
+pub(super) async fn foreign_token(app: &Application, account: i64) -> Result<String, DbErr> {
     app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
         "INSERT INTO public.oauth_grants(id,account_id,oauth_application_id,client_kind,code,code_challenge,code_challenge_method,redirect_uri,scopes,expires_in,authenticated_at,last_used_at,created_at,updated_at) VALUES(76994,$1,75001,'mobile','synthetic-storage-foreign-code','E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM','S256','io.damacus.medtracker:/oauth2redirect','medtracker offline_access',now()+interval '5 minutes',now(),now(),now(),now())",[account.into()])).await?;
     let fields = serde_urlencoded::to_string([

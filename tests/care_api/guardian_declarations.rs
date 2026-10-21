@@ -21,6 +21,9 @@ mod storage_boundary;
 #[path = "guardian_declarations/locale_contract.rs"]
 mod locale_contract;
 
+#[path = "guardian_declarations/recovery.rs"]
+mod recovery;
+
 fn require(condition: bool, message: &str) -> Result<(), DbErr> {
     if condition {
         Ok(())

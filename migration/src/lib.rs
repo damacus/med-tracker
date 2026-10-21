@@ -15,6 +15,7 @@ pub mod m20261013_000010_review_edit;
 pub mod m20261016_000011_account_avatars;
 pub mod m20261016_000012_support_expiry;
 pub mod m20261017_000013_guardian_declarations;
+pub mod m20261021_000014_guardian_recovery;
 pub use m20261006_000003_canonical_take_identity::CANONICAL_CLIENT_UUID_SQL;
 
 pub struct Migrator;
@@ -37,6 +38,7 @@ impl MigratorTrait for StandardMigrator {
             Box::new(m20261016_000011_account_avatars::Migration),
             Box::new(m20261016_000012_support_expiry::Migration),
             Box::new(m20261017_000013_guardian_declarations::Migration),
+            Box::new(m20261021_000014_guardian_recovery::Migration),
         ]
     }
 }

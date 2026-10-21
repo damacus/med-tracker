@@ -27,9 +27,28 @@ from household management.
 
 When an adult creates a new accountless dependent, that adult declares themselves
 the initial guardian. Record a declaration, not verified legal status. A successor
-guardian must be authorised by an existing guardian. Disputed guardian recovery
-is deferred and fails closed. This declaration does not create an account for the
-dependent.
+guardian is normally authorised by an existing guardian. For a minor with no
+currently effective guardian in any household, a current owner or administrator
+of a household in which the minor actively participates may explicitly restore
+an eligible open local declaration link or appoint an eligible adult participant.
+The manager's appointment is a new declaration with its own source and actor;
+it does not assert the appointee's consent or verified legal status. Withdrawn
+and superseded declarations remain terminal and attributable. Recovery requires
+a reason, deliberate confirmation, a fresh global authority check and audit in
+one transaction. It does not create an account or membership, and it does not
+authorise dependent-adult recovery or generic care delegation.
+The confirmation binds to an opaque latest declaration-history token and a
+separate opaque local-link token that rotates on activation or deactivation;
+neither token grants authority or reveals a foreign guardian.
+
+Around an eighteenth birthday, recovery uses database-clock bounds covering
+UTC−12 through UTC+14. Possible valid guardian authority anywhere blocks
+recovery, while a subject or appointee must be unambiguously eligible. This may
+delay recovery for about 26 hours around the boundary; it prevents a timezone
+mismatch from authorising takeover.
+An existing guardian's temporary login lockout does not by itself permit a
+replacement appointment; the acting manager and new appointee must still have
+usable accounts. Ordinary initial declaration birthday rules are unchanged.
 
 A person or an explicitly authorised guardian must approve sharing that person's
 care with another household. Household role and manager status do not establish
