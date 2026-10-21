@@ -202,6 +202,14 @@ async fn fresh_database_is_created_by_loco_migrations() -> Result<(), serde_json
             "Expected additive guardian key: {key}"
         );
     }
+    for (key, value) in serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(
+        include_str!("../migration/api-key-expiry-cutoff-catalog.json"),
+    )? {
+        assert!(
+            expected.insert(key.clone(), value).is_none(),
+            "Expected additive API-key expiry key: {key}"
+        );
+    }
     let differences: Vec<_> = expected
         .keys()
         .chain(actual.keys())
@@ -220,12 +228,13 @@ async fn fresh_database_is_created_by_loco_migrations() -> Result<(), serde_json
         differences.join("\n")
     );
     let ledger = ledger_rows(&db).await;
-    assert_eq!(ledger.len(), 13);
+    assert_eq!(ledger.len(), 14);
     assert_eq!(ledger[10].0, "m20261016_000011_account_avatars");
     assert_eq!(ledger[11].0, "m20261016_000012_support_expiry");
+    assert_eq!(ledger[12].0, "m20261017_000013_guardian_declarations");
     assert_eq!(
         ledger.last().map(|row| row.0.as_str()),
-        Some("m20261017_000013_guardian_declarations")
+        Some("m20261021_000014_api_key_expiry_cutoff")
     );
     migration::Migrator::up(&db, None).await.unwrap();
     assert_eq!(catalog(&db).await, before);

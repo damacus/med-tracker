@@ -1,0 +1,10 @@
+{
+  "function:public.identity_delete_expired_api_keys(cutoff timestamp with time zone)": {
+    "acl": [
+      "med_tracker_app=X/med_tracker_owner",
+      "med_tracker_owner=X/med_tracker_owner"
+    ],
+    "owner": "med_tracker_owner",
+    "definition": "CREATE OR REPLACE FUNCTION public.identity_delete_expired_api_keys(cutoff timestamp with time zone)\n RETURNS bigint\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog'\nAS $function$\nDECLARE removed bigint;\nBEGIN\n    IF cutoff IS NULL OR cutoff > statement_timestamp() THEN\n        RAISE EXCEPTION 'Invalid API credential expiration cutoff' USING ERRCODE = '22023';\n    END IF;\n    WITH deleted AS (\n        DELETE FROM public.identity_api_keys\n        WHERE expires_at < cutoff AND expires_at < CURRENT_TIMESTAMP\n        RETURNING 1\n    ) SELECT count(*) INTO removed FROM deleted;\n    RETURN removed;\nEND\n$function$\n"
+  }
+}
