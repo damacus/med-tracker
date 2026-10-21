@@ -299,7 +299,7 @@ async fn authority(
         .await
         .map_err(unavailable)?
         .ok_or(AuthenticationError::Unauthenticated)?;
-    let (current, user_id) = access::verify_membership(
+    let current = access::verify_membership(
         transaction,
         &HouseholdScope {
             actor: Actor { account_id },
@@ -315,6 +315,9 @@ async fn authority(
     if current.id != membership_id || current.permissions_version != permissions_version {
         return Err(AuthenticationError::Unauthenticated);
     }
+    let user_id = access::verify_account_actor(transaction, account_id)
+        .await
+        .map_err(resource::operation_error)?;
     let person = person::Entity::find_by_id(account.person_id)
         .one(transaction)
         .await

@@ -18,6 +18,8 @@ tasks:
       - assets/static/css/themes.css
       - assets/static/css/fonts.css
       - assets/static/css/platform.css
+      - assets/static/css/shared-layout.css
+      - assets/static/css/administration.css
       - assets/views/**/*.html
       - assets/static/js/*.js
       - exclude: assets/static/js/html5-qrcode.min.js

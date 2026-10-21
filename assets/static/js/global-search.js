@@ -91,14 +91,18 @@
       return;
     }
     const clickedTrigger = event?.currentTarget instanceof Element ? event.currentTarget : undefined;
-    opener = clickedTrigger || document.activeElement;
+    const navigationPanels = [...document.querySelectorAll(".app-navigation-panel[open]")];
+    const navigationTrigger = navigationPanels.flatMap(dialog => [...document.querySelectorAll(`[aria-controls="${dialog.id}"][aria-expanded="true"]`)])
+      .find(trigger => trigger.getClientRects().length > 0);
+    opener = clickedTrigger || navigationTrigger || document.activeElement;
+    navigationPanels.forEach(dialog => dialog.close());
     position();
     panel.hidden = false;
     panel.setAttribute('aria-hidden', 'false');
     triggers.forEach(button => button.setAttribute('aria-expanded', 'true'));
     input.value = '';
     clear();
-    requestAnimationFrame(() => input.focus({ preventScroll: true }));
+    input.focus({ preventScroll: true });
   }
 
   function close(event, restoreFocus = true) {

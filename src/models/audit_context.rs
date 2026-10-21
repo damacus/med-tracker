@@ -18,7 +18,7 @@ pub(crate) fn for_request(
     build(
         tenant.scope(),
         tenant.membership(),
-        tenant.user_id(),
+        tenant.legacy_user_id(),
         request_id,
         provenance,
     )
@@ -27,12 +27,13 @@ pub(crate) fn for_request(
 fn build(
     scope: &HouseholdScope,
     membership: &membership::Model,
-    user_id: i64,
+    user_id: Option<i64>,
     request_id: &str,
     provenance: Option<&CredentialProvenance>,
 ) -> Value {
     let mut context = json!({
         "actor_account_id": scope.actor.account_id,
+        "actor_person_id": membership.person_id,
         "actor_user_id": user_id,
         "actor_membership_id": membership.id,
         "household_id": scope.household_id,
@@ -87,10 +88,10 @@ mod tests {
     #[test]
     fn household_audit_preserves_actor_and_explicit_request_without_credentials() {
         let (scope, membership) = fixture();
-        let context = build(&scope, &membership, 77, "operation-request", None);
+        let context = build(&scope, &membership, Some(77), "operation-request", None);
         assert_eq!(
             context,
-            json!({"actor_account_id":71,"actor_user_id":77,"actor_membership_id":74,"household_id":72,"request_id":"operation-request","active_role":"administrator","permissions_version":5})
+            json!({"actor_account_id":71,"actor_person_id":73,"actor_user_id":77,"actor_membership_id":74,"household_id":72,"request_id":"operation-request","active_role":"administrator","permissions_version":5})
         );
     }
 
@@ -123,7 +124,7 @@ mod tests {
             let context = build(
                 &scope,
                 &membership,
-                77,
+                Some(77),
                 &scope.request_id,
                 Some(&provenance),
             );

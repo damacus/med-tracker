@@ -51,7 +51,7 @@ pub(super) async fn record_version(
         event: Set(event.into()),
         object: Set(before.map(|value| value.to_string())),
         object_changes: Set(Some(Value::Object(changes).to_string())),
-        whodunnit: Set(Some(tenant.user_id().to_string())),
+        whodunnit: Set(tenant.legacy_user_id().map(|id| id.to_string())),
         request_id: Set(Some(tenant.scope().request_id.clone())),
         household_id: Set(Some(tenant.scope().household_id)),
         actor_membership_id: Set(Some(tenant.membership().id)),

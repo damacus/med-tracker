@@ -19,7 +19,7 @@ use super::{resource::AuthenticationError, store::Lifetime};
 use crate::models::{
     access::{self, Actor, HouseholdScope, TenantTransaction},
     care::doses::{CredentialMethod, CredentialProvenance},
-    entities::{account, household, user},
+    entities::{account, household},
     settings,
 };
 
@@ -55,10 +55,15 @@ pub struct BrowserHousehold {
 
 pub struct BrowserInvitationActor {
     pub account_id: i64,
-    pub user_id: i64,
     pub person_id: i64,
     pub email: String,
     pub provenance: CredentialProvenance,
+}
+
+pub fn household_name(input: &str) -> Option<&str> {
+    let name = input.trim();
+    (!name.is_empty() && name.chars().count() <= 100 && !name.chars().any(char::is_control))
+        .then_some(name)
 }
 
 impl BrowserPrincipal {
@@ -96,16 +101,8 @@ impl BrowserPrincipal {
         .await
         .map_err(unavailable)?
         .ok_or(AuthenticationError::Unauthenticated)?;
-        let user = user::Entity::find()
-            .filter(user::Column::PersonId.eq(person.id))
-            .filter(user::Column::Active.eq(true))
-            .one(transaction)
-            .await
-            .map_err(unavailable)?
-            .ok_or(AuthenticationError::Unauthenticated)?;
         Ok(BrowserInvitationActor {
             account_id: account.id,
-            user_id: user.id,
             person_id: person.id,
             email: account.email,
             provenance: self.provenance.clone(),
@@ -144,6 +141,89 @@ impl BrowserPrincipal {
     }
     pub fn time_zone(&self) -> chrono_tz::Tz {
         self.time_zone
+    }
+
+    pub async fn create_first_household(
+        &self,
+        db: &DatabaseConnection,
+        name: &str,
+        request_id: &str,
+        settings: Option<&serde_json::Value>,
+    ) -> Result<BrowserHousehold, AuthenticationError> {
+        let name = household_name(name).ok_or(AuthenticationError::Forbidden)?;
+        let database_error = |error: sea_orm::DbErr| super::resource::operation_error(error.into());
+        let transaction = transaction(db).await?;
+        account::Entity::find_by_id(self.account_id())
+            .lock(sea_orm::sea_query::LockType::NoKeyUpdate)
+            .one(&transaction)
+            .await
+            .map_err(database_error)?
+            .ok_or(AuthenticationError::Unauthenticated)?;
+        let account = validate(&transaction, &self.identity, false).await?;
+        let person = access::person_queries::account_person(Actor {
+            account_id: account.id,
+        })
+        .one(&transaction)
+        .await
+        .map_err(database_error)?
+        .ok_or(AuthenticationError::Unauthenticated)?;
+        if person.person_type == 1 {
+            return Err(AuthenticationError::Forbidden);
+        }
+        let time_zone = super::time_zone::preferred(&account.preferences, settings)?;
+        let existing = transaction
+            .query_one_raw(sql(
+                "SELECT 1 FROM household_memberships m JOIN households h ON h.id=m.household_id WHERE m.person_id=$1 AND m.status='active' AND m.revoked_at IS NULL AND h.status='active' AND h.lifecycle_state='active' LIMIT 1",
+                [person.id.into()],
+            ))
+            .await
+            .map_err(database_error)?;
+        if existing.is_some() {
+            return Err(AuthenticationError::Forbidden);
+        }
+        let mut suffix = [0_u8; 4];
+        getrandom::fill(&mut suffix).map_err(unavailable)?;
+        let slug = format!("{}-{}", slug::slugify(name), hex::encode(suffix));
+        let row = transaction
+            .query_one_raw(sql(
+                "INSERT INTO households(name,slug,timezone,created_by_account_id,created_at,updated_at) VALUES($1,$2,$3,$4,now(),now()) RETURNING id",
+                [name.into(), slug.clone().into(), time_zone.to_string().into(), account.id.into()],
+            ))
+            .await
+            .map_err(database_error)?
+            .ok_or(AuthenticationError::Unavailable)?;
+        let household_id: i64 = row.try_get("", "id").map_err(database_error)?;
+        transaction
+            .execute_raw(sql(
+                "SELECT set_config('med_tracker.current_household_id',$1,true)",
+                [household_id.to_string().into()],
+            ))
+            .await
+            .map_err(database_error)?;
+        let row = transaction
+            .query_one_raw(sql(
+                "INSERT INTO household_memberships(household_id,person_id,role,status,permissions_version,joined_at,created_at,updated_at) VALUES($1,$2,'owner','active',1,now(),now(),now()) RETURNING id",
+                [household_id.into(), person.id.into()],
+            ))
+            .await
+            .map_err(database_error)?
+            .ok_or(AuthenticationError::Unavailable)?;
+        let membership_id: i64 = row.try_get("", "id").map_err(database_error)?;
+        let metadata = serde_json::json!({"target_account_id":account.id,"target_membership_id":membership_id,"previous_state":null,"new_state":{"role":"owner","status":"active","person_id":person.id,"permissions_version":1},"outcome":"success"});
+        let audit_context = serde_json::json!({"actor_account_id":account.id,"actor_person_id":person.id,"actor_membership_id":membership_id,"household_id":household_id,"request_id":request_id});
+        transaction
+            .execute_raw(sql(
+                "INSERT INTO security_audit_events(household_id,actor_account_id,actor_membership_id,event_type,metadata,audit_context,request_id,created_at,updated_at) VALUES($1,$2,$3,'household_access.membership_created',$4,$5,$6,now(),now())",
+                [household_id.into(),account.id.into(),membership_id.into(),metadata.into(),audit_context.into(),request_id.to_owned().into()],
+            ))
+            .await
+            .map_err(database_error)?;
+        transaction.commit().await.map_err(database_error)?;
+        Ok(BrowserHousehold {
+            id: household_id,
+            name: name.to_owned(),
+            slug,
+        })
     }
 
     pub async fn households(

@@ -1,0 +1,26 @@
+{
+  "function:med_tracker.can_read_member_directory()": {
+    "acl": [
+      "med_tracker_owner=X/med_tracker_owner"
+    ],
+    "owner": "med_tracker_owner",
+    "definition": "CREATE OR REPLACE FUNCTION med_tracker.can_read_member_directory()\n RETURNS boolean\n LANGUAGE sql\n SET search_path TO 'pg_catalog'\nAS $function$\n  SELECT EXISTS (\n    SELECT 1 FROM public.household_memberships actor\n    JOIN public.accounts account ON account.person_id=actor.person_id\n    JOIN public.households household ON household.id=actor.household_id\n    WHERE actor.id=med_tracker.current_membership_id()\n      AND actor.household_id=med_tracker.current_household_id()\n      AND actor.status='active' AND actor.revoked_at IS NULL\n      AND actor.role IN ('owner','administrator')\n      AND account.id=med_tracker.current_account_id() AND account.status=2\n      AND household.status='active' AND household.lifecycle_state='active'\n      AND NOT EXISTS (\n        SELECT 1 FROM public.account_lockouts lockout\n        WHERE lockout.account_id=account.id\n          AND lockout.deadline>pg_catalog.timezone('UTC',pg_catalog.clock_timestamp())\n      )\n  );\n$function$\n"
+  },
+  "function:med_tracker.member_directory_identity()": {
+    "acl": [
+      "med_tracker_app=X/med_tracker_owner",
+      "med_tracker_owner=X/med_tracker_owner"
+    ],
+    "owner": "med_tracker_owner",
+    "definition": "CREATE OR REPLACE FUNCTION med_tracker.member_directory_identity()\n RETURNS TABLE(membership_id bigint, name text, email text)\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog'\nAS $function$\nBEGIN\n  IF NOT med_tracker.can_read_member_directory() THEN\n    RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='Member directory unavailable';\n  END IF;\n  RETURN QUERY\n    SELECT membership.id,\n      coalesce(nullif(account.name,''),account.email,person.name,'Member #'||membership.id::text)::text,\n      coalesce(account.email,person.email,'')::text\n    FROM public.household_memberships membership\n    LEFT JOIN public.accounts account ON account.person_id=membership.person_id\n    LEFT JOIN public.people person ON person.id=membership.person_id\n    WHERE membership.household_id=med_tracker.current_household_id();\nEND;\n$function$\n"
+  },
+  "policy:public.people.people_member_directory_owner": {
+    "check": null,
+    "roles": [
+      "med_tracker_owner"
+    ],
+    "using": "(med_tracker.can_read_member_directory() AND (EXISTS ( SELECT 1\n   FROM household_memberships subject\n  WHERE ((subject.person_id = people.id) AND (subject.household_id = med_tracker.current_household_id())))))",
+    "command": "r",
+    "permissive": true
+  }
+}

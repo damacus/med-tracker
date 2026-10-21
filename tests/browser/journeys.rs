@@ -1,8 +1,130 @@
 use playwright_rs::expect;
-use playwright_rs::protocol::{AriaRole, Viewport};
+use playwright_rs::protocol::{Animations, AriaRole, ScreenshotOptions, Viewport};
+use sea_orm::ConnectionTrait;
+use sha2::Digest as _;
+use std::path::Path;
 
 use crate::harness::named;
 use crate::{fixtures, harness};
+
+#[tokio::test]
+#[ignore = "browser journeys run through task test:browser, not the shared --tests lanes"]
+async fn account_only_household_entry_works_with_keyboard_at_desktop_and_mobile_sizes() {
+    harness::journey(Viewport { width: 1440, height: 1000 }, |journey| {
+        Box::pin(async move {
+            journey.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,password_hash,status,preferences,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',crypt('password',gen_salt('bf',4)),2,'{\"time_zone\":\"Europe/London\"}',now(),now()); INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71050,now()); DELETE FROM app_settings; INSERT INTO app_settings(invite_only,created_at,updated_at) VALUES(true,now(),now())").await.unwrap();
+            let page = &journey.page;
+            page.goto(&format!("{}/login", journey.origin), None).await.unwrap();
+            page.get_by_label("Email address", true).fill("household-entry@example.test", None).await.unwrap();
+            page.get_by_label("Password", true).fill("password", None).await.unwrap();
+            page.get_by_role(AriaRole::Button, named("Sign in")).click(None).await.unwrap();
+            expect(page.get_by_role(AriaRole::Heading, named("Choose a household"))).to_be_visible().await.unwrap();
+            expect(page.get_by_label("Household name", true)).to_be_visible().await.unwrap();
+            page.screenshot_to_file(Path::new("docs/screenshots/household-entry-empty-desktop.png"), None).await.unwrap();
+            page.set_viewport_size(Viewport { width: 390, height: 844 }).await.unwrap();
+            page.screenshot_to_file(Path::new("docs/screenshots/household-entry-empty-mobile.png"), None).await.unwrap();
+            page.get_by_label("Household name", true).fill(" ", None).await.unwrap();
+            page.get_by_label("Household name", true).press("Enter", None).await.unwrap();
+            expect(page.get_by_role(AriaRole::Status, None)).to_contain_text("Enter a household name").await.unwrap();
+            page.screenshot_to_file(Path::new("docs/screenshots/household-entry-error-mobile.png"), None).await.unwrap();
+            let long_unicode_name = format!("Care {}", "😀".repeat(51));
+            page.get_by_label("Household name", true).fill(&long_unicode_name, None).await.unwrap();
+            expect(page.get_by_label("Household name", true)).to_have_value(&long_unicode_name).await.unwrap();
+            page.get_by_label("Household name", true).fill("Browser care home", None).await.unwrap();
+            page.get_by_label("Household name", true).press("Enter", None).await.unwrap();
+            expect(page.locator("#dashboard")).to_be_visible().await.unwrap();
+            assert!(page.url().contains("/households/browser-care-home-"));
+            page.screenshot_to_file(Path::new("docs/screenshots/household-entry-dashboard-mobile.png"), None).await.unwrap();
+            page.set_viewport_size(Viewport { width: 1440, height: 1000 }).await.unwrap();
+            page.screenshot_to_file(Path::new("docs/screenshots/household-entry-dashboard-desktop.png"), None).await.unwrap();
+        })
+    }).await;
+}
+
+#[tokio::test]
+#[ignore = "browser journeys run through task test:browser, not the shared --tests lanes"]
+async fn account_only_invitation_opens_dashboard_at_desktop_and_mobile_sizes() {
+    harness::journey(Viewport { width: 1440, height: 1000 }, |journey| {
+        Box::pin(async move {
+            journey.admin.execute_unprepared("DELETE FROM users WHERE person_id=73001; INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,password_hash,status,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',crypt('password',gen_salt('bf',4)),2,now(),now()); INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71050,now())").await.unwrap();
+            let invitation = "browser-account-only-invitation";
+            let digest = hex::encode(sha2::Sha256::digest(invitation.as_bytes()));
+            journey.admin.execute_raw(sea_orm::Statement::from_sql_and_values(sea_orm::DbBackend::Postgres,
+                "INSERT INTO household_invitations(household_id,email,membership_role,token_digest,invited_by_membership_id,expires_at,created_at,updated_at) VALUES(72001,'household-entry@example.test','member',$1,74001,now()+interval '7 days',now(),now())",
+                [digest.into()],
+            )).await.unwrap();
+            let page = &journey.page;
+            page.goto(&format!("{}/login", journey.origin), None).await.unwrap();
+            page.get_by_label("Email address", true).fill("household-entry@example.test", None).await.unwrap();
+            page.get_by_label("Password", true).fill("password", None).await.unwrap();
+            page.get_by_role(AriaRole::Button, named("Sign in")).click(None).await.unwrap();
+            page.goto(&format!("{}/invitations/accept?token={invitation}", journey.origin), None).await.unwrap();
+            expect(page.get_by_role(AriaRole::Heading, named("Accept invitation"))).to_be_visible().await.unwrap();
+            page.screenshot_to_file(Path::new("docs/screenshots/household-invitation-desktop.png"), None).await.unwrap();
+            page.set_viewport_size(Viewport { width: 390, height: 844 }).await.unwrap();
+            page.screenshot_to_file(Path::new("docs/screenshots/household-invitation-mobile.png"), None).await.unwrap();
+            page.get_by_role(AriaRole::Button, named("Accept invitation")).press("Enter", None).await.unwrap();
+            expect(page.locator("#dashboard")).to_be_visible().await.unwrap();
+            assert!(page.url().ends_with("/households/persistence-fixture/dashboard"));
+            page.screenshot_to_file(Path::new("docs/screenshots/household-invitation-dashboard-mobile.png"), None).await.unwrap();
+            page.set_viewport_size(Viewport { width: 1440, height: 1000 }).await.unwrap();
+            page.screenshot_to_file(Path::new("docs/screenshots/household-invitation-dashboard-desktop.png"), None).await.unwrap();
+        })
+    }).await;
+}
+
+#[tokio::test]
+#[ignore = "browser journeys run through task test:browser, not the shared --tests lanes"]
+async fn household_member_table_and_confirmation_at_desktop_and_mobile() {
+    for (viewport, screenshot) in [
+        (
+            Viewport {
+                width: 1440,
+                height: 1000,
+            },
+            "members-desktop",
+        ),
+        (
+            Viewport {
+                width: 390,
+                height: 844,
+            },
+            "members-mobile",
+        ),
+        (
+            Viewport {
+                width: 320,
+                height: 844,
+            },
+            "members-narrow",
+        ),
+    ] {
+        harness::journey(viewport, |journey| {
+            Box::pin(async move {
+                journey.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73006,'Hidden person name',0,true,now(),now()),(73016,'Accountless dependant',1,false,now(),now()); INSERT INTO accounts(id,person_id,name,email,password_hash,status,created_at,updated_at) VALUES(71006,73006,'Inactive member','inactive@example.test',NULL,2,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74006,72001,73006,'member','suspended',now(),now(),now()),(74016,72001,73016,'member','suspended',now(),now(),now())").await.unwrap();
+                harness::sign_in(journey).await;
+                let page = &journey.page;
+                page.goto(&format!("{}/households/persistence-fixture/admin/users?status=suspended", journey.origin), None).await.unwrap();
+                expect(page.locator("body[data-navigation-ready]")).to_be_visible().await.unwrap();
+                expect(page.get_by_role(AriaRole::Heading, named("Members"))).to_be_visible().await.unwrap();
+                expect(page.locator("tbody")).to_contain_text("Inactive member").await.unwrap();
+                expect(page.locator("tbody")).to_contain_text("inactive@example.test").await.unwrap();
+                expect(page.locator("tbody")).to_contain_text("Accountless dependant").await.unwrap();
+                assert!(!page.evaluate::<(),bool>("() => document.documentElement.scrollWidth > innerWidth",None).await.unwrap());
+                page.get_by_text("Restore Inactive member", true).click(None).await.unwrap();
+                expect(page.get_by_role(AriaRole::Button, named("Confirm Restore"))).to_be_visible().await.unwrap();
+                page.evaluate::<(),bool>("() => { window.scrollTo(0,0); return true; }",None).await.unwrap();
+                page.screenshot_to_file(Path::new(&format!("docs/screenshots/browser-journeys/{screenshot}.png")),ScreenshotOptions::builder().animations(Animations::Disabled).full_page(true).build()).await.unwrap();
+                page.get_by_text("Edit household role for Accountless dependant",true).click(None).await.unwrap();
+                expect(page.get_by_role(AriaRole::Heading,named("Edit household role for Accountless dependant"))).to_be_visible().await.unwrap();
+                expect(page.locator("body[data-navigation-ready]")).to_be_visible().await.unwrap();
+                page.evaluate::<(),bool>("() => { window.scrollTo(0,0); return true; }",None).await.unwrap();
+                page.screenshot_to_file(Path::new(&format!("docs/screenshots/browser-journeys/{screenshot}-role.png")),ScreenshotOptions::builder().animations(Animations::Disabled).full_page(true).build()).await.unwrap();
+
+            })
+        }).await;
+    }
+}
 
 #[tokio::test]
 #[ignore = "browser journeys run through task test:browser, not the shared --tests lanes"]

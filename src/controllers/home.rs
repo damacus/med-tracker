@@ -10,7 +10,7 @@ use axum_csrf::CsrfToken;
 use axum_session::Session;
 use axum_session_sqlx::SessionPgPool;
 use better_auth_core::store::SessionStore;
-use loco_rs::prelude::*;
+use loco_rs::{controller::middleware::request_id::LocoRequestId, prelude::*};
 
 pub async fn index(
     State(ctx): State<AppContext>,
@@ -138,6 +138,91 @@ fn render_home(
 pub struct Selection {
     household_id: String,
     authenticity_token: String,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Creation {
+    name: String,
+    authenticity_token: String,
+}
+
+pub async fn create(
+    State(ctx): State<AppContext>,
+    Extension(service): Extension<crate::models::identity::better_auth::IdentityService>,
+    session: Session<SessionPgPool>,
+    token: CsrfToken,
+    ViewEngine(view): ViewEngine<TeraView>,
+    request: Option<Extension<LocoRequestId>>,
+    form: std::result::Result<AxumForm<Creation>, axum::extract::rejection::FormRejection>,
+) -> Response {
+    let AxumForm(form) = match form {
+        Ok(form) => form,
+        Err(error) => return ([(header::CACHE_CONTROL, "no-store")], error).into_response(),
+    };
+    if token.verify(&form.authenticity_token).is_err() {
+        return forbidden();
+    }
+    let principal =
+        match browser::authenticate(&ctx.db, &session, ctx.config.settings.as_ref()).await {
+            Ok(principal) => principal,
+            Err(error) => return authentication_error(error),
+        };
+    let Some(name) = browser::household_name(&form.name) else {
+        let households = match principal.households(&ctx.db).await {
+            Ok(households) => households,
+            Err(error) => return authentication_error(error),
+        };
+        if !households.is_empty() {
+            return forbidden();
+        }
+        let mut response = render_home(
+            view,
+            true,
+            households,
+            Some("Enter a household name of up to 100 characters.".to_owned()),
+            Some(token),
+        );
+        *response.status_mut() = StatusCode::UNPROCESSABLE_ENTITY;
+        return response;
+    };
+    let request_id = request.map_or_else(
+        || uuid::Uuid::new_v4().to_string(),
+        |Extension(id)| id.get().to_owned(),
+    );
+    let household = match principal
+        .create_first_household(&ctx.db, name, &request_id, ctx.config.settings.as_ref())
+        .await
+    {
+        Ok(household) => household,
+        Err(error) => return authentication_error(error),
+    };
+    if service
+        .store
+        .update_session_active_organization(
+            principal.session_token(),
+            Some(&household.id.to_string()),
+        )
+        .await
+        .is_err()
+    {
+        session.set(
+            "auth_notice",
+            "Your household was created. Select it below to continue.",
+        );
+        return redirect("/households/choose");
+    }
+    (
+        StatusCode::SEE_OTHER,
+        [
+            (
+                header::LOCATION,
+                format!("/households/{}/dashboard", household.slug),
+            ),
+            (header::CACHE_CONTROL, "no-store".to_owned()),
+        ],
+    )
+        .into_response()
 }
 
 pub async fn select(

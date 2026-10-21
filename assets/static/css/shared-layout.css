@@ -1,0 +1,68 @@
+.app-sidebar { position:fixed; inset:0 auto 0 0; z-index:25; display:flex; flex-direction:column; width:14rem; padding:1.5rem .875rem; overflow-y:auto; border-right:1px solid var(--border-color); background:var(--surface-container-lowest); }
+.app-sidebar-brand { display:flex; align-items:center; gap:.625rem; padding:.25rem .5rem; font-size:1rem; font-weight:800; }
+.app-sidebar-brand > span { display:grid; place-items:center; width:2.25rem; height:2.25rem; border-radius:.75rem; background:var(--primary); color:var(--primary-foreground); }
+.app-sidebar-search { display:flex; align-items:center; justify-content:space-between; gap:.5rem; margin-top:2rem; padding:.625rem .75rem; border:1px solid var(--border-color); border-radius:.5rem; font-size:.8125rem; font-weight:600; color:var(--on-surface-variant); }
+.app-sidebar-search kbd { font-size:.625rem; white-space:nowrap; }
+.app-sidebar-navigation { display:grid; gap:.25rem; padding-block:1.25rem; }
+.app-sidebar .app-navigation-link { min-height:2.75rem; padding:.625rem .75rem; gap:.75rem; font-size:.8125rem; font-weight:600; color:var(--on-surface-variant); }
+.app-sidebar .app-navigation-link svg { flex-shrink:0; width:1.25rem; height:1.25rem; }
+.app-sidebar .app-navigation-link[aria-current] { color:var(--on-secondary-container); }
+.app-sidebar-account { display:grid; gap:.25rem; margin-top:auto; }
+.app-sidebar-account [data-sidebar-name] { overflow-wrap:anywhere; }
+.app-sidebar-account .app-avatar { position:relative; flex-shrink:0; }
+.app-household > .shell-header { margin-left:14rem; }
+.app-household > .shell-header .app-header { justify-content:flex-end; }
+.app-household > .shell-header .app-brand, .app-household > .shell-header [data-app-drawer], .app-household > .shell-header [data-global-search-trigger] { display:none; }
+.app-household > .shell-header:has(.app-header) { position:absolute; top:.75rem; right:1.5rem; z-index:20; border:0; background:transparent; }
+.app-household > .shell-header .app-header { padding:0; }
+.app-household > .shell-header .app-account-trigger { display:none; }
+.app-household > .shell-main { width:auto; max-width:none; margin:0 0 0 14rem; padding:2rem clamp(1rem, 3vw, 3rem); min-width:0; }
+.app-household > .shell-footer { margin-left:14rem; }
+.shell-main > section { padding-block:0; }
+.shell-main > section > header { padding-bottom:1.5rem; gap:1rem; }
+.shell-main > section > header h1, .shell-main > section > h1 { font-size:1.5rem; line-height:1.3; font-weight:750; }
+.shell-main > section > header .btn { min-height:2.5rem; border-radius:1.5rem; font-size:.8125rem; }
+.shell-main > section > .card { border-radius:1.5rem; }
+.shell-panel { border-radius:1.5rem; border:1px solid var(--border-color); background:var(--card); }
+.shell-page-heading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; margin-bottom:1.5rem; }
+.shell-eyebrow { font-size:.6875rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--on-surface-variant); }
+.shell-form { display:grid; gap:1.25rem; max-width:42rem; }
+.app-household .shell-main .label { white-space:normal; }
+.shell-table { width:100%; font-size:.8125rem; }
+.app-household .dashboard-page { padding:0; }
+@media (min-width:1024px) { .app-household > .shell-header:not(:has(.app-header)) { padding-right:1rem; } }
+@media (max-width:1023px) {
+  .app-sidebar { position:static; width:auto; padding:1rem; border-right:0; border-bottom:1px solid var(--border-color); }
+  .app-household[data-navigation-ready] .app-sidebar { display:none; }
+  .app-household > .shell-header, .app-household > .shell-header:has(.app-header) { position:sticky; top:0; right:auto; z-index:25; margin-left:0; border-bottom:1px solid var(--border-color); background:var(--surface-container-lowest); }
+  .app-household > .shell-header .app-header { padding-block:.5rem; gap:.25rem; }
+  .app-household > .shell-header .app-brand, .app-household > .shell-header [data-app-drawer], .app-household > .shell-header [data-global-search-trigger], .app-household > .shell-header .app-account-trigger { display:flex; }
+  .app-household > .shell-main { margin:0; padding:1.5rem .75rem; }
+  .app-household > .shell-footer { margin-left:0; }
+  .app-household .app-brand { font-size:1rem; }
+  .app-household .shell-main > section { padding-inline:0; }
+  .app-household .shell-header-inner.app-header { flex-wrap:nowrap; }
+  .app-household .app-header .btn { padding-inline:.5rem; }
+}
+
+.people-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1.5rem; list-style:none; padding:0; }
+.person-card { display:flex; flex-direction:column; padding:2rem 1.75rem 1.5rem; min-width:0; }
+.person-avatar { position:relative; display:grid; place-items:center; width:2.75rem; height:2.75rem; overflow:hidden; border-radius:50%; background:var(--secondary-container); color:var(--on-secondary-container); font-weight:750; font-size:.875rem; flex-shrink:0; }
+.person-avatar img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+.person-card h2 { margin-top:1.75rem; font-weight:800; font-size:1.125rem; overflow-wrap:anywhere; }
+.person-card h2 a:hover { color:var(--primary); }
+.person-facts { display:grid; gap:.875rem; margin-block:1.5rem 2rem; font-size:.8125rem; color:var(--on-surface-variant); }
+.person-facts > div { display:flex; flex-wrap:wrap; align-items:baseline; gap:.5rem; }
+.person-facts dt { font-size:.625rem; font-weight:750; letter-spacing:.08em; text-transform:uppercase; }
+.person-facts dd { min-width:0; overflow-wrap:anywhere; }
+.person-card-actions { display:grid; gap:.625rem; margin-top:auto; }
+.person-card-actions .btn { width:100%; border-radius:1.5rem; min-height:2.5rem; font-size:.8125rem; }
+.people-empty { grid-column:1/-1; display:grid; justify-items:center; text-align:center; gap:1rem; padding:3rem 1.5rem; }
+.people-empty h2 { font-size:1.125rem; font-weight:700; }
+.people-editor .card-body { padding:2rem; }
+.people-editor legend, .people-editor label:not(:has(input)) { font-size:.75rem; font-weight:700; }
+.people-detail dd { overflow-wrap:anywhere; }
+@media (max-width:1200px) { .people-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:639px) { .people-grid { grid-template-columns:minmax(0,1fr); gap:1rem; } .person-card { padding:1.5rem; } .people-editor .card-body { padding:1.25rem; } }
+
+.app-sidebar .app-household-switcher { display:flex; flex-direction:column; align-items:flex-start; gap:.125rem; overflow-wrap:anywhere; }

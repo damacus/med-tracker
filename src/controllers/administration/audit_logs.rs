@@ -226,11 +226,17 @@ enum EventLabel {
     RoleUpdated,
     MembershipChanged,
     MembershipCreated,
+    InvitationCreated,
+    InvitationResent,
+    InvitationRevoked,
 }
 
 impl EventLabel {
     fn from_identifier(event_type: &str) -> Option<Self> {
         match event_type {
+            "api/admin/invitation/created" => Some(Self::InvitationCreated),
+            "api/admin/invitation/resent" => Some(Self::InvitationResent),
+            "api/admin/invitation/revoked" => Some(Self::InvitationRevoked),
             "api.request" => Some(Self::ApiRequest),
             "household_membership.role_updated" => Some(Self::RoleUpdated),
             "household_access.membership_changed" => Some(Self::MembershipChanged),
@@ -241,6 +247,9 @@ impl EventLabel {
 
     const fn translation_key(&self) -> &'static str {
         match self {
+            Self::InvitationCreated => "invitation_created",
+            Self::InvitationResent => "invitation_resent",
+            Self::InvitationRevoked => "invitation_revoked",
             Self::ApiRequest => "api_request",
             Self::RoleUpdated => "role_updated",
             Self::MembershipChanged => "membership_changed",
@@ -270,9 +279,7 @@ fn summary(
     language: &str,
 ) -> Result<SummaryView, OperationError> {
     let audit = &labels["administration"]["audit"];
-    let event_label = if language == "en" {
-        event.event_label.clone()
-    } else if let Some(kind) = EventLabel::from_identifier(&event.event_type) {
+    let event_label = if let Some(kind) = EventLabel::from_identifier(&event.event_type) {
         text(&audit["events"], kind.translation_key())?.to_owned()
     } else {
         event.event_label.clone()
@@ -480,6 +487,38 @@ mod tests {
                     )?
                     .is_empty()
                 );
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn invitation_activity_has_translated_human_labels() -> Result<(), OperationError> {
+        for (language, expected) in [
+            ("en", "Invitation created"),
+            ("cy", "Gwahoddiad wedi’i greu"),
+            ("ga", "Cuireadh cruthaithe"),
+            ("pt", "Convite criado"),
+            ("es", "Invitación creada"),
+        ] {
+            let labels = crate::models::care::report_pdf::translations(language)
+                .map_err(|_| OperationError::Unavailable)?;
+            for action in ["created", "resent", "revoked"] {
+                let identifier = format!("api/admin/invitation/{action}");
+                let event = administration::audit_logs::AuditSummary {
+                    id: 950001,
+                    event_type: identifier.clone(),
+                    event_label: identifier.clone(),
+                    occurred_at_utc: "2030-01-15 12:00:00 UTC".to_owned(),
+                    actor: "Account #71001, membership #74001".to_owned(),
+                    actor_account_id: Some(71001),
+                    actor_membership_id: Some(74001),
+                };
+                let view = summary(&event, &labels, language)?;
+                assert_ne!(view.event_label, identifier, "{language} {action}");
+                if action == "created" {
+                    assert_eq!(view.event_label, expected);
+                }
             }
         }
         Ok(())
