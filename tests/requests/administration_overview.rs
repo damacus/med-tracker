@@ -45,6 +45,7 @@ async fn administration_overview_shows_only_current_household_status() -> TestRe
     fixture.admin.execute_unprepared(
         "INSERT INTO household_invitations(id,household_id,email,membership_role,token_digest,invited_by_membership_id,expires_at,created_at,updated_at) VALUES(87001,72001,'pending-admin@example.test','member','overview-pending',74001,now()+interval '7 days',now(),now()),(87002,72001,'expired-admin@example.test','member','overview-expired',74001,now()-interval '1 day',now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71001,'Other household','other-household','UTC',now(),now()); INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73004,'Other person',0,true,now(),now()),(73005,'Foreign account person',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74002,72002,73001,'owner',now(),now(),now()),(74004,72002,73004,'member',now(),now(),now()); INSERT INTO household_invitations(id,household_id,email,membership_role,token_digest,invited_by_membership_id,expires_at,created_at,updated_at) VALUES(87003,72002,'other-admin@example.test','member','overview-other',74002,now()+interval '7 days',now(),now()); INSERT INTO accounts(id,person_id,email,password_hash,status,created_at,updated_at) VALUES(71002,73005,'foreign-admin@example.test',crypt('password',gen_salt('bf',4)),2,now(),now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72003,71002,'Foreign household','foreign-admin-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74003,72003,73005,'owner',now(),now(),now())"
     ).await?;
+    fixture.admin.execute_unprepared("INSERT INTO schedules(household_id,person_id,medication_id,active,start_date,end_date,created_at,updated_at) VALUES(72001,73001,80001,true,current_date,current_date,now(),now()),(72001,73001,80001,true,current_date+1,current_date+3,now(),now()),(72001,73001,80001,false,NULL,NULL,now(),now()),(72001,73001,80001,true,NULL,NULL,now(),now()); UPDATE household_memberships SET joined_at=now()-interval '8 days' WHERE id=74001; INSERT INTO household_invitations(id,household_id,email,membership_role,token_digest,invited_by_membership_id,expires_at,revoked_at,created_at,updated_at) VALUES(87004,72001,'cancelled@example.test','member','overview-cancelled',74001,now()-interval '1 day',now(),now(),now())").await?;
     let identity = fixture.admin.query_one_raw(Statement::from_string(
         DbBackend::Postgres,
         "SELECT a.person_id,count(m.id) AS households FROM accounts a JOIN household_memberships m ON m.person_id=a.person_id WHERE a.id=71001 AND m.household_id IN(72001,72002) GROUP BY a.person_id",
@@ -82,6 +83,24 @@ async fn administration_overview_shows_only_current_household_status() -> TestRe
     assert!(html.contains("3 active members"));
     assert!(html.contains("3 people"));
     assert!(html.contains("1 pending invitation"));
+    let document = scraper::Html::parse_document(&html);
+    for (metric, count) in [
+        ("expired-invitations", "1"),
+        ("active-schedules", "1"),
+        ("recent-memberships", "2"),
+    ] {
+        let selector = scraper::Selector::parse(&format!("[data-admin-metric='{metric}'] dd"))
+            .map_err(|_| "metric selector")?;
+        let text = document
+            .select(&selector)
+            .next()
+            .ok_or("missing administration metric")?
+            .text()
+            .collect::<String>();
+        assert_eq!(text.trim(), count, "{metric}");
+    }
+    assert!(html.contains("id=\"expired-invitations\""));
+    assert!(html.contains("href=\"/households/persistence-fixture/admin/invitations\""));
     assert!(!html.contains("Other household"));
     assert!(!html.contains("other-admin@example.test"));
     assert_eq!(other_status, 200, "{other_html}");
@@ -120,6 +139,7 @@ async fn administration_overview_shows_five_recent_scoped_safe_events() -> TestR
         fixture.admin.execute_unprepared(
             "INSERT INTO security_audit_events(id,household_id,actor_account_id,actor_membership_id,event_type,request_id,metadata,audit_context,created_at,updated_at) SELECT 953000+number,72001,71001,74001,'household_membership.role_updated','recent-primary-' || number,'{\"target_membership_id\":74001,\"new_role\":\"administrator\",\"secret\":\"private-clinical-note\"}'::jsonb,'{\"session_reference\":\"private-session\"}'::jsonb,'2030-01-15 12:00:00','2030-01-15 12:00:00' FROM generate_series(1,6) AS number; INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71001,'Other household','other-household','UTC',now(),now()); INSERT INTO security_audit_events(id,household_id,event_type,request_id,metadata,audit_context,created_at,updated_at) VALUES(953007,72002,'household_membership.role_updated','recent-foreign','{\"secret\":\"foreign-clinical-note\"}'::jsonb,'{}'::jsonb,'2030-01-16 12:00:00','2030-01-16 12:00:00')"
         ).await?;
+        fixture.admin.execute_unprepared("INSERT INTO security_audit_events(household_id,event_type,metadata,audit_context,created_at,updated_at) VALUES(72001,'api_request','{}','{}',now(),now()),(72001,'api_request','{}','{}',now()-interval '2 days',now())").await?;
         let populated = request.get("/households/persistence-fixture/admin").await;
         let populated_status = populated.status_code();
         let populated_cache = populated.header("cache-control").to_owned();
@@ -135,6 +155,20 @@ async fn administration_overview_shows_five_recent_scoped_safe_events() -> TestR
     assert_eq!(populated_status, 200, "{populated_html}");
     assert_eq!(populated_cache, "no-store");
     assert!(populated_html.contains("Recent activity"));
+    let document = scraper::Html::parse_document(&populated_html);
+    let metric = scraper::Selector::parse("[data-admin-metric='recent-audit-events'] dd")
+        .map_err(|_| "audit metric selector")?;
+    assert_eq!(
+        document
+            .select(&metric)
+            .next()
+            .ok_or("audit metric missing")?
+            .text()
+            .collect::<String>()
+            .trim(),
+        "1",
+        "future and foreign events are outside the 24-hour window"
+    );
     assert_eq!(populated_html.matches("View audit event").count(), 5);
     assert!(populated_html.contains("/admin/audit_logs/953006"));
     assert!(!populated_html.contains("/admin/audit_logs/953001"));
@@ -292,7 +326,7 @@ async fn administration_locale_selection_survives_shared_links_and_forms() -> Te
                 );
             }
         }
-        if html.contains("method=\"post\"") {
+        if html.contains("action=\"/households/persistence-fixture/admin/") {
             assert!(
                 html.contains(&format!("name=\"lang\" value=\"{language}\"")),
                 "{language} {path}: form lost language"

@@ -57,6 +57,20 @@ async fn shared_layout_desktop_navigation_survives_route_changes() {
                             .unwrap(),
                         1
                     );
+                    let switcher =
+                        page.locator(".app-sidebar a[href=\"/households/choose?switch=1\"]");
+                    expect(switcher.clone())
+                        .to_contain_text("Synthetic household")
+                        .await
+                        .unwrap();
+                    assert_eq!(
+                        switcher
+                            .get_attribute("aria-label")
+                            .await
+                            .unwrap()
+                            .as_deref(),
+                        Some("Households · Synthetic household")
+                    );
                     if ["dashboard", "medications", "profile", "reports"].contains(&path) {
                         capture(page, &format!("{section}-desktop")).await;
                     }

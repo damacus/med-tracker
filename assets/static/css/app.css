@@ -5,6 +5,7 @@
 @import "./profile.css";
 @import "./platform.css";
 @import "./shared-layout.css";
+@import "./administration.css";
 @source "../../views";
 @plugin "daisyui" { themes: false; }
 

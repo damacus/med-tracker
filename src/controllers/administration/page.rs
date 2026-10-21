@@ -112,7 +112,15 @@ impl<'a> Page<'a> {
         data["labels"] = labels.clone();
         data["admin_labels"] = labels["administration"].clone();
         data["overview_labels"] = labels["administration"]["overview"].clone();
-        let household_name = administration::overview::household_name(tenant).await?;
+        let overview = if matches!(screen, Screen::Index) {
+            Some(administration::overview::read(tenant).await?)
+        } else {
+            None
+        };
+        let household_name = match &overview {
+            Some(overview) => overview.household_name.clone(),
+            None => administration::overview::household_name(tenant).await?,
+        };
         data["household_name"] = json!(household_name);
         let (title_key, section) = match screen {
             Screen::Index => ("overview", "overview"),
@@ -127,7 +135,7 @@ impl<'a> Page<'a> {
         data["admin_section"] = json!(section);
         let template = match screen {
             Screen::Index => {
-                let overview = administration::overview::read(tenant).await?;
+                let overview = overview.ok_or(OperationError::Unavailable)?;
                 let heading = format!(
                     "{} {}",
                     overview.household_name,
@@ -139,6 +147,10 @@ impl<'a> Page<'a> {
                 data["active_members"] = json!(overview.active_members);
                 data["people_count"] = json!(overview.people);
                 data["pending_invitations"] = json!(overview.pending_invitations);
+                data["expired_invitations"] = json!(overview.expired_invitations);
+                data["active_schedules"] = json!(overview.active_schedules);
+                data["recent_memberships"] = json!(overview.recent_memberships);
+                data["recent_audit_events"] = json!(overview.recent_audit_events);
                 data["title"] = json!(heading);
                 let warnings = crate::models::care::care_warning::project(tenant, None).await?;
                 let mut warnings = warnings.into_values().collect::<Vec<_>>();
@@ -171,9 +183,15 @@ impl<'a> Page<'a> {
             Screen::Role(user_id) => {
                 let member = self.member(tenant, user_id).await?;
                 data["title"] = json!(format!(
-                    "{} · Edit household role for {}",
+                    "{} · {}",
                     household_name,
-                    member["name"].as_str().unwrap_or("member")
+                    labels["administration"]["polish"]["edit_role"]
+                        .as_str()
+                        .ok_or(OperationError::Unavailable)?
+                        .replace(
+                            "%{name}",
+                            member["name"].as_str().ok_or(OperationError::Unavailable)?
+                        )
                 ));
                 data["draft"] =
                     submitted.map_or_else(|| json!({"role":member["role"]}), |draft| json!(draft));
@@ -184,14 +202,19 @@ impl<'a> Page<'a> {
                 data["relationships"] =
                     administration::delegation::list(tenant).await?["data"].clone();
                 data["unavailable_person"] =
-                    crate::models::care::report_pdf::translations("en")
+                    crate::models::care::report_pdf::translations(self.language)
                         .map_err(|_| OperationError::Unavailable)?["admin"]["carer_relationships"]
                         ["index"]["unavailable_person"]
                         .clone();
                 "administration/relationships.html"
             }
             Screen::NewRelationship => {
-                data["title"] = json!(format!("{household_name} · New relationship"));
+                data["title"] = json!(format!(
+                    "{household_name} · {}",
+                    labels["administration"]["polish"]["new_relationship"]
+                        .as_str()
+                        .ok_or(OperationError::Unavailable)?
+                ));
                 let draft = submitted.cloned().unwrap_or_else(|| {
                     HashMap::from([
                         ("carer_id".into(), String::new()),

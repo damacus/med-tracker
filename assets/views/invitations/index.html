@@ -1,7 +1,7 @@
 {% extends "layouts/base.html" %}
 {% block content %}
 {% set invite = invite_labels.index %}
-<section class="max-w-3xl mx-auto">
+<section class="admin-page">
   <a class="link" href="/households/{{ slug }}/admin{{ language_suffix }}">{{ admin_labels.nav.overview }}</a>
   {% include "administration/context.html" %}
   <h1 class="text-3xl font-semibold mt-4">{{ invite.title }}</h1>
@@ -24,11 +24,11 @@
     </form>
   </div></div>
   <h2 class="text-xl font-semibold mt-8">{{ invite.recent }}</h2>
-  <ul class="flex flex-col gap-4 mt-4">
+  <ul class="admin-invitations">
     {% for invitation in invitations %}
     <li class="card bg-base-100 border border-base-300"><div class="card-body">
       <h3 class="card-title break-all">{{ invitation.email }}</h3>
-      <p>{% if invitation.membership_role == "member" %}{{ role_labels.member }}{% else %}{{ role_labels.administrator }}{% endif %} · {{ invitation.status }}</p>
+      <p>{% if invitation.membership_role == "member" %}{{ role_labels.member }}{% else %}{{ role_labels.administrator }}{% endif %} · <span class="admin-chip">{{ invitation.status }}</span></p>
       <p class="break-words">{{ invite.expires }} <time datetime="{{ invitation.expires_at }}">{{ invitation.expires_at_display }}</time></p>
       {% if invitation.actionable %}<div class="flex flex-col sm:flex-row gap-3">
         <form action="/households/{{ slug }}/admin/invitations/{{ invitation.id }}/resend" method="post">

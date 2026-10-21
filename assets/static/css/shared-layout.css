@@ -64,3 +64,5 @@
 .people-detail dd { overflow-wrap:anywhere; }
 @media (max-width:1200px) { .people-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media (max-width:639px) { .people-grid { grid-template-columns:minmax(0,1fr); gap:1rem; } .person-card { padding:1.5rem; } .people-editor .card-body { padding:1.25rem; } }
+
+.app-sidebar .app-household-switcher { display:flex; flex-direction:column; align-items:flex-start; gap:.125rem; overflow-wrap:anywhere; }

@@ -14,3 +14,6 @@ mod shared_layout;
 
 #[path = "browser/people_polish.rs"]
 mod people_polish;
+
+#[path = "browser/administration_polish.rs"]
+mod administration_polish;

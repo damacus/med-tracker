@@ -184,7 +184,15 @@
     if (sidebarTrigger) {
       sidebar.setAttribute("aria-label", labels.mobile_rail.primary_navigation);
       sidebar.querySelector("[data-sidebar-navigation]").setAttribute("aria-label", labels.mobile_rail.primary_navigation);
-      sidebar.querySelector("a[href=\"/households/choose?switch=1\"]").textContent = labels.profile_menu.households;
+      const switcher = sidebar.querySelector('a[href="/households/choose?switch=1"]');
+      const selectedHousehold = data.households?.find(household => String(household.id) === String(data.active_household_id) && typeof household.name === 'string');
+      switcher.replaceChildren(element('span', labels.profile_menu.households));
+      switcher.setAttribute('aria-label', labels.profile_menu.households);
+      if (selectedHousehold) {
+        switcher.append(element('span', selectedHousehold.name, 'text-xs shell-muted'));
+        switcher.setAttribute('aria-label', `${labels.profile_menu.households} · ${selectedHousehold.name}`);
+      }
+      switcher.classList.add('app-household-switcher');
       sidebar.querySelector('[data-sidebar-name]').textContent = data.name;
       sidebar.querySelector('[data-sidebar-avatar]').replaceChildren(...[...header.querySelector('[data-profile-avatar]').childNodes].map(node => node.cloneNode(true)));
       sidebar.querySelector('[data-sidebar-profile]').hidden = true;
