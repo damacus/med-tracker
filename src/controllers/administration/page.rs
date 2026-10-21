@@ -1,4 +1,8 @@
 use super::*;
+use crate::models::care::administration::recovery::{
+    self, RecoveryAction, RecoveryCommand, RecoveryGuardianId, RecoverySnapshot, RecoverySubjectId,
+};
+use uuid::Uuid;
 
 #[derive(Clone, Copy)]
 pub(super) enum Screen {
@@ -8,6 +12,8 @@ pub(super) enum Screen {
     Role(i64),
     Relationships,
     NewRelationship,
+    Recovery,
+    RecoveryDetail(i64),
 }
 #[derive(Clone, Copy)]
 pub(super) enum Change {
@@ -15,6 +21,7 @@ pub(super) enum Change {
     Role(i64),
     CreateRelationship,
     Relationship(i64, bool),
+    Recovery(i64),
 }
 
 pub(super) struct Page<'a> {
@@ -118,7 +125,10 @@ impl<'a> Page<'a> {
             Screen::Index => ("overview", "overview"),
             Screen::Settings => ("settings", "settings"),
             Screen::Users | Screen::Role(_) => ("members", "users"),
-            Screen::Relationships | Screen::NewRelationship => ("relationships", "relationships"),
+            Screen::Relationships
+            | Screen::NewRelationship
+            | Screen::Recovery
+            | Screen::RecoveryDetail(_) => ("relationships", "relationships"),
         };
         let section_title = labels["administration"]["nav"][title_key]
             .as_str()
@@ -206,6 +216,47 @@ impl<'a> Page<'a> {
                 data["draft"] = json!(draft);
                 "administration/relationship_form.html"
             }
+            Screen::Recovery => {
+                let options = recovery::options(tenant).await?;
+                data["subjects"] = json!(
+                    options
+                        .subjects
+                        .into_iter()
+                        .filter(|subject| !subject.has_effective_guardian)
+                        .map(|subject| json!({"id":subject.id.get(),"name":subject.name}))
+                        .collect::<Vec<_>>()
+                );
+                data["subjects_has_more"] = json!(options.subjects_has_more);
+                "administration/recovery.html"
+            }
+            Screen::RecoveryDetail(id) => {
+                let options = recovery::options(tenant).await?;
+                let subject = options
+                    .subjects
+                    .into_iter()
+                    .find(|subject| subject.id.get() == id && !subject.has_effective_guardian)
+                    .ok_or(OperationError::NotFound)?;
+                data["subject"] = json!({
+                    "id":subject.id.get(),"name":subject.name,
+                    "snapshot_token":subject.snapshot.token.to_string(),
+                    "snapshot_revision":subject.snapshot.revision,
+                    "link_token":subject.snapshot.link_token.to_string(),
+                    "restorable":subject.restorable.map(|link| json!({
+                        "declaration_id":link.declaration_id,"relationship_id":link.relationship_id,
+                        "guardian_id":link.guardian_id.get()
+                    }))
+                });
+                data["guardians"] = json!(
+                    options
+                        .guardians
+                        .into_iter()
+                        .map(|guardian| json!({"id":guardian.id.get(),"name":guardian.name}))
+                        .collect::<Vec<_>>()
+                );
+                data["guardians_has_more"] = json!(options.guardians_has_more);
+                data["draft"] = json!(submitted);
+                "administration/recovery_detail.html"
+            }
         };
         Ok((template, data))
     }
@@ -283,6 +334,38 @@ impl<'a> Page<'a> {
                     }
                     Ok(("carer_relationships", Screen::Relationships))
                 }
+                Change::Recovery(id) => {
+                    if forms::field(&draft, "confirm_recovery") != "true" {
+                        return Err(validation("confirm_recovery", "must be confirmed"));
+                    }
+                    let subject = RecoverySubjectId::parse(id)?;
+                    let action = match forms::field(&draft, "action") {
+                        "restore" => RecoveryAction::Restore {
+                            declaration_id: positive_id(&draft, "declaration_id")?,
+                            relationship_id: positive_id(&draft, "relationship_id")?,
+                        },
+                        "appoint" => RecoveryAction::Appoint,
+                        _ => return Err(validation("action", "is invalid")),
+                    };
+                    let guardian = RecoveryGuardianId::parse(positive_id(&draft, "guardian_id")?)?;
+                    let expected = RecoverySnapshot {
+                        token: uuid_field(&draft, "snapshot_token")?,
+                        revision: nonnegative_id(&draft, "snapshot_revision")?,
+                        link_token: uuid_field(&draft, "link_token")?,
+                    };
+                    recovery::execute(
+                        &tenant,
+                        RecoveryCommand {
+                            subject,
+                            guardian,
+                            expected,
+                            action,
+                            reason: forms::field(&draft, "reason").to_owned(),
+                        },
+                    )
+                    .await?;
+                    Ok(("carer_relationships", Screen::RecoveryDetail(id)))
+                }
             }
         }
         .await;
@@ -331,11 +414,37 @@ impl<'a> Page<'a> {
                     Change::Role(id) => Screen::Role(id),
                     Change::CreateRelationship => Screen::NewRelationship,
                     Change::Relationship(_, _) => Screen::Relationships,
+                    Change::Recovery(id) => {
+                        if matches!(&error, OperationError::Conflict { code, .. } if code == "stale_guardian_recovery" || code == "guardian_already_effective")
+                        {
+                            Screen::Recovery
+                        } else {
+                            Screen::RecoveryDetail(id)
+                        }
+                    }
                 };
                 self.show(screen, Some(&draft), Some(&error)).await
             }
         }
     }
+}
+
+fn validation(field: &str, message: &str) -> OperationError {
+    OperationError::Validation {
+        details: json!({"errors":{field:[message]}}),
+    }
+}
+
+fn uuid_field(draft: &HashMap<String, String>, field: &str) -> Result<Uuid, OperationError> {
+    Uuid::parse_str(forms::field(draft, field)).map_err(|_| validation(field, "is invalid"))
+}
+
+fn nonnegative_id(draft: &HashMap<String, String>, field: &str) -> Result<i64, OperationError> {
+    forms::field(draft, field)
+        .parse::<i64>()
+        .ok()
+        .filter(|id| *id >= 0)
+        .ok_or_else(|| validation(field, "is invalid"))
 }
 
 fn positive_id(

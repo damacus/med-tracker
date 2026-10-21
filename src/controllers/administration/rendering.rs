@@ -44,6 +44,9 @@ pub(super) fn context(slug: &str, error: Option<&OperationError>) -> Value {
         "carer_id",
         "patient_id",
         "relationship_type",
+        "guardian_id",
+        "reason",
+        "confirm_recovery",
     ] {
         data[format!("{field}_invalid")] =
             json!(errors.iter().any(|error| error["field"] == field));
@@ -62,9 +65,9 @@ fn field_errors(error: Option<&OperationError>) -> Vec<Value> {
         && let Some(fields) = details.get("errors").and_then(Value::as_object)
     {
         return fields.iter().map(|(field, messages)| {
-            let field=match field.as_str() {"carer"=>"carer_id","patient"=>"patient_id",field=>field};
+            let field=match field.as_str() {"carer"=>"carer_id","patient"=>"patient_id","guardian"=>"guardian_id","action" | "recovery" | "snapshot_token" | "snapshot_revision" | "link_token" | "declaration_id" | "relationship_id"=>"administration-form",field=>field};
             let label = match field {
-                "name" => "Household name", "role" => "Household role", "carer_id" => "Carer", "patient_id" => "Patient", "relationship_type" => "Relationship type", _ => "",
+                "name" => "Household name", "role" => "Household role", "carer_id" => "Carer", "patient_id" => "Patient", "relationship_type" => "Relationship type", "guardian" | "guardian_id" => "Eligible adult", "reason" => "Reason for recovery", "confirm_recovery" => "Confirmation", _ => "",
             };
             let message = messages.as_array().map(|items| items.iter().filter_map(Value::as_str).collect::<Vec<_>>().join(", ")).unwrap_or_else(||messages.as_str().unwrap_or("is invalid").into());
             json!({"field":if field=="base" {"administration-form"}else{field},"message":format!("{label} {message}").trim()})

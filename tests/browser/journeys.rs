@@ -1,8 +1,59 @@
 use playwright_rs::expect;
-use playwright_rs::protocol::{AriaRole, Viewport};
+use playwright_rs::protocol::{Animations, AriaRole, ScreenshotOptions, Viewport};
 
 use crate::harness::named;
 use crate::{fixtures, harness};
+use sea_orm::ConnectionTrait;
+
+async fn guardian_recovery_screen(viewport: Viewport, screenshot: &'static str) {
+    harness::journey(viewport, |journey| {
+        Box::pin(async move {
+            journey.admin.execute_unprepared(
+                "UPDATE public.household_memberships SET role='owner' WHERE id=74001;
+                 INSERT INTO public.people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at)
+                 VALUES(73994,'Synthetic recovery child','2020-01-01',1,false,now(),now());
+                 INSERT INTO public.household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at)
+                 VALUES(74994,72001,73994,'member','active',now(),now(),now())"
+            ).await.unwrap();
+            harness::sign_in(journey).await;
+            let page=&journey.page;
+            page.goto(&format!("{}/households/persistence-fixture/admin/carer_relationships",journey.origin),None).await.unwrap();
+            page.get_by_role(AriaRole::Link,named("Recover a minor's guardian")).click(None).await.unwrap();
+            page.get_by_role(AriaRole::Link,named("Review recovery")).click(None).await.unwrap();
+            expect(page.get_by_role(AriaRole::Heading,named("Recover guardian: Synthetic recovery child"))).to_be_visible().await.unwrap();
+            expect(page.get_by_label("Eligible adult",true)).to_be_visible().await.unwrap();
+            expect(page.get_by_label("I confirm that I want to appoint this adult as guardian.",true)).to_be_visible().await.unwrap();
+            let path=std::path::Path::new("docs/screenshots/browser-journeys").join(format!("{screenshot}.png"));
+            page.screenshot_to_file(&path,ScreenshotOptions::builder().animations(Animations::Disabled).full_page(true).build()).await.unwrap();
+        })
+    }).await;
+}
+
+#[tokio::test]
+#[ignore = "browser journeys run through task test:browser, not the shared --tests lanes"]
+async fn guardian_recovery_desktop() {
+    guardian_recovery_screen(
+        Viewport {
+            width: 1440,
+            height: 1000,
+        },
+        "guardian-recovery-desktop",
+    )
+    .await;
+}
+
+#[tokio::test]
+#[ignore = "browser journeys run through task test:browser, not the shared --tests lanes"]
+async fn guardian_recovery_mobile() {
+    guardian_recovery_screen(
+        Viewport {
+            width: 390,
+            height: 844,
+        },
+        "guardian-recovery-mobile",
+    )
+    .await;
+}
 
 #[tokio::test]
 #[ignore = "browser journeys run through task test:browser, not the shared --tests lanes"]

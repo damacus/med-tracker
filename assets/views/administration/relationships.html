@@ -5,6 +5,7 @@
   {% include "administration/context.html" %}
   <h1 class="text-3xl font-semibold mt-4">Care relationships</h1>
   {% include "administration/navigation.html" %}
+  <a class="btn btn-primary mt-5" href="/households/{{ slug }}/admin/carer_relationships/recover{{ language_suffix }}">{{ admin_labels.recovery.open }}</a>
   <div class="mt-6">{% include "components/form_errors.html" %}</div>
   <ul class="flex flex-col gap-4 mt-6">
   {% for relationship in relationships %}

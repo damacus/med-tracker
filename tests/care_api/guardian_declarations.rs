@@ -24,6 +24,9 @@ mod locale_contract;
 #[path = "guardian_declarations/recovery.rs"]
 mod recovery;
 
+#[path = "guardian_declarations/recovery_browser.rs"]
+mod recovery_browser;
+
 fn require(condition: bool, message: &str) -> Result<(), DbErr> {
     if condition {
         Ok(())

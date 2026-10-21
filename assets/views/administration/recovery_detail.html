@@ -1,0 +1,47 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<section class="max-w-3xl mx-auto px-4 sm:px-0">
+  <a class="link" href="/households/{{ slug }}/admin/carer_relationships/recover{{ language_suffix }}">{{ admin_labels.recovery.back }}</a>
+  <h1 class="text-3xl font-semibold mt-4">{{ admin_labels.recovery.title }}: {{ subject.name }}</h1>
+  <p class="mt-3">{{ admin_labels.recovery.authority }}</p>
+  <p class="mt-2">{{ admin_labels.recovery.birthday }}</p>
+  {% if errors %}<section role="alert" aria-labelledby="recovery-errors-title" class="alert alert-error mt-5">
+    <div><h2 id="recovery-errors-title" class="font-semibold" tabindex="-1" autofocus>{{ admin_labels.recovery.check_details }}</h2><ul>{% for error in errors %}<li><a href="#{{ error.field }}">{{ error.message }}</a></li>{% endfor %}</ul></div>
+  </section>{% endif %}
+  {% if subject.restorable %}
+  <div class="card bg-base-100 border border-base-300 mt-6"><div class="card-body">
+    <h2 class="card-title">{{ admin_labels.recovery.restore_title }}</h2>
+    <p>{{ admin_labels.recovery.restore_hint }}</p>
+    <form id="administration-form" method="post" action="/households/{{ slug }}/admin/carer_relationships/recover/{{ subject.id }}" class="grid gap-4 mt-3">
+      {% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}
+      <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+      <input type="hidden" name="action" value="restore"><input type="hidden" name="guardian_id" value="{{ subject.restorable.guardian_id }}">
+      <input type="hidden" name="declaration_id" value="{{ subject.restorable.declaration_id }}"><input type="hidden" name="relationship_id" value="{{ subject.restorable.relationship_id }}">
+      <input type="hidden" name="snapshot_token" value="{{ subject.snapshot_token }}"><input type="hidden" name="snapshot_revision" value="{{ subject.snapshot_revision }}"><input type="hidden" name="link_token" value="{{ subject.link_token }}">
+      <label for="restore-reason">{{ admin_labels.recovery.reason }}</label>
+      <textarea id="restore-reason" name="reason" class="textarea w-full" minlength="10" maxlength="500" required aria-describedby="reason-hint">{{ draft.reason | default(value="") }}</textarea>
+      <p id="reason-hint">{{ admin_labels.recovery.reason_hint }}</p>
+      <label class="flex items-start gap-3" for="restore-confirm"><input id="restore-confirm" type="checkbox" name="confirm_recovery" value="true" class="checkbox" required><span>{{ admin_labels.recovery.confirm_restore }}</span></label>
+      <button class="btn btn-neutral w-full sm:w-fit" type="submit">{{ admin_labels.recovery.restore }}</button>
+    </form>
+  </div></div>
+  {% endif %}
+  <div class="card bg-base-100 border border-base-300 mt-6"><div class="card-body">
+    <h2 class="card-title">{{ admin_labels.recovery.appoint_title }}</h2>
+    <p>{{ admin_labels.recovery.appoint_hint }}</p>
+    {% if guardians_has_more %}<p role="status" class="alert alert-warning">{{ admin_labels.recovery.guardians_incomplete }}</p>{% endif %}
+    <form id="appointment-form" method="post" action="/households/{{ slug }}/admin/carer_relationships/recover/{{ subject.id }}" class="grid gap-4 mt-3">
+      {% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}
+      <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}"><input type="hidden" name="action" value="appoint">
+      <input type="hidden" name="snapshot_token" value="{{ subject.snapshot_token }}"><input type="hidden" name="snapshot_revision" value="{{ subject.snapshot_revision }}"><input type="hidden" name="link_token" value="{{ subject.link_token }}">
+      <label for="guardian_id">{{ admin_labels.recovery.guardian }}</label>
+      <select id="guardian_id" name="guardian_id" class="select w-full" required><option value="">{{ admin_labels.recovery.choose_guardian }}</option>{% for guardian in guardians %}<option value="{{ guardian.id }}" {% if draft.guardian_id == guardian.id %}selected{% endif %}>{{ guardian.name }}</option>{% endfor %}</select>
+      <label for="reason">{{ admin_labels.recovery.reason }}</label>
+      <textarea id="reason" name="reason" class="textarea w-full" minlength="10" maxlength="500" required aria-describedby="appoint-reason-hint">{{ draft.reason | default(value="") }}</textarea>
+      <p id="appoint-reason-hint">{{ admin_labels.recovery.reason_hint }}</p>
+      <label class="flex items-start gap-3" for="confirm_recovery"><input id="confirm_recovery" type="checkbox" name="confirm_recovery" value="true" class="checkbox" required><span>{{ admin_labels.recovery.confirm_appoint }}</span></label>
+      <button class="btn btn-neutral w-full sm:w-fit" type="submit">{{ admin_labels.recovery.appoint }}</button>
+    </form>
+  </div></div>
+</section>
+{% endblock content %}

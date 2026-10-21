@@ -104,6 +104,11 @@ pub fn routes() -> Routes {
             "/{slug}/admin/carer_relationships/new",
             get(new_relationship),
         )
+        .add("/{slug}/admin/carer_relationships/recover", get(recovery))
+        .add(
+            "/{slug}/admin/carer_relationships/recover/{id}",
+            get(recovery_detail).post(save_recovery),
+        )
         .add(
             "/{slug}/admin/carer_relationships/{id}/deactivate",
             post(deactivate),
@@ -238,6 +243,62 @@ async fn new_relationship(
         .with_language(language)
         .with_explicit_language(incoming.uri().query().is_some())
         .show(page::Screen::NewRelationship, None, None)
+        .await
+}
+
+async fn recovery(
+    State(ctx): State<AppContext>,
+    Path(slug): Path<String>,
+    session: Session<SessionPgPool>,
+    request: Option<Extension<LocoRequestId>>,
+    token: CsrfToken,
+    ViewEngine(view): ViewEngine<TeraView>,
+    incoming: Request,
+) -> Response {
+    let language = match presentation_language(incoming.uri().query(), incoming.headers()) {
+        Ok(language) => language,
+        Err(_) => return rendering::invalid_link(&view, fallback_language(incoming.headers())),
+    };
+    page::Page::new(&ctx, &session, &token, &view, &slug, request)
+        .with_language(language)
+        .with_explicit_language(incoming.uri().query().is_some())
+        .show(page::Screen::Recovery, None, None)
+        .await
+}
+
+async fn recovery_detail(
+    State(ctx): State<AppContext>,
+    Path((slug, id)): Path<(String, i64)>,
+    session: Session<SessionPgPool>,
+    request: Option<Extension<LocoRequestId>>,
+    token: CsrfToken,
+    ViewEngine(view): ViewEngine<TeraView>,
+    incoming: Request,
+) -> Response {
+    let language = match presentation_language(incoming.uri().query(), incoming.headers()) {
+        Ok(language) => language,
+        Err(_) => return rendering::invalid_link(&view, fallback_language(incoming.headers())),
+    };
+    page::Page::new(&ctx, &session, &token, &view, &slug, request)
+        .with_language(language)
+        .with_explicit_language(incoming.uri().query().is_some())
+        .show(page::Screen::RecoveryDetail(id), None, None)
+        .await
+}
+
+async fn save_recovery(
+    State(ctx): State<AppContext>,
+    Path((slug, id)): Path<(String, i64)>,
+    session: Session<SessionPgPool>,
+    request: Option<Extension<LocoRequestId>>,
+    token: CsrfToken,
+    ViewEngine(view): ViewEngine<TeraView>,
+    AxumForm(draft): AxumForm<HashMap<String, String>>,
+) -> Response {
+    page::Page::new(&ctx, &session, &token, &view, &slug, request)
+        .with_language(draft.get("lang").map_or("en", String::as_str))
+        .with_explicit_language(draft.contains_key("lang"))
+        .save(page::Change::Recovery(id), draft)
         .await
 }
 async fn save_settings(
