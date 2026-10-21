@@ -49,13 +49,12 @@ struct SessionRow {
 impl TryFrom<SessionRow> for SessionView {
     type Error = AuthError;
     fn try_from(row: SessionRow) -> AuthResult<Self> {
-        let mut fields: FieldMap = row
-            .additional_fields
-            .as_object()
-            .ok_or_else(|| AuthError::internal("Invalid stored session fields"))?
-            .iter()
-            .map(|(key, value)| Ok((key.clone(), FieldValue::from_json(value.clone())?)))
-            .collect::<AuthResult<_>>()?;
+        let mut fields = FieldMap::from_json(
+            row.additional_fields
+                .as_object()
+                .cloned()
+                .ok_or_else(|| AuthError::internal("Invalid stored session fields"))?,
+        )?;
         fields.insert("clinical_session_purpose".into(), row.purpose.into());
         Ok(Self {
             field_order: Vec::new(),

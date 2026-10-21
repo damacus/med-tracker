@@ -1,7 +1,8 @@
 use async_trait::async_trait;
 use better_auth_core::{
     AuthError, AuthRecordFields, AuthResult, CreateDeviceCode, DeviceCode, DeviceCodeOwnership,
-    FieldMap, FieldValue, FromFieldMap, SchemaValue, UpdateDeviceCode,
+    FieldMap, FieldValue, FromFieldMap, SchemaField, SchemaValue, UpdateDeviceCode,
+    plugin_runtime::ModelFields,
     store::{DeviceCodeStore, JwksStore, WalletStore},
 };
 use chrono::{DateTime, Utc};
@@ -25,38 +26,27 @@ struct DeviceRow {
 
 impl From<DeviceRow> for DeviceCode {
     fn from(row: DeviceRow) -> Self {
-        let bindings = FieldMap::from([
-            ("id".into(), row.id.clone().into()),
-            ("deviceCode".into(), row.device_code.clone().into()),
-            (
-                "clientId".into(),
-                row.client_id
-                    .clone()
-                    .map(FieldValue::from)
-                    .unwrap_or(FieldValue::Null),
-            ),
+        let fields = FieldMap::from([
+            ("id".into(), row.id.into()),
+            ("deviceCode".into(), row.device_code.into()),
+            ("userCode".into(), row.user_code.into()),
             (
                 "userId".into(),
-                row.account_id
-                    .map(|id| id.to_string())
-                    .map(FieldValue::from)
-                    .unwrap_or(FieldValue::Null),
+                row.account_id.map(|id| id.to_string()).into_field(),
             ),
-            ("status".into(), row.status.clone().into()),
+            ("expiresAt".into(), row.expires_at.into()),
+            ("status".into(), row.status.into()),
+            ("lastPolledAt".into(), row.last_polled_at.into_field()),
+            (
+                "pollingInterval".into(),
+                row.polling_interval.map(|value| value as f64).into_field(),
+            ),
+            ("clientId".into(), row.client_id.into_field()),
+            ("scope".into(), row.scope.into_field()),
         ]);
-        let mut device = Self::default();
-        device.field_order = Vec::new();
-        device.additional_fields = FieldMap::new();
-        device.id = row.id.into();
-        device.device_code = row.device_code.into();
-        device.user_code = row.user_code.into();
-        device.user_id = row.account_id.map(|id| id.to_string()).into();
-        device.expires_at = row.expires_at.into();
-        device.status = row.status.into();
-        device.last_polled_at = row.last_polled_at.map(Into::into).into();
-        device.polling_interval = row.polling_interval.map(|value| value as f64).into();
-        device.client_id = row.client_id.into();
-        device.scope = row.scope.into();
+        let bindings = ModelFields::default().device_code_storage_bindings(&fields);
+        let mut device = Self::from(fields);
+        device.field_order.clear();
         device.with_storage_bindings(bindings)
     }
 }
