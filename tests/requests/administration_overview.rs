@@ -11,6 +11,17 @@ fn authenticity_token(html: &str) -> Option<&str> {
         .next()
 }
 
+fn listed_membership_ids(html: &str) -> Vec<i64> {
+    html.split("<table")
+        .nth(1)
+        .and_then(|table| table.split("</table>").next())
+        .unwrap_or_default()
+        .split("/admin/memberships/")
+        .skip(1)
+        .filter_map(|link| link.split("/edit").next()?.parse().ok())
+        .collect()
+}
+
 async fn select_household(
     request: &TestServer,
     fixture: &Fixture,
@@ -302,10 +313,18 @@ async fn member_administration_lists_inactive_identity_and_changes_membership_st
     let first_html = first_page.text();
     assert_eq!(first_page.status_code(), 200, "{first_html}");
     assert_eq!(first_html.matches("Bulk member</th>").count(), 25);
+    assert_eq!(
+        listed_membership_ids(&first_html),
+        (74101..=74125).collect::<Vec<_>>()
+    );
     assert!(first_html.contains("page=2&amp;lang=es"), "{first_html}");
     let second_page = request.get("/households/persistence-fixture/admin/users?role=member&status=active&sort=name&direction=asc&page=2&lang=es").await;
     assert_eq!(second_page.status_code(), 200, "{}", second_page.text());
     assert_eq!(second_page.text().matches("Bulk member</th>").count(), 2);
+    assert_eq!(
+        listed_membership_ids(&second_page.text()),
+        vec![74126, 74127, 74981, 74980]
+    );
     fixture
         .admin
         .execute_unprepared("UPDATE household_memberships SET role='owner' WHERE id=74001")
@@ -328,6 +347,19 @@ async fn member_administration_lists_inactive_identity_and_changes_membership_st
             .text()
             .contains("Last active owner cannot be removed")
     );
+    assert!(last_owner.text().contains("href=\"#administration-form\""));
+    assert_eq!(
+        last_owner
+            .text()
+            .matches("id=\"administration-form\"")
+            .count(),
+        1
+    );
+    assert!(
+        last_owner
+            .text()
+            .contains("id=\"administration-form\" tabindex=\"-1\"")
+    );
     let retained = fixture
         .admin
         .query_one_raw(Statement::from_string(
@@ -349,6 +381,82 @@ async fn member_administration_lists_inactive_identity_and_changes_membership_st
         ])
         .await;
     assert_eq!(stale_manager.status_code(), 403, "{}", stale_manager.text());
+    drop(request);
+    close(fixture, boot).await;
+    Ok(())
+}
+
+#[tokio::test]
+async fn member_administration_orders_and_filters_exact_memberships() -> TestResult {
+    let (fixture, boot) = boot_fixture_with(|config| {
+        let key = base64::engine::general_purpose::STANDARD.encode([7_u8; 64]);
+        config.settings.get_or_insert_with(|| json!({}))["browser_session"] =
+            json!({"key":key,"secure":false});
+    })
+    .await;
+    fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES (73201,'Hidden Alpha',0,true,now(),now()),(73202,'Hidden Bravo',0,true,now(),now()),(73203,'Hidden Charlie',0,true,now(),now()),(73204,'Hidden Delta',0,true,now(),now()); INSERT INTO accounts(id,person_id,name,email,password_hash,status,created_at,updated_at) VALUES (71201,73201,'Sortprobe Alpha','zeta-sortprobe@example.test',crypt('password',gen_salt('bf',4)),2,now(),now()),(71202,73202,'Sortprobe Bravo','delta-sortprobe@example.test',crypt('password',gen_salt('bf',4)),2,now(),now()),(71203,73203,'Sortprobe Charlie','alpha-sortprobe@example.test',crypt('password',gen_salt('bf',4)),2,now(),now()),(71204,73204,'Sortprobe Delta','beta-sortprobe@example.test',crypt('password',gen_salt('bf',4)),2,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES (74201,72001,73201,'owner','active',now(),now(),now()),(74202,72001,73202,'administrator','suspended',now(),now(),now()),(74203,72001,73203,'member','revoked',now(),now(),now()),(74204,72001,73204,'member','active',now(),now(),now())").await?;
+    let mut request = server(&boot);
+    request.save_cookies();
+    select_household(&request, &fixture, &boot).await?;
+    let path = "/households/persistence-fixture/admin/users?q=sortprobe";
+    for (field, ascending, descending) in [
+        (
+            "name",
+            vec![74201, 74202, 74203, 74204],
+            vec![74204, 74203, 74202, 74201],
+        ),
+        (
+            "email",
+            vec![74203, 74204, 74202, 74201],
+            vec![74201, 74202, 74204, 74203],
+        ),
+        (
+            "role",
+            vec![74202, 74203, 74204, 74201],
+            vec![74201, 74203, 74204, 74202],
+        ),
+        (
+            "status",
+            vec![74201, 74204, 74203, 74202],
+            vec![74202, 74203, 74201, 74204],
+        ),
+    ] {
+        for (direction, expected) in [("asc", ascending), ("desc", descending)] {
+            let response = request
+                .get(&format!("{path}&sort={field}&direction={direction}"))
+                .await;
+            assert_eq!(response.status_code(), 200, "{}", response.text());
+            assert_eq!(
+                listed_membership_ids(&response.text()),
+                expected,
+                "{field} {direction}"
+            );
+        }
+    }
+    for (filter, expected) in [
+        ("role=member", vec![74203, 74204]),
+        ("status=active", vec![74201, 74204]),
+        ("status=suspended", vec![74202]),
+        ("status=revoked", vec![74203]),
+    ] {
+        let response = request.get(&format!("{path}&{filter}")).await;
+        assert_eq!(response.status_code(), 200, "{}", response.text());
+        assert_eq!(
+            listed_membership_ids(&response.text()),
+            expected,
+            "{filter}"
+        );
+    }
+    let canonical_name = request
+        .get("/households/persistence-fixture/admin/users?q=BRAVO")
+        .await;
+    assert_eq!(
+        canonical_name.status_code(),
+        200,
+        "{}",
+        canonical_name.text()
+    );
+    assert_eq!(listed_membership_ids(&canonical_name.text()), vec![74202]);
     drop(request);
     close(fixture, boot).await;
     Ok(())

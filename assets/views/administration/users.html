@@ -1,6 +1,6 @@
 {% extends "layouts/base.html" %}
 {% block content %}
-<section class="max-w-6xl mx-auto">
+<section id="administration-form" tabindex="-1" class="max-w-6xl mx-auto">
   <a class="link" href="/households/{{ slug }}/admin{{ language_suffix }}">Administration</a>
   {% include "administration/context.html" %}
   <h1 class="text-3xl font-semibold mt-4">{{ admin_labels.nav.members }}</h1>
