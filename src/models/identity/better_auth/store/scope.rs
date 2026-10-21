@@ -6,13 +6,11 @@ use std::{
     },
 };
 
-use better_auth_core::store::TypedTransactionFuture;
 use sea_orm::{DatabaseTransaction, DbErr};
 
 pub(super) struct Scope {
     pub transaction: DatabaseTransaction,
     pub rollback_only: AtomicBool,
-    pub after_commit: std::sync::Mutex<Vec<TypedTransactionFuture<'static, ()>>>,
 }
 
 tokio::task_local! {

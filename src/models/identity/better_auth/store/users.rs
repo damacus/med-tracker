@@ -1,5 +1,3 @@
-use std::future::Future;
-
 use async_trait::async_trait;
 use better_auth_core::{
     AuthError, AuthResult, CreateUser, FieldValue, ListUsersParams, UpdateUser,
@@ -10,18 +8,6 @@ use sea_orm::{ConnectionTrait, DatabaseTransaction};
 
 use super::super::{ClinicalAuthSchema, request};
 use super::{ClinicalStore, clinical_id, context, database_error, statement};
-
-async fn limit_available<T>(
-    fetch: impl Future<Output = AuthResult<Vec<T>>>,
-    limit: f64,
-) -> AuthResult<Vec<T>> {
-    if !limit.is_finite() || limit < 0.0 {
-        return Err(AuthError::validation("Invalid user list limit"));
-    }
-    let mut users = fetch.await?;
-    users.truncate(limit.floor() as usize);
-    Ok(users)
-}
 
 impl ClinicalStore {
     async fn update_user_in(
@@ -75,15 +61,6 @@ impl ClinicalStore {
             transaction.execute_raw(statement("UPDATE public.accounts SET email=$2,updated_at=clock_timestamp() WHERE id=$1 AND status=2", [account_id.into(), email.clone().into()])).await.map_err(database_error)?;
             transaction.execute_raw(statement("UPDATE public.users SET email_address=$2,updated_at=clock_timestamp() WHERE person_id IN(SELECT person_id FROM public.accounts WHERE id=$1)", [account_id.into(), email.into()])).await.map_err(database_error)?;
         }
-        if let Some(enabled) = input.two_factor_enabled {
-            let row = transaction.query_one_raw(statement("SELECT EXISTS(SELECT 1 FROM public.identity_two_factors WHERE account_id=$1 AND verified) AS enabled", [account_id.into()])).await.map_err(database_error)?.ok_or_else(|| AuthError::internal("Factor state unavailable"))?;
-            if row.try_get::<bool>("", "enabled").map_err(database_error)? != enabled {
-                return Err(AuthError::forbidden(
-                    "Factor state must be changed through its verified ceremony",
-                ));
-            }
-            transaction.execute_raw(statement("UPDATE public.identity_onboarding SET legacy_totp_disabled_at=clock_timestamp() WHERE account_id=$1", [account_id.into()])).await.map_err(database_error)?;
-        }
         self.canonical_user_in(transaction, id)
             .await?
             .ok_or(AuthError::UserNotFound)
@@ -104,7 +81,12 @@ impl UserStore<ClinicalAuthSchema> for ClinicalStore {
     }
 
     async fn list_users_by_ids(&self, ids: &[String], limit: f64) -> AuthResult<Vec<UserView>> {
-        limit_available(self.canonical_users_by_ids(ids), limit).await
+        if !limit.is_finite() || limit < 0.0 {
+            return Err(AuthError::validation("Invalid user list limit"));
+        }
+        let mut users = self.canonical_users_by_ids(ids).await?;
+        users.truncate(limit.floor() as usize);
+        Ok(users)
     }
 
     async fn get_user_by_email(&self, email: &str) -> AuthResult<Option<UserView>> {
@@ -123,7 +105,6 @@ impl UserStore<ClinicalAuthSchema> for ClinicalStore {
     }
 
     async fn get_user_with_accounts(&self, email: &str) -> AuthResult<Option<UserAccounts>> {
-        self.validate_user_account_join()?;
         let Some(user) = self.get_user_by_email(email).await? else {
             return Ok(None);
         };
@@ -196,116 +177,25 @@ impl UserStore<ClinicalAuthSchema> for ClinicalStore {
 
     async fn verify_user_and_revoke_unproven_access(
         &self,
-        user_id: &str,
+        _user_id: &str,
     ) -> AuthResult<Option<UserView>> {
-        let account_id = clinical_id(user_id)?;
-        let transaction = self.transaction().await?;
-        context(&transaction, "med_tracker.current_account_id", user_id).await?;
-        let current = transaction
-            .query_one_raw(statement(
-                "SELECT status FROM public.accounts WHERE id=$1 FOR UPDATE",
-                [account_id.into()],
-            ))
-            .await
-            .map_err(database_error)?;
-        let Some(current) = current else {
-            transaction.commit().await.map_err(database_error)?;
-            return Ok(None);
-        };
-        let status: i32 = current.try_get("", "status").map_err(database_error)?;
-        if status == 1 {
-            transaction
-                .execute_raw(statement(
-                    "DELETE FROM public.identity_sessions WHERE account_id=$1",
-                    [account_id.into()],
-                ))
-                .await
-                .map_err(database_error)?;
-            transaction
-                .execute_raw(statement(
-                    "DELETE FROM public.identity_provider_accounts WHERE account_id=$1",
-                    [account_id.into()],
-                ))
-                .await
-                .map_err(database_error)?;
-            transaction.execute_raw(statement("UPDATE public.accounts SET status=2,updated_at=clock_timestamp() WHERE id=$1 AND status=1", [account_id.into()])).await.map_err(database_error)?;
-            self.audit(&transaction, account_id, "email_verification", "verified")
-                .await?;
-        } else if status != 2 {
-            return Err(AuthError::Unauthenticated);
-        }
-        let user = self.canonical_user_in(&transaction, user_id).await?;
-        transaction.commit().await.map_err(database_error)?;
-        Ok(user)
+        Err(AuthError::config(
+            "Magic link and email OTP authentication are not configured",
+        ))
     }
 
     async fn create_user_fields_optional(
         &self,
-        fields: better_auth_core::FieldMap,
+        _fields: better_auth_core::FieldMap,
     ) -> AuthResult<Option<UserView>> {
-        for field in fields.keys() {
-            if ![
-                "email",
-                "name",
-                "metadata",
-                "emailVerified",
-                "image",
-                "createdAt",
-                "updatedAt",
-            ]
-            .contains(&field.as_str())
-            {
-                return Err(AuthError::forbidden("Registration field is unavailable"));
-            }
-        }
-        let mut input = CreateUser::new();
-        let email = fields
-            .get("email")
-            .and_then(better_auth_core::FieldValue::as_str)
-            .ok_or_else(|| AuthError::validation("Email is required"))?;
-        input.email = Some(email.to_owned());
-        let name = fields
-            .get("name")
-            .and_then(better_auth_core::FieldValue::as_str)
-            .ok_or_else(|| AuthError::validation("Name is required"))?;
-        input.name = Some(name.to_owned()).into();
-        input.metadata = fields.get("metadata").cloned();
-        if fields
-            .get("emailVerified")
-            .is_some_and(|value| !matches!(value, better_auth_core::FieldValue::Bool(false)))
-        {
-            return Err(AuthError::forbidden(
-                "Registration cannot set email verification",
-            ));
-        }
-        self.create_user(input).await.map(Some)
+        Err(AuthError::config(
+            "Native user registration is not configured",
+        ))
     }
 
     async fn list_users(&self, _input: ListUsersParams) -> AuthResult<(Vec<UserView>, usize)> {
         Err(AuthError::forbidden(
             "Global account administration is not enabled",
         ))
-    }
-}
-#[cfg(test)]
-mod tests {
-    use super::limit_available;
-
-    #[tokio::test]
-    async fn limit_counts_available_users_after_missing_ids_are_filtered() {
-        let candidates = ["missing", "available"];
-        let found = limit_available(
-            async {
-                Ok(candidates
-                    .iter()
-                    .filter(|id| **id == "available")
-                    .copied()
-                    .collect())
-            },
-            1.0,
-        )
-        .await
-        .unwrap();
-        assert_eq!(found, ["available"]);
     }
 }

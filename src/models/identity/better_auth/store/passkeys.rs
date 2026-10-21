@@ -1,8 +1,7 @@
 use async_trait::async_trait;
 use better_auth_core::{
-    AuthError, AuthRecordFields, AuthResult, CreatePasskey, FieldMap, FieldValue, FromFieldMap,
-    Passkey, PasskeyCredentialState, SchemaValue, UpdatePasskey, store::PasskeyStore,
-    types::UpdatePasskeyAuthentication,
+    AuthError, AuthResult, CreatePasskey, FieldMap, FieldValue, Passkey, PasskeyCredentialState,
+    SchemaValue, UpdatePasskey, store::PasskeyStore, types::UpdatePasskeyAuthentication,
 };
 use chrono::{DateTime, Utc};
 use sea_orm::{ConnectionTrait, FromQueryResult};
@@ -127,81 +126,6 @@ impl ClinicalStore {
 
 #[async_trait]
 impl PasskeyStore for ClinicalStore {
-    async fn create_passkey_record(&self, fields: FieldMap) -> AuthResult<Option<FieldMap>> {
-        let record = Passkey::from_field_values(fields)?;
-        let input = CreatePasskey {
-            additional_fields: record.additional_fields,
-            user_id: record.user_id,
-            name: record.name,
-            credential_id: record.credential_id.typed()?.clone(),
-            public_key: record.public_key.typed()?.clone(),
-            counter: *record.counter.typed()?,
-            device_type: record.device_type.typed()?.clone(),
-            backed_up: *record.backed_up.typed()?,
-            transports: record.transports.typed()?.clone(),
-            credential: PasskeyCredentialState::Legacy(record.credential.typed()?.clone()),
-            aaguid: record.aaguid,
-        };
-        self.create_passkey(input).await?.field_values().map(Some)
-    }
-
-    async fn get_passkey_record(&self, id: &SchemaValue<String>) -> AuthResult<Option<FieldMap>> {
-        self.get_passkey_by_id(id.typed()?)
-            .await?
-            .map(|row| row.field_values())
-            .transpose()
-    }
-
-    async fn update_passkey_record(
-        &self,
-        id: &SchemaValue<String>,
-        fields: FieldMap,
-    ) -> AuthResult<Option<FieldMap>> {
-        let record = Passkey::from_field_values(fields)?;
-        if !record.id.is_undefined()
-            || !record.user_id.is_undefined()
-            || !record.public_key.is_undefined()
-            || !record.credential_id.is_undefined()
-            || !record.device_type.is_undefined()
-            || !record.backed_up.is_undefined()
-            || !record.transports.is_undefined()
-            || !record.credential.is_undefined()
-            || !record.created_at.is_undefined()
-            || !record.updated_at.is_undefined()
-        {
-            return Err(AuthError::bad_request(
-                "Passkey identity or credential fields cannot be patched",
-            ));
-        }
-        if !record.additional_fields.is_empty() {
-            return Err(AuthError::config(
-                "Passkey extension fields are not configured",
-            ));
-        }
-        if !record.name.is_undefined() {
-            let _ = record.name.typed()?;
-        }
-        if !record.aaguid.is_undefined() {
-            let _ = record.aaguid.typed()?;
-        }
-        self.update_passkey_optional(
-            id,
-            UpdatePasskey {
-                name: record.name,
-                aaguid: record.aaguid,
-                counter: if record.counter.is_undefined() {
-                    None
-                } else {
-                    Some(*record.counter.typed()?)
-                },
-                additional_fields: record.additional_fields,
-            },
-        )
-        .await?
-        .map(|row| row.field_values())
-        .transpose()
-    }
-
     async fn create_passkey(&self, input: CreatePasskey) -> AuthResult<Passkey> {
         let transaction = self.transaction().await?;
         let passkey = self.create_passkey_in(&transaction, input).await?;

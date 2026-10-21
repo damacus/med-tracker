@@ -861,10 +861,14 @@ pub(super) async fn issue_profile_personal_key(app: &Application, name: &str) ->
     .await
     .unwrap();
     if issued.status != 200 {
-        let error: Value = issued.body.json().unwrap().unwrap();
+        let issued = issued.into_http_response().unwrap();
+        let error: Value = issued.body.json().unwrap().unwrap_or_default();
         panic!(
-            "Personal key confirmation setup rejected: status={}, code={}, message={}",
-            issued.status, error["code"], error["message"]
+            "Personal key confirmation setup rejected: status={}, location={:?}, code={}, message={}",
+            issued.status,
+            issued.headers.get("location"),
+            error["code"],
+            error["message"]
         );
     }
     let issued: Value = issued.body.json().unwrap().unwrap();

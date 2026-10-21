@@ -153,6 +153,9 @@ impl ClinicalStore {
         input: CreateSession,
     ) -> AuthResult<SessionView> {
         let mut additional_fields = input.inherited_fields.clone();
+        for field in RESERVED_SESSION_FIELDS {
+            additional_fields.remove(field);
+        }
         additional_fields.extend(self.session_defaults()?);
         additional_fields.extend(input.additional_fields.clone());
         if RESERVED_SESSION_FIELDS
@@ -242,8 +245,8 @@ impl SessionStore<ClinicalAuthSchema> for ClinicalStore {
 
     async fn get_session_snapshots(
         &self,
-        tokens: &[String],
-        only_active: bool,
+        _tokens: &[String],
+        _only_active: bool,
     ) -> AuthResult<
         Vec<(
             SessionView,
@@ -254,33 +257,9 @@ impl SessionStore<ClinicalAuthSchema> for ClinicalStore {
             >,
         )>,
     > {
-        let mut snapshots = Vec::new();
-        for token in tokens {
-            let session = if only_active {
-                self.get_session(token).await?
-            } else {
-                let transaction = self.transaction().await?;
-                context(
-                    &transaction,
-                    "med_tracker.identity_session_token",
-                    &token_digest(token),
-                )
-                .await?;
-                let row = SessionRow::find_by_statement(statement("SELECT s.* FROM public.identity_sessions s JOIN public.accounts a ON a.id=s.account_id WHERE s.token=$1 AND a.status=2", [token_digest(token).into()])).one(&*transaction).await.map_err(database_error)?;
-                let session = row
-                    .map(|mut row| {
-                        row.token = token.clone();
-                        row.try_into()
-                    })
-                    .transpose()?;
-                transaction.commit().await.map_err(database_error)?;
-                session
-            };
-            if let Some(session) = session {
-                snapshots.push((session, None));
-            }
-        }
-        Ok(snapshots)
+        Err(AuthError::config(
+            "Token-batch session lookup is not configured",
+        ))
     }
 
     async fn create_session(&self, input: CreateSession) -> AuthResult<SessionView> {

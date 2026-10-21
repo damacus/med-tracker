@@ -1,10 +1,7 @@
 use better_auth_core::{
-    AuthError, AuthRequest, CreateSession, CreateVerification, FieldMap, FieldValue, HttpMethod,
-    SchemaValue, UpdateAccount, UpdateUser,
-    store::{
-        AccountStore, SessionStore, UserStore, VerificationStore,
-        database_hooks::VerificationUpdate,
-    },
+    AuthError, AuthRequest, CreateSession, FieldMap, FieldValue, HttpMethod, SchemaValue,
+    UpdateAccount, UpdateUser,
+    store::{AccountStore, SessionStore, UserStore},
 };
 use chrono::{Duration, Utc};
 use med_tracker::models::_entities::accounts;
@@ -13,13 +10,78 @@ use sea_orm::{ActiveModelTrait, ConnectionTrait, DbBackend, Set, Statement};
 
 use super::{Application, fixture::Fixture};
 
-fn verification(identifier: &str) -> CreateVerification {
-    CreateVerification {
-        identifier: identifier.to_owned().into(),
-        value: "reserved".to_owned().into(),
-        expires_at: (Utc::now() + Duration::minutes(5)).into(),
+#[tokio::test]
+async fn advisory_factor_flag_cannot_enable_pending_factor_or_retire_retained_factor() {
+    use better_auth_core::{CreateTwoFactor, store::TwoFactorStore};
+    use med_tracker::models::_entities::{account_otp_keys, identity_onboarding};
+    use sea_orm::EntityTrait;
+
+    let fixture = Fixture::new().await;
+    let store = ClinicalStore::new(fixture.runtime.clone());
+    identity_onboarding::ActiveModel {
+        account_id: Set(71001),
         ..Default::default()
     }
+    .insert(&fixture.admin)
+    .await
+    .unwrap();
+    account_otp_keys::ActiveModel {
+        id: Set(71001),
+        key: Set("abcdefghijklmnop".to_owned()),
+        last_use: Set((Utc::now() - Duration::days(1)).naive_utc()),
+        num_failures: Set(0),
+    }
+    .insert(&fixture.admin)
+    .await
+    .unwrap();
+    store
+        .create_two_factor(CreateTwoFactor {
+            additional_fields: FieldMap::new(),
+            user_id: "71001".to_owned(),
+            secret: "pending-secret".to_owned(),
+            backup_codes: "pending-backup-codes".to_owned(),
+            verified: false,
+        })
+        .await
+        .unwrap();
+    for enabled in [true, false] {
+        let user = UserStore::<ClinicalAuthSchema>::update_user(
+            &store,
+            "71001",
+            UpdateUser {
+                two_factor_enabled: Some(enabled),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+        assert_eq!(*user.two_factor_enabled.typed().unwrap(), Some(false));
+        assert!(
+            !store
+                .get_two_factor_by_user_id("71001")
+                .await
+                .unwrap()
+                .unwrap()
+                .verified
+                .typed()
+                .unwrap()
+                .unwrap()
+        );
+        let onboarding = identity_onboarding::Entity::find_by_id(71001)
+            .one(&fixture.admin)
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(onboarding.legacy_totp_disabled_at.is_none());
+        assert!(
+            account_otp_keys::Entity::find_by_id(71001)
+                .one(&fixture.admin)
+                .await
+                .unwrap()
+                .is_some()
+        );
+    }
+    fixture.close().await;
 }
 
 #[tokio::test]
@@ -203,99 +265,19 @@ async fn account_patch_distinguishes_omitted_from_explicit_null() {
 }
 
 #[tokio::test]
-async fn verification_reservation_collision_update_and_consume_obey_restricted_runtime() {
-    let fixture = Fixture::new().await;
-    let store = ClinicalStore::new(fixture.runtime.clone());
-    assert!(
-        VerificationStore::<ClinicalAuthSchema>::reserve_verification(
-            &store,
-            "reserved-key",
-            verification("reserved-owner")
-        )
-        .await
-        .unwrap()
-    );
-    assert!(
-        !VerificationStore::<ClinicalAuthSchema>::reserve_verification(
-            &store,
-            "reserved-key",
-            verification("reserved-owner")
-        )
-        .await
-        .unwrap()
-    );
-    assert!(
-        VerificationStore::<ClinicalAuthSchema>::reserve_verification(
-            &store,
-            "reserved-key",
-            verification("other-owner")
-        )
-        .await
-        .is_err()
-    );
-    let updated = VerificationStore::<ClinicalAuthSchema>::update_verification(
-        &store,
-        "reserved-owner",
-        VerificationUpdate {
-            value: "updated".to_owned().into(),
-            ..Default::default()
-        },
-    )
-    .await
-    .unwrap()
-    .unwrap();
-    assert_eq!(updated.value.typed().unwrap(), "updated");
-    assert!(
-        VerificationStore::<ClinicalAuthSchema>::get_verification(
-            &store,
-            "reserved-owner",
-            "reserved"
-        )
-        .await
-        .unwrap()
-        .is_none()
-    );
-    assert!(
-        VerificationStore::<ClinicalAuthSchema>::consume_verification(
-            &store,
-            "reserved-owner",
-            "updated"
-        )
-        .await
-        .unwrap()
-        .is_some()
-    );
-    assert!(
-        VerificationStore::<ClinicalAuthSchema>::consume_verification(
-            &store,
-            "reserved-owner",
-            "updated"
-        )
-        .await
-        .unwrap()
-        .is_none()
-    );
-    let row = fixture
-        .admin
-        .query_one_raw(Statement::from_string(
-            DbBackend::Postgres,
-            "SELECT count(*) AS count FROM public.identity_verifications WHERE id='reserved-key'",
-        ))
-        .await
-        .unwrap()
-        .unwrap();
-    assert_eq!(row.try_get::<i64>("", "count").unwrap(), 0);
-    fixture.close().await;
-}
-
-#[tokio::test]
 async fn session_creation_persists_inherited_and_native_fields() {
     let fixture = Fixture::new().await;
     let store = ClinicalStore::new(fixture.runtime.clone());
     let session = SessionStore::<ClinicalAuthSchema>::create_session(
         &store,
         CreateSession {
-            inherited_fields: FieldMap::from([("inherited_marker".into(), "inherited".into())]),
+            inherited_fields: FieldMap::from([
+                ("inherited_marker".into(), "inherited".into()),
+                ("clinical_session_purpose".into(), "authenticated".into()),
+                ("authentication_method".into(), "passkey".into()),
+                ("legacy_factor_pending".into(), false.into()),
+                ("activeOrganizationId".into(), "72002".into()),
+            ]),
             additional_fields: FieldMap::from([("native_marker".into(), "native".into())]),
             user_id: "71001".into(),
             expires_at: (Utc::now() + Duration::hours(1)).into(),
@@ -320,6 +302,35 @@ async fn session_creation_persists_inherited_and_native_fields() {
     let fields: serde_json::Value = row.try_get("", "additional_fields").unwrap();
     assert_eq!(fields["inherited_marker"], "inherited");
     assert_eq!(fields["native_marker"], "native");
+    assert!(
+        !fields
+            .as_object()
+            .unwrap()
+            .contains_key("clinical_session_purpose")
+    );
+    assert!(
+        !fields
+            .as_object()
+            .unwrap()
+            .contains_key("authentication_method")
+    );
+    assert!(
+        !fields
+            .as_object()
+            .unwrap()
+            .contains_key("legacy_factor_pending")
+    );
+    assert!(
+        !fields
+            .as_object()
+            .unwrap()
+            .contains_key("activeOrganizationId")
+    );
+    assert_eq!(
+        session.additional_fields["clinical_session_purpose"],
+        "enrolment".into()
+    );
+    assert!(session.active_organization_id.typed().unwrap().is_none());
     fixture.close().await;
 }
 

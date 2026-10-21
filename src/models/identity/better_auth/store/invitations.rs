@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use better_auth_core::{
     AuthError, AuthResult, CreateInvitation, FieldMap, Invitation, InvitationStatus,
-    store::{InvitationOrganization, InvitationStore, JoinValue},
+    store::{InvitationOrganization, InvitationStore},
 };
 use chrono::{DateTime, Utc};
 use sea_orm::{ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter, QuerySelect, QueryTrait};
@@ -297,50 +297,9 @@ impl InvitationStore for ClinicalStore {
             .await?
             .len() as i64)
     }
-    async fn list_user_invitations(&self, email: &str) -> AuthResult<Vec<InvitationOrganization>> {
-        let invitations = self.invitation_rows(None, Some(email), false).await?;
-        let transaction = self.account_transaction().await?;
-        let mut result = Vec::with_capacity(invitations.len());
-        for invitation in invitations {
-            let organization_id = clinical_id(invitation.organization_id.typed()?)?;
-            let row = transaction.query_one_raw(statement("SELECT h.id,h.name,h.slug,h.created_at FROM public.households h JOIN public.household_invitations i ON i.household_id=h.id WHERE i.id=$1 AND h.id=$2 AND h.status='active' AND h.lifecycle_state='active'", [clinical_id(invitation.id.typed()?)?.into(), organization_id.into()])).await.map_err(database_error)?;
-            let organization = match row {
-                Some(row) => JoinValue::One(Some(FieldMap::from([
-                    (
-                        "id".into(),
-                        row.try_get::<i64>("", "id")
-                            .map_err(database_error)?
-                            .to_string()
-                            .into(),
-                    ),
-                    (
-                        "name".into(),
-                        row.try_get::<String>("", "name")
-                            .map_err(database_error)?
-                            .into(),
-                    ),
-                    (
-                        "slug".into(),
-                        row.try_get::<String>("", "slug")
-                            .map_err(database_error)?
-                            .into(),
-                    ),
-                    (
-                        "createdAt".into(),
-                        row.try_get::<chrono::NaiveDateTime>("", "created_at")
-                            .map_err(database_error)?
-                            .and_utc()
-                            .into(),
-                    ),
-                ]))),
-                None => JoinValue::One(None),
-            };
-            result.push(InvitationOrganization {
-                invitation,
-                organization,
-            });
-        }
-        transaction.commit().await.map_err(database_error)?;
-        Ok(result)
+    async fn list_user_invitations(&self, _email: &str) -> AuthResult<Vec<InvitationOrganization>> {
+        Err(AuthError::config(
+            "Native organization invitation listing is not configured",
+        ))
     }
 }

@@ -61,37 +61,6 @@ fn metadata_text(value: FieldValue) -> AuthResult<Option<String>> {
         .map(Some)
 }
 
-fn patch_number(value: &SchemaValue<Option<f64>>) -> AuthResult<Option<f64>> {
-    if value.is_undefined() {
-        return Ok(None);
-    }
-    value
-        .typed()?
-        .as_ref()
-        .copied()
-        .ok_or_else(|| AuthError::bad_request("Cannot clear numeric API credential field"))
-        .map(Some)
-}
-
-fn patch_string(value: &SchemaValue<Option<String>>) -> AuthResult<Option<String>> {
-    if value.is_undefined() {
-        return Ok(None);
-    }
-    value
-        .typed()?
-        .clone()
-        .ok_or_else(|| AuthError::bad_request("Cannot clear API credential field"))
-        .map(Some)
-}
-
-fn patch_date(value: &SchemaValue<Option<FieldDate>>) -> AuthResult<Option<Option<FieldDate>>> {
-    if value.is_undefined() {
-        Ok(None)
-    } else {
-        Ok(Some(value.typed()?.clone()))
-    }
-}
-
 fn stored_optional_date(value: &SchemaValue<Option<FieldDate>>) -> AuthResult<Option<&FieldDate>> {
     if value.is_undefined() {
         Ok(None)
@@ -247,86 +216,6 @@ impl ApiKeyStore for ClinicalStore {
         .await?
         .field_values()
         .map(Some)
-    }
-
-    async fn get_api_key_record(&self, id: &SchemaValue<String>) -> AuthResult<Option<FieldMap>> {
-        self.get_api_key_by_id(id.typed()?)
-            .await?
-            .map(|row| row.field_values())
-            .transpose()
-    }
-
-    async fn update_api_key_record(
-        &self,
-        id: &SchemaValue<String>,
-        fields: FieldMap,
-    ) -> AuthResult<Option<FieldMap>> {
-        let record = ApiKey::from_field_values(fields)?;
-        if !record.id.is_undefined()
-            || !record.start.is_undefined()
-            || !record.prefix.is_undefined()
-            || !record.key_hash.is_undefined()
-            || !record.reference_id.is_undefined()
-            || !record.config_id.is_undefined()
-            || !record.created_at.is_undefined()
-            || !record.updated_at.is_undefined()
-        {
-            return Err(AuthError::bad_request(
-                "API credential identity fields cannot be updated",
-            ));
-        }
-        if !record.additional_fields.is_empty() {
-            return Err(AuthError::config(
-                "API-key extension fields are not configured",
-            ));
-        }
-        self.update_api_key_optional(
-            id,
-            UpdateApiKey {
-                additional_fields: record.additional_fields,
-                name: if record.name.is_undefined() {
-                    None
-                } else {
-                    let _ = record.name.typed()?;
-                    Some(record.name)
-                },
-                enabled: if record.enabled.is_undefined() {
-                    None
-                } else {
-                    let _ = record.enabled.typed()?;
-                    Some(record.enabled)
-                },
-                remaining: patch_number(&record.remaining)?,
-                rate_limit_enabled: if record.rate_limit_enabled.is_undefined() {
-                    None
-                } else {
-                    Some(*record.rate_limit_enabled.typed()?)
-                },
-                rate_limit_time_window: patch_number(&record.rate_limit_time_window)?,
-                rate_limit_max: patch_number(&record.rate_limit_max)?,
-                refill_interval: patch_number(&record.refill_interval)?,
-                refill_amount: patch_number(&record.refill_amount)?,
-                permissions: patch_string(&record.permissions)?,
-                metadata: if record.metadata.is_undefined() {
-                    None
-                } else {
-                    Some(
-                        metadata_text(record.metadata.field_value())?.ok_or_else(|| {
-                            AuthError::bad_request(
-                                "Clearing API credential metadata is unsupported",
-                            )
-                        })?,
-                    )
-                },
-                expires_at: patch_date(&record.expires_at)?,
-                last_request: patch_date(&record.last_request)?,
-                request_count: patch_number(&record.request_count)?,
-                last_refill_at: patch_date(&record.last_refill_at)?,
-            },
-        )
-        .await?
-        .map(|row| row.field_values())
-        .transpose()
     }
 
     async fn create_api_key(&self, input: CreateApiKey) -> AuthResult<ApiKey> {

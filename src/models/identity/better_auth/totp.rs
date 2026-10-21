@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use better_auth::plugins::{PasswordManagementPlugin, TwoFactorPlugin};
 use better_auth_core::{
     AuthContext, AuthError, AuthPlugin, AuthRequest, AuthResponse, AuthResult, AuthRoute,
-    CreateVerification, HttpMethod, UpdateAccount, utils::password::hash_password,
+    CreateVerification, HttpMethod,
 };
 use sea_orm::ConnectionTrait;
 use serde::{Deserialize, Serialize};
@@ -135,10 +135,16 @@ async fn plugin(
     request: &AuthRequest,
     ctx: &AuthContext<ClinicalAuthSchema>,
 ) -> AuthResult<AuthResponse> {
-    TwoFactorPlugin::new()
+    let mut response = TwoFactorPlugin::new()
         .on_request(request, ctx)
         .await?
-        .ok_or_else(|| AuthError::internal("Authenticator operation unavailable"))
+        .ok_or_else(|| AuthError::internal("Authenticator operation unavailable"))?;
+    if response.status < 400 {
+        for (name, value) in request.take_response_headers()? {
+            response = response.with_appended_header(name, value);
+        }
+    }
+    Ok(response)
 }
 
 fn rejected_login(error: &AuthError) -> bool {
@@ -293,7 +299,7 @@ impl Totp {
             .await?
             .ok_or(AuthError::Unauthenticated)?;
         let accounts = ctx.database.get_user_accounts(user.id.typed()?).await?;
-        let credential = accounts
+        accounts
             .iter()
             .find(|account| {
                 account.provider_id == "credential"
@@ -402,6 +408,7 @@ impl Totp {
             if response.status >= 400 {
                 return Ok(response);
             }
+            transaction.execute_raw(statement("UPDATE public.identity_onboarding SET legacy_totp_disabled_at=clock_timestamp(),legacy_totp_locked_until=NULL WHERE account_id=$1", [clinical_id(user.id.typed()?)?.into()])).await.map_err(database_error)?;
             self.0
                 .audit(
                     &transaction,
@@ -441,22 +448,6 @@ impl Totp {
                     transaction.commit().await.map_err(database_error)?;
                     return Ok(rejected);
                 }
-            }
-            if credential
-                .password
-                .typed()?
-                .as_deref()
-                .is_some_and(|value| value.starts_with("$2"))
-            {
-                ctx.database
-                    .update_account(
-                        credential.id.typed()?,
-                        UpdateAccount {
-                            password: Some(hash_password(None, &input.password).await?).into(),
-                            ..Default::default()
-                        },
-                    )
-                    .await?;
             }
             let enabled = plugin(
                 &delegated(
@@ -533,6 +524,7 @@ impl Totp {
             if response.status >= 400 {
                 return Ok(response);
             }
+            transaction.execute_raw(statement("UPDATE public.identity_onboarding SET legacy_totp_disabled_at=clock_timestamp(),legacy_totp_locked_until=NULL WHERE account_id=$1", [clinical_id(user.id.typed()?)?.into()])).await.map_err(database_error)?;
             self.0
                 .audit(
                     &transaction,

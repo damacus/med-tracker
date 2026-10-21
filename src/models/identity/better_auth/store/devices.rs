@@ -1,8 +1,7 @@
 use async_trait::async_trait;
 use better_auth_core::{
-    AuthError, AuthRecordFields, AuthResult, CreateDeviceCode, DeviceCode, DeviceCodeOwnership,
-    FieldMap, FieldValue, FromFieldMap, SchemaField, SchemaValue, UpdateDeviceCode,
-    plugin_runtime::ModelFields,
+    AuthError, AuthResult, CreateDeviceCode, DeviceCode, DeviceCodeOwnership, FieldMap, FieldValue,
+    SchemaField, SchemaValue, UpdateDeviceCode,
     store::{DeviceCodeStore, JwksStore, WalletStore},
 };
 use chrono::{DateTime, Utc};
@@ -44,10 +43,7 @@ impl From<DeviceRow> for DeviceCode {
             ("clientId".into(), row.client_id.into_field()),
             ("scope".into(), row.scope.into_field()),
         ]);
-        let bindings = ModelFields::default().device_code_storage_bindings(&fields);
-        let mut device = Self::from(fields);
-        device.field_order.clear();
-        device.with_storage_bindings(bindings)
+        Self::from(fields)
     }
 }
 
@@ -100,101 +96,23 @@ impl ClinicalStore {
 
 #[async_trait]
 impl DeviceCodeStore for ClinicalStore {
-    async fn create_device_code_record(&self, fields: FieldMap) -> AuthResult<Option<FieldMap>> {
-        let record = DeviceCode::from_field_values(fields)?;
-        self.create_device_code(CreateDeviceCode {
-            additional_fields: record.additional_fields,
-            device_code: record.device_code.typed()?.clone(),
-            user_code: record.user_code.typed()?.clone(),
-            user_id: record.user_id.typed()?.clone(),
-            expires_at: record.expires_at.typed()?.clone(),
-            status: record.status.typed()?.clone(),
-            last_polled_at: record.last_polled_at.typed()?.clone(),
-            polling_interval: *record.polling_interval.typed()?,
-            client_id: record.client_id.typed()?.clone(),
-            scope: record.scope,
-        })
-        .await?
-        .field_values()
-        .map(Some)
+    async fn create_device_code_record(&self, _fields: FieldMap) -> AuthResult<Option<FieldMap>> {
+        Err(AuthError::config("Device authorization is not configured"))
     }
 
     async fn get_device_code_record(
         &self,
-        id: &SchemaValue<String>,
+        _id: &SchemaValue<String>,
     ) -> AuthResult<Option<FieldMap>> {
-        let id = id.typed()?;
-        let transaction = self.transaction().await?;
-        context(&transaction, "med_tracker.identity_device_id", id).await?;
-        let row = DeviceRow::find_by_statement(statement(
-            "SELECT * FROM public.identity_device_codes WHERE id=$1",
-            [id.into()],
-        ))
-        .one(&*transaction)
-        .await
-        .map_err(database_error)?;
-        let result = row
-            .map(DeviceCode::from)
-            .map(|row| row.field_values())
-            .transpose()?;
-        transaction.commit().await.map_err(database_error)?;
-        Ok(result)
+        Err(AuthError::config("Device authorization is not configured"))
     }
 
     async fn update_device_code_record(
         &self,
-        id: &SchemaValue<String>,
-        fields: FieldMap,
+        _id: &SchemaValue<String>,
+        _fields: FieldMap,
     ) -> AuthResult<Option<FieldMap>> {
-        let record = DeviceCode::from_field_values(fields)?;
-        if !record.id.is_undefined()
-            || !record.device_code.is_undefined()
-            || !record.user_code.is_undefined()
-            || !record.expires_at.is_undefined()
-            || !record.polling_interval.is_undefined()
-            || !record.client_id.is_undefined()
-        {
-            return Err(AuthError::bad_request(
-                "Device-code binding fields cannot be patched",
-            ));
-        }
-        if !record.additional_fields.is_empty() {
-            return Err(AuthError::config(
-                "Device-code extension fields are not configured",
-            ));
-        }
-        if !record.user_id.is_undefined() {
-            let _ = record.user_id.typed()?;
-        }
-        if !record.scope.is_undefined() {
-            let _ = record.scope.typed()?;
-        }
-        self.device_update(
-            id.typed()?,
-            None,
-            UpdateDeviceCode {
-                additional_fields: record.additional_fields,
-                status: if record.status.is_undefined() {
-                    None
-                } else {
-                    Some(record.status.typed()?.clone())
-                },
-                user_id: if record.user_id.is_undefined() {
-                    None
-                } else {
-                    Some(record.user_id)
-                },
-                last_polled_at: if record.last_polled_at.is_undefined() {
-                    None
-                } else {
-                    Some(record.last_polled_at.typed()?.clone())
-                },
-                scope: record.scope,
-            },
-        )
-        .await?
-        .map(|row| row.field_values())
-        .transpose()
+        Err(AuthError::config("Device authorization is not configured"))
     }
 
     async fn create_device_code(&self, input: CreateDeviceCode) -> AuthResult<DeviceCode> {
@@ -320,47 +238,10 @@ impl DeviceCodeStore for ClinicalStore {
 
     async fn consume_device_code(
         &self,
-        expected: &DeviceCode,
-        ownership: &DeviceCodeOwnership,
+        _expected: &DeviceCode,
+        _ownership: &DeviceCodeOwnership,
     ) -> AuthResult<Option<DeviceCode>> {
-        let (bindings, unchanged) = expected.consumption_bindings()?;
-        if !unchanged {
-            return Ok(None);
-        }
-        let client = match ownership {
-            DeviceCodeOwnership::ClientId(client) => client,
-            _ => {
-                return Err(AuthError::config(
-                    "Device-code ownership query is not configured",
-                ));
-            }
-        };
-        if bindings.get("clientId").and_then(|value| value.as_str()) != Some(client.as_str()) {
-            return Ok(None);
-        }
-        let string = |name: &str| -> AuthResult<&str> {
-            bindings
-                .get(name)
-                .and_then(|value| value.as_str())
-                .ok_or_else(|| AuthError::bad_request("Invalid device-code consumption binding"))
-        };
-        let id = string("id")?;
-        let device_code = string("deviceCode")?;
-        let user_id = string("userId")?;
-        let account_id = clinical_id(user_id)?;
-        if string("status")? != "approved" {
-            return Ok(None);
-        }
-        let transaction = self.transaction().await?;
-        context(&transaction, "med_tracker.identity_device_id", id).await?;
-        context(&transaction, "med_tracker.current_account_id", user_id).await?;
-        let row = DeviceRow::find_by_statement(statement(
-            "DELETE FROM public.identity_device_codes WHERE id=$1 AND device_code=$2 AND client_id=$3 AND account_id=$4 AND status='approved' AND expires_at>CURRENT_TIMESTAMP RETURNING *",
-            [id.into(), device_code.into(), client.as_str().into(), account_id.into()],
-        )).one(&*transaction).await.map_err(database_error)?;
-        let consumed = row.map(Into::into);
-        transaction.commit().await.map_err(database_error)?;
-        Ok(consumed)
+        Err(AuthError::config("Device authorization is not configured"))
     }
 
     async fn delete_device_code(&self, id: &SchemaValue<String>) -> AuthResult<()> {

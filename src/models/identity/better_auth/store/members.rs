@@ -3,32 +3,15 @@ use better_auth_core::{
     AuthError, AuthResult, CreateMember, Member,
     store::{ListOrganizationMembersParams, MemberStore},
 };
-use sea_orm::{
-    ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, QueryTrait,
-    sea_query::{Expr, SimpleExpr},
-};
-use std::collections::HashMap;
+use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QuerySelect, QueryTrait};
 
 use super::{
-    ClinicalStore, clinical_field_id, clinical_id, clinical_schema_id, database_error,
-    tenant::operation_error,
+    ClinicalStore, clinical_id, clinical_schema_id, database_error, tenant::operation_error,
 };
 use crate::models::{
     care::administration,
     entities::{account, membership},
 };
-
-fn member(row: membership::Model, account_id: i64) -> Member {
-    Member {
-        field_order: Vec::new(),
-        additional_fields: Default::default(),
-        id: row.id.to_string().into(),
-        organization_id: row.household_id.to_string().into(),
-        user_id: account_id.to_string().into(),
-        role: row.role.into(),
-        created_at: row.created_at.and_utc().into(),
-    }
-}
 
 #[async_trait]
 impl MemberStore for ClinicalStore {
@@ -80,117 +63,10 @@ impl MemberStore for ClinicalStore {
 
     async fn query_organization_members(
         &self,
-        input: &ListOrganizationMembersParams,
+        _input: &ListOrganizationMembersParams,
     ) -> AuthResult<(Vec<Member>, usize)> {
-        let household_id = clinical_schema_id(&input.organization_id)?;
-        let tenant = self.tenant(household_id).await?;
-        administration::authorize(&tenant)
-            .await
-            .map_err(operation_error)?;
-        let mut query = membership::Entity::find()
-            .filter(
-                membership::Column::PersonId.in_subquery(
-                    account::Entity::find()
-                        .select_only()
-                        .column(account::Column::PersonId)
-                        .into_query(),
-                ),
-            )
-            .filter(membership::Column::HouseholdId.eq(household_id))
-            .filter(membership::Column::Status.eq("active"))
-            .filter(membership::Column::RevokedAt.is_null());
-        if let Some(field) = input.filter_field.as_deref() {
-            let value = input
-                .filter_value
-                .as_ref()
-                .ok_or_else(|| AuthError::validation("Filter value is required"))?;
-            let equal = match input.filter_operator.as_deref().unwrap_or("eq") {
-                "eq" => true,
-                "ne" => false,
-                _ => return Err(AuthError::validation("Unsupported membership filter")),
-            };
-            let condition = match (field, equal) {
-                ("id", true) => membership::Column::Id.eq(clinical_field_id(value)?),
-                ("id", false) => membership::Column::Id.ne(clinical_field_id(value)?),
-                ("userId" | "user_id", true) => membership::Column::PersonId.in_subquery(
-                    account::Entity::find()
-                        .select_only()
-                        .column(account::Column::PersonId)
-                        .filter(account::Column::Id.eq(clinical_field_id(value)?))
-                        .into_query(),
-                ),
-                ("userId" | "user_id", false) => membership::Column::PersonId.not_in_subquery(
-                    account::Entity::find()
-                        .select_only()
-                        .column(account::Column::PersonId)
-                        .filter(account::Column::Id.eq(clinical_field_id(value)?))
-                        .into_query(),
-                ),
-                ("role", true) => membership::Column::Role.eq(value
-                    .as_str()
-                    .ok_or_else(|| AuthError::validation("Invalid role filter"))?),
-                ("role", false) => membership::Column::Role.ne(value
-                    .as_str()
-                    .ok_or_else(|| AuthError::validation("Invalid role filter"))?),
-                _ => return Err(AuthError::validation("Unsupported membership field")),
-            };
-            query = query.filter(condition);
-        }
-        let total = query
-            .clone()
-            .count(tenant.transaction())
-            .await
-            .map_err(database_error)?;
-        let sort: SimpleExpr = match input.sort_by.as_deref().unwrap_or("id") {
-            "id" => Expr::col((membership::Entity, membership::Column::Id)),
-            "userId" | "user_id" => Expr::cust(
-                "(SELECT a.id FROM public.accounts a WHERE a.person_id=household_memberships.person_id)",
-            ),
-            "role" => Expr::col((membership::Entity, membership::Column::Role)),
-            "createdAt" | "created_at" => {
-                Expr::col((membership::Entity, membership::Column::CreatedAt))
-            }
-            _ => return Err(AuthError::validation("Unsupported membership sort")),
-        };
-        query = match input.sort_direction.as_deref().unwrap_or("asc") {
-            "asc" => query.order_by_asc(sort),
-            "desc" => query.order_by_desc(sort),
-            _ => return Err(AuthError::validation("Unsupported sort direction")),
-        };
-        let offset = input.offset.unwrap_or(0.0);
-        let limit = input.limit.unwrap_or(100.0);
-        if !offset.is_finite() || offset < 0.0 || !limit.is_finite() || limit < 0.0 {
-            return Err(AuthError::validation("Invalid membership page"));
-        }
-        let rows = query
-            .order_by_asc(membership::Column::Id)
-            .offset(offset.floor() as u64)
-            .limit(limit.floor().min(100.0) as u64)
-            .all(tenant.transaction())
-            .await
-            .map_err(database_error)?;
-        let accounts = account::Entity::find()
-            .filter(account::Column::PersonId.is_in(rows.iter().map(|row| row.person_id)))
-            .all(tenant.transaction())
-            .await
-            .map_err(database_error)?
-            .into_iter()
-            .map(|row| (row.person_id, row.id))
-            .collect::<HashMap<_, _>>();
-        let members = rows
-            .into_iter()
-            .map(|row| {
-                let account_id = accounts
-                    .get(&row.person_id)
-                    .copied()
-                    .ok_or_else(|| AuthError::internal("Membership account unavailable"))?;
-                Ok(member(row, account_id))
-            })
-            .collect::<AuthResult<Vec<_>>>()?;
-        tenant.commit().await.map_err(operation_error)?;
-        Ok((
-            members,
-            usize::try_from(total).map_err(|_| AuthError::internal("Membership count overflow"))?,
+        Err(AuthError::config(
+            "Native organization member queries are not configured",
         ))
     }
 

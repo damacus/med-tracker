@@ -31,7 +31,7 @@ use scope::Transaction;
 pub struct ClinicalStore {
     db: DatabaseConnection,
     settings: Option<std::sync::Arc<serde_json::Value>>,
-    runtime: Option<std::sync::Arc<runtime::RuntimeBindings>>,
+    runtime: Option<std::sync::Arc<better_auth_core::AuthConfig>>,
 }
 
 impl ClinicalStore {
@@ -97,7 +97,6 @@ impl ClinicalStore {
         let scope = std::sync::Arc::new(scope::Scope {
             transaction: self.begin_transaction().await?,
             rollback_only: std::sync::atomic::AtomicBool::new(false),
-            after_commit: std::sync::Mutex::new(Vec::new()),
         });
         let result = scope::TRANSACTION.scope(scope.clone(), work).await;
         let scope = std::sync::Arc::try_unwrap(scope)
@@ -109,13 +108,6 @@ impl ClinicalStore {
         let commit = acceptable && !rollback_only;
         if commit {
             scope.transaction.commit().await.map_err(database_error)?;
-            for effect in scope
-                .after_commit
-                .into_inner()
-                .map_err(|_| AuthError::internal("Identity after-commit queue unavailable"))?
-            {
-                effect.await?;
-            }
             result
         } else {
             scope.transaction.rollback().await.map_err(database_error)?;

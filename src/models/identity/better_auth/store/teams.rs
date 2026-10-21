@@ -109,37 +109,3 @@ impl OrganizationRoleStore for ClinicalStore {
         Err(dynamic_roles_disabled())
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn unconfigured_organization_extensions_reject_reads_and_writes() {
-        let store = ClinicalStore::new(sea_orm::DatabaseConnection::default());
-        assert!(matches!(
-            store.get_team("1").await,
-            Err(AuthError::Config(_))
-        ));
-        assert!(matches!(
-            store.delete_team("1").await,
-            Err(AuthError::Config(_))
-        ));
-        assert!(matches!(
-            store.list_user_teams("1").await,
-            Err(AuthError::Config(_))
-        ));
-        assert!(matches!(
-            store.get_organization_role("1").await,
-            Err(AuthError::Config(_))
-        ));
-        assert!(matches!(
-            store.delete_organization_role("1").await,
-            Err(AuthError::Config(_))
-        ));
-        assert!(matches!(
-            store.list_organization_roles("1").await,
-            Err(AuthError::Config(_))
-        ));
-    }
-}

@@ -110,24 +110,11 @@ impl TwoFactorStore for ClinicalStore {
 
     async fn get_two_factor_record(
         &self,
-        id: &SchemaValue<String>,
+        _id: &SchemaValue<String>,
     ) -> AuthResult<Option<FieldMap>> {
-        let id = id.typed()?;
-        let transaction = self.transaction().await?;
-        context(&transaction, "med_tracker.identity_factor_id", id).await?;
-        let row = FactorRow::find_by_statement(statement(
-            "SELECT * FROM public.identity_two_factors WHERE id=$1",
-            [id.into()],
+        Err(AuthError::config(
+            "Native authenticator record lookup is not configured",
         ))
-        .one(&*transaction)
-        .await
-        .map_err(database_error)?;
-        let result = row
-            .map(TwoFactor::from)
-            .map(|row| row.field_values())
-            .transpose()?;
-        transaction.commit().await.map_err(database_error)?;
-        Ok(result)
     }
 
     async fn update_two_factor_record(
@@ -172,9 +159,6 @@ impl TwoFactorStore for ClinicalStore {
                 })?)
             },
         };
-        if self.get_two_factor_record(id).await?.is_none() {
-            return Ok(None);
-        }
         self.update_two_factor(id, update)
             .await?
             .field_values()
