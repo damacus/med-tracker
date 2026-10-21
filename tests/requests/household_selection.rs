@@ -50,6 +50,17 @@ async fn verified_account_without_user_or_membership_creates_first_household() -
         .form(&[("name", "New care home"), ("authenticity_token", token)])
         .await;
     assert_eq!(created.status_code(), 303, "{}", created.text());
+    let response_request_id = created.header("x-request-id").to_str()?.to_owned();
+    let audit = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT request_id, audit_context->>'request_id' AS context_request_id FROM security_audit_events WHERE actor_account_id=71050 AND event_type='household_access.membership_created'")).await?.ok_or("creation audit missing")?;
+    assert_eq!(
+        audit.try_get::<String>("", "request_id")?,
+        response_request_id
+    );
+    assert_eq!(
+        audit.try_get::<String>("", "context_request_id")?,
+        response_request_id
+    );
     let location_header = created.header("location");
     let location = location_header.to_str()?;
     let dashboard = request.get(location).await;
@@ -63,6 +74,117 @@ async fn verified_account_without_user_or_membership_creates_first_household() -
     assert_eq!(identity.try_get::<i64>("", "people")?, 1);
     assert_eq!(identity.try_get::<i64>("", "users")?, 0);
     assert_eq!(identity.try_get::<i64>("", "person_events")?, 0);
+    drop(request);
+    close(fixture, boot).await;
+    Ok(())
+}
+
+#[tokio::test]
+async fn held_or_archived_household_membership_allows_new_selectable_household() -> TestResult {
+    for inactive_state in ["held", "archived"] {
+        let (fixture, boot) = boot_browser_fixture().await;
+        fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,password_hash,status,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',crypt('password',gen_salt('bf',4)),2,now(),now()); INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71050,now()); INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72050,71050,'Previous household','previous-household','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74050,72050,73050,'owner','active',now(),now(),now())").await?;
+        let inactive_sql = if inactive_state == "held" {
+            "UPDATE households SET lifecycle_state='held' WHERE id=72050"
+        } else {
+            "UPDATE households SET status='archived' WHERE id=72050"
+        };
+        fixture.admin.execute_unprepared(inactive_sql).await?;
+        let mut request = server(&boot);
+        request.save_cookies();
+        sign_in_account_only(&request, &boot).await;
+        let chooser = request.get("/households/choose").await;
+        assert_eq!(chooser.status_code(), 200, "{}", chooser.text());
+        let html = chooser.text();
+        assert!(html.contains("Create a household"));
+        let csrf = authenticity_token(&html).ok_or("creation token missing")?;
+        let created = request
+            .post("/households")
+            .add_header("sec-fetch-site", "same-origin")
+            .form(&[
+                ("name", "New selectable home"),
+                ("authenticity_token", csrf),
+            ])
+            .await;
+        assert_eq!(
+            created.status_code(),
+            303,
+            "{inactive_state}: {}",
+            created.text()
+        );
+        let dashboard = request.get(created.header("location").to_str()?).await;
+        assert_eq!(
+            dashboard.status_code(),
+            200,
+            "{inactive_state}: {}",
+            dashboard.text()
+        );
+        let old = request
+            .get("/households/previous-household/dashboard")
+            .await;
+        assert!(
+            old.status_code().is_client_error(),
+            "{inactive_state}: {}",
+            old.text()
+        );
+        drop(request);
+        close(fixture, boot).await;
+    }
+    Ok(())
+}
+
+#[tokio::test]
+async fn existing_member_invalid_creation_post_does_not_render_empty_chooser() -> TestResult {
+    let (fixture, boot) = boot_browser_fixture().await;
+    fixture.admin.execute_unprepared("INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71001,now()) ON CONFLICT(account_id) DO UPDATE SET recovery_saved_at=now()").await?;
+    let mut request = server(&boot);
+    request.save_cookies();
+    sign_in(&request, &boot).await;
+    let chooser = request.get("/households/choose?switch=1").await;
+    assert_eq!(chooser.status_code(), 200, "{}", chooser.text());
+    let chooser_html = chooser.text();
+    let csrf = authenticity_token(&chooser_html).ok_or("selection token missing")?;
+    let rejected = request
+        .post("/households")
+        .add_header("sec-fetch-site", "same-origin")
+        .form(&[("name", " "), ("authenticity_token", csrf)])
+        .await;
+    assert_eq!(rejected.status_code(), 403, "{}", rejected.text());
+    let chooser = request.get("/households/choose?switch=1").await;
+    assert_eq!(chooser.status_code(), 200, "{}", chooser.text());
+    assert!(chooser.text().contains("action=\"/households/select\""));
+    drop(request);
+    close(fixture, boot).await;
+    Ok(())
+}
+
+#[tokio::test]
+async fn supplementary_plane_name_above_browser_utf16_limit_is_accepted() -> TestResult {
+    let (fixture, boot) = boot_browser_fixture().await;
+    fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73050,'Household entrant',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,password_hash,status,created_at,updated_at) VALUES(71050,73050,'household-entry@example.test',crypt('password',gen_salt('bf',4)),2,now(),now()); INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71050,now())").await?;
+    let mut request = server(&boot);
+    request.save_cookies();
+    sign_in_account_only(&request, &boot).await;
+    let html = request.get("/households/choose").await.text();
+    let csrf = authenticity_token(&html).ok_or("creation token missing")?;
+    let name = format!("Care {}", "😀".repeat(51));
+    assert!(name.chars().count() <= 100);
+    assert!(name.encode_utf16().count() > 100);
+    let created = request
+        .post("/households")
+        .add_header("sec-fetch-site", "same-origin")
+        .form(&[("name", name.as_str()), ("authenticity_token", csrf)])
+        .await;
+    assert_eq!(created.status_code(), 303, "{}", created.text());
+    let row = fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT name FROM households WHERE created_by_account_id=71050",
+        ))
+        .await?
+        .ok_or("household missing")?;
+    assert_eq!(row.try_get::<String>("", "name")?, name);
     drop(request);
     close(fixture, boot).await;
     Ok(())

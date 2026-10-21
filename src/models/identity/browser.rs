@@ -173,7 +173,7 @@ impl BrowserPrincipal {
         let time_zone = super::time_zone::preferred(&account.preferences, settings)?;
         let existing = transaction
             .query_one_raw(sql(
-                "SELECT 1 FROM household_memberships WHERE person_id=$1 AND status='active' AND revoked_at IS NULL LIMIT 1",
+                "SELECT 1 FROM household_memberships m JOIN households h ON h.id=m.household_id WHERE m.person_id=$1 AND m.status='active' AND m.revoked_at IS NULL AND h.status='active' AND h.lifecycle_state='active' LIMIT 1",
                 [person.id.into()],
             ))
             .await

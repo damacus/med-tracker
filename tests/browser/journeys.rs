@@ -27,6 +27,9 @@ async fn account_only_household_entry_works_with_keyboard_at_desktop_and_mobile_
             page.get_by_label("Household name", true).press("Enter", None).await.unwrap();
             expect(page.get_by_role(AriaRole::Status, None)).to_contain_text("Enter a household name").await.unwrap();
             page.screenshot_to_file(Path::new("docs/screenshots/household-entry-error-mobile.png"), None).await.unwrap();
+            let long_unicode_name = format!("Care {}", "😀".repeat(51));
+            page.get_by_label("Household name", true).fill(&long_unicode_name, None).await.unwrap();
+            expect(page.get_by_label("Household name", true)).to_have_value(&long_unicode_name).await.unwrap();
             page.get_by_label("Household name", true).fill("Browser care home", None).await.unwrap();
             page.get_by_label("Household name", true).press("Enter", None).await.unwrap();
             expect(page.locator("#dashboard")).to_be_visible().await.unwrap();
