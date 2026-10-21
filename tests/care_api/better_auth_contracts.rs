@@ -1,11 +1,15 @@
 use better_auth_core::{
-    AuthRequest, CreateSession, CreateVerification, FieldMap, HttpMethod, SchemaValue,
-    UpdateAccount,
-    store::{AccountStore, SessionStore, VerificationStore, database_hooks::VerificationUpdate},
+    AuthError, AuthRequest, CreateSession, CreateVerification, FieldMap, FieldValue, HttpMethod,
+    SchemaValue, UpdateAccount, UpdateUser,
+    store::{
+        AccountStore, SessionStore, UserStore, VerificationStore,
+        database_hooks::VerificationUpdate,
+    },
 };
 use chrono::{Duration, Utc};
+use med_tracker::models::_entities::accounts;
 use med_tracker::models::identity::better_auth::{ClinicalAuthSchema, ClinicalStore};
-use sea_orm::{ConnectionTrait, DbBackend, Statement};
+use sea_orm::{ActiveModelTrait, ConnectionTrait, DbBackend, Set, Statement};
 
 use super::{Application, fixture::Fixture};
 
@@ -16,6 +20,133 @@ fn verification(identifier: &str) -> CreateVerification {
         expires_at: (Utc::now() + Duration::minutes(5)).into(),
         ..Default::default()
     }
+}
+
+#[tokio::test]
+async fn native_user_field_updates_preserve_selector_and_profile_guards() {
+    let fixture = Fixture::new().await;
+    let store = ClinicalStore::new(fixture.runtime.clone());
+    let verified = UserStore::<ClinicalAuthSchema>::update_user_by_field_value(
+        &store,
+        "email",
+        &"PERSISTENCE@EXAMPLE.TEST".into(),
+        UpdateUser {
+            email_verified: Some(true),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    assert_eq!(verified.id.typed().unwrap(), "71001");
+    assert!(
+        UserStore::<ClinicalAuthSchema>::update_user_by_field_value(
+            &store,
+            "email",
+            &"missing@example.test".into(),
+            UpdateUser::default(),
+        )
+        .await
+        .unwrap()
+        .is_none()
+    );
+    assert!(
+        UserStore::<ClinicalAuthSchema>::update_user_by_field_value(
+            &store,
+            "id",
+            &"71001".into(),
+            UpdateUser::default(),
+        )
+        .await
+        .unwrap()
+        .is_some()
+    );
+    for selector in [
+        FieldValue::Null,
+        FieldValue::Undefined,
+        false.into(),
+        7.0.into(),
+        Vec::<FieldValue>::new().into(),
+        FieldMap::new().into(),
+    ] {
+        assert!(matches!(
+            UserStore::<ClinicalAuthSchema>::update_user_by_field_value(
+                &store,
+                "email",
+                &selector,
+                UpdateUser::default(),
+            )
+            .await,
+            Err(AuthError::Validation(_))
+        ));
+    }
+    assert!(matches!(
+        UserStore::<ClinicalAuthSchema>::update_user_by_field_value(
+            &store,
+            "id",
+            &"not-an-account-id".into(),
+            UpdateUser::default(),
+        )
+        .await,
+        Err(AuthError::BadRequest(_) | AuthError::Validation(_))
+    ));
+    assert!(matches!(
+        UserStore::<ClinicalAuthSchema>::update_user_by_field_value(
+            &store,
+            "role",
+            &"owner".into(),
+            UpdateUser::default(),
+        )
+        .await,
+        Err(AuthError::Config(_))
+    ));
+    assert!(matches!(
+        UserStore::<ClinicalAuthSchema>::update_user_by_field_value(
+            &store,
+            "email",
+            &"persistence@example.test".into(),
+            UpdateUser {
+                email: Some("attacker@example.test".into()),
+                ..Default::default()
+            },
+        )
+        .await,
+        Err(AuthError::Validation(_))
+    ));
+    assert_eq!(
+        UserStore::<ClinicalAuthSchema>::get_user_by_id(&store, "71001")
+            .await
+            .unwrap()
+            .unwrap()
+            .email
+            .typed()
+            .unwrap()
+            .as_deref(),
+        Some("persistence@example.test")
+    );
+    accounts::ActiveModel {
+        id: Set(71001),
+        status: Set(3),
+        ..Default::default()
+    }
+    .update(&fixture.admin)
+    .await
+    .unwrap();
+    assert!(
+        UserStore::<ClinicalAuthSchema>::update_user_by_field_value(
+            &store,
+            "email",
+            &"persistence@example.test".into(),
+            UpdateUser {
+                email_verified: Some(true),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap()
+        .is_none()
+    );
+    fixture.close().await;
 }
 
 #[tokio::test]

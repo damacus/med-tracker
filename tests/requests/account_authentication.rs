@@ -6,6 +6,13 @@ use med_tracker::models::_entities::{
 };
 use sea_orm::{ActiveModelTrait, EntityTrait, Set};
 
+fn is_auth_session_cookie(header: &str) -> bool {
+    matches!(
+        header.split('=').next(),
+        Some("better-auth.session_token" | "__Secure-better-auth.session_token")
+    )
+}
+
 async fn enable_completed_onboarding(fixture: &Fixture, account_id: i64) {
     let active = identity_onboarding::ActiveModel {
         account_id: Set(account_id),
@@ -47,6 +54,208 @@ fn inventory_key(
             "expiresAt":expires_at.to_rfc3339()
         })),
     }
+}
+
+#[tokio::test]
+async fn account_authentication_password_signup_verifies_email_and_retains_first_login() {
+    let (fixture, boot) = boot_fixture().await;
+    app_settings::ActiveModel {
+        invite_only: Set(false),
+        created_at: Set(Utc::now().naive_utc()),
+        updated_at: Set(Utc::now().naive_utc()),
+        ..Default::default()
+    }
+    .insert(&fixture.admin)
+    .await
+    .unwrap();
+    let email = "password-confirmation@example.test";
+    let password = "Verification-passphrase-42";
+    let mut request = server(&boot);
+    request.save_cookies();
+    let signup = request
+        .post("/api/auth/onboarding/signup")
+        .add_header("origin", boot.app_context.config.server.full_url())
+        .json(&json!({"name":"Password confirmation owner","email":email,"date_of_birth":"1990-04-12","credential":"password","password":password}))
+        .await;
+    assert_eq!(signup.status_code(), 200, "{}", signup.text());
+    let pending = fixture.admin.query_one_raw(Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        "SELECT a.id,a.status,p.id AS credential_id,p.password AS credential_password,(SELECT count(*) FROM pg_loco_queue q WHERE q.task_data->>'to'=$1 AND q.task_data->>'subject'='Verify your account') AS mail_count FROM accounts a JOIN identity_provider_accounts p ON p.account_id=a.id AND p.provider_id='credential' AND p.disabled_at IS NULL WHERE a.email=$1",
+        [email.into()],
+    )).await.unwrap().unwrap();
+    let account_id: i64 = pending.try_get("", "id").unwrap();
+    let credential_id: String = pending.try_get("", "credential_id").unwrap();
+    let credential_password: String = pending.try_get("", "credential_password").unwrap();
+    assert_eq!(pending.try_get::<i32>("", "status").unwrap(), 1);
+    assert_eq!(pending.try_get::<i64>("", "mail_count").unwrap(), 1);
+    assert!(!credential_password.is_empty());
+    let mail = fixture.admin.query_one_raw(Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        "SELECT task_data FROM pg_loco_queue WHERE task_data->>'to'=$1 AND task_data->>'subject'='Verify your account' ORDER BY created_at DESC LIMIT 1",
+        [email.into()],
+    )).await.unwrap().unwrap();
+    let mail: Value = mail.try_get("", "task_data").unwrap();
+    let link = url::Url::parse(
+        mail["text"]
+            .as_str()
+            .unwrap()
+            .split_whitespace()
+            .last()
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(link.path(), "/verify-account-confirm");
+    let token = link
+        .query_pairs()
+        .find(|(name, _)| name == "token")
+        .map(|(_, value)| value.into_owned())
+        .unwrap();
+    let confirmation_page = request
+        .get(&format!("{}?{}", link.path(), link.query().unwrap()))
+        .await;
+    assert_eq!(
+        confirmation_page.status_code(),
+        200,
+        "{}",
+        confirmation_page.text()
+    );
+    let csrf = confirmation_page
+        .text()
+        .split("name=\"authenticity_token\" value=\"")
+        .nth(1)
+        .and_then(|value| value.split('"').next())
+        .unwrap()
+        .to_owned();
+    let tampered = request
+        .post("/verify-account-confirm")
+        .add_header("origin", boot.app_context.config.server.full_url())
+        .add_header("sec-fetch-site", "same-origin")
+        .form(&[
+            ("token", format!("invalid{token}").as_str()),
+            ("authenticity_token", csrf.as_str()),
+        ])
+        .await;
+    assert_eq!(tampered.status_code(), 303, "{}", tampered.text());
+    assert_eq!(tampered.header("location"), "/login");
+    assert!(
+        !tampered
+            .headers()
+            .get_all("set-cookie")
+            .iter()
+            .filter_map(|header| header.to_str().ok())
+            .any(is_auth_session_cookie)
+    );
+    let pending = accounts::Entity::find_by_id(account_id)
+        .one(&fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(pending.status, 1);
+    let pending_sessions = fixture
+        .admin
+        .query_one_raw(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            "SELECT count(*) AS sessions FROM identity_sessions WHERE account_id=$1",
+            [account_id.into()],
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(pending_sessions.try_get::<i64>("", "sessions").unwrap(), 0);
+    let confirmed = request
+        .post("/verify-account-confirm")
+        .add_header("origin", boot.app_context.config.server.full_url())
+        .add_header("sec-fetch-site", "same-origin")
+        .form(&[
+            ("token", token.as_str()),
+            ("authenticity_token", csrf.as_str()),
+        ])
+        .await;
+    assert_eq!(confirmed.status_code(), 303, "{}", confirmed.text());
+    assert_eq!(confirmed.header("location"), "/auth/passkey/setup");
+    let session_cookie = confirmed
+        .headers()
+        .get_all("set-cookie")
+        .iter()
+        .filter_map(|header| header.to_str().ok())
+        .rfind(|header| is_auth_session_cookie(header))
+        .unwrap()
+        .split(';')
+        .next()
+        .unwrap()
+        .to_owned();
+    let native_session = request
+        .get("/api/auth/get-session")
+        .add_header("cookie", session_cookie.clone())
+        .await;
+    assert_eq!(
+        native_session.status_code(),
+        200,
+        "{}",
+        native_session.text()
+    );
+    assert_eq!(
+        native_session.json::<Value>()["session"]["clinical_session_purpose"],
+        "enrolment"
+    );
+    let setup = request
+        .get("/auth/passkey/setup")
+        .add_header("cookie", session_cookie)
+        .await;
+    assert_eq!(setup.status_code(), 200, "{}", setup.text());
+    assert!(setup.text().contains("Your password is ready"));
+    let replay = request
+        .post("/verify-account-confirm")
+        .add_header("origin", boot.app_context.config.server.full_url())
+        .add_header("sec-fetch-site", "same-origin")
+        .form(&[
+            ("token", token.as_str()),
+            ("authenticity_token", csrf.as_str()),
+        ])
+        .await;
+    assert_eq!(replay.status_code(), 303, "{}", replay.text());
+    assert_eq!(replay.header("location"), "/login");
+    assert!(
+        !replay
+            .headers()
+            .get_all("set-cookie")
+            .iter()
+            .filter_map(|header| header.to_str().ok())
+            .any(is_auth_session_cookie)
+    );
+    let verified = fixture.admin.query_one_raw(Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        "SELECT a.status,p.password,(SELECT count(*) FROM versions v WHERE v.item_type='AuthenticationToken' AND v.item_id=a.id AND v.event='auth_token/email_verification/verified') AS audits,(SELECT count(*) FROM pg_loco_queue q WHERE q.task_data->>'to'=a.email::text AND q.task_data->>'subject'='Verify your account') AS mail_count,(SELECT count(*) FROM identity_sessions s WHERE s.account_id=a.id AND s.active AND s.purpose='enrolment') AS sessions FROM accounts a JOIN identity_provider_accounts p ON p.account_id=a.id AND p.id=$2 WHERE a.id=$1",
+        [account_id.into(), credential_id.into()],
+    )).await.unwrap().unwrap();
+    assert_eq!(verified.try_get::<i32>("", "status").unwrap(), 2);
+    assert_eq!(
+        verified.try_get::<String>("", "password").unwrap(),
+        credential_password
+    );
+    assert_eq!(verified.try_get::<i64>("", "audits").unwrap(), 1);
+    assert_eq!(verified.try_get::<i64>("", "mail_count").unwrap(), 1);
+    assert_eq!(verified.try_get::<i64>("", "sessions").unwrap(), 1);
+    let fresh = server(&boot);
+    let signed_in = fresh
+        .post("/api/auth/sign-in/email")
+        .add_header("origin", boot.app_context.config.server.full_url())
+        .json(&json!({"email":email,"password":password}))
+        .await;
+    assert_eq!(signed_in.status_code(), 200, "{}", signed_in.text());
+    assert_eq!(
+        signed_in.json::<Value>()["user"]["id"],
+        account_id.to_string()
+    );
+    let denied = fresh
+        .post("/api/auth/sign-in/email")
+        .add_header("origin", boot.app_context.config.server.full_url())
+        .json(&json!({"email":email,"password":"wrong-password"}))
+        .await;
+    assert_eq!(denied.status_code(), 401, "{}", denied.text());
+    drop(fresh);
+    drop(request);
+    close(fixture, boot).await;
 }
 
 #[tokio::test]

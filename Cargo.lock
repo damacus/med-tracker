@@ -1214,7 +1214,7 @@ dependencies = [
 [[package]]
 name = "better-auth"
 version = "1.0.0-alpha.4"
-source = "git+https://github.com/better-auth-rs/better-auth-rs?rev=df6a9cbfce9273e4e8fa1e31f3d0b9d7cdcb8e3c#df6a9cbfce9273e4e8fa1e31f3d0b9d7cdcb8e3c"
+source = "git+https://github.com/better-auth-rs/better-auth-rs?rev=83fbe69b40dd4e69b74e20f2a238ce54ced82b90#83fbe69b40dd4e69b74e20f2a238ce54ced82b90"
 dependencies = [
  "argon2",
  "async-trait",
@@ -1241,7 +1241,7 @@ dependencies = [
 [[package]]
 name = "better-auth-api"
 version = "1.0.0-alpha.4"
-source = "git+https://github.com/better-auth-rs/better-auth-rs?rev=df6a9cbfce9273e4e8fa1e31f3d0b9d7cdcb8e3c#df6a9cbfce9273e4e8fa1e31f3d0b9d7cdcb8e3c"
+source = "git+https://github.com/better-auth-rs/better-auth-rs?rev=83fbe69b40dd4e69b74e20f2a238ce54ced82b90#83fbe69b40dd4e69b74e20f2a238ce54ced82b90"
 dependencies = [
  "aes-gcm 0.10.3",
  "async-trait",
@@ -1287,7 +1287,7 @@ dependencies = [
 [[package]]
 name = "better-auth-core"
 version = "1.0.0-alpha.4"
-source = "git+https://github.com/better-auth-rs/better-auth-rs?rev=df6a9cbfce9273e4e8fa1e31f3d0b9d7cdcb8e3c#df6a9cbfce9273e4e8fa1e31f3d0b9d7cdcb8e3c"
+source = "git+https://github.com/better-auth-rs/better-auth-rs?rev=83fbe69b40dd4e69b74e20f2a238ce54ced82b90#83fbe69b40dd4e69b74e20f2a238ce54ced82b90"
 dependencies = [
  "argon2",
  "async-trait",
@@ -1333,7 +1333,7 @@ dependencies = [
 [[package]]
 name = "better-auth-macros"
 version = "1.0.0-alpha.4"
-source = "git+https://github.com/better-auth-rs/better-auth-rs?rev=df6a9cbfce9273e4e8fa1e31f3d0b9d7cdcb8e3c#df6a9cbfce9273e4e8fa1e31f3d0b9d7cdcb8e3c"
+source = "git+https://github.com/better-auth-rs/better-auth-rs?rev=83fbe69b40dd4e69b74e20f2a238ce54ced82b90#83fbe69b40dd4e69b74e20f2a238ce54ced82b90"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1343,7 +1343,7 @@ dependencies = [
 [[package]]
 name = "better-auth-schema-registry"
 version = "1.0.0-alpha.4"
-source = "git+https://github.com/better-auth-rs/better-auth-rs?rev=df6a9cbfce9273e4e8fa1e31f3d0b9d7cdcb8e3c#df6a9cbfce9273e4e8fa1e31f3d0b9d7cdcb8e3c"
+source = "git+https://github.com/better-auth-rs/better-auth-rs?rev=83fbe69b40dd4e69b74e20f2a238ce54ced82b90#83fbe69b40dd4e69b74e20f2a238ce54ced82b90"
 dependencies = [
  "serde",
 ]

@@ -80,10 +80,28 @@ impl AuthPlugin<ClinicalAuthSchema> for Confirmation {
         let mut verification = AuthRequest::new(HttpMethod::Get, "/verify-email");
         verification.headers = request.headers.clone();
         verification.query = Some(json!({"token":input.token,"callbackURL":"/auth/passkey/setup"}));
-        EmailVerificationPlugin::new()
+        let response = EmailVerificationPlugin::new()
             .auto_sign_in_after_verification(true)
             .require_verification_for_signin(true)
             .on_request(&verification, ctx)
-            .await
+            .await?;
+        if response
+            .as_ref()
+            .is_some_and(|response| response.status < 400)
+        {
+            for (name, value) in verification.take_response_headers()? {
+                if name.eq_ignore_ascii_case("set-cookie") {
+                    request.append_response_header(&name, value)?;
+                } else if !name.eq_ignore_ascii_case("cache-control")
+                    && !name.eq_ignore_ascii_case("pragma")
+                {
+                    request.set_response_header(&name, value)?;
+                }
+            }
+            if let Some(session) = verification.new_session()? {
+                ctx.session_manager().publish_session(request, session)?;
+            }
+        }
+        Ok(response)
     }
 }

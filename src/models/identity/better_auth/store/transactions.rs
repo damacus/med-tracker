@@ -105,6 +105,21 @@ impl AuthTransaction<ClinicalAuthSchema> for ClinicalTransaction {
         .await
     }
 
+    async fn update_user_by_field_value(
+        &self,
+        field: &str,
+        value: &FieldValue,
+        update: UpdateUser,
+    ) -> AuthResult<Option<UserView>> {
+        self.in_scope(UserStore::<ClinicalAuthSchema>::update_user_by_field_value(
+            &self.store,
+            field,
+            value,
+            update,
+        ))
+        .await
+    }
+
     async fn update_user(&self, id: &str, update: UpdateUser) -> AuthResult<UserView> {
         self.in_scope(UserStore::<ClinicalAuthSchema>::update_user(
             &self.store,
