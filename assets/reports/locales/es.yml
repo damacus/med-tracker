@@ -3151,7 +3151,7 @@ es:
       refresh: "El estado del tutor ha cambiado. Revisa las opciones actuales y confirma de nuevo."
       intro: "Elige un menor sin tutor en este hogar. El acceso solo se concede tras tu confirmación explícita."
       birthday: "Cerca del decimoctavo cumpleaños, la recuperación puede no estar disponible temporalmente durante el intervalo mundial de husos UTC, unas 26 horas."
-      subjects_incomplete: "Solo se muestran los primeros 100 menores elegibles. Esta lista está incompleta."
+      subjects_incomplete: "Solo se comprobaron los primeros 100 menores candidatos de este hogar. Puede haber más menores elegibles."
       guardians_incomplete: "Solo se muestran los primeros 100 adultos elegibles. Esta lista está incompleta."
       choose: "Revisar recuperación"
       empty: "No se muestran menores elegibles."

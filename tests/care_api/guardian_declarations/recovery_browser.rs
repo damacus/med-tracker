@@ -67,6 +67,19 @@ async fn guardian_recovery_browser_appoints_with_audit_and_new_guardian_can_with
             ("link_token",link.as_str()),("reason","Manager confirmed a new guardian for this minor."),
             ("confirm_recovery","true")]).await;
         require(denied.status().as_u16()==403,"Recovery must reject a missing CSRF token")?;
+        let malformed=post_form(&app,&cookies,path,&[form[0],form[1],form[2],
+            ("snapshot_token","not-a-uuid"),form[4],form[5],form[6],("confirm_recovery","true")]).await;
+        require(malformed.status().as_u16()==422,"Malformed hidden snapshot must be rejected")?;
+        let malformed_page=malformed.text().await.map_err(|error|DbErr::Custom(error.to_string()))?;
+        require(malformed_page.contains("href=\"#recovery-form\"")
+            && malformed_page.contains("id=\"recovery-form\" tabindex=\"-1\""),
+            "Hidden-field error must link to a focusable fallback when no restore form exists")?;
+        let unknown_action=post_form(&app,&cookies,path,&[form[0],("action","unexpected"),form[2],form[3],form[4],form[5],form[6],("confirm_recovery","true")]).await;
+        require(unknown_action.status().as_u16()==422,"Unknown action must be rejected")?;
+        let unknown_page=unknown_action.text().await.map_err(|error|DbErr::Custom(error.to_string()))?;
+        require(unknown_page.contains("href=\"#recovery-form\"")
+            && !unknown_page.contains("href=\"#restore-reason\""),
+            "Untrusted action must use the safe focusable fallback")?;
         let stale=post_form(&app,&cookies,path,&[form[0],form[1],form[2],
             ("snapshot_token","11111111-1111-4111-8111-111111111111"),form[4],form[5],form[6],
             ("confirm_recovery","true")]).await;
@@ -141,6 +154,18 @@ async fn guardian_recovery_browser_restores_exact_inactive_link_and_preserves_ge
             ("snapshot_token",snapshot.as_str()),("snapshot_revision",revision.as_str()),
             ("link_token",link_token.as_str()),("reason","Manager restored an existing guardian link."),
             ("confirm_recovery","true")];
+        let missing_confirm=post_form(&app,&cookies,&path,&form[..9]).await;
+        require(missing_confirm.status().as_u16()==422,"Restore confirmation must be required")?;
+        let confirmation_page=missing_confirm.text().await.map_err(|error|DbErr::Custom(error.to_string()))?;
+        require(confirmation_page.contains("href=\"#restore-confirm\"")
+            && confirmation_page.contains("id=\"restore-confirm\""),
+            "Restore confirmation error must target the restore checkbox")?;
+        let invalid_reason=post_form(&app,&cookies,&path,&[form[0],form[1],form[2],form[3],form[4],form[5],form[6],form[7],("reason","short"),form[9]]).await;
+        require(invalid_reason.status().as_u16()==422,"Short restore reason must be rejected")?;
+        let reason_page=invalid_reason.text().await.map_err(|error|DbErr::Custom(error.to_string()))?;
+        require(reason_page.contains("href=\"#restore-reason\"")
+            && reason_page.contains("id=\"restore-reason\""),
+            "Restore reason error must target the restore textarea")?;
         let restored=post_form(&app,&cookies,&path,&form).await;
         require(restored.status().as_u16()==303,"Exact guardian restore must redirect after commit")?;
         let row=app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,

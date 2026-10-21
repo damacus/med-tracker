@@ -3117,7 +3117,7 @@ en:
       refresh: "Guardian status changed. Review the current options and confirm again."
       intro: "Choose an orphaned minor in this household. Recovery grants guardian access only after your explicit confirmation."
       birthday: "Around an eighteenth birthday, recovery may be temporarily unavailable for up to the worldwide UTC offset span of about 26 hours."
-      subjects_incomplete: "Only the first 100 eligible minors are shown. This list is incomplete."
+      subjects_incomplete: "Only the first 100 local minor candidates were checked. More eligible minors may exist."
       guardians_incomplete: "Only the first 100 eligible adults are shown. This list is incomplete."
       choose: "Review recovery"
       empty: "No eligible minors are shown."

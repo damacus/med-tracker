@@ -236,6 +236,24 @@ impl<'a> Page<'a> {
                     .into_iter()
                     .find(|subject| subject.id.get() == id && !subject.has_effective_guardian)
                     .ok_or(OperationError::NotFound)?;
+                let restore_selected = submitted
+                    .is_some_and(|draft| forms::field(draft, "action") == "restore")
+                    && subject.restorable.is_some();
+                let appoint_selected =
+                    submitted.is_some_and(|draft| forms::field(draft, "action") == "appoint");
+                if let Some(errors) = data["errors"].as_array_mut() {
+                    for error in errors {
+                        let target = match error["field"].as_str() {
+                            Some("reason") if restore_selected => "restore-reason",
+                            Some("confirm_recovery") if restore_selected => "restore-confirm",
+                            Some("reason") if appoint_selected => "reason",
+                            Some("confirm_recovery") if appoint_selected => "confirm_recovery",
+                            Some("guardian_id") if appoint_selected => "guardian_id",
+                            _ => "recovery-form",
+                        };
+                        error["field"] = json!(target);
+                    }
+                }
                 data["subject"] = json!({
                     "id":subject.id.get(),"name":subject.name,
                     "snapshot_token":subject.snapshot.token.to_string(),
