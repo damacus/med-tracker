@@ -3,7 +3,7 @@
 <section class="people-page max-w-6xl mx-auto">
   <header class="shell-page-heading">
     <div><p class="shell-eyebrow">{{ labels.people.index.eyebrow }}</p><h1>{{ labels.home.cards.people.title }}</h1></div>
-    {% if can_create %}<a class="btn btn-primary" href="/households/{{ slug }}/people/new">{{ labels.people.form.new_heading }}</a>{% endif %}
+    {% if can_create %}<a class="btn btn-primary" href="/households/{{ slug }}/people/new{{ language_suffix | default(value="") }}">{{ labels.people.form.new_heading }}</a>{% endif %}
   </header>
   <ul class="people-grid">
   {% for person in people %}
@@ -12,7 +12,7 @@
         <span>{{ person.avatar_initials }}</span>
         {% if person.avatar_attached %}<img src="/households/{{ slug }}/people/{{ person.id }}/avatar" alt="" data-avatar-image>{% elif person.gravatar_url %}<img src="{{ person.gravatar_url }}" alt="" referrerpolicy="no-referrer" data-avatar-image>{% endif %}
       </div>
-      <h2><a href="/households/{{ slug }}/people/{{ person.id }}">{{ person.name }}</a></h2>
+      <h2><a href="/households/{{ slug }}/people/{{ person.id }}{{ language_suffix | default(value="") }}">{{ person.name }}</a></h2>
       {% set care_warning = person.care_warning %}{% include "components/care_warning.html" %}
       <dl class="person-facts">
         <div><dt>{{ labels.people.card.born }}</dt><dd>{% if person.date_of_birth_display %}<time datetime="{{ person.date_of_birth }}">{{ person.date_of_birth_display }}</time>{% else %}{{ labels.people.show.browser.not_recorded }}{% endif %}</dd></div>
@@ -21,20 +21,20 @@
       </dl>
       <div class="person-card-actions">
         {% if person.can_manage %}<a class="btn btn-primary" href="/households/{{ slug }}/add-medication?person_id={{ person.id }}">{{ labels.people.card.add_medication }}</a>{% endif %}
-        <a class="btn btn-outline" href="/households/{{ slug }}/people/{{ person.id }}">{{ labels.people.card.view_medications }}</a>
+        <a class="btn btn-outline" href="/households/{{ slug }}/people/{{ person.id }}{{ language_suffix | default(value="") }}">{{ labels.people.card.view_medications }}</a>
       </div>
     </li>
   {% else %}
     <li class="shell-panel people-empty">
       <svg aria-hidden="true" class="w-10 h-10"><use href="/static/profile-icons.svg#people"></use></svg>
       <h2>{{ labels.people.index.empty }}</h2>
-      {% if can_create %}<p>{{ labels.people.form.new_subheading }}</p><a class="btn btn-primary" href="/households/{{ slug }}/people/new">{{ labels.people.form.new_heading }}</a>{% endif %}
+      {% if can_create %}<p>{{ labels.people.form.new_subheading }}</p><a class="btn btn-primary" href="/households/{{ slug }}/people/new{{ language_suffix | default(value="") }}">{{ labels.people.form.new_heading }}</a>{% endif %}
     </li>
   {% endfor %}
   </ul>
   {% if previous_page or next_page %}<nav aria-label="{{ labels.people.index.pages }}" class="flex flex-wrap justify-between gap-4 mt-6">
-    {% if previous_page %}<a class="btn btn-outline" href="?page={{ previous_page }}&amp;per_page={{ per_page }}">{{ labels.people.index.previous }}</a>{% endif %}
-    {% if next_page %}<a class="btn btn-outline ml-auto" href="?page={{ next_page }}&amp;per_page={{ per_page }}">{{ labels.people.index.next }}</a>{% endif %}
+    {% if previous_page %}<a class="btn btn-outline" href="?page={{ previous_page }}&amp;per_page={{ per_page }}{% if language_explicit | default(value=false) %}&amp;lang={{ lang }}{% endif %}">{{ labels.people.index.previous }}</a>{% endif %}
+    {% if next_page %}<a class="btn btn-outline ml-auto" href="?page={{ next_page }}&amp;per_page={{ per_page }}{% if language_explicit | default(value=false) %}&amp;lang={{ lang }}{% endif %}">{{ labels.people.index.next }}</a>{% endif %}
   </nav>{% endif %}
 </section>
 {% endblock content %}

@@ -4,7 +4,7 @@ use crate::models::{
     profile,
 };
 use loco_rs::model::TenantQueryExt;
-use sea_orm::{ConnectionTrait, DbBackend, Statement};
+use sea_orm::{ConnectionTrait, DbBackend, QuerySelect, QueryTrait, Statement};
 use std::collections::HashSet;
 
 pub async fn enrich(
@@ -62,47 +62,7 @@ pub async fn enrich(
         uploaded.insert(row.try_get("", "id")?);
     }
     let gravatars = profile::gravatar::for_visible_people(tenant, &people, &uploaded).await?;
-    let schedules = access::schedule_scope(tenant)
-        .filter(schedule::Column::PersonId.is_in(ids.clone()))
-        .all(db)
-        .await?;
-    let assignments = person_medication::Entity::find()
-        .in_tenant(tenant.scope().household_id)
-        .filter(person_medication::Column::PersonId.is_in(ids))
-        .filter(person_medication::Column::RetiredAt.is_null())
-        .all(db)
-        .await?;
-    let mut care =
-        super::super::treatments::projection::serialize_schedules(db, tenant, schedules).await?;
-    care.extend(
-        super::super::treatments::projection::serialize_assignments(db, tenant, assignments)
-            .await?,
-    );
-    let visible_medicines: HashSet<_> = access::medication_scope(tenant)
-        .filter(
-            medication::Column::Id.is_in(
-                care.iter()
-                    .filter_map(|row| row["medication_id"].as_i64())
-                    .collect::<Vec<_>>(),
-            ),
-        )
-        .all(db)
-        .await?
-        .into_iter()
-        .map(|row| row.id)
-        .collect();
-    let mut counts: HashMap<i64, usize> = HashMap::new();
-    for row in care {
-        if row["active"] == true
-            && row["paused"] != true
-            && row["medication_id"]
-                .as_i64()
-                .is_some_and(|id| visible_medicines.contains(&id))
-            && let Some(id) = row["person_id"].as_i64()
-        {
-            *counts.entry(id).or_default() += 1;
-        }
-    }
+    let counts = active_source_counts(tenant, &ids).await?;
     if let Some(rows) = collection["data"].as_array_mut() {
         for row in rows {
             let id = row["id"].as_i64().ok_or(OperationError::Unavailable)?;
@@ -136,6 +96,58 @@ pub async fn enrich(
         }
     }
     Ok(())
+}
+
+#[derive(sea_orm::FromQueryResult)]
+struct PersonSourceCount {
+    person_id: i64,
+    source_count: i64,
+}
+
+async fn active_source_counts(
+    tenant: &TenantTransaction,
+    ids: &[i64],
+) -> Result<HashMap<i64, i64>, OperationError> {
+    let reference_date = Utc::now()
+        .with_timezone(&crate::models::care::doses::app_zone(tenant.settings()))
+        .date_naive();
+    let visible_medicines = || {
+        access::medication_scope(tenant)
+            .select_only()
+            .column(medication::Column::Id)
+            .into_query()
+    };
+    let schedules = access::schedule_scope(tenant)
+        .select_only()
+        .column(schedule::Column::PersonId)
+        .column_as(schedule::Column::Id.count(), "source_count")
+        .filter(schedule::Column::PersonId.is_in(ids.to_vec()))
+        .filter(schedule::Column::Active.eq(true))
+        .filter(schedule::Column::StartDate.lte(reference_date))
+        .filter(schedule::Column::EndDate.gte(reference_date))
+        .filter(schedule::Column::MedicationId.in_subquery(visible_medicines()))
+        .group_by(schedule::Column::PersonId)
+        .into_model::<PersonSourceCount>()
+        .all(tenant.transaction())
+        .await?;
+    let assignments = person_medication::Entity::find()
+        .select_only()
+        .column(person_medication::Column::PersonId)
+        .column_as(person_medication::Column::Id.count(), "source_count")
+        .in_tenant(tenant.scope().household_id)
+        .filter(person_medication::Column::PersonId.is_in(ids.to_vec()))
+        .filter(person_medication::Column::RetiredAt.is_null())
+        .filter(person_medication::Column::Active.eq(true))
+        .filter(person_medication::Column::MedicationId.in_subquery(visible_medicines()))
+        .group_by(person_medication::Column::PersonId)
+        .into_model::<PersonSourceCount>()
+        .all(tenant.transaction())
+        .await?;
+    let mut counts = HashMap::new();
+    for row in schedules.into_iter().chain(assignments) {
+        *counts.entry(row.person_id).or_default() += row.source_count;
+    }
+    Ok(counts)
 }
 
 pub(crate) fn birth_date(value: Option<&str>, labels: &Value) -> Option<String> {
