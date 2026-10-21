@@ -11,6 +11,24 @@ use serde_json::Value;
 use super::super::ClinicalAuthSchema;
 use super::{ClinicalStore, clinical_id, context, database_error, statement};
 
+const RESERVED_SESSION_FIELDS: &[&str] = &[
+    "id",
+    "userId",
+    "token",
+    "expiresAt",
+    "createdAt",
+    "updatedAt",
+    "ipAddress",
+    "userAgent",
+    "impersonatedBy",
+    "activeOrganizationId",
+    "activeTeamId",
+    "active",
+    "clinical_session_purpose",
+    "authentication_method",
+    "legacy_factor_pending",
+];
+
 #[derive(FromQueryResult)]
 struct SessionRow {
     id: String,
@@ -138,15 +156,9 @@ impl ClinicalStore {
         let mut additional_fields = input.inherited_fields.clone();
         additional_fields.extend(self.session_defaults()?);
         additional_fields.extend(input.additional_fields.clone());
-        if [
-            "clinical_session_purpose",
-            "authentication_method",
-            "legacy_factor_pending",
-            "activeTeamId",
-            "activeOrganizationId",
-        ]
-        .iter()
-        .any(|field| additional_fields.contains_key(*field))
+        if RESERVED_SESSION_FIELDS
+            .iter()
+            .any(|field| additional_fields.contains_key(*field))
         {
             return Err(AuthError::forbidden(
                 "Session assurance and membership require verified operations",
@@ -289,21 +301,33 @@ impl SessionStore<ClinicalAuthSchema> for ClinicalStore {
     async fn update_session_fields(
         &self,
         token: &str,
-        fields: FieldMap,
+        mut fields: FieldMap,
     ) -> AuthResult<Option<SessionView>> {
-        if [
-            "clinical_session_purpose",
-            "authentication_method",
-            "legacy_factor_pending",
-            "activeTeamId",
-            "activeOrganizationId",
-        ]
-        .iter()
-        .any(|field| fields.contains_key(*field))
+        if RESERVED_SESSION_FIELDS
+            .iter()
+            .filter(|field| !matches!(**field, "expiresAt" | "updatedAt"))
+            .any(|field| fields.contains_key(*field))
         {
             return Err(AuthError::forbidden(
                 "Session assurance cannot be changed through profile fields",
             ));
+        }
+        let expires_at = fields
+            .remove("expiresAt")
+            .map(|value| {
+                value
+                    .as_date()
+                    .ok_or_else(|| AuthError::validation("Invalid session expiry"))?
+                    .to_datetime()?
+                    .ok_or_else(|| AuthError::validation("Invalid session expiry"))
+            })
+            .transpose()?;
+        if let Some(updated_at) = fields.remove("updatedAt") {
+            updated_at
+                .as_date()
+                .ok_or_else(|| AuthError::validation("Invalid session update time"))?
+                .to_datetime()?
+                .ok_or_else(|| AuthError::validation("Invalid session update time"))?;
         }
         let (transaction, row) = self.session_transaction(token).await?;
         if row.is_none() {
@@ -313,7 +337,11 @@ impl SessionStore<ClinicalAuthSchema> for ClinicalStore {
         let fields = FieldValue::from(fields)
             .json()?
             .ok_or_else(|| AuthError::validation("Invalid session fields"))?;
-        let mut row = SessionRow::find_by_statement(statement("UPDATE public.identity_sessions SET additional_fields=additional_fields || $2::jsonb,updated_at=CURRENT_TIMESTAMP WHERE token=$1 RETURNING *", [token_digest(token).into(), fields.into()])).one(&*transaction).await.map_err(database_error)?;
+        let mut row = if let Some(expires_at) = expires_at {
+            SessionRow::find_by_statement(statement("UPDATE public.identity_sessions SET expires_at=LEAST($2,clock_timestamp()+interval '7 days',created_at+CASE WHEN additional_fields->>'legacy_factor_pending'='true' THEN interval '5 minutes' ELSE interval '30 days' END),additional_fields=(additional_fields - 'expiresAt' - 'updatedAt') || $3::jsonb,updated_at=clock_timestamp() WHERE token=$1 RETURNING *", [token_digest(token).into(), expires_at.into(), fields.into()])).one(&*transaction).await.map_err(database_error)?
+        } else {
+            SessionRow::find_by_statement(statement("UPDATE public.identity_sessions SET additional_fields=(additional_fields - 'expiresAt' - 'updatedAt') || $2::jsonb,updated_at=clock_timestamp() WHERE token=$1 RETURNING *", [token_digest(token).into(), fields.into()])).one(&*transaction).await.map_err(database_error)?
+        };
         if let Some(row) = &mut row {
             row.token = token.to_owned();
         }

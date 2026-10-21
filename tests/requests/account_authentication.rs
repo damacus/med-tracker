@@ -329,14 +329,19 @@ async fn account_authentication_retained_factor_promotes_without_clinical_actor(
         .json(&json!({"code":code}))
         .await;
     assert_eq!(verified.status_code(), 200, "{}", verified.text());
+    let cookie_name = cookie.split('=').next().unwrap();
     let authenticated_cookie = verified
-        .header("set-cookie")
-        .to_str()
+        .headers()
+        .get_all("set-cookie")
+        .iter()
+        .filter_map(|header| header.to_str().ok())
+        .rfind(|header| header.split('=').next() == Some(cookie_name))
         .unwrap()
         .split(';')
         .next()
         .unwrap()
         .to_owned();
+    assert_ne!(authenticated_cookie, cookie);
     let promoted = request
         .get("/api/auth/get-session")
         .add_header("cookie", authenticated_cookie)

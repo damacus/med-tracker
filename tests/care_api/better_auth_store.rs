@@ -305,6 +305,117 @@ async fn better_auth_sessions_store_only_non_reusable_digests() {
 }
 
 #[tokio::test]
+async fn better_auth_session_field_refresh_updates_native_expiry_with_lifetime_caps() {
+    use better_auth_core::{CreateSession, FieldDate, FieldMap, FieldValue};
+
+    let fixture = Fixture::new().await;
+    fixture
+        .admin
+        .execute_unprepared(
+            "INSERT INTO identity_onboarding(account_id,recovery_saved_at) VALUES(71001,now())",
+        )
+        .await
+        .unwrap();
+    let store = ClinicalStore::new(fixture.runtime.clone());
+    let issued = store
+        .create_session(CreateSession {
+            user_id: "71001".into(),
+            expires_at: (Utc::now() + Duration::days(1)).into(),
+            ip_address: None,
+            user_agent: None,
+            impersonated_by: None,
+            active_organization_id: None,
+            additional_fields: Default::default(),
+            inherited_fields: Default::default(),
+        })
+        .await
+        .unwrap();
+    fixture.admin.execute_unprepared("UPDATE identity_sessions SET created_at=now()-interval '2 days',updated_at=now()-interval '2 days',expires_at=now()+interval '1 hour' WHERE account_id=71001").await.unwrap();
+    let refreshed = store
+        .update_session_fields(
+            issued.token.typed().unwrap(),
+            FieldMap::from([
+                (
+                    "expiresAt".into(),
+                    FieldDate::from(Utc::now() + Duration::days(60)).into(),
+                ),
+                (
+                    "updatedAt".into(),
+                    FieldDate::from(Utc::now() - Duration::days(10)).into(),
+                ),
+            ]),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    let row = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT expires_at>now()+interval '6 days' AS renewed,expires_at<=now()+interval '7 days' AS capped,updated_at>now()-interval '1 minute' AS touched,additional_fields ? 'expiresAt' AS shadow_expiry,additional_fields ? 'updatedAt' AS shadow_updated FROM identity_sessions WHERE account_id=71001"
+    )).await.unwrap().unwrap();
+    assert!(row.try_get::<bool>("", "renewed").unwrap());
+    assert!(row.try_get::<bool>("", "capped").unwrap());
+    assert!(row.try_get::<bool>("", "touched").unwrap());
+    assert!(!row.try_get::<bool>("", "shadow_expiry").unwrap());
+    assert!(!row.try_get::<bool>("", "shadow_updated").unwrap());
+    assert!(
+        refreshed
+            .expires_at
+            .typed()
+            .unwrap()
+            .to_datetime()
+            .unwrap()
+            .unwrap()
+            > Utc::now() + Duration::days(6)
+    );
+    assert!(
+        store
+            .update_session_fields(
+                issued.token.typed().unwrap(),
+                FieldMap::from([("expiresAt".into(), FieldValue::from("unparseable"))])
+            )
+            .await
+            .is_err()
+    );
+    assert!(
+        store
+            .update_session_fields(
+                issued.token.typed().unwrap(),
+                FieldMap::from([("updatedAt".into(), FieldValue::Null)])
+            )
+            .await
+            .is_err()
+    );
+    for field in ["token", "userId", "active", "createdAt"] {
+        assert!(
+            store
+                .update_session_fields(
+                    issued.token.typed().unwrap(),
+                    FieldMap::from([(field.into(), FieldValue::from("forged"))])
+                )
+                .await
+                .is_err(),
+            "{field} must remain native"
+        );
+    }
+    fixture.admin.execute_unprepared("UPDATE identity_sessions SET purpose='enrolment',created_at=now(),expires_at=now()+interval '2 minutes',additional_fields=jsonb_build_object('legacy_factor_pending',true) WHERE account_id=71001").await.unwrap();
+    store
+        .update_session_fields(
+            issued.token.typed().unwrap(),
+            FieldMap::from([(
+                "expiresAt".into(),
+                FieldDate::from(Utc::now() + Duration::days(7)).into(),
+            )]),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    let pending = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+        "SELECT expires_at<=created_at+interval '5 minutes' AS capped FROM identity_sessions WHERE account_id=71001"
+    )).await.unwrap().unwrap();
+    assert!(pending.try_get::<bool>("", "capped").unwrap());
+    fixture.close().await;
+}
+
+#[tokio::test]
 async fn development_boot_uses_configured_session_key_without_environment_override() {
     use loco_rs::{app::Hooks, boot::StartMode, config::Config, environment::Environment};
     if std::env::var_os("MEDTRACKER_DEVELOPMENT_BOOT_CHILD").is_none() {
