@@ -13,8 +13,40 @@ pub(super) enum Screen {
 pub(super) enum Change {
     Settings,
     Role(i64),
+    Membership(i64, MembershipAction),
     CreateRelationship,
     Relationship(i64, bool),
+}
+#[derive(Clone, Copy)]
+pub(super) enum MembershipAction {
+    Suspend,
+    Restore,
+    Revoke,
+}
+
+impl MembershipAction {
+    fn status(self) -> &'static str {
+        match self {
+            Self::Suspend => "suspended",
+            Self::Restore => "active",
+            Self::Revoke => "revoked",
+        }
+    }
+    fn notice(self) -> &'static str {
+        match self {
+            Self::Suspend => "suspended",
+            Self::Restore => "restored",
+            Self::Revoke => "revoked",
+        }
+    }
+    fn allowed(self, current: &str) -> bool {
+        matches!(
+            (self, current),
+            (Self::Suspend | Self::Revoke, "active")
+                | (Self::Restore | Self::Revoke, "suspended")
+                | (Self::Restore, "revoked")
+        )
+    }
 }
 
 pub(super) struct Page<'a> {
@@ -26,9 +58,13 @@ pub(super) struct Page<'a> {
     request_id: String,
     language: &'static str,
     explicit_language: bool,
+    member_query: administration::member_browser::MemberQuery,
 }
 
 impl<'a> Page<'a> {
+    pub(super) fn view(&self) -> &TeraView {
+        self.view
+    }
     pub(super) fn new(
         ctx: &'a AppContext,
         session: &'a Session<SessionPgPool>,
@@ -46,6 +82,10 @@ impl<'a> Page<'a> {
             request_id: request_id(request),
             language: "en",
             explicit_language: false,
+            member_query: administration::member_browser::MemberQuery {
+                page: 1,
+                ..Default::default()
+            },
         }
     }
 
@@ -62,6 +102,14 @@ impl<'a> Page<'a> {
 
     pub(super) fn with_explicit_language(mut self, explicit: bool) -> Self {
         self.explicit_language = explicit;
+        self
+    }
+
+    pub(super) fn with_member_query(
+        mut self,
+        query: administration::member_browser::MemberQuery,
+    ) -> Self {
+        self.member_query = query;
         self
     }
 
@@ -112,6 +160,7 @@ impl<'a> Page<'a> {
         data["labels"] = labels.clone();
         data["admin_labels"] = labels["administration"].clone();
         data["overview_labels"] = labels["administration"]["overview"].clone();
+        data["member_labels"] = labels["administration"]["member_list"].clone();
         let household_name = administration::overview::household_name(tenant).await?;
         data["household_name"] = json!(household_name);
         let (title_key, section) = match screen {
@@ -163,9 +212,25 @@ impl<'a> Page<'a> {
                 "administration/household.html"
             }
             Screen::Users => {
-                data["members"] = json!(rendering::members(
-                    &administration::memberships::list(tenant).await?
-                )?);
+                let listing =
+                    administration::member_browser::list(tenant, &self.member_query).await?;
+                data["members"] = json!(listing.members);
+                data["total"] = json!(listing.total);
+                data["page"] = json!(listing.page);
+                data["pages"] = json!(listing.pages);
+                data["query"] = json!({"q":self.member_query.search,"role":self.member_query.role_value(),"status":self.member_query.status_value(),"sort":self.member_query.sort_value(),"direction":self.member_query.direction_value()});
+                let lang = self.explicit_language.then_some(self.language);
+                data["member_notice"] = json!(self.member_query.notice);
+                data["previous_url"] = if listing.page > 1 {
+                    json!(self.member_query.with_page(listing.page - 1).suffix(lang))
+                } else {
+                    json!("")
+                };
+                data["next_url"] = if listing.page < listing.pages {
+                    json!(self.member_query.with_page(listing.page + 1).suffix(lang))
+                } else {
+                    json!("")
+                };
                 "administration/users.html"
             }
             Screen::Role(user_id) => {
@@ -215,10 +280,9 @@ impl<'a> Page<'a> {
         tenant: &TenantTransaction,
         user_id: i64,
     ) -> std::result::Result<Value, OperationError> {
-        rendering::members(&administration::memberships::list(tenant).await?)?
-            .into_iter()
-            .find(|member| member["user_id"].as_i64() == Some(user_id))
-            .ok_or(OperationError::NotFound)
+        Ok(json!(
+            administration::member_browser::find(tenant, user_id).await?
+        ))
     }
 
     pub(super) async fn save(&self, change: Change, draft: HashMap<String, String>) -> Response {
@@ -262,6 +326,17 @@ impl<'a> Page<'a> {
                     .await?;
                     Ok(("users", Screen::Role(id)))
                 }
+                Change::Membership(id, action) => {
+                    if forms::field(&draft, "confirmation") != action.notice() {
+                        return Err(OperationError::Validation { details: json!({"errors":{"base":["Confirm the membership change"]}}) });
+                    }
+                    let member = self.member(&tenant, id).await?;
+                    let current = member["status"].as_str().ok_or(OperationError::Unavailable)?;
+                    if !action.allowed(current) { return Err(OperationError::Validation { details: json!({"errors":{"base":["Membership state has changed. Refresh the member list"]}}) }); }
+                    let membership_id = member["id"].as_i64().ok_or(OperationError::Unavailable)?;
+                    administration::memberships::change(&tenant, membership_id, json!({"status":action.status()}), matches!(action, MembershipAction::Revoke), provenance).await?;
+                    Ok(("users", Screen::Users))
+                }
                 Change::CreateRelationship => {
                     let carer = positive_id(&draft, "carer_id")?;
                     let patient = positive_id(&draft, "patient_id")?;
@@ -300,11 +375,21 @@ impl<'a> Page<'a> {
                     [
                         (
                             header::LOCATION,
-                            format!(
-                                "/households/{}/admin/{path}{}",
-                                self.slug,
-                                super::language_suffix(self.language, self.explicit_language)
-                            ),
+                            if let Change::Membership(_, action) = change {
+                                format!(
+                                    "/households/{}/admin/users{}&notice={}",
+                                    self.slug,
+                                    self.member_query
+                                        .suffix(self.explicit_language.then_some(self.language)),
+                                    action.notice()
+                                )
+                            } else {
+                                format!(
+                                    "/households/{}/admin/{path}{}",
+                                    self.slug,
+                                    super::language_suffix(self.language, self.explicit_language)
+                                )
+                            },
                         ),
                         (header::CACHE_CONTROL, "no-store".into()),
                     ],
@@ -312,7 +397,7 @@ impl<'a> Page<'a> {
                     .into_response()
             }
             Err(error) => {
-                let finish = if matches!(change, Change::Role(_))
+                let finish = if matches!(change, Change::Role(_) | Change::Membership(_, _))
                     && matches!(error, OperationError::Validation { .. })
                 {
                     tenant.commit().await
@@ -329,6 +414,7 @@ impl<'a> Page<'a> {
                 let screen = match change {
                     Change::Settings => Screen::Settings,
                     Change::Role(id) => Screen::Role(id),
+                    Change::Membership(_, _) => Screen::Users,
                     Change::CreateRelationship => Screen::NewRelationship,
                     Change::Relationship(_, _) => Screen::Relationships,
                 };

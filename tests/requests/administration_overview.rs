@@ -35,6 +35,204 @@ async fn select_household(
 }
 
 #[tokio::test]
+async fn member_administration_lists_inactive_identity_and_changes_membership_state() -> TestResult
+{
+    let (fixture, boot) = boot_fixture_with(|config| {
+        let key = base64::engine::general_purpose::STANDARD.encode([7_u8; 64]);
+        config.settings.get_or_insert_with(|| json!({}))["browser_session"] =
+            json!({"key":key,"secure":false});
+    })
+    .await;
+    fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73006,'Hidden person name',0,true,now(),now()),(73007,'Other hidden person',0,true,now(),now()); INSERT INTO accounts(id,person_id,name,email,password_hash,status,created_at,updated_at) VALUES(71006,73006,'Inactive member','inactive@example.test',crypt('password',gen_salt('bf',4)),2,now(),now()),(71007,73007,NULL,'fallback@example.test',crypt('password',gen_salt('bf',4)),2,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74006,72001,73006,'member','suspended',now(),now(),now()),(74007,72001,73007,'member','suspended',now(),now(),now())").await?;
+    let mut request = server(&boot);
+    request.save_cookies();
+    select_household(&request, &fixture, &boot).await?;
+    let list = request
+        .get("/households/persistence-fixture/admin/users?status=suspended")
+        .await;
+    let html = list.text();
+    assert_eq!(list.status_code(), 200, "{html}");
+    assert!(html.contains("Inactive member"), "{html}");
+    assert!(html.contains("inactive@example.test"), "{html}");
+    assert!(html.contains("fallback@example.test"), "{html}");
+    assert!(!html.contains("Hidden person name"), "{html}");
+    assert!(html.contains("suspended"), "{html}");
+    assert!(html.contains("Restore"), "{html}");
+    let search = request.get("/households/persistence-fixture/admin/users?q=INACTIVE%40EXAMPLE.TEST&role=member&status=suspended&sort=email&direction=desc").await;
+    assert_eq!(search.status_code(), 200, "{}", search.text());
+    assert!(search.text().contains("inactive@example.test"));
+    assert!(!search.text().contains("fallback@example.test"));
+    assert_eq!(
+        request
+            .get("/households/persistence-fixture/admin/users?sort=name%3BDROP%20TABLE%20accounts")
+            .await
+            .status_code(),
+        422
+    );
+    let role = request
+        .get("/households/persistence-fixture/admin/users/74006/edit")
+        .await;
+    assert_eq!(role.status_code(), 200, "{}", role.text());
+    assert!(
+        role.text()
+            .contains("Edit household role for Inactive member")
+    );
+    assert_eq!(
+        request
+            .get("/households/persistence-fixture/admin/users/77001/edit")
+            .await
+            .status_code(),
+        200
+    );
+    let csrf = authenticity_token(&html).ok_or("member form token missing")?;
+    let edited_role = request
+        .post("/households/persistence-fixture/admin/users/74006/membership_role")
+        .form(&[("role", "administrator"), ("authenticity_token", csrf)])
+        .await;
+    assert_eq!(edited_role.status_code(), 303, "{}", edited_role.text());
+    let restored_role = request
+        .post("/households/persistence-fixture/admin/users/74006/membership_role")
+        .form(&[("role", "member"), ("authenticity_token", csrf)])
+        .await;
+    assert_eq!(restored_role.status_code(), 303, "{}", restored_role.text());
+    let missing_csrf = request
+        .post("/households/persistence-fixture/admin/users/74006/restore")
+        .form(&[("confirmation", "restored")])
+        .await;
+    assert_eq!(missing_csrf.status_code(), 403);
+    let foreign = request
+        .post("/households/persistence-fixture/admin/users/74002/revoke")
+        .form(&[("confirmation", "revoked"), ("authenticity_token", csrf)])
+        .await;
+    assert_eq!(foreign.status_code(), 404, "{}", foreign.text());
+    let restored = request
+        .post("/households/persistence-fixture/admin/users/74006/restore")
+        .form(&[
+            ("confirmation", "restored"),
+            ("authenticity_token", csrf),
+            ("status", "suspended"),
+        ])
+        .await;
+    assert_eq!(restored.status_code(), 303, "{}", restored.text());
+    assert!(
+        restored
+            .header("location")
+            .to_str()?
+            .contains("notice=restored")
+    );
+    let active = fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT status,permissions_version FROM household_memberships WHERE id=74006",
+        ))
+        .await?
+        .ok_or("membership missing")?;
+    assert_eq!(active.try_get::<String>("", "status")?, "active");
+    assert_eq!(active.try_get::<i32>("", "permissions_version")?, 4);
+    let active_list = request
+        .get("/households/persistence-fixture/admin/users")
+        .await;
+    let active_html = active_list.text();
+    let next_csrf = authenticity_token(&active_html).ok_or("active form token missing")?;
+    let suspended = request
+        .post("/households/persistence-fixture/admin/users/74006/suspend")
+        .form(&[
+            ("confirmation", "suspended"),
+            ("authenticity_token", next_csrf),
+        ])
+        .await;
+    assert_eq!(suspended.status_code(), 303, "{}", suspended.text());
+    let revoked = request
+        .post("/households/persistence-fixture/admin/users/74006/revoke")
+        .form(&[
+            ("confirmation", "revoked"),
+            ("authenticity_token", next_csrf),
+        ])
+        .await;
+    assert_eq!(revoked.status_code(), 303, "{}", revoked.text());
+    let restored_again = request
+        .post("/households/persistence-fixture/admin/users/74006/restore")
+        .form(&[
+            ("confirmation", "restored"),
+            ("authenticity_token", next_csrf),
+        ])
+        .await;
+    assert_eq!(
+        restored_again.status_code(),
+        303,
+        "{}",
+        restored_again.text()
+    );
+    let audit = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres, "SELECT count(*) AS total FROM security_audit_events WHERE household_id=72001 AND metadata->>'target_membership_id'='74006' AND metadata->>'outcome'='success'")).await?.ok_or("audit missing")?;
+    assert!(audit.try_get::<i64>("", "total")? >= 4);
+    let account = fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT status FROM accounts WHERE id=71006",
+        ))
+        .await?
+        .ok_or("account missing")?;
+    assert_eq!(account.try_get::<i32>("", "status")?, 2);
+    fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) SELECT 73100+n,'Bulk member',0,true,now(),now() FROM generate_series(1,27) n; INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) SELECT 74100+n,72001,73100+n,'member','active',now(),now(),now() FROM generate_series(1,27) n").await?;
+    let first_page = request.get("/households/persistence-fixture/admin/users?role=member&status=active&sort=name&direction=asc&page=1&lang=es").await;
+    let first_html = first_page.text();
+    assert_eq!(first_page.status_code(), 200, "{first_html}");
+    assert_eq!(first_html.matches("Bulk member</th>").count(), 25);
+    assert!(first_html.contains("page=2&amp;lang=es"), "{first_html}");
+    let second_page = request.get("/households/persistence-fixture/admin/users?role=member&status=active&sort=name&direction=asc&page=2&lang=es").await;
+    assert_eq!(second_page.status_code(), 200, "{}", second_page.text());
+    assert_eq!(second_page.text().matches("Bulk member</th>").count(), 2);
+    fixture
+        .admin
+        .execute_unprepared("UPDATE household_memberships SET role='owner' WHERE id=74001")
+        .await?;
+    let owner_page = request
+        .get("/households/persistence-fixture/admin/users")
+        .await;
+    let owner_html = owner_page.text();
+    let owner_csrf = authenticity_token(&owner_html).ok_or("owner form token missing")?;
+    let last_owner = request
+        .post("/households/persistence-fixture/admin/users/74001/suspend")
+        .form(&[
+            ("confirmation", "suspended"),
+            ("authenticity_token", owner_csrf),
+        ])
+        .await;
+    assert_eq!(last_owner.status_code(), 422, "{}", last_owner.text());
+    assert!(
+        last_owner
+            .text()
+            .contains("Last active owner cannot be removed")
+    );
+    let retained = fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT status FROM household_memberships WHERE id=74001",
+        ))
+        .await?
+        .ok_or("owner missing")?;
+    assert_eq!(retained.try_get::<String>("", "status")?, "active");
+    fixture
+        .admin
+        .execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001")
+        .await?;
+    let stale_manager = request
+        .post("/households/persistence-fixture/admin/users/74006/suspend")
+        .form(&[
+            ("confirmation", "suspended"),
+            ("authenticity_token", owner_csrf),
+        ])
+        .await;
+    assert_eq!(stale_manager.status_code(), 403, "{}", stale_manager.text());
+    drop(request);
+    close(fixture, boot).await;
+    Ok(())
+}
+
+#[tokio::test]
 async fn administration_overview_shows_only_current_household_status() -> TestResult {
     let (fixture, boot) = boot_fixture_with(|config| {
         let key = base64::engine::general_purpose::STANDARD.encode([7_u8; 64]);

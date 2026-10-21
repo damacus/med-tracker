@@ -75,6 +75,42 @@ async fn account_only_invitation_opens_dashboard_at_desktop_and_mobile_sizes() {
 
 #[tokio::test]
 #[ignore = "browser journeys run through task test:browser, not the shared --tests lanes"]
+async fn household_member_table_and_confirmation_at_desktop_and_mobile() {
+    for (viewport, screenshot) in [
+        (
+            Viewport {
+                width: 1440,
+                height: 1000,
+            },
+            "members-desktop",
+        ),
+        (
+            Viewport {
+                width: 390,
+                height: 844,
+            },
+            "members-mobile",
+        ),
+    ] {
+        harness::journey(viewport, |journey| {
+            Box::pin(async move {
+                journey.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73006,'Hidden person name',0,true,now(),now()); INSERT INTO accounts(id,person_id,name,email,password_hash,status,created_at,updated_at) VALUES(71006,73006,'Inactive member','inactive@example.test',NULL,2,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74006,72001,73006,'member','suspended',now(),now(),now())").await.unwrap();
+                harness::sign_in(journey).await;
+                let page = &journey.page;
+                page.goto(&format!("{}/households/persistence-fixture/admin/users?status=suspended", journey.origin), None).await.unwrap();
+                expect(page.get_by_role(AriaRole::Heading, named("Members"))).to_be_visible().await.unwrap();
+                expect(page.locator("tbody")).to_contain_text("Inactive member").await.unwrap();
+                expect(page.locator("tbody")).to_contain_text("inactive@example.test").await.unwrap();
+                page.get_by_text("Restore Inactive member", true).click(None).await.unwrap();
+                expect(page.get_by_role(AriaRole::Button, named("Confirm Restore"))).to_be_visible().await.unwrap();
+                harness::capture(page, screenshot).await;
+            })
+        }).await;
+    }
+}
+
+#[tokio::test]
+#[ignore = "browser journeys run through task test:browser, not the shared --tests lanes"]
 async fn barcode_miss_flows_into_manual_medication_wizard() {
     let viewport = Viewport {
         width: 1440,

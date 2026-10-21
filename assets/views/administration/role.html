@@ -7,7 +7,7 @@
   {% include "administration/navigation.html" %}
   <div class="mt-6">{% include "components/form_errors.html" %}</div>
   <div class="card bg-base-100 border border-base-300 mt-6"><div class="card-body">
-    <form id="administration-form" action="/households/{{ slug }}/admin/users/{{ member.user_id }}/membership_role" method="post" class="flex flex-col gap-4">
+    <form id="administration-form" action="/households/{{ slug }}/admin/users/{{ member.id }}/membership_role" method="post" class="flex flex-col gap-4">
       {% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}<input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
       <label for="role" class="font-semibold">Household role</label>
       <select id="role" name="role" class="select w-full" {% if role_invalid %}aria-invalid="true" aria-describedby="form-error-role"{% endif %}>
