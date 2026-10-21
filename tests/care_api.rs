@@ -1,3 +1,5 @@
+#[path = "care_api/account_closure_mail.rs"]
+mod account_closure_mail;
 #[path = "care_api/account_sessions.rs"]
 mod account_sessions;
 #[path = "care_api/administration.rs"]
