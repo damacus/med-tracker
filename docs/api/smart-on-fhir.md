@@ -1,6 +1,22 @@
 # SMART on FHIR
 
-MedTracker exposes a SMART App Launch 2.x standalone authorization flow for
+## Status for fresh Rust
+
+SMART implementation is deferred until after the MedTracker migration and does
+not block migration completion. See
+[ADR 0018](../adrs/0018-defer-smart-and-record-interoperability-uses.md) for the
+accepted boundary, candidate inbound and outbound uses, and revisit criteria.
+First-party OAuth acceptance remains in migration scope.
+
+The following sections document the historical Rails contract. They are not
+evidence that the Rust application implements or has passed acceptance for
+these capabilities. References to person grants and Pundit describe that older
+implementation; current Rust authority follows ADRs 0013–0016. This status note
+does not enable, remove or broaden any existing endpoint or credential.
+
+## Historical contract
+
+The Rails contract described a SMART App Launch 2.x standalone authorization flow for
 registered third-party healthcare applications. It is separate from the
 first-party `/api/v1` API, CLI credentials, and hosted MCP access.
 

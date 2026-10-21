@@ -1,13 +1,22 @@
 # ADR 0010: External Integration Architecture
 
 - Status
-  Accepted
+  Accepted historically; fresh Rust SMART delivery amended by ADR 0018
 - Date
   2026-07-14
 - Supersedes
   [ADR 0007](0007-external-app-integration-contract.md)
 
 ## Context
+
+**Fresh Rust clarification — 21 October 2026:**
+[ADR 0018](0018-defer-smart-and-record-interoperability-uses.md) defers SMART
+implementation until after migration. The support statements below describe
+the historical Rails contract, not accepted Rust implementation. Current
+account, household and authentication decisions in ADRs 0013–0016 supersede
+the older permission and identity-provider assumptions below. The separation
+of product, MCP and healthcare integration audiences remains useful; this
+annotation does not change runtime capabilities or credential restrictions.
 
 MedTracker serves first-party applications, local automation, hosted MCP
 clients, and external healthcare applications. These clients require different

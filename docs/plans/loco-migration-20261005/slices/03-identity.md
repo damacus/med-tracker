@@ -8,6 +8,23 @@ through persistence interfaces. Select the OAuth server implementation from evid
 **Tech Stack:** Loco 1.2.0; maintained bcrypt, session, CSRF, TOTP, WebAuthn and OAuth server capabilities.
 **Spec:** [implementation-spec.md](../implementation-spec.md), [auth-feasibility.md](../auth-feasibility.md).
 
+## Current SMART boundary — 21 October 2026
+
+[ADR 0018](../../../adrs/0018-defer-smart-and-record-interoperability-uses.md)
+defers SMART implementation until after migration, superseding the older
+full-migration SMART requirements below. SMART conformance, patient context and
+interoperability checks are future work, not migration completion gates.
+First-party OAuth sign-in, consent, per-session household isolation, code and
+refresh handling, and revocation remain required. Shared code must preserve
+existing restrictions; this deferral is not evidence that OAuth acceptance is
+complete and does not permit weakening tests or enabling unsupported access.
+
+The historical I1/I3 SMART checklist is retained as reference for a future
+consumer-specific slice. Use ADR 0018's catalogue and revisit criteria before
+approving that work. Recommend separating the SMART follow-up from OAuth
+acceptance in [#2670](https://github.com/damacus/med-tracker/issues/2670);
+the issue now tracks OAuth migration acceptance with SMART deferred.
+
 ## s03-i12 account-closure mail evidence — 21 October 2026
 
 Follow-up for #2674 and #2631, based on `78ec7f281`. One Sol owner retains
@@ -80,8 +97,9 @@ Counting affected production accounts is not a gate. Saved pre-cutover state kee
 the Rails rollback credentials. Existing sessions and tokens will be invalidated;
 historical continuity is unnecessary. Test the invalidation mechanism on synthetic
 credentials and retain fresh authentication, account security and MFA checks.
-FHIR/SMART integration is deferred from the first production gate; it remains in
-the full migration scope. Core native/public API sign-in stays in the first release.
+SMART integration is now deferred until after migration under ADR 0018, rather
+than retained in the full migration scope. Core native/public API sign-in stays
+in the first release.
 
 ## Review focus
 
