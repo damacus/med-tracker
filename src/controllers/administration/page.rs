@@ -5,49 +5,22 @@ pub(super) enum Screen {
     Index,
     Settings,
     Users,
-    Role(i64),
+    Role(administration::member_browser::MemberLocator),
     Relationships,
     NewRelationship,
 }
 #[derive(Clone, Copy)]
 pub(super) enum Change {
     Settings,
-    Role(i64),
-    Membership(i64, MembershipAction),
+    Role(administration::member_browser::MemberLocator),
+    Membership(
+        administration::member_browser::MembershipId,
+        MembershipAction,
+    ),
     CreateRelationship,
     Relationship(i64, bool),
 }
-#[derive(Clone, Copy)]
-pub(super) enum MembershipAction {
-    Suspend,
-    Restore,
-    Revoke,
-}
-
-impl MembershipAction {
-    fn status(self) -> &'static str {
-        match self {
-            Self::Suspend => "suspended",
-            Self::Restore => "active",
-            Self::Revoke => "revoked",
-        }
-    }
-    fn notice(self) -> &'static str {
-        match self {
-            Self::Suspend => "suspended",
-            Self::Restore => "restored",
-            Self::Revoke => "revoked",
-        }
-    }
-    fn allowed(self, current: &str) -> bool {
-        matches!(
-            (self, current),
-            (Self::Suspend | Self::Revoke, "active")
-                | (Self::Restore | Self::Revoke, "suspended")
-                | (Self::Restore, "revoked")
-        )
-    }
-}
+pub(super) use administration::memberships::LifecycleAction as MembershipAction;
 
 pub(super) struct Page<'a> {
     ctx: &'a AppContext,
@@ -220,6 +193,7 @@ impl<'a> Page<'a> {
                 data["pages"] = json!(listing.pages);
                 data["query"] = json!({"q":self.member_query.search,"role":self.member_query.role_value(),"status":self.member_query.status_value(),"sort":self.member_query.sort_value(),"direction":self.member_query.direction_value()});
                 let lang = self.explicit_language.then_some(self.language);
+                data["member_query_suffix"] = json!(self.member_query.suffix(lang));
                 data["member_notice"] = json!(self.member_query.notice);
                 data["previous_url"] = if listing.page > 1 {
                     json!(self.member_query.with_page(listing.page - 1).suffix(lang))
@@ -233,16 +207,25 @@ impl<'a> Page<'a> {
                 };
                 "administration/users.html"
             }
-            Screen::Role(user_id) => {
-                let member = self.member(tenant, user_id).await?;
+            Screen::Role(locator) => {
+                let member = self.member(tenant, locator).await?;
+                let member_json = json!(member);
                 data["title"] = json!(format!(
                     "{} · Edit household role for {}",
-                    household_name,
-                    member["name"].as_str().unwrap_or("member")
+                    household_name, member.name
                 ));
                 data["draft"] =
-                    submitted.map_or_else(|| json!({"role":member["role"]}), |draft| json!(draft));
-                data["member"] = member;
+                    submitted.map_or_else(|| json!({"role":member.role}), |draft| json!(draft));
+                data["member"] = member_json;
+                let lang = self.explicit_language.then_some(self.language);
+                data["member_return_suffix"] = json!(self.member_query.suffix(lang));
+                data["member_role_path"] = json!(match locator {
+                    administration::member_browser::MemberLocator::Membership(_) =>
+                        format!("memberships/{}", member.id.get()),
+                    administration::member_browser::MemberLocator::LegacyUser(id) =>
+                        format!("users/{}", id.get()),
+                });
+                data["member_query"] = json!({"q":self.member_query.search,"role":self.member_query.role_value(),"status":self.member_query.status_value(),"sort":self.member_query.sort_value(),"direction":self.member_query.direction_value(),"page":self.member_query.page});
                 "administration/role.html"
             }
             Screen::Relationships => {
@@ -278,11 +261,9 @@ impl<'a> Page<'a> {
     async fn member(
         &self,
         tenant: &TenantTransaction,
-        user_id: i64,
-    ) -> std::result::Result<Value, OperationError> {
-        Ok(json!(
-            administration::member_browser::find(tenant, user_id).await?
-        ))
+        locator: administration::member_browser::MemberLocator,
+    ) -> std::result::Result<administration::member_browser::MemberRow, OperationError> {
+        administration::member_browser::find(tenant, locator).await
     }
 
     pub(super) async fn save(&self, change: Change, draft: HashMap<String, String>) -> Response {
@@ -315,10 +296,9 @@ impl<'a> Page<'a> {
                 }
                 Change::Role(id) => {
                     let member = self.member(&tenant, id).await?;
-                    let membership_id = member["id"].as_i64().ok_or(OperationError::Unavailable)?;
                     administration::memberships::change(
                         &tenant,
-                        membership_id,
+                        member.id.get(),
                         json!({"role":forms::field(&draft,"role")}),
                         false,
                         provenance,
@@ -328,13 +308,14 @@ impl<'a> Page<'a> {
                 }
                 Change::Membership(id, action) => {
                     if forms::field(&draft, "confirmation") != action.notice() {
-                        return Err(OperationError::Validation { details: json!({"errors":{"base":["Confirm the membership change"]}}) });
+                        return Err(OperationError::Validation {
+                            details: json!({"errors":{"base":["Confirm the membership change"]}}),
+                        });
                     }
-                    let member = self.member(&tenant, id).await?;
-                    let current = member["status"].as_str().ok_or(OperationError::Unavailable)?;
-                    if !action.allowed(current) { return Err(OperationError::Validation { details: json!({"errors":{"base":["Membership state has changed. Refresh the member list"]}}) }); }
-                    let membership_id = member["id"].as_i64().ok_or(OperationError::Unavailable)?;
-                    administration::memberships::change(&tenant, membership_id, json!({"status":action.status()}), matches!(action, MembershipAction::Revoke), provenance).await?;
+                    administration::memberships::change_browser_status(
+                        &tenant, id, action, provenance,
+                    )
+                    .await?;
                     Ok(("users", Screen::Users))
                 }
                 Change::CreateRelationship => {
@@ -382,6 +363,13 @@ impl<'a> Page<'a> {
                                     self.member_query
                                         .suffix(self.explicit_language.then_some(self.language)),
                                     action.notice()
+                                )
+                            } else if matches!(change, Change::Role(_)) {
+                                format!(
+                                    "/households/{}/admin/users{}",
+                                    self.slug,
+                                    self.member_query
+                                        .suffix(self.explicit_language.then_some(self.language))
                                 )
                             } else {
                                 format!(

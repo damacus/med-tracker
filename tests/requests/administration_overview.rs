@@ -1,5 +1,6 @@
 use super::*;
 use base64::Engine as _;
+use sea_orm::TransactionTrait;
 
 type TestResult = std::result::Result<(), Box<dyn std::error::Error>>;
 
@@ -56,6 +57,46 @@ async fn member_administration_lists_inactive_identity_and_changes_membership_st
     assert!(html.contains("inactive@example.test"), "{html}");
     assert!(html.contains("fallback@example.test"), "{html}");
     assert!(!html.contains("Hidden person name"), "{html}");
+    fixture.admin.execute_unprepared("INSERT INTO users(id,person_id,email_address,active,created_at,updated_at) VALUES(74006,73007,'legacy-collision@example.test',true,now(),now())").await?;
+    let legacy_collision = request
+        .get("/households/persistence-fixture/admin/users/74006/edit")
+        .await;
+    assert!(
+        legacy_collision
+            .text()
+            .contains("Edit household role for fallback@example.test"),
+        "{}",
+        legacy_collision.text()
+    );
+    let member_editor = request.get("/households/persistence-fixture/admin/memberships/74006/edit?status=suspended&sort=email&direction=desc&page=1&lang=es").await;
+    assert_eq!(member_editor.status_code(), 200, "{}", member_editor.text());
+    assert!(
+        member_editor
+            .text()
+            .contains("Edit household role for Inactive member")
+    );
+    assert!(member_editor.text().contains("/admin/users?q=&amp;role=all&amp;status=suspended&amp;sort=email&amp;direction=desc&amp;page=1&amp;lang=es"));
+    let editor_csrf = authenticity_token(&member_editor.text())
+        .ok_or("editor token missing")?
+        .to_owned();
+    let stateful_save = request
+        .post("/households/persistence-fixture/admin/memberships/74006/membership_role")
+        .form(&[
+            ("role", "member"),
+            ("role_filter", "all"),
+            ("status", "suspended"),
+            ("sort", "email"),
+            ("direction", "desc"),
+            ("page", "1"),
+            ("lang", "es"),
+            ("authenticity_token", editor_csrf.as_str()),
+        ])
+        .await;
+    assert_eq!(stateful_save.status_code(), 303, "{}", stateful_save.text());
+    assert_eq!(
+        stateful_save.header("location").to_str()?,
+        "/households/persistence-fixture/admin/users?q=&role=all&status=suspended&sort=email&direction=desc&page=1&lang=es"
+    );
     assert!(html.contains("suspended"), "{html}");
     assert!(html.contains("Restore"), "{html}");
     let search = request.get("/households/persistence-fixture/admin/users?q=INACTIVE%40EXAMPLE.TEST&role=member&status=suspended&sort=email&direction=desc").await;
@@ -70,7 +111,7 @@ async fn member_administration_lists_inactive_identity_and_changes_membership_st
         422
     );
     let role = request
-        .get("/households/persistence-fixture/admin/users/74006/edit")
+        .get("/households/persistence-fixture/admin/memberships/74006/edit")
         .await;
     assert_eq!(role.status_code(), 200, "{}", role.text());
     assert!(
@@ -86,12 +127,12 @@ async fn member_administration_lists_inactive_identity_and_changes_membership_st
     );
     let csrf = authenticity_token(&html).ok_or("member form token missing")?;
     let edited_role = request
-        .post("/households/persistence-fixture/admin/users/74006/membership_role")
+        .post("/households/persistence-fixture/admin/memberships/74006/membership_role")
         .form(&[("role", "administrator"), ("authenticity_token", csrf)])
         .await;
     assert_eq!(edited_role.status_code(), 303, "{}", edited_role.text());
     let restored_role = request
-        .post("/households/persistence-fixture/admin/users/74006/membership_role")
+        .post("/households/persistence-fixture/admin/memberships/74006/membership_role")
         .form(&[("role", "member"), ("authenticity_token", csrf)])
         .await;
     assert_eq!(restored_role.status_code(), 303, "{}", restored_role.text());
@@ -151,6 +192,19 @@ async fn member_administration_lists_inactive_identity_and_changes_membership_st
         ])
         .await;
     assert_eq!(revoked.status_code(), 303, "{}", revoked.text());
+    let forbidden_suspend = request
+        .post("/households/persistence-fixture/admin/users/74006/suspend")
+        .form(&[
+            ("confirmation", "suspended"),
+            ("authenticity_token", next_csrf),
+        ])
+        .await;
+    assert_eq!(
+        forbidden_suspend.status_code(),
+        422,
+        "{}",
+        forbidden_suspend.text()
+    );
     let restored_again = request
         .post("/households/persistence-fixture/admin/users/74006/restore")
         .form(&[
@@ -164,6 +218,58 @@ async fn member_administration_lists_inactive_identity_and_changes_membership_st
         "{}",
         restored_again.text()
     );
+    let blocker = fixture.admin.begin().await?;
+    let blocker_pid: i32 = blocker
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT pg_backend_pid() AS pid",
+        ))
+        .await?
+        .ok_or("blocker pid missing")?
+        .try_get("", "pid")?;
+    blocker
+        .execute_unprepared("SELECT id FROM household_memberships WHERE id=74006 FOR UPDATE")
+        .await?;
+    let stale_suspend = async {
+        request
+            .post("/households/persistence-fixture/admin/users/74006/suspend")
+            .form(&[
+                ("confirmation", "suspended"),
+                ("authenticity_token", next_csrf),
+            ])
+            .await
+    };
+    let revoke_under_lock = async {
+        let observed = tokio::time::timeout(std::time::Duration::from_secs(5), async {
+            loop {
+                let row = fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres, "SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE '%household_memberships%' AND $1::int=ANY(pg_blocking_pids(pid))) AS waiting", [blocker_pid.into()])).await?.ok_or("lock observation missing")?;
+                if row.try_get::<bool>("", "waiting")? { break Ok::<_, Box<dyn std::error::Error>>(true); }
+                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+            }
+        }).await.unwrap_or(Ok(false))?;
+        blocker
+            .execute_unprepared(
+                "UPDATE household_memberships SET status='revoked',revoked_at=now() WHERE id=74006",
+            )
+            .await?;
+        blocker.commit().await?;
+        Ok::<_, Box<dyn std::error::Error>>(observed)
+    };
+    let (stale_result, observed) = tokio::join!(stale_suspend, revoke_under_lock);
+    assert!(
+        observed?,
+        "browser mutation must wait on the membership row lock"
+    );
+    assert_eq!(stale_result.status_code(), 422, "{}", stale_result.text());
+    let raced_state = fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT status FROM household_memberships WHERE id=74006",
+        ))
+        .await?
+        .ok_or("raced membership missing")?;
+    assert_eq!(raced_state.try_get::<String>("", "status")?, "revoked");
     let audit = fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres, "SELECT count(*) AS total FROM security_audit_events WHERE household_id=72001 AND metadata->>'target_membership_id'='74006' AND metadata->>'outcome'='success'")).await?.ok_or("audit missing")?;
     assert!(audit.try_get::<i64>("", "total")? >= 4);
     let account = fixture

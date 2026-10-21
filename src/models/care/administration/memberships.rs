@@ -1,5 +1,37 @@
+use super::member_browser::MembershipId;
 use super::*;
 use loco_rs::model::TenantQueryExt;
+
+#[derive(Clone, Copy)]
+pub enum LifecycleAction {
+    Suspend,
+    Restore,
+    Revoke,
+}
+impl LifecycleAction {
+    pub fn status(self) -> &'static str {
+        match self {
+            Self::Suspend => "suspended",
+            Self::Restore => "active",
+            Self::Revoke => "revoked",
+        }
+    }
+    pub fn notice(self) -> &'static str {
+        match self {
+            Self::Suspend => "suspended",
+            Self::Restore => "restored",
+            Self::Revoke => "revoked",
+        }
+    }
+    fn allowed(self, current: &str) -> bool {
+        matches!(
+            (self, current),
+            (Self::Suspend | Self::Revoke, "active")
+                | (Self::Restore | Self::Revoke, "suspended")
+                | (Self::Restore, "revoked")
+        )
+    }
+}
 
 fn state(row: &membership::Model) -> Value {
     json!({"role":row.role,"status":row.status,"person_id":row.person_id})
@@ -56,7 +88,24 @@ pub async fn change(
     provenance: Option<&CredentialProvenance>,
 ) -> Result<Value, OperationError> {
     authorize(tenant).await?;
-    change_record(tenant, id, attributes, revoke, provenance).await
+    change_record(tenant, id, attributes, revoke, None, provenance).await
+}
+pub async fn change_browser_status(
+    tenant: &TenantTransaction,
+    id: MembershipId,
+    action: LifecycleAction,
+    provenance: Option<&CredentialProvenance>,
+) -> Result<Value, OperationError> {
+    authorize(tenant).await?;
+    change_record(
+        tenant,
+        id.get(),
+        json!({"status":action.status()}),
+        matches!(action, LifecycleAction::Revoke),
+        Some(action),
+        provenance,
+    )
+    .await
 }
 pub(super) async fn change_for_delegation(
     tenant: &TenantTransaction,
@@ -69,6 +118,7 @@ pub(super) async fn change_for_delegation(
         id,
         json!({"status":"active","person_id":person_id}),
         false,
+        None,
         provenance,
     )
     .await?;
@@ -79,6 +129,7 @@ async fn change_record(
     id: i64,
     attributes: Value,
     revoke: bool,
+    browser_action: Option<LifecycleAction>,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<Value, OperationError> {
     let current = membership::Entity::find_by_id(id)
@@ -87,6 +138,18 @@ async fn change_record(
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::NotFound)?;
+    if let Some(action) = browser_action
+        && !action.allowed(&current.status)
+    {
+        return rejected(
+            tenant,
+            &current,
+            &current,
+            "Membership state has changed. Refresh the member list",
+            provenance,
+        )
+        .await;
+    }
     let mut next = current.clone();
     if revoke {
         next.status = "revoked".into();

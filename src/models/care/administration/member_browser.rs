@@ -1,6 +1,6 @@
 use crate::models::{access::TenantTransaction, errors::OperationError};
 use sea_orm::{ConnectionTrait, DbBackend, Statement};
-use serde::Serialize;
+use serde::{Serialize, Serializer};
 use serde_json::json;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -11,6 +11,26 @@ pub enum MemberRole {
     Administrator,
     Member,
 }
+impl MemberRole {
+    fn from_database(value: &str) -> Result<Self, OperationError> {
+        match value {
+            "owner" => Ok(Self::Owner),
+            "administrator" => Ok(Self::Administrator),
+            "member" => Ok(Self::Member),
+            _ => Err(OperationError::Unavailable),
+        }
+    }
+}
+impl Serialize for MemberRole {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(match self {
+            Self::All => "all",
+            Self::Owner => "owner",
+            Self::Administrator => "administrator",
+            Self::Member => "member",
+        })
+    }
+}
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum MemberStatus {
     #[default]
@@ -18,6 +38,66 @@ pub enum MemberStatus {
     Active,
     Suspended,
     Revoked,
+}
+impl MemberStatus {
+    fn from_database(value: &str) -> Result<Self, OperationError> {
+        match value {
+            "active" => Ok(Self::Active),
+            "suspended" => Ok(Self::Suspended),
+            "revoked" => Ok(Self::Revoked),
+            _ => Err(OperationError::Unavailable),
+        }
+    }
+}
+impl Serialize for MemberStatus {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(match self {
+            Self::All => "all",
+            Self::Active => "active",
+            Self::Suspended => "suspended",
+            Self::Revoked => "revoked",
+        })
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(transparent)]
+pub struct MembershipId(i64);
+impl MembershipId {
+    pub fn new(value: i64) -> Result<Self, OperationError> {
+        (value > 0)
+            .then_some(Self(value))
+            .ok_or(OperationError::NotFound)
+    }
+    pub fn get(self) -> i64 {
+        self.0
+    }
+}
+
+#[derive(Clone, Copy)]
+pub enum MemberLocator {
+    Membership(MembershipId),
+    LegacyUser(LegacyUserId),
+}
+impl MemberLocator {
+    pub fn membership(value: i64) -> Result<Self, OperationError> {
+        Ok(Self::Membership(MembershipId::new(value)?))
+    }
+    pub fn legacy_user(value: i64) -> Result<Self, OperationError> {
+        Ok(Self::LegacyUser(LegacyUserId::new(value)?))
+    }
+}
+#[derive(Clone, Copy)]
+pub struct LegacyUserId(i64);
+impl LegacyUserId {
+    fn new(value: i64) -> Result<Self, OperationError> {
+        (value > 0)
+            .then_some(Self(value))
+            .ok_or(OperationError::NotFound)
+    }
+    pub fn get(self) -> i64 {
+        self.0
+    }
 }
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum MemberSort {
@@ -53,7 +133,14 @@ impl MemberQuery {
             .extend_pairs(
                 ["q", "role", "status", "sort", "direction", "page"]
                     .into_iter()
-                    .filter_map(|key| form.get(key).map(|value| (key, value.as_str()))),
+                    .filter_map(|key| {
+                        form.get(if key == "role" && form.contains_key("role_filter") {
+                            "role_filter"
+                        } else {
+                            key
+                        })
+                        .map(|value| (key, value.as_str()))
+                    }),
             )
             .finish();
         Self::parse(Some(&encoded)).map(|(query, _)| query)
@@ -158,6 +245,15 @@ impl MemberQuery {
         }
     }
     pub fn suffix(&self, language: Option<&str>) -> String {
+        if self.search.is_empty()
+            && self.role == MemberRole::All
+            && self.status == MemberStatus::All
+            && self.sort == MemberSort::Name
+            && self.direction == SortDirection::Asc
+            && self.page == 1
+        {
+            return language.map_or_else(String::new, |language| format!("?lang={language}"));
+        }
         let mut pairs = vec![
             ("q", self.search.as_str()),
             ("role", self.role_value()),
@@ -187,11 +283,11 @@ fn invalid(field: &str) -> OperationError {
 
 #[derive(Serialize)]
 pub struct MemberRow {
-    pub id: i64,
+    pub id: MembershipId,
     pub name: String,
     pub email: String,
-    pub role: String,
-    pub status: String,
+    pub role: MemberRole,
+    pub status: MemberStatus,
 }
 #[derive(Serialize)]
 pub struct MemberPage {
@@ -264,16 +360,8 @@ pub async fn list(
         .await?;
     let members = rows
         .into_iter()
-        .map(|row| {
-            Ok(MemberRow {
-                id: row.try_get("", "id")?,
-                name: row.try_get("", "name")?,
-                email: row.try_get("", "email")?,
-                role: row.try_get("", "role")?,
-                status: row.try_get("", "status")?,
-            })
-        })
-        .collect::<Result<Vec<_>, sea_orm::DbErr>>()?;
+        .map(member_row)
+        .collect::<Result<Vec<_>, _>>()?;
     Ok(MemberPage {
         members,
         total,
@@ -282,9 +370,32 @@ pub async fn list(
     })
 }
 
-pub async fn find(tenant: &TenantTransaction, id: i64) -> Result<MemberRow, OperationError> {
+fn member_row(row: sea_orm::QueryResult) -> Result<MemberRow, OperationError> {
+    Ok(MemberRow {
+        id: MembershipId::new(row.try_get("", "id")?)?,
+        name: row.try_get("", "name")?,
+        email: row.try_get("", "email")?,
+        role: MemberRole::from_database(&row.try_get::<String>("", "role")?)?,
+        status: MemberStatus::from_database(&row.try_get::<String>("", "status")?)?,
+    })
+}
+
+pub async fn find(
+    tenant: &TenantTransaction,
+    locator: MemberLocator,
+) -> Result<MemberRow, OperationError> {
     super::authorize(tenant).await?;
-    let sql = "SELECT m.id,coalesce(nullif(a.name,''),p.name,a.email,'Member #'||m.id::text) AS name,coalesce(a.email,p.email,'') AS email,m.role,m.status FROM household_memberships m LEFT JOIN accounts a ON a.person_id=m.person_id LEFT JOIN people p ON p.id=m.person_id LEFT JOIN users u ON u.person_id=m.person_id WHERE m.household_id=$1 AND (m.id=$2 OR u.id=$2) ORDER BY CASE WHEN m.id=$2 THEN 0 ELSE 1 END,m.id LIMIT 1";
+    let (identity_join, identity_filter, id) = match locator {
+        MemberLocator::Membership(id) => ("", "m.id=$2", id.get()),
+        MemberLocator::LegacyUser(id) => (
+            " JOIN users u ON u.person_id=m.person_id",
+            "u.id=$2",
+            id.get(),
+        ),
+    };
+    let sql = format!(
+        "SELECT m.id,coalesce(nullif(a.name,''),p.name,a.email,'Member #'||m.id::text) AS name,coalesce(a.email,p.email,'') AS email,m.role,m.status FROM household_memberships m LEFT JOIN accounts a ON a.person_id=m.person_id LEFT JOIN people p ON p.id=m.person_id{identity_join} WHERE m.household_id=$1 AND {identity_filter} ORDER BY m.id LIMIT 1"
+    );
     let row = tenant
         .transaction()
         .query_one_raw(Statement::from_sql_and_values(
@@ -294,11 +405,5 @@ pub async fn find(tenant: &TenantTransaction, id: i64) -> Result<MemberRow, Oper
         ))
         .await?
         .ok_or(OperationError::NotFound)?;
-    Ok(MemberRow {
-        id: row.try_get("", "id")?,
-        name: row.try_get("", "name")?,
-        email: row.try_get("", "email")?,
-        role: row.try_get("", "role")?,
-        status: row.try_get("", "status")?,
-    })
+    member_row(row)
 }
