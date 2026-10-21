@@ -3,8 +3,11 @@ use super::*;
 
 async fn prepare(app: &Application) -> (String, String) {
     super::account_sessions::stored_credentials(app).await;
+    app.fixture.seed_foreign_household(72002).await;
     app.fixture.admin.execute_unprepared(
-        "INSERT INTO native_device_tokens(account_id,device_token,platform,created_at,updated_at) VALUES(71001,'closure-device','ios',now(),now());
+        "INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74002,72001,73999,'member','active',now(),now(),now()),(74003,72002,73001,'member','active',now(),now(),now());
+         INSERT INTO person_access_grants(id,household_id,household_membership_id,person_id,access_level,relationship_type,revoked_at,created_at,updated_at) VALUES(78002,72001,74002,73999,'manage','self',NULL,now(),now()),(78003,72002,74003,73001,'manage','self',NULL,now(),now()),(78004,72002,74003,73999,'view','family_member',now()-interval '1 day',now()-interval '2 days',now()-interval '1 day');
+         INSERT INTO native_device_tokens(account_id,device_token,platform,created_at,updated_at) VALUES(71001,'closure-device','ios',now(),now());
          INSERT INTO push_subscriptions(account_id,endpoint,p256dh,auth,created_at,updated_at) VALUES(71001,'https://example.test/closure','synthetic-key','synthetic-auth',now(),now());
          INSERT INTO identity_api_keys(id,account_id,key_hash,payload) VALUES('closure-key',71001,'closure-hash','{\"enabled\":true}');
          INSERT INTO account_active_session_keys(account_id,session_id,created_at,last_use) VALUES(71001,'closure-session',now(),now())"
@@ -63,8 +66,14 @@ async fn assert_bearers(app: &Application, expected: reqwest::StatusCode) {
 async fn notices_and_audits(app: &Application) -> (i64, i64) {
     let row=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
         "SELECT (SELECT count(*) FROM pg_loco_queue WHERE task_data->>'subject'='Account closed' AND task_data->>'to'='persistence@example.test') AS notices,
-        (SELECT count(*) FROM versions WHERE item_type='AuthenticationToken' AND event='auth_token/account/closed') AS audits"
+        (SELECT count(*) FROM versions WHERE item_type='AuthenticationToken' AND event='auth_token/account/closed') AS audits,
+        (SELECT count(*) FROM versions WHERE item_type='AuthenticationToken' AND event='auth_token/account/closed' AND item_id=71001 AND audit_context->>'actor_account_id'='71001') AS attributed_audits"
     )).await.unwrap().unwrap();
+    assert_eq!(
+        row.try_get::<i64>("", "audits").unwrap(),
+        row.try_get::<i64>("", "attributed_audits").unwrap(),
+        "every closure audit must identify the closing account and actor"
+    );
     (
         row.try_get("", "notices").unwrap(),
         row.try_get("", "audits").unwrap(),
@@ -121,6 +130,18 @@ async fn rollback_case(deferred: bool, enqueue: bool) {
     );
     assert_eq!(notices_and_audits(&app).await, (0, 0));
     assert_bearers(&app, reqwest::StatusCode::OK).await;
+    let table = if enqueue { "pg_loco_queue" } else { "accounts" };
+    app.fixture
+        .admin
+        .execute_unprepared(&format!("DROP TRIGGER closure_failure ON {table}"))
+        .await
+        .unwrap();
+    assert_eq!(
+        confirm(&app, &cookie, &operation).await.status(),
+        reqwest::StatusCode::OK
+    );
+    assert_eq!(notices_and_audits(&app).await, (1, 1));
+    assert_bearers(&app, reqwest::StatusCode::UNAUTHORIZED).await;
     app.close().await;
 }
 
@@ -143,6 +164,8 @@ async fn account_closure_mail_enqueue_failure_rolls_back() {
 async fn account_closure_mail_success_and_replay() {
     let app = Application::new().await;
     let (cookie, operation) = prepare(&app).await;
+    let before = state(&app).await;
+    assert_eq!(before["grants"].as_array().unwrap().len(), 4);
     let records = app
         .fixture
         .admin
@@ -165,6 +188,26 @@ async fn account_closure_mail_success_and_replay() {
     for membership in after["memberships"].as_array().unwrap() {
         assert_eq!(membership["status"], "revoked");
         assert!(!membership["revoked_at"].is_null());
+    }
+    let grants = after["grants"].as_array().unwrap();
+    assert_eq!(grants.len(), 4);
+    for prior in before["grants"].as_array().unwrap() {
+        let grant = grants
+            .iter()
+            .find(|grant| grant["id"] == prior["id"])
+            .unwrap();
+        if prior["id"] == 78001 || prior["id"] == 78003 {
+            assert!(prior["revoked_at"].is_null());
+            assert!(
+                !grant["revoked_at"].is_null(),
+                "active grants in both households must be revoked"
+            );
+        } else {
+            assert_eq!(
+                grant, prior,
+                "another member's grant and an already revoked grant must be unchanged"
+            );
+        }
     }
     for kind in ["api_sessions", "app_tokens"] {
         for credential in after[kind].as_array().unwrap() {
@@ -205,5 +248,41 @@ async fn account_closure_mail_success_and_replay() {
             .is_success()
     );
     assert_eq!(notices_and_audits(&app).await, (1, 1));
+    app.close().await;
+}
+
+#[tokio::test]
+async fn account_closure_mail_later_household_owner_denial_rolls_back() {
+    let app = Application::new().await;
+    let (cookie, operation) = prepare(&app).await;
+    app.fixture.admin.execute_unprepared(
+        "UPDATE household_memberships SET role='member' WHERE id=74999;
+         UPDATE household_memberships SET role='owner' WHERE id=74003;
+         CREATE SEQUENCE closure_first_household_reached;
+         GRANT USAGE,SELECT ON SEQUENCE closure_first_household_reached TO med_tracker_app;
+         CREATE FUNCTION closure_first_household() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM nextval('closure_first_household_reached'); RETURN NEW; END $$;
+         CREATE TRIGGER closure_first_household AFTER UPDATE ON person_access_grants FOR EACH ROW WHEN (NEW.id=78001 AND NEW.revoked_at IS NOT NULL) EXECUTE FUNCTION closure_first_household()"
+    ).await.unwrap();
+    let before = state(&app).await;
+    let response = confirm(&app, &cookie, &operation).await;
+    assert_eq!(response.status(), reqwest::StatusCode::FORBIDDEN);
+    assert!(!response.headers().contains_key("set-cookie"));
+    let marker = app
+        .fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT is_called FROM closure_first_household_reached",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(
+        marker.try_get::<bool>("", "is_called").unwrap(),
+        "first household grant must have been changed before second household denial"
+    );
+    assert_eq!(state(&app).await, before);
+    assert_eq!(notices_and_audits(&app).await, (0, 0));
+    assert_bearers(&app, reqwest::StatusCode::OK).await;
     app.close().await;
 }
