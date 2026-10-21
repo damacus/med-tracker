@@ -1463,6 +1463,18 @@ pt:
         one: O fornecimento restante de %{count} medicamento foi atualizado.
         other: O fornecimento restante de %{count} medicamentos foi atualizado.
   people:
+    index:
+      error_heading: "Verifique os dados da pessoa"
+      eyebrow: "Gerir pessoas"
+      empty: "Não há pessoas para mostrar."
+      pages: "Páginas de pessoas"
+      previous: "Página anterior"
+      next: "Página seguinte"
+      identity: "Identidade"
+      medication_support: "Apoio à medicação"
+      active_medications:
+        one: "%{count} medicamento ativo"
+        other: "%{count} medicamentos ativos"
     created: Pessoa criada com sucesso.
     updated: Pessoa atualizada com sucesso.
     deleted: Pessoa eliminada com sucesso.

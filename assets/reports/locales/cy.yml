@@ -1456,6 +1456,18 @@ cy:
         one: Diweddarwyd y cyflenwad sy'n weddill ar gyfer %{count} meddyginiaeth.
         other: Diweddarwyd y cyflenwad sy'n weddill ar gyfer %{count} meddyginiaethau.
   people:
+    index:
+      error_heading: "Gwiriwch fanylion y person"
+      eyebrow: "Rheoli pobl"
+      empty: "Dim pobl i’w dangos."
+      pages: "Tudalennau pobl"
+      previous: "Tudalen flaenorol"
+      next: "Tudalen nesaf"
+      identity: "Hunaniaeth"
+      medication_support: "Cymorth meddyginiaeth"
+      active_medications:
+        one: "%{count} feddyginiaeth weithredol"
+        other: "%{count} meddyginiaeth weithredol"
     created: Crëwyd y person yn llwyddiannus.
     updated: Diweddarwyd y person yn llwyddiannus.
     deleted: Dilëwyd y person yn llwyddiannus.

@@ -1,3 +1,4 @@
+pub(crate) mod browser;
 mod creation;
 mod me;
 mod persistence;

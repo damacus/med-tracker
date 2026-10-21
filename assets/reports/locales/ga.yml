@@ -1460,6 +1460,18 @@ ga:
         one: Nuashonraíodh an soláthar atá fágtha do %{count} leigheas.
         other: Nuashonraíodh an soláthar atá fágtha do %{count} leigheasanna.
   people:
+    index:
+      error_heading: "Seiceáil sonraí an duine"
+      eyebrow: "Bainistigh daoine"
+      empty: "Níl aon duine le taispeáint."
+      pages: "Leathanaigh daoine"
+      previous: "An leathanach roimhe"
+      next: "An chéad leathanach eile"
+      identity: "Aitheantas"
+      medication_support: "Tacaíocht le cógais"
+      active_medications:
+        one: "%{count} chógas gníomhach"
+        other: "%{count} cógas gníomhach"
     created: Cruthaíodh an duine go rathúil.
     updated: Nuashonraíodh an duine go rathúil.
     deleted: Scriosadh an duine go rathúil.

@@ -11,3 +11,6 @@ mod template;
 
 #[path = "browser/shared_layout.rs"]
 mod shared_layout;
+
+#[path = "browser/people_polish.rs"]
+mod people_polish;
