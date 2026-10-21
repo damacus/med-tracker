@@ -21,8 +21,12 @@ fn password_hash() -> String {
     bcrypt::hash("password", 4).expect("fixture password hash")
 }
 
-/// Equivalent of tests/fixtures/persistence-records.sql and care-doses.sql.
 pub async fn seed_core(db: &DatabaseConnection) {
+    seed_persistence(db).await;
+    seed_care_doses(db).await;
+}
+
+pub async fn seed_persistence(db: &DatabaseConnection) {
     people::Entity::insert_many([
         people::ActiveModel {
             id: Set(73001),
@@ -61,7 +65,7 @@ pub async fn seed_core(db: &DatabaseConnection) {
         person_id: Set(73001),
         email: Set("persistence@example.test".into()),
         password_hash: Set(Some(password_hash())),
-        status: Set(2),
+        status: Set(1),
         created_at: Set(now()),
         updated_at: Set(now()),
         ..Default::default()
@@ -84,38 +88,16 @@ pub async fn seed_core(db: &DatabaseConnection) {
     .await
     .expect("seed household");
 
-    household_memberships::Entity::insert_many([
-        household_memberships::ActiveModel {
-            id: Set(74001),
-            household_id: Set(72001),
-            person_id: Set(73001),
-            role: Set("administrator".into()),
-            joined_at: Set(now()),
-            created_at: Set(now()),
-            updated_at: Set(now()),
-            ..Default::default()
-        },
-        household_memberships::ActiveModel {
-            id: Set(74980),
-            household_id: Set(72001),
-            person_id: Set(73002),
-            role: Set("member".into()),
-            joined_at: Set(now()),
-            created_at: Set(now()),
-            updated_at: Set(now()),
-            ..Default::default()
-        },
-        household_memberships::ActiveModel {
-            id: Set(74981),
-            household_id: Set(72001),
-            person_id: Set(73003),
-            role: Set("member".into()),
-            joined_at: Set(now()),
-            created_at: Set(now()),
-            updated_at: Set(now()),
-            ..Default::default()
-        },
-    ])
+    household_memberships::Entity::insert_many([household_memberships::ActiveModel {
+        id: Set(74001),
+        household_id: Set(72001),
+        person_id: Set(73001),
+        role: Set("administrator".into()),
+        joined_at: Set(now()),
+        created_at: Set(now()),
+        updated_at: Set(now()),
+        ..Default::default()
+    }])
     .exec(db)
     .await
     .expect("seed memberships");
@@ -158,7 +140,17 @@ pub async fn seed_core(db: &DatabaseConnection) {
     .exec(db)
     .await
     .expect("seed oauth grant");
+}
 
+async fn seed_verified_user(db: &DatabaseConnection) {
+    let account = accounts::Entity::find_by_id(71001)
+        .one(db)
+        .await
+        .expect("find fixture account")
+        .expect("fixture account");
+    let mut account = account.into_active_model();
+    account.status = Set(2);
+    account.update(db).await.expect("verify fixture account");
     users::Entity::insert(users::ActiveModel {
         id: Set(77001),
         person_id: Set(73001),
@@ -171,6 +163,36 @@ pub async fn seed_core(db: &DatabaseConnection) {
     .exec(db)
     .await
     .expect("seed user");
+}
+
+pub async fn seed_care_doses(db: &DatabaseConnection) {
+    seed_verified_user(db).await;
+
+    household_memberships::Entity::insert_many([
+        household_memberships::ActiveModel {
+            id: Set(74980),
+            household_id: Set(72001),
+            person_id: Set(73002),
+            role: Set("member".into()),
+            joined_at: Set(now()),
+            created_at: Set(now()),
+            updated_at: Set(now()),
+            ..Default::default()
+        },
+        household_memberships::ActiveModel {
+            id: Set(74981),
+            household_id: Set(72001),
+            person_id: Set(73003),
+            role: Set("member".into()),
+            joined_at: Set(now()),
+            created_at: Set(now()),
+            updated_at: Set(now()),
+            ..Default::default()
+        },
+    ])
+    .exec(db)
+    .await
+    .expect("seed dependent memberships");
 
     person_access_grants::Entity::insert(person_access_grants::ActiveModel {
         id: Set(78001),
@@ -232,6 +254,88 @@ pub async fn seed_core(db: &DatabaseConnection) {
     .expect("seed person medication");
 }
 
+pub async fn seed_care_medications(db: &DatabaseConnection) {
+    seed_verified_user(db).await;
+
+    person_access_grants::Entity::insert(person_access_grants::ActiveModel {
+        id: Set(88001),
+        household_id: Set(72001),
+        household_membership_id: Set(74001),
+        person_id: Set(73001),
+        access_level: Set("manage".into()),
+        relationship_type: Set("self".into()),
+        created_at: Set(now()),
+        updated_at: Set(now()),
+        ..Default::default()
+    })
+    .exec(db)
+    .await
+    .expect("seed access grant");
+
+    locations::Entity::insert(locations::ActiveModel {
+        id: Set(89001),
+        household_id: Set(72001),
+        name: Set("Synthetic stock cabinet".into()),
+        created_at: Set(now()),
+        updated_at: Set(now()),
+        ..Default::default()
+    })
+    .exec(db)
+    .await
+    .expect("seed location");
+
+    medications::Entity::insert(medications::ActiveModel {
+        id: Set(90001),
+        household_id: Set(72001),
+        created_by_membership_id: Set(Some(74001)),
+        location_id: Set(89001),
+        name: Set(Some("Synthetic stock tablets".into())),
+        current_supply: Set(Some(Decimal::new(10, 0))),
+        dose_amount: Set(Some(2.0)),
+        dose_unit: Set(Some("tablet".into())),
+        created_at: Set(now()),
+        updated_at: Set(now()),
+        ..Default::default()
+    })
+    .exec(db)
+    .await
+    .expect("seed medication");
+}
+
+pub async fn seed_identity_oauth(db: &DatabaseConnection) {
+    seed_verified_user(db).await;
+    let application = oauth_applications::Entity::find_by_id(75001)
+        .one(db)
+        .await
+        .expect("find fixture client")
+        .expect("fixture client");
+    let mut application = application.into_active_model();
+    application.client_id = Set("native".into());
+    application.redirect_uri = Set("https://example.test/oauth/callback".into());
+    application.scopes = Set("patient/*.rs offline_access".into());
+    application
+        .update(db)
+        .await
+        .expect("configure OAuth client");
+    let grant = oauth_grants::Entity::find_by_id(76001)
+        .one(db)
+        .await
+        .expect("find fixture grant")
+        .expect("fixture grant");
+    let mut grant = grant.into_active_model();
+    grant.code = Set(Some("synthetic-legacy-code".into()));
+    grant.code_challenge = Set(Some("E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM".into()));
+    grant.code_challenge_method = Set(Some("S256".into()));
+    grant.redirect_uri = Set(Some("https://example.test/oauth/callback".into()));
+    grant.scopes = Set("patient/*.rs offline_access".into());
+    grant.token = Set(None);
+    grant.refresh_token = Set(None);
+    grant.token_hash = Set(None);
+    grant.refresh_token_hash = Set(None);
+    grant.expires_in = Set(now() + chrono::Duration::minutes(5));
+    grant.update(db).await.expect("configure OAuth grant");
+}
+
 /// The care API suite exchanges its authorization code against client id
 /// `native`; repoint application 75001 after `seed_core` created it as
 /// `synthetic-client`.
@@ -247,7 +351,7 @@ pub async fn set_native_client_id(db: &DatabaseConnection) {
     active.update(db).await.expect("set native client id");
 }
 
-/// Equivalent of tests/oauth_server/clients.sql.
+/// Seed native and SMART OAuth clients.
 #[allow(dead_code)]
 pub async fn seed_oauth_clients(db: &DatabaseConnection) {
     oauth_applications::Entity::insert_many([
@@ -284,7 +388,7 @@ pub async fn seed_oauth_clients(db: &DatabaseConnection) {
     .expect("seed oauth clients");
 }
 
-/// Equivalent of src/fixtures/browser.sql.
+/// Seed the additional households used by browser journeys.
 #[allow(dead_code)]
 pub async fn seed_browser_rows(db: &DatabaseConnection) {
     people::Entity::insert(people::ActiveModel {
@@ -447,8 +551,7 @@ pub async fn seed_barcode_metadata(db: &DatabaseConnection) {
     active.update(db).await.expect("set medication barcode");
 }
 
-/// Equivalent of tests/fixtures/identity/mobile.sql: swap the integration
-/// grant for a mobile grant on the same ids.
+/// Swap the integration grant for a mobile grant on the same ids.
 #[allow(dead_code)]
 pub async fn seed_mobile_grant(db: &DatabaseConnection) {
     oauth_grants::Entity::delete_by_id(76001)
@@ -487,4 +590,97 @@ pub async fn seed_mobile_grant(db: &DatabaseConnection) {
     .exec(db)
     .await
     .expect("seed mobile grant");
+}
+
+pub async fn seed_tenant_access(db: &DatabaseConnection) {
+    seed_verified_user(db).await;
+    person_access_grants::Entity::insert(person_access_grants::ActiveModel {
+        id: Set(78001),
+        household_id: Set(72001),
+        household_membership_id: Set(74001),
+        person_id: Set(73001),
+        access_level: Set("manage".into()),
+        relationship_type: Set("self".into()),
+        created_at: Set(now()),
+        updated_at: Set(now()),
+        ..Default::default()
+    })
+    .exec(db)
+    .await
+    .expect("seed tenant self grant");
+    people::Entity::insert(people::ActiveModel {
+        id: Set(73004),
+        name: Set("Other adult".into()),
+        person_type: Set(0),
+        has_capacity: Set(true),
+        created_at: Set(now()),
+        updated_at: Set(now()),
+        ..Default::default()
+    })
+    .exec(db)
+    .await
+    .expect("seed other adult");
+    accounts::Entity::insert(accounts::ActiveModel {
+        id: Set(71002),
+        person_id: Set(73004),
+        email: Set("other@example.test".into()),
+        status: Set(2),
+        password_hash: Set(Some(password_hash())),
+        created_at: Set(now()),
+        updated_at: Set(now()),
+        ..Default::default()
+    })
+    .exec(db)
+    .await
+    .expect("seed other account");
+    households::Entity::insert(households::ActiveModel {
+        id: Set(72002),
+        name: Set("Other household".into()),
+        slug: Set("other-fixture".into()),
+        timezone: Set("Europe/London".into()),
+        created_at: Set(now()),
+        updated_at: Set(now()),
+        ..Default::default()
+    })
+    .exec(db)
+    .await
+    .expect("seed other household");
+    household_memberships::Entity::insert(household_memberships::ActiveModel {
+        id: Set(74002),
+        household_id: Set(72002),
+        person_id: Set(73004),
+        joined_at: Set(now()),
+        created_at: Set(now()),
+        updated_at: Set(now()),
+        ..Default::default()
+    })
+    .exec(db)
+    .await
+    .expect("seed other membership");
+    users::Entity::insert(users::ActiveModel {
+        id: Set(77002),
+        person_id: Set(73004),
+        email_address: Set("other@example.test".into()),
+        password_digest: Set(Some(password_hash())),
+        created_at: Set(now()),
+        updated_at: Set(now()),
+        ..Default::default()
+    })
+    .exec(db)
+    .await
+    .expect("seed other user");
+    person_access_grants::Entity::insert(person_access_grants::ActiveModel {
+        id: Set(78002),
+        household_id: Set(72002),
+        household_membership_id: Set(74002),
+        person_id: Set(73004),
+        access_level: Set("view".into()),
+        relationship_type: Set("self".into()),
+        created_at: Set(now()),
+        updated_at: Set(now()),
+        ..Default::default()
+    })
+    .exec(db)
+    .await
+    .expect("seed other self grant");
 }

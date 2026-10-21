@@ -1,3 +1,5 @@
+#[path = "care_api/account_closure_mail.rs"]
+mod account_closure_mail;
 #[path = "care_api/account_sessions.rs"]
 mod account_sessions;
 #[path = "care_api/administration.rs"]
@@ -51,7 +53,7 @@ mod dose_outcomes;
 #[path = "care_api/fixture.rs"]
 mod fixture;
 #[path = "support/fixtures.rs"]
-mod fixtures;
+pub mod fixtures;
 #[path = "care_api/guardian_declarations.rs"]
 mod guardian_declarations;
 #[path = "care_api/health_events.rs"]
