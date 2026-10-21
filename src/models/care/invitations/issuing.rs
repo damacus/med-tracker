@@ -9,6 +9,7 @@ pub async fn create(
     acceptance_url: Option<&url::Url>,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<Value, OperationError> {
+    crate::models::care::sync::lock(tenant).await?;
     administration::authorize(tenant).await?;
     create_authorized(tenant, attributes, acceptance_url, provenance).await
 }
@@ -51,7 +52,7 @@ async fn create_authorized(
     if let Some(acceptance_url) = acceptance_url {
         let mut target = acceptance_url.clone();
         target.query_pairs_mut().append_pair("token", &token);
-        delivery::enqueue(tenant, Email { to: email, subject: "MedTracker household invitation".into(), text: format!("You have been invited to a MedTracker household. Accept your invitation: {target}"), ..Default::default() }).await?;
+        delivery::enqueue(tenant, &row, Email { to: email, subject: "MedTracker household invitation".into(), text: format!("You have been invited to a MedTracker household. Accept your invitation: {target}"), ..Default::default() }).await?;
     }
     record(tenant, &row, None, "created", provenance).await?;
     Ok(json!({"data":summary(&row,now)}))

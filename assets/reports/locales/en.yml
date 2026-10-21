@@ -294,6 +294,28 @@ en:
       index:
         title: Invitations
         subtitle: Invite new users to join MedTracker.
+        created: "Created:"
+        filters:
+          heading: "Search invitations"
+          search: "Email contains"
+          all_roles: "All roles"
+          status: "Invitation status"
+          all_statuses: "All statuses"
+          apply: "Apply filters"
+          clear: "Clear filters"
+        delivery:
+          heading: "Latest email attempt"
+          explanation: "Sent to provider means the mail provider accepted the message. It does not confirm delivery to the recipient."
+          retry: "Use Resend to issue a new link. The previous link will stop working."
+          status:
+            unknown: "Not tracked"
+            queued: "Queued"
+            sent_to_provider: "Sent to provider"
+            failed: "Failed"
+          category:
+            unavailable: "The invitation or sending authority is no longer available. If authority has changed, cancel this invitation and create a new one."
+            provider_unavailable: "The mail provider could not accept this attempt."
+            uncertain: "Sending may have started. This attempt will not be sent again."
         recent: Recent invitations
         resend: Resend
         cancel: Cancel

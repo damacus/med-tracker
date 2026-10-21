@@ -1202,3 +1202,230 @@ async fn member_detail_rechecks_authority_and_keeps_context_on_errors() -> TestR
     close(fixture, boot).await;
     Ok(())
 }
+
+#[tokio::test]
+async fn invitation_management_filters_are_literal_bounded_and_preserve_action_context()
+-> TestResult {
+    let (fixture, boot) = boot_fixture_with(|config| {
+        let key = base64::engine::general_purpose::STANDARD.encode([7_u8; 64]);
+        config.settings.get_or_insert_with(|| json!({}))["browser_session"] =
+            json!({"key":key,"secure":false});
+    })
+    .await;
+    fixture.admin.execute_unprepared("INSERT INTO household_invitations(id,household_id,email,membership_role,token_digest,invited_by_membership_id,expires_at,created_at,updated_at) SELECT 88000+n,72001,'Synthetic-'||n||'@example.test','member','management-'||n,74001,now()+interval '7 days','2026-01-01',now() FROM generate_series(1,52) n; INSERT INTO household_invitations(id,household_id,email,membership_role,token_digest,invited_by_membership_id,expires_at,created_at,updated_at) VALUES(88901,72001,'literal%_@example.test','administrator','literal-filter',74001,now()-interval '1 day',now(),now())").await?;
+    let mut request = server(&boot);
+    request.save_cookies();
+    select_household(&request, &fixture, &boot).await?;
+    let path = "/households/persistence-fixture/admin/invitations";
+    let literal = request
+        .get(&format!(
+            "{path}?q=%25_&role=administrator&status=expired&lang=es"
+        ))
+        .await;
+    assert_eq!(literal.status_code(), 200, "{}", literal.text());
+    assert!(literal.text().contains("literal%_@example.test"));
+    assert!(!literal.text().contains("Synthetic-"));
+    let first = request
+        .get(&format!(
+            "{path}?q=SYNTHETIC&role=member&status=pending&lang=es"
+        ))
+        .await;
+    assert_eq!(first.status_code(), 200, "{}", first.text());
+    let html = first.text();
+    assert_eq!(html.matches("class=\"card-title break-all\"").count(), 50);
+    assert!(html.contains("Synthetic-52@example.test"));
+    assert!(!html.contains("Synthetic-2@example.test"));
+    let next = html
+        .split("rel=\"next\" href=\"")
+        .nth(1)
+        .and_then(|value| value.split('"').next())
+        .ok_or("next page missing")?
+        .replace("&amp;", "&");
+    let second = request.get(&next).await;
+    assert_eq!(second.status_code(), 200, "{}", second.text());
+    assert!(second.text().contains("Synthetic-2@example.test"));
+    assert!(second.text().contains("Synthetic-1@example.test"));
+    assert!(!second.text().contains("Synthetic-3@example.test"));
+    assert!(!second.text().contains("rel=\"next\""));
+    let token = authenticity_token(&html).ok_or("invitation CSRF missing")?;
+    let changed = request
+        .post(&format!("{path}/88052/resend"))
+        .add_header("sec-fetch-site", "same-origin")
+        .form(&[
+            ("authenticity_token", token),
+            ("q", "SYNTHETIC"),
+            ("role", "member"),
+            ("status", "pending"),
+            ("lang", "es"),
+        ])
+        .await;
+    assert_eq!(changed.status_code(), 303, "{}", changed.text());
+    let location = changed
+        .headers()
+        .get("location")
+        .ok_or("redirect missing")?
+        .to_str()?;
+    for expected in [
+        "q=SYNTHETIC",
+        "role=member",
+        "status=pending",
+        "lang=es",
+        "notice=resent",
+    ] {
+        assert!(location.contains(expected), "{location}");
+    }
+    fixture.admin.execute_unprepared("UPDATE invitation_mail_attempts SET status='failed',category='unavailable',finished_at=now()").await?;
+    let unavailable = request.get(&format!("{path}?q=SYNTHETIC&lang=en")).await;
+    assert_eq!(unavailable.status_code(), 200, "{}", unavailable.text());
+    assert!(
+        unavailable
+            .text()
+            .contains("cancel this invitation and create a new one"),
+        "{}",
+        unavailable.text()
+    );
+    assert!(
+        !unavailable
+            .text()
+            .contains("Use Resend to issue a new link")
+    );
+    let invalid_cursor = request.get(&next.replace("q=SYNTHETIC", "q=other")).await;
+    assert_eq!(invalid_cursor.status_code(), 422);
+    for query in [
+        "q=a&q=b",
+        "role=owner",
+        "status=sent",
+        "cursor=invalid",
+        "q=a&lang=es&lang=en",
+    ] {
+        assert_eq!(
+            request.get(&format!("{path}?{query}")).await.status_code(),
+            422,
+            "{query}"
+        );
+    }
+    let invalid = request
+        .post(path)
+        .add_header("sec-fetch-site", "same-origin")
+        .form(&[
+            ("authenticity_token", token),
+            ("email", "invalid"),
+            ("membership_role", "member"),
+            ("q", "SYNTHETIC"),
+            ("role", "member"),
+            ("status", "pending"),
+            ("lang", "es"),
+        ])
+        .await;
+    assert_eq!(invalid.status_code(), 422, "{}", invalid.text());
+    for field in ["q", "role", "status", "lang"] {
+        assert!(invalid.text().contains(&format!("name=\"{field}\"")));
+    }
+    for language in ["en", "cy", "ga", "pt", "es"] {
+        let local = request
+            .get(&format!("{path}?q=SYNTHETIC&lang={language}"))
+            .await;
+        assert_eq!(local.status_code(), 200, "{}", local.text());
+        assert!(local.text().contains(&format!("<html lang=\"{language}\"")));
+        assert!(local.text().contains("Latest email attempt") == (language == "en"));
+    }
+    let before = fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT count(*) AS attempts FROM invitation_mail_attempts",
+        ))
+        .await?
+        .ok_or("attempt count missing")?
+        .try_get::<i64>("", "attempts")?;
+    fixture.admin.execute_unprepared("UPDATE household_memberships SET role='member',permissions_version=permissions_version+1 WHERE id=74001").await?;
+    let denied = request
+        .post(&format!("{path}/88051/resend"))
+        .add_header("sec-fetch-site", "same-origin")
+        .form(&[("authenticity_token", token), ("lang", "es")])
+        .await;
+    assert_eq!(denied.status_code(), 403, "{}", denied.text());
+    assert_eq!(request.get(path).await.status_code(), 403);
+    let after = fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT count(*) AS attempts FROM invitation_mail_attempts",
+        ))
+        .await?
+        .ok_or("attempt count missing")?
+        .try_get::<i64>("", "attempts")?;
+    assert_eq!(before, after);
+    drop(request);
+    close(fixture, boot).await;
+    Ok(())
+}
+
+#[tokio::test]
+async fn invitation_actions_reject_cross_filter_and_household_cursors_without_mutation()
+-> TestResult {
+    use med_tracker::models::{
+        access::{self, Actor, HouseholdScope},
+        care::invitations::browser,
+    };
+    let (fixture, boot) = boot_fixture_with(|config| {
+        let key = base64::engine::general_purpose::STANDARD.encode([7_u8; 64]);
+        config.settings.get_or_insert_with(|| json!({}))["browser_session"] =
+            json!({"key":key,"secure":false});
+    })
+    .await;
+    fixture.admin.execute_unprepared("INSERT INTO households(id,name,slug,timezone,created_at,updated_at) VALUES(72002,'Other synthetic household','cursor-foreign','UTC',now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,joined_at,created_at,updated_at) VALUES(74002,72002,73001,'owner',now(),now(),now()); INSERT INTO household_invitations(id,household_id,email,membership_role,token_digest,invited_by_membership_id,expires_at,created_at,updated_at) SELECT 88000+n,72001,'synthetic-'||n||'@example.test','member','cursor-main-'||n,74001,now()+interval '7 days',now(),now() FROM generate_series(1,51) n; INSERT INTO household_invitations(id,household_id,email,membership_role,token_digest,invited_by_membership_id,expires_at,created_at,updated_at) SELECT 89000+n,72002,'synthetic-'||n||'@example.test','member','cursor-foreign-'||n,74002,now()+interval '7 days',now(),now() FROM generate_series(1,51) n").await?;
+    let mut request = server(&boot);
+    request.save_cookies();
+    select_household(&request, &fixture, &boot).await?;
+    let page = request
+        .get("/households/persistence-fixture/admin/invitations")
+        .await;
+    let html = page.text();
+    let token = authenticity_token(&html).ok_or("invitation token missing")?;
+    let mut cursors = Vec::new();
+    for household_id in [72001, 72002] {
+        let scope = HouseholdScope {
+            actor: Actor { account_id: 71001 },
+            household_id,
+            request_id: "invitation-cursor-proof".into(),
+        };
+        let tenant = access::begin(&fixture.runtime, &scope, None).await?;
+        let records = browser::browse(
+            &tenant,
+            None,
+            &browser::BrowseFilters::parse("synthetic", "", "")?,
+        )
+        .await?;
+        cursors.push(records.next_cursor.ok_or("bounded cursor missing")?);
+        tenant.commit().await?;
+    }
+    for (cursor, search) in [(&cursors[0], "wrong-filter"), (&cursors[1], "synthetic")] {
+        let before=fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT token_digest,(SELECT count(*) FROM invitation_mail_attempts) AS attempts,(SELECT count(*) FROM versions WHERE item_type='HouseholdInvitation') AS versions FROM household_invitations WHERE id=88001")).await?.ok_or("before state missing")?;
+        let rejected = request
+            .post("/households/persistence-fixture/admin/invitations/88001/resend")
+            .add_header("sec-fetch-site", "same-origin")
+            .form(&[
+                ("authenticity_token", token),
+                ("q", search),
+                ("cursor", cursor.as_str()),
+                ("lang", "es"),
+            ])
+            .await;
+        assert_eq!(rejected.status_code(), 422, "{}", rejected.text());
+        let after=fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT token_digest,(SELECT count(*) FROM invitation_mail_attempts) AS attempts,(SELECT count(*) FROM versions WHERE item_type='HouseholdInvitation') AS versions FROM household_invitations WHERE id=88001")).await?.ok_or("after state missing")?;
+        assert_eq!(
+            before.try_get::<String>("", "token_digest")?,
+            after.try_get::<String>("", "token_digest")?
+        );
+        for field in ["attempts", "versions"] {
+            assert_eq!(
+                before.try_get::<i64>("", field)?,
+                after.try_get::<i64>("", field)?
+            );
+        }
+    }
+    drop(request);
+    close(fixture, boot).await;
+    Ok(())
+}

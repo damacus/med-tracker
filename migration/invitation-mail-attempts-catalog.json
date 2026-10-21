@@ -1,0 +1,501 @@
+{
+  "relation:public.invitation_mail_attempts": {
+    "acl": [
+      "med_tracker_app=ar/med_tracker_owner",
+      "med_tracker_owner=arwdDxtm/med_tracker_owner"
+    ],
+    "rls": true,
+    "kind": "r",
+    "owner": "med_tracker_owner",
+    "options": null,
+    "force_rls": true,
+    "partition": false,
+    "tablespace": null,
+    "persistence": "p",
+    "access_method": "heap",
+    "partition_key": null,
+    "partition_bound": null,
+    "replica_identity": "d"
+  },
+  "column:public.invitation_mail_attempts.id": {
+    "acl": null,
+    "type": "bigint",
+    "default": null,
+    "options": null,
+    "storage": "p",
+    "identity": "d",
+    "not_null": true,
+    "position": 1,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "index:public.invitation_mail_attempts_pkey": {
+    "live": true,
+    "owner": "med_tracker_owner",
+    "ready": true,
+    "valid": true,
+    "options": null,
+    "clustered": false,
+    "definition": "CREATE UNIQUE INDEX invitation_mail_attempts_pkey ON public.invitation_mail_attempts USING btree (id)",
+    "tablespace": null,
+    "replica_identity": false
+  },
+  "column:public.invitation_mail_attempts.status": {
+    "acl": [
+      "med_tracker_app=w/med_tracker_owner"
+    ],
+    "type": "character varying",
+    "default": "'queued'::character varying",
+    "options": null,
+    "storage": "x",
+    "identity": "",
+    "not_null": true,
+    "position": 9,
+    "collation": "pg_catalog.default",
+    "generated": "",
+    "compression": ""
+  },
+  "column:public.invitation_mail_attempts.category": {
+    "acl": [
+      "med_tracker_app=w/med_tracker_owner"
+    ],
+    "type": "character varying",
+    "default": null,
+    "options": null,
+    "storage": "x",
+    "identity": "",
+    "not_null": false,
+    "position": 10,
+    "collation": "pg_catalog.default",
+    "generated": "",
+    "compression": ""
+  },
+  "relation:public.invitation_mail_attempts_id_seq": {
+    "acl": [
+      "med_tracker_app=rU/med_tracker_owner",
+      "med_tracker_owner=rwU/med_tracker_owner"
+    ],
+    "rls": false,
+    "kind": "S",
+    "owner": "med_tracker_owner",
+    "options": null,
+    "force_rls": false,
+    "partition": false,
+    "tablespace": null,
+    "persistence": "p",
+    "access_method": null,
+    "partition_key": null,
+    "partition_bound": null,
+    "replica_identity": "n"
+  },
+  "sequence:public.invitation_mail_attempts_id_seq": {
+    "type": "bigint",
+    "cache": 1,
+    "cycle": false,
+    "start": 1,
+    "maximum": 9223372036854775807,
+    "minimum": 1,
+    "owned_by": "public.invitation_mail_attempts.id",
+    "increment": 1
+  },
+  "column:public.invitation_mail_attempts.queued_at": {
+    "acl": null,
+    "type": "timestamp(6) without time zone",
+    "default": "timezone('UTC'::text, clock_timestamp())",
+    "options": null,
+    "storage": "p",
+    "identity": "",
+    "not_null": true,
+    "position": 11,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "index:public.invitation_mail_attempts_recent_idx": {
+    "live": true,
+    "owner": "med_tracker_owner",
+    "ready": true,
+    "valid": true,
+    "options": null,
+    "clustered": false,
+    "definition": "CREATE INDEX invitation_mail_attempts_recent_idx ON public.invitation_mail_attempts USING btree (household_id, original_invitation_id, id DESC)",
+    "tablespace": null,
+    "replica_identity": false
+  },
+  "column:public.invitation_mail_attempts.started_at": {
+    "acl": [
+      "med_tracker_app=w/med_tracker_owner"
+    ],
+    "type": "timestamp(6) without time zone",
+    "default": null,
+    "options": null,
+    "storage": "p",
+    "identity": "",
+    "not_null": false,
+    "position": 12,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "column:public.invitation_mail_attempts.finished_at": {
+    "acl": [
+      "med_tracker_app=w/med_tracker_owner"
+    ],
+    "type": "timestamp(6) without time zone",
+    "default": null,
+    "options": null,
+    "storage": "p",
+    "identity": "",
+    "not_null": false,
+    "position": 13,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "column:public.invitation_mail_attempts.household_id": {
+    "acl": null,
+    "type": "bigint",
+    "default": null,
+    "options": null,
+    "storage": "p",
+    "identity": "",
+    "not_null": true,
+    "position": 2,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "column:public.invitation_mail_attempts.token_digest": {
+    "acl": null,
+    "type": "character varying",
+    "default": null,
+    "options": null,
+    "storage": "x",
+    "identity": "",
+    "not_null": true,
+    "position": 8,
+    "collation": "pg_catalog.default",
+    "generated": "",
+    "compression": ""
+  },
+  "column:public.invitation_mail_attempts.invitation_id": {
+    "acl": null,
+    "type": "bigint",
+    "default": null,
+    "options": null,
+    "storage": "p",
+    "identity": "",
+    "not_null": false,
+    "position": 3,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "column:public.invitation_mail_attempts_id_seq.log_cnt": {
+    "acl": null,
+    "type": "bigint",
+    "default": null,
+    "options": null,
+    "storage": "p",
+    "identity": "",
+    "not_null": true,
+    "position": 2,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "column:public.invitation_mail_attempts_id_seq.is_called": {
+    "acl": null,
+    "type": "boolean",
+    "default": null,
+    "options": null,
+    "storage": "p",
+    "identity": "",
+    "not_null": true,
+    "position": 3,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "column:public.invitation_mail_attempts.sender_account_id": {
+    "acl": null,
+    "type": "bigint",
+    "default": null,
+    "options": null,
+    "storage": "p",
+    "identity": "",
+    "not_null": true,
+    "position": 5,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "column:public.invitation_mail_attempts_id_seq.last_value": {
+    "acl": null,
+    "type": "bigint",
+    "default": null,
+    "options": null,
+    "storage": "p",
+    "identity": "",
+    "not_null": true,
+    "position": 1,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "column:public.invitation_mail_attempts.sender_membership_id": {
+    "acl": null,
+    "type": "bigint",
+    "default": null,
+    "options": null,
+    "storage": "p",
+    "identity": "",
+    "not_null": true,
+    "position": 6,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "column:public.invitation_mail_attempts.original_invitation_id": {
+    "acl": null,
+    "type": "bigint",
+    "default": null,
+    "options": null,
+    "storage": "p",
+    "identity": "",
+    "not_null": true,
+    "position": 4,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "column:public.invitation_mail_attempts.sender_permissions_version": {
+    "acl": null,
+    "type": "integer",
+    "default": null,
+    "options": null,
+    "storage": "p",
+    "identity": "",
+    "not_null": true,
+    "position": 7,
+    "collation": null,
+    "generated": "",
+    "compression": ""
+  },
+  "policy:public.invitation_mail_attempts.household_tenant_isolation": {
+    "check": "(household_id = med_tracker.current_household_id())",
+    "roles": [
+      "PUBLIC"
+    ],
+    "using": "(household_id = med_tracker.current_household_id())",
+    "command": "*",
+    "permissive": true
+  },
+  "constraint:public.invitation_mail_attempts.invitation_mail_attempts_pkey": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "PRIMARY KEY (id)",
+    "no_inherit": true,
+    "inherit_count": 0
+  },
+  "constraint:public.invitation_mail_attempts.invitation_mail_attempts_id_not_null": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "NOT NULL id",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
+  "constraint:public.invitation_mail_attempts.invitation_mail_attempts_state_check": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "CHECK (((((status)::text = 'queued'::text) AND (category IS NULL) AND (finished_at IS NULL)) OR (((status)::text = 'sent_to_provider'::text) AND (category IS NULL) AND (started_at IS NOT NULL) AND (finished_at IS NOT NULL)) OR (((status)::text = 'failed'::text) AND (category IS NOT NULL) AND (finished_at IS NOT NULL))))",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
+  "constraint:public.invitation_mail_attempts.invitation_mail_attempts_status_check": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "CHECK (((status)::text = ANY ((ARRAY['queued'::character varying, 'sent_to_provider'::character varying, 'failed'::character varying])::text[])))",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
+  "constraint:public.invitation_mail_attempts.invitation_mail_attempts_category_check": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "CHECK (((category IS NULL) OR ((category)::text = ANY ((ARRAY['unavailable'::character varying, 'provider_unavailable'::character varying, 'uncertain'::character varying])::text[]))))",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
+  "constraint:public.invitation_mail_attempts.invitation_mail_attempts_status_not_null": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "NOT NULL status",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
+  "constraint:public.invitation_mail_attempts.invitation_mail_attempts_household_id_fkey": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "FOREIGN KEY (household_id) REFERENCES households(id) ON DELETE CASCADE",
+    "no_inherit": true,
+    "inherit_count": 0
+  },
+  "constraint:public.invitation_mail_attempts.invitation_mail_attempts_invitation_id_fkey": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "FOREIGN KEY (invitation_id) REFERENCES household_invitations(id) ON DELETE SET NULL",
+    "no_inherit": true,
+    "inherit_count": 0
+  },
+  "constraint:public.invitation_mail_attempts.invitation_mail_attempts_queued_at_not_null": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "NOT NULL queued_at",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
+  "constraint:public.invitation_mail_attempts.invitation_mail_attempts_household_id_not_null": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "NOT NULL household_id",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
+  "constraint:public.invitation_mail_attempts.invitation_mail_attempts_token_digest_not_null": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "NOT NULL token_digest",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
+  "constraint:public.invitation_mail_attempts.invitation_mail_attempts_sender_account_id_not_null": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "NOT NULL sender_account_id",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
+  "constraint:public.invitation_mail_attempts.invitation_mail_attempts_sender_membership_id_not_null": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "NOT NULL sender_membership_id",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
+  "constraint:public.invitation_mail_attempts.invitation_mail_attempts_original_invitation_id_not_null": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "NOT NULL original_invitation_id",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
+  "constraint:public.invitation_mail_attempts.invitation_mail_attempts_sender_permissions_version_not_null": {
+    "local": true,
+    "deferred": false,
+    "enforced": true,
+    "validated": true,
+    "deferrable": false,
+    "definition": "NOT NULL sender_permissions_version",
+    "no_inherit": false,
+    "inherit_count": 0
+  },
+  "internal_trigger:public.households:public.invitation_mail_attempts.invitation_mail_attempts_household_id_fkey:9": {
+    "type": 9,
+    "enabled": "O",
+    "deferred": false,
+    "function": "\"RI_FKey_cascade_del\"()",
+    "deferrable": false
+  },
+  "internal_trigger:public.households:public.invitation_mail_attempts.invitation_mail_attempts_household_id_fkey:17": {
+    "type": 17,
+    "enabled": "O",
+    "deferred": false,
+    "function": "\"RI_FKey_noaction_upd\"()",
+    "deferrable": false
+  },
+  "internal_trigger:public.household_invitations:public.invitation_mail_attempts.invitation_mail_attempts_invitation_id_fkey:9": {
+    "type": 9,
+    "enabled": "O",
+    "deferred": false,
+    "function": "\"RI_FKey_setnull_del\"()",
+    "deferrable": false
+  },
+  "internal_trigger:public.household_invitations:public.invitation_mail_attempts.invitation_mail_attempts_invitation_id_fkey:17": {
+    "type": 17,
+    "enabled": "O",
+    "deferred": false,
+    "function": "\"RI_FKey_noaction_upd\"()",
+    "deferrable": false
+  },
+  "internal_trigger:public.invitation_mail_attempts:public.invitation_mail_attempts.invitation_mail_attempts_household_id_fkey:5": {
+    "type": 5,
+    "enabled": "O",
+    "deferred": false,
+    "function": "\"RI_FKey_check_ins\"()",
+    "deferrable": false
+  },
+  "internal_trigger:public.invitation_mail_attempts:public.invitation_mail_attempts.invitation_mail_attempts_household_id_fkey:17": {
+    "type": 17,
+    "enabled": "O",
+    "deferred": false,
+    "function": "\"RI_FKey_check_upd\"()",
+    "deferrable": false
+  },
+  "internal_trigger:public.invitation_mail_attempts:public.invitation_mail_attempts.invitation_mail_attempts_invitation_id_fkey:5": {
+    "type": 5,
+    "enabled": "O",
+    "deferred": false,
+    "function": "\"RI_FKey_check_ins\"()",
+    "deferrable": false
+  },
+  "internal_trigger:public.invitation_mail_attempts:public.invitation_mail_attempts.invitation_mail_attempts_invitation_id_fkey:17": {
+    "type": 17,
+    "enabled": "O",
+    "deferred": false,
+    "function": "\"RI_FKey_check_upd\"()",
+    "deferrable": false
+  }
+}

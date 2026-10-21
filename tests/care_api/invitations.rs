@@ -146,9 +146,9 @@ async fn invitations_resend_queue_rejection_returns_503_without_rotation_or_deli
         .unwrap_or("")
         .to_owned();
     let body: Value = response.json().await.unwrap_or(Value::Null);
-    let row=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT is_called FROM resend_queue_reached) AS reached,(SELECT count(*) FROM household_invitations WHERE id=87001 AND token_digest='synthetic-original-digest' AND expires_at='2020-01-01') AS original,(SELECT count(*) FROM pg_loco_queue) AS jobs,(SELECT count(*) FROM versions WHERE item_type='HouseholdInvitation') AS versions,(SELECT count(*) FROM api_idempotency_keys WHERE key='synthetic-failed-resend') AS keys")).await.unwrap().unwrap();
+    let row=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM invitation_mail_attempts) AS attempts,(SELECT is_called FROM resend_queue_reached) AS reached,(SELECT count(*) FROM household_invitations WHERE id=87001 AND token_digest='synthetic-original-digest' AND expires_at='2020-01-01') AS original,(SELECT count(*) FROM pg_loco_queue) AS jobs,(SELECT count(*) FROM versions WHERE item_type='HouseholdInvitation') AS versions,(SELECT count(*) FROM api_idempotency_keys WHERE key='synthetic-failed-resend') AS keys")).await.unwrap().unwrap();
     let reached: bool = row.try_get("", "reached").unwrap();
-    let counts: Vec<i64> = ["original", "jobs", "versions", "keys"]
+    let counts: Vec<i64> = ["original", "jobs", "versions", "keys", "attempts"]
         .iter()
         .map(|field| row.try_get("", field).unwrap())
         .collect();
@@ -157,7 +157,7 @@ async fn invitations_resend_queue_rejection_returns_503_without_rotation_or_deli
     assert_eq!(body["error"]["code"], "invitation_delivery_unavailable");
     assert_eq!(no_store, "no-store");
     assert!(reached);
-    assert_eq!(counts, vec![1, 0, 0, 0]);
+    assert_eq!(counts, vec![1, 0, 0, 0, 0]);
 }
 
 async fn seed_acceptance(app: &Application) -> &'static str {
@@ -303,24 +303,21 @@ async fn invitations_mail_queue_failure_rolls_back_invitation_and_audit() {
     )
     .await;
     tenant.rollback().await.unwrap();
-    let row=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT is_called FROM invitation_queue_reached) AS reached,(SELECT count(*) FROM household_invitations) AS invitations,(SELECT count(*) FROM household_invitation_grants) AS grants,(SELECT count(*) FROM pg_loco_queue) AS jobs,(SELECT count(*) FROM versions WHERE item_type='HouseholdInvitation') AS versions")).await.unwrap().unwrap();
+    let row=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT (SELECT count(*) FROM invitation_mail_attempts) AS attempts,(SELECT is_called FROM invitation_queue_reached) AS reached,(SELECT count(*) FROM household_invitations) AS invitations,(SELECT count(*) FROM household_invitation_grants) AS grants,(SELECT count(*) FROM pg_loco_queue) AS jobs,(SELECT count(*) FROM versions WHERE item_type='HouseholdInvitation') AS versions")).await.unwrap().unwrap();
     let reached: bool = row.try_get("", "reached").unwrap();
-    let counts: Vec<i64> = ["invitations", "grants", "jobs", "versions"]
+    let counts: Vec<i64> = ["invitations", "grants", "jobs", "versions", "attempts"]
         .iter()
         .map(|field| row.try_get("", field).unwrap())
         .collect();
     app.close().await;
     assert!(result.is_err());
     assert!(reached);
-    assert_eq!(counts, vec![0, 0, 0, 0]);
+    assert_eq!(counts, vec![0, 0, 0, 0, 0]);
 }
 
 #[tokio::test]
-async fn invitations_mail_committed_job_is_delivered_by_standard_worker() {
-    use loco_rs::{
-        bgworker::BackgroundWorker,
-        mailer::{EmailSender, MailerWorker},
-    };
+async fn invitations_mail_committed_job_has_durable_attempt_and_provider_receipt() {
+    use loco_rs::{app::Hooks, mailer::EmailSender};
     use med_tracker::models::{care::invitations, identity::resource};
     let mut app = Application::new().await;
     app.context.mailer = Some(EmailSender::stub());
@@ -349,14 +346,38 @@ async fn invitations_mail_committed_job_is_delivered_by_standard_worker() {
     .await
     .unwrap();
     tenant.commit().await.unwrap();
+    let attempt = app.fixture.admin.query_one_raw(Statement::from_string(
+        DbBackend::Postgres,
+        "SELECT a.status,a.started_at,a.finished_at,q.name FROM invitation_mail_attempts a JOIN pg_loco_queue q ON (q.task_data->>'attempt_id')::bigint=a.id",
+    )).await.unwrap().unwrap();
+    assert_eq!(attempt.try_get::<String>("", "status").unwrap(), "queued");
+    assert_eq!(
+        attempt
+            .try_get::<Option<chrono::NaiveDateTime>>("", "started_at")
+            .unwrap(),
+        None
+    );
+    assert_eq!(
+        attempt
+            .try_get::<Option<chrono::NaiveDateTime>>("", "finished_at")
+            .unwrap(),
+        None
+    );
+    assert!(
+        attempt
+            .try_get::<String>("", "name")
+            .unwrap()
+            .ends_with("InvitationMailWorker")
+    );
     let queue = app.context.queue_provider.as_ref().unwrap().clone();
-    queue
-        .register(MailerWorker::build(&app.context))
+    med_tracker::app::App::connect_workers(&app.context, &queue)
         .await
         .unwrap();
     let worker = tokio::spawn(async move { queue.run(vec![]).await });
     tokio::time::timeout(std::time::Duration::from_secs(10), async {
-        while app.context.mailer.as_ref().unwrap().deliveries().count == 0 {
+        loop {
+            let receipt=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,"SELECT count(*) AS count FROM invitation_mail_attempts WHERE status='sent_to_provider' AND started_at IS NOT NULL AND finished_at IS NOT NULL")).await.unwrap().unwrap();
+            if receipt.try_get::<i64>("","count").unwrap()==1 { break; }
             tokio::time::sleep(std::time::Duration::from_millis(25)).await;
         }
     })
@@ -566,4 +587,291 @@ async fn parent_label_cannot_replace_inviter_household_authority() {
     for field in ["memberships", "relationships", "audits", "target_grants"] {
         assert_eq!(state.try_get::<i64>("", field).unwrap(), 0);
     }
+}
+
+#[tokio::test]
+async fn invitation_mail_worker_rechecks_authority_tokens_and_replay_without_resending() {
+    use loco_rs::{bgworker::BackgroundWorker, mailer::EmailSender};
+    use med_tracker::models::{
+        access::{self, Actor, HouseholdScope},
+        care::invitations::{
+            self,
+            delivery::{InvitationMail, InvitationMailWorker},
+        },
+    };
+    for scenario in [
+        "sent",
+        "cancelled",
+        "expired",
+        "accepted",
+        "revoked",
+        "superseded",
+        "sender_revoked",
+        "inviter_revoked",
+        "sender_locked",
+        "inviter_locked",
+        "uncertain",
+        "provider_failure",
+        "foreign",
+        "race",
+        "commit_failure",
+    ] {
+        let mut app = Application::new().await;
+        app.context.mailer = Some(EmailSender::stub());
+        let scope = HouseholdScope {
+            actor: Actor { account_id: 71001 },
+            household_id: 72001,
+            request_id: format!("invitation-worker-{scenario}"),
+        };
+        let tenant = access::begin(&app.fixture.runtime, &scope, None)
+            .await
+            .unwrap();
+        let target = url::Url::parse("https://synthetic.example.test/invitations/accept").unwrap();
+        let created = invitations::create(
+            &tenant,
+            json!({"email":"safe-attempt@example.test","membership_role":"member"}),
+            Some(&target),
+            None,
+        )
+        .await
+        .unwrap();
+        let id = created["data"]["id"].as_i64().unwrap();
+        tenant.commit().await.unwrap();
+        if matches!(scenario, "inviter_revoked" | "inviter_locked") {
+            app.fixture.admin.execute_unprepared("INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73040,'Second manager',0,true,now(),now()); INSERT INTO accounts(id,person_id,email,status,created_at,updated_at) VALUES(71040,73040,'second-manager@example.test',2,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74040,72001,73040,'administrator','active',now(),now(),now())").await.unwrap();
+            let sender = HouseholdScope {
+                actor: Actor { account_id: 71040 },
+                ..scope.clone()
+            };
+            let tenant = access::begin(&app.fixture.runtime, &sender, None)
+                .await
+                .unwrap();
+            invitations::resend(&tenant, id, &target, None)
+                .await
+                .unwrap();
+            tenant.commit().await.unwrap();
+        }
+        let row = app
+            .fixture
+            .admin
+            .query_one_raw(Statement::from_string(
+                DbBackend::Postgres,
+                "SELECT task_data FROM pg_loco_queue ORDER BY id DESC LIMIT 1",
+            ))
+            .await
+            .unwrap()
+            .unwrap();
+        let mut payload: serde_json::Value = row.try_get("", "task_data").unwrap();
+        let attempt_id = payload["attempt_id"].as_i64().unwrap();
+        let mail_before = app.context.mailer.as_ref().unwrap().deliveries().count;
+        match scenario {
+            "cancelled" => {
+                let tenant = access::begin(&app.fixture.runtime, &scope, None)
+                    .await
+                    .unwrap();
+                invitations::cancel(&tenant, id, None).await.unwrap();
+                tenant.commit().await.unwrap();
+            }
+            "expired" => {
+                app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,"UPDATE household_invitations SET expires_at=now()-interval '1 second' WHERE id=$1",[id.into()])).await.unwrap();
+            }
+            "accepted" => {
+                app.fixture
+                    .admin
+                    .execute_raw(Statement::from_sql_and_values(
+                        DbBackend::Postgres,
+                        "UPDATE household_invitations SET accepted_at=now() WHERE id=$1",
+                        [id.into()],
+                    ))
+                    .await
+                    .unwrap();
+            }
+            "revoked" => {
+                app.fixture
+                    .admin
+                    .execute_raw(Statement::from_sql_and_values(
+                        DbBackend::Postgres,
+                        "UPDATE household_invitations SET revoked_at=now() WHERE id=$1",
+                        [id.into()],
+                    ))
+                    .await
+                    .unwrap();
+            }
+            "superseded" => {
+                app.fixture
+                    .admin
+                    .execute_raw(Statement::from_sql_and_values(
+                        DbBackend::Postgres,
+                        "UPDATE household_invitations SET token_digest='rotated' WHERE id=$1",
+                        [id.into()],
+                    ))
+                    .await
+                    .unwrap();
+            }
+            "sender_revoked" | "inviter_revoked" => {
+                app.fixture.admin.execute_unprepared("UPDATE household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74001").await.unwrap();
+            }
+            "sender_locked" | "inviter_locked" => {
+                app.fixture.admin.execute_unprepared("INSERT INTO account_lockouts(account_id,key,deadline) VALUES(71001,'synthetic-lockout',now()+interval '1 hour')").await.unwrap();
+            }
+            "uncertain" => {
+                app.fixture
+                    .admin
+                    .execute_raw(Statement::from_sql_and_values(
+                        DbBackend::Postgres,
+                        "UPDATE invitation_mail_attempts SET started_at=now() WHERE id=$1",
+                        [attempt_id.into()],
+                    ))
+                    .await
+                    .unwrap();
+            }
+            "commit_failure" => {
+                app.fixture.admin.execute_unprepared("CREATE FUNCTION reject_invitation_receipt() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'Synthetic terminal receipt failure'; END $$; CREATE TRIGGER reject_invitation_receipt BEFORE UPDATE ON invitation_mail_attempts FOR EACH ROW WHEN (NEW.status='sent_to_provider') EXECUTE FUNCTION reject_invitation_receipt()").await.unwrap();
+            }
+            "provider_failure" => app.context.mailer = None,
+            "foreign" => {
+                app.fixture.admin.execute_unprepared("INSERT INTO households(id,name,slug,timezone,created_at,updated_at) VALUES(72002,'Foreign synthetic household','worker-foreign','UTC',now(),now())").await.unwrap();
+                payload["household_id"] = json!(72002);
+            }
+            _ => {}
+        }
+        let mail: InvitationMail = serde_json::from_value(payload).unwrap();
+        let worker = InvitationMailWorker::build(&app.context);
+        if scenario == "commit_failure" {
+            assert!(worker.perform(mail.clone()).await.is_err());
+            assert_eq!(
+                app.context.mailer.as_ref().unwrap().deliveries().count - mail_before,
+                1
+            );
+            let started = app
+                .fixture
+                .admin
+                .query_one_raw(Statement::from_sql_and_values(
+                    DbBackend::Postgres,
+                    "SELECT status,started_at FROM invitation_mail_attempts WHERE id=$1",
+                    [attempt_id.into()],
+                ))
+                .await
+                .unwrap()
+                .unwrap();
+            assert_eq!(started.try_get::<String>("", "status").unwrap(), "queued");
+            assert!(
+                started
+                    .try_get::<Option<chrono::NaiveDateTime>>("", "started_at")
+                    .unwrap()
+                    .is_some()
+            );
+            app.fixture
+                .admin
+                .execute_unprepared(
+                    "DROP TRIGGER reject_invitation_receipt ON invitation_mail_attempts",
+                )
+                .await
+                .unwrap();
+        } else if scenario == "race" {
+            let (first, second) =
+                tokio::join!(worker.perform(mail.clone()), worker.perform(mail.clone()));
+            first.unwrap();
+            second.unwrap();
+        } else {
+            worker.perform(mail.clone()).await.unwrap();
+        }
+        worker.perform(mail).await.unwrap();
+        let attempt=app.fixture.admin.query_one_raw(Statement::from_sql_and_values(DbBackend::Postgres,
+            "SELECT status,category,invitation_id,finished_at,to_jsonb(a)::text AS safe_record FROM invitation_mail_attempts a WHERE id=$1",[attempt_id.into()])).await.unwrap().unwrap();
+        let state: String = attempt.try_get("", "status").unwrap();
+        let category: Option<String> = attempt.try_get("", "category").unwrap();
+        let safe: String = attempt.try_get("", "safe_record").unwrap();
+        assert!(!safe.contains("safe-attempt@example.test"));
+        assert!(!safe.contains("https://"));
+        let expected = match scenario {
+            "sent" => "sent_to_provider",
+            "foreign" => "queued",
+            _ => "failed",
+        };
+        if scenario == "race" {
+            assert!(matches!(state.as_str(), "sent_to_provider" | "failed"));
+            assert!(app.context.mailer.as_ref().unwrap().deliveries().count - mail_before <= 1);
+        } else {
+            assert_eq!(state, expected, "{scenario}");
+        }
+        if matches!(scenario, "uncertain" | "commit_failure") {
+            assert_eq!(category.as_deref(), Some("uncertain"));
+        }
+        if scenario == "provider_failure" {
+            assert_eq!(category.as_deref(), Some("provider_unavailable"));
+        }
+        if scenario == "cancelled" {
+            assert_eq!(
+                attempt.try_get::<Option<i64>>("", "invitation_id").unwrap(),
+                None
+            );
+        }
+        if let Some(mailer) = &app.context.mailer
+            && scenario != "race"
+        {
+            assert_eq!(
+                mailer.deliveries().count - mail_before,
+                usize::from(matches!(scenario, "sent" | "commit_failure")),
+                "{scenario}"
+            );
+        }
+        app.close().await;
+    }
+}
+
+#[tokio::test]
+async fn invitation_mail_attempts_enforce_runtime_tenancy_and_immutable_provenance() {
+    use med_tracker::models::{
+        access::{self, Actor, HouseholdScope},
+        care::invitations,
+    };
+    use sea_orm::TransactionTrait;
+    let app = Application::new().await;
+    let scope = HouseholdScope {
+        actor: Actor { account_id: 71001 },
+        household_id: 72001,
+        request_id: "attempt-runtime-scope".into(),
+    };
+    let tenant = access::begin(&app.fixture.runtime, &scope, None)
+        .await
+        .unwrap();
+    invitations::create(
+        &tenant,
+        json!({"email":"rls-attempt@example.test","membership_role":"member"}),
+        Some(&url::Url::parse("https://synthetic.example.test/invitations/accept").unwrap()),
+        None,
+    )
+    .await
+    .unwrap();
+    tenant.commit().await.unwrap();
+    app.fixture.admin.execute_unprepared("INSERT INTO households(id,name,slug,timezone,created_at,updated_at) VALUES(72002,'Foreign synthetic household','foreign-attempts','UTC',now(),now())").await.unwrap();
+    for query in [
+        "UPDATE invitation_mail_attempts SET sender_account_id=71001",
+        "UPDATE invitation_mail_attempts SET token_digest='changed'",
+        "DELETE FROM invitation_mail_attempts",
+    ] {
+        let db = app.fixture.runtime.begin().await.unwrap();
+        db.execute_unprepared("SET LOCAL ROLE med_tracker_app; SELECT set_config('med_tracker.current_household_id','72001',true)").await.unwrap();
+        assert!(db.execute_unprepared(query).await.is_err(), "{query}");
+        db.rollback().await.unwrap();
+    }
+    let db = app.fixture.runtime.begin().await.unwrap();
+    db.execute_unprepared("SET LOCAL ROLE med_tracker_app; SELECT set_config('med_tracker.current_household_id','72002',true)").await.unwrap();
+    let visible = db
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT count(*) AS count,current_user::text AS role FROM invitation_mail_attempts",
+        ))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        visible.try_get::<String>("", "role").unwrap(),
+        "med_tracker_app"
+    );
+    assert_eq!(visible.try_get::<i64>("", "count").unwrap(), 0);
+    assert!(db.execute_unprepared("INSERT INTO invitation_mail_attempts(household_id,original_invitation_id,sender_account_id,sender_membership_id,sender_permissions_version,token_digest) VALUES(72001,1,71001,74001,1,'foreign-write')").await.is_err());
+    db.rollback().await.unwrap();
+    app.close().await;
 }
