@@ -69,6 +69,7 @@ async fn invitation_management_search_delivery_and_keyboard_actions() {
         capture(page,"failure-320").await;
         page.get_by_role(AriaRole::Button,named("Resend maya@example.test")).press("Enter",None).await.unwrap();
         expect(page.locator(".admin-invitations")).to_contain_text("Queued").await.unwrap();
+        expect(page.locator("body[data-navigation-ready]")).to_be_visible().await.unwrap();
         assert!(page.url().contains("q=MAYA"));
         assert!(page.url().contains("role=member"));
         assert!(page.url().contains("status=pending"));
@@ -82,6 +83,7 @@ async fn invitation_management_search_delivery_and_keyboard_actions() {
         page.get_by_role(AriaRole::Button,named("Send invitation")).press("Enter",None).await.unwrap();
         expect(page.get_by_label("Email",true)).to_have_attribute("aria-invalid","true").await.unwrap();
         expect(page.locator("#email")).to_be_focused().await.unwrap();
+        expect(page.locator("body[data-navigation-ready]")).to_be_visible().await.unwrap();
         capture(page,"error-320").await;
         page.get_by_role(AriaRole::Button,named("Cancel maya@example.test")).press("Enter",None).await.unwrap();
         page.get_by_role(AriaRole::Button,named("Cancel invitation maya@example.test")).press("Enter",None).await.unwrap();
