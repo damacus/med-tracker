@@ -102,7 +102,7 @@
     triggers.forEach(button => button.setAttribute('aria-expanded', 'true'));
     input.value = '';
     clear();
-    requestAnimationFrame(() => input.focus({ preventScroll: true }));
+    input.focus({ preventScroll: true });
   }
 
   function close(event, restoreFocus = true) {
