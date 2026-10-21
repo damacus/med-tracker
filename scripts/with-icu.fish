@@ -44,7 +44,11 @@ end
 set -gx RUST_ICU_MAJOR_VERSION_NUMBER 78
 set -gx RUST_ICU_LINK_SEARCH_DIR $icu_lib
 if test (uname -s) = Linux
-    set -gx LD_LIBRARY_PATH "$icu_lib:$LD_LIBRARY_PATH"
+    if test -n "$LD_LIBRARY_PATH"
+        set -gx LD_LIBRARY_PATH "$icu_lib:$LD_LIBRARY_PATH"
+    else
+        set -gx LD_LIBRARY_PATH $icu_lib
+    end
 end
 
 exec $argv
