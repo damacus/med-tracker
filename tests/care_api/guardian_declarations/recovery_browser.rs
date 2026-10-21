@@ -138,11 +138,27 @@ async fn guardian_recovery_browser_restores_exact_inactive_link_and_preserves_ge
             .await?.ok_or_else(||DbErr::Custom("Missing initial guardian link".into()))?;
         let link_id:i64=row.try_get("","id")?;
         app.fixture.admin.execute_unprepared(&format!("UPDATE public.carer_relationships SET active=false WHERE id={link_id}")).await?;
+        app.fixture.admin.execute_unprepared(
+            "UPDATE public.people SET name='Linked guardian <care>' WHERE id=73001;
+             INSERT INTO public.people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at)
+             VALUES(73999,'Other eligible adult','1980-01-01',0,true,now(),now());
+             INSERT INTO public.household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at)
+             VALUES(74999,72001,73999,'member','active',now(),now(),now());
+             INSERT INTO public.accounts(id,person_id,email,status,created_at,updated_at)
+             VALUES(71999,73999,'restore-other@example.test',2,now(),now());
+             INSERT INTO public.users(id,person_id,email_address,password_digest,active,created_at,updated_at)
+             VALUES(77999,73999,'restore-other@example.test',crypt('password',gen_salt('bf',4)),true,now(),now())"
+        ).await?;
         let cookie=sign_in(&app,71001,"persistence@example.test").await;
         let path=format!("/households/persistence-fixture/admin/carer_relationships/recover/{subject}");
         let (cookies,page)=form_page(&app,&cookie,&path).await;
         require(page.contains("Restore existing guardian") && hidden_field(&page,"relationship_id")==link_id.to_string(),
             "Only the exact inactive declaration link should be offered for restoration")?;
+        let restore_card=page.split("id=\"administration-form\"").next().unwrap_or("");
+        require(restore_card.contains("Linked guardian &lt;care&gt;")
+            && !restore_card.contains("Other eligible adult")
+            && hidden_field(&page,"guardian_id")=="73001",
+            "Restore card must visibly identify the exact escaped linked guardian, independent of another eligible adult")?;
         let csrf=hidden_field(&page,"authenticity_token");
         let snapshot=hidden_field(&page,"snapshot_token");
         let revision=hidden_field(&page,"snapshot_revision");

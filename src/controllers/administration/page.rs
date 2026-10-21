@@ -261,7 +261,7 @@ impl<'a> Page<'a> {
                     "link_token":subject.snapshot.link_token.to_string(),
                     "restorable":subject.restorable.map(|link| json!({
                         "declaration_id":link.declaration_id,"relationship_id":link.relationship_id,
-                        "guardian_id":link.guardian_id.get()
+                        "guardian_id":link.guardian_id.get(),"guardian_name":link.guardian_name
                     }))
                 });
                 data["guardians"] = json!(

@@ -12,6 +12,7 @@
   <div class="card bg-base-100 border border-base-300 mt-6"><div class="card-body">
     <h2 class="card-title">{{ admin_labels.recovery.restore_title }}</h2>
     <p>{{ admin_labels.recovery.restore_hint }}</p>
+    <p class="font-semibold">{{ admin_labels.recovery.restore_recipient }}: {{ subject.restorable.guardian_name }}</p>
     <form id="administration-form" method="post" action="/households/{{ slug }}/admin/carer_relationships/recover/{{ subject.id }}" class="grid gap-4 mt-3">
       {% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}
       <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">

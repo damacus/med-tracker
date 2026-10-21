@@ -22,6 +22,91 @@ fn scope() -> HouseholdScope {
 }
 
 #[tokio::test]
+async fn guardian_recovery_account_then_household_closure_order_rejects_without_effects()
+-> Result<(), DbErr> {
+    let app = Application::new().await;
+    let result=async {
+        app.fixture.admin.execute_unprepared(
+            "INSERT INTO public.people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at) VALUES
+               (73994,'Closure race minor','2020-01-01',1,false,now(),now()),
+               (73995,'Closing candidate','1980-01-01',0,true,now(),now());
+             INSERT INTO public.household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES
+               (74994,72001,73994,'member','active',now(),now(),now()),
+               (74995,72001,73995,'member','active',now(),now(),now());
+             INSERT INTO public.accounts(id,person_id,email,status,created_at,updated_at) VALUES
+               (71995,73995,'closing-candidate@example.test',2,now(),now());
+             INSERT INTO public.users(id,person_id,email_address,password_digest,active,created_at,updated_at) VALUES
+               (77995,73995,'closing-candidate@example.test',crypt('password',gen_salt('bf',4)),true,now(),now())"
+        ).await?;
+        let tenant=access::begin(&app.fixture.runtime,&scope(),None).await.map_err(db_error)?;
+        let snapshot=recovery::options(&tenant).await.map_err(db_error)?.subjects.into_iter()
+            .find(|item|item.id.get()==73994)
+            .ok_or_else(||DbErr::Custom("Missing closure-race minor".into()))?.snapshot;
+        tenant.rollback().await.map_err(db_error)?;
+        let blocker=app.fixture.admin.begin().await?;
+        blocker.execute_unprepared("SELECT id FROM public.accounts WHERE id=71995 FOR UPDATE").await?;
+        let runtime=app.fixture.runtime.clone();
+        let attempt=tokio::spawn(async move {
+            let tenant=access::begin(&runtime,&scope(),None).await.unwrap();
+            let outcome=recovery::execute(&tenant,RecoveryCommand {
+                subject:RecoverySubjectId::parse(73994).unwrap(),
+                guardian:RecoveryGuardianId::parse(73995).unwrap(),
+                expected:snapshot,action:RecoveryAction::Appoint,
+                reason:"Candidate account closure must invalidate recovery.".into(),
+            }).await;
+            if outcome.is_ok() {tenant.commit().await.unwrap()} else {tenant.rollback().await.unwrap()}
+            outcome.map(|value|value.outcome).map_err(|error|format!("{error:?}"))
+        });
+        let mut waiting=false;
+        for _ in 0..40 {
+            let row=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+                "SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE wait_event_type='Lock' AND state='active' AND pid<>pg_backend_pid()) AS waiting"))
+                .await?.ok_or_else(||DbErr::Custom("Missing closure-race wait state".into()))?;
+            waiting=row.try_get("","waiting")?;
+            if waiting {break}
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        }
+        if !waiting {
+            blocker.rollback().await?;
+            let _=attempt.await;
+            return Err(DbErr::Custom("Recovery did not wait on candidate account".into()));
+        }
+        let household=tokio::time::timeout(std::time::Duration::from_secs(8),
+            blocker.execute_unprepared("SELECT id FROM public.households WHERE id=72001 FOR UPDATE"))
+            .await.map_err(db_error)?;
+        if let Err(error)=household {
+            let _=blocker.rollback().await;
+            let _=attempt.await;
+            return Err(DbErr::Custom(format!("Closure household lock failed: {error}")));
+        }
+        blocker.execute_unprepared(
+            "UPDATE public.household_memberships SET status='revoked',revoked_at=now(),permissions_version=permissions_version+1 WHERE id=74995;
+             UPDATE public.users SET active=false WHERE id=77995;
+             UPDATE public.accounts SET status=3 WHERE id=71995"
+        ).await?;
+        blocker.commit().await?;
+        let outcome=tokio::time::timeout(std::time::Duration::from_secs(8),attempt)
+            .await.map_err(db_error)?.map_err(db_error)?;
+        require(outcome.as_ref().is_err_and(|error|error.contains("is no longer eligible")),
+            &format!("Recovery must reject closed candidate after account wait: {outcome:?}"))?;
+        let state=app.fixture.admin.query_one_raw(Statement::from_string(DbBackend::Postgres,
+            "SELECT (SELECT count(*) FROM public.guardian_declarations WHERE subject_person_id=73994) AS declarations,
+             (SELECT count(*) FROM public.carer_relationships WHERE patient_id=73994) AS links,
+             (SELECT count(*) FROM public.security_audit_events WHERE event_type LIKE 'guardian_recovery.%') AS audits,
+             (SELECT count(*) FROM public.versions WHERE item_type='GuardianDeclaration' AND event='appointed') AS versions,
+             (SELECT permissions_version::bigint FROM public.household_memberships WHERE id=74995) AS permissions_version"))
+            .await?.ok_or_else(||DbErr::Custom("Missing closure-race state".into()))?;
+        require(state.try_get::<i64>("","declarations")?==0 && state.try_get::<i64>("","links")?==0
+            && state.try_get::<i64>("","audits")?==0 && state.try_get::<i64>("","versions")?==0
+            && state.try_get::<i64>("","permissions_version")?==2,
+            "Rejected recovery must leave no authority, audit, version or extra permission effects")?;
+        Ok(())
+    }.await;
+    app.close().await;
+    result
+}
+
+#[tokio::test]
 async fn guardian_recovery_options_report_bounded_truncation() -> Result<(), DbErr> {
     let app = Application::new().await;
     let result=async {
@@ -619,7 +704,7 @@ async fn guardian_recovery_restores_only_the_exact_open_local_link() -> Result<(
         let selected=options.subjects.iter().find(|item|item.id.get()==subject)
             .ok_or_else(||DbErr::Custom("Inactive link minor missing".into()))?;
         require(!selected.has_effective_guardian
-            && selected.restorable.is_some_and(|link|link.declaration_id==declaration_id && link.relationship_id==link_id),
+            && selected.restorable.as_ref().is_some_and(|link|link.declaration_id==declaration_id && link.relationship_id==link_id),
             "Only exact open local declaration/link may be restored")?;
         let restored=recovery::execute(&tenant,RecoveryCommand {
             subject:RecoverySubjectId::parse(subject).map_err(db_error)?,

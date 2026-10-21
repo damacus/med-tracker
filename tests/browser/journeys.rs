@@ -29,6 +29,65 @@ async fn guardian_recovery_screen(viewport: Viewport, screenshot: &'static str) 
     }).await;
 }
 
+async fn guardian_recovery_restore_screen(viewport: Viewport, screenshot: &'static str) {
+    harness::journey(viewport, |journey| {
+        Box::pin(async move {
+            journey.admin.execute_unprepared(
+                "UPDATE public.household_memberships SET role='owner' WHERE id=74001;
+                 UPDATE public.people SET name='Linked guardian <care>' WHERE id=73001;
+                 INSERT INTO public.people(id,name,date_of_birth,person_type,has_capacity,created_at,updated_at)
+                 VALUES(73994,'Synthetic restore child','2020-01-01',1,false,now(),now()),
+                       (73999,'Other eligible adult','1980-01-01',0,true,now(),now());
+                 INSERT INTO public.household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at)
+                 VALUES(74994,72001,73994,'member','active',now(),now(),now()),
+                       (74999,72001,73999,'member','active',now(),now(),now());
+                 INSERT INTO public.accounts(id,person_id,email,status,created_at,updated_at)
+                 VALUES(71999,73999,'screenshot-other@example.test',2,now(),now());
+                 INSERT INTO public.users(id,person_id,email_address,password_digest,active,created_at,updated_at)
+                 VALUES(77999,73999,'screenshot-other@example.test',crypt('password',gen_salt('bf',4)),true,now(),now());
+                 INSERT INTO public.guardian_declarations(subject_person_id,guardian_person_id,origin_household_id,declared_by_account_id,subject_name_at_declaration)
+                 VALUES(73994,73001,72001,71001,'Synthetic restore child');
+                 INSERT INTO public.carer_relationships(carer_id,patient_id,household_id,active,created_at,updated_at,guardian_declaration_id)
+                 SELECT 73001,73994,72001,false,now(),now(),id FROM public.guardian_declarations WHERE subject_person_id=73994"
+            ).await.unwrap();
+            harness::sign_in(journey).await;
+            let page=&journey.page;
+            page.goto(&format!("{}/households/persistence-fixture/admin/carer_relationships/recover/73994",journey.origin),None).await.unwrap();
+            expect(page.get_by_role(AriaRole::Heading,named("Recover guardian: Synthetic restore child"))).to_be_visible().await.unwrap();
+            expect(page.get_by_text("Guardian who will regain access: Linked guardian <care>",true)).to_be_visible().await.unwrap();
+            expect(page.get_by_label("I confirm that I want to restore this guardian's access.",true)).to_be_visible().await.unwrap();
+            let path=std::path::Path::new("docs/screenshots/browser-journeys").join(format!("{screenshot}.png"));
+            page.screenshot_to_file(&path,ScreenshotOptions::builder().animations(Animations::Disabled).full_page(true).build()).await.unwrap();
+        })
+    }).await;
+}
+
+#[tokio::test]
+#[ignore = "browser journeys run through task test:browser, not the shared --tests lanes"]
+async fn guardian_recovery_restore_desktop() {
+    guardian_recovery_restore_screen(
+        Viewport {
+            width: 1440,
+            height: 1000,
+        },
+        "guardian-recovery-restore-desktop",
+    )
+    .await;
+}
+
+#[tokio::test]
+#[ignore = "browser journeys run through task test:browser, not the shared --tests lanes"]
+async fn guardian_recovery_restore_mobile() {
+    guardian_recovery_restore_screen(
+        Viewport {
+            width: 390,
+            height: 844,
+        },
+        "guardian-recovery-restore-mobile",
+    )
+    .await;
+}
+
 #[tokio::test]
 #[ignore = "browser journeys run through task test:browser, not the shared --tests lanes"]
 async fn guardian_recovery_desktop() {

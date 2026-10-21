@@ -55,10 +55,6 @@ DROP INDEX public.index_carer_relationships_on_household_carer_patient;
 CREATE UNIQUE INDEX index_carer_relationships_on_household_carer_patient
   ON public.carer_relationships(household_id,carer_id,patient_id)
   WHERE guardian_declaration_id IS NULL;
-CREATE UNIQUE INDEX guardian_recovery_one_link_per_household_declaration
-  ON public.carer_relationships(household_id,guardian_declaration_id)
-  WHERE guardian_declaration_id IS NOT NULL;
-
 DROP POLICY guardian_declarations_initial_insert ON public.guardian_declarations;
 CREATE POLICY guardian_declarations_initial_insert
 ON public.guardian_declarations FOR INSERT TO med_tracker_app

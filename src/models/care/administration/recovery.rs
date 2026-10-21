@@ -42,11 +42,12 @@ pub struct RecoverySnapshot {
     pub link_token: Uuid,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RestorableLink {
     pub declaration_id: i64,
     pub relationship_id: i64,
     pub guardian_id: RecoveryGuardianId,
+    pub guardian_name: String,
     pub declaration_revision: i64,
 }
 
@@ -184,7 +185,7 @@ pub async fn options(tenant: &TenantTransaction) -> Result<RecoveryOptions, Oper
             .query_all_raw(Statement::from_sql_and_values(
                 DbBackend::Postgres,
                 "SELECT d.subject_person_id,d.id AS declaration_id,d.revision,
-                    d.guardian_person_id,c.id AS relationship_id
+                    d.guardian_person_id,guardian.name AS guardian_name,c.id AS relationship_id
              FROM public.guardian_declarations d
              JOIN public.carer_relationships c ON c.guardian_declaration_id=d.id
              JOIN public.household_memberships m
@@ -214,6 +215,7 @@ pub async fn options(tenant: &TenantTransaction) -> Result<RecoveryOptions, Oper
                     declaration_id: row.try_get("", "declaration_id")?,
                     relationship_id: row.try_get("", "relationship_id")?,
                     guardian_id: RecoveryGuardianId::parse(row.try_get("", "guardian_person_id")?)?,
+                    guardian_name: row.try_get("", "guardian_name")?,
                     declaration_revision: row.try_get("", "revision")?,
                 });
             }
@@ -231,7 +233,10 @@ pub async fn execute(
     tenant: &TenantTransaction,
     command: RecoveryCommand,
 ) -> Result<RecoveryResult, OperationError> {
-    super::authorize(tenant).await?;
+    access::recheck(tenant).await?;
+    if !access::can_manage_household(tenant) {
+        return Err(OperationError::Forbidden);
+    }
     let subject = access::person_queries::household_participants(tenant.scope().household_id)
         .filter(person::Column::Id.eq(command.subject.get()))
         .one(tenant.transaction())
