@@ -35,10 +35,6 @@ jobs:
         with:
           version: 3.52.0
           repo-token: ${{ github.token }}
-      - name: Install Fish and native ICU
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes fish pkg-config libicu-dev
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
         with:
           shared-key: loco-tests-v1
@@ -80,10 +76,6 @@ jobs:
         with:
           version: 3.52.0
           repo-token: ${{ github.token }}
-      - name: Install Fish and native ICU
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes fish pkg-config libicu-dev
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
         with:
           shared-key: loco-tests-v1
@@ -153,10 +145,6 @@ jobs:
         with:
           version: 3.52.0
           repo-token: ${{ github.token }}
-      - name: Install Fish and native ICU
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes fish pkg-config libicu-dev
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
         with:
           shared-key: loco-tests-v1
@@ -218,10 +206,6 @@ jobs:
         with:
           version: 3.52.0
           repo-token: ${{ github.token }}
-      - name: Install Fish and native ICU
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes fish pkg-config libicu-dev
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
         with:
           shared-key: loco-tests-v1
