@@ -117,7 +117,6 @@ aws-sdk-s3 = { version = "=1.153.0", default-features = false, features = [
     "default-https-client",
     "http-1x",
     "rt-tokio",
-    "rustls",
     "behavior-version-latest",
 ] }
 proptest = "=1.12.0"
