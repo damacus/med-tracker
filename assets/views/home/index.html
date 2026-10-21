@@ -22,6 +22,16 @@
       </div></li>
     {% else %}<li>You do not have an active household membership.</li>{% endfor %}
     </ul>
+    {% if households | length == 0 %}
+    <form method="post" action="/households" class="card shell-card mt-6"><div class="card-body">
+      <h3 class="card-title">Create a household</h3>
+      <p>Name the household where you will manage care.</p>
+      <label class="form-control" for="household-name">Household name</label>
+      <input class="input input-bordered" id="household-name" name="name" type="text" autocomplete="organization" maxlength="100" required>
+      <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+      <button class="btn btn-neutral self-start" type="submit">Create household</button>
+    </div></form>
+    {% endif %}
   </section>
   {% else %}
   <a class="btn btn-neutral mt-6" href="/login">Sign in</a>

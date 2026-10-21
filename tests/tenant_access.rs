@@ -192,7 +192,7 @@ async fn actor_identity_is_independent_of_another_clinical_subject() {
     let transaction = access::begin(&fixture.runtime, &scope(71001, 72002), None)
         .await
         .unwrap();
-    assert_eq!(transaction.user_id(), 77001);
+    assert_eq!(transaction.scope().actor.account_id, 71001);
     assert_eq!(transaction.membership().person_id, 73001);
     assert_eq!(transaction.membership().household_id, 72002);
     access::require_person_access(&transaction, 73004, PersonAccess::View)

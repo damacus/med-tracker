@@ -140,6 +140,84 @@ pub struct Selection {
     authenticity_token: String,
 }
 
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Creation {
+    name: String,
+    authenticity_token: String,
+}
+
+pub async fn create(
+    State(ctx): State<AppContext>,
+    Extension(service): Extension<crate::models::identity::better_auth::IdentityService>,
+    session: Session<SessionPgPool>,
+    token: CsrfToken,
+    ViewEngine(view): ViewEngine<TeraView>,
+    form: std::result::Result<AxumForm<Creation>, axum::extract::rejection::FormRejection>,
+) -> Response {
+    let AxumForm(form) = match form {
+        Ok(form) => form,
+        Err(error) => return ([(header::CACHE_CONTROL, "no-store")], error).into_response(),
+    };
+    if token.verify(&form.authenticity_token).is_err() {
+        return forbidden();
+    }
+    let principal =
+        match browser::authenticate(&ctx.db, &session, ctx.config.settings.as_ref()).await {
+            Ok(principal) => principal,
+            Err(error) => return authentication_error(error),
+        };
+    let Some(name) = browser::household_name(&form.name) else {
+        let mut response = render_home(
+            view,
+            true,
+            Vec::new(),
+            Some("Enter a household name of up to 100 characters.".to_owned()),
+            Some(token),
+        );
+        *response.status_mut() = StatusCode::UNPROCESSABLE_ENTITY;
+        return response;
+    };
+    let household = match principal
+        .create_first_household(
+            &ctx.db,
+            name,
+            &uuid::Uuid::new_v4().to_string(),
+            ctx.config.settings.as_ref(),
+        )
+        .await
+    {
+        Ok(household) => household,
+        Err(error) => return authentication_error(error),
+    };
+    if service
+        .store
+        .update_session_active_organization(
+            principal.session_token(),
+            Some(&household.id.to_string()),
+        )
+        .await
+        .is_err()
+    {
+        session.set(
+            "auth_notice",
+            "Your household was created. Select it below to continue.",
+        );
+        return redirect("/households/choose");
+    }
+    (
+        StatusCode::SEE_OTHER,
+        [
+            (
+                header::LOCATION,
+                format!("/households/{}/dashboard", household.slug),
+            ),
+            (header::CACHE_CONTROL, "no-store".to_owned()),
+        ],
+    )
+        .into_response()
+}
+
 pub async fn select(
     State(ctx): State<AppContext>,
     Extension(service): Extension<crate::models::identity::better_auth::IdentityService>,

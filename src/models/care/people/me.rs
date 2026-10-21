@@ -7,7 +7,10 @@ pub(crate) async fn me_read(tenant: &TenantTransaction, zone: Tz) -> Result<Valu
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::Unauthenticated)?;
-    let user = user::Entity::find_by_id(tenant.user_id())
+    let user_id = tenant
+        .legacy_user_id()
+        .ok_or(OperationError::Unauthenticated)?;
+    let user = user::Entity::find_by_id(user_id)
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::Unauthenticated)?;

@@ -53,5 +53,6 @@ pub fn browser_routes() -> Routes {
     Routes::new()
         .add("/", get(home::index))
         .add("/households/choose", get(home::choose))
+        .add("/households", post(home::create))
         .add("/households/select", post(home::select))
 }
