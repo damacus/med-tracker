@@ -13,9 +13,10 @@
     <script src="/static/js/app-navigation.js" defer></script>
     <script src="/static/js/security-return.js" defer></script>
   </head>
-  <body>
+  <body{% if slug %} class="app-household"{% endif %}>
     <a href="#main" class="skip-link">{% if labels %}{{ labels.layouts.navigation.skip_to_content }}{% else %}Skip to content{% endif %}</a>
     {% block header %}
+    {% if slug %}{% include "components/app-sidebar.html" %}{% endif %}
     <header class="shell-header">
       <div class="shell-width shell-header-inner">
         <a href="/" class="text-xl font-semibold" aria-label="{% if labels %}{{ labels.layouts.navigation.home_link }}{% else %}MedTracker home{% endif %}">MedTracker</a>

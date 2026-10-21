@@ -1,5 +1,132 @@
+use super::member_browser::MembershipId;
 use super::*;
 use loco_rs::model::TenantQueryExt;
+
+#[derive(Clone, Copy)]
+pub enum LifecycleAction {
+    Suspend,
+    Restore,
+    Revoke,
+}
+impl LifecycleAction {
+    pub fn notice(self) -> &'static str {
+        match self {
+            Self::Suspend => "suspended",
+            Self::Restore => "restored",
+            Self::Revoke => "revoked",
+        }
+    }
+    fn allowed(self, current: &str) -> bool {
+        matches!(
+            (self, current),
+            (Self::Suspend | Self::Revoke, "active")
+                | (Self::Restore | Self::Revoke, "suspended")
+                | (Self::Restore, "revoked")
+        )
+    }
+}
+
+#[derive(Clone, Copy)]
+pub enum MembershipRole {
+    Owner,
+    Administrator,
+    Member,
+}
+impl MembershipRole {
+    pub fn parse(value: &str) -> Result<Self, OperationError> {
+        match value {
+            "owner" => Ok(Self::Owner),
+            "administrator" => Ok(Self::Administrator),
+            "member" => Ok(Self::Member),
+            _ => Err(invalid("role", "is invalid")),
+        }
+    }
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Owner => "owner",
+            Self::Administrator => "administrator",
+            Self::Member => "member",
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+enum MembershipStatus {
+    Active,
+    Suspended,
+    Revoked,
+}
+impl MembershipStatus {
+    fn from_action(action: LifecycleAction) -> Self {
+        match action {
+            LifecycleAction::Suspend => Self::Suspended,
+            LifecycleAction::Restore => Self::Active,
+            LifecycleAction::Revoke => Self::Revoked,
+        }
+    }
+    fn parse(value: &str) -> Result<Self, OperationError> {
+        match value {
+            "active" => Ok(Self::Active),
+            "suspended" => Ok(Self::Suspended),
+            "revoked" => Ok(Self::Revoked),
+            _ => Err(invalid("status", "is invalid")),
+        }
+    }
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Active => "active",
+            Self::Suspended => "suspended",
+            Self::Revoked => "revoked",
+        }
+    }
+}
+
+#[derive(Default)]
+struct Mutation {
+    role: Option<MembershipRole>,
+    status: Option<MembershipStatus>,
+    person_id: Option<i64>,
+    revoke: bool,
+    browser_action: Option<LifecycleAction>,
+}
+impl Mutation {
+    fn from_api(attributes: &Value, revoke: bool) -> Result<Self, OperationError> {
+        if revoke {
+            return Ok(Self {
+                revoke: true,
+                ..Self::default()
+            });
+        }
+        let fields = fields(
+            attributes,
+            &["role", "status", "person_id"],
+            "household_membership",
+        )?;
+        let role = fields
+            .get("role")
+            .map(|value| MembershipRole::parse(value.as_str().unwrap_or_default()))
+            .transpose()?;
+        let status = fields
+            .get("status")
+            .map(|value| MembershipStatus::parse(value.as_str().unwrap_or_default()))
+            .transpose()?;
+        let person_id = fields
+            .get("person_id")
+            .map(|value| {
+                value
+                    .as_i64()
+                    .filter(|id| *id > 0)
+                    .ok_or_else(|| invalid("person_id", "is invalid"))
+            })
+            .transpose()?;
+        Ok(Self {
+            role,
+            status,
+            person_id,
+            ..Self::default()
+        })
+    }
+}
 
 fn state(row: &membership::Model) -> Value {
     json!({"role":row.role,"status":row.status,"person_id":row.person_id})
@@ -56,7 +183,49 @@ pub async fn change(
     provenance: Option<&CredentialProvenance>,
 ) -> Result<Value, OperationError> {
     authorize(tenant).await?;
-    change_record(tenant, id, attributes, revoke, provenance).await
+    let mutation = Mutation::from_api(&attributes, revoke)?;
+    let next = change_record(tenant, id, mutation, provenance).await?;
+    Ok(json!({"data":values(tenant,&[next]).await?.remove(0)}))
+}
+pub async fn change_browser_role(
+    tenant: &TenantTransaction,
+    id: MembershipId,
+    role: MembershipRole,
+    provenance: Option<&CredentialProvenance>,
+) -> Result<(), OperationError> {
+    authorize(tenant).await?;
+    change_record(
+        tenant,
+        id.get(),
+        Mutation {
+            role: Some(role),
+            ..Mutation::default()
+        },
+        provenance,
+    )
+    .await?;
+    Ok(())
+}
+pub async fn change_browser_status(
+    tenant: &TenantTransaction,
+    id: MembershipId,
+    action: LifecycleAction,
+    provenance: Option<&CredentialProvenance>,
+) -> Result<(), OperationError> {
+    authorize(tenant).await?;
+    change_record(
+        tenant,
+        id.get(),
+        Mutation {
+            status: Some(MembershipStatus::from_action(action)),
+            revoke: matches!(action, LifecycleAction::Revoke),
+            browser_action: Some(action),
+            ..Mutation::default()
+        },
+        provenance,
+    )
+    .await?;
+    Ok(())
 }
 pub(super) async fn change_for_delegation(
     tenant: &TenantTransaction,
@@ -64,11 +233,17 @@ pub(super) async fn change_for_delegation(
     person_id: i64,
     provenance: Option<&CredentialProvenance>,
 ) -> Result<(), OperationError> {
+    if person_id <= 0 {
+        return Err(invalid("person_id", "is invalid"));
+    }
     change_record(
         tenant,
         id,
-        json!({"status":"active","person_id":person_id}),
-        false,
+        Mutation {
+            status: Some(MembershipStatus::Active),
+            person_id: Some(person_id),
+            ..Mutation::default()
+        },
         provenance,
     )
     .await?;
@@ -77,60 +252,54 @@ pub(super) async fn change_for_delegation(
 async fn change_record(
     tenant: &TenantTransaction,
     id: i64,
-    attributes: Value,
-    revoke: bool,
+    mutation: Mutation,
     provenance: Option<&CredentialProvenance>,
-) -> Result<Value, OperationError> {
+) -> Result<membership::Model, OperationError> {
     let current = membership::Entity::find_by_id(id)
         .in_tenant(tenant.scope().household_id)
         .lock_exclusive()
         .one(tenant.transaction())
         .await?
         .ok_or(OperationError::NotFound)?;
+    if let Some(action) = mutation.browser_action
+        && !action.allowed(&current.status)
+    {
+        return rejected(
+            tenant,
+            &current,
+            &current,
+            "Membership state has changed. Refresh the member list",
+            provenance,
+        )
+        .await;
+    }
     let mut next = current.clone();
-    if revoke {
+    if mutation.revoke {
         next.status = "revoked".into();
         if next.revoked_at.is_none() {
             next.revoked_at = Some(Utc::now().naive_utc());
         }
     } else {
-        let fields = fields(
-            &attributes,
-            &["role", "status", "person_id"],
-            "household_membership",
-        )?;
-        if let Some(role) = fields.get("role") {
-            next.role = role
-                .as_str()
-                .filter(|value| matches!(*value, "owner" | "administrator" | "member"))
-                .ok_or_else(|| invalid("role", "is invalid"))?
-                .into();
+        if let Some(role) = mutation.role {
+            next.role = role.as_str().into();
         }
-        if let Some(status) = fields.get("status") {
-            next.status = status
-                .as_str()
-                .filter(|value| matches!(*value, "active" | "suspended" | "revoked"))
-                .ok_or_else(|| invalid("status", "is invalid"))?
-                .into();
+        if let Some(status) = mutation.status {
+            next.status = status.as_str().into();
             if next.status == "active" {
                 next.revoked_at = None;
             }
         }
-        if let Some(person) = fields.get("person_id") {
-            let person_id = person
-                .as_i64()
-                .filter(|id| *id > 0)
-                .ok_or_else(|| invalid("person_id", "is invalid"))?;
-            if person_id != current.person_id {
-                return rejected(
-                    tenant,
-                    &current,
-                    &next,
-                    "Membership identity cannot be changed",
-                    provenance,
-                )
-                .await;
-            }
+        if let Some(person_id) = mutation.person_id
+            && person_id != current.person_id
+        {
+            return rejected(
+                tenant,
+                &current,
+                &next,
+                "Membership identity cannot be changed",
+                provenance,
+            )
+            .await;
         }
     }
     let previous_owner = current.role == "owner" && current.status == "active";
@@ -174,8 +343,8 @@ async fn change_record(
             }
         }
     }
-    let changed =
-        state(&current) != state(&next) || (!revoke && current.revoked_at != next.revoked_at);
+    let changed = state(&current) != state(&next)
+        || (!mutation.revoke && current.revoked_at != next.revoked_at);
     if changed {
         let mut active: membership::ActiveModel = current.clone().into();
         active.role = Set(next.role);
@@ -195,7 +364,7 @@ async fn change_record(
         provenance,
     )
     .await?;
-    Ok(json!({"data":values(tenant,&[next]).await?.remove(0)}))
+    Ok(next)
 }
 async fn event(
     tenant: &TenantTransaction,
@@ -210,13 +379,13 @@ async fn event(
         .await?;
     persistence::event(tenant,if previous.role!=next.role{"household_membership.role_updated"}else{"household_access.membership_changed"},json!({"target_account_id":target.map(|account|account.id),"target_membership_id":previous.id,"previous_role":previous.role,"new_role":next.role,"previous_state":state(previous),"new_state":state(next),"outcome":outcome}),provenance).await
 }
-async fn rejected(
+async fn rejected<T>(
     tenant: &TenantTransaction,
     current: &membership::Model,
     next: &membership::Model,
     message: &str,
     provenance: Option<&CredentialProvenance>,
-) -> Result<Value, OperationError> {
+) -> Result<T, OperationError> {
     event(tenant, current, next, "rejected", provenance).await?;
     Err(invalid("base", message))
 }

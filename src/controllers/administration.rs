@@ -94,6 +94,14 @@ pub fn routes() -> Routes {
         .add("/{slug}/admin/users", get(users))
         .add("/{slug}/admin/users/{id}/edit", get(role))
         .add("/{slug}/admin/users/{id}/membership_role", post(save_role))
+        .add("/{slug}/admin/memberships/{id}/edit", get(membership_role))
+        .add(
+            "/{slug}/admin/memberships/{id}/membership_role",
+            post(save_membership_role),
+        )
+        .add("/{slug}/admin/users/{id}/suspend", post(suspend_member))
+        .add("/{slug}/admin/users/{id}/restore", post(restore_member))
+        .add("/{slug}/admin/users/{id}/revoke", post(revoke_member))
         .add("/{slug}/admin/audit_logs", get(audit_logs::index))
         .add("/{slug}/admin/audit_logs/{id}", get(audit_logs::detail))
         .add(
@@ -165,15 +173,24 @@ async fn users(
     ViewEngine(view): ViewEngine<TeraView>,
     incoming: Request,
 ) -> Response {
-    let language = match presentation_language(incoming.uri().query(), incoming.headers()) {
-        Ok(language) => language,
-        Err(_) => {
-            return rendering::invalid_link(&view, fallback_language(incoming.headers()));
-        }
+    let (query, explicit_language) =
+        match administration::member_browser::MemberQuery::parse(incoming.uri().query()) {
+            Ok(value) => value,
+            Err(_) => {
+                return rendering::invalid_link(&view, fallback_language(incoming.headers()));
+            }
+        };
+    let language = match explicit_language.as_deref() {
+        Some(value) => match supported_language(value) {
+            Some(language) => language,
+            None => return rendering::invalid_link(&view, fallback_language(incoming.headers())),
+        },
+        None => fallback_language(incoming.headers()),
     };
     page::Page::new(&ctx, &session, &token, &view, &slug, request)
         .with_language(language)
-        .with_explicit_language(incoming.uri().query().is_some())
+        .with_explicit_language(explicit_language.is_some())
+        .with_member_query(query)
         .show(page::Screen::Users, None, None)
         .await
 }
@@ -186,16 +203,58 @@ async fn role(
     ViewEngine(view): ViewEngine<TeraView>,
     incoming: Request,
 ) -> Response {
-    let language = match presentation_language(incoming.uri().query(), incoming.headers()) {
-        Ok(language) => language,
-        Err(_) => {
-            return rendering::invalid_link(&view, fallback_language(incoming.headers()));
-        }
+    role_page(
+        page::Page::new(&ctx, &session, &token, &view, &slug, request),
+        incoming,
+        administration::member_browser::MemberLocator::legacy_user(id),
+    )
+    .await
+}
+async fn membership_role(
+    State(ctx): State<AppContext>,
+    Path((slug, id)): Path<(String, i64)>,
+    session: Session<SessionPgPool>,
+    request: Option<Extension<LocoRequestId>>,
+    token: CsrfToken,
+    ViewEngine(view): ViewEngine<TeraView>,
+    incoming: Request,
+) -> Response {
+    role_page(
+        page::Page::new(&ctx, &session, &token, &view, &slug, request),
+        incoming,
+        administration::member_browser::MemberLocator::membership(id),
+    )
+    .await
+}
+async fn role_page(
+    page: page::Page<'_>,
+    incoming: Request,
+    locator: Result<administration::member_browser::MemberLocator, OperationError>,
+) -> Response {
+    let locator = match locator {
+        Ok(locator) => locator,
+        Err(error) => return presentation_error(page.view(), "en", error),
     };
-    page::Page::new(&ctx, &session, &token, &view, &slug, request)
-        .with_language(language)
-        .with_explicit_language(incoming.uri().query().is_some())
-        .show(page::Screen::Role(id), None, None)
+    let (query, explicit_language) =
+        match administration::member_browser::MemberQuery::parse(incoming.uri().query()) {
+            Ok(value) => value,
+            Err(_) => {
+                return rendering::invalid_link(page.view(), fallback_language(incoming.headers()));
+            }
+        };
+    let language = match explicit_language.as_deref() {
+        Some(value) => match supported_language(value) {
+            Some(language) => language,
+            None => {
+                return rendering::invalid_link(page.view(), fallback_language(incoming.headers()));
+            }
+        },
+        None => fallback_language(incoming.headers()),
+    };
+    page.with_language(language)
+        .with_explicit_language(explicit_language.is_some())
+        .with_member_query(query)
+        .show(page::Screen::Role(locator), None, None)
         .await
 }
 async fn relationships(
@@ -264,10 +323,132 @@ async fn save_role(
     ViewEngine(view): ViewEngine<TeraView>,
     AxumForm(draft): AxumForm<HashMap<String, String>>,
 ) -> Response {
-    page::Page::new(&ctx, &session, &token, &view, &slug, request)
-        .with_language(draft.get("lang").map_or("en", String::as_str))
+    save_role_page(
+        page::Page::new(&ctx, &session, &token, &view, &slug, request),
+        administration::member_browser::MemberLocator::legacy_user(id),
+        draft,
+    )
+    .await
+}
+async fn save_membership_role(
+    State(ctx): State<AppContext>,
+    Path((slug, id)): Path<(String, i64)>,
+    session: Session<SessionPgPool>,
+    request: Option<Extension<LocoRequestId>>,
+    token: CsrfToken,
+    ViewEngine(view): ViewEngine<TeraView>,
+    AxumForm(draft): AxumForm<HashMap<String, String>>,
+) -> Response {
+    save_role_page(
+        page::Page::new(&ctx, &session, &token, &view, &slug, request),
+        administration::member_browser::MemberLocator::membership(id),
+        draft,
+    )
+    .await
+}
+async fn save_role_page(
+    page: page::Page<'_>,
+    locator: Result<administration::member_browser::MemberLocator, OperationError>,
+    draft: HashMap<String, String>,
+) -> Response {
+    let locator = match locator {
+        Ok(locator) => locator,
+        Err(error) => return presentation_error(page.view(), "en", error),
+    };
+    let language = match draft.get("lang") {
+        Some(value) => match supported_language(value) {
+            Some(language) => language,
+            None => return rendering::invalid_link(page.view(), "en"),
+        },
+        None => "en",
+    };
+    let query = match administration::member_browser::MemberQuery::from_form(&draft) {
+        Ok(query) => query,
+        Err(_) => return rendering::invalid_link(page.view(), language),
+    };
+    page.with_language(language)
         .with_explicit_language(draft.contains_key("lang"))
-        .save(page::Change::Role(id), draft)
+        .with_member_query(query)
+        .save(page::Change::Role(locator), draft)
+        .await
+}
+
+async fn suspend_member(
+    State(ctx): State<AppContext>,
+    Path((slug, id)): Path<(String, i64)>,
+    session: Session<SessionPgPool>,
+    request: Option<Extension<LocoRequestId>>,
+    token: CsrfToken,
+    ViewEngine(view): ViewEngine<TeraView>,
+    AxumForm(draft): AxumForm<HashMap<String, String>>,
+) -> Response {
+    member_action(
+        page::Page::new(&ctx, &session, &token, &view, &slug, request),
+        id,
+        page::MembershipAction::Suspend,
+        draft,
+    )
+    .await
+}
+async fn restore_member(
+    State(ctx): State<AppContext>,
+    Path((slug, id)): Path<(String, i64)>,
+    session: Session<SessionPgPool>,
+    request: Option<Extension<LocoRequestId>>,
+    token: CsrfToken,
+    ViewEngine(view): ViewEngine<TeraView>,
+    AxumForm(draft): AxumForm<HashMap<String, String>>,
+) -> Response {
+    member_action(
+        page::Page::new(&ctx, &session, &token, &view, &slug, request),
+        id,
+        page::MembershipAction::Restore,
+        draft,
+    )
+    .await
+}
+async fn revoke_member(
+    State(ctx): State<AppContext>,
+    Path((slug, id)): Path<(String, i64)>,
+    session: Session<SessionPgPool>,
+    request: Option<Extension<LocoRequestId>>,
+    token: CsrfToken,
+    ViewEngine(view): ViewEngine<TeraView>,
+    AxumForm(draft): AxumForm<HashMap<String, String>>,
+) -> Response {
+    member_action(
+        page::Page::new(&ctx, &session, &token, &view, &slug, request),
+        id,
+        page::MembershipAction::Revoke,
+        draft,
+    )
+    .await
+}
+async fn member_action(
+    page: page::Page<'_>,
+    id: i64,
+    action: page::MembershipAction,
+    draft: HashMap<String, String>,
+) -> Response {
+    let id = match administration::member_browser::MembershipId::new(id) {
+        Ok(id) => id,
+        Err(error) => return presentation_error(page.view(), "en", error),
+    };
+    let language = match draft.get("lang") {
+        Some(value) => match supported_language(value) {
+            Some(language) => language,
+            None => return rendering::invalid_link(page.view(), "en"),
+        },
+        None => "en",
+    };
+    let query = match administration::member_browser::MemberQuery::from_form(&draft) {
+        Ok(query) => query,
+        Err(_) => return rendering::invalid_link(page.view(), language),
+    };
+    page.with_language(language)
+        .with_explicit_language(draft.contains_key("lang"))
+        .with_member_query(query)
+        .save(page::Change::Membership(id, action), draft)
         .await
 }
 async fn create_relationship(

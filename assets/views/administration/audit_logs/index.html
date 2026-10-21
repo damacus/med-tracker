@@ -1,6 +1,6 @@
 {% extends "layouts/base.html" %}
 {% block content %}
-<section class="max-w-5xl mx-auto">
+<section class="admin-page">
   <a class="link" href="/households/{{ slug }}/admin{{ language_suffix }}">{% if lang == "en" %}Administration{% else %}{{ admin_labels.nav.label }}{% endif %}</a>
   {% include "administration/context.html" %}
   <h1 class="text-3xl font-semibold mt-4">{{ admin_labels.audit.title }}</h1>
@@ -8,7 +8,7 @@
   {% include "administration/navigation.html" %}
 
   <div class="mt-6">{% include "components/form_errors.html" %}</div>
-  <form id="audit-filter-form" action="/households/{{ slug }}/admin/audit_logs" method="get" class="grid gap-4 sm:grid-cols-3 mt-6">
+  <form id="audit-filter-form" action="/households/{{ slug }}/admin/audit_logs" method="get" class="admin-filter shell-panel grid gap-4 sm:grid-cols-3 mt-6">
     {% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}
     <div>
       <label class="label" for="audit-event-type">{{ admin_labels.audit.event_type }}</label>
@@ -39,8 +39,8 @@
     {% endfor %}
   </ul>
 
-  <div class="hidden md:block overflow-x-auto mt-6">
-    <table class="table table-zebra">
+  <div class="hidden md:block overflow-x-auto mt-6 shell-panel">
+    <table class="table shell-table admin-table">
       <caption class="sr-only">{{ admin_labels.audit.caption }}</caption>
       <thead><tr><th scope="col">{{ admin_labels.audit.when }}</th><th scope="col">{{ admin_labels.audit.event }}</th><th scope="col">{{ admin_labels.audit.actor }}</th><th scope="col">{{ admin_labels.audit.details }}</th></tr></thead>
       <tbody>

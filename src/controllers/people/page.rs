@@ -64,8 +64,16 @@ impl<'a> Page<'a> {
                         .unwrap_or(Value::Null);
                 }
             }
+            let labels = crate::models::care::report_pdf::translations(self.form_language)
+                .map_err(|_| OperationError::Unavailable)?;
+            people::browser::enrich(&tenant, &mut collection, &labels).await?;
             let can_create = people::can_create(&tenant).await?;
-            Ok::<_, OperationError>(rendering::index(self.slug, collection, can_create))
+            let mut data = rendering::index(self.slug, collection, can_create);
+            data["labels"] = labels.clone();
+            data["lang"] = json!(self.form_language);
+            data["title"] = labels["home"]["cards"]["people"]["title"].clone();
+            data["care_warning_labels"] = labels["care_warning"].clone();
+            Ok::<_, OperationError>(data)
         }
         .await;
         self.finish(tenant, "people/index.html", result, None).await
@@ -106,6 +114,10 @@ impl<'a> Page<'a> {
                 can_manage,
                 can_manage_household,
             );
+            data["date_of_birth_display"] = json!(people::browser::birth_date(
+                data["person"]["date_of_birth"].as_str(),
+                &labels
+            ));
             data["labels"] = labels.clone();
             data["lang"] = json!(locale);
             data["care_warning_labels"] = labels["care_warning"].clone();

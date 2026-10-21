@@ -2,6 +2,7 @@ pub mod app_tokens;
 pub mod audit_logs;
 pub mod delegation;
 pub mod grants;
+pub mod member_browser;
 pub mod memberships;
 pub mod overview;
 pub(crate) mod persistence;
