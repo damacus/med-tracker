@@ -2508,9 +2508,8 @@ async fn browser_missed_reminder_skips_decided_dependent_doses_and_undeclared_ma
         .unwrap()
         .with_nanosecond(0)
         .unwrap();
-    let scheduled = (now - chrono::Duration::minutes(30))
-        .format("%H:%M")
-        .to_string();
+    let scheduled_at = now - chrono::Duration::minutes(30);
+    let scheduled = scheduled_at.format("%H:%M").to_string();
     let decided = create_declared_dependent(
         &app,
         &token,
@@ -2523,7 +2522,7 @@ async fn browser_missed_reminder_skips_decided_dependent_doses_and_undeclared_ma
     let schedule = seed_daily_schedule(&app, decided, now, &scheduled).await;
     app.fixture.admin.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
         "INSERT INTO medication_dose_occurrences(household_id,schedule_id,window_starts_on,window_ends_on,position,scheduled_at,outcome,resolved_at,resolved_by_membership_id,created_at,updated_at) VALUES(72001,$1,$2,$2,1,$3,'not_taken',now(),74001,now(),now())",
-        [schedule.into(),now.date_naive().into(),(now-chrono::Duration::minutes(30)).naive_utc().into()])).await.unwrap();
+        [schedule.into(),scheduled_at.date_naive().into(),scheduled_at.naive_utc().into()])).await.unwrap();
     let transport = Arc::new(Reminders(Mutex::new(vec![])));
     app.context.shared_store.insert(Service {
         public_key: String::new(),
