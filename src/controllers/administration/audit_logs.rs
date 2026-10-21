@@ -273,7 +273,7 @@ pub(super) fn summaries(
         .collect()
 }
 
-fn summary(
+pub(super) fn summary(
     event: &administration::audit_logs::AuditSummary,
     labels: &Value,
     language: &str,

@@ -1,0 +1,16 @@
+<div class="flex flex-wrap items-start gap-2">
+  <a class="btn btn-outline btn-sm" href="/households/{{ slug }}/admin/memberships/{{ member.id }}/edit{{ member_query_suffix }}" aria-label="{{ member_labels.edit_role }} {{ member.name }}">{{ detail_labels.edit_role }}</a>
+  {% if member.status == "active" %}{% set actions = ["suspend", "revoke"] %}{% elif member.status == "suspended" %}{% set actions = ["restore", "revoke"] %}{% else %}{% set actions = ["restore"] %}{% endif %}
+  {% for action in actions %}<details class="member-action"><summary class="btn btn-outline btn-sm cursor-pointer" aria-label="{{ member_labels[action] }} {{ member.name }}">{{ member_labels[action] }}</summary>
+    <form method="post" action="/households/{{ slug }}/admin/users/{{ member.id }}/{{ action }}" class="shell-panel p-3 mt-2" aria-label="{{ member_labels.confirm }} {{ member_labels[action] }} {{ member_labels.membership }} {{ member.name }}">
+      <p>{{ member_labels.confirm }} {{ member_labels[action] }} {{ member_labels.membership }} {{ member.name }}?</p>
+      <p class="mt-2">{{ detail_labels[action ~ "_help"] }}</p>
+      <input type="hidden" name="authenticity_token" value="{{ authenticity_token }}">
+      <input type="hidden" name="confirmation" value="{% if action == "restore" %}restored{% elif action == "suspend" %}suspended{% else %}revoked{% endif %}">
+      <input type="hidden" name="q" value="{{ query.q }}"><input type="hidden" name="role" value="{{ query.role }}"><input type="hidden" name="status" value="{{ query.status }}"><input type="hidden" name="sort" value="{{ query.sort }}"><input type="hidden" name="direction" value="{{ query.direction }}"><input type="hidden" name="page" value="{{ page }}">
+      {% if return_to_member | default(value=false) %}<input type="hidden" name="return_to" value="member">{% endif %}
+      {% if language_suffix != "" %}<input type="hidden" name="lang" value="{{ lang }}">{% endif %}
+      <button class="btn btn-sm btn-neutral mt-3" type="submit">{{ member_labels.confirm }} {{ member_labels[action] }}</button>
+    </form>
+  </details>{% endfor %}
+</div>

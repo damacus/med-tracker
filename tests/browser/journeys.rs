@@ -111,11 +111,11 @@ async fn household_member_table_and_confirmation_at_desktop_and_mobile() {
                 expect(page.locator("tbody")).to_contain_text("inactive@example.test").await.unwrap();
                 expect(page.locator("tbody")).to_contain_text("Accountless dependant").await.unwrap();
                 assert!(!page.evaluate::<(),bool>("() => document.documentElement.scrollWidth > innerWidth",None).await.unwrap());
-                page.get_by_text("Restore Inactive member", true).click(None).await.unwrap();
+                page.locator("summary[aria-label='Restore Inactive member']").click(None).await.unwrap();
                 expect(page.get_by_role(AriaRole::Button, named("Confirm Restore"))).to_be_visible().await.unwrap();
                 page.evaluate::<(),bool>("() => { window.scrollTo(0,0); return true; }",None).await.unwrap();
                 page.screenshot_to_file(Path::new(&format!("docs/screenshots/browser-journeys/{screenshot}.png")),ScreenshotOptions::builder().animations(Animations::Disabled).full_page(true).build()).await.unwrap();
-                page.get_by_text("Edit household role for Accountless dependant",true).click(None).await.unwrap();
+                page.get_by_role(AriaRole::Link,named("Edit household role for Accountless dependant")).click(None).await.unwrap();
                 expect(page.get_by_role(AriaRole::Heading,named("Edit household role for Accountless dependant"))).to_be_visible().await.unwrap();
                 expect(page.locator("body[data-navigation-ready]")).to_be_visible().await.unwrap();
                 page.evaluate::<(),bool>("() => { window.scrollTo(0,0); return true; }",None).await.unwrap();

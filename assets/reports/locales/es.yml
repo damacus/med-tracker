@@ -3151,6 +3151,34 @@ es:
     body: "La atención puede continuar. Puedes asignar o invitar a un cuidador cuando corresponda."
     action: "Asignar o invitar a un cuidador"
   administration:
+    member_detail:
+      not_applied: "Cambio solicitado (no aplicado)"
+      title: "Detalles del miembro"
+      no_email: "Sin dirección de correo"
+      membership_id: "Membresía"
+      edit_role: "Editar rol"
+      access_help: "El acceso al hogar es independiente del inicio de sesión en la cuenta. Gestionar un hogar no otorga tutela."
+      suspend_help: "La suspensión detiene temporalmente el acceso a este hogar. No desactiva el inicio de sesión en la cuenta."
+      revoke_help: "La revocación elimina el acceso a este hogar. No cierra la cuenta."
+      restore_help: "Restaurar la membresía permite de nuevo el acceso a este hogar, sujeto a los permisos actuales de la cuenta."
+      history: "Historial de la membresía"
+      history_help: "Solo se muestran los intentos registrados relativos a esta membresía en este hogar. Las referencias del autor conservan la atribución original."
+      empty_history: "No hay actividad de membresía registrada."
+      older: "Actividad anterior"
+      roles:
+        owner: "Los propietarios gestionan los miembros y la configuración del hogar. No se puede eliminar al último propietario activo."
+        administrator: "Los administradores gestionan los miembros y la configuración del hogar, sujetos a las salvaguardas de los propietarios."
+        member: "Los miembros pueden consultar y registrar los cuidados del hogar. No pueden administrar membresías."
+      events:
+        role: "Intento de cambio de rol"
+        membership: "Intento de cambio de membresía"
+        created: "Creación de la membresía"
+      outcomes:
+        success: "Cambio registrado"
+        no_change: "Sin cambios"
+        rejected: "Intento rechazado"
+        failure: "Intento fallido"
+        recorded: "Evento registrado"
     member_list:
       search: "Nombre o correo electrónico"
       role: "Rol en el hogar"

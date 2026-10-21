@@ -17,3 +17,6 @@ mod people_polish;
 
 #[path = "browser/administration_polish.rs"]
 mod administration_polish;
+
+#[path = "browser/member_details.rs"]
+mod member_details;

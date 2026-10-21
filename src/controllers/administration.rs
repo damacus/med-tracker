@@ -92,6 +92,7 @@ pub fn routes() -> Routes {
         .add("/{slug}/admin/household/edit", get(settings))
         .add("/{slug}/admin/household", post(save_settings))
         .add("/{slug}/admin/users", get(users))
+        .add("/{slug}/admin/memberships/{id}", get(member_detail))
         .add("/{slug}/admin/users/{id}/edit", get(role))
         .add("/{slug}/admin/users/{id}/membership_role", post(save_role))
         .add("/{slug}/admin/memberships/{id}/edit", get(membership_role))
@@ -192,6 +193,58 @@ async fn users(
         .with_explicit_language(explicit_language.is_some())
         .with_member_query(query)
         .show(page::Screen::Users, None, None)
+        .await
+}
+async fn member_detail(
+    State(ctx): State<AppContext>,
+    Path((slug, id)): Path<(String, i64)>,
+    session: Session<SessionPgPool>,
+    request: Option<Extension<LocoRequestId>>,
+    token: CsrfToken,
+    ViewEngine(view): ViewEngine<TeraView>,
+    incoming: Request,
+) -> Response {
+    let id = match administration::member_browser::MembershipId::new(id) {
+        Ok(id) => id,
+        Err(error) => return presentation_error(&view, "en", error),
+    };
+    let mut cursor = None;
+    let mut duplicate = false;
+    let mut pairs = Vec::new();
+    for (key, value) in
+        url::form_urlencoded::parse(incoming.uri().query().unwrap_or_default().as_bytes())
+    {
+        if key == "history_cursor" {
+            if cursor.replace(value.into_owned()).is_some() {
+                duplicate = true;
+            }
+        } else {
+            pairs.push((key.into_owned(), value.into_owned()));
+        }
+    }
+    let raw = url::form_urlencoded::Serializer::new(String::new())
+        .extend_pairs(pairs)
+        .finish();
+    let (query, explicit) = match administration::member_browser::MemberQuery::parse(Some(&raw)) {
+        Ok(value) => value,
+        Err(_) => return rendering::invalid_link(&view, fallback_language(incoming.headers())),
+    };
+    let language = match explicit.as_deref() {
+        Some(value) => match supported_language(value) {
+            Some(lang) => lang,
+            None => return rendering::invalid_link(&view, "en"),
+        },
+        None => fallback_language(incoming.headers()),
+    };
+    let cursor = match administration::member_history::HistoryCursor::parse(cursor.as_deref(), id) {
+        Ok(cursor) if !duplicate => cursor,
+        _ => return rendering::invalid_link(&view, language),
+    };
+    page::Page::new(&ctx, &session, &token, &view, &slug, request)
+        .with_language(language)
+        .with_explicit_language(explicit.is_some())
+        .with_member_query(query)
+        .show(page::Screen::Member(id, cursor), None, None)
         .await
 }
 async fn role(

@@ -16,7 +16,11 @@ Compare synthetic screenshots at 1440, 390 and 320 pixels against retained share
 
 ## Slice 2: member details and history
 
-Provide the complete member detail/history journey using the same scoped identity and permissions. Preserve immutable attribution and distinguish membership history from sign-in state. Define and test authorised history, empty/error states, navigation and mobile behaviour before implementation. Controller owns this subsequent slice.
+In progress on codex/feat-member-details from verified slice1 revision684fd2ee1. One source writer owns this checkout; no source changes to slice1 checkout. Use scoped identity and canonical role/lifecycle commands without changing lock order. Member names link to a detail page with identity, role/status, role powers, clear suspend/revoke/restore effects and explicit distinction from global sign-in and guardianship. Compact visible directory actions retain member-specific accessible names. Preserve original list search/role/status/sort/direction/page/language through detail, role editor and successful/rejected actions.
+
+History is a dedicated typed SQL projection scoped to current household and exact numeric metadata.target_membership_id, restricted to household_membership.role_updated, household_access.membership_changed and household_access.membership_created. Include rejected/no-change attempts with explicit outcome; never claim they changed membership. Page25 newest first with deterministic timestamp/id cursor bounded to the selected member. Reuse safe role/status/outcome allowlists and immutable actor references. Batch same-household actor names through narrow directory projection; fall back to original actor IDs without global identity lookup or raw clinical metadata. Reads add no new audit event.
+
+Acceptance uses restricted full-App requests for member/missing/foreign/ordinary/revoked/locked scope, exact timeline filtering, escaped malicious metadata/name, safe actor fallback, cursor boundaries and navigation through actions. Browser keyboard/action/back links and1440/390/320 screenshots include dark, validation error and empty history. Controller owns final taskci/docs and independent review after source freeze. Slices3–4 remain unimplemented.
 
 ## Slice 3: invitation management and delivery attempts
 
@@ -39,3 +43,9 @@ The accountless identity regression first failed through App::boot with restrict
 The synthetic browser journey covers directory/confirmation and accountless role editing at 1440, 390 and 320 pixels, including horizontal-overflow checks. Evidence lives in docs/screenshots/browser-journeys/members-{desktop,mobile,narrow}.png and matching -role.png files. The shared shell, rounded filter/table panels, typography and responsive role form are compared against docs/screenshots/shared-layout and the retained private Rails member reference. The added filter/sort/status/action controls deliberately extend the shared-layout reference. No sign-in activation or platform-administrator controls are copied from Rails.
 
 Final CI/docs and independent security acceptance remain controller gates. Local focused tests do not claim publication, merge or deployment.
+
+## Slice 2 focused evidence
+
+Implemented member detail/history and compact accessible directory actions on the verified slice1/focus-fix base. Detail requests first failed404 before production changes. Restricted App::boot member request coverage now includes exact household/target history filtering,25-entry cursor/tie-break pages, actor-name escaping/fallback, read audit invariance, missing/foreign/ordinary/revoked/locked cases and preserved list/language context through lifecycle/role/error responses. Rejected or failed requested deltas explicitly say they were not applied; unchanged pairs are omitted. Dates reuse the existing translated date helper and authenticated account timezone, with ISO time attributes.
+
+Focused member requests passed7/7; both the new detail keyboard journey and existing compact member journey passed. Final detail screenshots cover1440/390/320, dark mode, empty timeline and last-owner rejection under docs/screenshots/member-details/. Their shared frame/panels/type and compact actions were compared with retained shared-layout/private Rails references. Five locale trees remain in sync. Final acceptance/publication remains controller-owned after independent review and full CI/docs/security gates.

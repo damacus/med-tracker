@@ -436,7 +436,7 @@ async fn member_administration_lists_inactive_identity_and_changes_membership_st
     let first_page = request.get("/households/persistence-fixture/admin/users?role=member&status=active&sort=name&direction=asc&page=1&lang=es").await;
     let first_html = first_page.text();
     assert_eq!(first_page.status_code(), 200, "{first_html}");
-    assert_eq!(first_html.matches("Bulk member</th>").count(), 25);
+    assert_eq!(first_html.matches("Bulk member</a></th>").count(), 25);
     assert_eq!(
         listed_membership_ids(&first_html),
         (74101..=74125).collect::<Vec<_>>()
@@ -444,7 +444,10 @@ async fn member_administration_lists_inactive_identity_and_changes_membership_st
     assert!(first_html.contains("page=2&amp;lang=es"), "{first_html}");
     let second_page = request.get("/households/persistence-fixture/admin/users?role=member&status=active&sort=name&direction=asc&page=2&lang=es").await;
     assert_eq!(second_page.status_code(), 200, "{}", second_page.text());
-    assert_eq!(second_page.text().matches("Bulk member</th>").count(), 2);
+    assert_eq!(
+        second_page.text().matches("Bulk member</a></th>").count(),
+        2
+    );
     assert_eq!(
         listed_membership_ids(&second_page.text()),
         vec![74126, 74127, 74981, 74980]
@@ -963,5 +966,239 @@ async fn administration_locale_invalid_links_return_safe_translated_html() -> Te
         assert!(html.contains("class=\"btn btn-neutral mt-4\" href=\"/\""));
         assert!(!html.contains("private-sentinel"));
     }
+    Ok(())
+}
+
+#[tokio::test]
+async fn member_detail_scopes_safe_history_and_preserves_navigation() -> TestResult {
+    let (fixture, boot) = boot_fixture_with(|config| {
+        let key = base64::engine::general_purpose::STANDARD.encode([7_u8; 64]);
+        config.settings.get_or_insert_with(|| json!({}))["browser_session"] =
+            json!({"key":key,"secure":false});
+    })
+    .await;
+    fixture.admin.execute_unprepared("INSERT INTO people(id,name,email,person_type,has_capacity,created_at,updated_at) VALUES(73016,'Detail dependant','detail@example.test',1,false,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74016,72001,73016,'member','suspended',now(),now(),now()); INSERT INTO security_audit_events(id,household_id,actor_account_id,actor_membership_id,event_type,metadata,created_at,updated_at) SELECT 960000+n,72001,71001,CASE WHEN n=28 THEN NULL ELSE 74001 END,'household_access.membership_changed',jsonb_build_object('target_membership_id',74016,'outcome',CASE WHEN n=28 THEN 'rejected' WHEN n=27 THEN 'no_change' ELSE 'success' END,'new_state',jsonb_build_object('status','suspended'),'secret','private clinical sentinel'),'2030-01-15 12:00:00',now() FROM generate_series(1,28) n; INSERT INTO security_audit_events(id,household_id,event_type,metadata,created_at,updated_at) VALUES(960099,72001,'api.request',jsonb_build_object('target_membership_id',74016),now(),now()),(960098,72001,'household_access.membership_changed',jsonb_build_object('target_membership_id','74016'),now(),now()),(960097,72001,'household_access.membership_changed',jsonb_build_object('target_membership_id',74001),now(),now())").await?;
+    fixture.admin.execute_unprepared("INSERT INTO households(id,created_by_account_id,name,slug,timezone,created_at,updated_at) VALUES(72002,71001,'Foreign household','foreign-detail','UTC',now(),now()); INSERT INTO people(id,name,person_type,has_capacity,created_at,updated_at) VALUES(73026,'Foreign secret identity',0,true,now(),now()); INSERT INTO household_memberships(id,household_id,person_id,role,status,joined_at,created_at,updated_at) VALUES(74026,72002,73026,'member','active',now(),now(),now()); INSERT INTO security_audit_events(id,household_id,event_type,metadata,created_at,updated_at) VALUES(960096,72002,'household_access.membership_changed',jsonb_build_object('target_membership_id',74016),now(),now()); UPDATE accounts SET name='<script>alert(1)</script>' WHERE id=71001").await?;
+    let mut request = server(&boot);
+    request.save_cookies();
+    select_household(&request, &fixture, &boot).await?;
+    let detail=request.get("/households/persistence-fixture/admin/memberships/74016?q=Detail&status=suspended&sort=email&direction=desc&page=2&lang=en").await;
+    assert_eq!(detail.status_code(), 200, "{}", detail.text());
+    let html = detail.text();
+    assert!(html.contains("Detail dependant"));
+    assert!(html.contains("detail@example.test"));
+    assert!(html.contains("Rejected attempt"));
+    assert!(html.contains("No change"));
+    assert!(!html.contains("private clinical sentinel"));
+    assert_eq!(html.matches("data-member-event=").count(), 25);
+    assert!(html.contains(r#"data-member-event="960028""#));
+    assert!(!html.contains(r#"data-member-event="960099""#));
+    assert!(html.contains("Account #71001"));
+    assert!(!html.contains("<script>alert(1)</script>"));
+    assert!(html.contains("&lt;script&gt;alert(1)&lt;/script&gt;"));
+    assert!(!html.contains("data-member-event=\"960096\""));
+    assert_eq!(
+        request
+            .get("/households/persistence-fixture/admin/memberships/74026")
+            .await
+            .status_code(),
+        404
+    );
+    assert_eq!(
+        request
+            .get("/households/persistence-fixture/admin/memberships/74016?history_cursor=bad")
+            .await
+            .status_code(),
+        422
+    );
+
+    assert!(html.contains("/admin/users?q=Detail&amp;role=all&amp;status=suspended&amp;sort=email&amp;direction=desc&amp;page=2&amp;lang=en"));
+    let older = html
+        .split(r#"data-member-older href=""#)
+        .nth(1)
+        .ok_or("older link missing")?
+        .split('"')
+        .next()
+        .ok_or("older link missing")?
+        .replace("&amp;", "&");
+    assert_eq!(
+        request
+            .get(&older.replace("/memberships/74016?", "/memberships/74001?"))
+            .await
+            .status_code(),
+        422
+    );
+    let next = request.get(&older).await;
+    assert_eq!(next.status_code(), 200, "{}", next.text());
+    assert_eq!(next.text().matches("data-member-event=").count(), 3);
+    assert!(!next.text().contains(r#"960004""#));
+    let csrf = authenticity_token(&html).ok_or("csrf missing")?;
+    let changed = request
+        .post("/households/persistence-fixture/admin/users/74016/restore")
+        .form(&[
+            ("confirmation", "restored"),
+            ("authenticity_token", csrf),
+            ("return_to", "member"),
+            ("q", "Detail"),
+            ("status", "suspended"),
+            ("sort", "email"),
+            ("direction", "desc"),
+            ("page", "2"),
+            ("lang", "en"),
+        ])
+        .await;
+    assert_eq!(changed.status_code(), 303, "{}", changed.text());
+    assert!(
+        changed
+            .header("location")
+            .to_str()?
+            .starts_with("/households/persistence-fixture/admin/memberships/74016?")
+    );
+    assert_eq!(
+        request
+            .get("/households/persistence-fixture/admin/memberships/999999")
+            .await
+            .status_code(),
+        404
+    );
+    fixture
+        .admin
+        .execute_unprepared("UPDATE household_memberships SET role='member' WHERE id=74001")
+        .await?;
+    assert_eq!(
+        request
+            .get("/households/persistence-fixture/admin/memberships/74016")
+            .await
+            .status_code(),
+        403
+    );
+    drop(request);
+    close(fixture, boot).await;
+    Ok(())
+}
+
+#[tokio::test]
+async fn member_detail_rechecks_authority_and_keeps_context_on_errors() -> TestResult {
+    let (fixture, boot) = boot_fixture_with(|config| {
+        let key = base64::engine::general_purpose::STANDARD.encode([7_u8; 64]);
+        config.settings.get_or_insert_with(|| json!({}))["browser_session"] =
+            json!({"key":key,"secure":false});
+    })
+    .await;
+    fixture
+        .admin
+        .execute_unprepared("UPDATE household_memberships SET role='owner' WHERE id=74001")
+        .await?;
+    let mut request = server(&boot);
+    request.save_cookies();
+    select_household(&request, &fixture, &boot).await?;
+    let before = fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT count(*) AS count FROM security_audit_events",
+        ))
+        .await?
+        .ok_or("audit count missing")?
+        .try_get::<i64>("", "count")?;
+    for lang in ["en", "es", "cy", "ga", "pt"] {
+        let detail = request
+            .get(&format!(
+                "/households/persistence-fixture/admin/memberships/74001?lang={lang}"
+            ))
+            .await;
+        assert_eq!(detail.status_code(), 200, "{}", detail.text());
+        assert!(detail.text().contains(&format!(r#"<html lang="{lang}""#)));
+        assert_eq!(detail.text().matches("data-member-event=").count(), 0);
+    }
+    let after = fixture
+        .admin
+        .query_one_raw(Statement::from_string(
+            DbBackend::Postgres,
+            "SELECT count(*) AS count FROM security_audit_events",
+        ))
+        .await?
+        .ok_or("audit count missing")?
+        .try_get::<i64>("", "count")?;
+    assert_eq!(before, after);
+    let detail=request.get("/households/persistence-fixture/admin/memberships/74001?q=Synthetic&role=owner&sort=email&direction=desc&page=3&lang=en").await;
+    let html = detail.text();
+    let csrf = authenticity_token(&html).ok_or("csrf missing")?;
+    let rejected = request
+        .post("/households/persistence-fixture/admin/users/74001/suspend")
+        .form(&[
+            ("confirmation", "suspended"),
+            ("authenticity_token", csrf),
+            ("return_to", "member"),
+            ("q", "Synthetic"),
+            ("role", "owner"),
+            ("sort", "email"),
+            ("direction", "desc"),
+            ("page", "3"),
+            ("lang", "en"),
+        ])
+        .await;
+    assert_eq!(rejected.status_code(), 422, "{}", rejected.text());
+    assert!(
+        rejected
+            .text()
+            .contains("Last active owner cannot be removed")
+    );
+    assert!(rejected.text().contains("Rejected attempt"));
+    assert!(rejected.text().contains("Requested change (not applied)"));
+    assert!(rejected.text().contains(r#"name="q" value="Synthetic""#));
+    assert!(
+        rejected
+            .text()
+            .contains(r#"name="return_to" value="member""#)
+    );
+    assert!(rejected.text().contains("/admin/users?q=Synthetic&amp;role=owner&amp;status=all&amp;sort=email&amp;direction=desc&amp;page=3&amp;lang=en"));
+    let role=request.get("/households/persistence-fixture/admin/memberships/74001/edit?q=Synthetic&return_to=member&page=3&lang=es").await;
+    assert_eq!(role.status_code(), 200, "{}", role.text());
+    assert!(role.text().contains("/admin/memberships/74001?q=Synthetic"));
+    let role_html = role.text();
+    let csrf = authenticity_token(&role_html).ok_or("csrf missing")?;
+    let role_save = request
+        .post("/households/persistence-fixture/admin/memberships/74001/membership_role")
+        .form(&[
+            ("role", "owner"),
+            ("role_filter", "all"),
+            ("authenticity_token", csrf),
+            ("return_to", "member"),
+            ("q", "Synthetic"),
+            ("page", "3"),
+            ("lang", "es"),
+        ])
+        .await;
+    assert_eq!(role_save.status_code(), 303, "{}", role_save.text());
+    assert!(
+        role_save
+            .header("location")
+            .to_str()?
+            .contains("/admin/memberships/74001?q=Synthetic")
+    );
+    assert!(role_save.header("location").to_str()?.contains("lang=es"));
+    fixture
+        .admin
+        .execute_unprepared(
+            "UPDATE household_memberships SET status='revoked',revoked_at=now() WHERE id=74001",
+        )
+        .await?;
+    assert_eq!(
+        request
+            .get("/households/persistence-fixture/admin/memberships/74980")
+            .await
+            .status_code(),
+        403
+    );
+    fixture.admin.execute_unprepared("UPDATE household_memberships SET status='active',revoked_at=NULL WHERE id=74001; INSERT INTO account_lockouts(account_id,key,deadline) VALUES(71001,'detail-lock',now()+interval '1 hour')").await?;
+    let locked = request
+        .get("/households/persistence-fixture/admin/memberships/74980")
+        .await;
+    assert_eq!(locked.status_code(), 303);
+    assert_eq!(locked.header("location").to_str()?, "/login");
+    assert!(!locked.text().contains("Synthetic minor"));
+    drop(request);
+    close(fixture, boot).await;
     Ok(())
 }
