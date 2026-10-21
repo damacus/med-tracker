@@ -184,6 +184,22 @@ async fn member_administration_lists_inactive_identity_and_changes_membership_st
         ])
         .await;
     assert_eq!(suspended.status_code(), 303, "{}", suspended.text());
+    assert_eq!(
+        suspended.header("location").to_str()?,
+        "/households/persistence-fixture/admin/users?notice=suspended"
+    );
+    let suspended_notice = request.get(suspended.header("location").to_str()?).await;
+    assert_eq!(
+        suspended_notice.status_code(),
+        200,
+        "{}",
+        suspended_notice.text()
+    );
+    assert!(
+        suspended_notice.text().contains("Membership Suspended."),
+        "{}",
+        suspended_notice.text()
+    );
     let revoked = request
         .post("/households/persistence-fixture/admin/users/74006/revoke")
         .form(&[

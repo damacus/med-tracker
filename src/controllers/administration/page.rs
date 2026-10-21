@@ -296,12 +296,11 @@ impl<'a> Page<'a> {
                 }
                 Change::Role(id) => {
                     let member = self.member(&tenant, id).await?;
-                    administration::memberships::change(
-                        &tenant,
-                        member.id.get(),
-                        json!({"role":forms::field(&draft,"role")}),
-                        false,
-                        provenance,
+                    let role = administration::memberships::MembershipRole::parse(forms::field(
+                        &draft, "role",
+                    ))?;
+                    administration::memberships::change_browser_role(
+                        &tenant, member.id, role, provenance,
                     )
                     .await?;
                     Ok(("users", Screen::Role(id)))
@@ -357,11 +356,15 @@ impl<'a> Page<'a> {
                         (
                             header::LOCATION,
                             if let Change::Membership(_, action) = change {
+                                let suffix = self
+                                    .member_query
+                                    .suffix(self.explicit_language.then_some(self.language));
+                                let separator = if suffix.is_empty() { "?" } else { "&" };
                                 format!(
-                                    "/households/{}/admin/users{}&notice={}",
+                                    "/households/{}/admin/users{}{}notice={}",
                                     self.slug,
-                                    self.member_query
-                                        .suffix(self.explicit_language.then_some(self.language)),
+                                    suffix,
+                                    separator,
                                     action.notice()
                                 )
                             } else if matches!(change, Change::Role(_)) {
