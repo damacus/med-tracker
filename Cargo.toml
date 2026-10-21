@@ -34,11 +34,11 @@ zip = { version = "=9.0.4", default-features = false, features = ["deflate"] }
 aes-gcm = "=0.11.1"
 base64 = "=0.23.1"
 bcrypt = "=0.19.3"
-better-auth = { git = "https://github.com/better-auth-rs/better-auth-rs", rev = "83fbe69b40dd4e69b74e20f2a238ce54ced82b90", default-features = false, features = [
+better-auth = { version = "=1.0.0-alpha.5", default-features = false, features = [
     "axum",
     "rustls",
 ] }
-better-auth-core = { git = "https://github.com/better-auth-rs/better-auth-rs", rev = "83fbe69b40dd4e69b74e20f2a238ce54ced82b90" }
+better-auth-core = { version = "=1.0.0-alpha.5" }
 openidconnect = "=4.0.1"
 cedar-policy = { version = "=4.13.0", default-features = false }
 headers = "=0.4.2"

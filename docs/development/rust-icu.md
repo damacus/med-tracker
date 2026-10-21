@@ -1,6 +1,6 @@
 # ICU for the root Rust application
 
-The pinned Better Auth revision requires ICU 78.3 to build its unconditional
+The published Better Auth 1.0.0-alpha.5 release requires ICU 78.3 to build its unconditional
 ICU dependency. Its in-memory sorting path can also need ICU at runtime.
 Root Rust Task commands
 find the ICU libraries and set `RUST_ICU_MAJOR_VERSION_NUMBER=78` and
