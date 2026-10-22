@@ -53,6 +53,22 @@ runtime credentials, template-cloned PostgreSQL and ConnectInfo where needed.
 Retain socket-specific coverage, real RLS, email stub/outbox and audit assertions.
 Never enable global truncation or use administrator credentials at runtime.
 
+Use SeaORM entities, relations, expressions and query builders for database access,
+including joins, filtering, pagination, aggregation and locking. Raw SQL strings,
+custom SQL fragments and direct driver/backend-specific APIs (for example SQLx
+PostgreSQL pools, rows or query adaptors, or hard-coded PostgreSQL query builders)
+are prohibited when SeaORM can express the required behaviour. Do not bypass
+SeaORM for convenience, familiarity or an assumed performance benefit. This rule
+also applies to migrations, fixtures and tests.
+
+An exception is allowed only when SeaORM cannot provide the required functionality.
+Before using one, identify the exact unsupported operation and the SeaORM APIs
+checked; document that limitation and the narrow exception in the code and PR.
+Keep the exception isolated, parameterise all values, preserve tenant/RLS and
+transaction boundaries, and cover the behaviour with focused acceptance tests.
+Use the connection-provided backend when constructing statements; hard-code a
+backend only when its specific functionality is the documented limitation.
+
 Use published release versions for package dependencies, never Git SHA or unreleased
 branch dependencies. Retain committed lockfiles and artifact integrity checksums.
 
