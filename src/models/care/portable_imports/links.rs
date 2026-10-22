@@ -1,28 +1,5 @@
 use super::*;
 
-pub(super) async fn write_location_memberships(
-    db: &DatabaseTransaction,
-    tenant: &TenantTransaction,
-    row: &Value,
-    index: &ExistingIndex,
-    person_id: i64,
-) -> Result<(), String> {
-    let Some(locations) = row["location_portable_ids"].as_array() else {
-        return Ok(());
-    };
-    for location in locations {
-        let portable_id = location.as_str().ok_or("Location portable ID is invalid")?;
-        let location_id = index
-            .get("locations", portable_id)
-            .ok_or("Imported location is unavailable")?;
-        db.execute_raw(Statement::from_sql_and_values(DbBackend::Postgres,
-            "INSERT INTO location_memberships (household_id, person_id, location_id, created_at, updated_at) VALUES ($1, $2, $3, NOW(), NOW()) ON CONFLICT (person_id, location_id) DO NOTHING",
-            [tenant.scope().household_id.into(), person_id.into(), location_id.into()]))
-            .await.map_err(|_| "Imported location membership could not be created".to_owned())?;
-    }
-    Ok(())
-}
-
 pub(super) async fn write_health_links(
     db: &DatabaseTransaction,
     tenant: &TenantTransaction,

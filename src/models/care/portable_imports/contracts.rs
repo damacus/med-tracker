@@ -1,4 +1,5 @@
 use super::*;
+use crate::models::care::sync::PortableFormat;
 
 pub(super) const BASE_TYPES: &[&str] = &[
     "people",
@@ -21,7 +22,7 @@ pub(crate) struct ImportPlan {
     records: Map<String, Value>,
     pub(crate) counts: Value,
     pub(super) errors: Vec<String>,
-    pub(super) v2: bool,
+    pub(super) format: PortableFormat,
 }
 
 impl ImportPlan {
@@ -44,9 +45,7 @@ impl ImportPlan {
         let format = payload["format"]
             .as_str()
             .ok_or("Portable data format is required")?;
-        if !matches!(format, "medtracker.portable.v1" | "medtracker.portable.v2") {
-            return Err("Unsupported portable data format".to_owned());
-        }
+        let format = PortableFormat::parse(format).ok_or("Unsupported portable data format")?;
         let records = payload["records"]
             .as_object()
             .ok_or("Portable data records are required")?;
@@ -54,7 +53,7 @@ impl ImportPlan {
         let mut errors = Vec::new();
         for (kind, rows) in records {
             if !BASE_TYPES.contains(&kind.as_str())
-                && !(format == "medtracker.portable.v2" && V2_TYPES.contains(&kind.as_str()))
+                && !(format.includes_extended_records() && V2_TYPES.contains(&kind.as_str()))
             {
                 return Err(format!("Unsupported portable record type: {kind}"));
             }
@@ -66,6 +65,25 @@ impl ImportPlan {
                 let object = row
                     .as_object()
                     .ok_or_else(|| format!("{kind}[{index}] must be an object"))?;
+                if kind == "people"
+                    && let Some(locations) = object.get("location_portable_ids")
+                {
+                    if !format.includes_person_locations() {
+                        return Err(format!(
+                            "people[{index}].location_portable_ids is not supported in medtracker.portable.v3"
+                        ));
+                    }
+                    if locations.as_array().is_some_and(|rows| !rows.is_empty()) {
+                        return Err(format!(
+                            "people[{index}].location_portable_ids is obsolete; remove the person location links or export medtracker.portable.v3 before retrying"
+                        ));
+                    }
+                    if !locations.is_null() && !locations.is_array() {
+                        return Err(format!(
+                            "people[{index}].location_portable_ids must be an array"
+                        ));
+                    }
+                }
                 let portable_id = row["portable_id"]
                     .as_str()
                     .filter(|value| !value.trim().is_empty())
@@ -104,7 +122,7 @@ impl ImportPlan {
             records: records.clone(),
             counts: Value::Object(counts),
             errors,
-            v2: format == "medtracker.portable.v2",
+            format,
         })
     }
 

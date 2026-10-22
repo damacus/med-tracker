@@ -65,7 +65,7 @@ pub(super) async fn record_change(
 
 use contracts::{BASE_TYPES, V2_TYPES};
 use identity::table;
-use links::{write_health_links, write_location_memberships};
+use links::write_health_links;
 use mapping::{mapped_row, record_person, text};
 use pauses::{reconcile_pauses, resume_pause, verify_pause};
 use validation::{decimal, validate_row};

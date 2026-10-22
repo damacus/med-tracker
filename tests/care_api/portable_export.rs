@@ -1,7 +1,176 @@
 use super::*;
 use med_tracker::models::care::portable_crypto;
+use med_tracker::models::entities::{location, medication, membership};
+use sea_orm::{ActiveModelTrait, Set};
 
 const PASSPHRASE: &str = "synthetic portable secret";
+
+#[tokio::test]
+async fn portable_v3_export_preserves_inventory_and_immutable_dose_locations_without_person_links()
+{
+    let app = Application::new().await;
+    membership::ActiveModel {
+        id: Set(74001),
+        role: Set("member".into()),
+        ..Default::default()
+    }
+    .update(&app.fixture.admin)
+    .await
+    .unwrap();
+    let token = app.token().await;
+    let take = app
+        .client
+        .post(format!(
+            "{}/api/v1/households/72001/medication_takes",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .json(&take_body())
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(take.status().as_u16(), 201);
+    let now = chrono::Utc::now().naive_utc();
+    let moved = location::ActiveModel {
+        household_id: Set(72001),
+        portable_id: Set("portable-v3-relocated-stock".into()),
+        name: Set("Relocated inventory".into()),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    medication::ActiveModel {
+        id: Set(80001),
+        location_id: Set(moved.id),
+        ..Default::default()
+    }
+    .update(&app.fixture.admin)
+    .await
+    .unwrap();
+    let mut payloads = Vec::new();
+    for query in [
+        "?version=2",
+        "?version=3",
+        "?portable_format=medtracker.portable.v3",
+    ] {
+        let response = app
+            .client
+            .get(export_url(&app, query))
+            .bearer_auth(&token)
+            .header("x-medtracker-portable-passphrase", PASSPHRASE)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status().as_u16(), 200, "{query}");
+        let body: Value = response.json().await.unwrap();
+        payloads.push(portable_crypto::decrypt(&body["data"], PASSPHRASE).unwrap());
+    }
+    let legacy = &payloads[0];
+    assert!(
+        !legacy["records"]["medication_takes"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+    assert!(
+        legacy["records"]["medication_takes"][0]["taken_from_location_portable_id"].is_string()
+    );
+    assert!(legacy["records"]["medications"][0]["location_portable_id"].is_string());
+    assert_ne!(
+        legacy["records"]["medications"][0]["location_portable_id"],
+        legacy["records"]["medication_takes"][0]["taken_from_location_portable_id"]
+    );
+    let before = super::portable_imports::import_effects(&app).await;
+    let bundle = portable_crypto::encrypt(&payloads[1], PASSPHRASE).unwrap();
+    let denied = app
+        .client
+        .post(format!(
+            "{}/api/v1/households/72001/portable_imports",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .header("x-medtracker-portable-passphrase", PASSPHRASE)
+        .json(&json!({"bundle":bundle}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(denied.status().as_u16(), 403);
+    assert_eq!(super::portable_imports::import_effects(&app).await, before);
+    membership::ActiveModel {
+        id: Set(74001),
+        role: Set("administrator".into()),
+        ..Default::default()
+    }
+    .update(&app.fixture.admin)
+    .await
+    .unwrap();
+    let before = super::portable_imports::import_effects(&app).await;
+    let mut altered = payloads[1].clone();
+    altered["records"]["medication_takes"][0]["taken_from_location_portable_id"] =
+        altered["records"]["medications"][0]["location_portable_id"].clone();
+    let bundle = portable_crypto::encrypt(&altered, PASSPHRASE).unwrap();
+    let rejected = app
+        .client
+        .post(format!(
+            "{}/api/v1/households/72001/portable_imports",
+            app.origin
+        ))
+        .bearer_auth(&token)
+        .header("x-medtracker-portable-passphrase", PASSPHRASE)
+        .json(&json!({"bundle":bundle}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(rejected.status().as_u16(), 422);
+    let rejected: Value = rejected.json().await.unwrap();
+    assert!(
+        rejected["data"]["errors"]
+            .to_string()
+            .contains("conflicts with existing history"),
+        "{rejected}"
+    );
+    assert_eq!(super::portable_imports::import_effects(&app).await, before);
+    for payload in &payloads[1..] {
+        assert_eq!(payload["format"], "medtracker.portable.v3");
+        for person in payload["records"]["people"].as_array().unwrap() {
+            assert!(person.get("location_portable_ids").is_none());
+        }
+        for collection in [
+            "medication_takes",
+            "medications",
+            "locations",
+            "medication_pause_periods",
+            "dose_occurrences",
+        ] {
+            assert_eq!(
+                payload["records"][collection], legacy["records"][collection],
+                "{collection}"
+            );
+        }
+        let before = super::portable_imports::import_effects(&app).await;
+        let bundle = portable_crypto::encrypt(payload, PASSPHRASE).unwrap();
+        let imported = app
+            .client
+            .post(format!(
+                "{}/api/v1/households/72001/portable_imports",
+                app.origin
+            ))
+            .bearer_auth(&token)
+            .header("x-medtracker-portable-passphrase", PASSPHRASE)
+            .json(&json!({"bundle":bundle}))
+            .send()
+            .await
+            .unwrap();
+        let status = imported.status().as_u16();
+        let body: Value = imported.json().await.unwrap();
+        assert_eq!(status, 201, "{body}");
+        assert_eq!(super::portable_imports::import_effects(&app).await, before);
+    }
+    app.close().await;
+}
 
 fn export_url(app: &Application, query: &str) -> String {
     format!(
@@ -137,7 +306,7 @@ async fn portable_export_rejects_invalid_options_and_foreign_households() {
     let mut statuses = Vec::new();
     let mut messages = Vec::new();
     for query in [
-        "?version=3",
+        "?version=4",
         "?portable_format=medtracker.portable.invalid",
         "?version=1&version=2",
     ] {

@@ -47,7 +47,8 @@ async fn advertised_features_match_executed_root_routes() {
             "portable_formats": [
                 "medtracker.portable.v1",
                 "medtracker.portable.encrypted.v1",
-                "medtracker.portable.v2"
+                "medtracker.portable.v2",
+                "medtracker.portable.v3"
             ],
             "encrypted_migration_bundle": true,
             "unencrypted_zip": true,

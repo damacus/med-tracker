@@ -102,6 +102,19 @@ provide personal history across households after departure.
 
 ## Portable Import Passphrases
 
+Select `version=3` or `portable_format=medtracker.portable.v3` on the household
+`portable_export` endpoint for bundles without person-to-location memberships.
+V3 retains inventory location labels, historical administration locations, pause
+periods and dose outcomes. Existing selectors continue to return their documented
+formats.
+An original administration location may differ from the current inventory label
+after relabelling; v3 retains both and rejects changes to existing history.
+
+Imports reject v1/v2 bundles containing non-empty
+`people.location_portable_ids`. Remove those obsolete person links deliberately
+or export a v3 bundle before retrying; the importer does not restore location
+permissions or silently discard those links. V3 does not accept that field.
+
 Portable import commands accept passphrases through stdin only:
 
 ```bash
